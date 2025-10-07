@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Miscellaneous
 *.class
 *.lock
@@ -117,3 +118,32 @@ app.*.symbols
 !**/ios/**/default.perspectivev3
 !/packages/flutter_tools/test/data/dart_dependencies_test/**/.packages
 !/dev/ci/**/Gemfile.lock
+=======
+# Flutter/Dart/Pub related
+.dart_tool/
+.packages
+.pub-cache/
+build/
+flutter_export_environment.sh
+
+# Android
+*.iml
+.gradle/
+local.properties
+**/android/key.properties
+
+# iOS
+Pods/
+Runner.xcworkspace/
+DerivedData/
+
+# VS Code
+.vscode/
+.idea/
+
+# Mac/Windows
+.DS_Store
+*.log
+*.swp
+Thumbs.db
+>>>>>>> fce486c (Initial Flutter project setup: AIRO base app with chat UI and updated dependencies)

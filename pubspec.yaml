@@ -1,0 +1,50 @@
+name: airo
+description: "AIRO - Offline-first Diet & Lifestyle Personal Assistant."
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.9.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # UI & design
+  cupertino_icons: ^1.0.8
+  google_fonts: ^6.2.1
+
+  # Core utilities
+  http: ^1.2.1
+  path: ^1.9.0
+
+  # Local storage
+  sqflite: ^2.3.3
+  path_provider: ^2.1.4
+
+  # Machine Learning (OCR)
+  google_mlkit_text_recognition: ^0.15.0
+
+  # Notifications & reminders
+  flutter_local_notifications: ^17.2.3
+  timezone: ^0.9.3
+
+  # File picker (for bills, diet charts, etc.)
+  file_picker: ^8.1.2
+
+  # State management (optional lightweight)
+  provider: ^6.1.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true
+
+  # Assets (images, sample data, diet PDFs, etc.)
+  assets:
+    - assets/images/
+    - assets/samples/
