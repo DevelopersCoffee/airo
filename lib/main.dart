@@ -1,94 +1,82 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'providers/auth_provider.dart';
+import 'providers/chat_provider.dart';
+import 'providers/food_provider.dart';
+import 'screens/login_screen.dart';
+import 'screens/chat_screen.dart';
 
-void main() => runApp(const DietAssistantApp());
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  runApp(const DietAssistantApp());
+}
 
 class DietAssistantApp extends StatelessWidget {
   const DietAssistantApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'Auro Assistant',
-      home: ChatScreen(),
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider(create: (_) => ChatProvider()),
+        ChangeNotifierProvider(create: (_) => FoodProvider()),
+      ],
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        title: 'AIRO Assistant',
+        theme: ThemeData(primarySwatch: Colors.blue, useMaterial3: true),
+        home: const AuthWrapper(),
+      ),
     );
   }
 }
 
-class ChatScreen extends StatefulWidget {
-  const ChatScreen({super.key});
+/// Wrapper widget that handles authentication state and routing
+class AuthWrapper extends StatefulWidget {
+  const AuthWrapper({super.key});
 
   @override
-  State<ChatScreen> createState() => _ChatScreenState();
+  State<AuthWrapper> createState() => _AuthWrapperState();
 }
 
-class _ChatScreenState extends State<ChatScreen> {
-  final List<Map<String, String>> _messages = [];
-  final TextEditingController _controller = TextEditingController();
-
-  void _sendMessage() {
-    if (_controller.text.trim().isEmpty) return;
-    setState(() {
-      _messages.add({'role': 'user', 'text': _controller.text.trim()});
-      _messages.add({'role': 'assistant', 'text': 'Got it! (sample reply)'});
+class _AuthWrapperState extends State<AuthWrapper> {
+  @override
+  void initState() {
+    super.initState();
+    // Initialize authentication on app startup
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<AuthProvider>().initializeAuth();
     });
-    _controller.clear();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Auro Assistant')),
-      body: Column(
-        children: [
-          Expanded(
-            child: ListView.builder(
-              reverse: true,
-              padding: const EdgeInsets.all(12),
-              itemCount: _messages.length,
-              itemBuilder: (context, index) {
-                final msg = _messages[_messages.length - 1 - index];
-                final isUser = msg['role'] == 'user';
-                return Align(
-                  alignment: isUser
-                      ? Alignment.centerRight
-                      : Alignment.centerLeft,
-                  child: Container(
-                    margin: const EdgeInsets.symmetric(vertical: 4),
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: isUser ? Colors.blue[100] : Colors.grey[200],
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(msg['text'] ?? ''),
-                  ),
-                );
-              },
+    return Consumer<AuthProvider>(
+      builder: (context, authProvider, _) {
+        // Show loading screen while checking authentication
+        if (authProvider.isLoading && !authProvider.isAuthenticated) {
+          return const Scaffold(
+            body: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 16),
+                  Text('Initializing...'),
+                ],
+              ),
             ),
-          ),
-          Container(
-            color: Colors.grey[100],
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _controller,
-                    decoration: const InputDecoration.collapsed(
-                      hintText: 'Type a message…',
-                    ),
-                    onSubmitted: (_) => _sendMessage(),
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.send),
-                  onPressed: _sendMessage,
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
+          );
+        }
+
+        // Route based on authentication status
+        if (authProvider.isAuthenticated) {
+          return const ChatScreen();
+        } else {
+          return const LoginScreen();
+        }
+      },
     );
   }
 }

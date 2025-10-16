@@ -1,4 +1,4 @@
-package com.example.airo
+package com.developerscoffee.airo
 
 import io.flutter.embedding.android.FlutterActivity
 

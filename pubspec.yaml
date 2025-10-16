@@ -26,20 +26,27 @@ dependencies:
   # Machine Learning (OCR)
   google_mlkit_text_recognition: ^0.15.0
 
+  # Image picker (for camera & gallery)
+  image_picker: ^1.1.2
+
   # Notifications & reminders
-  flutter_local_notifications: ^17.2.3
-  timezone: ^0.9.3
+  flutter_local_notifications: ^19.4.2
+  timezone: ^0.10.1
 
   # File picker (for bills, diet charts, etc.)
-  file_picker: ^8.1.2
+  file_picker: ^10.3.3
 
-  # State management (optional lightweight)
+  # State management
   provider: ^6.1.2
+
+  # Authentication & Security
+  flutter_appauth: ^7.0.0
+  flutter_secure_storage: ^9.2.2
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^5.0.0
+  flutter_lints: ^6.0.0
 
 flutter:
   uses-material-design: true
