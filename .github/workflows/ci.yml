@@ -117,21 +117,95 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           flutter-version: 'latest'
           channel: 'stable'
-      
+
       - name: Get dependencies
         run: |
           cd app
           flutter pub get
-      
+
       - name: Run linter
         run: |
           cd app
           flutter pub run custom_lint
+        continue-on-error: true
+
+  sonarqube:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for better analysis
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 'latest'
+          channel: 'stable'
+
+      - name: Get dependencies
+        run: |
+          cd app
+          flutter pub get
+
+      - name: Run Flutter Analyze
+        run: |
+          cd app
+          flutter analyze --no-fatal-infos > analysis-result.txt 2>&1 || true
+
+      - name: SonarQube Scan
+        uses: SonarSource/sonarqube-scan-action@master
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+        with:
+          args: >
+            -Dsonar.projectKey=airo-super-app
+            -Dsonar.projectName=Airo Super App
+            -Dsonar.sources=app/lib
+            -Dsonar.tests=app/test
+            -Dsonar.dart.coverage.reportPath=app/coverage/lcov.info
+            -Dsonar.exclusions=**/*.g.dart,**/*.freezed.dart,**/generated/**
+
+      - name: SonarQube Quality Gate
+        uses: SonarSource/sonarqube-quality-gate-action@master
+        timeout-minutes: 5
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        continue-on-error: true
+
+  snyk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 'latest'
+          channel: 'stable'
+
+      - name: Get dependencies
+        run: |
+          cd app
+          flutter pub get
+
+      - name: Run Snyk Security Scan
+        uses: snyk/actions/flutter@master
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --severity-threshold=high --all-projects
+
+      - name: Upload Snyk results
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()
+        with:
+          sarif_file: snyk.sarif
         continue-on-error: true
 

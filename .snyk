@@ -1,0 +1,44 @@
+# Snyk Configuration for Airo Super App
+
+# Severity threshold for failing the build
+# Options: low, medium, high, critical
+severity-threshold: high
+
+# Scan all projects
+all-projects: true
+
+# Fail on issues
+fail-on: all
+
+# Report format
+report: true
+
+# Exclude patterns
+exclude:
+  - node_modules
+  - .dart_tool
+  - build
+  - coverage
+  - .git
+
+# Snyk policy file location
+policy-path: .snyk-policy
+
+# License compliance
+license-check: true
+
+# Auto-fix settings
+auto-fix: false
+
+# Remediation settings
+remediation:
+  upgrade: true
+  patch: true
+  pin: false
+
+# Ignore rules (add specific CVEs to ignore if needed)
+# ignore:
+#   - CVE-2021-12345:
+#       reason: 'Not applicable to our use case'
+#       expires: '2025-12-31'
+

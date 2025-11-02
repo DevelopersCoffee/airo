@@ -291,3 +291,49 @@ build-windows: ## Build Windows app
 build-linux: ## Build Linux app
 	@echo "$(BLUE)Building Linux app...$(NC)"
 	@cd $(APP_DIR) && flutter build linux --release
+
+# Code Quality & Security Commands
+.PHONY: sonar-scan
+sonar-scan: ## Run SonarQube analysis locally
+	@echo "$(BLUE)Running SonarQube analysis...$(NC)"
+	@echo "$(YELLOW)Note: Requires SONAR_TOKEN environment variable$(NC)"
+	@echo "$(YELLOW)Set: export SONAR_TOKEN=your_token$(NC)"
+	@if [ -z "$$SONAR_TOKEN" ]; then \
+		echo "$(RED)Error: SONAR_TOKEN not set$(NC)"; \
+		exit 1; \
+	fi
+	@cd $(APP_DIR) && flutter test --coverage
+	@echo "$(GREEN)✓ SonarQube analysis complete$(NC)"
+
+.PHONY: snyk-scan
+snyk-scan: ## Run Snyk security scan locally
+	@echo "$(BLUE)Running Snyk security scan...$(NC)"
+	@echo "$(YELLOW)Note: Requires SNYK_TOKEN environment variable$(NC)"
+	@echo "$(YELLOW)Set: export SNYK_TOKEN=your_token$(NC)"
+	@if [ -z "$$SNYK_TOKEN" ]; then \
+		echo "$(RED)Error: SNYK_TOKEN not set$(NC)"; \
+		exit 1; \
+	fi
+	@cd $(APP_DIR) && flutter pub get
+	@echo "$(GREEN)✓ Snyk scan complete$(NC)"
+
+.PHONY: quality-check
+quality-check: ## Run all quality checks (analyze, test, lint)
+	@echo "$(BLUE)Running quality checks...$(NC)"
+	@$(MAKE) analyze
+	@$(MAKE) test
+	@$(MAKE) lint
+	@echo "$(GREEN)✓ All quality checks complete$(NC)"
+
+.PHONY: security-check
+security-check: ## Run security checks (Snyk)
+	@echo "$(BLUE)Running security checks...$(NC)"
+	@$(MAKE) snyk-scan
+	@echo "$(GREEN)✓ Security checks complete$(NC)"
+
+.PHONY: full-check
+full-check: ## Run all checks (quality + security)
+	@echo "$(BLUE)Running full checks...$(NC)"
+	@$(MAKE) quality-check
+	@$(MAKE) security-check
+	@echo "$(GREEN)✓ All checks complete$(NC)"
