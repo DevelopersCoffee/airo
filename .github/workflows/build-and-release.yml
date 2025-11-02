@@ -25,9 +25,9 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: 'latest'
+          flutter-version: '3.16.0'
           channel: 'stable'
-      
+
       - name: Create Firebase Config
         run: |
           cd app
@@ -49,13 +49,13 @@ jobs:
           flutter build appbundle --release
       
       - name: Upload APK
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: android-apk
           path: app/build/app/outputs/flutter-apk/app-release.apk
-      
+
       - name: Upload AAB
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: android-aab
           path: app/build/app/outputs/bundle/release/app-release.aab
@@ -68,24 +68,24 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: 'latest'
+          flutter-version: '3.16.0'
           channel: 'stable'
-      
+
       - name: Create Firebase Config
         run: |
           cd app
           echo '${{ secrets.GOOGLE_SERVICES_JSON }}' | base64 -d > android/app/google-services.json
-      
+
       - name: Get dependencies
         run: |
           cd app
           flutter pub get
-      
+
       - name: Build iOS
         run: |
           cd app
           flutter build ios --release --no-codesign
-      
+
       - name: Create IPA
         run: |
           cd app/build/ios/Release-iphoneos
@@ -93,9 +93,9 @@ jobs:
           mv Runner.app Payload/
           zip -r -q app-release.ipa Payload
           mv app-release.ipa ../../../
-      
+
       - name: Upload IPA
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ios-ipa
           path: app/app-release.ipa
@@ -108,26 +108,26 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: 'latest'
+          flutter-version: '3.16.0'
           channel: 'stable'
-      
+
       - name: Get dependencies
         run: |
           cd app
           flutter pub get
-      
+
       - name: Build Web
         run: |
           cd app
           flutter build web --release
-      
+
       - name: Create Web Archive
         run: |
           cd app/build/web
           zip -r -q ../../airo-web-release.zip .
-      
+
       - name: Upload Web
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: web-build
           path: app/airo-web-release.zip
@@ -140,26 +140,26 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: 'latest'
+          flutter-version: '3.16.0'
           channel: 'stable'
-      
+
       - name: Get dependencies
         run: |
           cd app
           flutter pub get
-      
+
       - name: Build Windows
         run: |
           cd app
           flutter build windows --release
-      
+
       - name: Create Windows Archive
         run: |
           cd app/build/windows/runner/Release
           powershell Compress-Archive -Path . -DestinationPath ../../../../airo-windows-release.zip
-      
+
       - name: Upload Windows
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: windows-build
           path: app/airo-windows-release.zip
@@ -172,31 +172,31 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: 'latest'
+          flutter-version: '3.16.0'
           channel: 'stable'
-      
+
       - name: Install Linux dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y libgtk-3-dev libx11-dev pkg-config cmake ninja-build libblkid-dev
-      
+
       - name: Get dependencies
         run: |
           cd app
           flutter pub get
-      
+
       - name: Build Linux
         run: |
           cd app
           flutter build linux --release
-      
+
       - name: Create Linux Archive
         run: |
           cd app/build/linux/x64/release/bundle
           tar -czf ../../../../airo-linux-release.tar.gz .
-      
+
       - name: Upload Linux
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: linux-build
           path: app/airo-linux-release.tar.gz
@@ -208,7 +208,7 @@ jobs:
       - uses: actions/checkout@v4
       
       - name: Download all artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
       
       - name: Create Release Notes
         run: |
