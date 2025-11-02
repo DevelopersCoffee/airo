@@ -1,0 +1,292 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g., v1.0.0)'
+        required: true
+
+jobs:
+  build-android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Java
+        uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+      
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 'latest'
+          channel: 'stable'
+      
+      - name: Create Firebase Config
+        run: |
+          cd app
+          echo '${{ secrets.GOOGLE_SERVICES_JSON }}' | base64 -d > android/app/google-services.json
+      
+      - name: Get dependencies
+        run: |
+          cd app
+          flutter pub get
+      
+      - name: Build APK
+        run: |
+          cd app
+          flutter build apk --release
+      
+      - name: Build AAB
+        run: |
+          cd app
+          flutter build appbundle --release
+      
+      - name: Upload APK
+        uses: actions/upload-artifact@v3
+        with:
+          name: android-apk
+          path: app/build/app/outputs/flutter-apk/app-release.apk
+      
+      - name: Upload AAB
+        uses: actions/upload-artifact@v3
+        with:
+          name: android-aab
+          path: app/build/app/outputs/bundle/release/app-release.aab
+
+  build-ios:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 'latest'
+          channel: 'stable'
+      
+      - name: Create Firebase Config
+        run: |
+          cd app
+          echo '${{ secrets.GOOGLE_SERVICES_JSON }}' | base64 -d > android/app/google-services.json
+      
+      - name: Get dependencies
+        run: |
+          cd app
+          flutter pub get
+      
+      - name: Build iOS
+        run: |
+          cd app
+          flutter build ios --release --no-codesign
+      
+      - name: Create IPA
+        run: |
+          cd app/build/ios/Release-iphoneos
+          mkdir -p Payload
+          mv Runner.app Payload/
+          zip -r -q app-release.ipa Payload
+          mv app-release.ipa ../../../
+      
+      - name: Upload IPA
+        uses: actions/upload-artifact@v3
+        with:
+          name: ios-ipa
+          path: app/app-release.ipa
+
+  build-web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 'latest'
+          channel: 'stable'
+      
+      - name: Get dependencies
+        run: |
+          cd app
+          flutter pub get
+      
+      - name: Build Web
+        run: |
+          cd app
+          flutter build web --release
+      
+      - name: Create Web Archive
+        run: |
+          cd app/build/web
+          zip -r -q ../../airo-web-release.zip .
+      
+      - name: Upload Web
+        uses: actions/upload-artifact@v3
+        with:
+          name: web-build
+          path: app/airo-web-release.zip
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 'latest'
+          channel: 'stable'
+      
+      - name: Get dependencies
+        run: |
+          cd app
+          flutter pub get
+      
+      - name: Build Windows
+        run: |
+          cd app
+          flutter build windows --release
+      
+      - name: Create Windows Archive
+        run: |
+          cd app/build/windows/runner/Release
+          powershell Compress-Archive -Path . -DestinationPath ../../../../airo-windows-release.zip
+      
+      - name: Upload Windows
+        uses: actions/upload-artifact@v3
+        with:
+          name: windows-build
+          path: app/airo-windows-release.zip
+
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 'latest'
+          channel: 'stable'
+      
+      - name: Install Linux dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libx11-dev pkg-config cmake ninja-build libblkid-dev
+      
+      - name: Get dependencies
+        run: |
+          cd app
+          flutter pub get
+      
+      - name: Build Linux
+        run: |
+          cd app
+          flutter build linux --release
+      
+      - name: Create Linux Archive
+        run: |
+          cd app/build/linux/x64/release/bundle
+          tar -czf ../../../../airo-linux-release.tar.gz .
+      
+      - name: Upload Linux
+        uses: actions/upload-artifact@v3
+        with:
+          name: linux-build
+          path: app/airo-linux-release.tar.gz
+
+  create-release:
+    needs: [build-android, build-ios, build-web, build-windows, build-linux]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Download all artifacts
+        uses: actions/download-artifact@v3
+      
+      - name: Create Release Notes
+        run: |
+          cat > RELEASE_NOTES.md << 'EOF'
+          # Airo Super App Release
+          
+          ## 📦 Available Downloads
+          
+          ### Android
+          - **APK** - Direct installation on Android devices
+          - **AAB** - For Google Play Store distribution
+          
+          ### iOS
+          - **IPA** - For iOS devices (requires signing)
+          
+          ### Web
+          - **Web Build** - Run in any modern browser
+          
+          ### Desktop
+          - **Windows** - Windows 10/11 executable
+          - **Linux** - Linux AppImage/binary
+          
+          ## 🚀 Installation Instructions
+          
+          ### Android
+          ```bash
+          adb install app-release.apk
+          ```
+          
+          ### iOS
+          - Use Xcode or Apple Configurator 2
+          - Or use TestFlight for beta testing
+          
+          ### Web
+          - Extract the zip file
+          - Open index.html in a web browser
+          
+          ### Windows
+          - Extract the zip file
+          - Run airo.exe
+          
+          ### Linux
+          - Extract the tar.gz file
+          - Run ./airo or make it executable: chmod +x airo
+          
+          ## 📋 Features
+          - Coins Tab - Money management
+          - Quest Tab - AI-powered Q&A
+          - Beats Tab - Music streaming
+          - Arena Tab - Games
+          - Loot Tab - Deals feed
+          - Tales Tab - Reader
+          
+          ## 🔐 Security
+          - On-device AI processing (Pixel 9)
+          - Encrypted local storage
+          - No sensitive data in repository
+          
+          ## 📞 Support
+          - GitHub Issues: https://github.com/DevelopersCoffee/airo/issues
+          - Documentation: Check README.md
+          
+          EOF
+      
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            android-apk/app-release.apk
+            android-aab/app-release.aab
+            ios-ipa/app-release.ipa
+            web-build/airo-web-release.zip
+            windows-build/airo-windows-release.zip
+            linux-build/airo-linux-release.tar.gz
+            RELEASE_NOTES.md
+          body_path: RELEASE_NOTES.md
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+

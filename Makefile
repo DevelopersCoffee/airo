@@ -254,3 +254,40 @@ optimize-ios: ## Optimize for iOS (including iPhone 13 Pro Max)
 optimize-web: ## Optimize for web (including Chrome)
 	@echo "$(BLUE)Optimizing for web...$(NC)"
 	@cd $(APP_DIR) && flutter build web --release --web-renderer canvaskit
+
+# Release Commands
+.PHONY: build-release-all
+build-release-all: ## Build all platforms for release
+	@echo "$(BLUE)Building all platforms for release...$(NC)"
+	@$(MAKE) build-android
+	@$(MAKE) build-android-bundle
+	@$(MAKE) build-web
+	@if [ "$$(uname)" = "Darwin" ]; then \
+		$(MAKE) build-ios; \
+	fi
+	@echo "$(GREEN)✓ All release builds complete$(NC)"
+
+.PHONY: release-patch
+release-patch: ## Create a patch release (v1.0.1)
+	@echo "$(BLUE)Creating patch release...$(NC)"
+	@echo "$(YELLOW)Run: git tag -a v1.0.1 -m 'Release v1.0.1' && git push origin v1.0.1$(NC)"
+
+.PHONY: release-minor
+release-minor: ## Create a minor release (v1.1.0)
+	@echo "$(BLUE)Creating minor release...$(NC)"
+	@echo "$(YELLOW)Run: git tag -a v1.1.0 -m 'Release v1.1.0' && git push origin v1.1.0$(NC)"
+
+.PHONY: release-major
+release-major: ## Create a major release (v2.0.0)
+	@echo "$(BLUE)Creating major release...$(NC)"
+	@echo "$(YELLOW)Run: git tag -a v2.0.0 -m 'Release v2.0.0' && git push origin v2.0.0$(NC)"
+
+.PHONY: build-windows
+build-windows: ## Build Windows app
+	@echo "$(BLUE)Building Windows app...$(NC)"
+	@cd $(APP_DIR) && flutter build windows --release
+
+.PHONY: build-linux
+build-linux: ## Build Linux app
+	@echo "$(BLUE)Building Linux app...$(NC)"
+	@cd $(APP_DIR) && flutter build linux --release

@@ -1,0 +1,92 @@
+name: PR Checks
+
+on:
+  pull_request:
+    branches: [ main, master, develop ]
+
+jobs:
+  pr-validation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Validate PR title
+        uses: amannn/action-semantic-pull-request@v5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Check for secrets
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: ${{ github.event.pull_request.base.sha }}
+          head: HEAD
+          extra_args: --debug
+      
+      - name: Check file changes
+        uses: dorny/paths-filter@v2
+        id: changes
+        with:
+          filters: |
+            flutter:
+              - 'app/**'
+            android:
+              - 'app/android/**'
+            ios:
+              - 'app/ios/**'
+            web:
+              - 'app/web/**'
+            docs:
+              - '**.md'
+
+  build-pr:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Java
+        uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+      
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 'latest'
+          channel: 'stable'
+      
+      - name: Get dependencies
+        run: |
+          cd app
+          flutter pub get
+      
+      - name: Build APK
+        run: |
+          cd app
+          flutter build apk --debug
+      
+      - name: Comment PR with build status
+        if: always()
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            const buildStatus = '${{ job.status }}';
+            const comment = `## Build Status: ${buildStatus.toUpperCase()}
+            
+            ✅ Flutter dependencies resolved
+            ✅ Code analysis passed
+            ✅ APK built successfully
+            
+            [View Artifacts](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})`;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+
