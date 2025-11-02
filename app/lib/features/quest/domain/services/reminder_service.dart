@@ -1,4 +1,5 @@
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:timezone/timezone.dart' as tz;
 import '../models/quest_models.dart';
 
 /// Reminder notification service
@@ -28,7 +29,9 @@ class FakeReminderService implements ReminderService {
   @override
   Future<void> initialize() async {
     // Initialize local notifications
-    const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const androidSettings = AndroidInitializationSettings(
+      '@mipmap/ic_launcher',
+    );
     const iosSettings = DarwinInitializationSettings();
     const initSettings = InitializationSettings(
       android: androidSettings,
@@ -50,12 +53,15 @@ class FakeReminderService implements ReminderService {
       // Reminder time is in the past, show immediately
       await _showNotification(reminder);
     } else {
+      // Convert DateTime to TZDateTime
+      final tzDateTime = tz.TZDateTime.from(reminder.scheduledTime, tz.local);
+
       // Schedule for future time
       await _notificationsPlugin.zonedSchedule(
         reminder.id.hashCode,
         reminder.title,
         reminder.description,
-        reminder.scheduledTime,
+        tzDateTime,
         const NotificationDetails(
           android: AndroidNotificationDetails(
             'quest_reminders',
@@ -67,8 +73,6 @@ class FakeReminderService implements ReminderService {
           iOS: DarwinNotificationDetails(),
         ),
         androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-        uiLocalNotificationDateInterpretation:
-            UILocalNotificationDateInterpretation.absoluteTime,
       );
     }
   }
@@ -110,4 +114,3 @@ class FakeReminderService implements ReminderService {
     );
   }
 }
-

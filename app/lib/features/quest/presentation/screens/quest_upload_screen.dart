@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:go_router/go_router.dart';
-import '../../../quest/domain/models/quest_models.dart';
 import '../../../quest/application/providers/quest_provider.dart';
 
 /// Quest upload screen - upload files and start quest
@@ -41,9 +40,9 @@ class _QuestUploadScreenState extends ConsumerState<QuestUploadScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error picking files: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error picking files: $e')));
       }
     }
   }
@@ -67,9 +66,7 @@ class _QuestUploadScreenState extends ConsumerState<QuestUploadScreen> {
       // Upload files if selected
       for (final file in _selectedFiles) {
         if (file.path != null) {
-          await ref.read(
-            uploadFileProvider((quest.id, file.path!)).future,
-          );
+          await ref.read(uploadFileProvider((quest.id, file.path!)).future);
         }
       }
 
@@ -79,9 +76,9 @@ class _QuestUploadScreenState extends ConsumerState<QuestUploadScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error creating quest: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error creating quest: $e')));
       }
     } finally {
       setState(() => _isLoading = false);
@@ -91,10 +88,7 @@ class _QuestUploadScreenState extends ConsumerState<QuestUploadScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('New Quest'),
-        centerTitle: true,
-      ),
+      appBar: AppBar(title: const Text('New Quest'), centerTitle: true),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -103,16 +97,16 @@ class _QuestUploadScreenState extends ConsumerState<QuestUploadScreen> {
             // Title section
             Text(
               'Create a New Quest',
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
             Text(
               'Upload files and ask AI questions about them',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Colors.grey,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(color: Colors.grey),
             ),
             const SizedBox(height: 24),
 
@@ -148,9 +142,9 @@ class _QuestUploadScreenState extends ConsumerState<QuestUploadScreen> {
             // File upload section
             Text(
               'Upload Files',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 12),
 
@@ -160,7 +154,10 @@ class _QuestUploadScreenState extends ConsumerState<QuestUploadScreen> {
               icon: const Icon(Icons.upload_file),
               label: const Text('Select Files'),
               style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                padding: const EdgeInsets.symmetric(
+                  vertical: 12,
+                  horizontal: 16,
+                ),
               ),
             ),
             const SizedBox(height: 16),
@@ -180,47 +177,47 @@ class _QuestUploadScreenState extends ConsumerState<QuestUploadScreen> {
                         ),
                       ),
                       const SizedBox(height: 8),
-                      ...List.generate(
-                        _selectedFiles.length,
-                        (index) {
-                          final file = _selectedFiles[index];
-                          return Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 4),
-                            child: Row(
-                              children: [
-                                const Icon(Icons.insert_drive_file, size: 20),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        file.name,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: Theme.of(context).textTheme.bodySmall,
-                                      ),
-                                      Text(
-                                        '${(file.size / 1024).toStringAsFixed(2)} KB',
-                                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                          color: Colors.grey,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
+                      ...List.generate(_selectedFiles.length, (index) {
+                        final file = _selectedFiles[index];
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.insert_drive_file, size: 20),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      file.name,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: Theme.of(
+                                        context,
+                                      ).textTheme.bodySmall,
+                                    ),
+                                    Text(
+                                      '${(file.size / 1024).toStringAsFixed(2)} KB',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodySmall
+                                          ?.copyWith(color: Colors.grey),
+                                    ),
+                                  ],
                                 ),
-                                IconButton(
-                                  icon: const Icon(Icons.close, size: 20),
-                                  onPressed: () {
-                                    setState(() {
-                                      _selectedFiles.removeAt(index);
-                                    });
-                                  },
-                                ),
-                              ],
-                            ),
-                          );
-                        },
-                      ),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.close, size: 20),
+                                onPressed: () {
+                                  setState(() {
+                                    _selectedFiles.removeAt(index);
+                                  });
+                                },
+                              ),
+                            ],
+                          ),
+                        );
+                      }),
                     ],
                   ),
                 ),
@@ -237,10 +234,10 @@ class _QuestUploadScreenState extends ConsumerState<QuestUploadScreen> {
                 ),
                 child: _isLoading
                     ? const SizedBox(
-                      height: 20,
-                      width: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
                     : const Text('Create Quest'),
               ),
             ),
@@ -250,4 +247,3 @@ class _QuestUploadScreenState extends ConsumerState<QuestUploadScreen> {
     );
   }
 }
-

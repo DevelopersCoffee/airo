@@ -72,6 +72,7 @@ dependencies:
   url_launcher: ^6.3.2
   file_picker: ^10.3.3
   flutter_local_notifications: ^19.5.0
+  timezone: ^0.10.1
 
 dev_dependencies:
   flutter_test:
