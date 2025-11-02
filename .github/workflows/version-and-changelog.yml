@@ -84,20 +84,22 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      
+
       - name: Generate changelog
-        uses: orhun/git-cliff-action@v2
+        uses: orhun/git-cliff-action@v3
         with:
           config: cliff.toml
           args: --verbose
         env:
           OUTPUT: CHANGELOG.md
-      
+        continue-on-error: true
+
       - name: Commit changelog
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add CHANGELOG.md
+          git add CHANGELOG.md || true
           git commit -m "docs: update changelog" || true
           git push origin main || true
+        continue-on-error: true
 
