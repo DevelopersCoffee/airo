@@ -22,21 +22,21 @@ Everything you need to get up and running:
 - **DEPLOYMENT_COMPLETE.md** - Deployment instructions
 - **FINAL_DEPLOYMENT_CHECKLIST.md** - Pre-deployment checklist
 
-### 🔄 [CI/CD Pipeline](./ci-cd/)
+### 🔄 [CI/CD Pipeline](./setup/)
 Continuous Integration and Deployment setup:
-- **CI_CD_SETUP.md** - Initial CI/CD setup
-- **CI_CD_COMPLETE.md** - Complete pipeline overview
-- **CI_CD_SUMMARY.md** - Pipeline summary
-- **CI_CD_CHECKLIST.md** - Setup verification
-- **RELEASE_GUIDE.md** - How to create releases
+- **[CI_CD_SETUP.md](./setup/CI_CD_SETUP.md)** - Initial CI/CD setup
+- **[CI_CD_COMPLETE.md](./setup/CI_CD_COMPLETE.md)** - Complete pipeline overview
+- **[CI_CD_SUMMARY.md](./setup/CI_CD_SUMMARY.md)** - Pipeline summary
+- **[CI_CD_CHECKLIST.md](./setup/CI_CD_CHECKLIST.md)** - Setup verification
+- **[RELEASE_GUIDE.md](./guides/RELEASE_GUIDE.md)** - How to create releases
 
 ### 🔒 [Security & Quality](./security/)
 Code quality and security scanning:
-- **SONAR_SNYK_COMPLETE.md** - Integration overview
-- **SONAR_SNYK_SUMMARY.md** - Summary
-- **SONAR_SNYK_INTEGRATION.md** - Integration details
-- **SONAR_SNYK_SETUP_GUIDE.md** - Step-by-step setup
-- **SECURITY_CHECKLIST.md** - Security verification
+- **[SONAR_SNYK_COMPLETE.md](./integration/SONAR_SNYK_COMPLETE.md)** - Integration overview
+- **[SONAR_SNYK_SUMMARY.md](./guides/SONAR_SNYK_SUMMARY.md)** - Summary
+- **[SONAR_SNYK_INTEGRATION.md](./integration/SONAR_SNYK_INTEGRATION.md)** - Integration details
+- **[SONAR_SNYK_SETUP_GUIDE.md](./setup/SONAR_SNYK_SETUP_GUIDE.md)** - Step-by-step setup
+- **[SECURITY_CHECKLIST.md](./security/SECURITY_CHECKLIST.md)** - Security verification
 
 ### 🏗️ [Architecture](./architecture/)
 System design and technical decisions:
@@ -72,13 +72,13 @@ API documentation:
 → Read [Getting Started Guide](./getting-started/START_HERE.md)
 
 **...create a release**
-→ Read [Release Guide](./ci-cd/RELEASE_GUIDE.md)
+→ Read [Release Guide](./guides/RELEASE_GUIDE.md)
 
 **...set up CI/CD**
-→ Read [CI/CD Setup](./ci-cd/CI_CD_SETUP.md)
+→ Read [CI/CD Setup](./setup/CI_CD_SETUP.md)
 
 **...add SonarQube & Snyk**
-→ Read [Security Setup](./security/SONAR_SNYK_SETUP_GUIDE.md)
+→ Read [Security Setup](./setup/SONAR_SNYK_SETUP_GUIDE.md)
 
 **...understand the architecture**
 → Read [Technical Architecture](./architecture/TECHNICAL_ARCHITECTURE.md)

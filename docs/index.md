@@ -54,14 +54,14 @@ An advanced Flutter super app that brings powerful AI capabilities to your devic
 - [Deployment Guide](./getting-started/DEPLOYMENT_COMPLETE.md) - Deploy to production
 
 ### CI/CD & Releases
-- [CI/CD Setup](./ci-cd/CI_CD_SETUP.md) - Configure CI/CD
-- [Release Guide](./ci-cd/RELEASE_GUIDE.md) - Create releases
-- [CI/CD Complete](./ci-cd/CI_CD_COMPLETE.md) - Full pipeline overview
+- [CI/CD Setup](./setup/CI_CD_SETUP.md) - Configure CI/CD
+- [Release Guide](./guides/RELEASE_GUIDE.md) - Create releases
+- [CI/CD Complete](./setup/CI_CD_COMPLETE.md) - Full pipeline overview
 
 ### Security & Quality
-- [Security Setup](./security/SONAR_SNYK_SETUP_GUIDE.md) - SonarQube & Snyk
+- [Security Setup](./setup/SONAR_SNYK_SETUP_GUIDE.md) - SonarQube & Snyk
 - [Security Checklist](./security/SECURITY_CHECKLIST.md) - Security verification
-- [Code Quality](./security/SONAR_SNYK_INTEGRATION.md) - Quality metrics
+- [Code Quality](./integration/SONAR_SNYK_INTEGRATION.md) - Quality metrics
 
 ### Architecture
 - [Technical Architecture](./architecture/TECHNICAL_ARCHITECTURE.md) - System design
