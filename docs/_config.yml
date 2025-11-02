@@ -50,10 +50,6 @@ exclude:
   - Gemfile
   - Gemfile.lock
 
-# Include files
-include:
-  - .nojekyll
-
 # Collections
 collections:
   guides:
