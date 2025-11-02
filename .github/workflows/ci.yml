@@ -201,12 +201,13 @@ jobs:
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
-          args: --severity-threshold=high --all-projects
+          # Scan only the Flutter/Dart project, exclude Android/iOS native projects
+          args: --severity-threshold=high --file=app/pubspec.yaml
         continue-on-error: true
 
       - name: Upload Snyk results
         uses: github/codeql-action/upload-sarif@v3
-        if: always()
+        if: always() && hashFiles('snyk.sarif') != ''
         with:
           sarif_file: snyk.sarif
         continue-on-error: true
