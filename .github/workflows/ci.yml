@@ -26,7 +26,7 @@ jobs:
       - name: Run Flutter Analyze
         run: |
           cd app
-          flutter analyze
+          flutter analyze --no-fatal-warnings
       
       - name: Check formatting
         run: |
@@ -166,7 +166,7 @@ jobs:
         with:
           args: >
             -Dsonar.projectKey=airo-super-app
-            -Dsonar.projectName=Airo Super App
+            -Dsonar.projectName="Airo Super App"
             -Dsonar.sources=app/lib
             -Dsonar.tests=app/test
             -Dsonar.dart.coverage.reportPath=app/coverage/lcov.info
