@@ -10,6 +10,10 @@
 include: package:flutter_lints/flutter.yaml
 
 analyzer:
+  # Enable custom_lint plugin
+  plugins:
+    - custom_lint
+
   # Treat warnings as info to prevent CI failures on non-critical issues
   # Errors will still cause CI to fail
   errors:
