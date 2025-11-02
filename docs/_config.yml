@@ -1,0 +1,94 @@
+# GitHub Pages Configuration for Airo Super App Documentation
+
+# Site settings
+title: Airo Super App
+description: On-device AI platform for PDF/image/audio processing
+url: https://developercoffee.github.io/airo
+baseurl: /airo
+
+# Theme
+theme: jekyll-theme-cayman
+
+# Plugins
+plugins:
+  - jekyll-seo-tag
+  - jekyll-sitemap
+  - jekyll-feed
+
+# Navigation
+nav:
+  - title: Home
+    url: /
+  - title: Getting Started
+    url: /getting-started/
+  - title: CI/CD
+    url: /ci-cd/
+  - title: Security
+    url: /security/
+  - title: Architecture
+    url: /architecture/
+  - title: Features
+    url: /features/
+  - title: GitHub
+    url: https://github.com/DevelopersCoffee/airo
+
+# Build settings
+markdown: kramdown
+highlighter: rouge
+permalink: /:title/
+
+# Exclude files
+exclude:
+  - .gitignore
+  - .github
+  - app
+  - packages
+  - node_modules
+  - vendor
+  - .sass-cache
+  - .jekyll-cache
+  - Gemfile
+  - Gemfile.lock
+
+# Include files
+include:
+  - .nojekyll
+
+# Collections
+collections:
+  guides:
+    output: true
+    permalink: /guides/:path/
+
+# Defaults
+defaults:
+  - scope:
+      path: ""
+      type: "pages"
+    values:
+      layout: "default"
+  - scope:
+      path: ""
+      type: "posts"
+    values:
+      layout: "post"
+
+# Social
+social:
+  github: DevelopersCoffee/airo
+  twitter: 
+  linkedin: 
+
+# Analytics (optional)
+# google_analytics: UA-XXXXXXXX-X
+
+# SEO
+author:
+  name: Airo Team
+  email: team@airo.dev
+
+# Repository
+repository: DevelopersCoffee/airo
+github_user: DevelopersCoffee
+github_repo: airo
+
