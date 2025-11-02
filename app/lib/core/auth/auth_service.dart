@@ -53,7 +53,7 @@ class AuthService {
           isAdmin: true,
           createdAt: DateTime.now(),
         );
-        
+
         await _setCurrentUser(adminUser);
         return AuthResult.success(adminUser);
       }
@@ -94,7 +94,9 @@ class AuthService {
 
       // Check if username already exists
       final users = await _getRegisteredUsers();
-      if (users.any((u) => u.username.toLowerCase() == username.toLowerCase()) ||
+      if (users.any(
+            (u) => u.username.toLowerCase() == username.toLowerCase(),
+          ) ||
           username.toLowerCase() == 'admin') {
         return AuthResult.failure('Username already exists');
       }
@@ -235,11 +237,7 @@ class AuthResult {
   final String? message;
   final User? user;
 
-  const AuthResult._({
-    required this.success,
-    this.message,
-    this.user,
-  });
+  const AuthResult._({required this.success, this.message, this.user});
 
   factory AuthResult.success(User user) {
     return AuthResult._(success: true, user: user);

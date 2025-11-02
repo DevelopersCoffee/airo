@@ -52,7 +52,10 @@ class ErrorDisplayWidget extends StatelessWidget {
                 icon: const Icon(Icons.refresh),
                 label: const Text('Try Again'),
                 style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 12,
+                  ),
                 ),
               ),
             ],
@@ -138,10 +141,7 @@ class ErrorCard extends StatelessWidget {
 class NetworkErrorWidget extends StatelessWidget {
   final VoidCallback? onRetry;
 
-  const NetworkErrorWidget({
-    super.key,
-    this.onRetry,
-  });
+  const NetworkErrorWidget({super.key, this.onRetry});
 
   @override
   Widget build(BuildContext context) {
@@ -199,10 +199,7 @@ class EmptyStateWidget extends StatelessWidget {
               ),
               textAlign: TextAlign.center,
             ),
-            if (action != null) ...[
-              const SizedBox(height: 24),
-              action!,
-            ],
+            if (action != null) ...[const SizedBox(height: 24), action!],
           ],
         ),
       ),

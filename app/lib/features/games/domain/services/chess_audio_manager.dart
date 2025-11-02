@@ -84,18 +84,16 @@ class FakeChessAudioManager implements ChessAudioManager {
       'Royal flush.',
       'Majesty in motion.',
     ],
-    PieceType.king: [
-      'That tickled.',
-      'The king moves.',
-      'Royalty in retreat.',
-    ],
+    PieceType.king: ['That tickled.', 'The king moves.', 'Royalty in retreat.'],
   };
 
   @override
   Future<void> playVoiceLine(ChessAudioEvent event) async {
     if (!_voiceLinesEnabled) return;
     // Simulate audio playback
-    print('[AUDIO] Playing voice line: ${event.audioPath} (${event.piece.name})');
+    print(
+      '[AUDIO] Playing voice line: ${event.audioPath} (${event.piece.name})',
+    );
   }
 
   @override
@@ -163,7 +161,8 @@ class FakeChessAudioManager implements ChessAudioManager {
   /// Get random voice line for piece
   String getRandomVoiceLine(PieceType piece) {
     final lines = _voiceLines[piece] ?? [];
-    return lines.isNotEmpty ? lines[DateTime.now().millisecond % lines.length] : '';
+    return lines.isNotEmpty
+        ? lines[DateTime.now().millisecond % lines.length]
+        : '';
   }
 }
-

@@ -11,14 +11,14 @@ final musicServiceProvider = Provider<MusicService>((ref) {
 final musicPlayerStateProvider = StreamProvider<MusicPlayerState>((ref) async* {
   final musicService = ref.watch(musicServiceProvider);
   await musicService.initialize();
-  
+
   yield* musicService.getStateStream();
 });
 
 /// Current track provider
 final currentTrackProvider = StreamProvider<MusicTrack?>((ref) async* {
   final state = ref.watch(musicPlayerStateProvider);
-  
+
   yield* state.when(
     data: (playerState) async* {
       yield playerState.currentTrack;
@@ -35,7 +35,7 @@ final currentTrackProvider = StreamProvider<MusicTrack?>((ref) async* {
 /// Is playing provider
 final isPlayingProvider = StreamProvider<bool>((ref) async* {
   final state = ref.watch(musicPlayerStateProvider);
-  
+
   yield* state.when(
     data: (playerState) async* {
       yield playerState.isPlaying;
@@ -52,7 +52,7 @@ final isPlayingProvider = StreamProvider<bool>((ref) async* {
 /// Music position provider
 final musicPositionProvider = StreamProvider<Duration>((ref) async* {
   final state = ref.watch(musicPlayerStateProvider);
-  
+
   yield* state.when(
     data: (playerState) async* {
       yield playerState.position;
@@ -69,7 +69,7 @@ final musicPositionProvider = StreamProvider<Duration>((ref) async* {
 /// Music duration provider
 final musicDurationProvider = StreamProvider<Duration>((ref) async* {
   final state = ref.watch(musicPlayerStateProvider);
-  
+
   yield* state.when(
     data: (playerState) async* {
       yield playerState.duration;
@@ -86,7 +86,7 @@ final musicDurationProvider = StreamProvider<Duration>((ref) async* {
 /// Queue provider
 final queueProvider = StreamProvider<List<MusicTrack>>((ref) async* {
   final state = ref.watch(musicPlayerStateProvider);
-  
+
   yield* state.when(
     data: (playerState) async* {
       yield playerState.queue;

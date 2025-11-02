@@ -28,10 +28,7 @@ class _ChessGameScreenNewState extends ConsumerState<ChessGameScreenNew> {
     // Show difficulty selection if not selected
     if (_selectedDifficulty == null) {
       return Scaffold(
-        appBar: AppBar(
-          title: const Text('Chess Master'),
-          centerTitle: true,
-        ),
+        appBar: AppBar(title: const Text('Chess Master'), centerTitle: true),
         body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -88,9 +85,7 @@ class _ChessGameScreenNewState extends ConsumerState<ChessGameScreenNew> {
           ),
         ],
       ),
-      body: GameWidget(
-        game: ChessGameFlame(difficulty: _selectedDifficulty!),
-      ),
+      body: GameWidget(game: ChessGameFlame(difficulty: _selectedDifficulty!)),
     );
   }
 
@@ -126,10 +121,7 @@ class _ChessGameScreenNewState extends ConsumerState<ChessGameScreenNew> {
             const SizedBox(height: 4),
             Text(
               description,
-              style: const TextStyle(
-                fontSize: 12,
-                color: Colors.white70,
-              ),
+              style: const TextStyle(fontSize: 12, color: Colors.white70),
             ),
           ],
         ),
@@ -137,4 +129,3 @@ class _ChessGameScreenNewState extends ConsumerState<ChessGameScreenNew> {
     );
   }
 }
-

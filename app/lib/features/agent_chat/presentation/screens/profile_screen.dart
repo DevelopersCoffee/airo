@@ -41,9 +41,9 @@ class ProfileScreen extends StatelessWidget {
                   const SizedBox(height: 8),
                   Text(
                     'admin@airo.app',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Colors.grey[600],
-                        ),
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodyMedium?.copyWith(color: Colors.grey[600]),
                   ),
                 ],
               ),
@@ -51,10 +51,7 @@ class ProfileScreen extends StatelessWidget {
             const SizedBox(height: 32),
 
             // Settings section
-            Text(
-              'Settings',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
+            Text('Settings', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 16),
 
             // Bedtime mode toggle
@@ -96,10 +93,7 @@ class ProfileScreen extends StatelessWidget {
             const SizedBox(height: 32),
 
             // Feature flags section
-            Text(
-              'Features',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
+            Text('Features', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 16),
 
             // Agent as default
@@ -146,4 +140,3 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 }
-

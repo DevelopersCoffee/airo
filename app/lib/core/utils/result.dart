@@ -4,27 +4,27 @@ sealed class Result<T> {
 
   /// Map the success value to another type
   Result<U> map<U>(U Function(T) fn) => switch (this) {
-        Ok(value: final v) => Ok(fn(v)),
-        Err(error: final e, stack: final s) => Err(e, s),
-      };
+    Ok(value: final v) => Ok(fn(v)),
+    Err(error: final e, stack: final s) => Err(e, s),
+  };
 
   /// Flat map (bind) for chaining operations
   Result<U> flatMap<U>(Result<U> Function(T) fn) => switch (this) {
-        Ok(value: final v) => fn(v),
-        Err(error: final e, stack: final s) => Err(e, s),
-      };
+    Ok(value: final v) => fn(v),
+    Err(error: final e, stack: final s) => Err(e, s),
+  };
 
   /// Get the value or null
   T? getOrNull() => switch (this) {
-        Ok(value: final v) => v,
-        Err() => null,
-      };
+    Ok(value: final v) => v,
+    Err() => null,
+  };
 
   /// Get the error or null
   Object? getErrorOrNull() => switch (this) {
-        Ok() => null,
-        Err(error: final e) => e,
-      };
+    Ok() => null,
+    Err(error: final e) => e,
+  };
 
   /// Fold into a single value
   U fold<U>(U Function(Object, StackTrace) onError, U Function(T) onSuccess) =>
@@ -113,4 +113,3 @@ extension FutureResultExt<T> on Future<T> {
     }
   }
 }
-

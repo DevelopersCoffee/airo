@@ -26,16 +26,16 @@ class ReaderSeries extends Equatable {
 
   @override
   List<Object?> get props => [
-        id,
-        title,
-        description,
-        coverUrl,
-        source,
-        sourceId,
-        totalChapters,
-        lastUpdated,
-        addedAt,
-      ];
+    id,
+    title,
+    description,
+    coverUrl,
+    source,
+    sourceId,
+    totalChapters,
+    lastUpdated,
+    addedAt,
+  ];
 }
 
 /// Reader chapter model
@@ -62,15 +62,15 @@ class ReaderChapter extends Equatable {
 
   @override
   List<Object?> get props => [
-        id,
-        seriesId,
-        chapterNumber,
-        title,
-        pageUrls,
-        publishedAt,
-        downloadedAt,
-        isDownloaded,
-      ];
+    id,
+    seriesId,
+    chapterNumber,
+    title,
+    pageUrls,
+    publishedAt,
+    downloadedAt,
+    isDownloaded,
+  ];
 }
 
 /// Reader page model
@@ -93,13 +93,13 @@ class ReaderPage extends Equatable {
 
   @override
   List<Object?> get props => [
-        id,
-        chapterId,
-        pageNumber,
-        imageUrl,
-        localPath,
-        isDownloaded,
-      ];
+    id,
+    chapterId,
+    pageNumber,
+    imageUrl,
+    localPath,
+    isDownloaded,
+  ];
 }
 
 /// Reader progress model
@@ -120,12 +120,12 @@ class ReaderProgress extends Equatable {
 
   @override
   List<Object?> get props => [
-        id,
-        seriesId,
-        lastChapterRead,
-        lastPageRead,
-        lastReadAt,
-      ];
+    id,
+    seriesId,
+    lastChapterRead,
+    lastPageRead,
+    lastReadAt,
+  ];
 }
 
 /// Reader source interface
@@ -203,4 +203,3 @@ class FakeReaderSource implements ReaderSource {
     );
   }
 }
-

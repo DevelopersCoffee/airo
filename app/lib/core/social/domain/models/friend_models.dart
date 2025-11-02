@@ -1,12 +1,7 @@
 import 'package:equatable/equatable.dart';
 
 /// User presence status
-enum PresenceStatus {
-  online,
-  away,
-  busy,
-  offline,
-}
+enum PresenceStatus { online, away, busy, offline }
 
 /// Friend model
 class Friend extends Equatable {
@@ -82,4 +77,3 @@ class UserPresence extends Equatable {
     currentActivity,
   ];
 }
-

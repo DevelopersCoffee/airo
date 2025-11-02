@@ -46,11 +46,7 @@ class ChessMove extends Equatable {
   final ChessSquare to;
   final PieceType? promotion; // For pawn promotion
 
-  const ChessMove({
-    required this.from,
-    required this.to,
-    this.promotion,
-  });
+  const ChessMove({required this.from, required this.to, this.promotion});
 
   @override
   List<Object?> get props => [from, to, promotion];
@@ -97,32 +93,86 @@ class ChessBoardState extends Equatable {
     final squares = List<ChessPiece?>.filled(64, null);
 
     // Set up white pieces (rank 0-1)
-    squares[0] = const ChessPiece(type: PieceType.rook, color: ChessColor.white);
-    squares[1] = const ChessPiece(type: PieceType.knight, color: ChessColor.white);
-    squares[2] = const ChessPiece(type: PieceType.bishop, color: ChessColor.white);
-    squares[3] = const ChessPiece(type: PieceType.queen, color: ChessColor.white);
-    squares[4] = const ChessPiece(type: PieceType.king, color: ChessColor.white);
-    squares[5] = const ChessPiece(type: PieceType.bishop, color: ChessColor.white);
-    squares[6] = const ChessPiece(type: PieceType.knight, color: ChessColor.white);
-    squares[7] = const ChessPiece(type: PieceType.rook, color: ChessColor.white);
+    squares[0] = const ChessPiece(
+      type: PieceType.rook,
+      color: ChessColor.white,
+    );
+    squares[1] = const ChessPiece(
+      type: PieceType.knight,
+      color: ChessColor.white,
+    );
+    squares[2] = const ChessPiece(
+      type: PieceType.bishop,
+      color: ChessColor.white,
+    );
+    squares[3] = const ChessPiece(
+      type: PieceType.queen,
+      color: ChessColor.white,
+    );
+    squares[4] = const ChessPiece(
+      type: PieceType.king,
+      color: ChessColor.white,
+    );
+    squares[5] = const ChessPiece(
+      type: PieceType.bishop,
+      color: ChessColor.white,
+    );
+    squares[6] = const ChessPiece(
+      type: PieceType.knight,
+      color: ChessColor.white,
+    );
+    squares[7] = const ChessPiece(
+      type: PieceType.rook,
+      color: ChessColor.white,
+    );
 
     for (int i = 8; i < 16; i++) {
-      squares[i] = const ChessPiece(type: PieceType.pawn, color: ChessColor.white);
+      squares[i] = const ChessPiece(
+        type: PieceType.pawn,
+        color: ChessColor.white,
+      );
     }
 
     // Set up black pieces (rank 6-7)
     for (int i = 48; i < 56; i++) {
-      squares[i] = const ChessPiece(type: PieceType.pawn, color: ChessColor.black);
+      squares[i] = const ChessPiece(
+        type: PieceType.pawn,
+        color: ChessColor.black,
+      );
     }
 
-    squares[56] = const ChessPiece(type: PieceType.rook, color: ChessColor.black);
-    squares[57] = const ChessPiece(type: PieceType.knight, color: ChessColor.black);
-    squares[58] = const ChessPiece(type: PieceType.bishop, color: ChessColor.black);
-    squares[59] = const ChessPiece(type: PieceType.queen, color: ChessColor.black);
-    squares[60] = const ChessPiece(type: PieceType.king, color: ChessColor.black);
-    squares[61] = const ChessPiece(type: PieceType.bishop, color: ChessColor.black);
-    squares[62] = const ChessPiece(type: PieceType.knight, color: ChessColor.black);
-    squares[63] = const ChessPiece(type: PieceType.rook, color: ChessColor.black);
+    squares[56] = const ChessPiece(
+      type: PieceType.rook,
+      color: ChessColor.black,
+    );
+    squares[57] = const ChessPiece(
+      type: PieceType.knight,
+      color: ChessColor.black,
+    );
+    squares[58] = const ChessPiece(
+      type: PieceType.bishop,
+      color: ChessColor.black,
+    );
+    squares[59] = const ChessPiece(
+      type: PieceType.queen,
+      color: ChessColor.black,
+    );
+    squares[60] = const ChessPiece(
+      type: PieceType.king,
+      color: ChessColor.black,
+    );
+    squares[61] = const ChessPiece(
+      type: PieceType.bishop,
+      color: ChessColor.black,
+    );
+    squares[62] = const ChessPiece(
+      type: PieceType.knight,
+      color: ChessColor.black,
+    );
+    squares[63] = const ChessPiece(
+      type: PieceType.rook,
+      color: ChessColor.black,
+    );
 
     return ChessBoardState(
       squares: squares,
@@ -140,17 +190,17 @@ class ChessBoardState extends Equatable {
 
   @override
   List<Object?> get props => [
-        squares,
-        toMove,
-        whiteCanCastleKingside,
-        whiteCanCastleQueenside,
-        blackCanCastleKingside,
-        blackCanCastleQueenside,
-        enPassantSquare,
-        halfmoveClock,
-        fullmoveNumber,
-        moveHistory,
-      ];
+    squares,
+    toMove,
+    whiteCanCastleKingside,
+    whiteCanCastleQueenside,
+    blackCanCastleKingside,
+    blackCanCastleQueenside,
+    enPassantSquare,
+    halfmoveClock,
+    fullmoveNumber,
+    moveHistory,
+  ];
 }
 
 /// Chess game state
@@ -173,12 +223,11 @@ class ChessGameState extends Equatable {
 
   @override
   List<Object?> get props => [
-        id,
-        board,
-        isGameOver,
-        result,
-        createdAt,
-        endedAt,
-      ];
+    id,
+    board,
+    isGameOver,
+    result,
+    createdAt,
+    endedAt,
+  ];
 }
-

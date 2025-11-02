@@ -18,7 +18,7 @@ class BedtimeModeNotifier extends StateNotifier<bool> {
   /// Initialize bedtime mode
   Future<void> _initialize() async {
     _prefs = await SharedPreferences.getInstance();
-    
+
     // Load saved preference
     final saved = _prefs.getBool(_prefKey) ?? false;
     state = saved;
@@ -78,13 +78,16 @@ class BedtimeModeNotifier extends StateNotifier<bool> {
 }
 
 /// Bedtime mode provider
-final bedtimeModeProvider =
-    StateNotifierProvider<BedtimeModeNotifier, bool>((ref) {
+final bedtimeModeProvider = StateNotifierProvider<BedtimeModeNotifier, bool>((
+  ref,
+) {
   return BedtimeModeNotifier();
 });
 
 /// Sleep timer provider (in minutes)
-final sleepTimerProvider = StateNotifierProvider<SleepTimerNotifier, int>((ref) {
+final sleepTimerProvider = StateNotifierProvider<SleepTimerNotifier, int>((
+  ref,
+) {
   return SleepTimerNotifier();
 });
 
@@ -131,8 +134,9 @@ class SleepTimerNotifier extends StateNotifier<int> {
 }
 
 /// Do Not Disturb mode provider
-final doNotDisturbProvider =
-    StateNotifierProvider<DoNotDisturbNotifier, bool>((ref) {
+final doNotDisturbProvider = StateNotifierProvider<DoNotDisturbNotifier, bool>((
+  ref,
+) {
   return DoNotDisturbNotifier();
 });
 
@@ -170,8 +174,8 @@ class DoNotDisturbNotifier extends StateNotifier<bool> {
 /// Blue light filter intensity provider (0.0 to 1.0)
 final blueLightFilterProvider =
     StateNotifierProvider<BlueLightFilterNotifier, double>((ref) {
-  return BlueLightFilterNotifier();
-});
+      return BlueLightFilterNotifier();
+    });
 
 /// Blue light filter state notifier
 class BlueLightFilterNotifier extends StateNotifier<double> {
@@ -195,4 +199,3 @@ class BlueLightFilterNotifier extends StateNotifier<double> {
     await _prefs.setDouble(_prefKey, clamped);
   }
 }
-

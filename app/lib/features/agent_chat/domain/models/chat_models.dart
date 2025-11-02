@@ -46,14 +46,14 @@ class ChatMessage extends Equatable {
 
   @override
   List<Object?> get props => [
-        id,
-        conversationId,
-        role,
-        content,
-        timestamp,
-        toolCalls,
-        toolResult,
-      ];
+    id,
+    conversationId,
+    role,
+    content,
+    timestamp,
+    toolCalls,
+    toolResult,
+  ];
 }
 
 /// Tool call model
@@ -87,4 +87,3 @@ class ToolResult extends Equatable {
   @override
   List<Object?> get props => [toolCallId, result, isError];
 }
-

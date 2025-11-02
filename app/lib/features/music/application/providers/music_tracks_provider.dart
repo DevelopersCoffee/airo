@@ -11,4 +11,3 @@ final musicTracksProvider = FutureProvider<List<MusicTrack>>((ref) async {
 final refreshMusicTracksProvider = FutureProvider<void>((ref) async {
   ref.refresh(musicTracksProvider);
 });
-

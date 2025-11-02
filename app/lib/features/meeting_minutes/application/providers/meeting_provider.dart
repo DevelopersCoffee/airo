@@ -13,16 +13,19 @@ final activeRecordingProvider = StateProvider<MeetingRecording?>((ref) {
 });
 
 /// Meeting minutes list provider - WIP
-final meetingMinutesListProvider = FutureProvider<List<MeetingMinutes>>((ref) async {
+final meetingMinutesListProvider = FutureProvider<List<MeetingMinutes>>((
+  ref,
+) async {
   final service = ref.watch(meetingServiceProvider);
   return service.listMeetingMinutes();
 });
 
 /// Meeting minutes detail provider - WIP
-final meetingMinutesDetailProvider = FutureProvider.family<MeetingMinutes?, String>((ref, id) async {
-  final service = ref.watch(meetingServiceProvider);
-  return service.getMeetingMinutes(id);
-});
+final meetingMinutesDetailProvider =
+    FutureProvider.family<MeetingMinutes?, String>((ref, id) async {
+      final service = ref.watch(meetingServiceProvider);
+      return service.getMeetingMinutes(id);
+    });
 
 /// Meeting controller provider
 final meetingControllerProvider = Provider<MeetingController>((ref) {
@@ -70,4 +73,3 @@ class MeetingController {
     _ref.refresh(meetingMinutesListProvider);
   }
 }
-

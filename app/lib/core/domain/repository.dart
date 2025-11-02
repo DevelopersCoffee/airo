@@ -38,4 +38,3 @@ abstract interface class StreamRepository<TQuery, TOut> {
   /// Stream data based on query
   Stream<Result<TOut>> stream(TQuery query);
 }
-

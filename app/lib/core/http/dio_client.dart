@@ -135,12 +135,11 @@ class DioClient {
     return switch (e.type) {
       DioExceptionType.connectionTimeout ||
       DioExceptionType.receiveTimeout ||
-      DioExceptionType.sendTimeout =>
-        TimeoutError(
-          'Request timeout: ${e.message}',
-          originalError: e,
-          originalStack: e.stackTrace,
-        ),
+      DioExceptionType.sendTimeout => TimeoutError(
+        'Request timeout: ${e.message}',
+        originalError: e,
+        originalStack: e.stackTrace,
+      ),
       DioExceptionType.badResponse => _handleResponseError(e),
       DioExceptionType.cancel => AppError(
         'REQUEST_CANCELLED',
@@ -216,4 +215,3 @@ class _LoggingInterceptor extends Interceptor {
     handler.next(response);
   }
 }
-

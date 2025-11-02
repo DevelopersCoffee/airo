@@ -5,10 +5,7 @@ import 'package:file_picker/file_picker.dart';
 class AttachmentButton extends StatefulWidget {
   final Function(String fileName, String filePath) onFileSelected;
 
-  const AttachmentButton({
-    super.key,
-    required this.onFileSelected,
-  });
+  const AttachmentButton({super.key, required this.onFileSelected});
 
   @override
   State<AttachmentButton> createState() => _AttachmentButtonState();
@@ -44,9 +41,9 @@ class _AttachmentButtonState extends State<AttachmentButton> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error picking file: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error picking file: $e')));
       }
     } finally {
       if (mounted) {
@@ -70,4 +67,3 @@ class _AttachmentButtonState extends State<AttachmentButton> {
     );
   }
 }
-

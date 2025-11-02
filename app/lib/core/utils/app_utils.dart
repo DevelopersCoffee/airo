@@ -6,7 +6,9 @@ class AppUtils {
   AppUtils._();
 
   /// Show a snackbar with the given message
-  static void showSnackBar(BuildContext context, String message, {
+  static void showSnackBar(
+    BuildContext context,
+    String message, {
     Color? backgroundColor,
     Duration duration = const Duration(seconds: 3),
     SnackBarAction? action,
@@ -18,9 +20,7 @@ class AppUtils {
         duration: duration,
         action: action,
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
     );
   }
@@ -36,11 +36,7 @@ class AppUtils {
 
   /// Show a success snackbar
   static void showSuccessSnackBar(BuildContext context, String message) {
-    showSnackBar(
-      context,
-      message,
-      backgroundColor: Colors.green,
-    );
+    showSnackBar(context, message, backgroundColor: Colors.green);
   }
 
   /// Validate email format
@@ -55,9 +51,9 @@ class AppUtils {
 
   /// Validate username format
   static bool isValidUsername(String username) {
-    return username.length >= 3 && 
-           username.length <= 30 && 
-           RegExp(r'^[a-zA-Z0-9_]+$').hasMatch(username);
+    return username.length >= 3 &&
+        username.length <= 30 &&
+        RegExp(r'^[a-zA-Z0-9_]+$').hasMatch(username);
   }
 
   /// Hide keyboard
@@ -110,8 +106,9 @@ class AppUtils {
 
 /// Navigation service for global navigation
 class NavigationService {
-  static final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
-  
+  static final GlobalKey<NavigatorState> navigatorKey =
+      GlobalKey<NavigatorState>();
+
   static NavigatorState? get navigator => navigatorKey.currentState;
   static BuildContext? get context => navigatorKey.currentContext;
 }

@@ -71,13 +71,13 @@ class GameSession extends Equatable {
 
   @override
   List<Object?> get props => [
-        id,
-        gameId,
-        startedAt,
-        endedAt,
-        finalScore,
-        sessionData,
-      ];
+    id,
+    gameId,
+    startedAt,
+    endedAt,
+    finalScore,
+    sessionData,
+  ];
 }
 
 /// Achievement model
@@ -102,13 +102,12 @@ class Achievement extends Equatable {
 
   @override
   List<Object?> get props => [
-        id,
-        gameId,
-        name,
-        description,
-        icon,
-        unlocked,
-        unlockedAt,
-      ];
+    id,
+    gameId,
+    name,
+    description,
+    icon,
+    unlocked,
+    unlockedAt,
+  ];
 }
-

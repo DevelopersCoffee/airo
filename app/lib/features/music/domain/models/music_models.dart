@@ -31,15 +31,15 @@ class AudioItem extends Equatable {
 
   @override
   List<Object?> get props => [
-        id,
-        title,
-        artist,
-        album,
-        albumArt,
-        duration,
-        url,
-        addedAt,
-      ];
+    id,
+    title,
+    artist,
+    album,
+    albumArt,
+    duration,
+    url,
+    addedAt,
+  ];
 }
 
 /// Playlist model
@@ -64,10 +64,7 @@ class Playlist extends Equatable {
 
   /// Get total duration of playlist
   Duration get totalDuration {
-    return items.fold(
-      Duration.zero,
-      (prev, item) => prev + item.duration,
-    );
+    return items.fold(Duration.zero, (prev, item) => prev + item.duration);
   }
 
   /// Get total duration as formatted string
@@ -79,14 +76,14 @@ class Playlist extends Equatable {
 
   @override
   List<Object?> get props => [
-        id,
-        name,
-        description,
-        coverArt,
-        items,
-        createdAt,
-        updatedAt,
-      ];
+    id,
+    name,
+    description,
+    coverArt,
+    items,
+    createdAt,
+    updatedAt,
+  ];
 }
 
 /// Audio queue model
@@ -104,10 +101,9 @@ class AudioQueue extends Equatable {
   });
 
   /// Get current item
-  AudioItem? get currentItem =>
-      currentIndex >= 0 && currentIndex < items.length
-          ? items[currentIndex]
-          : null;
+  AudioItem? get currentItem => currentIndex >= 0 && currentIndex < items.length
+      ? items[currentIndex]
+      : null;
 
   /// Get next item
   AudioItem? get nextItem =>
@@ -124,23 +120,11 @@ class AudioQueue extends Equatable {
   bool get hasPrevious => currentIndex > 0;
 
   @override
-  List<Object?> get props => [
-        items,
-        currentIndex,
-        isPlaying,
-        currentPosition,
-      ];
+  List<Object?> get props => [items, currentIndex, isPlaying, currentPosition];
 }
 
 /// Audio player state
-enum AudioPlayerState {
-  idle,
-  loading,
-  playing,
-  paused,
-  stopped,
-  error,
-}
+enum AudioPlayerState { idle, loading, playing, paused, stopped, error }
 
 /// Audio player model
 class AudioPlayerStatus extends Equatable {
@@ -164,13 +148,12 @@ class AudioPlayerStatus extends Equatable {
 
   @override
   List<Object?> get props => [
-        state,
-        currentItem,
-        currentPosition,
-        duration,
-        volume,
-        isMuted,
-        error,
-      ];
+    state,
+    currentItem,
+    currentPosition,
+    duration,
+    volume,
+    isMuted,
+    error,
+  ];
 }
-

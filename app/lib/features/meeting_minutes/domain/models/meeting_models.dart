@@ -6,11 +6,7 @@ class Participant extends Equatable {
   final String name;
   final String? avatarUrl;
 
-  const Participant({
-    required this.id,
-    required this.name,
-    this.avatarUrl,
-  });
+  const Participant({required this.id, required this.name, this.avatarUrl});
 
   @override
   List<Object?> get props => [id, name, avatarUrl];
@@ -75,13 +71,7 @@ class MeetingMinutes extends Equatable {
 }
 
 /// Meeting recording state
-enum RecordingState {
-  idle,
-  recording,
-  processing,
-  completed,
-  error,
-}
+enum RecordingState { idle, recording, processing, completed, error }
 
 /// Meeting recording model
 class MeetingRecording extends Equatable {
@@ -114,4 +104,3 @@ class MeetingRecording extends Equatable {
     errorMessage,
   ];
 }
-

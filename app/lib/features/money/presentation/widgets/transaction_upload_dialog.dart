@@ -4,12 +4,9 @@ import 'package:file_picker/file_picker.dart';
 /// Dialog to upload transaction files (receipts, invoices, etc.)
 class TransactionUploadDialog extends StatefulWidget {
   final Function(String fileName, String filePath, String fileType)
-      onFileSelected;
+  onFileSelected;
 
-  const TransactionUploadDialog({
-    super.key,
-    required this.onFileSelected,
-  });
+  const TransactionUploadDialog({super.key, required this.onFileSelected});
 
   @override
   State<TransactionUploadDialog> createState() =>
@@ -38,9 +35,9 @@ class _TransactionUploadDialogState extends State<TransactionUploadDialog> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error picking file: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error picking file: $e')));
       }
     }
   }
@@ -181,4 +178,3 @@ class _TransactionUploadDialogState extends State<TransactionUploadDialog> {
     );
   }
 }
-

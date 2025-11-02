@@ -28,7 +28,15 @@ class MoneyAccount extends Equatable {
   }
 
   @override
-  List<Object?> get props => [id, name, type, currency, balanceCents, createdAt, updatedAt];
+  List<Object?> get props => [
+    id,
+    name,
+    type,
+    currency,
+    balanceCents,
+    createdAt,
+    updatedAt,
+  ];
 }
 
 /// Transaction model
@@ -71,16 +79,16 @@ class Transaction extends Equatable {
 
   @override
   List<Object?> get props => [
-        id,
-        accountId,
-        timestamp,
-        amountCents,
-        description,
-        category,
-        tags,
-        receiptUrl,
-        createdAt,
-      ];
+    id,
+    accountId,
+    timestamp,
+    amountCents,
+    description,
+    category,
+    tags,
+    receiptUrl,
+    createdAt,
+  ];
 }
 
 /// Budget model
@@ -128,7 +136,14 @@ class Budget extends Equatable {
   }
 
   @override
-  List<Object?> get props => [id, tag, limitCents, usedCents, createdAt, updatedAt];
+  List<Object?> get props => [
+    id,
+    tag,
+    limitCents,
+    usedCents,
+    createdAt,
+    updatedAt,
+  ];
 }
 
 /// Insight model for analytics
@@ -150,6 +165,12 @@ class MoneyInsight extends Equatable {
   });
 
   @override
-  List<Object?> get props => [id, title, description, amountCents, type, createdAt];
+  List<Object?> get props => [
+    id,
+    title,
+    description,
+    amountCents,
+    type,
+    createdAt,
+  ];
 }
-

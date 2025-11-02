@@ -47,4 +47,3 @@ final audioDuckingProvider = StateProvider<bool>((ref) {
 final backgroundAudioProvider = StateProvider<bool>((ref) {
   return true;
 });
-

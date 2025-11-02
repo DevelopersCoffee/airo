@@ -84,14 +84,10 @@ class _CustomTextFieldState extends State<CustomTextField> {
         hintText: widget.hint,
         prefixIcon: widget.prefixIcon != null ? Icon(widget.prefixIcon) : null,
         suffixIcon: _buildSuffixIcon(),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-        ),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(
-            color: Theme.of(context).colorScheme.outline,
-          ),
+          borderSide: BorderSide(color: Theme.of(context).colorScheme.outline),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
@@ -102,9 +98,7 @@ class _CustomTextFieldState extends State<CustomTextField> {
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(
-            color: Theme.of(context).colorScheme.error,
-          ),
+          borderSide: BorderSide(color: Theme.of(context).colorScheme.error),
         ),
         focusedErrorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
@@ -113,7 +107,10 @@ class _CustomTextFieldState extends State<CustomTextField> {
             width: 2,
           ),
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 12,
+        ),
       ),
     );
   }
@@ -121,9 +118,7 @@ class _CustomTextFieldState extends State<CustomTextField> {
   Widget? _buildSuffixIcon() {
     if (widget.obscureText) {
       return IconButton(
-        icon: Icon(
-          _obscureText ? Icons.visibility : Icons.visibility_off,
-        ),
+        icon: Icon(_obscureText ? Icons.visibility : Icons.visibility_off),
         onPressed: () {
           setState(() {
             _obscureText = !_obscureText;
@@ -169,14 +164,10 @@ class SearchTextField extends StatelessWidget {
                 },
               )
             : null,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(24),
-        ),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(24)),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(24),
-          borderSide: BorderSide(
-            color: Theme.of(context).colorScheme.outline,
-          ),
+          borderSide: BorderSide(color: Theme.of(context).colorScheme.outline),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(24),
@@ -185,7 +176,10 @@ class SearchTextField extends StatelessWidget {
             width: 2,
           ),
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 12,
+        ),
         filled: true,
         fillColor: Theme.of(context).colorScheme.surface,
       ),

@@ -58,7 +58,11 @@ class GeminiQuestService implements QuestService {
   }
 
   @override
-  Future<String> processQuery(String questId, String query, {String? fileContext}) async {
+  Future<String> processQuery(
+    String questId,
+    String query, {
+    String? fileContext,
+  }) async {
     final quest = _quests[questId];
     if (quest == null) throw Exception('Quest not found');
 
@@ -210,4 +214,3 @@ Be concise, practical, and actionable in your responses.''';
     await _geminiNano.dispose();
   }
 }
-

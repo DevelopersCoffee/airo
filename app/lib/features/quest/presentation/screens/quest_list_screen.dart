@@ -37,16 +37,16 @@ class QuestListScreen extends ConsumerWidget {
                   const SizedBox(height: 16),
                   Text(
                     'No Quests Yet',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: Colors.grey,
-                    ),
+                    style: Theme.of(
+                      context,
+                    ).textTheme.titleMedium?.copyWith(color: Colors.grey),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     'Create a new quest to get started',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Colors.grey,
-                    ),
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodySmall?.copyWith(color: Colors.grey),
                   ),
                   const SizedBox(height: 24),
                   ElevatedButton.icon(
@@ -89,23 +89,20 @@ class QuestListScreen extends ConsumerWidget {
                       const SizedBox(height: 4),
                       Text(
                         '${quest.files.length} file(s) • ${quest.messages.length} message(s)',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Colors.grey,
-                        ),
+                        style: Theme.of(
+                          context,
+                        ).textTheme.bodySmall?.copyWith(color: Colors.grey),
                       ),
                       const SizedBox(height: 4),
                       Text(
                         _formatDate(quest.createdAt),
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Colors.grey,
-                        ),
+                        style: Theme.of(
+                          context,
+                        ).textTheme.bodySmall?.copyWith(color: Colors.grey),
                       ),
                     ],
                   ),
-                  trailing: Icon(
-                    Icons.chevron_right,
-                    color: Colors.grey[400],
-                  ),
+                  trailing: Icon(Icons.chevron_right, color: Colors.grey[400]),
                   onTap: () => context.go('/quest/${quest.id}'),
                 ),
               );
@@ -117,17 +114,13 @@ class QuestListScreen extends ConsumerWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(
-                Icons.error_outline,
-                size: 64,
-                color: Colors.red[300],
-              ),
+              Icon(Icons.error_outline, size: 64, color: Colors.red[300]),
               const SizedBox(height: 16),
               Text(
                 'Error loading quests',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  color: Colors.red,
-                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(color: Colors.red),
               ),
               const SizedBox(height: 24),
               ElevatedButton(
@@ -162,4 +155,3 @@ class QuestListScreen extends ConsumerWidget {
     }
   }
 }
-

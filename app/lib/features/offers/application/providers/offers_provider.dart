@@ -21,4 +21,3 @@ final refreshOffersProvider = FutureProvider<void>((ref) async {
 final savedOffersProvider = StateProvider<Set<String>>((ref) {
   return {};
 });
-

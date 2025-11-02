@@ -14,7 +14,11 @@ abstract interface class QuestService {
   Future<String> extractTextFromFile(QuestFile file);
 
   /// Process user query with AI
-  Future<String> processQuery(String questId, String query, {String? fileContext});
+  Future<String> processQuery(
+    String questId,
+    String query, {
+    String? fileContext,
+  });
 
   /// Create reminder from AI response
   Future<QuestReminder> createReminder(
@@ -84,7 +88,11 @@ class FakeQuestService implements QuestService {
   }
 
   @override
-  Future<String> processQuery(String questId, String query, {String? fileContext}) async {
+  Future<String> processQuery(
+    String questId,
+    String query, {
+    String? fileContext,
+  }) async {
     final quest = _quests[questId];
     if (quest == null) throw Exception('Quest not found');
 
@@ -196,4 +204,3 @@ Next steps: Would you like me to create reminders for this plan?
     }
   }
 }
-

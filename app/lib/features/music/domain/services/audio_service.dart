@@ -163,4 +163,3 @@ extension on AudioPlayerStatus {
     );
   }
 }
-

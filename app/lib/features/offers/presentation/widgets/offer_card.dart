@@ -80,9 +80,7 @@ class _OfferCardState extends State<OfferCard> {
                 ),
                 PopupMenuButton(
                   itemBuilder: (context) => [
-                    const PopupMenuItem(
-                      child: Text('Report'),
-                    ),
+                    const PopupMenuItem(child: Text('Report')),
                   ],
                 ),
               ],
@@ -165,10 +163,7 @@ class _OfferCardState extends State<OfferCard> {
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Text(
               widget.offer.title,
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 14,
-              ),
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
@@ -179,10 +174,7 @@ class _OfferCardState extends State<OfferCard> {
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Text(
               widget.offer.description,
-              style: const TextStyle(
-                fontSize: 12,
-                color: Colors.grey,
-              ),
+              style: const TextStyle(fontSize: 12, color: Colors.grey),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
@@ -240,9 +232,9 @@ class _OfferCardState extends State<OfferCard> {
 
   Future<void> _openLink(BuildContext context) async {
     if (widget.offer.link == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Link not available')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Link not available')));
       return;
     }
 
@@ -252,18 +244,17 @@ class _OfferCardState extends State<OfferCard> {
         await launchUrl(uri, mode: LaunchMode.externalApplication);
       } else {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Could not open link')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('Could not open link')));
         }
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: $e')));
       }
     }
   }
 }
-

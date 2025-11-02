@@ -41,7 +41,15 @@ class QuestFile extends Equatable {
   }
 
   @override
-  List<Object?> get props => [id, name, path, mimeType, sizeBytes, uploadedAt, extractedText];
+  List<Object?> get props => [
+    id,
+    name,
+    path,
+    mimeType,
+    sizeBytes,
+    uploadedAt,
+    extractedText,
+  ];
 }
 
 /// Quest message model - chat between user and AI
@@ -85,7 +93,15 @@ class QuestMessage extends Equatable {
   }
 
   @override
-  List<Object?> get props => [id, questId, text, isUser, timestamp, fileId, isError];
+  List<Object?> get props => [
+    id,
+    questId,
+    text,
+    isUser,
+    timestamp,
+    fileId,
+    isError,
+  ];
 }
 
 /// Quest reminder model - scheduled notification
@@ -211,4 +227,3 @@ class Quest extends Equatable {
     status,
   ];
 }
-

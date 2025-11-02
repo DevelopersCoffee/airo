@@ -2,15 +2,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
-enum PlatformType {
-  android,
-  ios,
-  web,
-  windows,
-  macos,
-  linux,
-  fuchsia,
-}
+enum PlatformType { android, ios, web, windows, macos, linux, fuchsia }
 
 class PlatformConfig {
   // Private constructor to prevent instantiation
@@ -158,9 +150,7 @@ class PlatformConfig {
             elevation: 1,
             scrolledUnderElevation: 2,
           ),
-          cardTheme: theme.cardTheme.copyWith(
-            elevation: 2,
-          ),
+          cardTheme: theme.cardTheme.copyWith(elevation: 2),
         );
       default:
         return theme;
@@ -218,6 +208,7 @@ class PlatformConfig {
   /// Check if current screen size is adequate
   static bool isScreenSizeAdequate(Size screenSize) {
     final minSize = getMinimumScreenSize();
-    return screenSize.width >= minSize.width && screenSize.height >= minSize.height;
+    return screenSize.width >= minSize.width &&
+        screenSize.height >= minSize.height;
   }
 }
