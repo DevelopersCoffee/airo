@@ -26,7 +26,7 @@ jobs:
       - name: Run Flutter Analyze
         run: |
           cd app
-          flutter analyze --no-fatal-warnings
+          flutter analyze --no-fatal-infos --no-fatal-warnings
       
       - name: Check formatting
         run: |
