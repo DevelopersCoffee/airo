@@ -1,0 +1,59 @@
+<svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="aiGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#2196F3;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#1976D2;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0D47A1;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="airGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#64B5F6;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#2196F3;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background circle -->
+  <circle cx="256" cy="256" r="256" fill="url(#aiGradient)"/>
+  
+  <!-- Outer ring - represents air flow -->
+  <circle cx="256" cy="256" r="220" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="2"/>
+  
+  <!-- AI symbol - stylized "A" with neural network concept -->
+  <g transform="translate(256, 256)">
+    <!-- Left side of A -->
+    <path d="M -60 60 L -20 -80 L 20 -80 L 60 60" fill="none" stroke="white" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+    
+    <!-- Horizontal bar of A -->
+    <line x1="-40" y1="0" x2="40" y2="0" stroke="white" stroke-width="12" stroke-linecap="round"/>
+    
+    <!-- Neural network nodes - representing AI -->
+    <!-- Top node -->
+    <circle cx="0" cy="-90" r="8" fill="white"/>
+    
+    <!-- Left node -->
+    <circle cx="-70" cy="70" r="8" fill="white"/>
+    
+    <!-- Right node -->
+    <circle cx="70" cy="70" r="8" fill="white"/>
+    
+    <!-- Center node -->
+    <circle cx="0" cy="30" r="10" fill="url(#aiGradient)" stroke="white" stroke-width="2"/>
+    
+    <!-- Connection lines - neural network -->
+    <line x1="0" y1="-82" x2="-70" y2="62" stroke="rgba(255,255,255,0.6)" stroke-width="2"/>
+    <line x1="0" y1="-82" x2="70" y2="62" stroke="rgba(255,255,255,0.6)" stroke-width="2"/>
+    <line x1="-70" y1="70" x2="0" y2="30" stroke="rgba(255,255,255,0.6)" stroke-width="2"/>
+    <line x1="70" y1="70" x2="0" y2="30" stroke="rgba(255,255,255,0.6)" stroke-width="2"/>
+    
+    <!-- Air flow curves - thin and elegant -->
+    <path d="M -100 -40 Q -120 0 -100 40" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="3" stroke-linecap="round"/>
+    <path d="M 100 -40 Q 120 0 100 40" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="3" stroke-linecap="round"/>
+    
+    <!-- Additional air flow elements -->
+    <path d="M -130 -20 Q -140 0 -130 20" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="2" stroke-linecap="round"/>
+    <path d="M 130 -20 Q 140 0 130 20" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="2" stroke-linecap="round"/>
+  </g>
+  
+  <!-- Subtle glow effect -->
+  <circle cx="256" cy="256" r="220" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
+</svg>
+
