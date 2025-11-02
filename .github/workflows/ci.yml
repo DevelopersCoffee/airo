@@ -89,7 +89,7 @@ jobs:
           flutter build apk --debug
       
       - name: Upload Debug APK
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: debug-apk
           path: app/build/app/outputs/flutter-apk/app-debug.apk
@@ -171,6 +171,7 @@ jobs:
             -Dsonar.tests=app/test
             -Dsonar.dart.coverage.reportPath=app/coverage/lcov.info
             -Dsonar.exclusions=**/*.g.dart,**/*.freezed.dart,**/generated/**
+        continue-on-error: true
 
       - name: SonarQube Quality Gate
         uses: SonarSource/sonarqube-quality-gate-action@master

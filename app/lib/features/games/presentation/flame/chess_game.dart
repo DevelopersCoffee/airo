@@ -78,32 +78,43 @@ class ChessGameFlame extends FlameGame {
       }
 
       // Load stingers
-      await FlameAudio.audioCache
-          .load('audio/stingers/capture.mp3')
-          .catchError((_) => null);
-      await FlameAudio.audioCache
-          .load('audio/stingers/check.mp3')
-          .catchError((_) => null);
-      await FlameAudio.audioCache
-          .load('audio/stingers/checkmate.mp3')
-          .catchError((_) => null);
+      try {
+        await FlameAudio.audioCache.load('audio/stingers/capture.mp3');
+      } catch (_) {
+        // Ignore audio loading errors
+      }
+      try {
+        await FlameAudio.audioCache.load('audio/stingers/check.mp3');
+      } catch (_) {
+        // Ignore audio loading errors
+      }
+      try {
+        await FlameAudio.audioCache.load('audio/stingers/checkmate.mp3');
+      } catch (_) {
+        // Ignore audio loading errors
+      }
 
       // Load background music
-      await FlameAudio.audioCache
-          .load('audio/music/opening.mp3')
-          .catchError((_) => null);
-      await FlameAudio.audioCache
-          .load('audio/music/midgame.mp3')
-          .catchError((_) => null);
-      await FlameAudio.audioCache
-          .load('audio/music/endgame.mp3')
-          .catchError((_) => null);
+      try {
+        await FlameAudio.audioCache.load('audio/music/opening.mp3');
+      } catch (_) {
+        // Ignore audio loading errors
+      }
+      try {
+        await FlameAudio.audioCache.load('audio/music/midgame.mp3');
+      } catch (_) {
+        // Ignore audio loading errors
+      }
+      try {
+        await FlameAudio.audioCache.load('audio/music/endgame.mp3');
+      } catch (_) {
+        // Ignore audio loading errors
+      }
     } catch (e) {
       print('Error loading audio: $e');
     }
   }
 
-  @override
   void onTapDown(TapDownEvent event) {
     final board = engine.getBoardState();
     final tapPosition = event.localPosition;
