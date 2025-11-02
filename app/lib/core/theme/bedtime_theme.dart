@@ -23,8 +23,6 @@ class BedtimeTheme {
         onSecondary: _amoledBlack,
         surface: _darkGray,
         onSurface: _warmTint,
-        background: _amoledBlack,
-        onBackground: _warmTint,
         error: Color(0xFFCF6679),
         onError: _amoledBlack,
       ),

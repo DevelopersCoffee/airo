@@ -135,8 +135,9 @@ class FakeTransactionsRepository implements TransactionsRepository {
   @override
   Future<Result<Transaction>> fetchById(String id) async {
     final txn = _transactions[id];
-    if (txn == null)
+    if (txn == null) {
       return Err(Exception('Transaction not found'), StackTrace.current);
+    }
     return Ok(txn);
   }
 
@@ -239,8 +240,9 @@ class FakeBudgetsRepository implements BudgetsRepository {
   @override
   Future<Result<Budget>> fetchById(String id) async {
     final budget = _budgets[id];
-    if (budget == null)
+    if (budget == null) {
       return Err(Exception('Budget not found'), StackTrace.current);
+    }
     return Ok(budget);
   }
 
@@ -285,8 +287,9 @@ class FakeBudgetsRepository implements BudgetsRepository {
   @override
   Future<Result<Budget>> updateUsage(String id, int usedCents) async {
     final budget = _budgets[id];
-    if (budget == null)
+    if (budget == null) {
       return Err(Exception('Budget not found'), StackTrace.current);
+    }
     final updated = Budget(
       id: budget.id,
       tag: budget.tag,

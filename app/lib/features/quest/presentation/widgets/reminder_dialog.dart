@@ -5,8 +5,13 @@ class ReminderDialog extends StatefulWidget {
   final String questId;
   final String suggestedTitle;
   final String suggestedDescription;
-  final Function(String title, String description, DateTime time, bool recurring)
-      onCreateReminder;
+  final Function(
+    String title,
+    String description,
+    DateTime time,
+    bool recurring,
+  )
+  onCreateReminder;
 
   const ReminderDialog({
     super.key,
@@ -31,8 +36,9 @@ class _ReminderDialogState extends State<ReminderDialog> {
   void initState() {
     super.initState();
     _titleController = TextEditingController(text: widget.suggestedTitle);
-    _descriptionController =
-        TextEditingController(text: widget.suggestedDescription);
+    _descriptionController = TextEditingController(
+      text: widget.suggestedDescription,
+    );
   }
 
   @override
@@ -133,7 +139,7 @@ class _ReminderDialogState extends State<ReminderDialog> {
               Padding(
                 padding: const EdgeInsets.only(top: 8),
                 child: DropdownButtonFormField<String>(
-                  value: _recurringPattern,
+                  initialValue: _recurringPattern,
                   decoration: InputDecoration(
                     labelText: 'Repeat',
                     border: OutlineInputBorder(
@@ -174,4 +180,3 @@ class _ReminderDialogState extends State<ReminderDialog> {
     );
   }
 }
-

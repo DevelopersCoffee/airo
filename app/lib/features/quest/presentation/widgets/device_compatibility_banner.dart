@@ -8,10 +8,10 @@ class DeviceCompatibilityBanner extends StatefulWidget {
   final bool showBanner;
 
   const DeviceCompatibilityBanner({
-    Key? key,
+    super.key,
     required this.child,
     this.showBanner = true,
-  }) : super(key: key);
+  });
 
   @override
   State<DeviceCompatibilityBanner> createState() =>
@@ -155,7 +155,7 @@ class _DeviceCompatibilityBannerState extends State<DeviceCompatibilityBanner> {
 
 /// Dialog showing detailed device information
 class DeviceInfoDialog extends StatefulWidget {
-  const DeviceInfoDialog({Key? key}) : super(key: key);
+  const DeviceInfoDialog({super.key});
 
   @override
   State<DeviceInfoDialog> createState() => _DeviceInfoDialogState();

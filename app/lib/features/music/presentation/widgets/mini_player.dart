@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../music/application/providers/music_provider.dart';
-import '../../../music/domain/services/music_service.dart';
 
 /// Mini player widget - persistent at bottom across all tabs
 class MiniPlayer extends ConsumerWidget {
@@ -27,9 +26,7 @@ class MiniPlayer extends ConsumerWidget {
             decoration: BoxDecoration(
               color: Theme.of(context).primaryColor.withValues(alpha: 0.1),
               border: Border(
-                top: BorderSide(
-                  color: Theme.of(context).dividerColor,
-                ),
+                top: BorderSide(color: Theme.of(context).dividerColor),
               ),
             ),
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -71,10 +68,7 @@ class MiniPlayer extends ConsumerWidget {
                         state.currentTrack!.artist,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey[600],
-                        ),
+                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                       ),
                     ],
                   ),
@@ -116,4 +110,3 @@ class MiniPlayer extends ConsumerWidget {
     );
   }
 }
-

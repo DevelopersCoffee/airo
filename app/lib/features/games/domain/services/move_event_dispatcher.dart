@@ -1,6 +1,5 @@
 import 'package:flutter/foundation.dart';
 import '../models/chess_models.dart';
-import 'chess_audio_manager.dart';
 
 /// Move event with classification and metadata
 class MoveEvent {
@@ -136,4 +135,3 @@ class MoveEventDispatcher extends ChangeNotifier {
     super.dispose();
   }
 }
-

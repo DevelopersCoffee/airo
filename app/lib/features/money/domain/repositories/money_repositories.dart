@@ -31,6 +31,7 @@ abstract interface class AccountsRepository
   Future<Result<MoneyAccount>> update(MoneyAccount account);
 
   /// Delete account
+  @override
   Future<Result<void>> delete(String id);
 }
 
@@ -79,6 +80,7 @@ abstract interface class TransactionsRepository
   Future<Result<Transaction>> update(Transaction transaction);
 
   /// Delete transaction
+  @override
   Future<Result<void>> delete(String id);
 
   /// Get transactions for account
@@ -104,15 +106,13 @@ abstract interface class BudgetsRepository
   Future<Result<Budget?>> fetchByTag(String tag);
 
   /// Create new budget
-  Future<Result<Budget>> create({
-    required String tag,
-    required int limitCents,
-  });
+  Future<Result<Budget>> create({required String tag, required int limitCents});
 
   /// Update budget
   Future<Result<Budget>> update(Budget budget);
 
   /// Delete budget
+  @override
   Future<Result<void>> delete(String id);
 
   /// Update budget usage
@@ -136,4 +136,3 @@ abstract interface class InsightsRepository {
   /// Get savings goals
   Future<Result<List<MoneyInsight>>> getSavingsGoals();
 }
-

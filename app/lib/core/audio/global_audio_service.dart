@@ -13,7 +13,7 @@ class GlobalAudioService {
   bool _isPlaying = false;
   bool _isDucked = false;
   double _normalVolume = 1.0;
-  double _duckedVolume = 0.3;
+  final double _duckedVolume = 0.3;
 
   // Audio focus management
   bool _hasAudioFocus = true;
@@ -179,4 +179,3 @@ class GlobalAudioService {
   AudioPlayer get musicPlayer => _musicPlayer;
   AudioPlayer get sfxPlayer => _sfxPlayer;
 }
-
