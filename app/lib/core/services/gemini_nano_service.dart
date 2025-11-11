@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 
 /// Device information model
 class DeviceInfo {
@@ -30,25 +31,29 @@ class GenerationResult {
 /// Wrapper service for Google's AI Edge SDK (Gemini Nano)
 /// Provides on-device AI inference for Pixel 9 devices
 ///
-/// Note: This is a mock implementation that can be swapped with the real
-/// AI Edge SDK when the dependency resolution is fixed.
+/// Uses native Android implementation via MethodChannel
 class GeminiNanoService {
   static final GeminiNanoService _instance = GeminiNanoService._internal();
   factory GeminiNanoService() => _instance;
   GeminiNanoService._internal();
 
+  static const MethodChannel _channel = MethodChannel('com.airo.gemini_nano');
+  static const EventChannel _eventChannel = EventChannel(
+    'com.airo.gemini_nano/stream',
+  );
+
   bool _isInitialized = false;
   bool _isSupported = false;
   DeviceInfo? _deviceInfo;
 
+  bool get isInitialized => _isInitialized;
+
   /// Check if device is supported (Pixel 9 with AICore)
-  /// Mock implementation - returns false for now
-  /// Will be replaced with real AI Edge SDK when dependency is resolved
   Future<bool> isSupported() async {
     try {
-      // Mock: Check if running on Android
-      // In production, this would use the real AI Edge SDK
-      _isSupported = false; // Default to false for now
+      // Call native Android method to check availability
+      final bool available = await _channel.invokeMethod('isAvailable');
+      _isSupported = available;
       return _isSupported;
     } catch (e) {
       debugPrint('Error checking device support: $e');
@@ -57,27 +62,25 @@ class GeminiNanoService {
   }
 
   /// Get detailed device information
-  /// Mock implementation
-  Future<DeviceInfo?> getDeviceInfo() async {
+  Future<Map<String, dynamic>> getDeviceInfo() async {
     try {
-      _deviceInfo = DeviceInfo(
-        manufacturer: 'Google',
-        model: 'Pixel 9',
-        androidVersion: '15',
-        isPixel9Series: false,
-        isAiCoreAvailable: false,
-        compatibilityStatus: 'Gemini Nano not available on this device',
+      final Map<dynamic, dynamic> info = await _channel.invokeMethod(
+        'getDeviceInfo',
       );
-      return _deviceInfo;
+      return Map<String, dynamic>.from(info);
     } catch (e) {
       debugPrint('Error getting device info: $e');
-      return null;
+      return {
+        'manufacturer': 'Unknown',
+        'model': 'Unknown',
+        'isPixel': false,
+        'supportsGeminiNano': false,
+      };
     }
   }
 
   /// Initialize Gemini Nano model
   /// Returns true if initialization was successful
-  /// Mock implementation - always returns false for now
   Future<bool> initialize({
     String modelName = 'gemini-nano',
     double temperature = 0.8,
@@ -94,8 +97,14 @@ class GeminiNanoService {
         return false;
       }
 
-      // Mock initialization
-      _isInitialized = false; // Mock: not supported
+      // Call native initialization
+      final bool initialized = await _channel.invokeMethod('initialize', {
+        'temperature': temperature,
+        'topK': topK,
+        'maxOutputTokens': maxOutputTokens,
+      });
+
+      _isInitialized = initialized;
       return _isInitialized;
     } catch (e) {
       debugPrint('Error initializing Gemini Nano: $e');
@@ -106,7 +115,6 @@ class GeminiNanoService {
 
   /// Generate content from a prompt
   /// Returns the generated text response
-  /// Mock implementation
   Future<String> generateContent(String prompt) async {
     if (!_isInitialized) {
       throw Exception(
@@ -115,9 +123,10 @@ class GeminiNanoService {
     }
 
     try {
-      // Mock response
-      await Future.delayed(const Duration(milliseconds: 500));
-      return 'Mock response to: $prompt';
+      final String? response = await _channel.invokeMethod('generateContent', {
+        'prompt': prompt,
+      });
+      return response ?? '';
     } catch (e) {
       debugPrint('Error generating content: $e');
       rethrow;
@@ -125,12 +134,8 @@ class GeminiNanoService {
   }
 
   /// Generate content with streaming support
-  /// Calls [onChunk] for each token chunk received
-  /// Mock implementation
-  Future<String> generateContentStream(
-    String prompt, {
-    void Function(String chunk)? onChunk,
-  }) async {
+  /// Returns a stream of accumulated text chunks
+  Stream<String> generateContentStream(String prompt) async* {
     if (!_isInitialized) {
       throw Exception(
         'GeminiNanoService not initialized. Call initialize() first.',
@@ -138,9 +143,13 @@ class GeminiNanoService {
     }
 
     try {
-      // Mock streaming response
-      await Future.delayed(const Duration(milliseconds: 500));
-      return 'Mock streaming response to: $prompt';
+      // Start streaming generation
+      await _channel.invokeMethod('generateContentStream', {'prompt': prompt});
+
+      // Listen to event channel for chunks
+      await for (final chunk in _eventChannel.receiveBroadcastStream()) {
+        yield chunk.toString();
+      }
     } catch (e) {
       debugPrint('Error generating content stream: $e');
       rethrow;
@@ -178,9 +187,6 @@ class GeminiNanoService {
       rethrow;
     }
   }
-
-  /// Check if Gemini Nano is initialized
-  bool get isInitialized => _isInitialized;
 
   /// Get current device info
   DeviceInfo? get deviceInfo => _deviceInfo;

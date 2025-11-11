@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import '../errors.dart';
+import 'http_status.dart';
 
 /// Configured Dio HTTP client with error handling
 class DioClient {
@@ -168,26 +169,31 @@ class DioClient {
     return switch (statusCode) {
       400 => ValidationError(
         'Bad request: $message',
+        statusCode: statusCode,
         originalError: e,
         originalStack: e.stackTrace,
       ),
       401 => AuthError(
         'Unauthorized: $message',
+        statusCode: statusCode,
         originalError: e,
         originalStack: e.stackTrace,
       ),
       403 => PermissionError(
         'Forbidden: $message',
+        statusCode: statusCode,
         originalError: e,
         originalStack: e.stackTrace,
       ),
       404 => NotFoundError(
         'Not found: $message',
+        statusCode: statusCode,
         originalError: e,
         originalStack: e.stackTrace,
       ),
       _ => NetworkError(
         'HTTP $statusCode: $message',
+        statusCode: statusCode,
         originalError: e,
         originalStack: e.stackTrace,
       ),

@@ -73,6 +73,11 @@ dependencies:
   file_picker: ^10.3.3
   flutter_local_notifications: ^19.5.0
   timezone: ^0.10.1
+  audioplayers: ^6.5.1
+  cached_network_image: ^3.4.1
+  flutter_tts: ^4.2.3
+  chess: ^0.8.1
+  stockfish: ^1.7.1
 
 dev_dependencies:
   flutter_test:

@@ -4,6 +4,10 @@ import '../../../quest/domain/models/quest_models.dart';
 import '../../../quest/application/providers/quest_provider.dart';
 import '../widgets/reminder_dialog.dart';
 import '../widgets/attachment_button.dart';
+import '../../../../core/ai/widgets/ai_provider_selector.dart';
+import '../../../../core/ai/ai_router_service.dart';
+import '../../../../core/ai/ai_provider.dart';
+import '../../../../core/services/gemini_nano_service.dart';
 
 /// Quest chat screen - interact with AI about uploaded files
 class QuestChatScreen extends ConsumerStatefulWidget {
@@ -20,6 +24,80 @@ class _QuestChatScreenState extends ConsumerState<QuestChatScreen> {
   final _scrollController = ScrollController();
   bool _isLoading = false;
   final List<Map<String, String>> _attachedFiles = [];
+  final GeminiNanoService _geminiNano = GeminiNanoService();
+  bool _isDeviceSupported = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkDeviceSupport();
+  }
+
+  Future<void> _checkDeviceSupport() async {
+    try {
+      final isSupported = await _geminiNano.isSupported();
+      if (mounted) {
+        setState(() {
+          _isDeviceSupported = isSupported;
+        });
+
+        // Show bottom banner popup
+        _showBottomBanner();
+      }
+    } catch (e) {
+      debugPrint('Error checking device support: $e');
+    }
+  }
+
+  void _showBottomBanner() {
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(
+              _isDeviceSupported ? Icons.phone_android : Icons.cloud,
+              color: Colors.white,
+              size: 20,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    _isDeviceSupported
+                        ? 'Optimized for Your Device'
+                        : 'Cloud AI Mode',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                      color: Colors.white,
+                    ),
+                  ),
+                  Text(
+                    _isDeviceSupported
+                        ? 'On-device AI ready • Fast & Private'
+                        : 'On-device AI not available',
+                    style: const TextStyle(fontSize: 11, color: Colors.white70),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: _isDeviceSupported
+            ? Colors.green.shade700
+            : Colors.orange.shade700,
+        duration: const Duration(seconds: 3),
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.all(16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
+  }
 
   @override
   void dispose() {
@@ -61,10 +139,140 @@ class _QuestChatScreenState extends ConsumerState<QuestChatScreen> {
     }
   }
 
+  IconData _getProviderIcon(AIProvider provider) {
+    switch (provider) {
+      case AIProvider.nano:
+        return Icons.phone_android;
+      case AIProvider.cloud:
+        return Icons.cloud;
+      case AIProvider.auto:
+        return Icons.auto_awesome;
+    }
+  }
+
+  Widget _buildSamplePrompts() {
+    final samplePrompts = [
+      {
+        'icon': Icons.summarize,
+        'title': 'Summarize',
+        'prompt': 'Summarize the key points from this document',
+        'color': Colors.blue,
+      },
+      {
+        'icon': Icons.image,
+        'title': 'Describe Image',
+        'prompt': 'Describe what you see in this image in detail',
+        'color': Colors.purple,
+      },
+      {
+        'icon': Icons.edit_note,
+        'title': 'Writing Help',
+        'prompt': 'Help me improve and rewrite this text professionally',
+        'color': Colors.orange,
+      },
+      {
+        'icon': Icons.restaurant_menu,
+        'title': 'Diet Plan',
+        'prompt':
+            'Create a 7-day healthy diet plan based on my uploaded nutrition info',
+        'color': Colors.green,
+      },
+      {
+        'icon': Icons.receipt_long,
+        'title': 'Split Bill',
+        'prompt': 'Help me split this bill equally among 4 people',
+        'color': Colors.teal,
+      },
+      {
+        'icon': Icons.description,
+        'title': 'Fill Form',
+        'prompt':
+            'Extract information from this document and help me fill the form',
+        'color': Colors.indigo,
+      },
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          child: Text(
+            'Try these:',
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+              color: Colors.grey[600],
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            crossAxisSpacing: 8,
+            mainAxisSpacing: 8,
+            childAspectRatio: 1.1,
+          ),
+          itemCount: samplePrompts.length,
+          itemBuilder: (context, index) {
+            final prompt = samplePrompts[index];
+            final color = prompt['color'] as Color;
+
+            return InkWell(
+              onTap: () {
+                _messageController.text = prompt['prompt'] as String;
+              },
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [color.withOpacity(0.1), color.withOpacity(0.05)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  border: Border.all(color: color.withOpacity(0.3)),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(prompt['icon'] as IconData, size: 28, color: color),
+                    const SizedBox(height: 8),
+                    Text(
+                      prompt['title'] as String,
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                        color: color.withOpacity(0.9),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      prompt['prompt'] as String,
+                      style: TextStyle(fontSize: 10, color: Colors.grey[600]),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final messages = ref.watch(questMessagesProvider(widget.questId));
     final questAsync = ref.watch(questDetailsProvider(widget.questId));
+    final selectedProvider = ref.watch(selectedAIProviderProvider);
+    final bestProvider = ref.watch(bestAIProviderProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -74,18 +282,46 @@ class _QuestChatScreenState extends ConsumerState<QuestChatScreen> {
           error: (_, __) => const Text('Quest'),
         ),
         centerTitle: true,
+        actions: [
+          // AI Provider Selector Button
+          IconButton(
+            icon: Stack(
+              children: [
+                Icon(_getProviderIcon(selectedProvider)),
+                if (selectedProvider == AIProvider.nano)
+                  Positioned(
+                    right: 0,
+                    bottom: 0,
+                    child: Container(
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: Colors.green,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 1),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            tooltip: 'AI Provider: ${bestProvider.displayName}',
+            onPressed: () => showAIProviderSelector(context),
+          ),
+        ],
       ),
       body: Column(
         children: [
           // Messages list
           Expanded(
             child: messages.isEmpty
-                ? Center(
+                ? SingleChildScrollView(
+                    padding: const EdgeInsets.all(16),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
+                        const SizedBox(height: 40),
                         Icon(
-                          Icons.chat_bubble_outline,
+                          Icons.auto_awesome,
                           size: 64,
                           color: Colors.grey[300],
                         ),
@@ -103,6 +339,9 @@ class _QuestChatScreenState extends ConsumerState<QuestChatScreen> {
                             context,
                           ).textTheme.bodySmall?.copyWith(color: Colors.grey),
                         ),
+                        const SizedBox(height: 32),
+                        // Sample prompts
+                        _buildSamplePrompts(),
                       ],
                     ),
                   )

@@ -75,8 +75,7 @@ class FakeOffersSource implements OffersSource {
         id: '1',
         title: 'Tu Casa Lamps - Upto 93% Off 💥',
         description: 'Premium lighting solutions at unbeatable prices',
-        imageUrl:
-            'https://images-na.ssl-images-amazon.com/images/I/71-qXjTrPyL._SX679_.jpg',
+        imageUrl: null, // Image URL removed - using fallback icon
         link: 'https://amzn.to/4omubAz',
         source: 'Amazon',
         publishedAt: DateTime.now(),
@@ -86,8 +85,7 @@ class FakeOffersSource implements OffersSource {
         id: '2',
         title: 'WickedGud Noodles - Apply 50% Off Coupon',
         description: 'Delicious instant noodles with 50% coupon available',
-        imageUrl:
-            'https://images-na.ssl-images-amazon.com/images/I/81Ym7-ZCBQL._SX679_.jpg',
+        imageUrl: null, // Image URL removed - using fallback icon
         link: 'https://amzn.to/4myhd0I',
         source: 'Amazon',
         publishedAt: DateTime.now().subtract(const Duration(minutes: 30)),
@@ -97,8 +95,7 @@ class FakeOffersSource implements OffersSource {
         id: '3',
         title: 'Vivel Soap, 150g - (Pack of 4) at Rs.151 💥',
         description: 'Premium soap pack at incredible price',
-        imageUrl:
-            'https://images-na.ssl-images-amazon.com/images/I/71Ym7-ZCBQL._SX679_.jpg',
+        imageUrl: null, // Image URL removed - using fallback icon
         link: 'https://amzn.to/48HnZOv',
         source: 'Amazon',
         publishedAt: DateTime.now().subtract(const Duration(hours: 1)),
@@ -108,8 +105,7 @@ class FakeOffersSource implements OffersSource {
         id: '4',
         title: 'Orient Electric - Water Geyser 25L at Rs.5,999 💥',
         description: 'High-capacity water heater at best price',
-        imageUrl:
-            'https://images-na.ssl-images-amazon.com/images/I/71Ym7-ZCBQL._SX679_.jpg',
+        imageUrl: null, // Image URL removed - using fallback icon
         link: 'https://amzn.to/4m3ezzN',
         source: 'Amazon',
         publishedAt: DateTime.now().subtract(const Duration(hours: 2)),
@@ -119,8 +115,7 @@ class FakeOffersSource implements OffersSource {
         id: '5',
         title: 'Milton Products - Upto 70% Off 💥',
         description: 'Kitchen and home products at massive discounts',
-        imageUrl:
-            'https://images-na.ssl-images-amazon.com/images/I/71Ym7-ZCBQL._SX679_.jpg',
+        imageUrl: null, // Image URL removed - using fallback icon
         link: 'https://amzn.to/4hGpejB',
         source: 'Amazon',
         publishedAt: DateTime.now().subtract(const Duration(hours: 3)),
@@ -130,8 +125,7 @@ class FakeOffersSource implements OffersSource {
         id: '6',
         title: 'Head & Shoulders Shampoos - Upto 70% Off 💥',
         description: 'Premium hair care products on Myntra',
-        imageUrl:
-            'https://images-na.ssl-images-amazon.com/images/I/71Ym7-ZCBQL._SX679_.jpg',
+        imageUrl: null, // Image URL removed - using fallback icon
         link: 'https://mynt.ro/0Bhx7ywP',
         source: 'Myntra',
         publishedAt: DateTime.now().subtract(const Duration(hours: 4)),
@@ -141,8 +135,7 @@ class FakeOffersSource implements OffersSource {
         id: '7',
         title: 'Men\'s Cotton T-Shirt - (Pack of 3) at Rs.400 💥',
         description: 'Apply Rs.399 Off Coupon for extra savings',
-        imageUrl:
-            'https://images-na.ssl-images-amazon.com/images/I/71Ym7-ZCBQL._SX679_.jpg',
+        imageUrl: null, // Image URL removed - using fallback icon
         link: 'https://amzn.to/4058ZVm',
         source: 'Amazon',
         publishedAt: DateTime.now().subtract(const Duration(hours: 5)),

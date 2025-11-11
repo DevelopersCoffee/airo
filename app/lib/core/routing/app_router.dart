@@ -14,6 +14,7 @@ import '../../features/quest/presentation/screens/quest_upload_screen.dart';
 import '../../features/quest/presentation/screens/quest_chat_screen.dart';
 import '../../core/auth/auth_service.dart';
 import '../../core/app/app_shell.dart';
+import '../http/http_dog.dart';
 import 'route_names.dart';
 
 class AppRouter {
@@ -154,26 +155,10 @@ class AppRouter {
         ],
       ),
     ],
-    errorBuilder: (context, state) => Scaffold(
-      appBar: AppBar(title: const Text('Error')),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.error_outline, size: 64, color: Colors.red),
-            const SizedBox(height: 16),
-            Text(
-              'Page not found: ${state.matchedLocation}',
-              style: Theme.of(context).textTheme.headlineSmall,
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () => context.go('/money'),
-              child: const Text('Go Home'),
-            ),
-          ],
-        ),
-      ),
+    errorBuilder: (context, state) => HttpDogErrorScreen(
+      statusCode: 404,
+      customMessage: 'Page not found: ${state.matchedLocation}',
+      onRetry: () => context.go('/agent'),
     ),
   );
 }

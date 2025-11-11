@@ -1,6 +1,27 @@
 # Airo Super App
 
+[![Download APK](https://img.shields.io/github/v/release/DevelopersCoffee/airo?label=Download%20APK&color=success)](https://github.com/DevelopersCoffee/airo/releases/latest/download/app-release.apk)
+[![GitHub Release](https://img.shields.io/github/v/release/DevelopersCoffee/airo)](https://github.com/DevelopersCoffee/airo/releases)
+[![License](https://img.shields.io/github/license/DevelopersCoffee/airo)](LICENSE)
+[![Flutter](https://img.shields.io/badge/Flutter-3.24.0+-blue.svg)](https://flutter.dev/)
+
 A Flutter-based super app combining AI-powered features and financial management tools.
+
+## 📥 Download
+
+### Android
+**[⬇️ Download Latest APK](https://github.com/DevelopersCoffee/airo/releases/latest/download/app-release.apk)** (~50 MB)
+
+### iOS
+**[⬇️ Download Latest IPA](https://github.com/DevelopersCoffee/airo/releases/latest/download/app-release.ipa)** (~100 MB)
+
+### Web
+**[⬇️ Download Web Build](https://github.com/DevelopersCoffee/airo/releases/latest/download/airo-web-release.zip)** (~30 MB)
+
+### All Platforms
+**[📦 View All Releases](https://github.com/DevelopersCoffee/airo/releases)**
+
+---
 
 ## 🚀 Quick Start
 

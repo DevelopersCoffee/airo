@@ -46,21 +46,18 @@ android {
         }
     }
 
-    // Gemini Nano dependencies - Currently Parked
-    // TODO: Re-enable when resuming Gemini Nano integration
-    // dependencies {
-    //     implementation("com.google.mlkit:genai-summarization:1.0.0-beta1")
-    //     implementation("com.google.mlkit:genai-image-description:1.0.0-beta1")
-    //     implementation("com.google.mlkit:genai-proofreading:1.0.0-beta1")
-    //     implementation("com.google.mlkit:genai-rewriting:1.0.0-beta1")
-    //     runtimeOnly("androidx.lifecycle:lifecycle-runtime-ktx:2.9.4")
-    //     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
-    // }
 }
 
 dependencies {
     // Core library desugaring for flutter_local_notifications
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
+
+    // Gemini Nano (AI Core) dependencies for on-device AI
+    // Based on: https://developer.android.com/ai/gemini-nano
+    // Note: Actual AI Core SDK integration pending - currently using mock responses
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.9.4")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
 }
 
 flutter {

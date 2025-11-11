@@ -2,10 +2,17 @@
 class AppError implements Exception {
   final String code;
   final String message;
+  final int? statusCode; // HTTP status code if applicable
   final Object? originalError;
   final StackTrace? originalStack;
 
-  AppError(this.code, this.message, {this.originalError, this.originalStack});
+  AppError(
+    this.code,
+    this.message, {
+    this.statusCode,
+    this.originalError,
+    this.originalStack,
+  });
 
   @override
   String toString() => 'AppError($code): $message';
@@ -15,11 +22,13 @@ class AppError implements Exception {
 class NetworkError extends AppError {
   NetworkError(
     String message, {
+    int? statusCode,
     Object? originalError,
     StackTrace? originalStack,
   }) : super(
          'NETWORK_ERROR',
          message,
+         statusCode: statusCode,
          originalError: originalError,
          originalStack: originalStack,
        );
@@ -27,13 +36,18 @@ class NetworkError extends AppError {
 
 /// Authentication errors
 class AuthError extends AppError {
-  AuthError(String message, {Object? originalError, StackTrace? originalStack})
-    : super(
-        'AUTH_ERROR',
-        message,
-        originalError: originalError,
-        originalStack: originalStack,
-      );
+  AuthError(
+    String message, {
+    int? statusCode = 401,
+    Object? originalError,
+    StackTrace? originalStack,
+  }) : super(
+         'AUTH_ERROR',
+         message,
+         statusCode: statusCode,
+         originalError: originalError,
+         originalStack: originalStack,
+       );
 }
 
 /// Validation errors
@@ -43,11 +57,13 @@ class ValidationError extends AppError {
   ValidationError(
     String message, {
     this.fieldErrors = const {},
+    int? statusCode = 400,
     Object? originalError,
     StackTrace? originalStack,
   }) : super(
          'VALIDATION_ERROR',
          message,
+         statusCode: statusCode,
          originalError: originalError,
          originalStack: originalStack,
        );
@@ -57,11 +73,13 @@ class ValidationError extends AppError {
 class NotFoundError extends AppError {
   NotFoundError(
     String message, {
+    int? statusCode = 404,
     Object? originalError,
     StackTrace? originalStack,
   }) : super(
          'NOT_FOUND',
          message,
+         statusCode: statusCode,
          originalError: originalError,
          originalStack: originalStack,
        );
@@ -71,11 +89,13 @@ class NotFoundError extends AppError {
 class PermissionError extends AppError {
   PermissionError(
     String message, {
+    int? statusCode = 403,
     Object? originalError,
     StackTrace? originalStack,
   }) : super(
          'PERMISSION_ERROR',
          message,
+         statusCode: statusCode,
          originalError: originalError,
          originalStack: originalStack,
        );

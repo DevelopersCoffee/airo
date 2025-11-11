@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../../core/http/http_dog.dart';
+import '../../../../core/dictionary/dictionary.dart';
+import '../../../quotes/presentation/widgets/daily_quote_card.dart';
 
 /// User profile screen
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Profile'),
@@ -120,6 +124,60 @@ class ProfileScreen extends StatelessWidget {
 
             const SizedBox(height: 32),
 
+            // Developer Tools section
+            Text(
+              'Developer Tools',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 16),
+
+            // HTTP Status Dogs
+            ListTile(
+              leading: const Icon(Icons.pets),
+              title: const Text('HTTP Status Dogs'),
+              subtitle: const Text(
+                'View all HTTP status codes with dog images',
+              ),
+              trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => const HttpStatusReferenceScreen(),
+                  ),
+                );
+              },
+            ),
+
+            // Quote Settings
+            ListTile(
+              leading: const Icon(Icons.format_quote),
+              title: const Text('Quote Settings'),
+              subtitle: const Text('Manage daily quotes display'),
+              trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+              onTap: () {
+                _showQuoteSettings(context, ref);
+              },
+            ),
+
+            // Dictionary Demo
+            ListTile(
+              leading: const Icon(Icons.menu_book),
+              title: const Text('Dictionary Demo'),
+              subtitle: const SelectableTextWithDictionary(
+                'Select any word to look it up in the dictionary',
+              ),
+              trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => const DictionaryDemoScreen(),
+                  ),
+                );
+              },
+            ),
+
+            const SizedBox(height: 32),
+
             // Logout button
             SizedBox(
               width: double.infinity,
@@ -136,6 +194,91 @@ class ProfileScreen extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  void _showQuoteSettings(BuildContext context, WidgetRef ref) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.format_quote),
+            SizedBox(width: 8),
+            Text('Quote Settings'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Consumer(
+              builder: (context, ref, child) {
+                final preferences = ref.watch(quotePreferencesProvider);
+                return SwitchListTile(
+                  title: const Text('Show Daily Quotes'),
+                  subtitle: const Text(
+                    'Display personalized quotes on screens',
+                  ),
+                  value: preferences.showQuotes,
+                  onChanged: (value) {
+                    ref
+                        .read(quotePreferencesProvider.notifier)
+                        .setShowQuotes(value);
+                  },
+                );
+              },
+            ),
+            const SizedBox(height: 16),
+            Consumer(
+              builder: (context, ref, child) {
+                final preferences = ref.watch(quotePreferencesProvider);
+                return DropdownButtonFormField<String>(
+                  decoration: const InputDecoration(
+                    labelText: 'Quote Source',
+                    border: OutlineInputBorder(),
+                  ),
+                  value: preferences.quoteSource,
+                  items: const [
+                    DropdownMenuItem(
+                      value: 'fake',
+                      child: Text('Inspirational Quotes'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'zenquotes',
+                      child: Text('ZenQuotes API'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'fortuneCookie',
+                      child: Text('Fortune Cookies'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'lifeHacks',
+                      child: Text('Life Hacks'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'uselessFacts',
+                      child: Text('Interesting Facts'),
+                    ),
+                  ],
+                  onChanged: (value) {
+                    if (value != null) {
+                      ref
+                          .read(quotePreferencesProvider.notifier)
+                          .setQuoteSource(value);
+                    }
+                  },
+                );
+              },
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Close'),
+          ),
+        ],
       ),
     );
   }
