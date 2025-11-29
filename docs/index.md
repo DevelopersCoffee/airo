@@ -57,6 +57,8 @@ An advanced Flutter super app that brings powerful AI capabilities to your devic
 - [CI/CD Setup](./setup/CI_CD_SETUP.md) - Configure CI/CD
 - [Release Guide](./guides/RELEASE_GUIDE.md) - Create releases
 - [CI/CD Complete](./setup/CI_CD_COMPLETE.md) - Full pipeline overview
+- [**Changelogs**](./release/README.md) - Version history & release notes
+- [Changelog v1.1.0](./release/CHANGELOG_v1.1.0.md) - Latest changes (Bill Split, E2E Testing)
 
 ### Security & Quality
 - [Security Setup](./setup/SONAR_SNYK_SETUP_GUIDE.md) - SonarQube & Snyk
@@ -69,6 +71,7 @@ An advanced Flutter super app that brings powerful AI capabilities to your devic
 
 ### Features
 - [Money Feature](./features/MONEY_FEATURE_COMPLETE.md) - Transaction tracking
+- [Bill Split](./release/CHANGELOG_v1.1.0.md#1-bill-split-feature-splitwise-style) - Splitwise-style expense splitting
 - [Chess Feature](./features/CHESS_IMPLEMENTATION_COMPLETE.md) - Chess game
 - [Chess Testing](./features/CHESS_TESTING_GUIDE.md) - Testing guide
 
@@ -156,7 +159,7 @@ This project is licensed under the MIT License.
 
 ---
 
-**Last Updated**: November 2, 2025
-**Version**: 1.0.0
+**Last Updated**: November 29, 2025
+**Version**: 1.1.0
 **Status**: ✅ Production Ready
 

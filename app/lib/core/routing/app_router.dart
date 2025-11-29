@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import '../../features/auth/screens/login_screen.dart';
 import '../../features/auth/screens/register_screen.dart';
 import '../../features/money/presentation/screens/money_overview_screen.dart';
+import '../../features/bill_split/presentation/screens/bill_split_screen.dart';
 import '../../features/agent_chat/presentation/screens/chat_screen.dart';
 import '../../features/agent_chat/presentation/screens/profile_screen.dart';
 import '../../features/music/presentation/screens/music_screen.dart';
@@ -67,6 +68,13 @@ class AppRouter {
                 path: '/money',
                 name: 'Coins',
                 builder: (context, state) => const MoneyOverviewScreen(),
+                routes: [
+                  GoRoute(
+                    path: 'split',
+                    name: 'bill_split',
+                    builder: (context, state) => const BillSplitScreen(),
+                  ),
+                ],
               ),
             ],
           ),

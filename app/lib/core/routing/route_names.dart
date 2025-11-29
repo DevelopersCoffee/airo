@@ -10,4 +10,7 @@ class RouteNames {
   static const String register = '/register';
   static const String profile = '/profile';
   static const String settings = '/settings';
+
+  // Bill Split
+  static const String billSplit = '/money/split';
 }

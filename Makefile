@@ -185,6 +185,58 @@ test-integration: ## Run integration tests
 	@echo "$(BLUE)Running integration tests...$(NC)"
 	@cd $(APP_DIR) && flutter test integration_test/
 
+# =============================================================================
+# E2E TESTING - Strategy: Playwright (browser) → Patrol (device) → Deploy
+# =============================================================================
+
+.PHONY: test-e2e
+test-e2e: test-browser test-device ## Run all E2E tests (browser + device)
+	@echo "$(GREEN)✓ All E2E tests passed! Ready for deployment.$(NC)"
+
+.PHONY: test-browser
+test-browser: ## Step 1: Run Playwright browser E2E tests
+	@echo "$(BLUE)Running Playwright browser tests...$(NC)"
+	@echo "$(YELLOW)NOTE: Flutter Web must be running on port 8080$(NC)"
+	@echo "$(YELLOW)Run 'make run-chrome-html' in another terminal first$(NC)"
+	@cd e2e && npm test
+
+.PHONY: test-browser-headless
+test-browser-headless: ## Run Playwright tests headless (CI)
+	@cd e2e && npm test -- --project=chromium
+
+.PHONY: test-browser-debug
+test-browser-debug: ## Run Playwright tests with debug UI
+	@cd e2e && npm run test:debug
+
+.PHONY: test-browser-report
+test-browser-report: ## Show Playwright test report
+	@cd e2e && npm run report
+
+.PHONY: test-device
+test-device: ## Step 2: Run Patrol device E2E tests
+	@echo "$(BLUE)Running Patrol device tests...$(NC)"
+	@cd $(APP_DIR) && patrol test -t integration_test/patrol_test.dart
+
+.PHONY: test-device-android
+test-device-android: ## Run Patrol tests on Android
+	@cd $(APP_DIR) && patrol test -t integration_test/patrol_test.dart --target android
+
+.PHONY: test-device-ios
+test-device-ios: ## Run Patrol tests on iOS
+	@cd $(APP_DIR) && patrol test -t integration_test/patrol_test.dart --target ios
+
+.PHONY: run-chrome-html
+run-chrome-html: ## Run Flutter Web with HTML renderer for E2E testing
+	@echo "$(BLUE)Running Flutter Web with HTML renderer on port 8080...$(NC)"
+	@cd $(APP_DIR) && flutter run -d chrome --web-renderer=html --web-port=8080
+
+.PHONY: setup-e2e
+setup-e2e: ## Setup E2E test dependencies
+	@echo "$(BLUE)Setting up E2E test dependencies...$(NC)"
+	@cd e2e && npm install && npx playwright install
+	@cd $(APP_DIR) && flutter pub add patrol --dev || true
+	@echo "$(GREEN)✓ E2E setup complete$(NC)"
+
 .PHONY: analyze
 analyze: ## Analyze code for issues
 	@echo "$(BLUE)Analyzing code...$(NC)"

@@ -1,5 +1,10 @@
 import '../models/chess_models.dart';
 
+/// Mixin for engines that need async initialization
+mixin ChessEngineAsync {
+  Future<void> waitForReady();
+}
+
 /// Difficulty level for AI
 enum ChessDifficulty {
   easy(depthLimit: 2, randomness: 0.3),

@@ -1,0 +1,25 @@
+# Patrol configuration for native device testing
+# Add this to dev_dependencies in pubspec.yaml:
+#
+# patrol: ^3.11.0
+#
+# Then run: flutter pub get
+
+# Example patrol.yaml configuration:
+# app_name: Airo
+# android:
+#   package_name: com.airo.superapp
+# ios:
+#   bundle_id: com.airo.superapp
+#   app_name: Airo
+
+# Commands:
+# patrol build android   - Build for Android
+# patrol build ios       - Build for iOS
+# patrol test            - Run tests on connected device
+# patrol test -t integration_test/patrol_test.dart --target android
+
+# For CI/CD:
+# patrol test --target android --flavor prod
+# patrol test --target ios --flavor prod
+

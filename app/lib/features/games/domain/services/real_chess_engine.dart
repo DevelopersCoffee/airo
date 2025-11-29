@@ -4,7 +4,7 @@ import 'chess_engine.dart';
 import '../models/chess_models.dart';
 
 /// Real chess engine using chess.dart and Stockfish
-class RealChessEngine implements ChessEngine {
+class RealChessEngine with ChessEngineAsync implements ChessEngine {
   late chess_lib.Chess _chess;
   static Stockfish? _stockfishInstance;
   static bool _stockfishReady = false;
@@ -79,6 +79,7 @@ class RealChessEngine implements ChessEngine {
   }
 
   /// Wait for Stockfish to be ready
+  @override
   Future<void> waitForReady() async {
     await _ensureStockfishReady();
   }

@@ -3,7 +3,7 @@ import 'package:flame/events.dart';
 import 'package:flutter/material.dart';
 import '../../domain/models/chess_models.dart';
 import '../../domain/services/chess_engine.dart';
-import '../../domain/services/real_chess_engine.dart';
+import '../../domain/services/chess_engine_factory.dart';
 import '../../domain/services/chess_audio_manager.dart';
 import '../../domain/services/chess_tts_manager.dart';
 import '../../domain/services/move_event_dispatcher.dart';
@@ -57,11 +57,13 @@ class ChessGameFlame extends FlameGame with TapCallbacks {
       '[CHESS] Player is ${playerColor.name.toUpperCase()}, AI is ${aiColor.name.toUpperCase()}',
     );
 
-    // Initialize engine and audio
-    engine = RealChessEngine();
+    // Initialize engine and audio (using factory for platform compatibility)
+    engine = ChessEngineFactory.create();
 
-    // Wait for Stockfish to be ready
-    await (engine as RealChessEngine).waitForReady();
+    // Wait for engine to be ready (on native platforms, this waits for Stockfish)
+    if (engine is ChessEngineAsync) {
+      await (engine as ChessEngineAsync).waitForReady();
+    }
 
     audioManager = FakeChessAudioManager();
     ttsManager = ChessTTSManager();

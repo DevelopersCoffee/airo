@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../core/dictionary/dictionary.dart';
+import '../../../../core/routing/route_names.dart';
 import '../../application/providers/money_provider.dart';
 import '../widgets/transaction_upload_dialog.dart';
 import '../../../quotes/presentation/widgets/daily_quote_card.dart';
@@ -39,6 +41,58 @@ class MoneyOverviewScreen extends ConsumerWidget {
                 padding: EdgeInsets.only(bottom: 16),
                 elevation: 1,
               ),
+
+              // Quick Actions
+              Text(
+                'Quick Actions',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                height: 100,
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  children: [
+                    _QuickActionCard(
+                      icon: Icons.call_split,
+                      label: 'Split Bill',
+                      color: Colors.orange,
+                      onTap: () => context.push(RouteNames.billSplit),
+                    ),
+                    _QuickActionCard(
+                      icon: Icons.receipt_long,
+                      label: 'Scan Receipt',
+                      color: Colors.blue,
+                      onTap: () {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Coming soon!')),
+                        );
+                      },
+                    ),
+                    _QuickActionCard(
+                      icon: Icons.send,
+                      label: 'Send Money',
+                      color: Colors.green,
+                      onTap: () {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Coming soon!')),
+                        );
+                      },
+                    ),
+                    _QuickActionCard(
+                      icon: Icons.request_page,
+                      label: 'Request',
+                      color: Colors.purple,
+                      onTap: () {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Coming soon!')),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
 
               // Total balance card
               totalBalance.when(
@@ -369,6 +423,57 @@ class MoneyOverviewScreen extends ConsumerWidget {
             label: const Text('Look Up'),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Quick action card widget for money screen
+class _QuickActionCard extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _QuickActionCard({
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.only(right: 12),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          width: 90,
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, color: color, size: 24),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                label,
+                style: const TextStyle(fontSize: 12),
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
