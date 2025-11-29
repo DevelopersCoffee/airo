@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'package:uuid/uuid.dart';
 import '../../../../core/services/gemini_nano_service.dart';
+import '../../../../core/services/gemini_api_service.dart';
 import '../models/receipt_item.dart';
 
 /// Service for parsing receipts from images using OCR
@@ -15,9 +16,17 @@ abstract class ReceiptParserService {
   Future<ParsedReceipt> parseReceiptFromBytes(List<int> bytes);
 }
 
-/// Hybrid ML Kit + Gemini Nano implementation for intelligent receipt parsing
-/// Step 1: ML Kit OCR extracts raw text
-/// Step 2: Gemini Nano intelligently parses items from raw text
+/// Hybrid ML Kit + AI implementation for intelligent receipt parsing
+///
+/// Parsing Strategy (with TODO for optimization):
+/// 1. Try Gemini API Vision (managed, accurate) - TODO: Replace with on-device
+/// 2. Try ML Kit OCR + Gemini Nano (on-device, private)
+/// 3. Fallback to regex parsing (fast, works offline)
+///
+/// TODO: OPTIMIZATION - Preferred on-device flow:
+/// 1. ML Kit OCR (on-device, fast)
+/// 2. Gemini Nano parsing (on-device, private)
+/// 3. Cloud API only for complex/failed receipts (user consent required)
 class MLKitReceiptParserService implements ReceiptParserService {
   final _uuid = const Uuid();
   final _textRecognizer = TextRecognizer(script: TextRecognitionScript.latin);
@@ -61,6 +70,22 @@ class MLKitReceiptParserService implements ReceiptParserService {
 
   @override
   Future<ParsedReceipt> parseReceipt(File imageFile) async {
+    // Strategy 1: Try Gemini API Vision for best accuracy
+    // TODO: OPTIMIZATION - Make this opt-in for cloud processing
+    // Only use cloud when user explicitly enables it or on-device fails
+    if (geminiApiService.isAvailable) {
+      try {
+        final result = await _parseWithGeminiApi(imageFile);
+        if (result != null && result.items.isNotEmpty) {
+          debugPrint('Parsed with Gemini API: ${result.items.length} items');
+          return result;
+        }
+      } catch (e) {
+        debugPrint('Gemini API failed, trying on-device: $e');
+      }
+    }
+
+    // Strategy 2: ML Kit OCR + Gemini Nano (on-device)
     final inputImage = InputImage.fromFile(imageFile);
     final recognizedText = await _textRecognizer.processImage(inputImage);
 
@@ -68,7 +93,7 @@ class MLKitReceiptParserService implements ReceiptParserService {
       '=== OCR Raw Text ===\n${recognizedText.text}\n===================',
     );
 
-    // Try Gemini Nano first for intelligent parsing
+    // Try Gemini Nano for on-device intelligent parsing
     if (await _geminiNano.isSupported()) {
       try {
         return await _parseWithGeminiNano(recognizedText.text, imageFile.path);
@@ -77,8 +102,65 @@ class MLKitReceiptParserService implements ReceiptParserService {
       }
     }
 
-    // Fallback to improved regex parsing
+    // Strategy 3: Fallback to regex parsing (works offline)
     return _parseTextWithRegex(recognizedText.text, imageFile.path);
+  }
+
+  /// Parse receipt using Gemini API Vision (cloud-based)
+  /// TODO: OPTIMIZATION - Replace with on-device processing:
+  /// - ML Kit OCR for text extraction
+  /// - Gemini Nano for intelligent parsing
+  /// - Only use cloud API for complex receipts with user consent
+  Future<ParsedReceipt?> _parseWithGeminiApi(File imageFile) async {
+    final result = await geminiApiService.parseReceiptImage(imageFile);
+    if (result == null) return null;
+
+    final items = <ReceiptItem>[];
+    int itemTotal = 0;
+
+    final itemsList = result['items'] as List<dynamic>?;
+    if (itemsList != null) {
+      for (final item in itemsList) {
+        final name = item['name']?.toString() ?? '';
+        final price = (item['price'] is num)
+            ? (item['price'] as num).toDouble()
+            : double.tryParse(item['price']?.toString() ?? '0') ?? 0;
+        final qty = item['quantity'] ?? 1;
+
+        if (name.isNotEmpty && price > 0) {
+          final paise = (price * 100).round();
+          items.add(
+            ReceiptItem(
+              id: _uuid.v4(),
+              name: name,
+              quantity: qty is int ? qty : 1,
+              unitPricePaise: paise,
+              totalPricePaise: paise * (qty is int ? qty : 1),
+            ),
+          );
+          itemTotal += paise * (qty is int ? qty : 1);
+        }
+      }
+    }
+
+    if (items.isEmpty) return null;
+
+    final total = result['total'] is num
+        ? ((result['total'] as num) * 100).round()
+        : itemTotal;
+
+    return ParsedReceipt(
+      id: _uuid.v4(),
+      vendor: result['vendor']?.toString(),
+      orderId: null,
+      orderDate: DateTime.now(),
+      items: items,
+      fees: const [],
+      itemTotalPaise: itemTotal,
+      grandTotalPaise: total,
+      imagePath: imageFile.path,
+      parsedAt: DateTime.now(),
+    );
   }
 
   @override

@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/models/bill_split_models.dart';
 import '../../domain/models/split_result.dart';
 import '../../domain/services/bill_split_service.dart';
+import '../../domain/services/bill_split_storage_service.dart';
 import '../../domain/services/contact_service.dart';
 
 // ============================================================================
@@ -16,6 +17,25 @@ final billSplitServiceProvider = Provider<BillSplitService>((ref) {
 /// Contact service provider (uses real device contacts on mobile)
 final contactServiceProvider = Provider<ContactService>((ref) {
   return DeviceContactService();
+});
+
+/// Storage service provider
+/// TODO: OPTIMIZATION - Replace with SQLCipher for encrypted storage
+/// For MVP, using SharedPreferences + JSON for fast development
+final billSplitStorageProvider = Provider<BillSplitStorageService>((ref) {
+  return LocalBillSplitStorage();
+});
+
+/// Split history provider - loads saved splits from storage
+final splitHistoryProvider = FutureProvider<List<SplitResult>>((ref) async {
+  final storage = ref.watch(billSplitStorageProvider);
+  return storage.getSplitHistory();
+});
+
+/// Bill history provider - loads saved bills from storage
+final billHistoryProvider = FutureProvider<List<Bill>>((ref) async {
+  final storage = ref.watch(billSplitStorageProvider);
+  return storage.getBillHistory();
 });
 
 // ============================================================================
@@ -178,6 +198,23 @@ class BillSplitController {
 
     _ref.read(currentSplitResultProvider.notifier).state = result;
     return result;
+  }
+
+  /// Save split result to storage for history
+  /// TODO: OPTIMIZATION - Use background isolate for storage operations
+  Future<void> saveSplitToHistory(SplitResult result) async {
+    final storage = _ref.read(billSplitStorageProvider);
+    await storage.saveSplitHistory(result);
+    // Invalidate the history provider to refresh
+    _ref.invalidate(splitHistoryProvider);
+  }
+
+  /// Save bill to storage for history
+  Future<void> saveBillToHistory(Bill bill) async {
+    final storage = _ref.read(billSplitStorageProvider);
+    await storage.saveBill(bill);
+    // Invalidate the history provider to refresh
+    _ref.invalidate(billHistoryProvider);
   }
 
   /// Reset all state

@@ -86,6 +86,8 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  integration_test:
+    sdk: flutter
 
   # Code generation
   build_runner: ^2.4.9
@@ -96,6 +98,7 @@ dev_dependencies:
   # Testing
   mocktail: ^1.0.0
   golden_toolkit: ^0.15.0
+  patrol: ^3.13.0  # E2E testing for iOS/Android devices
 
   # Linting
   flutter_lints: ^6.0.0
