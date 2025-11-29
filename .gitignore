@@ -1,5 +1,4 @@
 # Secrets and confidential files
-.vscode/secrets/
 *.secret
 *.key
 *.pem
@@ -22,8 +21,7 @@ build/
 
 # IDE
 .idea/
-.vscode/launch.json
-.vscode/settings.json
+.vscode/
 *.swp
 *.swo
 *~

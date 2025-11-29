@@ -1,7 +1,0 @@
-{
-    "java.configuration.updateBuildConfiguration": "automatic",
-    "sonarlint.connectedMode.project": {
-        "connectionId": "airo-super-app",
-        "projectKey": "airo-super-app"
-    }
-}
