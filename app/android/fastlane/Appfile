@@ -1,0 +1,7 @@
+# Appfile for Airo Android
+# 
+# Uncomment and configure with your Play Store credentials
+
+# json_key_file("play-store-credentials.json") # Path to the json secret file
+# package_name("com.developerscoffee.airo") # Your package name
+

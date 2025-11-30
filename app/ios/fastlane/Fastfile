@@ -1,0 +1,93 @@
+# Fastfile for Airo iOS
+#
+# Usage:
+#   bundle exec fastlane testflight      # Upload to TestFlight
+#   bundle exec fastlane appstore        # Submit to App Store
+
+default_platform(:ios)
+
+platform :ios do
+  desc "Build release IPA"
+  lane :build do
+    sh "cd ../.. && flutter build ios --release"
+  end
+
+  desc "Upload to TestFlight"
+  lane :testflight_upload do
+    # Build if needed
+    sh "cd ../.. && flutter build ios --release" unless File.exist?("../build/ios/iphoneos/Runner.app")
+    
+    # Create IPA
+    build_app(
+      workspace: "Runner.xcworkspace",
+      scheme: "Runner",
+      export_method: "app-store",
+      output_directory: "../build",
+      output_name: "airo.ipa",
+    )
+    
+    # Upload to TestFlight
+    upload_to_testflight(
+      skip_waiting_for_build_processing: true,
+      distribute_external: false,
+    )
+  end
+
+  desc "Upload to TestFlight with external testers"
+  lane :testflight_external do
+    build_app(
+      workspace: "Runner.xcworkspace",
+      scheme: "Runner",
+      export_method: "app-store",
+    )
+    
+    upload_to_testflight(
+      distribute_external: true,
+      groups: ["External Testers"],
+      changelog: "New build for testing",
+    )
+  end
+
+  desc "Submit to App Store for review"
+  lane :appstore do
+    build_app(
+      workspace: "Runner.xcworkspace",
+      scheme: "Runner",
+      export_method: "app-store",
+    )
+    
+    upload_to_app_store(
+      submit_for_review: true,
+      automatic_release: false, # Manual release after approval
+      force: true,
+      skip_metadata: false,
+      skip_screenshots: false,
+    )
+  end
+
+  desc "Submit to App Store with phased release"
+  lane :appstore_phased do
+    upload_to_app_store(
+      submit_for_review: true,
+      automatic_release: false,
+      phased_release: true, # 7-day phased rollout
+    )
+  end
+
+  desc "Sync certificates and profiles"
+  lane :sync_certs do
+    match(
+      type: "appstore",
+      readonly: true,
+    )
+  end
+
+  desc "Create new certificates and profiles"
+  lane :create_certs do
+    match(
+      type: "appstore",
+      readonly: false,
+    )
+  end
+end
+
