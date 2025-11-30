@@ -6,6 +6,8 @@ import '../../../../core/routing/route_names.dart';
 import '../../application/providers/money_provider.dart';
 import '../widgets/transaction_upload_dialog.dart';
 import '../../../quotes/presentation/widgets/daily_quote_card.dart';
+import 'add_expense_screen.dart';
+import 'budgets_screen.dart';
 
 /// Money overview screen
 class MoneyOverviewScreen extends ConsumerWidget {
@@ -15,8 +17,9 @@ class MoneyOverviewScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final totalBalance = ref.watch(totalBalanceProvider);
     final accounts = ref.watch(accountsProvider);
-    final transactions = ref.watch(recentTransactionsProvider);
-    final budgets = ref.watch(budgetsProvider);
+    // Use stream provider for reactive transactions
+    final transactionsStream = ref.watch(transactionsStreamProvider);
+    final budgetsStream = ref.watch(budgetsStreamProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -211,7 +214,7 @@ class MoneyOverviewScreen extends ConsumerWidget {
                 style: Theme.of(context).textTheme.titleLarge,
               ),
               const SizedBox(height: 12),
-              transactions.when(
+              transactionsStream.when(
                 data: (txnList) {
                   if (txnList.isEmpty) {
                     return Card(
@@ -219,20 +222,22 @@ class MoneyOverviewScreen extends ConsumerWidget {
                         padding: const EdgeInsets.all(16),
                         child: Column(
                           children: [
-                            const ListTile(
-                              title: Text('No transactions yet'),
-                              subtitle: Text(
-                                'Your transactions will appear here',
-                              ),
-                              leading: Icon(Icons.receipt),
-                            ),
+                            Icon(Icons.receipt_long, size: 48, color: Colors.grey[400]),
                             const SizedBox(height: 12),
-                            ElevatedButton.icon(
-                              onPressed: () {
-                                // TODO: Navigate to add transaction screen
-                              },
+                            const Text(
+                              'No transactions yet',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Add your first expense to start tracking',
+                              style: TextStyle(color: Colors.grey[600]),
+                            ),
+                            const SizedBox(height: 16),
+                            FilledButton.icon(
+                              onPressed: () => _navigateToAddExpense(context),
                               icon: const Icon(Icons.add),
-                              label: const Text('Add Transaction'),
+                              label: const Text('Add Expense'),
                             ),
                           ],
                         ),
@@ -243,7 +248,7 @@ class MoneyOverviewScreen extends ConsumerWidget {
                     child: Padding(
                       padding: const EdgeInsets.all(16),
                       child: Column(
-                        children: txnList
+                        children: txnList.take(5)
                             .map(
                               (txn) => ListTile(
                                 title: Text(txn.description),
@@ -267,7 +272,7 @@ class MoneyOverviewScreen extends ConsumerWidget {
                 loading: () => const Card(
                   child: Padding(
                     padding: EdgeInsets.all(16),
-                    child: CircularProgressIndicator(),
+                    child: Center(child: CircularProgressIndicator()),
                   ),
                 ),
                 error: (_, __) => const Card(
@@ -280,9 +285,18 @@ class MoneyOverviewScreen extends ConsumerWidget {
               const SizedBox(height: 24),
 
               // Budgets section
-              Text('Budgets', style: Theme.of(context).textTheme.titleLarge),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('Budgets', style: Theme.of(context).textTheme.titleLarge),
+                  TextButton(
+                    onPressed: () => _navigateToBudgets(context),
+                    child: const Text('Manage'),
+                  ),
+                ],
+              ),
               const SizedBox(height: 12),
-              budgets.when(
+              budgetsStream.when(
                 data: (budgetList) {
                   if (budgetList.isEmpty) {
                     return Card(
@@ -290,18 +304,20 @@ class MoneyOverviewScreen extends ConsumerWidget {
                         padding: const EdgeInsets.all(16),
                         child: Column(
                           children: [
-                            const ListTile(
-                              title: Text('No budgets yet'),
-                              subtitle: Text(
-                                'Create budgets to track your spending',
-                              ),
-                              leading: Icon(Icons.trending_down),
-                            ),
+                            Icon(Icons.trending_down, size: 48, color: Colors.grey[400]),
                             const SizedBox(height: 12),
-                            ElevatedButton.icon(
-                              onPressed: () {
-                                // TODO: Navigate to add budget screen
-                              },
+                            const Text(
+                              'No budgets yet',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Create budgets to track your spending',
+                              style: TextStyle(color: Colors.grey[600]),
+                            ),
+                            const SizedBox(height: 16),
+                            FilledButton.icon(
+                              onPressed: () => _navigateToBudgets(context),
                               icon: const Icon(Icons.add),
                               label: const Text('Create Budget'),
                             ),
@@ -325,10 +341,14 @@ class MoneyOverviewScreen extends ConsumerWidget {
                                     ),
                                     trailing: Text(
                                       '${(budget.percentageUsed * 100).toStringAsFixed(0)}%',
+                                      style: TextStyle(
+                                        color: budget.isExceeded ? Colors.red : Colors.green,
+                                        fontWeight: FontWeight.bold,
+                                      ),
                                     ),
                                   ),
                                   LinearProgressIndicator(
-                                    value: budget.percentageUsed,
+                                    value: budget.percentageUsedClamped,
                                     color: budget.isExceeded
                                         ? Colors.red
                                         : Colors.green,
@@ -345,7 +365,7 @@ class MoneyOverviewScreen extends ConsumerWidget {
                 loading: () => const Card(
                   child: Padding(
                     padding: EdgeInsets.all(16),
-                    child: CircularProgressIndicator(),
+                    child: Center(child: CircularProgressIndicator()),
                   ),
                 ),
                 error: (_, __) => const Card(
@@ -360,20 +380,22 @@ class MoneyOverviewScreen extends ConsumerWidget {
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          showDialog(
-            context: context,
-            builder: (context) => TransactionUploadDialog(
-              onFileSelected: (fileName, filePath, fileType) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Uploaded: $fileName ($fileType)')),
-                );
-              },
-            ),
-          );
-        },
+        onPressed: () => _navigateToAddExpense(context),
+        tooltip: 'Add Expense',
         child: const Icon(Icons.add),
       ),
+    );
+  }
+
+  void _navigateToAddExpense(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const AddExpenseScreen()),
+    );
+  }
+
+  void _navigateToBudgets(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const BudgetsScreen()),
     );
   }
 

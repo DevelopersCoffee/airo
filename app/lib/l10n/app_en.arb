@@ -1,0 +1,117 @@
+{
+  "@@locale": "en",
+  
+  "appTitle": "Airo Money",
+  "@appTitle": {
+    "description": "The application title"
+  },
+
+  "budgets": "Budgets",
+  "noBudgetsYet": "No budgets yet",
+  "createBudgetsToTrack": "Create budgets to track your spending",
+  "createBudget": "Create Budget",
+  "editBudget": "Edit Budget",
+  "deleteBudget": "Delete Budget",
+  "deleteBudgetConfirm": "Delete budget for \"{category}\"?",
+  "@deleteBudgetConfirm": {
+    "placeholders": {
+      "category": {
+        "type": "String"
+      }
+    }
+  },
+  "category": "Category",
+  "monthlyLimit": "Monthly Limit",
+  "cancel": "Cancel",
+  "save": "Save",
+  "create": "Create",
+  "delete": "Delete",
+  "edit": "Edit",
+
+  "budgetExceeded": "Budget exceeded",
+  "budgetExceededBy": "Budget exceeded by {amount}",
+  "@budgetExceededBy": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "budgetRemaining": "{amount} left in {category} budget",
+  "@budgetRemaining": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      },
+      "category": {
+        "type": "String"
+      }
+    }
+  },
+
+  "addExpense": "Add Expense",
+  "amount": "Amount",
+  "description": "Description",
+  "descriptionHint": "e.g., Coffee at Starbucks",
+  "date": "Date",
+  "saveExpense": "Save Expense",
+  "expenseSaved": "Expense saved",
+  "failedToSaveExpense": "Failed to save expense",
+
+  "noTransactionsYet": "No transactions yet",
+  "addFirstExpense": "Add your first expense to start tracking",
+  "recentTransactions": "Recent Transactions",
+
+  "categoryFoodDrink": "Food & Drink",
+  "categoryTransportation": "Transportation",
+  "categoryEntertainment": "Entertainment",
+  "categoryShopping": "Shopping",
+  "categoryBillsUtilities": "Bills & Utilities",
+  "categoryHealthcare": "Healthcare",
+  "categoryEducation": "Education",
+  "categoryOther": "Other",
+
+  "syncInProgress": "Syncing...",
+  "syncComplete": "Sync complete",
+  "syncFailed": "Sync failed",
+  "offline": "Offline",
+  "pendingSync": "Pending sync: {count} items",
+  "@pendingSync": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+
+  "enterAmount": "Enter an amount",
+  "enterValidAmount": "Enter a valid amount",
+  "enterDescription": "Enter a description",
+  "enterLimit": "Enter a limit",
+
+  "manageBudgets": "Manage",
+  "budgetProgress": "Budget progress {percent}",
+  "@budgetProgress": {
+    "placeholders": {
+      "percent": {
+        "type": "String"
+      }
+    }
+  },
+  "budgetAccessibilityLabel": "{category} budget, {used} of {limit} used, {percent}{exceeded}",
+  "@budgetAccessibilityLabel": {
+    "placeholders": {
+      "category": { "type": "String" },
+      "used": { "type": "String" },
+      "limit": { "type": "String" },
+      "percent": { "type": "String" },
+      "exceeded": { "type": "String" }
+    }
+  },
+
+  "errorGeneric": "Something went wrong. Please try again.",
+  "errorNetwork": "Network error. Please check your connection.",
+  "errorBudgetDuplicate": "Budget already exists for this category",
+  "errorBudgetPositiveAmount": "Budget limit must be positive"
+}
+

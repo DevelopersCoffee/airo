@@ -44,6 +44,11 @@ dependencies:
   sqlite3_flutter_libs: ^0.5.24
   hive: ^2.2.3
   hive_flutter: ^1.1.0
+  path: ^1.9.0
+  path_provider: ^2.1.1
+
+  # Connectivity
+  connectivity_plus: ^5.0.2
 
   # Networking
   dio: ^5.4.0

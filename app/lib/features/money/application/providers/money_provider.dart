@@ -1,7 +1,14 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/database/app_database.dart';
 import '../../../../core/utils/result.dart';
+import '../../data/repositories/local_budgets_repository.dart';
+import '../../data/repositories/local_transactions_repository.dart';
 import '../../domain/models/money_models.dart';
+import '../../domain/models/insight_models.dart';
 import '../../domain/repositories/money_repositories.dart';
+import '../services/expense_service.dart';
+import '../services/insights_service.dart';
+import '../services/sync_service.dart';
 
 // ============================================================================
 // FAKE IMPLEMENTATIONS FOR DEVELOPMENT
@@ -340,19 +347,45 @@ class FakeBudgetsRepository implements BudgetsRepository {
 // PROVIDERS
 // ============================================================================
 
-/// Accounts repository provider
+/// Database provider - singleton
+final appDatabaseProvider = Provider<AppDatabase>((ref) {
+  final db = AppDatabase();
+  ref.onDispose(() => db.close());
+  return db;
+});
+
+/// Local transactions repository (database-backed)
+final localTransactionsRepositoryProvider = Provider<LocalTransactionsRepository>((ref) {
+  return LocalTransactionsRepository(ref.watch(appDatabaseProvider));
+});
+
+/// Local budgets repository (database-backed)
+final localBudgetsRepositoryProvider = Provider<LocalBudgetsRepository>((ref) {
+  return LocalBudgetsRepository(ref.watch(appDatabaseProvider));
+});
+
+/// Expense service for transactional operations
+final expenseServiceProvider = Provider<ExpenseService>((ref) {
+  return ExpenseService(
+    ref.watch(appDatabaseProvider),
+    ref.watch(localTransactionsRepositoryProvider),
+    ref.watch(localBudgetsRepositoryProvider),
+  );
+});
+
+/// Accounts repository provider (still using fake for now)
 final accountsRepositoryProvider = Provider<AccountsRepository>((ref) {
   return FakeAccountsRepository();
 });
 
-/// Transactions repository provider
+/// Transactions repository provider - uses local DB
 final transactionsRepositoryProvider = Provider<TransactionsRepository>((ref) {
-  return FakeTransactionsRepository();
+  return ref.watch(localTransactionsRepositoryProvider);
 });
 
-/// Budgets repository provider
+/// Budgets repository provider - uses local DB
 final budgetsRepositoryProvider = Provider<BudgetsRepository>((ref) {
-  return FakeBudgetsRepository();
+  return ref.watch(localBudgetsRepositoryProvider);
 });
 
 /// All accounts provider
@@ -368,13 +401,17 @@ final totalBalanceProvider = FutureProvider<int>((ref) async {
   return accounts.fold<int>(0, (sum, acc) => sum + acc.balanceCents);
 });
 
-/// Recent transactions provider
-final recentTransactionsProvider = FutureProvider<List<Transaction>>((
-  ref,
-) async {
+/// Recent transactions provider (stream-backed for reactivity)
+final recentTransactionsProvider = FutureProvider<List<Transaction>>((ref) async {
   final repo = ref.watch(transactionsRepositoryProvider);
-  final result = await repo.fetch(const FetchTransactionsQuery());
-  return result.fold((_, __) => [], (txns) => txns.take(10).toList());
+  final result = await repo.fetch(const FetchTransactionsQuery(limit: 10));
+  return result.fold((_, __) => [], (txns) => txns);
+});
+
+/// Stream of recent transactions for reactive UI
+final transactionsStreamProvider = StreamProvider<List<Transaction>>((ref) {
+  final repo = ref.watch(localTransactionsRepositoryProvider);
+  return repo.watchTransactions(limit: 50);
 });
 
 /// All budgets provider
@@ -382,6 +419,51 @@ final budgetsProvider = FutureProvider<List<Budget>>((ref) async {
   final repo = ref.watch(budgetsRepositoryProvider);
   final result = await repo.fetchAll();
   return result.fold((_, __) => [], (budgets) => budgets);
+});
+
+/// Stream of budgets for reactive UI
+final budgetsStreamProvider = StreamProvider<List<Budget>>((ref) {
+  final repo = ref.watch(localBudgetsRepositoryProvider);
+  return repo.watchBudgets();
+});
+
+/// Insights service provider
+final insightsServiceProvider = Provider<InsightsService>((ref) {
+  return InsightsService(
+    ref.watch(localTransactionsRepositoryProvider),
+    ref.watch(localBudgetsRepositoryProvider),
+  );
+});
+
+/// Sync service provider
+final syncServiceProvider = Provider<SyncService>((ref) {
+  final service = SyncService(ref.watch(localTransactionsRepositoryProvider));
+  ref.onDispose(() => service.dispose());
+  return service;
+});
+
+/// Spending summary provider (current month)
+final spendingSummaryProvider = FutureProvider<SpendingSummary>((ref) async {
+  final service = ref.watch(insightsServiceProvider);
+  return service.getSpendingSummary();
+});
+
+/// Budget health provider
+final budgetHealthProvider = FutureProvider<BudgetHealth>((ref) async {
+  final service = ref.watch(insightsServiceProvider);
+  return service.getBudgetHealth();
+});
+
+/// Spending trend provider
+final spendingTrendProvider = FutureProvider<SpendingTrend>((ref) async {
+  final service = ref.watch(insightsServiceProvider);
+  return service.getSpendingTrend();
+});
+
+/// Sync status stream provider
+final syncStatusProvider = StreamProvider<SyncState>((ref) {
+  final service = ref.watch(syncServiceProvider);
+  return service.syncStatus;
 });
 
 /// Money controller provider
@@ -427,6 +509,60 @@ class MoneyController {
     _ref.invalidate(totalBalanceProvider);
   }
 
+  /// Add expense with automatic budget deduction
+  Future<SaveExpenseResult?> addExpense({
+    required String accountId,
+    required DateTime timestamp,
+    required int amountCents,
+    required String description,
+    required String category,
+    List<String> tags = const [],
+    String? receiptUrl,
+  }) async {
+    final expenseService = _ref.read(expenseServiceProvider);
+    final result = await expenseService.saveExpense(
+      accountId: accountId,
+      timestamp: timestamp,
+      amountCents: amountCents,
+      description: description,
+      category: category,
+      tags: tags,
+      receiptUrl: receiptUrl,
+    );
+
+    _ref.invalidate(recentTransactionsProvider);
+    _ref.invalidate(totalBalanceProvider);
+    _ref.invalidate(budgetsProvider);
+
+    return result.getOrNull();
+  }
+
+  /// Add income (no budget impact)
+  Future<Transaction?> addIncome({
+    required String accountId,
+    required DateTime timestamp,
+    required int amountCents,
+    required String description,
+    required String category,
+    List<String> tags = const [],
+  }) async {
+    final expenseService = _ref.read(expenseServiceProvider);
+    final result = await expenseService.saveIncome(
+      accountId: accountId,
+      timestamp: timestamp,
+      amountCents: amountCents,
+      description: description,
+      category: category,
+      tags: tags,
+    );
+
+    _ref.invalidate(recentTransactionsProvider);
+    _ref.invalidate(totalBalanceProvider);
+
+    return result.getOrNull();
+  }
+
+  /// Legacy method - delegates to addExpense for backward compatibility
   Future<void> addTransaction({
     required String accountId,
     required DateTime timestamp,
@@ -435,16 +571,25 @@ class MoneyController {
     required String category,
     List<String> tags = const [],
   }) async {
-    await _transactionsRepo.create(
-      accountId: accountId,
-      timestamp: timestamp,
-      amountCents: amountCents,
-      description: description,
-      category: category,
-      tags: tags,
-    );
-    _ref.invalidate(recentTransactionsProvider);
-    _ref.invalidate(totalBalanceProvider);
+    if (amountCents < 0) {
+      await addExpense(
+        accountId: accountId,
+        timestamp: timestamp,
+        amountCents: amountCents,
+        description: description,
+        category: category,
+        tags: tags,
+      );
+    } else {
+      await addIncome(
+        accountId: accountId,
+        timestamp: timestamp,
+        amountCents: amountCents,
+        description: description,
+        category: category,
+        tags: tags,
+      );
+    }
   }
 
   Future<void> createBudget({
@@ -452,6 +597,16 @@ class MoneyController {
     required int limitCents,
   }) async {
     await _budgetsRepo.create(tag: tag, limitCents: limitCents);
+    _ref.invalidate(budgetsProvider);
+  }
+
+  Future<void> updateBudget(Budget budget) async {
+    await _budgetsRepo.update(budget);
+    _ref.invalidate(budgetsProvider);
+  }
+
+  Future<void> deleteBudget(String id) async {
+    await _budgetsRepo.delete(id);
     _ref.invalidate(budgetsProvider);
   }
 }

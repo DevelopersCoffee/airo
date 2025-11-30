@@ -91,12 +91,34 @@ class Transaction extends Equatable {
   ];
 }
 
+/// Budget recurrence type
+enum BudgetRecurrence {
+  monthly,
+  weekly,
+  yearly,
+}
+
+/// Budget carryover behavior
+enum CarryoverBehavior {
+  /// No carryover - unused budget is lost
+  none,
+  /// Unused budget carries over to next period
+  carryUnused,
+  /// Overspent amount is added to next period's used
+  carryDeficit,
+  /// Both unused and deficit carry over
+  carryBoth,
+}
+
 /// Budget model
 class Budget extends Equatable {
   final String id;
   final String tag; // Budget is per tag/category
-  final int limitCents; // Monthly limit in cents
-  final int usedCents; // Amount used in current month
+  final int limitCents; // Budget limit in cents
+  final int usedCents; // Amount used in current period
+  final int carryoverCents; // Amount carried over from previous period
+  final BudgetRecurrence recurrence;
+  final CarryoverBehavior carryoverBehavior;
   final DateTime createdAt;
   final DateTime? updatedAt;
 
@@ -105,34 +127,85 @@ class Budget extends Equatable {
     required this.tag,
     required this.limitCents,
     required this.usedCents,
+    this.carryoverCents = 0,
+    this.recurrence = BudgetRecurrence.monthly,
+    this.carryoverBehavior = CarryoverBehavior.none,
     required this.createdAt,
     this.updatedAt,
   });
 
-  /// Get percentage of budget used (0.0 to 1.0)
-  double get percentageUsed {
-    if (limitCents == 0) return 0.0;
-    return (usedCents / limitCents).clamp(0.0, 1.0);
+  /// Effective limit after carryover adjustments
+  int get effectiveLimitCents {
+    switch (carryoverBehavior) {
+      case CarryoverBehavior.none:
+        return limitCents;
+      case CarryoverBehavior.carryUnused:
+        return limitCents + (carryoverCents > 0 ? carryoverCents : 0);
+      case CarryoverBehavior.carryDeficit:
+        return limitCents - (carryoverCents < 0 ? carryoverCents.abs() : 0);
+      case CarryoverBehavior.carryBoth:
+        return limitCents + carryoverCents;
+    }
   }
+
+  /// Get percentage of budget used (0.0 to 1.0+)
+  double get percentageUsed {
+    final effective = effectiveLimitCents;
+    if (effective == 0) return 0.0;
+    return usedCents / effective;
+  }
+
+  /// Get percentage clamped to 0.0-1.0 for progress bars
+  double get percentageUsedClamped => percentageUsed.clamp(0.0, 1.0);
 
   /// Check if budget is exceeded
-  bool get isExceeded => usedCents > limitCents;
+  bool get isExceeded => usedCents > effectiveLimitCents;
 
   /// Get remaining budget in cents
-  int get remainingCents => (limitCents - usedCents).clamp(0, limitCents);
+  int get remainingCents => (effectiveLimitCents - usedCents).clamp(0, effectiveLimitCents);
 
   /// Get limit as formatted string
-  String get limitFormatted {
-    final dollars = limitCents ~/ 100;
-    final cents = (limitCents % 100);
-    return '\$$dollars.${cents.toString().padLeft(2, '0')}';
-  }
+  String get limitFormatted => _formatCurrency(limitCents);
+
+  /// Get effective limit as formatted string
+  String get effectiveLimitFormatted => _formatCurrency(effectiveLimitCents);
 
   /// Get used as formatted string
-  String get usedFormatted {
-    final dollars = usedCents ~/ 100;
-    final cents = (usedCents % 100);
-    return '\$$dollars.${cents.toString().padLeft(2, '0')}';
+  String get usedFormatted => _formatCurrency(usedCents);
+
+  /// Get remaining as formatted string
+  String get remainingFormatted => _formatCurrency(remainingCents);
+
+  static String _formatCurrency(int cents) {
+    final dollars = cents.abs() ~/ 100;
+    final c = cents.abs() % 100;
+    final formatted = '\$$dollars.${c.toString().padLeft(2, '0')}';
+    return cents < 0 ? '-$formatted' : formatted;
+  }
+
+  /// Create a copy with updated fields
+  Budget copyWith({
+    String? id,
+    String? tag,
+    int? limitCents,
+    int? usedCents,
+    int? carryoverCents,
+    BudgetRecurrence? recurrence,
+    CarryoverBehavior? carryoverBehavior,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) {
+    return Budget(
+      id: id ?? this.id,
+      tag: tag ?? this.tag,
+      limitCents: limitCents ?? this.limitCents,
+      usedCents: usedCents ?? this.usedCents,
+      carryoverCents: carryoverCents ?? this.carryoverCents,
+      recurrence: recurrence ?? this.recurrence,
+      carryoverBehavior: carryoverBehavior ?? this.carryoverBehavior,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
   }
 
   @override
@@ -141,6 +214,9 @@ class Budget extends Equatable {
     tag,
     limitCents,
     usedCents,
+    carryoverCents,
+    recurrence,
+    carryoverBehavior,
     createdAt,
     updatedAt,
   ];
