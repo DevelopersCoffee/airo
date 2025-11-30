@@ -6,6 +6,7 @@ library core_data;
 // HTTP Client
 export 'src/http/api_client.dart';
 export 'src/http/api_exception.dart';
+export 'src/http/certificate_pinner.dart';
 
 // Local Storage
 export 'src/storage/key_value_store.dart';
