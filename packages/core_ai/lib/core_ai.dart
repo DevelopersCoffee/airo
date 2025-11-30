@@ -7,6 +7,9 @@ library core_ai;
 export 'src/llm/llm_client.dart';
 export 'src/llm/llm_response.dart';
 export 'src/llm/llm_config.dart';
+export 'src/llm/gemini_nano_client.dart';
+export 'src/llm/gemini_api_client.dart';
+export 'src/llm/llm_router_impl.dart';
 
 // Prompt Management
 export 'src/prompts/prompt.dart';
