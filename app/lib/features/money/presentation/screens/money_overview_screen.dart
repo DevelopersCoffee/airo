@@ -4,10 +4,12 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/dictionary/dictionary.dart';
 import '../../../../core/routing/route_names.dart';
 import '../../application/providers/money_provider.dart';
+import '../../domain/models/money_models.dart';
 import '../widgets/transaction_upload_dialog.dart';
 import '../../../quotes/presentation/widgets/daily_quote_card.dart';
 import 'add_expense_screen.dart';
 import 'budgets_screen.dart';
+import 'transactions_list_screen.dart';
 
 /// Money overview screen
 class MoneyOverviewScreen extends ConsumerWidget {
@@ -248,23 +250,29 @@ class MoneyOverviewScreen extends ConsumerWidget {
                     child: Padding(
                       padding: const EdgeInsets.all(16),
                       child: Column(
-                        children: txnList.take(5)
-                            .map(
-                              (txn) => ListTile(
-                                title: Text(txn.description),
-                                subtitle: Text(txn.category),
-                                trailing: Text(
-                                  txn.amountFormatted,
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    color: txn.isExpense
-                                        ? Colors.red
-                                        : Colors.green,
+                        children: [
+                          ...txnList.take(5)
+                              .map(
+                                (txn) => ListTile(
+                                  title: Text(txn.description),
+                                  subtitle: Text(txn.category),
+                                  trailing: Text(
+                                    txn.amountFormatted,
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: txn.isExpense
+                                          ? Colors.red
+                                          : Colors.green,
+                                    ),
                                   ),
                                 ),
                               ),
-                            )
-                            .toList(),
+                          if (txnList.length > 5)
+                            TextButton(
+                              onPressed: () => _navigateToAllTransactions(context),
+                              child: const Text('View All Transactions'),
+                            ),
+                        ],
                       ),
                     ),
                   );
@@ -332,30 +340,59 @@ class MoneyOverviewScreen extends ConsumerWidget {
                       child: Column(
                         children: budgetList
                             .map(
-                              (budget) => Column(
-                                children: [
-                                  ListTile(
-                                    title: Text(budget.tag),
-                                    subtitle: Text(
-                                      '${budget.usedFormatted} / ${budget.limitFormatted}',
-                                    ),
-                                    trailing: Text(
-                                      '${(budget.percentageUsed * 100).toStringAsFixed(0)}%',
-                                      style: TextStyle(
-                                        color: budget.isExceeded ? Colors.red : Colors.green,
-                                        fontWeight: FontWeight.bold,
+                              (budget) {
+                                // Color based on warning level
+                                Color progressColor;
+                                switch (budget.warningLevel) {
+                                  case BudgetWarningLevel.exceeded:
+                                    progressColor = Colors.red;
+                                    break;
+                                  case BudgetWarningLevel.warning:
+                                    progressColor = Colors.orange;
+                                    break;
+                                  case BudgetWarningLevel.normal:
+                                    progressColor = Colors.green;
+                                    break;
+                                }
+                                return Column(
+                                  children: [
+                                    ListTile(
+                                      title: Text(budget.tag),
+                                      subtitle: Text(
+                                        '${budget.usedFormatted} / ${budget.limitFormatted}',
+                                      ),
+                                      trailing: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          if (budget.warningLevel != BudgetWarningLevel.normal)
+                                            Padding(
+                                              padding: const EdgeInsets.only(right: 4),
+                                              child: Icon(
+                                                budget.warningLevel == BudgetWarningLevel.exceeded
+                                                    ? Icons.error
+                                                    : Icons.warning_amber,
+                                                color: progressColor,
+                                                size: 18,
+                                              ),
+                                            ),
+                                          Text(
+                                            '${(budget.percentageUsed * 100).toStringAsFixed(0)}%',
+                                            style: TextStyle(
+                                              color: progressColor,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ),
-                                  ),
-                                  LinearProgressIndicator(
-                                    value: budget.percentageUsedClamped,
-                                    color: budget.isExceeded
-                                        ? Colors.red
-                                        : Colors.green,
-                                  ),
-                                  const SizedBox(height: 12),
-                                ],
-                              ),
+                                    LinearProgressIndicator(
+                                      value: budget.percentageUsedClamped,
+                                      color: progressColor,
+                                    ),
+                                    const SizedBox(height: 12),
+                                  ],
+                                );
+                              },
                             )
                             .toList(),
                       ),
@@ -396,6 +433,12 @@ class MoneyOverviewScreen extends ConsumerWidget {
   void _navigateToBudgets(BuildContext context) {
     Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => const BudgetsScreen()),
+    );
+  }
+
+  void _navigateToAllTransactions(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const TransactionsListScreen()),
     );
   }
 

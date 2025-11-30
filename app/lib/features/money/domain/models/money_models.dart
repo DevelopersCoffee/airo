@@ -161,6 +161,16 @@ enum CarryoverBehavior {
   carryBoth,
 }
 
+/// Budget warning level
+enum BudgetWarningLevel {
+  /// Under 80% - safe
+  normal,
+  /// 80-100% - approaching limit
+  warning,
+  /// Over 100% - exceeded
+  exceeded,
+}
+
 /// Budget model
 class Budget extends Equatable {
   final String id;
@@ -211,6 +221,16 @@ class Budget extends Equatable {
 
   /// Check if budget is exceeded
   bool get isExceeded => usedCents > effectiveLimitCents;
+
+  /// Check if budget is approaching limit (80% or more)
+  bool get isApproachingLimit => percentageUsed >= 0.8 && !isExceeded;
+
+  /// Check if budget is at warning level (80%) or exceeded (100%)
+  BudgetWarningLevel get warningLevel {
+    if (isExceeded) return BudgetWarningLevel.exceeded;
+    if (percentageUsed >= 0.8) return BudgetWarningLevel.warning;
+    return BudgetWarningLevel.normal;
+  }
 
   /// Get remaining budget in cents
   int get remainingCents => (effectiveLimitCents - usedCents).clamp(0, effectiveLimitCents);
