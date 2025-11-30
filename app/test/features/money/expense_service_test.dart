@@ -6,11 +6,13 @@ import 'package:airo_app/core/utils/result.dart';
 import 'package:airo_app/features/money/data/repositories/local_transactions_repository.dart';
 import 'package:airo_app/features/money/data/repositories/local_budgets_repository.dart';
 import 'package:airo_app/features/money/application/services/expense_service.dart';
+import 'package:airo_app/features/money/application/services/audit_service.dart';
 
 void main() {
   late AppDatabase db;
   late LocalTransactionsRepository transactionsRepo;
   late LocalBudgetsRepository budgetsRepo;
+  late AuditService auditService;
   late ExpenseService expenseService;
 
   setUp(() {
@@ -18,7 +20,8 @@ void main() {
     db = AppDatabase.forTesting(NativeDatabase.memory());
     transactionsRepo = LocalTransactionsRepository(db);
     budgetsRepo = LocalBudgetsRepository(db);
-    expenseService = ExpenseService(db, transactionsRepo, budgetsRepo);
+    auditService = AuditService(userId: 'test_user');
+    expenseService = ExpenseService(db, transactionsRepo, budgetsRepo, auditService);
   });
 
   tearDown(() async {
