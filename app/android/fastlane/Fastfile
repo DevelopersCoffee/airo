@@ -1,0 +1,115 @@
+# Fastfile for Airo Android
+# 
+# Usage:
+#   bundle exec fastlane internal      # Upload to internal testing
+#   bundle exec fastlane alpha         # Upload to alpha/closed testing
+#   bundle exec fastlane beta          # Upload to beta/open testing
+#   bundle exec fastlane production    # Upload to production (staged)
+
+default_platform(:android)
+
+platform :android do
+  desc "Build release AAB"
+  lane :build do
+    sh "cd ../.. && flutter build appbundle --release"
+  end
+
+  desc "Upload to Internal Testing track"
+  lane :internal do
+    upload_to_play_store(
+      track: 'internal',
+      aab: '../build/app/outputs/bundle/release/app-release.aab',
+      skip_upload_metadata: true,
+      skip_upload_images: true,
+      skip_upload_screenshots: true,
+    )
+  end
+
+  desc "Upload to Alpha/Closed Testing track"
+  lane :alpha do
+    upload_to_play_store(
+      track: 'alpha',
+      aab: '../build/app/outputs/bundle/release/app-release.aab',
+      skip_upload_metadata: true,
+      skip_upload_images: true,
+      skip_upload_screenshots: true,
+    )
+  end
+
+  desc "Upload to Beta/Open Testing track"
+  lane :beta do
+    upload_to_play_store(
+      track: 'beta',
+      aab: '../build/app/outputs/bundle/release/app-release.aab',
+      skip_upload_metadata: true,
+      skip_upload_images: true,
+      skip_upload_screenshots: true,
+    )
+  end
+
+  desc "Upload to Production with staged rollout"
+  lane :production do |options|
+    # Default to 10% rollout
+    rollout_percentage = options[:rollout] || 0.1
+    
+    upload_to_play_store(
+      track: 'production',
+      aab: '../build/app/outputs/bundle/release/app-release.aab',
+      rollout: rollout_percentage.to_s,
+      skip_upload_metadata: true,
+      skip_upload_images: true,
+      skip_upload_screenshots: true,
+    )
+  end
+
+  desc "Promote internal to beta"
+  lane :promote_to_beta do
+    upload_to_play_store(
+      track: 'internal',
+      track_promote_to: 'beta',
+    )
+  end
+
+  desc "Promote beta to production (staged)"
+  lane :promote_to_production do |options|
+    rollout_percentage = options[:rollout] || 0.1
+    
+    upload_to_play_store(
+      track: 'beta',
+      track_promote_to: 'production',
+      rollout: rollout_percentage.to_s,
+    )
+  end
+
+  desc "Increase production rollout percentage"
+  lane :increase_rollout do |options|
+    new_percentage = options[:rollout] || 0.5
+    
+    upload_to_play_store(
+      track: 'production',
+      rollout: new_percentage.to_s,
+      skip_upload_aab: true,
+    )
+  end
+
+  desc "Complete production rollout (100%)"
+  lane :complete_rollout do
+    upload_to_play_store(
+      track: 'production',
+      rollout: '1.0',
+      skip_upload_aab: true,
+    )
+  end
+
+  desc "Halt rollout (emergency)"
+  lane :halt_rollout do
+    upload_to_play_store(
+      track: 'production',
+      rollout: '0',
+      skip_upload_aab: true,
+    )
+    
+    UI.important "Rollout halted! Use increase_rollout to resume."
+  end
+end
+
