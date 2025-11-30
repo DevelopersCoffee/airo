@@ -444,6 +444,7 @@ JSON output:''';
 
   /// Correct OCR price errors using Item Bill total as reference
   /// Common error: ₹ read as 7, so ₹45.0 becomes 745.0
+  /// BUT: Valid prices like ₹745.0 should NOT be corrected
   List<int> _correctPrices(
     List<int> rawPrices,
     int? itemBillTotal,
@@ -451,31 +452,16 @@ JSON output:''';
   ) {
     if (rawPrices.isEmpty) return [];
 
-    // If no reference total, try to detect and fix common OCR errors
+    // If we have a reference total, use it to validate corrections
+    // Don't blindly strip leading 7s - many valid prices are in 700s range
     final corrected = <int>[];
 
     for (final price in rawPrices) {
-      var correctedPrice = price;
-
-      // Check if price starts with 7 and is suspiciously large
-      // ₹45.00 (4500 paise) often becomes 745.00 (74500 paise)
-      final priceStr = (price / 100).toStringAsFixed(0);
-      if (priceStr.startsWith('7') && price > 10000) {
-        // Try removing the leading 7 (OCR artifact from ₹)
-        final withoutSeven = priceStr.substring(1);
-        final fixed = int.tryParse(withoutSeven);
-        if (fixed != null && fixed > 0 && fixed < 1000) {
-          correctedPrice = fixed * 100;
-          debugPrint(
-            'Price correction: ₹${price / 100} -> ₹${correctedPrice / 100}',
-          );
-        }
-      }
-
       // Skip prices that are way too high (likely OCR errors or totals)
-      if (correctedPrice < 50000) {
-        // < ₹500 per item is reasonable
-        corrected.add(correctedPrice);
+      // Keep prices up to ₹1000 per item as reasonable for groceries
+      if (price <= 100000) {
+        // <= ₹1000 per item
+        corrected.add(price);
       }
     }
 

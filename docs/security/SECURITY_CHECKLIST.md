@@ -17,34 +17,48 @@
 - [x] Added Firebase debug logs
 - [x] Added API key files
 
-## ⚠️ Hardcoded Credentials Found
+## ✅ Hardcoded Credentials - FIXED
 
-### 1. Admin Credentials
-**File**: `app/lib/core/auth/auth_service.dart` (Line 49)
+### Environment-Based Demo Credentials
+
+**Status**: ✅ IMPLEMENTED - Environment-based configuration
+
+Demo credentials are now controlled via build-time environment variables:
+
+**Configuration File**: `app/lib/core/config/app_config.dart`
 ```dart
-if (username.toLowerCase() == 'admin' && password == 'admin') {
+// Build with: flutter run --dart-define=ENV=prod --dart-define=DEMO_MODE=false
+static const String environment = String.fromEnvironment('ENV', defaultValue: 'dev');
+static const bool isDemoMode = bool.fromEnvironment('DEMO_MODE', defaultValue: true);
 ```
 
-**Status**: ✅ ACCEPTABLE FOR DEVELOPMENT
-- This is a development-only default credential
-- Used for testing purposes
-- Should be changed in production
-- Consider adding environment-based configuration
-
-**Recommendation**: 
-- Add comment explaining this is dev-only
-- Create production configuration
-- Use environment variables for production
-
-### 2. Login Screen Default
-**File**: `app/lib/features/auth/screens/login_screen.dart`
+**Auth Service**: `app/lib/core/auth/auth_service.dart`
 ```dart
-_passwordController.text = 'admin';
+class DemoCredentials {
+  static const String _demoUsername = String.fromEnvironment('DEMO_USERNAME', defaultValue: 'demo');
+  static const String _demoPassword = String.fromEnvironment('DEMO_PASSWORD', defaultValue: 'demo123');
+  static bool get isEnabled => AppConfig.isDemoMode && !AppConfig.isProd;
+}
 ```
 
-**Status**: ✅ ACCEPTABLE FOR DEVELOPMENT
-- Pre-fills password field for testing
-- Should be removed in production builds
+**Security Features**:
+- ✅ Demo credentials only work in dev/demo mode
+- ✅ Production builds (`ENV=prod`) disable demo login entirely
+- ✅ Credentials can be customized per build via `--dart-define`
+- ✅ UI elements (demo button, credentials display) hidden in production
+- ✅ No hardcoded `admin/admin` in codebase
+
+**Build Commands**:
+```bash
+# Development (demo enabled)
+flutter run --dart-define=ENV=dev --dart-define=DEMO_MODE=true
+
+# Production (demo disabled)
+flutter run --dart-define=ENV=prod --dart-define=DEMO_MODE=false
+
+# Custom demo credentials
+flutter run --dart-define=DEMO_USERNAME=tester --dart-define=DEMO_PASSWORD=test123
+```
 
 ## 🔐 Security Best Practices
 

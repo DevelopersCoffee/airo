@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/auth/auth_service.dart';
+import '../../../core/config/app_config.dart';
 import '../../../core/routing/route_names.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../../../shared/widgets/custom_text_field.dart';
@@ -67,9 +68,11 @@ class _LoginScreenState extends State<LoginScreen> {
     context.go(RouteNames.register);
   }
 
-  void _fillAdminCredentials() {
-    _usernameController.text = 'admin';
-    _passwordController.text = 'admin';
+  void _fillDemoCredentials() {
+    if (DemoCredentials.isEnabled) {
+      _usernameController.text = DemoCredentials.username ?? '';
+      _passwordController.text = DemoCredentials.password ?? '';
+    }
   }
 
   @override
@@ -183,15 +186,16 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 16),
 
-                // Admin quick login
-                OutlinedButton.icon(
-                  onPressed: _fillAdminCredentials,
-                  icon: const Icon(Icons.admin_panel_settings, size: 18),
-                  label: const Text('Fill Admin Credentials'),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
+                // Demo quick login (only in dev/demo mode)
+                if (DemoCredentials.isEnabled)
+                  OutlinedButton.icon(
+                    onPressed: _fillDemoCredentials,
+                    icon: const Icon(Icons.science, size: 18),
+                    label: const Text('Fill Demo Credentials'),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
                   ),
-                ),
                 const SizedBox(height: 32),
 
                 // Register link
@@ -211,43 +215,47 @@ class _LoginScreenState extends State<LoginScreen> {
 
                 const SizedBox(height: 24),
 
-                // Demo info
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.info_outline,
-                            size: 16,
-                            color: Theme.of(context).colorScheme.primary,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Demo Credentials',
-                            style: Theme.of(context).textTheme.titleSmall
-                                ?.copyWith(fontWeight: FontWeight.bold),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Admin: admin / admin\nOr create a new account',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                // Demo info (only in dev/demo mode)
+                if (AppConfig.showDemoCredentials)
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.surfaceContainerHighest,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.info_outline,
+                              size: 16,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Demo Mode',
+                              style: Theme.of(context).textTheme.titleSmall
+                                  ?.copyWith(fontWeight: FontWeight.bold),
+                            ),
+                          ],
                         ),
-                      ),
-                    ],
+                        const SizedBox(height: 8),
+                        Text(
+                          'Demo: ${DemoCredentials.username} / ${DemoCredentials.password}\nOr create a new account',
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurfaceVariant,
+                              ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
               ],
             ),
           ),

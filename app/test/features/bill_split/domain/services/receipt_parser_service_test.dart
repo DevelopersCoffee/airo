@@ -88,27 +88,42 @@ F288.00
       expect(parseCorruptedPrice('29.0'), equals(2900));
     });
 
-    test('should correct prices where ₹ is read as 7 (745.0 -> 45.0)', () {
-      // OCR often misreads ₹ as 7, causing ₹45.0 to become 745.0
+    test('should keep valid prices in 700s range (not strip leading 7)', () {
+      // Prices like ₹745 are VALID and should NOT be "corrected" to ₹45
+      // The old logic was incorrectly stripping leading 7s
       final rawPrices = [
-        74500,
-        73800,
-        9100,
-        12000,
-        5800,
-        72900,
-        76900,
+        74500, // ₹745.00 - valid price
+        73800, // ₹738.00 - valid price
+        9100, // ₹91.00 - valid price
+        12000, // ₹120.00 - valid price
+        5800, // ₹58.00 - valid price
+        72900, // ₹729.00 - valid price
+        76900, // ₹769.00 - valid price
       ]; // in paise
       final corrected = correctPrices(rawPrices, null, 7);
 
-      // Prices starting with 7 and > ₹100 should be corrected
-      expect(corrected[0], equals(4500)); // 745.0 -> 45.0
-      expect(corrected[1], equals(3800)); // 738.0 -> 38.0
-      expect(corrected[2], equals(9100)); // 91.0 stays (doesn't start with 7)
-      expect(corrected[3], equals(12000)); // 120.0 stays (doesn't start with 7)
-      expect(corrected[4], equals(5800)); // 58.0 stays (< ₹100)
-      expect(corrected[5], equals(2900)); // 729.0 -> 29.0
-      expect(corrected[6], equals(6900)); // 769.0 -> 69.0
+      // All prices should be kept as-is (no "correction")
+      expect(corrected[0], equals(74500)); // ₹745.00 stays
+      expect(corrected[1], equals(73800)); // ₹738.00 stays
+      expect(corrected[2], equals(9100)); // ₹91.00 stays
+      expect(corrected[3], equals(12000)); // ₹120.00 stays
+      expect(corrected[4], equals(5800)); // ₹58.00 stays
+      expect(corrected[5], equals(72900)); // ₹729.00 stays
+      expect(corrected[6], equals(76900)); // ₹769.00 stays
+    });
+
+    test('should filter out unreasonably high prices (over ₹1000)', () {
+      final rawPrices = [
+        5000, // ₹50 - valid
+        100000, // ₹1000 - max valid
+        150000, // ₹1500 - too high, filtered out
+        200000, // ₹2000 - too high, filtered out
+      ];
+      final corrected = correctPrices(rawPrices, null, 4);
+
+      expect(corrected.length, equals(2)); // Only first two kept
+      expect(corrected[0], equals(5000));
+      expect(corrected[1], equals(100000));
     });
 
     test('should detect Zepto vendor', () {
@@ -315,7 +330,8 @@ Map<String, int> calculateParticipantTotals(
   return totals;
 }
 
-/// Correct OCR price errors where ₹ is read as 7
+/// Price filtering - keep valid prices, filter out unreasonable ones
+/// No longer strips leading 7s as this was incorrectly "correcting" valid prices
 List<int> correctPrices(
   List<int> rawPrices,
   int? itemBillTotal,
@@ -326,22 +342,9 @@ List<int> correctPrices(
   final corrected = <int>[];
 
   for (final price in rawPrices) {
-    var correctedPrice = price;
-
-    // Check if price starts with 7 and is suspiciously large (> ₹100)
-    final priceStr = (price / 100).toStringAsFixed(0);
-    if (priceStr.startsWith('7') && price > 10000) {
-      // Try removing the leading 7 (OCR artifact from ₹)
-      final withoutSeven = priceStr.substring(1);
-      final fixed = int.tryParse(withoutSeven);
-      if (fixed != null && fixed > 0 && fixed < 1000) {
-        correctedPrice = fixed * 100;
-      }
-    }
-
-    // Skip prices that are way too high
-    if (correctedPrice < 50000) {
-      corrected.add(correctedPrice);
+    // Keep prices up to ₹1000 per item as reasonable for groceries
+    if (price <= 100000) {
+      corrected.add(price);
     }
   }
 

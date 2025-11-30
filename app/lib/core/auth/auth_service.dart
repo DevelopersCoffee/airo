@@ -1,6 +1,41 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../config/app_config.dart';
+
+/// Demo credentials configuration.
+/// Only available in development/demo builds, never in production.
+class DemoCredentials {
+  DemoCredentials._();
+
+  /// Demo username - only used in dev/demo mode
+  static const String _demoUsername = String.fromEnvironment(
+    'DEMO_USERNAME',
+    defaultValue: 'demo',
+  );
+
+  /// Demo password - only used in dev/demo mode
+  static const String _demoPassword = String.fromEnvironment(
+    'DEMO_PASSWORD',
+    defaultValue: 'demo123',
+  );
+
+  /// Check if demo login is enabled
+  static bool get isEnabled => AppConfig.isDemoMode && !AppConfig.isProd;
+
+  /// Get demo username (only in demo mode)
+  static String? get username => isEnabled ? _demoUsername : null;
+
+  /// Get demo password (only in demo mode)
+  static String? get password => isEnabled ? _demoPassword : null;
+
+  /// Validate demo credentials
+  static bool validate(String username, String password) {
+    if (!isEnabled) return false;
+    return username.toLowerCase() == _demoUsername.toLowerCase() &&
+        password == _demoPassword;
+  }
+}
 
 /// Authentication service for the super app
 class AuthService {
@@ -45,17 +80,17 @@ class AuthService {
         return AuthResult.failure('Username and password are required');
       }
 
-      // Check for admin login
-      if (username.toLowerCase() == 'admin' && password == 'admin') {
-        final adminUser = User(
-          id: 'admin',
-          username: 'admin',
+      // Check for demo login (only in dev/demo mode, never in production)
+      if (DemoCredentials.validate(username, password)) {
+        final demoUser = User(
+          id: 'demo',
+          username: DemoCredentials.username!,
           isAdmin: true,
           createdAt: DateTime.now(),
         );
 
-        await _setCurrentUser(adminUser);
-        return AuthResult.success(adminUser);
+        await _setCurrentUser(demoUser);
+        return AuthResult.success(demoUser);
       }
 
       // Check registered users

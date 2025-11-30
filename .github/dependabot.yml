@@ -1,0 +1,113 @@
+# Dependabot configuration for automated dependency updates
+# https://docs.github.com/en/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
+
+version: 2
+updates:
+  # Flutter/Dart dependencies (pubspec.yaml)
+  - package-ecosystem: "pub"
+    directory: "/app"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "UTC"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+      - "flutter"
+    commit-message:
+      prefix: "deps(flutter)"
+    reviewers:
+      - "ucguy4u"
+    groups:
+      flutter-minor:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+
+  # Core packages
+  - package-ecosystem: "pub"
+    directory: "/packages/core_ai"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    labels:
+      - "dependencies"
+      - "core-ai"
+    commit-message:
+      prefix: "deps(core-ai)"
+
+  - package-ecosystem: "pub"
+    directory: "/packages/core_auth"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    labels:
+      - "dependencies"
+      - "core-auth"
+    commit-message:
+      prefix: "deps(core-auth)"
+
+  - package-ecosystem: "pub"
+    directory: "/packages/core_data"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    labels:
+      - "dependencies"
+      - "core-data"
+    commit-message:
+      prefix: "deps(core-data)"
+
+  - package-ecosystem: "pub"
+    directory: "/packages/core_domain"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    labels:
+      - "dependencies"
+      - "core-domain"
+    commit-message:
+      prefix: "deps(core-domain)"
+
+  - package-ecosystem: "pub"
+    directory: "/packages/core_ui"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    labels:
+      - "dependencies"
+      - "core-ui"
+    commit-message:
+      prefix: "deps(core-ui)"
+
+  # GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    labels:
+      - "dependencies"
+      - "github-actions"
+    commit-message:
+      prefix: "ci(actions)"
+
+  # Android Gradle dependencies
+  - package-ecosystem: "gradle"
+    directory: "/app/android"
+    schedule:
+      interval: "weekly"
+      day: "tuesday"
+    labels:
+      - "dependencies"
+      - "android"
+    commit-message:
+      prefix: "deps(android)"
+    ignore:
+      # Ignore major version updates for stability
+      - dependency-name: "com.android.tools.build:gradle"
+        update-types: ["version-update:semver-major"]
+

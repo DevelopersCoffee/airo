@@ -319,6 +319,41 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.1.2"
+  core_ai:
+    dependency: "direct main"
+    description:
+      path: "../packages/core_ai"
+      relative: true
+    source: path
+    version: "0.0.1"
+  core_auth:
+    dependency: "direct main"
+    description:
+      path: "../packages/core_auth"
+      relative: true
+    source: path
+    version: "0.0.1"
+  core_data:
+    dependency: "direct main"
+    description:
+      path: "../packages/core_data"
+      relative: true
+    source: path
+    version: "0.0.1"
+  core_domain:
+    dependency: "direct main"
+    description:
+      path: "../packages/core_domain"
+      relative: true
+    source: path
+    version: "0.0.1"
+  core_ui:
+    dependency: "direct main"
+    description:
+      path: "../packages/core_ui"
+      relative: true
+    source: path
+    version: "0.0.1"
   cross_file:
     dependency: transitive
     description:

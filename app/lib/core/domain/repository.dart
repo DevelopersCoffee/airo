@@ -1,40 +1,4 @@
-import '../utils/result.dart';
-
-/// Base repository interface for fetching data
-abstract interface class Repository<TQuery, TOut> {
-  /// Fetch data based on query
-  Future<Result<TOut>> fetch(TQuery query);
-}
-
-/// Base cache repository interface
-abstract interface class CacheRepository<TId, T> {
-  /// Get item from cache
-  Future<T?> get(TId id);
-
-  /// Put item into cache
-  Future<void> put(TId id, T data);
-
-  /// Get all items from cache
-  Future<List<T>> getAll();
-
-  /// Clear specific item from cache
-  Future<void> delete(TId id);
-
-  /// Clear all items from cache
-  Future<void> clear();
-
-  /// Check if item exists in cache
-  Future<bool> exists(TId id);
-}
-
-/// Base paginated repository interface
-abstract interface class PaginatedRepository<TQuery, TOut> {
-  /// Fetch paginated data
-  Future<Result<(List<TOut>, String?)>> fetch(TQuery query, {String? cursor});
-}
-
-/// Base stream repository interface
-abstract interface class StreamRepository<TQuery, TOut> {
-  /// Stream data based on query
-  Stream<Result<TOut>> stream(TQuery query);
-}
+// Re-export repository interfaces from core_data for backward compatibility.
+// New code should import directly from core_data:
+// import 'package:core_data/core_data.dart';
+export 'package:core_data/src/repository/repository.dart';

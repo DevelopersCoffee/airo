@@ -206,17 +206,21 @@ class RealChessEngine with ChessEngineAsync implements ChessEngine {
     final board = _chess.board;
 
     // chess.dart uses 0x88 board representation (128 squares)
-    // We need to map to our 64-square representation
+    // 0x88 layout: 0x00-0x07 = a8-h8, 0x10-0x17 = a7-h7, ..., 0x70-0x77 = a1-h1
+    // Our layout: 0-7 = a1-h1, 8-15 = a2-h2, ..., 56-63 = a8-h8
+    // So we need to flip the rank: our_rank = 7 - 0x88_rank
     for (int i = 0; i < board.length; i++) {
       final piece = board[i];
       if (piece != null) {
         // Convert 0x88 index to 64-square index
-        final rank = i ~/ 16;
+        final rank0x88 = i ~/ 16; // 0 = rank 8, 7 = rank 1
         final file = i % 16;
         if (file < 8) {
           // Valid square in 0x88 representation
-          final index = rank * 8 + file;
-          if (index < 64) {
+          // Convert to our indexing: rank 1 = row 0, rank 8 = row 7
+          final ourRank = 7 - rank0x88;
+          final index = ourRank * 8 + file;
+          if (index >= 0 && index < 64) {
             squares[index] = ChessPiece(
               type: _convertPieceType(piece.type),
               color: piece.color == chess_lib.Color.WHITE

@@ -9,45 +9,123 @@ on:
       version:
         description: 'Release version (e.g., v1.0.0)'
         required: true
+      prerelease:
+        description: 'Is this a pre-release?'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  FLUTTER_VERSION: '3.35.7'
 
 jobs:
-  build-android:
+  # ============================================
+  # Generate Changelog
+  # ============================================
+  changelog:
     runs-on: ubuntu-latest
+    outputs:
+      changelog: ${{ steps.changelog.outputs.changelog }}
+      version: ${{ steps.version.outputs.version }}
     steps:
       - uses: actions/checkout@v4
-      
+        with:
+          fetch-depth: 0
+
+      - name: Get version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Generate changelog
+        id: changelog
+        uses: orhun/git-cliff-action@v3
+        with:
+          config: cliff.toml
+          args: --latest --strip header
+        continue-on-error: true
+
+      - name: Fallback changelog
+        if: steps.changelog.outcome == 'failure'
+        run: |
+          echo "CHANGELOG<<EOF" >> $GITHUB_OUTPUT
+          echo "## What's Changed" >> $GITHUB_OUTPUT
+          git log --oneline -20 >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+  # ============================================
+  # Build Android (APK + AAB)
+  # ============================================
+  build-android:
+    runs-on: ubuntu-latest
+    needs: changelog
+    steps:
+      - uses: actions/checkout@v4
+
       - name: Setup Java
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
-      
+
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.24.0'
+          flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: 'stable'
+          cache: true
+
+      - name: Cache pub dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.pub-cache
+          key: pub-${{ runner.os }}-${{ hashFiles('**/pubspec.lock') }}
+          restore-keys: pub-${{ runner.os }}-
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: gradle-${{ runner.os }}-
 
       - name: Create Firebase Config
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        if: env.GOOGLE_SERVICES_JSON != ''
         run: |
           cd app
           echo '${{ secrets.GOOGLE_SERVICES_JSON }}' | base64 -d > android/app/google-services.json
-      
+
       - name: Get dependencies
         run: |
-          cd app
-          flutter pub get
-      
-      - name: Build APK
+          cd packages/core_domain && flutter pub get
+          cd ../core_ui && flutter pub get
+          cd ../core_data && flutter pub get
+          cd ../core_ai && flutter pub get
+          cd ../core_auth && flutter pub get
+          cd ../../app && flutter pub get
+
+      - name: Build APK (Release)
         run: |
           cd app
-          flutter build apk --release
-      
-      - name: Build AAB
+          flutter build apk --release \
+            --dart-define=ENV=prod \
+            --dart-define=DEMO_MODE=false
+
+      - name: Build AAB (Release)
         run: |
           cd app
-          flutter build appbundle --release
-      
+          flutter build appbundle --release \
+            --dart-define=ENV=prod \
+            --dart-define=DEMO_MODE=false
+
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
@@ -60,31 +138,44 @@ jobs:
           name: android-aab
           path: app/build/app/outputs/bundle/release/app-release.aab
 
+  # ============================================
+  # Build iOS
+  # ============================================
   build-ios:
     runs-on: macos-latest
+    needs: changelog
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.24.0'
+          flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: 'stable'
+          cache: true
 
-      - name: Create Firebase Config
-        run: |
-          cd app
-          echo '${{ secrets.GOOGLE_SERVICES_JSON }}' | base64 -d > android/app/google-services.json
+      - name: Cache pub dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.pub-cache
+          key: pub-${{ runner.os }}-${{ hashFiles('**/pubspec.lock') }}
+          restore-keys: pub-${{ runner.os }}-
 
       - name: Get dependencies
         run: |
-          cd app
-          flutter pub get
+          cd packages/core_domain && flutter pub get
+          cd ../core_ui && flutter pub get
+          cd ../core_data && flutter pub get
+          cd ../core_ai && flutter pub get
+          cd ../core_auth && flutter pub get
+          cd ../../app && flutter pub get
 
       - name: Build iOS
         run: |
           cd app
-          flutter build ios --release --no-codesign
+          flutter build ios --release --no-codesign \
+            --dart-define=ENV=prod \
+            --dart-define=DEMO_MODE=false
 
       - name: Create IPA
         run: |
@@ -100,26 +191,44 @@ jobs:
           name: ios-ipa
           path: app/app-release.ipa
 
+  # ============================================
+  # Build Web
+  # ============================================
   build-web:
     runs-on: ubuntu-latest
+    needs: changelog
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.24.0'
+          flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: 'stable'
+          cache: true
+
+      - name: Cache pub dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.pub-cache
+          key: pub-${{ runner.os }}-${{ hashFiles('**/pubspec.lock') }}
+          restore-keys: pub-${{ runner.os }}-
 
       - name: Get dependencies
         run: |
-          cd app
-          flutter pub get
+          cd packages/core_domain && flutter pub get
+          cd ../core_ui && flutter pub get
+          cd ../core_data && flutter pub get
+          cd ../core_ai && flutter pub get
+          cd ../core_auth && flutter pub get
+          cd ../../app && flutter pub get
 
       - name: Build Web
         run: |
           cd app
-          flutter build web --release
+          flutter build web --release \
+            --dart-define=ENV=prod \
+            --dart-define=DEMO_MODE=false
 
       - name: Create Web Archive
         run: |
@@ -132,21 +241,30 @@ jobs:
           name: web-build
           path: app/airo-web-release.zip
 
+  # ============================================
+  # Build Windows
+  # ============================================
   build-windows:
     runs-on: windows-latest
+    needs: changelog
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.24.0'
+          flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: 'stable'
+          cache: true
 
       - name: Get dependencies
         run: |
-          cd app
-          flutter pub get
+          cd packages/core_domain; flutter pub get
+          cd ../core_ui; flutter pub get
+          cd ../core_data; flutter pub get
+          cd ../core_ai; flutter pub get
+          cd ../core_auth; flutter pub get
+          cd ../../app; flutter pub get
 
       - name: Build Windows
         run: |
@@ -155,8 +273,8 @@ jobs:
 
       - name: Create Windows Archive
         run: |
-          cd app/build/windows/runner/Release
-          powershell Compress-Archive -Path . -DestinationPath ../../../../airo-windows-release.zip
+          cd app/build/windows/x64/runner/Release
+          powershell Compress-Archive -Path . -DestinationPath ../../../../../airo-windows-release.zip
 
       - name: Upload Windows
         uses: actions/upload-artifact@v4
@@ -164,16 +282,28 @@ jobs:
           name: windows-build
           path: app/airo-windows-release.zip
 
+  # ============================================
+  # Build Linux
+  # ============================================
   build-linux:
     runs-on: ubuntu-latest
+    needs: changelog
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.24.0'
+          flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: 'stable'
+          cache: true
+
+      - name: Cache pub dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.pub-cache
+          key: pub-${{ runner.os }}-${{ hashFiles('**/pubspec.lock') }}
+          restore-keys: pub-${{ runner.os }}-
 
       - name: Install Linux dependencies
         run: |
@@ -182,13 +312,19 @@ jobs:
 
       - name: Get dependencies
         run: |
-          cd app
-          flutter pub get
+          cd packages/core_domain && flutter pub get
+          cd ../core_ui && flutter pub get
+          cd ../core_data && flutter pub get
+          cd ../core_ai && flutter pub get
+          cd ../core_auth && flutter pub get
+          cd ../../app && flutter pub get
 
       - name: Build Linux
         run: |
           cd app
-          flutter build linux --release
+          flutter build linux --release \
+            --dart-define=ENV=prod \
+            --dart-define=DEMO_MODE=false
 
       - name: Create Linux Archive
         run: |
@@ -201,81 +337,77 @@ jobs:
           name: linux-build
           path: app/airo-linux-release.tar.gz
 
+  # ============================================
+  # Create GitHub Release
+  # ============================================
   create-release:
-    needs: [build-android, build-ios, build-web, build-windows, build-linux]
+    needs: [changelog, build-android, build-ios, build-web, build-windows, build-linux]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
+        with:
+          fetch-depth: 0
+
       - name: Download all artifacts
         uses: actions/download-artifact@v4
-      
-      - name: Create Release Notes
+
+      - name: Generate release notes
         run: |
-          cat > RELEASE_NOTES.md << 'EOF'
-          # Airo Super App Release
-          
+          VERSION="${{ needs.changelog.outputs.version }}"
+          CHANGELOG='${{ needs.changelog.outputs.changelog }}'
+
+          cat > RELEASE_NOTES.md << EOF
+          # Airo Super App ${VERSION}
+
+          ## What's Changed
+
+          ${CHANGELOG:-See commit history for changes.}
+
+          ---
+
           ## 📦 Available Downloads
-          
+
+          | Platform | File | Description |
+          |----------|------|-------------|
+          | Android | \`app-release.apk\` | Direct install on Android |
+          | Android | \`app-release.aab\` | For Google Play Store |
+          | iOS | \`app-release.ipa\` | Requires signing |
+          | Web | \`airo-web-release.zip\` | Run in browser |
+          | Windows | \`airo-windows-release.zip\` | Windows 10/11 |
+          | Linux | \`airo-linux-release.tar.gz\` | Linux x64 |
+
+          ## 🚀 Quick Start
+
           ### Android
-          - **APK** - Direct installation on Android devices
-          - **AAB** - For Google Play Store distribution
-          
-          ### iOS
-          - **IPA** - For iOS devices (requires signing)
-          
-          ### Web
-          - **Web Build** - Run in any modern browser
-          
-          ### Desktop
-          - **Windows** - Windows 10/11 executable
-          - **Linux** - Linux AppImage/binary
-          
-          ## 🚀 Installation Instructions
-          
-          ### Android
-          ```bash
+          \`\`\`bash
           adb install app-release.apk
-          ```
-          
-          ### iOS
-          - Use Xcode or Apple Configurator 2
-          - Or use TestFlight for beta testing
-          
+          \`\`\`
+
           ### Web
-          - Extract the zip file
-          - Open index.html in a web browser
-          
-          ### Windows
-          - Extract the zip file
-          - Run airo.exe
-          
-          ### Linux
-          - Extract the tar.gz file
-          - Run ./airo or make it executable: chmod +x airo
-          
+          Extract zip, open \`index.html\` in browser
+
           ## 📋 Features
-          - Coins Tab - Money management
-          - Quest Tab - AI-powered Q&A
-          - Beats Tab - Music streaming
-          - Arena Tab - Games
-          - Loot Tab - Deals feed
-          - Tales Tab - Reader
-          
+          - 💰 Coins - Money management & bill splitting
+          - 🤖 Quest - AI-powered Q&A with Gemini Nano
+          - 🎵 Beats - Music streaming
+          - 🎮 Arena - Games
+          - 🏷️ Loot - Deals feed
+          - 📖 Tales - Reader
+
           ## 🔐 Security
-          - On-device AI processing (Pixel 9)
+          - On-device AI (Pixel 9 Gemini Nano)
           - Encrypted local storage
-          - No sensitive data in repository
-          
-          ## 📞 Support
-          - GitHub Issues: https://github.com/DevelopersCoffee/airo/issues
-          - Documentation: Check README.md
-          
+          - HTTPS enforced
+
+          ---
+          *Built with Flutter ${{ env.FLUTTER_VERSION }}*
           EOF
-      
+
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ needs.changelog.outputs.version }}
+          name: Airo ${{ needs.changelog.outputs.version }}
           files: |
             android-apk/app-release.apk
             android-aab/app-release.aab
@@ -283,10 +415,8 @@ jobs:
             web-build/airo-web-release.zip
             windows-build/airo-windows-release.zip
             linux-build/airo-linux-release.tar.gz
-            RELEASE_NOTES.md
           body_path: RELEASE_NOTES.md
           draft: false
-          prerelease: false
+          prerelease: ${{ github.event.inputs.prerelease == 'true' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-

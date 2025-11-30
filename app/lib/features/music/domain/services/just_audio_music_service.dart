@@ -37,11 +37,13 @@ class JustAudioMusicService implements MusicService {
         await _audioPlayer.play();
         _isPlaying = true;
       } else {
-        throw Exception('Track has no stream URL');
+        // No stream URL - silently skip instead of throwing
+        print('[MUSIC] Track has no stream URL, skipping: ${track.title}');
       }
     } catch (e) {
+      // Gracefully handle audio errors - don't crash the app
       print('[MUSIC] Error playing track: $e');
-      rethrow;
+      // Don't rethrow - audio is non-critical functionality
     }
   }
 
@@ -59,11 +61,13 @@ class JustAudioMusicService implements MusicService {
         await _audioPlayer.play();
         _isPlaying = true;
       } else {
-        throw Exception('Track has no stream URL');
+        // No stream URL - silently skip instead of throwing
+        print('[MUSIC] Track has no stream URL, skipping: ${track.title}');
       }
     } catch (e) {
+      // Gracefully handle audio errors - don't crash the app
       print('[MUSIC] Error playing queue: $e');
-      rethrow;
+      // Don't rethrow - audio is non-critical functionality
     }
   }
 
