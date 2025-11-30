@@ -91,11 +91,72 @@ class ChessTTSManager {
     }
   }
 
+  /// Announce a move in human-readable notation (e.g., "Knight to f3")
+  Future<void> speakMoveNotation(MoveEvent event) async {
+    final notation = _getMoveNotation(event);
+    await speak(notation, pitch: 1.0, rate: 0.5, interrupt: false);
+  }
+
+  /// Get human-readable move notation
+  String _getMoveNotation(MoveEvent event) {
+    final pieceName = _getPieceName(event.piece);
+    final toSquare = event.move.to.toAlgebraic();
+
+    // Check for castling (king moves 2 squares)
+    if (event.piece == PieceType.king) {
+      final fromFile = event.move.from.file;
+      final toFile = event.move.to.file;
+      if ((fromFile - toFile).abs() == 2) {
+        return toFile > fromFile ? 'Castles kingside' : 'Castles queenside';
+      }
+    }
+
+    // Check for promotion
+    if (event.move.promotion != null) {
+      final promotedTo = _getPieceName(event.move.promotion!);
+      if (event.isCapture) {
+        return 'Pawn takes and promotes to $promotedTo on $toSquare';
+      }
+      return 'Pawn promotes to $promotedTo on $toSquare';
+    }
+
+    // Normal move or capture
+    if (event.isCapture) {
+      return '$pieceName takes on $toSquare';
+    }
+    return '$pieceName to $toSquare';
+  }
+
+  /// Get human-readable piece name
+  String _getPieceName(PieceType piece) {
+    switch (piece) {
+      case PieceType.pawn:
+        return 'Pawn';
+      case PieceType.knight:
+        return 'Knight';
+      case PieceType.bishop:
+        return 'Bishop';
+      case PieceType.rook:
+        return 'Rook';
+      case PieceType.queen:
+        return 'Queen';
+      case PieceType.king:
+        return 'King';
+    }
+  }
+
   /// Play move voice line based on move event
   Future<String> playMoveVoice(
     MoveEvent event, {
     required bool isPlayerMove,
   }) async {
+    // First, announce the move notation
+    await speakMoveNotation(event);
+
+    // Brief pause before banter
+    await Future.delayed(const Duration(milliseconds: 500));
+
+    // Then play the DotA-style voice line
     final voiceLine = _getDotAVoiceLine(event, isPlayerMove: isPlayerMove);
 
     // Customize voice based on who's moving

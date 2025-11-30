@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:flame/game.dart';
 import 'package:flame/events.dart';
 import 'package:flutter/material.dart';
@@ -15,10 +16,14 @@ class ChessGameFlame extends FlameGame with TapCallbacks {
   late ChessTTSManager ttsManager;
   late MoveEventDispatcher dispatcher;
   late ChessDifficulty difficulty;
+  final bool shuffleSides;
 
-  // Player color (randomly assigned)
+  // Player color (randomly assigned if shuffleSides is true)
   late ChessColor playerColor;
   late ChessColor aiColor;
+
+  // Board flip state (independent of player color)
+  bool isBoardFlipped = false;
 
   ChessSquare? selectedSquare;
   List<ChessMove> legalMoves = [];
@@ -43,15 +48,28 @@ class ChessGameFlame extends FlameGame with TapCallbacks {
   late double squareSize;
   late Offset boardOffset;
 
-  ChessGameFlame({required this.difficulty}) : super();
+  ChessGameFlame({required this.difficulty, this.shuffleSides = false})
+      : super();
+
+  /// Flip the board perspective
+  void flipBoard() {
+    isBoardFlipped = !isBoardFlipped;
+  }
 
   @override
   Future<void> onLoad() async {
     await super.onLoad();
 
-    // Player is always white (white moves first in chess)
-    playerColor = ChessColor.white;
-    aiColor = ChessColor.black;
+    // Assign player color: random if shuffleSides, otherwise always white
+    if (shuffleSides) {
+      playerColor = Random().nextBool() ? ChessColor.white : ChessColor.black;
+    } else {
+      playerColor = ChessColor.white;
+    }
+    aiColor = playerColor == ChessColor.white ? ChessColor.black : ChessColor.white;
+
+    // Set initial board flip based on player color (black player sees board flipped)
+    isBoardFlipped = playerColor == ChessColor.black;
 
     print(
       '[CHESS] Player is ${playerColor.name.toUpperCase()}, AI is ${aiColor.name.toUpperCase()}',
@@ -90,8 +108,11 @@ class ChessGameFlame extends FlameGame with TapCallbacks {
     // Play background music
     await audioManager.playBackgroundMusic(engine.getBoardState());
 
-    // Player is always white, so player moves first
-    // No need to trigger AI move here
+    // If player is black, AI (white) moves first
+    if (playerColor == ChessColor.black) {
+      isPlayerTurn = false;
+      await _makeAIMove();
+    }
   }
 
   @override
@@ -115,13 +136,14 @@ class ChessGameFlame extends FlameGame with TapCallbacks {
       return;
     }
 
-    final col = (tapPosition.x / squareSize).floor();
+    final displayCol = (tapPosition.x / squareSize).floor();
     final displayRow = ((tapPosition.y - boardOffset.dy) / squareSize).floor();
 
-    // Convert display row back to actual board row based on player's perspective
-    // If player is white, flip board (white at bottom)
-    // If player is black, don't flip (black at bottom)
-    final row = playerColor == ChessColor.white ? 7 - displayRow : displayRow;
+    // Convert display coordinates back to actual board coordinates based on flip state
+    // When not flipped: white at bottom, row 0 is at display row 7
+    // When flipped: black at bottom, row 0 is at display row 0
+    final row = isBoardFlipped ? displayRow : 7 - displayRow;
+    final col = isBoardFlipped ? 7 - displayCol : displayCol;
     final index = row * 8 + col;
 
     print('[CHESS] Tap at col=$col, row=$row, index=$index');
@@ -311,22 +333,19 @@ class ChessGameFlame extends FlameGame with TapCallbacks {
 
     for (int row = 0; row < 8; row++) {
       for (int col = 0; col < 8; col++) {
-        // Flip the board based on player's perspective
-        // If player is white, flip board (white at bottom)
-        // If player is black, don't flip (black at bottom)
-        final displayRow = playerColor == ChessColor.white ? 7 - row : row;
+        // Calculate display position based on flip state
+        // When not flipped: white at bottom, row 0 displayed at bottom (displayRow 7)
+        // When flipped: black at bottom, row 0 displayed at top (displayRow 0)
+        final displayRow = isBoardFlipped ? row : 7 - row;
+        final displayCol = isBoardFlipped ? 7 - col : col;
         final index = row * 8 + col;
 
-        // Chess board: a1 (bottom-left for white) is dark square
-        // Standard chess board has dark square on bottom-left (a1)
-        // row 0 = rank 8, row 7 = rank 1
-        // col 0 = file a, col 7 = file h
-        // For standard chess coloring: (row + col) % 2 == 1 means light square
+        // Chess board: a1 is dark square (when row + col is even)
         final isLight = (row + col) % 2 == 1;
         final paint = isLight ? lightSquarePaint : darkSquarePaint;
 
         final rect = Rect.fromLTWH(
-          col * squareSize,
+          displayCol * squareSize,
           boardOffset.dy + displayRow * squareSize,
           squareSize,
           squareSize,
@@ -366,13 +385,15 @@ class ChessGameFlame extends FlameGame with TapCallbacks {
 
   void _drawCoordinates(Canvas canvas) {
     // Draw file labels (a-h) at bottom
-    for (int col = 0; col < 8; col++) {
-      final file = String.fromCharCode(97 + col); // a-h
+    // When flipped, files go from h to a (right to left)
+    for (int displayCol = 0; displayCol < 8; displayCol++) {
+      final fileIndex = isBoardFlipped ? 7 - displayCol : displayCol;
+      final file = String.fromCharCode(97 + fileIndex); // a-h
       final textPainter = TextPainter(
         text: TextSpan(
           text: file,
           style: TextStyle(
-            color: (col % 2 == 0)
+            color: (displayCol % 2 == 0)
                 ? darkSquarePaint.color
                 : lightSquarePaint.color,
             fontSize: squareSize * 0.2,
@@ -385,20 +406,22 @@ class ChessGameFlame extends FlameGame with TapCallbacks {
       textPainter.paint(
         canvas,
         Offset(
-          col * squareSize + squareSize - textPainter.width - 4,
+          displayCol * squareSize + squareSize - textPainter.width - 4,
           boardOffset.dy + 7 * squareSize + squareSize - textPainter.height - 2,
         ),
       );
     }
 
     // Draw rank labels (1-8) on left
-    for (int row = 0; row < 8; row++) {
-      final rank = (8 - row).toString(); // 8-1 (top to bottom)
+    // When flipped, ranks go from 1 to 8 (top to bottom)
+    for (int displayRow = 0; displayRow < 8; displayRow++) {
+      final rankIndex = isBoardFlipped ? displayRow + 1 : 8 - displayRow;
+      final rank = rankIndex.toString();
       final textPainter = TextPainter(
         text: TextSpan(
           text: rank,
           style: TextStyle(
-            color: (row % 2 == 0)
+            color: (displayRow % 2 == 0)
                 ? lightSquarePaint.color
                 : darkSquarePaint.color,
             fontSize: squareSize * 0.2,
@@ -410,7 +433,7 @@ class ChessGameFlame extends FlameGame with TapCallbacks {
       textPainter.layout();
       textPainter.paint(
         canvas,
-        Offset(4, boardOffset.dy + row * squareSize + 2),
+        Offset(4, boardOffset.dy + displayRow * squareSize + 2),
       );
     }
   }
@@ -476,10 +499,9 @@ class ChessGameFlame extends FlameGame with TapCallbacks {
 
       final row = i ~/ 8;
       final col = i % 8;
-      // Flip the board based on player's perspective
-      // If player is white, flip board (white at bottom)
-      // If player is black, don't flip (black at bottom)
-      final displayRow = playerColor == ChessColor.white ? 7 - row : row;
+      // Calculate display position based on flip state
+      final displayRow = isBoardFlipped ? row : 7 - row;
+      final displayCol = isBoardFlipped ? 7 - col : col;
 
       // Get the correct symbol based on piece color
       final symbol = piece.color == ChessColor.white
@@ -515,7 +537,7 @@ class ChessGameFlame extends FlameGame with TapCallbacks {
       textPainter.paint(
         canvas,
         Offset(
-          col * squareSize + squareSize / 2 - textPainter.width / 2,
+          displayCol * squareSize + squareSize / 2 - textPainter.width / 2,
           boardOffset.dy +
               displayRow * squareSize +
               squareSize / 2 -
@@ -531,11 +553,12 @@ class ChessGameFlame extends FlameGame with TapCallbacks {
     final row = speakingPieceIndex! ~/ 8;
     final col = speakingPieceIndex! % 8;
 
-    // Calculate display position based on player's perspective
-    final displayRow = playerColor == ChessColor.white ? 7 - row : row;
+    // Calculate display position based on flip state
+    final displayRow = isBoardFlipped ? row : 7 - row;
+    final displayCol = isBoardFlipped ? 7 - col : col;
 
     // Position bubble above the piece
-    final pieceX = col * squareSize + squareSize / 2;
+    final pieceX = displayCol * squareSize + squareSize / 2;
     final pieceY = boardOffset.dy + displayRow * squareSize;
 
     // Create text painter for the speech

@@ -16,6 +16,8 @@ class ChessGameScreenNew extends ConsumerStatefulWidget {
 
 class _ChessGameScreenNewState extends ConsumerState<ChessGameScreenNew> {
   ChessDifficulty? _selectedDifficulty;
+  bool _shuffleSides = false;
+  ChessGameFlame? _game;
 
   @override
   void initState() {
@@ -39,7 +41,35 @@ class _ChessGameScreenNewState extends ConsumerState<ChessGameScreenNew> {
                 'Select Difficulty',
                 style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
               ),
-              const SizedBox(height: 32),
+              const SizedBox(height: 16),
+              // Shuffle sides toggle
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text(
+                    'Random side:',
+                    style: TextStyle(fontSize: 16),
+                  ),
+                  const SizedBox(width: 8),
+                  Switch(
+                    value: _shuffleSides,
+                    onChanged: (value) {
+                      setState(() {
+                        _shuffleSides = value;
+                      });
+                    },
+                  ),
+                  Text(
+                    _shuffleSides ? 'ON' : 'OFF',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: _shuffleSides ? Colors.green : Colors.grey,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
               _buildDifficultyButton(
                 context,
                 ChessDifficulty.easy,
@@ -77,23 +107,40 @@ class _ChessGameScreenNewState extends ConsumerState<ChessGameScreenNew> {
       );
     }
 
+    // Create game instance if needed
+    _game ??= ChessGameFlame(
+      difficulty: _selectedDifficulty!,
+      shuffleSides: _shuffleSides,
+    );
+
     // Show game
     return Scaffold(
       appBar: AppBar(
         title: Text('Chess - ${_selectedDifficulty!.name.toUpperCase()}'),
         centerTitle: true,
         actions: [
+          // Flip board button
+          IconButton(
+            icon: const Icon(Icons.swap_vert),
+            tooltip: 'Flip board',
+            onPressed: () {
+              _game?.flipBoard();
+            },
+          ),
+          // New game button
           IconButton(
             icon: const Icon(Icons.refresh),
+            tooltip: 'New game',
             onPressed: () {
               setState(() {
                 _selectedDifficulty = null;
+                _game = null;
               });
             },
           ),
         ],
       ),
-      body: GameWidget(game: ChessGameFlame(difficulty: _selectedDifficulty!)),
+      body: GameWidget(game: _game!),
     );
   }
 
