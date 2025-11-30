@@ -20,11 +20,62 @@ class MoneyAccount extends Equatable {
     this.updatedAt,
   });
 
-  /// Get balance as formatted string
+  /// Get currency symbol based on currency code
+  String get currencySymbol {
+    switch (currency.toUpperCase()) {
+      case 'INR':
+        return '₹';
+      case 'USD':
+        return '\$';
+      case 'EUR':
+        return '€';
+      case 'GBP':
+        return '£';
+      default:
+        return currency;
+    }
+  }
+
+  /// Get balance as formatted string with proper currency
   String get balanceFormatted {
-    final dollars = balanceCents ~/ 100;
-    final cents = (balanceCents % 100).abs();
-    return '\$$dollars.${cents.toString().padLeft(2, '0')}';
+    final wholePart = balanceCents ~/ 100;
+    final decimalPart = (balanceCents % 100).abs();
+
+    if (currency.toUpperCase() == 'INR') {
+      return _formatIndianCurrency(wholePart, decimalPart);
+    }
+    return '$currencySymbol$wholePart.${decimalPart.toString().padLeft(2, '0')}';
+  }
+
+  /// Format amount using Indian numbering system (lakhs, crores)
+  String _formatIndianCurrency(int wholePart, int decimalPart) {
+    final isNegative = wholePart < 0;
+    final absWhole = wholePart.abs();
+
+    String formatted;
+    if (absWhole < 1000) {
+      formatted = absWhole.toString();
+    } else if (absWhole < 100000) {
+      final thousands = absWhole ~/ 1000;
+      final remainder = absWhole % 1000;
+      formatted = '$thousands,${remainder.toString().padLeft(3, '0')}';
+    } else if (absWhole < 10000000) {
+      final lakhs = absWhole ~/ 100000;
+      final thousands = (absWhole % 100000) ~/ 1000;
+      final remainder = absWhole % 1000;
+      formatted =
+          '$lakhs,${thousands.toString().padLeft(2, '0')},${remainder.toString().padLeft(3, '0')}';
+    } else {
+      final crores = absWhole ~/ 10000000;
+      final lakhs = (absWhole % 10000000) ~/ 100000;
+      final thousands = (absWhole % 100000) ~/ 1000;
+      final remainder = absWhole % 1000;
+      formatted =
+          '$crores,${lakhs.toString().padLeft(2, '0')},${thousands.toString().padLeft(2, '0')},${remainder.toString().padLeft(3, '0')}';
+    }
+
+    final sign = isNegative ? '-' : '';
+    return '$sign₹$formatted.${decimalPart.toString().padLeft(2, '0')}';
   }
 
   @override
@@ -69,12 +120,12 @@ class Transaction extends Equatable {
   /// Check if transaction is income (positive amount)
   bool get isIncome => amountCents > 0;
 
-  /// Get amount as formatted string
+  /// Get amount as formatted string (uses INR by default)
   String get amountFormatted {
-    final dollars = amountCents.abs() ~/ 100;
-    final cents = (amountCents.abs() % 100);
+    final wholePart = amountCents.abs() ~/ 100;
+    final decimalPart = (amountCents.abs() % 100);
     final sign = isExpense ? '-' : '+';
-    return '$sign\$$dollars.${cents.toString().padLeft(2, '0')}';
+    return '$sign₹$wholePart.${decimalPart.toString().padLeft(2, '0')}';
   }
 
   @override
@@ -176,10 +227,11 @@ class Budget extends Equatable {
   /// Get remaining as formatted string
   String get remainingFormatted => _formatCurrency(remainingCents);
 
+  /// Format currency using INR by default
   static String _formatCurrency(int cents) {
-    final dollars = cents.abs() ~/ 100;
-    final c = cents.abs() % 100;
-    final formatted = '\$$dollars.${c.toString().padLeft(2, '0')}';
+    final wholePart = cents.abs() ~/ 100;
+    final decimalPart = cents.abs() % 100;
+    final formatted = '₹$wholePart.${decimalPart.toString().padLeft(2, '0')}';
     return cents < 0 ? '-$formatted' : formatted;
   }
 

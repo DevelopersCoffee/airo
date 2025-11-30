@@ -1,11 +1,15 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../../core/utils/result.dart';
+import '../../../../core/utils/locale_settings.dart';
+import '../../../../core/utils/currency_formatter.dart';
 import '../../data/repositories/local_budgets_repository.dart';
 import '../../data/repositories/local_transactions_repository.dart';
+import '../../data/repositories/local_wallet_repository.dart';
 import '../../domain/models/money_models.dart';
 import '../../domain/models/insight_models.dart';
 import '../../domain/repositories/money_repositories.dart';
+import '../../domain/repositories/wallet_repository.dart';
 import '../services/expense_service.dart';
 import '../services/insights_service.dart';
 import '../services/sync_service.dart';
@@ -610,3 +614,92 @@ class MoneyController {
     _ref.invalidate(budgetsProvider);
   }
 }
+
+// ============================================================================
+// WALLET PROVIDERS (Real Repository Implementation)
+// ============================================================================
+
+/// Wallet repository provider - uses real local storage
+final walletRepositoryProvider = Provider<WalletRepository>((ref) {
+  return LocalWalletRepository();
+});
+
+/// All wallets provider
+final walletsProvider = FutureProvider<List<Wallet>>((ref) async {
+  final repo = ref.watch(walletRepositoryProvider);
+  final result = await repo.fetchAll();
+  return result.fold((_, __) => [], (wallets) => wallets);
+});
+
+/// Total wallet balance provider (in cents)
+final totalWalletBalanceProvider = FutureProvider<int>((ref) async {
+  final repo = ref.watch(walletRepositoryProvider);
+  final result = await repo.getTotalBalanceCents();
+  return result.fold((_, __) => 0, (total) => total);
+});
+
+/// Formatted total wallet balance provider
+final formattedTotalBalanceProvider = FutureProvider<String>((ref) async {
+  final balanceCents = await ref.watch(totalWalletBalanceProvider.future);
+  final formatter = ref.watch(currencyFormatterProvider);
+  return formatter.formatCents(balanceCents);
+});
+
+/// Wallet controller for managing wallet operations
+class WalletController {
+  final WalletRepository _repo;
+  final Ref _ref;
+
+  WalletController(this._repo, this._ref);
+
+  Future<Result<Wallet>> createWallet({
+    required String name,
+    String? description,
+    required int balanceCents,
+    required WalletType type,
+    required String currency,
+    String? bankName,
+    String? accountNumber,
+  }) async {
+    final result = await _repo.create(
+      name: name,
+      description: description,
+      balanceCents: balanceCents,
+      type: type,
+      currency: currency,
+      bankName: bankName,
+      accountNumber: accountNumber,
+    );
+    _ref.invalidate(walletsProvider);
+    _ref.invalidate(totalWalletBalanceProvider);
+    _ref.invalidate(formattedTotalBalanceProvider);
+    return result;
+  }
+
+  Future<Result<Wallet>> updateWalletBalance(
+    String id,
+    int newBalanceCents,
+  ) async {
+    final result = await _repo.updateBalance(id, newBalanceCents);
+    _ref.invalidate(walletsProvider);
+    _ref.invalidate(totalWalletBalanceProvider);
+    _ref.invalidate(formattedTotalBalanceProvider);
+    return result;
+  }
+
+  Future<Result<void>> deleteWallet(String id) async {
+    final result = await _repo.delete(id);
+    _ref.invalidate(walletsProvider);
+    _ref.invalidate(totalWalletBalanceProvider);
+    _ref.invalidate(formattedTotalBalanceProvider);
+    return result;
+  }
+}
+
+/// Wallet controller provider
+final walletControllerProvider = Provider<WalletController>((ref) {
+  return WalletController(
+    ref.watch(walletRepositoryProvider),
+    ref,
+  );
+});
