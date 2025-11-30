@@ -3,6 +3,7 @@ import '../../../../core/utils/result.dart';
 import '../../data/repositories/local_budgets_repository.dart';
 import '../../data/repositories/local_transactions_repository.dart';
 import '../../domain/models/money_models.dart';
+import 'audit_service.dart';
 
 /// Service for managing expenses with budget deduction
 /// Handles transactional operations for offline-first support
@@ -10,8 +11,9 @@ class ExpenseService {
   final AppDatabase _db;
   final LocalTransactionsRepository _transactionsRepo;
   final LocalBudgetsRepository _budgetsRepo;
+  final AuditService _auditService;
 
-  ExpenseService(this._db, this._transactionsRepo, this._budgetsRepo);
+  ExpenseService(this._db, this._transactionsRepo, this._budgetsRepo, this._auditService);
 
   /// Save an expense and automatically deduct from matching budget
   /// Uses database transaction to ensure atomicity
@@ -77,6 +79,35 @@ class ExpenseService {
           budget: updatedBudget,
         );
       });
+
+      // Audit log the transaction creation (outside DB transaction)
+      await _auditService.logTransactionCreated(
+        transactionId: result.transaction.id,
+        amountCents: expenseAmount,
+        category: category,
+        description: description,
+      );
+
+      // Log budget events if applicable
+      if (result.budget != null) {
+        await _auditService.logBudgetDeduction(
+          budgetId: result.budget!.id,
+          category: category,
+          deductionCents: expenseAmount.abs(),
+          previousUsedCents: result.budget!.usedCents - expenseAmount.abs(),
+          newUsedCents: result.budget!.usedCents,
+          limitCents: result.budget!.limitCents,
+        );
+
+        if (result.isBudgetExceeded) {
+          await _auditService.logBudgetExceeded(
+            budgetId: result.budget!.id,
+            category: category,
+            usedCents: result.budget!.usedCents,
+            limitCents: result.budget!.limitCents,
+          );
+        }
+      }
 
       return Ok(result);
     } catch (e, s) {

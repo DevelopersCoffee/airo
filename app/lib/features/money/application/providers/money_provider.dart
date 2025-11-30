@@ -10,6 +10,7 @@ import '../../domain/models/money_models.dart';
 import '../../domain/models/insight_models.dart';
 import '../../domain/repositories/money_repositories.dart';
 import '../../domain/repositories/wallet_repository.dart';
+import '../services/audit_service.dart';
 import '../services/expense_service.dart';
 import '../services/insights_service.dart';
 import '../services/sync_service.dart';
@@ -368,12 +369,19 @@ final localBudgetsRepositoryProvider = Provider<LocalBudgetsRepository>((ref) {
   return LocalBudgetsRepository(ref.watch(appDatabaseProvider));
 });
 
+/// Audit service for logging financial operations
+final auditServiceProvider = Provider<AuditService>((ref) {
+  // TODO: Get actual user ID from auth provider when available
+  return AuditService(userId: 'default_user');
+});
+
 /// Expense service for transactional operations
 final expenseServiceProvider = Provider<ExpenseService>((ref) {
   return ExpenseService(
     ref.watch(appDatabaseProvider),
     ref.watch(localTransactionsRepositoryProvider),
     ref.watch(localBudgetsRepositoryProvider),
+    ref.watch(auditServiceProvider),
   );
 });
 
@@ -416,6 +424,92 @@ final recentTransactionsProvider = FutureProvider<List<Transaction>>((ref) async
 final transactionsStreamProvider = StreamProvider<List<Transaction>>((ref) {
   final repo = ref.watch(localTransactionsRepositoryProvider);
   return repo.watchTransactions(limit: 50);
+});
+
+// ============================================================================
+// PAGINATED TRANSACTIONS PROVIDERS
+// ============================================================================
+
+/// Transaction filter state
+class TransactionFilter {
+  final String? category;
+  final DateTime? startDate;
+  final DateTime? endDate;
+
+  const TransactionFilter({this.category, this.startDate, this.endDate});
+
+  TransactionFilter copyWith({
+    String? category,
+    DateTime? startDate,
+    DateTime? endDate,
+    bool clearCategory = false,
+    bool clearStartDate = false,
+    bool clearEndDate = false,
+  }) {
+    return TransactionFilter(
+      category: clearCategory ? null : (category ?? this.category),
+      startDate: clearStartDate ? null : (startDate ?? this.startDate),
+      endDate: clearEndDate ? null : (endDate ?? this.endDate),
+    );
+  }
+}
+
+/// Current transaction filter state
+final transactionFilterProvider = StateProvider<TransactionFilter>(
+  (ref) => const TransactionFilter(),
+);
+
+/// Page size for pagination
+const _pageSize = 20;
+
+/// Paginated transactions provider
+/// Returns transactions for a specific page with filters applied
+final paginatedTransactionsProvider = FutureProvider.family<List<Transaction>, int>(
+  (ref, page) async {
+    final repo = ref.watch(transactionsRepositoryProvider);
+    final filter = ref.watch(transactionFilterProvider);
+
+    final query = FetchTransactionsQuery(
+      category: filter.category,
+      startDate: filter.startDate,
+      endDate: filter.endDate,
+      limit: _pageSize,
+      offset: page * _pageSize,
+    );
+
+    final result = await repo.fetch(query);
+    return result.fold((_, __) => [], (txns) => txns);
+  },
+);
+
+/// Total transaction count for pagination info
+final transactionCountProvider = FutureProvider<int>((ref) async {
+  final repo = ref.watch(transactionsRepositoryProvider);
+  final filter = ref.watch(transactionFilterProvider);
+
+  // Fetch all to get count (in production, use COUNT query)
+  final query = FetchTransactionsQuery(
+    category: filter.category,
+    startDate: filter.startDate,
+    endDate: filter.endDate,
+  );
+
+  final result = await repo.fetch(query);
+  return result.fold((_, __) => 0, (txns) => txns.length);
+});
+
+/// Available categories for filtering
+final availableCategoriesProvider = Provider<List<String>>((ref) {
+  return const [
+    'Food & Drink',
+    'Transportation',
+    'Entertainment',
+    'Shopping',
+    'Bills & Utilities',
+    'Healthcare',
+    'Education',
+    'Other',
+  ];
 });
 
 /// All budgets provider

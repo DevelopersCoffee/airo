@@ -8,22 +8,31 @@ class AiroMoneyHomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Mock data for demonstration
+    // Default Indian bank data for demonstration
     final mockWallets = [
       Wallet(
         id: '1',
-        name: 'Main Wallet',
-        balance: 2500.50,
+        name: 'Cash Wallet',
+        balance: 5000.00,
         type: WalletType.cash,
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
       ),
       Wallet(
         id: '2',
-        name: 'Savings Account',
-        balance: 15000.00,
+        name: 'SBI Savings',
+        balance: 45000.00,
         type: WalletType.bank,
-        bankName: 'Chase Bank',
+        bankName: 'State Bank of India',
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      ),
+      Wallet(
+        id: '3',
+        name: 'HDFC Account',
+        balance: 25000.00,
+        type: WalletType.bank,
+        bankName: 'HDFC Bank',
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
       ),
@@ -32,19 +41,35 @@ class AiroMoneyHomeScreen extends StatelessWidget {
     final mockTransactions = [
       Transaction(
         id: '1',
-        title: 'Coffee Shop',
-        amount: 4.50,
+        title: 'Swiggy Order',
+        amount: 450.00,
         type: TransactionType.expense,
         category: TransactionCategory.food,
         date: DateTime.now().subtract(const Duration(hours: 2)),
       ),
       Transaction(
         id: '2',
-        title: 'Salary',
-        amount: 3000.00,
+        title: 'Salary Credit',
+        amount: 75000.00,
         type: TransactionType.income,
         category: TransactionCategory.salary,
         date: DateTime.now().subtract(const Duration(days: 1)),
+      ),
+      Transaction(
+        id: '3',
+        title: 'Zomato Dinner',
+        amount: 580.00,
+        type: TransactionType.expense,
+        category: TransactionCategory.food,
+        date: DateTime.now().subtract(const Duration(days: 1)),
+      ),
+      Transaction(
+        id: '4',
+        title: 'UPI - Metro',
+        amount: 60.00,
+        type: TransactionType.expense,
+        category: TransactionCategory.transport,
+        date: DateTime.now().subtract(const Duration(days: 2)),
       ),
     ];
 
@@ -202,7 +227,7 @@ class AiroMoneyHomeScreen extends StatelessWidget {
                   '${transaction.category.name} • ${_formatDate(transaction.date)}',
                 ),
                 trailing: Text(
-                  '${transaction.type == TransactionType.income ? '+' : '-'}\$${transaction.amount.toStringAsFixed(2)}',
+                  '${transaction.type == TransactionType.income ? '+' : '-'}₹${transaction.amount.toStringAsFixed(2)}',
                   style: TextStyle(
                     color: transaction.type == TransactionType.income
                         ? Colors.green

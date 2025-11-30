@@ -154,11 +154,25 @@ class _BudgetCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final progress = budget.percentageUsedClamped;
-    final isExceeded = budget.isExceeded;
+    final warningLevel = budget.warningLevel;
     final percentText = '${(budget.percentageUsed * 100).toStringAsFixed(0)}%';
 
+    // Color based on warning level
+    Color progressColor;
+    switch (warningLevel) {
+      case BudgetWarningLevel.exceeded:
+        progressColor = Colors.red;
+        break;
+      case BudgetWarningLevel.warning:
+        progressColor = Colors.orange;
+        break;
+      case BudgetWarningLevel.normal:
+        progressColor = Colors.green;
+        break;
+    }
+
     return Semantics(
-      label: '${budget.tag} budget, ${budget.usedFormatted} of ${budget.limitFormatted} used, $percentText${isExceeded ? ', exceeded' : ''}',
+      label: '${budget.tag} budget, ${budget.usedFormatted} of ${budget.limitFormatted} used, $percentText${warningLevel == BudgetWarningLevel.exceeded ? ', exceeded' : warningLevel == BudgetWarningLevel.warning ? ', approaching limit' : ''}',
       child: Card(
         margin: const EdgeInsets.only(bottom: 12),
         child: Padding(
@@ -196,7 +210,7 @@ class _BudgetCard extends StatelessWidget {
                 Text(
                   percentText,
                   style: TextStyle(
-                    color: isExceeded ? Colors.red : Colors.green,
+                    color: progressColor,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -207,16 +221,42 @@ class _BudgetCard extends StatelessWidget {
               label: 'Budget progress $percentText',
               child: LinearProgressIndicator(
                 value: progress.clamp(0.0, 1.0),
-                color: isExceeded ? Colors.red : Colors.green,
+                color: progressColor,
                 backgroundColor: Colors.grey[300],
               ),
             ),
-            if (isExceeded)
+            // Warning message at 80% threshold
+            if (warningLevel == BudgetWarningLevel.warning)
               Padding(
                 padding: const EdgeInsets.only(top: 8),
-                child: Text(
-                  '⚠️ Budget exceeded by \$${((budget.usedCents - budget.limitCents) / 100).toStringAsFixed(2)}',
-                  style: const TextStyle(color: Colors.red, fontSize: 12),
+                child: Row(
+                  children: [
+                    const Icon(Icons.warning_amber, color: Colors.orange, size: 16),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        'Approaching budget limit - ₹${(budget.remainingCents / 100).toStringAsFixed(2)} remaining',
+                        style: const TextStyle(color: Colors.orange, fontSize: 12),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            // Exceeded message at 100%
+            if (warningLevel == BudgetWarningLevel.exceeded)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Row(
+                  children: [
+                    const Icon(Icons.error, color: Colors.red, size: 16),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        'Budget exceeded by ₹${((budget.usedCents - budget.limitCents) / 100).toStringAsFixed(2)}',
+                        style: const TextStyle(color: Colors.red, fontSize: 12),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],

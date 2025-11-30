@@ -5,6 +5,8 @@ import 'package:share_plus/share_plus.dart';
 import '../../application/providers/bill_split_providers.dart';
 import '../../domain/models/bill_split_models.dart';
 import '../../domain/models/split_result.dart';
+import '../../../money/application/providers/money_provider.dart';
+import '../../../money/application/services/expense_service.dart';
 import 'itemized_split_screen.dart';
 
 /// Test IDs for Playwright/Patrol testing
@@ -35,6 +37,7 @@ class _BillSplitScreenState extends ConsumerState<BillSplitScreen> {
   final _descriptionController = TextEditingController();
   final _amountController = TextEditingController();
   bool _showResult = false;
+  bool _isSaving = false;
   PaidBy _paidBy = PaidBy.you;
   SplitOption _splitOption = SplitOption.equalSplit;
 
@@ -45,7 +48,7 @@ class _BillSplitScreenState extends ConsumerState<BillSplitScreen> {
     super.dispose();
   }
 
-  void _calculateSplit() {
+  Future<void> _calculateAndSave() async {
     if (_amountController.text.isEmpty) return;
 
     final amount = double.tryParse(_amountController.text);
@@ -59,20 +62,83 @@ class _BillSplitScreenState extends ConsumerState<BillSplitScreen> {
       return;
     }
 
-    final controller = ref.read(billSplitControllerProvider);
-    controller.createSimpleBill(
-      vendor: _descriptionController.text.isNotEmpty
-          ? _descriptionController.text
-          : null,
-      date: DateTime.now(),
-      totalAmount: amount,
-    );
-    controller.calculateSplitWithOptions(
-      paidBy: _paidBy,
-      splitOption: _splitOption,
-    );
+    setState(() => _isSaving = true);
 
-    setState(() => _showResult = true);
+    try {
+      final controller = ref.read(billSplitControllerProvider);
+      controller.createSimpleBill(
+        vendor: _descriptionController.text.isNotEmpty
+            ? _descriptionController.text
+            : null,
+        date: DateTime.now(),
+        totalAmount: amount,
+      );
+      final splitResult = controller.calculateSplitWithOptions(
+        paidBy: _paidBy,
+        splitOption: _splitOption,
+      );
+
+      // Persist to database as a transaction
+      if (splitResult != null) {
+        await _persistExpenseToDb(amount, splitResult);
+
+        // Save to split history for reference
+        await controller.saveSplitToHistory(splitResult);
+      }
+
+      setState(() => _showResult = true);
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
+  }
+
+  /// Persist the bill split as an expense transaction to the database
+  Future<void> _persistExpenseToDb(double amount, SplitResult splitResult) async {
+    final moneyController = ref.read(moneyControllerProvider);
+    final amountCents = (amount * 100).round();
+    final description = _descriptionController.text.isNotEmpty
+        ? _descriptionController.text
+        : 'Bill Split';
+
+    // Determine if current user owes money (expense) or is owed (they pay you)
+    final bool isExpense = _splitOption != SplitOption.theyOweAll;
+
+    if (isExpense) {
+      // Save as expense - user paid or owes
+      final result = await moneyController.addExpense(
+        accountId: 'acc1', // Default account
+        timestamp: DateTime.now(),
+        amountCents: amountCents,
+        description: '$description (Split with ${splitResult.participantCount} people)',
+        category: 'Food & Drink', // Default category for bill splits
+        tags: ['bill-split'],
+      );
+
+      if (result != null && mounted) {
+        _showBudgetFeedback(result);
+      }
+    }
+  }
+
+  void _showBudgetFeedback(SaveExpenseResult result) {
+    if (result.isBudgetExceeded) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('⚠️ Budget for ${result.budget?.tag ?? 'category'} exceeded!'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+    } else if (result.hasBudget && result.budget != null) {
+      final percentUsed = result.budget!.percentageUsed * 100;
+      if (percentUsed >= 80) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('⚠️ ${percentUsed.toStringAsFixed(0)}% of ${result.budget!.tag} budget used'),
+            backgroundColor: Colors.amber,
+          ),
+        );
+      }
+    }
   }
 
   void _resetSplit() {
@@ -102,17 +168,26 @@ class _BillSplitScreenState extends ConsumerState<BillSplitScreen> {
         ),
         actions: [
           if (!_showResult)
-            TextButton(
-              key: const Key(BillSplitTestIds.saveButton),
-              onPressed: _calculateSplit,
-              child: Text(
-                'Save',
-                style: TextStyle(
-                  color: theme.colorScheme.primary,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            )
+            _isSaving
+                ? const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 16),
+                    child: SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  )
+                : TextButton(
+                    key: const Key(BillSplitTestIds.saveButton),
+                    onPressed: _calculateAndSave,
+                    child: Text(
+                      'Save',
+                      style: TextStyle(
+                        color: theme.colorScheme.primary,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  )
           else
             TextButton(
               key: const Key(BillSplitTestIds.newButton),
