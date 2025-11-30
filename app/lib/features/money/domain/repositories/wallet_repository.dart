@@ -1,3 +1,7 @@
+import '../../../../core/domain/repository.dart';
+import '../../../../core/utils/result.dart';
+
+/// Wallet type enum matching airomoney package
 enum WalletType {
   cash,
   bank,
@@ -6,11 +10,13 @@ enum WalletType {
   crypto,
 }
 
+/// Wallet model for the money feature
+/// Uses cents to avoid floating point precision issues with real money
 class Wallet {
   final String id;
   final String name;
   final String? description;
-  final double balance;
+  final int balanceCents; // Store in cents for precision
   final WalletType type;
   final String currency;
   final String? bankName;
@@ -24,9 +30,9 @@ class Wallet {
     required this.id,
     required this.name,
     this.description,
-    required this.balance,
+    required this.balanceCents,
     required this.type,
-    this.currency = 'INR', // Default to INR for India
+    this.currency = 'INR',
     this.bankName,
     this.accountNumber,
     this.isActive = true,
@@ -35,11 +41,23 @@ class Wallet {
     this.metadata,
   });
 
+  /// Get balance as double (for display only, not calculations)
+  double get balanceAsDouble => balanceCents / 100.0;
+
+  /// Get masked account number for security
+  String get maskedAccountNumber {
+    if (accountNumber == null || accountNumber!.length < 4) {
+      return accountNumber ?? '';
+    }
+    final lastFour = accountNumber!.substring(accountNumber!.length - 4);
+    return '****$lastFour';
+  }
+
   Wallet copyWith({
     String? id,
     String? name,
     String? description,
-    double? balance,
+    int? balanceCents,
     WalletType? type,
     String? currency,
     String? bankName,
@@ -53,7 +71,7 @@ class Wallet {
       id: id ?? this.id,
       name: name ?? this.name,
       description: description ?? this.description,
-      balance: balance ?? this.balance,
+      balanceCents: balanceCents ?? this.balanceCents,
       type: type ?? this.type,
       currency: currency ?? this.currency,
       bankName: bankName ?? this.bankName,
@@ -65,78 +83,12 @@ class Wallet {
     );
   }
 
-  /// Get currency symbol based on currency code
-  String get currencySymbol {
-    switch (currency.toUpperCase()) {
-      case 'INR':
-        return '₹';
-      case 'USD':
-        return '\$';
-      case 'EUR':
-        return '€';
-      case 'GBP':
-        return '£';
-      default:
-        return currency;
-    }
-  }
-
-  /// Format balance with proper currency symbol
-  /// Uses Indian numbering system for INR (lakhs, crores)
-  String get formattedBalance {
-    if (currency.toUpperCase() == 'INR') {
-      return _formatIndianCurrency(balance);
-    }
-    return '$currencySymbol${balance.toStringAsFixed(2)}';
-  }
-
-  /// Format amount using Indian numbering system
-  String _formatIndianCurrency(double amount) {
-    final isNegative = amount < 0;
-    final absAmount = amount.abs();
-    final wholePart = absAmount.truncate();
-    final decimalPart = ((absAmount - wholePart) * 100).round();
-
-    String formatted;
-    if (wholePart < 1000) {
-      formatted = wholePart.toString();
-    } else if (wholePart < 100000) {
-      final thousands = wholePart ~/ 1000;
-      final remainder = wholePart % 1000;
-      formatted = '$thousands,${remainder.toString().padLeft(3, '0')}';
-    } else if (wholePart < 10000000) {
-      final lakhs = wholePart ~/ 100000;
-      final thousands = (wholePart % 100000) ~/ 1000;
-      final remainder = wholePart % 1000;
-      formatted =
-          '$lakhs,${thousands.toString().padLeft(2, '0')},${remainder.toString().padLeft(3, '0')}';
-    } else {
-      final crores = wholePart ~/ 10000000;
-      final lakhs = (wholePart % 10000000) ~/ 100000;
-      final thousands = (wholePart % 100000) ~/ 1000;
-      final remainder = wholePart % 1000;
-      formatted =
-          '$crores,${lakhs.toString().padLeft(2, '0')},${thousands.toString().padLeft(2, '0')},${remainder.toString().padLeft(3, '0')}';
-    }
-
-    final sign = isNegative ? '-' : '';
-    return '$sign₹$formatted.${decimalPart.toString().padLeft(2, '0')}';
-  }
-
-  String get maskedAccountNumber {
-    if (accountNumber == null || accountNumber!.length < 4) {
-      return accountNumber ?? '';
-    }
-    final lastFour = accountNumber!.substring(accountNumber!.length - 4);
-    return '****$lastFour';
-  }
-
   Map<String, dynamic> toJson() {
     return {
       'id': id,
       'name': name,
       'description': description,
-      'balance': balance,
+      'balanceCents': balanceCents,
       'type': type.name,
       'currency': currency,
       'bankName': bankName,
@@ -153,9 +105,10 @@ class Wallet {
       id: json['id'] as String,
       name: json['name'] as String,
       description: json['description'] as String?,
-      balance: (json['balance'] as num).toDouble(),
+      balanceCents: json['balanceCents'] as int,
       type: WalletType.values.firstWhere(
         (e) => e.name == json['type'],
+        orElse: () => WalletType.cash,
       ),
       currency: json['currency'] as String? ?? 'INR',
       bankName: json['bankName'] as String?,
@@ -175,9 +128,39 @@ class Wallet {
 
   @override
   int get hashCode => id.hashCode;
-
-  @override
-  String toString() {
-    return 'Wallet(id: $id, name: $name, balance: $balance, type: $type, currency: $currency)';
-  }
 }
+
+/// Wallet repository interface for managing user wallets
+abstract interface class WalletRepository
+    implements CacheRepository<String, Wallet> {
+  /// Fetch all wallets for the current user
+  Future<Result<List<Wallet>>> fetchAll();
+
+  /// Fetch wallet by ID
+  Future<Result<Wallet>> fetchById(String id);
+
+  /// Create new wallet
+  Future<Result<Wallet>> create({
+    required String name,
+    String? description,
+    required int balanceCents,
+    required WalletType type,
+    required String currency,
+    String? bankName,
+    String? accountNumber,
+  });
+
+  /// Update wallet
+  Future<Result<Wallet>> update(Wallet wallet);
+
+  /// Delete wallet
+  @override
+  Future<Result<void>> delete(String id);
+
+  /// Update wallet balance (atomic operation)
+  Future<Result<Wallet>> updateBalance(String id, int newBalanceCents);
+
+  /// Get total balance across all wallets in cents
+  Future<Result<int>> getTotalBalanceCents();
+}
+

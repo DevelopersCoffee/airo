@@ -28,9 +28,10 @@ class AiroMoneyConstants {
   static const double maxTransactionAmount = 1000000.0;
   static const double minTransactionAmount = 0.01;
 
-  // Default Values
-  static const String defaultCurrency = 'USD';
-  static const String defaultCurrencySymbol = '\$';
+  // Default Values - India-specific defaults
+  static const String defaultCurrency = 'INR';
+  static const String defaultCurrencySymbol = '₹';
+  static const String defaultLocale = 'en_IN';
   static const int defaultDecimalPlaces = 2;
 
   // Transaction Categories
