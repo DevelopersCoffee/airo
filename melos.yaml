@@ -1,0 +1,97 @@
+name: airo_workspace
+repository: https://github.com/DevelopersCoffee/airo
+
+packages:
+  - app
+  - packages/**
+
+ide:
+  intellij:
+    enabled: true
+    moduleNamePrefix: ''
+
+command:
+  version:
+    linkToCommits: true
+    workspaceChangelog: true
+  bootstrap:
+    usePubspecOverrides: true
+
+scripts:
+  # Bootstrap all packages
+  bootstrap:
+    run: melos bootstrap
+    description: Bootstrap all packages in the workspace
+
+  # Clean all packages
+  clean:
+    run: melos clean
+    description: Clean all packages
+
+  # Get dependencies for all packages
+  get:
+    run: melos exec -- flutter pub get
+    description: Get dependencies for all packages
+
+  # Run analyzer on all packages
+  analyze:
+    run: melos exec -- flutter analyze --fatal-infos
+    description: Run flutter analyze on all packages
+    failFast: true
+
+  # Format all packages
+  format:
+    run: melos exec -- dart format --set-exit-if-changed .
+    description: Format all Dart files
+
+  # Format and fix all packages
+  format:fix:
+    run: melos exec -- dart format .
+    description: Format all Dart files (apply changes)
+
+  # Run tests for all packages
+  test:
+    run: melos exec --fail-fast -- flutter test
+    description: Run tests for all packages
+    packageFilters:
+      dirExists: test
+
+  # Run tests with coverage
+  test:coverage:
+    run: melos exec -- flutter test --coverage
+    description: Run tests with coverage for all packages
+    packageFilters:
+      dirExists: test
+
+  # Run code generation
+  generate:
+    run: melos exec -- flutter pub run build_runner build --delete-conflicting-outputs
+    description: Run build_runner for all packages
+    packageFilters:
+      dependsOn: build_runner
+
+  # Check for outdated dependencies
+  outdated:
+    run: melos exec -- flutter pub outdated
+    description: Check for outdated dependencies
+
+  # Upgrade dependencies
+  upgrade:
+    run: melos exec -- flutter pub upgrade
+    description: Upgrade dependencies for all packages
+
+  # Run all checks (CI simulation)
+  ci:
+    description: Run all CI checks
+    run: |
+      melos run format
+      melos run analyze
+      melos run test
+
+  # Quick check before commit
+  precommit:
+    description: Run format and analyze before commit
+    run: |
+      melos run format:fix
+      melos run analyze
+
