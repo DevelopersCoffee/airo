@@ -131,6 +131,16 @@ class CacheFailure extends Failure {
   });
 }
 
+/// Failure for database operations
+@immutable
+class DatabaseFailure extends Failure {
+  const DatabaseFailure({
+    super.message = 'Database operation failed',
+    super.code,
+    super.cause,
+  });
+}
+
 /// Generic unexpected failure
 @immutable
 class UnexpectedFailure extends Failure {

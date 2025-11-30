@@ -77,7 +77,33 @@ class AccountEntries extends Table {
   DateTimeColumn get updatedAt => dateTime().nullable()();
 }
 
-@DriftDatabase(tables: [TransactionEntries, BudgetEntries, AccountEntries])
+/// Outbox table for offline-first sync operations
+class OutboxEntries extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get operationId => text().unique()();
+  TextColumn get entityType => text()(); // transaction, budget, account
+  TextColumn get entityId => text()();
+  TextColumn get operationType => text()(); // create, update, delete
+  TextColumn get payload => text()(); // JSON payload
+  IntColumn get priority => integer().withDefault(const Constant(1))(); // 0=low, 1=normal, 2=high, 3=critical
+  TextColumn get status => text().withDefault(const Constant('pending'))(); // pending, inProgress, completed, failed
+  IntColumn get retryCount => integer().withDefault(const Constant(0))();
+  TextColumn get lastError => text().nullable()();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+  DateTimeColumn get lastAttemptAt => dateTime().nullable()();
+}
+
+/// Sync metadata table for tracking sync state
+class SyncMetadata extends Table {
+  TextColumn get key => text()();
+  TextColumn get value => text()();
+  DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
+
+  @override
+  Set<Column> get primaryKey => {key};
+}
+
+@DriftDatabase(tables: [TransactionEntries, BudgetEntries, AccountEntries, OutboxEntries, SyncMetadata])
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
@@ -85,7 +111,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -103,6 +129,15 @@ class AppDatabase extends _$AppDatabase {
           'CREATE INDEX idx_transactions_timestamp ON transaction_entries(timestamp DESC)'));
         await m.createIndex(Index('idx_budgets_period',
           'CREATE INDEX idx_budgets_period ON budget_entries(period_month, tag)'));
+      }
+      // Migration from v2 to v3: Add outbox and sync metadata tables
+      if (from < 3) {
+        await m.createTable(outboxEntries);
+        await m.createTable(syncMetadata);
+        await m.createIndex(Index('idx_outbox_status',
+          'CREATE INDEX idx_outbox_status ON outbox_entries(status, priority DESC, created_at)'));
+        await m.createIndex(Index('idx_outbox_entity',
+          'CREATE INDEX idx_outbox_entity ON outbox_entries(entity_type, entity_id)'));
       }
     },
     beforeOpen: (details) async {
