@@ -1,0 +1,129 @@
+# Local CI Checks - Optimized for running with `act`
+#
+# Usage:
+#   act -j local-checks          # Run all local checks
+#   act -j analyze               # Run only analysis
+#   act -j test                  # Run only tests
+#
+# Requirements:
+#   - Docker must be running
+#   - Install act: https://github.com/nektos/act
+#
+# Note: This workflow is designed to work without secrets
+# for local development. Use pr-checks.yml for actual PRs.
+
+name: Local CI Checks
+
+on:
+  workflow_dispatch:
+  # Can also be triggered manually via act
+
+env:
+  FLUTTER_VERSION: '3.24.0'
+
+jobs:
+  local-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: 'stable'
+          cache: true
+
+      - name: Get dependencies
+        run: |
+          cd app
+          flutter pub get
+
+      - name: Check formatting
+        run: |
+          cd app
+          dart format --set-exit-if-changed .
+
+      - name: Run analyzer
+        run: |
+          cd app
+          flutter analyze --fatal-infos
+
+      - name: Run tests
+        run: |
+          cd app
+          flutter test
+
+  analyze:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: 'stable'
+          cache: true
+
+      - name: Get dependencies
+        run: |
+          cd app
+          flutter pub get
+
+      - name: Run analyzer
+        run: |
+          cd app
+          flutter analyze --fatal-infos
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: 'stable'
+          cache: true
+
+      - name: Get dependencies
+        run: |
+          cd app
+          flutter pub get
+
+      - name: Run tests
+        run: |
+          cd app
+          flutter test --coverage
+
+      - name: Upload coverage
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-report
+          path: app/coverage/
+
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: 'stable'
+          cache: true
+
+      - name: Get dependencies
+        run: |
+          cd app
+          flutter pub get
+
+      - name: Check formatting
+        run: |
+          cd app
+          dart format --set-exit-if-changed .
+
