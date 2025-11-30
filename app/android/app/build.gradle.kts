@@ -50,7 +50,7 @@ android {
 
 dependencies {
     // Core library desugaring for flutter_local_notifications
-    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
 
     // Gemini Nano (AI Core) dependencies for on-device AI
     // Based on: https://developer.android.com/ai/gemini-nano
