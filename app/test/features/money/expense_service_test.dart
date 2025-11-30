@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:drift/drift.dart';
+import 'package:drift/drift.dart' hide isNotNull;
 import 'package:drift/native.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:airo_app/core/database/app_database.dart';
 import 'package:airo_app/core/utils/result.dart';
@@ -17,6 +18,8 @@ void main() {
   late ExpenseService expenseService;
 
   setUp(() {
+    // Initialize SharedPreferences with empty values for testing
+    SharedPreferences.setMockInitialValues({});
     // Create in-memory database for testing
     db = AppDatabase.forTesting(NativeDatabase.memory());
     transactionsRepo = LocalTransactionsRepository(db);
