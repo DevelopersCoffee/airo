@@ -1,0 +1,9 @@
+# Appfile for Airo iOS
+#
+# Uncomment and configure with your App Store credentials
+
+# app_identifier("com.developerscoffee.airo") # Your bundle identifier
+# apple_id("your@email.com") # Your Apple ID
+# team_id("XXXXXXXXXX") # Your Team ID
+# itc_team_id("XXXXXXXXXX") # App Store Connect Team ID (if different)
+
