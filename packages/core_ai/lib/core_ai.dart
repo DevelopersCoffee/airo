@@ -15,6 +15,9 @@ export 'src/llm/llm_router_impl.dart';
 export 'src/prompts/prompt.dart';
 export 'src/prompts/prompt_template.dart';
 
+// Parsing
+export 'src/parsing/json_parser.dart';
+
 // Utilities
 export 'src/utils/token_counter.dart';
 
