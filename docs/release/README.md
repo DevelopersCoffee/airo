@@ -38,6 +38,15 @@ Documentation for Airo releases and version history.
 | [Quick Release Guide](./QUICK_RELEASE_GUIDE.md) | Fast release checklist |
 | [Publishing Summary](./PUBLISHING_SUMMARY.md) | Publishing overview |
 
+## 📋 QA & Compliance
+
+| Document | Description |
+|----------|-------------|
+| [Release Checklist](./RELEASE_CHECKLIST.md) | Pre-release verification |
+| [Store Compliance](./STORE_COMPLIANCE.md) | Play Store/App Store guidelines |
+| [Rollback Procedure](./ROLLBACK_PROCEDURE.md) | Emergency rollback steps |
+| [Beta Testing](./BETA_TESTING.md) | Beta coordination guide |
+
 ---
 
 ## 🔗 External Links
