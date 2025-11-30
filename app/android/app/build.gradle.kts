@@ -55,7 +55,7 @@ dependencies {
     // Gemini Nano (AI Core) dependencies for on-device AI
     // Based on: https://developer.android.com/ai/gemini-nano
     // Note: Actual AI Core SDK integration pending - currently using mock responses
-    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.9.4")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.10.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
 }
