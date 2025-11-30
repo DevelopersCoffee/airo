@@ -20,6 +20,12 @@ export 'src/connectivity/connectivity_service.dart';
 // Encryption
 export 'src/encryption/encryption_service.dart';
 
+// Sync & Offline
+export 'src/sync/sync_operation.dart';
+export 'src/sync/sync_status.dart';
+export 'src/sync/sync_service.dart';
+export 'src/sync/outbox_repository.dart';
+
 // Base Repository
 export 'src/repositories/base_repository.dart';
 
