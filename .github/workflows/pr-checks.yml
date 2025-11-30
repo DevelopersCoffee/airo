@@ -257,7 +257,7 @@ jobs:
     if: always()
     steps:
       - name: Comment PR with summary
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const prValidation = '${{ needs.pr-validation.result }}';
