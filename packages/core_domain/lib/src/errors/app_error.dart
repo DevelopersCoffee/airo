@@ -35,8 +35,8 @@ class NetworkError extends AppError {
 }
 
 /// Authentication errors
-class AuthError extends AppError {
-  AuthError(
+class AuthenticationError extends AppError {
+  AuthenticationError(
     String message, {
     int? statusCode = 401,
     Object? originalError,
@@ -169,4 +169,3 @@ class AIError extends AppError {
          originalStack: originalStack,
        );
 }
-

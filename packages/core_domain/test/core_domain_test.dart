@@ -63,8 +63,8 @@ void main() {
       expect(error.code, 'NETWORK_ERROR');
     });
 
-    test('AuthError has correct code and default status', () {
-      final error = AuthError('Unauthorized');
+    test('AuthenticationError has correct code and default status', () {
+      final error = AuthenticationError('Unauthorized');
       expect(error.code, 'AUTH_ERROR');
       expect(error.statusCode, 401);
     });

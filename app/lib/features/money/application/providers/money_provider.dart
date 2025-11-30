@@ -1,18 +1,33 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../../core/database/app_database.dart';
 import '../../../../core/utils/result.dart';
 import '../../../../core/utils/locale_settings.dart';
 import '../../../../core/utils/currency_formatter.dart';
-import '../../data/repositories/local_budgets_repository.dart';
-import '../../data/repositories/local_transactions_repository.dart';
 import '../../data/repositories/local_wallet_repository.dart';
 import '../../domain/models/money_models.dart';
 import '../../domain/models/insight_models.dart';
 import '../../domain/repositories/money_repositories.dart';
 import '../../domain/repositories/wallet_repository.dart';
-import '../services/expense_service.dart';
-import '../services/insights_service.dart';
-import '../services/sync_service.dart';
+
+// Native-only imports - these are only used when not on web
+// ignore: unused_import
+import '../../../../core/database/app_database.dart'
+    if (dart.library.html) '../../../../core/database/app_database_stub.dart';
+// ignore: unused_import
+import '../../data/repositories/local_budgets_repository.dart'
+    if (dart.library.html) '../../data/repositories/local_budgets_repository_stub.dart';
+// ignore: unused_import
+import '../../data/repositories/local_transactions_repository.dart'
+    if (dart.library.html) '../../data/repositories/local_transactions_repository_stub.dart';
+// ignore: unused_import
+import '../services/expense_service.dart'
+    if (dart.library.html) '../services/expense_service_stub.dart';
+// ignore: unused_import
+import '../services/insights_service.dart'
+    if (dart.library.html) '../services/insights_service_stub.dart';
+// ignore: unused_import
+import '../services/sync_service.dart'
+    if (dart.library.html) '../services/sync_service_stub.dart';
 
 // ============================================================================
 // FAKE IMPLEMENTATIONS FOR DEVELOPMENT
@@ -352,44 +367,50 @@ class FakeBudgetsRepository implements BudgetsRepository {
 // ============================================================================
 
 /// Database provider - singleton
+// Database provider - only used on native platforms
+// On web, we use fake repositories instead
 final appDatabaseProvider = Provider<AppDatabase>((ref) {
   final db = AppDatabase();
   ref.onDispose(() => db.close());
   return db;
 });
 
-/// Local transactions repository (database-backed)
-final localTransactionsRepositoryProvider = Provider<LocalTransactionsRepository>((ref) {
+/// Accounts repository provider (using fake for now)
+final accountsRepositoryProvider = Provider<AccountsRepository>((ref) {
+  return FakeAccountsRepository();
+});
+
+/// Transactions repository provider - uses fake on web, local DB on native
+final transactionsRepositoryProvider = Provider<TransactionsRepository>((ref) {
+  // On web, use fake repository (no SQLite support)
+  if (kIsWeb) {
+    return FakeTransactionsRepository();
+  }
+  // On native platforms, use database-backed repository
   return LocalTransactionsRepository(ref.watch(appDatabaseProvider));
 });
 
-/// Local budgets repository (database-backed)
-final localBudgetsRepositoryProvider = Provider<LocalBudgetsRepository>((ref) {
+/// Budgets repository provider - uses fake on web, local DB on native
+final budgetsRepositoryProvider = Provider<BudgetsRepository>((ref) {
+  // On web, use fake repository (no SQLite support)
+  if (kIsWeb) {
+    return FakeBudgetsRepository();
+  }
+  // On native platforms, use database-backed repository
   return LocalBudgetsRepository(ref.watch(appDatabaseProvider));
 });
 
 /// Expense service for transactional operations
 final expenseServiceProvider = Provider<ExpenseService>((ref) {
-  return ExpenseService(
-    ref.watch(appDatabaseProvider),
-    ref.watch(localTransactionsRepositoryProvider),
-    ref.watch(localBudgetsRepositoryProvider),
-  );
-});
-
-/// Accounts repository provider (still using fake for now)
-final accountsRepositoryProvider = Provider<AccountsRepository>((ref) {
-  return FakeAccountsRepository();
-});
-
-/// Transactions repository provider - uses local DB
-final transactionsRepositoryProvider = Provider<TransactionsRepository>((ref) {
-  return ref.watch(localTransactionsRepositoryProvider);
-});
-
-/// Budgets repository provider - uses local DB
-final budgetsRepositoryProvider = Provider<BudgetsRepository>((ref) {
-  return ref.watch(localBudgetsRepositoryProvider);
+  // On web, use stub service
+  if (kIsWeb) {
+    return ExpenseService(null, null, null);
+  }
+  // On native platforms, use real service with database
+  final db = ref.watch(appDatabaseProvider);
+  final transactionsRepo = LocalTransactionsRepository(db);
+  final budgetsRepo = LocalBudgetsRepository(db);
+  return ExpenseService(db, transactionsRepo, budgetsRepo);
 });
 
 /// All accounts provider
@@ -406,7 +427,9 @@ final totalBalanceProvider = FutureProvider<int>((ref) async {
 });
 
 /// Recent transactions provider (stream-backed for reactivity)
-final recentTransactionsProvider = FutureProvider<List<Transaction>>((ref) async {
+final recentTransactionsProvider = FutureProvider<List<Transaction>>((
+  ref,
+) async {
   final repo = ref.watch(transactionsRepositoryProvider);
   final result = await repo.fetch(const FetchTransactionsQuery(limit: 10));
   return result.fold((_, __) => [], (txns) => txns);
@@ -414,7 +437,13 @@ final recentTransactionsProvider = FutureProvider<List<Transaction>>((ref) async
 
 /// Stream of recent transactions for reactive UI
 final transactionsStreamProvider = StreamProvider<List<Transaction>>((ref) {
-  final repo = ref.watch(localTransactionsRepositoryProvider);
+  // On web, return empty stream (no SQLite support)
+  if (kIsWeb) {
+    return Stream.value([]);
+  }
+  // On native, use database-backed repository
+  final db = ref.watch(appDatabaseProvider);
+  final repo = LocalTransactionsRepository(db);
   return repo.watchTransactions(limit: 50);
 });
 
@@ -427,21 +456,44 @@ final budgetsProvider = FutureProvider<List<Budget>>((ref) async {
 
 /// Stream of budgets for reactive UI
 final budgetsStreamProvider = StreamProvider<List<Budget>>((ref) {
-  final repo = ref.watch(localBudgetsRepositoryProvider);
+  // On web, return empty stream (no SQLite support)
+  if (kIsWeb) {
+    return Stream.value([]);
+  }
+  // On native, use database-backed repository
+  final db = ref.watch(appDatabaseProvider);
+  final repo = LocalBudgetsRepository(db);
   return repo.watchBudgets();
 });
 
 /// Insights service provider
 final insightsServiceProvider = Provider<InsightsService>((ref) {
+  // On web, use stub service
+  if (kIsWeb) {
+    return InsightsService(
+      LocalTransactionsRepository(null),
+      LocalBudgetsRepository(null),
+    );
+  }
+  // On native, use real service
+  final db = ref.watch(appDatabaseProvider);
   return InsightsService(
-    ref.watch(localTransactionsRepositoryProvider),
-    ref.watch(localBudgetsRepositoryProvider),
+    LocalTransactionsRepository(db),
+    LocalBudgetsRepository(db),
   );
 });
 
 /// Sync service provider
 final syncServiceProvider = Provider<SyncService>((ref) {
-  final service = SyncService(ref.watch(localTransactionsRepositoryProvider));
+  // On web, use stub service
+  if (kIsWeb) {
+    final service = SyncService(LocalTransactionsRepository(null));
+    ref.onDispose(() => service.dispose());
+    return service;
+  }
+  // On native, use real service
+  final db = ref.watch(appDatabaseProvider);
+  final service = SyncService(LocalTransactionsRepository(db));
   ref.onDispose(() => service.dispose());
   return service;
 });
@@ -698,8 +750,5 @@ class WalletController {
 
 /// Wallet controller provider
 final walletControllerProvider = Provider<WalletController>((ref) {
-  return WalletController(
-    ref.watch(walletRepositoryProvider),
-    ref,
-  );
+  return WalletController(ref.watch(walletRepositoryProvider), ref);
 });

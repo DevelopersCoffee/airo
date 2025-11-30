@@ -1,6 +1,10 @@
-import '../../data/repositories/local_transactions_repository.dart';
-import '../../data/repositories/local_budgets_repository.dart';
+// Conditional imports for native platforms only
+import '../../data/repositories/local_transactions_repository.dart'
+    if (dart.library.html) '../../data/repositories/local_transactions_repository_stub.dart';
+import '../../data/repositories/local_budgets_repository.dart'
+    if (dart.library.html) '../../data/repositories/local_budgets_repository_stub.dart';
 import '../../domain/models/money_models.dart';
+import '../../domain/models/insight_models.dart';
 
 /// Service for generating spending insights and analytics
 class InsightsService {
@@ -23,7 +27,7 @@ class InsightsService {
     );
 
     final transactions = result.getOrNull() ?? [];
-    
+
     int totalExpenses = 0;
     int totalIncome = 0;
     final categorySpending = <String, int>{};
@@ -32,14 +36,19 @@ class InsightsService {
     for (final txn in transactions) {
       if (txn.isExpense) {
         totalExpenses += txn.amountCents.abs();
-        
+
         // Category breakdown
-        categorySpending[txn.category] = 
+        categorySpending[txn.category] =
             (categorySpending[txn.category] ?? 0) + txn.amountCents.abs();
-        
+
         // Daily breakdown
-        final date = DateTime(txn.timestamp.year, txn.timestamp.month, txn.timestamp.day);
-        dailySpending[date] = (dailySpending[date] ?? 0) + txn.amountCents.abs();
+        final date = DateTime(
+          txn.timestamp.year,
+          txn.timestamp.month,
+          txn.timestamp.day,
+        );
+        dailySpending[date] =
+            (dailySpending[date] ?? 0) + txn.amountCents.abs();
       } else {
         totalIncome += txn.amountCents;
       }
@@ -52,10 +61,11 @@ class InsightsService {
     // Get top categories
     final sortedCategories = categorySpending.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
-    
-    final topCategories = sortedCategories.take(5).map((e) => 
-      CategorySpending(category: e.key, amountCents: e.value)
-    ).toList();
+
+    final topCategories = sortedCategories
+        .take(5)
+        .map((e) => CategorySpending(category: e.key, amountCents: e.value))
+        .toList();
 
     return SpendingSummary(
       startDate: start,
@@ -93,30 +103,36 @@ class InsightsService {
 
     for (final budget in budgets) {
       final percentage = budget.percentageUsed;
-      
+
       if (budget.isExceeded) {
         exceeded++;
-        insights.add(BudgetInsight(
-          type: InsightType.exceeded,
-          message: '${budget.tag} budget exceeded by ${_formatCurrency(budget.usedCents - budget.limitCents)}',
-          category: budget.tag,
-          severity: InsightSeverity.high,
-        ));
+        insights.add(
+          BudgetInsight(
+            type: InsightType.exceeded,
+            message:
+                '${budget.tag} budget exceeded by ${_formatCurrency(budget.usedCents - budget.limitCents)}',
+            category: budget.tag,
+            severity: InsightSeverity.high,
+          ),
+        );
       } else if (percentage >= 0.8) {
         warning++;
-        insights.add(BudgetInsight(
-          type: InsightType.warning,
-          message: '${budget.tag} budget at ${(percentage * 100).toInt()}%',
-          category: budget.tag,
-          severity: InsightSeverity.medium,
-        ));
+        insights.add(
+          BudgetInsight(
+            type: InsightType.warning,
+            message: '${budget.tag} budget at ${(percentage * 100).toInt()}%',
+            category: budget.tag,
+            severity: InsightSeverity.medium,
+          ),
+        );
       } else {
         healthy++;
       }
     }
 
     // Calculate overall health score (0-100)
-    final healthScore = ((healthy * 100 + warning * 50) / budgets.length).round();
+    final healthScore = ((healthy * 100 + warning * 50) / budgets.length)
+        .round();
 
     return BudgetHealth(
       totalBudgets: budgets.length,
@@ -131,7 +147,7 @@ class InsightsService {
   /// Get spending trends (compare with previous period)
   Future<SpendingTrend> getSpendingTrend() async {
     final now = DateTime.now();
-    
+
     // Current month
     final currentStart = DateTime(now.year, now.month, 1);
     final currentSummary = await getSpendingSummary(
@@ -141,7 +157,11 @@ class InsightsService {
 
     // Previous month
     final previousStart = DateTime(now.year, now.month - 1, 1);
-    final previousEnd = DateTime(now.year, now.month, 0); // Last day of prev month
+    final previousEnd = DateTime(
+      now.year,
+      now.month,
+      0,
+    ); // Last day of prev month
     final previousSummary = await getSpendingSummary(
       startDate: previousStart,
       endDate: previousEnd,
@@ -149,8 +169,10 @@ class InsightsService {
 
     // Calculate change
     final expenseChange = previousSummary.totalExpenses > 0
-        ? ((currentSummary.totalExpenses - previousSummary.totalExpenses) / 
-           previousSummary.totalExpenses * 100).round()
+        ? ((currentSummary.totalExpenses - previousSummary.totalExpenses) /
+                  previousSummary.totalExpenses *
+                  100)
+              .round()
         : 0;
 
     return SpendingTrend(
@@ -167,4 +189,3 @@ class InsightsService {
     return '\$$dollars.${remaining.toString().padLeft(2, '0')}';
   }
 }
-
