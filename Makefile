@@ -180,6 +180,11 @@ test: ## Run all tests
 	@cd packages/airo && flutter test
 	@cd packages/airomoney && flutter test
 
+.PHONY: test-coverage
+test-coverage: ## Run tests with coverage and check threshold
+	@echo "$(BLUE)Running tests with coverage...$(NC)"
+	@./scripts/check-coverage.sh 60
+
 .PHONY: test-integration
 test-integration: ## Run integration tests
 	@echo "$(BLUE)Running integration tests...$(NC)"
