@@ -510,10 +510,10 @@ packages:
     dependency: "direct main"
     description:
       name: file_picker
-      sha256: f2d9f173c2c14635cc0e9b14c143c49ef30b4934e8d1d274d6206fcb0086a06f
+      sha256: "7872545770c277236fd32b022767576c562ba28366204ff1a5628853cf8f2200"
       url: "https://pub.dev"
     source: hosted
-    version: "10.3.3"
+    version: "10.3.7"
   file_selector_linux:
     dependency: transitive
     description:
@@ -558,18 +558,18 @@ packages:
     dependency: "direct main"
     description:
       name: flame
-      sha256: "3725f1ab4ca07f77955c2b1c21d02906646ec0be95f7bc141854a529704fda9d"
+      sha256: "348136b7d928188a8c9a11cd844d9125b02e7afc6c83bb9a52a16aee88ab7e81"
       url: "https://pub.dev"
     source: hosted
-    version: "1.33.0"
+    version: "1.34.0"
   flame_audio:
     dependency: "direct main"
     description:
       name: flame_audio
-      sha256: "4427f00e93e6a2f0850d35b3aef5198eb0158f5829ef37b12d2558a7e493b3e6"
+      sha256: "339b8aa5576e9d4678608c07b8e973ffa17802aaabb701a813364b59b64aedec"
       url: "https://pub.dev"
     source: hosted
-    version: "2.11.11"
+    version: "2.11.12"
   flutter:
     dependency: "direct main"
     description: flutter
@@ -916,10 +916,10 @@ packages:
     dependency: "direct main"
     description:
       name: intl
-      sha256: d6f56758b7d3014a48af9701c085700aac781a92a87a62b1333b46d8879661cf
+      sha256: "3df61194eb431efc39c4ceba583b95633a403f46c9fd341e550ce0bfa50e9aa5"
       url: "https://pub.dev"
     source: hosted
-    version: "0.19.0"
+    version: "0.20.2"
   io:
     dependency: transitive
     description:
@@ -948,10 +948,10 @@ packages:
     dependency: "direct main"
     description:
       name: just_audio
-      sha256: f978d5b4ccea08f267dae0232ec5405c1b05d3f3cd63f82097ea46c015d5c09e
+      sha256: "9694e4734f515f2a052493d1d7e0d6de219ee0427c7c29492e246ff32a219908"
       url: "https://pub.dev"
     source: hosted
-    version: "0.9.46"
+    version: "0.10.5"
   just_audio_platform_interface:
     dependency: transitive
     description:
@@ -1437,14 +1437,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.10.1"
-  sprintf:
-    dependency: transitive
-    description:
-      name: sprintf
-      sha256: "1fc9ffe69d4df602376b52949af107d8f5703b77cda567c4d7d86a0693120f23"
-      url: "https://pub.dev"
-    source: hosted
-    version: "7.0.0"
   sqflite:
     dependency: transitive
     description:
@@ -1681,10 +1673,10 @@ packages:
     dependency: "direct main"
     description:
       name: uuid
-      sha256: a5be9ef6618a7ac1e964353ef476418026db906c4facdedaa299b7a2e71690ff
+      sha256: a11b666489b1954e01d992f3d601b1804a33937b5a8fe677bd26b8a9f96f96e8
       url: "https://pub.dev"
     source: hosted
-    version: "4.5.1"
+    version: "4.5.2"
   vector_math:
     dependency: transitive
     description:
