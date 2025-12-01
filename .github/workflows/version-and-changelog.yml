@@ -64,7 +64,7 @@ jobs:
           fi
       
       - name: Create Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         if: steps.new_version.outputs.new_version != ''
         with:
           tag_name: v${{ steps.new_version.outputs.new_version }}
