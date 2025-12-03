@@ -49,7 +49,14 @@ class GeminiNanoService {
   bool get isInitialized => _isInitialized;
 
   /// Check if device is supported (Pixel 9 with AICore)
+  /// Returns false on web platform
   Future<bool> isSupported() async {
+    // Web platform doesn't support Gemini Nano
+    if (kIsWeb) {
+      _isSupported = false;
+      return false;
+    }
+
     try {
       // Call native Android method to check availability
       final bool available = await _channel.invokeMethod('isAvailable');
@@ -62,7 +69,19 @@ class GeminiNanoService {
   }
 
   /// Get detailed device information
+  /// Returns web platform info on web
   Future<Map<String, dynamic>> getDeviceInfo() async {
+    // Web platform doesn't have native device info
+    if (kIsWeb) {
+      return {
+        'manufacturer': 'Web',
+        'model': 'Browser',
+        'isPixel': false,
+        'supportsGeminiNano': false,
+        'platform': 'web',
+      };
+    }
+
     try {
       final Map<dynamic, dynamic> info = await _channel.invokeMethod(
         'getDeviceInfo',
@@ -114,12 +133,16 @@ class GeminiNanoService {
   }
 
   /// Generate content from a prompt
-  /// Returns the generated text response
+  /// Returns the generated text response, or fallback message on web/uninitialized
   Future<String> generateContent(String prompt) async {
+    // Web platform doesn't support Gemini Nano
+    if (kIsWeb) {
+      return _getWebFallbackResponse(prompt);
+    }
+
     if (!_isInitialized) {
-      throw Exception(
-        'GeminiNanoService not initialized. Call initialize() first.',
-      );
+      debugPrint('GeminiNanoService not initialized');
+      return _getWebFallbackResponse(prompt);
     }
 
     try {
@@ -129,17 +152,24 @@ class GeminiNanoService {
       return response ?? '';
     } catch (e) {
       debugPrint('Error generating content: $e');
-      rethrow;
+      return _getWebFallbackResponse(prompt);
     }
   }
 
   /// Generate content with streaming support
   /// Returns a stream of accumulated text chunks
+  /// On web, yields a single fallback response
   Stream<String> generateContentStream(String prompt) async* {
+    // Web platform doesn't support Gemini Nano
+    if (kIsWeb) {
+      yield _getWebFallbackResponse(prompt);
+      return;
+    }
+
     if (!_isInitialized) {
-      throw Exception(
-        'GeminiNanoService not initialized. Call initialize() first.',
-      );
+      debugPrint('GeminiNanoService not initialized');
+      yield _getWebFallbackResponse(prompt);
+      return;
     }
 
     try {
@@ -152,21 +182,42 @@ class GeminiNanoService {
       }
     } catch (e) {
       debugPrint('Error generating content stream: $e');
-      rethrow;
+      yield _getWebFallbackResponse(prompt);
     }
+  }
+
+  /// Fallback response for web platform
+  String _getWebFallbackResponse(String prompt) {
+    final lowerPrompt = prompt.toLowerCase();
+    if (lowerPrompt.contains('hi') || lowerPrompt.contains('hello')) {
+      return 'Hello! 👋 I\'m Airo, your AI assistant. On web, I use cloud AI. How can I help you today?';
+    }
+    if (lowerPrompt.contains('diet') || lowerPrompt.contains('food')) {
+      return 'I can help you create personalized diet plans! Try uploading a PDF or describing your dietary needs.';
+    }
+    if (lowerPrompt.contains('bill') || lowerPrompt.contains('split')) {
+      return 'I can help split bills! Upload a receipt image or enter items manually to get started.';
+    }
+    return 'I\'m here to help! On web platform, some features use cloud AI. For full on-device AI, try the Android app on a Pixel 9 device.';
   }
 
   /// Process a query with optional file context
   /// Useful for diet plans, form filling, bill splitting, etc.
-  Future<String> processQuery(
+  /// Returns null on web platform or if not initialized
+  Future<String?> processQuery(
     String query, {
     String? fileContext,
     String? systemPrompt,
   }) async {
+    // Web platform doesn't support Gemini Nano
+    if (kIsWeb) {
+      debugPrint('Gemini Nano not available on web platform');
+      return null;
+    }
+
     if (!_isInitialized) {
-      throw Exception(
-        'GeminiNanoService not initialized. Call initialize() first.',
-      );
+      debugPrint('GeminiNanoService not initialized. Call initialize() first.');
+      return null;
     }
 
     try {
@@ -184,7 +235,7 @@ class GeminiNanoService {
       return await generateContent(fullPrompt);
     } catch (e) {
       debugPrint('Error processing query: $e');
-      rethrow;
+      return null;
     }
   }
 

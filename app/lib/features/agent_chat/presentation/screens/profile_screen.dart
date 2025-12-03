@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../../core/auth/auth_service.dart';
+import '../../../../core/auth/google_auth_service.dart';
 import '../../../../core/http/http_dog.dart';
 import '../../../../core/dictionary/dictionary.dart';
+import '../../../../core/routing/route_names.dart';
 import '../../../quotes/presentation/widgets/daily_quote_card.dart';
 
 /// User profile screen
@@ -184,11 +187,20 @@ class ProfileScreen extends ConsumerWidget {
               child: ElevatedButton.icon(
                 icon: const Icon(Icons.logout),
                 label: const Text('Logout'),
-                onPressed: () {
-                  // TODO: Implement logout
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Logout not yet implemented')),
-                  );
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Theme.of(context).colorScheme.error,
+                  foregroundColor: Theme.of(context).colorScheme.onError,
+                ),
+                onPressed: () async {
+                  // Sign out from Google if user was signed in with Google
+                  final user = AuthService.instance.currentUser;
+                  if (user?.isGoogleUser == true) {
+                    await GoogleAuthService.instance.signOut();
+                  }
+                  await AuthService.instance.logout();
+                  if (context.mounted) {
+                    context.go(RouteNames.login);
+                  }
                 },
               ),
             ),

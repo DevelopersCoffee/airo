@@ -46,6 +46,8 @@ class AppRouter {
       return null; // No redirect needed
     },
     routes: [
+      // Redirect root to agent
+      GoRoute(path: '/', redirect: (context, state) => '/agent'),
       GoRoute(
         path: RouteNames.login,
         name: RouteNames.login,

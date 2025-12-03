@@ -4,6 +4,7 @@ import '../../../core/auth/auth_service.dart';
 import '../../../core/auth/google_auth_service.dart';
 import '../../../core/config/app_config.dart';
 import '../../../core/routing/route_names.dart';
+import '../../../main.dart' show isFirebaseInitialized;
 import '../../../shared/widgets/loading_widget.dart';
 import '../../../shared/widgets/custom_text_field.dart';
 
@@ -57,8 +58,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (result.success) {
         if (mounted) {
-          // Navigate to home screen
-          context.go(RouteNames.home);
+          // Navigate to main app (agent tab)
+          context.go('/agent');
         }
       } else {
         setState(() {
@@ -90,6 +91,15 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _signInWithGoogle() async {
+    // Check if Firebase is configured
+    if (!isFirebaseInitialized) {
+      setState(() {
+        _errorMessage =
+            'Google Sign-In requires Firebase setup. Use demo login (admin/admin) for now.';
+      });
+      return;
+    }
+
     setState(() {
       _isGoogleLoading = true;
       _errorMessage = null;
@@ -100,7 +110,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (result.success) {
         if (mounted) {
-          context.go(RouteNames.home);
+          context.go('/agent');
         }
       } else {
         setState(() {
@@ -126,227 +136,232 @@ class _LoginScreenState extends State<LoginScreen> {
       label: LoginTestIds.screen,
       child: Scaffold(
         body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // Logo and title
-                Icon(
-                  Icons.account_circle,
-                  size: 80,
-                  color: Theme.of(context).colorScheme.primary,
-                ),
-                const SizedBox(height: 24),
-                Text(
-                  'Welcome to Airo',
-                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Sign in to continue',
-                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 48),
-
-                // Username field
-                CustomTextField(
-                  controller: _usernameController,
-                  label: 'Username',
-                  hint: 'Enter your username',
-                  prefixIcon: Icons.person,
-                  textInputAction: TextInputAction.next,
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return 'Username is required';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16),
-
-                // Password field
-                CustomTextField(
-                  controller: _passwordController,
-                  label: 'Password',
-                  hint: 'Enter your password',
-                  prefixIcon: Icons.lock,
-                  obscureText: true,
-                  textInputAction: TextInputAction.done,
-                  onSubmitted: (_) => _login(),
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return 'Password is required';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 24),
-
-                // Error message
-                if (_errorMessage != null)
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    margin: const EdgeInsets.only(bottom: 16),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.errorContainer,
-                      borderRadius: BorderRadius.circular(8),
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24.0),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Logo and title
+                    Icon(
+                      Icons.account_circle,
+                      size: 80,
+                      color: Theme.of(context).colorScheme.primary,
                     ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.error_outline,
-                          color: Theme.of(context).colorScheme.error,
-                          size: 20,
+                    const SizedBox(height: 24),
+                    Text(
+                      'Welcome to Airo',
+                      style: Theme.of(context).textTheme.headlineMedium
+                          ?.copyWith(fontWeight: FontWeight.bold),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Sign in to continue',
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 48),
+
+                    // Username field
+                    CustomTextField(
+                      controller: _usernameController,
+                      label: 'Username',
+                      hint: 'Enter your username',
+                      prefixIcon: Icons.person,
+                      textInputAction: TextInputAction.next,
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return 'Username is required';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Password field
+                    CustomTextField(
+                      controller: _passwordController,
+                      label: 'Password',
+                      hint: 'Enter your password',
+                      prefixIcon: Icons.lock,
+                      obscureText: true,
+                      textInputAction: TextInputAction.done,
+                      onSubmitted: (_) => _login(),
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return 'Password is required';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Error message
+                    if (_errorMessage != null)
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        margin: const EdgeInsets.only(bottom: 16),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.errorContainer,
+                          borderRadius: BorderRadius.circular(8),
                         ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            _errorMessage!,
-                            style: TextStyle(
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.onErrorContainer,
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.error_outline,
+                              color: Theme.of(context).colorScheme.error,
+                              size: 20,
                             ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                _errorMessage!,
+                                style: TextStyle(
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onErrorContainer,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                    // Login button
+                    LoadingButton(
+                      text: 'Sign In',
+                      onPressed: _login,
+                      isLoading: _isLoading,
+                      icon: Icons.login,
+                      width: double.infinity,
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Divider with "or"
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Divider(
+                            color: Theme.of(context).colorScheme.outlineVariant,
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: Text(
+                            'or',
+                            style: Theme.of(context).textTheme.bodyMedium
+                                ?.copyWith(
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurfaceVariant,
+                                ),
+                          ),
+                        ),
+                        Expanded(
+                          child: Divider(
+                            color: Theme.of(context).colorScheme.outlineVariant,
                           ),
                         ),
                       ],
                     ),
-                  ),
+                    const SizedBox(height: 16),
 
-                // Login button
-                LoadingButton(
-                  text: 'Sign In',
-                  onPressed: _login,
-                  isLoading: _isLoading,
-                  icon: Icons.login,
-                  width: double.infinity,
-                ),
-                const SizedBox(height: 16),
-
-                // Divider with "or"
-                Row(
-                  children: [
-                    Expanded(
-                      child: Divider(
-                        color: Theme.of(context).colorScheme.outlineVariant,
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Text(
-                        'or',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color:
-                                  Theme.of(context).colorScheme.onSurfaceVariant,
-                            ),
-                      ),
-                    ),
-                    Expanded(
-                      child: Divider(
-                        color: Theme.of(context).colorScheme.outlineVariant,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-
-                // Google Sign-In button
-                Semantics(
-                  label: LoginTestIds.googleSignInButton,
-                  child: _GoogleSignInButton(
-                    onPressed: _signInWithGoogle,
-                    isLoading: _isGoogleLoading,
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                // Demo quick login (only in dev/demo mode)
-                if (DemoCredentials.isEnabled)
-                  Semantics(
-                    label: LoginTestIds.demoCredentialsButton,
-                    child: OutlinedButton.icon(
-                      onPressed: _fillDemoCredentials,
-                      icon: const Icon(Icons.science, size: 18),
-                      label: const Text('Fill Demo Credentials'),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                      ),
-                    ),
-                  ),
-                const SizedBox(height: 32),
-
-                // Register link
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      "Don't have an account? ",
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
+                    // Google Sign-In button
                     Semantics(
-                      label: LoginTestIds.registerLink,
-                      child: TextButton(
-                        onPressed: _navigateToRegister,
-                        child: const Text('Sign Up'),
+                      label: LoginTestIds.googleSignInButton,
+                      child: _GoogleSignInButton(
+                        onPressed: _signInWithGoogle,
+                        isLoading: _isGoogleLoading,
                       ),
                     ),
-                  ],
-                ),
+                    const SizedBox(height: 16),
 
-                const SizedBox(height: 24),
-
-                // Demo info (only in dev/demo mode)
-                if (AppConfig.showDemoCredentials)
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.surfaceContainerHighest,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Icon(
-                              Icons.info_outline,
-                              size: 16,
-                              color: Theme.of(context).colorScheme.primary,
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              'Demo Mode',
-                              style: Theme.of(context).textTheme.titleSmall
-                                  ?.copyWith(fontWeight: FontWeight.bold),
-                            ),
-                          ],
+                    // Demo quick login (only in dev/demo mode)
+                    if (DemoCredentials.isEnabled)
+                      Semantics(
+                        label: LoginTestIds.demoCredentialsButton,
+                        child: OutlinedButton.icon(
+                          onPressed: _fillDemoCredentials,
+                          icon: const Icon(Icons.science, size: 18),
+                          label: const Text('Fill Demo Credentials'),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                          ),
                         ),
-                        const SizedBox(height: 8),
+                      ),
+                    const SizedBox(height: 32),
+
+                    // Register link
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
                         Text(
-                          'Demo: ${DemoCredentials.username} / ${DemoCredentials.password}\nOr create a new account',
-                          style: Theme.of(context).textTheme.bodySmall
-                              ?.copyWith(
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.onSurfaceVariant,
-                              ),
+                          "Don't have an account? ",
+                          style: Theme.of(context).textTheme.bodyMedium,
+                        ),
+                        Semantics(
+                          label: LoginTestIds.registerLink,
+                          child: TextButton(
+                            onPressed: _navigateToRegister,
+                            child: const Text('Sign Up'),
+                          ),
                         ),
                       ],
                     ),
-                  ),
-              ],
+
+                    const SizedBox(height: 24),
+
+                    // Demo info (only in dev/demo mode)
+                    if (AppConfig.showDemoCredentials)
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.surfaceContainerHighest,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.info_outline,
+                                  size: 16,
+                                  color: Theme.of(context).colorScheme.primary,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'Demo Mode',
+                                  style: Theme.of(context).textTheme.titleSmall
+                                      ?.copyWith(fontWeight: FontWeight.bold),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Demo: ${DemoCredentials.username} / ${DemoCredentials.password}\nOr create a new account',
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onSurfaceVariant,
+                                  ),
+                            ),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
+              ),
             ),
           ),
         ),
@@ -357,10 +372,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
 /// Google Sign-In button widget
 class _GoogleSignInButton extends StatelessWidget {
-  const _GoogleSignInButton({
-    required this.onPressed,
-    required this.isLoading,
-  });
+  const _GoogleSignInButton({required this.onPressed, required this.isLoading});
 
   final VoidCallback onPressed;
   final bool isLoading;
@@ -373,9 +385,7 @@ class _GoogleSignInButton extends StatelessWidget {
         onPressed: isLoading ? null : onPressed,
         style: OutlinedButton.styleFrom(
           padding: const EdgeInsets.symmetric(vertical: 14),
-          side: BorderSide(
-            color: Theme.of(context).colorScheme.outline,
-          ),
+          side: BorderSide(color: Theme.of(context).colorScheme.outline),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
@@ -407,8 +417,8 @@ class _GoogleSignInButton extends StatelessWidget {
                   Text(
                     'Continue with Google',
                     style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                          fontWeight: FontWeight.w500,
-                        ),
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ],
               ),

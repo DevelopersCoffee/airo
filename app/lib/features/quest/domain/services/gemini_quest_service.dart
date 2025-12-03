@@ -104,7 +104,7 @@ Be concise, practical, and actionable in your responses.''';
           systemPrompt: systemPrompt,
         );
 
-        return response;
+        return response ?? _generateMockResponse(query, fileContext);
       } else {
         // Fallback to mock response if Gemini Nano not available
         return _generateMockResponse(query, fileContext);

@@ -11,8 +11,13 @@ class GoogleAuthService {
 
   GoogleAuthService._();
 
+  // Web OAuth Client ID from Google Cloud Console
+  static const String _webClientId =
+      '906799550225-2cs0tag45smuuksmeq8lblkrmaueta3t.apps.googleusercontent.com';
+
   final GoogleSignIn _googleSignIn = GoogleSignIn(
     scopes: ['email', 'profile'],
+    clientId: kIsWeb ? _webClientId : null,
   );
 
   firebase_auth.FirebaseAuth get _firebaseAuth =>
@@ -46,8 +51,9 @@ class GoogleAuthService {
       );
 
       // Sign in to Firebase with the Google credential
-      final userCredential =
-          await _firebaseAuth.signInWithCredential(credential);
+      final userCredential = await _firebaseAuth.signInWithCredential(
+        credential,
+      );
 
       final firebaseUser = userCredential.user;
       if (firebaseUser == null) {
@@ -79,10 +85,7 @@ class GoogleAuthService {
   /// Sign out from Google and Firebase
   Future<void> signOut() async {
     try {
-      await Future.wait([
-        _googleSignIn.signOut(),
-        _firebaseAuth.signOut(),
-      ]);
+      await Future.wait([_googleSignIn.signOut(), _firebaseAuth.signOut()]);
       debugPrint('Google Sign-Out successful');
     } catch (e) {
       debugPrint('Google Sign-Out error: $e');
@@ -111,8 +114,9 @@ class GoogleAuthService {
         idToken: googleAuth.idToken,
       );
 
-      final userCredential =
-          await _firebaseAuth.signInWithCredential(credential);
+      final userCredential = await _firebaseAuth.signInWithCredential(
+        credential,
+      );
       final firebaseUser = userCredential.user;
 
       if (firebaseUser == null) return null;
@@ -135,4 +139,3 @@ class GoogleAuthService {
     }
   }
 }
-
