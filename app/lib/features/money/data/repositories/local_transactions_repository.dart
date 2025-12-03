@@ -3,7 +3,9 @@ import 'dart:convert';
 import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
 
-import '../../../../core/database/app_database.dart';
+// Conditional imports for native platforms only
+import '../../../../core/database/app_database.dart'
+    if (dart.library.html) '../../../../core/database/app_database_stub.dart';
 import '../../../../core/utils/result.dart';
 import '../../domain/models/money_models.dart';
 import '../../domain/repositories/money_repositories.dart';
@@ -14,44 +16,56 @@ class LocalTransactionsRepository implements TransactionsRepository {
   final AppDatabase _db;
   final Uuid _uuid;
 
-  LocalTransactionsRepository(this._db, [Uuid? uuid]) : _uuid = uuid ?? const Uuid();
+  LocalTransactionsRepository(this._db, [Uuid? uuid])
+    : _uuid = uuid ?? const Uuid();
 
   @override
   Future<Result<List<Transaction>>> fetch(FetchTransactionsQuery query) async {
     try {
       var selectQuery = _db.select(_db.transactionEntries);
-      
+
       // Apply filters
-      selectQuery = selectQuery..where((t) {
-        Expression<bool>? condition;
-        
-        if (query.accountId != null) {
-          condition = t.accountId.equals(query.accountId!);
-        }
-        if (query.category != null) {
-          final catCondition = t.category.equals(query.category!);
-          condition = condition == null ? catCondition : condition & catCondition;
-        }
-        if (query.startDate != null) {
-          final startCondition = t.timestamp.isBiggerOrEqualValue(query.startDate!);
-          condition = condition == null ? startCondition : condition & startCondition;
-        }
-        if (query.endDate != null) {
-          final endCondition = t.timestamp.isSmallerOrEqualValue(query.endDate!);
-          condition = condition == null ? endCondition : condition & endCondition;
-        }
-        
-        return condition ?? const Constant(true);
-      });
+      selectQuery = selectQuery
+        ..where((t) {
+          Expression<bool>? condition;
+
+          if (query.accountId != null) {
+            condition = t.accountId.equals(query.accountId!);
+          }
+          if (query.category != null) {
+            final catCondition = t.category.equals(query.category!);
+            condition = condition == null
+                ? catCondition
+                : condition & catCondition;
+          }
+          if (query.startDate != null) {
+            final startCondition = t.timestamp.isBiggerOrEqualValue(
+              query.startDate!,
+            );
+            condition = condition == null
+                ? startCondition
+                : condition & startCondition;
+          }
+          if (query.endDate != null) {
+            final endCondition = t.timestamp.isSmallerOrEqualValue(
+              query.endDate!,
+            );
+            condition = condition == null
+                ? endCondition
+                : condition & endCondition;
+          }
+
+          return condition ?? const Constant(true);
+        });
 
       // Order by timestamp descending (newest first)
-      selectQuery = selectQuery..orderBy([
-        (t) => OrderingTerm.desc(t.timestamp),
-      ]);
+      selectQuery = selectQuery
+        ..orderBy([(t) => OrderingTerm.desc(t.timestamp)]);
 
       // Apply limit and offset
       if (query.limit != null) {
-        selectQuery = selectQuery..limit(query.limit!, offset: query.offset ?? 0);
+        selectQuery = selectQuery
+          ..limit(query.limit!, offset: query.offset ?? 0);
       }
 
       final results = await selectQuery.get();
@@ -64,10 +78,10 @@ class LocalTransactionsRepository implements TransactionsRepository {
   @override
   Future<Result<Transaction>> fetchById(String id) async {
     try {
-      final result = await (_db.select(_db.transactionEntries)
-        ..where((t) => t.uuid.equals(id)))
-        .getSingleOrNull();
-      
+      final result = await (_db.select(
+        _db.transactionEntries,
+      )..where((t) => t.uuid.equals(id))).getSingleOrNull();
+
       if (result == null) {
         return Err(Exception('Transaction not found'), StackTrace.current);
       }
@@ -90,21 +104,23 @@ class LocalTransactionsRepository implements TransactionsRepository {
     try {
       final uuid = _uuid.v4();
       final now = DateTime.now();
-      
-      await _db.into(_db.transactionEntries).insert(
-        TransactionEntriesCompanion.insert(
-          uuid: uuid,
-          accountId: accountId,
-          timestamp: timestamp,
-          amountCents: amountCents,
-          description: description,
-          category: category,
-          tags: Value(jsonEncode(tags)),
-          receiptUrl: Value(receiptUrl),
-          syncStatus: const Value('pending'),
-          createdAt: Value(now),
-        ),
-      );
+
+      await _db
+          .into(_db.transactionEntries)
+          .insert(
+            TransactionEntriesCompanion.insert(
+              uuid: uuid,
+              accountId: accountId,
+              timestamp: timestamp,
+              amountCents: amountCents,
+              description: description,
+              category: category,
+              tags: Value(jsonEncode(tags)),
+              receiptUrl: Value(receiptUrl),
+              syncStatus: const Value('pending'),
+              createdAt: Value(now),
+            ),
+          );
 
       final transaction = Transaction(
         id: uuid,
@@ -128,9 +144,10 @@ class LocalTransactionsRepository implements TransactionsRepository {
   Future<Result<Transaction>> update(Transaction transaction) async {
     try {
       final now = DateTime.now();
-      await (_db.update(_db.transactionEntries)
-        ..where((t) => t.uuid.equals(transaction.id)))
-        .write(TransactionEntriesCompanion(
+      await (_db.update(
+        _db.transactionEntries,
+      )..where((t) => t.uuid.equals(transaction.id))).write(
+        TransactionEntriesCompanion(
           accountId: Value(transaction.accountId),
           timestamp: Value(transaction.timestamp),
           amountCents: Value(transaction.amountCents),
@@ -140,7 +157,8 @@ class LocalTransactionsRepository implements TransactionsRepository {
           receiptUrl: Value(transaction.receiptUrl),
           syncStatus: const Value('pending'),
           updatedAt: Value(now),
-        ));
+        ),
+      );
 
       return Ok(transaction);
     } catch (e, s) {
@@ -151,9 +169,9 @@ class LocalTransactionsRepository implements TransactionsRepository {
   @override
   Future<Result<void>> delete(String id) async {
     try {
-      await (_db.delete(_db.transactionEntries)
-        ..where((t) => t.uuid.equals(id)))
-        .go();
+      await (_db.delete(
+        _db.transactionEntries,
+      )..where((t) => t.uuid.equals(id))).go();
       return const Ok(null);
     } catch (e, s) {
       return Err(e, s);
@@ -220,9 +238,9 @@ class LocalTransactionsRepository implements TransactionsRepository {
   /// Get transactions with pending sync status (for offline-outbox)
   Future<List<Transaction>> getPendingSync() async {
     try {
-      final results = await (_db.select(_db.transactionEntries)
-        ..where((t) => t.syncStatus.equals('pending')))
-        .get();
+      final results = await (_db.select(
+        _db.transactionEntries,
+      )..where((t) => t.syncStatus.equals('pending'))).get();
       return results.map(_mapToTransaction).toList();
     } catch (_) {
       return [];
@@ -231,12 +249,14 @@ class LocalTransactionsRepository implements TransactionsRepository {
 
   /// Mark transaction as synced
   Future<void> markSynced(String id) async {
-    await (_db.update(_db.transactionEntries)
-      ..where((t) => t.uuid.equals(id)))
-      .write(TransactionEntriesCompanion(
+    await (_db.update(
+      _db.transactionEntries,
+    )..where((t) => t.uuid.equals(id))).write(
+      TransactionEntriesCompanion(
         syncStatus: const Value('synced'),
         updatedAt: Value(DateTime.now()),
-      ));
+      ),
+    );
   }
 
   /// Watch transactions stream for reactive UI
@@ -272,4 +292,3 @@ class LocalTransactionsRepository implements TransactionsRepository {
     );
   }
 }
-

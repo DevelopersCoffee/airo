@@ -220,7 +220,7 @@ class DioClient {
         originalError: e,
         originalStack: e.stackTrace,
       ),
-      401 => AuthError(
+      401 => AuthenticationError(
         'Unauthorized: $message',
         statusCode: statusCode,
         originalError: e,

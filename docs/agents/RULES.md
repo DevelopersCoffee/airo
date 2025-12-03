@@ -169,6 +169,62 @@ An agent task is DONE when:
 
 ---
 
+## 🌐 Web Platform Rules
+
+### Web Build Compatibility
+When adding new features, ensure web platform compatibility:
+
+1. **No dart:ffi on Web** - Native SQLite/Drift won't work on web
+2. **Create stub files** for platform-specific code:
+   - `*_stub.dart` - Web-compatible no-op implementations
+   - Use conditional imports: `if (dart.library.html)`
+3. **Test web build** before committing: `cd app && flutter build web --release`
+
+### Stub File Pattern
+```dart
+// file.dart (main)
+import 'file_stub.dart' if (dart.library.io) 'file_native.dart';
+
+// file_stub.dart (web - no-op)
+class MyService {
+  Future<void> doThing() async {} // No-op for web
+}
+
+// file_native.dart (mobile/desktop)
+class MyService {
+  Future<void> doThing() async { /* actual impl */ }
+}
+```
+
+### Web Platform Files Created
+- `app/lib/core/database/app_database_stub.dart`
+- `app/lib/features/money/data/repositories/local_*_repository_stub.dart`
+- `app/lib/features/money/application/services/*_service_stub.dart`
+
+---
+
+## 🔥 Firebase Integration Rules
+
+### Firebase Project Details
+- **Project Name**: Airo
+- **Android SHA-1**: `8A:07:B9:45:21:18:F6:D7:7E:C5:77:2F:34:DE:A5:14:4D:03:E0:53`
+- **Android Package**: `com.example.airo`
+
+### Firebase Setup Checklist
+- [x] Firebase project created
+- [x] Google Sign-In enabled in Authentication
+- [x] Firestore database created (production mode)
+- [x] SHA-1 fingerprint added for Android
+- [ ] Firebase packages added (see Issue #53)
+- [ ] Web config added to `web/index.html`
+- [ ] `google-services.json` for Android
+- [ ] `GoogleService-Info.plist` for iOS
+
+### Pending Firebase Tasks
+See **Issue #53**: [Add Firebase Authentication with Google Sign-In](https://github.com/DevelopersCoffee/airo/issues/53)
+
+---
+
 ## 📚 Related Documents
 
 - [SDLC Process](./SDLC.md) - Development workflow

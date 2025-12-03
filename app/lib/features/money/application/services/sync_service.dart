@@ -2,7 +2,9 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 
-import '../../data/repositories/local_transactions_repository.dart';
+// Conditional imports for native platforms only
+import '../../data/repositories/local_transactions_repository.dart'
+    if (dart.library.html) '../../data/repositories/local_transactions_repository_stub.dart';
 import '../../domain/models/money_models.dart';
 
 /// Service for syncing local data with remote server
@@ -10,7 +12,7 @@ import '../../domain/models/money_models.dart';
 class SyncService {
   final LocalTransactionsRepository _transactionsRepo;
   final Connectivity _connectivity;
-  
+
   Timer? _syncTimer;
   bool _isSyncing = false;
   int _retryCount = 0;
@@ -23,13 +25,13 @@ class SyncService {
   Stream<SyncState> get syncStatus => _syncStatusController.stream;
 
   SyncService(this._transactionsRepo, [Connectivity? connectivity])
-      : _connectivity = connectivity ?? Connectivity();
+    : _connectivity = connectivity ?? Connectivity();
 
   /// Start periodic sync
   void startPeriodicSync() {
     _syncTimer?.cancel();
     _syncTimer = Timer.periodic(_syncInterval, (_) => sync());
-    
+
     // Also sync when connectivity changes
     _connectivity.onConnectivityChanged.listen((result) {
       if (result != ConnectivityResult.none) {
@@ -73,7 +75,7 @@ class SyncService {
 
       // Get pending transactions
       final pendingTransactions = await _transactionsRepo.getPendingSync();
-      
+
       if (pendingTransactions.isEmpty) {
         _syncStatusController.add(SyncState.synced);
         _retryCount = 0;
@@ -93,7 +95,7 @@ class SyncService {
         try {
           // TODO: Replace with actual API call
           final success = await _syncTransaction(transaction);
-          
+
           if (success) {
             await _transactionsRepo.markSynced(transaction.id);
             syncedCount++;
@@ -121,7 +123,7 @@ class SyncService {
 
       return SyncResult(
         success: failedCount == 0,
-        message: failedCount == 0 
+        message: failedCount == 0
             ? 'Synced $syncedCount transactions'
             : 'Synced $syncedCount, failed $failedCount',
         syncedCount: syncedCount,
@@ -158,14 +160,7 @@ class SyncService {
 }
 
 /// Sync states
-enum SyncState {
-  idle,
-  syncing,
-  synced,
-  retrying,
-  error,
-  offline,
-}
+enum SyncState { idle, syncing, synced, retrying, error, offline }
 
 /// Result of a sync operation
 class SyncResult {
@@ -184,6 +179,6 @@ class SyncResult {
   });
 
   @override
-  String toString() => 'SyncResult(success: $success, synced: $syncedCount, failed: $failedCount)';
+  String toString() =>
+      'SyncResult(success: $success, synced: $syncedCount, failed: $failedCount)';
 }
-

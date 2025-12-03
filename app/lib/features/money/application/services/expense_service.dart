@@ -1,7 +1,11 @@
-import '../../../../core/database/app_database.dart';
+// Conditional imports for native platforms only
+import '../../../../core/database/app_database.dart'
+    if (dart.library.html) '../../../../core/database/app_database_stub.dart';
 import '../../../../core/utils/result.dart';
-import '../../data/repositories/local_budgets_repository.dart';
-import '../../data/repositories/local_transactions_repository.dart';
+import '../../data/repositories/local_budgets_repository.dart'
+    if (dart.library.html) '../../data/repositories/local_budgets_repository_stub.dart';
+import '../../data/repositories/local_transactions_repository.dart'
+    if (dart.library.html) '../../data/repositories/local_transactions_repository_stub.dart';
 import '../../domain/models/money_models.dart';
 
 /// Service for managing expenses with budget deduction
@@ -132,7 +136,8 @@ class SaveExpenseResult {
   });
 
   /// Check if budget limit was exceeded
-  bool get isBudgetExceeded => budgetStatus == BudgetDeductionStatus.exceededLimit;
+  bool get isBudgetExceeded =>
+      budgetStatus == BudgetDeductionStatus.exceededLimit;
 
   /// Check if there was a matching budget
   bool get hasBudget => budgetStatus != BudgetDeductionStatus.noBudget;
@@ -142,14 +147,13 @@ class SaveExpenseResult {
 enum BudgetDeductionStatus {
   /// Successfully deducted from budget, within limit
   success,
-  
+
   /// Successfully deducted, but budget limit exceeded
   exceededLimit,
-  
+
   /// No budget exists for this category
   noBudget,
-  
+
   /// Error occurred during deduction
   error,
 }
-

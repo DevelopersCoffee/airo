@@ -10,8 +10,8 @@ class AiroApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp.router(
       title: 'Airo Super App',
-      theme: PlatformConfig.adjustThemeForPlatform(AppTheme.lightTheme),
-      darkTheme: PlatformConfig.adjustThemeForPlatform(AppTheme.darkTheme),
+      theme: PlatformConfig.adjustThemeForPlatform(AppTheme.light),
+      darkTheme: PlatformConfig.adjustThemeForPlatform(AppTheme.dark),
       themeMode: ThemeMode.system,
       routerConfig: AppRouter.router,
       debugShowCheckedModeBanner: false,
