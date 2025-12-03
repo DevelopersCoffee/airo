@@ -163,6 +163,11 @@ class AuthService {
     await _prefs?.setBool(_keyIsLoggedIn, false);
   }
 
+  /// Set Google user (called from GoogleAuthService)
+  Future<void> setGoogleUser(User user) async {
+    await _setCurrentUser(user);
+  }
+
   /// Get all registered users (admin only)
   Future<List<User>> getRegisteredUsers() async {
     if (currentUser?.isAdmin != true) {
@@ -213,14 +218,20 @@ class User {
   final String id;
   final String username;
   final String? password; // Only stored for demo purposes
+  final String? email;
+  final String? photoUrl;
   final bool isAdmin;
+  final bool isGoogleUser;
   final DateTime createdAt;
 
   const User({
     required this.id,
     required this.username,
     this.password,
+    this.email,
+    this.photoUrl,
     required this.isAdmin,
+    this.isGoogleUser = false,
     required this.createdAt,
   });
 
@@ -229,7 +240,10 @@ class User {
       'id': id,
       'username': username,
       'password': password,
+      'email': email,
+      'photoUrl': photoUrl,
       'isAdmin': isAdmin,
+      'isGoogleUser': isGoogleUser,
       'createdAt': createdAt.toIso8601String(),
     };
   }
@@ -239,7 +253,10 @@ class User {
       id: json['id'],
       username: json['username'],
       password: json['password'],
+      email: json['email'],
+      photoUrl: json['photoUrl'],
       isAdmin: json['isAdmin'] ?? false,
+      isGoogleUser: json['isGoogleUser'] ?? false,
       createdAt: DateTime.parse(json['createdAt']),
     );
   }
@@ -248,21 +265,27 @@ class User {
     String? id,
     String? username,
     String? password,
+    String? email,
+    String? photoUrl,
     bool? isAdmin,
+    bool? isGoogleUser,
     DateTime? createdAt,
   }) {
     return User(
       id: id ?? this.id,
       username: username ?? this.username,
       password: password ?? this.password,
+      email: email ?? this.email,
+      photoUrl: photoUrl ?? this.photoUrl,
       isAdmin: isAdmin ?? this.isAdmin,
+      isGoogleUser: isGoogleUser ?? this.isGoogleUser,
       createdAt: createdAt ?? this.createdAt,
     );
   }
 
   @override
   String toString() {
-    return 'User(id: $id, username: $username, isAdmin: $isAdmin)';
+    return 'User(id: $id, username: $username, email: $email, isAdmin: $isAdmin, isGoogleUser: $isGoogleUser)';
   }
 }
 

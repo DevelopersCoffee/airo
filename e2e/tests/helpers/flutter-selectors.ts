@@ -5,6 +5,18 @@ import { Page, Locator } from '@playwright/test';
  * Flutter with HTML renderer exposes widgets via flt-semantics elements
  */
 
+// Login Screen Test IDs (must match Dart LoginTestIds)
+export const LoginTestIds = {
+  screen: 'login-screen',
+  usernameInput: 'login-username-input',
+  passwordInput: 'login-password-input',
+  signInButton: 'login-sign-in-button',
+  googleSignInButton: 'login-google-sign-in-button',
+  registerLink: 'login-register-link',
+  demoCredentialsButton: 'login-demo-credentials-button',
+  errorMessage: 'login-error-message',
+} as const;
+
 // Bill Split Screen Test IDs (must match Dart BillSplitTestIds)
 export const BillSplitTestIds = {
   screen: 'bill-split-screen',

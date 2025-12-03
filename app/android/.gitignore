@@ -13,5 +13,5 @@ key.properties
 **/*.keystore
 **/*.jks
 
-# Google Services (Firebase) - contains API keys
+# Google Services (Firebase) - use GitHub Secrets for CI/CD
 app/google-services.json

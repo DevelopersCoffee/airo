@@ -1,10 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/auth/auth_service.dart';
+import '../../../core/auth/google_auth_service.dart';
 import '../../../core/config/app_config.dart';
 import '../../../core/routing/route_names.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../../../shared/widgets/custom_text_field.dart';
+
+/// Test IDs for login screen - used by Playwright E2E tests
+class LoginTestIds {
+  static const screen = 'login-screen';
+  static const usernameInput = 'login-username-input';
+  static const passwordInput = 'login-password-input';
+  static const signInButton = 'login-sign-in-button';
+  static const googleSignInButton = 'login-google-sign-in-button';
+  static const registerLink = 'login-register-link';
+  static const demoCredentialsButton = 'login-demo-credentials-button';
+  static const errorMessage = 'login-error-message';
+}
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -18,6 +31,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isLoading = false;
+  bool _isGoogleLoading = false;
   String? _errorMessage;
 
   @override
@@ -75,10 +89,43 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  Future<void> _signInWithGoogle() async {
+    setState(() {
+      _isGoogleLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final result = await GoogleAuthService.instance.signInWithGoogle();
+
+      if (result.success) {
+        if (mounted) {
+          context.go(RouteNames.home);
+        }
+      } else {
+        setState(() {
+          _errorMessage = result.message;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _errorMessage = 'Google Sign-In failed: ${e.toString()}';
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isGoogleLoading = false;
+        });
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: SafeArea(
+    return Semantics(
+      label: LoginTestIds.screen,
+      child: Scaffold(
+        body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(24.0),
           child: Form(
@@ -186,14 +233,54 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 16),
 
+                // Divider with "or"
+                Row(
+                  children: [
+                    Expanded(
+                      child: Divider(
+                        color: Theme.of(context).colorScheme.outlineVariant,
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Text(
+                        'or',
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color:
+                                  Theme.of(context).colorScheme.onSurfaceVariant,
+                            ),
+                      ),
+                    ),
+                    Expanded(
+                      child: Divider(
+                        color: Theme.of(context).colorScheme.outlineVariant,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+
+                // Google Sign-In button
+                Semantics(
+                  label: LoginTestIds.googleSignInButton,
+                  child: _GoogleSignInButton(
+                    onPressed: _signInWithGoogle,
+                    isLoading: _isGoogleLoading,
+                  ),
+                ),
+                const SizedBox(height: 16),
+
                 // Demo quick login (only in dev/demo mode)
                 if (DemoCredentials.isEnabled)
-                  OutlinedButton.icon(
-                    onPressed: _fillDemoCredentials,
-                    icon: const Icon(Icons.science, size: 18),
-                    label: const Text('Fill Demo Credentials'),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
+                  Semantics(
+                    label: LoginTestIds.demoCredentialsButton,
+                    child: OutlinedButton.icon(
+                      onPressed: _fillDemoCredentials,
+                      icon: const Icon(Icons.science, size: 18),
+                      label: const Text('Fill Demo Credentials'),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
                     ),
                   ),
                 const SizedBox(height: 32),
@@ -206,9 +293,12 @@ class _LoginScreenState extends State<LoginScreen> {
                       "Don't have an account? ",
                       style: Theme.of(context).textTheme.bodyMedium,
                     ),
-                    TextButton(
-                      onPressed: _navigateToRegister,
-                      child: const Text('Sign Up'),
+                    Semantics(
+                      label: LoginTestIds.registerLink,
+                      child: TextButton(
+                        onPressed: _navigateToRegister,
+                        child: const Text('Sign Up'),
+                      ),
                     ),
                   ],
                 ),
@@ -260,6 +350,68 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Google Sign-In button widget
+class _GoogleSignInButton extends StatelessWidget {
+  const _GoogleSignInButton({
+    required this.onPressed,
+    required this.isLoading,
+  });
+
+  final VoidCallback onPressed;
+  final bool isLoading;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      child: OutlinedButton(
+        onPressed: isLoading ? null : onPressed,
+        style: OutlinedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          side: BorderSide(
+            color: Theme.of(context).colorScheme.outline,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+        child: isLoading
+            ? SizedBox(
+                height: 20,
+                width: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+              )
+            : Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // Google logo
+                  Image.network(
+                    'https://www.google.com/favicon.ico',
+                    height: 20,
+                    width: 20,
+                    errorBuilder: (context, error, stackTrace) => Icon(
+                      Icons.g_mobiledata,
+                      size: 24,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    'Continue with Google',
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                          fontWeight: FontWeight.w500,
+                        ),
+                  ),
+                ],
+              ),
       ),
     );
   }

@@ -53,6 +53,11 @@ dependencies:
   # Networking
   dio: ^5.4.0
 
+  # Firebase & Authentication
+  firebase_core: ^3.8.1
+  firebase_auth: ^5.3.4
+  google_sign_in: ^6.2.2
+
   # Audio & Media
   audio_service: ^0.18.14
   just_audio: ^0.10.5
