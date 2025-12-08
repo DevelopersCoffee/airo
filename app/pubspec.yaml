@@ -41,7 +41,7 @@ dependencies:
   # Storage & Persistence
   shared_preferences: ^2.2.2
   drift: ^2.18.0
-  sqlite3_flutter_libs: ^0.5.24
+  sqlite3_flutter_libs: ^0.5.41
   hive: ^2.2.3
   hive_flutter: ^1.1.0
   path: ^1.9.0
@@ -99,7 +99,7 @@ dependencies:
   cached_network_image: ^3.4.1
   flutter_tts: ^4.2.3
   chess: ^0.8.1
-  stockfish: ^1.7.1
+  stockfish: ^1.7.2
   flutter_contacts: ^1.1.9+2
   permission_handler: ^12.0.0+1
   image_picker: ^1.2.1
