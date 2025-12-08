@@ -48,7 +48,7 @@ dependencies:
   path_provider: ^2.1.1
 
   # Connectivity
-  connectivity_plus: ^5.0.2
+  connectivity_plus: ^7.0.0
 
   # Networking
   dio: ^5.4.0
