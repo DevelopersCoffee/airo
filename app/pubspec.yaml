@@ -54,8 +54,8 @@ dependencies:
   dio: ^5.4.0
 
   # Firebase & Authentication
-  firebase_core: ^3.8.1
-  firebase_auth: ^5.3.4
+  firebase_core: ^4.2.1
+  firebase_auth: ^6.1.2
   google_sign_in: ^6.2.2
 
   # Audio & Media
