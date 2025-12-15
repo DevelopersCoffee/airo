@@ -127,13 +127,13 @@ jobs:
             --dart-define=DEMO_MODE=false
 
       - name: Upload APK
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: android-apk
           path: app/build/app/outputs/flutter-apk/app-release.apk
 
       - name: Upload AAB
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: android-aab
           path: app/build/app/outputs/bundle/release/app-release.aab
@@ -186,7 +186,7 @@ jobs:
           mv app-release.ipa ../../../
 
       - name: Upload IPA
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: ios-ipa
           path: app/app-release.ipa
@@ -236,7 +236,7 @@ jobs:
           zip -r -q ../../airo-web-release.zip .
 
       - name: Upload Web
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: web-build
           path: app/airo-web-release.zip
@@ -277,7 +277,7 @@ jobs:
           powershell Compress-Archive -Path . -DestinationPath ../../../../../airo-windows-release.zip
 
       - name: Upload Windows
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: windows-build
           path: app/airo-windows-release.zip
@@ -332,7 +332,7 @@ jobs:
           tar -czf ../../../../airo-linux-release.tar.gz .
 
       - name: Upload Linux
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: linux-build
           path: app/airo-linux-release.tar.gz
