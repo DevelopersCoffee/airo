@@ -32,16 +32,16 @@ dependencies:
     sdk: flutter
 
   # Routing & Navigation
-  go_router: ^17.0.0
+  go_router: ^17.0.1
 
   # State Management
   riverpod: ^2.6.1
   flutter_riverpod: ^2.6.1
 
   # Storage & Persistence
-  shared_preferences: ^2.2.2
+  shared_preferences: ^2.5.4
   drift: ^2.18.0
-  sqlite3_flutter_libs: ^0.5.24
+  sqlite3_flutter_libs: ^0.5.41
   hive: ^2.2.3
   hive_flutter: ^1.1.0
   path: ^1.9.0
@@ -87,19 +87,19 @@ dependencies:
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
-  equatable: ^2.0.7
+  equatable: ^2.0.8
   flame: ^1.34.0
   flame_audio: ^2.11.12
   share_plus: ^12.0.1
   url_launcher: ^6.3.2
-  file_picker: ^10.3.7
+  file_picker: ^10.3.8
   flutter_local_notifications: ^19.5.0
   timezone: ^0.10.1
   audioplayers: ^6.5.1
   cached_network_image: ^3.4.1
-  flutter_tts: ^4.2.3
+  flutter_tts: ^4.2.4
   chess: ^0.8.1
-  stockfish: ^1.7.1
+  stockfish: ^1.7.2
   flutter_contacts: ^1.1.9+2
   permission_handler: ^12.0.0+1
   image_picker: ^1.2.1
