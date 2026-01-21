@@ -1,6 +1,10 @@
 import 'package:meta/meta.dart';
 
-import 'failure.dart';
+import 'failure.dart' as failures;
+
+/// Type alias for the base Failure class from failure.dart
+/// This distinguishes it from the Failure<T> result wrapper class
+typedef BaseFailure = failures.Failure;
 
 /// A Result type that represents either a success value or a failure.
 ///
@@ -20,13 +24,14 @@ sealed class Result<T> {
   T get value {
     return switch (this) {
       Success<T>(:final value) => value,
-      Failure<T>(:final failure) =>
-        throw StateError('Cannot get value from failure: $failure'),
+      Failure<T>(:final failure) => throw StateError(
+        'Cannot get value from failure: $failure',
+      ),
     };
   }
 
   /// Gets the failure or throws if this is a success
-  Failure get failure {
+  BaseFailure get failure {
     return switch (this) {
       Success<T>() => throw StateError('Cannot get failure from success'),
       Failure<T>(:final failure) => failure,
@@ -35,31 +40,30 @@ sealed class Result<T> {
 
   /// Gets the success value or null if this is a failure
   T? get valueOrNull => switch (this) {
-        Success<T>(:final value) => value,
-        Failure<T>() => null,
-      };
+    Success<T>(:final value) => value,
+    Failure<T>() => null,
+  };
 
   /// Maps the success value using the provided function
   Result<R> map<R>(R Function(T value) mapper) => switch (this) {
-        Success<T>(:final value) => Success(mapper(value)),
-        Failure<T>(:final failure) => Failure(failure),
-      };
+    Success<T>(:final value) => Success(mapper(value)),
+    Failure<T>(:final failure) => Failure(failure),
+  };
 
   /// Flat maps the success value using the provided function
   Result<R> flatMap<R>(Result<R> Function(T value) mapper) => switch (this) {
-        Success<T>(:final value) => mapper(value),
-        Failure<T>(:final failure) => Failure(failure),
-      };
+    Success<T>(:final value) => mapper(value),
+    Failure<T>(:final failure) => Failure(failure),
+  };
 
   /// Executes the appropriate callback based on success or failure
   R fold<R>({
     required R Function(T value) onSuccess,
-    required R Function(Failure failure) onFailure,
-  }) =>
-      switch (this) {
-        Success<T>(:final value) => onSuccess(value),
-        Failure<T>(:final failure) => onFailure(failure),
-      };
+    required R Function(BaseFailure failure) onFailure,
+  }) => switch (this) {
+    Success<T>(:final value) => onSuccess(value),
+    Failure<T>(:final failure) => onFailure(failure),
+  };
 
   /// Executes side effect on success
   Result<T> onSuccess(void Function(T value) action) {
@@ -70,7 +74,7 @@ sealed class Result<T> {
   }
 
   /// Executes side effect on failure
-  Result<T> onFailure(void Function(Failure failure) action) {
+  Result<T> onFailure(void Function(BaseFailure failure) action) {
     if (this case Failure<T>(:final failure)) {
       action(failure);
     }
@@ -103,7 +107,7 @@ final class Failure<T> extends Result<T> {
   const Failure(this.failure);
 
   @override
-  final Failure failure;
+  final BaseFailure failure;
 
   @override
   String toString() => 'Failure($failure)';
@@ -115,4 +119,3 @@ final class Failure<T> extends Result<T> {
   @override
   int get hashCode => failure.hashCode;
 }
-

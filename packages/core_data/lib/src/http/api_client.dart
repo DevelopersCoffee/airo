@@ -11,13 +11,13 @@ class ApiClient {
     Duration? receiveTimeout,
     Map<String, String>? defaultHeaders,
   }) : _dio = Dio(
-          BaseOptions(
-            baseUrl: baseUrl,
-            connectTimeout: connectTimeout ?? const Duration(seconds: 30),
-            receiveTimeout: receiveTimeout ?? const Duration(seconds: 30),
-            headers: defaultHeaders,
-          ),
-        );
+         BaseOptions(
+           baseUrl: baseUrl,
+           connectTimeout: connectTimeout ?? const Duration(seconds: 30),
+           receiveTimeout: receiveTimeout ?? const Duration(seconds: 30),
+           headers: defaultHeaders,
+         ),
+       );
 
   final Dio _dio;
 
@@ -31,11 +31,10 @@ class ApiClient {
     String path, {
     Map<String, dynamic>? queryParams,
     T Function(dynamic data)? parser,
-  }) async =>
-      _executeRequest(
-        () => _dio.get<dynamic>(path, queryParameters: queryParams),
-        parser: parser,
-      );
+  }) async => _executeRequest(
+    () => _dio.get<dynamic>(path, queryParameters: queryParams),
+    parser: parser,
+  );
 
   /// POST request
   Future<Result<T>> post<T>(
@@ -43,11 +42,10 @@ class ApiClient {
     dynamic data,
     Map<String, dynamic>? queryParams,
     T Function(dynamic data)? parser,
-  }) async =>
-      _executeRequest(
-        () => _dio.post<dynamic>(path, data: data, queryParameters: queryParams),
-        parser: parser,
-      );
+  }) async => _executeRequest(
+    () => _dio.post<dynamic>(path, data: data, queryParameters: queryParams),
+    parser: parser,
+  );
 
   /// PUT request
   Future<Result<T>> put<T>(
@@ -55,22 +53,20 @@ class ApiClient {
     dynamic data,
     Map<String, dynamic>? queryParams,
     T Function(dynamic data)? parser,
-  }) async =>
-      _executeRequest(
-        () => _dio.put<dynamic>(path, data: data, queryParameters: queryParams),
-        parser: parser,
-      );
+  }) async => _executeRequest(
+    () => _dio.put<dynamic>(path, data: data, queryParameters: queryParams),
+    parser: parser,
+  );
 
   /// DELETE request
   Future<Result<T>> delete<T>(
     String path, {
     Map<String, dynamic>? queryParams,
     T Function(dynamic data)? parser,
-  }) async =>
-      _executeRequest(
-        () => _dio.delete<dynamic>(path, queryParameters: queryParams),
-        parser: parser,
-      );
+  }) async => _executeRequest(
+    () => _dio.delete<dynamic>(path, queryParameters: queryParams),
+    parser: parser,
+  );
 
   /// PATCH request
   Future<Result<T>> patch<T>(
@@ -78,11 +74,10 @@ class ApiClient {
     dynamic data,
     Map<String, dynamic>? queryParams,
     T Function(dynamic data)? parser,
-  }) async =>
-      _executeRequest(
-        () => _dio.patch<dynamic>(path, data: data, queryParameters: queryParams),
-        parser: parser,
-      );
+  }) async => _executeRequest(
+    () => _dio.patch<dynamic>(path, data: data, queryParameters: queryParams),
+    parser: parser,
+  );
 
   Future<Result<T>> _executeRequest<T>(
     Future<Response<dynamic>> Function() request, {
@@ -105,7 +100,7 @@ class ApiClient {
     }
   }
 
-  Failure _mapDioException(DioException e) {
+  BaseFailure _mapDioException(DioException e) {
     switch (e.type) {
       case DioExceptionType.connectionTimeout:
       case DioExceptionType.sendTimeout:
@@ -135,4 +130,3 @@ class ApiClient {
     }
   }
 }
-

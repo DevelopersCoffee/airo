@@ -23,13 +23,11 @@ void main() {
     return ProviderScope(
       overrides: [
         appDatabaseProvider.overrideWithValue(db),
-        localBudgetsRepositoryProvider.overrideWith(
+        budgetsRepositoryProvider.overrideWith(
           (ref) => LocalBudgetsRepository(db),
         ),
       ],
-      child: const MaterialApp(
-        home: BudgetsScreen(),
-      ),
+      child: const MaterialApp(home: BudgetsScreen()),
     );
   }
 
@@ -39,7 +37,10 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('No budgets yet'), findsOneWidget);
-      expect(find.text('Create budgets to track your spending'), findsOneWidget);
+      expect(
+        find.text('Create budgets to track your spending'),
+        findsOneWidget,
+      );
       expect(find.text('Create Budget'), findsOneWidget);
     });
 
@@ -137,4 +138,3 @@ void main() {
     });
   });
 }
-

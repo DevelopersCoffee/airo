@@ -402,9 +402,9 @@ final budgetsRepositoryProvider = Provider<BudgetsRepository>((ref) {
 
 /// Expense service for transactional operations
 final expenseServiceProvider = Provider<ExpenseService>((ref) {
-  // On web, use stub service
+  // On web, use stub service (stub accepts dynamic parameters)
   if (kIsWeb) {
-    return ExpenseService(null, null, null);
+    return (ExpenseService as dynamic)(null, null, null) as ExpenseService;
   }
   // On native platforms, use real service with database
   final db = ref.watch(appDatabaseProvider);
@@ -468,11 +468,12 @@ final budgetsStreamProvider = StreamProvider<List<Budget>>((ref) {
 
 /// Insights service provider
 final insightsServiceProvider = Provider<InsightsService>((ref) {
-  // On web, use stub service
+  // On web, use stub service (stub accepts dynamic parameters)
   if (kIsWeb) {
     return InsightsService(
-      LocalTransactionsRepository(null),
-      LocalBudgetsRepository(null),
+      (LocalTransactionsRepository as dynamic)(null)
+          as LocalTransactionsRepository,
+      (LocalBudgetsRepository as dynamic)(null) as LocalBudgetsRepository,
     );
   }
   // On native, use real service
@@ -485,9 +486,12 @@ final insightsServiceProvider = Provider<InsightsService>((ref) {
 
 /// Sync service provider
 final syncServiceProvider = Provider<SyncService>((ref) {
-  // On web, use stub service
+  // On web, use stub service (stub accepts dynamic parameters)
   if (kIsWeb) {
-    final service = SyncService(LocalTransactionsRepository(null));
+    final service = SyncService(
+      (LocalTransactionsRepository as dynamic)(null)
+          as LocalTransactionsRepository,
+    );
     ref.onDispose(() => service.dispose());
     return service;
   }

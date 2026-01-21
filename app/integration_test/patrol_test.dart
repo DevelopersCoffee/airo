@@ -5,23 +5,23 @@ import 'package:airo_app/features/bill_split/presentation/screens/bill_split_scr
 import 'package:airo_app/features/bill_split/presentation/screens/itemized_split_screen.dart';
 
 /// Patrol E2E tests for Airo app - iOS/Android device testing
-/// 
+///
 /// Run with:
 ///   patrol test -t integration_test/patrol_test.dart
-/// 
+///
 /// For Android:
 ///   patrol test -t integration_test/patrol_test.dart --target android
-/// 
+///
 /// For iOS:
 ///   patrol test -t integration_test/patrol_test.dart --target ios
-/// 
+///
 /// Testing Strategy:
 /// 1. Playwright tests (browser) → 2. Patrol tests (device) → 3. Deploy
 
 void main() {
   patrolTest('Bill Split - Complete flow on device', ($) async {
     // Launch the app
-    await app.main();
+    app.main();
     await $.pumpAndSettle();
 
     // Navigate to Coins tab
@@ -38,7 +38,7 @@ void main() {
   });
 
   patrolTest('Bill Split - Add participant and enter amount', ($) async {
-    await app.main();
+    app.main();
     await $.pumpAndSettle();
 
     await $(#coins_tab).tap();
@@ -65,7 +65,7 @@ void main() {
   });
 
   patrolTest('Itemized Split - Open and verify UI', ($) async {
-    await app.main();
+    app.main();
     await $.pumpAndSettle();
 
     await $(#coins_tab).tap();
@@ -90,7 +90,7 @@ void main() {
   });
 
   patrolTest('Itemized Split - Camera permission and photo capture', ($) async {
-    await app.main();
+    app.main();
     await $.pumpAndSettle();
 
     await $(#coins_tab).tap();
@@ -111,7 +111,7 @@ void main() {
 
     // Tap camera button (will request permission on device)
     await $(ItemizedSplitTestIds.cameraButton).tap();
-    
+
     // Handle native camera permission dialog
     if (await $.native.isPermissionDialogVisible()) {
       await $.native.grantPermissionWhenInUse();
@@ -122,7 +122,7 @@ void main() {
   });
 
   patrolTest('Itemized Split - Gallery selection', ($) async {
-    await app.main();
+    app.main();
     await $.pumpAndSettle();
 
     await $(#coins_tab).tap();
@@ -143,11 +143,10 @@ void main() {
 
     // Tap gallery button
     await $(ItemizedSplitTestIds.galleryButton).tap();
-    
+
     // Handle native photo picker
     if (await $.native.isPermissionDialogVisible()) {
       await $.native.grantPermissionWhenInUse();
     }
   });
 }
-

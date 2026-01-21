@@ -5,6 +5,7 @@ import '../../data/repositories/local_budgets_repository.dart'
     if (dart.library.html) '../../data/repositories/local_budgets_repository_stub.dart';
 import '../../domain/models/money_models.dart';
 import '../../domain/models/insight_models.dart';
+import '../../domain/repositories/money_repositories.dart';
 
 /// Service for generating spending insights and analytics
 class InsightsService {
