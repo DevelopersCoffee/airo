@@ -1,24 +1,36 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:drift/drift.dart' hide isNotNull;
 import 'package:drift/native.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:airo_app/core/database/app_database.dart';
 import 'package:airo_app/core/utils/result.dart';
 import 'package:airo_app/features/money/data/repositories/local_transactions_repository.dart';
 import 'package:airo_app/features/money/data/repositories/local_budgets_repository.dart';
 import 'package:airo_app/features/money/application/services/expense_service.dart';
+import 'package:airo_app/features/money/application/services/audit_service.dart';
 
 void main() {
   late AppDatabase db;
   late LocalTransactionsRepository transactionsRepo;
   late LocalBudgetsRepository budgetsRepo;
+  late AuditService auditService;
   late ExpenseService expenseService;
 
   setUp(() {
+    // Initialize SharedPreferences with empty values for testing
+    SharedPreferences.setMockInitialValues({});
     // Create in-memory database for testing
     db = AppDatabase.forTesting(NativeDatabase.memory());
     transactionsRepo = LocalTransactionsRepository(db);
     budgetsRepo = LocalBudgetsRepository(db);
-    expenseService = ExpenseService(db, transactionsRepo, budgetsRepo);
+    auditService = AuditService(userId: 'test_user');
+    expenseService = ExpenseService(
+      db,
+      transactionsRepo,
+      budgetsRepo,
+      auditService,
+    );
   });
 
   tearDown(() async {
