@@ -97,7 +97,7 @@ dependencies:
   timezone: ^0.10.1
   audioplayers: ^6.5.1
   cached_network_image: ^3.4.1
-  flutter_tts: ^4.2.4
+  flutter_tts: ^4.2.5
   chess: ^0.8.1
   stockfish: ^1.7.2
   flutter_contacts: ^1.1.9+2

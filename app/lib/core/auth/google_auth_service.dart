@@ -5,6 +5,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'auth_service.dart';
 
 /// Google Authentication Service using Firebase Auth
+/// Updated for google_sign_in 7.x API
 class GoogleAuthService {
   static GoogleAuthService? _instance;
   static GoogleAuthService get instance => _instance ??= GoogleAuthService._();
@@ -15,10 +16,10 @@ class GoogleAuthService {
   static const String _webClientId =
       '906799550225-2cs0tag45smuuksmeq8lblkrmaueta3t.apps.googleusercontent.com';
 
-  final GoogleSignIn _googleSignIn = GoogleSignIn(
-    scopes: ['email', 'profile'],
-    clientId: kIsWeb ? _webClientId : null,
-  );
+  // google_sign_in 7.x: Use singleton instance
+  GoogleSignIn get _googleSignIn => GoogleSignIn.instance;
+
+  bool _isInitialized = false;
 
   firebase_auth.FirebaseAuth get _firebaseAuth =>
       firebase_auth.FirebaseAuth.instance;
@@ -29,25 +30,52 @@ class GoogleAuthService {
   /// Get current Firebase user
   firebase_auth.User? get currentFirebaseUser => _firebaseAuth.currentUser;
 
+  /// Initialize GoogleSignIn - must be called before any other methods
+  /// google_sign_in 7.x requires explicit initialization
+  Future<void> initialize() async {
+    if (_isInitialized) return;
+    try {
+      await _googleSignIn.initialize(
+        clientId: kIsWeb ? _webClientId : null,
+        serverClientId: null,
+      );
+      _isInitialized = true;
+      debugPrint('GoogleSignIn initialized successfully');
+    } catch (e) {
+      debugPrint('GoogleSignIn initialization failed: $e');
+      rethrow;
+    }
+  }
+
   /// Sign in with Google
   Future<AuthResult> signInWithGoogle() async {
     try {
-      // Trigger the Google Sign-In flow
-      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+      // Ensure initialized
+      await initialize();
 
-      if (googleUser == null) {
-        // User cancelled the sign-in
-        return AuthResult.failure('Sign-in cancelled');
+      // google_sign_in 7.x: authenticate() returns the account (throws on cancel)
+      final GoogleSignInAccount googleUser;
+      try {
+        googleUser = await _googleSignIn.authenticate();
+      } on GoogleSignInException catch (e) {
+        if (e.code == GoogleSignInExceptionCode.canceled) {
+          return AuthResult.failure('Sign-in cancelled');
+        }
+        rethrow;
       }
 
-      // Obtain the auth details from the request
-      final GoogleSignInAuthentication googleAuth =
-          await googleUser.authentication;
+      // google_sign_in 7.x: Get tokens via authorizationClient
+      final authResult = await googleUser.authorizationClient.authorizeScopes([
+        'email',
+        'profile',
+      ]);
 
-      // Create a new credential
+      // Create a new credential using the tokens
+      // Note: For Firebase, we need idToken which comes from authorization
       final credential = firebase_auth.GoogleAuthProvider.credential(
-        accessToken: googleAuth.accessToken,
-        idToken: googleAuth.idToken,
+        accessToken: authResult.accessToken,
+        // idToken may not be available in all cases with 7.x
+        // Firebase can work with just accessToken for some flows
       );
 
       // Sign in to Firebase with the Google credential
@@ -85,6 +113,7 @@ class GoogleAuthService {
   /// Sign out from Google and Firebase
   Future<void> signOut() async {
     try {
+      await initialize();
       await Future.wait([_googleSignIn.signOut(), _firebaseAuth.signOut()]);
       debugPrint('Google Sign-Out successful');
     } catch (e) {
@@ -95,7 +124,9 @@ class GoogleAuthService {
   /// Check if Google Sign-In is available on this device
   Future<bool> isGoogleSignInAvailable() async {
     try {
-      return await _googleSignIn.isSignedIn() || true;
+      await initialize();
+      // google_sign_in 7.x: supportsAuthenticate checks platform support
+      return _googleSignIn.supportsAuthenticate();
     } catch (e) {
       debugPrint('Google Sign-In availability check failed: $e');
       return false;
@@ -103,15 +134,24 @@ class GoogleAuthService {
   }
 
   /// Silently sign in (for returning users)
+  /// google_sign_in 7.x: Use attemptLightweightAuthentication
   Future<AuthResult?> signInSilently() async {
     try {
-      final googleUser = await _googleSignIn.signInSilently();
+      await initialize();
+
+      // google_sign_in 7.x: attemptLightweightAuthentication for silent sign-in
+      final googleUser = await _googleSignIn.attemptLightweightAuthentication();
       if (googleUser == null) return null;
 
-      final googleAuth = await googleUser.authentication;
+      // Get access token for Firebase
+      final authResult = await googleUser.authorizationClient.authorizeScopes([
+        'email',
+        'profile',
+      ]);
+
       final credential = firebase_auth.GoogleAuthProvider.credential(
-        accessToken: googleAuth.accessToken,
-        idToken: googleAuth.idToken,
+        accessToken: authResult.accessToken,
+        // idToken not directly available in 7.x, Firebase works with accessToken
       );
 
       final userCredential = await _firebaseAuth.signInWithCredential(

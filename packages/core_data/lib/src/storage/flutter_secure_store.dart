@@ -5,7 +5,7 @@ import 'secure_store.dart';
 /// Flutter Secure Storage implementation of SecureStore.
 ///
 /// Uses platform-specific secure storage:
-/// - Android: EncryptedSharedPreferences backed by Android Keystore
+/// - Android: Custom secure ciphers backed by Android Keystore (v10+)
 /// - iOS: Keychain Services
 /// - Web: Encrypted localStorage (less secure, consider alternatives)
 /// - macOS: Keychain Services
@@ -13,14 +13,20 @@ import 'secure_store.dart';
 /// - Windows: Windows Credential Manager
 class FlutterSecureStore implements SecureStore {
   FlutterSecureStore({FlutterSecureStorage? storage})
-      : _storage = storage ?? _createSecureStorage();
+    : _storage = storage ?? _createSecureStorage();
 
   final FlutterSecureStorage _storage;
 
   /// Creates a FlutterSecureStorage with secure options
-  static FlutterSecureStorage _createSecureStorage() => const FlutterSecureStorage(
+  ///
+  /// Note: flutter_secure_storage v10+ uses custom cipher implementations
+  /// instead of deprecated EncryptedSharedPreferences. Auto-migration
+  /// is enabled by default (migrateOnAlgorithmChange: true).
+  static FlutterSecureStorage _createSecureStorage() =>
+      const FlutterSecureStorage(
         aOptions: AndroidOptions(
-          encryptedSharedPreferences: true,
+          // v10+: encryptedSharedPreferences removed, using new secure ciphers
+          // Auto-migration from old storage happens automatically
           sharedPreferencesName: 'airo_secure_prefs',
           preferencesKeyPrefix: 'airo_',
         ),
@@ -94,4 +100,3 @@ class SecureStoreFactory {
   static SecureStore create({bool isDebug = false}) =>
       isDebug ? createForTesting() : createSecure();
 }
-
