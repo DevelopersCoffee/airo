@@ -55,7 +55,7 @@ dependencies:
 
   # Firebase & Authentication
   firebase_core: ^4.2.1
-  firebase_auth: ^6.1.2
+  firebase_auth: ^6.1.4
   google_sign_in: ^7.2.0
 
   # Audio & Media
