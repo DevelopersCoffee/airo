@@ -120,7 +120,7 @@ dev_dependencies:
   # Testing
   mocktail: ^1.0.0
   golden_toolkit: ^0.15.0
-  patrol: ^3.13.0  # E2E testing for iOS/Android devices
+  patrol: ^4.1.0  # E2E testing for iOS/Android devices
 
   # Linting
   flutter_lints: ^6.0.0
