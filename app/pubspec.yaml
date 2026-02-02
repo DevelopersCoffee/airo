@@ -51,11 +51,11 @@ dependencies:
   connectivity_plus: ^7.0.0
 
   # Networking
-  dio: ^5.4.0
+  dio: ^5.9.1
 
   # Firebase & Authentication
   firebase_core: ^4.2.1
-  firebase_auth: ^6.1.2
+  firebase_auth: ^6.1.4
   google_sign_in: ^7.2.0
 
   # Audio & Media
@@ -88,11 +88,11 @@ dependencies:
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
   equatable: ^2.0.8
-  flame: ^1.34.0
-  flame_audio: ^2.11.12
+  flame: ^1.35.0
+  flame_audio: ^2.11.13
   share_plus: ^12.0.1
   url_launcher: ^6.3.2
-  file_picker: ^10.3.8
+  file_picker: ^10.3.10
   flutter_local_notifications: ^19.5.0
   timezone: ^0.10.1
   audioplayers: ^6.5.1
