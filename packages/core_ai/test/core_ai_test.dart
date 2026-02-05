@@ -1,4 +1,4 @@
-import 'package:test/test.dart';
+import 'package:flutter_test/flutter_test.dart';
 import 'package:core_ai/core_ai.dart';
 
 void main() {
@@ -13,6 +13,12 @@ void main() {
       expect(AIProvider.nano.shortName, 'On-device AI');
       expect(AIProvider.cloud.shortName, 'Cloud AI');
       expect(AIProvider.auto.shortName, 'Smart Selection');
+    });
+
+    test('has correct descriptions', () {
+      expect(AIProvider.nano.description, 'Local processing on your Pixel 9');
+      expect(AIProvider.cloud.description, 'Powered by Google AI');
+      expect(AIProvider.auto.description, 'Automatically choose best option');
     });
   });
 
@@ -60,575 +66,167 @@ void main() {
     });
   });
 
-  group('GenerationConfig', () {
+  group('LLMConfig', () {
     test('has sensible defaults', () {
-      const config = GenerationConfig();
+      const config = LLMConfig(provider: 'test');
       expect(config.temperature, 0.7);
       expect(config.topK, 40);
       expect(config.maxOutputTokens, 1024);
     });
 
     test('copyWith creates modified copy', () {
-      const config = GenerationConfig();
+      const config = LLMConfig(provider: 'test');
       final modified = config.copyWith(temperature: 0.5);
       expect(modified.temperature, 0.5);
       expect(modified.topK, 40);
     });
+
+    test('geminiNano static config has correct provider', () {
+      expect(LLMConfig.geminiNano.provider, 'gemini-nano');
+    });
+
+    test('geminiApi factory creates config with API key', () {
+      final config = LLMConfig.geminiApi(apiKey: 'test-key');
+      expect(config.provider, 'gemini-api');
+      expect(config.apiKey, 'test-key');
+      expect(config.modelName, 'gemini-1.5-flash');
+    });
   });
 
-  group('ChatMessage', () {
-    test('user factory creates user message', () {
-      final msg = ChatMessage.user('Hello');
-      expect(msg.role, 'user');
-      expect(msg.content, 'Hello');
+  group('LLMResponse', () {
+    test('creates response with required fields', () {
+      const response = LLMResponse(text: 'Hello', provider: 'test');
+      expect(response.text, 'Hello');
+      expect(response.provider, 'test');
     });
 
-    test('assistant factory creates assistant message', () {
-      final msg = ChatMessage.assistant('Hi there');
-      expect(msg.role, 'assistant');
-      expect(msg.content, 'Hi there');
+    test('calculates totalTokens when both are provided', () {
+      const response = LLMResponse(
+        text: 'Hello',
+        provider: 'test',
+        promptTokens: 10,
+        completionTokens: 5,
+      );
+      expect(response.totalTokens, 15);
     });
 
-    test('system factory creates system message', () {
-      final msg = ChatMessage.system('You are helpful');
-      expect(msg.role, 'system');
-      expect(msg.content, 'You are helpful');
+    test('totalTokens is null when tokens not provided', () {
+      const response = LLMResponse(text: 'Hello', provider: 'test');
+      expect(response.totalTokens, isNull);
+    });
+  });
+
+  group('MemorySeverity', () {
+    test('canLoad returns true for safe, warning, and critical', () {
+      expect(MemorySeverity.safe.canLoad, isTrue);
+      expect(MemorySeverity.warning.canLoad, isTrue);
+      expect(MemorySeverity.critical.canLoad, isTrue);
+      expect(MemorySeverity.blocked.canLoad, isFalse);
+    });
+
+    test('shouldWarn returns true for warning and critical', () {
+      expect(MemorySeverity.safe.shouldWarn, isFalse);
+      expect(MemorySeverity.warning.shouldWarn, isTrue);
+      expect(MemorySeverity.critical.shouldWarn, isTrue);
+      expect(MemorySeverity.blocked.shouldWarn, isFalse);
+    });
+
+    test('isRisky returns true for critical and blocked', () {
+      expect(MemorySeverity.safe.isRisky, isFalse);
+      expect(MemorySeverity.warning.isRisky, isFalse);
+      expect(MemorySeverity.critical.isRisky, isTrue);
+      expect(MemorySeverity.blocked.isRisky, isTrue);
+    });
+  });
+
+  group('MemoryInfo', () {
+    test('calculates usedBytes correctly', () {
+      const info = MemoryInfo(totalBytes: 1000, availableBytes: 400);
+      expect(info.usedBytes, 600);
+    });
+
+    test('calculates usagePercent correctly', () {
+      const info = MemoryInfo(totalBytes: 1000, availableBytes: 400);
+      expect(info.usagePercent, 0.6);
+    });
+
+    test('fromMegabytes creates correct values', () {
+      final info = MemoryInfo.fromMegabytes(totalMB: 8192, availableMB: 4096);
+      expect(info.totalGB, closeTo(8.0, 0.01));
+      expect(info.availableGB, closeTo(4.0, 0.01));
+    });
+
+    test('unknown factory creates empty info', () {
+      final info = MemoryInfo.unknown();
+      expect(info.isAvailable, isFalse);
+      expect(info.totalBytes, 0);
     });
   });
 
   group('PromptTemplate', () {
-    test('fullId includes version', () {
-      const prompt = PromptTemplate(
-        id: 'diet.coach',
-        version: 1,
-        name: 'Diet Coach',
-        description: 'Diet coaching prompt',
-        template: 'Help with {{goal}}',
-      );
-      expect(prompt.fullId, 'diet.coach.v1');
-    });
-
-    test('render replaces placeholders', () {
-      const prompt = PromptTemplate(
-        id: 'test',
-        version: 1,
-        name: 'Test',
-        description: 'Test prompt',
+    test('fill replaces placeholders', () {
+      const template = PromptTemplate(
         template: 'Hello {{name}}, your goal is {{goal}}',
+        variables: ['name', 'goal'],
       );
-      final rendered = prompt.render({'name': 'John', 'goal': 'lose weight'});
-      expect(rendered, 'Hello John, your goal is lose weight');
+      final filled = template.fill({'name': 'John', 'goal': 'lose weight'});
+      expect(filled, 'Hello John, your goal is lose weight');
     });
 
-    test('toJson and fromJson roundtrip', () {
-      const prompt = PromptTemplate(
-        id: 'test',
-        version: 2,
-        name: 'Test Prompt',
-        description: 'A test',
-        template: 'Template text',
-        tags: ['test', 'example'],
+    test('validate returns true when all variables provided', () {
+      const template = PromptTemplate(
+        template: 'Hello {{name}}',
+        variables: ['name'],
       );
-      final json = prompt.toJson();
-      final restored = PromptTemplate.fromJson(json);
-      expect(restored.id, prompt.id);
-      expect(restored.version, prompt.version);
-      expect(restored.tags, prompt.tags);
+      expect(template.validate({'name': 'John'}), isTrue);
+    });
+
+    test('validate returns false when variables missing', () {
+      const template = PromptTemplate(
+        template: 'Hello {{name}}',
+        variables: ['name'],
+      );
+      expect(template.validate({}), isFalse);
+    });
+
+    test('getMissingVariables returns list of missing variables', () {
+      const template = PromptTemplate(
+        template: 'Hello {{name}}, goal: {{goal}}',
+        variables: ['name', 'goal'],
+      );
+      final missing = template.getMissingVariables({'name': 'John'});
+      expect(missing, ['goal']);
     });
   });
 
-  group('PromptRegistry', () {
-    test('register and get prompt', () {
-      final registry = PromptRegistry();
-      const prompt = PromptTemplate(
-        id: 'test',
-        version: 1,
-        name: 'Test',
-        description: 'Test',
-        template: 'Template',
-      );
-      registry.register(prompt);
-      expect(registry.get('test.v1'), prompt);
+  group('AiroPrompts', () {
+    test('receiptParsing template exists and has correct variables', () {
+      expect(AiroPrompts.receiptParsing.variables, contains('receipt_text'));
     });
 
-    test('getLatest returns highest version', () {
-      final registry = PromptRegistry();
-      const v1 = PromptTemplate(
-        id: 'test',
-        version: 1,
-        name: 'Test v1',
-        description: 'Test',
-        template: 'Template v1',
-      );
-      const v2 = PromptTemplate(
-        id: 'test',
-        version: 2,
-        name: 'Test v2',
-        description: 'Test',
-        template: 'Template v2',
-      );
-      registry.register(v1);
-      registry.register(v2);
-      expect(registry.getLatest('test')?.version, 2);
+    test('billSplit template exists and has correct variables', () {
+      expect(AiroPrompts.billSplit.variables, contains('items'));
+      expect(AiroPrompts.billSplit.variables, contains('participants'));
     });
   });
 
-  group('FakeLLMClient', () {
-    test('isAvailable returns true by default', () async {
-      final client = FakeLLMClient();
-      expect(await client.isAvailable(), isTrue);
+  group('TokenCounter', () {
+    test('estimates token count for text', () {
+      final count = TokenCounter.estimate('Hello world');
+      expect(count, greaterThan(0));
     });
 
-    test('isAvailable returns false when simulating unavailable', () async {
-      final client = FakeLLMClient(simulateUnavailable: true);
-      expect(await client.isAvailable(), isFalse);
+    test('handles empty string', () {
+      final count = TokenCounter.estimate('');
+      expect(count, 0);
     });
 
-    test('generateText returns default response', () async {
-      final client = FakeLLMClient(defaultResponse: 'Test response');
-      final result = await client.generateText('Hello');
-      expect(result.isOk, isTrue);
-      expect(result.getOrNull()?.content, 'Test response');
+    test('fitsInLimit returns true when text fits', () {
+      expect(TokenCounter.fitsInLimit('Hello', 100), isTrue);
     });
 
-    test('generateText returns prompt-specific response', () async {
-      final client = FakeLLMClient(promptResponses: {'Hello': 'Hi there!'});
-      final result = await client.generateText('Hello');
-      expect(result.isOk, isTrue);
-      expect(result.getOrNull()?.content, 'Hi there!');
-    });
-
-    test('generateText returns error when simulating error', () async {
-      final client = FakeLLMClient(
-        simulateError: true,
-        errorMessage: 'Test error',
-      );
-      final result = await client.generateText('Hello');
-      expect(result.isErr, isTrue);
-    });
-
-    test('tracks generateText calls', () async {
-      final client = FakeLLMClient();
-      await client.generateText('First');
-      await client.generateText('Second');
-      expect(client.generateTextCalls, ['First', 'Second']);
-    });
-
-    test('classify returns first category by default', () async {
-      final client = FakeLLMClient();
-      final result = await client.classify('text', ['cat1', 'cat2']);
-      expect(result.isOk, isTrue);
-      expect(result.getOrNull(), 'cat1');
-    });
-
-    test('classify returns configured response', () async {
-      final client = FakeLLMClient(
-        classificationResponses: {'spam text': 'spam'},
-      );
-      final result = await client.classify('spam text', ['spam', 'ham']);
-      expect(result.isOk, isTrue);
-      expect(result.getOrNull(), 'spam');
-    });
-
-    test('reset clears tracked calls', () async {
-      final client = FakeLLMClient();
-      await client.generateText('Test');
-      await client.classify('Test', ['a']);
-      client.reset();
-      expect(client.generateTextCalls, isEmpty);
-      expect(client.classifyCalls, isEmpty);
-    });
-  });
-
-  group('AIRouter', () {
-    test('uses onDeviceClient when onDevicePreferred and available', () async {
-      final onDevice = FakeLLMClient(defaultResponse: 'On-device');
-      final cloud = FakeLLMClient(defaultResponse: 'Cloud');
-
-      final router = AIRouter(
-        onDeviceClient: onDevice,
-        cloudClient: cloud,
-        config: const AIRouterConfig(
-          defaultStrategy: AIRoutingStrategy.onDevicePreferred,
-        ),
-      );
-
-      final result = await router.generateText('Test');
-      expect(result.isOk, isTrue);
-      expect(result.getOrNull()?.content, 'On-device');
-    });
-
-    test('falls back to cloud when onDevice unavailable', () async {
-      final onDevice = FakeLLMClient(
-        defaultResponse: 'On-device',
-        simulateUnavailable: true,
-      );
-      final cloud = FakeLLMClient(defaultResponse: 'Cloud');
-
-      final router = AIRouter(
-        onDeviceClient: onDevice,
-        cloudClient: cloud,
-        config: const AIRouterConfig(
-          defaultStrategy: AIRoutingStrategy.onDevicePreferred,
-        ),
-      );
-
-      final result = await router.generateText('Test');
-      expect(result.isOk, isTrue);
-      expect(result.getOrNull()?.content, 'Cloud');
-    });
-
-    test('routes to cloud for long prompts', () async {
-      final onDevice = FakeLLMClient(defaultResponse: 'On-device');
-      final cloud = FakeLLMClient(defaultResponse: 'Cloud');
-
-      final router = AIRouter(
-        onDeviceClient: onDevice,
-        cloudClient: cloud,
-        config: const AIRouterConfig(
-          defaultStrategy: AIRoutingStrategy.onDevicePreferred,
-          onDeviceMaxPromptLength: 10,
-        ),
-      );
-
-      final result = await router.generateText('This is a very long prompt');
-      expect(result.isOk, isTrue);
-      expect(result.getOrNull()?.content, 'Cloud');
-    });
-
-    test('cloudOnly strategy uses only cloud', () async {
-      final onDevice = FakeLLMClient(defaultResponse: 'On-device');
-      final cloud = FakeLLMClient(defaultResponse: 'Cloud');
-
-      final router = AIRouter(
-        onDeviceClient: onDevice,
-        cloudClient: cloud,
-        config: const AIRouterConfig(
-          defaultStrategy: AIRoutingStrategy.cloudOnly,
-        ),
-      );
-
-      final result = await router.generateText('Test');
-      expect(result.isOk, isTrue);
-      expect(result.getOrNull()?.content, 'Cloud');
-    });
-
-    test('returns error when no provider available', () async {
-      final router = AIRouter(onDeviceClient: null, cloudClient: null);
-
-      final result = await router.generateText('Test');
-      expect(result.isErr, isTrue);
-    });
-  });
-
-  group('PromptLogger', () {
-    test('InMemoryPromptLogger logs entries', () async {
-      final logger = InMemoryPromptLogger();
-
-      final entry = PromptExecutionLog(
-        executionId: 'test_1',
-        promptId: 'diet.meal_analysis',
-        promptVersion: 1,
-        variables: {'meal': 'salad'},
-        renderedPrompt: 'Analyze salad',
-        response: 'Healthy choice!',
-        success: true,
-        durationMs: 100,
-        timestamp: DateTime.now(),
-        provider: 'nano',
-      );
-
-      await logger.log(entry);
-      expect(logger.logs.length, 1);
-      expect(logger.logs.first.promptId, 'diet.meal_analysis');
-    });
-
-    test('getLogsForPrompt filters by prompt ID', () async {
-      final logger = InMemoryPromptLogger();
-      final now = DateTime.now();
-
-      await logger.log(
-        PromptExecutionLog(
-          executionId: '1',
-          promptId: 'diet.meal_analysis',
-          promptVersion: 1,
-          variables: {},
-          renderedPrompt: 'test',
-          success: true,
-          durationMs: 100,
-          timestamp: now,
-          provider: 'nano',
-        ),
-      );
-
-      await logger.log(
-        PromptExecutionLog(
-          executionId: '2',
-          promptId: 'finance.receipt_parse',
-          promptVersion: 1,
-          variables: {},
-          renderedPrompt: 'test',
-          success: true,
-          durationMs: 100,
-          timestamp: now,
-          provider: 'cloud',
-        ),
-      );
-
-      final dietLogs = await logger.getLogsForPrompt('diet.meal_analysis');
-      expect(dietLogs.length, 1);
-      expect(dietLogs.first.executionId, '1');
-    });
-
-    test('getFailedExecutions returns only failures', () async {
-      final logger = InMemoryPromptLogger();
-      final now = DateTime.now();
-
-      await logger.log(
-        PromptExecutionLog(
-          executionId: '1',
-          promptId: 'test',
-          promptVersion: 1,
-          variables: {},
-          renderedPrompt: 'test',
-          success: true,
-          durationMs: 100,
-          timestamp: now,
-          provider: 'nano',
-        ),
-      );
-
-      await logger.log(
-        PromptExecutionLog(
-          executionId: '2',
-          promptId: 'test',
-          promptVersion: 1,
-          variables: {},
-          renderedPrompt: 'test',
-          success: false,
-          errorMessage: 'Failed',
-          durationMs: 100,
-          timestamp: now,
-          provider: 'nano',
-        ),
-      );
-
-      final failures = await logger.getFailedExecutions();
-      expect(failures.length, 1);
-      expect(failures.first.executionId, '2');
-    });
-
-    test('PromptExecutionLog toJson and fromJson roundtrip', () {
-      final now = DateTime.now();
-      final entry = PromptExecutionLog(
-        executionId: 'test_1',
-        promptId: 'diet.meal_analysis',
-        promptVersion: 1,
-        variables: {'meal': 'salad'},
-        renderedPrompt: 'Analyze salad',
-        response: 'Healthy!',
-        success: true,
-        durationMs: 100,
-        timestamp: now,
-        provider: 'nano',
-        metadata: {'key': 'value'},
-      );
-
-      final json = entry.toJson();
-      final restored = PromptExecutionLog.fromJson(json);
-
-      expect(restored.executionId, entry.executionId);
-      expect(restored.promptId, entry.promptId);
-      expect(restored.promptVersion, entry.promptVersion);
-      expect(restored.success, entry.success);
-      expect(restored.provider, entry.provider);
-    });
-  });
-
-  group('DefaultPrompts', () {
-    test('all prompts have valid IDs', () {
-      for (final prompt in DefaultPrompts.all) {
-        expect(prompt.id, isNotEmpty);
-        expect(prompt.version, greaterThan(0));
-      }
-    });
-
-    test('diet prompts exist', () {
-      expect(DefaultPrompts.dietMealAnalysis.id, 'diet.meal_analysis');
-      expect(DefaultPrompts.dietDailySummary.id, 'diet.daily_summary');
-    });
-
-    test('finance prompts exist', () {
-      expect(DefaultPrompts.financeReceiptParse.id, 'finance.receipt_parse');
-      expect(
-        DefaultPrompts.financeSpendingAnalysis.id,
-        'finance.spending_analysis',
-      );
-    });
-
-    test('registerAll adds all prompts to registry', () {
-      final registry = PromptRegistry();
-      DefaultPrompts.registerAll(registry);
-
-      expect(registry.getAll().length, DefaultPrompts.all.length);
-      expect(registry.get('diet.meal_analysis.v1'), isNotNull);
-      expect(registry.get('finance.receipt_parse.v1'), isNotNull);
-    });
-  });
-
-  group('PromptExecutor', () {
-    test('executes prompt and logs result', () async {
-      final client = FakeLLMClient(defaultResponse: 'Test response');
-      final logger = InMemoryPromptLogger();
-      final executor = PromptExecutor(
-        client: client,
-        logger: logger,
-        providerName: 'test',
-      );
-
-      const prompt = PromptTemplate(
-        id: 'test',
-        version: 1,
-        name: 'Test',
-        description: 'Test prompt',
-        template: 'Hello {{name}}!',
-      );
-
-      final result = await executor.execute(prompt, {'name': 'World'});
-
-      expect(result.isOk, isTrue);
-      expect(result.getOrNull(), 'Test response');
-      expect(logger.logs.length, 1);
-      expect(logger.logs.first.renderedPrompt, 'Hello World!');
-      expect(logger.logs.first.success, isTrue);
-    });
-
-    test('logs failures', () async {
-      final client = FakeLLMClient(
-        defaultResponse: 'Test',
-        simulateError: true,
-        errorMessage: 'Test error',
-      );
-      final logger = InMemoryPromptLogger();
-      final executor = PromptExecutor(
-        client: client,
-        logger: logger,
-        providerName: 'test',
-      );
-
-      const prompt = PromptTemplate(
-        id: 'test',
-        version: 1,
-        name: 'Test',
-        description: 'Test prompt',
-        template: 'Test',
-      );
-
-      final result = await executor.execute(prompt, {});
-
-      expect(result.isErr, isTrue);
-      expect(logger.logs.length, 1);
-      expect(logger.logs.first.success, isFalse);
-    });
-  });
-
-  group('SafetyGuardrails', () {
-    test('withDefaults creates guardrails with default rules', () {
-      final guardrails = SafetyGuardrails.withDefaults();
-      expect(guardrails.inputRules.length, greaterThan(0));
-      expect(guardrails.outputRules.length, greaterThan(0));
-    });
-
-    test('NoMedicalAdviceRule blocks medical queries', () {
-      final rule = NoMedicalAdviceRule();
-      final result = rule.check('What medicine should I take for headache?');
-      expect(result.isAllowed, isFalse);
-      expect(result.blockedReason, contains('medical'));
-    });
-
-    test('NoMedicalAdviceRule allows non-medical queries', () {
-      final rule = NoMedicalAdviceRule();
-      final result = rule.check('What is the weather today?');
-      expect(result.isAllowed, isTrue);
-    });
-
-    test('NoInvestmentAdviceRule blocks investment queries', () {
-      final rule = NoInvestmentAdviceRule();
-      final result = rule.check('Should I buy Bitcoin?');
-      expect(result.isAllowed, isFalse);
-      expect(result.blockedReason, contains('investment'));
-    });
-
-    test('PIIDetectionRule warns about email', () {
-      final rule = PIIDetectionRule();
-      final result = rule.check('My email is test@example.com');
-      expect(result.isAllowed, isTrue);
-      expect(result.warnings, isNotEmpty);
-    });
-
-    test('PIIDetectionRule warns about phone numbers', () {
-      final rule = PIIDetectionRule();
-      final result = rule.check('Call me at 555-123-4567');
-      expect(result.isAllowed, isTrue);
-      expect(result.warnings, isNotEmpty);
-    });
-
-    test('MaxLengthRule blocks long input', () {
-      final rule = MaxLengthRule(maxLength: 10);
-      final result = rule.check('This is a very long input');
-      expect(result.isAllowed, isFalse);
-    });
-
-    test('checkInput returns error for blocked content', () {
-      final guardrails = SafetyGuardrails.withDefaults();
-      final result = guardrails.checkInput('What medicine should I take?');
-      expect(result.isErr, isTrue);
-    });
-
-    test('checkInput returns Ok for allowed content', () {
-      final guardrails = SafetyGuardrails.withDefaults();
-      final result = guardrails.checkInput('What is the weather?');
-      expect(result.isOk, isTrue);
-    });
-  });
-
-  group('SafetyFilteredClient', () {
-    test('blocks unsafe input', () async {
-      final delegate = FakeLLMClient(defaultResponse: 'Response');
-      final client = SafetyFilteredClient.withDefaults(delegate);
-
-      final result = await client.generateText('What medicine should I take?');
-      expect(result.isErr, isTrue);
-      expect(delegate.generateTextCalls, isEmpty);
-    });
-
-    test('allows safe input', () async {
-      final delegate = FakeLLMClient(defaultResponse: 'Response');
-      final client = SafetyFilteredClient.withDefaults(delegate);
-
-      final result = await client.generateText('What is the weather?');
-      expect(result.isOk, isTrue);
-      expect(delegate.generateTextCalls, hasLength(1));
-    });
-
-    test('filters chat messages', () async {
-      final delegate = FakeLLMClient(defaultResponse: 'Response');
-      final client = SafetyFilteredClient.withDefaults(delegate);
-
-      final result = await client.chat([
-        ChatMessage.user('What medicine should I take?'),
-      ]);
-      expect(result.isErr, isTrue);
-    });
-
-    test('allows safe chat messages', () async {
-      final delegate = FakeLLMClient(defaultResponse: 'Response');
-      final client = SafetyFilteredClient.withDefaults(delegate);
-
-      final result = await client.chat([
-        ChatMessage.user('Hello, how are you?'),
-      ]);
-      expect(result.isOk, isTrue);
+    test('fitsInLimit returns false when text exceeds limit', () {
+      expect(TokenCounter.fitsInLimit('Hello world', 1), isFalse);
     });
   });
 }

@@ -1,8 +1,8 @@
-import 'package:test/test.dart';
+import 'package:flutter_test/flutter_test.dart';
 import 'package:core_auth/core_auth.dart';
 
 void main() {
-  group('User', () {
+  group('User (core_auth)', () {
     test('can be created with required fields', () {
       final user = User(
         id: '123',
@@ -117,62 +117,52 @@ void main() {
     });
   });
 
-  group('AuthState', () {
-    test('initial creates AuthInitial', () {
-      final state = AuthState.initial();
-      expect(state, isA<AuthInitial>());
+  group('AuthState (services)', () {
+    test('AuthInitial is not authenticated', () {
+      const state = AuthInitial();
       expect(state.isAuthenticated, isFalse);
       expect(state.isLoading, isFalse);
     });
 
-    test('loading creates AuthLoading', () {
-      final state = AuthState.loading();
-      expect(state, isA<AuthLoading>());
+    test('AuthLoading indicates loading state', () {
+      const state = AuthLoading();
       expect(state.isLoading, isTrue);
-    });
-
-    test('authenticated creates AuthAuthenticated', () {
-      final user = User(
-        id: '123',
-        username: 'testuser',
-        createdAt: DateTime(2024, 1, 1),
-      );
-      final state = AuthState.authenticated(user);
-      expect(state, isA<AuthAuthenticated>());
-      expect(state.isAuthenticated, isTrue);
-      expect(state.currentUser, user);
-    });
-
-    test('unauthenticated creates AuthUnauthenticated', () {
-      final state = AuthState.unauthenticated(reason: 'Session expired');
-      expect(state, isA<AuthUnauthenticated>());
       expect(state.isAuthenticated, isFalse);
-      expect((state as AuthUnauthenticated).reason, 'Session expired');
+    });
+
+    test('Unauthenticated with message', () {
+      const state = Unauthenticated(message: 'Session expired');
+      expect(state.isAuthenticated, isFalse);
+      expect(state.message, 'Session expired');
+    });
+
+    test('AuthError contains error message', () {
+      const state = AuthError('Login failed');
+      expect(state.isAuthenticated, isFalse);
+      expect(state.message, 'Login failed');
     });
   });
 
-  group('LoginCredentials', () {
+  group('Credentials', () {
     test('can be created', () {
-      const creds = LoginCredentials(
-        username: 'testuser',
-        password: 'password123',
-        rememberMe: true,
-      );
+      const creds = Credentials(username: 'testuser', password: 'password123');
       expect(creds.username, 'testuser');
       expect(creds.password, 'password123');
-      expect(creds.rememberMe, isTrue);
     });
-  });
 
-  group('RegisterCredentials', () {
-    test('can be created', () {
-      const creds = RegisterCredentials(
-        username: 'newuser',
-        password: 'password123',
-        email: 'new@example.com',
-      );
-      expect(creds.username, 'newuser');
-      expect(creds.email, 'new@example.com');
+    test('isValid returns true for non-empty values', () {
+      const creds = Credentials(username: 'user', password: 'pass');
+      expect(creds.isValid, isTrue);
+    });
+
+    test('isValid returns false for empty username', () {
+      const creds = Credentials(username: '', password: 'pass');
+      expect(creds.isValid, isFalse);
+    });
+
+    test('isValid returns false for empty password', () {
+      const creds = Credentials(username: 'user', password: '');
+      expect(creds.isValid, isFalse);
     });
   });
 

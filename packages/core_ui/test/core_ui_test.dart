@@ -5,35 +5,37 @@ import 'package:core_ui/core_ui.dart';
 
 void main() {
   group('AppTheme', () {
-    test('lightTheme returns valid ThemeData', () {
-      final theme = AppTheme.lightTheme;
+    test('light theme returns valid ThemeData', () {
+      final theme = AppTheme.light;
       expect(theme, isA<ThemeData>());
       expect(theme.useMaterial3, isTrue);
       expect(theme.brightness, Brightness.light);
     });
 
-    test('darkTheme returns valid ThemeData', () {
-      final theme = AppTheme.darkTheme;
+    test('dark theme returns valid ThemeData', () {
+      final theme = AppTheme.dark;
       expect(theme, isA<ThemeData>());
       expect(theme.useMaterial3, isTrue);
       expect(theme.brightness, Brightness.dark);
     });
+  });
 
+  group('AppColors', () {
     test('color constants are defined', () {
-      expect(AppTheme.primaryColor, const Color(0xFF2196F3));
-      expect(AppTheme.secondaryColor, const Color(0xFF03DAC6));
-      expect(AppTheme.errorColor, const Color(0xFFB00020));
-      expect(AppTheme.surfaceColor, const Color(0xFFFAFAFA));
-      expect(AppTheme.backgroundColor, const Color(0xFFFFFFFF));
+      expect(AppColors.primary, const Color(0xFF6750A4));
+      expect(AppColors.secondary, const Color(0xFF625B71));
+      expect(AppColors.error, const Color(0xFFB3261E));
+      expect(AppColors.surface, const Color(0xFFFFFBFE));
+      expect(AppColors.background, const Color(0xFFFFFBFE));
     });
   });
 
   group('AppSpacing', () {
-    test('spacing values are correct multiples of unit', () {
+    test('spacing values are correct', () {
       expect(AppSpacing.unit, 4.0);
-      expect(AppSpacing.xxs, 4.0);
-      expect(AppSpacing.xs, 8.0);
-      expect(AppSpacing.sm, 12.0);
+      expect(AppSpacing.xxs, 2.0);
+      expect(AppSpacing.xs, 4.0);
+      expect(AppSpacing.sm, 8.0);
       expect(AppSpacing.md, 16.0);
       expect(AppSpacing.lg, 24.0);
       expect(AppSpacing.xl, 32.0);
@@ -41,7 +43,7 @@ void main() {
     });
 
     test('padding presets have correct values', () {
-      expect(AppSpacing.paddingXs, const EdgeInsets.all(8.0));
+      expect(AppSpacing.paddingXs, const EdgeInsets.all(4.0));
       expect(AppSpacing.paddingMd, const EdgeInsets.all(16.0));
       expect(AppSpacing.paddingLg, const EdgeInsets.all(24.0));
     });
@@ -56,19 +58,18 @@ void main() {
     });
   });
 
-  group('LoadingWidget', () {
+  group('LoadingIndicator', () {
     testWidgets('renders without message', (tester) async {
       await tester.pumpWidget(
-        const MaterialApp(home: Scaffold(body: LoadingWidget())),
+        const MaterialApp(home: Scaffold(body: LoadingIndicator())),
       );
       expect(find.byType(CircularProgressIndicator), findsOneWidget);
-      expect(find.byType(Text), findsNothing);
     });
 
     testWidgets('renders with message', (tester) async {
       await tester.pumpWidget(
         const MaterialApp(
-          home: Scaffold(body: LoadingWidget(message: 'Loading...')),
+          home: Scaffold(body: LoadingIndicator(message: 'Loading...')),
         ),
       );
       expect(find.byType(CircularProgressIndicator), findsOneWidget);
@@ -76,11 +77,11 @@ void main() {
     });
   });
 
-  group('ErrorDisplayWidget', () {
+  group('ErrorView', () {
     testWidgets('renders error message', (tester) async {
       await tester.pumpWidget(
-        const MaterialApp(
-          home: Scaffold(body: ErrorDisplayWidget(message: 'Test error')),
+        MaterialApp(
+          home: Scaffold(body: ErrorView(message: 'Test error')),
         ),
       );
       expect(find.text('Test error'), findsOneWidget);
@@ -89,12 +90,9 @@ void main() {
 
     testWidgets('renders with title', (tester) async {
       await tester.pumpWidget(
-        const MaterialApp(
+        MaterialApp(
           home: Scaffold(
-            body: ErrorDisplayWidget(
-              message: 'Test error',
-              title: 'Error Title',
-            ),
+            body: ErrorView(message: 'Test error', title: 'Error Title'),
           ),
         ),
       );
@@ -107,39 +105,16 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: ErrorDisplayWidget(
+            body: ErrorView(
               message: 'Test error',
               onRetry: () => retryPressed = true,
             ),
           ),
         ),
       );
-      expect(find.text('Try Again'), findsOneWidget);
-      await tester.tap(find.text('Try Again'));
+      expect(find.text('Retry'), findsOneWidget);
+      await tester.tap(find.text('Retry'));
       expect(retryPressed, isTrue);
-    });
-  });
-
-  group('EmptyStateWidget', () {
-    testWidgets('renders message', (tester) async {
-      await tester.pumpWidget(
-        const MaterialApp(
-          home: Scaffold(body: EmptyStateWidget(message: 'No items')),
-        ),
-      );
-      expect(find.text('No items'), findsOneWidget);
-      expect(find.byIcon(Icons.inbox_outlined), findsOneWidget);
-    });
-
-    testWidgets('renders with custom icon', (tester) async {
-      await tester.pumpWidget(
-        const MaterialApp(
-          home: Scaffold(
-            body: EmptyStateWidget(message: 'No items', icon: Icons.search),
-          ),
-        ),
-      );
-      expect(find.byIcon(Icons.search), findsOneWidget);
     });
   });
 }

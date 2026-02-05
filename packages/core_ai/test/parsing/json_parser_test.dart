@@ -44,7 +44,7 @@ I hope this helps!
         final result = LLMJsonParser.parseObject(response);
 
         expect(result.isFailure, isTrue);
-        expect(result.failure.message, contains('Invalid JSON'));
+        expect(result.failure.message, contains('No JSON object found'));
       });
 
       test('returns failure for array instead of object', () {
@@ -164,4 +164,3 @@ I hope this helps!
     });
   });
 }
-

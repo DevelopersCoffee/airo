@@ -3,6 +3,9 @@
 /// Contains LLM client abstractions, prompt management, and AI utilities.
 library core_ai;
 
+// AI Provider
+export 'src/provider/ai_provider.dart';
+
 // Device Capabilities
 export 'src/device/device_capability_service.dart';
 export 'src/device/memory_budget_manager.dart';

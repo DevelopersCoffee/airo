@@ -8,10 +8,11 @@ library core_domain;
 export 'src/entities/entity.dart';
 export 'src/entities/user.dart';
 
+// Result Type - Ok/Err pattern for functional error handling
+export 'src/result/result.dart';
+
 // Value Objects
-export 'src/value_objects/result.dart';
-// Note: Failure class from failure.dart conflicts with Failure<T> from result.dart
-// Use 'hide' to avoid the conflict - import failure.dart directly if needed
+// Failure types for domain errors (hiding base Failure class to avoid conflict with Result.Failure)
 export 'src/value_objects/failure.dart' hide Failure;
 
 // Errors
@@ -22,3 +23,7 @@ export 'src/repositories/repository.dart';
 
 // Use Cases
 export 'src/use_cases/use_case.dart';
+
+// State Management
+export 'src/state/async_state.dart';
+export 'src/state/paginated_state.dart';

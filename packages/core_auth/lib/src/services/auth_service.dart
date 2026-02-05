@@ -9,9 +9,7 @@ import 'auth_state.dart';
 
 /// Service for managing authentication
 class AuthService {
-  AuthService({
-    required AuthRepository repository,
-  }) : _repository = repository;
+  AuthService({required AuthRepository repository}) : _repository = repository;
 
   final AuthRepository _repository;
   final _stateController = StreamController<AuthState>.broadcast();
@@ -38,8 +36,8 @@ class AuthService {
     final result = await _repository.login(credentials);
 
     result.fold(
-      onSuccess: (session) => _updateState(Authenticated(session)),
-      onFailure: (failure) => _updateState(AuthError(failure.message)),
+      (error, stack) => _updateState(AuthError(result.failure.message)),
+      (session) => _updateState(Authenticated(session)),
     );
 
     return result;
@@ -51,13 +49,10 @@ class AuthService {
 
     final result = await _repository.logout();
 
-    result.fold(
-      onSuccess: (_) => _updateState(const Unauthenticated()),
-      onFailure: (failure) {
-        // Still log out locally even if server fails
-        _updateState(const Unauthenticated());
-      },
-    );
+    result.fold((error, stack) {
+      // Still log out locally even if server fails
+      _updateState(const Unauthenticated());
+    }, (_) => _updateState(const Unauthenticated()));
 
     return result;
   }
@@ -68,16 +63,15 @@ class AuthService {
 
     final result = await _repository.getStoredSession();
 
-    result.fold(
-      onSuccess: (session) {
-        if (session != null && session.isValid) {
-          _updateState(Authenticated(session));
-        } else {
-          _updateState(const Unauthenticated());
-        }
-      },
-      onFailure: (_) => _updateState(const Unauthenticated()),
-    );
+    result.fold((error, stack) => _updateState(const Unauthenticated()), (
+      session,
+    ) {
+      if (session != null && session.isValid) {
+        _updateState(Authenticated(session));
+      } else {
+        _updateState(const Unauthenticated());
+      }
+    });
   }
 
   void _updateState(AuthState newState) {
@@ -90,4 +84,3 @@ class AuthService {
     await _stateController.close();
   }
 }
-

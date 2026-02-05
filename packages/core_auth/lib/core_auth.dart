@@ -10,7 +10,8 @@ export 'src/services/auth_state.dart';
 // Models
 export 'src/models/credentials.dart';
 export 'src/models/session.dart';
+export 'src/models/user.dart';
+export 'src/models/auth_result.dart';
 
 // Repository
 export 'src/repositories/auth_repository.dart';
-

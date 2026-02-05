@@ -5,6 +5,7 @@ import 'package:core_domain/core_domain.dart';
 import '../connectivity/connectivity_service.dart';
 import 'outbox_repository.dart';
 import 'sync_operation.dart';
+import 'sync_status.dart';
 
 /// Service for managing offline-first sync operations.
 ///
@@ -19,8 +20,8 @@ class SyncService {
     required ConnectivityService connectivityService,
     this.onSyncOperation,
     this.conflictResolver,
-  })  : _outboxRepository = outboxRepository,
-        _connectivityService = connectivityService;
+  }) : _outboxRepository = outboxRepository,
+       _connectivityService = connectivityService;
 
   final OutboxRepository _outboxRepository;
   final ConnectivityService _connectivityService;
@@ -31,7 +32,7 @@ class SyncService {
 
   /// Callback to resolve conflicts between local and remote data.
   final Future<ConflictResolution> Function(SyncOperation operation)?
-      conflictResolver;
+  conflictResolver;
 
   Timer? _syncTimer;
   bool _isSyncing = false;
@@ -51,11 +52,11 @@ class SyncService {
     // Listen for connectivity changes
     _connectivitySubscription = _connectivityService.onConnectivityChanged
         .listen((isConnected) {
-      if (isConnected) {
-        // Trigger sync when coming back online
-        processOutbox();
-      }
-    });
+          if (isConnected) {
+            // Trigger sync when coming back online
+            processOutbox();
+          }
+        });
 
     // Periodic sync
     _syncTimer = Timer.periodic(interval, (_) => processOutbox());
@@ -159,10 +160,7 @@ class SyncService {
         return false;
       }
     } catch (e) {
-      await _outboxRepository.recordAttempt(
-        operation.id,
-        error: e.toString(),
-      );
+      await _outboxRepository.recordAttempt(operation.id, error: e.toString());
       return false;
     }
   }
@@ -184,4 +182,3 @@ class SyncService {
     _statusController.close();
   }
 }
-

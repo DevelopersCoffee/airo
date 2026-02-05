@@ -1,4 +1,4 @@
-import 'package:core_auth/core_auth.dart';
+import 'package:core_auth/core_auth.dart' hide User;
 import 'package:core_domain/core_domain.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -157,4 +157,3 @@ void main() {
     });
   });
 }
-
