@@ -1,16 +1,27 @@
+import 'dart:developer' as developer;
+
+import 'package:core_domain/core_domain.dart';
+
+import 'gemini_api_client.dart';
+import 'gemini_nano_client.dart';
 import 'llm_client.dart';
 import 'llm_config.dart';
-import 'gemini_nano_client.dart';
-import 'gemini_api_client.dart';
+import 'llm_response.dart';
 import '../utils/token_counter.dart';
 
+/// Callback for memory-related events during LLM routing.
+typedef MemoryWarningCallback = void Function(MemoryCheckResult memoryCheck);
+
 /// Implementation of LLM router for selecting appropriate provider.
+///
+/// Includes memory-aware routing for on-device models.
 class LLMRouterImpl implements LLMRouter {
   LLMRouterImpl({
     this.geminiNanoClient,
     this.geminiApiClient,
     this.mockClient,
     this.preferOnDevice = true,
+    this.onMemoryWarning,
   });
 
   final GeminiNanoClient? geminiNanoClient;
@@ -18,33 +29,51 @@ class LLMRouterImpl implements LLMRouter {
   final LLMClient? mockClient;
   final bool preferOnDevice;
 
+  /// Optional callback for memory warnings during on-device model loading.
+  final MemoryWarningCallback? onMemoryWarning;
+
   /// Creates router with automatic client initialization.
+  ///
+  /// [geminiApiKey] - API key for Gemini Cloud API.
+  /// [nanoConfig] - Configuration for Gemini Nano.
+  /// [apiConfig] - Configuration for Gemini API.
+  /// [preferOnDevice] - Whether to prefer on-device inference.
+  /// [checkMemory] - Whether to check memory before creating Nano client.
+  /// [onMemoryWarning] - Callback for memory warnings.
   static Future<LLMRouterImpl> create({
     String? geminiApiKey,
     LLMConfig? nanoConfig,
     LLMConfig? apiConfig,
     bool preferOnDevice = true,
+    bool checkMemory = true,
+    MemoryWarningCallback? onMemoryWarning,
   }) async {
     GeminiNanoClient? nanoClient;
     GeminiApiClient? apiClient;
 
-    // Try to create Nano client if available
+    // Try to create Nano client if available (with memory check)
     nanoClient = await GeminiNanoClientFactory.createIfAvailable(
       config: nanoConfig,
+      checkMemory: checkMemory,
+      onMemoryWarning: (memoryCheck) {
+        developer.log(
+          'Memory warning for Gemini Nano: ${memoryCheck.severity.title}',
+          name: 'LLMRouterImpl',
+        );
+        onMemoryWarning?.call(memoryCheck);
+      },
     );
 
     // Create API client if key provided
     if (geminiApiKey != null && geminiApiKey.isNotEmpty) {
-      apiClient = GeminiApiClient(
-        apiKey: geminiApiKey,
-        config: apiConfig,
-      );
+      apiClient = GeminiApiClient(apiKey: geminiApiKey, config: apiConfig);
     }
 
     return LLMRouterImpl(
       geminiNanoClient: nanoClient,
       geminiApiClient: apiClient,
       preferOnDevice: preferOnDevice,
+      onMemoryWarning: onMemoryWarning,
     );
   }
 
@@ -59,7 +88,9 @@ class LLMRouterImpl implements LLMRouter {
       if (geminiApiClient != null) {
         return geminiApiClient!;
       }
-      throw StateError('Vision requires Gemini API but no API client available');
+      throw StateError(
+        'Vision requires Gemini API but no API client available',
+      );
     }
 
     // Check if prompt fits in Nano context
@@ -88,10 +119,10 @@ class LLMRouterImpl implements LLMRouter {
 
   @override
   LLMClient? getProvider(LLMProvider provider) => switch (provider) {
-        LLMProvider.geminiNano => geminiNanoClient,
-        LLMProvider.geminiApi => geminiApiClient,
-        LLMProvider.mock => mockClient,
-      };
+    LLMProvider.geminiNano => geminiNanoClient,
+    LLMProvider.geminiApi => geminiApiClient,
+    LLMProvider.mock => mockClient,
+  };
 
   /// Gets availability status of all providers.
   Future<Map<LLMProvider, bool>> getAvailability() async {
@@ -143,14 +174,14 @@ class MockLLMClient implements LLMClient {
 
   @override
   Future<Result<LLMResponse>> generate(String prompt) async => Success(
-        LLMResponse(
-          text: mockResponse,
-          provider: 'mock',
-          promptTokens: estimateTokens(prompt),
-          completionTokens: estimateTokens(mockResponse),
-          latencyMs: 0,
-        ),
-      );
+    LLMResponse(
+      text: mockResponse,
+      provider: 'mock',
+      promptTokens: estimateTokens(prompt),
+      completionTokens: estimateTokens(mockResponse),
+      latencyMs: 0,
+    ),
+  );
 
   @override
   Stream<String> generateStream(String prompt) async* {
@@ -166,8 +197,3 @@ class MockLLMClient implements LLMClient {
   @override
   Future<void> dispose() async {}
 }
-
-// Import Result from core_domain
-import 'package:core_domain/core_domain.dart';
-import 'llm_response.dart';
-

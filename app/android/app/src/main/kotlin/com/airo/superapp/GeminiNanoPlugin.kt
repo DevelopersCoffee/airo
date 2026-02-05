@@ -1,5 +1,6 @@
 package com.airo.superapp
 
+import android.app.ActivityManager
 import android.content.Context
 import android.os.Build
 import androidx.annotation.NonNull
@@ -88,6 +89,7 @@ class GeminiNanoPlugin(private val context: Context) : MethodChannel.MethodCallH
             "generateContent" -> generateContent(call, result)
             "generateContentStream" -> generateContentStream(call, result)
             "getDeviceInfo" -> getDeviceInfo(result)
+            "getMemoryInfo" -> getMemoryInfo(result)
             "getCapabilities" -> getCapabilities(result)
             else -> result.notImplemented()
         }
@@ -253,6 +255,28 @@ class GeminiNanoPlugin(private val context: Context) : MethodChannel.MethodCallH
         result.success(deviceInfo)
     }
     
+    /**
+     * Get device memory information
+     * Uses ActivityManager to query total and available RAM
+     */
+    private fun getMemoryInfo(result: MethodChannel.Result) {
+        try {
+            val activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+            val memoryInfo = ActivityManager.MemoryInfo()
+            activityManager.getMemoryInfo(memoryInfo)
+
+            val memoryData = mapOf(
+                "totalBytes" to memoryInfo.totalMem,
+                "availableBytes" to memoryInfo.availMem,
+                "threshold" to memoryInfo.threshold,
+                "lowMemory" to memoryInfo.lowMemory
+            )
+            result.success(memoryData)
+        } catch (e: Exception) {
+            result.error("MEMORY_INFO_FAILED", e.message, null)
+        }
+    }
+
     /**
      * Get Gemini Nano capabilities
      */
