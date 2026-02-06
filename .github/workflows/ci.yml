@@ -57,7 +57,8 @@ jobs:
       - name: Check formatting
         run: |
           cd app
-          dart format --set-exit-if-changed lib/
+          # Exclude generated files from formatting check
+          find lib -name "*.dart" ! -name "*.g.dart" ! -name "*.freezed.dart" -print0 | xargs -0 dart format --set-exit-if-changed
 
   # ============================================
   # Tests (all packages + app)
