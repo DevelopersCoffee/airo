@@ -9,11 +9,7 @@ import 'package:flutter/foundation.dart';
 part 'app_database.g.dart';
 
 /// Sync status for offline-first support
-enum SyncStatus {
-  pending,
-  synced,
-  failed,
-}
+enum SyncStatus { pending, synced, failed }
 
 /// Database configuration
 class DatabaseConfig {
@@ -41,7 +37,8 @@ class TransactionEntries extends Table {
   IntColumn get amountCents => integer()(); // Negative for expenses
   TextColumn get description => text()();
   TextColumn get category => text()();
-  TextColumn get tags => text().withDefault(const Constant('[]'))(); // JSON array
+  TextColumn get tags =>
+      text().withDefault(const Constant('[]'))(); // JSON array
   TextColumn get receiptUrl => text().nullable()();
   TextColumn get syncStatus => text().withDefault(const Constant('pending'))();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
@@ -58,7 +55,8 @@ class BudgetEntries extends Table {
   IntColumn get carryoverCents => integer().withDefault(const Constant(0))();
   IntColumn get periodMonth => integer()(); // YYYYMM format, e.g., 202411
   TextColumn get recurrence => text().withDefault(const Constant('monthly'))();
-  TextColumn get carryoverBehavior => text().withDefault(const Constant('none'))();
+  TextColumn get carryoverBehavior =>
+      text().withDefault(const Constant('none'))();
   TextColumn get syncStatus => text().withDefault(const Constant('pending'))();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().nullable()();
@@ -85,8 +83,12 @@ class OutboxEntries extends Table {
   TextColumn get entityId => text()();
   TextColumn get operationType => text()(); // create, update, delete
   TextColumn get payload => text()(); // JSON payload
-  IntColumn get priority => integer().withDefault(const Constant(1))(); // 0=low, 1=normal, 2=high, 3=critical
-  TextColumn get status => text().withDefault(const Constant('pending'))(); // pending, inProgress, completed, failed
+  IntColumn get priority => integer().withDefault(
+    const Constant(1),
+  )(); // 0=low, 1=normal, 2=high, 3=critical
+  TextColumn get status => text().withDefault(
+    const Constant('pending'),
+  )(); // pending, inProgress, completed, failed
   IntColumn get retryCount => integer().withDefault(const Constant(0))();
   TextColumn get lastError => text().nullable()();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
@@ -103,7 +105,15 @@ class SyncMetadata extends Table {
   Set<Column> get primaryKey => {key};
 }
 
-@DriftDatabase(tables: [TransactionEntries, BudgetEntries, AccountEntries, OutboxEntries, SyncMetadata])
+@DriftDatabase(
+  tables: [
+    TransactionEntries,
+    BudgetEntries,
+    AccountEntries,
+    OutboxEntries,
+    SyncMetadata,
+  ],
+)
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
@@ -121,23 +131,47 @@ class AppDatabase extends _$AppDatabase {
     onUpgrade: (Migrator m, int from, int to) async {
       // Migration from v1 to v2: Add indexes for performance
       if (from < 2) {
-        await m.createIndex(Index('idx_transactions_account',
-          'CREATE INDEX idx_transactions_account ON transaction_entries(account_id)'));
-        await m.createIndex(Index('idx_transactions_category',
-          'CREATE INDEX idx_transactions_category ON transaction_entries(category)'));
-        await m.createIndex(Index('idx_transactions_timestamp',
-          'CREATE INDEX idx_transactions_timestamp ON transaction_entries(timestamp DESC)'));
-        await m.createIndex(Index('idx_budgets_period',
-          'CREATE INDEX idx_budgets_period ON budget_entries(period_month, tag)'));
+        await m.createIndex(
+          Index(
+            'idx_transactions_account',
+            'CREATE INDEX idx_transactions_account ON transaction_entries(account_id)',
+          ),
+        );
+        await m.createIndex(
+          Index(
+            'idx_transactions_category',
+            'CREATE INDEX idx_transactions_category ON transaction_entries(category)',
+          ),
+        );
+        await m.createIndex(
+          Index(
+            'idx_transactions_timestamp',
+            'CREATE INDEX idx_transactions_timestamp ON transaction_entries(timestamp DESC)',
+          ),
+        );
+        await m.createIndex(
+          Index(
+            'idx_budgets_period',
+            'CREATE INDEX idx_budgets_period ON budget_entries(period_month, tag)',
+          ),
+        );
       }
       // Migration from v2 to v3: Add outbox and sync metadata tables
       if (from < 3) {
         await m.createTable(outboxEntries);
         await m.createTable(syncMetadata);
-        await m.createIndex(Index('idx_outbox_status',
-          'CREATE INDEX idx_outbox_status ON outbox_entries(status, priority DESC, created_at)'));
-        await m.createIndex(Index('idx_outbox_entity',
-          'CREATE INDEX idx_outbox_entity ON outbox_entries(entity_type, entity_id)'));
+        await m.createIndex(
+          Index(
+            'idx_outbox_status',
+            'CREATE INDEX idx_outbox_status ON outbox_entries(status, priority DESC, created_at)',
+          ),
+        );
+        await m.createIndex(
+          Index(
+            'idx_outbox_entity',
+            'CREATE INDEX idx_outbox_entity ON outbox_entries(entity_type, entity_id)',
+          ),
+        );
       }
     },
     beforeOpen: (details) async {
@@ -192,4 +226,3 @@ LazyDatabase _openConnection() {
     return NativeDatabase.createInBackground(file);
   });
 }
-

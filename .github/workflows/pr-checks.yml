@@ -143,16 +143,16 @@ jobs:
           dart run build_runner build --delete-conflicting-outputs
 
       - name: Run core_domain tests
-        run: cd packages/core_domain && dart test --reporter=compact
+        run: cd packages/core_domain && flutter test --reporter=compact
 
       - name: Run core_data tests
-        run: cd packages/core_data && dart test --reporter=compact
+        run: cd packages/core_data && flutter test --reporter=compact
 
       - name: Run core_ai tests
-        run: cd packages/core_ai && dart test --reporter=compact
+        run: cd packages/core_ai && flutter test --reporter=compact
 
       - name: Run core_auth tests
-        run: cd packages/core_auth && dart test --reporter=compact
+        run: cd packages/core_auth && flutter test --reporter=compact
 
       - name: Run app tests with coverage
         run: |

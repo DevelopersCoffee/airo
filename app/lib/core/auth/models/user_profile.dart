@@ -128,4 +128,3 @@ class UserProfile {
     return 'UserProfile(id: $id, username: $username, displayName: $displayName)';
   }
 }
-

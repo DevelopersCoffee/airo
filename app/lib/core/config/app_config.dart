@@ -47,11 +47,7 @@ class AppConfig {
 }
 
 /// Build flavor configuration
-enum BuildFlavor {
-  development,
-  staging,
-  production,
-}
+enum BuildFlavor { development, staging, production }
 
 /// Get current build flavor from environment
 BuildFlavor get currentFlavor {
@@ -64,4 +60,3 @@ BuildFlavor get currentFlavor {
       return BuildFlavor.development;
   }
 }
-

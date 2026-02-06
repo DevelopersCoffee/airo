@@ -150,4 +150,3 @@ class TestableChessEngine implements ChessEngine {
     reset();
   }
 }
-

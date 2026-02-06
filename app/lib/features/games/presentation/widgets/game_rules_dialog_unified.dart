@@ -28,8 +28,9 @@ class UnifiedGameRulesDialog extends StatelessWidget {
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
                 color: gameInfo.difficulty.color,
-                borderRadius:
-                    const BorderRadius.vertical(top: Radius.circular(20)),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(20),
+                ),
               ),
               child: Row(
                 children: [
@@ -74,12 +75,9 @@ class UnifiedGameRulesDialog extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // Objective
-                    _buildSection(
-                      'Objective',
-                      Icons.flag,
-                      [gameInfo.objective],
-                      gameInfo.difficulty.color,
-                    ),
+                    _buildSection('Objective', Icons.flag, [
+                      gameInfo.objective,
+                    ], gameInfo.difficulty.color),
 
                     const SizedBox(height: 20),
 
@@ -157,23 +155,24 @@ class UnifiedGameRulesDialog extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 12),
-        ...items.map((item) => Padding(
-              padding: const EdgeInsets.only(bottom: 8.0, left: 28),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('• ', style: TextStyle(fontSize: 16, color: color)),
-                  Expanded(
-                    child: Text(
-                      item,
-                      style: const TextStyle(fontSize: 14, height: 1.5),
-                    ),
+        ...items.map(
+          (item) => Padding(
+            padding: const EdgeInsets.only(bottom: 8.0, left: 28),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('• ', style: TextStyle(fontSize: 16, color: color)),
+                Expanded(
+                  child: Text(
+                    item,
+                    style: const TextStyle(fontSize: 14, height: 1.5),
                   ),
-                ],
-              ),
-            )),
+                ),
+              ],
+            ),
+          ),
+        ),
       ],
     );
   }
 }
-

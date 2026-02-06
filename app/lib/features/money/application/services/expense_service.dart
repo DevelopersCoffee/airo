@@ -17,7 +17,12 @@ class ExpenseService {
   final LocalBudgetsRepository _budgetsRepo;
   final AuditService _auditService;
 
-  ExpenseService(this._db, this._transactionsRepo, this._budgetsRepo, this._auditService);
+  ExpenseService(
+    this._db,
+    this._transactionsRepo,
+    this._budgetsRepo,
+    this._auditService,
+  );
 
   /// Save an expense and automatically deduct from matching budget
   /// Uses database transaction to ensure atomicity

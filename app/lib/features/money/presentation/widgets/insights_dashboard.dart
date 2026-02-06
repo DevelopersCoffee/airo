@@ -17,30 +17,27 @@ class InsightsDashboard extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Insights',
-          style: Theme.of(context).textTheme.titleLarge,
-        ),
+        Text('Insights', style: Theme.of(context).textTheme.titleLarge),
         const SizedBox(height: 12),
-        
+
         // Spending summary card
         summaryAsync.when(
           data: (summary) => _SpendingSummaryCard(summary: summary),
           loading: () => const _LoadingCard(),
           error: (_, __) => const _ErrorCard(message: 'Failed to load summary'),
         ),
-        
+
         const SizedBox(height: 12),
-        
+
         // Trend card
         trendAsync.when(
           data: (trend) => _TrendCard(trend: trend),
           loading: () => const SizedBox.shrink(),
           error: (_, __) => const SizedBox.shrink(),
         ),
-        
+
         const SizedBox(height: 12),
-        
+
         // Budget health
         healthAsync.when(
           data: (health) => _BudgetHealthCard(health: health),
@@ -65,10 +62,7 @@ class _SpendingSummaryCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'This Month',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
+            Text('This Month', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 16),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -99,19 +93,23 @@ class _SpendingSummaryCard extends StatelessWidget {
                 style: Theme.of(context).textTheme.titleSmall,
               ),
               const SizedBox(height: 8),
-              ...summary.topCategories.take(3).map((cat) => Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(cat.category),
-                    Text(
-                      cat.amountFormatted,
-                      style: const TextStyle(fontWeight: FontWeight.bold),
+              ...summary.topCategories
+                  .take(3)
+                  .map(
+                    (cat) => Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(cat.category),
+                          Text(
+                            cat.amountFormatted,
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
                     ),
-                  ],
-                ),
-              )),
+                  ),
             ],
           ],
         ),
@@ -144,10 +142,7 @@ class _StatItem extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 4),
-        Text(
-          label,
-          style: Theme.of(context).textTheme.bodySmall,
-        ),
+        Text(label, style: Theme.of(context).textTheme.bodySmall),
       ],
     );
   }
@@ -208,15 +203,22 @@ class _BudgetHealthCard extends StatelessWidget {
           ),
           if (health.insights.isNotEmpty) ...[
             const Divider(),
-            ...health.insights.take(2).map((insight) => ListTile(
-              dense: true,
-              leading: Icon(
-                _getInsightIcon(insight.type),
-                color: _getSeverityColor(insight.severity),
-                size: 20,
-              ),
-              title: Text(insight.message, style: const TextStyle(fontSize: 13)),
-            )),
+            ...health.insights
+                .take(2)
+                .map(
+                  (insight) => ListTile(
+                    dense: true,
+                    leading: Icon(
+                      _getInsightIcon(insight.type),
+                      color: _getSeverityColor(insight.severity),
+                      size: 20,
+                    ),
+                    title: Text(
+                      insight.message,
+                      style: const TextStyle(fontSize: 13),
+                    ),
+                  ),
+                ),
           ],
         ],
       ),
@@ -225,19 +227,27 @@ class _BudgetHealthCard extends StatelessWidget {
 
   IconData _getInsightIcon(InsightType type) {
     switch (type) {
-      case InsightType.exceeded: return Icons.error;
-      case InsightType.warning: return Icons.warning;
-      case InsightType.saving: return Icons.savings;
-      case InsightType.trend: return Icons.trending_up;
-      case InsightType.tip: return Icons.lightbulb;
+      case InsightType.exceeded:
+        return Icons.error;
+      case InsightType.warning:
+        return Icons.warning;
+      case InsightType.saving:
+        return Icons.savings;
+      case InsightType.trend:
+        return Icons.trending_up;
+      case InsightType.tip:
+        return Icons.lightbulb;
     }
   }
 
   Color _getSeverityColor(InsightSeverity severity) {
     switch (severity) {
-      case InsightSeverity.low: return Colors.blue;
-      case InsightSeverity.medium: return Colors.orange;
-      case InsightSeverity.high: return Colors.red;
+      case InsightSeverity.low:
+        return Colors.blue;
+      case InsightSeverity.medium:
+        return Colors.orange;
+      case InsightSeverity.high:
+        return Colors.red;
     }
   }
 }
@@ -271,4 +281,3 @@ class _ErrorCard extends StatelessWidget {
     );
   }
 }
-

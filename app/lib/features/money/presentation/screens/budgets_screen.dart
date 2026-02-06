@@ -14,9 +14,7 @@ class BudgetsScreen extends ConsumerWidget {
     final budgetsAsync = ref.watch(budgetsStreamProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Budgets'),
-      ),
+      appBar: AppBar(title: const Text('Budgets')),
       body: budgetsAsync.when(
         data: (budgets) {
           if (budgets.isEmpty) {
@@ -57,7 +55,11 @@ class BudgetsScreen extends ConsumerWidget {
     );
   }
 
-  void _showEditBudgetDialog(BuildContext context, WidgetRef ref, Budget budget) {
+  void _showEditBudgetDialog(
+    BuildContext context,
+    WidgetRef ref,
+    Budget budget,
+  ) {
     showDialog(
       context: context,
       builder: (context) => _BudgetFormDialog(
@@ -117,16 +119,13 @@ class _EmptyBudgetsPlaceholder extends StatelessWidget {
         children: [
           Icon(Icons.trending_down, size: 64, color: Colors.grey[400]),
           const SizedBox(height: 16),
-          Text(
-            'No budgets yet',
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
+          Text('No budgets yet', style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: 8),
           Text(
             'Create budgets to track your spending',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Colors.grey[600],
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(color: Colors.grey[600]),
           ),
           const SizedBox(height: 24),
           FilledButton.icon(
@@ -172,7 +171,12 @@ class _BudgetCard extends StatelessWidget {
     }
 
     return Semantics(
-      label: '${budget.tag} budget, ${budget.usedFormatted} of ${budget.limitFormatted} used, $percentText${warningLevel == BudgetWarningLevel.exceeded ? ', exceeded' : warningLevel == BudgetWarningLevel.warning ? ', approaching limit' : ''}',
+      label:
+          '${budget.tag} budget, ${budget.usedFormatted} of ${budget.limitFormatted} used, $percentText${warningLevel == BudgetWarningLevel.exceeded
+              ? ', exceeded'
+              : warningLevel == BudgetWarningLevel.warning
+              ? ', approaching limit'
+              : ''}',
       child: Card(
         margin: const EdgeInsets.only(bottom: 12),
         child: Padding(
@@ -196,69 +200,82 @@ class _BudgetCard extends StatelessWidget {
                       if (value == 'delete') onDelete();
                     },
                     itemBuilder: (context) => [
-                    const PopupMenuItem(value: 'edit', child: Text('Edit')),
-                    const PopupMenuItem(value: 'delete', child: Text('Delete')),
-                  ],
+                      const PopupMenuItem(value: 'edit', child: Text('Edit')),
+                      const PopupMenuItem(
+                        value: 'delete',
+                        child: Text('Delete'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('${budget.usedFormatted} / ${budget.limitFormatted}'),
+                  Text(
+                    percentText,
+                    style: TextStyle(
+                      color: progressColor,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Semantics(
+                label: 'Budget progress $percentText',
+                child: LinearProgressIndicator(
+                  value: progress.clamp(0.0, 1.0),
+                  color: progressColor,
+                  backgroundColor: Colors.grey[300],
                 ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text('${budget.usedFormatted} / ${budget.limitFormatted}'),
-                Text(
-                  percentText,
-                  style: TextStyle(
-                    color: progressColor,
-                    fontWeight: FontWeight.bold,
+              ),
+              // Warning message at 80% threshold
+              if (warningLevel == BudgetWarningLevel.warning)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.warning_amber,
+                        color: Colors.orange,
+                        size: 16,
+                      ),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          'Approaching budget limit - ₹${(budget.remainingCents / 100).toStringAsFixed(2)} remaining',
+                          style: const TextStyle(
+                            color: Colors.orange,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Semantics(
-              label: 'Budget progress $percentText',
-              child: LinearProgressIndicator(
-                value: progress.clamp(0.0, 1.0),
-                color: progressColor,
-                backgroundColor: Colors.grey[300],
-              ),
-            ),
-            // Warning message at 80% threshold
-            if (warningLevel == BudgetWarningLevel.warning)
-              Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: Row(
-                  children: [
-                    const Icon(Icons.warning_amber, color: Colors.orange, size: 16),
-                    const SizedBox(width: 4),
-                    Expanded(
-                      child: Text(
-                        'Approaching budget limit - ₹${(budget.remainingCents / 100).toStringAsFixed(2)} remaining',
-                        style: const TextStyle(color: Colors.orange, fontSize: 12),
+              // Exceeded message at 100%
+              if (warningLevel == BudgetWarningLevel.exceeded)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.error, color: Colors.red, size: 16),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          'Budget exceeded by ₹${((budget.usedCents - budget.limitCents) / 100).toStringAsFixed(2)}',
+                          style: const TextStyle(
+                            color: Colors.red,
+                            fontSize: 12,
+                          ),
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-            // Exceeded message at 100%
-            if (warningLevel == BudgetWarningLevel.exceeded)
-              Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: Row(
-                  children: [
-                    const Icon(Icons.error, color: Colors.red, size: 16),
-                    const SizedBox(width: 4),
-                    Expanded(
-                      child: Text(
-                        'Budget exceeded by ₹${((budget.usedCents - budget.limitCents) / 100).toStringAsFixed(2)}',
-                        style: const TextStyle(color: Colors.red, fontSize: 12),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
             ],
           ),
         ),
@@ -297,7 +314,9 @@ class _BudgetFormDialogState extends State<_BudgetFormDialog> {
   @override
   void initState() {
     super.initState();
-    _tagController = TextEditingController(text: widget.budget?.tag ?? _categories.first);
+    _tagController = TextEditingController(
+      text: widget.budget?.tag ?? _categories.first,
+    );
     _limitController = TextEditingController(
       text: widget.budget != null
           ? (widget.budget!.limitCents / 100).toStringAsFixed(2)
@@ -341,10 +360,9 @@ class _BudgetFormDialogState extends State<_BudgetFormDialog> {
                 labelText: 'Category',
                 border: OutlineInputBorder(),
               ),
-              items: _categories.map((cat) => DropdownMenuItem(
-                value: cat,
-                child: Text(cat),
-              )).toList(),
+              items: _categories
+                  .map((cat) => DropdownMenuItem(value: cat, child: Text(cat)))
+                  .toList(),
               onChanged: (value) {
                 if (value != null) _tagController.text = value;
               },
@@ -357,14 +375,17 @@ class _BudgetFormDialogState extends State<_BudgetFormDialog> {
                 prefixText: '\$ ',
                 border: OutlineInputBorder(),
               ),
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               inputFormatters: [
                 FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
               ],
               validator: (value) {
                 if (value == null || value.isEmpty) return 'Enter a limit';
                 final amount = double.tryParse(value);
-                if (amount == null || amount <= 0) return 'Enter a valid amount';
+                if (amount == null || amount <= 0)
+                  return 'Enter a valid amount';
                 return null;
               },
             ),
@@ -390,4 +411,3 @@ class _BudgetFormDialogState extends State<_BudgetFormDialog> {
     );
   }
 }
-

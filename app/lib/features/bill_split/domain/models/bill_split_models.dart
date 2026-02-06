@@ -37,12 +37,7 @@ class Participant extends Equatable {
     String? phone,
     String? email,
   }) {
-    return Participant(
-      id: id,
-      name: name,
-      phone: phone,
-      email: email,
-    );
+    return Participant(id: id, name: name, phone: phone, email: email);
   }
 
   /// Get initials for avatar
@@ -127,17 +122,17 @@ class Bill extends Equatable {
 
   @override
   List<Object?> get props => [
-        id,
-        vendor,
-        date,
-        items,
-        subtotalPaise,
-        taxPaise,
-        tipPaise,
-        totalPaise,
-        currency,
-        createdAt,
-      ];
+    id,
+    vendor,
+    date,
+    items,
+    subtotalPaise,
+    taxPaise,
+    tipPaise,
+    totalPaise,
+    currency,
+    createdAt,
+  ];
 }
 
 /// Individual split result for a participant
@@ -161,4 +156,3 @@ class ParticipantSplit extends Equatable {
   @override
   List<Object?> get props => [participant, amountPaise, currency];
 }
-

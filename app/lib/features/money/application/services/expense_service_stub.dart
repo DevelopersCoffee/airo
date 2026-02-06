@@ -26,10 +26,12 @@ class ExpenseService {
       receiptUrl: receiptUrl,
       createdAt: DateTime.now(),
     );
-    return Ok(SaveExpenseResult(
-      transaction: transaction,
-      budgetStatus: BudgetDeductionStatus.noBudget,
-    ));
+    return Ok(
+      SaveExpenseResult(
+        transaction: transaction,
+        budgetStatus: BudgetDeductionStatus.noBudget,
+      ),
+    );
   }
 
   Future<Result<Transaction>> saveIncome({
@@ -41,17 +43,19 @@ class ExpenseService {
     List<String> tags = const [],
     String? receiptUrl,
   }) async {
-    return Ok(Transaction(
-      id: 'web_txn_${DateTime.now().millisecondsSinceEpoch}',
-      accountId: accountId,
-      timestamp: timestamp,
-      amountCents: amountCents < 0 ? -amountCents : amountCents,
-      description: description,
-      category: category,
-      tags: tags,
-      receiptUrl: receiptUrl,
-      createdAt: DateTime.now(),
-    ));
+    return Ok(
+      Transaction(
+        id: 'web_txn_${DateTime.now().millisecondsSinceEpoch}',
+        accountId: accountId,
+        timestamp: timestamp,
+        amountCents: amountCents < 0 ? -amountCents : amountCents,
+        description: description,
+        category: category,
+        tags: tags,
+        receiptUrl: receiptUrl,
+        createdAt: DateTime.now(),
+      ),
+    );
   }
 
   Future<List<Transaction>> getPendingTransactions() async => [];
@@ -70,14 +74,9 @@ class SaveExpenseResult {
     this.budget,
   });
 
-  bool get isBudgetExceeded => budgetStatus == BudgetDeductionStatus.exceededLimit;
+  bool get isBudgetExceeded =>
+      budgetStatus == BudgetDeductionStatus.exceededLimit;
   bool get hasBudget => budgetStatus != BudgetDeductionStatus.noBudget;
 }
 
-enum BudgetDeductionStatus {
-  success,
-  exceededLimit,
-  noBudget,
-  error,
-}
-
+enum BudgetDeductionStatus { success, exceededLimit, noBudget, error }

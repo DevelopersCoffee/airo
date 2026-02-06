@@ -23,9 +23,9 @@ class LocalBudgetsRepository implements BudgetsRepository {
   @override
   Future<Result<List<Budget>>> fetchAll() async {
     try {
-      final results = await (_db.select(_db.budgetEntries)
-        ..where((b) => b.periodMonth.equals(_currentPeriodMonth)))
-        .get();
+      final results = await (_db.select(
+        _db.budgetEntries,
+      )..where((b) => b.periodMonth.equals(_currentPeriodMonth))).get();
       return Ok(results.map(_mapToBudget).toList());
     } catch (e, s) {
       return Err(e, s);
@@ -35,9 +35,9 @@ class LocalBudgetsRepository implements BudgetsRepository {
   @override
   Future<Result<Budget>> fetchById(String id) async {
     try {
-      final result = await (_db.select(_db.budgetEntries)
-        ..where((b) => b.uuid.equals(id)))
-        .getSingleOrNull();
+      final result = await (_db.select(
+        _db.budgetEntries,
+      )..where((b) => b.uuid.equals(id))).getSingleOrNull();
 
       if (result == null) {
         return Err(Exception('Budget not found'), StackTrace.current);
@@ -51,9 +51,13 @@ class LocalBudgetsRepository implements BudgetsRepository {
   @override
   Future<Result<Budget?>> fetchByTag(String tag) async {
     try {
-      final result = await (_db.select(_db.budgetEntries)
-        ..where((b) => b.tag.equals(tag) & b.periodMonth.equals(_currentPeriodMonth)))
-        .getSingleOrNull();
+      final result =
+          await (_db.select(_db.budgetEntries)..where(
+                (b) =>
+                    b.tag.equals(tag) &
+                    b.periodMonth.equals(_currentPeriodMonth),
+              ))
+              .getSingleOrNull();
 
       return Ok(result != null ? _mapToBudget(result) : null);
     } catch (e, s) {
@@ -87,16 +91,18 @@ class LocalBudgetsRepository implements BudgetsRepository {
       final uuid = _uuid.v4();
       final now = DateTime.now();
 
-      await _db.into(_db.budgetEntries).insert(
-        BudgetEntriesCompanion.insert(
-          uuid: uuid,
-          tag: tag,
-          limitCents: limitCents,
-          periodMonth: _currentPeriodMonth,
-          syncStatus: const Value('pending'),
-          createdAt: Value(now),
-        ),
-      );
+      await _db
+          .into(_db.budgetEntries)
+          .insert(
+            BudgetEntriesCompanion.insert(
+              uuid: uuid,
+              tag: tag,
+              limitCents: limitCents,
+              periodMonth: _currentPeriodMonth,
+              syncStatus: const Value('pending'),
+              createdAt: Value(now),
+            ),
+          );
 
       final budget = Budget(
         id: uuid,
@@ -116,15 +122,17 @@ class LocalBudgetsRepository implements BudgetsRepository {
   Future<Result<Budget>> update(Budget budget) async {
     try {
       final now = DateTime.now();
-      await (_db.update(_db.budgetEntries)
-        ..where((b) => b.uuid.equals(budget.id)))
-        .write(BudgetEntriesCompanion(
+      await (_db.update(
+        _db.budgetEntries,
+      )..where((b) => b.uuid.equals(budget.id))).write(
+        BudgetEntriesCompanion(
           tag: Value(budget.tag),
           limitCents: Value(budget.limitCents),
           usedCents: Value(budget.usedCents),
           syncStatus: const Value('pending'),
           updatedAt: Value(now),
-        ));
+        ),
+      );
 
       return Ok(budget);
     } catch (e, s) {
@@ -135,9 +143,9 @@ class LocalBudgetsRepository implements BudgetsRepository {
   @override
   Future<Result<void>> delete(String id) async {
     try {
-      await (_db.delete(_db.budgetEntries)
-        ..where((b) => b.uuid.equals(id)))
-        .go();
+      await (_db.delete(
+        _db.budgetEntries,
+      )..where((b) => b.uuid.equals(id))).go();
       return const Ok(null);
     } catch (e, s) {
       return Err(e, s);
@@ -148,13 +156,15 @@ class LocalBudgetsRepository implements BudgetsRepository {
   Future<Result<Budget>> updateUsage(String id, int usedCents) async {
     try {
       final now = DateTime.now();
-      await (_db.update(_db.budgetEntries)
-        ..where((b) => b.uuid.equals(id)))
-        .write(BudgetEntriesCompanion(
+      await (_db.update(
+        _db.budgetEntries,
+      )..where((b) => b.uuid.equals(id))).write(
+        BudgetEntriesCompanion(
           usedCents: Value(usedCents),
           syncStatus: const Value('pending'),
           updatedAt: Value(now),
-        ));
+        ),
+      );
 
       return fetchById(id);
     } catch (e, s) {
@@ -165,12 +175,14 @@ class LocalBudgetsRepository implements BudgetsRepository {
   @override
   Future<Result<void>> resetMonthlyUsage() async {
     try {
-      await (_db.update(_db.budgetEntries)
-        ..where((b) => b.periodMonth.equals(_currentPeriodMonth)))
-        .write(BudgetEntriesCompanion(
+      await (_db.update(
+        _db.budgetEntries,
+      )..where((b) => b.periodMonth.equals(_currentPeriodMonth))).write(
+        BudgetEntriesCompanion(
           usedCents: const Value(0),
           updatedAt: Value(DateTime.now()),
-        ));
+        ),
+      );
       return const Ok(null);
     } catch (e, s) {
       return Err(e, s);
@@ -209,14 +221,17 @@ class LocalBudgetsRepository implements BudgetsRepository {
   /// Watch budgets stream for reactive UI
   Stream<List<Budget>> watchBudgets() {
     return (_db.select(_db.budgetEntries)
-      ..where((b) => b.periodMonth.equals(_currentPeriodMonth)))
-      .watch()
-      .map((entries) => entries.map(_mapToBudget).toList());
+          ..where((b) => b.periodMonth.equals(_currentPeriodMonth)))
+        .watch()
+        .map((entries) => entries.map(_mapToBudget).toList());
   }
 
   /// Deduct from budget when expense is saved
   /// Returns true if budget was found and updated
-  Future<Result<bool>> deductFromBudget(String category, int amountCents) async {
+  Future<Result<bool>> deductFromBudget(
+    String category,
+    int amountCents,
+  ) async {
     try {
       // Find budget for this category
       final budgetResult = await fetchByTag(category);
@@ -252,18 +267,25 @@ class LocalBudgetsRepository implements BudgetsRepository {
 
   BudgetRecurrence _parseRecurrence(String value) {
     switch (value) {
-      case 'weekly': return BudgetRecurrence.weekly;
-      case 'yearly': return BudgetRecurrence.yearly;
-      default: return BudgetRecurrence.monthly;
+      case 'weekly':
+        return BudgetRecurrence.weekly;
+      case 'yearly':
+        return BudgetRecurrence.yearly;
+      default:
+        return BudgetRecurrence.monthly;
     }
   }
 
   CarryoverBehavior _parseCarryoverBehavior(String value) {
     switch (value) {
-      case 'carryUnused': return CarryoverBehavior.carryUnused;
-      case 'carryDeficit': return CarryoverBehavior.carryDeficit;
-      case 'carryBoth': return CarryoverBehavior.carryBoth;
-      default: return CarryoverBehavior.none;
+      case 'carryUnused':
+        return CarryoverBehavior.carryUnused;
+      case 'carryDeficit':
+        return CarryoverBehavior.carryDeficit;
+      case 'carryBoth':
+        return CarryoverBehavior.carryBoth;
+      default:
+        return CarryoverBehavior.none;
     }
   }
 
@@ -276,15 +298,19 @@ class LocalBudgetsRepository implements BudgetsRepository {
         : now.year * 100 + (now.month - 1);
 
     // Get budgets from previous period
-    final previousBudgets = await (_db.select(_db.budgetEntries)
-      ..where((b) => b.periodMonth.equals(previousPeriod)))
-      .get();
+    final previousBudgets = await (_db.select(
+      _db.budgetEntries,
+    )..where((b) => b.periodMonth.equals(previousPeriod))).get();
 
     for (final budget in previousBudgets) {
       // Check if budget already exists for current period
-      final existing = await (_db.select(_db.budgetEntries)
-        ..where((b) => b.tag.equals(budget.tag) & b.periodMonth.equals(currentPeriod)))
-        .getSingleOrNull();
+      final existing =
+          await (_db.select(_db.budgetEntries)..where(
+                (b) =>
+                    b.tag.equals(budget.tag) &
+                    b.periodMonth.equals(currentPeriod),
+              ))
+              .getSingleOrNull();
 
       if (existing == null) {
         // Calculate carryover based on behavior
@@ -308,19 +334,20 @@ class LocalBudgetsRepository implements BudgetsRepository {
         }
 
         // Create new budget for current period
-        await _db.into(_db.budgetEntries).insert(
-          BudgetEntriesCompanion.insert(
-            uuid: _uuid.v4(),
-            tag: budget.tag,
-            limitCents: budget.limitCents,
-            periodMonth: currentPeriod,
-            carryoverCents: Value(carryover),
-            recurrence: Value(budget.recurrence),
-            carryoverBehavior: Value(budget.carryoverBehavior),
-          ),
-        );
+        await _db
+            .into(_db.budgetEntries)
+            .insert(
+              BudgetEntriesCompanion.insert(
+                uuid: _uuid.v4(),
+                tag: budget.tag,
+                limitCents: budget.limitCents,
+                periodMonth: currentPeriod,
+                carryoverCents: Value(carryover),
+                recurrence: Value(budget.recurrence),
+                carryoverBehavior: Value(budget.carryoverBehavior),
+              ),
+            );
       }
     }
   }
 }
-

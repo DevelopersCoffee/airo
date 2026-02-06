@@ -1,17 +1,12 @@
 /// User preferences for quotes feature
 class QuotePreferences {
   final bool showQuotes;
-  final String quoteSource; // 'fake', 'zenquotes', 'fortuneCookie', 'lifeHacks', 'uselessFacts'
+  final String
+  quoteSource; // 'fake', 'zenquotes', 'fortuneCookie', 'lifeHacks', 'uselessFacts'
 
-  const QuotePreferences({
-    this.showQuotes = true,
-    this.quoteSource = 'fake',
-  });
+  const QuotePreferences({this.showQuotes = true, this.quoteSource = 'fake'});
 
-  QuotePreferences copyWith({
-    bool? showQuotes,
-    String? quoteSource,
-  }) {
+  QuotePreferences copyWith({bool? showQuotes, String? quoteSource}) {
     return QuotePreferences(
       showQuotes: showQuotes ?? this.showQuotes,
       quoteSource: quoteSource ?? this.quoteSource,
@@ -19,10 +14,7 @@ class QuotePreferences {
   }
 
   Map<String, dynamic> toJson() {
-    return {
-      'showQuotes': showQuotes,
-      'quoteSource': quoteSource,
-    };
+    return {'showQuotes': showQuotes, 'quoteSource': quoteSource};
   }
 
   factory QuotePreferences.fromJson(Map<String, dynamic> json) {
@@ -43,4 +35,3 @@ class QuotePreferences {
   @override
   int get hashCode => showQuotes.hashCode ^ quoteSource.hashCode;
 }
-

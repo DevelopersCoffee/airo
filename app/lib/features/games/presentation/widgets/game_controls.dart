@@ -6,10 +6,7 @@ import '../../application/blackjack_notifier.dart';
 class GameControls extends ConsumerWidget {
   final dynamic game;
 
-  const GameControls({
-    super.key,
-    required this.game,
-  });
+  const GameControls({super.key, required this.game});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -52,9 +49,9 @@ class GameControls extends ConsumerWidget {
             ],
           ),
         ),
-        
+
         const SizedBox(height: 20),
-        
+
         // Action buttons
         Row(
           children: [
@@ -68,24 +65,25 @@ class GameControls extends ConsumerWidget {
                 color: Colors.green,
               ),
             ),
-            
+
             const SizedBox(width: 12),
-            
+
             // Stand button
             Expanded(
               child: _buildActionButton(
                 label: 'STAND',
                 icon: Icons.pan_tool,
                 enabled: game.canStand,
-                onPressed: () => ref.read(blackjackGameProvider.notifier).stand(),
+                onPressed: () =>
+                    ref.read(blackjackGameProvider.notifier).stand(),
                 color: Colors.red,
               ),
             ),
           ],
         ),
-        
+
         const SizedBox(height: 12),
-        
+
         // Secondary actions
         Row(
           children: [
@@ -95,14 +93,15 @@ class GameControls extends ConsumerWidget {
                 label: 'DOUBLE',
                 icon: Icons.exposure_plus_2,
                 enabled: game.canDouble,
-                onPressed: () => ref.read(blackjackGameProvider.notifier).doubleDown(),
+                onPressed: () =>
+                    ref.read(blackjackGameProvider.notifier).doubleDown(),
                 color: Colors.blue,
                 isSecondary: true,
               ),
             ),
-            
+
             const SizedBox(width: 12),
-            
+
             // Split button
             Expanded(
               child: _buildActionButton(
@@ -160,4 +159,3 @@ class GameControls extends ConsumerWidget {
     );
   }
 }
-

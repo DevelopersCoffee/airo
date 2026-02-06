@@ -124,11 +124,7 @@ class _HttpStatusReferenceScreenState extends State<HttpStatusReferenceScreen> {
     return FilterChip(
       label: Row(
         mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 16),
-          const SizedBox(width: 4),
-          Text(label),
-        ],
+        children: [Icon(icon, size: 16), const SizedBox(width: 4), Text(label)],
       ),
       selected: isSelected,
       onSelected: (selected) {
@@ -227,4 +223,3 @@ class _HttpStatusReferenceScreenState extends State<HttpStatusReferenceScreen> {
     );
   }
 }
-

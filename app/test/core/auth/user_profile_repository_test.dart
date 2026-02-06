@@ -91,9 +91,7 @@ void main() {
       });
 
       test('should return error when no profile exists', () async {
-        final result = await repository.updateProfile(
-          displayName: 'New Name',
-        );
+        final result = await repository.updateProfile(displayName: 'New Name');
 
         expect(result.isErr, true);
       });
@@ -134,4 +132,3 @@ void main() {
     });
   });
 }
-

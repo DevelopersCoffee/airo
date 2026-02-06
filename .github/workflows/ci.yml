@@ -100,10 +100,10 @@ jobs:
 
       - name: Run core package tests
         run: |
-          cd packages/core_domain && dart test --reporter=compact
-          cd ../core_data && dart test --reporter=compact
-          cd ../core_ai && dart test --reporter=compact
-          cd ../core_auth && dart test --reporter=compact
+          cd packages/core_domain && flutter test --reporter=compact
+          cd ../core_data && flutter test --reporter=compact
+          cd ../core_ai && flutter test --reporter=compact
+          cd ../core_auth && flutter test --reporter=compact
 
       - name: Run app tests with coverage
         run: |

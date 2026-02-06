@@ -10,4 +10,3 @@ export 'application/providers/quote_provider.dart';
 
 // Presentation
 export 'presentation/widgets/daily_quote_card.dart';
-

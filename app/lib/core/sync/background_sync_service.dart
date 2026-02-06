@@ -11,9 +11,8 @@ import 'package:flutter/services.dart';
 /// - iOS: BGTaskScheduler
 /// - Web: Service Worker (if available)
 class BackgroundSyncService {
-  BackgroundSyncService({
-    required SyncService syncService,
-  }) : _syncService = syncService;
+  BackgroundSyncService({required SyncService syncService})
+    : _syncService = syncService;
 
   final SyncService _syncService;
 
@@ -38,7 +37,10 @@ class BackgroundSyncService {
       }
 
       final result = await _channel.invokeMethod<bool>('register', {
-        'intervalMinutes': interval.inMinutes.clamp(_minSyncIntervalMinutes, 1440),
+        'intervalMinutes': interval.inMinutes.clamp(
+          _minSyncIntervalMinutes,
+          1440,
+        ),
         'requiresNetwork': requiresNetwork,
         'requiresCharging': requiresCharging,
         'taskName': 'airo_sync',
@@ -147,8 +149,8 @@ class BackgroundSyncConfig {
       requiresNetwork: requiresNetwork ?? this.requiresNetwork,
       requiresCharging: requiresCharging ?? this.requiresCharging,
       syncOnAppResume: syncOnAppResume ?? this.syncOnAppResume,
-      syncOnConnectivityChange: syncOnConnectivityChange ?? this.syncOnConnectivityChange,
+      syncOnConnectivityChange:
+          syncOnConnectivityChange ?? this.syncOnConnectivityChange,
     );
   }
 }
-

@@ -48,7 +48,7 @@ class LocalWalletRepository implements WalletRepository {
       final List<dynamic> jsonList = jsonDecode(jsonStr);
       _cache = {
         for (final json in jsonList)
-          json['id'] as String: Wallet.fromJson(json as Map<String, dynamic>)
+          json['id'] as String: Wallet.fromJson(json as Map<String, dynamic>),
       };
     } catch (e) {
       debugPrint('Error loading wallets: $e');
@@ -167,7 +167,10 @@ class LocalWalletRepository implements WalletRepository {
       await _loadCache();
       final wallet = _cache![id];
       if (wallet != null) {
-        _cache![id] = wallet.copyWith(isActive: false, updatedAt: DateTime.now());
+        _cache![id] = wallet.copyWith(
+          isActive: false,
+          updatedAt: DateTime.now(),
+        );
         await _saveCache();
       }
       return const Ok(null);
@@ -241,4 +244,3 @@ class LocalWalletRepository implements WalletRepository {
     await _saveCache();
   }
 }
-

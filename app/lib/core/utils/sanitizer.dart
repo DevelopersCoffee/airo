@@ -4,7 +4,7 @@ class Sanitizer {
 
   /// Maximum length for description fields
   static const int maxDescriptionLength = 500;
-  
+
   /// Maximum length for category/tag fields
   static const int maxCategoryLength = 50;
 
@@ -14,23 +14,26 @@ class Sanitizer {
     if (input.isEmpty) return input;
 
     // Remove null bytes and other control characters
-    var sanitized = input.replaceAll(RegExp(r'[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]'), '');
-    
+    var sanitized = input.replaceAll(
+      RegExp(r'[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]'),
+      '',
+    );
+
     // Remove HTML/script tags
     sanitized = _stripHtml(sanitized);
-    
+
     // Normalize whitespace (multiple spaces to single space)
     sanitized = sanitized.replaceAll(RegExp(r'\s+'), ' ');
-    
+
     // Trim leading/trailing whitespace
     sanitized = sanitized.trim();
-    
+
     // Enforce max length
     final limit = maxLength ?? maxDescriptionLength;
     if (sanitized.length > limit) {
       sanitized = sanitized.substring(0, limit);
     }
-    
+
     return sanitized;
   }
 
@@ -47,19 +50,19 @@ class Sanitizer {
   /// Sanitize amount input - ensure it's a valid positive number
   static double? sanitizeAmount(String input) {
     if (input.isEmpty) return null;
-    
+
     // Remove currency symbols and commas
     var cleaned = input.replaceAll(RegExp(r'[^\d.]'), '');
-    
+
     // Handle multiple decimal points
     final parts = cleaned.split('.');
     if (parts.length > 2) {
       cleaned = '${parts[0]}.${parts.sublist(1).join('')}';
     }
-    
+
     final amount = double.tryParse(cleaned);
     if (amount == null || amount < 0) return null;
-    
+
     // Round to 2 decimal places
     return (amount * 100).round() / 100;
   }
@@ -81,21 +84,21 @@ class Sanitizer {
       RegExp(r'data:', caseSensitive: false),
       RegExp(r'vbscript:', caseSensitive: false),
     ];
-    
+
     return patterns.any((pattern) => pattern.hasMatch(input));
   }
 
   /// Validate and sanitize email address
   static String? sanitizeEmail(String input) {
     final trimmed = input.trim().toLowerCase();
-    
+
     // Basic email validation
     final emailRegex = RegExp(
       r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$',
     );
-    
+
     if (!emailRegex.hasMatch(trimmed)) return null;
-    
+
     return trimmed;
   }
 
@@ -114,7 +117,8 @@ class Sanitizer {
     final absCents = cents.abs();
     final dollars = absCents ~/ 100;
     final remainingCents = absCents % 100;
-    final formatted = '$symbol$dollars.${remainingCents.toString().padLeft(2, '0')}';
+    final formatted =
+        '$symbol$dollars.${remainingCents.toString().padLeft(2, '0')}';
     return isNegative ? '-$formatted' : formatted;
   }
 
@@ -125,4 +129,3 @@ class Sanitizer {
     return (amount * 100).round();
   }
 }
-

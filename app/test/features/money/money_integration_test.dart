@@ -24,7 +24,12 @@ void main() {
     transactionsRepo = LocalTransactionsRepository(db);
     budgetsRepo = LocalBudgetsRepository(db);
     auditService = AuditService(userId: 'test_user');
-    expenseService = ExpenseService(db, transactionsRepo, budgetsRepo, auditService);
+    expenseService = ExpenseService(
+      db,
+      transactionsRepo,
+      budgetsRepo,
+      auditService,
+    );
     insightsService = InsightsService(transactionsRepo, budgetsRepo);
   });
 
@@ -90,7 +95,7 @@ void main() {
     test('budget health reflects exceeded budgets', () async {
       // Create budget and exceed it
       await budgetsRepo.create(tag: 'Entertainment', limitCents: 5000);
-      
+
       await expenseService.saveExpense(
         accountId: 'acc1',
         timestamp: DateTime.now(),
@@ -100,7 +105,7 @@ void main() {
       );
 
       final health = await insightsService.getBudgetHealth();
-      
+
       expect(health.exceededBudgets, 1);
       expect(health.hasExceeded, true);
       expect(health.insights.any((i) => i.category == 'Entertainment'), true);
@@ -132,22 +137,21 @@ void main() {
   group('Budget Validation', () {
     test('prevents duplicate budgets', () async {
       await budgetsRepo.create(tag: 'Shopping', limitCents: 20000);
-      
+
       final duplicate = await budgetsRepo.create(
         tag: 'Shopping',
         limitCents: 30000,
       );
-      
+
       expect(duplicate.isErr, true);
     });
 
     test('rejects invalid budget amounts', () async {
       final zero = await budgetsRepo.create(tag: 'Test1', limitCents: 0);
       final negative = await budgetsRepo.create(tag: 'Test2', limitCents: -100);
-      
+
       expect(zero.isErr, true);
       expect(negative.isErr, true);
     });
   });
 }
-

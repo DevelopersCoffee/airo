@@ -75,9 +75,9 @@ class AuditEntityTypes {
 class AuditService {
   static const String _storageKey = 'airo_audit_log';
   static const int _maxEntries = 1000; // Retain last 1000 entries
-  
+
   final String _userId;
-  
+
   AuditService({String userId = 'default_user'}) : _userId = userId;
 
   /// Log a financial operation
@@ -228,9 +228,9 @@ class AuditService {
     DateTime end,
   ) async {
     final entries = await _loadEntries();
-    return entries.where((e) => 
-      e.timestamp.isAfter(start) && e.timestamp.isBefore(end)
-    ).toList();
+    return entries
+        .where((e) => e.timestamp.isAfter(start) && e.timestamp.isBefore(end))
+        .toList();
   }
 
   /// Clear old logs (keep only recent entries)
@@ -243,16 +243,16 @@ class AuditService {
   }
 
   // Private methods for storage
-  
+
   Future<void> _appendEntry(AuditLogEntry entry) async {
     final entries = await _loadEntries();
     entries.insert(0, entry); // Prepend new entry (most recent first)
-    
+
     // Prune if needed
-    final trimmed = entries.length > _maxEntries 
-        ? entries.take(_maxEntries).toList() 
+    final trimmed = entries.length > _maxEntries
+        ? entries.take(_maxEntries).toList()
         : entries;
-    
+
     await _saveEntries(trimmed);
   }
 
@@ -261,7 +261,7 @@ class AuditService {
       final prefs = await SharedPreferences.getInstance();
       final jsonString = prefs.getString(_storageKey);
       if (jsonString == null) return [];
-      
+
       final jsonList = json.decode(jsonString) as List;
       return jsonList
           .map((e) => AuditLogEntry.fromJson(e as Map<String, dynamic>))
@@ -278,4 +278,3 @@ class AuditService {
     await prefs.setString(_storageKey, jsonString);
   }
 }
-

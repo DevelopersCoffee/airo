@@ -41,9 +41,7 @@ class DeckOfCardsService {
       final path = shuffle ? '$_baseUrl/new/shuffle/' : '$_baseUrl/new/';
       final response = await _dio.get(
         path,
-        queryParameters: {
-          'cards': cards.join(','),
-        },
+        queryParameters: {'cards': cards.join(',')},
       );
 
       return DeckResponse.fromJson(response.data as Map<String, dynamic>);
@@ -62,9 +60,7 @@ class DeckOfCardsService {
     try {
       final response = await _dio.get(
         '$_baseUrl/$deckId/draw/',
-        queryParameters: {
-          'count': count,
-        },
+        queryParameters: {'count': count},
       );
 
       return DrawResponse.fromJson(response.data as Map<String, dynamic>);
@@ -83,9 +79,7 @@ class DeckOfCardsService {
     try {
       final response = await _dio.get(
         '$_baseUrl/$deckId/shuffle/',
-        queryParameters: {
-          if (remainingOnly) 'remaining': true,
-        },
+        queryParameters: {if (remainingOnly) 'remaining': true},
       );
 
       return DeckResponse.fromJson(response.data as Map<String, dynamic>);
@@ -106,9 +100,7 @@ class DeckOfCardsService {
     try {
       final response = await _dio.get(
         '$_baseUrl/$deckId/pile/$pileName/add/',
-        queryParameters: {
-          'cards': cards.join(','),
-        },
+        queryParameters: {'cards': cards.join(',')},
       );
 
       return PileResponse.fromJson(response.data as Map<String, dynamic>);
@@ -125,9 +117,7 @@ class DeckOfCardsService {
     required String pileName,
   }) async {
     try {
-      final response = await _dio.get(
-        '$_baseUrl/$deckId/pile/$pileName/list/',
-      );
+      final response = await _dio.get('$_baseUrl/$deckId/pile/$pileName/list/');
 
       return PileResponse.fromJson(response.data as Map<String, dynamic>);
     } catch (e) {
@@ -150,7 +140,7 @@ class DeckOfCardsService {
   }) async {
     try {
       String path = '$_baseUrl/$deckId/pile/$pileName/draw/';
-      
+
       if (position == 'bottom') {
         path += 'bottom/';
       } else if (position == 'random') {
@@ -199,9 +189,7 @@ class DeckOfCardsService {
     try {
       final response = await _dio.get(
         '$_baseUrl/$deckId/return/',
-        queryParameters: {
-          if (cards != null) 'cards': cards.join(','),
-        },
+        queryParameters: {if (cards != null) 'cards': cards.join(',')},
       );
 
       return DeckResponse.fromJson(response.data as Map<String, dynamic>);
@@ -222,9 +210,7 @@ class DeckOfCardsService {
     try {
       final response = await _dio.get(
         '$_baseUrl/$deckId/pile/$pileName/return/',
-        queryParameters: {
-          if (cards != null) 'cards': cards.join(','),
-        },
+        queryParameters: {if (cards != null) 'cards': cards.join(',')},
       );
 
       return DeckResponse.fromJson(response.data as Map<String, dynamic>);
@@ -234,6 +220,6 @@ class DeckOfCardsService {
   }
 
   /// Get the back of card image URL
-  static String get cardBackImage => 'https://deckofcardsapi.com/static/img/back.png';
+  static String get cardBackImage =>
+      'https://deckofcardsapi.com/static/img/back.png';
 }
-

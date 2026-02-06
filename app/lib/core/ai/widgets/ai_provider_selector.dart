@@ -8,10 +8,7 @@ import '../ai_router_service.dart';
 class AIProviderSelector extends ConsumerWidget {
   final VoidCallback? onProviderSelected;
 
-  const AIProviderSelector({
-    super.key,
-    this.onProviderSelected,
-  });
+  const AIProviderSelector({super.key, this.onProviderSelected});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -19,11 +16,11 @@ class AIProviderSelector extends ConsumerWidget {
     final selectedProvider = ref.watch(selectedAIProviderProvider);
 
     return providerStatusAsync.when(
-      data: (statuses) => _buildSelector(context, ref, statuses, selectedProvider),
+      data: (statuses) =>
+          _buildSelector(context, ref, statuses, selectedProvider),
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (error, stack) => Center(
-        child: Text('Error loading AI providers: $error'),
-      ),
+      error: (error, stack) =>
+          Center(child: Text('Error loading AI providers: $error')),
     );
   }
 
@@ -46,10 +43,7 @@ class AIProviderSelector extends ConsumerWidget {
               const SizedBox(width: 12),
               const Text(
                 'Select AI Provider',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
               const Spacer(),
               IconButton(
@@ -63,13 +57,13 @@ class AIProviderSelector extends ConsumerWidget {
           ),
         ),
         const Divider(height: 1),
-        
+
         // Provider options
         ...AIProvider.values.map((provider) {
           final status = statuses[provider];
           final isSelected = selectedProvider == provider;
           final isAvailable = status?.isAvailable ?? false;
-          
+
           return _buildProviderTile(
             context,
             ref,
@@ -79,7 +73,7 @@ class AIProviderSelector extends ConsumerWidget {
             isAvailable,
           );
         }),
-        
+
         const SizedBox(height: 16),
       ],
     );
@@ -94,7 +88,7 @@ class AIProviderSelector extends ConsumerWidget {
     bool isAvailable,
   ) {
     final capabilities = status?.capabilities;
-    
+
     return ListTile(
       leading: _getProviderIcon(provider, isAvailable),
       title: Text(
@@ -132,10 +126,7 @@ class AIProviderSelector extends ConsumerWidget {
             const SizedBox(height: 4),
             Text(
               capabilities!.errorMessage!,
-              style: const TextStyle(
-                fontSize: 11,
-                color: Colors.red,
-              ),
+              style: const TextStyle(fontSize: 11, color: Colors.red),
             ),
           ],
         ],
@@ -149,7 +140,7 @@ class AIProviderSelector extends ConsumerWidget {
               ref.read(selectedAIProviderProvider.notifier).state = provider;
               ref.read(aiRouterServiceProvider).setProvider(provider);
               onProviderSelected?.call();
-              
+
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text('Switched to ${provider.displayName}'),
@@ -164,7 +155,7 @@ class AIProviderSelector extends ConsumerWidget {
   Widget _getProviderIcon(AIProvider provider, bool isAvailable) {
     IconData icon;
     Color? color;
-    
+
     switch (provider) {
       case AIProvider.nano:
         icon = Icons.phone_android;
@@ -179,7 +170,7 @@ class AIProviderSelector extends ConsumerWidget {
         color = Colors.orange;
         break;
     }
-    
+
     return Icon(icon, color: color);
   }
 
@@ -224,4 +215,3 @@ Future<void> showAIProviderSelector(BuildContext context) async {
     ),
   );
 }
-

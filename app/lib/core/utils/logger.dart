@@ -7,7 +7,7 @@ class AppLogger {
   AppLogger._();
 
   static const String _name = 'AiroMoney';
-  
+
   /// Log levels
   static const int _levelDebug = 0;
   static const int _levelInfo = 1;
@@ -23,24 +23,50 @@ class AppLogger {
   }
 
   /// Debug log - for development only
-  static void debug(String message, {String? tag, Object? error, StackTrace? stackTrace}) {
+  static void debug(
+    String message, {
+    String? tag,
+    Object? error,
+    StackTrace? stackTrace,
+  }) {
     _log(_levelDebug, message, tag: tag, error: error, stackTrace: stackTrace);
   }
 
   /// Info log - general information
-  static void info(String message, {String? tag, Object? error, StackTrace? stackTrace}) {
+  static void info(
+    String message, {
+    String? tag,
+    Object? error,
+    StackTrace? stackTrace,
+  }) {
     _log(_levelInfo, message, tag: tag, error: error, stackTrace: stackTrace);
   }
 
   /// Warning log - potential issues
-  static void warning(String message, {String? tag, Object? error, StackTrace? stackTrace}) {
-    _log(_levelWarning, message, tag: tag, error: error, stackTrace: stackTrace);
+  static void warning(
+    String message, {
+    String? tag,
+    Object? error,
+    StackTrace? stackTrace,
+  }) {
+    _log(
+      _levelWarning,
+      message,
+      tag: tag,
+      error: error,
+      stackTrace: stackTrace,
+    );
   }
 
   /// Error log - errors that need attention
-  static void error(String message, {String? tag, Object? error, StackTrace? stackTrace}) {
+  static void error(
+    String message, {
+    String? tag,
+    Object? error,
+    StackTrace? stackTrace,
+  }) {
     _log(_levelError, message, tag: tag, error: error, stackTrace: stackTrace);
-    
+
     // In production, send to crash reporting service
     if (!kDebugMode && error != null) {
       _reportToCrashlytics(message, error, stackTrace);
@@ -49,7 +75,7 @@ class AppLogger {
 
   /// Log a database operation
   static void database(String operation, {String? details, int? durationMs}) {
-    final msg = durationMs != null 
+    final msg = durationMs != null
         ? '$operation ($durationMs ms)${details != null ? ': $details' : ''}'
         : '$operation${details != null ? ': $details' : ''}';
     debug(msg, tag: 'DATABASE');
@@ -76,9 +102,17 @@ class AppLogger {
   }
 
   /// Log performance metrics
-  static void performance(String metric, int durationMs, {Map<String, dynamic>? details}) {
+  static void performance(
+    String metric,
+    int durationMs, {
+    Map<String, dynamic>? details,
+  }) {
     final level = durationMs > 1000 ? _levelWarning : _levelDebug;
-    _log(level, 'Performance: $metric took ${durationMs}ms ${details ?? ''}', tag: 'PERF');
+    _log(
+      level,
+      'Performance: $metric took ${durationMs}ms ${details ?? ''}',
+      tag: 'PERF',
+    );
   }
 
   static void _log(
@@ -112,15 +146,24 @@ class AppLogger {
 
   static String _getLevelName(int level) {
     switch (level) {
-      case _levelDebug: return 'DEBUG';
-      case _levelInfo: return 'INFO';
-      case _levelWarning: return 'WARN';
-      case _levelError: return 'ERROR';
-      default: return 'LOG';
+      case _levelDebug:
+        return 'DEBUG';
+      case _levelInfo:
+        return 'INFO';
+      case _levelWarning:
+        return 'WARN';
+      case _levelError:
+        return 'ERROR';
+      default:
+        return 'LOG';
     }
   }
 
-  static void _reportToCrashlytics(String message, Object error, StackTrace? stackTrace) {
+  static void _reportToCrashlytics(
+    String message,
+    Object error,
+    StackTrace? stackTrace,
+  ) {
     // TODO: Integrate with Firebase Crashlytics or similar service
     // FirebaseCrashlytics.instance.recordError(error, stackTrace, reason: message);
   }
@@ -133,4 +176,3 @@ extension LoggerTiming on Stopwatch {
     AppLogger.performance(metric, elapsedMilliseconds, details: details);
   }
 }
-

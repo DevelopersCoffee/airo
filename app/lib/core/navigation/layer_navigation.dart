@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 /// Layer-based modular navigation system
-/// 
+///
 /// Rules:
 /// - App has one main shell
 /// - Each section is a module loaded when tapped
@@ -14,13 +14,13 @@ import 'package:flutter/material.dart';
 enum LayerType {
   /// Bottom sheet that slides up from bottom
   bottomSheet,
-  
+
   /// Full screen overlay
   fullScreen,
-  
+
   /// Dialog overlay
   dialog,
-  
+
   /// Drawer from side
   drawer,
 }
@@ -53,22 +53,23 @@ class LayerConfig {
 /// Layer navigation controller
 class LayerNavigationController extends ChangeNotifier {
   final List<LayerConfig> _layerStack = [];
-  
+
   /// Get current layer stack
   List<LayerConfig> get layerStack => List.unmodifiable(_layerStack);
-  
+
   /// Get current layer
-  LayerConfig? get currentLayer => _layerStack.isEmpty ? null : _layerStack.last;
-  
+  LayerConfig? get currentLayer =>
+      _layerStack.isEmpty ? null : _layerStack.last;
+
   /// Check if any layers are open
   bool get hasLayers => _layerStack.isNotEmpty;
-  
+
   /// Push a new layer onto the stack
   void pushLayer(LayerConfig config) {
     _layerStack.add(config);
     notifyListeners();
   }
-  
+
   /// Pop the top layer from the stack
   void popLayer() {
     if (_layerStack.isNotEmpty) {
@@ -76,13 +77,13 @@ class LayerNavigationController extends ChangeNotifier {
       notifyListeners();
     }
   }
-  
+
   /// Pop all layers
   void popAllLayers() {
     _layerStack.clear();
     notifyListeners();
   }
-  
+
   /// Pop to a specific layer by id
   void popToLayer(String layerId) {
     final index = _layerStack.indexWhere((layer) => layer.id == layerId);
@@ -91,7 +92,7 @@ class LayerNavigationController extends ChangeNotifier {
       notifyListeners();
     }
   }
-  
+
   /// Replace current layer
   void replaceLayer(LayerConfig config) {
     if (_layerStack.isNotEmpty) {
@@ -213,9 +214,7 @@ class _LayerNavigationState extends State<LayerNavigation> {
             ),
             const Divider(height: 1),
             // Content
-            Expanded(
-              child: config.builder(context),
-            ),
+            Expanded(child: config.builder(context)),
           ],
         ),
       ),
@@ -228,39 +227,41 @@ class _LayerNavigationState extends State<LayerNavigation> {
   }
 
   void _showFullScreen(LayerConfig config) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        fullscreenDialog: true,
-        builder: (context) => Scaffold(
-          appBar: AppBar(
-            title: Text(config.title),
-            leading: widget.controller.layerStack.length > 1
-                ? IconButton(
-                    icon: const Icon(Icons.arrow_back),
+    Navigator.of(context)
+        .push(
+          MaterialPageRoute(
+            fullscreenDialog: true,
+            builder: (context) => Scaffold(
+              appBar: AppBar(
+                title: Text(config.title),
+                leading: widget.controller.layerStack.length > 1
+                    ? IconButton(
+                        icon: const Icon(Icons.arrow_back),
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                          widget.controller.popLayer();
+                        },
+                      )
+                    : null,
+                actions: [
+                  IconButton(
+                    icon: const Icon(Icons.close),
                     onPressed: () {
                       Navigator.of(context).pop();
-                      widget.controller.popLayer();
+                      widget.controller.popAllLayers();
                     },
-                  )
-                : null,
-            actions: [
-              IconButton(
-                icon: const Icon(Icons.close),
-                onPressed: () {
-                  Navigator.of(context).pop();
-                  widget.controller.popAllLayers();
-                },
+                  ),
+                ],
               ),
-            ],
+              body: config.builder(context),
+            ),
           ),
-          body: config.builder(context),
-        ),
-      ),
-    ).then((_) {
-      if (widget.controller.currentLayer?.id == config.id) {
-        widget.controller.popLayer();
-      }
-    });
+        )
+        .then((_) {
+          if (widget.controller.currentLayer?.id == config.id) {
+            widget.controller.popLayer();
+          }
+        });
   }
 
   void _showDialog(LayerConfig config) {
@@ -294,10 +295,7 @@ class _LayerNavigationState extends State<LayerNavigation> {
         child: Column(
           children: [
             DrawerHeader(
-              child: Text(
-                config.title,
-                style: const TextStyle(fontSize: 24),
-              ),
+              child: Text(config.title, style: const TextStyle(fontSize: 24)),
             ),
             Expanded(child: config.builder(context)),
           ],
@@ -315,4 +313,3 @@ class _LayerNavigationState extends State<LayerNavigation> {
     return widget.child;
   }
 }
-

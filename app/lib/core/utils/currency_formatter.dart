@@ -32,8 +32,8 @@ class CurrencyFormatter {
     required this.currency,
     required NumberFormat formatter,
     required NumberFormat compactFormatter,
-  })  : _formatter = formatter,
-        _compactFormatter = compactFormatter;
+  }) : _formatter = formatter,
+       _compactFormatter = compactFormatter;
 
   /// Create formatter for a specific currency
   factory CurrencyFormatter.forCurrency(SupportedCurrency currency) {
@@ -114,8 +114,10 @@ class CurrencyFormatter {
 /// Date formatter for Indian locale
 class IndianDateFormatter {
   static final DateFormat _dateFormat = DateFormat('dd/MM/yyyy', 'en_IN');
-  static final DateFormat _dateTimeFormat =
-      DateFormat('dd/MM/yyyy HH:mm', 'en_IN');
+  static final DateFormat _dateTimeFormat = DateFormat(
+    'dd/MM/yyyy HH:mm',
+    'en_IN',
+  );
   static final DateFormat _timeFormat = DateFormat('HH:mm', 'en_IN');
   static final DateFormat _monthYearFormat = DateFormat('MMMM yyyy', 'en_IN');
   static final DateFormat _shortDateFormat = DateFormat('dd MMM', 'en_IN');
@@ -144,4 +146,3 @@ class IndianDateFormatter {
     }
   }
 }
-

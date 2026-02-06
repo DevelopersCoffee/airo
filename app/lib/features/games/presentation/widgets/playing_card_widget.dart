@@ -33,7 +33,7 @@ class _PlayingCardWidgetState extends ConsumerState<PlayingCardWidget>
   @override
   void initState() {
     super.initState();
-    
+
     _controller = AnimationController(
       duration: const Duration(milliseconds: 500),
       vsync: this,
@@ -42,18 +42,12 @@ class _PlayingCardWidgetState extends ConsumerState<PlayingCardWidget>
     _scaleAnimation = Tween<double>(
       begin: 0.0,
       end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _controller,
-      curve: Curves.elasticOut,
-    ));
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.elasticOut));
 
     _rotationAnimation = Tween<double>(
       begin: 0.5,
       end: 0.0,
-    ).animate(CurvedAnimation(
-      parent: _controller,
-      curve: Curves.easeOut,
-    ));
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
 
     // Start animation after delay
     Future.delayed(widget.delay, () {
@@ -167,4 +161,3 @@ class SimpleCardWidget extends ConsumerWidget {
     );
   }
 }
-
