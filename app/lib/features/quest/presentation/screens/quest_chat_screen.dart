@@ -147,6 +147,12 @@ class _QuestChatScreenState extends ConsumerState<QuestChatScreen> {
         return Icons.cloud;
       case AIProvider.auto:
         return Icons.auto_awesome;
+      case AIProvider.gguf:
+      case AIProvider.gemma:
+      case AIProvider.phi:
+      case AIProvider.llama:
+      case AIProvider.custom:
+        return Icons.memory;
     }
   }
 

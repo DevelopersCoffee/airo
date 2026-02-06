@@ -1,4 +1,7 @@
 /// AI Provider types for query routing.
+///
+/// Supports both built-in providers (Gemini Nano, Cloud) and
+/// custom GGUF models (Gemma, Phi, Llama, etc.).
 enum AIProvider {
   /// On-device Gemini Nano (Pixel 9+)
   nano('Gemini Nano', 'On-device AI', 'Local processing on your Pixel 9'),
@@ -7,13 +10,47 @@ enum AIProvider {
   cloud('Gemini Cloud', 'Cloud AI', 'Powered by Google AI'),
 
   /// Auto-select based on availability
-  auto('Auto', 'Smart Selection', 'Automatically choose best option');
+  auto('Auto', 'Smart Selection', 'Automatically choose best option'),
+
+  /// Generic GGUF model (llama.cpp compatible)
+  gguf('GGUF Model', 'Local GGUF', 'Custom GGUF model via llama.cpp'),
+
+  /// Google Gemma models (GGUF format)
+  gemma('Gemma', 'Gemma AI', 'Google Gemma open model'),
+
+  /// Microsoft Phi models (GGUF format)
+  phi('Phi', 'Phi AI', 'Microsoft Phi small language model'),
+
+  /// Meta Llama models (GGUF format)
+  llama('Llama', 'Llama AI', 'Meta Llama open model'),
+
+  /// User-selected custom model
+  custom('Custom', 'Custom Model', 'User-selected offline model');
 
   const AIProvider(this.displayName, this.shortName, this.description);
 
   final String displayName;
   final String shortName;
   final String description;
+
+  /// Returns true if this provider uses GGUF format models.
+  bool get isGGUF => switch (this) {
+    gguf || gemma || phi || llama || custom => true,
+    _ => false,
+  };
+
+  /// Returns true if this provider runs on-device (offline capable).
+  bool get isOnDevice => switch (this) {
+    nano || gguf || gemma || phi || llama || custom => true,
+    cloud => false,
+    auto => false, // Auto may route to cloud
+  };
+
+  /// Returns true if this is a built-in provider (not user-configurable).
+  bool get isBuiltIn => switch (this) {
+    nano || cloud || auto => true,
+    _ => false,
+  };
 }
 
 /// AI Provider capabilities.
@@ -37,10 +74,7 @@ class AICapabilities {
   });
 
   factory AICapabilities.unavailable(String reason) {
-    return AICapabilities(
-      isAvailable: false,
-      errorMessage: reason,
-    );
+    return AICapabilities(isAvailable: false, errorMessage: reason);
   }
 
   factory AICapabilities.fromNano(Map<String, dynamic> data) {
@@ -50,8 +84,9 @@ class AICapabilities {
       supportsImages: data['imageDescription'] ?? false,
       supportsFiles: true,
       maxTokens: data['maxTokens'] ?? 2048,
-      supportedLanguages:
-          List<String>.from(data['supportedLanguages'] ?? ['en']),
+      supportedLanguages: List<String>.from(
+        data['supportedLanguages'] ?? ['en'],
+      ),
     );
   }
 
@@ -129,4 +164,3 @@ class AIProviderStatus {
     );
   }
 }
-

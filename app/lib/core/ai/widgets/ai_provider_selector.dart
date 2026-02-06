@@ -169,6 +169,14 @@ class AIProviderSelector extends ConsumerWidget {
         icon = Icons.auto_awesome;
         color = Colors.orange;
         break;
+      case AIProvider.gguf:
+      case AIProvider.gemma:
+      case AIProvider.phi:
+      case AIProvider.llama:
+      case AIProvider.custom:
+        icon = Icons.memory;
+        color = isAvailable ? Colors.teal : Colors.grey;
+        break;
     }
 
     return Icon(icon, color: color);

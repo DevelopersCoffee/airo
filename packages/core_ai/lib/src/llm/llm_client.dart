@@ -38,6 +38,9 @@ enum LLMProvider {
   /// Cloud-based Gemini API
   geminiApi,
 
+  /// GGUF model via llama.cpp
+  gguf,
+
   /// Fallback/mock for testing
   mock,
 }
@@ -54,4 +57,3 @@ abstract class LLMRouter {
   /// Gets a specific provider
   LLMClient? getProvider(LLMProvider provider);
 }
-
