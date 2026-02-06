@@ -44,6 +44,11 @@ jobs:
           cd ../core_auth && flutter pub get
           cd ../../app && flutter pub get
 
+      - name: Run code generation
+        run: |
+          cd app
+          dart run build_runner build --delete-conflicting-outputs
+
       - name: Run Flutter Analyze
         run: |
           cd app
@@ -87,6 +92,11 @@ jobs:
           cd ../core_ai && flutter pub get
           cd ../core_auth && flutter pub get
           cd ../../app && flutter pub get
+
+      - name: Run code generation
+        run: |
+          cd app
+          dart run build_runner build --delete-conflicting-outputs
 
       - name: Run core package tests
         run: |
