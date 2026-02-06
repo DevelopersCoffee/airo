@@ -23,13 +23,13 @@ void main() {
     });
 
     test('canRetry returns true when under max retries', () {
-      const operation = SyncOperation(
+      final operation = SyncOperation(
         id: 'op-1',
         entityType: 'test',
         entityId: 'e-1',
         operationType: SyncOperationType.create,
         payload: '{}',
-        createdAt: null,
+        createdAt: DateTime.now(),
         retryCount: 3,
       );
 
@@ -37,13 +37,13 @@ void main() {
     });
 
     test('canRetry returns false when at max retries', () {
-      const operation = SyncOperation(
+      final operation = SyncOperation(
         id: 'op-1',
         entityType: 'test',
         entityId: 'e-1',
         operationType: SyncOperationType.create,
         payload: '{}',
-        createdAt: null,
+        createdAt: DateTime.now(),
         retryCount: 5,
       );
 
@@ -52,14 +52,14 @@ void main() {
 
     test('retryDelay increases exponentially', () {
       SyncOperation createWithRetries(int count) => SyncOperation(
-            id: 'op-1',
-            entityType: 'test',
-            entityId: 'e-1',
-            operationType: SyncOperationType.create,
-            payload: '{}',
-            createdAt: DateTime.now(),
-            retryCount: count,
-          );
+        id: 'op-1',
+        entityType: 'test',
+        entityId: 'e-1',
+        operationType: SyncOperationType.create,
+        payload: '{}',
+        createdAt: DateTime.now(),
+        retryCount: count,
+      );
 
       expect(createWithRetries(0).retryDelay, const Duration(seconds: 1));
       expect(createWithRetries(1).retryDelay, const Duration(seconds: 2));
@@ -182,4 +182,3 @@ void main() {
     });
   });
 }
-

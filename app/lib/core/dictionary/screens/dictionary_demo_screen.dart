@@ -105,10 +105,7 @@ class DictionaryDemoScreen extends StatelessWidget {
             const SizedBox(height: 24),
 
             // Feature 3: Quick Lookup Buttons
-            Text(
-              '3. Quick Lookup Examples',
-              style: theme.textTheme.titleLarge,
-            ),
+            Text('3. Quick Lookup Examples', style: theme.textTheme.titleLarge),
             const SizedBox(height: 8),
             Text(
               'Tap any word to see its definition:',
@@ -135,10 +132,7 @@ class DictionaryDemoScreen extends StatelessWidget {
             const SizedBox(height: 24),
 
             // Feature 4: Extension Methods
-            Text(
-              '4. Extension Methods',
-              style: theme.textTheme.titleLarge,
-            ),
+            Text('4. Extension Methods', style: theme.textTheme.titleLarge),
             const SizedBox(height: 8),
             Text(
               'Use .withDictionary() extension on any Text or SelectableText:',
@@ -191,10 +185,7 @@ class DictionaryDemoScreen extends StatelessWidget {
             const SizedBox(height: 24),
 
             // Features List
-            Text(
-              'Features',
-              style: theme.textTheme.titleLarge,
-            ),
+            Text('Features', style: theme.textTheme.titleLarge),
             const SizedBox(height: 12),
             _buildFeatureItem(
               Icons.volume_up,
@@ -307,10 +298,7 @@ class DictionaryDemoScreen extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   description,
-                  style: TextStyle(
-                    color: Colors.grey[600],
-                    fontSize: 14,
-                  ),
+                  style: TextStyle(color: Colors.grey[600], fontSize: 14),
                 ),
               ],
             ),
@@ -320,4 +308,3 @@ class DictionaryDemoScreen extends StatelessWidget {
     );
   }
 }
-

@@ -18,12 +18,14 @@ class DictionaryEntry {
     return DictionaryEntry(
       word: json['word'] as String,
       phonetic: json['phonetic'] as String?,
-      phonetics: (json['phonetics'] as List<dynamic>?)
+      phonetics:
+          (json['phonetics'] as List<dynamic>?)
               ?.map((e) => Phonetic.fromJson(e as Map<String, dynamic>))
               .toList() ??
           [],
       origin: json['origin'] as String?,
-      meanings: (json['meanings'] as List<dynamic>?)
+      meanings:
+          (json['meanings'] as List<dynamic>?)
               ?.map((e) => Meaning.fromJson(e as Map<String, dynamic>))
               .toList() ??
           [],
@@ -46,10 +48,7 @@ class Phonetic {
   final String? text;
   final String? audio;
 
-  const Phonetic({
-    this.text,
-    this.audio,
-  });
+  const Phonetic({this.text, this.audio});
 
   factory Phonetic.fromJson(Map<String, dynamic> json) {
     return Phonetic(
@@ -59,10 +58,7 @@ class Phonetic {
   }
 
   Map<String, dynamic> toJson() {
-    return {
-      'text': text,
-      'audio': audio,
-    };
+    return {'text': text, 'audio': audio};
   }
 
   /// Check if audio is available
@@ -85,15 +81,13 @@ class Meaning {
   final String partOfSpeech;
   final List<Definition> definitions;
 
-  const Meaning({
-    required this.partOfSpeech,
-    required this.definitions,
-  });
+  const Meaning({required this.partOfSpeech, required this.definitions});
 
   factory Meaning.fromJson(Map<String, dynamic> json) {
     return Meaning(
       partOfSpeech: json['partOfSpeech'] as String,
-      definitions: (json['definitions'] as List<dynamic>?)
+      definitions:
+          (json['definitions'] as List<dynamic>?)
               ?.map((e) => Definition.fromJson(e as Map<String, dynamic>))
               .toList() ??
           [],
@@ -126,11 +120,13 @@ class Definition {
     return Definition(
       definition: json['definition'] as String,
       example: json['example'] as String?,
-      synonyms: (json['synonyms'] as List<dynamic>?)
+      synonyms:
+          (json['synonyms'] as List<dynamic>?)
               ?.map((e) => e as String)
               .toList() ??
           [],
-      antonyms: (json['antonyms'] as List<dynamic>?)
+      antonyms:
+          (json['antonyms'] as List<dynamic>?)
               ?.map((e) => e as String)
               .toList() ??
           [],
@@ -150,4 +146,3 @@ class Definition {
   bool get hasAntonyms => antonyms.isNotEmpty;
   bool get hasExample => example != null && example!.isNotEmpty;
 }
-

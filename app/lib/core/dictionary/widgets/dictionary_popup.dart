@@ -8,11 +8,7 @@ class DictionaryPopup extends StatefulWidget {
   final String word;
   final VoidCallback? onClose;
 
-  const DictionaryPopup({
-    super.key,
-    required this.word,
-    this.onClose,
-  });
+  const DictionaryPopup({super.key, required this.word, this.onClose});
 
   @override
   State<DictionaryPopup> createState() => _DictionaryPopupState();
@@ -55,7 +51,7 @@ class DictionaryPopup extends StatefulWidget {
 class _DictionaryPopupState extends State<DictionaryPopup> {
   final DictionaryService _dictionaryService = DictionaryService();
   final AudioPlayer _audioPlayer = AudioPlayer();
-  
+
   List<DictionaryEntry>? _entries;
   bool _isLoading = true;
   String? _error;
@@ -108,9 +104,9 @@ class _DictionaryPopupState extends State<DictionaryPopup> {
       await _audioPlayer.play(UrlSource(audioUrl));
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to play audio')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Failed to play audio')));
       }
     }
   }
@@ -133,10 +129,7 @@ class _DictionaryPopupState extends State<DictionaryPopup> {
               const Icon(Icons.book),
               const SizedBox(width: 12),
               Expanded(
-                child: Text(
-                  'Dictionary',
-                  style: theme.textTheme.titleLarge,
-                ),
+                child: Text('Dictionary', style: theme.textTheme.titleLarge),
               ),
               IconButton(
                 icon: const Icon(Icons.close),
@@ -151,8 +144,8 @@ class _DictionaryPopupState extends State<DictionaryPopup> {
           child: _isLoading
               ? const Center(child: CircularProgressIndicator())
               : _error != null
-                  ? _buildError()
-                  : _buildContent(),
+              ? _buildError()
+              : _buildContent(),
         ),
       ],
     );
@@ -221,9 +214,8 @@ class _DictionaryPopupState extends State<DictionaryPopup> {
     final theme = Theme.of(context);
     final audioPhonetic = entry.phonetics.firstWhere(
       (p) => p.hasAudio,
-      orElse: () => entry.phonetics.isNotEmpty
-          ? entry.phonetics.first
-          : const Phonetic(),
+      orElse: () =>
+          entry.phonetics.isNotEmpty ? entry.phonetics.first : const Phonetic(),
     );
 
     return Column(
@@ -393,4 +385,3 @@ class _DictionaryPopupState extends State<DictionaryPopup> {
     );
   }
 }
-

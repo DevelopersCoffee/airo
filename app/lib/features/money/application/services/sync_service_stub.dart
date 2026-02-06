@@ -29,14 +29,7 @@ class SyncService {
   }
 }
 
-enum SyncState {
-  idle,
-  syncing,
-  synced,
-  retrying,
-  error,
-  offline,
-}
+enum SyncState { idle, syncing, synced, retrying, error, offline }
 
 class SyncResult {
   final bool success;
@@ -54,6 +47,6 @@ class SyncResult {
   });
 
   @override
-  String toString() => 'SyncResult(success: $success, synced: $syncedCount, failed: $failedCount)';
+  String toString() =>
+      'SyncResult(success: $success, synced: $syncedCount, failed: $failedCount)';
 }
-

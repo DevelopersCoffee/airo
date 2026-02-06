@@ -1,18 +1,31 @@
+# =============================================================================
+# PR Checks Workflow - Optimized for Fast Feedback
+# =============================================================================
+# This workflow is designed to provide fast feedback on PRs (<5 minutes)
+# More comprehensive checks (coverage, security scans, builds) run in the
+# release workflow or on push to main.
+# =============================================================================
 name: PR Checks
 
 on:
   pull_request:
     branches: [ main, master, develop ]
 
+# Cancel any in-progress runs for the same PR
+concurrency:
+  group: pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 env:
   FLUTTER_VERSION: '3.35.7'
 
 jobs:
   # ============================================
-  # PR Validation (fast checks)
+  # PR Validation (fast checks) - ~15 seconds
   # ============================================
   pr-validation:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v6
         with:
@@ -23,14 +36,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Check for secrets
-        uses: trufflesecurity/trufflehog@main
-        with:
-          path: ./
-          base: ${{ github.event.pull_request.base.sha }}
-          head: HEAD
-          extra_args: --debug
-
       - name: Check file changes
         uses: dorny/paths-filter@v3
         id: changes
@@ -39,22 +44,15 @@ jobs:
             flutter:
               - 'app/**'
               - 'packages/**'
-            android:
-              - 'app/android/**'
-            ios:
-              - 'app/ios/**'
-            web:
-              - 'app/web/**'
             docs:
               - '**.md'
-            core_packages:
-              - 'packages/core_*/**'
 
   # ============================================
-  # Code Quality (analyze, format, lint)
+  # Code Quality (analyze, format) - ~2 minutes
   # ============================================
   code-quality:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v6
 
@@ -64,8 +62,6 @@ jobs:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: 'stable'
           cache: true
-          cache-key: 'flutter-:os:-:channel:-:version:-:arch:-:hash:'
-          cache-path: '${{ runner.tool_cache }}/flutter/:channel:-:version:-:arch:'
 
       - name: Cache pub dependencies
         uses: actions/cache@v5
@@ -75,17 +71,22 @@ jobs:
             app/.dart_tool
             packages/*/.dart_tool
           key: pub-${{ runner.os }}-${{ hashFiles('**/pubspec.lock') }}
-          restore-keys: |
-            pub-${{ runner.os }}-
+          restore-keys: pub-${{ runner.os }}-
 
-      - name: Get dependencies (all packages)
+      - name: Get dependencies (parallel)
         run: |
-          cd packages/core_domain && flutter pub get
-          cd ../core_ui && flutter pub get
-          cd ../core_data && flutter pub get
-          cd ../core_ai && flutter pub get
-          cd ../core_auth && flutter pub get
-          cd ../../app && flutter pub get
+          (cd packages/core_domain && flutter pub get) &
+          (cd packages/core_ui && flutter pub get) &
+          (cd packages/core_data && flutter pub get) &
+          (cd packages/core_ai && flutter pub get) &
+          (cd packages/core_auth && flutter pub get) &
+          wait
+          cd app && flutter pub get
+
+      - name: Run code generation
+        run: |
+          cd app
+          dart run build_runner build --delete-conflicting-outputs
 
       - name: Run Flutter Analyze
         run: |
@@ -95,13 +96,15 @@ jobs:
       - name: Check formatting
         run: |
           cd app
-          dart format --set-exit-if-changed lib/ test/
+          find lib test -name "*.dart" ! -name "*.g.dart" ! -name "*.freezed.dart" -print0 | xargs -0 dart format --set-exit-if-changed
 
   # ============================================
-  # Unit & Widget Tests
+  # Fast Unit Tests (core packages only) - ~2 minutes
+  # App tests and coverage moved to release workflow
   # ============================================
   tests:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v6
 
@@ -117,143 +120,35 @@ jobs:
         with:
           path: |
             ~/.pub-cache
-            app/.dart_tool
             packages/*/.dart_tool
           key: pub-${{ runner.os }}-${{ hashFiles('**/pubspec.lock') }}
-          restore-keys: |
-            pub-${{ runner.os }}-
+          restore-keys: pub-${{ runner.os }}-
 
-      - name: Get dependencies (all packages)
+      - name: Get core package dependencies (parallel)
         run: |
-          cd packages/core_domain && flutter pub get
-          cd ../core_ui && flutter pub get
-          cd ../core_data && flutter pub get
-          cd ../core_ai && flutter pub get
-          cd ../core_auth && flutter pub get
-          cd ../../app && flutter pub get
+          (cd packages/core_domain && flutter pub get) &
+          (cd packages/core_ui && flutter pub get) &
+          (cd packages/core_data && flutter pub get) &
+          (cd packages/core_ai && flutter pub get) &
+          (cd packages/core_auth && flutter pub get) &
+          wait
 
-      - name: Run core_domain tests
-        run: cd packages/core_domain && dart test --reporter=compact
-
-      - name: Run core_data tests
-        run: cd packages/core_data && dart test --reporter=compact
-
-      - name: Run core_ai tests
-        run: cd packages/core_ai && dart test --reporter=compact
-
-      - name: Run core_auth tests
-        run: cd packages/core_auth && dart test --reporter=compact
-
-      - name: Run app tests with coverage
+      - name: Run core package tests (parallel)
         run: |
-          cd app
-          flutter test --coverage --reporter=compact
-
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v5
-        with:
-          files: ./app/coverage/lcov.info
-          flags: flutter
-          name: flutter-coverage
-          fail_ci_if_error: false
-
-  # ============================================
-  # Build Verification
-  # ============================================
-  build-pr:
-    runs-on: ubuntu-latest
-    needs: [code-quality, tests]
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Setup Java
-        uses: actions/setup-java@v5
-        with:
-          java-version: '17'
-          distribution: 'temurin'
-
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: ${{ env.FLUTTER_VERSION }}
-          channel: 'stable'
-          cache: true
-
-      - name: Cache pub dependencies
-        uses: actions/cache@v5
-        with:
-          path: |
-            ~/.pub-cache
-            app/.dart_tool
-          key: pub-${{ runner.os }}-${{ hashFiles('**/pubspec.lock') }}
-          restore-keys: |
-            pub-${{ runner.os }}-
-
-      - name: Cache Gradle
-        uses: actions/cache@v5
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
-          restore-keys: |
-            gradle-${{ runner.os }}-
-
-      - name: Get dependencies
-        run: |
-          cd packages/core_domain && flutter pub get
-          cd ../core_ui && flutter pub get
-          cd ../core_data && flutter pub get
-          cd ../core_ai && flutter pub get
-          cd ../core_auth && flutter pub get
-          cd ../../app && flutter pub get
-
-      - name: Build APK (Debug)
-        run: |
-          cd app
-          flutter build apk --debug
-
-      - name: Upload Debug APK
-        uses: actions/upload-artifact@v6
-        with:
-          name: pr-debug-apk
-          path: app/build/app/outputs/flutter-apk/app-debug.apk
-          retention-days: 3
-
-  # ============================================
-  # Security Scan
-  # ============================================
-  security-scan:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: ${{ env.FLUTTER_VERSION }}
-          channel: 'stable'
-          cache: true
-
-      - name: Get dependencies
-        run: |
-          cd app
-          flutter pub get
-
-      - name: Run Snyk Security Scan
-        uses: snyk/actions@master
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-        with:
-          args: --severity-threshold=high --file=app/pubspec.yaml
-        continue-on-error: true  # Don't block PRs, but report issues
+          echo "Running core package tests in parallel..."
+          (cd packages/core_domain && flutter test --reporter=compact) &
+          (cd packages/core_data && flutter test --reporter=compact) &
+          (cd packages/core_ai && flutter test --reporter=compact) &
+          (cd packages/core_auth && flutter test --reporter=compact) &
+          wait
+          echo "All core package tests completed!"
 
   # ============================================
   # PR Summary Comment
   # ============================================
   pr-summary:
     runs-on: ubuntu-latest
-    needs: [pr-validation, code-quality, tests, build-pr]
+    needs: [pr-validation, code-quality, tests]
     if: always()
     steps:
       - name: Comment PR with summary
@@ -263,18 +158,18 @@ jobs:
             const prValidation = '${{ needs.pr-validation.result }}';
             const codeQuality = '${{ needs.code-quality.result }}';
             const tests = '${{ needs.tests.result }}';
-            const build = '${{ needs.build-pr.result }}';
 
             const getEmoji = (status) => status === 'success' ? '✅' : status === 'skipped' ? '⏭️' : '❌';
 
-            const comment = `## PR Check Summary
+            const comment = `## 🚀 PR Quick Check Summary
 
-            | Check | Status |
-            |-------|--------|
-            | PR Validation | ${getEmoji(prValidation)} ${prValidation} |
-            | Code Quality | ${getEmoji(codeQuality)} ${codeQuality} |
-            | Tests | ${getEmoji(tests)} ${tests} |
-            | Build | ${getEmoji(build)} ${build} |
+            | Check | Status | Description |
+            |-------|--------|-------------|
+            | PR Validation | ${getEmoji(prValidation)} ${prValidation} | Title format, file changes |
+            | Code Quality | ${getEmoji(codeQuality)} ${codeQuality} | Analyze, formatting |
+            | Core Tests | ${getEmoji(tests)} ${tests} | Core package unit tests |
+
+            > 💡 **Note:** Full app tests, coverage reports, and security scans run on merge to main.
 
             [View Details](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})`;
 

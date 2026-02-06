@@ -224,7 +224,11 @@ class MoneyOverviewScreen extends ConsumerWidget {
                         padding: const EdgeInsets.all(16),
                         child: Column(
                           children: [
-                            Icon(Icons.receipt_long, size: 48, color: Colors.grey[400]),
+                            Icon(
+                              Icons.receipt_long,
+                              size: 48,
+                              color: Colors.grey[400],
+                            ),
                             const SizedBox(height: 12),
                             const Text(
                               'No transactions yet',
@@ -251,7 +255,8 @@ class MoneyOverviewScreen extends ConsumerWidget {
                       padding: const EdgeInsets.all(16),
                       child: Column(
                         children: [
-                          ...txnList.take(5)
+                          ...txnList
+                              .take(5)
                               .map(
                                 (txn) => ListTile(
                                   title: Text(txn.description),
@@ -269,7 +274,8 @@ class MoneyOverviewScreen extends ConsumerWidget {
                               ),
                           if (txnList.length > 5)
                             TextButton(
-                              onPressed: () => _navigateToAllTransactions(context),
+                              onPressed: () =>
+                                  _navigateToAllTransactions(context),
                               child: const Text('View All Transactions'),
                             ),
                         ],
@@ -296,7 +302,10 @@ class MoneyOverviewScreen extends ConsumerWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('Budgets', style: Theme.of(context).textTheme.titleLarge),
+                  Text(
+                    'Budgets',
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
                   TextButton(
                     onPressed: () => _navigateToBudgets(context),
                     child: const Text('Manage'),
@@ -312,7 +321,11 @@ class MoneyOverviewScreen extends ConsumerWidget {
                         padding: const EdgeInsets.all(16),
                         child: Column(
                           children: [
-                            Icon(Icons.trending_down, size: 48, color: Colors.grey[400]),
+                            Icon(
+                              Icons.trending_down,
+                              size: 48,
+                              color: Colors.grey[400],
+                            ),
                             const SizedBox(height: 12),
                             const Text(
                               'No budgets yet',
@@ -338,63 +351,63 @@ class MoneyOverviewScreen extends ConsumerWidget {
                     child: Padding(
                       padding: const EdgeInsets.all(16),
                       child: Column(
-                        children: budgetList
-                            .map(
-                              (budget) {
-                                // Color based on warning level
-                                Color progressColor;
-                                switch (budget.warningLevel) {
-                                  case BudgetWarningLevel.exceeded:
-                                    progressColor = Colors.red;
-                                    break;
-                                  case BudgetWarningLevel.warning:
-                                    progressColor = Colors.orange;
-                                    break;
-                                  case BudgetWarningLevel.normal:
-                                    progressColor = Colors.green;
-                                    break;
-                                }
-                                return Column(
+                        children: budgetList.map((budget) {
+                          // Color based on warning level
+                          Color progressColor;
+                          switch (budget.warningLevel) {
+                            case BudgetWarningLevel.exceeded:
+                              progressColor = Colors.red;
+                              break;
+                            case BudgetWarningLevel.warning:
+                              progressColor = Colors.orange;
+                              break;
+                            case BudgetWarningLevel.normal:
+                              progressColor = Colors.green;
+                              break;
+                          }
+                          return Column(
+                            children: [
+                              ListTile(
+                                title: Text(budget.tag),
+                                subtitle: Text(
+                                  '${budget.usedFormatted} / ${budget.limitFormatted}',
+                                ),
+                                trailing: Row(
+                                  mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    ListTile(
-                                      title: Text(budget.tag),
-                                      subtitle: Text(
-                                        '${budget.usedFormatted} / ${budget.limitFormatted}',
+                                    if (budget.warningLevel !=
+                                        BudgetWarningLevel.normal)
+                                      Padding(
+                                        padding: const EdgeInsets.only(
+                                          right: 4,
+                                        ),
+                                        child: Icon(
+                                          budget.warningLevel ==
+                                                  BudgetWarningLevel.exceeded
+                                              ? Icons.error
+                                              : Icons.warning_amber,
+                                          color: progressColor,
+                                          size: 18,
+                                        ),
                                       ),
-                                      trailing: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          if (budget.warningLevel != BudgetWarningLevel.normal)
-                                            Padding(
-                                              padding: const EdgeInsets.only(right: 4),
-                                              child: Icon(
-                                                budget.warningLevel == BudgetWarningLevel.exceeded
-                                                    ? Icons.error
-                                                    : Icons.warning_amber,
-                                                color: progressColor,
-                                                size: 18,
-                                              ),
-                                            ),
-                                          Text(
-                                            '${(budget.percentageUsed * 100).toStringAsFixed(0)}%',
-                                            style: TextStyle(
-                                              color: progressColor,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                        ],
+                                    Text(
+                                      '${(budget.percentageUsed * 100).toStringAsFixed(0)}%',
+                                      style: TextStyle(
+                                        color: progressColor,
+                                        fontWeight: FontWeight.bold,
                                       ),
                                     ),
-                                    LinearProgressIndicator(
-                                      value: budget.percentageUsedClamped,
-                                      color: progressColor,
-                                    ),
-                                    const SizedBox(height: 12),
                                   ],
-                                );
-                              },
-                            )
-                            .toList(),
+                                ),
+                              ),
+                              LinearProgressIndicator(
+                                value: budget.percentageUsedClamped,
+                                color: progressColor,
+                              ),
+                              const SizedBox(height: 12),
+                            ],
+                          );
+                        }).toList(),
                       ),
                     ),
                   );
@@ -425,21 +438,21 @@ class MoneyOverviewScreen extends ConsumerWidget {
   }
 
   void _navigateToAddExpense(BuildContext context) {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const AddExpenseScreen()),
-    );
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const AddExpenseScreen()));
   }
 
   void _navigateToBudgets(BuildContext context) {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const BudgetsScreen()),
-    );
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const BudgetsScreen()));
   }
 
   void _navigateToAllTransactions(BuildContext context) {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const TransactionsListScreen()),
-    );
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const TransactionsListScreen()));
   }
 
   void _showQuickLookup(BuildContext context) {

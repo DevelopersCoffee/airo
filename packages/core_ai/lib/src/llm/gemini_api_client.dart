@@ -16,9 +16,9 @@ class GeminiApiClient implements LLMClient {
     required String apiKey,
     LLMConfig? config,
     HttpClientFactory? httpClientFactory,
-  })  : _apiKey = apiKey,
-        _config = config ?? LLMConfig.geminiApi(apiKey: apiKey),
-        _httpClientFactory = httpClientFactory ?? _defaultHttpFactory;
+  }) : _apiKey = apiKey,
+       _config = config ?? LLMConfig.geminiApi(apiKey: apiKey),
+       _httpClientFactory = httpClientFactory ?? _defaultHttpFactory;
 
   static const String _baseUrl =
       'https://generativelanguage.googleapis.com/v1beta';
@@ -78,15 +78,17 @@ class GeminiApiClient implements LLMClient {
       final text = _extractText(data);
       final usage = data['usageMetadata'] as Map<String, dynamic>?;
 
-      return Success(LLMResponse(
-        text: text,
-        provider: 'gemini-api',
-        promptTokens: usage?['promptTokenCount'] as int?,
-        completionTokens: usage?['candidatesTokenCount'] as int?,
-        latencyMs: stopwatch.elapsedMilliseconds,
-        finishReason: _extractFinishReason(data),
-        metadata: data,
-      ));
+      return Success(
+        LLMResponse(
+          text: text,
+          provider: 'gemini-api',
+          promptTokens: usage?['promptTokenCount'] as int?,
+          completionTokens: usage?['candidatesTokenCount'] as int?,
+          latencyMs: stopwatch.elapsedMilliseconds,
+          finishReason: _extractFinishReason(data),
+          metadata: data,
+        ),
+      );
     } catch (e) {
       return Failure(UnexpectedFailure(message: e.toString(), cause: e));
     }
@@ -140,10 +142,12 @@ class GeminiApiClient implements LLMClient {
         return Success(jsonDecode(response.body) as Map<String, dynamic>);
       }
 
-      return Failure(ServerFailure(
-        message: 'API error: ${response.statusCode}',
-        statusCode: response.statusCode,
-      ));
+      return Failure(
+        ServerFailure(
+          message: 'API error: ${response.statusCode}',
+          statusCode: response.statusCode,
+        ),
+      );
     } catch (e) {
       return Failure(NetworkFailure(message: e.toString()));
     }
@@ -171,7 +175,7 @@ class GeminiApiClient implements LLMClient {
 /// Allows injection of mock clients for testing.
 typedef HttpClientFactory = HttpClient Function();
 
-HttpClient _defaultHttpFactory() => HttpClient();
+HttpClient _defaultHttpFactory() => DartHttpClient();
 
 /// Minimal HTTP client interface for dependency injection.
 abstract class HttpClient {
@@ -182,10 +186,26 @@ abstract class HttpClient {
   });
 }
 
+/// Default HTTP client implementation using dart:io.
+class DartHttpClient implements HttpClient {
+  @override
+  Future<HttpResponse> post(
+    Uri uri, {
+    Map<String, String>? headers,
+    String? body,
+  }) async {
+    // Using http package would be cleaner, but this avoids extra dependencies
+    // In production, you should use package:http or dio
+    throw UnimplementedError(
+      'DartHttpClient.post not implemented. '
+      'Inject a real HTTP client for production use.',
+    );
+  }
+}
+
 /// HTTP response wrapper.
 class HttpResponse {
   const HttpResponse({required this.statusCode, required this.body});
   final int statusCode;
   final String body;
 }
-

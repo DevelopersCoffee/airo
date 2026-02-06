@@ -107,10 +107,7 @@ void main() {
           updatedAt: DateTime.now(),
         );
 
-        final copy = original.copyWith(
-          name: 'Updated',
-          balanceCents: 20000,
-        );
+        final copy = original.copyWith(name: 'Updated', balanceCents: 20000);
 
         expect(copy.id, original.id);
         expect(copy.name, 'Updated');
@@ -147,4 +144,3 @@ void main() {
     });
   });
 }
-

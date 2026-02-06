@@ -50,7 +50,11 @@ class HomeScreen extends StatelessWidget {
                         ),
                       ),
                       if (user?.isGoogleUser == true)
-                        const Icon(Icons.verified, size: 16, color: Colors.blue),
+                        const Icon(
+                          Icons.verified,
+                          size: 16,
+                          color: Colors.blue,
+                        ),
                     ],
                   ),
                 ),

@@ -106,7 +106,7 @@ class TextWithDictionary extends StatelessWidget {
   void _showWordSelection(BuildContext context) {
     // Extract words from text
     final words = text.split(RegExp(r'\s+'));
-    
+
     if (words.length == 1) {
       // Single word - show definition directly
       DictionaryPopup.showBottomSheet(context, words.first);
@@ -129,7 +129,7 @@ class _WordPickerSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return Container(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -153,7 +153,7 @@ class _WordPickerSheet extends StatelessWidget {
             children: words.map((word) {
               final cleanWord = word.replaceAll(RegExp(r'[^\w]'), '');
               if (cleanWord.isEmpty) return const SizedBox.shrink();
-              
+
               return ActionChip(
                 label: Text(cleanWord),
                 onPressed: () {
@@ -198,4 +198,3 @@ extension DictionarySelectableTextExtension on SelectableText {
     );
   }
 }
-

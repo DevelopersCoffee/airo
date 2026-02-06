@@ -1,5 +1,5 @@
 import '../entities/entity.dart';
-import '../value_objects/result.dart';
+import '../result/result.dart';
 
 /// Base interface for all repositories.
 ///
@@ -25,10 +25,7 @@ abstract class PaginatedRepository<T extends Entity> extends Repository<T> {
   ///
   /// [page] is 0-indexed.
   /// [pageSize] is the number of items per page.
-  Future<Result<Page<T>>> findPage({
-    required int page,
-    required int pageSize,
-  });
+  Future<Result<Page<T>>> findPage({required int page, required int pageSize});
 }
 
 /// Represents a page of results from a paginated query.
@@ -67,4 +64,3 @@ class Page<T> {
   /// Whether this page has items
   bool get isNotEmpty => items.isNotEmpty;
 }
-

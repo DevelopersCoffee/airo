@@ -108,10 +108,7 @@ class LocalUserProfileRepository implements UserProfileRepository {
       final current = currentResult.getOrNull();
 
       if (current == null) {
-        return Err(
-          Exception('No profile found to update'),
-          StackTrace.current,
-        );
+        return Err(Exception('No profile found to update'), StackTrace.current);
       }
 
       final updated = current.copyWith(
@@ -166,4 +163,3 @@ final currentUserProfileProvider = FutureProvider<UserProfile?>((ref) async {
   final result = await repo.getCurrentProfile();
   return result.getOrNull();
 });
-

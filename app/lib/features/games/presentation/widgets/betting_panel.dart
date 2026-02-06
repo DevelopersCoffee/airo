@@ -6,10 +6,7 @@ import '../../application/blackjack_notifier.dart';
 class BettingPanel extends ConsumerStatefulWidget {
   final dynamic game;
 
-  const BettingPanel({
-    super.key,
-    required this.game,
-  });
+  const BettingPanel({super.key, required this.game});
 
   @override
   ConsumerState<BettingPanel> createState() => _BettingPanelState();
@@ -52,9 +49,9 @@ class _BettingPanelState extends ConsumerState<BettingPanel> {
             ],
           ),
         ),
-        
+
         const SizedBox(height: 20),
-        
+
         // Bet chips
         Wrap(
           spacing: 12,
@@ -63,7 +60,7 @@ class _BettingPanelState extends ConsumerState<BettingPanel> {
           children: _betOptions.map((amount) {
             final isSelected = _selectedBet == amount;
             final canAfford = amount <= widget.game.playerBalance;
-            
+
             return _buildBetChip(
               amount: amount,
               isSelected: isSelected,
@@ -71,9 +68,9 @@ class _BettingPanelState extends ConsumerState<BettingPanel> {
             );
           }).toList(),
         ),
-        
+
         const SizedBox(height: 24),
-        
+
         // Deal button
         SizedBox(
           width: double.infinity,
@@ -119,15 +116,15 @@ class _BettingPanelState extends ConsumerState<BettingPanel> {
           color: isSelected
               ? Colors.amber
               : canAfford
-                  ? Colors.white.withValues(alpha: 0.1)
-                  : Colors.grey.withValues(alpha: 0.1),
+              ? Colors.white.withValues(alpha: 0.1)
+              : Colors.grey.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: isSelected
                 ? Colors.amber
                 : canAfford
-                    ? Colors.white.withValues(alpha: 0.3)
-                    : Colors.grey.withValues(alpha: 0.2),
+                ? Colors.white.withValues(alpha: 0.3)
+                : Colors.grey.withValues(alpha: 0.2),
             width: 2,
           ),
         ),
@@ -137,8 +134,8 @@ class _BettingPanelState extends ConsumerState<BettingPanel> {
             color: isSelected
                 ? Colors.black
                 : canAfford
-                    ? Colors.white
-                    : Colors.grey,
+                ? Colors.white
+                : Colors.grey,
             fontSize: 16,
             fontWeight: FontWeight.bold,
           ),
@@ -151,4 +148,3 @@ class _BettingPanelState extends ConsumerState<BettingPanel> {
     ref.read(blackjackGameProvider.notifier).placeBet(_selectedBet);
   }
 }
-

@@ -5,7 +5,7 @@ void main() {
   group('TransactionFilter', () {
     test('should create empty filter by default', () {
       const filter = TransactionFilter();
-      
+
       expect(filter.category, isNull);
       expect(filter.startDate, isNull);
       expect(filter.endDate, isNull);
@@ -13,7 +13,7 @@ void main() {
 
     test('should create filter with category', () {
       const filter = TransactionFilter(category: 'Food & Drink');
-      
+
       expect(filter.category, 'Food & Drink');
       expect(filter.startDate, isNull);
       expect(filter.endDate, isNull);
@@ -23,7 +23,7 @@ void main() {
       final start = DateTime(2024, 1, 1);
       final end = DateTime(2024, 1, 31);
       final filter = TransactionFilter(startDate: start, endDate: end);
-      
+
       expect(filter.category, isNull);
       expect(filter.startDate, start);
       expect(filter.endDate, end);
@@ -37,7 +37,7 @@ void main() {
         startDate: start,
         endDate: end,
       );
-      
+
       expect(filter.category, 'Food & Drink');
       expect(filter.startDate, start);
       expect(filter.endDate, end);
@@ -46,7 +46,7 @@ void main() {
     test('copyWith should update category', () {
       const original = TransactionFilter(category: 'Food');
       final updated = original.copyWith(category: 'Transport');
-      
+
       expect(updated.category, 'Transport');
       expect(original.category, 'Food'); // Original unchanged
     });
@@ -55,7 +55,7 @@ void main() {
       const original = TransactionFilter();
       final newDate = DateTime(2024, 6, 15);
       final updated = original.copyWith(startDate: newDate);
-      
+
       expect(updated.startDate, newDate);
       expect(original.startDate, isNull); // Original unchanged
     });
@@ -63,21 +63,21 @@ void main() {
     test('copyWith should clear category when clearCategory is true', () {
       const original = TransactionFilter(category: 'Food');
       final updated = original.copyWith(clearCategory: true);
-      
+
       expect(updated.category, isNull);
     });
 
     test('copyWith should clear startDate when clearStartDate is true', () {
       final original = TransactionFilter(startDate: DateTime(2024, 1, 1));
       final updated = original.copyWith(clearStartDate: true);
-      
+
       expect(updated.startDate, isNull);
     });
 
     test('copyWith should clear endDate when clearEndDate is true', () {
       final original = TransactionFilter(endDate: DateTime(2024, 12, 31));
       final updated = original.copyWith(clearEndDate: true);
-      
+
       expect(updated.endDate, isNull);
     });
 
@@ -90,7 +90,7 @@ void main() {
         endDate: end,
       );
       final updated = original.copyWith(category: 'Transport');
-      
+
       expect(updated.category, 'Transport');
       expect(updated.startDate, start); // Preserved
       expect(updated.endDate, end); // Preserved
@@ -98,16 +98,12 @@ void main() {
 
     test('copyWith without parameters should return equivalent filter', () {
       final start = DateTime(2024, 1, 1);
-      final original = TransactionFilter(
-        category: 'Food',
-        startDate: start,
-      );
+      final original = TransactionFilter(category: 'Food', startDate: start);
       final updated = original.copyWith();
-      
+
       expect(updated.category, original.category);
       expect(updated.startDate, original.startDate);
       expect(updated.endDate, original.endDate);
     });
   });
 }
-

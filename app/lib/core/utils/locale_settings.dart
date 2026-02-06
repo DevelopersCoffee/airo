@@ -87,13 +87,8 @@ class LocaleSettings {
   }
 
   @override
-  int get hashCode => Object.hash(
-        locale,
-        currency,
-        dateFormat,
-        timeFormat,
-        numberFormat,
-      );
+  int get hashCode =>
+      Object.hash(locale, currency, dateFormat, timeFormat, numberFormat);
 }
 
 /// Provider for locale settings
@@ -139,12 +134,11 @@ class LocaleSettingsNotifier extends StateNotifier<LocaleSettings> {
 /// Global locale settings provider
 final localeSettingsProvider =
     StateNotifierProvider<LocaleSettingsNotifier, LocaleSettings>((ref) {
-  return LocaleSettingsNotifier();
-});
+      return LocaleSettingsNotifier();
+    });
 
 /// Currency formatter provider (derived from locale settings)
 final currencyFormatterProvider = Provider<CurrencyFormatter>((ref) {
   final settings = ref.watch(localeSettingsProvider);
   return settings.currencyFormatter;
 });
-

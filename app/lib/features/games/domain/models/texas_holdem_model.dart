@@ -1,14 +1,7 @@
 import 'card_model.dart';
 
 /// Texas Hold'em game phases
-enum TexasHoldemPhase {
-  preflop,
-  flop,
-  turn,
-  river,
-  showdown,
-  gameOver,
-}
+enum TexasHoldemPhase { preflop, flop, turn, river, showdown, gameOver }
 
 /// Player in Texas Hold'em
 class TexasHoldemPlayer {
@@ -203,4 +196,3 @@ class TexasHoldemGame {
     );
   }
 }
-

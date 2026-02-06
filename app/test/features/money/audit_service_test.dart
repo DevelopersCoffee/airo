@@ -117,7 +117,9 @@ void main() {
         limitCents: 10000,
       );
 
-      final exceededLogs = await auditService.getLogsByOperation(AuditOperations.budgetExceeded);
+      final exceededLogs = await auditService.getLogsByOperation(
+        AuditOperations.budgetExceeded,
+      );
       expect(exceededLogs.length, 1);
       expect(exceededLogs.first.entityType, AuditEntityTypes.budget);
     });
@@ -189,4 +191,3 @@ void main() {
     });
   });
 }
-

@@ -2,13 +2,7 @@ import '../../../../core/domain/repository.dart';
 import '../../../../core/utils/result.dart';
 
 /// Wallet type enum matching airomoney package
-enum WalletType {
-  cash,
-  bank,
-  credit,
-  investment,
-  crypto,
-}
+enum WalletType { cash, bank, credit, investment, crypto }
 
 /// Wallet model for the money feature
 /// Uses cents to avoid floating point precision issues with real money
@@ -163,4 +157,3 @@ abstract interface class WalletRepository
   /// Get total balance across all wallets in cents
   Future<Result<int>> getTotalBalanceCents();
 }
-

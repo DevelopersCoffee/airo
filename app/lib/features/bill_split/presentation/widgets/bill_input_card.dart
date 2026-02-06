@@ -7,10 +7,7 @@ import '../../application/providers/bill_split_providers.dart';
 class BillInputCard extends ConsumerStatefulWidget {
   final VoidCallback onBillCreated;
 
-  const BillInputCard({
-    super.key,
-    required this.onBillCreated,
-  });
+  const BillInputCard({super.key, required this.onBillCreated});
 
   @override
   ConsumerState<BillInputCard> createState() => _BillInputCardState();
@@ -48,15 +45,17 @@ class _BillInputCardState extends ConsumerState<BillInputCard> {
   void _createBill() {
     if (_formKey.currentState!.validate()) {
       final controller = ref.read(billSplitControllerProvider);
-      
+
       controller.createSimpleBill(
-        vendor: _vendorController.text.isNotEmpty ? _vendorController.text : null,
+        vendor: _vendorController.text.isNotEmpty
+            ? _vendorController.text
+            : null,
         date: _selectedDate,
         totalAmount: double.parse(_amountController.text),
         taxAmount: double.tryParse(_taxController.text) ?? 0,
         tipAmount: double.tryParse(_tipController.text) ?? 0,
       );
-      
+
       widget.onBillCreated();
     }
   }
@@ -126,7 +125,9 @@ class _BillInputCardState extends ConsumerState<BillInputCard> {
                 border: OutlineInputBorder(),
                 hintText: '0.00',
               ),
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               inputFormatters: [
                 FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
               ],
@@ -154,9 +155,13 @@ class _BillInputCardState extends ConsumerState<BillInputCard> {
                       prefixIcon: Icon(Icons.receipt_long_outlined),
                       border: OutlineInputBorder(),
                     ),
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
                     inputFormatters: [
-                      FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
+                      FilteringTextInputFormatter.allow(
+                        RegExp(r'^\d+\.?\d{0,2}'),
+                      ),
                     ],
                   ),
                 ),
@@ -169,9 +174,13 @@ class _BillInputCardState extends ConsumerState<BillInputCard> {
                       prefixIcon: Icon(Icons.volunteer_activism_outlined),
                       border: OutlineInputBorder(),
                     ),
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
                     inputFormatters: [
-                      FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
+                      FilteringTextInputFormatter.allow(
+                        RegExp(r'^\d+\.?\d{0,2}'),
+                      ),
                     ],
                   ),
                 ),
@@ -194,4 +203,3 @@ class _BillInputCardState extends ConsumerState<BillInputCard> {
     );
   }
 }
-

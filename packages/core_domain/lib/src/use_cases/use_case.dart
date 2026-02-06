@@ -1,4 +1,4 @@
-import '../value_objects/result.dart';
+import '../result/result.dart';
 
 /// Base interface for use cases.
 ///
@@ -38,4 +38,3 @@ abstract class StreamUseCase<Input, Output> {
   /// Returns a stream of outputs.
   Stream<Output> call(Input input);
 }
-

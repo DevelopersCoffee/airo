@@ -49,10 +49,7 @@ class CategorySpending extends Equatable {
   final String category;
   final int amountCents;
 
-  const CategorySpending({
-    required this.category,
-    required this.amountCents,
-  });
+  const CategorySpending({required this.category, required this.amountCents});
 
   String get amountFormatted {
     final dollars = amountCents ~/ 100;
@@ -87,7 +84,12 @@ class BudgetHealth extends Equatable {
   bool get hasExceeded => exceededBudgets > 0;
 
   @override
-  List<Object?> get props => [totalBudgets, healthyBudgets, warningBudgets, exceededBudgets];
+  List<Object?> get props => [
+    totalBudgets,
+    healthyBudgets,
+    warningBudgets,
+    exceededBudgets,
+  ];
 }
 
 /// Individual budget insight
@@ -108,19 +110,9 @@ class BudgetInsight extends Equatable {
   List<Object?> get props => [type, message, category, severity];
 }
 
-enum InsightType {
-  exceeded,
-  warning,
-  saving,
-  trend,
-  tip,
-}
+enum InsightType { exceeded, warning, saving, trend, tip }
 
-enum InsightSeverity {
-  low,
-  medium,
-  high,
-}
+enum InsightSeverity { low, medium, high }
 
 /// Spending trend comparison
 class SpendingTrend extends Equatable {
@@ -146,4 +138,3 @@ class SpendingTrend extends Equatable {
   @override
   List<Object?> get props => [expenseChangePercent, isSpendingUp];
 }
-

@@ -46,19 +46,13 @@ void main() {
       });
 
       test('should reject non-positive limit', () async {
-        final result = await repo.create(
-          tag: 'Test',
-          limitCents: 0,
-        );
+        final result = await repo.create(tag: 'Test', limitCents: 0);
 
         expect(result.isErr, true);
       });
 
       test('should reject negative limit', () async {
-        final result = await repo.create(
-          tag: 'Test',
-          limitCents: -100,
-        );
+        final result = await repo.create(tag: 'Test', limitCents: -100);
 
         expect(result.isErr, true);
       });
@@ -110,10 +104,7 @@ void main() {
       });
 
       test('should allow exceeding limit', () async {
-        final createResult = await repo.create(
-          tag: 'Bills',
-          limitCents: 10000,
-        );
+        final createResult = await repo.create(tag: 'Bills', limitCents: 10000);
         final created = (createResult as Ok).value;
 
         final updateResult = await repo.updateUsage(created.id, 15000);
@@ -178,4 +169,3 @@ void main() {
     });
   });
 }
-

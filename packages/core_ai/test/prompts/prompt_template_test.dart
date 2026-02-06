@@ -20,10 +20,7 @@ void main() {
         variables: ['name'],
       );
 
-      expect(
-        () => template.fill({}),
-        throwsArgumentError,
-      );
+      expect(() => template.fill({}), throwsArgumentError);
     });
 
     test('validate returns true when all variables provided', () {
@@ -88,7 +85,7 @@ void main() {
       const template = AiroPrompts.receiptParsing;
 
       final result = template.fill({
-        'receipt_text': 'Coffee $5.00\nTotal: $5.00',
+        'receipt_text': 'Coffee \$5.00\nTotal: \$5.00',
       });
 
       expect(result, contains('Coffee'));
@@ -176,4 +173,3 @@ void main() {
     });
   });
 }
-

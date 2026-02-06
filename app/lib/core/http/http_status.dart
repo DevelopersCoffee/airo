@@ -44,14 +44,7 @@ enum HttpStatusCategory {
 }
 
 /// Status colors
-enum HttpStatusColor {
-  blue,
-  green,
-  yellow,
-  orange,
-  red,
-  grey,
-}
+enum HttpStatusColor { blue, green, yellow, orange, red, grey }
 
 /// HTTP status code registry
 class HttpStatusCodes {
@@ -59,12 +52,13 @@ class HttpStatusCodes {
 
   /// Get status by code
   static HttpStatus fromCode(int code) {
-    return _statusMap[code] ?? HttpStatus(
-      code: code,
-      message: 'Unknown',
-      description: 'Unknown status code',
-      category: HttpStatusCategory.unknown,
-    );
+    return _statusMap[code] ??
+        HttpStatus(
+          code: code,
+          message: 'Unknown',
+          description: 'Unknown status code',
+          category: HttpStatusCategory.unknown,
+        );
   }
 
   /// Get category from code
@@ -268,4 +262,3 @@ class HttpStatusCodes {
     ),
   };
 }
-

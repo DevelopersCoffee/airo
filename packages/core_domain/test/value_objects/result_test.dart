@@ -100,29 +100,29 @@ void main() {
       test('calls onSuccess for success', () {
         const result = Success(10);
         final value = result.fold(
-          onSuccess: (v) => 'Success: $v',
-          onFailure: (f) => 'Failure: ${f.message}',
+          (error, stack) => 'Error: $error',
+          (v) => 'Success: $v',
         );
 
         expect(value, 'Success: 10');
       });
 
-      test('calls onFailure for failure', () {
+      test('calls onError for failure', () {
         const result = Failure<int>(ServerFailure(message: 'Error'));
         final value = result.fold(
-          onSuccess: (v) => 'Success: $v',
-          onFailure: (f) => 'Failure: ${f.message}',
+          (error, stack) => 'Error: ${(error as ServerFailure).message}',
+          (v) => 'Success: $v',
         );
 
-        expect(value, 'Failure: Error');
+        expect(value, 'Error: Error');
       });
     });
 
-    group('onSuccess', () {
+    group('tap (onSuccess equivalent)', () {
       test('executes action for success', () {
         var executed = false;
         const result = Success(10);
-        result.onSuccess((v) => executed = true);
+        result.tap((v) => executed = true);
 
         expect(executed, isTrue);
       });
@@ -130,17 +130,17 @@ void main() {
       test('does not execute action for failure', () {
         var executed = false;
         const result = Failure<int>(ServerFailure());
-        result.onSuccess((v) => executed = true);
+        result.tap((v) => executed = true);
 
         expect(executed, isFalse);
       });
     });
 
-    group('onFailure', () {
+    group('tapError (onFailure equivalent)', () {
       test('executes action for failure', () {
         var executed = false;
         const result = Failure<int>(ServerFailure());
-        result.onFailure((f) => executed = true);
+        result.tapError((e, s) => executed = true);
 
         expect(executed, isTrue);
       });
@@ -148,11 +148,10 @@ void main() {
       test('does not execute action for success', () {
         var executed = false;
         const result = Success(10);
-        result.onFailure((f) => executed = true);
+        result.tapError((e, s) => executed = true);
 
         expect(executed, isFalse);
       });
     });
   });
 }
-

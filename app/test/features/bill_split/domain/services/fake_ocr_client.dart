@@ -67,15 +67,11 @@ class FakeOcrClient implements OcrClient {
   /// Call log for verification
   final List<String> callLog = [];
 
-  FakeOcrClient({
-    Map<String, OcrResult>? fixtures,
-    OcrResult? defaultResult,
-  })  : _fixtures = fixtures ?? {},
-        _defaultResult = defaultResult ??
-            const OcrResult(
-              text: 'No text detected',
-              confidence: 0.0,
-            );
+  FakeOcrClient({Map<String, OcrResult>? fixtures, OcrResult? defaultResult})
+    : _fixtures = fixtures ?? {},
+      _defaultResult =
+          defaultResult ??
+          const OcrResult(text: 'No text detected', confidence: 0.0);
 
   /// Add a fixture for a specific image path
   void addFixture(String imagePath, OcrResult result) {
@@ -124,4 +120,3 @@ class FakeOcrClient implements OcrClient {
     return callLog.where((call) => call.startsWith(method)).length;
   }
 }
-

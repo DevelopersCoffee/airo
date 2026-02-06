@@ -12,7 +12,8 @@ class TransactionsListScreen extends ConsumerStatefulWidget {
       _TransactionsListScreenState();
 }
 
-class _TransactionsListScreenState extends ConsumerState<TransactionsListScreen> {
+class _TransactionsListScreenState
+    extends ConsumerState<TransactionsListScreen> {
   final _scrollController = ScrollController();
   int _currentPage = 0;
   bool _hasMore = true;
@@ -56,7 +57,9 @@ class _TransactionsListScreenState extends ConsumerState<TransactionsListScreen>
   Future<void> _loadPage(int page) async {
     setState(() => _isLoadingMore = true);
     try {
-      final newTxns = await ref.read(paginatedTransactionsProvider(page).future);
+      final newTxns = await ref.read(
+        paginatedTransactionsProvider(page).future,
+      );
       if (mounted) {
         setState(() {
           _currentPage = page;
@@ -68,9 +71,9 @@ class _TransactionsListScreenState extends ConsumerState<TransactionsListScreen>
     } catch (e) {
       if (mounted) {
         setState(() => _isLoadingMore = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error loading: $e')));
       }
     }
   }
@@ -101,10 +104,13 @@ class _TransactionsListScreenState extends ConsumerState<TransactionsListScreen>
       appBar: AppBar(
         title: const Text('All Transactions'),
         actions: [
-          Badge(isLabelVisible: hasFilter, child: IconButton(
-            icon: const Icon(Icons.filter_list),
-            onPressed: _showFilterSheet,
-          )),
+          Badge(
+            isLabelVisible: hasFilter,
+            child: IconButton(
+              icon: const Icon(Icons.filter_list),
+              onPressed: _showFilterSheet,
+            ),
+          ),
         ],
       ),
       body: _transactions.isEmpty && !_isLoadingMore
@@ -140,10 +146,12 @@ class _TransactionsListScreenState extends ConsumerState<TransactionsListScreen>
         itemCount: _transactions.length + (_hasMore ? 1 : 0),
         itemBuilder: (context, i) {
           if (i >= _transactions.length) {
-            return const Center(child: Padding(
-              padding: EdgeInsets.all(16),
-              child: CircularProgressIndicator(),
-            ));
+            return const Center(
+              child: Padding(
+                padding: EdgeInsets.all(16),
+                child: CircularProgressIndicator(),
+              ),
+            );
           }
           return _TxnTile(txn: _transactions[i]);
         },
@@ -164,13 +172,23 @@ class _TxnTile extends StatelessWidget {
       child: ListTile(
         leading: CircleAvatar(
           backgroundColor: (isExp ? Colors.red : Colors.green).withOpacity(0.1),
-          child: Icon(isExp ? Icons.arrow_upward : Icons.arrow_downward,
-              color: isExp ? Colors.red : Colors.green),
+          child: Icon(
+            isExp ? Icons.arrow_upward : Icons.arrow_downward,
+            color: isExp ? Colors.red : Colors.green,
+          ),
         ),
-        title: Text(txn.description, style: const TextStyle(fontWeight: FontWeight.w500)),
+        title: Text(
+          txn.description,
+          style: const TextStyle(fontWeight: FontWeight.w500),
+        ),
         subtitle: Text('${txn.category} • ${_fmtDate(txn.timestamp)}'),
-        trailing: Text(txn.amountFormatted,
-            style: TextStyle(fontWeight: FontWeight.bold, color: isExp ? Colors.red : Colors.green)),
+        trailing: Text(
+          txn.amountFormatted,
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: isExp ? Colors.red : Colors.green,
+          ),
+        ),
       ),
     );
   }
@@ -188,7 +206,11 @@ class _FilterSheet extends StatefulWidget {
   final TransactionFilter currentFilter;
   final List<String> categories;
   final void Function(TransactionFilter) onApply;
-  const _FilterSheet({required this.currentFilter, required this.categories, required this.onApply});
+  const _FilterSheet({
+    required this.currentFilter,
+    required this.categories,
+    required this.onApply,
+  });
   @override
   State<_FilterSheet> createState() => _FilterSheetState();
 }
@@ -222,34 +244,62 @@ class _FilterSheetState extends State<_FilterSheet> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text('Filters', style: Theme.of(ctx).textTheme.titleLarge),
-                TextButton(onPressed: () => setState(() { _cat = null; _start = null; _end = null; }),
-                    child: const Text('Clear')),
+                TextButton(
+                  onPressed: () => setState(() {
+                    _cat = null;
+                    _start = null;
+                    _end = null;
+                  }),
+                  child: const Text('Clear'),
+                ),
               ],
             ),
             const SizedBox(height: 12),
             Text('Category', style: Theme.of(ctx).textTheme.titleSmall),
             const SizedBox(height: 8),
             Wrap(
-              spacing: 8, runSpacing: 8,
-              children: widget.categories.map((c) => FilterChip(
-                label: Text(c),
-                selected: _cat == c,
-                onSelected: (sel) => setState(() => _cat = sel ? c : null),
-              )).toList(),
+              spacing: 8,
+              runSpacing: 8,
+              children: widget.categories
+                  .map(
+                    (c) => FilterChip(
+                      label: Text(c),
+                      selected: _cat == c,
+                      onSelected: (sel) =>
+                          setState(() => _cat = sel ? c : null),
+                    ),
+                  )
+                  .toList(),
             ),
             const SizedBox(height: 16),
             Text('Date Range', style: Theme.of(ctx).textTheme.titleSmall),
             const SizedBox(height: 8),
-            Row(children: [
-              Expanded(child: _dateBtn('Start', _start, (d) => setState(() => _start = d))),
-              const SizedBox(width: 8),
-              Expanded(child: _dateBtn('End', _end, (d) => setState(() => _end = d))),
-            ]),
+            Row(
+              children: [
+                Expanded(
+                  child: _dateBtn(
+                    'Start',
+                    _start,
+                    (d) => setState(() => _start = d),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _dateBtn('End', _end, (d) => setState(() => _end = d)),
+                ),
+              ],
+            ),
             const Spacer(),
             SizedBox(
               width: double.infinity,
               child: FilledButton(
-                onPressed: () => widget.onApply(TransactionFilter(category: _cat, startDate: _start, endDate: _end)),
+                onPressed: () => widget.onApply(
+                  TransactionFilter(
+                    category: _cat,
+                    startDate: _start,
+                    endDate: _end,
+                  ),
+                ),
                 child: const Text('Apply'),
               ),
             ),
@@ -262,8 +312,12 @@ class _FilterSheetState extends State<_FilterSheet> {
   Widget _dateBtn(String lbl, DateTime? dt, void Function(DateTime) onPick) {
     return OutlinedButton.icon(
       onPressed: () async {
-        final p = await showDatePicker(context: context, initialDate: dt ?? DateTime.now(),
-            firstDate: DateTime(2020), lastDate: DateTime.now());
+        final p = await showDatePicker(
+          context: context,
+          initialDate: dt ?? DateTime.now(),
+          firstDate: DateTime(2020),
+          lastDate: DateTime.now(),
+        );
         if (p != null) onPick(p);
       },
       icon: const Icon(Icons.calendar_today, size: 16),

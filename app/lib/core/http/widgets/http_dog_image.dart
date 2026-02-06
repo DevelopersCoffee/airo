@@ -47,7 +47,7 @@ class HttpDogImage extends StatelessWidget {
                   child: CircularProgressIndicator(
                     value: loadingProgress.expectedTotalBytes != null
                         ? loadingProgress.cumulativeBytesLoaded /
-                            loadingProgress.expectedTotalBytes!
+                              loadingProgress.expectedTotalBytes!
                         : null,
                   ),
                 ),
@@ -143,10 +143,16 @@ class HttpDogIndicator extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: _getColorFromCategory(theme, status.category).withValues(alpha: 0.1),
+        color: _getColorFromCategory(
+          theme,
+          status.category,
+        ).withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: _getColorFromCategory(theme, status.category).withValues(alpha: 0.3),
+          color: _getColorFromCategory(
+            theme,
+            status.category,
+          ).withValues(alpha: 0.3),
           width: 1,
         ),
       ),
@@ -308,10 +314,7 @@ class HttpDogCard extends StatelessWidget {
                   ),
                   if (title != null) ...[
                     const SizedBox(height: 8),
-                    Text(
-                      title!,
-                      style: theme.textTheme.bodyLarge,
-                    ),
+                    Text(title!, style: theme.textTheme.bodyLarge),
                   ],
                   if (subtitle != null) ...[
                     const SizedBox(height: 4),
@@ -331,4 +334,3 @@ class HttpDogCard extends StatelessWidget {
     );
   }
 }
-

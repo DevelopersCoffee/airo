@@ -3,24 +3,25 @@ import '../models/dictionary_entry.dart';
 
 /// Service to fetch word definitions from Free Dictionary API
 class DictionaryService {
-  static const String _baseUrl = 'https://api.dictionaryapi.dev/api/v2/entries/en';
-  
+  static const String _baseUrl =
+      'https://api.dictionaryapi.dev/api/v2/entries/en';
+
   final Dio _dio;
 
   DictionaryService({Dio? dio}) : _dio = dio ?? Dio();
 
   /// Look up a word and get its definitions
-  /// 
+  ///
   /// Returns a list of dictionary entries (usually just one, but some words
   /// may have multiple entries)
-  /// 
+  ///
   /// Throws [DictionaryNotFoundException] if word is not found
   /// Throws [DictionaryServiceException] for other errors
   Future<List<DictionaryEntry>> lookupWord(String word) async {
     try {
       // Clean the word (trim, lowercase)
       final cleanWord = word.trim().toLowerCase();
-      
+
       if (cleanWord.isEmpty) {
         throw DictionaryServiceException('Word cannot be empty');
       }
@@ -36,7 +37,9 @@ class DictionaryService {
       if (response.statusCode == 200) {
         final List<dynamic> data = response.data as List<dynamic>;
         return data
-            .map((json) => DictionaryEntry.fromJson(json as Map<String, dynamic>))
+            .map(
+              (json) => DictionaryEntry.fromJson(json as Map<String, dynamic>),
+            )
             .toList();
       } else {
         throw DictionaryServiceException(
@@ -101,4 +104,3 @@ class DictionaryNotFoundException extends DictionaryServiceException {
   @override
   String toString() => 'DictionaryNotFoundException: $message';
 }
-

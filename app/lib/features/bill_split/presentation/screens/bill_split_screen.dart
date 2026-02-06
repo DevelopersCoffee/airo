@@ -93,7 +93,10 @@ class _BillSplitScreenState extends ConsumerState<BillSplitScreen> {
   }
 
   /// Persist the bill split as an expense transaction to the database
-  Future<void> _persistExpenseToDb(double amount, SplitResult splitResult) async {
+  Future<void> _persistExpenseToDb(
+    double amount,
+    SplitResult splitResult,
+  ) async {
     final moneyController = ref.read(moneyControllerProvider);
     final amountCents = (amount * 100).round();
     final description = _descriptionController.text.isNotEmpty
@@ -109,7 +112,8 @@ class _BillSplitScreenState extends ConsumerState<BillSplitScreen> {
         accountId: 'acc1', // Default account
         timestamp: DateTime.now(),
         amountCents: amountCents,
-        description: '$description (Split with ${splitResult.participantCount} people)',
+        description:
+            '$description (Split with ${splitResult.participantCount} people)',
         category: 'Food & Drink', // Default category for bill splits
         tags: ['bill-split'],
       );
@@ -124,7 +128,9 @@ class _BillSplitScreenState extends ConsumerState<BillSplitScreen> {
     if (result.isBudgetExceeded) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('⚠️ Budget for ${result.budget?.tag ?? 'category'} exceeded!'),
+          content: Text(
+            '⚠️ Budget for ${result.budget?.tag ?? 'category'} exceeded!',
+          ),
           backgroundColor: Colors.orange,
         ),
       );
@@ -133,7 +139,9 @@ class _BillSplitScreenState extends ConsumerState<BillSplitScreen> {
       if (percentUsed >= 80) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('⚠️ ${percentUsed.toStringAsFixed(0)}% of ${result.budget!.tag} budget used'),
+            content: Text(
+              '⚠️ ${percentUsed.toStringAsFixed(0)}% of ${result.budget!.tag} budget used',
+            ),
             backgroundColor: Colors.amber,
           ),
         );

@@ -1,253 +1,42 @@
-import 'package:test/test.dart';
+import 'package:flutter_test/flutter_test.dart';
 import 'package:core_data/core_data.dart';
 
 void main() {
-  group('DioClient', () {
-    test('can be instantiated with default values', () {
-      final client = DioClient();
-      expect(client.dio, isNotNull);
-    });
-
-    test('can be instantiated with custom values', () {
-      final client = DioClient(
-        baseUrl: 'https://api.example.com',
-        connectTimeout: const Duration(seconds: 5),
-        receiveTimeout: const Duration(seconds: 15),
-      );
-      expect(client.dio.options.baseUrl, 'https://api.example.com');
-      expect(client.dio.options.connectTimeout, const Duration(seconds: 5));
-      expect(client.dio.options.receiveTimeout, const Duration(seconds: 15));
-    });
-
-    test('setAuthToken adds authorization header', () {
-      final client = DioClient();
-      client.setAuthToken('test-token');
-      expect(client.dio.options.headers['Authorization'], 'Bearer test-token');
-    });
-
-    test('clearAuthToken removes authorization header', () {
-      final client = DioClient();
-      client.setAuthToken('test-token');
-      client.clearAuthToken();
-      expect(client.dio.options.headers['Authorization'], isNull);
-    });
-
-    test('can be instantiated with security config', () {
-      final client = DioClient(securityConfig: HttpSecurityConfig.production);
-      expect(client.securityConfig.enforceHttps, isTrue);
-      expect(client.securityConfig.enableCertificatePinning, isTrue);
-    });
-
-    test('development security config is less strict', () {
-      const config = HttpSecurityConfig.development;
-      expect(config.enforceHttps, isFalse);
-      expect(config.enableCertificatePinning, isFalse);
-      expect(config.allowSelfSigned, isTrue);
-    });
-
-    test('production security config is strict', () {
-      const config = HttpSecurityConfig.production;
-      expect(config.enforceHttps, isTrue);
-      expect(config.enableCertificatePinning, isTrue);
-      expect(config.allowSelfSigned, isFalse);
-    });
-  });
-
-  group('InMemoryCacheRepository', () {
-    late InMemoryCacheRepository<String, String> cache;
-
-    setUp(() {
-      cache = InMemoryCacheRepository<String, String>();
-    });
-
-    test('put and get work correctly', () async {
-      await cache.put('key1', 'value1');
-      final result = await cache.get('key1');
-      expect(result, 'value1');
-    });
-
-    test('get returns null for non-existent key', () async {
-      final result = await cache.get('non-existent');
-      expect(result, isNull);
-    });
-
-    test('getAll returns all values', () async {
-      await cache.put('key1', 'value1');
-      await cache.put('key2', 'value2');
-      final all = await cache.getAll();
-      expect(all, containsAll(['value1', 'value2']));
-    });
-
-    test('delete removes item', () async {
-      await cache.put('key1', 'value1');
-      await cache.delete('key1');
-      final result = await cache.get('key1');
-      expect(result, isNull);
-    });
-
-    test('clear removes all items', () async {
-      await cache.put('key1', 'value1');
-      await cache.put('key2', 'value2');
-      await cache.clear();
-      final all = await cache.getAll();
-      expect(all, isEmpty);
-    });
-
-    test('exists returns true for existing key', () async {
-      await cache.put('key1', 'value1');
-      final exists = await cache.exists('key1');
-      expect(exists, isTrue);
-    });
-
-    test('exists returns false for non-existent key', () async {
-      final exists = await cache.exists('non-existent');
-      expect(exists, isFalse);
-    });
-  });
-
-  group('Repository interfaces', () {
-    test('Repository interface is defined', () {
-      // Just verify the interface exists and can be referenced
-      expect(Repository, isNotNull);
-    });
-
-    test('CacheRepository interface is defined', () {
-      expect(CacheRepository, isNotNull);
-    });
-
-    test('PaginatedRepository interface is defined', () {
-      expect(PaginatedRepository, isNotNull);
-    });
-
-    test('StreamRepository interface is defined', () {
-      expect(StreamRepository, isNotNull);
-    });
-  });
-
   group('SyncStatus', () {
-    test('SyncStatus enum has all expected values', () {
-      expect(SyncStatus.values, contains(SyncStatus.synced));
-      expect(SyncStatus.values, contains(SyncStatus.pending));
-      expect(SyncStatus.values, contains(SyncStatus.syncing));
-      expect(SyncStatus.values, contains(SyncStatus.failed));
-      expect(SyncStatus.values, contains(SyncStatus.conflict));
-    });
-  });
-
-  group('SyncMetadata', () {
-    test('default values are correct', () {
-      const metadata = SyncMetadata();
-      expect(metadata.status, SyncStatus.pending);
-      expect(metadata.retryCount, 0);
-      expect(metadata.version, 1);
-      expect(metadata.needsSync, isTrue);
+    test('idle factory creates idle status', () {
+      const status = SyncStatus.idle();
+      expect(status.isSyncing, isFalse);
+      expect(status.hasError, isFalse);
     });
 
-    test('markSyncing updates status', () {
-      const metadata = SyncMetadata();
-      final syncing = metadata.markSyncing();
-      expect(syncing.status, SyncStatus.syncing);
+    test('syncing factory creates syncing status', () {
+      const status = SyncStatus.syncing(progress: 5, total: 10);
+      expect(status.isSyncing, isTrue);
+      expect(status.hasError, isFalse);
     });
 
-    test('markSynced updates status and timestamp', () {
-      const metadata = SyncMetadata();
-      final synced = metadata.markSynced(remoteId: 'remote-123');
-      expect(synced.status, SyncStatus.synced);
-      expect(synced.remoteId, 'remote-123');
-      expect(synced.lastSyncedAt, isNotNull);
-      expect(synced.retryCount, 0);
+    test('completed factory creates completed status', () {
+      const status = SyncStatus.completed(synced: 10, failed: 0);
+      expect(status.isSyncing, isFalse);
+      expect(status.hasError, isFalse);
     });
 
-    test('markFailed updates status and increments retry', () {
-      const metadata = SyncMetadata();
-      final failed = metadata.markFailed('Network error');
-      expect(failed.status, SyncStatus.failed);
-      expect(failed.errorMessage, 'Network error');
-      expect(failed.retryCount, 1);
+    test('error factory creates error status', () {
+      const status = SyncStatus.error('Network error');
+      expect(status.isSyncing, isFalse);
+      expect(status.hasError, isTrue);
     });
 
-    test('markPending updates status and version', () {
-      const metadata = SyncMetadata(status: SyncStatus.synced, version: 1);
-      final pending = metadata.markPending();
-      expect(pending.status, SyncStatus.pending);
-      expect(pending.version, 2);
-      expect(pending.lastModifiedAt, isNotNull);
+    test('SyncSyncing progressPercent calculates correctly', () {
+      const syncing = SyncSyncing(progress: 3, total: 10);
+      expect(syncing.progressPercent, 0.3);
     });
 
-    test('toJson and fromJson roundtrip', () {
-      final metadata = SyncMetadata(
-        status: SyncStatus.synced,
-        lastSyncedAt: DateTime(2024, 1, 1),
-        remoteId: 'remote-123',
-        version: 5,
-      );
-      final json = metadata.toJson();
-      final restored = SyncMetadata.fromJson(json);
-      expect(restored.status, metadata.status);
-      expect(restored.remoteId, metadata.remoteId);
-      expect(restored.version, metadata.version);
-    });
-
-    test('needsSync returns true for pending and failed', () {
-      const pending = SyncMetadata(status: SyncStatus.pending);
-      const failed = SyncMetadata(status: SyncStatus.failed);
-      const synced = SyncMetadata(status: SyncStatus.synced);
-
-      expect(pending.needsSync, isTrue);
-      expect(failed.needsSync, isTrue);
-      expect(synced.needsSync, isFalse);
-    });
-
-    test('hasError returns true when failed with message', () {
-      const failed = SyncMetadata(
-        status: SyncStatus.failed,
-        errorMessage: 'Error',
-      );
-      const failedNoMessage = SyncMetadata(status: SyncStatus.failed);
-
-      expect(failed.hasError, isTrue);
-      expect(failedNoMessage.hasError, isFalse);
-    });
-  });
-
-  group('SyncResult', () {
-    test('default values are correct', () {
-      const result = SyncResult();
-      expect(result.synced, 0);
-      expect(result.failed, 0);
-      expect(result.conflicts, 0);
-      expect(result.isSuccess, isTrue);
-      expect(result.hasErrors, isFalse);
-    });
-
-    test('hasErrors returns true when failed or conflicts', () {
-      const withFailed = SyncResult(synced: 5, failed: 1);
-      const withConflicts = SyncResult(synced: 5, conflicts: 1);
-      const success = SyncResult(synced: 5);
-
-      expect(withFailed.hasErrors, isTrue);
-      expect(withConflicts.hasErrors, isTrue);
-      expect(success.hasErrors, isFalse);
-    });
-  });
-
-  group('SyncSummary', () {
-    test('syncProgress calculates correctly', () {
-      const summary = SyncSummary(total: 10, synced: 5);
-      expect(summary.syncProgress, 0.5);
-    });
-
-    test('syncProgress returns 1.0 when total is 0', () {
-      const summary = SyncSummary(total: 0, synced: 0);
-      expect(summary.syncProgress, 1.0);
-    });
-
-    test('isFullySynced returns true when no pending/failed/conflicts', () {
-      const synced = SyncSummary(total: 10, synced: 10);
-      const pending = SyncSummary(total: 10, synced: 5, pending: 5);
-
-      expect(synced.isFullySynced, isTrue);
-      expect(pending.isFullySynced, isFalse);
+    test('SyncCompleted hasFailures returns true when failures exist', () {
+      const withFailures = SyncCompleted(synced: 5, failed: 2);
+      const noFailures = SyncCompleted(synced: 5, failed: 0);
+      expect(withFailures.hasFailures, isTrue);
+      expect(noFailures.hasFailures, isFalse);
     });
   });
 
@@ -255,186 +44,284 @@ void main() {
     test('default values are correct', () {
       const config = SyncConfig();
       expect(config.syncInterval, const Duration(minutes: 5));
-      expect(config.maxRetries, 3);
-      expect(config.autoSync, isTrue);
-      expect(config.syncOnStart, isTrue);
-      expect(config.batchSize, 50);
+      expect(config.maxRetries, 5);
+      expect(config.enableBackgroundSync, isTrue);
+      expect(config.syncOnConnectivityChange, isTrue);
+      expect(config.batchSize, 10);
+      expect(config.defaultConflictResolution, ConflictResolution.keepLocal);
+    });
+
+    test('batterySaver config has reduced sync frequency', () {
+      const config = SyncConfig.batterySaver;
+      expect(config.syncInterval, const Duration(minutes: 15));
+      expect(config.enableBackgroundSync, isFalse);
+      expect(config.batchSize, 5);
     });
   });
 
-  group('Offline interfaces', () {
-    test('OfflineRepository interface is defined', () {
-      expect(OfflineRepository, isNotNull);
-    });
-
-    test('RemoteRepository interface is defined', () {
-      expect(RemoteRepository, isNotNull);
-    });
-
-    test('SyncableRepository interface is defined', () {
-      expect(SyncableRepository, isNotNull);
-    });
-
-    test('SyncEngine interface is defined', () {
-      expect(SyncEngine, isNotNull);
-    });
-
-    test('ConflictResolver interface is defined', () {
-      expect(ConflictResolver, isNotNull);
-    });
-
-    test('ConnectivityChecker interface is defined', () {
-      expect(ConnectivityChecker, isNotNull);
+  group('ConflictResolution', () {
+    test('all resolution strategies are defined', () {
+      expect(ConflictResolution.values, contains(ConflictResolution.keepLocal));
+      expect(
+        ConflictResolution.values,
+        contains(ConflictResolution.keepRemote),
+      );
+      expect(ConflictResolution.values, contains(ConflictResolution.merge));
+      expect(ConflictResolution.values, contains(ConflictResolution.skip));
+      expect(ConflictResolution.values, contains(ConflictResolution.retry));
     });
   });
 
-  group('InMemorySecureStorage', () {
-    late InMemorySecureStorage storage;
+  group('SyncOperation', () {
+    test('creates with required fields', () {
+      final operation = SyncOperation(
+        id: 'op-1',
+        entityType: 'transaction',
+        entityId: 'txn-123',
+        operationType: SyncOperationType.create,
+        payload: '{"amount": 100}',
+        createdAt: DateTime(2024, 1, 1),
+      );
+      expect(operation.id, 'op-1');
+      expect(operation.entityType, 'transaction');
+      expect(operation.retryCount, 0);
+      expect(operation.status, SyncOperationStatus.pending);
+    });
+
+    test('canRetry returns true when under max retries', () {
+      final operation = SyncOperation(
+        id: 'op-1',
+        entityType: 'transaction',
+        entityId: 'txn-123',
+        operationType: SyncOperationType.update,
+        payload: '{}',
+        createdAt: DateTime.now(),
+        retryCount: 2,
+      );
+      expect(operation.canRetry, isTrue);
+    });
+
+    test('canRetry returns false when at max retries', () {
+      final operation = SyncOperation(
+        id: 'op-1',
+        entityType: 'transaction',
+        entityId: 'txn-123',
+        operationType: SyncOperationType.update,
+        payload: '{}',
+        createdAt: DateTime.now(),
+        retryCount: 5,
+      );
+      expect(operation.canRetry, isFalse);
+    });
+
+    test('retryDelay uses exponential backoff', () {
+      final op0 = SyncOperation(
+        id: 'op',
+        entityType: 't',
+        entityId: 'e',
+        operationType: SyncOperationType.create,
+        payload: '{}',
+        createdAt: DateTime.now(),
+        retryCount: 0,
+      );
+      final op2 = op0.copyWith(retryCount: 2);
+      final op4 = op0.copyWith(retryCount: 4);
+
+      expect(op0.retryDelay, const Duration(seconds: 1));
+      expect(op2.retryDelay, const Duration(seconds: 4));
+      expect(op4.retryDelay, const Duration(seconds: 16));
+    });
+
+    test('copyWith creates modified copy', () {
+      final original = SyncOperation(
+        id: 'op-1',
+        entityType: 'transaction',
+        entityId: 'txn-123',
+        operationType: SyncOperationType.create,
+        payload: '{}',
+        createdAt: DateTime.now(),
+      );
+      final modified = original.copyWith(
+        status: SyncOperationStatus.completed,
+        retryCount: 3,
+      );
+      expect(modified.status, SyncOperationStatus.completed);
+      expect(modified.retryCount, 3);
+      expect(modified.id, original.id);
+    });
+  });
+
+  group('SyncOperationType', () {
+    test('all operation types are defined', () {
+      expect(SyncOperationType.values, contains(SyncOperationType.create));
+      expect(SyncOperationType.values, contains(SyncOperationType.update));
+      expect(SyncOperationType.values, contains(SyncOperationType.delete));
+    });
+  });
+
+  group('SyncOperationStatus', () {
+    test('all statuses are defined', () {
+      expect(SyncOperationStatus.values, contains(SyncOperationStatus.pending));
+      expect(
+        SyncOperationStatus.values,
+        contains(SyncOperationStatus.inProgress),
+      );
+      expect(
+        SyncOperationStatus.values,
+        contains(SyncOperationStatus.completed),
+      );
+      expect(SyncOperationStatus.values, contains(SyncOperationStatus.failed));
+      expect(
+        SyncOperationStatus.values,
+        contains(SyncOperationStatus.cancelled),
+      );
+    });
+  });
+
+  group('SyncPriority', () {
+    test('all priorities are defined', () {
+      expect(SyncPriority.values, contains(SyncPriority.low));
+      expect(SyncPriority.values, contains(SyncPriority.normal));
+      expect(SyncPriority.values, contains(SyncPriority.high));
+      expect(SyncPriority.values, contains(SyncPriority.critical));
+    });
+  });
+
+  group('InMemorySecureStore', () {
+    late InMemorySecureStore store;
 
     setUp(() {
-      storage = InMemorySecureStorage();
+      store = InMemorySecureStore();
     });
 
     test('write and read work correctly', () async {
-      final writeResult = await storage.write('key1', 'value1');
-      expect(writeResult.isOk, isTrue);
-
-      final readResult = await storage.read('key1');
-      expect(readResult.isOk, isTrue);
-      expect(readResult.getOrNull(), 'value1');
+      await store.write(key: 'key1', value: 'value1');
+      final result = await store.read(key: 'key1');
+      expect(result, 'value1');
     });
 
     test('read returns null for non-existent key', () async {
-      final result = await storage.read('non-existent');
-      expect(result.isOk, isTrue);
-      expect(result.getOrNull(), isNull);
+      final result = await store.read(key: 'non-existent');
+      expect(result, isNull);
     });
 
     test('delete removes key', () async {
-      await storage.write('key1', 'value1');
-      await storage.delete('key1');
-      final result = await storage.read('key1');
-      expect(result.getOrNull(), isNull);
+      await store.write(key: 'key1', value: 'value1');
+      await store.delete(key: 'key1');
+      final result = await store.read(key: 'key1');
+      expect(result, isNull);
     });
 
     test('deleteAll clears all keys', () async {
-      await storage.write('key1', 'value1');
-      await storage.write('key2', 'value2');
-      await storage.deleteAll();
-      final keys = await storage.getAllKeys();
-      expect(keys.getOrNull(), isEmpty);
+      await store.write(key: 'key1', value: 'value1');
+      await store.write(key: 'key2', value: 'value2');
+      await store.deleteAll();
+      final key1 = await store.read(key: 'key1');
+      final key2 = await store.read(key: 'key2');
+      expect(key1, isNull);
+      expect(key2, isNull);
     });
 
     test('containsKey returns correct value', () async {
-      await storage.write('key1', 'value1');
-      final exists = await storage.containsKey('key1');
-      final notExists = await storage.containsKey('key2');
-      expect(exists.getOrNull(), isTrue);
-      expect(notExists.getOrNull(), isFalse);
-    });
-
-    test('getAllKeys returns all keys', () async {
-      await storage.write('key1', 'value1');
-      await storage.write('key2', 'value2');
-      final keys = await storage.getAllKeys();
-      expect(keys.getOrNull(), containsAll(['key1', 'key2']));
+      await store.write(key: 'key1', value: 'value1');
+      final exists = await store.containsKey(key: 'key1');
+      final notExists = await store.containsKey(key: 'key2');
+      expect(exists, isTrue);
+      expect(notExists, isFalse);
     });
   });
 
-  group('InMemoryEncryptionKeyManager', () {
-    late InMemoryEncryptionKeyManager keyManager;
-
-    setUp(() {
-      keyManager = InMemoryEncryptionKeyManager();
+  group('KeyDerivation', () {
+    test('generateKey creates random key', () {
+      final key1 = KeyDerivation.generateKey();
+      final key2 = KeyDerivation.generateKey();
+      expect(key1, isNotEmpty);
+      expect(key2, isNotEmpty);
+      expect(key1, isNot(equals(key2)));
     });
 
-    test('getDatabaseKey returns 32-byte key', () async {
-      final result = await keyManager.getDatabaseKey();
-      expect(result.isOk, isTrue);
-      expect(result.getOrNull()?.length, 32);
+    test('generateKey creates key of specified length encoded', () {
+      final key = KeyDerivation.generateKey(length: 16);
+      expect(key, isNotEmpty);
+    });
+
+    test('deriveFromPassphrase creates deterministic key', () {
+      final key1 = KeyDerivation.deriveFromPassphrase('password123');
+      final key2 = KeyDerivation.deriveFromPassphrase('password123');
+      expect(key1, equals(key2));
+    });
+
+    test('deriveFromPassphrase with salt creates different key', () {
+      final key1 = KeyDerivation.deriveFromPassphrase(
+        'password',
+        salt: 'salt1',
+      );
+      final key2 = KeyDerivation.deriveFromPassphrase(
+        'password',
+        salt: 'salt2',
+      );
+      expect(key1, isNot(equals(key2)));
+    });
+  });
+
+  group('EncryptionService', () {
+    late EncryptionService service;
+    late InMemorySecureStore store;
+
+    setUp(() {
+      store = InMemorySecureStore();
+      service = EncryptionService(secureStore: store);
+    });
+
+    test('getDatabaseKey generates and returns key', () async {
+      final key = await service.getDatabaseKey();
+      expect(key, isNotEmpty);
     });
 
     test('getDatabaseKey returns same key on subsequent calls', () async {
-      final key1 = await keyManager.getDatabaseKey();
-      final key2 = await keyManager.getDatabaseKey();
-      expect(key1.getOrNull(), equals(key2.getOrNull()));
+      final key1 = await service.getDatabaseKey();
+      final key2 = await service.getDatabaseKey();
+      expect(key1, equals(key2));
     });
 
-    test('rotateKey generates new key', () async {
-      final key1 = await keyManager.getDatabaseKey();
-      await keyManager.rotateKey();
-      final key2 = await keyManager.getDatabaseKey();
-      expect(key1.getOrNull(), isNot(equals(key2.getOrNull())));
+    test('rotateDatabaseKey creates new key', () async {
+      final key1 = await service.getDatabaseKey();
+      final key2 = await service.rotateDatabaseKey();
+      expect(key1, isNot(equals(key2)));
     });
 
-    test('isEncryptionAvailable returns true', () async {
-      final available = await keyManager.isEncryptionAvailable();
-      expect(available, isTrue);
+    test('hasDatabaseKey returns false initially', () async {
+      final hasKey = await service.hasDatabaseKey();
+      expect(hasKey, isFalse);
     });
 
-    test('clearKeys clears the key', () async {
-      await keyManager.getDatabaseKey();
-      await keyManager.clearKeys();
-      // After clear, a new key should be generated
-      final key1 = await keyManager.getDatabaseKey();
-      await keyManager.clearKeys();
-      final key2 = await keyManager.getDatabaseKey();
-      expect(key1.getOrNull(), isNot(equals(key2.getOrNull())));
+    test('hasDatabaseKey returns true after key generation', () async {
+      await service.getDatabaseKey();
+      final hasKey = await service.hasDatabaseKey();
+      expect(hasKey, isTrue);
+    });
+
+    test('deleteAllKeys removes keys', () async {
+      await service.getDatabaseKey();
+      await service.deleteAllKeys();
+      final hasKey = await service.hasDatabaseKey();
+      expect(hasKey, isFalse);
     });
   });
 
-  group('InMemoryEncryptedDatabase', () {
-    late InMemoryEncryptedDatabase db;
-
-    setUp(() async {
-      db = InMemoryEncryptedDatabase();
-      await db.initialize(
-        const EncryptedDatabaseConfig(databaseName: 'test.db'),
-      );
+  group('EncryptionConfig', () {
+    test('production config enables encryption', () {
+      const config = EncryptionConfig.production;
+      expect(config.enableDatabaseEncryption, isTrue);
+      expect(config.enableAtRestEncryption, isTrue);
+      expect(config.keyRotationDays, 90);
     });
 
-    test('initialize opens database', () async {
-      expect(db.isOpen, isTrue);
-      expect(db.path, 'test.db');
-    });
-
-    test('insert and query work correctly', () async {
-      final insertResult = await db.insert('users', {
-        'name': 'John',
-        'age': 30,
-      });
-      expect(insertResult.isOk, isTrue);
-      expect(insertResult.getOrNull(), greaterThan(0));
-
-      final queryResult = await db.query('users');
-      expect(queryResult.isOk, isTrue);
-      expect(queryResult.getOrNull()?.length, 1);
-      expect(queryResult.getOrNull()?.first['name'], 'John');
-    });
-
-    test('delete clears table', () async {
-      await db.insert('users', {'name': 'John'});
-      await db.insert('users', {'name': 'Jane'});
-      final deleteResult = await db.delete('users');
-      expect(deleteResult.isOk, isTrue);
-      expect(deleteResult.getOrNull(), 2);
-
-      final queryResult = await db.query('users');
-      expect(queryResult.getOrNull(), isEmpty);
-    });
-
-    test('close closes database', () async {
-      await db.close();
-      expect(db.isOpen, isFalse);
-    });
-
-    test('transaction executes action', () async {
-      final result = await db.transaction((txn) async {
-        await txn.insert('users', {'name': 'John'});
-        return 'done';
-      });
-      expect(result.isOk, isTrue);
-      expect(result.getOrNull(), 'done');
+    test('development config disables encryption', () {
+      const config = EncryptionConfig.development;
+      expect(config.enableDatabaseEncryption, isFalse);
+      expect(config.enableAtRestEncryption, isFalse);
+      expect(config.keyRotationDays, 0);
     });
   });
 }

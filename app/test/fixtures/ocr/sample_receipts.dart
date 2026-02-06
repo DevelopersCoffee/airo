@@ -123,4 +123,3 @@ const List<Map<String, dynamic>> expectedInstamartItems = [
   {'name': 'Spring Onion (Kanda Patta)', 'price': 29.0},
   {'name': '[Combo] Amul Taaza Milky Milk', 'price': 58.0},
 ];
-

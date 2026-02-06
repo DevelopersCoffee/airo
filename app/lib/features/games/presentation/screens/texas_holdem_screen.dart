@@ -45,10 +45,7 @@ class _TexasHoldemScreenState extends ConsumerState<TexasHoldemScreen> {
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.green[900]!,
-                    Colors.green[700]!,
-                  ],
+                  colors: [Colors.green[900]!, Colors.green[700]!],
                 ),
               ),
               child: SafeArea(
@@ -152,19 +149,18 @@ class _TexasHoldemScreenState extends ConsumerState<TexasHoldemScreen> {
           ? const Center(
               child: Text(
                 'Community Cards',
-                style: TextStyle(
-                  color: Colors.white70,
-                  fontSize: 16,
-                ),
+                style: TextStyle(color: Colors.white70, fontSize: 16),
               ),
             )
           : Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: game.communityCards
-                  .map((card) => Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 4),
-                        child: PlayingCardWidget(card: card),
-                      ))
+                  .map(
+                    (card) => Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      child: PlayingCardWidget(card: card),
+                    ),
+                  )
                   .toList(),
             ),
     );
@@ -210,10 +206,7 @@ class _TexasHoldemScreenState extends ConsumerState<TexasHoldemScreen> {
                 const SizedBox(height: 4),
                 Text(
                   '\$${player.chips}',
-                  style: const TextStyle(
-                    color: Colors.amber,
-                    fontSize: 12,
-                  ),
+                  style: const TextStyle(color: Colors.amber, fontSize: 12),
                 ),
                 if (player.isFolded)
                   const Text(
@@ -227,10 +220,7 @@ class _TexasHoldemScreenState extends ConsumerState<TexasHoldemScreen> {
                 if (player.currentBet > 0)
                   Text(
                     'Bet: \$${player.currentBet}',
-                    style: const TextStyle(
-                      color: Colors.white70,
-                      fontSize: 10,
-                    ),
+                    style: const TextStyle(color: Colors.white70, fontSize: 10),
                   ),
               ],
             ),
@@ -261,10 +251,12 @@ class _TexasHoldemScreenState extends ConsumerState<TexasHoldemScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: player.holeCards
-                  .map((card) => Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 4),
-                        child: PlayingCardWidget(card: card),
-                      ))
+                  .map(
+                    (card) => Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      child: PlayingCardWidget(card: card),
+                    ),
+                  )
                   .toList(),
             ),
           ),
@@ -304,10 +296,7 @@ class _TexasHoldemScreenState extends ConsumerState<TexasHoldemScreen> {
         padding: const EdgeInsets.all(16),
         child: const Text(
           'Waiting for other players...',
-          style: TextStyle(
-            color: Colors.white70,
-            fontSize: 14,
-          ),
+          style: TextStyle(color: Colors.white70, fontSize: 14),
         ),
       );
     }
@@ -352,4 +341,3 @@ class _TexasHoldemScreenState extends ConsumerState<TexasHoldemScreen> {
     );
   }
 }
-

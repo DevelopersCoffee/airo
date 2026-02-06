@@ -179,8 +179,10 @@ void main() {
   group('MoveClassification', () {
     test('all classifications are distinct', () {
       final classifications = MoveClassification.values;
-      expect(classifications.length, equals(6)); // quiet, capture, check, checkmate, blunder, brilliance
+      expect(
+        classifications.length,
+        equals(6),
+      ); // quiet, capture, check, checkmate, blunder, brilliance
     });
   });
 }
-

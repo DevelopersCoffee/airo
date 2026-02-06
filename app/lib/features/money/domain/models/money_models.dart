@@ -143,20 +143,19 @@ class Transaction extends Equatable {
 }
 
 /// Budget recurrence type
-enum BudgetRecurrence {
-  monthly,
-  weekly,
-  yearly,
-}
+enum BudgetRecurrence { monthly, weekly, yearly }
 
 /// Budget carryover behavior
 enum CarryoverBehavior {
   /// No carryover - unused budget is lost
   none,
+
   /// Unused budget carries over to next period
   carryUnused,
+
   /// Overspent amount is added to next period's used
   carryDeficit,
+
   /// Both unused and deficit carry over
   carryBoth,
 }
@@ -165,8 +164,10 @@ enum CarryoverBehavior {
 enum BudgetWarningLevel {
   /// Under 80% - safe
   normal,
+
   /// 80-100% - approaching limit
   warning,
+
   /// Over 100% - exceeded
   exceeded,
 }
@@ -233,7 +234,8 @@ class Budget extends Equatable {
   }
 
   /// Get remaining budget in cents
-  int get remainingCents => (effectiveLimitCents - usedCents).clamp(0, effectiveLimitCents);
+  int get remainingCents =>
+      (effectiveLimitCents - usedCents).clamp(0, effectiveLimitCents);
 
   /// Get limit as formatted string
   String get limitFormatted => _formatCurrency(limitCents);

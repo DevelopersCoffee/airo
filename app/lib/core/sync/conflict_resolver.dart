@@ -45,7 +45,9 @@ class LastWriteWinsResolver implements ConflictResolver {
       return ConflictResolution.keepRemote;
     } else {
       // Equal timestamps - use preference
-      return preferLocal ? ConflictResolution.keepLocal : ConflictResolution.keepRemote;
+      return preferLocal
+          ? ConflictResolution.keepLocal
+          : ConflictResolution.keepRemote;
     }
   }
 }
@@ -69,11 +71,19 @@ class MergeResolver implements ConflictResolver {
   Future<ConflictResolution> resolve(SyncConflict conflict) async {
     // This is a simplified merge - in production, you'd want to
     // actually produce merged data
-    debugPrint('MergeResolver: Merging ${conflict.entityType}/${conflict.entityId}');
+    debugPrint(
+      'MergeResolver: Merging ${conflict.entityType}/${conflict.entityId}',
+    );
 
     // Check if there are actual conflicts
-    final localChanged = _getChangedFields(conflict.localData, conflict.remoteData);
-    final remoteChanged = _getChangedFields(conflict.remoteData, conflict.localData);
+    final localChanged = _getChangedFields(
+      conflict.localData,
+      conflict.remoteData,
+    );
+    final remoteChanged = _getChangedFields(
+      conflict.remoteData,
+      conflict.localData,
+    );
 
     final conflictingFields = localChanged.intersection(remoteChanged);
 
@@ -87,7 +97,10 @@ class MergeResolver implements ConflictResolver {
     return fieldResolver.resolve(conflict);
   }
 
-  Set<String> _getChangedFields(Map<String, dynamic> a, Map<String, dynamic> b) {
+  Set<String> _getChangedFields(
+    Map<String, dynamic> a,
+    Map<String, dynamic> b,
+  ) {
     final changed = <String>{};
     for (final key in a.keys) {
       if (!immutableFields.contains(key) && a[key] != b[key]) {
@@ -108,7 +121,9 @@ class TransactionConflictResolver implements ConflictResolver {
   Future<ConflictResolution> resolve(SyncConflict conflict) async {
     // For transactions, always keep both versions
     // Create a duplicate on the server if needed
-    debugPrint('TransactionResolver: Keep both - financial data must not be lost');
+    debugPrint(
+      'TransactionResolver: Keep both - financial data must not be lost',
+    );
 
     // In a real implementation, this would create a duplicate
     // For now, keep local and queue for manual review
@@ -121,8 +136,8 @@ class EntityTypeResolver implements ConflictResolver {
   EntityTypeResolver({
     Map<String, ConflictResolver>? resolvers,
     ConflictResolver? defaultResolver,
-  })  : _resolvers = resolvers ?? {},
-        _defaultResolver = defaultResolver ?? const LastWriteWinsResolver();
+  }) : _resolvers = resolvers ?? {},
+       _defaultResolver = defaultResolver ?? const LastWriteWinsResolver();
 
   final Map<String, ConflictResolver> _resolvers;
   final ConflictResolver _defaultResolver;
@@ -150,4 +165,3 @@ class EntityTypeResolver implements ConflictResolver {
     );
   }
 }
-

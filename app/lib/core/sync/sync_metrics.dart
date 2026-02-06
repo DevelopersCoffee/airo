@@ -6,9 +6,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 /// Metrics and monitoring for sync operations.
 class SyncMetrics {
-  SyncMetrics({
-    required OutboxRepository outboxRepository,
-  }) : _outboxRepository = outboxRepository;
+  SyncMetrics({required OutboxRepository outboxRepository})
+    : _outboxRepository = outboxRepository;
 
   final OutboxRepository _outboxRepository;
   SharedPreferences? _prefs;
@@ -41,7 +40,8 @@ class SyncMetrics {
 
     // Update averages
     final oldAvg = prefs.getInt(_keyAverageSyncDurationMs) ?? 0;
-    final newAvg = ((oldAvg * (syncCount - 1)) + duration.inMilliseconds) ~/ syncCount;
+    final newAvg =
+        ((oldAvg * (syncCount - 1)) + duration.inMilliseconds) ~/ syncCount;
 
     await prefs.setInt(_keyTotalSynced, totalSynced);
     await prefs.setInt(_keyTotalFailed, totalFailed);
@@ -50,7 +50,9 @@ class SyncMetrics {
     await prefs.setInt(_keyAverageSyncDurationMs, newAvg);
     await prefs.setString(_keyLastSyncAt, DateTime.now().toIso8601String());
 
-    debugPrint('SyncMetrics: Recorded - synced=$synced, failed=$failed, duration=${duration.inMs}ms');
+    debugPrint(
+      'SyncMetrics: Recorded - synced=$synced, failed=$failed, duration=${duration.inMs}ms',
+    );
   }
 
   /// Gets current sync statistics.
@@ -63,8 +65,12 @@ class SyncMetrics {
       totalFailed: prefs.getInt(_keyTotalFailed) ?? 0,
       pendingCount: pendingResult.valueOrNull ?? 0,
       lastSyncAt: _parseDateTime(prefs.getString(_keyLastSyncAt)),
-      lastSyncDuration: Duration(milliseconds: prefs.getInt(_keyLastSyncDurationMs) ?? 0),
-      averageSyncDuration: Duration(milliseconds: prefs.getInt(_keyAverageSyncDurationMs) ?? 0),
+      lastSyncDuration: Duration(
+        milliseconds: prefs.getInt(_keyLastSyncDurationMs) ?? 0,
+      ),
+      averageSyncDuration: Duration(
+        milliseconds: prefs.getInt(_keyAverageSyncDurationMs) ?? 0,
+      ),
       syncCount: prefs.getInt(_keySyncCount) ?? 0,
     );
   }
@@ -140,4 +146,3 @@ class SyncStats {
 extension on Duration {
   int get inMs => inMilliseconds;
 }
-

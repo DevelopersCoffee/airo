@@ -3,10 +3,7 @@ class Quote {
   final String text;
   final String author;
 
-  const Quote({
-    required this.text,
-    required this.author,
-  });
+  const Quote({required this.text, required this.author});
 
   factory Quote.fromJson(Map<String, dynamic> json) {
     return Quote(
@@ -16,10 +13,7 @@ class Quote {
   }
 
   Map<String, dynamic> toJson() {
-    return {
-      'q': text,
-      'a': author,
-    };
+    return {'q': text, 'a': author};
   }
 
   @override
@@ -36,4 +30,3 @@ class Quote {
   @override
   int get hashCode => text.hashCode ^ author.hashCode;
 }
-

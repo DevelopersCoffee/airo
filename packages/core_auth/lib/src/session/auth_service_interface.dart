@@ -1,4 +1,4 @@
-import 'package:core_domain/core_domain.dart';
+import 'package:core_domain/core_domain.dart' hide User;
 import '../models/user.dart';
 import '../models/auth_result.dart';
 import 'auth_state.dart';
@@ -64,10 +64,7 @@ abstract interface class TokenStorage {
   Future<String?> getRefreshToken();
 
   /// Store tokens.
-  Future<void> storeTokens({
-    required String accessToken,
-    String? refreshToken,
-  });
+  Future<void> storeTokens({required String accessToken, String? refreshToken});
 
   /// Clear stored tokens.
   Future<void> clearTokens();
@@ -87,4 +84,3 @@ abstract interface class UserStorage {
   /// Clear stored user.
   Future<void> clearUser();
 }
-

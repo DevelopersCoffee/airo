@@ -16,10 +16,10 @@ final deckOfCardsServiceProvider = Provider<DeckOfCardsService>((ref) {
 /// Provider for Blackjack game state
 final blackjackGameProvider =
     StateNotifierProvider<BlackjackNotifier, BlackjackGame?>((ref) {
-  final service = ref.watch(deckOfCardsServiceProvider);
-  final settings = ref.watch(blackjackSettingsProvider);
-  return BlackjackNotifier(service, settings);
-});
+      final service = ref.watch(deckOfCardsServiceProvider);
+      final settings = ref.watch(blackjackSettingsProvider);
+      return BlackjackNotifier(service, settings);
+    });
 
 /// Blackjack game state notifier
 class BlackjackNotifier extends StateNotifier<BlackjackGame?> {
@@ -68,7 +68,9 @@ class BlackjackNotifier extends StateNotifier<BlackjackGame?> {
       final playerHand = [cards[0], cards[2]];
       final dealerHand = [cards[1], cards[3]];
 
-      final playerValue = BlackjackHandCalculator.calculateHandValue(playerHand);
+      final playerValue = BlackjackHandCalculator.calculateHandValue(
+        playerHand,
+      );
       final isPlayerBlackjack = BlackjackHandCalculator.isBlackjack(playerHand);
 
       state = state!.copyWith(
@@ -84,7 +86,8 @@ class BlackjackNotifier extends StateNotifier<BlackjackGame?> {
         canHit: !isPlayerBlackjack,
         canStand: !isPlayerBlackjack,
         canDouble: !isPlayerBlackjack && state!.playerBalance >= amount,
-        canSplit: !isPlayerBlackjack &&
+        canSplit:
+            !isPlayerBlackjack &&
             BlackjackHandCalculator.canSplit(playerHand) &&
             state!.playerBalance >= amount,
         message: isPlayerBlackjack ? 'Blackjack! You win!' : null,
@@ -231,10 +234,12 @@ class BlackjackNotifier extends StateNotifier<BlackjackGame?> {
   Future<void> _determineWinner() async {
     if (state == null) return;
 
-    final playerValue =
-        BlackjackHandCalculator.calculateHandValue(state!.playerHand);
-    final dealerValue =
-        BlackjackHandCalculator.calculateHandValue(state!.dealerHand);
+    final playerValue = BlackjackHandCalculator.calculateHandValue(
+      state!.playerHand,
+    );
+    final dealerValue = BlackjackHandCalculator.calculateHandValue(
+      state!.dealerHand,
+    );
     final dealerBust = dealerValue > 21;
 
     BlackjackGameStatus status;
@@ -273,12 +278,11 @@ class BlackjackNotifier extends StateNotifier<BlackjackGame?> {
   Future<void> _resolveBlackjack() async {
     if (state == null) return;
 
-    final payout = (state!.currentBet * _settings.blackjackPayout.multiplier).round();
+    final payout = (state!.currentBet * _settings.blackjackPayout.multiplier)
+        .round();
     final winnings = state!.currentBet + payout;
 
-    state = state!.copyWith(
-      playerBalance: state!.playerBalance + winnings,
-    );
+    state = state!.copyWith(playerBalance: state!.playerBalance + winnings);
 
     await Future.delayed(const Duration(seconds: 3));
     await _resetForNextRound();
@@ -290,13 +294,9 @@ class BlackjackNotifier extends StateNotifier<BlackjackGame?> {
 
     // Check if we need to reshuffle (less than 25% remaining)
     if (state!.remainingCards < (52 * _settings.deckCount * 0.25)) {
-      final deckResponse = await _service.reshuffleDeck(
-        deckId: state!.deckId,
-      );
+      final deckResponse = await _service.reshuffleDeck(deckId: state!.deckId);
 
-      state = state!.copyWith(
-        remainingCards: deckResponse.remaining,
-      );
+      state = state!.copyWith(remainingCards: deckResponse.remaining);
     }
 
     state = state!.copyWith(
@@ -313,4 +313,3 @@ class BlackjackNotifier extends StateNotifier<BlackjackGame?> {
     );
   }
 }
-
