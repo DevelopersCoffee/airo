@@ -137,7 +137,13 @@ class AIRouterService {
           systemPrompt: systemPrompt,
         );
       case AIProvider.auto:
-        // This shouldn't happen as getBestProvider() resolves auto
+      case AIProvider.gguf:
+      case AIProvider.gemma:
+      case AIProvider.phi:
+      case AIProvider.llama:
+      case AIProvider.custom:
+        // GGUF models and auto fallback to cloud for now
+        // TODO: Implement GGUF model processing when ActiveModelService is ready
         return await _processWithCloud(
           query,
           fileContext: fileContext,
@@ -171,6 +177,12 @@ class AIRouterService {
         );
         break;
       case AIProvider.auto:
+      case AIProvider.gguf:
+      case AIProvider.gemma:
+      case AIProvider.phi:
+      case AIProvider.llama:
+      case AIProvider.custom:
+        // GGUF models and auto fallback to cloud for now
         yield* _processStreamWithCloud(
           query,
           fileContext: fileContext,

@@ -2,8 +2,11 @@ import 'dart:developer' as developer;
 
 import 'package:core_domain/core_domain.dart';
 
+import 'active_model_service.dart';
 import 'gemini_api_client.dart';
 import 'gemini_nano_client.dart';
+import 'gguf_model_client.dart';
+import 'gguf_model_config.dart';
 import 'llm_client.dart';
 import 'llm_config.dart';
 import 'llm_response.dart';
@@ -14,7 +17,7 @@ typedef MemoryWarningCallback = void Function(MemoryCheckResult memoryCheck);
 
 /// Implementation of LLM router for selecting appropriate provider.
 ///
-/// Includes memory-aware routing for on-device models.
+/// Includes memory-aware routing for on-device models and GGUF support.
 class LLMRouterImpl implements LLMRouter {
   LLMRouterImpl({
     this.geminiNanoClient,
@@ -22,12 +25,17 @@ class LLMRouterImpl implements LLMRouter {
     this.mockClient,
     this.preferOnDevice = true,
     this.onMemoryWarning,
-  });
+    ActiveModelService? activeModelService,
+  }) : _activeModelService = activeModelService ?? ActiveModelService.instance;
 
   final GeminiNanoClient? geminiNanoClient;
   final GeminiApiClient? geminiApiClient;
   final LLMClient? mockClient;
   final bool preferOnDevice;
+  final ActiveModelService _activeModelService;
+
+  /// Currently loaded GGUF client (managed by ActiveModelService).
+  GGUFModelClient? _ggufClient;
 
   /// Optional callback for memory warnings during on-device model loading.
   final MemoryWarningCallback? onMemoryWarning;
@@ -121,6 +129,7 @@ class LLMRouterImpl implements LLMRouter {
   LLMClient? getProvider(LLMProvider provider) => switch (provider) {
     LLMProvider.geminiNano => geminiNanoClient,
     LLMProvider.geminiApi => geminiApiClient,
+    LLMProvider.gguf => _ggufClient,
     LLMProvider.mock => mockClient,
   };
 
@@ -150,6 +159,65 @@ class LLMRouterImpl implements LLMRouter {
     await geminiNanoClient?.dispose();
     await geminiApiClient?.dispose();
     await mockClient?.dispose();
+    await _ggufClient?.dispose();
+    // Note: ActiveModelService.dispose() should be called separately
+    // as it's a singleton that may be shared across routers.
+  }
+
+  /// Loads a GGUF model and creates a client for it.
+  ///
+  /// Returns the [GGUFModelClient] for the loaded model.
+  /// If another GGUF model is loaded, it will be unloaded first.
+  Future<Result<GGUFModelClient>> loadGGUFModel(
+    GGUFModelConfig config, {
+    ModelLoadProgressCallback? onProgress,
+    ModelMemoryWarningCallback? onMemoryWarning,
+  }) async {
+    developer.log(
+      'Loading GGUF model: ${config.modelName}',
+      name: 'LLMRouterImpl',
+    );
+
+    // Create client (will use ActiveModelService for loading)
+    final client = GGUFModelClient(
+      modelConfig: config,
+      activeModelService: _activeModelService,
+    );
+
+    // Ensure model is loaded
+    final loadResult = await client.ensureLoaded(
+      onProgress: onProgress,
+      onMemoryWarning: (memoryCheck) {
+        developer.log(
+          'Memory warning for GGUF: ${memoryCheck.severity.title}',
+          name: 'LLMRouterImpl',
+        );
+        onMemoryWarning?.call(memoryCheck);
+      },
+    );
+
+    if (loadResult is Err<ActiveModelInfo>) {
+      return Err(loadResult.error, loadResult.stack);
+    }
+
+    _ggufClient = client;
+    return Ok(client);
+  }
+
+  /// Gets the currently loaded GGUF client, if any.
+  GGUFModelClient? get ggufClient => _ggufClient;
+
+  /// Whether a GGUF model is currently loaded and ready.
+  bool get hasGGUFModel => _activeModelService.hasActiveModel;
+
+  /// Stream of GGUF model state changes.
+  Stream<ActiveModelInfo?> get ggufModelStateStream =>
+      _activeModelService.stateStream;
+
+  /// Unloads the current GGUF model.
+  Future<void> unloadGGUFModel() async {
+    await _activeModelService.unloadModel();
+    _ggufClient = null;
   }
 }
 
