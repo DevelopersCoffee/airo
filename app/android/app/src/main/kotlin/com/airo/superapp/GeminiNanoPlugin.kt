@@ -3,46 +3,59 @@ package com.airo.superapp
 import android.app.ActivityManager
 import android.content.Context
 import android.os.Build
+import android.util.Log
 import androidx.annotation.NonNull
+import com.google.mlkit.genai.common.DownloadCallback
+import com.google.mlkit.genai.common.DownloadStatus
+import com.google.mlkit.genai.common.FeatureStatus
+import com.google.mlkit.genai.prompt.GenerateContentRequest
+import com.google.mlkit.genai.prompt.GenerateContentResponse
+import com.google.mlkit.genai.prompt.Generation
+import com.google.mlkit.genai.prompt.GenerativeModel
+import com.google.mlkit.genai.prompt.TextPart
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
  * Gemini Nano Plugin for Flutter
- * Provides on-device AI inference using Google's AI Core on Pixel 9+ devices
- * 
- * Based on: https://developer.android.com/ai/gemini-nano
+ * Provides on-device AI inference using ML Kit GenAI Prompt API on Pixel 9+ devices
+ *
+ * Based on: https://developers.google.com/ml-kit/genai/prompt/android/get-started
  */
 class GeminiNanoPlugin(private val context: Context) : MethodChannel.MethodCallHandler {
-    
+
     companion object {
+        private const val TAG = "GeminiNanoPlugin"
         private const val CHANNEL_NAME = "com.airo.gemini_nano"
         private const val EVENT_CHANNEL_NAME = "com.airo.gemini_nano/stream"
-        
+
         fun registerWith(flutterEngine: FlutterEngine) {
             val context = flutterEngine.dartExecutor.binaryMessenger.let { messenger ->
                 flutterEngine.dartExecutor.binaryMessenger
             }
-            
+
             val plugin = GeminiNanoPlugin(
-                flutterEngine.dartExecutor.binaryMessenger.let { 
+                flutterEngine.dartExecutor.binaryMessenger.let {
                     // Get context from FlutterEngine
                     null as? Context ?: throw IllegalStateException("Context not available")
                 }
             )
-            
+
             val methodChannel = MethodChannel(
                 flutterEngine.dartExecutor.binaryMessenger,
                 CHANNEL_NAME
             )
             methodChannel.setMethodCallHandler(plugin)
-            
+
             val eventChannel = EventChannel(
                 flutterEngine.dartExecutor.binaryMessenger,
                 EVENT_CHANNEL_NAME
@@ -50,8 +63,9 @@ class GeminiNanoPlugin(private val context: Context) : MethodChannel.MethodCallH
             eventChannel.setStreamHandler(plugin.streamHandler)
         }
     }
-    
+
     private var isInitialized = false
+    private var generativeModel: GenerativeModel? = null
     private val coroutineScope = CoroutineScope(Dispatchers.Main)
 
     // Stream handler for streaming responses
@@ -96,139 +110,265 @@ class GeminiNanoPlugin(private val context: Context) : MethodChannel.MethodCallH
     }
     
     /**
-     * Check if Gemini Nano is available on this device
-     * Requirements:
-     * - Pixel 9, 9 Pro, 9 Pro XL, or 9 Pro Fold
-     * - Android 14 (API 34) or higher
-     * - AI Core system component installed
+     * Check if Gemini Nano is available on this device using ML Kit GenAI API
+     * Uses FeatureStatus to check model availability
      */
     private fun checkAvailability(result: MethodChannel.Result) {
-        try {
-            val isPixel9Series = isPixel9Device()
-            val hasMinAndroidVersion = Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE // API 34
-            
-            // Check if AI Core is available (this would use actual AI Core API in production)
-            val hasAiCore = checkAiCoreAvailability()
-            
-            val isAvailable = isPixel9Series && hasMinAndroidVersion && hasAiCore
-            
-            result.success(isAvailable)
-        } catch (e: Exception) {
-            result.error("AVAILABILITY_CHECK_FAILED", e.message, null)
+        coroutineScope.launch {
+            try {
+                // Initialize generative model if not already done
+                if (generativeModel == null) {
+                    generativeModel = Generation.getClient()
+                }
+
+                // Check feature status - returns @FeatureStatus int directly
+                val status: Int = generativeModel!!.checkStatus()
+
+                when (status) {
+                    FeatureStatus.AVAILABLE -> {
+                        Log.d(TAG, "Gemini Nano is AVAILABLE")
+                        result.success(true)
+                    }
+                    FeatureStatus.DOWNLOADABLE -> {
+                        Log.d(TAG, "Gemini Nano is DOWNLOADABLE - needs download")
+                        result.success(true) // Available but needs download
+                    }
+                    FeatureStatus.DOWNLOADING -> {
+                        Log.d(TAG, "Gemini Nano is currently DOWNLOADING")
+                        result.success(true) // In progress
+                    }
+                    FeatureStatus.UNAVAILABLE -> {
+                        Log.d(TAG, "Gemini Nano is UNAVAILABLE on this device")
+                        result.success(false)
+                    }
+                    else -> {
+                        Log.d(TAG, "Unknown Gemini Nano status: $status")
+                        result.success(false)
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error checking availability: ${e.message}", e)
+                result.error("AVAILABILITY_CHECK_FAILED", e.message, null)
+            }
         }
     }
-    
+
     /**
      * Initialize Gemini Nano with configuration
+     * Downloads the model if needed
      */
     private fun initialize(call: MethodCall, result: MethodChannel.Result) {
         coroutineScope.launch {
             try {
-                val temperature = call.argument<Double>("temperature") ?: 0.7
-                val topK = call.argument<Int>("topK") ?: 40
-                val maxOutputTokens = call.argument<Int>("maxOutputTokens") ?: 1024
-                
-                // In production, this would initialize the actual AI Core SDK
-                // For now, we'll simulate initialization
-                withContext(Dispatchers.IO) {
-                    // Simulate initialization delay
-                    Thread.sleep(500)
-                    
-                    // TODO: Replace with actual AI Core initialization
-                    // Example (pseudo-code):
-                    // val aiCore = AICore.getInstance(context)
-                    // aiCore.initialize(
-                    //     temperature = temperature,
-                    //     topK = topK,
-                    //     maxOutputTokens = maxOutputTokens
-                    // )
+                // Initialize generative model if not already done
+                if (generativeModel == null) {
+                    generativeModel = Generation.getClient()
                 }
-                
-                isInitialized = true
-                result.success(true)
+
+                // Check current status - returns @FeatureStatus int directly
+                val status: Int = generativeModel!!.checkStatus()
+                Log.d(TAG, "Initialize: Current status = $status")
+
+                when (status) {
+                    FeatureStatus.AVAILABLE -> {
+                        Log.d(TAG, "Gemini Nano already available")
+                        isInitialized = true
+                        result.success(true)
+                    }
+                    FeatureStatus.DOWNLOADABLE -> {
+                        Log.d(TAG, "Starting Gemini Nano download...")
+                        // Download the model using Flow-based API
+                        var downloadCompleted = false
+                        generativeModel!!.download()
+                            .catch { e ->
+                                Log.e(TAG, "Download failed: ${e.message}", e)
+                                result.error("DOWNLOAD_FAILED", e.message, null)
+                            }
+                            .collect { downloadStatus ->
+                                when (downloadStatus) {
+                                    is DownloadStatus.DownloadStarted -> {
+                                        Log.d(TAG, "Download started...")
+                                    }
+                                    is DownloadStatus.DownloadProgress -> {
+                                        Log.d(TAG, "Download progress: ${downloadStatus.totalBytesDownloaded} bytes downloaded")
+                                    }
+                                    DownloadStatus.DownloadCompleted -> {
+                                        Log.d(TAG, "Gemini Nano download complete")
+                                        isInitialized = true
+                                        downloadCompleted = true
+                                    }
+                                    is DownloadStatus.DownloadFailed -> {
+                                        Log.e(TAG, "Download failed: ${downloadStatus.e.message}")
+                                        result.error("DOWNLOAD_FAILED", downloadStatus.e.message, null)
+                                    }
+                                }
+                            }
+                        if (downloadCompleted) {
+                            result.success(true)
+                        }
+                    }
+                    FeatureStatus.DOWNLOADING -> {
+                        Log.d(TAG, "Gemini Nano is already downloading, waiting...")
+                        // Wait for download to complete by polling
+                        pollForAvailability(result)
+                    }
+                    FeatureStatus.UNAVAILABLE -> {
+                        Log.e(TAG, "Gemini Nano is not available on this device")
+                        result.error("UNAVAILABLE", "Gemini Nano not available on this device", null)
+                    }
+                    else -> {
+                        result.error("UNKNOWN_STATUS", "Unknown status: $status", null)
+                    }
+                }
             } catch (e: Exception) {
+                Log.e(TAG, "Initialization failed: ${e.message}", e)
                 result.error("INITIALIZATION_FAILED", e.message, null)
             }
         }
     }
-    
+
     /**
-     * Generate content using Gemini Nano
+     * Poll for model availability during download
+     */
+    private fun pollForAvailability(result: MethodChannel.Result) {
+        coroutineScope.launch {
+            try {
+                var attempts = 0
+                val maxAttempts = 60 // Max 60 seconds
+
+                while (attempts < maxAttempts) {
+                    val status: Int = generativeModel!!.checkStatus()
+
+                    if (status == FeatureStatus.AVAILABLE) {
+                        Log.d(TAG, "Model now available after polling")
+                        isInitialized = true
+                        result.success(true)
+                        return@launch
+                    } else if (status == FeatureStatus.UNAVAILABLE) {
+                        Log.e(TAG, "Model became unavailable during polling")
+                        result.error("UNAVAILABLE", "Model became unavailable", null)
+                        return@launch
+                    }
+
+                    delay(1000) // Wait 1 second (proper coroutine suspension)
+                    attempts++
+                }
+
+                result.error("TIMEOUT", "Timeout waiting for model download", null)
+            } catch (e: Exception) {
+                Log.e(TAG, "Error polling for availability: ${e.message}", e)
+                result.error("POLLING_FAILED", e.message, null)
+            }
+        }
+    }
+
+    /**
+     * Ensure model is initialized before use
+     */
+    private suspend fun ensureInitialized(): Boolean {
+        if (isInitialized && generativeModel != null) return true
+
+        try {
+            if (generativeModel == null) {
+                generativeModel = Generation.getClient()
+            }
+
+            val status: Int = generativeModel!!.checkStatus()
+            if (status == FeatureStatus.AVAILABLE) {
+                isInitialized = true
+                return true
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error ensuring initialization: ${e.message}", e)
+        }
+        return false
+    }
+
+    /**
+     * Generate content using Gemini Nano (non-streaming)
      */
     private fun generateContent(call: MethodCall, result: MethodChannel.Result) {
         coroutineScope.launch {
             try {
-                if (!isInitialized) {
-                    // Auto-initialize if not done yet
-                    withContext(Dispatchers.IO) {
-                        Thread.sleep(300)
-                    }
-                    isInitialized = true
+                // Ensure model is initialized
+                if (!ensureInitialized()) {
+                    result.error("NOT_INITIALIZED", "Gemini Nano not initialized", null)
+                    return@launch
                 }
+
                 val prompt = call.argument<String>("prompt")
                     ?: throw IllegalArgumentException("Prompt is required")
-                
-                val response = withContext(Dispatchers.IO) {
-                    // TODO: Replace with actual AI Core generation
-                    // Example (pseudo-code):
-                    // val aiCore = AICore.getInstance(context)
-                    // aiCore.generateContent(prompt)
-                    
-                    // Simulated response for now
-                    generateMockResponse(prompt)
-                }
-                
-                result.success(response)
+
+                Log.d(TAG, "Generating content for prompt: ${prompt.take(50)}...")
+
+                // Build the request
+                val request = GenerateContentRequest.Builder(TextPart(prompt)).build()
+
+                // Generate content using ML Kit - generateContent is a suspend function
+                val response = generativeModel!!.generateContent(request)
+
+                // Extract text from response - candidates list, first candidate, get text
+                val text = response.candidates.firstOrNull()?.text ?: ""
+                Log.d(TAG, "Generated response: ${text.take(100)}...")
+
+                result.success(text)
             } catch (e: Exception) {
+                Log.e(TAG, "Generation failed: ${e.message}", e)
                 result.error("GENERATION_FAILED", e.message, null)
             }
         }
     }
-    
+
     /**
-     * Generate content with streaming response
+     * Generate content with streaming response using ML Kit GenAI
      */
     private fun generateContentStream(call: MethodCall, result: MethodChannel.Result) {
         coroutineScope.launch {
             try {
-                if (!isInitialized) {
-                    // Auto-initialize if not done yet
-                    withContext(Dispatchers.IO) {
-                        Thread.sleep(300)
-                    }
-                    isInitialized = true
+                // Ensure model is initialized
+                if (!ensureInitialized()) {
+                    streamHandler.sendError("Gemini Nano not initialized")
+                    result.error("NOT_INITIALIZED", "Gemini Nano not initialized", null)
+                    return@launch
                 }
 
                 val prompt = call.argument<String>("prompt")
                     ?: throw IllegalArgumentException("Prompt is required")
 
-                // Generate response in background
-                val response = withContext(Dispatchers.IO) {
-                    generateMockResponse(prompt)
-                }
+                Log.d(TAG, "Starting streaming generation for: ${prompt.take(50)}...")
 
-                // Stream chunks on main thread
-                val words = response.split(" ")
-                var accumulated = ""
+                // Build the request
+                val request = GenerateContentRequest.Builder(TextPart(prompt)).build()
 
-                for (word in words) {
-                    accumulated += "$word "
-                    // Send chunk on main thread
-                    withContext(Dispatchers.Main) {
-                        streamHandler.sendChunk(accumulated.trim())
+                var fullResponse = ""
+
+                // Use streaming API
+                generativeModel!!.generateContentStream(request)
+                    .catch { e ->
+                        Log.e(TAG, "Streaming error: ${e.message}", e)
+                        withContext(Dispatchers.Main) {
+                            streamHandler.sendError(e.message ?: "Unknown error")
+                        }
                     }
-                    // Delay in background
-                    withContext(Dispatchers.IO) {
-                        Thread.sleep(50) // Simulate streaming delay
-                    }
-                }
+                    .collect { chunk ->
+                        val chunkText = chunk.candidates.firstOrNull()?.text ?: ""
+                        fullResponse += chunkText
 
-                // End stream on main thread
+                        // Send accumulated response to Flutter
+                        withContext(Dispatchers.Main) {
+                            streamHandler.sendChunk(fullResponse)
+                        }
+                    }
+
+                Log.d(TAG, "Streaming complete. Full response: ${fullResponse.take(100)}...")
+
+                // End stream
                 withContext(Dispatchers.Main) {
                     streamHandler.endStream()
                 }
                 result.success(true)
             } catch (e: Exception) {
+                Log.e(TAG, "Streaming failed: ${e.message}", e)
                 withContext(Dispatchers.Main) {
                     streamHandler.sendError(e.message ?: "Unknown error")
                 }
@@ -294,38 +434,17 @@ class GeminiNanoPlugin(private val context: Context) : MethodChannel.MethodCallH
     }
     
     // Helper methods
-    
+
     private fun isPixel9Device(): Boolean {
         val model = Build.MODEL.lowercase()
         val device = Build.DEVICE.lowercase()
-        
+
         return (Build.MANUFACTURER.equals("Google", ignoreCase = true) &&
-                (model.contains("pixel 9") || 
+                (model.contains("pixel 9") ||
                  device.contains("komodo") ||  // Pixel 9
                  device.contains("caiman") ||  // Pixel 9 Pro
                  device.contains("tokay") ||   // Pixel 9 Pro XL
                  device.contains("comet")))    // Pixel 9 Pro Fold
-    }
-    
-    private fun checkAiCoreAvailability(): Boolean {
-        // TODO: Implement actual AI Core availability check
-        // This would use the AI Core SDK to check if the system component is installed
-        // For now, return true for Pixel 9 devices
-        return isPixel9Device()
-    }
-    
-    private fun generateMockResponse(prompt: String): String {
-        // Mock response generator for testing
-        return when {
-            prompt.lowercase().contains("diet") -> 
-                "Based on your request, here's a personalized diet plan focusing on balanced nutrition..."
-            prompt.lowercase().contains("bill") -> 
-                "I can help you split the bill fairly. Please provide the total amount and number of people..."
-            prompt.lowercase().contains("form") -> 
-                "I'll help you fill out this form. Let me extract the relevant information..."
-            else -> 
-                "I'm Gemini Nano running locally on your Pixel 9. How can I help you today?"
-        }
     }
 }
 

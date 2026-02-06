@@ -54,12 +54,15 @@ dependencies {
     // Core library desugaring for flutter_local_notifications
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
 
-    // Gemini Nano (AI Core) dependencies for on-device AI
-    // Based on: https://developer.android.com/ai/gemini-nano
-    // Note: Actual AI Core SDK integration pending - currently using mock responses
+    // ML Kit GenAI Prompt API for on-device Gemini Nano
+    // Based on: https://developers.google.com/ml-kit/genai/prompt/android/get-started
+    implementation("com.google.mlkit:genai-prompt:1.0.0-beta1")
+
+    // Coroutines and lifecycle dependencies for async operations
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.10.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.10.2")
 }
 
 flutter {

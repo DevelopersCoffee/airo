@@ -25,10 +25,8 @@ class GeminiNanoClient implements LLMClient {
   }) : _config = config ?? LLMConfig.geminiNano,
        _memoryBudgetManager = memoryBudgetManager ?? MemoryBudgetManager();
 
-  static const _channel = MethodChannel('com.airo.superapp/gemini_nano');
-  static const _eventChannel = EventChannel(
-    'com.airo.superapp/gemini_nano_stream',
-  );
+  static const _channel = MethodChannel('com.airo.gemini_nano');
+  static const _eventChannel = EventChannel('com.airo.gemini_nano/stream');
 
   /// Estimated Gemini Nano model size in bytes (~2.5GB).
   /// This is used for memory budget calculations.
@@ -177,8 +175,8 @@ class GeminiNanoClient implements LLMClient {
     }
 
     try {
-      // Start streaming generation
-      await _channel.invokeMethod('startStreamGeneration', {'prompt': prompt});
+      // Start streaming generation (method name matches Android plugin)
+      await _channel.invokeMethod('generateContentStream', {'prompt': prompt});
 
       // Listen to stream
       await for (final chunk in _eventChannel.receiveBroadcastStream()) {
