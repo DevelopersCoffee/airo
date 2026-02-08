@@ -24,6 +24,12 @@ export 'src/llm/gguf_model_config.dart';
 export 'src/llm/gguf_model_client.dart';
 export 'src/llm/active_model_service.dart';
 
+// Model Registry
+export 'src/models/model_credibility.dart';
+export 'src/models/offline_model_info.dart';
+export 'src/registry/model_registry.dart';
+export 'src/registry/model_catalog.dart';
+
 // Prompt Management
 export 'src/prompts/prompt.dart';
 export 'src/prompts/prompt_template.dart';
