@@ -9,6 +9,10 @@ import '../../data/repositories/local_transactions_repository.dart'
 import '../../domain/models/money_models.dart';
 import 'audit_service.dart';
 
+// Re-export shared types for backward compatibility
+export '../../domain/models/money_models.dart'
+    show SaveExpenseResult, BudgetDeductionStatus;
+
 /// Service for managing expenses with budget deduction
 /// Handles transactional operations for offline-first support
 class ExpenseService {
@@ -159,37 +163,4 @@ class ExpenseService {
   }
 }
 
-/// Result of saving an expense
-class SaveExpenseResult {
-  final Transaction transaction;
-  final BudgetDeductionStatus budgetStatus;
-  final Budget? budget;
-
-  const SaveExpenseResult({
-    required this.transaction,
-    required this.budgetStatus,
-    this.budget,
-  });
-
-  /// Check if budget limit was exceeded
-  bool get isBudgetExceeded =>
-      budgetStatus == BudgetDeductionStatus.exceededLimit;
-
-  /// Check if there was a matching budget
-  bool get hasBudget => budgetStatus != BudgetDeductionStatus.noBudget;
-}
-
-/// Status of budget deduction after saving expense
-enum BudgetDeductionStatus {
-  /// Successfully deducted from budget, within limit
-  success,
-
-  /// Successfully deducted, but budget limit exceeded
-  exceededLimit,
-
-  /// No budget exists for this category
-  noBudget,
-
-  /// Error occurred during deduction
-  error,
-}
+// SaveExpenseResult and BudgetDeductionStatus are exported from money_models.dart

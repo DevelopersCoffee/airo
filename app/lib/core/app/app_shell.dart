@@ -7,6 +7,8 @@ import '../providers/bedtime_mode_provider.dart';
 import '../routing/route_names.dart';
 import '../theme/bedtime_theme.dart';
 import '../../features/music/presentation/widgets/mini_player.dart';
+import '../../features/iptv/presentation/widgets/iptv_mini_player.dart';
+import '../../features/iptv/application/providers/iptv_providers.dart';
 import '../../features/quest/presentation/widgets/device_compatibility_banner.dart';
 
 /// Get initials from a name (e.g., "Uday Chauhan" -> "UC", "Uday" -> "U")
@@ -17,7 +19,7 @@ String _getInitials(String name) {
   return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
 }
 
-/// App shell with bottom navigation for 6 feature tabs
+/// App shell with bottom navigation for 5 feature tabs (Material Design compliant)
 class AppShell extends ConsumerWidget {
   const AppShell({super.key, required this.navigationShell});
 
@@ -119,17 +121,23 @@ class AppShell extends ConsumerWidget {
         ),
         body: DeviceCompatibilityBanner(
           showBanner:
-              navigationShell.currentIndex == 1, // Show only on Quest tab
+              navigationShell.currentIndex ==
+              4, // Show only on Quest tab (index 4)
           child: Column(
             children: [
               Expanded(child: navigationShell),
               const MiniPlayer(),
+              const IPTVMiniPlayer(),
             ],
           ),
         ),
         bottomNavigationBar: NavigationBar(
           selectedIndex: navigationShell.currentIndex,
-          onDestinationSelected: navigationShell.goBranch,
+          onDestinationSelected: (index) {
+            // Update the navigation tab provider for mini player visibility
+            ref.read(currentNavigationTabProvider.notifier).state = index;
+            navigationShell.goBranch(index);
+          },
           destinations: const [
             NavigationDestination(
               icon: Icon(Icons.account_balance_wallet_outlined),
@@ -139,12 +147,12 @@ class AppShell extends ConsumerWidget {
             NavigationDestination(
               icon: Icon(Icons.smart_toy_outlined),
               selectedIcon: Icon(Icons.smart_toy),
-              label: 'Quest',
+              label: 'Mind',
             ),
             NavigationDestination(
-              icon: Icon(Icons.music_note_outlined),
-              selectedIcon: Icon(Icons.music_note),
-              label: 'Beats',
+              icon: Icon(Icons.play_circle_outlined),
+              selectedIcon: Icon(Icons.play_circle),
+              label: 'Media',
             ),
             NavigationDestination(
               icon: Icon(Icons.sports_esports_outlined),
@@ -152,14 +160,9 @@ class AppShell extends ConsumerWidget {
               label: 'Arena',
             ),
             NavigationDestination(
-              icon: Icon(Icons.local_offer_outlined),
-              selectedIcon: Icon(Icons.local_offer),
-              label: 'Loot',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.menu_book_outlined),
-              selectedIcon: Icon(Icons.menu_book),
-              label: 'Tales',
+              icon: Icon(Icons.explore_outlined),
+              selectedIcon: Icon(Icons.explore),
+              label: 'Quest',
             ),
           ],
         ),

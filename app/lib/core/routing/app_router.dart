@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../features/auth/screens/login_screen.dart';
 import '../../features/auth/screens/register_screen.dart';
@@ -6,10 +5,8 @@ import '../../features/money/presentation/screens/money_overview_screen.dart';
 import '../../features/bill_split/presentation/screens/bill_split_screen.dart';
 import '../../features/agent_chat/presentation/screens/chat_screen.dart';
 import '../../features/agent_chat/presentation/screens/profile_screen.dart';
-import '../../features/music/presentation/screens/music_screen.dart';
+import '../../features/media/presentation/screens/media_hub_screen.dart';
 import '../../features/games/presentation/screens/games_hub_screen.dart';
-import '../../features/offers/presentation/screens/offers_feed_screen.dart';
-import '../../features/reader/presentation/screens/reader_screen.dart';
 import '../../features/quest/presentation/screens/quest_list_screen.dart';
 import '../../features/quest/presentation/screens/quest_upload_screen.dart';
 import '../../features/quest/presentation/screens/quest_chat_screen.dart';
@@ -97,13 +94,13 @@ class AppRouter {
               ),
             ],
           ),
-          // Music branch
+          // Media branch (Music + IPTV/Stream unified)
           StatefulShellBranch(
             routes: [
               GoRoute(
-                path: '/music',
-                name: 'Beats',
-                builder: (context, state) => const MusicScreen(),
+                path: '/media',
+                name: 'Media',
+                builder: (context, state) => const MediaHubScreen(),
               ),
             ],
           ),
@@ -114,26 +111,6 @@ class AppRouter {
                 path: '/games',
                 name: 'Arena',
                 builder: (context, state) => const GamesHubScreen(),
-              ),
-            ],
-          ),
-          // Offers branch
-          StatefulShellBranch(
-            routes: [
-              GoRoute(
-                path: '/offers',
-                name: 'Loot',
-                builder: (context, state) => const OffersFeedScreen(),
-              ),
-            ],
-          ),
-          // Reader branch
-          StatefulShellBranch(
-            routes: [
-              GoRoute(
-                path: '/reader',
-                name: 'Tales',
-                builder: (context, state) => const ReaderScreen(),
               ),
             ],
           ),
