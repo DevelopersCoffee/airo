@@ -2,9 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../application/providers/music_provider.dart';
 import '../../application/providers/music_tracks_provider.dart';
+import '../../application/providers/beats_provider.dart';
 import '../../domain/services/music_service.dart';
+import '../../domain/models/beats_models.dart';
+import '../widgets/beats_search_bar.dart';
+import '../widgets/beats_search_results.dart';
 
-/// Music player screen with Spotify Top 20 India
+/// Music player screen with Beats search and playback
 class MusicScreen extends ConsumerWidget {
   const MusicScreen({super.key});
 
@@ -13,6 +17,7 @@ class MusicScreen extends ConsumerWidget {
     final playerState = ref.watch(musicPlayerStateProvider);
     final musicTracks = ref.watch(musicTracksProvider);
     final musicController = ref.watch(musicControllerProvider);
+    final beatsSearchState = ref.watch(beatsSearchStateProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -22,65 +27,91 @@ class MusicScreen extends ConsumerWidget {
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: () {
-              ref.refresh(musicTracksProvider);
+              ref.invalidate(musicTracksProvider);
             },
           ),
         ],
       ),
-      body: musicTracks.when(
-        data: (tracks) {
-          if (tracks.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.music_note, size: 64, color: Colors.grey),
-                  const SizedBox(height: 16),
-                  const Text('No tracks available'),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'No tracks loaded',
-                    style: TextStyle(color: Colors.grey, fontSize: 12),
-                  ),
-                  const SizedBox(height: 24),
-                  ElevatedButton.icon(
-                    onPressed: () {
-                      ref.refresh(musicTracksProvider);
-                    },
-                    icon: const Icon(Icons.refresh),
-                    label: const Text('Retry'),
-                  ),
-                ],
-              ),
-            );
-          }
+      body: Column(
+        children: [
+          // Beats search bar
+          const BeatsSearchBar(),
 
-          return playerState.when(
-            data: (state) =>
-                _buildPlayerUI(context, ref, state, tracks, musicController),
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (err, st) => Center(child: Text('Error: $err')),
-          );
-        },
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, st) => Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.error, size: 64, color: Colors.red),
-              const SizedBox(height: 16),
-              Text('Error loading tracks: $err'),
-              const SizedBox(height: 24),
-              ElevatedButton.icon(
-                onPressed: () {
-                  ref.refresh(musicTracksProvider);
-                },
-                icon: const Icon(Icons.refresh),
-                label: const Text('Retry'),
-              ),
-            ],
+          // Show search results if searching, otherwise show player
+          Expanded(
+            child: beatsSearchState.state != BeatsSearchState.idle
+                ? const SingleChildScrollView(child: BeatsSearchResults())
+                : musicTracks.when(
+                    data: (tracks) {
+                      if (tracks.isEmpty) {
+                        return Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(
+                                Icons.music_note,
+                                size: 64,
+                                color: Colors.grey,
+                              ),
+                              const SizedBox(height: 16),
+                              const Text('No tracks available'),
+                              const SizedBox(height: 8),
+                              const Text(
+                                'No tracks loaded',
+                                style: TextStyle(
+                                  color: Colors.grey,
+                                  fontSize: 12,
+                                ),
+                              ),
+                              const SizedBox(height: 24),
+                              ElevatedButton.icon(
+                                onPressed: () {
+                                  ref.invalidate(musicTracksProvider);
+                                },
+                                icon: const Icon(Icons.refresh),
+                                label: const Text('Retry'),
+                              ),
+                            ],
+                          ),
+                        );
+                      }
+
+                      return playerState.when(
+                        data: (state) => _buildPlayerUI(
+                          context,
+                          ref,
+                          state,
+                          tracks,
+                          musicController,
+                        ),
+                        loading: () =>
+                            const Center(child: CircularProgressIndicator()),
+                        error: (err, st) => Center(child: Text('Error: $err')),
+                      );
+                    },
+                    loading: () =>
+                        const Center(child: CircularProgressIndicator()),
+                    error: (err, st) => Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.error, size: 64, color: Colors.red),
+                          const SizedBox(height: 16),
+                          Text('Error loading tracks: $err'),
+                          const SizedBox(height: 24),
+                          ElevatedButton.icon(
+                            onPressed: () {
+                              ref.invalidate(musicTracksProvider);
+                            },
+                            icon: const Icon(Icons.refresh),
+                            label: const Text('Retry'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
           ),
-        ),
+        ],
       ),
     );
   }

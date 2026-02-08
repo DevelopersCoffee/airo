@@ -29,16 +29,21 @@ class ChannelListWidget extends ConsumerWidget {
             decoration: InputDecoration(
               hintText: 'Search channels...',
               prefixIcon: const Icon(Icons.search),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
               contentPadding: const EdgeInsets.symmetric(horizontal: 16),
               suffixIcon: searchQuery.isNotEmpty
                   ? IconButton(
                       icon: const Icon(Icons.clear),
-                      onPressed: () => ref.read(channelSearchQueryProvider.notifier).state = '',
+                      onPressed: () =>
+                          ref.read(channelSearchQueryProvider.notifier).state =
+                              '',
                     )
                   : null,
             ),
-            onChanged: (value) => ref.read(channelSearchQueryProvider.notifier).state = value,
+            onChanged: (value) =>
+                ref.read(channelSearchQueryProvider.notifier).state = value,
           ),
         ),
 
@@ -58,7 +63,9 @@ class ChannelListWidget extends ConsumerWidget {
                   child: ChoiceChip(
                     label: Text(category.label),
                     selected: isSelected,
-                    onSelected: (_) => ref.read(selectedCategoryProvider.notifier).state = category,
+                    onSelected: (_) =>
+                        ref.read(selectedCategoryProvider.notifier).state =
+                            category,
                   ),
                 );
               },
@@ -146,7 +153,11 @@ class _ChannelListTile extends ConsumerWidget {
           if (channel.isAudioOnly)
             const Icon(Icons.music_note, size: 16, color: Colors.orange),
           if (isPlaying)
-            Icon(Icons.volume_up, size: 16, color: Theme.of(context).primaryColor),
+            Icon(
+              Icons.volume_up,
+              size: 16,
+              color: Theme.of(context).primaryColor,
+            ),
         ],
       ),
       onTap: onTap,
@@ -160,4 +171,3 @@ class _ChannelListTile extends ConsumerWidget {
     );
   }
 }
-
