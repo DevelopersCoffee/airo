@@ -76,4 +76,12 @@ class LocalTransactionsRepository implements TransactionsRepository {
   Future<Result<List<Transaction>>> getByTag(String tag) async {
     return const Ok([]);
   }
+
+  /// Get pending sync transactions - returns empty list on web
+  Future<List<Transaction>> getPendingSync() async {
+    return [];
+  }
+
+  /// Mark transaction as synced - no-op on web
+  Future<void> markSynced(String id) async {}
 }

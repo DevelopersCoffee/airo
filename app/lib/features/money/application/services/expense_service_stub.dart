@@ -2,9 +2,18 @@
 import '../../../../core/utils/result.dart';
 import '../../domain/models/money_models.dart';
 
+// Re-export shared types for backward compatibility
+export '../../domain/models/money_models.dart'
+    show SaveExpenseResult, BudgetDeductionStatus;
+
 /// Stub service for web - uses in-memory storage
 class ExpenseService {
-  ExpenseService(dynamic db, dynamic transactionsRepo, dynamic budgetsRepo);
+  ExpenseService(
+    dynamic db,
+    dynamic transactionsRepo,
+    dynamic budgetsRepo,
+    dynamic auditService,
+  );
 
   Future<Result<SaveExpenseResult>> saveExpense({
     required String accountId,
@@ -61,22 +70,3 @@ class ExpenseService {
   Future<List<Transaction>> getPendingTransactions() async => [];
   Future<void> markTransactionSynced(String id) async {}
 }
-
-/// Result of saving an expense
-class SaveExpenseResult {
-  final Transaction transaction;
-  final BudgetDeductionStatus budgetStatus;
-  final Budget? budget;
-
-  const SaveExpenseResult({
-    required this.transaction,
-    required this.budgetStatus,
-    this.budget,
-  });
-
-  bool get isBudgetExceeded =>
-      budgetStatus == BudgetDeductionStatus.exceededLimit;
-  bool get hasBudget => budgetStatus != BudgetDeductionStatus.noBudget;
-}
-
-enum BudgetDeductionStatus { success, exceededLimit, noBudget, error }

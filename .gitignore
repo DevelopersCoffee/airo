@@ -8,6 +8,12 @@ google-services.json
 firebase-adminsdk*.json
 GoogleService-Info.plist
 
+# E2E Test Authentication Sessions (sensitive - contains OAuth tokens)
+e2e/googleAuth.json
+e2e/*Auth.json
+e2e/.auth/
+playwright/.auth/
+
 # Flutter/Dart
 .dart_tool/
 .flutter-plugins

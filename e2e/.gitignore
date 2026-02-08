@@ -1,0 +1,37 @@
+# E2E Test Authentication Sessions
+# These files contain sensitive OAuth tokens and session cookies
+# NEVER commit these files to version control
+
+# Google OAuth session (created by: npm run google:login)
+googleAuth.json
+*Auth.json
+
+# Playwright auth state directory
+.auth/
+
+# Test results and reports (optional - can be committed for CI)
+test-results/
+playwright-report/
+
+# Node modules
+node_modules/
+
+# TypeScript build output
+dist/
+*.js
+*.js.map
+*.d.ts
+!playwright.config.ts
+!tsconfig.json
+
+# IDE
+.idea/
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+

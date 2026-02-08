@@ -75,20 +75,35 @@ export function getByPlaceholder(page: Page, placeholder: string): Locator {
 
 /**
  * Wait for Flutter to be fully loaded
+ * Uses multiple detection strategies for reliability
+ *
+ * The Flutter app now has SemanticsBinding.instance.ensureSemantics() enabled
+ * in main.dart for web, which creates DOM elements from Flutter's semantic tree.
  */
 export async function waitForFlutterReady(page: Page, timeout = 30000): Promise<void> {
-  // Wait for Flutter bootstrap to complete
-  await page.waitForFunction(
-    () => {
-      // Check if Flutter engine is initialized
-      const flutter = (window as any).flutter;
-      return flutter && flutter.loader && flutter.loader._scriptLoaded;
-    },
-    { timeout }
-  );
-  
-  // Additional wait for rendering
-  await page.waitForTimeout(1000);
+  // Wait for page to load
+  await page.waitForLoadState('domcontentloaded');
+
+  // Wait for Flutter to bootstrap - look for the Flutter canvas first
+  try {
+    await page.waitForSelector('canvas, flt-glass-pane', { timeout: 15000 });
+  } catch {
+    // Page loaded but no Flutter canvas found - wait a bit more
+    await page.waitForTimeout(3000);
+  }
+
+  // Wait for Flutter's semantics tree to be available
+  // With ensureSemantics() enabled, Flutter creates flt-semantics elements automatically
+  try {
+    await page.waitForSelector('flt-semantics, [role="textbox"], [role="button"], [role="heading"]', { timeout: 10000 });
+  } catch {
+    // Semantics may take longer - wait for any interactive element
+    console.log('Waiting for semantic elements...');
+    await page.waitForTimeout(2000);
+  }
+
+  // Additional wait for Flutter to finish rendering
+  await page.waitForTimeout(500);
 }
 
 /**
