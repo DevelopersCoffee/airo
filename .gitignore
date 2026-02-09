@@ -60,3 +60,8 @@ logs/
 *.temp
 .cache/
 
+# Build artifacts
+release-artifacts/
+*.apk
+*.aab
+*.ipa

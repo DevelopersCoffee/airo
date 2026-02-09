@@ -2,6 +2,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../iptv/application/providers/iptv_providers.dart'
     hide selectedCategoryProvider;
 import '../../../iptv/domain/models/iptv_channel.dart';
+import '../../../music/application/providers/music_tracks_provider.dart';
+import '../../../music/domain/services/music_service.dart';
 import '../../domain/models/discovery_state.dart';
 import '../../domain/models/media_category.dart';
 import '../../domain/models/media_mode.dart';
@@ -32,6 +34,18 @@ class DiscoveryNotifier extends StateNotifier<DiscoveryState> {
       next.whenData((channels) {
         if (state.currentMode == MediaMode.tv) {
           _updateTVContent(channels);
+        }
+      });
+    });
+
+    // Listen to music tracks and update music content
+    _ref.listen<AsyncValue<List<MusicTrack>>>(musicTracksProvider, (
+      prev,
+      next,
+    ) {
+      next.whenData((tracks) {
+        if (state.currentMode == MediaMode.music) {
+          _updateMusicContent(tracks);
         }
       });
     });
@@ -89,8 +103,9 @@ class DiscoveryNotifier extends StateNotifier<DiscoveryState> {
         final channels = await _ref.read(iptvChannelsProvider.future);
         _updateTVContent(channels);
       } else {
-        // TODO: Load music content from music provider
-        _updateMusicContent([]);
+        // Load music content from music tracks provider
+        final tracks = await _ref.read(musicTracksProvider.future);
+        _updateMusicContent(tracks);
       }
     } catch (e) {
       state = state.copyWith(
@@ -109,9 +124,10 @@ class DiscoveryNotifier extends StateNotifier<DiscoveryState> {
     );
   }
 
-  void _updateMusicContent(List<UnifiedMediaContent> tracks) {
+  void _updateMusicContent(List<MusicTrack> tracks) {
+    final content = tracks.map(UnifiedMediaContent.fromTrack).toList();
     state = state.copyWith(
-      contentItems: tracks,
+      contentItems: content,
       isLoading: false,
       clearError: true,
     );

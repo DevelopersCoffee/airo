@@ -1,8 +1,11 @@
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../iptv/application/providers/iptv_providers.dart';
+import '../../../iptv/domain/models/iptv_channel.dart';
 import '../../../iptv/domain/models/streaming_state.dart';
 import '../../../music/application/providers/music_provider.dart';
+import '../../../music/domain/services/music_service.dart';
+import '../../domain/models/media_category.dart';
 import '../../domain/models/media_mode.dart';
 import '../../domain/models/player_display_mode.dart';
 import '../../domain/models/quality_settings.dart';
@@ -45,28 +48,21 @@ class UnifiedPlayerNotifier extends StateNotifier<UnifiedPlayerState> {
       playbackState: PlaybackState.loading,
     );
 
-    // Delegate to appropriate player service
-    if (content.type == MediaMode.music) {
-      // Resume from last position if available
-      final personalization = _ref.read(personalizationProvider);
-      final lastPosition = personalization.getLastPosition(content.id);
-      final musicService = _ref.read(musicServiceProvider);
-      // TODO: Play music track with lastPosition
-      // musicService.playTrack(track, startPosition: lastPosition);
-      // Suppress unused variable warnings until implementation
-      assert(() {
-        lastPosition;
-        musicService;
-        return true;
-      }());
-    } else {
-      final iptvService = _ref.read(iptvStreamingServiceProvider);
-      // TODO: Convert back to IPTVChannel and play
-      // Suppress unused variable warning until implementation
-      assert(() {
-        iptvService;
-        return true;
-      }());
+    try {
+      // Delegate to appropriate player service
+      if (content.type == MediaMode.music) {
+        await _playMusicContent(content);
+      } else {
+        await _playTVContent(content);
+      }
+
+      state = state.copyWith(playbackState: PlaybackState.playing);
+    } catch (e) {
+      state = state.copyWith(
+        playbackState: PlaybackState.error,
+        errorMessage: 'Failed to play: $e',
+      );
+      return;
     }
 
     // Update personalization
@@ -76,16 +72,91 @@ class UnifiedPlayerNotifier extends StateNotifier<UnifiedPlayerState> {
     _startPositionTracking(content.id);
   }
 
+  /// Play music content with resume support
+  Future<void> _playMusicContent(UnifiedMediaContent content) async {
+    final personalization = _ref.read(personalizationProvider);
+    final lastPosition = personalization.getLastPosition(content.id);
+    final musicService = _ref.read(musicServiceProvider);
+
+    // Convert UnifiedMediaContent back to MusicTrack
+    final track = MusicTrack(
+      id: content.id.replaceFirst('music_', ''),
+      title: content.title,
+      artist: content.subtitle ?? 'Unknown Artist',
+      albumArt: content.thumbnailUrl,
+      duration: content.duration ?? Duration.zero,
+      streamUrl: content.streamUrl,
+    );
+
+    // Play the track
+    await musicService.playTrack(track);
+
+    // Seek to last position if resumable
+    if (lastPosition != null && lastPosition.inSeconds > 10) {
+      await musicService.seek(lastPosition);
+    }
+  }
+
+  /// Play TV content
+  Future<void> _playTVContent(UnifiedMediaContent content) async {
+    final iptvService = _ref.read(iptvStreamingServiceProvider);
+
+    // Convert UnifiedMediaContent back to IPTVChannel
+    final channel = IPTVChannel(
+      id: content.id.replaceFirst('tv_', ''),
+      name: content.title,
+      streamUrl: content.streamUrl ?? '',
+      logoUrl: content.thumbnailUrl,
+      group: content.subtitle ?? 'Uncategorized',
+      category: _mapCategoryToChannelCategory(content.category),
+    );
+
+    // Play the channel
+    await iptvService.playChannel(channel);
+  }
+
+  /// Map MediaCategory back to ChannelCategory
+  ChannelCategory _mapCategoryToChannelCategory(MediaCategory? category) {
+    if (category == null) return ChannelCategory.all;
+
+    switch (category.id) {
+      case 'tv_news':
+        return ChannelCategory.news;
+      case 'tv_movies':
+        return ChannelCategory.movies;
+      case 'tv_kids':
+        return ChannelCategory.kids;
+      case 'tv_music':
+        return ChannelCategory.music;
+      case 'tv_regional':
+        return ChannelCategory.regional;
+      default:
+        return ChannelCategory.all;
+    }
+  }
+
   /// Pause playback
-  void pause() {
+  Future<void> pause() async {
     state = state.copyWith(playbackState: PlaybackState.paused);
-    // TODO: Pause actual players
+
+    // Pause the appropriate player
+    if (state.currentContent?.isMusic == true) {
+      await _ref.read(musicServiceProvider).pause();
+    } else if (state.currentContent?.isTV == true) {
+      await _ref.read(iptvStreamingServiceProvider).pause();
+    }
   }
 
   /// Resume playback
-  void resume() {
+  Future<void> resume() async {
     state = state.copyWith(playbackState: PlaybackState.playing);
-    // TODO: Resume actual players
+
+    // Resume the appropriate player
+    if (state.currentContent?.isMusic == true) {
+      await _ref.read(musicServiceProvider).resume();
+    } else if (state.currentContent?.isTV == true) {
+      await _ref.read(iptvStreamingServiceProvider).resume();
+    }
   }
 
   /// Toggle play/pause
@@ -98,26 +169,54 @@ class UnifiedPlayerNotifier extends StateNotifier<UnifiedPlayerState> {
   }
 
   /// Seek to position
-  void seekTo(Duration position) {
+  Future<void> seekTo(Duration position) async {
     state = state.copyWith(position: position);
-    // TODO: Seek actual players
+
+    // Seek the appropriate player
+    if (state.currentContent?.isMusic == true) {
+      await _ref.read(musicServiceProvider).seek(position);
+    } else if (state.currentContent?.isTV == true) {
+      await _ref.read(iptvStreamingServiceProvider).seek(position);
+    }
   }
 
   /// Set volume
-  void setVolume(double volume) {
+  Future<void> setVolume(double volume) async {
     state = state.copyWith(volume: volume.clamp(0.0, 1.0));
-    // TODO: Update actual player volume
+
+    // Update volume on the appropriate player
+    if (state.currentContent?.isMusic == true) {
+      await _ref.read(musicServiceProvider).setVolume(volume);
+    } else if (state.currentContent?.isTV == true) {
+      await _ref.read(iptvStreamingServiceProvider).setVolume(volume);
+    }
   }
 
   /// Toggle mute
-  void toggleMute() {
-    state = state.copyWith(isMuted: !state.isMuted);
+  Future<void> toggleMute() async {
+    final newMuted = !state.isMuted;
+    state = state.copyWith(isMuted: newMuted);
+
+    // Toggle mute on TV player (music service doesn't have toggleMute)
+    if (state.currentContent?.isTV == true) {
+      await _ref.read(iptvStreamingServiceProvider).toggleMute();
+    } else if (state.currentContent?.isMusic == true) {
+      // For music, set volume to 0 or restore
+      final volume = newMuted ? 0.0 : state.volume;
+      await _ref.read(musicServiceProvider).setVolume(volume);
+    }
   }
 
   /// Update quality settings
-  void updateQualitySettings(QualitySettings settings) {
+  Future<void> updateQualitySettings(QualitySettings settings) async {
     state = state.copyWith(qualitySettings: settings);
-    // TODO: Apply to actual players
+
+    // Apply quality to TV player
+    if (state.currentContent?.isTV == true) {
+      await _ref
+          .read(iptvStreamingServiceProvider)
+          .setQuality(settings.videoQuality);
+    }
   }
 
   /// Set display mode
