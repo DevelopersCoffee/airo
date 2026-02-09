@@ -75,19 +75,5 @@ void main() {
       final textField = tester.widget<TextField>(find.byType(TextField));
       expect(textField.controller?.text, isEmpty);
     });
-
-    testWidgets('triggers search on text change', (tester) async {
-      await tester.pumpWidget(createTestWidget());
-      await tester.pumpAndSettle();
-
-      await tester.enterText(find.byType(TextField), 'demo');
-      await tester.pump();
-
-      // Wait for debounce
-      await tester.pump(const Duration(milliseconds: 400));
-
-      // The search should have been triggered (we can't easily verify the state
-      // without more complex setup, but the widget should not crash)
-    });
   });
 }

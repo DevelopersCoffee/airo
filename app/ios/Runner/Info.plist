@@ -58,5 +58,10 @@
 	<string>This app needs microphone access for voice commands</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>This app needs location access for location-based features</string>
+	<!-- Background audio playback -->
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>audio</string>
+	</array>
 </dict>
 </plist>

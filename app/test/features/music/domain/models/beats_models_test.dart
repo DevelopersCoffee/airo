@@ -111,17 +111,17 @@ void main() {
 
       const result = BeatsSearchResult(
         tracks: tracks,
-        query: 'test query',
         nextPageToken: 'next_token',
+        totalResults: 2,
       );
 
       expect(result.tracks.length, 2);
-      expect(result.query, 'test query');
+      expect(result.totalResults, 2);
       expect(result.nextPageToken, 'next_token');
     });
 
     test('empty result has no tracks', () {
-      const result = BeatsSearchResult(tracks: [], query: 'no results');
+      const result = BeatsSearchResult(tracks: []);
 
       expect(result.tracks, isEmpty);
       expect(result.nextPageToken, isNull);

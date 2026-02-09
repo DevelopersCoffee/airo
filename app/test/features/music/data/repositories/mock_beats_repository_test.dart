@@ -17,7 +17,6 @@ void main() {
         expect(result.isSuccess, isTrue);
         expect(result.data, isNotNull);
         expect(result.data!.tracks, isNotEmpty);
-        expect(result.data!.query, 'demo');
       });
 
       test('returns empty list for non-matching query', () async {

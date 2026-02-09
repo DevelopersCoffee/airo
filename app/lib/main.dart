@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'core/app/airo_app.dart';
 import 'core/auth/auth_service.dart';
 import 'features/iptv/application/providers/iptv_providers.dart';
+import 'features/music/application/providers/beats_audio_provider.dart';
 import 'firebase_options.dart';
 
 /// Global flag to track if Firebase is available
@@ -61,6 +62,18 @@ void main() async {
 
   // Initialize AuthService
   await AuthService.instance.initialize();
+
+  // Initialize audio service for background music playback
+  // This must be done before runApp() for audio_service to work properly
+  if (!kIsWeb) {
+    try {
+      await initAudioService();
+      debugPrint('✅ Audio service initialized for background playback');
+    } catch (e) {
+      debugPrint('⚠️ Audio service initialization failed: $e');
+      debugPrint('📝 Background music playback may not work');
+    }
+  }
 
   // Initialize SharedPreferences for IPTV caching
   final prefs = await SharedPreferences.getInstance();
