@@ -7,6 +7,7 @@ import '../../../../core/http/http_dog.dart';
 import '../../../../core/dictionary/dictionary.dart';
 import '../../../../core/routing/route_names.dart';
 import '../../../quotes/presentation/widgets/daily_quote_card.dart';
+import '../../../settings/presentation/screens/ai_models_screen.dart';
 
 /// User profile screen
 class ProfileScreen extends ConsumerWidget {
@@ -95,6 +96,21 @@ class ProfileScreen extends ConsumerWidget {
                   // TODO: Implement audio ducking toggle
                 },
               ),
+            ),
+
+            // AI Models
+            ListTile(
+              leading: const Icon(Icons.model_training),
+              title: const Text('AI Models'),
+              subtitle: const Text('Browse and manage offline models'),
+              trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => const AIModelsScreen(),
+                  ),
+                );
+              },
             ),
 
             const SizedBox(height: 32),
