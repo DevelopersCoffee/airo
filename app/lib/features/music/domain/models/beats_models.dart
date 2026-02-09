@@ -47,8 +47,45 @@ class BeatsTrack extends Equatable {
     );
   }
 
+  /// Convert to JSON for persistence
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'title': title,
+      'artist': artist,
+      'thumbnailUrl': thumbnailUrl,
+      'durationMs': duration.inMilliseconds,
+      'source': source.index,
+      'sourceUrl': sourceUrl,
+      'streamUrl': streamUrl,
+    };
+  }
+
+  /// Create from JSON
+  factory BeatsTrack.fromJson(Map<String, dynamic> json) {
+    return BeatsTrack(
+      id: json['id'] as String,
+      title: json['title'] as String,
+      artist: json['artist'] as String,
+      thumbnailUrl: json['thumbnailUrl'] as String?,
+      duration: Duration(milliseconds: json['durationMs'] as int? ?? 0),
+      source: BeatsSource.values[json['source'] as int? ?? 3],
+      sourceUrl: json['sourceUrl'] as String?,
+      streamUrl: json['streamUrl'] as String?,
+    );
+  }
+
   @override
-  List<Object?> get props => [id, title, artist, thumbnailUrl, duration, source, sourceUrl, streamUrl];
+  List<Object?> get props => [
+    id,
+    title,
+    artist,
+    thumbnailUrl,
+    duration,
+    source,
+    sourceUrl,
+    streamUrl,
+  ];
 }
 
 /// Search result containing tracks and pagination info
@@ -88,7 +125,13 @@ class BeatsStreamSession extends Equatable {
   Duration get remainingTime => expiresAt.difference(DateTime.now());
 
   @override
-  List<Object?> get props => [sessionId, trackId, hlsManifestUrl, createdAt, expiresAt];
+  List<Object?> get props => [
+    sessionId,
+    trackId,
+    hlsManifestUrl,
+    createdAt,
+    expiresAt,
+  ];
 }
 
 /// Search state for UI
@@ -127,7 +170,13 @@ class BeatsSearchUiState extends Equatable {
   }
 
   @override
-  List<Object?> get props => [state, query, results, errorMessage, resolvingTrack];
+  List<Object?> get props => [
+    state,
+    query,
+    results,
+    errorMessage,
+    resolvingTrack,
+  ];
 }
 
 /// Result wrapper for repository operations
@@ -141,4 +190,3 @@ class BeatsResult<T> {
   bool get isSuccess => data != null;
   bool get isFailure => error != null;
 }
-

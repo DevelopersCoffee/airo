@@ -29,3 +29,5 @@ export 'src/sync/outbox_repository.dart';
 // Base Repository
 export 'src/repositories/base_repository.dart';
 
+// Plugin Storage
+export 'src/plugins/local_plugin_storage.dart';

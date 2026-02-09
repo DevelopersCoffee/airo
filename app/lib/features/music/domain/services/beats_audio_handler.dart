@@ -31,35 +31,35 @@ class BeatsAudioHandler extends BaseAudioHandler with SeekHandler {
 
     // Update position stream
     _player.positionStream.listen((position) {
-      playbackState.add(playbackState.value.copyWith(
-        updatePosition: position,
-      ));
+      playbackState.add(playbackState.value.copyWith(updatePosition: position));
     });
   }
 
   /// Broadcast current playback state to the system
   void _broadcastState() {
     final playing = _player.playing;
-    playbackState.add(playbackState.value.copyWith(
-      controls: [
-        MediaControl.skipToPrevious,
-        if (playing) MediaControl.pause else MediaControl.play,
-        MediaControl.stop,
-        MediaControl.skipToNext,
-      ],
-      systemActions: const {
-        MediaAction.seek,
-        MediaAction.seekForward,
-        MediaAction.seekBackward,
-      },
-      androidCompactActionIndices: const [0, 1, 3],
-      processingState: _mapProcessingState(_player.processingState),
-      playing: playing,
-      updatePosition: _player.position,
-      bufferedPosition: _player.bufferedPosition,
-      speed: _player.speed,
-      queueIndex: _currentIndex,
-    ));
+    playbackState.add(
+      playbackState.value.copyWith(
+        controls: [
+          MediaControl.skipToPrevious,
+          if (playing) MediaControl.pause else MediaControl.play,
+          MediaControl.stop,
+          MediaControl.skipToNext,
+        ],
+        systemActions: const {
+          MediaAction.seek,
+          MediaAction.seekForward,
+          MediaAction.seekBackward,
+        },
+        androidCompactActionIndices: const [0, 1, 3],
+        processingState: _mapProcessingState(_player.processingState),
+        playing: playing,
+        updatePosition: _player.position,
+        bufferedPosition: _player.bufferedPosition,
+        speed: _player.speed,
+        queueIndex: _currentIndex,
+      ),
+    );
   }
 
   AudioProcessingState _mapProcessingState(ProcessingState state) {
@@ -115,18 +115,24 @@ class BeatsAudioHandler extends BaseAudioHandler with SeekHandler {
   @override
   Future<void> skipToQueueItem(int index) async {
     if (index < 0 || index >= _queue.length) return;
-    
+
     _currentIndex = index;
     final item = _queue[index];
     mediaItem.add(item);
-    
+
     if (item.extras?['url'] != null) {
-      await _player.setUrl(item.extras!['url'] as String);
-      await _player.play();
+      try {
+        await _player.setUrl(item.extras!['url'] as String);
+        await _player.play();
+      } catch (e) {
+        print('[BeatsAudioHandler] Error playing item at index $index: $e');
+        _notifyError(e);
+      }
     }
   }
 
   /// Add a single item and play it
+  @override
   Future<void> playMediaItem(MediaItem item) async {
     _queue.clear();
     _queue.add(item);
@@ -135,8 +141,13 @@ class BeatsAudioHandler extends BaseAudioHandler with SeekHandler {
     mediaItem.add(item);
 
     if (item.extras?['url'] != null) {
-      await _player.setUrl(item.extras!['url'] as String);
-      await _player.play();
+      try {
+        await _player.setUrl(item.extras!['url'] as String);
+        await _player.play();
+      } catch (e) {
+        print('[BeatsAudioHandler] Error playing item: $e');
+        _notifyError(e);
+      }
     }
   }
 
@@ -158,9 +169,48 @@ class BeatsAudioHandler extends BaseAudioHandler with SeekHandler {
   /// Get buffered position stream
   Stream<Duration> get bufferedPositionStream => _player.bufferedPositionStream;
 
+  /// Error stream for recovery
+  Stream<Object> get errorStream => _player.playbackEventStream
+      .where((event) => event.processingState == ProcessingState.idle)
+      .map((event) => 'Playback stopped unexpectedly');
+
+  /// Notify error through playback state
+  void _notifyError(Object error) {
+    playbackState.add(
+      playbackState.value.copyWith(
+        processingState: AudioProcessingState.error,
+        errorMessage: error.toString(),
+      ),
+    );
+  }
+
+  /// Retry current track
+  Future<bool> retryCurrentTrack() async {
+    if (_currentIndex < 0 || _currentIndex >= _queue.length) return false;
+
+    final item = _queue[_currentIndex];
+    if (item.extras?['url'] == null) return false;
+
+    try {
+      await _player.setUrl(item.extras!['url'] as String);
+      await _player.play();
+      return true;
+    } catch (e) {
+      print('[BeatsAudioHandler] Retry failed: $e');
+      return false;
+    }
+  }
+
+  /// Get current media item
+  MediaItem? get currentMediaItem {
+    if (_currentIndex >= 0 && _currentIndex < _queue.length) {
+      return _queue[_currentIndex];
+    }
+    return null;
+  }
+
   /// Dispose resources
   Future<void> dispose() async {
     await _player.dispose();
   }
 }
-

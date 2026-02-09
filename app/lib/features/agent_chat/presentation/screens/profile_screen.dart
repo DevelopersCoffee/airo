@@ -8,6 +8,7 @@ import '../../../../core/dictionary/dictionary.dart';
 import '../../../../core/routing/route_names.dart';
 import '../../../quotes/presentation/widgets/daily_quote_card.dart';
 import '../../../settings/presentation/screens/ai_models_screen.dart';
+import '../../../settings/presentation/screens/audio_settings_screen.dart';
 
 /// User profile screen
 class ProfileScreen extends ConsumerWidget {
@@ -96,6 +97,21 @@ class ProfileScreen extends ConsumerWidget {
                   // TODO: Implement audio ducking toggle
                 },
               ),
+            ),
+
+            // Audio Settings (Context-Aware Audio)
+            ListTile(
+              leading: const Icon(Icons.settings_voice),
+              title: const Text('Audio Settings'),
+              subtitle: const Text('Configure context-aware audio behavior'),
+              trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => const AudioSettingsScreen(),
+                  ),
+                );
+              },
             ),
 
             // AI Models

@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../iptv/application/providers/iptv_providers.dart';
+import '../../../iptv/application/providers/iptv_providers.dart'
+    hide selectedCategoryProvider;
 import '../../../iptv/domain/models/iptv_channel.dart';
 import '../../domain/models/discovery_state.dart';
 import '../../domain/models/media_category.dart';
@@ -24,7 +25,10 @@ class DiscoveryNotifier extends StateNotifier<DiscoveryState> {
     });
 
     // Listen to IPTV channels and update TV content
-    _ref.listen<AsyncValue<List<IPTVChannel>>>(iptvChannelsProvider, (prev, next) {
+    _ref.listen<AsyncValue<List<IPTVChannel>>>(iptvChannelsProvider, (
+      prev,
+      next,
+    ) {
       next.whenData((channels) {
         if (state.currentMode == MediaMode.tv) {
           _updateTVContent(channels);
@@ -121,17 +125,15 @@ class DiscoveryNotifier extends StateNotifier<DiscoveryState> {
           content.tags.any((tag) => tag.toLowerCase().contains(queryLower));
     }).toList();
 
-    state = state.copyWith(
-      contentItems: filtered,
-      isLoading: false,
-    );
+    state = state.copyWith(contentItems: filtered, isLoading: false);
   }
 }
 
 /// Discovery provider
-final discoveryProvider = StateNotifierProvider<DiscoveryNotifier, DiscoveryState>(
-  (ref) => DiscoveryNotifier(ref),
-);
+final discoveryProvider =
+    StateNotifierProvider<DiscoveryNotifier, DiscoveryState>(
+      (ref) => DiscoveryNotifier(ref),
+    );
 
 /// Derived: Filtered content based on mode and category
 final filteredContentProvider = Provider<List<UnifiedMediaContent>>((ref) {
@@ -150,7 +152,8 @@ final filteredContentProvider = Provider<List<UnifiedMediaContent>>((ref) {
 
 /// Derived: TV content only
 final tvContentProvider = Provider<List<UnifiedMediaContent>>((ref) {
-  return ref.watch(discoveryProvider)
+  return ref
+      .watch(discoveryProvider)
       .contentItems
       .where((c) => c.isTV)
       .toList();
@@ -158,9 +161,9 @@ final tvContentProvider = Provider<List<UnifiedMediaContent>>((ref) {
 
 /// Derived: Music content only
 final musicContentProvider = Provider<List<UnifiedMediaContent>>((ref) {
-  return ref.watch(discoveryProvider)
+  return ref
+      .watch(discoveryProvider)
       .contentItems
       .where((c) => c.isMusic)
       .toList();
 });
-

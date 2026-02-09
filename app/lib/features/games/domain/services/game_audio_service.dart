@@ -1,3 +1,5 @@
+import '../../../../core/audio/audio_context_manager.dart';
+
 /// Game audio service interface
 /// Provides audio control for games with ducking support
 abstract interface class GameAudioService {
@@ -29,39 +31,51 @@ abstract interface class GameAudioService {
 }
 
 /// Fake game audio service for development
+/// Integrates with AudioContextManager for proper audio focus handling
 class FakeGameAudioService implements GameAudioService {
+  final AudioContextManager _audioContext;
   bool _sfxEnabled = true;
   double _sfxVolume = 1.0;
   bool _hasFocus = true;
 
+  FakeGameAudioService({AudioContextManager? audioContext})
+    : _audioContext = audioContext ?? AudioContextManager();
+
   @override
   Future<void> requestDucking(Duration duration) async {
-    // Simulate ducking
-    // In real implementation, would call GlobalAudioService.duckMusic()
+    // Use AudioContextManager for ducking instead of GlobalAudioService
+    await _audioContext.duckForDuration(duration);
   }
 
   @override
   Future<void> playSfx(String id) async {
     if (!_sfxEnabled) return;
-    // Simulate SFX playback
-    // In real implementation, would call GlobalAudioService.playSfx()
+    // Request SFX audio focus (ducks music automatically)
+    _audioContext.requestFocus(AudioFocusType.sfx);
+    // Simulate SFX playback (2 second duration)
+    print('[GameAudio] Playing SFX: $id at volume $_sfxVolume');
+    await Future.delayed(const Duration(seconds: 2));
+    // Release focus after SFX completes
+    _audioContext.releaseFocus(AudioFocusType.sfx);
   }
 
   @override
   Future<void> stopSfxAll() async {
-    // Simulate stopping all SFX
+    // Release any SFX focus
+    _audioContext.releaseFocus(AudioFocusType.sfx);
   }
 
   @override
   Future<void> onFocusLost() async {
     _hasFocus = false;
-    // Pause game audio
+    // Release all game audio focus
+    _audioContext.releaseFocus(AudioFocusType.sfx);
   }
 
   @override
   Future<void> onFocusGain() async {
     _hasFocus = true;
-    // Resume game audio
+    // Focus is regained, game can play audio again
   }
 
   @override
@@ -76,6 +90,7 @@ class FakeGameAudioService implements GameAudioService {
 
   @override
   Future<void> dispose() async {
-    // Clean up resources
+    // Release any held focus
+    _audioContext.releaseFocus(AudioFocusType.sfx);
   }
 }

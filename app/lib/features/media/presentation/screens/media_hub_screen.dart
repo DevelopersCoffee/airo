@@ -2,6 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../music/presentation/screens/music_screen.dart';
 import '../../../iptv/presentation/screens/iptv_screen.dart';
+import '../../../iptv/presentation/widgets/video_player_widget.dart';
+import '../../../media_hub/application/providers/media_hub_providers.dart';
+import '../../../media_hub/domain/models/media_mode.dart';
+import '../../../media_hub/domain/models/player_display_mode.dart';
+import '../../../media_hub/presentation/widgets/collapsible_player_container.dart';
 
 /// Media type for the hub
 enum MediaType { music, stream, podcasts }
@@ -10,6 +15,9 @@ enum MediaType { music, stream, podcasts }
 final selectedMediaTabProvider = StateProvider<int>((ref) => 0);
 
 /// Unified Media Hub with sub-navigation for Music, Stream, and Podcasts
+///
+/// Implements collapsible player container with scroll-based collapse behavior.
+/// Core principle: "Player never blocks discovery"
 class MediaHubScreen extends ConsumerStatefulWidget {
   const MediaHubScreen({super.key});
 
@@ -20,6 +28,7 @@ class MediaHubScreen extends ConsumerStatefulWidget {
 class _MediaHubScreenState extends ConsumerState<MediaHubScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  late ScrollController _scrollController;
 
   static const _tabs = [
     Tab(icon: Icon(Icons.music_note), text: 'Music'),
@@ -30,6 +39,7 @@ class _MediaHubScreenState extends ConsumerState<MediaHubScreen>
   @override
   void initState() {
     super.initState();
+    _scrollController = ScrollController();
     final initialIndex = ref.read(selectedMediaTabProvider);
     _tabController = TabController(
       length: _tabs.length,
@@ -42,6 +52,9 @@ class _MediaHubScreenState extends ConsumerState<MediaHubScreen>
   void _onTabChanged() {
     if (!_tabController.indexIsChanging) {
       ref.read(selectedMediaTabProvider.notifier).state = _tabController.index;
+      // Sync with MediaMode provider
+      final mode = _tabController.index == 0 ? MediaMode.music : MediaMode.tv;
+      ref.read(selectedMediaModeProvider.notifier).state = mode;
     }
   }
 
@@ -49,11 +62,32 @@ class _MediaHubScreenState extends ConsumerState<MediaHubScreen>
   void dispose() {
     _tabController.removeListener(_onTabChanged);
     _tabController.dispose();
+    _scrollController.dispose();
     super.dispose();
+  }
+
+  void _onFullscreenToggle() {
+    // Handle fullscreen toggle - could update system UI, etc.
+    debugPrint('Fullscreen toggled');
   }
 
   @override
   Widget build(BuildContext context) {
+    final displayMode = ref.watch(playerDisplayModeProvider);
+    final isFullscreen = displayMode == PlayerDisplayMode.fullscreen;
+
+    // In fullscreen mode, only show the player
+    if (isFullscreen) {
+      return Scaffold(
+        backgroundColor: Colors.black,
+        body: CollapsiblePlayerContainer(
+          scrollController: _scrollController,
+          onFullscreenToggle: _onFullscreenToggle,
+          child: const VideoPlayerWidget(showControls: true),
+        ),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Media'),
@@ -77,15 +111,26 @@ class _MediaHubScreenState extends ConsumerState<MediaHubScreen>
           ),
         ],
       ),
-      body: TabBarView(
-        controller: _tabController,
-        children: const [
-          // Music Tab - embed MusicScreen content without its own AppBar
-          _MusicTabContent(),
-          // Stream Tab - embed IPTVScreen content without its own AppBar
-          _StreamTabContent(),
-          // Podcasts Tab - placeholder for future
-          // _PodcastsTabContent(),
+      body: Column(
+        children: [
+          // Collapsible player at the top
+          CollapsiblePlayerContainer(
+            scrollController: _scrollController,
+            onFullscreenToggle: _onFullscreenToggle,
+            child: const VideoPlayerWidget(showControls: true),
+          ),
+          // Discovery content below
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                // Music Tab - scrollable discovery content
+                _MusicTabContent(scrollController: _scrollController),
+                // Stream Tab - scrollable discovery content
+                _StreamTabContent(scrollController: _scrollController),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -93,51 +138,35 @@ class _MediaHubScreenState extends ConsumerState<MediaHubScreen>
 }
 
 /// Music tab content (MusicScreen without AppBar)
+///
+/// Accepts an optional scroll controller for shared scroll behavior
+/// with the collapsible player container.
 class _MusicTabContent extends ConsumerWidget {
-  const _MusicTabContent();
+  final ScrollController? scrollController;
+
+  const _MusicTabContent({this.scrollController});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     // Reuse music screen body content
+    // TODO: Pass scrollController to MusicScreenBody when it supports it
     return const MusicScreenBody();
   }
 }
 
 /// Stream/IPTV tab content (IPTVScreen without AppBar)
+///
+/// Accepts an optional scroll controller for shared scroll behavior
+/// with the collapsible player container.
 class _StreamTabContent extends ConsumerWidget {
-  const _StreamTabContent();
+  final ScrollController? scrollController;
+
+  const _StreamTabContent({this.scrollController});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     // Reuse IPTV screen body content
+    // TODO: Pass scrollController to IPTVScreenBody when it supports it
     return const IPTVScreenBody();
   }
 }
-
-/// Placeholder for future Podcasts tab
-class _PodcastsTabContent extends StatelessWidget {
-  const _PodcastsTabContent();
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.podcasts, size: 80, color: Colors.grey[400]),
-          const SizedBox(height: 16),
-          Text(
-            'Podcasts Coming Soon',
-            style: Theme.of(context).textTheme.headlineSmall,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Stay tuned for podcast support!',
-            style: TextStyle(color: Colors.grey[600]),
-          ),
-        ],
-      ),
-    );
-  }
-}
-

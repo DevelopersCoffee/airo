@@ -23,7 +23,10 @@ class UnifiedPlayerNotifier extends StateNotifier<UnifiedPlayerState> {
 
   void _listenToStreams() {
     // Listen to IPTV streaming state
-    _ref.listen<AsyncValue<StreamingState>>(streamingStateProvider, (prev, next) {
+    _ref.listen<AsyncValue<StreamingState>>(streamingStateProvider, (
+      prev,
+      next,
+    ) {
       next.whenData((streamingState) {
         if (state.currentContent?.isTV == true) {
           state = state.copyWith(
@@ -47,12 +50,23 @@ class UnifiedPlayerNotifier extends StateNotifier<UnifiedPlayerState> {
       // Resume from last position if available
       final personalization = _ref.read(personalizationProvider);
       final lastPosition = personalization.getLastPosition(content.id);
-      // TODO: Play music track with lastPosition
       final musicService = _ref.read(musicServiceProvider);
+      // TODO: Play music track with lastPosition
       // musicService.playTrack(track, startPosition: lastPosition);
+      // Suppress unused variable warnings until implementation
+      assert(() {
+        lastPosition;
+        musicService;
+        return true;
+      }());
     } else {
       final iptvService = _ref.read(iptvStreamingServiceProvider);
       // TODO: Convert back to IPTVChannel and play
+      // Suppress unused variable warning until implementation
+      assert(() {
+        iptvService;
+        return true;
+      }());
     }
 
     // Update personalization
@@ -132,10 +146,9 @@ class UnifiedPlayerNotifier extends StateNotifier<UnifiedPlayerState> {
     _positionSaveTimer?.cancel();
     _positionSaveTimer = Timer.periodic(const Duration(seconds: 10), (_) {
       if (state.isPlaying && state.position.inSeconds > 0) {
-        _ref.read(personalizationProvider.notifier).savePosition(
-          contentId,
-          state.position,
-        );
+        _ref
+            .read(personalizationProvider.notifier)
+            .savePosition(contentId, state.position);
       }
     });
   }
@@ -149,9 +162,10 @@ class UnifiedPlayerNotifier extends StateNotifier<UnifiedPlayerState> {
 }
 
 /// Unified player provider
-final unifiedPlayerProvider = StateNotifierProvider<UnifiedPlayerNotifier, UnifiedPlayerState>(
-  (ref) => UnifiedPlayerNotifier(ref),
-);
+final unifiedPlayerProvider =
+    StateNotifierProvider<UnifiedPlayerNotifier, UnifiedPlayerState>(
+      (ref) => UnifiedPlayerNotifier(ref),
+    );
 
 /// Derived: Currently playing content
 final currentPlayingContentProvider = Provider<UnifiedMediaContent?>((ref) {
@@ -162,4 +176,3 @@ final currentPlayingContentProvider = Provider<UnifiedMediaContent?>((ref) {
 final isPlayingProvider = Provider<bool>((ref) {
   return ref.watch(unifiedPlayerProvider).isPlaying;
 });
-

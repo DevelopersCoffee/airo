@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:video_player/video_player.dart';
+import '../../../../core/audio/audio_context_manager.dart';
 import '../models/iptv_channel.dart';
 import '../models/streaming_state.dart';
 import 'iptv_streaming_service.dart';
@@ -13,9 +14,11 @@ import 'iptv_streaming_service.dart';
 /// 4. Auto-retry on network errors
 /// 5. Seamless quality switching
 /// 6. Background audio mode
+/// 7. Audio context integration (pauses music during video)
 class VideoPlayerStreamingService implements IPTVStreamingService {
   VideoPlayerController? _controller;
   final StreamingConfig _config;
+  final AudioContextManager _audioContext;
   final _stateController = StreamController<StreamingState>.broadcast();
 
   StreamingState _state = const StreamingState();
@@ -26,7 +29,9 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
 
   VideoPlayerStreamingService({
     StreamingConfig config = StreamingConfig.youtube,
-  }) : _config = config;
+    AudioContextManager? audioContext,
+  }) : _config = config,
+       _audioContext = audioContext ?? AudioContextManager();
 
   @override
   Stream<StreamingState> get stateStream => _stateController.stream;
@@ -54,6 +59,9 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
 
     try {
       await _disposeController();
+
+      // Request video audio focus (pauses background music)
+      _audioContext.requestFocus(AudioFocusType.video);
 
       final url = channel.getStreamUrl(_state.selectedQuality);
       _controller = VideoPlayerController.networkUrl(
@@ -95,6 +103,8 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
       _startBufferMonitoring();
       _setupControllerListeners();
     } catch (e) {
+      // Release focus on error
+      _audioContext.releaseFocus(AudioFocusType.video);
       await _handleError(e.toString());
     }
   }
@@ -228,11 +238,15 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
   @override
   Future<void> pause() async {
     await _controller?.pause();
+    // Release video focus when paused so music can resume
+    _audioContext.releaseFocus(AudioFocusType.video);
     _updateState(_state.copyWith(playbackState: PlaybackState.paused));
   }
 
   @override
   Future<void> resume() async {
+    // Request video focus again when resuming
+    _audioContext.requestFocus(AudioFocusType.video);
     await _controller?.play();
     _updateState(_state.copyWith(playbackState: PlaybackState.playing));
   }
@@ -240,6 +254,8 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
   @override
   Future<void> stop() async {
     _bufferMonitor?.cancel();
+    // Release video audio focus so music can resume
+    _audioContext.releaseFocus(AudioFocusType.video);
     await _disposeController();
     _updateState(const StreamingState());
   }
@@ -309,6 +325,8 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
   Future<void> dispose() async {
     _bufferMonitor?.cancel();
     _metricsTimer?.cancel();
+    // Release video audio focus
+    _audioContext.releaseFocus(AudioFocusType.video);
     await _disposeController();
     await _stateController.close();
   }

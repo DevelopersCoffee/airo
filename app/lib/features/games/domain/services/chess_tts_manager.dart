@@ -1,4 +1,5 @@
 import 'package:flutter_tts/flutter_tts.dart';
+import '../../../../core/audio/audio_context_manager.dart';
 import '../models/chess_models.dart';
 import 'move_event_dispatcher.dart';
 
@@ -6,8 +7,12 @@ import 'move_event_dispatcher.dart';
 /// Generates real-time DotA-style voice responses using TTS
 class ChessTTSManager {
   final FlutterTts _tts = FlutterTts();
+  final AudioContextManager _audioContext;
   bool _isInitialized = false;
   bool _isSpeaking = false;
+
+  ChessTTSManager({AudioContextManager? audioContext})
+    : _audioContext = audioContext ?? AudioContextManager();
 
   /// Initialize TTS with custom settings
   Future<void> initialize() async {
@@ -23,15 +28,20 @@ class ChessTTSManager {
       // Set up callbacks
       _tts.setStartHandler(() {
         _isSpeaking = true;
+        // Request audio focus for voice output (ducks music)
+        _audioContext.requestFocus(AudioFocusType.voiceOutput);
       });
 
       _tts.setCompletionHandler(() {
         _isSpeaking = false;
+        // Release audio focus when done speaking
+        _audioContext.releaseFocus(AudioFocusType.voiceOutput);
       });
 
       _tts.setErrorHandler((msg) {
         print('[TTS] Error: $msg');
         _isSpeaking = false;
+        _audioContext.releaseFocus(AudioFocusType.voiceOutput);
       });
 
       _isInitialized = true;

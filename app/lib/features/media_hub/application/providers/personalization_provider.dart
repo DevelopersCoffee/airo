@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../../../iptv/application/providers/iptv_providers.dart';
 import '../../domain/models/personalization_state.dart';
 import '../../domain/models/unified_media_content.dart';
@@ -29,7 +28,7 @@ class PersonalizationNotifier extends StateNotifier<PersonalizationState> {
     final positions = Map<String, Duration>.from(state.playbackPositions);
     positions[contentId] = position;
     state = state.copyWith(playbackPositions: positions);
-    
+
     // Update continue watching list
     _updateContinueWatching();
     _saveToStorage();
@@ -74,11 +73,14 @@ class PersonalizationNotifier extends StateNotifier<PersonalizationState> {
 
   void _updateContinueWatching() {
     // Filter recently played to those with valid resume positions (>10 seconds)
-    final continueList = state.recentlyPlayed.where((content) {
-      final position = state.playbackPositions[content.id];
-      return position != null && position.inSeconds > 10;
-    }).take(PersonalizationState.maxContinueItems).toList();
-    
+    final continueList = state.recentlyPlayed
+        .where((content) {
+          final position = state.playbackPositions[content.id];
+          return position != null && position.inSeconds > 10;
+        })
+        .take(PersonalizationState.maxContinueItems)
+        .toList();
+
     state = state.copyWith(continueWatching: continueList);
   }
 
@@ -118,9 +120,10 @@ class PersonalizationNotifier extends StateNotifier<PersonalizationState> {
 }
 
 /// Personalization provider
-final personalizationProvider = StateNotifierProvider<PersonalizationNotifier, PersonalizationState>(
-  (ref) => PersonalizationNotifier(ref),
-);
+final personalizationProvider =
+    StateNotifierProvider<PersonalizationNotifier, PersonalizationState>(
+      (ref) => PersonalizationNotifier(ref),
+    );
 
 /// Derived: Continue watching content
 final continueWatchingProvider = Provider<List<UnifiedMediaContent>>((ref) {
@@ -136,4 +139,3 @@ final recentlyPlayedProvider = Provider<List<UnifiedMediaContent>>((ref) {
 final isFavoriteProvider = Provider.family<bool, String>((ref, contentId) {
   return ref.watch(personalizationProvider).isFavorite(contentId);
 });
-

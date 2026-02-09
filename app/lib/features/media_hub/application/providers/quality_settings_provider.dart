@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../../../iptv/application/providers/iptv_providers.dart';
 import '../../../iptv/domain/models/iptv_channel.dart';
 import '../../domain/models/quality_settings.dart';
@@ -64,9 +63,10 @@ class QualitySettingsNotifier extends StateNotifier<QualitySettings> {
 }
 
 /// Quality settings provider
-final qualitySettingsProvider = StateNotifierProvider<QualitySettingsNotifier, QualitySettings>(
-  (ref) => QualitySettingsNotifier(ref),
-);
+final qualitySettingsProvider =
+    StateNotifierProvider<QualitySettingsNotifier, QualitySettings>(
+      (ref) => QualitySettingsNotifier(ref),
+    );
 
 /// Available video quality options
 final availableVideoQualitiesProvider = Provider<List<VideoQuality>>((ref) {
@@ -77,4 +77,3 @@ final availableVideoQualitiesProvider = Provider<List<VideoQuality>>((ref) {
 final availablePlaybackSpeedsProvider = Provider<List<double>>((ref) {
   return QualitySettings.availableSpeeds;
 });
-
