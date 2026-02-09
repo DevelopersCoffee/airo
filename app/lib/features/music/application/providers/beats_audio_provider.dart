@@ -1,6 +1,8 @@
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/audio/audio_context_provider.dart';
 import '../../domain/services/beats_audio_handler.dart';
+import '../../domain/services/beats_context_integration.dart';
 
 /// Singleton instance of BeatsAudioHandler
 BeatsAudioHandler? _audioHandler;
@@ -130,3 +132,25 @@ final beatsAudioControllerProvider = Provider<BeatsAudioController>((ref) {
   return BeatsAudioController(handler);
 });
 
+/// Provider for BeatsContextIntegration
+/// Connects Beats playback with audio context for ducking/pause
+final beatsContextIntegrationProvider = Provider<BeatsContextIntegration>((
+  ref,
+) {
+  final handler = ref.watch(beatsAudioHandlerProvider);
+  final contextManager = ref.watch(audioContextManagerProvider);
+
+  final integration = BeatsContextIntegration(
+    audioHandler: handler,
+    contextManager: contextManager,
+  );
+
+  ref.onDispose(() => integration.dispose());
+  return integration;
+});
+
+/// Provider for whether music is paused by context
+final isMusicPausedByContextProvider = Provider<bool>((ref) {
+  final integration = ref.watch(beatsContextIntegrationProvider);
+  return integration.isPausedByContext;
+});

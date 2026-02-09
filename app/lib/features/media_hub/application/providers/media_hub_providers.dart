@@ -4,7 +4,9 @@ import '../../domain/models/media_mode.dart';
 import '../../domain/models/player_display_mode.dart';
 
 /// Current media mode (Music/TV)
-final selectedMediaModeProvider = StateProvider<MediaMode>((ref) => MediaMode.music);
+final selectedMediaModeProvider = StateProvider<MediaMode>(
+  (ref) => MediaMode.music,
+);
 
 /// Selected category for filtering (null = all)
 final selectedCategoryProvider = StateProvider<MediaCategory?>((ref) => null);
@@ -34,4 +36,3 @@ final isSearchingProvider = Provider<bool>((ref) {
   final query = ref.watch(mediaSearchQueryProvider);
   return query.isNotEmpty;
 });
-

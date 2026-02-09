@@ -18,8 +18,8 @@ class M3UParserService {
   ];
 
   M3UParserService({required Dio dio, required SharedPreferences prefs})
-      : _dio = dio,
-        _prefs = prefs;
+    : _dio = dio,
+      _prefs = prefs;
 
   /// Fetch and parse playlist with caching and fallback
   Future<List<IPTVChannel>> fetchPlaylist({bool forceRefresh = false}) async {
@@ -99,15 +99,17 @@ class M3UParserService {
           !line.startsWith('#') &&
           currentName != null) {
         // This is the stream URL
-        channels.add(IPTVChannel.fromM3U(
-          name: currentName,
-          url: line,
-          logo: currentLogo,
-          group: currentGroup,
-          tvgId: currentTvgId,
-          tvgName: currentTvgName,
-          language: currentLanguage,
-        ));
+        channels.add(
+          IPTVChannel.fromM3U(
+            name: currentName,
+            url: line,
+            logo: currentLogo,
+            group: currentGroup,
+            tvgId: currentTvgId,
+            tvgName: currentTvgName,
+            language: currentLanguage,
+          ),
+        );
 
         // Reset for next channel
         currentName = null;
@@ -163,11 +165,15 @@ class M3UParserService {
     final buffer = StringBuffer('#EXTM3U\n');
     for (final ch in channels) {
       buffer.writeln(
-          '#EXTINF:-1 tvg-logo="${ch.logoUrl ?? ""}" group-title="${ch.group}",${ch.name}');
+        '#EXTINF:-1 tvg-logo="${ch.logoUrl ?? ""}" group-title="${ch.group}",${ch.name}',
+      );
       buffer.writeln(ch.streamUrl);
     }
     await _prefs.setString(_cacheKey, buffer.toString());
-    await _prefs.setInt(_cacheTimestampKey, DateTime.now().millisecondsSinceEpoch);
+    await _prefs.setInt(
+      _cacheTimestampKey,
+      DateTime.now().millisecondsSinceEpoch,
+    );
   }
 
   /// Clear cache
@@ -176,4 +182,3 @@ class M3UParserService {
     await _prefs.remove(_cacheTimestampKey);
   }
 }
-

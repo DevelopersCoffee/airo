@@ -29,5 +29,9 @@ export 'src/state/async_state.dart';
 export 'src/state/paginated_state.dart';
 
 // Plugin System
-export 'src/plugins/manifest_validator.dart';
 export 'src/plugins/plugin_manifest.dart';
+export 'src/plugins/manifest_validator.dart';
+export 'src/plugins/plugin_registry_service.dart';
+export 'src/plugins/plugin_loader_service.dart';
+export 'src/plugins/plugin_downloader_service.dart';
+export 'src/plugins/plugin_storage_service.dart';

@@ -66,4 +66,3 @@ class QualitySettings extends Equatable {
   @override
   List<Object?> get props => [videoQuality, audioLanguage, playbackSpeed];
 }
-

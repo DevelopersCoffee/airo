@@ -14,4 +14,3 @@ void exitFullscreen() {
 void toggleFullscreen() {
   // No-op on non-web platforms
 }
-

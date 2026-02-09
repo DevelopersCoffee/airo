@@ -62,8 +62,7 @@ class UnifiedMediaContent extends Equatable {
   });
 
   /// Check if content can be resumed (played > 10 seconds)
-  bool get canResume =>
-      lastPosition != null && lastPosition!.inSeconds > 10;
+  bool get canResume => lastPosition != null && lastPosition!.inSeconds > 10;
 
   /// Check if this is music content
   bool get isMusic => type == MediaMode.music;
@@ -75,8 +74,10 @@ class UnifiedMediaContent extends Equatable {
   double get progress {
     if (duration == null || lastPosition == null) return 0.0;
     if (duration!.inMilliseconds == 0) return 0.0;
-    return (lastPosition!.inMilliseconds / duration!.inMilliseconds)
-        .clamp(0.0, 1.0);
+    return (lastPosition!.inMilliseconds / duration!.inMilliseconds).clamp(
+      0.0,
+      1.0,
+    );
   }
 
   /// Convert from IPTVChannel
@@ -161,4 +162,3 @@ class UnifiedMediaContent extends Equatable {
   @override
   List<Object?> get props => [id, type];
 }
-

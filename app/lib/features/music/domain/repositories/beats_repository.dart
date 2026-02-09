@@ -58,7 +58,9 @@ class BeatsUrlPatterns {
     if (shortMatch != null) return shortMatch.group(1);
 
     // Handle youtube.com/watch?v= format
-    final watchMatch = RegExp(r'youtube\.com/watch\?v=([\w-]+)').firstMatch(url);
+    final watchMatch = RegExp(
+      r'youtube\.com/watch\?v=([\w-]+)',
+    ).firstMatch(url);
     if (watchMatch != null) return watchMatch.group(1);
 
     // Handle youtube.com/shorts/ format
@@ -68,4 +70,3 @@ class BeatsUrlPatterns {
     return null;
   }
 }
-

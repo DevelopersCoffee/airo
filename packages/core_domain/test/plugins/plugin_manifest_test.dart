@@ -1,5 +1,8 @@
 import 'package:core_domain/src/plugins/manifest_validator.dart';
 import 'package:core_domain/src/plugins/plugin_manifest.dart';
+import 'package:core_domain/src/plugins/plugin_loader_service.dart';
+import 'package:core_domain/src/plugins/plugin_downloader_service.dart';
+import 'package:core_domain/src/plugins/plugin_storage_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -246,6 +249,210 @@ void main() {
         result.errors,
         contains(contains('Invalid registry version format')),
       );
+    });
+  });
+
+  group('PluginLoadResult', () {
+    test('success factory creates successful result', () {
+      final result = PluginLoadResult.success('com.test.plugin', '1.0.0');
+
+      expect(result.pluginId, 'com.test.plugin');
+      expect(result.success, isTrue);
+      expect(result.loadedVersion, '1.0.0');
+      expect(result.errorMessage, isNull);
+    });
+
+    test('failure factory creates failed result', () {
+      final result = PluginLoadResult.failure('com.test.plugin', 'Load failed');
+
+      expect(result.pluginId, 'com.test.plugin');
+      expect(result.success, isFalse);
+      expect(result.errorMessage, 'Load failed');
+      expect(result.loadedVersion, isNull);
+    });
+  });
+
+  group('PluginState', () {
+    test('enum has all expected values', () {
+      expect(
+        PluginState.values,
+        containsAll([
+          PluginState.notInstalled,
+          PluginState.downloading,
+          PluginState.installed,
+          PluginState.loading,
+          PluginState.loaded,
+          PluginState.updating,
+          PluginState.uninstalling,
+          PluginState.error,
+          PluginState.disabled,
+        ]),
+      );
+    });
+  });
+
+  group('DownloadProgress', () {
+    test('starting factory creates pending progress', () {
+      final progress = DownloadProgress.starting('com.test.plugin');
+
+      expect(progress.pluginId, 'com.test.plugin');
+      expect(progress.status, DownloadStatus.pending);
+      expect(progress.totalBytes, 0);
+      expect(progress.downloadedBytes, 0);
+      expect(progress.progress, 0.0);
+    });
+
+    test('completed factory creates completed progress', () {
+      final progress = DownloadProgress.completed('com.test.plugin', 1000);
+
+      expect(progress.pluginId, 'com.test.plugin');
+      expect(progress.status, DownloadStatus.completed);
+      expect(progress.totalBytes, 1000);
+      expect(progress.downloadedBytes, 1000);
+      expect(progress.isComplete, isTrue);
+      expect(progress.progress, 1.0);
+      expect(progress.progressPercent, 100);
+    });
+
+    test('failed factory creates failed progress', () {
+      final progress = DownloadProgress.failed('com.test.plugin', 'Error');
+
+      expect(progress.pluginId, 'com.test.plugin');
+      expect(progress.status, DownloadStatus.failed);
+      expect(progress.isFailed, isTrue);
+      expect(progress.error, 'Error');
+    });
+
+    test('progress calculation works correctly', () {
+      const progress = DownloadProgress(
+        pluginId: 'com.test.plugin',
+        totalBytes: 1000,
+        downloadedBytes: 500,
+        status: DownloadStatus.downloading,
+      );
+
+      expect(progress.progress, 0.5);
+      expect(progress.progressPercent, 50);
+      expect(progress.isInProgress, isTrue);
+    });
+
+    test('handles zero totalBytes gracefully', () {
+      const progress = DownloadProgress(
+        pluginId: 'com.test.plugin',
+        totalBytes: 0,
+        downloadedBytes: 0,
+        status: DownloadStatus.pending,
+      );
+
+      expect(progress.progress, 0.0);
+      expect(progress.progressPercent, 0);
+    });
+  });
+
+  group('VerificationResult', () {
+    test('valid factory creates valid result', () {
+      final result = VerificationResult.valid('com.test.plugin');
+
+      expect(result.pluginId, 'com.test.plugin');
+      expect(result.isValid, isTrue);
+      expect(result.errorMessage, isNull);
+    });
+
+    test('invalid factory creates invalid result', () {
+      final result = VerificationResult.invalid(
+        'com.test.plugin',
+        'Bad checksum',
+      );
+
+      expect(result.pluginId, 'com.test.plugin');
+      expect(result.isValid, isFalse);
+      expect(result.errorMessage, 'Bad checksum');
+    });
+  });
+
+  group('StoredPluginInfo', () {
+    late PluginManifest testManifest;
+
+    setUp(() {
+      testManifest = PluginManifest(
+        schemaVersion: '1.0',
+        id: 'com.test.plugin',
+        name: 'Test Plugin',
+        version: '1.0.0',
+        sizeMb: 5.0,
+        minAppVersion: '1.0.0',
+        entryPoint: 'test.dart',
+        initFunction: 'initTest',
+        permissions: [],
+        dependencies: [],
+        checksums: const PluginChecksums(
+          sha256:
+              'abc123def456abc123def456abc123def456abc123def456abc123def456abc1',
+        ),
+      );
+    });
+
+    test('shortcuts return correct values', () {
+      final info = StoredPluginInfo(
+        manifest: testManifest,
+        installedAt: DateTime(2024, 1, 1),
+        storagePath: '/path/to/plugin',
+        sizeBytes: 5000000,
+        isEnabled: true,
+      );
+
+      expect(info.pluginId, 'com.test.plugin');
+      expect(info.version, '1.0.0');
+      expect(info.isEnabled, isTrue);
+    });
+  });
+
+  group('LoadedPluginInfo', () {
+    late PluginManifest testManifest;
+
+    setUp(() {
+      testManifest = PluginManifest(
+        schemaVersion: '1.0',
+        id: 'com.test.plugin',
+        name: 'Test Plugin',
+        version: '1.0.0',
+        sizeMb: 5.0,
+        minAppVersion: '1.0.0',
+        entryPoint: 'test.dart',
+        initFunction: 'initTest',
+        permissions: [],
+        dependencies: [],
+        checksums: const PluginChecksums(
+          sha256:
+              'abc123def456abc123def456abc123def456abc123def456abc123def456abc1',
+        ),
+      );
+    });
+
+    test('creates loaded plugin info correctly', () {
+      final now = DateTime.now();
+      final info = LoadedPluginInfo(
+        manifest: testManifest,
+        state: PluginState.loaded,
+        installedAt: now,
+        lastLoadedAt: now,
+      );
+
+      expect(info.manifest, testManifest);
+      expect(info.state, PluginState.loaded);
+      expect(info.error, isNull);
+    });
+
+    test('error state includes error message', () {
+      final info = LoadedPluginInfo(
+        manifest: testManifest,
+        state: PluginState.error,
+        installedAt: DateTime.now(),
+        error: 'Failed to load',
+      );
+
+      expect(info.state, PluginState.error);
+      expect(info.error, 'Failed to load');
     });
   });
 }
