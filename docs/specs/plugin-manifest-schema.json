@@ -1,0 +1,155 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://airo.app/schemas/plugin-manifest-v1.json",
+  "title": "Plugin Manifest",
+  "description": "Schema for Airo plugin manifest.json files",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "id",
+    "name",
+    "version",
+    "size_mb",
+    "min_app_version",
+    "entry_point",
+    "init_function",
+    "checksums"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "1.0",
+      "description": "Schema version (must be 1.0)"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^com\\.airo\\.plugin\\.[a-z][a-z0-9]*$",
+      "description": "Plugin ID in reverse domain notation (e.g., com.airo.plugin.beats)"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 50,
+      "description": "Human-readable plugin name"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "description": "Semantic version (MAJOR.MINOR.PATCH)"
+    },
+    "size_mb": {
+      "type": "number",
+      "minimum": 0.01,
+      "maximum": 500,
+      "description": "Total plugin size in megabytes"
+    },
+    "min_app_version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "description": "Minimum app version required"
+    },
+    "max_app_version": {
+      "type": ["string", "null"],
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "description": "Maximum app version supported (null = no limit)"
+    },
+    "entry_point": {
+      "type": "string",
+      "pattern": "^[a-z_][a-z0-9_/]*\\.dart$",
+      "description": "Entry point Dart file relative to plugin root"
+    },
+    "init_function": {
+      "type": "string",
+      "pattern": "^[a-zA-Z_][a-zA-Z0-9_]*$",
+      "description": "Initialization function name"
+    },
+    "permissions": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "audio",
+          "network",
+          "background_audio",
+          "storage",
+          "camera",
+          "microphone",
+          "location",
+          "notifications",
+          "contacts",
+          "calendar"
+        ]
+      },
+      "uniqueItems": true,
+      "description": "Required permissions"
+    },
+    "dependencies": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z_][a-z0-9_]*(>=\\d+\\.\\d+\\.\\d+)?$"
+      },
+      "description": "Plugin dependencies with optional version constraints"
+    },
+    "assets": {
+      "type": "object",
+      "properties": {
+        "total_size_mb": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Total asset size in megabytes"
+        },
+        "files": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Asset file paths or directories"
+        }
+      },
+      "required": ["total_size_mb"]
+    },
+    "checksums": {
+      "type": "object",
+      "required": ["sha256"],
+      "properties": {
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-fA-F0-9]{64}$",
+          "description": "SHA-256 hash of the plugin bundle"
+        },
+        "signature": {
+          "type": "string",
+          "description": "Optional cryptographic signature"
+        }
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "description": { "type": "string" },
+        "icon": { "type": "string" },
+        "category": {
+          "type": "string",
+          "enum": ["media", "games", "productivity", "social", "finance", "education", "utilities", "communication"]
+        },
+        "tags": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "feature_flags": {
+      "type": "object",
+      "properties": {
+        "requires": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" }
+        },
+        "provides": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" }
+        }
+      }
+    }
+  }
+}
+
