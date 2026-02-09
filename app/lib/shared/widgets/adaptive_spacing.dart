@@ -122,4 +122,3 @@ class AdaptiveSpacing {
   static double radiusLg(BuildContext context) => getSpacing(context, 16.0);
   static double radiusXl(BuildContext context) => getSpacing(context, 24.0);
 }
-

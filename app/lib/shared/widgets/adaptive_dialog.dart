@@ -4,7 +4,7 @@ import 'responsive_center.dart';
 /// Adaptive dialog that shows as full-screen on mobile and centered dialog on desktop
 class AdaptiveDialog {
   /// Show an adaptive dialog that adjusts based on screen size
-  /// 
+  ///
   /// On mobile (<600px): Full-screen bottom sheet
   /// On tablet/desktop (>=600px): Centered dialog with max width
   static Future<T?> show<T>({
@@ -63,11 +63,8 @@ class AdaptiveDialog {
       barrierDismissible: barrierDismissible,
       maxWidth: 400,
       maxHeight: 600,
-      builder: (context) => AlertDialog(
-        title: title,
-        content: content,
-        actions: actions,
-      ),
+      builder: (context) =>
+          AlertDialog(title: title, content: content, actions: actions),
     );
   }
 }
@@ -76,7 +73,7 @@ class AdaptiveDialog {
 /// and fixed-size dialog on desktop
 class AdaptiveBottomSheet {
   /// Show an adaptive bottom sheet
-  /// 
+  ///
   /// On mobile: Draggable bottom sheet
   /// On desktop: Centered dialog
   static Future<T?> show<T>({
@@ -118,10 +115,7 @@ class AdaptiveBottomSheet {
         barrierDismissible: isDismissible,
         builder: (context) => Dialog(
           child: ConstrainedBox(
-            constraints: const BoxConstraints(
-              maxWidth: 600,
-              maxHeight: 700,
-            ),
+            constraints: const BoxConstraints(maxWidth: 600, maxHeight: 700),
             child: builder(context),
           ),
         ),
@@ -129,4 +123,3 @@ class AdaptiveBottomSheet {
     }
   }
 }
-

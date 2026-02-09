@@ -130,4 +130,3 @@ class AdaptiveFormField extends StatelessWidget {
     );
   }
 }
-

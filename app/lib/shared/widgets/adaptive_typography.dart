@@ -48,9 +48,7 @@ class AdaptiveText extends StatelessWidget {
     }
     // Tablet: Keep base size (scale *= 1.0)
 
-    return baseStyle.copyWith(
-      fontSize: (baseStyle.fontSize ?? 14) * scale,
-    );
+    return baseStyle.copyWith(fontSize: (baseStyle.fontSize ?? 14) * scale);
   }
 }
 
@@ -138,4 +136,3 @@ class AdaptiveTypography {
     );
   }
 }
-

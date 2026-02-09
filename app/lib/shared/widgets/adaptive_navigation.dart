@@ -22,7 +22,7 @@ class AdaptiveNavigation extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final isDesktop = ResponsiveBreakpoints.isDesktop(context);
-        
+
         if (isDesktop) {
           // Desktop: Use NavigationRail
           return Row(
@@ -81,4 +81,3 @@ class AdaptiveNavigationDestination {
   final Widget? selectedIcon;
   final String label;
 }
-
