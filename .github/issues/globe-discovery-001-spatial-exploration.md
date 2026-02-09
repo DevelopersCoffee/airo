@@ -2,9 +2,16 @@
 name: Agent Task
 about: Task for a specific agent
 title: '[AGENT] Globe Discovery - Spatial Music & IPTV Exploration Surface'
-labels: 'agent/mobile-ui, P2, enhancement, experimental, web-first'
+labels: 'agent/mobile-ui, P2, enhancement, experimental, web-first, deprecated'
 assignees: ''
 ---
+
+> ⚠️ **STATUS: DEPRECATED / REMOVED**
+>
+> **Date:** 2026-02-09
+>
+> This feature was implemented but subsequently removed as it does not align with current product priorities.
+> See: `.github/issues/globe-discovery-removal.md` for details.
 
 ## Agent
 

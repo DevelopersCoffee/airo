@@ -1,5 +1,22 @@
 # Globe Discovery - Spatial Exploration Roadmap
 
+> ⚠️ **STATUS: DEPRECATED / POSTPONED**
+>
+> **Date:** 2026-02-09
+>
+> This feature has been removed from the current product roadmap. The implementation was completed for Phase 1 but subsequently removed as it does not align with current product priorities.
+>
+> **Reason:** Resource optimization - development efforts are being focused on core features.
+>
+> **Future:** This roadmap is preserved for reference. The concept may be revisited when:
+> - User research indicates demand for spatial discovery experiences
+> - Product roadmap priorities shift to include discovery features
+> - Core app features are stable and resources are available
+>
+> See: `.github/issues/globe-discovery-removal.md` for removal details.
+
+---
+
 ## Vision
 Transform content discovery from passive list browsing into an interactive, playful spatial experience where users "spin the globe" to explore trending music and IPTV channels by geographic region.
 

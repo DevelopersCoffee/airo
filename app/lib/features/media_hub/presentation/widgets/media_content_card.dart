@@ -7,6 +7,7 @@ import '../../domain/models/unified_media_content.dart';
 ///
 /// Displays thumbnail, title, subtitle, genre tag, LIVE badge (for TV),
 /// and optional viewer count. Uses lazy-loading with fade-in animation.
+/// Includes optional favorite heart button with animation.
 class MediaContentCard extends StatelessWidget {
   const MediaContentCard({
     super.key,
@@ -17,6 +18,9 @@ class MediaContentCard extends StatelessWidget {
     this.height,
     this.showViewerCount = true,
     this.showProgress = true,
+    this.showFavoriteButton = false,
+    this.isFavorite = false,
+    this.onFavoriteToggle,
   });
 
   /// The media content to display
@@ -39,6 +43,15 @@ class MediaContentCard extends StatelessWidget {
 
   /// Whether to show progress indicator for resumable content
   final bool showProgress;
+
+  /// Whether to show the favorite heart button
+  final bool showFavoriteButton;
+
+  /// Whether this content is currently favorited
+  final bool isFavorite;
+
+  /// Callback when favorite button is tapped
+  final VoidCallback? onFavoriteToggle;
 
   /// Animation duration for thumbnail fade-in
   static const Duration fadeInDuration = Duration(milliseconds: 200);
@@ -124,7 +137,54 @@ class MediaContentCard extends StatelessWidget {
             right: 0,
             child: _buildProgressIndicator(theme),
           ),
+
+        // Favorite heart button
+        if (showFavoriteButton)
+          Positioned(
+            top: 8,
+            // Position on left if viewer count is on right, otherwise on right
+            right:
+                content.isLive && showViewerCount && content.viewerCount != null
+                ? null
+                : 8,
+            left:
+                content.isLive && showViewerCount && content.viewerCount != null
+                ? 8
+                : null,
+            child: _buildFavoriteButton(theme),
+          ),
       ],
+    );
+  }
+
+  Widget _buildFavoriteButton(ThemeData theme) {
+    return GestureDetector(
+      onTap: onFavoriteToggle,
+      child: Container(
+        width: 32,
+        height: 32,
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.5),
+          shape: BoxShape.circle,
+        ),
+        child: Center(
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 200),
+            transitionBuilder: (child, animation) {
+              return ScaleTransition(scale: animation, child: child);
+            },
+            child: Icon(
+              isFavorite ? Icons.favorite : Icons.favorite_border,
+              key: ValueKey(isFavorite),
+              size: 18,
+              color: isFavorite ? Colors.red : Colors.white,
+              semanticLabel: isFavorite
+                  ? 'Remove from favorites'
+                  : 'Add to favorites',
+            ),
+          ),
+        ),
+      ),
     );
   }
 

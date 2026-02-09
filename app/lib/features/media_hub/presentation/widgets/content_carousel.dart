@@ -20,6 +20,9 @@ class ContentCarousel extends ConsumerWidget {
     this.itemWidth,
     this.itemHeight,
     this.showSeeAll = true,
+    this.showFavoriteButton = false,
+    this.isFavoriteCallback,
+    this.onFavoriteToggle,
   });
 
   /// List of content items to display
@@ -51,6 +54,15 @@ class ContentCarousel extends ConsumerWidget {
 
   /// Whether to show "See All" button
   final bool showSeeAll;
+
+  /// Whether to show favorite button on cards
+  final bool showFavoriteButton;
+
+  /// Callback to check if content is favorited
+  final bool Function(String contentId)? isFavoriteCallback;
+
+  /// Callback when favorite button is toggled
+  final void Function(String contentId)? onFavoriteToggle;
 
   /// Default card width on mobile
   static const double mobileCardWidth = 140;
@@ -89,12 +101,20 @@ class ContentCarousel extends ConsumerWidget {
             separatorBuilder: (_, __) => SizedBox(width: itemSpacing),
             itemBuilder: (context, index) {
               final item = content[index];
+              final isFavorite = isFavoriteCallback?.call(item.id) ?? false;
               return SizedBox(
                 width: itemWidth ?? _getCardWidth(context),
                 child: MediaContentCard(
                   content: item,
                   onTap: onItemTap != null ? () => onItemTap!(item) : null,
-                  onLongPress: onItemLongPress != null ? () => onItemLongPress!(item) : null,
+                  onLongPress: onItemLongPress != null
+                      ? () => onItemLongPress!(item)
+                      : null,
+                  showFavoriteButton: showFavoriteButton,
+                  isFavorite: isFavorite,
+                  onFavoriteToggle: onFavoriteToggle != null
+                      ? () => onFavoriteToggle!(item.id)
+                      : null,
                 ),
               );
             },
@@ -187,4 +207,3 @@ class ContentSection extends ConsumerWidget {
     );
   }
 }
-
