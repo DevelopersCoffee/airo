@@ -25,7 +25,7 @@ android {
 
     defaultConfig {
         applicationId = "com.airo.superapp"
-        minSdk = 31 // Required for Gemini Nano AI Core library
+        minSdk = 26 // Android 8.0 - broader device compatibility
         targetSdk = 36 // Target latest Android for Pixel 9
         versionCode = flutter.versionCode
         versionName = flutter.versionName
