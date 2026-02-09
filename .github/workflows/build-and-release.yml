@@ -112,10 +112,10 @@ jobs:
           cd ../core_auth && flutter pub get
           cd ../../app && flutter pub get
 
-      - name: Build APK (Release)
+      - name: Build APK (Release - Split per ABI)
         run: |
           cd app
-          flutter build apk --release \
+          flutter build apk --release --split-per-abi \
             --dart-define=ENV=prod \
             --dart-define=DEMO_MODE=false
 
@@ -126,11 +126,17 @@ jobs:
             --dart-define=ENV=prod \
             --dart-define=DEMO_MODE=false
 
-      - name: Upload APK
+      - name: Upload APK (arm64-v8a)
         uses: actions/upload-artifact@v6
         with:
-          name: android-apk
-          path: app/build/app/outputs/flutter-apk/app-release.apk
+          name: android-apk-arm64
+          path: app/build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
+
+      - name: Upload APK (armeabi-v7a)
+        uses: actions/upload-artifact@v6
+        with:
+          name: android-apk-arm32
+          path: app/build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk
 
       - name: Upload AAB
         uses: actions/upload-artifact@v6
@@ -369,7 +375,8 @@ jobs:
 
           | Platform | File | Description |
           |----------|------|-------------|
-          | Android | \`app-release.apk\` | Direct install on Android |
+          | Android | \`app-arm64-v8a-release.apk\` | For modern 64-bit devices (recommended) |
+          | Android | \`app-armeabi-v7a-release.apk\` | For older 32-bit devices |
           | Android | \`app-release.aab\` | For Google Play Store |
           | iOS | \`app-release.ipa\` | Requires signing |
           | Web | \`airo-web-release.zip\` | Run in browser |
@@ -380,7 +387,10 @@ jobs:
 
           ### Android
           \`\`\`bash
-          adb install app-release.apk
+          # For most modern devices (Pixel, Samsung Galaxy S/A series, etc.)
+          adb install app-arm64-v8a-release.apk
+          # For older 32-bit devices
+          adb install app-armeabi-v7a-release.apk
           \`\`\`
 
           ### Web
@@ -409,7 +419,8 @@ jobs:
           tag_name: ${{ needs.changelog.outputs.version }}
           name: Airo ${{ needs.changelog.outputs.version }}
           files: |
-            android-apk/app-release.apk
+            android-apk-arm64/app-arm64-v8a-release.apk
+            android-apk-arm32/app-armeabi-v7a-release.apk
             android-aab/app-release.aab
             ios-ipa/app-release.ipa
             web-build/airo-web-release.zip
