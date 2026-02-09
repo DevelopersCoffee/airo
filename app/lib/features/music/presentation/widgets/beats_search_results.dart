@@ -15,10 +15,12 @@ class BeatsSearchResults extends ConsumerWidget {
     return switch (searchState.state) {
       BeatsSearchState.idle => const SizedBox.shrink(),
       BeatsSearchState.searching ||
-      BeatsSearchState.resolving =>
-        _buildLoading(searchState),
-      BeatsSearchState.success =>
-        _buildResults(context, searchState, beatsController),
+      BeatsSearchState.resolving => _buildLoading(searchState),
+      BeatsSearchState.success => _buildResults(
+        context,
+        searchState,
+        beatsController,
+      ),
       BeatsSearchState.error => _buildError(context, ref, searchState),
     };
   }
@@ -142,14 +144,15 @@ class _TrackTile extends StatelessWidget {
             : _buildPlaceholder(),
       ),
       title: Text(track.title, maxLines: 1, overflow: TextOverflow.ellipsis),
-      subtitle: Text(track.artist, maxLines: 1, overflow: TextOverflow.ellipsis),
+      subtitle: Text(
+        track.artist,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      ),
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          IconButton(
-            icon: const Icon(Icons.play_arrow),
-            onPressed: onPlay,
-          ),
+          IconButton(icon: const Icon(Icons.play_arrow), onPressed: onPlay),
           IconButton(
             icon: const Icon(Icons.playlist_add),
             onPressed: onAddToQueue,
@@ -169,4 +172,3 @@ class _TrackTile extends StatelessWidget {
     );
   }
 }
-

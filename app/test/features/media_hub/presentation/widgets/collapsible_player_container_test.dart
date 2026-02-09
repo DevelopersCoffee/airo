@@ -12,9 +12,7 @@ void main() {
     VoidCallback? onFullscreenToggle,
   }) {
     return ProviderScope(
-      overrides: [
-        playerDisplayModeProvider.overrideWith((ref) => initialMode),
-      ],
+      overrides: [playerDisplayModeProvider.overrideWith((ref) => initialMode)],
       child: MaterialApp(
         home: MediaQuery(
           data: MediaQueryData(size: Size(screenWidth, 800)),
@@ -34,46 +32,55 @@ void main() {
 
   group('CollapsiblePlayerContainer', () {
     group('Height calculations', () {
-      testWidgets('uses mobile collapsed height on narrow screens',
-          (tester) async {
+      testWidgets('uses mobile collapsed height on narrow screens', (
+        tester,
+      ) async {
         await tester.pumpWidget(createTestWidget(screenWidth: 400));
         await tester.pumpAndSettle();
 
         final container = tester.widget<AnimatedContainer>(
           find.byType(AnimatedContainer),
         );
-        expect(container.constraints?.maxHeight,
-            CollapsiblePlayerContainer.mobileCollapsedHeight);
+        expect(
+          container.constraints?.maxHeight,
+          CollapsiblePlayerContainer.mobileCollapsedHeight,
+        );
       });
 
-      testWidgets('uses tablet collapsed height on wide screens',
-          (tester) async {
+      testWidgets('uses tablet collapsed height on wide screens', (
+        tester,
+      ) async {
         await tester.pumpWidget(createTestWidget(screenWidth: 700));
         await tester.pumpAndSettle();
 
         final container = tester.widget<AnimatedContainer>(
           find.byType(AnimatedContainer),
         );
-        expect(container.constraints?.maxHeight,
-            CollapsiblePlayerContainer.tabletCollapsedHeight);
+        expect(
+          container.constraints?.maxHeight,
+          CollapsiblePlayerContainer.tabletCollapsedHeight,
+        );
       });
 
       testWidgets('expanded mode uses multiplied height', (tester) async {
         await tester.pumpWidget(
-            createTestWidget(initialMode: PlayerDisplayMode.expanded));
+          createTestWidget(initialMode: PlayerDisplayMode.expanded),
+        );
         await tester.pumpAndSettle();
 
         final container = tester.widget<AnimatedContainer>(
           find.byType(AnimatedContainer),
         );
-        final expectedHeight = CollapsiblePlayerContainer.mobileCollapsedHeight *
+        final expectedHeight =
+            CollapsiblePlayerContainer.mobileCollapsedHeight *
             CollapsiblePlayerContainer.expandedMultiplier;
         expect(container.constraints?.maxHeight, expectedHeight);
       });
 
       testWidgets('hidden mode renders nothing', (tester) async {
         await tester.pumpWidget(
-            createTestWidget(initialMode: PlayerDisplayMode.hidden));
+          createTestWidget(initialMode: PlayerDisplayMode.hidden),
+        );
         await tester.pumpAndSettle();
 
         expect(find.byType(AnimatedContainer), findsNothing);
@@ -82,8 +89,9 @@ void main() {
     });
 
     group('Display mode transitions', () {
-      testWidgets('expand button switches from collapsed to expanded',
-          (tester) async {
+      testWidgets('expand button switches from collapsed to expanded', (
+        tester,
+      ) async {
         await tester.pumpWidget(createTestWidget());
         await tester.pumpAndSettle();
 
@@ -99,10 +107,12 @@ void main() {
         expect(find.byIcon(Icons.unfold_less), findsOneWidget);
       });
 
-      testWidgets('collapse button switches from expanded to collapsed',
-          (tester) async {
+      testWidgets('collapse button switches from expanded to collapsed', (
+        tester,
+      ) async {
         await tester.pumpWidget(
-            createTestWidget(initialMode: PlayerDisplayMode.expanded));
+          createTestWidget(initialMode: PlayerDisplayMode.expanded),
+        );
         await tester.pumpAndSettle();
 
         // Find and tap the collapse button (unfold_less icon)
@@ -114,9 +124,9 @@ void main() {
 
       testWidgets('fullscreen button triggers callback', (tester) async {
         bool callbackCalled = false;
-        await tester.pumpWidget(createTestWidget(
-          onFullscreenToggle: () => callbackCalled = true,
-        ));
+        await tester.pumpWidget(
+          createTestWidget(onFullscreenToggle: () => callbackCalled = true),
+        );
         await tester.pumpAndSettle();
 
         await tester.tap(find.byIcon(Icons.fullscreen));
@@ -149,8 +159,10 @@ void main() {
       });
 
       test('animationDuration is 300ms', () {
-        expect(CollapsiblePlayerContainer.animationDuration,
-            const Duration(milliseconds: 300));
+        expect(
+          CollapsiblePlayerContainer.animationDuration,
+          const Duration(milliseconds: 300),
+        );
       });
 
       test('animationCurve is easeOutCubic', () {
@@ -159,4 +171,3 @@ void main() {
     });
   });
 }
-

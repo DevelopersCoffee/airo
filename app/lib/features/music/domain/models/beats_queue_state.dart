@@ -42,9 +42,8 @@ class BeatsQueueState extends Equatable {
   });
 
   /// Create an empty queue state
-  factory BeatsQueueState.empty() => BeatsQueueState(
-        lastUpdated: DateTime.now(),
-      );
+  factory BeatsQueueState.empty() =>
+      BeatsQueueState(lastUpdated: DateTime.now());
 
   /// Get current track or null
   BeatsTrack? get currentTrack {
@@ -115,7 +114,8 @@ class BeatsQueueState extends Equatable {
   /// Create from JSON
   factory BeatsQueueState.fromJson(Map<String, dynamic> json) {
     return BeatsQueueState(
-      tracks: (json['tracks'] as List?)
+      tracks:
+          (json['tracks'] as List?)
               ?.map((t) => BeatsTrack.fromJson(t as Map<String, dynamic>))
               .toList() ??
           [],
@@ -133,14 +133,13 @@ class BeatsQueueState extends Equatable {
 
   @override
   List<Object?> get props => [
-        tracks,
-        currentIndex,
-        position,
-        repeatMode,
-        shuffleEnabled,
-        sessionId,
-        lastUpdated,
-        originalOrder,
-      ];
+    tracks,
+    currentIndex,
+    position,
+    repeatMode,
+    shuffleEnabled,
+    sessionId,
+    lastUpdated,
+    originalOrder,
+  ];
 }
-

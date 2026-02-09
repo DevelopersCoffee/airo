@@ -95,7 +95,9 @@ class ContentGrid extends ConsumerWidget {
             return MediaContentCard(
               content: item,
               onTap: onItemTap != null ? () => onItemTap!(item) : null,
-              onLongPress: onItemLongPress != null ? () => onItemLongPress!(item) : null,
+              onLongPress: onItemLongPress != null
+                  ? () => onItemLongPress!(item)
+                  : null,
             );
           },
         );
@@ -138,7 +140,9 @@ class ContentGrid extends ConsumerWidget {
             Text(
               'Try adjusting your filters or check back later',
               style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+                color: theme.colorScheme.onSurfaceVariant.withValues(
+                  alpha: 0.7,
+                ),
               ),
               textAlign: TextAlign.center,
             ),
@@ -187,17 +191,16 @@ class SliverContentGrid extends ConsumerWidget {
             mainAxisSpacing: mainAxisSpacing,
             childAspectRatio: aspectRatio,
           ),
-          delegate: SliverChildBuilderDelegate(
-            (context, index) {
-              final item = content[index];
-              return MediaContentCard(
-                content: item,
-                onTap: onItemTap != null ? () => onItemTap!(item) : null,
-                onLongPress: onItemLongPress != null ? () => onItemLongPress!(item) : null,
-              );
-            },
-            childCount: content.length,
-          ),
+          delegate: SliverChildBuilderDelegate((context, index) {
+            final item = content[index];
+            return MediaContentCard(
+              content: item,
+              onTap: onItemTap != null ? () => onItemTap!(item) : null,
+              onLongPress: onItemLongPress != null
+                  ? () => onItemLongPress!(item)
+                  : null,
+            );
+          }, childCount: content.length),
         );
       },
     );
@@ -213,4 +216,3 @@ class SliverContentGrid extends ConsumerWidget {
     }
   }
 }
-

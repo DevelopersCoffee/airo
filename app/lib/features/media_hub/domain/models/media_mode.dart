@@ -19,4 +19,3 @@ enum MediaMode {
   /// Check if this is TV mode
   bool get isTV => this == MediaMode.tv;
 }
-

@@ -119,23 +119,23 @@ class MediaCategories {
 
   /// Get all TV categories
   static List<MediaCategory> get tvCategories => [
-        tvLive,
-        tvMovies,
-        tvKids,
-        tvMusic,
-        tvRegional,
-        tvNews,
-      ];
+    tvLive,
+    tvMovies,
+    tvKids,
+    tvMusic,
+    tvRegional,
+    tvNews,
+  ];
 
   /// Get all Music categories
   static List<MediaCategory> get musicCategories => [
-        musicTrending,
-        musicRegional,
-        musicIndie,
-        musicDevotional,
-        musicChill,
-        musicFocus,
-      ];
+    musicTrending,
+    musicRegional,
+    musicIndie,
+    musicDevotional,
+    musicChill,
+    musicFocus,
+  ];
 
   /// Get categories for a specific mode
   static List<MediaCategory> forMode(MediaMode mode) =>
@@ -151,4 +151,3 @@ class MediaCategories {
     }
   }
 }
-

@@ -46,4 +46,3 @@ final beatsRecoveryMessageProvider = Provider<String?>((ref) {
     error: (_, __) => null,
   );
 });
-

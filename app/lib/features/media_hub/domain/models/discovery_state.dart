@@ -58,8 +58,7 @@ class DiscoveryState extends Equatable {
   }
 
   /// Check if currently searching
-  bool get isSearching =>
-      searchQuery != null && searchQuery!.isNotEmpty;
+  bool get isSearching => searchQuery != null && searchQuery!.isNotEmpty;
 
   /// Check if has error
   bool get hasError => errorMessage != null;
@@ -82,8 +81,9 @@ class DiscoveryState extends Equatable {
   }) {
     return DiscoveryState(
       currentMode: currentMode ?? this.currentMode,
-      selectedCategory:
-          clearCategory ? null : (selectedCategory ?? this.selectedCategory),
+      selectedCategory: clearCategory
+          ? null
+          : (selectedCategory ?? this.selectedCategory),
       contentItems: contentItems ?? this.contentItems,
       isLoading: isLoading ?? this.isLoading,
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
@@ -95,14 +95,13 @@ class DiscoveryState extends Equatable {
 
   @override
   List<Object?> get props => [
-        currentMode,
-        selectedCategory,
-        contentItems,
-        isLoading,
-        errorMessage,
-        searchQuery,
-        hasMore,
-        nextCursor,
-      ];
+    currentMode,
+    selectedCategory,
+    contentItems,
+    isLoading,
+    errorMessage,
+    searchQuery,
+    hasMore,
+    nextCursor,
+  ];
 }
-

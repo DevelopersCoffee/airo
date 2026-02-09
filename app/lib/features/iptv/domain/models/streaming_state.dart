@@ -15,15 +15,7 @@ enum NetworkQuality {
 }
 
 /// Playback state
-enum PlaybackState {
-  idle,
-  loading,
-  buffering,
-  playing,
-  paused,
-  error,
-  ended,
-}
+enum PlaybackState { idle, loading, buffering, playing, paused, error, ended }
 
 /// Buffer status for streaming
 class BufferStatus extends Equatable {
@@ -46,7 +38,12 @@ class BufferStatus extends Equatable {
   bool get isOptimal => bufferedAhead.inSeconds >= 20;
 
   @override
-  List<Object?> get props => [bufferedAhead, totalBuffered, bufferPercentage, isBuffering];
+  List<Object?> get props => [
+    bufferedAhead,
+    totalBuffered,
+    bufferPercentage,
+    isBuffering,
+  ];
 }
 
 /// Streaming quality metrics
@@ -77,7 +74,12 @@ class StreamingMetrics extends Equatable {
   bool get isSmooth => frameDropRate < 1.0;
 
   @override
-  List<Object?> get props => [currentBitrate, droppedFrames, latency, networkQuality];
+  List<Object?> get props => [
+    currentBitrate,
+    droppedFrames,
+    latency,
+    networkQuality,
+  ];
 }
 
 /// Complete streaming state
@@ -156,14 +158,13 @@ class StreamingState extends Equatable {
 
   @override
   List<Object?> get props => [
-        currentChannel,
-        playbackState,
-        currentQuality,
-        bufferStatus,
-        position,
-        volume,
-        isMuted,
-        errorMessage,
-      ];
+    currentChannel,
+    playbackState,
+    currentQuality,
+    bufferStatus,
+    position,
+    volume,
+    isMuted,
+    errorMessage,
+  ];
 }
-

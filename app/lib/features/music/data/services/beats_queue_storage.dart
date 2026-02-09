@@ -103,4 +103,3 @@ class BeatsQueueStorage {
     return _prefs.containsKey(_queueKey);
   }
 }
-

@@ -15,8 +15,8 @@ class BeatsContextIntegration {
   BeatsContextIntegration({
     required BeatsAudioHandler audioHandler,
     required AudioContextManager contextManager,
-  })  : _audioHandler = audioHandler,
-        _contextManager = contextManager {
+  }) : _audioHandler = audioHandler,
+       _contextManager = contextManager {
     _init();
   }
 
@@ -26,7 +26,9 @@ class BeatsContextIntegration {
     _contextManager.requestFocus(AudioFocusType.music);
 
     // Listen to context changes
-    _contextSubscription = _contextManager.contextChanges.listen(_onContextChange);
+    _contextSubscription = _contextManager.contextChanges.listen(
+      _onContextChange,
+    );
   }
 
   /// Handle audio context changes
@@ -103,4 +105,3 @@ class BeatsContextIntegration {
     _contextManager.releaseFocus(AudioFocusType.music);
   }
 }
-

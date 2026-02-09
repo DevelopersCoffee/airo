@@ -20,9 +20,9 @@ enum PlayerDisplayMode {
 
   /// Check if player is in full view (expanded or fullscreen)
   bool get isFullView =>
-      this == PlayerDisplayMode.expanded || this == PlayerDisplayMode.fullscreen;
+      this == PlayerDisplayMode.expanded ||
+      this == PlayerDisplayMode.fullscreen;
 
   /// Check if player is minimized
   bool get isMinimized => this == PlayerDisplayMode.mini;
 }
-

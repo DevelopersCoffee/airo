@@ -4,7 +4,7 @@ import '../models/iptv_channel.dart';
 import '../models/streaming_state.dart';
 
 /// IPTV Streaming Service with YouTube-quality optimizations
-/// 
+///
 /// Features:
 /// - Adaptive bitrate streaming (ABR)
 /// - 10-30 second buffer ahead
@@ -60,19 +60,19 @@ abstract class IPTVStreamingService {
 class StreamingConfig {
   /// Target buffer duration (10-30 seconds)
   final Duration targetBufferDuration;
-  
+
   /// Minimum buffer before playback starts
   final Duration minBufferDuration;
-  
+
   /// Maximum retry attempts
   final int maxRetries;
-  
+
   /// Retry delay
   final Duration retryDelay;
-  
+
   /// Enable adaptive bitrate
   final bool enableABR;
-  
+
   /// Low latency mode (for live streams)
   final bool lowLatencyMode;
 
@@ -105,4 +105,3 @@ class StreamingConfig {
     lowLatencyMode: true,
   );
 }
-

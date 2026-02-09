@@ -125,18 +125,17 @@ class UnifiedPlayerState extends Equatable {
 
   @override
   List<Object?> get props => [
-        currentContent,
-        playbackState,
-        displayMode,
-        position,
-        duration,
-        volume,
-        isMuted,
-        qualitySettings,
-        bufferStatus,
-        queue,
-        currentIndex,
-        errorMessage,
-      ];
+    currentContent,
+    playbackState,
+    displayMode,
+    position,
+    duration,
+    volume,
+    isMuted,
+    qualitySettings,
+    bufferStatus,
+    queue,
+    currentIndex,
+    errorMessage,
+  ];
 }
-

@@ -10,7 +10,8 @@ class AudioContextSettingsNotifier extends StateNotifier<AudioContextSettings> {
   final Ref _ref;
   static const String _storageKey = 'audio_context_settings';
 
-  AudioContextSettingsNotifier(this._ref) : super(const AudioContextSettings()) {
+  AudioContextSettingsNotifier(this._ref)
+    : super(const AudioContextSettings()) {
     _loadFromStorage();
   }
 
@@ -117,14 +118,14 @@ class AudioContextSettingsNotifier extends StateNotifier<AudioContextSettings> {
 /// Audio context settings provider
 final audioContextSettingsProvider =
     StateNotifierProvider<AudioContextSettingsNotifier, AudioContextSettings>(
-  (ref) => AudioContextSettingsNotifier(ref),
-);
+      (ref) => AudioContextSettingsNotifier(ref),
+    );
 
 /// Provider for AudioContextManager singleton
 /// This replaces the one in audio_context_provider.dart to integrate with settings
 final audioContextManagerProvider = Provider<AudioContextManager>((ref) {
   final manager = AudioContextManager();
-  
+
   // Apply settings from storage when manager is created
   try {
     final settings = ref.watch(audioContextSettingsProvider);
@@ -133,7 +134,7 @@ final audioContextManagerProvider = Provider<AudioContextManager>((ref) {
   } catch (e) {
     // Settings not available yet, use defaults
   }
-  
+
   ref.onDispose(() => manager.dispose());
   return manager;
 });
@@ -143,4 +144,3 @@ final autoResumeEnabledProvider = Provider<bool>((ref) {
   final notifier = ref.watch(audioContextSettingsProvider.notifier);
   return notifier.autoResumeEnabled;
 });
-

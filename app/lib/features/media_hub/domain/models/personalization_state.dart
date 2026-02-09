@@ -45,8 +45,10 @@ class PersonalizationState extends Equatable {
     final position = playbackPositions[contentId];
     if (position == null || totalDuration == null) return 0.0;
     if (totalDuration.inMilliseconds == 0) return 0.0;
-    return (position.inMilliseconds / totalDuration.inMilliseconds)
-        .clamp(0.0, 1.0);
+    return (position.inMilliseconds / totalDuration.inMilliseconds).clamp(
+      0.0,
+      1.0,
+    );
   }
 
   /// Get count of favorites
@@ -73,8 +75,10 @@ class PersonalizationState extends Equatable {
   factory PersonalizationState.fromJson(Map<String, dynamic> json) {
     return PersonalizationState(
       favoriteIds: Set<String>.from(json['favoriteIds'] as List? ?? []),
-      playbackPositions: (json['playbackPositions'] as Map<String, dynamic>?)
-              ?.map((k, v) => MapEntry(k, Duration(milliseconds: v as int))) ??
+      playbackPositions:
+          (json['playbackPositions'] as Map<String, dynamic>?)?.map(
+            (k, v) => MapEntry(k, Duration(milliseconds: v as int)),
+          ) ??
           {},
     );
   }
@@ -84,17 +88,17 @@ class PersonalizationState extends Equatable {
   Map<String, dynamic> toJson() {
     return {
       'favoriteIds': favoriteIds.toList(),
-      'playbackPositions': playbackPositions
-          .map((k, v) => MapEntry(k, v.inMilliseconds)),
+      'playbackPositions': playbackPositions.map(
+        (k, v) => MapEntry(k, v.inMilliseconds),
+      ),
     };
   }
 
   @override
   List<Object?> get props => [
-        continueWatching,
-        recentlyPlayed,
-        favoriteIds,
-        playbackPositions,
-      ];
+    continueWatching,
+    recentlyPlayed,
+    favoriteIds,
+    playbackPositions,
+  ];
 }
-

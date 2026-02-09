@@ -132,4 +132,3 @@ class _BeatsSearchBarState extends ConsumerState<BeatsSearchBar> {
     );
   }
 }
-
