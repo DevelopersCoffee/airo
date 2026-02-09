@@ -272,7 +272,7 @@ class DictionaryDemoScreen extends StatelessWidget {
     return ActionChip(
       avatar: Icon(icon, size: 18),
       label: Text(word),
-      onPressed: () => DictionaryPopup.showBottomSheet(context, word),
+      onPressed: () => DictionaryPopup.showAdaptive(context, word),
     );
   }
 

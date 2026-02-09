@@ -7,6 +7,7 @@ import 'game_coming_soon_screen.dart';
 import '../../application/card_asset_manager.dart';
 import '../../domain/models/game_info.dart';
 import '../widgets/game_rules_dialog_unified.dart';
+import '../../../../shared/widgets/responsive_center.dart';
 
 /// Games hub screen - Mall-like balanced layout
 class GamesHubScreen extends ConsumerWidget {
@@ -29,104 +30,117 @@ class GamesHubScreen extends ConsumerWidget {
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Welcome header
-            Text(
-              'Welcome to Arena',
-              style: Theme.of(
-                context,
-              ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Choose your game and start playing',
-              style: Theme.of(
-                context,
-              ).textTheme.bodyMedium?.copyWith(color: Colors.grey),
-            ),
-            const SizedBox(height: 24),
+      body: ResponsiveCenter(
+        maxWidth: ResponsiveBreakpoints.dashboardMaxWidth,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Welcome header
+              Text(
+                'Welcome to Arena',
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Choose your game and start playing',
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyMedium?.copyWith(color: Colors.grey),
+              ),
+              const SizedBox(height: 24),
 
-            // Game categories in grid
-            ...gamesByCategory.entries.map((entry) {
-              final category = entry.key;
-              final games = entry.value;
+              // Game categories in grid
+              ...gamesByCategory.entries.map((entry) {
+                final category = entry.key;
+                final games = entry.value;
 
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Category header
-                  Row(
-                    children: [
-                      Icon(category.icon, size: 20),
-                      const SizedBox(width: 8),
-                      Text(
-                        category.displayName,
-                        style: Theme.of(context).textTheme.titleLarge,
-                      ),
-                      const Spacer(),
-                      if (games.length > 4)
-                        TextButton(
-                          onPressed: () {
-                            // TODO: View all in category
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Category header
+                    Row(
+                      children: [
+                        Icon(category.icon, size: 20),
+                        const SizedBox(width: 8),
+                        Text(
+                          category.displayName,
+                          style: Theme.of(context).textTheme.titleLarge,
+                        ),
+                        const Spacer(),
+                        if (games.length > 4)
+                          TextButton(
+                            onPressed: () {
+                              // TODO: View all in category
+                            },
+                            child: const Text('View All'),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Games grid - responsive
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        final columns = ResponsiveBreakpoints.getGridColumns(
+                          constraints.maxWidth,
+                          mobile: 2,
+                          tablet: 3,
+                          desktop: 4,
+                        );
+                        return GridView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          gridDelegate:
+                              SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: columns,
+                                crossAxisSpacing: 12,
+                                mainAxisSpacing: 12,
+                                childAspectRatio: 0.85,
+                              ),
+                          itemCount: games.length,
+                          itemBuilder: (context, index) {
+                            return _buildGameTile(context, ref, games[index]);
                           },
-                          child: const Text('View All'),
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 24),
+                  ],
+                );
+              }),
 
-                  // Games grid
-                  GridView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          crossAxisSpacing: 12,
-                          mainAxisSpacing: 12,
-                          childAspectRatio: 0.85,
-                        ),
-                    itemCount: games.length,
-                    itemBuilder: (context, index) {
-                      return _buildGameTile(context, ref, games[index]);
-                    },
+              // Quick stats
+              Text('Your Stats', style: Theme.of(context).textTheme.titleLarge),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildStatCard(
+                      context,
+                      'Games Played',
+                      '0',
+                      Icons.sports_esports,
+                      Colors.blue,
+                    ),
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildStatCard(
+                      context,
+                      'Wins',
+                      '0',
+                      Icons.emoji_events,
+                      Colors.amber,
+                    ),
+                  ),
                 ],
-              );
-            }),
-
-            // Quick stats
-            Text('Your Stats', style: Theme.of(context).textTheme.titleLarge),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: _buildStatCard(
-                    context,
-                    'Games Played',
-                    '0',
-                    Icons.sports_esports,
-                    Colors.blue,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _buildStatCard(
-                    context,
-                    'Wins',
-                    '0',
-                    Icons.emoji_events,
-                    Colors.amber,
-                  ),
-                ),
-              ],
-            ),
-          ],
+              ),
+            ],
+          ),
         ),
       ),
     );

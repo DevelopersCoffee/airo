@@ -7,6 +7,7 @@ import '../../../core/routing/route_names.dart';
 import '../../../main.dart' show isFirebaseInitialized;
 import '../../../shared/widgets/loading_widget.dart';
 import '../../../shared/widgets/custom_text_field.dart';
+import '../../../shared/widgets/responsive_center.dart';
 
 /// Test IDs for login screen - used by Playwright E2E tests
 class LoginTestIds {
@@ -136,7 +137,8 @@ class _LoginScreenState extends State<LoginScreen> {
       label: LoginTestIds.screen,
       child: Scaffold(
         body: SafeArea(
-          child: Center(
+          child: ResponsiveCenter(
+            maxWidth: ResponsiveBreakpoints.formMaxWidth,
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(24.0),
               child: Form(
