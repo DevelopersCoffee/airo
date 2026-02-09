@@ -241,6 +241,25 @@ class UnifiedPlayerNotifier extends StateNotifier<UnifiedPlayerState> {
     state = state.copyWith(currentIndex: state.currentIndex - 1);
   }
 
+  /// Stop playback and clear content
+  Future<void> stop() async {
+    // Stop the appropriate player
+    if (state.currentContent?.isMusic == true) {
+      await _ref.read(musicServiceProvider).stop();
+    } else if (state.currentContent?.isTV == true) {
+      await _ref.read(iptvStreamingServiceProvider).stop();
+    }
+
+    // Cancel timers
+    _positionSaveTimer?.cancel();
+    _positionSubscription?.cancel();
+
+    // Reset state
+    state = const UnifiedPlayerState();
+    _ref.read(playerDisplayModeProvider.notifier).state =
+        PlayerDisplayMode.hidden;
+  }
+
   void _startPositionTracking(String contentId) {
     _positionSaveTimer?.cancel();
     _positionSaveTimer = Timer.periodic(const Duration(seconds: 10), (_) {
