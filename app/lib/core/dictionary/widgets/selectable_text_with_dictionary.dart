@@ -54,7 +54,7 @@ class SelectableTextWithDictionary extends StatelessWidget {
           label: 'Look up "$selectedText"',
           onPressed: () {
             ContextMenuController.removeAny();
-            DictionaryPopup.showBottomSheet(context, selectedText);
+            DictionaryPopup.showAdaptive(context, selectedText);
           },
         ),
       );
@@ -109,7 +109,7 @@ class TextWithDictionary extends StatelessWidget {
 
     if (words.length == 1) {
       // Single word - show definition directly
-      DictionaryPopup.showBottomSheet(context, words.first);
+      DictionaryPopup.showAdaptive(context, words.first);
     } else {
       // Multiple words - show word picker
       showModalBottomSheet(
@@ -158,7 +158,7 @@ class _WordPickerSheet extends StatelessWidget {
                 label: Text(cleanWord),
                 onPressed: () {
                   Navigator.of(context).pop();
-                  DictionaryPopup.showBottomSheet(context, cleanWord);
+                  DictionaryPopup.showAdaptive(context, cleanWord);
                 },
               );
             }).toList(),

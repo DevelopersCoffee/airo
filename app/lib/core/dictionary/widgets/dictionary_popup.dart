@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:audioplayers/audioplayers.dart';
 import '../models/dictionary_entry.dart';
 import '../services/dictionary_service.dart';
+import '../../../shared/widgets/adaptive_dialog.dart';
 
 /// Popup widget to display word definition
 class DictionaryPopup extends StatefulWidget {
@@ -13,7 +14,8 @@ class DictionaryPopup extends StatefulWidget {
   @override
   State<DictionaryPopup> createState() => _DictionaryPopupState();
 
-  /// Show dictionary popup as a dialog
+  /// Show dictionary popup as a dialog (deprecated - use showAdaptive instead)
+  @Deprecated('Use showAdaptive() for responsive behavior')
   static Future<void> show(BuildContext context, String word) {
     return showDialog(
       context: context,
@@ -29,7 +31,8 @@ class DictionaryPopup extends StatefulWidget {
     );
   }
 
-  /// Show dictionary popup as a bottom sheet (better for mobile)
+  /// Show dictionary popup as a bottom sheet (deprecated - use showAdaptive instead)
+  @Deprecated('Use showAdaptive() for responsive behavior')
   static Future<void> showBottomSheet(BuildContext context, String word) {
     return showModalBottomSheet(
       context: context,
@@ -43,6 +46,23 @@ class DictionaryPopup extends StatefulWidget {
           word: word,
           onClose: () => Navigator.of(context).pop(),
         ),
+      ),
+    );
+  }
+
+  /// Show dictionary popup with adaptive presentation
+  ///
+  /// On mobile: Draggable bottom sheet
+  /// On desktop: Centered dialog with max width
+  static Future<void> showAdaptive(BuildContext context, String word) {
+    return AdaptiveBottomSheet.show(
+      context: context,
+      initialChildSize: 0.7,
+      minChildSize: 0.5,
+      maxChildSize: 0.95,
+      builder: (context) => DictionaryPopup(
+        word: word,
+        onClose: () => Navigator.of(context).pop(),
       ),
     );
   }

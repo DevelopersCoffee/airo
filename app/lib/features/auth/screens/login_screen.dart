@@ -136,7 +136,8 @@ class _LoginScreenState extends State<LoginScreen> {
       label: LoginTestIds.screen,
       child: Scaffold(
         body: SafeArea(
-          child: Center(
+          child: ResponsiveCenter(
+            maxWidth: ResponsiveBreakpoints.formMaxWidth,
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(24.0),
               child: Form(

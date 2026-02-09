@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../application/providers/music_provider.dart';
 import '../../application/providers/music_tracks_provider.dart';
 import '../../domain/services/music_service.dart';
+import '../../../../shared/widgets/responsive_center.dart';
 
 /// Music player screen with Spotify Top 20 India
 class MusicScreen extends ConsumerWidget {
@@ -92,166 +93,173 @@ class MusicScreen extends ConsumerWidget {
     List<MusicTrack> tracks,
     MusicController musicController,
   ) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Now playing card
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                children: [
-                  // Album art
-                  Container(
-                    width: double.infinity,
-                    height: 200,
-                    decoration: BoxDecoration(
-                      color: Colors.grey.withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: state.currentTrack?.albumArt != null
-                        ? Image.network(
-                            state.currentTrack!.albumArt!,
-                            fit: BoxFit.cover,
-                          )
-                        : const Icon(
-                            Icons.music_note,
-                            size: 64,
-                            color: Colors.grey,
-                          ),
-                  ),
-                  const SizedBox(height: 16),
-                  // Track info
-                  Text(
-                    state.currentTrack?.title ?? 'No track playing',
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    state.currentTrack?.artist ?? '—',
-                    style: const TextStyle(color: Colors.grey),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 16),
-                  // Progress bar
-                  if (state.currentTrack != null)
-                    Column(
-                      children: [
-                        LinearProgressIndicator(
-                          value: state.duration.inMilliseconds > 0
-                              ? state.position.inMilliseconds /
-                                    state.duration.inMilliseconds
-                              : 0,
+    return ResponsiveCenter(
+      maxWidth: ResponsiveBreakpoints.textMaxWidth,
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Now playing card
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                    // Album art with aspect ratio
+                    AspectRatio(
+                      aspectRatio: 1.0,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.grey.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                        const SizedBox(height: 8),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              _formatDuration(state.position),
-                              style: const TextStyle(fontSize: 12),
-                            ),
-                            Text(
-                              _formatDuration(state.duration),
-                              style: const TextStyle(fontSize: 12),
-                            ),
-                          ],
+                        child: state.currentTrack?.albumArt != null
+                            ? ClipRRect(
+                                borderRadius: BorderRadius.circular(12),
+                                child: Image.network(
+                                  state.currentTrack!.albumArt!,
+                                  fit: BoxFit.cover,
+                                ),
+                              )
+                            : const Icon(
+                                Icons.music_note,
+                                size: 64,
+                                color: Colors.grey,
+                              ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    // Track info
+                    Text(
+                      state.currentTrack?.title ?? 'No track playing',
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      state.currentTrack?.artist ?? '—',
+                      style: const TextStyle(color: Colors.grey),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 16),
+                    // Progress bar
+                    if (state.currentTrack != null)
+                      Column(
+                        children: [
+                          LinearProgressIndicator(
+                            value: state.duration.inMilliseconds > 0
+                                ? state.position.inMilliseconds /
+                                      state.duration.inMilliseconds
+                                : 0,
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                _formatDuration(state.position),
+                                style: const TextStyle(fontSize: 12),
+                              ),
+                              Text(
+                                _formatDuration(state.duration),
+                                style: const TextStyle(fontSize: 12),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    const SizedBox(height: 16),
+                    // Player controls
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.skip_previous),
+                          onPressed: state.currentIndex > 0
+                              ? () => musicController.previous()
+                              : null,
+                        ),
+                        IconButton(
+                          icon: Icon(
+                            state.isPlaying
+                                ? Icons.pause_circle
+                                : Icons.play_circle,
+                            size: 48,
+                          ),
+                          onPressed: () {
+                            if (state.isPlaying) {
+                              musicController.pause();
+                            } else if (state.currentTrack != null) {
+                              musicController.resume();
+                            } else if (tracks.isNotEmpty) {
+                              musicController.playTrack(tracks[0]);
+                            }
+                          },
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.skip_next),
+                          onPressed: state.currentIndex < tracks.length - 1
+                              ? () => musicController.next()
+                              : null,
                         ),
                       ],
                     ),
-                  const SizedBox(height: 16),
-                  // Player controls
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.skip_previous),
-                        onPressed: state.currentIndex > 0
-                            ? () => musicController.previous()
-                            : null,
-                      ),
-                      IconButton(
-                        icon: Icon(
-                          state.isPlaying
-                              ? Icons.pause_circle
-                              : Icons.play_circle,
-                          size: 48,
-                        ),
-                        onPressed: () {
-                          if (state.isPlaying) {
-                            musicController.pause();
-                          } else if (state.currentTrack != null) {
-                            musicController.resume();
-                          } else if (tracks.isNotEmpty) {
-                            musicController.playTrack(tracks[0]);
-                          }
-                        },
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.skip_next),
-                        onPressed: state.currentIndex < tracks.length - 1
-                            ? () => musicController.next()
-                            : null,
-                      ),
-                    ],
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: 24),
-          // Playlist section
-          Text('Top 20 India', style: Theme.of(context).textTheme.titleLarge),
-          const SizedBox(height: 12),
-          ListView.separated(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: tracks.length,
-            separatorBuilder: (_, _) => const Divider(height: 0.5),
-            itemBuilder: (context, index) {
-              final track = tracks[index];
-              final isCurrentTrack = state.currentTrack?.id == track.id;
+            const SizedBox(height: 24),
+            // Playlist section
+            Text('Top 20 India', style: Theme.of(context).textTheme.titleLarge),
+            const SizedBox(height: 12),
+            ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: tracks.length,
+              separatorBuilder: (_, _) => const Divider(height: 0.5),
+              itemBuilder: (context, index) {
+                final track = tracks[index];
+                final isCurrentTrack = state.currentTrack?.id == track.id;
 
-              return ListTile(
-                leading: SizedBox(
-                  width: 48,
-                  height: 48,
-                  child: track.albumArt != null
-                      ? Image.network(track.albumArt!, fit: BoxFit.cover)
-                      : Container(
-                          color: Colors.grey[300],
-                          child: const Icon(Icons.music_note, size: 24),
-                        ),
-                ),
-                title: Text(
-                  track.title,
-                  style: TextStyle(
-                    fontWeight: isCurrentTrack
-                        ? FontWeight.bold
-                        : FontWeight.normal,
-                    color: isCurrentTrack
-                        ? Theme.of(context).primaryColor
-                        : null,
+                return ListTile(
+                  leading: SizedBox(
+                    width: 48,
+                    height: 48,
+                    child: track.albumArt != null
+                        ? Image.network(track.albumArt!, fit: BoxFit.cover)
+                        : Container(
+                            color: Colors.grey[300],
+                            child: const Icon(Icons.music_note, size: 24),
+                          ),
                   ),
-                ),
-                subtitle: Text(track.artist),
-                trailing: isCurrentTrack
-                    ? Icon(
-                        state.isPlaying ? Icons.volume_up : Icons.pause,
-                        color: Theme.of(context).primaryColor,
-                      )
-                    : null,
-                onTap: () => musicController.playTrack(track),
-              );
-            },
-          ),
-        ],
+                  title: Text(
+                    track.title,
+                    style: TextStyle(
+                      fontWeight: isCurrentTrack
+                          ? FontWeight.bold
+                          : FontWeight.normal,
+                      color: isCurrentTrack
+                          ? Theme.of(context).primaryColor
+                          : null,
+                    ),
+                  ),
+                  subtitle: Text(track.artist),
+                  trailing: isCurrentTrack
+                      ? Icon(
+                          state.isPlaying ? Icons.volume_up : Icons.pause,
+                          color: Theme.of(context).primaryColor,
+                        )
+                      : null,
+                  onTap: () => musicController.playTrack(track),
+                );
+              },
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -344,169 +352,173 @@ class _MusicPlayerUI extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Now playing card
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                children: [
-                  // Album art
-                  Container(
-                    width: double.infinity,
-                    height: 200,
-                    decoration: BoxDecoration(
-                      color: Colors.grey.withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: state.currentTrack?.albumArt != null
-                        ? ClipRRect(
-                            borderRadius: BorderRadius.circular(12),
-                            child: Image.network(
-                              state.currentTrack!.albumArt!,
-                              fit: BoxFit.cover,
-                            ),
-                          )
-                        : const Icon(
-                            Icons.music_note,
-                            size: 64,
-                            color: Colors.grey,
-                          ),
-                  ),
-                  const SizedBox(height: 16),
-                  // Track info
-                  Text(
-                    state.currentTrack?.title ?? 'No track playing',
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    state.currentTrack?.artist ?? '—',
-                    style: const TextStyle(color: Colors.grey),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 16),
-                  // Progress bar
-                  if (state.currentTrack != null)
-                    Column(
-                      children: [
-                        LinearProgressIndicator(
-                          value: state.duration.inMilliseconds > 0
-                              ? state.position.inMilliseconds /
-                                    state.duration.inMilliseconds
-                              : 0,
+    return ResponsiveCenter(
+      maxWidth: ResponsiveBreakpoints.textMaxWidth,
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Now playing card
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                    // Album art with aspect ratio
+                    AspectRatio(
+                      aspectRatio: 1.0,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.grey.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                        const SizedBox(height: 8),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              _formatDuration(state.position),
-                              style: const TextStyle(fontSize: 12),
-                            ),
-                            Text(
-                              _formatDuration(state.duration),
-                              style: const TextStyle(fontSize: 12),
-                            ),
-                          ],
+                        child: state.currentTrack?.albumArt != null
+                            ? ClipRRect(
+                                borderRadius: BorderRadius.circular(12),
+                                child: Image.network(
+                                  state.currentTrack!.albumArt!,
+                                  fit: BoxFit.cover,
+                                ),
+                              )
+                            : const Icon(
+                                Icons.music_note,
+                                size: 64,
+                                color: Colors.grey,
+                              ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    // Track info
+                    Text(
+                      state.currentTrack?.title ?? 'No track playing',
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      state.currentTrack?.artist ?? '—',
+                      style: const TextStyle(color: Colors.grey),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 16),
+                    // Progress bar
+                    if (state.currentTrack != null)
+                      Column(
+                        children: [
+                          LinearProgressIndicator(
+                            value: state.duration.inMilliseconds > 0
+                                ? state.position.inMilliseconds /
+                                      state.duration.inMilliseconds
+                                : 0,
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                _formatDuration(state.position),
+                                style: const TextStyle(fontSize: 12),
+                              ),
+                              Text(
+                                _formatDuration(state.duration),
+                                style: const TextStyle(fontSize: 12),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    const SizedBox(height: 16),
+                    // Player controls
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.skip_previous),
+                          onPressed: state.currentIndex > 0
+                              ? () => musicController.previous()
+                              : null,
+                        ),
+                        IconButton(
+                          icon: Icon(
+                            state.isPlaying
+                                ? Icons.pause_circle
+                                : Icons.play_circle,
+                            size: 48,
+                          ),
+                          onPressed: () {
+                            if (state.isPlaying) {
+                              musicController.pause();
+                            } else if (state.currentTrack != null) {
+                              musicController.resume();
+                            } else if (tracks.isNotEmpty) {
+                              musicController.playTrack(tracks[0]);
+                            }
+                          },
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.skip_next),
+                          onPressed: state.currentIndex < tracks.length - 1
+                              ? () => musicController.next()
+                              : null,
                         ),
                       ],
                     ),
-                  const SizedBox(height: 16),
-                  // Player controls
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.skip_previous),
-                        onPressed: state.currentIndex > 0
-                            ? () => musicController.previous()
-                            : null,
-                      ),
-                      IconButton(
-                        icon: Icon(
-                          state.isPlaying
-                              ? Icons.pause_circle
-                              : Icons.play_circle,
-                          size: 48,
-                        ),
-                        onPressed: () {
-                          if (state.isPlaying) {
-                            musicController.pause();
-                          } else if (state.currentTrack != null) {
-                            musicController.resume();
-                          } else if (tracks.isNotEmpty) {
-                            musicController.playTrack(tracks[0]);
-                          }
-                        },
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.skip_next),
-                        onPressed: state.currentIndex < tracks.length - 1
-                            ? () => musicController.next()
-                            : null,
-                      ),
-                    ],
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: 24),
-          // Playlist section
-          Text('Top 20 India', style: Theme.of(context).textTheme.titleLarge),
-          const SizedBox(height: 12),
-          ListView.separated(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: tracks.length,
-            separatorBuilder: (_, __) => const Divider(height: 0.5),
-            itemBuilder: (context, index) {
-              final track = tracks[index];
-              final isCurrentTrack = state.currentTrack?.id == track.id;
+            const SizedBox(height: 24),
+            // Playlist section
+            Text('Top 20 India', style: Theme.of(context).textTheme.titleLarge),
+            const SizedBox(height: 12),
+            ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: tracks.length,
+              separatorBuilder: (_, __) => const Divider(height: 0.5),
+              itemBuilder: (context, index) {
+                final track = tracks[index];
+                final isCurrentTrack = state.currentTrack?.id == track.id;
 
-              return ListTile(
-                leading: SizedBox(
-                  width: 48,
-                  height: 48,
-                  child: track.albumArt != null
-                      ? Image.network(track.albumArt!, fit: BoxFit.cover)
-                      : Container(
-                          color: Colors.grey[300],
-                          child: const Icon(Icons.music_note, size: 24),
-                        ),
-                ),
-                title: Text(
-                  track.title,
-                  style: TextStyle(
-                    fontWeight: isCurrentTrack
-                        ? FontWeight.bold
-                        : FontWeight.normal,
-                    color: isCurrentTrack
-                        ? Theme.of(context).primaryColor
-                        : null,
+                return ListTile(
+                  leading: SizedBox(
+                    width: 48,
+                    height: 48,
+                    child: track.albumArt != null
+                        ? Image.network(track.albumArt!, fit: BoxFit.cover)
+                        : Container(
+                            color: Colors.grey[300],
+                            child: const Icon(Icons.music_note, size: 24),
+                          ),
                   ),
-                ),
-                subtitle: Text(track.artist),
-                trailing: isCurrentTrack
-                    ? Icon(
-                        state.isPlaying ? Icons.volume_up : Icons.pause,
-                        color: Theme.of(context).primaryColor,
-                      )
-                    : null,
-                onTap: () => musicController.playTrack(track),
-              );
-            },
-          ),
-        ],
+                  title: Text(
+                    track.title,
+                    style: TextStyle(
+                      fontWeight: isCurrentTrack
+                          ? FontWeight.bold
+                          : FontWeight.normal,
+                      color: isCurrentTrack
+                          ? Theme.of(context).primaryColor
+                          : null,
+                    ),
+                  ),
+                  subtitle: Text(track.artist),
+                  trailing: isCurrentTrack
+                      ? Icon(
+                          state.isPlaying ? Icons.volume_up : Icons.pause,
+                          color: Theme.of(context).primaryColor,
+                        )
+                      : null,
+                  onTap: () => musicController.playTrack(track),
+                );
+              },
+            ),
+          ],
+        ),
       ),
     );
   }

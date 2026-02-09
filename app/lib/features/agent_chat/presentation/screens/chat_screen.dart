@@ -500,7 +500,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           onSubmitted: (word) {
             if (word.trim().isNotEmpty) {
               Navigator.of(context).pop();
-              DictionaryPopup.showBottomSheet(context, word.trim());
+              DictionaryPopup.showAdaptive(context, word.trim());
             }
           },
         ),
@@ -514,7 +514,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               final word = controller.text.trim();
               if (word.isNotEmpty) {
                 Navigator.of(context).pop();
-                DictionaryPopup.showBottomSheet(context, word);
+                DictionaryPopup.showAdaptive(context, word);
               }
             },
             icon: const Icon(Icons.search),

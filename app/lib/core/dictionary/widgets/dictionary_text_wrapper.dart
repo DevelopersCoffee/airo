@@ -152,7 +152,7 @@ class _DictionarySelectionAreaState extends State<DictionarySelectionArea> {
     final cleanWord = word.replaceAll(RegExp(r'[^\w]'), '');
     if (cleanWord.isEmpty) return;
 
-    DictionaryPopup.showBottomSheet(context, cleanWord);
+    DictionaryPopup.showAdaptive(context, cleanWord);
   }
 
   void _showWordPicker(BuildContext context, String text) {
@@ -223,7 +223,7 @@ class _WordPickerSheet extends StatelessWidget {
                   label: Text(word),
                   onPressed: () {
                     Navigator.of(context).pop();
-                    DictionaryPopup.showBottomSheet(context, word);
+                    DictionaryPopup.showAdaptive(context, word);
                   },
                 );
               }).toList(),
@@ -281,7 +281,7 @@ class _QuickLookupDialogState extends State<_QuickLookupDialog> {
     if (word.isEmpty) return;
 
     Navigator.of(context).pop();
-    DictionaryPopup.showBottomSheet(context, word);
+    DictionaryPopup.showAdaptive(context, word);
   }
 
   @override
