@@ -34,13 +34,35 @@ android {
         multiDexEnabled = true
     }
 
+    // ABI Splitting - Generate separate APKs for each architecture
+    // This reduces APK size by ~50-70% compared to universal APK
+    splits {
+        abi {
+            isEnable = true
+            reset()
+            // Only include ARM architectures (covers 99%+ of Android devices)
+            // x86/x86_64 excluded as they're primarily for emulators
+            include("armeabi-v7a", "arm64-v8a")
+            // Don't generate universal APK for release (use AAB for Play Store)
+            isUniversalApk = false
+        }
+    }
+
     buildTypes {
+        debug {
+            // Enable test plugins for debug/test builds
+        }
         release {
             // TODO: Add your own signing config for the release build.
             // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.getByName("debug")
 
-            // ProGuard rules for ML Kit and Firebase
+            // Enable code shrinking (R8/ProGuard)
+            isMinifyEnabled = true
+            // Enable resource shrinking (removes unused resources)
+            isShrinkResources = true
+
+            // ProGuard rules for ML Kit, Firebase, and Flutter
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
