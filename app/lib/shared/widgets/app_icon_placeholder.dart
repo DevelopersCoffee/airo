@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 
 /// A shared widget that displays the Airo app icon as a placeholder.
-/// 
+///
 /// This widget centralizes app icon usage to:
 /// 1. Reduce code duplication across the app
 /// 2. Enable easy asset optimization (single reference point)
 /// 3. Provide consistent fallback behavior
-/// 
+///
 /// Usage:
 /// ```dart
 /// AppIconPlaceholder(size: 48)
@@ -46,10 +46,7 @@ class AppIconPlaceholder extends StatelessWidget {
   });
 
   /// Creates a placeholder for channel icons (with standard channel size)
-  factory AppIconPlaceholder.channel({
-    Key? key,
-    bool isAudioOnly = false,
-  }) {
+  factory AppIconPlaceholder.channel({Key? key, bool isAudioOnly = false}) {
     return AppIconPlaceholder(
       key: key,
       padding: const EdgeInsets.all(8),
@@ -66,11 +63,7 @@ class AppIconPlaceholder extends StatelessWidget {
       key: key,
       size: 120,
       padding: const EdgeInsets.all(16),
-      fallbackIcon: const Icon(
-        Icons.live_tv,
-        color: Colors.white54,
-        size: 64,
-      ),
+      fallbackIcon: const Icon(Icons.live_tv, color: Colors.white54, size: 64),
     );
   }
 
@@ -87,12 +80,7 @@ class AppIconPlaceholder extends StatelessWidget {
         cacheWidth: size != null ? (size! * 2).toInt() : null,
         cacheHeight: size != null ? (size! * 2).toInt() : null,
         errorBuilder: (_, __, ___) =>
-            fallbackIcon ??
-            Icon(
-              Icons.image,
-              color: Colors.grey,
-              size: size,
-            ),
+            fallbackIcon ?? Icon(Icons.image, color: Colors.grey, size: size),
       ),
     );
   }
@@ -100,10 +88,6 @@ class AppIconPlaceholder extends StatelessWidget {
   /// Precache the app icon for faster loading
   /// Call this in main.dart or during app initialization
   static Future<void> precache(BuildContext context) async {
-    await precacheImage(
-      const AssetImage(assetPath),
-      context,
-    );
+    await precacheImage(const AssetImage(assetPath), context);
   }
 }
-
