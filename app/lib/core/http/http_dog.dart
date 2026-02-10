@@ -19,6 +19,7 @@
 /// print(status.message); // "Not Found"
 /// print(status.dogImageUrl); // "https://http.dog/404.jpg"
 /// ```
+library;
 
 export 'http_status.dart';
 export 'widgets/http_dog_image.dart';

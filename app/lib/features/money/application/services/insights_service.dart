@@ -3,7 +3,6 @@ import '../../data/repositories/local_transactions_repository.dart'
     if (dart.library.html) '../../data/repositories/local_transactions_repository_stub.dart';
 import '../../data/repositories/local_budgets_repository.dart'
     if (dart.library.html) '../../data/repositories/local_budgets_repository_stub.dart';
-import '../../domain/models/money_models.dart';
 import '../../domain/models/insight_models.dart';
 import '../../domain/repositories/money_repositories.dart';
 

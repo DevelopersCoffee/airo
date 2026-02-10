@@ -16,7 +16,6 @@ class _HttpStatusReferenceScreenState extends State<HttpStatusReferenceScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final statuses = _selectedCategory == null
         ? HttpStatusCodes.allStatuses
         : HttpStatusCodes.getByCategory(_selectedCategory!);

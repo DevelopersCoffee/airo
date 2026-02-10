@@ -171,7 +171,9 @@ class _TxnTile extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 8),
       child: ListTile(
         leading: CircleAvatar(
-          backgroundColor: (isExp ? Colors.red : Colors.green).withOpacity(0.1),
+          backgroundColor: (isExp ? Colors.red : Colors.green).withValues(
+            alpha: 0.1,
+          ),
           child: Icon(
             isExp ? Icons.arrow_upward : Icons.arrow_downward,
             color: isExp ? Colors.red : Colors.green,

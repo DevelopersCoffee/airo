@@ -44,7 +44,7 @@ class ValidationError extends MoneyError {
 
 /// Error when database operation fails
 class DatabaseError extends MoneyError {
-  const DatabaseError(String message, [Object? cause]) : super(message, cause);
+  const DatabaseError(super.message, [super.cause]);
 }
 
 /// Error when sync operation fails

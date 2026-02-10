@@ -26,7 +26,7 @@ final beatsRecoveryStatusProvider = Provider<RecoveryStatus>((ref) {
   return recovery.when(
     data: (event) => event.status,
     loading: () => RecoveryStatus.idle,
-    error: (_, __) => RecoveryStatus.idle,
+    error: (_, _) => RecoveryStatus.idle,
   );
 });
 
@@ -43,6 +43,6 @@ final beatsRecoveryMessageProvider = Provider<String?>((ref) {
       return event.message;
     },
     loading: () => null,
-    error: (_, __) => null,
+    error: (_, _) => null,
   );
 });

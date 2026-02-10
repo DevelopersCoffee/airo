@@ -171,7 +171,7 @@ class _ChannelListTile extends ConsumerWidget {
               ? Image.network(
                   channel.logoUrl!,
                   fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => _buildDefaultIcon(),
+                  errorBuilder: (_, _, _) => _buildDefaultIcon(),
                 )
               : _buildDefaultIcon(),
         ),

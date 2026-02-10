@@ -206,7 +206,6 @@ class HttpDogErrorScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final status = HttpStatusCodes.fromCode(statusCode);
     final theme = Theme.of(context);
 
     return Scaffold(

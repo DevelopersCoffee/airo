@@ -48,6 +48,7 @@ final friendControllerProvider = Provider<FriendController>((ref) {
 
 /// Friend controller for managing friend operations
 class FriendController {
+  // ignore: unused_field - reserved for future implementation
   final Ref _ref;
 
   FriendController(this._ref);

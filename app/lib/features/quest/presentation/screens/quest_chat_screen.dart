@@ -235,11 +235,14 @@ class _QuestChatScreenState extends ConsumerState<QuestChatScreen> {
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [color.withOpacity(0.1), color.withOpacity(0.05)],
+                    colors: [
+                      color.withValues(alpha: 0.1),
+                      color.withValues(alpha: 0.05),
+                    ],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
-                  border: Border.all(color: color.withOpacity(0.3)),
+                  border: Border.all(color: color.withValues(alpha: 0.3)),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Column(
@@ -253,7 +256,7 @@ class _QuestChatScreenState extends ConsumerState<QuestChatScreen> {
                       style: TextStyle(
                         fontWeight: FontWeight.w600,
                         fontSize: 13,
-                        color: color.withOpacity(0.9),
+                        color: color.withValues(alpha: 0.9),
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -285,7 +288,7 @@ class _QuestChatScreenState extends ConsumerState<QuestChatScreen> {
         title: questAsync.when(
           data: (quest) => Text(quest?.title ?? 'Quest'),
           loading: () => const Text('Loading...'),
-          error: (_, __) => const Text('Quest'),
+          error: (_, _) => const Text('Quest'),
         ),
         centerTitle: true,
         actions: [
@@ -533,6 +536,7 @@ class _QuestChatScreenState extends ConsumerState<QuestChatScreen> {
               )).future,
             );
             if (mounted) {
+              // ignore: use_build_context_synchronously
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Reminder created successfully!')),
               );
@@ -540,6 +544,7 @@ class _QuestChatScreenState extends ConsumerState<QuestChatScreen> {
           } catch (e) {
             if (mounted) {
               ScaffoldMessenger.of(
+                // ignore: use_build_context_synchronously
                 context,
               ).showSnackBar(SnackBar(content: Text('Error: $e')));
             }

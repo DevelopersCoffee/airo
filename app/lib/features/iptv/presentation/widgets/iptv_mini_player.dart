@@ -62,7 +62,7 @@ class IPTVMiniPlayer extends ConsumerWidget {
                       ? Image.network(
                           state.currentChannel!.logoUrl!,
                           fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => _buildDefaultIcon(),
+                          errorBuilder: (_, _, _) => _buildDefaultIcon(),
                         )
                       : _buildDefaultIcon(),
                 ),
@@ -123,7 +123,7 @@ class IPTVMiniPlayer extends ConsumerWidget {
         );
       },
       loading: () => const SizedBox.shrink(),
-      error: (_, __) => const SizedBox.shrink(),
+      error: (_, _) => const SizedBox.shrink(),
     );
   }
 

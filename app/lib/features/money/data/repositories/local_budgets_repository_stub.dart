@@ -1,5 +1,6 @@
 /// Stub for LocalBudgetsRepository on web platform
 /// Web uses FakeBudgetsRepository from money_provider.dart instead
+library;
 
 import '../../domain/models/money_models.dart';
 import '../../domain/repositories/money_repositories.dart';

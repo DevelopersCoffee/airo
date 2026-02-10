@@ -56,7 +56,7 @@ final isBeatsPlayingProvider = Provider<bool>((ref) {
   return playbackState.when(
     data: (state) => state.playing,
     loading: () => false,
-    error: (_, __) => false,
+    error: (_, _) => false,
   );
 });
 

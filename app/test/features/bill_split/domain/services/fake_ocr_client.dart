@@ -2,6 +2,7 @@
 ///
 /// This client returns pre-defined OCR results instead of using ML Kit,
 /// allowing tests to be fast, deterministic, and run without device dependencies.
+library;
 
 /// Result of OCR processing
 class OcrResult {

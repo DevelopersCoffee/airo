@@ -1,4 +1,6 @@
 /// Stub for SyncService on web platform
+library;
+
 import 'dart:async';
 
 /// Stub service for web - no-op sync

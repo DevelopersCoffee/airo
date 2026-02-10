@@ -31,7 +31,6 @@ typedef MoveEventListener = void Function(MoveEvent event);
 class MoveEventDispatcher extends ChangeNotifier {
   final List<MoveEventListener> _listeners = [];
   final Map<PieceType, DateTime> _lastPlayedTime = {};
-  static const Duration _globalCooldown = Duration(milliseconds: 300);
   static const Duration _pieceCooldown = Duration(milliseconds: 500);
 
   /// Add listener for move events

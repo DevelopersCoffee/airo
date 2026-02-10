@@ -26,7 +26,9 @@ class DictionaryTextWrapper extends StatelessWidget {
 
     return DefaultTextStyle.merge(
       child: DefaultSelectionStyle(
-        selectionColor: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+        selectionColor: Theme.of(
+          context,
+        ).colorScheme.primary.withValues(alpha: 0.3),
         child: child,
       ),
     );

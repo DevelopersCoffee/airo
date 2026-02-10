@@ -1,4 +1,6 @@
 /// Stub for InsightsService on web platform
+library;
+
 import '../../domain/models/insight_models.dart';
 
 /// Stub service for web - returns empty/default data

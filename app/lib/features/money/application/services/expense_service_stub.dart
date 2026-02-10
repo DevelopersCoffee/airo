@@ -1,4 +1,6 @@
 /// Stub for ExpenseService on web platform
+library;
+
 import '../../../../core/utils/result.dart';
 import '../../domain/models/money_models.dart';
 

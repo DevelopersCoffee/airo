@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'package:video_player/video_player.dart';
 import '../models/iptv_channel.dart';
 import '../models/streaming_state.dart';
 

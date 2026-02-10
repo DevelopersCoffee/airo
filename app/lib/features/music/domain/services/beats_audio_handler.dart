@@ -1,5 +1,6 @@
 import 'package:audio_service/audio_service.dart';
 import 'package:just_audio/just_audio.dart';
+// ignore: unused_import, depend_on_referenced_packages
 import 'package:rxdart/rxdart.dart';
 
 /// BeatsAudioHandler - Enables background playback and media controls

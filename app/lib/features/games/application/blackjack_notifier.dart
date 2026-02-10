@@ -1,6 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../domain/models/blackjack_model.dart';
-import '../domain/models/card_model.dart';
 import '../domain/services/deck_of_cards_service.dart';
 
 /// Provider for Blackjack game settings
@@ -68,9 +67,6 @@ class BlackjackNotifier extends StateNotifier<BlackjackGame?> {
       final playerHand = [cards[0], cards[2]];
       final dealerHand = [cards[1], cards[3]];
 
-      final playerValue = BlackjackHandCalculator.calculateHandValue(
-        playerHand,
-      );
       final isPlayerBlackjack = BlackjackHandCalculator.isBlackjack(playerHand);
 
       state = state!.copyWith(

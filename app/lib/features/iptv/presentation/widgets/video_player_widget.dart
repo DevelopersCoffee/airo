@@ -378,7 +378,7 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                 width: 120,
                 height: 120,
                 fit: BoxFit.contain,
-                errorBuilder: (_, __, ___) => _buildDefaultPlaceholder(),
+                errorBuilder: (_, _, _) => _buildDefaultPlaceholder(),
               )
             : _buildDefaultPlaceholder(),
       ),
@@ -432,7 +432,7 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                       state.currentChannel!.logoUrl!,
                       width: 32,
                       height: 32,
-                      errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                      errorBuilder: (_, _, _) => const SizedBox.shrink(),
                     ),
                   ),
                 const SizedBox(width: 8),

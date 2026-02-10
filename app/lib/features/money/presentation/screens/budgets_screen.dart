@@ -355,7 +355,7 @@ class _BudgetFormDialogState extends State<_BudgetFormDialog> {
           mainAxisSize: MainAxisSize.min,
           children: [
             DropdownButtonFormField<String>(
-              value: _tagController.text,
+              initialValue: _tagController.text,
               decoration: const InputDecoration(
                 labelText: 'Category',
                 border: OutlineInputBorder(),
@@ -384,8 +384,9 @@ class _BudgetFormDialogState extends State<_BudgetFormDialog> {
               validator: (value) {
                 if (value == null || value.isEmpty) return 'Enter a limit';
                 final amount = double.tryParse(value);
-                if (amount == null || amount <= 0)
+                if (amount == null || amount <= 0) {
                   return 'Enter a valid amount';
+                }
                 return null;
               },
             ),

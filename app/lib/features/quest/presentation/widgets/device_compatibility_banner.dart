@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+// ignore: unnecessary_import
 import 'package:flutter/foundation.dart';
 import '../../../../core/services/gemini_nano_service.dart';
 
