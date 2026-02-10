@@ -34,19 +34,9 @@ android {
         multiDexEnabled = true
     }
 
-    // ABI Splitting - Generate separate APKs for each architecture
-    // This reduces APK size by ~50-70% compared to universal APK
-    splits {
-        abi {
-            isEnable = true
-            reset()
-            // Only include ARM architectures (covers 99%+ of Android devices)
-            // x86/x86_64 excluded as they're primarily for emulators
-            include("armeabi-v7a", "arm64-v8a")
-            // Don't generate universal APK for release (use AAB for Play Store)
-            isUniversalApk = false
-        }
-    }
+    // NOTE: ABI splitting is handled by Flutter's --split-per-abi flag
+    // Do NOT add splits.abi here as it conflicts with Flutter's NDK filters
+    // See: https://developer.android.com/studio/build/configure-apk-splits
 
     buildTypes {
         debug {
