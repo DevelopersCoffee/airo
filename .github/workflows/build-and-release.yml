@@ -126,23 +126,33 @@ jobs:
             --dart-define=ENV=prod \
             --dart-define=DEMO_MODE=false
 
+      - name: Rename APK files with version
+        run: |
+          VERSION="${{ needs.changelog.outputs.version }}"
+          cd app/build/app/outputs/flutter-apk
+          mv app-arm64-v8a-release.apk "airo-${VERSION}-arm64-v8a.apk"
+          mv app-armeabi-v7a-release.apk "airo-${VERSION}-armeabi-v7a.apk"
+          mv app-x86_64-release.apk "airo-${VERSION}-x86_64.apk" 2>/dev/null || true
+          cd ../../bundle/release
+          mv app-release.aab "airo-${VERSION}.aab"
+
       - name: Upload APK (arm64-v8a)
         uses: actions/upload-artifact@v6
         with:
           name: android-apk-arm64
-          path: app/build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
+          path: app/build/app/outputs/flutter-apk/airo-*-arm64-v8a.apk
 
       - name: Upload APK (armeabi-v7a)
         uses: actions/upload-artifact@v6
         with:
           name: android-apk-arm32
-          path: app/build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk
+          path: app/build/app/outputs/flutter-apk/airo-*-armeabi-v7a.apk
 
       - name: Upload AAB
         uses: actions/upload-artifact@v6
         with:
           name: android-aab
-          path: app/build/app/outputs/bundle/release/app-release.aab
+          path: app/build/app/outputs/bundle/release/airo-*.aab
 
   # ============================================
   # Build iOS
@@ -185,17 +195,18 @@ jobs:
 
       - name: Create IPA
         run: |
+          VERSION="${{ needs.changelog.outputs.version }}"
           cd app/build/ios/Release-iphoneos
           mkdir -p Payload
           mv Runner.app Payload/
-          zip -r -q app-release.ipa Payload
-          mv app-release.ipa ../../../
+          zip -r -q "airo-${VERSION}-ios.ipa" Payload
+          mv "airo-${VERSION}-ios.ipa" ../../../
 
       - name: Upload IPA
         uses: actions/upload-artifact@v6
         with:
           name: ios-ipa
-          path: app/app-release.ipa
+          path: app/airo-*-ios.ipa
 
   # ============================================
   # Build Web
@@ -238,14 +249,15 @@ jobs:
 
       - name: Create Web Archive
         run: |
+          VERSION="${{ needs.changelog.outputs.version }}"
           cd app/build/web
-          zip -r -q ../../airo-web-release.zip .
+          zip -r -q "../../airo-${VERSION}-web.zip" .
 
       - name: Upload Web
         uses: actions/upload-artifact@v6
         with:
           name: web-build
-          path: app/airo-web-release.zip
+          path: app/airo-*-web.zip
 
   # ============================================
   # Build Windows
@@ -279,14 +291,15 @@ jobs:
 
       - name: Create Windows Archive
         run: |
+          $VERSION = "${{ needs.changelog.outputs.version }}"
           cd app/build/windows/x64/runner/Release
-          powershell Compress-Archive -Path . -DestinationPath ../../../../../airo-windows-release.zip
+          powershell Compress-Archive -Path . -DestinationPath "../../../../../airo-${VERSION}-windows-x64.zip"
 
       - name: Upload Windows
         uses: actions/upload-artifact@v6
         with:
           name: windows-build
-          path: app/airo-windows-release.zip
+          path: app/airo-*-windows-x64.zip
 
   # ============================================
   # Build Linux
@@ -334,14 +347,15 @@ jobs:
 
       - name: Create Linux Archive
         run: |
+          VERSION="${{ needs.changelog.outputs.version }}"
           cd app/build/linux/x64/release/bundle
-          tar -czf ../../../../airo-linux-release.tar.gz .
+          tar -czf "../../../../airo-${VERSION}-linux-x64.tar.gz" .
 
       - name: Upload Linux
         uses: actions/upload-artifact@v6
         with:
           name: linux-build
-          path: app/airo-linux-release.tar.gz
+          path: app/airo-*-linux-x64.tar.gz
 
   # ============================================
   # Create GitHub Release
@@ -375,22 +389,22 @@ jobs:
 
           | Platform | File | Description |
           |----------|------|-------------|
-          | Android | \`app-arm64-v8a-release.apk\` | For modern 64-bit devices (recommended) |
-          | Android | \`app-armeabi-v7a-release.apk\` | For older 32-bit devices |
-          | Android | \`app-release.aab\` | For Google Play Store |
-          | iOS | \`app-release.ipa\` | Requires signing |
-          | Web | \`airo-web-release.zip\` | Run in browser |
-          | Windows | \`airo-windows-release.zip\` | Windows 10/11 |
-          | Linux | \`airo-linux-release.tar.gz\` | Linux x64 |
+          | Android | \`airo-${VERSION}-arm64-v8a.apk\` | For modern 64-bit devices (recommended) |
+          | Android | \`airo-${VERSION}-armeabi-v7a.apk\` | For older 32-bit devices |
+          | Android | \`airo-${VERSION}.aab\` | For Google Play Store |
+          | iOS | \`airo-${VERSION}-ios.ipa\` | Requires signing |
+          | Web | \`airo-${VERSION}-web.zip\` | Run in browser |
+          | Windows | \`airo-${VERSION}-windows-x64.zip\` | Windows 10/11 |
+          | Linux | \`airo-${VERSION}-linux-x64.tar.gz\` | Linux x64 |
 
           ## 🚀 Quick Start
 
           ### Android
           \`\`\`bash
           # For most modern devices (Pixel, Samsung Galaxy S/A series, etc.)
-          adb install app-arm64-v8a-release.apk
+          adb install airo-${VERSION}-arm64-v8a.apk
           # For older 32-bit devices
-          adb install app-armeabi-v7a-release.apk
+          adb install airo-${VERSION}-armeabi-v7a.apk
           \`\`\`
 
           ### Web
@@ -398,10 +412,9 @@ jobs:
 
           ## 📋 Features
           - 💰 Coins - Money management & bill splitting
-          - 🤖 Quest - AI-powered Q&A with Gemini Nano
-          - 🎵 Beats - Music streaming
+          - 🤖 Mind - AI-powered Q&A with Gemini Nano
+          - 🎵 Live - Music & IPTV streaming
           - 🎮 Arena - Games
-          - 🏷️ Loot - Deals feed
           - 📖 Tales - Reader
 
           ## 🔐 Security
@@ -413,19 +426,24 @@ jobs:
           *Built with Flutter ${{ env.FLUTTER_VERSION }}*
           EOF
 
+      - name: List downloaded artifacts
+        run: |
+          echo "=== Downloaded artifacts ==="
+          find . -type f -name "airo-*" | head -50
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.changelog.outputs.version }}
-          name: Airo ${{ needs.changelog.outputs.version }}
+          name: Airo Super App ${{ needs.changelog.outputs.version }}
           files: |
-            android-apk-arm64/app-arm64-v8a-release.apk
-            android-apk-arm32/app-armeabi-v7a-release.apk
-            android-aab/app-release.aab
-            ios-ipa/app-release.ipa
-            web-build/airo-web-release.zip
-            windows-build/airo-windows-release.zip
-            linux-build/airo-linux-release.tar.gz
+            android-apk-arm64/airo-*-arm64-v8a.apk
+            android-apk-arm32/airo-*-armeabi-v7a.apk
+            android-aab/airo-*.aab
+            ios-ipa/airo-*-ios.ipa
+            web-build/airo-*-web.zip
+            windows-build/airo-*-windows-x64.zip
+            linux-build/airo-*-linux-x64.tar.gz
           body_path: RELEASE_NOTES.md
           draft: false
           prerelease: ${{ github.event.inputs.prerelease == 'true' }}
