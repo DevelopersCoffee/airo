@@ -58,12 +58,12 @@ jobs:
           echo "EOF" >> $GITHUB_OUTPUT
 
   # ============================================
-  # Build Android (APK + AAB)
+  # Build Android ARM64 (APK + AAB) - Modern 64-bit devices
+  # This is the primary Android build - includes AAB for Play Store
   # ============================================
-  build-android:
+  build-android-arm64:
     runs-on: ubuntu-latest
     needs: changelog
-    # Allow Android build to fail - don't block release for slow builds
     continue-on-error: true
     steps:
       - uses: actions/checkout@v6
@@ -94,7 +94,7 @@ jobs:
           path: |
             ~/.gradle/caches
             ~/.gradle/wrapper
-          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          key: gradle-${{ runner.os }}-arm64-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
           restore-keys: gradle-${{ runner.os }}-
 
       - name: Create Firebase Config
@@ -114,51 +114,28 @@ jobs:
           cd ../core_auth && flutter pub get
           cd ../../app && flutter pub get
 
-      - name: Build APK (Release - Split per ABI)
-        id: build-apk
+      - name: Build APK (arm64-v8a)
         run: |
           cd app
-          # Disable Gradle file watching to avoid "Already watching path" error
-          export GRADLE_OPTS="-Dorg.gradle.watch.fs=false -Xmx4g"
-          flutter build apk --release --split-per-abi \
+          export GRADLE_OPTS="-Dorg.gradle.watch.fs=false -Xmx4g -Dorg.gradle.parallel=true"
+          flutter build apk --release \
+            --target-platform android-arm64 \
             --dart-define=ENV=prod \
-            --dart-define=DEMO_MODE=false || true
-          # Verify APKs were built despite potential Gradle errors
-          if [ -f "build/app/outputs/flutter-apk/app-arm64-v8a-release.apk" ]; then
-            echo "APK build successful"
-          else
-            echo "APK not found, retrying..."
-            flutter clean
-            flutter pub get
-            flutter build apk --release --split-per-abi \
-              --dart-define=ENV=prod \
-              --dart-define=DEMO_MODE=false
-          fi
+            --dart-define=DEMO_MODE=false
 
-      - name: Build AAB (Release)
+      - name: Build AAB (Release - All ABIs)
         run: |
           cd app
-          export GRADLE_OPTS="-Dorg.gradle.watch.fs=false -Xmx4g"
+          export GRADLE_OPTS="-Dorg.gradle.watch.fs=false -Xmx4g -Dorg.gradle.parallel=true"
           flutter build appbundle --release \
             --dart-define=ENV=prod \
-            --dart-define=DEMO_MODE=false || true
-          # Verify AAB was built
-          if [ -f "build/app/outputs/bundle/release/app-release.aab" ]; then
-            echo "AAB build successful"
-          else
-            echo "AAB not found, retrying..."
-            flutter build appbundle --release \
-              --dart-define=ENV=prod \
-              --dart-define=DEMO_MODE=false
-          fi
+            --dart-define=DEMO_MODE=false
 
-      - name: Rename APK files with version
+      - name: Rename artifacts with version
         run: |
           VERSION="${{ needs.changelog.outputs.version }}"
           cd app/build/app/outputs/flutter-apk
-          mv app-arm64-v8a-release.apk "airo-${VERSION}-arm64-v8a.apk"
-          mv app-armeabi-v7a-release.apk "airo-${VERSION}-armeabi-v7a.apk"
-          mv app-x86_64-release.apk "airo-${VERSION}-x86_64.apk" 2>/dev/null || true
+          mv app-release.apk "airo-${VERSION}-arm64-v8a.apk"
           cd ../../bundle/release
           mv app-release.aab "airo-${VERSION}.aab"
 
@@ -168,17 +145,165 @@ jobs:
           name: android-apk-arm64
           path: app/build/app/outputs/flutter-apk/airo-*-arm64-v8a.apk
 
+      - name: Upload AAB
+        uses: actions/upload-artifact@v6
+        with:
+          name: android-aab
+          path: app/build/app/outputs/bundle/release/airo-*.aab
+
+  # ============================================
+  # Build Android ARM32 (APK) - Older 32-bit devices
+  # ============================================
+  build-android-arm32:
+    runs-on: ubuntu-latest
+    needs: changelog
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: 'stable'
+          cache: true
+
+      - name: Cache pub dependencies
+        uses: actions/cache@v5
+        with:
+          path: ~/.pub-cache
+          key: pub-${{ runner.os }}-${{ hashFiles('**/pubspec.lock') }}
+          restore-keys: pub-${{ runner.os }}-
+
+      - name: Cache Gradle
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-arm32-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: gradle-${{ runner.os }}-
+
+      - name: Create Firebase Config
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        if: env.GOOGLE_SERVICES_JSON != ''
+        run: |
+          cd app
+          echo '${{ secrets.GOOGLE_SERVICES_JSON }}' | base64 -d > android/app/google-services.json
+
+      - name: Get dependencies
+        run: |
+          cd packages/core_domain && flutter pub get
+          cd ../core_ui && flutter pub get
+          cd ../core_data && flutter pub get
+          cd ../core_ai && flutter pub get
+          cd ../core_auth && flutter pub get
+          cd ../../app && flutter pub get
+
+      - name: Build APK (armeabi-v7a)
+        run: |
+          cd app
+          export GRADLE_OPTS="-Dorg.gradle.watch.fs=false -Xmx4g -Dorg.gradle.parallel=true"
+          flutter build apk --release \
+            --target-platform android-arm \
+            --dart-define=ENV=prod \
+            --dart-define=DEMO_MODE=false
+
+      - name: Rename APK with version
+        run: |
+          VERSION="${{ needs.changelog.outputs.version }}"
+          cd app/build/app/outputs/flutter-apk
+          mv app-release.apk "airo-${VERSION}-armeabi-v7a.apk"
+
       - name: Upload APK (armeabi-v7a)
         uses: actions/upload-artifact@v6
         with:
           name: android-apk-arm32
           path: app/build/app/outputs/flutter-apk/airo-*-armeabi-v7a.apk
 
-      - name: Upload AAB
+  # ============================================
+  # Build Android x86_64 (APK) - Emulators/Chromebooks
+  # ============================================
+  build-android-x64:
+    runs-on: ubuntu-latest
+    needs: changelog
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: 'stable'
+          cache: true
+
+      - name: Cache pub dependencies
+        uses: actions/cache@v5
+        with:
+          path: ~/.pub-cache
+          key: pub-${{ runner.os }}-${{ hashFiles('**/pubspec.lock') }}
+          restore-keys: pub-${{ runner.os }}-
+
+      - name: Cache Gradle
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-x64-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: gradle-${{ runner.os }}-
+
+      - name: Create Firebase Config
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        if: env.GOOGLE_SERVICES_JSON != ''
+        run: |
+          cd app
+          echo '${{ secrets.GOOGLE_SERVICES_JSON }}' | base64 -d > android/app/google-services.json
+
+      - name: Get dependencies
+        run: |
+          cd packages/core_domain && flutter pub get
+          cd ../core_ui && flutter pub get
+          cd ../core_data && flutter pub get
+          cd ../core_ai && flutter pub get
+          cd ../core_auth && flutter pub get
+          cd ../../app && flutter pub get
+
+      - name: Build APK (x86_64)
+        run: |
+          cd app
+          export GRADLE_OPTS="-Dorg.gradle.watch.fs=false -Xmx4g -Dorg.gradle.parallel=true"
+          flutter build apk --release \
+            --target-platform android-x64 \
+            --dart-define=ENV=prod \
+            --dart-define=DEMO_MODE=false
+
+      - name: Rename APK with version
+        run: |
+          VERSION="${{ needs.changelog.outputs.version }}"
+          cd app/build/app/outputs/flutter-apk
+          mv app-release.apk "airo-${VERSION}-x86_64.apk"
+
+      - name: Upload APK (x86_64)
         uses: actions/upload-artifact@v6
         with:
-          name: android-aab
-          path: app/build/app/outputs/bundle/release/airo-*.aab
+          name: android-apk-x64
+          path: app/build/app/outputs/flutter-apk/airo-*-x86_64.apk
 
   # ============================================
   # Build iOS
@@ -391,9 +516,9 @@ jobs:
   # Create GitHub Release
   # ============================================
   create-release:
-    needs: [changelog, build-android, build-ios, build-web, build-windows, build-linux]
+    needs: [changelog, build-android-arm64, build-android-arm32, build-android-x64, build-ios, build-web, build-windows, build-linux]
     runs-on: ubuntu-latest
-    # Always run release creation, even if some builds fail (iOS has known issues)
+    # Always run release creation, even if some builds fail (iOS/Android have known issues)
     if: always() && needs.changelog.result == 'success'
     steps:
       - uses: actions/checkout@v6
@@ -424,6 +549,7 @@ jobs:
           |----------|------|-------------|
           | Android | \`airo-${VERSION}-arm64-v8a.apk\` | For modern 64-bit devices (recommended) |
           | Android | \`airo-${VERSION}-armeabi-v7a.apk\` | For older 32-bit devices |
+          | Android | \`airo-${VERSION}-x86_64.apk\` | For emulators/Chromebooks |
           | Android | \`airo-${VERSION}.aab\` | For Google Play Store |
           | iOS | \`airo-${VERSION}-ios.ipa\` | Requires signing (may be unavailable) |
           | Web | \`airo-${VERSION}-web.zip\` | Run in browser |
@@ -440,6 +566,8 @@ jobs:
           adb install airo-${VERSION}-arm64-v8a.apk
           # For older 32-bit devices
           adb install airo-${VERSION}-armeabi-v7a.apk
+          # For emulators or Chromebooks
+          adb install airo-${VERSION}-x86_64.apk
           \`\`\`
 
           ### Web
