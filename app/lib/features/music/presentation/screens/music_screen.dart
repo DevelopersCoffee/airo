@@ -23,6 +23,7 @@ class MusicScreen extends ConsumerWidget {
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: () {
+              // ignore: unused_result
               ref.refresh(musicTracksProvider);
             },
           ),
@@ -46,6 +47,7 @@ class MusicScreen extends ConsumerWidget {
                   const SizedBox(height: 24),
                   ElevatedButton.icon(
                     onPressed: () {
+                      // ignore: unused_result
                       ref.refresh(musicTracksProvider);
                     },
                     icon: const Icon(Icons.refresh),
@@ -74,6 +76,7 @@ class MusicScreen extends ConsumerWidget {
               const SizedBox(height: 24),
               ElevatedButton.icon(
                 onPressed: () {
+                  // ignore: unused_result
                   ref.refresh(musicTracksProvider);
                 },
                 icon: const Icon(Icons.refresh),
@@ -479,7 +482,7 @@ class _MusicPlayerUI extends StatelessWidget {
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               itemCount: tracks.length,
-              separatorBuilder: (_, __) => const Divider(height: 0.5),
+              separatorBuilder: (_, _) => const Divider(height: 0.5),
               itemBuilder: (context, index) {
                 final track = tracks[index];
                 final isCurrentTrack = state.currentTrack?.id == track.id;

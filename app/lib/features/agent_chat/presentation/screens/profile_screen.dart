@@ -282,7 +282,7 @@ class ProfileScreen extends ConsumerWidget {
                     labelText: 'Quote Source',
                     border: OutlineInputBorder(),
                   ),
-                  value: preferences.quoteSource,
+                  initialValue: preferences.quoteSource,
                   items: const [
                     DropdownMenuItem(
                       value: 'fake',

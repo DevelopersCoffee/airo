@@ -111,6 +111,7 @@ class CardAssetManager {
         _imageCache[cardCode] = imageProvider;
 
         batchFutures.add(
+          // ignore: use_build_context_synchronously
           precacheImage(imageProvider, context).catchError((_) {
             // Ignore errors during preload
           }),
@@ -125,6 +126,7 @@ class CardAssetManager {
     // Preload card back
     final cardBackProvider = NetworkImage(DeckOfCardsService.cardBackImage);
     _imageCache['BACK'] = cardBackProvider;
+    // ignore: use_build_context_synchronously
     await precacheImage(cardBackProvider, context).catchError((_) {});
 
     _isPreloaded = true;

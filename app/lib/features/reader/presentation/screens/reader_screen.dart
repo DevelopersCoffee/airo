@@ -78,7 +78,7 @@ class ReaderScreen extends ConsumerWidget {
                               width: 60,
                               height: 80,
                               decoration: BoxDecoration(
-                                color: Colors.grey.withOpacity(0.2),
+                                color: Colors.grey.withValues(alpha: 0.2),
                                 borderRadius: BorderRadius.circular(4),
                               ),
                               child: const Icon(

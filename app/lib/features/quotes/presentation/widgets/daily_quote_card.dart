@@ -54,8 +54,8 @@ class DailyQuoteCard extends ConsumerWidget {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              colorScheme.primaryContainer.withOpacity(0.3),
-              colorScheme.secondaryContainer.withOpacity(0.3),
+              colorScheme.primaryContainer.withValues(alpha: 0.3),
+              colorScheme.secondaryContainer.withValues(alpha: 0.3),
             ],
           ),
         ),
@@ -92,7 +92,7 @@ class DailyQuoteCard extends ConsumerWidget {
                 children: [
                   Icon(
                     Icons.format_quote,
-                    color: colorScheme.primary.withOpacity(0.5),
+                    color: colorScheme.primary.withValues(alpha: 0.5),
                     size: 32,
                   ),
                   const SizedBox(width: 8),
@@ -118,7 +118,7 @@ class DailyQuoteCard extends ConsumerWidget {
                                 gradient: LinearGradient(
                                   colors: [
                                     colorScheme.primary,
-                                    colorScheme.primary.withOpacity(0),
+                                    colorScheme.primary.withValues(alpha: 0),
                                   ],
                                 ),
                               ),
@@ -163,8 +163,8 @@ class DailyQuoteCard extends ConsumerWidget {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              colorScheme.primaryContainer.withOpacity(0.3),
-              colorScheme.secondaryContainer.withOpacity(0.3),
+              colorScheme.primaryContainer.withValues(alpha: 0.3),
+              colorScheme.secondaryContainer.withValues(alpha: 0.3),
             ],
           ),
         ),
@@ -190,8 +190,8 @@ class DailyQuoteCard extends ConsumerWidget {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              colorScheme.primaryContainer.withOpacity(0.3),
-              colorScheme.secondaryContainer.withOpacity(0.3),
+              colorScheme.primaryContainer.withValues(alpha: 0.3),
+              colorScheme.secondaryContainer.withValues(alpha: 0.3),
             ],
           ),
         ),
@@ -201,7 +201,7 @@ class DailyQuoteCard extends ConsumerWidget {
             children: [
               Icon(
                 Icons.format_quote,
-                color: colorScheme.primary.withOpacity(0.5),
+                color: colorScheme.primary.withValues(alpha: 0.5),
                 size: 32,
               ),
               const SizedBox(width: 12),
@@ -258,10 +258,10 @@ class CompactQuoteCard extends ConsumerWidget {
       data: (quote) => Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: colorScheme.primaryContainer.withOpacity(0.3),
+          color: colorScheme.primaryContainer.withValues(alpha: 0.3),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: colorScheme.primary.withOpacity(0.2),
+            color: colorScheme.primary.withValues(alpha: 0.2),
             width: 1,
           ),
         ),
@@ -269,7 +269,7 @@ class CompactQuoteCard extends ConsumerWidget {
           children: [
             Icon(
               Icons.format_quote,
-              color: colorScheme.primary.withOpacity(0.6),
+              color: colorScheme.primary.withValues(alpha: 0.6),
               size: 20,
             ),
             const SizedBox(width: 8),
@@ -305,7 +305,7 @@ class CompactQuoteCard extends ConsumerWidget {
         height: 60,
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: colorScheme.primaryContainer.withOpacity(0.3),
+          color: colorScheme.primaryContainer.withValues(alpha: 0.3),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Center(
@@ -319,7 +319,7 @@ class CompactQuoteCard extends ConsumerWidget {
           ),
         ),
       ),
-      error: (_, __) => const SizedBox.shrink(),
+      error: (_, _) => const SizedBox.shrink(),
     );
   }
 }

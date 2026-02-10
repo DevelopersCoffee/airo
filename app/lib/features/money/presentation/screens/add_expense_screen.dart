@@ -137,8 +137,9 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
               validator: (value) {
                 if (value == null || value.isEmpty) return 'Enter an amount';
                 final amount = double.tryParse(value);
-                if (amount == null || amount <= 0)
+                if (amount == null || amount <= 0) {
                   return 'Enter a valid amount';
+                }
                 return null;
               },
             ),
@@ -163,7 +164,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
 
             // Category dropdown
             DropdownButtonFormField<String>(
-              value: _selectedCategory,
+              initialValue: _selectedCategory,
               decoration: const InputDecoration(
                 labelText: 'Category',
                 border: OutlineInputBorder(),

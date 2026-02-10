@@ -20,7 +20,7 @@ final musicPlayingProvider = StreamProvider<bool>((ref) async* {
   yield audioService.isPlaying;
 
   // Listen to player state changes
-  await for (final state in audioService.getMusicStateStream()) {
+  await for (final _ in audioService.getMusicStateStream()) {
     yield audioService.isPlaying;
   }
 });

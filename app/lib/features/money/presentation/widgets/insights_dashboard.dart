@@ -24,7 +24,7 @@ class InsightsDashboard extends ConsumerWidget {
         summaryAsync.when(
           data: (summary) => _SpendingSummaryCard(summary: summary),
           loading: () => const _LoadingCard(),
-          error: (_, __) => const _ErrorCard(message: 'Failed to load summary'),
+          error: (_, _) => const _ErrorCard(message: 'Failed to load summary'),
         ),
 
         const SizedBox(height: 12),
@@ -33,7 +33,7 @@ class InsightsDashboard extends ConsumerWidget {
         trendAsync.when(
           data: (trend) => _TrendCard(trend: trend),
           loading: () => const SizedBox.shrink(),
-          error: (_, __) => const SizedBox.shrink(),
+          error: (_, _) => const SizedBox.shrink(),
         ),
 
         const SizedBox(height: 12),
@@ -42,7 +42,7 @@ class InsightsDashboard extends ConsumerWidget {
         healthAsync.when(
           data: (health) => _BudgetHealthCard(health: health),
           loading: () => const SizedBox.shrink(),
-          error: (_, __) => const SizedBox.shrink(),
+          error: (_, _) => const SizedBox.shrink(),
         ),
       ],
     );

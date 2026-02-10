@@ -36,6 +36,7 @@ class FakeGameAudioService implements GameAudioService {
   final AudioContextManager _audioContext;
   bool _sfxEnabled = true;
   double _sfxVolume = 1.0;
+  // ignore: unused_field - reserved for future focus-based audio control
   bool _hasFocus = true;
 
   FakeGameAudioService({AudioContextManager? audioContext})

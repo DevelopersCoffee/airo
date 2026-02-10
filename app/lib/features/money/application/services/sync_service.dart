@@ -34,7 +34,7 @@ class SyncService {
 
     // Also sync when connectivity changes
     _connectivity.onConnectivityChanged.listen((result) {
-      if (result != ConnectivityResult.none) {
+      if (!result.contains(ConnectivityResult.none)) {
         sync();
       }
     });
@@ -63,7 +63,7 @@ class SyncService {
     try {
       // Check connectivity
       final connectivityResult = await _connectivity.checkConnectivity();
-      if (connectivityResult == ConnectivityResult.none) {
+      if (connectivityResult.contains(ConnectivityResult.none)) {
         _syncStatusController.add(SyncState.offline);
         return SyncResult(
           success: false,

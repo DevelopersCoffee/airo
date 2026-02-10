@@ -63,7 +63,7 @@ class AppShell extends ConsumerWidget {
                 'assets/images/app_icon.png',
                 width: 32,
                 height: 32,
-                errorBuilder: (_, __, ___) => const Icon(Icons.home),
+                errorBuilder: (_, _, _) => const Icon(Icons.home),
               ),
             ),
           ),
@@ -83,7 +83,7 @@ class AppShell extends ConsumerWidget {
                           width: 32,
                           height: 32,
                           fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => Text(
+                          errorBuilder: (_, _, _) => Text(
                             _getInitials(user.username),
                             style: TextStyle(
                               fontSize: 12,

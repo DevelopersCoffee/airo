@@ -122,7 +122,7 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen> {
                             )
                           : _buildPlayerPlaceholder(),
                       loading: () => _buildPlayerPlaceholder(),
-                      error: (_, __) => _buildPlayerPlaceholder(),
+                      error: (_, _) => _buildPlayerPlaceholder(),
                     ),
                   ),
                 ),
@@ -157,7 +157,7 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen> {
                   )
                 : _buildPlayerPlaceholder(),
             loading: () => _buildPlayerPlaceholder(),
-            error: (_, __) => _buildPlayerPlaceholder(),
+            error: (_, _) => _buildPlayerPlaceholder(),
           ),
         ),
 
@@ -216,7 +216,7 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen> {
         );
       },
       loading: () => const SizedBox.shrink(),
-      error: (_, __) => const SizedBox.shrink(),
+      error: (_, _) => const SizedBox.shrink(),
     );
   }
 
@@ -430,7 +430,7 @@ class _IPTVScreenBodyState extends ConsumerState<IPTVScreenBody> {
                             )
                           : _buildPlayerPlaceholder(),
                       loading: () => _buildPlayerPlaceholder(),
-                      error: (_, __) => _buildPlayerPlaceholder(),
+                      error: (_, _) => _buildPlayerPlaceholder(),
                     ),
                   ),
                 ),
@@ -471,7 +471,7 @@ class _IPTVScreenBodyState extends ConsumerState<IPTVScreenBody> {
                       )
                     : _buildPlayerPlaceholder(),
                 loading: () => _buildPlayerPlaceholder(),
-                error: (_, __) => _buildPlayerPlaceholder(),
+                error: (_, _) => _buildPlayerPlaceholder(),
               ),
             ),
           ),
@@ -596,7 +596,7 @@ class _IPTVScreenBodyState extends ConsumerState<IPTVScreenBody> {
         );
       },
       loading: () => const SizedBox.shrink(),
-      error: (_, __) => const SizedBox.shrink(),
+      error: (_, _) => const SizedBox.shrink(),
     );
   }
 

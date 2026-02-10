@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/utils/result.dart';
 import '../../../../core/utils/locale_settings.dart';
+// ignore: unused_import
 import '../../../../core/utils/currency_formatter.dart';
 import '../../data/repositories/local_wallet_repository.dart';
 import '../../domain/models/money_models.dart';
@@ -426,7 +427,7 @@ final expenseServiceProvider = Provider<ExpenseService>((ref) {
 final accountsProvider = FutureProvider<List<MoneyAccount>>((ref) async {
   final repo = ref.watch(accountsRepositoryProvider);
   final result = await repo.fetchAll();
-  return result.fold((_, __) => [], (accounts) => accounts);
+  return result.fold((_, _) => [], (accounts) => accounts);
 });
 
 /// Total balance provider
@@ -441,7 +442,7 @@ final recentTransactionsProvider = FutureProvider<List<Transaction>>((
 ) async {
   final repo = ref.watch(transactionsRepositoryProvider);
   final result = await repo.fetch(const FetchTransactionsQuery(limit: 10));
-  return result.fold((_, __) => [], (txns) => txns);
+  return result.fold((_, _) => [], (txns) => txns);
 });
 
 /// Stream of recent transactions for reactive UI
@@ -508,7 +509,7 @@ final paginatedTransactionsProvider =
       );
 
       final result = await repo.fetch(query);
-      return result.fold((_, __) => [], (txns) => txns);
+      return result.fold((_, _) => [], (txns) => txns);
     });
 
 /// Total transaction count for pagination info
@@ -524,7 +525,7 @@ final transactionCountProvider = FutureProvider<int>((ref) async {
   );
 
   final result = await repo.fetch(query);
-  return result.fold((_, __) => 0, (txns) => txns.length);
+  return result.fold((_, _) => 0, (txns) => txns.length);
 });
 
 /// Available categories for filtering
@@ -545,7 +546,7 @@ final availableCategoriesProvider = Provider<List<String>>((ref) {
 final budgetsProvider = FutureProvider<List<Budget>>((ref) async {
   final repo = ref.watch(budgetsRepositoryProvider);
   final result = await repo.fetchAll();
-  return result.fold((_, __) => [], (budgets) => budgets);
+  return result.fold((_, _) => [], (budgets) => budgets);
 });
 
 /// Stream of budgets for reactive UI
@@ -636,6 +637,7 @@ final moneyControllerProvider = Provider<MoneyController>((ref) {
 
 class MoneyController {
   final AccountsRepository _accountsRepo;
+  // ignore: unused_field - reserved for future transaction operations
   final TransactionsRepository _transactionsRepo;
   final BudgetsRepository _budgetsRepo;
   final Ref _ref;
@@ -778,14 +780,14 @@ final walletRepositoryProvider = Provider<WalletRepository>((ref) {
 final walletsProvider = FutureProvider<List<Wallet>>((ref) async {
   final repo = ref.watch(walletRepositoryProvider);
   final result = await repo.fetchAll();
-  return result.fold((_, __) => [], (wallets) => wallets);
+  return result.fold((_, _) => [], (wallets) => wallets);
 });
 
 /// Total wallet balance provider (in cents)
 final totalWalletBalanceProvider = FutureProvider<int>((ref) async {
   final repo = ref.watch(walletRepositoryProvider);
   final result = await repo.getTotalBalanceCents();
-  return result.fold((_, __) => 0, (total) => total);
+  return result.fold((_, _) => 0, (total) => total);
 });
 
 /// Formatted total wallet balance provider

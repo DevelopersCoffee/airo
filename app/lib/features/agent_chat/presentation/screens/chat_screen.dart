@@ -457,6 +457,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     );
   }
 
+  // ignore: unused_element
   void _showQuickLookup(BuildContext context) {
     final controller = TextEditingController();
 

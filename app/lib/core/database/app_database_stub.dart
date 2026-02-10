@@ -1,7 +1,8 @@
+// ignore_for_file: avoid_unused_constructor_parameters
+
 /// Stub for AppDatabase on web platform
 /// Web uses in-memory fake repositories instead of SQLite
-
-// ignore_for_file: avoid_unused_constructor_parameters
+library;
 
 /// Stub database class for web - not actually used
 class AppDatabase {

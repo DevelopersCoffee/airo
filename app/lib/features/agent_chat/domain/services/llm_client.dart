@@ -100,7 +100,8 @@ class MoneyTool implements Tool {
   @override
   Future<Map<String, dynamic>> call(Map<String, dynamic> args) async {
     final action = args['action'] as String?;
-    final params = args['params'] as Map<String, dynamic>? ?? {};
+    // params reserved for future action implementations
+    // final params = args['params'] as Map<String, dynamic>? ?? {};
 
     return switch (action) {
       'check_balance' => {'balance': '\$0.00', 'currency': 'USD'},

@@ -79,6 +79,7 @@ class _BeatsSearchBarState extends ConsumerState<BeatsSearchBar> {
   @override
   Widget build(BuildContext context) {
     final searchState = ref.watch(beatsSearchStateProvider);
+    // ignore: unused_local_variable
     final theme = Theme.of(context);
 
     return Column(

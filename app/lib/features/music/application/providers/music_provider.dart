@@ -26,7 +26,7 @@ final currentTrackProvider = StreamProvider<MusicTrack?>((ref) async* {
     loading: () async* {
       yield null;
     },
-    error: (_, __) async* {
+    error: (_, _) async* {
       yield null;
     },
   );
@@ -43,7 +43,7 @@ final isPlayingProvider = StreamProvider<bool>((ref) async* {
     loading: () async* {
       yield false;
     },
-    error: (_, __) async* {
+    error: (_, _) async* {
       yield false;
     },
   );
@@ -60,7 +60,7 @@ final musicPositionProvider = StreamProvider<Duration>((ref) async* {
     loading: () async* {
       yield Duration.zero;
     },
-    error: (_, __) async* {
+    error: (_, _) async* {
       yield Duration.zero;
     },
   );
@@ -77,7 +77,7 @@ final musicDurationProvider = StreamProvider<Duration>((ref) async* {
     loading: () async* {
       yield Duration.zero;
     },
-    error: (_, __) async* {
+    error: (_, _) async* {
       yield Duration.zero;
     },
   );
@@ -94,7 +94,7 @@ final queueProvider = StreamProvider<List<MusicTrack>>((ref) async* {
     loading: () async* {
       yield [];
     },
-    error: (_, __) async* {
+    error: (_, _) async* {
       yield [];
     },
   );

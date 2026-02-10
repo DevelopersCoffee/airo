@@ -245,6 +245,7 @@ class _OfferCardState extends State<OfferCard> {
       } else {
         if (mounted) {
           ScaffoldMessenger.of(
+            // ignore: use_build_context_synchronously
             context,
           ).showSnackBar(const SnackBar(content: Text('Could not open link')));
         }
@@ -252,6 +253,7 @@ class _OfferCardState extends State<OfferCard> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(
+          // ignore: use_build_context_synchronously
           context,
         ).showSnackBar(SnackBar(content: Text('Error: $e')));
       }

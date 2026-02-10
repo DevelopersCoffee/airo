@@ -108,6 +108,7 @@ class OffersFeedScreen extends ConsumerWidget {
               const SizedBox(height: 16),
               ElevatedButton.icon(
                 onPressed: () {
+                  // ignore: unused_result
                   ref.refresh(offersProvider);
                 },
                 icon: const Icon(Icons.refresh),
@@ -119,6 +120,7 @@ class OffersFeedScreen extends ConsumerWidget {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
+          // ignore: unused_result
           ref.refresh(offersProvider);
         },
         child: const Icon(Icons.refresh),

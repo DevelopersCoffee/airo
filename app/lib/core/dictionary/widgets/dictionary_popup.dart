@@ -75,7 +75,7 @@ class _DictionaryPopupState extends State<DictionaryPopup> {
   List<DictionaryEntry>? _entries;
   bool _isLoading = true;
   String? _error;
-  int _selectedEntryIndex = 0;
+  final int _selectedEntryIndex = 0;
 
   @override
   void initState() {

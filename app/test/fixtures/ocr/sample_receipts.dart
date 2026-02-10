@@ -3,6 +3,7 @@
 /// These fixtures contain real-world OCR output patterns from various
 /// grocery delivery apps, including common OCR errors like corrupted
 /// rupee symbols and character substitutions.
+library;
 
 const String instamartReceiptOcr = '''
 9:25 O

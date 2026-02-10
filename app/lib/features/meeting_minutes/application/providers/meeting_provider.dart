@@ -53,6 +53,7 @@ class MeetingController {
       await _service.stopRecording(recording.id);
       _ref.read(activeRecordingProvider.notifier).state = null;
       // Refresh list
+      // ignore: unused_result
       _ref.refresh(meetingMinutesListProvider);
     }
   }
@@ -70,6 +71,7 @@ class MeetingController {
   /// Delete meeting
   Future<void> deleteMeeting(String id) async {
     await _service.deleteMeetingMinutes(id);
+    // ignore: unused_result
     _ref.refresh(meetingMinutesListProvider);
   }
 }

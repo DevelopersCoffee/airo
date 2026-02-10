@@ -14,6 +14,7 @@ final offersProvider = FutureProvider<List<Offer>>((ref) async {
 
 /// Refresh offers provider
 final refreshOffersProvider = FutureProvider<void>((ref) async {
+  // ignore: unused_result
   ref.refresh(offersProvider);
 });
 

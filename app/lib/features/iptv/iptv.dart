@@ -9,6 +9,7 @@
 /// - Network interruption handling with auto-retry
 /// - Background audio for music channels
 /// - YouTube-like playback controls
+library;
 
 // Models
 export 'domain/models/iptv_channel.dart';

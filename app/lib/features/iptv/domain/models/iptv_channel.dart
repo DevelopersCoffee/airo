@@ -111,13 +111,16 @@ class IPTVChannel extends Equatable {
 
     if (combined.contains('news')) return ChannelCategory.news;
     if (combined.contains('sport')) return ChannelCategory.sports;
-    if (combined.contains('movie') || combined.contains('cinema'))
+    if (combined.contains('movie') || combined.contains('cinema')) {
       return ChannelCategory.movies;
-    if (combined.contains('kid') || combined.contains('cartoon'))
+    }
+    if (combined.contains('kid') || combined.contains('cartoon')) {
       return ChannelCategory.kids;
+    }
     if (combined.contains('doc')) return ChannelCategory.documentary;
-    if (combined.contains('entertainment'))
+    if (combined.contains('entertainment')) {
       return ChannelCategory.entertainment;
+    }
     return ChannelCategory.all;
   }
 

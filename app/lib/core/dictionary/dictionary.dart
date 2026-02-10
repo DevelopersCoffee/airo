@@ -18,6 +18,8 @@
 /// SelectableTextWithDictionary('Select any word to look it up')
 ///
 /// // Use Text with dictionary (long press)
+library;
+
 /// TextWithDictionary('Long press any word')
 ///
 /// // Use extensions

@@ -361,7 +361,7 @@ class _BlackjackScreenState extends ConsumerState<BlackjackScreen>
     return value;
   }
 
-  int _getCardValue(card) {
+  int _getCardValue(dynamic card) {
     final cardValue = card.value;
     if (cardValue == 'ACE') return 11;
     if (['JACK', 'QUEEN', 'KING'].contains(cardValue)) return 10;

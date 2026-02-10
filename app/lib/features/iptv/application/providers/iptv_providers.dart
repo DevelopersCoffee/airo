@@ -125,7 +125,7 @@ final filteredChannelsProvider = Provider<List<IPTVChannel>>((ref) {
       return filtered;
     },
     loading: () => [],
-    error: (_, __) => [],
+    error: (_, _) => [],
   );
 });
 
@@ -159,7 +159,7 @@ final categoryCounts = Provider<Map<ChannelCategory, int>>((ref) {
       return counts;
     },
     loading: () => {},
-    error: (_, __) => {},
+    error: (_, _) => {},
   );
 });
 
@@ -182,7 +182,7 @@ final currentChannelProvider = Provider<IPTVChannel?>((ref) {
   return state.when(
     data: (s) => s.currentChannel,
     loading: () => null,
-    error: (_, __) => null,
+    error: (_, _) => null,
   );
 });
 
@@ -222,7 +222,7 @@ final playbackStateProvider = Provider<PlaybackState>((ref) {
   return state.when(
     data: (s) => s.playbackState,
     loading: () => PlaybackState.idle,
-    error: (_, __) => PlaybackState.error,
+    error: (_, _) => PlaybackState.error,
   );
 });
 
@@ -232,7 +232,7 @@ final bufferStatusProvider = Provider<BufferStatus>((ref) {
   return state.when(
     data: (s) => s.bufferStatus,
     loading: () => const BufferStatus(),
-    error: (_, __) => const BufferStatus(),
+    error: (_, _) => const BufferStatus(),
   );
 });
 
@@ -242,7 +242,7 @@ final currentQualityProvider = Provider<VideoQuality>((ref) {
   return state.when(
     data: (s) => s.currentQuality,
     loading: () => VideoQuality.auto,
-    error: (_, __) => VideoQuality.auto,
+    error: (_, _) => VideoQuality.auto,
   );
 });
 
@@ -252,6 +252,6 @@ final networkQualityProvider = Provider<NetworkQuality>((ref) {
   return state.when(
     data: (s) => s.metrics?.networkQuality ?? NetworkQuality.good,
     loading: () => NetworkQuality.good,
-    error: (_, __) => NetworkQuality.offline,
+    error: (_, _) => NetworkQuality.offline,
   );
 });

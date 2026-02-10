@@ -89,7 +89,7 @@ void main() {
       const to = ChessSquare(18);
       const m1 = ChessMove(from: from, to: to);
       const m2 = ChessMove(from: from, to: to);
-      const m3 = ChessMove(from: from, to: const ChessSquare(19));
+      const m3 = ChessMove(from: from, to: ChessSquare(19));
 
       expect(m1, equals(m2));
       expect(m1, isNot(equals(m3)));

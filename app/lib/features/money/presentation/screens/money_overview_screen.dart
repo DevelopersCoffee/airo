@@ -5,6 +5,7 @@ import '../../../../core/dictionary/dictionary.dart';
 import '../../../../core/routing/route_names.dart';
 import '../../application/providers/money_provider.dart';
 import '../../domain/models/money_models.dart';
+// ignore: unused_import
 import '../widgets/transaction_upload_dialog.dart';
 import 'add_expense_screen.dart';
 import 'budgets_screen.dart';
@@ -92,7 +93,7 @@ class MoneyOverviewScreen extends ConsumerWidget {
                     ),
                     child: const Center(child: CircularProgressIndicator()),
                   ),
-                  error: (_, __) => Container(
+                  error: (_, _) => Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(24),
                     decoration: BoxDecoration(
@@ -207,7 +208,7 @@ class MoneyOverviewScreen extends ConsumerWidget {
                       child: CircularProgressIndicator(),
                     ),
                   ),
-                  error: (_, __) => const Card(
+                  error: (_, _) => const Card(
                     child: Padding(
                       padding: EdgeInsets.all(16),
                       child: Text('Error loading accounts'),
@@ -295,7 +296,7 @@ class MoneyOverviewScreen extends ConsumerWidget {
                       child: Center(child: CircularProgressIndicator()),
                     ),
                   ),
-                  error: (_, __) => const Card(
+                  error: (_, _) => const Card(
                     child: Padding(
                       padding: EdgeInsets.all(16),
                       child: Text('Error loading transactions'),
@@ -424,7 +425,7 @@ class MoneyOverviewScreen extends ConsumerWidget {
                       child: Center(child: CircularProgressIndicator()),
                     ),
                   ),
-                  error: (_, __) => const Card(
+                  error: (_, _) => const Card(
                     child: Padding(
                       padding: EdgeInsets.all(16),
                       child: Text('Error loading budgets'),
@@ -463,6 +464,7 @@ class MoneyOverviewScreen extends ConsumerWidget {
     ).push(MaterialPageRoute(builder: (_) => const TransactionsListScreen()));
   }
 
+  // ignore: unused_element
   void _showQuickLookup(BuildContext context) {
     final controller = TextEditingController();
 

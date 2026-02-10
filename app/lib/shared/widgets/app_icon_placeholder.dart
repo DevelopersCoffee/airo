@@ -79,7 +79,7 @@ class AppIconPlaceholder extends StatelessWidget {
         // Cache the image for better performance
         cacheWidth: size != null ? (size! * 2).toInt() : null,
         cacheHeight: size != null ? (size! * 2).toInt() : null,
-        errorBuilder: (_, __, ___) =>
+        errorBuilder: (_, _, _) =>
             fallbackIcon ?? Icon(Icons.image, color: Colors.grey, size: size),
       ),
     );

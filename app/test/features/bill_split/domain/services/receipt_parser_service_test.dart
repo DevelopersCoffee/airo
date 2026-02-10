@@ -46,15 +46,14 @@ F288.00
 ''';
 
         // Expected parsed items (7 items matching 7 prices)
-        final expectedItems = [
-          {'name': 'Potato (Batate)', 'price': 41.0},
-          {'name': 'Lady Red Papaya (Kappalanga (Omakka)', 'price': 69.0},
-          {'name': 'Coriander Leaves without root', 'price': 20.0},
-          {'name': 'Onion (Kanda)', 'price': 29.0},
-          {'name': 'White Cucumber (Pandhri Kakdi)', 'price': 30.0},
-          {'name': 'Spring Onion (Kanda Patta)', 'price': 29.0},
-          {'name': '[Combo] Amul Taaza Milky Milk', 'price': 58.0},
-        ];
+        // Reference items for documentation:
+        // - Potato (Batate): 41.0
+        // - Lady Red Papaya (Kappalanga (Omakka): 69.0
+        // - Coriander Leaves without root: 20.0
+        // - Onion (Kanda): 29.0
+        // - White Cucumber (Pandhri Kakdi): 30.0
+        // - Spring Onion (Kanda Patta): 29.0
+        // - [Combo] Amul Taaza Milky Milk: 58.0
 
         // Test parsing logic
         final items = parseInstamartItems(ocrText);
