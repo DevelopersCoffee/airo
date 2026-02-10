@@ -134,9 +134,11 @@ jobs:
       - name: Rename artifacts with version
         run: |
           VERSION="${{ needs.changelog.outputs.version }}"
+          # Rename APK
           cd app/build/app/outputs/flutter-apk
           mv app-release.apk "airo-${VERSION}-arm64-v8a.apk"
-          cd ../../bundle/release
+          # Rename AAB (use absolute path)
+          cd $GITHUB_WORKSPACE/app/build/app/outputs/bundle/release
           mv app-release.aab "airo-${VERSION}.aab"
 
       - name: Upload APK (arm64-v8a)
