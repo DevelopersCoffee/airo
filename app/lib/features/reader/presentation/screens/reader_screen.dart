@@ -11,29 +11,6 @@ class ReaderScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Tales'),
-        centerTitle: true,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.menu_book),
-            onPressed: () => _showQuickLookup(context),
-            tooltip: 'Quick Dictionary Lookup',
-          ),
-          IconButton(
-            icon: const Icon(Icons.search),
-            onPressed: () {
-              // TODO: Show search
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.more_vert),
-            onPressed: () {
-              // TODO: Show menu
-            },
-          ),
-        ],
-      ),
       body: DictionarySelectionArea(
         child: ResponsiveCenter(
           maxWidth: ResponsiveBreakpoints.textMaxWidth,
@@ -145,6 +122,11 @@ class ReaderScreen extends ConsumerWidget {
             ),
           ),
         ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => _showQuickLookup(context),
+        tooltip: 'Quick Dictionary Lookup',
+        child: const Icon(Icons.search),
       ),
     );
   }

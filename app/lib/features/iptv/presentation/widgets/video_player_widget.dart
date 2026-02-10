@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:video_player/video_player.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
+import '../../../../shared/widgets/app_icon_placeholder.dart';
 import '../../application/providers/iptv_providers.dart';
 import '../../domain/models/iptv_channel.dart';
 import '../../domain/models/streaming_state.dart';
@@ -14,11 +15,13 @@ import '../utils/web_fullscreen.dart' as web_fullscreen;
 class VideoPlayerWidget extends ConsumerStatefulWidget {
   final bool showControls;
   final VoidCallback? onFullscreenToggle;
+  final bool enableSwipeChannelChange;
 
   const VideoPlayerWidget({
     super.key,
     this.showControls = true,
     this.onFullscreenToggle,
+    this.enableSwipeChannelChange = false,
   });
 
   @override
@@ -28,22 +31,44 @@ class VideoPlayerWidget extends ConsumerStatefulWidget {
 class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
   bool _showControlsOverlay = true;
   bool _isFullscreen = false;
+  bool _isCinemaMode = false;
   Timer? _hideControlsTimer;
   static const _controlsHideDelay = Duration(seconds: 4);
   bool _wakelockEnabled = false;
+
+  // Channel change overlay state
+  String? _channelChangeOverlayText;
+  Timer? _channelChangeOverlayTimer;
 
   @override
   void initState() {
     super.initState();
     _startHideControlsTimer();
-    _enableWakelock();
+    // Note: Wakelock is now managed by _updateWakelockForPlayback
+    // based on actual playback state, not just widget mount
   }
 
   @override
   void dispose() {
     _cancelHideControlsTimer();
+    _channelChangeOverlayTimer?.cancel();
     _disableWakelock();
     super.dispose();
+  }
+
+  /// Update wakelock based on playback state
+  /// Enable only when video is actively playing (not audio-only)
+  void _updateWakelockForPlayback(StreamingState state) {
+    final isVideoPlaying =
+        state.isPlaying &&
+        state.currentChannel != null &&
+        !state.currentChannel!.isAudioOnly;
+
+    if (isVideoPlaying && !_wakelockEnabled) {
+      _enableWakelock();
+    } else if (!isVideoPlaying && _wakelockEnabled) {
+      _disableWakelock();
+    }
   }
 
   /// Enable screen wake lock to prevent screen from going off during video playback
@@ -111,6 +136,39 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
     }
   }
 
+  // Channel navigation button handlers
+  void _goToNextChannel() {
+    final streamingService = ref.read(iptvStreamingServiceProvider);
+    final nextChannel = ref.read(nextChannelProvider);
+    if (nextChannel != null) {
+      streamingService.playChannel(nextChannel);
+      _showChannelChangeOverlay(nextChannel.name);
+    }
+  }
+
+  void _goToPreviousChannel() {
+    final streamingService = ref.read(iptvStreamingServiceProvider);
+    final prevChannel = ref.read(previousChannelProvider);
+    if (prevChannel != null) {
+      streamingService.playChannel(prevChannel);
+      _showChannelChangeOverlay(prevChannel.name);
+    }
+  }
+
+  void _showChannelChangeOverlay(String text) {
+    _channelChangeOverlayTimer?.cancel();
+    setState(() {
+      _channelChangeOverlayText = text;
+    });
+    _channelChangeOverlayTimer = Timer(const Duration(seconds: 2), () {
+      if (mounted) {
+        setState(() {
+          _channelChangeOverlayText = null;
+        });
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final streamingService = ref.watch(iptvStreamingServiceProvider);
@@ -128,6 +186,12 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
     VideoPlayerStreamingService service,
     StreamingState state,
   ) {
+    // Update wakelock based on current playback state
+    // This is called on every build when state changes
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _updateWakelockForPlayback(state);
+    });
+
     final controller = service.controller;
 
     return MouseRegion(
@@ -150,6 +214,26 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                 _buildLoading()
               else
                 _buildPlaceholder(state),
+
+              // Cinema mode vignette overlay
+              if (_isCinemaMode)
+                Positioned.fill(
+                  child: IgnorePointer(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        gradient: RadialGradient(
+                          center: Alignment.center,
+                          radius: 1.15,
+                          colors: [
+                            Colors.transparent,
+                            Colors.black.withValues(alpha: 0.6),
+                          ],
+                          stops: const [0.6, 1.0],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
 
               // Buffering indicator
               if (state.isBuffering)
@@ -184,6 +268,61 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                 left: 8,
                 child: _buildQualityBadge(state.currentQuality),
               ),
+
+              // Previous/Next channel buttons (for fullscreen mode)
+              if (widget.enableSwipeChannelChange && _showControlsOverlay)
+                Positioned(
+                  left: 16,
+                  top: 0,
+                  bottom: 0,
+                  child: Center(
+                    child: IconButton(
+                      icon: const Icon(Icons.skip_previous, size: 40),
+                      color: Colors.white,
+                      onPressed: _goToPreviousChannel,
+                    ),
+                  ),
+                ),
+              if (widget.enableSwipeChannelChange && _showControlsOverlay)
+                Positioned(
+                  right: 16,
+                  top: 0,
+                  bottom: 0,
+                  child: Center(
+                    child: IconButton(
+                      icon: const Icon(Icons.skip_next, size: 40),
+                      color: Colors.white,
+                      onPressed: _goToNextChannel,
+                    ),
+                  ),
+                ),
+
+              // Channel change overlay
+              if (_channelChangeOverlayText != null)
+                Positioned(
+                  child: AnimatedOpacity(
+                    opacity: _channelChangeOverlayText != null ? 1.0 : 0.0,
+                    duration: const Duration(milliseconds: 200),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 12,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.8),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        _channelChangeOverlayText!,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
             ],
           ),
         ),
@@ -247,7 +386,8 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
   }
 
   Widget _buildDefaultPlaceholder() {
-    return const Icon(Icons.live_tv, color: Colors.white54, size: 64);
+    // Use shared AppIconPlaceholder for brand consistency and optimized caching
+    return AppIconPlaceholder.videoPlayer();
   }
 
   Widget _buildControlsOverlay(
@@ -337,6 +477,7 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
+                  // Mute button
                   IconButton(
                     icon: Icon(
                       state.isMuted ? Icons.volume_off : Icons.volume_up,
@@ -344,6 +485,18 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                     ),
                     onPressed: () => service.toggleMute(),
                   ),
+                  // Cinema mode toggle
+                  IconButton(
+                    icon: Icon(
+                      _isCinemaMode ? Icons.wb_sunny : Icons.theaters,
+                      color: _isCinemaMode ? Colors.amber : Colors.white,
+                    ),
+                    tooltip: _isCinemaMode ? 'Standard Mode' : 'Cinema Mode',
+                    onPressed: () {
+                      setState(() => _isCinemaMode = !_isCinemaMode);
+                    },
+                  ),
+                  // Fullscreen button
                   IconButton(
                     icon: Icon(
                       _isFullscreen ? Icons.fullscreen_exit : Icons.fullscreen,

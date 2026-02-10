@@ -130,26 +130,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // No AppBar here - global AppBar is in AppShell
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Agent Chat'),
-        centerTitle: true,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.menu_book),
-            onPressed: () {
-              _showQuickLookup(context);
-            },
-            tooltip: 'Quick Dictionary Lookup',
-          ),
-          IconButton(
-            icon: const Icon(Icons.more_vert),
-            onPressed: () {
-              // TODO: Show menu
-            },
-          ),
-        ],
-      ),
       body: DictionarySelectionArea(
         child: Column(
           children: [

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -16,8 +18,6 @@ class IPTVScreen extends ConsumerStatefulWidget {
 }
 
 class _IPTVScreenState extends ConsumerState<IPTVScreen> {
-  bool _isFullscreen = false;
-
   @override
   void initState() {
     super.initState();
@@ -27,25 +27,26 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen> {
 
   @override
   void dispose() {
-    // Restore system UI if fullscreen
-    if (_isFullscreen) {
-      SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-      SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
-    }
+    // Don't reset orientation here - it causes issues during widget rebuilds
+    // Orientation is reset in:
+    // 1. _toggleFullscreen() when user explicitly exits fullscreen
+    // 2. AppShell when navigating to a different tab
     super.dispose();
   }
 
   void _toggleFullscreen() {
-    setState(() {
-      _isFullscreen = !_isFullscreen;
-    });
-    if (_isFullscreen) {
+    final isFullscreen = ref.read(isFullscreenModeProvider);
+    ref.read(isFullscreenModeProvider.notifier).state = !isFullscreen;
+
+    if (!isFullscreen) {
+      // Entering fullscreen
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
       SystemChrome.setPreferredOrientations([
         DeviceOrientation.landscapeLeft,
         DeviceOrientation.landscapeRight,
       ]);
     } else {
+      // Exiting fullscreen
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
       SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
     }
@@ -59,8 +60,9 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen> {
   Widget build(BuildContext context) {
     final channelsAsync = ref.watch(iptvChannelsProvider);
     final streamingState = ref.watch(streamingStateProvider);
+    final isFullscreen = ref.watch(isFullscreenModeProvider);
 
-    if (_isFullscreen) {
+    if (isFullscreen) {
       return Scaffold(
         backgroundColor: Colors.black,
         body: VideoPlayerWidget(
@@ -291,7 +293,9 @@ class IPTVScreenBody extends ConsumerStatefulWidget {
 }
 
 class _IPTVScreenBodyState extends ConsumerState<IPTVScreenBody> {
-  bool _isFullscreen = false;
+  bool _isWatchingMode = false; // UI collapsed during playback
+  Timer? _watchingModeTimer;
+  static const _watchingModeDelay = Duration(seconds: 4);
 
   @override
   void initState() {
@@ -302,25 +306,27 @@ class _IPTVScreenBodyState extends ConsumerState<IPTVScreenBody> {
 
   @override
   void dispose() {
-    // Restore system UI if fullscreen
-    if (_isFullscreen) {
-      SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-      SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
-    }
+    _watchingModeTimer?.cancel();
+    // Don't reset orientation here - it causes issues during widget rebuilds
+    // Orientation is reset in:
+    // 1. _toggleFullscreen() when user explicitly exits fullscreen
+    // 2. AppShell when navigating to a different tab
     super.dispose();
   }
 
   void _toggleFullscreen() {
-    setState(() {
-      _isFullscreen = !_isFullscreen;
-    });
-    if (_isFullscreen) {
+    final isFullscreen = ref.read(isFullscreenModeProvider);
+    ref.read(isFullscreenModeProvider.notifier).state = !isFullscreen;
+
+    if (!isFullscreen) {
+      // Entering fullscreen
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
       SystemChrome.setPreferredOrientations([
         DeviceOrientation.landscapeLeft,
         DeviceOrientation.landscapeRight,
       ]);
     } else {
+      // Exiting fullscreen
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
       SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
     }
@@ -328,27 +334,68 @@ class _IPTVScreenBodyState extends ConsumerState<IPTVScreenBody> {
 
   void _playChannel(IPTVChannel channel) {
     ref.read(iptvStreamingServiceProvider).playChannel(channel);
+    // Start watching mode timer when a channel starts playing
+    _startWatchingModeTimer();
+  }
+
+  /// Start timer to enter watching mode after inactivity
+  void _startWatchingModeTimer() {
+    _watchingModeTimer?.cancel();
+    // Exit watching mode first to show UI
+    if (_isWatchingMode) {
+      setState(() => _isWatchingMode = false);
+    }
+    _watchingModeTimer = Timer(_watchingModeDelay, () {
+      if (mounted) {
+        setState(() => _isWatchingMode = true);
+      }
+    });
+  }
+
+  /// Exit watching mode on user interaction
+  void _exitWatchingMode() {
+    if (_isWatchingMode) {
+      setState(() => _isWatchingMode = false);
+    }
+    // Restart timer if video is playing
+    final state = ref.read(streamingStateProvider);
+    if (state.hasValue && state.value?.currentChannel != null) {
+      _startWatchingModeTimer();
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final channelsAsync = ref.watch(iptvChannelsProvider);
     final streamingState = ref.watch(streamingStateProvider);
+    final isFullscreen = ref.watch(isFullscreenModeProvider);
 
-    if (_isFullscreen) {
-      return Scaffold(
-        backgroundColor: Colors.black,
-        body: VideoPlayerWidget(
-          showControls: true,
-          onFullscreenToggle: _toggleFullscreen,
-        ),
-      );
-    }
-
-    return channelsAsync.when(
-      data: (channels) => _buildContent(context, channels, streamingState),
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (error, stack) => _buildError(error.toString()),
+    // Use AnimatedSwitcher with fade to black for seamless fullscreen transition
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 200),
+      transitionBuilder: (child, animation) {
+        // Fade transition with black background to prevent channel list flash
+        return FadeTransition(opacity: animation, child: child);
+      },
+      child: isFullscreen
+          ? Scaffold(
+              key: const ValueKey('fullscreen'),
+              backgroundColor: Colors.black,
+              body: VideoPlayerWidget(
+                showControls: true,
+                onFullscreenToggle: _toggleFullscreen,
+                enableSwipeChannelChange: true,
+              ),
+            )
+          : KeyedSubtree(
+              key: const ValueKey('normal'),
+              child: channelsAsync.when(
+                data: (channels) =>
+                    _buildContent(context, channels, streamingState),
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (error, stack) => _buildError(error.toString()),
+              ),
+            ),
     );
   }
 
@@ -404,35 +451,107 @@ class _IPTVScreenBodyState extends ConsumerState<IPTVScreenBody> {
       );
     }
 
-    // Mobile: Vertical layout
-    return Column(
-      children: [
-        // Video player section
-        AspectRatio(
-          aspectRatio: 16 / 9,
-          child: streamingState.when(
-            data: (state) => state.currentChannel != null
-                ? VideoPlayerWidget(
-                    showControls: true,
-                    onFullscreenToggle: _toggleFullscreen,
-                  )
-                : _buildPlayerPlaceholder(),
-            loading: () => _buildPlayerPlaceholder(),
-            error: (_, __) => _buildPlayerPlaceholder(),
+    // Mobile: Vertical layout with watching mode
+    return GestureDetector(
+      onTap: _exitWatchingMode,
+      behavior: HitTestBehavior.translucent,
+      child: Column(
+        children: [
+          // Video player section - expands in watching mode
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+            child: AspectRatio(
+              aspectRatio: 16 / 9,
+              child: streamingState.when(
+                data: (state) => state.currentChannel != null
+                    ? VideoPlayerWidget(
+                        showControls: true,
+                        onFullscreenToggle: _toggleFullscreen,
+                      )
+                    : _buildPlayerPlaceholder(),
+                loading: () => _buildPlayerPlaceholder(),
+                error: (_, __) => _buildPlayerPlaceholder(),
+              ),
+            ),
+          ),
+
+          // Quality selector and info bar - hidden in watching mode
+          AnimatedOpacity(
+            opacity: _isWatchingMode ? 0.0 : 1.0,
+            duration: const Duration(milliseconds: 200),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              height: _isWatchingMode ? 0 : null,
+              child: _isWatchingMode
+                  ? const SizedBox.shrink()
+                  : _buildInfoBar(streamingState),
+            ),
+          ),
+
+          // Channel list - collapsed in watching mode with "Now Playing" indicator
+          Expanded(
+            child: AnimatedOpacity(
+              opacity: _isWatchingMode ? 0.0 : 1.0,
+              duration: const Duration(milliseconds: 200),
+              child: _isWatchingMode
+                  ? _buildWatchingModeIndicator(streamingState)
+                  : ChannelListWidget(
+                      onChannelTap: _playChannel,
+                      showCategories: true,
+                    ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Build "Now Playing" indicator shown during watching mode
+  Widget _buildWatchingModeIndicator(
+    AsyncValue<StreamingState> streamingState,
+  ) {
+    return GestureDetector(
+      onTap: _exitWatchingMode,
+      child: Container(
+        color: Colors.grey[100],
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.touch_app, size: 32, color: Colors.grey[400]),
+              const SizedBox(height: 8),
+              Text(
+                'Tap to show channels',
+                style: TextStyle(color: Colors.grey[600], fontSize: 14),
+              ),
+              if (streamingState.hasValue &&
+                  streamingState.value?.currentChannel != null) ...[
+                const SizedBox(height: 4),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.play_circle_filled,
+                      size: 16,
+                      color: Colors.green[600],
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Now playing: ${streamingState.value!.currentChannel!.name}',
+                      style: TextStyle(
+                        color: Colors.grey[800],
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ],
           ),
         ),
-
-        // Quality selector and info bar
-        _buildInfoBar(streamingState),
-
-        // Channel list
-        Expanded(
-          child: ChannelListWidget(
-            onChannelTap: _playChannel,
-            showCategories: true,
-          ),
-        ),
-      ],
+      ),
     );
   }
 

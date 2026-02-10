@@ -14,9 +14,12 @@ final sharedPreferencesProvider = Provider<SharedPreferences>((ref) {
   );
 });
 
-/// Current navigation tab index provider (0=Coins, 1=Mind, 2=Media, 3=Arena, 4=Quest)
-/// Used to detect when user navigates away from Media tab for mini player display
-final currentNavigationTabProvider = StateProvider<int>((ref) => 2);
+/// Current navigation tab index provider (0=Coins, 1=Mind, 2=Live, 3=Arena, 4=Tales)
+/// Used to detect when user navigates away from media tabs for mini player display
+final currentNavigationTabProvider = StateProvider<int>((ref) => 1);
+
+/// Global fullscreen mode provider - when true, hides bottom navigation and app bar
+final isFullscreenModeProvider = StateProvider<bool>((ref) => false);
 
 /// Dio HTTP client provider
 final dioProvider = Provider<Dio>((ref) {
@@ -136,6 +139,37 @@ int _getPreferenceScore(IPTVChannel channel, List<String> preferences) {
   return 0;
 }
 
+/// Category counts provider - shows how many channels in each category
+final categoryCounts = Provider<Map<ChannelCategory, int>>((ref) {
+  final channelsAsync = ref.watch(iptvChannelsProvider);
+
+  return channelsAsync.when(
+    data: (channels) {
+      final counts = <ChannelCategory, int>{};
+      // Count 'All' as total channels
+      counts[ChannelCategory.all] = channels.length;
+      // Count each category
+      for (final category in ChannelCategory.values) {
+        if (category != ChannelCategory.all) {
+          counts[category] = channels
+              .where((c) => c.category == category)
+              .length;
+        }
+      }
+      return counts;
+    },
+    loading: () => {},
+    error: (_, __) => {},
+  );
+});
+
+/// Check if any filter is active (category or search)
+final hasActiveFilterProvider = Provider<bool>((ref) {
+  final category = ref.watch(selectedCategoryProvider);
+  final searchQuery = ref.watch(channelSearchQueryProvider);
+  return category != ChannelCategory.all || searchQuery.isNotEmpty;
+});
+
 /// Streaming state provider
 final streamingStateProvider = StreamProvider<StreamingState>((ref) {
   final service = ref.watch(iptvStreamingServiceProvider);
@@ -150,6 +184,36 @@ final currentChannelProvider = Provider<IPTVChannel?>((ref) {
     loading: () => null,
     error: (_, __) => null,
   );
+});
+
+/// Current channel index in filtered list
+final currentChannelIndexProvider = Provider<int>((ref) {
+  final currentChannel = ref.watch(currentChannelProvider);
+  final filteredChannels = ref.watch(filteredChannelsProvider);
+  if (currentChannel == null) return -1;
+  return filteredChannels.indexWhere(
+    (c) => c.streamUrl == currentChannel.streamUrl,
+  );
+});
+
+/// Next channel provider - returns the next channel in the filtered list
+final nextChannelProvider = Provider<IPTVChannel?>((ref) {
+  final currentIndex = ref.watch(currentChannelIndexProvider);
+  final filteredChannels = ref.watch(filteredChannelsProvider);
+  if (currentIndex < 0 || filteredChannels.isEmpty) return null;
+  final nextIndex = (currentIndex + 1) % filteredChannels.length;
+  return filteredChannels[nextIndex];
+});
+
+/// Previous channel provider - returns the previous channel in the filtered list
+final previousChannelProvider = Provider<IPTVChannel?>((ref) {
+  final currentIndex = ref.watch(currentChannelIndexProvider);
+  final filteredChannels = ref.watch(filteredChannelsProvider);
+  if (currentIndex < 0 || filteredChannels.isEmpty) return null;
+  final prevIndex = currentIndex == 0
+      ? filteredChannels.length - 1
+      : currentIndex - 1;
+  return filteredChannels[prevIndex];
 });
 
 /// Playback state provider

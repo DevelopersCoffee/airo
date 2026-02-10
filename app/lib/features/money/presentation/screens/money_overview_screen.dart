@@ -6,13 +6,13 @@ import '../../../../core/routing/route_names.dart';
 import '../../application/providers/money_provider.dart';
 import '../../domain/models/money_models.dart';
 import '../widgets/transaction_upload_dialog.dart';
-import '../../../quotes/presentation/widgets/daily_quote_card.dart';
 import 'add_expense_screen.dart';
 import 'budgets_screen.dart';
 import 'transactions_list_screen.dart';
 import '../../../../shared/widgets/responsive_center.dart';
 
-/// Money overview screen
+/// Money overview screen - Finance Hub
+/// Purpose: Money management & transactions
 class MoneyOverviewScreen extends ConsumerWidget {
   const MoneyOverviewScreen({super.key});
 
@@ -23,19 +23,11 @@ class MoneyOverviewScreen extends ConsumerWidget {
     // Use stream provider for reactive transactions
     final transactionsStream = ref.watch(transactionsStreamProvider);
     final budgetsStream = ref.watch(budgetsStreamProvider);
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
 
+    // No AppBar here - global AppBar is in AppShell
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Coins'),
-        centerTitle: true,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.menu_book),
-            onPressed: () => _showQuickLookup(context),
-            tooltip: 'Quick Dictionary Lookup',
-          ),
-        ],
-      ),
       body: DictionarySelectionArea(
         child: ResponsiveCenter(
           maxWidth: ResponsiveBreakpoints.contentMaxWidth,
@@ -44,112 +36,120 @@ class MoneyOverviewScreen extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Daily quote card
-                const DailyQuoteCard(
-                  padding: EdgeInsets.only(bottom: 16),
-                  elevation: 1,
-                ),
-
-                // Quick Actions
-                Text(
-                  'Quick Actions',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-                const SizedBox(height: 12),
-                SizedBox(
-                  height: 100,
-                  child: ListView(
-                    scrollDirection: Axis.horizontal,
-                    children: [
-                      _QuickActionCard(
-                        icon: Icons.call_split,
-                        label: 'Split Bill',
-                        color: Colors.orange,
-                        onTap: () => context.push(RouteNames.billSplit),
-                      ),
-                      _QuickActionCard(
-                        icon: Icons.receipt_long,
-                        label: 'Scan Receipt',
-                        color: Colors.blue,
-                        onTap: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Coming soon!')),
-                          );
-                        },
-                      ),
-                      _QuickActionCard(
-                        icon: Icons.send,
-                        label: 'Send Money',
-                        color: Colors.green,
-                        onTap: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Coming soon!')),
-                          );
-                        },
-                      ),
-                      _QuickActionCard(
-                        icon: Icons.request_page,
-                        label: 'Request',
-                        color: Colors.purple,
-                        onTap: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Coming soon!')),
-                          );
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 24),
-
-                // Total balance card
+                // Balance Hero - Above the fold
                 totalBalance.when(
                   data: (balance) {
                     final dollars = balance ~/ 100;
                     final cents = (balance % 100).abs();
-                    return Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Total Balance',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Colors.grey,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              '\$$dollars.${cents.toString().padLeft(2, '0')}',
-                              style: const TextStyle(
-                                fontSize: 32,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
+                    return Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 32,
+                        horizontal: 24,
+                      ),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            colorScheme.primaryContainer,
+                            colorScheme.primaryContainer.withValues(alpha: 0.7),
                           ],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
                         ),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Text(
+                            'Available Balance',
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              color: colorScheme.onPrimaryContainer.withValues(
+                                alpha: 0.8,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            '\$$dollars.${cents.toString().padLeft(2, '0')}',
+                            style: theme.textTheme.displayMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: colorScheme.onPrimaryContainer,
+                            ),
+                          ),
+                        ],
                       ),
                     );
                   },
-                  loading: () => const Card(
-                    child: Padding(
-                      padding: EdgeInsets.all(16),
-                      child: CircularProgressIndicator(),
+                  loading: () => Container(
+                    width: double.infinity,
+                    height: 120,
+                    decoration: BoxDecoration(
+                      color: colorScheme.primaryContainer.withValues(
+                        alpha: 0.5,
+                      ),
+                      borderRadius: BorderRadius.circular(20),
                     ),
+                    child: const Center(child: CircularProgressIndicator()),
                   ),
-                  error: (_, __) => const Card(
-                    child: Padding(
-                      padding: EdgeInsets.all(16),
-                      child: Text('Error loading balance'),
+                  error: (_, __) => Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: colorScheme.errorContainer,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      'Error loading balance',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: colorScheme.onErrorContainer),
                     ),
                   ),
                 ),
                 const SizedBox(height: 24),
 
+                // Primary Actions - Above the fold
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    _PrimaryActionButton(
+                      icon: Icons.call_split,
+                      label: 'Split Bill',
+                      onTap: () => context.push(RouteNames.billSplit),
+                    ),
+                    _PrimaryActionButton(
+                      icon: Icons.qr_code_scanner,
+                      label: 'Scan',
+                      onTap: () {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Coming soon!')),
+                        );
+                      },
+                    ),
+                    _PrimaryActionButton(
+                      icon: Icons.send,
+                      label: 'Send Money',
+                      onTap: () {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Coming soon!')),
+                        );
+                      },
+                    ),
+                    _PrimaryActionButton(
+                      icon: Icons.request_page,
+                      label: 'Request',
+                      onTap: () {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Coming soon!')),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+
                 // Accounts section
-                Text('Accounts', style: Theme.of(context).textTheme.titleLarge),
+                Text('Accounts', style: theme.textTheme.titleLarge),
                 const SizedBox(height: 12),
                 accounts.when(
                   data: (accountsList) {
@@ -436,10 +436,11 @@ class MoneyOverviewScreen extends ConsumerWidget {
           ),
         ),
       ),
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _navigateToAddExpense(context),
-        tooltip: 'Add Expense',
-        child: const Icon(Icons.add),
+        tooltip: 'Add Money',
+        icon: const Icon(Icons.add),
+        label: const Text('Add Money'),
       ),
     );
   }
@@ -513,51 +514,54 @@ class MoneyOverviewScreen extends ConsumerWidget {
   }
 }
 
-/// Quick action card widget for money screen
-class _QuickActionCard extends StatelessWidget {
+/// Primary action button for Coins screen
+class _PrimaryActionButton extends StatelessWidget {
   final IconData icon;
   final String label;
-  final Color color;
   final VoidCallback onTap;
 
-  const _QuickActionCard({
+  const _PrimaryActionButton({
     required this.icon,
     required this.label,
-    required this.color,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.only(right: 12),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          width: 90,
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(icon, color: color, size: 24),
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: colorScheme.primaryContainer,
+                shape: BoxShape.circle,
               ),
-              const SizedBox(height: 8),
-              Text(
-                label,
-                style: const TextStyle(fontSize: 12),
-                textAlign: TextAlign.center,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+              child: Icon(
+                icon,
+                color: colorScheme.onPrimaryContainer,
+                size: 24,
               ),
-            ],
-          ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              label,
+              style: theme.textTheme.labelSmall?.copyWith(
+                fontWeight: FontWeight.w500,
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
         ),
       ),
     );

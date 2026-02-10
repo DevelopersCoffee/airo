@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../auth/auth_service.dart';
@@ -9,7 +10,7 @@ import '../theme/bedtime_theme.dart';
 import '../../features/music/presentation/widgets/mini_player.dart';
 import '../../features/iptv/presentation/widgets/iptv_mini_player.dart';
 import '../../features/iptv/application/providers/iptv_providers.dart';
-import '../../features/quest/presentation/widgets/device_compatibility_banner.dart';
+import '../../features/live/presentation/screens/live_screen.dart';
 
 /// Get initials from a name (e.g., "Uday Chauhan" -> "UC", "Uday" -> "U")
 String _getInitials(String name) {
@@ -19,7 +20,7 @@ String _getInitials(String name) {
   return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
 }
 
-/// App shell with bottom navigation for 5 feature tabs (Material Design compliant)
+/// App shell with bottom navigation for 5 feature tabs (Live combines Music & TV)
 class AppShell extends ConsumerWidget {
   const AppShell({super.key, required this.navigationShell});
 
@@ -29,15 +30,48 @@ class AppShell extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final isBedtimeMode = ref.watch(bedtimeModeProvider);
     final sleepTimer = ref.watch(sleepTimerProvider);
+    final isFullscreen = ref.watch(isFullscreenModeProvider);
     final user = AuthService.instance.currentUser;
+
+    // In fullscreen mode, return just the navigation shell content without app bar or bottom nav
+    if (isFullscreen) {
+      return Theme(
+        data: isBedtimeMode ? BedtimeTheme.bedtimeTheme : Theme.of(context),
+        child: Scaffold(body: navigationShell),
+      );
+    }
+
+    // Get current page name based on navigation index
+    final pageNames = ['Coins', 'Mind', 'Live', 'Arena', 'Tales'];
+    final currentPageName = pageNames[navigationShell.currentIndex];
 
     return Theme(
       data: isBedtimeMode ? BedtimeTheme.bedtimeTheme : Theme.of(context),
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Airo'),
+          // Airo logo/title on left - clickable to go to default page
+          leading: InkWell(
+            onTap: () {
+              // Go to first tab (Coins) as default/home
+              ref.read(currentNavigationTabProvider.notifier).state = 0;
+              navigationShell.goBranch(0);
+            },
+            borderRadius: BorderRadius.circular(20),
+            child: Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Image.asset(
+                'assets/images/app_icon.png',
+                width: 32,
+                height: 32,
+                errorBuilder: (_, __, ___) => const Icon(Icons.home),
+              ),
+            ),
+          ),
+          // Current page name in center
+          title: Text(currentPageName),
+          centerTitle: true,
           actions: [
-            // User menu with logout
+            // User profile avatar with menu
             PopupMenuButton<String>(
               icon: CircleAvatar(
                 radius: 16,
@@ -117,52 +151,64 @@ class AppShell extends ConsumerWidget {
                 ),
               ],
             ),
+            const SizedBox(width: 8),
           ],
         ),
-        body: DeviceCompatibilityBanner(
-          showBanner:
-              navigationShell.currentIndex ==
-              4, // Show only on Quest tab (index 4)
-          child: Column(
-            children: [
-              Expanded(child: navigationShell),
-              const MiniPlayer(),
-              const IPTVMiniPlayer(),
-            ],
-          ),
+        body: _ContextAwareMiniPlayers(
+          currentIndex: navigationShell.currentIndex,
+          child: navigationShell,
         ),
         bottomNavigationBar: NavigationBar(
           selectedIndex: navigationShell.currentIndex,
           onDestinationSelected: (index) {
+            // Reset fullscreen mode and orientation when changing tabs
+            if (ref.read(isFullscreenModeProvider)) {
+              ref.read(isFullscreenModeProvider.notifier).state = false;
+              // Restore normal UI and portrait orientation
+              SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+              SystemChrome.setPreferredOrientations([
+                DeviceOrientation.portraitUp,
+              ]);
+            }
             // Update the navigation tab provider for mini player visibility
             ref.read(currentNavigationTabProvider.notifier).state = index;
             navigationShell.goBranch(index);
           },
-          destinations: const [
+          destinations: [
             NavigationDestination(
-              icon: Icon(Icons.account_balance_wallet_outlined),
-              selectedIcon: Icon(Icons.account_balance_wallet),
+              icon: Image.asset(
+                'assets/airo_icon.png',
+                width: 24,
+                height: 24,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+              selectedIcon: Image.asset(
+                'assets/airo_icon.png',
+                width: 24,
+                height: 24,
+                color: Theme.of(context).colorScheme.primary,
+              ),
               label: 'Coins',
             ),
-            NavigationDestination(
-              icon: Icon(Icons.smart_toy_outlined),
+            const NavigationDestination(
+              icon: Icon(Icons.smart_toy),
               selectedIcon: Icon(Icons.smart_toy),
               label: 'Mind',
             ),
-            NavigationDestination(
-              icon: Icon(Icons.play_circle_outlined),
-              selectedIcon: Icon(Icons.play_circle),
-              label: 'Media',
+            const NavigationDestination(
+              icon: Icon(Icons.play_circle),
+              selectedIcon: Icon(Icons.play_circle_filled),
+              label: 'Live',
             ),
-            NavigationDestination(
-              icon: Icon(Icons.sports_esports_outlined),
+            const NavigationDestination(
+              icon: Icon(Icons.sports_esports),
               selectedIcon: Icon(Icons.sports_esports),
               label: 'Arena',
             ),
-            NavigationDestination(
-              icon: Icon(Icons.explore_outlined),
-              selectedIcon: Icon(Icons.explore),
-              label: 'Quest',
+            const NavigationDestination(
+              icon: Icon(Icons.menu_book_outlined),
+              selectedIcon: Icon(Icons.menu_book),
+              label: 'Tales',
             ),
           ],
         ),
@@ -177,6 +223,39 @@ class AppShell extends ConsumerWidget {
               )
             : null,
       ),
+    );
+  }
+}
+
+/// Context-aware mini players that show based on current mode
+/// - Music mini player: Shows when NOT on Live tab in TV mode
+/// - IPTV mini player: Shows when NOT on Live tab in Music mode
+class _ContextAwareMiniPlayers extends ConsumerWidget {
+  final int currentIndex;
+  final Widget child;
+
+  const _ContextAwareMiniPlayers({
+    required this.currentIndex,
+    required this.child,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final liveMode = ref.watch(liveModeProvider);
+    final isOnLiveTab = currentIndex == 2; // Live tab is at index 2
+
+    return Column(
+      children: [
+        Expanded(child: child),
+        // Show music mini player only when:
+        // - Not on Live tab, OR
+        // - On Live tab but in TV mode (so music plays in background)
+        if (!isOnLiveTab || liveMode == LiveMode.tv) const MiniPlayer(),
+        // Show IPTV mini player only when:
+        // - Not on Live tab, OR
+        // - On Live tab but in Music mode (so TV plays in background)
+        if (!isOnLiveTab || liveMode == LiveMode.music) const IPTVMiniPlayer(),
+      ],
     );
   }
 }

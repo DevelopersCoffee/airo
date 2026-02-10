@@ -5,11 +5,9 @@ import '../../features/money/presentation/screens/money_overview_screen.dart';
 import '../../features/bill_split/presentation/screens/bill_split_screen.dart';
 import '../../features/agent_chat/presentation/screens/chat_screen.dart';
 import '../../features/agent_chat/presentation/screens/profile_screen.dart';
-import '../../features/media/presentation/screens/media_hub_screen.dart';
+import '../../features/live/presentation/screens/live_screen.dart';
 import '../../features/games/presentation/screens/games_hub_screen.dart';
-import '../../features/quest/presentation/screens/quest_list_screen.dart';
-import '../../features/quest/presentation/screens/quest_upload_screen.dart';
-import '../../features/quest/presentation/screens/quest_chat_screen.dart';
+import '../../features/reader/presentation/screens/reader_screen.dart';
 import '../../core/auth/auth_service.dart';
 import '../../core/app/app_shell.dart';
 import '../http/http_dog.dart';
@@ -94,13 +92,13 @@ class AppRouter {
               ),
             ],
           ),
-          // Media branch (Music + IPTV/Stream unified)
+          // Live branch (Music + IPTV/Stream unified with toggle)
           StatefulShellBranch(
             routes: [
               GoRoute(
-                path: '/media',
-                name: 'Media',
-                builder: (context, state) => const MediaHubScreen(),
+                path: '/live',
+                name: 'Live',
+                builder: (context, state) => const LiveScreen(),
               ),
             ],
           ),
@@ -114,28 +112,13 @@ class AppRouter {
               ),
             ],
           ),
-          // Quest branch
+          // Tales branch (Reader/Manga)
           StatefulShellBranch(
             routes: [
               GoRoute(
-                path: '/quest',
-                name: 'Quest',
-                builder: (context, state) => const QuestListScreen(),
-                routes: [
-                  GoRoute(
-                    path: 'new',
-                    name: 'quest_new',
-                    builder: (context, state) => const QuestUploadScreen(),
-                  ),
-                  GoRoute(
-                    path: ':questId',
-                    name: 'quest_chat',
-                    builder: (context, state) {
-                      final questId = state.pathParameters['questId']!;
-                      return QuestChatScreen(questId: questId);
-                    },
-                  ),
-                ],
+                path: '/tales',
+                name: 'Tales',
+                builder: (context, state) => const ReaderScreen(),
               ),
             ],
           ),
