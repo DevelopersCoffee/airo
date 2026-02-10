@@ -113,18 +113,42 @@ jobs:
           cd ../../app && flutter pub get
 
       - name: Build APK (Release - Split per ABI)
+        id: build-apk
         run: |
           cd app
+          # Disable Gradle file watching to avoid "Already watching path" error
+          export GRADLE_OPTS="-Dorg.gradle.watch.fs=false -Xmx4g"
           flutter build apk --release --split-per-abi \
             --dart-define=ENV=prod \
-            --dart-define=DEMO_MODE=false
+            --dart-define=DEMO_MODE=false || true
+          # Verify APKs were built despite potential Gradle errors
+          if [ -f "build/app/outputs/flutter-apk/app-arm64-v8a-release.apk" ]; then
+            echo "APK build successful"
+          else
+            echo "APK not found, retrying..."
+            flutter clean
+            flutter pub get
+            flutter build apk --release --split-per-abi \
+              --dart-define=ENV=prod \
+              --dart-define=DEMO_MODE=false
+          fi
 
       - name: Build AAB (Release)
         run: |
           cd app
+          export GRADLE_OPTS="-Dorg.gradle.watch.fs=false -Xmx4g"
           flutter build appbundle --release \
             --dart-define=ENV=prod \
-            --dart-define=DEMO_MODE=false
+            --dart-define=DEMO_MODE=false || true
+          # Verify AAB was built
+          if [ -f "build/app/outputs/bundle/release/app-release.aab" ]; then
+            echo "AAB build successful"
+          else
+            echo "AAB not found, retrying..."
+            flutter build appbundle --release \
+              --dart-define=ENV=prod \
+              --dart-define=DEMO_MODE=false
+          fi
 
       - name: Rename APK files with version
         run: |
@@ -156,10 +180,14 @@ jobs:
 
   # ============================================
   # Build iOS
+  # NOTE: Currently disabled due to stockfish NNUE file issue (see issue #51)
+  # The stockfish package fails to compile on iOS because NNUE files are not embedded
   # ============================================
   build-ios:
     runs-on: macos-latest
     needs: changelog
+    # Allow iOS build to fail - stockfish has NNUE embedding issues on iOS
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v6
 
@@ -363,6 +391,8 @@ jobs:
   create-release:
     needs: [changelog, build-android, build-ios, build-web, build-windows, build-linux]
     runs-on: ubuntu-latest
+    # Always run release creation, even if some builds fail (iOS has known issues)
+    if: always() && needs.changelog.result == 'success'
     steps:
       - uses: actions/checkout@v6
         with:
@@ -370,6 +400,7 @@ jobs:
 
       - name: Download all artifacts
         uses: actions/download-artifact@v7
+        continue-on-error: true
 
       - name: Generate release notes
         run: |
@@ -392,10 +423,12 @@ jobs:
           | Android | \`airo-${VERSION}-arm64-v8a.apk\` | For modern 64-bit devices (recommended) |
           | Android | \`airo-${VERSION}-armeabi-v7a.apk\` | For older 32-bit devices |
           | Android | \`airo-${VERSION}.aab\` | For Google Play Store |
-          | iOS | \`airo-${VERSION}-ios.ipa\` | Requires signing |
+          | iOS | \`airo-${VERSION}-ios.ipa\` | Requires signing (may be unavailable) |
           | Web | \`airo-${VERSION}-web.zip\` | Run in browser |
           | Windows | \`airo-${VERSION}-windows-x64.zip\` | Windows 10/11 |
           | Linux | \`airo-${VERSION}-linux-x64.tar.gz\` | Linux x64 |
+
+          > **Note**: iOS build may be unavailable due to a known upstream issue with the Stockfish chess engine package.
 
           ## 🚀 Quick Start
 
@@ -431,6 +464,38 @@ jobs:
           echo "=== Downloaded artifacts ==="
           find . -type f -name "airo-*" | head -50
 
+      - name: Collect available artifacts
+        id: collect-artifacts
+        run: |
+          echo "=== Collecting available artifacts ==="
+          # Create a file list of all available artifacts
+          find . -type f -name "airo-*" > artifact_files.txt
+          cat artifact_files.txt
+
+          # Build file list for release (only include files that exist)
+          FILES=""
+          for pattern in \
+            "android-apk-arm64/airo-*-arm64-v8a.apk" \
+            "android-apk-arm32/airo-*-armeabi-v7a.apk" \
+            "android-aab/airo-*.aab" \
+            "ios-ipa/airo-*-ios.ipa" \
+            "web-build/airo-*-web.zip" \
+            "windows-build/airo-*-windows-x64.zip" \
+            "linux-build/airo-*-linux-x64.tar.gz"; do
+            for file in $pattern; do
+              if [ -f "$file" ]; then
+                FILES="${FILES}${file}\n"
+                echo "Found: $file"
+              fi
+            done
+          done
+
+          # Save file list (newline separated)
+          echo -e "$FILES" > release_files.txt
+          echo "files<<EOF" >> $GITHUB_OUTPUT
+          cat release_files.txt >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
@@ -447,5 +512,6 @@ jobs:
           body_path: RELEASE_NOTES.md
           draft: false
           prerelease: ${{ github.event.inputs.prerelease == 'true' }}
+          fail_on_unmatched_files: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
