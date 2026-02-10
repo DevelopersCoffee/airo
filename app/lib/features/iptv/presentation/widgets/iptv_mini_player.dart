@@ -7,7 +7,7 @@ import '../../domain/models/streaming_state.dart';
 /// Mini player widget for IPTV background playback
 /// Shows at bottom when:
 /// - Playing audio-only channels (always visible)
-/// - Playing any channel when user navigates away from Media tab
+/// - Playing any channel when user navigates away from Stream tab
 class IPTVMiniPlayer extends ConsumerWidget {
   const IPTVMiniPlayer({super.key});
 
@@ -16,9 +16,9 @@ class IPTVMiniPlayer extends ConsumerWidget {
     final streamingState = ref.watch(streamingStateProvider);
     final currentTab = ref.watch(currentNavigationTabProvider);
 
-    // Media tab is at index 2 (0=Coins, 1=Mind, 2=Media, 3=Arena, 4=Quest)
-    const mediaTabIndex = 2;
-    final isOnMediaTab = currentTab == mediaTabIndex;
+    // Live tab is at index 2 (0=Coins, 1=Mind, 2=Live, 3=Arena, 4=Quest)
+    const liveTabIndex = 2;
+    final isOnLiveTab = currentTab == liveTabIndex;
 
     return streamingState.when(
       data: (state) {
@@ -27,17 +27,17 @@ class IPTVMiniPlayer extends ConsumerWidget {
           return const SizedBox.shrink();
         }
 
-        // Don't show if on Media tab (video player is visible there)
+        // Don't show if on Live tab (video player is visible there)
         // unless it's an audio-only channel
-        if (isOnMediaTab && !state.currentChannel!.isAudioOnly) {
+        if (isOnLiveTab && !state.currentChannel!.isAudioOnly) {
           return const SizedBox.shrink();
         }
 
         return GestureDetector(
           onTap: () {
-            // Navigate to Media tab and update provider
+            // Navigate to Live tab and update provider
             ref.read(currentNavigationTabProvider.notifier).state = 2;
-            context.go('/media');
+            context.go('/live');
           },
           child: Container(
             height: 64,

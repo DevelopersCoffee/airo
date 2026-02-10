@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../shared/widgets/app_icon_placeholder.dart';
 import '../../application/providers/iptv_providers.dart';
 import '../../domain/models/iptv_channel.dart';
 
@@ -19,38 +20,51 @@ class ChannelListWidget extends ConsumerWidget {
     final channels = ref.watch(filteredChannelsProvider);
     final selectedCategory = ref.watch(selectedCategoryProvider);
     final searchQuery = ref.watch(channelSearchQueryProvider);
+    final counts = ref.watch(categoryCounts);
+    final hasActiveFilter = ref.watch(hasActiveFilterProvider);
 
     return Column(
       children: [
-        // Search bar
+        // Search bar - compact to prevent overflow
         Padding(
-          padding: const EdgeInsets.all(8),
-          child: TextField(
-            decoration: InputDecoration(
-              hintText: 'Search channels...',
-              prefixIcon: const Icon(Icons.search),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          child: SizedBox(
+            height: 44,
+            child: TextField(
+              decoration: InputDecoration(
+                hintText: 'Search channels...',
+                prefixIcon: const Icon(Icons.search, size: 20),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+                isDense: true,
+                suffixIcon: searchQuery.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear, size: 18),
+                        onPressed: () =>
+                            ref
+                                    .read(channelSearchQueryProvider.notifier)
+                                    .state =
+                                '',
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                      )
+                    : null,
               ),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-              suffixIcon: searchQuery.isNotEmpty
-                  ? IconButton(
-                      icon: const Icon(Icons.clear),
-                      onPressed: () =>
-                          ref.read(channelSearchQueryProvider.notifier).state =
-                              '',
-                    )
-                  : null,
+              onChanged: (value) =>
+                  ref.read(channelSearchQueryProvider.notifier).state = value,
             ),
-            onChanged: (value) =>
-                ref.read(channelSearchQueryProvider.notifier).state = value,
           ),
         ),
 
-        // Category tabs
+        // Category tabs with counts - compact height
         if (showCategories)
           SizedBox(
-            height: 48,
+            height: 44,
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -58,10 +72,12 @@ class ChannelListWidget extends ConsumerWidget {
               itemBuilder: (context, index) {
                 final category = ChannelCategory.values[index];
                 final isSelected = category == selectedCategory;
+                final count = counts[category] ?? 0;
                 return Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 4),
                   child: ChoiceChip(
-                    label: Text(category.label),
+                    // Show count in label for better UX feedback
+                    label: Text('${category.label} ($count)'),
                     selected: isSelected,
                     onSelected: (_) =>
                         ref.read(selectedCategoryProvider.notifier).state =
@@ -69,6 +85,34 @@ class ChannelListWidget extends ConsumerWidget {
                   ),
                 );
               },
+            ),
+          ),
+
+        // Clear filters button - show when filters are active
+        if (hasActiveFilter)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            child: Row(
+              children: [
+                Text(
+                  '${channels.length} channels',
+                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                ),
+                const Spacer(),
+                TextButton.icon(
+                  onPressed: () {
+                    ref.read(selectedCategoryProvider.notifier).state =
+                        ChannelCategory.all;
+                    ref.read(channelSearchQueryProvider.notifier).state = '';
+                  },
+                  icon: const Icon(Icons.clear_all, size: 16),
+                  label: const Text('Clear filters'),
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    visualDensity: VisualDensity.compact,
+                  ),
+                ),
+              ],
             ),
           ),
 
@@ -141,21 +185,44 @@ class _ChannelListTile extends ConsumerWidget {
           color: isPlaying ? Theme.of(context).primaryColor : null,
         ),
       ),
-      subtitle: Text(
-        channel.group,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+      subtitle: Row(
+        children: [
+          // Audio-only label for clarity (UX improvement)
+          if (channel.isAudioOnly)
+            Container(
+              margin: const EdgeInsets.only(right: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+              decoration: BoxDecoration(
+                color: Colors.orange.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: const Text(
+                'Audio',
+                style: TextStyle(
+                  fontSize: 10,
+                  color: Colors.orange,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          Expanded(
+            child: Text(
+              channel.group,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+            ),
+          ),
+        ],
       ),
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (channel.isAudioOnly)
-            const Icon(Icons.music_note, size: 16, color: Colors.orange),
+          // Playing indicator with animation
           if (isPlaying)
             Icon(
-              Icons.volume_up,
-              size: 16,
+              Icons.equalizer,
+              size: 18,
               color: Theme.of(context).primaryColor,
             ),
         ],
@@ -165,9 +232,7 @@ class _ChannelListTile extends ConsumerWidget {
   }
 
   Widget _buildDefaultIcon() {
-    return Icon(
-      channel.isAudioOnly ? Icons.radio : Icons.live_tv,
-      color: Colors.grey,
-    );
+    // Use shared AppIconPlaceholder for brand consistency and optimized caching
+    return AppIconPlaceholder.channel(isAudioOnly: channel.isAudioOnly);
   }
 }

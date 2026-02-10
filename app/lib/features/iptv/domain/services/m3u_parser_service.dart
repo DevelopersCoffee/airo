@@ -71,10 +71,12 @@ class M3UParserService {
     return parseM3U(response.data!);
   }
 
-  /// Parse M3U content into channels
+  /// Parse M3U content into channels with deduplication
   List<IPTVChannel> parseM3U(String content) {
     final lines = content.split('\n');
     final channels = <IPTVChannel>[];
+    // Track seen channels by normalized name to deduplicate
+    final seenChannels = <String, IPTVChannel>{};
 
     String? currentName;
     String? currentLogo;
@@ -98,18 +100,30 @@ class M3UParserService {
       } else if (line.isNotEmpty &&
           !line.startsWith('#') &&
           currentName != null) {
-        // This is the stream URL
-        channels.add(
-          IPTVChannel.fromM3U(
-            name: currentName,
-            url: line,
-            logo: currentLogo,
-            group: currentGroup,
-            tvgId: currentTvgId,
-            tvgName: currentTvgName,
-            language: currentLanguage,
-          ),
+        // Normalize the channel name for deduplication
+        final normalizedName = _normalizeChannelName(currentName);
+
+        // Create the channel
+        final channel = IPTVChannel.fromM3U(
+          name: _formatChannelName(currentName), // Use formatted name
+          url: line,
+          logo: currentLogo,
+          group: currentGroup,
+          tvgId: currentTvgId,
+          tvgName: currentTvgName,
+          language: currentLanguage,
         );
+
+        // Deduplicate: keep the one with logo, or first occurrence
+        if (!seenChannels.containsKey(normalizedName)) {
+          seenChannels[normalizedName] = channel;
+        } else {
+          // Prefer channel with logo over one without
+          final existing = seenChannels[normalizedName]!;
+          if (existing.logoUrl == null && channel.logoUrl != null) {
+            seenChannels[normalizedName] = channel;
+          }
+        }
 
         // Reset for next channel
         currentName = null;
@@ -121,7 +135,82 @@ class M3UParserService {
       }
     }
 
+    // Return deduplicated channels
+    channels.addAll(seenChannels.values);
     return channels;
+  }
+
+  /// Normalize channel name for deduplication (lowercase, remove special chars)
+  String _normalizeChannelName(String name) {
+    return name
+        .toLowerCase()
+        .replaceAll(RegExp(r'[^a-z0-9]'), '') // Remove non-alphanumeric
+        .replaceAll(RegExp(r'\s+'), ''); // Remove whitespace
+  }
+
+  /// Format channel name for display (proper capitalization)
+  String _formatChannelName(String name) {
+    // Remove extra whitespace
+    name = name.trim().replaceAll(RegExp(r'\s+'), ' ');
+
+    // Known channel name mappings for consistency
+    const nameCorrections = {
+      'b4u music': 'B4U Music',
+      'b4u beats': 'B4U Beats',
+      '9xm': '9XM',
+      '9x jalwa': '9X Jalwa',
+      'mtv': 'MTV',
+      'vh1': 'VH1',
+      'ndtv': 'NDTV',
+      'ndtv india': 'NDTV India',
+      'aaj tak': 'Aaj Tak',
+      'zee news': 'Zee News',
+      'republic tv': 'Republic TV',
+      'times now': 'Times Now',
+      'india today': 'India Today',
+      'cnn': 'CNN',
+      'bbc': 'BBC',
+      'star plus': 'Star Plus',
+      'star gold': 'Star Gold',
+      'sony tv': 'Sony TV',
+      'colors': 'Colors',
+      'zee tv': 'Zee TV',
+      'discovery': 'Discovery',
+      'nat geo': 'Nat Geo',
+      'national geographic': 'National Geographic',
+      'cartoon network': 'Cartoon Network',
+      'pogo': 'Pogo',
+      'nick': 'Nick',
+      'disney': 'Disney',
+    };
+
+    final lowerName = name.toLowerCase();
+
+    // Check for known corrections
+    for (final entry in nameCorrections.entries) {
+      if (lowerName == entry.key || lowerName.contains(entry.key)) {
+        // If exact match, return the correction
+        if (lowerName == entry.key) return entry.value;
+        // If partial match, replace the part
+        return name.replaceAll(
+          RegExp(entry.key, caseSensitive: false),
+          entry.value,
+        );
+      }
+    }
+
+    // Default: Title Case
+    return name
+        .split(' ')
+        .map((word) {
+          if (word.isEmpty) return word;
+          // Keep acronyms uppercase (2-4 letter all-caps words)
+          if (word.length <= 4 && word == word.toUpperCase()) {
+            return word;
+          }
+          return word[0].toUpperCase() + word.substring(1).toLowerCase();
+        })
+        .join(' ');
   }
 
   /// Parse #EXTINF line attributes

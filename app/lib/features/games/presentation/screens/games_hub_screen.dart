@@ -17,19 +17,8 @@ class GamesHubScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final gamesByCategory = GameRegistry.byCategory;
 
+    // No AppBar here - global AppBar is in AppShell
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Arena'),
-        centerTitle: true,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.search),
-            onPressed: () {
-              // TODO: Search games
-            },
-          ),
-        ],
-      ),
       body: ResponsiveCenter(
         maxWidth: ResponsiveBreakpoints.dashboardMaxWidth,
         child: SingleChildScrollView(
