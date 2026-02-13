@@ -2,7 +2,6 @@
 
 import hashlib
 import re
-from typing import Any
 
 from ..models import NormalizedChannel, RawChannel
 from ..utils import get_logger

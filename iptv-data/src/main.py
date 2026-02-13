@@ -5,7 +5,7 @@ import asyncio
 import sys
 import time
 from collections import Counter
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from .exporters import JsonExporter, M3UExporter
@@ -115,17 +115,17 @@ async def run_pipeline(
 
     # Build metadata
     processing_time = time.time() - start_time
-    version = datetime.now(timezone.utc).strftime("%Y.%m.%d")
+    version = datetime.now(UTC).strftime("%Y.%m.%d")
 
     metadata = PipelineMetadata(
         version=version,
-        generated_at=datetime.now(timezone.utc),
+        generated_at=datetime.now(UTC),
         checksum="",  # Will be filled by exporter
         total_channels=len(processed_channels),
         channels_by_country=dict(Counter(c.country for c in processed_channels)),
         channels_by_category=dict(Counter(c.category for c in processed_channels)),
         channels_by_flavor=dict(Counter(c.flavor for c in processed_channels)),
-        sources_used=list(set(s for c in processed_channels for s in c.sources)),
+        sources_used=list({s for c in processed_channels for s in c.sources}),
         dead_streams_removed=dead_streams_removed,
         duplicates_merged=duplicates_merged,
         processing_time_seconds=round(processing_time, 2),

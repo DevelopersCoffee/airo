@@ -46,7 +46,7 @@ class StreamValidator:
         valid_channels = []
         dead_count = 0
 
-        for channel, result in zip(channels, results):
+        for channel, result in zip(channels, results, strict=True):
             if isinstance(result, Exception):
                 logger.warning(f"Validation error for {channel.name}: {result}")
                 channel.validation_status = ValidationStatus.INVALID
@@ -111,7 +111,7 @@ class StreamValidator:
                     channel.validation_status = ValidationStatus.INVALID
                     return False
 
-        except asyncio.TimeoutError:
+        except TimeoutError:
             channel.validation_status = ValidationStatus.TIMEOUT
             logger.debug(f"Timeout validating {channel.name}")
 

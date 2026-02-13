@@ -44,7 +44,7 @@ class Deduplicator:
         result: list[ProcessedChannel] = []
         duplicates_merged = 0
 
-        for key, group in groups.items():
+        for _key, group in groups.items():
             if len(group) == 1:
                 result.append(self._to_processed(group[0]))
             else:
