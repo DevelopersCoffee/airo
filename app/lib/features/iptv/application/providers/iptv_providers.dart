@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../domain/models/iptv_channel.dart';
 import '../../domain/models/streaming_state.dart';
 import '../../domain/services/m3u_parser_service.dart';
+import '../../domain/services/channel_data_service.dart';
 import '../../domain/services/iptv_streaming_service.dart';
 import '../../domain/services/video_player_streaming_service.dart';
 
@@ -31,9 +32,17 @@ final dioProvider = Provider<Dio>((ref) {
   );
 });
 
-/// M3U Parser service provider
+/// M3U Parser service provider (legacy - for backward compatibility)
 final m3uParserProvider = Provider<M3UParserService>((ref) {
   return M3UParserService(
+    dio: ref.watch(dioProvider),
+    prefs: ref.watch(sharedPreferencesProvider),
+  );
+});
+
+/// Channel data service provider (new - fetches preprocessed JSON)
+final channelDataServiceProvider = Provider<ChannelDataService>((ref) {
+  return ChannelDataService(
     dio: ref.watch(dioProvider),
     prefs: ref.watch(sharedPreferencesProvider),
   );
@@ -48,8 +57,20 @@ final iptvStreamingServiceProvider = Provider<VideoPlayerStreamingService>((
   return service;
 });
 
-/// All channels provider - fetches and caches playlist
+/// All channels provider - fetches preprocessed channels from IPTV Sanity Agent
+/// Falls back to M3U parser if preprocessed data is unavailable
 final iptvChannelsProvider = FutureProvider<List<IPTVChannel>>((ref) async {
+  final channelDataService = ref.watch(channelDataServiceProvider);
+  try {
+    final channels = await channelDataService.fetchChannels();
+    if (channels.isNotEmpty) {
+      return channels;
+    }
+  } catch (e) {
+    print('[Provider] ChannelDataService failed, falling back to M3U: $e');
+  }
+
+  // Fallback to legacy M3U parser
   final parser = ref.watch(m3uParserProvider);
   return parser.fetchPlaylist();
 });
@@ -59,6 +80,21 @@ final refreshChannelsProvider = FutureProvider.family<List<IPTVChannel>, bool>((
   ref,
   forceRefresh,
 ) async {
+  final channelDataService = ref.watch(channelDataServiceProvider);
+  try {
+    final channels = await channelDataService.fetchChannels(
+      forceRefresh: forceRefresh,
+    );
+    if (channels.isNotEmpty) {
+      return channels;
+    }
+  } catch (e) {
+    print(
+      '[Provider] ChannelDataService refresh failed, falling back to M3U: $e',
+    );
+  }
+
+  // Fallback to legacy M3U parser
   final parser = ref.watch(m3uParserProvider);
   return parser.fetchPlaylist(forceRefresh: forceRefresh);
 });
@@ -66,6 +102,11 @@ final refreshChannelsProvider = FutureProvider.family<List<IPTVChannel>, bool>((
 /// Current category filter
 final selectedCategoryProvider = StateProvider<ChannelCategory>((ref) {
   return ChannelCategory.all;
+});
+
+/// Current flavor filter (taste-based filtering)
+final selectedFlavorProvider = StateProvider<ChannelFlavor?>((ref) {
+  return null; // null means no flavor filter
 });
 
 /// Search query provider
@@ -93,6 +134,7 @@ final preferenceKeywordsProvider = StateProvider<List<String>>((ref) {
 final filteredChannelsProvider = Provider<List<IPTVChannel>>((ref) {
   final channelsAsync = ref.watch(iptvChannelsProvider);
   final category = ref.watch(selectedCategoryProvider);
+  final flavor = ref.watch(selectedFlavorProvider);
   final searchQuery = ref.watch(channelSearchQueryProvider).toLowerCase();
   final preferences = ref.watch(preferenceKeywordsProvider);
 
@@ -102,6 +144,11 @@ final filteredChannelsProvider = Provider<List<IPTVChannel>>((ref) {
       var filtered = category == ChannelCategory.all
           ? channels
           : channels.where((c) => c.category == category).toList();
+
+      // Filter by flavor (taste-based filtering)
+      if (flavor != null) {
+        filtered = filtered.where((c) => c.flavor == flavor).toList();
+      }
 
       // Filter by search query
       if (searchQuery.isNotEmpty) {
@@ -127,6 +174,37 @@ final filteredChannelsProvider = Provider<List<IPTVChannel>>((ref) {
     loading: () => [],
     error: (_, _) => [],
   );
+});
+
+/// Channels filtered by specific flavor
+final channelsByFlavorProvider =
+    Provider.family<List<IPTVChannel>, ChannelFlavor>((ref, flavor) {
+      final channelsAsync = ref.watch(iptvChannelsProvider);
+      return channelsAsync.when(
+        data: (channels) => channels.where((c) => c.flavor == flavor).toList(),
+        loading: () => [],
+        error: (_, _) => [],
+      );
+    });
+
+/// Hindi music channels provider (convenience)
+final hindiMusicChannelsProvider = Provider<List<IPTVChannel>>((ref) {
+  return ref.watch(channelsByFlavorProvider(ChannelFlavor.hindiMusic));
+});
+
+/// English music channels provider (convenience)
+final englishMusicChannelsProvider = Provider<List<IPTVChannel>>((ref) {
+  return ref.watch(channelsByFlavorProvider(ChannelFlavor.englishMusic));
+});
+
+/// Hindi news channels provider (convenience)
+final hindiNewsChannelsProvider = Provider<List<IPTVChannel>>((ref) {
+  return ref.watch(channelsByFlavorProvider(ChannelFlavor.hindiNews));
+});
+
+/// English news channels provider (convenience)
+final englishNewsChannelsProvider = Provider<List<IPTVChannel>>((ref) {
+  return ref.watch(channelsByFlavorProvider(ChannelFlavor.englishNews));
 });
 
 int _getPreferenceScore(IPTVChannel channel, List<String> preferences) {
@@ -163,11 +241,31 @@ final categoryCounts = Provider<Map<ChannelCategory, int>>((ref) {
   );
 });
 
-/// Check if any filter is active (category or search)
+/// Check if any filter is active (category, flavor, or search)
 final hasActiveFilterProvider = Provider<bool>((ref) {
   final category = ref.watch(selectedCategoryProvider);
+  final flavor = ref.watch(selectedFlavorProvider);
   final searchQuery = ref.watch(channelSearchQueryProvider);
-  return category != ChannelCategory.all || searchQuery.isNotEmpty;
+  return category != ChannelCategory.all ||
+      flavor != null ||
+      searchQuery.isNotEmpty;
+});
+
+/// Flavor counts provider - shows how many channels in each flavor
+final flavorCounts = Provider<Map<ChannelFlavor, int>>((ref) {
+  final channelsAsync = ref.watch(iptvChannelsProvider);
+
+  return channelsAsync.when(
+    data: (channels) {
+      final counts = <ChannelFlavor, int>{};
+      for (final flavor in ChannelFlavor.values) {
+        counts[flavor] = channels.where((c) => c.flavor == flavor).length;
+      }
+      return counts;
+    },
+    loading: () => {},
+    error: (_, _) => {},
+  );
 });
 
 /// Streaming state provider

@@ -1,0 +1,120 @@
+# IPTV Sanity Agent - Development Configuration
+# Overrides default.yaml for local testing
+
+version: "1.0"
+environment: development
+
+sources:
+  m3u:
+    enabled: true
+    priority: 1
+    urls:
+      - url: https://raw.githubusercontent.com/FunctionError/PiratesTv/main/combined_playlist.m3u
+        name: "PiratesTv Primary"
+        timeout_seconds: 60
+    retry:
+      max_attempts: 1
+      backoff_seconds: [5]
+
+  iptv_org:
+    enabled: true
+    priority: 2
+    base_url: https://iptv-org.github.io/api
+    endpoints:
+      channels: /channels.json
+      streams: /streams.json
+      blocklist: /blocklist.json
+    cache_hours: 1
+    retry:
+      max_attempts: 1
+      backoff_seconds: [5]
+
+  custom:
+    enabled: false
+    priority: 3
+    urls: []
+
+processing:
+  target_countries:
+    - IN
+    - US
+    - GB
+  
+  default_country: IN
+  
+  validation:
+    enabled: false  # Skip validation in dev for speed
+    timeout_seconds: 3
+    max_concurrent: 10
+    retry_once: false
+  
+  deduplication:
+    enabled: true
+    strategy: composite_key
+    priority_order:
+      - m3u
+      - iptv_org
+      - custom
+  
+  normalization:
+    lowercase: true
+    strip_symbols: true
+    collapse_whitespace: true
+    remove_suffixes:
+      quality: [hd, fhd, uhd, 4k, 1080p, 720p, 480p, sd]
+      region: [india, us, uk, eu, asia, international, in, usa]
+      feed: [live, stream, tv, channel, plus]
+
+enrichment:
+  flavor_rules_file: rules/flavor_rules.json
+  category_rules_file: rules/category_rules.json
+  language_rules_file: rules/language_rules.json
+  logo:
+    prefer_source: iptv_org
+    fallback_to_tvg_logo: true
+    validate_urls: false
+
+output:
+  primary_format: json
+  secondary_formats:
+    - m3u
+  directory: output
+  filenames:
+    json: iptv_channels.json
+    m3u: iptv_channels.m3u
+  versioning:
+    strategy: date
+    format: "YYYY.MM.DD"
+    include_checksum: true
+    checksum_algorithm: sha256
+  guarantees:
+    sorted_output: true
+    sort_by: [country, category, name]
+    stable_ids: true
+    no_empty_fields: true
+    minify_json: false
+  thresholds:
+    min_channels: 10  # Lower for dev
+    min_working_streams: 5
+    max_dead_stream_ratio: 0.9
+
+failure_handling:
+  hard_fail:
+    - output_channel_count_zero
+    - all_streams_invalid
+  soft_fail:
+    - primary_source_fetch_failed  # Softer in dev
+    - secondary_source_unavailable
+    - custom_sources_failed
+    - some_streams_invalid
+    - logo_fetch_failed
+    - threshold_not_met  # Softer in dev
+  rollback:
+    enabled: false
+    keep_previous_versions: 1
+
+logging:
+  level: DEBUG
+  format: text  # Human-readable in dev
+  include_timestamps: true
+

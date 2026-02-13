@@ -1,0 +1,113 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "description": "Category mapping rules for IPTV channels",
+  "version": "1.0",
+  "categories": {
+    "news": {
+      "display_name": "News",
+      "icon": "newspaper",
+      "patterns": [
+        "news", "aaj tak", "abp", "zee news", "ndtv", "times now",
+        "republic", "cnn", "bbc", "al jazeera", "wion", "mirror now"
+      ],
+      "priority": 1
+    },
+    "entertainment": {
+      "display_name": "Entertainment",
+      "icon": "tv",
+      "patterns": [
+        "star plus", "zee tv", "colors", "sony", "sab", "&tv",
+        "star bharat", "dangal", "big magic", "hbo", "fx", "amc"
+      ],
+      "priority": 2
+    },
+    "sports": {
+      "display_name": "Sports",
+      "icon": "sports_soccer",
+      "patterns": [
+        "sports", "cricket", "espn", "star sports", "sony sports",
+        "ten sports", "dd sports", "eurosport", "sky sports", "fox sports"
+      ],
+      "priority": 3
+    },
+    "movies": {
+      "display_name": "Movies",
+      "icon": "movie",
+      "patterns": [
+        "movies", "cinema", "hbo", "max", "star movies", "zee cinema",
+        "sony pix", "movies now", "romedy now", "wb"
+      ],
+      "priority": 4
+    },
+    "music": {
+      "display_name": "Music",
+      "icon": "music_note",
+      "patterns": [
+        "music", "mtv", "vh1", "9xm", "zing", "b4u music", "mastiii",
+        "trace", "vevo"
+      ],
+      "priority": 5
+    },
+    "kids": {
+      "display_name": "Kids",
+      "icon": "child_care",
+      "patterns": [
+        "cartoon", "disney", "nick", "pogo", "hungama", "sonic",
+        "discovery kids", "baby tv", "junior"
+      ],
+      "priority": 6
+    },
+    "documentary": {
+      "display_name": "Documentary",
+      "icon": "explore",
+      "patterns": [
+        "discovery", "national geographic", "nat geo", "animal planet",
+        "history", "science", "planet earth", "bbc earth"
+      ],
+      "priority": 7
+    },
+    "lifestyle": {
+      "display_name": "Lifestyle",
+      "icon": "spa",
+      "patterns": [
+        "tlc", "fox life", "living", "food", "travel", "hgtv",
+        "cooking", "fashion"
+      ],
+      "priority": 8
+    },
+    "devotional": {
+      "display_name": "Devotional",
+      "icon": "self_improvement",
+      "patterns": [
+        "aastha", "sanskar", "god", "peace of mind", "divya",
+        "bhakti", "vedic", "spiritual", "religious"
+      ],
+      "priority": 9
+    },
+    "regional": {
+      "display_name": "Regional",
+      "icon": "language",
+      "patterns": [
+        "tamil", "telugu", "kannada", "marathi", "bengali", "malayalam",
+        "gujarati", "punjabi", "odia", "assamese"
+      ],
+      "priority": 10
+    },
+    "business": {
+      "display_name": "Business",
+      "icon": "trending_up",
+      "patterns": [
+        "cnbc", "bloomberg", "et now", "zee business", "business"
+      ],
+      "priority": 11
+    },
+    "general": {
+      "display_name": "General",
+      "icon": "category",
+      "patterns": [],
+      "priority": 100,
+      "is_default": true
+    }
+  }
+}
+

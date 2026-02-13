@@ -1,0 +1,106 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "description": "Language detection rules for IPTV channels",
+  "version": "1.0",
+  "languages": {
+    "hi": {
+      "name": "Hindi",
+      "native_name": "हिन्दी",
+      "patterns": [
+        "hindi", "zee tv", "star plus", "colors", "sony", "aaj tak",
+        "abp news", "zee news", "ndtv india", "star bharat", "sab"
+      ],
+      "keywords": ["hindi", "bollywood", "bharat"],
+      "country_hints": ["IN"]
+    },
+    "en": {
+      "name": "English",
+      "native_name": "English",
+      "patterns": [
+        "cnn", "bbc", "fox", "abc", "nbc", "cbs", "hbo", "espn",
+        "star movies", "movies now", "times now", "ndtv 24x7"
+      ],
+      "keywords": ["english", "international"],
+      "country_hints": ["US", "GB", "AU"]
+    },
+    "ta": {
+      "name": "Tamil",
+      "native_name": "தமிழ்",
+      "patterns": [
+        "sun tv", "zee tamil", "star vijay", "colors tamil", "ktv",
+        "kalaignar", "jaya tv", "raj tv", "polimer"
+      ],
+      "keywords": ["tamil"],
+      "country_hints": ["IN"]
+    },
+    "te": {
+      "name": "Telugu",
+      "native_name": "తెలుగు",
+      "patterns": [
+        "zee telugu", "star maa", "etv telugu", "gemini tv",
+        "colors telugu", "maa tv"
+      ],
+      "keywords": ["telugu"],
+      "country_hints": ["IN"]
+    },
+    "kn": {
+      "name": "Kannada",
+      "native_name": "ಕನ್ನಡ",
+      "patterns": [
+        "zee kannada", "colors kannada", "udaya tv", "star suvarna",
+        "public tv"
+      ],
+      "keywords": ["kannada"],
+      "country_hints": ["IN"]
+    },
+    "mr": {
+      "name": "Marathi",
+      "native_name": "मराठी",
+      "patterns": [
+        "zee marathi", "star pravah", "colors marathi", "fakt marathi"
+      ],
+      "keywords": ["marathi"],
+      "country_hints": ["IN"]
+    },
+    "bn": {
+      "name": "Bengali",
+      "native_name": "বাংলা",
+      "patterns": [
+        "zee bangla", "star jalsha", "colors bangla", "sony aath"
+      ],
+      "keywords": ["bengali", "bangla"],
+      "country_hints": ["IN", "BD"]
+    },
+    "ml": {
+      "name": "Malayalam",
+      "native_name": "മലയാളം",
+      "patterns": [
+        "asianet", "mazhavil manorama", "zee keralam", "flowers tv",
+        "surya tv", "kairali tv"
+      ],
+      "keywords": ["malayalam"],
+      "country_hints": ["IN"]
+    },
+    "gu": {
+      "name": "Gujarati",
+      "native_name": "ગુજરાતી",
+      "patterns": [
+        "colors gujarati", "zee gujarati", "vtv gujarati"
+      ],
+      "keywords": ["gujarati"],
+      "country_hints": ["IN"]
+    },
+    "pa": {
+      "name": "Punjabi",
+      "native_name": "ਪੰਜਾਬੀ",
+      "patterns": [
+        "zee punjabi", "ptc punjabi", "chardikla time", "9x tashan"
+      ],
+      "keywords": ["punjabi"],
+      "country_hints": ["IN"]
+    }
+  },
+  "default_language": "en",
+  "detection_order": ["patterns", "keywords", "country_hints"]
+}
+

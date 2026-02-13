@@ -1,0 +1,111 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "description": "Flavor tagging rules for IPTV channels - maps channel patterns to taste-based flavors",
+  "version": "1.0",
+  "flavors": {
+    "hindiMusic": {
+      "description": "Hindi music channels",
+      "patterns": [
+        "9xm", "mtv india", "mtv beats", "zing", "b4u music", "mastiii",
+        "9x jalwa", "9x tashan", "mtv indies", "vh1 india", "music india",
+        "sangeet", "rishtey music"
+      ],
+      "keywords": ["hindi", "bollywood", "desi"]
+    },
+    "englishMusic": {
+      "description": "English/International music channels",
+      "patterns": [
+        "mtv", "vh1", "mtv live", "mtv classic", "mtv hits",
+        "trace urban", "trace latina", "club mtv"
+      ],
+      "keywords": ["english", "international", "pop", "rock"],
+      "exclude_patterns": ["india", "hindi", "beats"]
+    },
+    "hindiNews": {
+      "description": "Hindi news channels",
+      "patterns": [
+        "aaj tak", "abp news", "india tv", "zee news", "news18 india",
+        "republic bharat", "news nation", "india news", "news24",
+        "cnbc awaaz", "zee business hindi", "ndtv india", "dd news"
+      ],
+      "keywords": ["hindi", "bharat"],
+      "exclude_keywords": ["english"]
+    },
+    "englishNews": {
+      "description": "English news channels",
+      "patterns": [
+        "times now", "republic tv", "cnn", "bbc", "ndtv 24x7",
+        "mirror now", "wion", "cnn news18", "india today", "al jazeera"
+      ],
+      "keywords": ["english", "international"],
+      "exclude_keywords": ["hindi", "bharat"]
+    },
+    "hindiEntertainment": {
+      "description": "Hindi general entertainment",
+      "patterns": [
+        "star plus", "zee tv", "colors", "sony", "sab tv", "&tv",
+        "star bharat", "dangal", "big magic", "ishara", "shemaroo tv",
+        "zee anmol", "rishtey", "sony pal"
+      ],
+      "keywords": ["hindi", "entertainment"]
+    },
+    "regionalEntertainment": {
+      "description": "Regional language entertainment",
+      "patterns": [
+        "sun tv", "zee tamil", "star vijay", "colors tamil",
+        "zee telugu", "star maa", "zee kannada", "colors kannada",
+        "zee marathi", "star pravah", "zee bangla", "star jalsha",
+        "mazhavil manorama", "asianet"
+      ],
+      "keywords": ["tamil", "telugu", "kannada", "marathi", "bengali", "malayalam"]
+    },
+    "sports": {
+      "description": "Sports channels",
+      "patterns": [
+        "star sports", "sony sports", "dd sports", "sony ten",
+        "sony six", "eurosport", "espn", "fox sports", "sky sports"
+      ],
+      "keywords": ["sports", "cricket", "football", "tennis"]
+    },
+    "movies": {
+      "description": "Movie channels",
+      "patterns": [
+        "star movies", "sony max", "zee cinema", "colors cineplex",
+        "star gold", "zee bollywood", "movies now", "romedy now",
+        "mnx", "wb", "hbo", "sony pix", "movies ok"
+      ],
+      "keywords": ["movies", "cinema", "films"]
+    },
+    "kids": {
+      "description": "Kids channels",
+      "patterns": [
+        "cartoon network", "pogo", "disney", "nick", "hungama",
+        "sonic", "discovery kids", "baby tv"
+      ],
+      "keywords": ["kids", "children", "cartoon", "animation"]
+    },
+    "devotional": {
+      "description": "Religious/devotional channels",
+      "patterns": [
+        "aastha", "sanskar", "peace of mind", "divya", "sadhna",
+        "god tv", "ishwar", "bhakti", "vedic"
+      ],
+      "keywords": ["devotional", "religious", "spiritual", "bhakti"]
+    },
+    "lifestyle": {
+      "description": "Lifestyle and food channels",
+      "patterns": [
+        "tlc", "fox life", "living", "ndtv good times", "food food",
+        "travel xp", "epic", "history tv18"
+      ],
+      "keywords": ["lifestyle", "food", "travel", "cooking"]
+    },
+    "general": {
+      "description": "Uncategorized or general purpose channels",
+      "patterns": [],
+      "keywords": [],
+      "is_default": true
+    }
+  }
+}
+

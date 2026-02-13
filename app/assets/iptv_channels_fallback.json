@@ -1,0 +1,22 @@
+{
+  "version": "2024.01.01",
+  "generated_at": "2024-01-01T00:00:00Z",
+  "channels": [
+    {
+      "id": "sample-channel-1",
+      "name": "Sample Channel",
+      "streamUrl": "https://example.com/stream.m3u8",
+      "logoUrl": null,
+      "group": "General",
+      "category": "general",
+      "flavor": "general",
+      "country": "IN",
+      "isAudioOnly": false,
+      "languages": ["en"],
+      "isWorking": true,
+      "sources": ["fallback"],
+      "altNames": []
+    }
+  ]
+}
+

@@ -1,0 +1,150 @@
+# IPTV Sanity Agent Configuration
+# This file is the single source of truth for pipeline behavior
+
+version: "1.0"
+environment: production
+
+# ═══════════════════════════════════════════════════════════════
+# SOURCE CONFIGURATION
+# ═══════════════════════════════════════════════════════════════
+sources:
+  # Primary M3U Playlist (highest priority)
+  m3u:
+    enabled: true
+    priority: 1
+    urls:
+      - url: https://raw.githubusercontent.com/FunctionError/PiratesTv/main/combined_playlist.m3u
+        name: "PiratesTv Primary"
+        timeout_seconds: 30
+    retry:
+      max_attempts: 3
+      backoff_seconds: [5, 15, 30]
+
+  # IPTV-org Database (secondary source)
+  iptv_org:
+    enabled: true
+    priority: 2
+    base_url: https://iptv-org.github.io/api
+    endpoints:
+      channels: /channels.json
+      streams: /streams.json
+      blocklist: /blocklist.json
+    cache_hours: 24
+    retry:
+      max_attempts: 2
+      backoff_seconds: [10, 30]
+
+  # Custom/User Sources (future extensibility)
+  custom:
+    enabled: false
+    priority: 3
+    urls: []
+
+# ═══════════════════════════════════════════════════════════════
+# PROCESSING CONFIGURATION
+# ═══════════════════════════════════════════════════════════════
+processing:
+  target_countries:
+    - IN
+    - US
+    - GB
+  
+  default_country: IN
+  
+  validation:
+    enabled: true
+    timeout_seconds: 5
+    max_concurrent: 50
+    retry_once: true
+    accept_status_codes: [200, 302, 303, 307, 308]
+    conditional_accept: [403]
+    skip_patterns:
+      - "*.onion"
+      - "localhost:*"
+  
+  deduplication:
+    enabled: true
+    strategy: composite_key
+    priority_order:
+      - m3u
+      - iptv_org
+      - custom
+    prefer_criteria:
+      - has_logo
+      - higher_quality
+      - faster_response
+  
+  normalization:
+    lowercase: true
+    strip_symbols: true
+    collapse_whitespace: true
+    remove_suffixes:
+      quality: [hd, fhd, uhd, 4k, 1080p, 720p, 480p, sd]
+      region: [india, us, uk, eu, asia, international, in, usa]
+      feed: [live, stream, tv, channel, plus]
+
+# ═══════════════════════════════════════════════════════════════
+# ENRICHMENT CONFIGURATION
+# ═══════════════════════════════════════════════════════════════
+enrichment:
+  flavor_rules_file: rules/flavor_rules.json
+  category_rules_file: rules/category_rules.json
+  language_rules_file: rules/language_rules.json
+  logo:
+    prefer_source: iptv_org
+    fallback_to_tvg_logo: true
+    validate_urls: false
+
+# ═══════════════════════════════════════════════════════════════
+# OUTPUT CONFIGURATION
+# ═══════════════════════════════════════════════════════════════
+output:
+  primary_format: json
+  secondary_formats:
+    - m3u
+  directory: output
+  filenames:
+    json: iptv_channels.json
+    m3u: iptv_channels.m3u
+  versioning:
+    strategy: date
+    format: "YYYY.MM.DD"
+    include_checksum: true
+    checksum_algorithm: sha256
+  guarantees:
+    sorted_output: true
+    sort_by: [country, category, name]
+    stable_ids: true
+    no_empty_fields: true
+    minify_json: false
+  thresholds:
+    min_channels: 100
+    min_working_streams: 50
+    max_dead_stream_ratio: 0.5
+
+# ═══════════════════════════════════════════════════════════════
+# FAILURE HANDLING
+# ═══════════════════════════════════════════════════════════════
+failure_handling:
+  hard_fail:
+    - output_channel_count_zero
+    - all_streams_invalid
+    - primary_source_fetch_failed
+    - threshold_not_met
+  soft_fail:
+    - secondary_source_unavailable
+    - custom_sources_failed
+    - some_streams_invalid
+    - logo_fetch_failed
+  rollback:
+    enabled: true
+    keep_previous_versions: 3
+
+# ═══════════════════════════════════════════════════════════════
+# LOGGING
+# ═══════════════════════════════════════════════════════════════
+logging:
+  level: INFO
+  format: json
+  include_timestamps: true
+

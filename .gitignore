@@ -65,3 +65,40 @@ release-artifacts/
 *.apk
 *.aab
 *.ipa
+
+# ===========================================
+# Python (iptv-data/)
+# ===========================================
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Virtual environments
+venv/
+ENV/
+env/
+.venv/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+# Type checking / Linting
+.mypy_cache/
+.ruff_cache/
+
+# IPTV Pipeline Output (published to GitHub Gist, not committed to repo)
+iptv-data/output/current/
+iptv-data/output/previous/
+iptv-data/output/archive/
+iptv-data/output/reports/
+
+# Keep output directory structure with .gitkeep files
+!iptv-data/output/.gitkeep
+!iptv-data/output/current/.gitkeep

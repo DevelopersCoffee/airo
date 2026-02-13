@@ -1,0 +1,106 @@
+{
+  "version": "2026.02.11",
+  "generatedAt": "2026-02-11T00:00:00Z",
+  "checksum": "abc123",
+  "metadata": {
+    "totalChannels": 8,
+    "channelsByCountry": {
+      "IN": 8
+    },
+    "channelsByCategory": {
+      "entertainment": 2,
+      "news": 1,
+      "music": 1,
+      "sports": 1,
+      "kids": 1,
+      "movies": 1,
+      "regional": 1
+    },
+    "channelsByFlavor": {
+      "hindiEntertainment": 2,
+      "hindiNews": 1,
+      "hindiMusic": 1,
+      "sports": 1,
+      "kids": 1,
+      "movies": 1,
+      "regionalEntertainment": 1
+    },
+    "sourcesUsed": ["m3u"],
+    "deadStreamsRemoved": 0,
+    "duplicatesMerged": 0,
+    "processingTimeSeconds": 1.5
+  },
+  "channels": [
+    {
+      "id": "star.plus",
+      "name": "Star Plus HD",
+      "streamUrl": "http://example.com/stream/star-plus.m3u8",
+      "logoUrl": "https://example.com/star-plus.png",
+      "category": "entertainment",
+      "country": "IN",
+      "language": "hi",
+      "flavor": "hindiEntertainment",
+      "group": "Entertainment",
+      "qualityUrls": {},
+      "altNames": [],
+      "sources": ["m3u"]
+    },
+    {
+      "id": "zee.tv",
+      "name": "Zee TV",
+      "streamUrl": "http://example.com/stream/zee-tv.m3u8",
+      "logoUrl": "https://example.com/zee-tv.png",
+      "category": "entertainment",
+      "country": "IN",
+      "language": "hi",
+      "flavor": "hindiEntertainment",
+      "group": "Entertainment",
+      "qualityUrls": {},
+      "altNames": [],
+      "sources": ["m3u"]
+    },
+    {
+      "id": "aaj.tak",
+      "name": "Aaj Tak",
+      "streamUrl": "http://example.com/stream/aaj-tak.m3u8",
+      "logoUrl": "https://example.com/aaj-tak.png",
+      "category": "news",
+      "country": "IN",
+      "language": "hi",
+      "flavor": "hindiNews",
+      "group": "News",
+      "qualityUrls": {},
+      "altNames": [],
+      "sources": ["m3u"]
+    },
+    {
+      "id": "9xm",
+      "name": "9XM",
+      "streamUrl": "http://example.com/stream/9xm.m3u8",
+      "logoUrl": "https://example.com/9xm.png",
+      "category": "music",
+      "country": "IN",
+      "language": "hi",
+      "flavor": "hindiMusic",
+      "group": "Music",
+      "qualityUrls": {},
+      "altNames": [],
+      "sources": ["m3u"]
+    },
+    {
+      "id": "star.sports.1",
+      "name": "Star Sports 1 HD",
+      "streamUrl": "http://example.com/stream/star-sports-1.m3u8",
+      "logoUrl": "https://example.com/star-sports.png",
+      "category": "sports",
+      "country": "IN",
+      "language": "en",
+      "flavor": "sports",
+      "group": "Sports",
+      "qualityUrls": {},
+      "altNames": [],
+      "sources": ["m3u"]
+    }
+  ]
+}
+

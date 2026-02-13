@@ -1,0 +1,18 @@
+#EXTM3U
+#EXTINF:-1 tvg-id="star.plus" tvg-name="Star Plus" tvg-logo="https://example.com/star-plus.png" group-title="Entertainment",Star Plus HD
+http://example.com/stream/star-plus.m3u8
+#EXTINF:-1 tvg-id="zee.tv" tvg-name="Zee TV" tvg-logo="https://example.com/zee-tv.png" group-title="Entertainment",Zee TV
+http://example.com/stream/zee-tv.m3u8
+#EXTINF:-1 tvg-id="aaj.tak" tvg-name="Aaj Tak" tvg-logo="https://example.com/aaj-tak.png" group-title="News",Aaj Tak
+http://example.com/stream/aaj-tak.m3u8
+#EXTINF:-1 tvg-id="9xm" tvg-name="9XM" tvg-logo="https://example.com/9xm.png" group-title="Music",9XM
+http://example.com/stream/9xm.m3u8
+#EXTINF:-1 tvg-id="star.sports.1" tvg-name="Star Sports 1" tvg-logo="https://example.com/star-sports.png" group-title="Sports",Star Sports 1 HD
+http://example.com/stream/star-sports-1.m3u8
+#EXTINF:-1 tvg-id="cartoon.network" tvg-name="Cartoon Network" tvg-logo="https://example.com/cn.png" group-title="Kids",Cartoon Network
+http://example.com/stream/cartoon-network.m3u8
+#EXTINF:-1 tvg-id="star.movies" tvg-name="Star Movies" tvg-logo="https://example.com/star-movies.png" group-title="Movies",Star Movies HD
+http://example.com/stream/star-movies.m3u8
+#EXTINF:-1 tvg-id="sun.tv" tvg-name="Sun TV" tvg-logo="https://example.com/sun-tv.png" group-title="Tamil" tvg-country="IN" tvg-language="ta",Sun TV
+http://example.com/stream/sun-tv.m3u8
+
