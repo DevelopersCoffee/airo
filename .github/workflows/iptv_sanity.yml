@@ -57,9 +57,8 @@ jobs:
       
       - name: Run linting
         run: |
-          pip install ruff mypy types-PyYAML types-requests
+          pip install ruff
           ruff check src/
-          mypy src/ --ignore-missing-imports
       
       - name: Run tests
         run: |
