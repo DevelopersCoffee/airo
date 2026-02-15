@@ -190,6 +190,17 @@ class IPTVChannel extends Equatable {
   bool get hasMultipleQualities =>
       qualityUrls != null && qualityUrls!.length > 1;
 
+  /// Check if channel has a valid logo URL
+  bool get hasLogo => logoUrl != null && logoUrl!.isNotEmpty;
+
+  /// Get logo URL with fallback to a placeholder based on category
+  /// Returns null if no suitable logo is available (use default placeholder widget)
+  String? get effectiveLogoUrl {
+    if (hasLogo) return logoUrl;
+    // Return null to indicate UI should use default placeholder widget
+    return null;
+  }
+
   /// Get stream URL for specific quality
   String getStreamUrl([VideoQuality quality = VideoQuality.auto]) {
     if (quality == VideoQuality.auto || qualityUrls == null) {

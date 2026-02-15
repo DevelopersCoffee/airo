@@ -6,6 +6,7 @@ import '../../../../core/auth/google_auth_service.dart';
 import '../../../../core/http/http_dog.dart';
 import '../../../../core/dictionary/dictionary.dart';
 import '../../../../core/routing/route_names.dart';
+import '../../../../shared/widgets/bug_report_dialog.dart';
 import '../../../quotes/presentation/widgets/daily_quote_card.dart';
 import '../../../settings/presentation/screens/ai_models_screen.dart';
 import '../../../settings/presentation/screens/audio_settings_screen.dart';
@@ -208,6 +209,17 @@ class ProfileScreen extends ConsumerWidget {
                     builder: (context) => const DictionaryDemoScreen(),
                   ),
                 );
+              },
+            ),
+
+            // Bug Report
+            ListTile(
+              leading: const Icon(Icons.bug_report),
+              title: const Text('Report a Bug'),
+              subtitle: const Text('Submit bug reports to GitHub'),
+              trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+              onTap: () {
+                BugReportDialog.show(context);
               },
             ),
 

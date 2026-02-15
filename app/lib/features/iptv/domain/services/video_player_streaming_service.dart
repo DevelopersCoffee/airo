@@ -216,23 +216,48 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
     return NetworkQuality.poor;
   }
 
+  /// Flag to prevent duplicate error handling
+  bool _isHandlingError = false;
+
   Future<void> _handleError(String message) async {
+    // Prevent duplicate error handling that causes flickering
+    if (_isHandlingError || _state.playbackState == PlaybackState.error) {
+      return;
+    }
+    _isHandlingError = true;
+
     final newRetryCount = _state.retryCount + 1;
+
+    // Determine user-friendly error message
+    String userMessage;
+    if (newRetryCount > _config.maxRetries) {
+      userMessage = 'Unable to play this channel. Please try again later.';
+    } else {
+      userMessage = 'Playback failed: $message';
+    }
 
     _updateState(
       _state.copyWith(
         playbackState: PlaybackState.error,
-        errorMessage: message,
+        errorMessage: userMessage,
         retryCount: newRetryCount,
         lastError: DateTime.now(),
       ),
     );
 
-    // Auto-retry if within limits
-    if (newRetryCount <= _config.maxRetries) {
-      await Future.delayed(_config.retryDelay);
-      await retry();
-    }
+    // Stop buffer monitoring to prevent state updates
+    _bufferMonitor?.cancel();
+
+    // Release audio focus
+    _audioContext.releaseFocus(AudioFocusType.video);
+
+    // Dispose controller to stop any retries from the video player
+    await _disposeController();
+
+    _isHandlingError = false;
+
+    // NO auto-retry - user must manually retry via the Retry button
+    // This prevents flickering from continuous retry loops
   }
 
   @override
@@ -297,6 +322,9 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
   @override
   Future<void> retry() async {
     if (_state.currentChannel != null) {
+      // Reset error handling flag and retry count for manual retry
+      _isHandlingError = false;
+      // Note: playChannel() already resets retryCount to 0
       await playChannel(_state.currentChannel!);
     }
   }

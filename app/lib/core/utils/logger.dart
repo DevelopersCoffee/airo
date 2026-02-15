@@ -1,8 +1,42 @@
+import 'dart:collection';
 import 'dart:developer' as developer;
 import 'package:flutter/foundation.dart';
 
-/// Centralized logging utility with support for different log levels
-/// and crash reporting integration
+/// A single log entry with timestamp and metadata.
+class LogEntry {
+  final DateTime timestamp;
+  final int level;
+  final String levelName;
+  final String message;
+  final String? tag;
+  final String? error;
+  final String? stackTrace;
+
+  const LogEntry({
+    required this.timestamp,
+    required this.level,
+    required this.levelName,
+    required this.message,
+    this.tag,
+    this.error,
+    this.stackTrace,
+  });
+
+  @override
+  String toString() {
+    final buffer = StringBuffer();
+    buffer.write('[${timestamp.toIso8601String()}] ');
+    buffer.write('[$levelName] ');
+    if (tag != null) buffer.write('[$tag] ');
+    buffer.write(message);
+    if (error != null) buffer.write('\nError: $error');
+    if (stackTrace != null) buffer.write('\nStack: $stackTrace');
+    return buffer.toString();
+  }
+}
+
+/// Centralized logging utility with support for different log levels,
+/// crash reporting integration, and log buffer for bug reports.
 class AppLogger {
   AppLogger._();
 
@@ -17,9 +51,45 @@ class AppLogger {
   /// Minimum log level to output (configurable per environment)
   static int _minLevel = kDebugMode ? _levelDebug : _levelInfo;
 
+  /// Maximum number of log entries to keep in buffer
+  static const int _maxBufferSize = 500;
+
+  /// Circular buffer for recent log entries (for bug reports)
+  static final Queue<LogEntry> _logBuffer = Queue<LogEntry>();
+
   /// Set minimum log level
   static void setMinLevel(int level) {
     _minLevel = level;
+  }
+
+  /// Get recent log entries for bug reports.
+  /// Returns logs from newest to oldest, limited to [count] entries.
+  static List<LogEntry> getRecentLogs({int count = 100}) {
+    final logs = _logBuffer.toList().reversed.take(count).toList();
+    return logs;
+  }
+
+  /// Get recent logs formatted as a string for bug reports.
+  static String getRecentLogsAsString({int count = 100}) {
+    final logs = getRecentLogs(count: count);
+    if (logs.isEmpty) return 'No logs available';
+    return logs.map((e) => e.toString()).join('\n');
+  }
+
+  /// Get only error logs for bug reports.
+  static String getErrorLogsAsString({int count = 50}) {
+    final errorLogs = _logBuffer
+        .where((e) => e.level >= _levelError)
+        .toList()
+        .reversed
+        .take(count);
+    if (errorLogs.isEmpty) return 'No error logs';
+    return errorLogs.map((e) => e.toString()).join('\n');
+  }
+
+  /// Clear the log buffer.
+  static void clearBuffer() {
+    _logBuffer.clear();
   }
 
   /// Debug log - for development only
@@ -128,6 +198,16 @@ class AppLogger {
     final fullTag = tag != null ? '$_name:$tag' : _name;
     final fullMessage = '[$levelName] $message';
 
+    // Add to buffer for bug reports
+    _addToBuffer(
+      level: level,
+      levelName: levelName,
+      message: message,
+      tag: tag,
+      error: error,
+      stackTrace: stackTrace,
+    );
+
     if (kDebugMode) {
       developer.log(
         fullMessage,
@@ -141,6 +221,32 @@ class AppLogger {
       // Real apps would use a logging service
       // ignore: avoid_print
       print('$fullTag $fullMessage');
+    }
+  }
+
+  static void _addToBuffer({
+    required int level,
+    required String levelName,
+    required String message,
+    String? tag,
+    Object? error,
+    StackTrace? stackTrace,
+  }) {
+    final entry = LogEntry(
+      timestamp: DateTime.now(),
+      level: level,
+      levelName: levelName,
+      message: message,
+      tag: tag,
+      error: error?.toString(),
+      stackTrace: stackTrace?.toString(),
+    );
+
+    _logBuffer.add(entry);
+
+    // Keep buffer size under limit
+    while (_logBuffer.length > _maxBufferSize) {
+      _logBuffer.removeFirst();
     }
   }
 

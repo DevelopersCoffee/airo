@@ -31,3 +31,7 @@ export 'src/repositories/base_repository.dart';
 
 // Plugin Storage
 export 'src/plugins/local_plugin_storage.dart';
+
+// Bug Reporting
+export 'src/bug_report/bug_report_model.dart';
+export 'src/bug_report/github_issue_service.dart';

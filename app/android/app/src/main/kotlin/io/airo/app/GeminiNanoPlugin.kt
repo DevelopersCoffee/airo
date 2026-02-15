@@ -1,4 +1,4 @@
-package com.airo.superapp
+package io.airo.app
 
 import android.app.ActivityManager
 import android.content.Context
@@ -376,7 +376,7 @@ class GeminiNanoPlugin(private val context: Context) : MethodChannel.MethodCallH
             }
         }
     }
-    
+
     /**
      * Get device information
      */
@@ -394,7 +394,7 @@ class GeminiNanoPlugin(private val context: Context) : MethodChannel.MethodCallH
         )
         result.success(deviceInfo)
     }
-    
+
     /**
      * Get device memory information
      * Uses ActivityManager to query total and available RAM
@@ -432,7 +432,7 @@ class GeminiNanoPlugin(private val context: Context) : MethodChannel.MethodCallH
         )
         result.success(capabilities)
     }
-    
+
     // Helper methods
 
     private fun isPixel9Device(): Boolean {
@@ -447,4 +447,3 @@ class GeminiNanoPlugin(private val context: Context) : MethodChannel.MethodCallH
                  device.contains("comet")))    // Pixel 9 Pro Fold
     }
 }
-

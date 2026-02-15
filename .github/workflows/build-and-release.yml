@@ -97,13 +97,36 @@ jobs:
           key: gradle-${{ runner.os }}-arm64-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
           restore-keys: gradle-${{ runner.os }}-
 
+      # ===========================================
+      # Firebase Configuration Setup
+      # ===========================================
+      # The google-services.json file is required for Firebase features.
+      # It should be stored as a base64-encoded GitHub secret.
+      #
+      # To set up the secret:
+      # 1. Download google-services.json from Firebase Console
+      # 2. Encode it: base64 -w 0 google-services.json > encoded.txt
+      # 3. Add to GitHub Secrets as GOOGLE_SERVICES_JSON
+      # ===========================================
       - name: Create Firebase Config
         env:
           GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
-        if: env.GOOGLE_SERVICES_JSON != ''
         run: |
           cd app
-          echo '${{ secrets.GOOGLE_SERVICES_JSON }}' | base64 -d > android/app/google-services.json
+          if [ -z "$GOOGLE_SERVICES_JSON" ]; then
+            echo "::warning::GOOGLE_SERVICES_JSON secret not set. Firebase features may not work correctly."
+            echo "::warning::To fix: Add your base64-encoded google-services.json as a repository secret."
+            exit 0
+          fi
+
+          echo "$GOOGLE_SERVICES_JSON" | base64 -d > android/app/google-services.json
+
+          if [ ! -f android/app/google-services.json ] || [ ! -s android/app/google-services.json ]; then
+            echo "::error::Failed to create google-services.json. Check that the secret is valid base64."
+            exit 1
+          fi
+
+          echo "✅ Firebase configuration created successfully"
 
       - name: Get dependencies
         run: |
@@ -195,10 +218,18 @@ jobs:
       - name: Create Firebase Config
         env:
           GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
-        if: env.GOOGLE_SERVICES_JSON != ''
         run: |
           cd app
-          echo '${{ secrets.GOOGLE_SERVICES_JSON }}' | base64 -d > android/app/google-services.json
+          if [ -z "$GOOGLE_SERVICES_JSON" ]; then
+            echo "::warning::GOOGLE_SERVICES_JSON secret not set. Firebase features may not work correctly."
+            exit 0
+          fi
+          echo "$GOOGLE_SERVICES_JSON" | base64 -d > android/app/google-services.json
+          if [ ! -f android/app/google-services.json ] || [ ! -s android/app/google-services.json ]; then
+            echo "::error::Failed to create google-services.json."
+            exit 1
+          fi
+          echo "✅ Firebase configuration created successfully"
 
       - name: Get dependencies
         run: |
@@ -272,10 +303,18 @@ jobs:
       - name: Create Firebase Config
         env:
           GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
-        if: env.GOOGLE_SERVICES_JSON != ''
         run: |
           cd app
-          echo '${{ secrets.GOOGLE_SERVICES_JSON }}' | base64 -d > android/app/google-services.json
+          if [ -z "$GOOGLE_SERVICES_JSON" ]; then
+            echo "::warning::GOOGLE_SERVICES_JSON secret not set. Firebase features may not work correctly."
+            exit 0
+          fi
+          echo "$GOOGLE_SERVICES_JSON" | base64 -d > android/app/google-services.json
+          if [ ! -f android/app/google-services.json ] || [ ! -s android/app/google-services.json ]; then
+            echo "::error::Failed to create google-services.json."
+            exit 1
+          fi
+          echo "✅ Firebase configuration created successfully"
 
       - name: Get dependencies
         run: |

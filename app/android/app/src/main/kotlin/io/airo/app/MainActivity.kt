@@ -1,4 +1,4 @@
-package com.airo.superapp
+package io.airo.app
 
 import android.content.Context
 import io.flutter.embedding.android.FlutterActivity

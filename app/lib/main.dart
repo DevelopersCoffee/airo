@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'core/app/airo_app.dart';
 import 'core/auth/auth_service.dart';
+import 'core/error/global_error_handler.dart';
 import 'features/iptv/application/providers/iptv_providers.dart';
 import 'features/music/application/providers/beats_audio_provider.dart';
 import 'firebase_options.dart';
@@ -15,6 +16,9 @@ bool isFirebaseInitialized = false;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize global error handler for unhandled exceptions
+  GlobalErrorHandler.initialize();
 
   // Enable semantics for web testing (Playwright/Selenium/accessibility)
   // This creates DOM elements from Flutter's semantic tree

@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -104,31 +102,35 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen> {
       return Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Left: Video player and info
+          // Left: Video player and info - constrain width and align to top
           Expanded(
             flex: 3,
-            child: Column(
-              children: [
-                // Video player section with constrained height
-                ConstrainedBox(
-                  constraints: const BoxConstraints(maxHeight: 400),
-                  child: AspectRatio(
-                    aspectRatio: 16 / 9,
-                    child: streamingState.when(
-                      data: (state) => state.currentChannel != null
-                          ? VideoPlayerWidget(
-                              showControls: true,
-                              onFullscreenToggle: _toggleFullscreen,
-                            )
-                          : _buildPlayerPlaceholder(),
-                      loading: () => _buildPlayerPlaceholder(),
-                      error: (_, _) => _buildPlayerPlaceholder(),
+            child: Align(
+              alignment: Alignment.topCenter,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Video player section with constrained height
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxHeight: 400),
+                    child: AspectRatio(
+                      aspectRatio: 16 / 9,
+                      child: streamingState.when(
+                        data: (state) => state.currentChannel != null
+                            ? VideoPlayerWidget(
+                                showControls: true,
+                                onFullscreenToggle: _toggleFullscreen,
+                              )
+                            : _buildPlayerPlaceholder(),
+                        loading: () => _buildPlayerPlaceholder(),
+                        error: (_, _) => _buildPlayerPlaceholder(),
+                      ),
                     ),
                   ),
-                ),
-                // Quality selector and info bar
-                _buildInfoBar(streamingState),
-              ],
+                  // Quality selector and info bar
+                  _buildInfoBar(streamingState),
+                ],
+              ),
             ),
           ),
           // Right: Channel list
@@ -177,16 +179,26 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen> {
 
   Widget _buildPlayerPlaceholder() {
     return Container(
-      color: Colors.black,
-      child: const Center(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Colors.blueGrey.shade800, Colors.blueGrey.shade900],
+        ),
+      ),
+      child: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.live_tv, size: 64, color: Colors.white54),
-            SizedBox(height: 16),
+            Icon(
+              Icons.live_tv,
+              size: 64,
+              color: Colors.white.withValues(alpha: 0.7),
+            ),
+            const SizedBox(height: 16),
             Text(
               'Select a channel to start watching',
-              style: TextStyle(color: Colors.white54),
+              style: TextStyle(color: Colors.white.withValues(alpha: 0.7)),
             ),
           ],
         ),
@@ -293,10 +305,6 @@ class IPTVScreenBody extends ConsumerStatefulWidget {
 }
 
 class _IPTVScreenBodyState extends ConsumerState<IPTVScreenBody> {
-  bool _isWatchingMode = false; // UI collapsed during playback
-  Timer? _watchingModeTimer;
-  static const _watchingModeDelay = Duration(seconds: 4);
-
   @override
   void initState() {
     super.initState();
@@ -306,7 +314,6 @@ class _IPTVScreenBodyState extends ConsumerState<IPTVScreenBody> {
 
   @override
   void dispose() {
-    _watchingModeTimer?.cancel();
     // Don't reset orientation here - it causes issues during widget rebuilds
     // Orientation is reset in:
     // 1. _toggleFullscreen() when user explicitly exits fullscreen
@@ -334,34 +341,6 @@ class _IPTVScreenBodyState extends ConsumerState<IPTVScreenBody> {
 
   void _playChannel(IPTVChannel channel) {
     ref.read(iptvStreamingServiceProvider).playChannel(channel);
-    // Start watching mode timer when a channel starts playing
-    _startWatchingModeTimer();
-  }
-
-  /// Start timer to enter watching mode after inactivity
-  void _startWatchingModeTimer() {
-    _watchingModeTimer?.cancel();
-    // Exit watching mode first to show UI
-    if (_isWatchingMode) {
-      setState(() => _isWatchingMode = false);
-    }
-    _watchingModeTimer = Timer(_watchingModeDelay, () {
-      if (mounted) {
-        setState(() => _isWatchingMode = true);
-      }
-    });
-  }
-
-  /// Exit watching mode on user interaction
-  void _exitWatchingMode() {
-    if (_isWatchingMode) {
-      setState(() => _isWatchingMode = false);
-    }
-    // Restart timer if video is playing
-    final state = ref.read(streamingStateProvider);
-    if (state.hasValue && state.value?.currentChannel != null) {
-      _startWatchingModeTimer();
-    }
   }
 
   @override
@@ -412,31 +391,35 @@ class _IPTVScreenBodyState extends ConsumerState<IPTVScreenBody> {
       return Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Left: Video player and info
+          // Left: Video player and info - constrain width and align to top
           Expanded(
             flex: 3,
-            child: Column(
-              children: [
-                // Video player section with constrained height
-                ConstrainedBox(
-                  constraints: const BoxConstraints(maxHeight: 400),
-                  child: AspectRatio(
-                    aspectRatio: 16 / 9,
-                    child: streamingState.when(
-                      data: (state) => state.currentChannel != null
-                          ? VideoPlayerWidget(
-                              showControls: true,
-                              onFullscreenToggle: _toggleFullscreen,
-                            )
-                          : _buildPlayerPlaceholder(),
-                      loading: () => _buildPlayerPlaceholder(),
-                      error: (_, _) => _buildPlayerPlaceholder(),
+            child: Align(
+              alignment: Alignment.topCenter,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Video player section with constrained height
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxHeight: 400),
+                    child: AspectRatio(
+                      aspectRatio: 16 / 9,
+                      child: streamingState.when(
+                        data: (state) => state.currentChannel != null
+                            ? VideoPlayerWidget(
+                                showControls: true,
+                                onFullscreenToggle: _toggleFullscreen,
+                              )
+                            : _buildPlayerPlaceholder(),
+                        loading: () => _buildPlayerPlaceholder(),
+                        error: (_, _) => _buildPlayerPlaceholder(),
+                      ),
                     ),
                   ),
-                ),
-                // Quality selector and info bar
-                _buildInfoBar(streamingState),
-              ],
+                  // Quality selector and info bar
+                  _buildInfoBar(streamingState),
+                ],
+              ),
             ),
           ),
           // Right: Channel list
@@ -451,122 +434,60 @@ class _IPTVScreenBodyState extends ConsumerState<IPTVScreenBody> {
       );
     }
 
-    // Mobile: Vertical layout with watching mode
-    return GestureDetector(
-      onTap: _exitWatchingMode,
-      behavior: HitTestBehavior.translucent,
-      child: Column(
-        children: [
-          // Video player section - expands in watching mode
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeInOut,
-            child: AspectRatio(
-              aspectRatio: 16 / 9,
-              child: streamingState.when(
-                data: (state) => state.currentChannel != null
-                    ? VideoPlayerWidget(
-                        showControls: true,
-                        onFullscreenToggle: _toggleFullscreen,
-                      )
-                    : _buildPlayerPlaceholder(),
-                loading: () => _buildPlayerPlaceholder(),
-                error: (_, _) => _buildPlayerPlaceholder(),
-              ),
-            ),
-          ),
-
-          // Quality selector and info bar - hidden in watching mode
-          AnimatedOpacity(
-            opacity: _isWatchingMode ? 0.0 : 1.0,
-            duration: const Duration(milliseconds: 200),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 300),
-              height: _isWatchingMode ? 0 : null,
-              child: _isWatchingMode
-                  ? const SizedBox.shrink()
-                  : _buildInfoBar(streamingState),
-            ),
-          ),
-
-          // Channel list - collapsed in watching mode with "Now Playing" indicator
-          Expanded(
-            child: AnimatedOpacity(
-              opacity: _isWatchingMode ? 0.0 : 1.0,
-              duration: const Duration(milliseconds: 200),
-              child: _isWatchingMode
-                  ? _buildWatchingModeIndicator(streamingState)
-                  : ChannelListWidget(
-                      onChannelTap: _playChannel,
-                      showCategories: true,
-                    ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// Build "Now Playing" indicator shown during watching mode
-  Widget _buildWatchingModeIndicator(
-    AsyncValue<StreamingState> streamingState,
-  ) {
-    return GestureDetector(
-      onTap: _exitWatchingMode,
-      child: Container(
-        color: Colors.grey[100],
-        child: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.touch_app, size: 32, color: Colors.grey[400]),
-              const SizedBox(height: 8),
-              Text(
-                'Tap to show channels',
-                style: TextStyle(color: Colors.grey[600], fontSize: 14),
-              ),
-              if (streamingState.hasValue &&
-                  streamingState.value?.currentChannel != null) ...[
-                const SizedBox(height: 4),
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.play_circle_filled,
-                      size: 16,
-                      color: Colors.green[600],
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      'Now playing: ${streamingState.value!.currentChannel!.name}',
-                      style: TextStyle(
-                        color: Colors.grey[800],
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ],
+    // Mobile: Vertical layout - always show channel list
+    return Column(
+      children: [
+        // Video player section
+        AspectRatio(
+          aspectRatio: 16 / 9,
+          child: streamingState.when(
+            data: (state) => state.currentChannel != null
+                ? VideoPlayerWidget(
+                    showControls: true,
+                    onFullscreenToggle: _toggleFullscreen,
+                  )
+                : _buildPlayerPlaceholder(),
+            loading: () => _buildPlayerPlaceholder(),
+            error: (_, _) => _buildPlayerPlaceholder(),
           ),
         ),
-      ),
+
+        // Quality selector and info bar
+        _buildInfoBar(streamingState),
+
+        // Channel list - always visible
+        Expanded(
+          child: ChannelListWidget(
+            onChannelTap: _playChannel,
+            showCategories: true,
+          ),
+        ),
+      ],
     );
   }
 
   Widget _buildPlayerPlaceholder() {
     return Container(
-      color: Colors.black,
-      child: const Center(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Colors.blueGrey.shade800, Colors.blueGrey.shade900],
+        ),
+      ),
+      child: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.live_tv, size: 64, color: Colors.white54),
-            SizedBox(height: 16),
+            Icon(
+              Icons.live_tv,
+              size: 64,
+              color: Colors.white.withValues(alpha: 0.7),
+            ),
+            const SizedBox(height: 16),
             Text(
               'Select a channel to start watching',
-              style: TextStyle(color: Colors.white54),
+              style: TextStyle(color: Colors.white.withValues(alpha: 0.7)),
             ),
           ],
         ),

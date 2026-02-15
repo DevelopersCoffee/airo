@@ -213,6 +213,28 @@ jobs:
           key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
           restore-keys: gradle-${{ runner.os }}-
 
+      # ===========================================
+      # Firebase Configuration Setup
+      # ===========================================
+      # Required for Firebase features in Android builds.
+      # Secret should be base64-encoded google-services.json
+      # ===========================================
+      - name: Create Firebase Config
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: |
+          cd app
+          if [ -z "$GOOGLE_SERVICES_JSON" ]; then
+            echo "::warning::GOOGLE_SERVICES_JSON secret not set. Firebase features may not work correctly."
+            exit 0
+          fi
+          echo "$GOOGLE_SERVICES_JSON" | base64 -d > android/app/google-services.json
+          if [ ! -f android/app/google-services.json ] || [ ! -s android/app/google-services.json ]; then
+            echo "::error::Failed to create google-services.json."
+            exit 1
+          fi
+          echo "✅ Firebase configuration created successfully"
+
       - name: Get dependencies
         run: |
           cd packages/core_domain && flutter pub get

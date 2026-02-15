@@ -348,33 +348,104 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
 
   Widget _buildError(String message) {
     return Container(
-      color: Colors.black,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Colors.blueGrey.shade900, Colors.black87],
+        ),
+      ),
       child: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.error_outline, color: Colors.red, size: 48),
-            const SizedBox(height: 16),
-            Text(message, style: const TextStyle(color: Colors.white)),
-            const SizedBox(height: 16),
-            ElevatedButton.icon(
-              onPressed: () => ref.read(iptvStreamingServiceProvider).retry(),
-              icon: const Icon(Icons.refresh),
-              label: const Text('Retry'),
-            ),
-          ],
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Error icon with subtle animation effect
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.red.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.error_outline_rounded,
+                  color: Colors.redAccent,
+                  size: 56,
+                ),
+              ),
+              const SizedBox(height: 20),
+              // Primary error message
+              const Text(
+                'Unable to play this channel',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              // Secondary message (technical details)
+              Text(
+                message,
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.7),
+                  fontSize: 13,
+                ),
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 24),
+              // Retry button with better styling
+              ElevatedButton.icon(
+                onPressed: () => ref.read(iptvStreamingServiceProvider).retry(),
+                icon: const Icon(Icons.refresh_rounded),
+                label: const Text('Try Again'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blueGrey.shade700,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 12,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              // Hint text
+              Text(
+                'The stream may be temporarily unavailable',
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.5),
+                  fontSize: 12,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
   Widget _buildPlaceholder(StreamingState state) {
+    final channel = state.currentChannel;
     return Container(
-      color: Colors.black,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Colors.blueGrey.shade900, Colors.black],
+        ),
+      ),
       child: Center(
-        child: state.currentChannel?.logoUrl != null
+        child: channel != null && channel.hasLogo
             ? Image.network(
-                state.currentChannel!.logoUrl!,
+                channel.logoUrl!,
                 width: 120,
                 height: 120,
                 fit: BoxFit.contain,

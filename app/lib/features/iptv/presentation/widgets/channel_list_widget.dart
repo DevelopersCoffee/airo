@@ -167,10 +167,22 @@ class _ChannelListTile extends ConsumerWidget {
           width: 48,
           height: 48,
           color: Colors.grey[200],
-          child: channel.logoUrl != null
+          child: channel.hasLogo
               ? Image.network(
                   channel.logoUrl!,
                   fit: BoxFit.cover,
+                  loadingBuilder: (_, child, loadingProgress) {
+                    if (loadingProgress == null) return child;
+                    return Center(
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        value: loadingProgress.expectedTotalBytes != null
+                            ? loadingProgress.cumulativeBytesLoaded /
+                                  loadingProgress.expectedTotalBytes!
+                            : null,
+                      ),
+                    );
+                  },
                   errorBuilder: (_, _, _) => _buildDefaultIcon(),
                 )
               : _buildDefaultIcon(),

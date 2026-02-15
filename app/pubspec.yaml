@@ -106,6 +106,9 @@ dependencies:
   google_mlkit_text_recognition: ^0.15.1
   video_player: ^2.10.1
   wakelock_plus: ^1.4.0
+  package_info_plus: ^9.0.0
+  screenshot: ^3.0.0
+  flutter_image_compress: ^2.4.0
 
 dev_dependencies:
   flutter_test:

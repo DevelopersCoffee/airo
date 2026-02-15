@@ -8,7 +8,7 @@ plugins {
 }
 
 android {
-    namespace = "com.airo.superapp"
+    namespace = "io.airo.app"
     compileSdk = 36 // Android 15 (API level 35) for Pixel 9 compatibility
     ndkVersion = flutter.ndkVersion
 
@@ -24,7 +24,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.airo.superapp"
+        applicationId = "io.airo.app"
         minSdk = 26 // Android 8.0 - broader device compatibility
         targetSdk = 36 // Target latest Android for Pixel 9
         versionCode = flutter.versionCode
