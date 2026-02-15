@@ -32,6 +32,13 @@ subprojects {
     project.evaluationDependsOn(":app")
 }
 
+// Remove -Werror from Java compilation for third-party plugins that use it
+subprojects {
+    tasks.withType<JavaCompile>().configureEach {
+        options.compilerArgs.removeAll { it == "-Werror" }
+    }
+}
+
 tasks.register<Delete>("clean") {
     delete(rootProject.layout.buildDirectory)
 }

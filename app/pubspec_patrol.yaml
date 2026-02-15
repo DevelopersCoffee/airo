@@ -8,9 +8,9 @@
 # Example patrol.yaml configuration:
 # app_name: Airo
 # android:
-#   package_name: com.airo.superapp
+#   package_name: io.airo.app
 # ios:
-#   bundle_id: com.airo.superapp
+#   bundle_id: io.airo.app
 #   app_name: Airo
 
 # Commands:

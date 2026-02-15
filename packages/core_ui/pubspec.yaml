@@ -3,19 +3,19 @@ description: "Core UI package: theme, design tokens, and shared widgets"
 version: 0.0.1
 
 environment:
-  sdk: ^3.9.2
-  flutter: ">=3.24.0"
+  sdk: ">=3.9.2 <4.0.0"
+  flutter: ">=3.35.7"
 
 dependencies:
   flutter:
     sdk: flutter
-  cupertino_icons: ^1.0.8
+  cupertino_icons: 1.0.8
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ">=5.0.0 <7.0.0"
-  golden_toolkit: ^0.15.0
+  flutter_lints: 6.0.0
+  alchemist: ^0.13.0  # Golden testing (replaces discontinued golden_toolkit)
 
 flutter:
   uses-material-design: true

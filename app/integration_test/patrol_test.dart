@@ -113,8 +113,9 @@ void main() {
     await $(ItemizedSplitTestIds.cameraButton).tap();
 
     // Handle native camera permission dialog
-    if (await $.native.isPermissionDialogVisible()) {
-      await $.native.grantPermissionWhenInUse();
+    // Using platformAutomator.mobile (Patrol 4.x API, replaces deprecated .native)
+    if (await $.platformAutomator.mobile.isPermissionDialogVisible()) {
+      await $.platformAutomator.mobile.grantPermissionWhenInUse();
     }
 
     // Note: Actual photo capture would happen here on real device
@@ -145,8 +146,9 @@ void main() {
     await $(ItemizedSplitTestIds.galleryButton).tap();
 
     // Handle native photo picker
-    if (await $.native.isPermissionDialogVisible()) {
-      await $.native.grantPermissionWhenInUse();
+    // Using platformAutomator.mobile (Patrol 4.x API, replaces deprecated .native)
+    if (await $.platformAutomator.mobile.isPermissionDialogVisible()) {
+      await $.platformAutomator.mobile.grantPermissionWhenInUse();
     }
   });
 }

@@ -131,12 +131,7 @@ class SplitResultCard extends ConsumerWidget {
 
   void _shareAll(BuildContext context, SplitResult result) {
     final message = result.generateSummaryMessage();
-    SharePlus.instance.share(
-      ShareParams(
-        text: message,
-        subject: 'Bill Split - ${result.bill.vendor ?? ""}',
-      ),
-    );
+    Share.share(message, subject: 'Bill Split - ${result.bill.vendor ?? ""}');
   }
 
   void _copySummary(BuildContext context, SplitResult result) {
@@ -194,8 +189,6 @@ class _SplitTile extends StatelessWidget {
 
   void _shareToPerson(BuildContext context) {
     final message = splitResult.generateShareMessage(split);
-    SharePlus.instance.share(
-      ShareParams(text: message, subject: 'Your share of the bill'),
-    );
+    Share.share(message, subject: 'Your share of the bill');
   }
 }

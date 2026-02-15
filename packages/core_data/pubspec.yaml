@@ -3,24 +3,25 @@ description: "Core data layer: database, API clients, and repository implementat
 version: 0.0.1
 
 environment:
-  sdk: ^3.9.2
-  flutter: ">=3.24.0"
+  sdk: ">=3.9.2 <4.0.0"
+  flutter: ">=3.35.7"
 
 dependencies:
   flutter:
     sdk: flutter
   core_domain:
     path: ../core_domain
-  dio: ^5.4.0
-  shared_preferences: ^2.2.2
-  flutter_secure_storage: ">=9.2.2 <11.0.0"
-  connectivity_plus: ">=5.0.2 <8.0.0"
-  path: ^1.9.0
-  path_provider: ^2.1.1
+  dio: 5.9.1
+  shared_preferences: 2.5.4
+  flutter_secure_storage: 10.0.0
+  connectivity_plus: 7.0.0
+  path: 1.9.1
+  path_provider: 2.1.5
+  meta: 1.16.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ">=5.0.0 <7.0.0"
-  mocktail: ^1.0.0
+  flutter_lints: 6.0.0
+  mocktail: 1.0.4
 

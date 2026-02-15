@@ -1,0 +1,231 @@
+# Dependabot LTS Configuration for Airo Super App
+# This configuration implements the LTS strategy defined in docs/DEPENDENCY_LTS_STRATEGY.md
+#
+# Strategy:
+# - Patch updates only for production dependencies (security + bug fixes)
+# - Block minor and major updates (require manual review)
+# - Monthly schedule to reduce PR noise
+# - Grouped updates by ecosystem
+#
+# To activate: Rename this file to dependabot.yml (backup current one first)
+
+version: 2
+updates:
+  # =============================================================================
+  # Flutter/Dart Dependencies - Main App
+  # =============================================================================
+  - package-ecosystem: "pub"
+    directory: "/app"
+    schedule:
+      interval: "monthly"
+      day: "monday"
+      time: "09:00"
+      timezone: "UTC"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "flutter"
+      - "security"
+    commit-message:
+      prefix: "deps(flutter)"
+      include: "scope"
+    reviewers:
+      - "ucguy4u"
+    # Only allow patch updates (x.y.Z)
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+    groups:
+      flutter-security-patches:
+        patterns:
+          - "*"
+        update-types:
+          - "patch"
+
+  # =============================================================================
+  # Core Packages - Individual tracking for better control
+  # =============================================================================
+  - package-ecosystem: "pub"
+    directory: "/packages/core_domain"
+    schedule:
+      interval: "monthly"
+      day: "monday"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+      - "core-domain"
+    commit-message:
+      prefix: "deps(core-domain)"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+
+  - package-ecosystem: "pub"
+    directory: "/packages/core_data"
+    schedule:
+      interval: "monthly"
+      day: "monday"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+      - "core-data"
+    commit-message:
+      prefix: "deps(core-data)"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+
+  - package-ecosystem: "pub"
+    directory: "/packages/core_ui"
+    schedule:
+      interval: "monthly"
+      day: "monday"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+      - "core-ui"
+    commit-message:
+      prefix: "deps(core-ui)"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+
+  - package-ecosystem: "pub"
+    directory: "/packages/core_ai"
+    schedule:
+      interval: "monthly"
+      day: "monday"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+      - "core-ai"
+    commit-message:
+      prefix: "deps(core-ai)"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+
+  - package-ecosystem: "pub"
+    directory: "/packages/core_auth"
+    schedule:
+      interval: "monthly"
+      day: "monday"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+      - "core-auth"
+    commit-message:
+      prefix: "deps(core-auth)"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+
+  # =============================================================================
+  # Android Gradle Dependencies
+  # =============================================================================
+  - package-ecosystem: "gradle"
+    directory: "/app/android"
+    schedule:
+      interval: "monthly"
+      day: "tuesday"
+      time: "09:00"
+      timezone: "UTC"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "android"
+      - "security"
+    commit-message:
+      prefix: "deps(android)"
+    # Block all automatic updates except security patches
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+      # Specific packages to never auto-update
+      - dependency-name: "com.android.tools.build:gradle"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "com.google.gms:google-services"
+        update-types: ["version-update:semver-major"]
+
+  # =============================================================================
+  # GitHub Actions - Major version updates only
+  # =============================================================================
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+      day: "wednesday"
+      time: "09:00"
+      timezone: "UTC"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+      - "github-actions"
+      - "ci-cd"
+    commit-message:
+      prefix: "ci(actions)"
+    # Only update to new major versions (v5 -> v6)
+    # Ignore minor/patch as they're auto-updated by @v6 syntax
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+
+  # =============================================================================
+  # Node.js/npm Dependencies (E2E Tests)
+  # =============================================================================
+  - package-ecosystem: "npm"
+    directory: "/e2e"
+    schedule:
+      interval: "monthly"
+      day: "thursday"
+      time: "09:00"
+      timezone: "UTC"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "e2e"
+      - "testing"
+    commit-message:
+      prefix: "deps(e2e)"
+    # Only allow patch updates for stability
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+    groups:
+      playwright-patches:
+        patterns:
+          - "@playwright/*"
+          - "playwright"
+        update-types:
+          - "patch"
+
+  # =============================================================================
+  # Python Dependencies (IPTV Data)
+  # =============================================================================
+  - package-ecosystem: "pip"
+    directory: "/iptv-data"
+    schedule:
+      interval: "monthly"
+      day: "friday"
+      time: "09:00"
+      timezone: "UTC"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "python"
+      - "iptv"
+    commit-message:
+      prefix: "deps(iptv)"
+    # Only allow patch updates
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+    groups:
+      python-security-patches:
+        patterns:
+          - "*"
+        update-types:
+          - "patch"
+
+

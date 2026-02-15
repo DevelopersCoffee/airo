@@ -10,23 +10,32 @@ import 'package:airo_app/features/money/presentation/screens/budgets_screen.dart
 
 void main() {
   late AppDatabase db;
+  late ProviderContainer container;
 
   setUp(() {
     db = AppDatabase.forTesting(NativeDatabase.memory());
-  });
-
-  tearDown(() async {
-    await db.close();
-  });
-
-  Widget createTestWidget() {
-    return ProviderScope(
+    container = ProviderContainer(
       overrides: [
         appDatabaseProvider.overrideWithValue(db),
         budgetsRepositoryProvider.overrideWith(
           (ref) => LocalBudgetsRepository(db),
         ),
       ],
+    );
+  });
+
+  tearDown(() async {
+    // Dispose Riverpod container first to close all streams
+    container.dispose();
+    // Small delay to allow microtasks to complete
+    await Future<void>.delayed(const Duration(milliseconds: 10));
+    // Then close the database
+    await db.close();
+  });
+
+  Widget createTestWidget() {
+    return UncontrolledProviderScope(
+      container: container,
       child: const MaterialApp(home: BudgetsScreen()),
     );
   }
@@ -34,7 +43,9 @@ void main() {
   group('BudgetsScreen', () {
     testWidgets('shows empty state when no budgets', (tester) async {
       await tester.pumpWidget(createTestWidget());
-      await tester.pumpAndSettle();
+      // Use pump with duration instead of pumpAndSettle to avoid
+      // hanging on Drift stream subscriptions that emit continuously
+      await tester.pump(const Duration(milliseconds: 100));
 
       expect(find.text('No budgets yet'), findsOneWidget);
       expect(
@@ -46,7 +57,7 @@ void main() {
 
     testWidgets('shows FAB to add budget', (tester) async {
       await tester.pumpWidget(createTestWidget());
-      await tester.pumpAndSettle();
+      await tester.pump(const Duration(milliseconds: 100));
 
       expect(find.byType(FloatingActionButton), findsOneWidget);
     });

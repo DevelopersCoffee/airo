@@ -82,12 +82,9 @@ class OffersFeedScreen extends ConsumerWidget {
                   );
                 },
                 onShare: () {
-                  share_plus.SharePlus.instance.share(
-                    share_plus.ShareParams(
-                      text:
-                          '${offer.title}\n\n${offer.description}\n\n${offer.link}',
-                      subject: offer.title,
-                    ),
+                  share_plus.Share.share(
+                    '${offer.title}\n\n${offer.description}\n\n${offer.link}',
+                    subject: offer.title,
                   );
                 },
               );

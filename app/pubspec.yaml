@@ -19,8 +19,8 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 version: 1.0.0+1
 
 environment:
-  sdk: ^3.9.2
-  flutter: ">=3.24.0"
+  sdk: ">=3.9.2 <4.0.0"
+  flutter: ">=3.35.7"
 # Dependencies specify other packages that your package needs in order to work.
 # To automatically upgrade your package dependencies to the latest versions
 # consider running `flutter pub upgrade --major-versions`. Alternatively,
@@ -32,39 +32,39 @@ dependencies:
     sdk: flutter
 
   # Routing & Navigation
-  go_router: ^17.1.0
+  go_router: 17.1.0
 
   # State Management
-  riverpod: ^2.6.1
-  flutter_riverpod: ^2.6.1
+  riverpod: 2.6.1
+  flutter_riverpod: 2.6.1
 
   # Storage & Persistence
-  shared_preferences: ^2.5.4
+  shared_preferences: 2.5.4
   drift: ^2.18.0
   sqlite3_flutter_libs: ^0.5.41
-  hive: ^2.2.3
-  hive_flutter: ^1.1.0
-  path: ^1.9.0
-  path_provider: ^2.1.1
+  hive: 2.2.3
+  hive_flutter: 1.1.0
+  path: 1.9.1
+  path_provider: 2.1.5
 
   # Connectivity
-  connectivity_plus: ^7.0.0
+  connectivity_plus: 7.0.0
 
   # Networking
-  dio: ^5.9.1
+  dio: 5.9.1
 
   # Firebase & Authentication
-  firebase_core: ^4.2.1
-  firebase_auth: ^6.1.4
-  google_sign_in: ^7.2.0
+  firebase_core: 4.4.0
+  firebase_auth: 6.1.4
+  google_sign_in: 7.2.0
 
   # Audio & Media
-  audio_service: ^0.18.14
+  audio_service: ^0.18.18  # Latest version with SDK 36 compatibility
   just_audio: ^0.10.5
 
   # Utilities
-  intl: ^0.20.2
-  uuid: ^4.5.2
+  intl: 0.20.2
+  uuid: 4.5.2
 
   # Local packages - Core
   core_domain:
@@ -86,29 +86,29 @@ dependencies:
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
-  cupertino_icons: ^1.0.8
-  equatable: ^2.0.8
-  flame: ^1.35.0
-  flame_audio: ^2.11.13
-  share_plus: ^12.0.1
-  url_launcher: ^6.3.2
-  file_picker: ^10.3.10
-  flutter_local_notifications: ^19.5.0
-  timezone: ^0.10.1
-  audioplayers: ^6.5.1
-  cached_network_image: ^3.4.1
-  flutter_tts: ^4.2.5
-  chess: ^0.8.1
-  stockfish: ^1.8.1
-  flutter_contacts: ^1.1.9+2
-  permission_handler: ^12.0.0+1
-  image_picker: ^1.2.1
-  google_mlkit_text_recognition: ^0.15.1
-  video_player: ^2.10.1
-  wakelock_plus: ^1.4.0
-  package_info_plus: ^9.0.0
-  screenshot: ^3.0.0
-  flutter_image_compress: ^2.4.0
+  cupertino_icons: 1.0.8
+  equatable: 2.0.8
+  flame: 1.35.0
+  flame_audio: 2.11.13
+  share_plus: ^10.0.0
+  url_launcher: 6.3.2
+  file_picker: 10.3.10
+  flutter_local_notifications: 19.5.0
+  timezone: 0.10.1
+  audioplayers: 6.5.1
+  cached_network_image: 3.4.1
+  flutter_tts: 4.2.5
+  chess: 0.8.1
+  stockfish: 1.8.1
+  flutter_contacts: 1.1.9+2
+  permission_handler: 12.0.0+1
+  image_picker: 1.2.1
+  google_mlkit_text_recognition: 0.15.1
+  video_player: 2.10.1
+  wakelock_plus: 1.4.0
+  package_info_plus: 9.0.0
+  screenshot: 3.0.0
+  flutter_image_compress: 2.4.0
 
 dev_dependencies:
   flutter_test:
@@ -117,20 +117,20 @@ dev_dependencies:
     sdk: flutter
 
   # Code generation
-  build_runner: ^2.4.9
+  build_runner: 2.4.13
   drift_dev: ^2.18.0
-  hive_generator: ^2.0.1
-  riverpod_generator: ^2.4.0
+  hive_generator: 2.0.1
+  riverpod_generator: 2.4.0
 
   # Testing
-  mocktail: ^1.0.0
-  golden_toolkit: ^0.15.0
-  patrol: ^3.13.0  # E2E testing for iOS/Android devices
+  mocktail: 1.0.4
+  alchemist: ^0.13.0  # Golden testing (replaces discontinued golden_toolkit)
+  patrol: ^4.1.1  # E2E testing for iOS/Android devices (updated for compileSdk 34+ support)
 
   # Linting
-  flutter_lints: ^6.0.0
-  custom_lint: ^0.6.4
-  riverpod_lint: ^2.3.10
+  flutter_lints: 6.0.0
+  custom_lint: 0.6.4
+  riverpod_lint: 2.3.10
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

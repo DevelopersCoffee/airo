@@ -8,7 +8,7 @@
    - Go to [Firebase Console](https://console.firebase.google.com/)
    - Select your project: `devscoffee-airo`
    - Navigate to Project Settings > General
-   - Under "Your apps", find the Android app (`com.airo.superapp`)
+   - Under "Your apps", find the Android app (`io.airo.app`)
    - Download `google-services.json`
 
 2. **Place the file (local development):**
@@ -18,7 +18,8 @@
 
 3. **Verify the file structure:**
    - Use `google-services.json.example` as a reference
-   - Ensure package_name is `com.airo.superapp`
+   - Ensure package_name is `io.airo.app` (primary) or `com.airo.superapp` (legacy)
+   - The file supports multiple package names for different build variants
    - Never commit the actual `google-services.json` file
 
 ### GitHub Secrets Setup (CI/CD)
@@ -81,6 +82,11 @@ The `google-services.json` file is gitignored for security. For CI/CD builds:
 
 **Build errors:**
 - Verify JSON structure matches the example
-- Ensure package name matches: `com.android.ai.catalog`
+- Ensure package name matches: `io.airo.app` (or `com.airo.superapp` for legacy builds)
 - Re-download from Firebase Console if corrupted
+
+**Package Name Reference:**
+- **Current (Production)**: `io.airo.app`
+- **Legacy**: `com.airo.superapp`
+- **AI Catalog Reference**: `com.android.ai.catalog` (for testing Gemini Nano features)
 
