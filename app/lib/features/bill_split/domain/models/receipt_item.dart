@@ -1,5 +1,7 @@
 import 'package:equatable/equatable.dart';
 
+import '../../../../core/utils/currency_formatter.dart';
+
 /// A participant in item splitting
 class ItemParticipant extends Equatable {
   final String id;
@@ -81,10 +83,28 @@ class ReceiptItem extends Equatable {
   /// Check if split among all (no specific assignments)
   bool get isSplitAmongAll => assignedParticipantIds.isEmpty;
 
+  // ---- Locale-aware formatting methods (preferred) ----
+
+  /// Format total price using locale-aware CurrencyFormatter
+  String formatPrice(CurrencyFormatter formatter) {
+    return formatter.formatCents(totalPricePaise);
+  }
+
+  /// Format unit price using locale-aware CurrencyFormatter
+  String formatUnitPrice(CurrencyFormatter formatter) {
+    return formatter.formatCents(unitPricePaise);
+  }
+
+  // ---- Deprecated getters for backward compatibility ----
+
   /// Formatted price string
+  @Deprecated('Use formatPrice(CurrencyFormatter) for global locale support')
   String get formattedPrice => '₹${(totalPricePaise / 100).toStringAsFixed(2)}';
 
   /// Formatted unit price
+  @Deprecated(
+    'Use formatUnitPrice(CurrencyFormatter) for global locale support',
+  )
   String get formattedUnitPrice =>
       '₹${(unitPricePaise / 100).toStringAsFixed(2)}';
 
@@ -125,6 +145,13 @@ class ReceiptFee extends Equatable {
     this.isFree = false,
   });
 
+  /// Format amount using locale-aware CurrencyFormatter
+  String formatAmount(CurrencyFormatter formatter) {
+    return isFree ? 'Free' : formatter.formatCents(amountPaise);
+  }
+
+  /// @deprecated Use formatAmount(CurrencyFormatter) for global locale support
+  @Deprecated('Use formatAmount(CurrencyFormatter) for global locale support')
   String get formattedAmount =>
       isFree ? 'Free' : '₹${(amountPaise / 100).toStringAsFixed(2)}';
 
@@ -209,11 +236,31 @@ class ParsedReceipt extends Equatable {
     return totals;
   }
 
+  // ---- Locale-aware formatting methods (preferred) ----
+
+  /// Format grand total using locale-aware CurrencyFormatter
+  String formatGrandTotal(CurrencyFormatter formatter) {
+    return formatter.formatCents(grandTotalPaise);
+  }
+
+  /// Format item total using locale-aware CurrencyFormatter
+  String formatItemTotal(CurrencyFormatter formatter) {
+    return formatter.formatCents(itemTotalPaise);
+  }
+
+  // ---- Deprecated getters for backward compatibility ----
+
   /// Get formatted grand total
+  @Deprecated(
+    'Use formatGrandTotal(CurrencyFormatter) for global locale support',
+  )
   String get formattedGrandTotal =>
       '₹${(grandTotalPaise / 100).toStringAsFixed(2)}';
 
   /// Get formatted item total
+  @Deprecated(
+    'Use formatItemTotal(CurrencyFormatter) for global locale support',
+  )
   String get formattedItemTotal =>
       '₹${(itemTotalPaise / 100).toStringAsFixed(2)}';
 

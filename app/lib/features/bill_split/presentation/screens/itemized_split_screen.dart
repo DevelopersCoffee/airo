@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
+import '../../../../core/utils/currency_formatter.dart';
 import '../../../../core/utils/locale_settings.dart';
 import '../../domain/models/receipt_item.dart';
 import '../../domain/services/receipt_parser_service.dart';
@@ -349,6 +350,8 @@ class _ItemizedSplitScreenState extends ConsumerState<ItemizedSplitScreen> {
   }
 
   Widget _buildVendorHeader(ThemeData theme) {
+    final currencyFormatter = ref.watch(currencyFormatterProvider);
+
     return Container(
       key: const Key(ItemizedSplitTestIds.vendorHeader),
       padding: const EdgeInsets.all(16),
@@ -381,7 +384,7 @@ class _ItemizedSplitScreenState extends ConsumerState<ItemizedSplitScreen> {
             ),
           ),
           Text(
-            _receipt!.formattedGrandTotal,
+            _receipt!.formatGrandTotal(currencyFormatter),
             style: theme.textTheme.titleLarge?.copyWith(
               fontWeight: FontWeight.bold,
               color: theme.colorScheme.onPrimaryContainer,
@@ -394,6 +397,7 @@ class _ItemizedSplitScreenState extends ConsumerState<ItemizedSplitScreen> {
 
   Widget _buildItemsList(ThemeData theme) {
     final items = ref.watch(receiptItemsProvider);
+    final currencyFormatter = ref.watch(currencyFormatterProvider);
 
     return ListView.builder(
       key: const Key(ItemizedSplitTestIds.itemsList),
@@ -409,6 +413,7 @@ class _ItemizedSplitScreenState extends ConsumerState<ItemizedSplitScreen> {
                   .read(receiptItemsProvider.notifier)
                   .toggleParticipant(items[index].id, participantId);
             },
+            currencyFormatter: currencyFormatter,
           );
         } else {
           return _buildFeesSection(theme);
@@ -419,6 +424,8 @@ class _ItemizedSplitScreenState extends ConsumerState<ItemizedSplitScreen> {
 
   Widget _buildFeesSection(ThemeData theme) {
     if (_receipt?.fees.isEmpty ?? true) return const SizedBox.shrink();
+
+    final currencyFormatter = ref.watch(currencyFormatterProvider);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -445,7 +452,7 @@ class _ItemizedSplitScreenState extends ConsumerState<ItemizedSplitScreen> {
             ),
             title: Text(fee.type.displayName),
             trailing: Text(
-              fee.formattedAmount,
+              fee.formatAmount(currencyFormatter),
               style: TextStyle(
                 color: fee.isFree ? Colors.green : null,
                 fontWeight: fee.isFree ? FontWeight.bold : null,
@@ -660,11 +667,13 @@ class _MultiParticipantItemTile extends StatelessWidget {
   final ReceiptItem item;
   final List<ItemParticipant> participants;
   final ValueChanged<String> onParticipantToggled;
+  final CurrencyFormatter currencyFormatter;
 
   const _MultiParticipantItemTile({
     required this.item,
     required this.participants,
     required this.onParticipantToggled,
+    required this.currencyFormatter,
   });
 
   Color _getParticipantColor(int index, ThemeData theme) {
@@ -706,7 +715,7 @@ class _MultiParticipantItemTile extends StatelessWidget {
                       ),
                       if (item.quantity > 1)
                         Text(
-                          '${item.quantity} × ${item.formattedUnitPrice}',
+                          '${item.quantity} × ${item.formatUnitPrice(currencyFormatter)}',
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: theme.colorScheme.onSurfaceVariant,
                           ),
@@ -715,7 +724,7 @@ class _MultiParticipantItemTile extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  item.formattedPrice,
+                  item.formatPrice(currencyFormatter),
                   style: theme.textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
