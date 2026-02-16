@@ -1,6 +1,8 @@
 import 'package:equatable/equatable.dart';
 
-/// Currency enum for future multi-currency support
+import '../../../../core/utils/currency_formatter.dart';
+
+/// Currency enum for multi-currency support
 enum Currency {
   inr('INR', '₹', 'Indian Rupee'),
   usd('USD', '\$', 'US Dollar'),
@@ -12,6 +14,22 @@ enum Currency {
   final String name;
 
   const Currency(this.code, this.symbol, this.name);
+
+  /// Convert from SupportedCurrency (from locale settings)
+  static Currency fromSupportedCurrency(SupportedCurrency supported) {
+    return Currency.values.firstWhere(
+      (c) => c.code == supported.code,
+      orElse: () => Currency.inr,
+    );
+  }
+
+  /// Convert from currency code string
+  static Currency fromCode(String code) {
+    return Currency.values.firstWhere(
+      (c) => c.code.toUpperCase() == code.toUpperCase(),
+      orElse: () => Currency.inr,
+    );
+  }
 }
 
 /// Participant in a bill split (from contacts)
@@ -90,10 +108,20 @@ class Bill extends Equatable {
   final int taxPaise;
   final int tipPaise;
   final int totalPaise;
+
+  /// Currency for the bill.
+  /// Note: Currency.inr is a fallback default only. Callers should pass
+  /// the currency from user locale settings using:
+  /// `Currency.fromSupportedCurrency(ref.read(currencyFormatterProvider).currency)`
   final Currency currency;
   final String? rawText; // Original extracted text
   final DateTime createdAt;
 
+  /// Creates a new Bill.
+  ///
+  /// [currency] defaults to INR as a fallback. For locale-aware currency,
+  /// pass `Currency.fromSupportedCurrency(supportedCurrency)` where
+  /// supportedCurrency comes from `currencyFormatterProvider`.
   const Bill({
     required this.id,
     this.vendor,
@@ -139,8 +167,18 @@ class Bill extends Equatable {
 class ParticipantSplit extends Equatable {
   final Participant participant;
   final int amountPaise;
+
+  /// Currency for the split amount.
+  /// Note: Currency.inr is a fallback default only. Callers should pass
+  /// the currency from user locale settings using:
+  /// `Currency.fromSupportedCurrency(ref.read(currencyFormatterProvider).currency)`
   final Currency currency;
 
+  /// Creates a new ParticipantSplit.
+  ///
+  /// [currency] defaults to INR as a fallback. For locale-aware currency,
+  /// pass `Currency.fromSupportedCurrency(supportedCurrency)` where
+  /// supportedCurrency comes from `currencyFormatterProvider`.
   const ParticipantSplit({
     required this.participant,
     required this.amountPaise,
