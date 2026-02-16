@@ -108,4 +108,11 @@ Last Updated: 2026-02-16
 5. `58eba36` - refactor(ai): use locale-agnostic currency terms in AI prompts
 6. `0099ae6` - docs(database): document INR as fallback currency default
 7. `997f822` - refactor(bill-split): add locale integration for default currency in domain models
+8. `e29d6f5` - refactor(bill-split): use locale-aware currency in bill input card
+
+---
+
+## Follow-Up Work
+
+See [LOCALE_ONBOARDING_REQUIREMENTS.md](./LOCALE_ONBOARDING_REQUIREMENTS.md) for user onboarding currency selection requirements.
 
