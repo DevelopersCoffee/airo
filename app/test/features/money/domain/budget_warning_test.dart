@@ -56,12 +56,17 @@ void main() {
       expect(budget.isExceeded, false);
     });
 
-    test('should return exceeded level at 100%', () {
+    test('should return warning level at exactly 100%', () {
+      // At exactly 100%, the budget is fully used but not exceeded
+      // This should be treated as a warning (approaching limit)
       final budget = createBudget(limitCents: 10000, usedCents: 10000); // 100%
 
-      expect(budget.warningLevel, BudgetWarningLevel.normal);
-      expect(budget.isApproachingLimit, false);
-      expect(budget.isExceeded, false);
+      expect(budget.warningLevel, BudgetWarningLevel.warning);
+      expect(budget.isApproachingLimit, true); // 100% >= 80% and not exceeded
+      expect(
+        budget.isExceeded,
+        false,
+      ); // Not exceeded (usedCents == limitCents)
     });
 
     test('should return exceeded level when over 100%', () {

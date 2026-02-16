@@ -1,7 +1,16 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:airo_app/core/utils/currency_formatter.dart';
+import 'package:intl/date_symbol_data_local.dart';
 
 void main() {
+  // Initialize locale data before running date formatter tests
+  setUpAll(() async {
+    await initializeDateFormatting('en_IN', null);
+    await initializeDateFormatting('en_US', null);
+    await initializeDateFormatting('en_GB', null);
+    await initializeDateFormatting('de_DE', null);
+  });
+
   group('CurrencyFormatter', () {
     group('INR Formatting', () {
       late CurrencyFormatter formatter;
@@ -74,42 +83,138 @@ void main() {
     });
   });
 
-  group('IndianDateFormatter', () {
-    test('should format date in dd/MM/yyyy format', () {
+  group('LocaleDateFormatter', () {
+    group('India locale (dd/MM/yyyy)', () {
+      late LocaleDateFormatter formatter;
+
+      setUp(() {
+        formatter = LocaleDateFormatter.india;
+      });
+
+      test('should format date in dd/MM/yyyy format', () {
+        final date = DateTime(2025, 11, 30);
+        expect(formatter.formatDate(date), '30/11/2025');
+      });
+
+      test('should format date and time correctly', () {
+        final date = DateTime(2025, 11, 30, 14, 30);
+        expect(formatter.formatDateTime(date), '30/11/2025 14:30');
+      });
+
+      test('should format time correctly', () {
+        final date = DateTime(2025, 11, 30, 14, 30);
+        expect(formatter.formatTime(date), '14:30');
+      });
+
+      test('should format month year correctly', () {
+        final date = DateTime(2025, 11, 30);
+        expect(formatter.formatMonthYear(date), 'November 2025');
+      });
+
+      test('should format short date correctly', () {
+        final date = DateTime(2025, 11, 30);
+        expect(formatter.formatShortDate(date), '30 Nov');
+      });
+
+      test('should parse date string correctly', () {
+        final parsed = formatter.parseDate('30/11/2025');
+        expect(parsed, isNotNull);
+        expect(parsed!.day, 30);
+        expect(parsed.month, 11);
+        expect(parsed.year, 2025);
+      });
+
+      test('should return null for invalid date string', () {
+        expect(formatter.parseDate('invalid'), null);
+      });
+    });
+
+    group('US locale (MM/dd/yyyy)', () {
+      late LocaleDateFormatter formatter;
+
+      setUp(() {
+        formatter = LocaleDateFormatter.us;
+      });
+
+      test('should format date in MM/dd/yyyy format', () {
+        final date = DateTime(2025, 11, 30);
+        expect(formatter.formatDate(date), '11/30/2025');
+      });
+
+      test('should format date and time with AM/PM', () {
+        final date = DateTime(2025, 11, 30, 14, 30);
+        expect(formatter.formatDateTime(date), '11/30/2025 2:30 PM');
+      });
+
+      test('should format time with AM/PM', () {
+        final date = DateTime(2025, 11, 30, 14, 30);
+        expect(formatter.formatTime(date), '2:30 PM');
+      });
+
+      test('should format short date correctly', () {
+        final date = DateTime(2025, 11, 30);
+        expect(formatter.formatShortDate(date), 'Nov 30');
+      });
+
+      test('should parse US date format correctly', () {
+        final parsed = formatter.parseDate('11/30/2025');
+        expect(parsed, isNotNull);
+        expect(parsed!.day, 30);
+        expect(parsed.month, 11);
+        expect(parsed.year, 2025);
+      });
+    });
+
+    group('EU locale (dd.MM.yyyy)', () {
+      late LocaleDateFormatter formatter;
+
+      setUp(() {
+        formatter = LocaleDateFormatter.eu;
+      });
+
+      test('should format date in dd.MM.yyyy format', () {
+        final date = DateTime(2025, 11, 30);
+        expect(formatter.formatDate(date), '30.11.2025');
+      });
+
+      test('should format date and time correctly', () {
+        final date = DateTime(2025, 11, 30, 14, 30);
+        expect(formatter.formatDateTime(date), '30.11.2025 14:30');
+      });
+    });
+
+    group('Flexible date parsing', () {
+      late LocaleDateFormatter formatter;
+
+      setUp(() {
+        formatter = LocaleDateFormatter.india;
+      });
+
+      test('should parse multiple date formats', () {
+        // Indian format
+        expect(formatter.parseDateFlexible('30/11/2025')?.day, 30);
+        // US format
+        expect(formatter.parseDateFlexible('11/30/2025')?.day, 30);
+        // ISO format
+        expect(formatter.parseDateFlexible('2025-11-30')?.day, 30);
+        // EU format
+        expect(formatter.parseDateFlexible('30.11.2025')?.day, 30);
+      });
+
+      test('should return null for unparseable dates', () {
+        expect(formatter.parseDateFlexible('invalid'), null);
+        expect(formatter.parseDateFlexible(''), null);
+      });
+    });
+  });
+
+  // Legacy IndianDateFormatter tests (deprecated but still supported)
+  group('IndianDateFormatter (deprecated)', () {
+    // ignore: deprecated_member_use_from_same_package
+    test('should still work for backward compatibility', () {
       final date = DateTime(2025, 11, 30);
+      // ignore: deprecated_member_use_from_same_package
       expect(IndianDateFormatter.formatDate(date), '30/11/2025');
-    });
-
-    test('should format date and time correctly', () {
-      final date = DateTime(2025, 11, 30, 14, 30);
-      expect(IndianDateFormatter.formatDateTime(date), '30/11/2025 14:30');
-    });
-
-    test('should format time correctly', () {
-      final date = DateTime(2025, 11, 30, 14, 30);
-      expect(IndianDateFormatter.formatTime(date), '14:30');
-    });
-
-    test('should format month year correctly', () {
-      final date = DateTime(2025, 11, 30);
-      expect(IndianDateFormatter.formatMonthYear(date), 'November 2025');
-    });
-
-    test('should format short date correctly', () {
-      final date = DateTime(2025, 11, 30);
-      expect(IndianDateFormatter.formatShortDate(date), '30 Nov');
-    });
-
-    test('should parse date string correctly', () {
-      final parsed = IndianDateFormatter.parseDate('30/11/2025');
-      expect(parsed, isNotNull);
-      expect(parsed!.day, 30);
-      expect(parsed.month, 11);
-      expect(parsed.year, 2025);
-    });
-
-    test('should return null for invalid date string', () {
-      expect(IndianDateFormatter.parseDate('invalid'), null);
     });
   });
 

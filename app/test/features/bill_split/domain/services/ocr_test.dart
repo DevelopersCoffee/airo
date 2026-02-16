@@ -111,20 +111,23 @@ void main() {
       expect(parseCorruptedPrice('R95.00'), equals(9500));
     });
 
-    test('corrects prices where ₹ is read as 7 prefix', () {
-      // OCR misreads ₹45.0 as 745.0
+    test('keeps valid prices in 700s range (not strip leading 7)', () {
+      // Prices like ₹741 are VALID and should NOT be "corrected" to ₹41
+      // OCR ₹→7 corruption should be handled at parse time via corrupted char detection
       final rawPrices = [74100, 73800, 76900, 4500, 12000];
       final corrected = correctPrices(rawPrices, null, 5);
 
-      expect(corrected[0], equals(4100)); // 741 -> 41
-      expect(corrected[1], equals(3800)); // 738 -> 38
-      expect(corrected[2], equals(6900)); // 769 -> 69
-      expect(corrected[3], equals(4500)); // 45 stays (no 7 prefix)
-      expect(corrected[4], equals(12000)); // 120 stays
+      // All prices up to ₹1000 are kept as-is
+      expect(corrected[0], equals(74100)); // ₹741 stays
+      expect(corrected[1], equals(73800)); // ₹738 stays
+      expect(corrected[2], equals(76900)); // ₹769 stays
+      expect(corrected[3], equals(4500)); // ₹45 stays
+      expect(corrected[4], equals(12000)); // ₹120 stays
     });
 
     test('skips prices that are way too high', () {
-      final rawPrices = [100000, 4500]; // ₹1000 (too high), ₹45
+      // Filter out unreasonably high prices (over ₹1000 for groceries)
+      final rawPrices = [150000, 4500]; // ₹1500 (too high), ₹45
       final corrected = correctPrices(rawPrices, null, 2);
 
       expect(corrected.length, equals(1));

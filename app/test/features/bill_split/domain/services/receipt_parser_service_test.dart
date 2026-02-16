@@ -401,12 +401,40 @@ String? extractVendor(String ocrText) {
 
 int extractGrandTotal(String ocrText) {
   final lines = ocrText.split('\n').map((l) => l.trim()).toList();
-  for (var i = 0; i < lines.length - 1; i++) {
+
+  // Pattern for price lines (with optional corrupted prefix)
+  final pricePattern = RegExp(r'^[FZTRIOЩ₹]?\d+[.,]\d+$');
+
+  for (var i = 0; i < lines.length; i++) {
     if (lines[i].toLowerCase().contains('grand total')) {
-      return parseCorruptedPrice(lines[i + 1]);
+      // Look for the LAST price line after "Grand Total"
+      // In OCR output, the actual total is often the last price in the section
+      int lastPriceAfterGrandTotal = 0;
+      for (var j = i + 1; j < lines.length; j++) {
+        final line = lines[j].trim();
+        if (pricePattern.hasMatch(line)) {
+          lastPriceAfterGrandTotal = parseCorruptedPrice(line);
+        }
+      }
+      if (lastPriceAfterGrandTotal > 0) {
+        return lastPriceAfterGrandTotal;
+      }
     }
   }
-  return 0;
+
+  // Fallback: look for the largest price in the document
+  // (the grand total is typically the largest amount)
+  int largestPrice = 0;
+  for (final line in lines) {
+    if (pricePattern.hasMatch(line.trim())) {
+      final price = parseCorruptedPrice(line.trim());
+      if (price > largestPrice) {
+        largestPrice = price;
+      }
+    }
+  }
+
+  return largestPrice;
 }
 
 int parseCorruptedPrice(String priceStr) {

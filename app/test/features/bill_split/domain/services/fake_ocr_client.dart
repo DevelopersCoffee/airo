@@ -113,11 +113,21 @@ class FakeOcrClient implements OcrClient {
 
   /// Verify a method was called
   bool wasCalled(String method) {
-    return callLog.any((call) => call.startsWith(method));
+    return callLog.any((call) => _matchesMethod(call, method));
   }
 
   /// Get number of times a method was called
   int callCount(String method) {
-    return callLog.where((call) => call.startsWith(method)).length;
+    return callLog.where((call) => _matchesMethod(call, method)).length;
+  }
+
+  /// Check if a call log entry matches a method name
+  /// Handles both exact matches (e.g., 'dispose') and colon-prefixed entries
+  bool _matchesMethod(String logEntry, String method) {
+    // Exact match for methods without parameters (e.g., 'dispose')
+    if (logEntry == method) return true;
+    // Match colon-prefixed entries (e.g., 'processImage:/path/to/file')
+    if (logEntry.startsWith('$method:')) return true;
+    return false;
   }
 }
