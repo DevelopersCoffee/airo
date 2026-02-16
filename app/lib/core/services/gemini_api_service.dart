@@ -69,7 +69,7 @@ Return ONLY valid JSON with this structure:
   "total": 133.00,
   "date": "2024-01-15 or null"
 }
-Be accurate with prices. Indian currency (₹/Rs) values.''',
+Be accurate with prices. Extract currency values as decimal numbers without currency symbols.''',
                 },
                 {
                   'inline_data': {
