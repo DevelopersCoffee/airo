@@ -1,5 +1,7 @@
 import 'package:equatable/equatable.dart';
 
+import '../../../../core/utils/currency_formatter.dart';
+
 /// Money account model
 class MoneyAccount extends Equatable {
   final String id;
@@ -22,60 +24,25 @@ class MoneyAccount extends Equatable {
 
   /// Get currency symbol based on currency code
   String get currencySymbol {
-    switch (currency.toUpperCase()) {
-      case 'INR':
-        return '₹';
-      case 'USD':
-        return '\$';
-      case 'EUR':
-        return '€';
-      case 'GBP':
-        return '£';
-      default:
-        return currency;
-    }
+    return SupportedCurrency.fromCode(currency).symbol;
+  }
+
+  /// Get balance formatted using locale-aware CurrencyFormatter
+  ///
+  /// This is the preferred method for formatting currency.
+  /// Pass the formatter from the user's locale settings.
+  String formatBalance(CurrencyFormatter formatter) {
+    return formatter.formatCents(balanceCents);
   }
 
   /// Get balance as formatted string with proper currency
+  ///
+  /// @Deprecated: Use [formatBalance] with a CurrencyFormatter for global locale support.
+  /// This method uses the account's currency but may not respect user's locale preferences.
+  @Deprecated('Use formatBalance(CurrencyFormatter) for global locale support')
   String get balanceFormatted {
-    final wholePart = balanceCents ~/ 100;
-    final decimalPart = (balanceCents % 100).abs();
-
-    if (currency.toUpperCase() == 'INR') {
-      return _formatIndianCurrency(wholePart, decimalPart);
-    }
-    return '$currencySymbol$wholePart.${decimalPart.toString().padLeft(2, '0')}';
-  }
-
-  /// Format amount using Indian numbering system (lakhs, crores)
-  String _formatIndianCurrency(int wholePart, int decimalPart) {
-    final isNegative = wholePart < 0;
-    final absWhole = wholePart.abs();
-
-    String formatted;
-    if (absWhole < 1000) {
-      formatted = absWhole.toString();
-    } else if (absWhole < 100000) {
-      final thousands = absWhole ~/ 1000;
-      final remainder = absWhole % 1000;
-      formatted = '$thousands,${remainder.toString().padLeft(3, '0')}';
-    } else if (absWhole < 10000000) {
-      final lakhs = absWhole ~/ 100000;
-      final thousands = (absWhole % 100000) ~/ 1000;
-      final remainder = absWhole % 1000;
-      formatted =
-          '$lakhs,${thousands.toString().padLeft(2, '0')},${remainder.toString().padLeft(3, '0')}';
-    } else {
-      final crores = absWhole ~/ 10000000;
-      final lakhs = (absWhole % 10000000) ~/ 100000;
-      final thousands = (absWhole % 100000) ~/ 1000;
-      final remainder = absWhole % 1000;
-      formatted =
-          '$crores,${lakhs.toString().padLeft(2, '0')},${thousands.toString().padLeft(2, '0')},${remainder.toString().padLeft(3, '0')}';
-    }
-
-    final sign = isNegative ? '-' : '';
-    return '$sign₹$formatted.${decimalPart.toString().padLeft(2, '0')}';
+    final formatter = CurrencyFormatter.fromCode(currency);
+    return formatter.formatCents(balanceCents);
   }
 
   @override
@@ -120,12 +87,21 @@ class Transaction extends Equatable {
   /// Check if transaction is income (positive amount)
   bool get isIncome => amountCents > 0;
 
-  /// Get amount as formatted string (uses INR by default)
+  /// Format amount using locale-aware CurrencyFormatter
+  ///
+  /// This is the preferred method for formatting currency.
+  /// Pass the formatter from the user's locale settings.
+  String formatAmount(CurrencyFormatter formatter) {
+    return formatter.formatCentsWithSign(amountCents);
+  }
+
+  /// Get amount as formatted string
+  ///
+  /// @Deprecated: Use [formatAmount] with a CurrencyFormatter for global locale support.
+  /// This method defaults to INR formatting.
+  @Deprecated('Use formatAmount(CurrencyFormatter) for global locale support')
   String get amountFormatted {
-    final wholePart = amountCents.abs() ~/ 100;
-    final decimalPart = (amountCents.abs() % 100);
-    final sign = isExpense ? '-' : '+';
-    return '$sign₹$wholePart.${decimalPart.toString().padLeft(2, '0')}';
+    return CurrencyFormatter.inr.formatCentsWithSign(amountCents);
   }
 
   @override
@@ -237,25 +213,55 @@ class Budget extends Equatable {
   int get remainingCents =>
       (effectiveLimitCents - usedCents).clamp(0, effectiveLimitCents);
 
+  // ---- Locale-aware formatting methods (preferred) ----
+
+  /// Format limit using locale-aware CurrencyFormatter
+  String formatLimit(CurrencyFormatter formatter) =>
+      formatter.formatCents(limitCents);
+
+  /// Format effective limit using locale-aware CurrencyFormatter
+  String formatEffectiveLimit(CurrencyFormatter formatter) =>
+      formatter.formatCents(effectiveLimitCents);
+
+  /// Format used amount using locale-aware CurrencyFormatter
+  String formatUsed(CurrencyFormatter formatter) =>
+      formatter.formatCents(usedCents);
+
+  /// Format remaining amount using locale-aware CurrencyFormatter
+  String formatRemaining(CurrencyFormatter formatter) =>
+      formatter.formatCents(remainingCents);
+
+  // ---- Deprecated getters for backward compatibility ----
+
   /// Get limit as formatted string
-  String get limitFormatted => _formatCurrency(limitCents);
+  ///
+  /// @Deprecated: Use [formatLimit] with a CurrencyFormatter for global locale support.
+  @Deprecated('Use formatLimit(CurrencyFormatter) for global locale support')
+  String get limitFormatted => CurrencyFormatter.inr.formatCents(limitCents);
 
   /// Get effective limit as formatted string
-  String get effectiveLimitFormatted => _formatCurrency(effectiveLimitCents);
+  ///
+  /// @Deprecated: Use [formatEffectiveLimit] with a CurrencyFormatter for global locale support.
+  @Deprecated(
+    'Use formatEffectiveLimit(CurrencyFormatter) for global locale support',
+  )
+  String get effectiveLimitFormatted =>
+      CurrencyFormatter.inr.formatCents(effectiveLimitCents);
 
   /// Get used as formatted string
-  String get usedFormatted => _formatCurrency(usedCents);
+  ///
+  /// @Deprecated: Use [formatUsed] with a CurrencyFormatter for global locale support.
+  @Deprecated('Use formatUsed(CurrencyFormatter) for global locale support')
+  String get usedFormatted => CurrencyFormatter.inr.formatCents(usedCents);
 
   /// Get remaining as formatted string
-  String get remainingFormatted => _formatCurrency(remainingCents);
-
-  /// Format currency using INR by default
-  static String _formatCurrency(int cents) {
-    final wholePart = cents.abs() ~/ 100;
-    final decimalPart = cents.abs() % 100;
-    final formatted = '₹$wholePart.${decimalPart.toString().padLeft(2, '0')}';
-    return cents < 0 ? '-$formatted' : formatted;
-  }
+  ///
+  /// @Deprecated: Use [formatRemaining] with a CurrencyFormatter for global locale support.
+  @Deprecated(
+    'Use formatRemaining(CurrencyFormatter) for global locale support',
+  )
+  String get remainingFormatted =>
+      CurrencyFormatter.inr.formatCents(remainingCents);
 
   /// Create a copy with updated fields
   Budget copyWith({
