@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:share_plus/share_plus.dart';
+import '../../../../core/utils/locale_settings.dart';
 import '../../application/providers/bill_split_providers.dart';
 import '../../domain/models/bill_split_models.dart';
 import '../../domain/models/split_result.dart';
@@ -211,6 +212,7 @@ class _BillSplitScreenState extends ConsumerState<BillSplitScreen> {
   Widget _buildInputView() {
     final theme = Theme.of(context);
     final selectedParticipants = ref.watch(selectedParticipantsProvider);
+    final currencySymbol = ref.watch(currencyFormatterProvider).currency.symbol;
 
     return SingleChildScrollView(
       child: Column(
@@ -245,7 +247,7 @@ class _BillSplitScreenState extends ConsumerState<BillSplitScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '₹',
+                      currencySymbol,
                       style: theme.textTheme.displayMedium?.copyWith(
                         color: theme.colorScheme.primary,
                         fontWeight: FontWeight.bold,
@@ -507,16 +509,17 @@ class _BillSplitScreenState extends ConsumerState<BillSplitScreen> {
   ) {
     final amount = double.tryParse(_amountController.text) ?? 0;
     final participantCount = selectedParticipants.length + 1; // +1 for "you"
+    final currencySymbol = ref.watch(currencyFormatterProvider).currency.symbol;
 
     String getAmountText() {
       if (amount <= 0 || selectedParticipants.isEmpty) return '';
       switch (_splitOption) {
         case SplitOption.equalSplit:
-          return '₹${(amount / participantCount).toStringAsFixed(2)}/person';
+          return '$currencySymbol${(amount / participantCount).toStringAsFixed(2)}/person';
         case SplitOption.youOweAll:
-          return 'You owe ₹${amount.toStringAsFixed(2)}';
+          return 'You owe $currencySymbol${amount.toStringAsFixed(2)}';
         case SplitOption.theyOweAll:
-          return 'They owe ₹${amount.toStringAsFixed(2)}';
+          return 'They owe $currencySymbol${amount.toStringAsFixed(2)}';
       }
     }
 

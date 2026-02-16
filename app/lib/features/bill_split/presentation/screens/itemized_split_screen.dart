@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
+import '../../../../core/utils/locale_settings.dart';
 import '../../domain/models/receipt_item.dart';
 import '../../domain/services/receipt_parser_service.dart';
 
@@ -89,13 +90,21 @@ class ItemizedSplitResult {
   });
 
   /// Generate WhatsApp-shareable message with full item details
-  String generateWhatsAppMessage(List<ItemParticipant> participants) {
+  ///
+  /// [participants] - List of participants to include in the message
+  /// [currencySymbol] - Currency symbol to use (e.g., '₹', '$', '€')
+  String generateWhatsAppMessage(
+    List<ItemParticipant> participants, {
+    String currencySymbol = '₹',
+  }) {
     final buffer = StringBuffer();
 
     buffer.writeln('🧾 *Bill Split - ${vendor ?? "Receipt"}*');
     if (orderId != null) buffer.writeln('Order #$orderId');
     buffer.writeln('');
-    buffer.writeln('💰 *Total: ₹${totalAmount.toStringAsFixed(2)}*');
+    buffer.writeln(
+      '💰 *Total: $currencySymbol${totalAmount.toStringAsFixed(2)}*',
+    );
     buffer.writeln('');
 
     // Group items by participant
@@ -111,7 +120,9 @@ class ItemizedSplitResult {
       final amount = summary[p.id] ?? 0;
       final name = p.isMe ? 'You' : p.name;
       buffer.writeln('');
-      buffer.writeln('👤 *$name: ₹${(amount / 100).toStringAsFixed(2)}*');
+      buffer.writeln(
+        '👤 *$name: $currencySymbol${(amount / 100).toStringAsFixed(2)}*',
+      );
 
       final items = itemsByParticipant[p.id] ?? [];
       for (final item in items) {
@@ -119,11 +130,11 @@ class ItemizedSplitResult {
         final itemShare = item.pricePaise ~/ splitCount;
         if (splitCount > 1) {
           buffer.writeln(
-            '  • ${item.name} (split ÷$splitCount) ₹${(itemShare / 100).toStringAsFixed(2)}',
+            '  • ${item.name} (split ÷$splitCount) $currencySymbol${(itemShare / 100).toStringAsFixed(2)}',
           );
         } else {
           buffer.writeln(
-            '  • ${item.name} ₹${(item.pricePaise / 100).toStringAsFixed(2)}',
+            '  • ${item.name} $currencySymbol${(item.pricePaise / 100).toStringAsFixed(2)}',
           );
         }
       }
@@ -449,6 +460,7 @@ class _ItemizedSplitScreenState extends ConsumerState<ItemizedSplitScreen> {
   Widget _buildSummaryFooter(ThemeData theme) {
     final items = ref.watch(receiptItemsProvider);
     final summary = _calculateSummary(items);
+    final currencySymbol = ref.watch(currencyFormatterProvider).currency.symbol;
 
     return Container(
       key: const Key(ItemizedSplitTestIds.summaryFooter),
@@ -481,6 +493,7 @@ class _ItemizedSplitScreenState extends ConsumerState<ItemizedSplitScreen> {
                       color: p.isMe
                           ? theme.colorScheme.primary
                           : theme.colorScheme.secondary,
+                      currencySymbol: currencySymbol,
                     ),
                   );
                 }).toList(),
@@ -510,6 +523,9 @@ class _ItemizedSplitScreenState extends ConsumerState<ItemizedSplitScreen> {
   }
 
   void _confirmSplit(Map<String, int> summary) {
+    // Get currency symbol from locale settings
+    final currencySymbol = ref.read(currencyFormatterProvider).currency.symbol;
+
     // Get items from receipt
     final items = _receipt?.items ?? [];
 
@@ -561,7 +577,7 @@ class _ItemizedSplitScreenState extends ConsumerState<ItemizedSplitScreen> {
             return Padding(
               padding: const EdgeInsets.symmetric(vertical: 4),
               child: Text(
-                '${p.isMe ? "You" : p.name}: ₹${(amount / 100).toStringAsFixed(2)}',
+                '${p.isMe ? "You" : p.name}: $currencySymbol${(amount / 100).toStringAsFixed(2)}',
                 style: TextStyle(
                   fontWeight: p.isMe ? FontWeight.bold : FontWeight.normal,
                 ),
@@ -573,7 +589,10 @@ class _ItemizedSplitScreenState extends ConsumerState<ItemizedSplitScreen> {
           // Copy to clipboard button
           TextButton.icon(
             onPressed: () {
-              final message = result.generateWhatsAppMessage(_participants);
+              final message = result.generateWhatsAppMessage(
+                _participants,
+                currencySymbol: currencySymbol,
+              );
               Clipboard.setData(ClipboardData(text: message));
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
@@ -795,11 +814,13 @@ class _SummaryCard extends StatelessWidget {
   final String label;
   final int amount;
   final Color color;
+  final String currencySymbol;
 
   const _SummaryCard({
     required this.label,
     required this.amount,
     required this.color,
+    this.currencySymbol = '₹',
   });
 
   @override
@@ -823,7 +844,7 @@ class _SummaryCard extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            '₹${(amount / 100).toStringAsFixed(2)}',
+            '$currencySymbol${(amount / 100).toStringAsFixed(2)}',
             style: TextStyle(
               color: color,
               fontWeight: FontWeight.bold,
