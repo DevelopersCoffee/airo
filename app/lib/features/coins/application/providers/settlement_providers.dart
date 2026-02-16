@@ -1,20 +1,27 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/entities/settlement.dart';
 import '../../domain/repositories/settlement_repository.dart';
 import '../../domain/services/balance_engine.dart';
 import '../../domain/services/debt_simplifier.dart';
 import '../../domain/models/balance_summary.dart';
+import '../../data/repositories/settlement_repository_impl.dart';
+import '../../data/mappers/settlement_mapper.dart';
 import 'group_providers.dart';
+import 'expense_providers.dart';
 
 /// Settlement repository provider
 ///
-/// Must be overridden in main.dart with actual implementation.
+/// Uses local datasource for offline-first storage.
+/// On web, throws UnimplementedError (no SQLite support).
 ///
 /// Phase: 2 (Split Engine)
 final settlementRepositoryProvider = Provider<SettlementRepository>((ref) {
-  throw UnimplementedError(
-    'settlementRepositoryProvider must be overridden in main.dart',
-  );
+  if (kIsWeb) {
+    throw UnimplementedError('Coins feature not supported on web (no SQLite)');
+  }
+  final datasource = ref.watch(coinsLocalDatasourceProvider);
+  return SettlementRepositoryImpl(datasource, SettlementMapper());
 });
 
 /// Balance engine provider
@@ -30,9 +37,9 @@ final debtSimplifierProvider = Provider<DebtSimplifier>((ref) {
 /// Watch settlements for a group
 final groupSettlementsProvider =
     StreamProvider.family<List<Settlement>, String>((ref, groupId) {
-  final repo = ref.watch(settlementRepositoryProvider);
-  return repo.watchByGroup(groupId);
-});
+      final repo = ref.watch(settlementRepositoryProvider);
+      return repo.watchByGroup(groupId);
+    });
 
 /// Watch pending settlements for current user
 final pendingSettlementsProvider = StreamProvider<List<Settlement>>((ref) {
@@ -45,37 +52,39 @@ final pendingSettlementsProvider = StreamProvider<List<Settlement>>((ref) {
 /// Balance summary for a group
 final groupBalanceSummaryProvider =
     FutureProvider.family<BalanceSummary, String>((ref, groupId) async {
-  final groupRepo = ref.watch(groupRepositoryProvider);
-  final settlementRepo = ref.watch(settlementRepositoryProvider);
-  final engine = ref.watch(balanceEngineProvider);
+      final groupRepo = ref.watch(groupRepositoryProvider);
+      final settlementRepo = ref.watch(settlementRepositoryProvider);
+      final engine = ref.watch(balanceEngineProvider);
 
-  final expensesResult = await groupRepo.getExpenses(groupId);
-  final settlementsResult = await settlementRepo.findByGroup(groupId);
+      final expensesResult = await groupRepo.getExpenses(groupId);
+      final settlementsResult = await settlementRepo.findByGroup(groupId);
 
-  return engine.calculateBalanceSummary(
-    groupId: groupId,
-    expenses: expensesResult.data ?? [],
-    settlements: settlementsResult.data ?? [],
-  );
-});
+      return engine.calculateBalanceSummary(
+        groupId: groupId,
+        expenses: expensesResult.data ?? [],
+        settlements: settlementsResult.data ?? [],
+      );
+    });
 
 /// Simplified debts for a group
-final simplifiedDebtsProvider = FutureProvider.family<BalanceSummary, String>(
-  (ref, groupId) async {
-    final summary = await ref.watch(groupBalanceSummaryProvider(groupId).future);
-    final simplifier = ref.watch(debtSimplifierProvider);
+final simplifiedDebtsProvider = FutureProvider.family<BalanceSummary, String>((
+  ref,
+  groupId,
+) async {
+  final summary = await ref.watch(groupBalanceSummaryProvider(groupId).future);
+  final simplifier = ref.watch(debtSimplifierProvider);
 
-    final simplifiedDebts = simplifier.fromNetBalances(summary.netBalances);
+  final simplifiedDebts = simplifier.fromNetBalances(summary.netBalances);
 
-    return summary.copyWith(simplifiedDebts: simplifiedDebts);
-  },
-);
+  return summary.copyWith(simplifiedDebts: simplifiedDebts);
+});
 
 /// Record settlement state notifier
-final recordSettlementProvider = StateNotifierProvider.autoDispose<
-    RecordSettlementNotifier, AsyncValue<Settlement?>>(
-  (ref) => RecordSettlementNotifier(ref),
-);
+final recordSettlementProvider =
+    StateNotifierProvider.autoDispose<
+      RecordSettlementNotifier,
+      AsyncValue<Settlement?>
+    >((ref) => RecordSettlementNotifier(ref));
 
 class RecordSettlementNotifier extends StateNotifier<AsyncValue<Settlement?>> {
   final Ref _ref;
@@ -123,4 +132,3 @@ class RecordSettlementNotifier extends StateNotifier<AsyncValue<Settlement?>> {
     }
   }
 }
-

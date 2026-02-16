@@ -1,17 +1,31 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../money/application/providers/money_provider.dart';
 import '../../domain/entities/transaction.dart';
 import '../../domain/repositories/transaction_repository.dart';
+import '../../data/repositories/transaction_repository_impl.dart';
+import '../../data/datasources/coins_local_datasource_impl.dart';
+import '../../data/mappers/transaction_mapper.dart';
+
+/// Coins local datasource provider - singleton
+final coinsLocalDatasourceProvider = Provider<CoinsLocalDatasourceImpl>((ref) {
+  final db = ref.watch(appDatabaseProvider);
+  return CoinsLocalDatasourceImpl(db);
+});
 
 /// Transaction repository provider
 ///
-/// Must be overridden in main.dart with actual implementation.
+/// Uses local datasource for offline-first storage.
+/// On web, throws UnimplementedError (no SQLite support).
 ///
 /// Phase: 1 (Foundation)
 /// See: docs/features/coins/PROJECT_STRUCTURE.md
 final transactionRepositoryProvider = Provider<TransactionRepository>((ref) {
-  throw UnimplementedError(
-    'transactionRepositoryProvider must be overridden in main.dart',
-  );
+  if (kIsWeb) {
+    throw UnimplementedError('Coins feature not supported on web (no SQLite)');
+  }
+  final datasource = ref.watch(coinsLocalDatasourceProvider);
+  return TransactionRepositoryImpl(datasource, TransactionMapper());
 });
 
 /// Watch all transactions stream
@@ -40,9 +54,9 @@ final todayExpensesProvider = StreamProvider<List<Transaction>>((ref) {
 /// Watch transactions by category
 final expensesByCategoryProvider =
     StreamProvider.family<List<Transaction>, String>((ref, categoryId) {
-  final repo = ref.watch(transactionRepositoryProvider);
-  return repo.watchByCategory(categoryId);
-});
+      final repo = ref.watch(transactionRepositoryProvider);
+      return repo.watchByCategory(categoryId);
+    });
 
 /// Total spent today
 final spentTodayProvider = FutureProvider<int>((ref) async {
@@ -65,8 +79,9 @@ final spentThisMonthProvider = FutureProvider<int>((ref) async {
 });
 
 /// Spending by category for current month
-final monthlySpendingByCategoryProvider =
-    FutureProvider<Map<String, int>>((ref) async {
+final monthlySpendingByCategoryProvider = FutureProvider<Map<String, int>>((
+  ref,
+) async {
   final repo = ref.watch(transactionRepositoryProvider);
   final now = DateTime.now();
   final startOfMonth = DateTime(now.year, now.month, 1);
@@ -76,8 +91,10 @@ final monthlySpendingByCategoryProvider =
 });
 
 /// Search transactions
-final expenseSearchProvider =
-    FutureProvider.family<List<Transaction>, String>((ref, query) async {
+final expenseSearchProvider = FutureProvider.family<List<Transaction>, String>((
+  ref,
+  query,
+) async {
   if (query.isEmpty) return [];
   final repo = ref.watch(transactionRepositoryProvider);
   final result = await repo.search(query);
@@ -87,8 +104,8 @@ final expenseSearchProvider =
 /// Add expense state notifier
 final addExpenseProvider =
     StateNotifierProvider.autoDispose<AddExpenseNotifier, AsyncValue<void>>(
-  (ref) => AddExpenseNotifier(ref),
-);
+      (ref) => AddExpenseNotifier(ref),
+    );
 
 class AddExpenseNotifier extends StateNotifier<AsyncValue<void>> {
   final Ref _ref;
@@ -110,4 +127,3 @@ class AddExpenseNotifier extends StateNotifier<AsyncValue<void>> {
     }
   }
 }
-

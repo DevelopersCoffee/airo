@@ -4,6 +4,7 @@ import '../../../../core/audio/audio_context_manager.dart';
 import '../models/iptv_channel.dart';
 import '../models/streaming_state.dart';
 import 'iptv_streaming_service.dart';
+import 'live_edge_detector.dart';
 
 /// Video Player implementation of IPTV Streaming Service
 ///
@@ -27,11 +28,46 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
   DateTime? _loadStartTime;
   bool _isBackgroundAudioMode = false;
 
+  // Live edge detection (P0-1 through P0-4)
+  final LiveEdgeDetector _liveEdgeDetector;
+
   VideoPlayerStreamingService({
     StreamingConfig config = StreamingConfig.youtube,
     AudioContextManager? audioContext,
+    LiveEdgeConfig? liveEdgeConfig,
   }) : _config = config,
-       _audioContext = audioContext ?? AudioContextManager();
+       _audioContext = audioContext ?? AudioContextManager(),
+       _liveEdgeDetector = LiveEdgeDetector(config: liveEdgeConfig) {
+    _setupLiveEdgeCallbacks();
+  }
+
+  void _setupLiveEdgeCallbacks() {
+    _liveEdgeDetector.onStateUpdate = _handleLiveEdgeUpdate;
+    _liveEdgeDetector.onDriftDetected = _handleDriftDetected;
+  }
+
+  void _handleLiveEdgeUpdate(LiveEdgeState liveState) {
+    _updateState(
+      _state.copyWith(
+        isLiveStream: liveState.isLiveStream,
+        liveEdge: liveState.liveEdge,
+        liveDelay: liveState.liveDelay,
+        liveStreamState: liveState.liveStreamState,
+        hasDvrSupport: liveState.hasDvrSupport,
+        dvrWindowStart: liveState.dvrWindowStart,
+        dvrWindowDuration: liveState.dvrWindowDuration,
+        lastLiveEdgeUpdate: DateTime.now(),
+      ),
+    );
+  }
+
+  void _handleDriftDetected() {
+    // Auto-resync to live edge when drift exceeds threshold
+    // Only auto-resync if not paused by user
+    if (_state.playbackState == PlaybackState.playing) {
+      goLive();
+    }
+  }
 
   @override
   Stream<StreamingState> get stateStream => _stateController.stream;
@@ -102,6 +138,9 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
 
       _startBufferMonitoring();
       _setupControllerListeners();
+
+      // Attach live edge detector for live stream monitoring
+      _liveEdgeDetector.attach(_controller!);
     } catch (e) {
       // Release focus on error
       _audioContext.releaseFocus(AudioFocusType.video);
@@ -287,8 +326,34 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
 
   @override
   Future<void> seek(Duration position) async {
+    // Notify live edge detector of manual seek
+    _liveEdgeDetector.notifyUserSeek();
     await _controller?.seekTo(position);
     _updateState(_state.copyWith(position: position));
+  }
+
+  @override
+  Future<void> goLive() async {
+    // P0-6: Seek to live edge
+    if (!_state.isLiveStream) return;
+
+    final liveEdge = _state.liveEdge;
+    if (liveEdge == null || liveEdge == Duration.zero) {
+      // Fallback: use controller duration as live edge estimate
+      final duration = _controller?.value.duration;
+      if (duration != null && duration > Duration.zero) {
+        await _controller?.seekTo(duration);
+      }
+      return;
+    }
+
+    await _controller?.seekTo(liveEdge);
+    _updateState(
+      _state.copyWith(
+        liveStreamState: LiveStreamState.live,
+        liveDelay: Duration.zero,
+      ),
+    );
   }
 
   @override
@@ -339,6 +404,8 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
   }
 
   Future<void> _disposeController() async {
+    // Detach live edge detector
+    _liveEdgeDetector.detach();
     _controller?.removeListener(_onControllerUpdate);
     await _controller?.dispose();
     _controller = null;
@@ -353,6 +420,8 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
   Future<void> dispose() async {
     _bufferMonitor?.cancel();
     _metricsTimer?.cancel();
+    // Dispose live edge detector
+    _liveEdgeDetector.dispose();
     // Release video audio focus
     _audioContext.releaseFocus(AudioFocusType.video);
     await _disposeController();

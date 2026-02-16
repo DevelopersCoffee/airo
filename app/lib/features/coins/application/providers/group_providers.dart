@@ -1,18 +1,25 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/entities/group.dart';
 import '../../domain/entities/group_member.dart';
 import '../../domain/entities/shared_expense.dart';
 import '../../domain/repositories/group_repository.dart';
+import '../../data/repositories/group_repository_impl.dart';
+import '../../data/mappers/group_mapper.dart';
+import 'expense_providers.dart';
 
 /// Group repository provider
 ///
-/// Must be overridden in main.dart with actual implementation.
+/// Uses local datasource for offline-first storage.
+/// On web, throws UnimplementedError (no SQLite support).
 ///
 /// Phase: 2 (Split Engine)
 final groupRepositoryProvider = Provider<GroupRepository>((ref) {
-  throw UnimplementedError(
-    'groupRepositoryProvider must be overridden in main.dart',
-  );
+  if (kIsWeb) {
+    throw UnimplementedError('Coins feature not supported on web (no SQLite)');
+  }
+  final datasource = ref.watch(coinsLocalDatasourceProvider);
+  return GroupRepositoryImpl(datasource, GroupMapper());
 });
 
 /// Watch all groups
@@ -35,8 +42,10 @@ final groupByIdProvider = StreamProvider.family<Group?, String>((ref, id) {
 });
 
 /// Watch group members
-final groupMembersProvider =
-    StreamProvider.family<List<GroupMember>, String>((ref, groupId) {
+final groupMembersProvider = StreamProvider.family<List<GroupMember>, String>((
+  ref,
+  groupId,
+) {
   final repo = ref.watch(groupRepositoryProvider);
   return repo.watchMembers(groupId);
 });
@@ -44,9 +53,9 @@ final groupMembersProvider =
 /// Watch group expenses
 final groupExpensesProvider =
     StreamProvider.family<List<SharedExpense>, String>((ref, groupId) {
-  final repo = ref.watch(groupRepositoryProvider);
-  return repo.watchExpenses(groupId);
-});
+      final repo = ref.watch(groupRepositoryProvider);
+      return repo.watchExpenses(groupId);
+    });
 
 /// Currently selected group (for navigation state)
 final selectedGroupIdProvider = StateProvider<String?>((ref) => null);
@@ -61,8 +70,8 @@ final selectedGroupProvider = Provider<AsyncValue<Group?>>((ref) {
 /// Create group state notifier
 final createGroupProvider =
     StateNotifierProvider.autoDispose<CreateGroupNotifier, AsyncValue<Group?>>(
-  (ref) => CreateGroupNotifier(ref),
-);
+      (ref) => CreateGroupNotifier(ref),
+    );
 
 class CreateGroupNotifier extends StateNotifier<AsyncValue<Group?>> {
   final Ref _ref;
@@ -103,8 +112,8 @@ class CreateGroupNotifier extends StateNotifier<AsyncValue<Group?>> {
 /// Add member state notifier
 final addMemberProvider =
     StateNotifierProvider.autoDispose<AddMemberNotifier, AsyncValue<void>>(
-  (ref) => AddMemberNotifier(ref),
-);
+      (ref) => AddMemberNotifier(ref),
+    );
 
 class AddMemberNotifier extends StateNotifier<AsyncValue<void>> {
   final Ref _ref;
@@ -133,4 +142,3 @@ class AddMemberNotifier extends StateNotifier<AsyncValue<void>> {
     }
   }
 }
-

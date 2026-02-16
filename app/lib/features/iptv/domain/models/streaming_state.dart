@@ -17,6 +17,48 @@ enum NetworkQuality {
 /// Playback state
 enum PlaybackState { idle, loading, buffering, playing, paused, error, ended }
 
+/// Live stream state for DVR functionality (P0-4)
+/// Tracks whether user is at live edge or behind
+enum LiveStreamState {
+  /// At or near live edge (delay <= threshold)
+  live('LIVE'),
+
+  /// Behind live edge (delay > threshold)
+  behindLive('BEHIND_LIVE'),
+
+  /// Stream is paused
+  paused('PAUSED'),
+
+  /// Playing within DVR window (not at live edge)
+  dvrPlayback('DVR_PLAYBACK'),
+
+  /// Stream type unknown or VOD content
+  unknown('UNKNOWN');
+
+  const LiveStreamState(this.label);
+  final String label;
+}
+
+/// Configuration for live edge detection thresholds
+class LiveEdgeConfig {
+  /// Delay threshold to consider "at live edge" (default: 3 seconds)
+  final Duration liveEdgeThreshold;
+
+  /// Delay threshold for auto-resync (default: 30 seconds)
+  final Duration autoResyncThreshold;
+
+  /// Update interval for live edge detection (default: 1 second)
+  final Duration updateInterval;
+
+  const LiveEdgeConfig({
+    this.liveEdgeThreshold = const Duration(seconds: 3),
+    this.autoResyncThreshold = const Duration(seconds: 30),
+    this.updateInterval = const Duration(seconds: 1),
+  });
+
+  static const defaultConfig = LiveEdgeConfig();
+}
+
 /// Buffer status for streaming
 class BufferStatus extends Equatable {
   final Duration bufferedAhead;
@@ -82,7 +124,7 @@ class StreamingMetrics extends Equatable {
   ];
 }
 
-/// Complete streaming state
+/// Complete streaming state with Live DVR support
 class StreamingState extends Equatable {
   final IPTVChannel? currentChannel;
   final PlaybackState playbackState;
@@ -98,6 +140,32 @@ class StreamingState extends Equatable {
   final int retryCount;
   final DateTime? lastError;
 
+  // === Live DVR Properties (P0-1 to P0-4) ===
+
+  /// Whether the current stream is a live stream (vs VOD)
+  final bool isLiveStream;
+
+  /// The live edge position (latest available position in stream)
+  final Duration? liveEdge;
+
+  /// Current delay from live edge (liveEdge - position)
+  final Duration liveDelay;
+
+  /// Start of DVR window (earliest seekable position)
+  final Duration? dvrWindowStart;
+
+  /// Duration of available DVR window
+  final Duration? dvrWindowDuration;
+
+  /// Current live stream state (LIVE, BEHIND_LIVE, etc.)
+  final LiveStreamState liveStreamState;
+
+  /// Whether DVR is supported by this stream
+  final bool hasDvrSupport;
+
+  /// Timestamp of last live edge update
+  final DateTime? lastLiveEdgeUpdate;
+
   const StreamingState({
     this.currentChannel,
     this.playbackState = PlaybackState.idle,
@@ -112,7 +180,18 @@ class StreamingState extends Equatable {
     this.errorMessage,
     this.retryCount = 0,
     this.lastError,
+    // Live DVR defaults
+    this.isLiveStream = false,
+    this.liveEdge,
+    this.liveDelay = Duration.zero,
+    this.dvrWindowStart,
+    this.dvrWindowDuration,
+    this.liveStreamState = LiveStreamState.unknown,
+    this.hasDvrSupport = false,
+    this.lastLiveEdgeUpdate,
   });
+
+  // === Existing Getters ===
 
   bool get isPlaying => playbackState == PlaybackState.playing;
   bool get isLoading => playbackState == PlaybackState.loading;
@@ -123,6 +202,45 @@ class StreamingState extends Equatable {
   /// Time to first frame target: < 2 seconds
   bool get meetsLoadTimeTarget =>
       metrics != null && metrics!.latency.inMilliseconds < 2000;
+
+  // === Live DVR Getters (P0-5 visibility logic) ===
+
+  /// Whether user is at live edge (delay <= 3 seconds)
+  bool get isAtLiveEdge =>
+      isLiveStream &&
+      liveDelay.inSeconds <=
+          LiveEdgeConfig.defaultConfig.liveEdgeThreshold.inSeconds;
+
+  /// Whether user is behind live (delay > threshold)
+  bool get isBehindLive =>
+      isLiveStream &&
+      liveDelay.inSeconds >
+          LiveEdgeConfig.defaultConfig.liveEdgeThreshold.inSeconds;
+
+  /// Whether "Go Live" button should be visible (P0-5)
+  bool get shouldShowGoLive =>
+      isLiveStream && (isBehindLive || playbackState == PlaybackState.paused);
+
+  /// Whether auto-resync should trigger (delay > 30s without user action)
+  bool get shouldAutoResync =>
+      isLiveStream &&
+      liveDelay.inSeconds >
+          LiveEdgeConfig.defaultConfig.autoResyncThreshold.inSeconds;
+
+  /// Formatted delay string for UI (e.g., "45s behind")
+  String get formattedDelay {
+    if (!isLiveStream || isAtLiveEdge) return '';
+    final seconds = liveDelay.inSeconds;
+    if (seconds < 60) return '${seconds}s behind';
+    final minutes = liveDelay.inMinutes;
+    final remainingSeconds = seconds % 60;
+    if (remainingSeconds == 0) return '${minutes}m behind';
+    return '${minutes}m ${remainingSeconds}s behind';
+  }
+
+  /// Whether seeking is allowed (within DVR window)
+  bool get canSeekBack =>
+      isLiveStream && hasDvrSupport && dvrWindowDuration != null;
 
   StreamingState copyWith({
     IPTVChannel? currentChannel,
@@ -138,6 +256,15 @@ class StreamingState extends Equatable {
     String? errorMessage,
     int? retryCount,
     DateTime? lastError,
+    // Live DVR properties
+    bool? isLiveStream,
+    Duration? liveEdge,
+    Duration? liveDelay,
+    Duration? dvrWindowStart,
+    Duration? dvrWindowDuration,
+    LiveStreamState? liveStreamState,
+    bool? hasDvrSupport,
+    DateTime? lastLiveEdgeUpdate,
   }) {
     return StreamingState(
       currentChannel: currentChannel ?? this.currentChannel,
@@ -153,6 +280,15 @@ class StreamingState extends Equatable {
       errorMessage: errorMessage,
       retryCount: retryCount ?? this.retryCount,
       lastError: lastError ?? this.lastError,
+      // Live DVR properties
+      isLiveStream: isLiveStream ?? this.isLiveStream,
+      liveEdge: liveEdge ?? this.liveEdge,
+      liveDelay: liveDelay ?? this.liveDelay,
+      dvrWindowStart: dvrWindowStart ?? this.dvrWindowStart,
+      dvrWindowDuration: dvrWindowDuration ?? this.dvrWindowDuration,
+      liveStreamState: liveStreamState ?? this.liveStreamState,
+      hasDvrSupport: hasDvrSupport ?? this.hasDvrSupport,
+      lastLiveEdgeUpdate: lastLiveEdgeUpdate ?? this.lastLiveEdgeUpdate,
     );
   }
 
@@ -166,5 +302,10 @@ class StreamingState extends Equatable {
     volume,
     isMuted,
     errorMessage,
+    // Live DVR properties
+    isLiveStream,
+    liveEdge,
+    liveDelay,
+    liveStreamState,
   ];
 }

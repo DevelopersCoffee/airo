@@ -34,7 +34,10 @@ class GroupRepositoryImpl implements GroupRepository {
   Future<Result<Group?>> findByInviteCode(String code) async {
     try {
       final entity = await _localDatasource.getGroupByInviteCode(code);
-      return (data: entity != null ? _mapper.toDomain(entity) : null, error: null);
+      return (
+        data: entity != null ? _mapper.toDomain(entity) : null,
+        error: null,
+      );
     } catch (e) {
       return (data: null, error: 'Failed to fetch group: $e');
     }
@@ -114,9 +117,9 @@ class GroupRepositoryImpl implements GroupRepository {
 
   @override
   Stream<List<Group>> watchAll() {
-    return _localDatasource
-        .watchAllGroups()
-        .map((entities) => entities.map(_mapper.toDomain).toList());
+    return _localDatasource.watchAllGroups().map(
+      (entities) => entities.map(_mapper.toDomain).toList(),
+    );
   }
 
   @override
@@ -183,7 +186,7 @@ class GroupRepositoryImpl implements GroupRepository {
   @override
   Future<Result<List<SharedExpense>>> getExpenses(String groupId) async {
     // TODO: Implement
-    return (data: [], error: null);
+    return (data: <SharedExpense>[], error: null);
   }
 
   @override
@@ -192,7 +195,7 @@ class GroupRepositoryImpl implements GroupRepository {
     String userId,
   ) async {
     // TODO: Implement
-    return (data: [], error: null);
+    return (data: <SharedExpense>[], error: null);
   }
 
   @override
@@ -216,7 +219,6 @@ class GroupRepositoryImpl implements GroupRepository {
   @override
   Stream<List<SharedExpense>> watchExpenses(String groupId) {
     // TODO: Implement
-    return Stream.value([]);
+    return Stream.value(<SharedExpense>[]);
   }
 }
-

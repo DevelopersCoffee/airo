@@ -15,11 +15,13 @@ class SettlementMapper {
       amountCents: entity.amountCents,
       currencyCode: entity.currencyCode,
       status: _parseSettlementStatus(entity.status),
-      paymentMethod: _parsePaymentMethod(entity.paymentMethod),
+      paymentMethod:
+          _parsePaymentMethod(entity.paymentMethod) ?? PaymentMethod.cash,
       paymentReference: entity.paymentReference,
       notes: entity.notes,
+      settlementDate: entity.completedAt ?? entity.createdAt,
       createdAt: entity.createdAt,
-      completedAt: entity.completedAt,
+      updatedAt: entity.completedAt,
     );
   }
 
@@ -33,11 +35,11 @@ class SettlementMapper {
       amountCents: settlement.amountCents,
       currencyCode: settlement.currencyCode,
       status: settlement.status.name,
-      paymentMethod: settlement.paymentMethod?.name,
+      paymentMethod: settlement.paymentMethod.name,
       paymentReference: settlement.paymentReference,
       notes: settlement.notes,
       createdAt: settlement.createdAt,
-      completedAt: settlement.completedAt,
+      completedAt: settlement.updatedAt,
     );
   }
 
@@ -56,4 +58,3 @@ class SettlementMapper {
     );
   }
 }
-

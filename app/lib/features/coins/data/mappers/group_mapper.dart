@@ -35,8 +35,9 @@ class GroupMapper {
       defaultCurrencyCode: group.defaultCurrencyCode,
       settings: jsonEncode({
         'simplifyDebts': group.settings.simplifyDebts,
-        'defaultSplitType': group.settings.defaultSplitType.name,
-        'allowMultipleCurrencies': group.settings.allowMultipleCurrencies,
+        'defaultEqualSplit': group.settings.defaultEqualSplit,
+        'allowMultiCurrency': group.settings.allowMultiCurrency,
+        'defaultCurrencyCode': group.settings.defaultCurrencyCode,
       }),
       creatorId: group.creatorId,
       inviteCode: group.inviteCode,
@@ -82,8 +83,9 @@ class GroupMapper {
       final decoded = jsonDecode(settingsJson) as Map<String, dynamic>;
       return GroupSettings(
         simplifyDebts: decoded['simplifyDebts'] as bool? ?? true,
-        defaultSplitType: _parseSplitType(decoded['defaultSplitType'] as String?),
-        allowMultipleCurrencies: decoded['allowMultipleCurrencies'] as bool? ?? false,
+        defaultEqualSplit: decoded['defaultEqualSplit'] as bool? ?? true,
+        allowMultiCurrency: decoded['allowMultiCurrency'] as bool? ?? false,
+        defaultCurrencyCode: decoded['defaultCurrencyCode'] as String? ?? 'INR',
       );
     } catch (_) {
       return const GroupSettings();
@@ -96,16 +98,4 @@ class GroupMapper {
       orElse: () => MemberRole.member,
     );
   }
-
-  SplitType _parseSplitType(String? type) {
-    if (type == null) return SplitType.equal;
-    return SplitType.values.firstWhere(
-      (t) => t.name == type,
-      orElse: () => SplitType.equal,
-    );
-  }
 }
-
-// Import SplitType from split_entry
-import '../../domain/entities/split_entry.dart';
-

@@ -140,15 +140,12 @@ class _BudgetCard extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    budget.name,
+                    budget.categoryId,
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                   PopupMenuButton(
                     itemBuilder: (context) => [
-                      const PopupMenuItem(
-                        value: 'edit',
-                        child: Text('Edit'),
-                      ),
+                      const PopupMenuItem(value: 'edit', child: Text('Edit')),
                       const PopupMenuItem(
                         value: 'delete',
                         child: Text('Delete'),
@@ -171,8 +168,8 @@ class _BudgetCard extends StatelessWidget {
                     percentUsed > 0.9
                         ? Colors.red
                         : percentUsed > 0.7
-                            ? Colors.orange
-                            : Colors.green,
+                        ? Colors.orange
+                        : Colors.green,
                   ),
                 ),
               ),
@@ -194,8 +191,8 @@ class _BudgetCard extends StatelessWidget {
               Text(
                 budget.period.name.toUpperCase(),
                 style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: Theme.of(context).colorScheme.secondary,
-                    ),
+                  color: Theme.of(context).colorScheme.secondary,
+                ),
               ),
             ],
           ),
@@ -204,4 +201,3 @@ class _BudgetCard extends StatelessWidget {
     );
   }
 }
-

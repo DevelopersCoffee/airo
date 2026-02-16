@@ -9,6 +9,7 @@
 /// - Network interruption handling with auto-retry
 /// - Background audio for music channels
 /// - YouTube-like playback controls
+/// - Live DVR with Go Live functionality
 library;
 
 // Models
@@ -19,6 +20,7 @@ export 'domain/models/streaming_state.dart';
 export 'domain/services/iptv_streaming_service.dart';
 export 'domain/services/video_player_streaming_service.dart';
 export 'domain/services/m3u_parser_service.dart';
+export 'domain/services/live_edge_detector.dart';
 
 // Providers
 export 'application/providers/iptv_providers.dart';
@@ -30,3 +32,5 @@ export 'presentation/screens/iptv_screen.dart';
 export 'presentation/widgets/video_player_widget.dart';
 export 'presentation/widgets/channel_list_widget.dart';
 export 'presentation/widgets/iptv_mini_player.dart';
+export 'presentation/widgets/go_live_button.dart';
+export 'presentation/widgets/live_indicators.dart';

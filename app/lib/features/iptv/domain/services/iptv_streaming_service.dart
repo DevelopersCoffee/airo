@@ -30,6 +30,9 @@ abstract class IPTVStreamingService {
   /// Seek to position (for VOD content)
   Future<void> seek(Duration position);
 
+  /// Seek to live edge (for live streams) - P0-6
+  Future<void> goLive();
+
   /// Set volume (0.0 to 1.0)
   Future<void> setVolume(double volume);
 
