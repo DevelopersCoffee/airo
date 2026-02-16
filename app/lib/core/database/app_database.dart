@@ -95,6 +95,133 @@ class OutboxEntries extends Table {
   DateTimeColumn get lastAttemptAt => dateTime().nullable()();
 }
 
+/// Categories table for expense categorization
+class CategoryEntries extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get uuid => text().unique()();
+  TextColumn get name => text()();
+  TextColumn get iconName => text().withDefault(const Constant('category'))();
+  TextColumn get colorHex => text().withDefault(const Constant('#808080'))();
+  TextColumn get categoryType =>
+      text().withDefault(const Constant('expense'))(); // expense, income, both
+  TextColumn get parentId => text().nullable()(); // For subcategories
+  IntColumn get sortOrder => integer().withDefault(const Constant(0))();
+  BoolColumn get isActive => boolean().withDefault(const Constant(true))();
+  TextColumn get syncStatus => text().withDefault(const Constant('pending'))();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+  DateTimeColumn get updatedAt => dateTime().nullable()();
+}
+
+/// Groups table for expense sharing groups
+class GroupEntries extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get uuid => text().unique()();
+  TextColumn get name => text()();
+  TextColumn get description => text().nullable()();
+  TextColumn get iconUrl => text().nullable()();
+  TextColumn get createdByUserId => text()();
+
+  /// Default currency for the group.
+  /// Note: 'INR' is a fallback default only. User locale settings should
+  /// override this value when creating new groups. See LocaleSettings for
+  /// supported currencies (INR, USD, EUR, GBP).
+  TextColumn get defaultCurrency => text().withDefault(const Constant('INR'))();
+  BoolColumn get simplifyDebts => boolean().withDefault(const Constant(true))();
+  BoolColumn get isActive => boolean().withDefault(const Constant(true))();
+  TextColumn get inviteCode => text().nullable()();
+  TextColumn get syncStatus => text().withDefault(const Constant('pending'))();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+  DateTimeColumn get updatedAt => dateTime().nullable()();
+}
+
+/// Group members table
+class GroupMemberEntries extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get uuid => text().unique()();
+  TextColumn get groupId => text()();
+  TextColumn get userId => text()();
+  TextColumn get displayName => text()();
+  TextColumn get email => text().nullable()();
+  TextColumn get avatarUrl => text().nullable()();
+  TextColumn get role =>
+      text().withDefault(const Constant('member'))(); // admin, member
+  IntColumn get defaultSharePercent =>
+      integer().withDefault(const Constant(100))();
+  BoolColumn get isActive => boolean().withDefault(const Constant(true))();
+  TextColumn get syncStatus => text().withDefault(const Constant('pending'))();
+  DateTimeColumn get joinedAt => dateTime().withDefault(currentDateAndTime)();
+  DateTimeColumn get updatedAt => dateTime().nullable()();
+}
+
+/// Shared expenses table (group expenses)
+class SharedExpenseEntries extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get uuid => text().unique()();
+  TextColumn get groupId => text()();
+  TextColumn get description => text()();
+  IntColumn get totalAmountCents => integer()();
+
+  /// Currency code for the expense.
+  /// Note: 'INR' is a fallback default only. User locale settings should
+  /// override this value when creating new expenses. See LocaleSettings for
+  /// supported currencies (INR, USD, EUR, GBP).
+  TextColumn get currencyCode => text().withDefault(const Constant('INR'))();
+  TextColumn get paidByUserId => text()();
+  TextColumn get categoryId => text().nullable()();
+  TextColumn get splitType => text().withDefault(
+    const Constant('equal'),
+  )(); // equal, percentage, exact, shares
+  TextColumn get notes => text().nullable()();
+  TextColumn get receiptUrl => text().nullable()();
+  BoolColumn get isDeleted => boolean().withDefault(const Constant(false))();
+  TextColumn get syncStatus => text().withDefault(const Constant('pending'))();
+  DateTimeColumn get expenseDate => dateTime()();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+  DateTimeColumn get updatedAt => dateTime().nullable()();
+}
+
+/// Split entries table (individual shares of shared expenses)
+class SplitEntryRecords extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get uuid => text().unique()();
+  TextColumn get sharedExpenseId => text()();
+  TextColumn get userId => text()();
+  IntColumn get amountCents => integer()();
+  IntColumn get shareValue =>
+      integer().withDefault(const Constant(100))(); // percentage or shares
+  BoolColumn get isSettled => boolean().withDefault(const Constant(false))();
+  TextColumn get syncStatus => text().withDefault(const Constant('pending'))();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+  DateTimeColumn get updatedAt => dateTime().nullable()();
+}
+
+/// Settlements table for debt payments
+class SettlementEntries extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get uuid => text().unique()();
+  TextColumn get groupId => text()();
+  TextColumn get fromUserId => text()();
+  TextColumn get toUserId => text()();
+  IntColumn get amountCents => integer()();
+
+  /// Currency code for the settlement.
+  /// Note: 'INR' is a fallback default only. User locale settings should
+  /// override this value when creating new settlements. See LocaleSettings for
+  /// supported currencies (INR, USD, EUR, GBP).
+  TextColumn get currencyCode => text().withDefault(const Constant('INR'))();
+  TextColumn get paymentMethod =>
+      text().nullable()(); // cash, upi, bank_transfer
+  TextColumn get paymentReference => text().nullable()();
+  TextColumn get notes => text().nullable()();
+  TextColumn get status => text().withDefault(
+    const Constant('pending'),
+  )(); // pending, completed, rejected
+  DateTimeColumn get settledAt => dateTime().nullable()();
+  TextColumn get syncStatus => text().withDefault(const Constant('pending'))();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+  DateTimeColumn get updatedAt => dateTime().nullable()();
+}
+
 /// Sync metadata table for tracking sync state
 class SyncMetadata extends Table {
   TextColumn get key => text()();
@@ -110,6 +237,12 @@ class SyncMetadata extends Table {
     TransactionEntries,
     BudgetEntries,
     AccountEntries,
+    CategoryEntries,
+    GroupEntries,
+    GroupMemberEntries,
+    SharedExpenseEntries,
+    SplitEntryRecords,
+    SettlementEntries,
     OutboxEntries,
     SyncMetadata,
   ],
@@ -121,7 +254,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 1;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -129,50 +262,8 @@ class AppDatabase extends _$AppDatabase {
       await m.createAll();
     },
     onUpgrade: (Migrator m, int from, int to) async {
-      // Migration from v1 to v2: Add indexes for performance
-      if (from < 2) {
-        await m.createIndex(
-          Index(
-            'idx_transactions_account',
-            'CREATE INDEX idx_transactions_account ON transaction_entries(account_id)',
-          ),
-        );
-        await m.createIndex(
-          Index(
-            'idx_transactions_category',
-            'CREATE INDEX idx_transactions_category ON transaction_entries(category)',
-          ),
-        );
-        await m.createIndex(
-          Index(
-            'idx_transactions_timestamp',
-            'CREATE INDEX idx_transactions_timestamp ON transaction_entries(timestamp DESC)',
-          ),
-        );
-        await m.createIndex(
-          Index(
-            'idx_budgets_period',
-            'CREATE INDEX idx_budgets_period ON budget_entries(period_month, tag)',
-          ),
-        );
-      }
-      // Migration from v2 to v3: Add outbox and sync metadata tables
-      if (from < 3) {
-        await m.createTable(outboxEntries);
-        await m.createTable(syncMetadata);
-        await m.createIndex(
-          Index(
-            'idx_outbox_status',
-            'CREATE INDEX idx_outbox_status ON outbox_entries(status, priority DESC, created_at)',
-          ),
-        );
-        await m.createIndex(
-          Index(
-            'idx_outbox_entity',
-            'CREATE INDEX idx_outbox_entity ON outbox_entries(entity_type, entity_id)',
-          ),
-        );
-      }
+      // Early development - no migrations needed yet
+      // When we have production data, add proper migrations here
     },
     beforeOpen: (details) async {
       // Enable foreign keys for data integrity
@@ -200,9 +291,18 @@ class AppDatabase extends _$AppDatabase {
   /// Delete all data (for account deletion/reset)
   Future<void> deleteAllData() async {
     await transaction(() async {
+      // Delete in order respecting foreign key constraints
+      await delete(splitEntryRecords).go();
+      await delete(settlementEntries).go();
+      await delete(sharedExpenseEntries).go();
+      await delete(groupMemberEntries).go();
+      await delete(groupEntries).go();
+      await delete(categoryEntries).go();
       await delete(transactionEntries).go();
       await delete(budgetEntries).go();
       await delete(accountEntries).go();
+      await delete(outboxEntries).go();
+      await delete(syncMetadata).go();
     });
   }
 }
