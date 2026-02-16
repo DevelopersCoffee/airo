@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/utils/locale_settings.dart';
 import '../../application/providers/bill_split_providers.dart';
 
 /// Widget for entering bill details
@@ -63,6 +64,7 @@ class _BillInputCardState extends ConsumerState<BillInputCard> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final currencySymbol = ref.watch(currencyFormatterProvider).currency.symbol;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
@@ -119,10 +121,10 @@ class _BillInputCardState extends ConsumerState<BillInputCard> {
             // Total amount
             TextFormField(
               controller: _amountController,
-              decoration: const InputDecoration(
-                labelText: 'Total Amount (₹)',
-                prefixIcon: Icon(Icons.currency_rupee),
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: 'Total Amount ($currencySymbol)',
+                prefixIcon: const Icon(Icons.payments_outlined),
+                border: const OutlineInputBorder(),
                 hintText: '0.00',
               ),
               keyboardType: const TextInputType.numberWithOptions(
@@ -150,10 +152,10 @@ class _BillInputCardState extends ConsumerState<BillInputCard> {
                 Expanded(
                   child: TextFormField(
                     controller: _taxController,
-                    decoration: const InputDecoration(
-                      labelText: 'Tax (₹)',
-                      prefixIcon: Icon(Icons.receipt_long_outlined),
-                      border: OutlineInputBorder(),
+                    decoration: InputDecoration(
+                      labelText: 'Tax ($currencySymbol)',
+                      prefixIcon: const Icon(Icons.receipt_long_outlined),
+                      border: const OutlineInputBorder(),
                     ),
                     keyboardType: const TextInputType.numberWithOptions(
                       decimal: true,
@@ -169,10 +171,10 @@ class _BillInputCardState extends ConsumerState<BillInputCard> {
                 Expanded(
                   child: TextFormField(
                     controller: _tipController,
-                    decoration: const InputDecoration(
-                      labelText: 'Tip (₹)',
-                      prefixIcon: Icon(Icons.volunteer_activism_outlined),
-                      border: OutlineInputBorder(),
+                    decoration: InputDecoration(
+                      labelText: 'Tip ($currencySymbol)',
+                      prefixIcon: const Icon(Icons.volunteer_activism_outlined),
+                      border: const OutlineInputBorder(),
                     ),
                     keyboardType: const TextInputType.numberWithOptions(
                       decimal: true,
