@@ -2,6 +2,7 @@ import '../entities/shared_expense.dart';
 import '../entities/settlement.dart';
 import '../models/balance_summary.dart';
 import '../models/debt_entry.dart';
+import 'debt_simplifier.dart';
 
 /// Balance calculation engine interface
 ///
@@ -36,6 +37,11 @@ abstract class BalanceEngine {
 
 /// Default implementation of BalanceEngine
 class BalanceEngineImpl implements BalanceEngine {
+  final DebtSimplifier _simplifier;
+
+  BalanceEngineImpl({DebtSimplifier? simplifier})
+    : _simplifier = simplifier ?? DebtSimplifierImpl();
+
   @override
   Future<Map<String, int>> calculateNetBalances({
     required List<SharedExpense> expenses,
@@ -86,7 +92,7 @@ class BalanceEngineImpl implements BalanceEngine {
     );
 
     final debts = calculateDebts(netBalances);
-    // TODO: Implement debt simplification via DebtSimplifier
+    final simplifiedDebts = _simplifier.simplify(debts);
 
     final totalExpenses = expenses
         .where((e) => !e.isDeleted)
@@ -100,7 +106,7 @@ class BalanceEngineImpl implements BalanceEngine {
       groupId: groupId,
       netBalances: netBalances,
       debts: debts,
-      simplifiedDebts: debts, // TODO: Use simplified debts
+      simplifiedDebts: simplifiedDebts,
       totalExpensesCents: totalExpenses,
       totalSettlementsCents: totalSettlements,
       calculatedAt: DateTime.now(),
@@ -109,9 +115,8 @@ class BalanceEngineImpl implements BalanceEngine {
 
   @override
   List<DebtEntry> calculateDebts(Map<String, int> netBalances) {
-    // TODO: Implement debt calculation
-    // Convert net balances to individual debt entries
-    throw UnimplementedError('calculateDebts not implemented');
+    // Use the simplifier to convert net balances to minimal debt entries
+    return _simplifier.fromNetBalances(netBalances);
   }
 
   @override
@@ -119,4 +124,3 @@ class BalanceEngineImpl implements BalanceEngine {
     return netBalances[userId] ?? 0;
   }
 }
-

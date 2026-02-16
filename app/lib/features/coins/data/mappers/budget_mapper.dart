@@ -9,13 +9,11 @@ class BudgetMapper {
   Budget toDomain(BudgetEntity entity) {
     return Budget(
       id: entity.id,
-      name: entity.name,
       categoryId: entity.categoryId,
       limitCents: entity.limitCents,
       period: _parseBudgetPeriod(entity.period),
       alertThresholdPercent: entity.alertThresholdPercent,
       isActive: entity.isActive,
-      currencyCode: entity.currencyCode,
       startDate: entity.startDate,
       endDate: entity.endDate,
       createdAt: entity.createdAt,
@@ -27,13 +25,13 @@ class BudgetMapper {
   BudgetEntity toEntity(Budget budget) {
     return BudgetEntity(
       id: budget.id,
-      name: budget.name,
+      name: budget.categoryId, // Use categoryId as name for database entity
       categoryId: budget.categoryId,
       limitCents: budget.limitCents,
       period: budget.period.name,
       alertThresholdPercent: budget.alertThresholdPercent,
       isActive: budget.isActive,
-      currencyCode: budget.currencyCode,
+      currencyCode: 'INR', // Default currency code for database entity
       startDate: budget.startDate,
       endDate: budget.endDate,
       createdAt: budget.createdAt,
@@ -48,4 +46,3 @@ class BudgetMapper {
     );
   }
 }
-

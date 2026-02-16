@@ -53,12 +53,106 @@ class BudgetEngineImpl implements BudgetEngine {
     required List<Transaction> transactions,
     required DateTime currentDate,
   }) async {
-    // TODO: Implement safe-to-spend calculation
-    // 1. Sum all monthly budgets
-    // 2. Calculate total spent this month
-    // 3. Calculate days remaining in month
-    // 4. Divide remaining budget by remaining days
-    throw UnimplementedError('calculateSafeToSpend not implemented');
+    // Filter to active monthly budgets
+    final activeBudgets = budgets.where((b) => b.isActive).toList();
+
+    if (activeBudgets.isEmpty) {
+      return SafeToSpend(
+        amountCents: 0,
+        dailyLimitCents: 0,
+        spentTodayCents: 0,
+        spentThisMonthCents: 0,
+        monthlyBudgetCents: 0,
+        daysRemaining: 0,
+        percentUsed: 0,
+        health: BudgetHealth.healthy,
+        calculatedAt: currentDate,
+      );
+    }
+
+    // Sum all monthly budgets
+    final monthlyBudgetCents = activeBudgets
+        .where((b) => b.period == BudgetPeriod.monthly)
+        .fold<int>(0, (sum, b) => sum + b.limitCents);
+
+    // Get start of month
+    final startOfMonth = DateTime(currentDate.year, currentDate.month, 1);
+    final endOfMonth = DateTime(currentDate.year, currentDate.month + 1, 0);
+    final startOfToday = DateTime(
+      currentDate.year,
+      currentDate.month,
+      currentDate.day,
+    );
+
+    // Calculate spent this month (only expenses, not income)
+    final monthlyExpenses = transactions.where(
+      (t) =>
+          !t.isDeleted &&
+          t.type == TransactionType.expense &&
+          t.transactionDate.isAfter(
+            startOfMonth.subtract(const Duration(days: 1)),
+          ) &&
+          t.transactionDate.isBefore(endOfMonth.add(const Duration(days: 1))),
+    );
+
+    final spentThisMonthCents = monthlyExpenses.fold<int>(
+      0,
+      (sum, t) => sum + t.amountCents.abs(),
+    );
+
+    // Calculate spent today
+    final todayExpenses = monthlyExpenses.where(
+      (t) =>
+          t.transactionDate.year == currentDate.year &&
+          t.transactionDate.month == currentDate.month &&
+          t.transactionDate.day == currentDate.day,
+    );
+
+    final spentTodayCents = todayExpenses.fold<int>(
+      0,
+      (sum, t) => sum + t.amountCents.abs(),
+    );
+
+    // Calculate days remaining (including today)
+    final daysRemainingValue = endOfMonth.difference(startOfToday).inDays + 1;
+
+    // Calculate remaining budget
+    final remainingCents = monthlyBudgetCents - spentThisMonthCents;
+
+    // Calculate daily allowance
+    final dailyLimitCents = daysRemainingValue > 0
+        ? (remainingCents / daysRemainingValue).floor()
+        : 0;
+
+    // Safe-to-spend for today
+    final safeToSpendCents = dailyLimitCents - spentTodayCents;
+
+    // Calculate percent used
+    final percentUsed = monthlyBudgetCents > 0
+        ? (spentThisMonthCents / monthlyBudgetCents) * 100
+        : 0.0;
+
+    // Determine health
+    BudgetHealth health;
+    if (percentUsed < 70) {
+      health = BudgetHealth.healthy;
+    } else if (percentUsed < 90) {
+      health = BudgetHealth.warning;
+    } else {
+      health = BudgetHealth.critical;
+    }
+
+    return SafeToSpend(
+      amountCents: safeToSpendCents,
+      dailyLimitCents: dailyLimitCents,
+      spentTodayCents: spentTodayCents,
+      spentThisMonthCents: spentThisMonthCents,
+      monthlyBudgetCents: monthlyBudgetCents,
+      daysRemaining: daysRemainingValue,
+      percentUsed: percentUsed,
+      health: health,
+      calculatedAt: currentDate,
+    );
   }
 
   @override
@@ -67,12 +161,31 @@ class BudgetEngineImpl implements BudgetEngine {
     required List<Transaction> transactions,
     required DateTime currentDate,
   }) {
-    // TODO: Implement budget status calculation
-    // 1. Get period dates
-    // 2. Filter transactions to this period and category
-    // 3. Sum spending
-    // 4. Calculate percentages and status
-    throw UnimplementedError('getBudgetStatus not implemented');
+    final (periodStart, periodEnd) = getPeriodDates(budget, currentDate);
+
+    // Filter transactions to this period and category
+    final periodTransactions = transactions.where(
+      (t) =>
+          !t.isDeleted &&
+          t.categoryId == budget.categoryId &&
+          t.type == TransactionType.expense &&
+          !t.transactionDate.isBefore(periodStart) &&
+          !t.transactionDate.isAfter(periodEnd),
+    );
+
+    // Sum spending (absolute value since expenses are negative)
+    final spentCents = periodTransactions.fold<int>(
+      0,
+      (sum, t) => sum + t.amountCents.abs(),
+    );
+
+    return BudgetStatus.calculate(
+      budget: budget,
+      spentCents: spentCents,
+      transactionCount: periodTransactions.length,
+      periodStart: periodStart,
+      periodEnd: periodEnd,
+    );
   }
 
   @override
@@ -86,10 +199,49 @@ class BudgetEngineImpl implements BudgetEngine {
     Budget budget,
     DateTime currentDate,
   ) {
-    // TODO: Implement based on budget period type
-    // For monthly: start of month to end of month
-    // For weekly: start of week to end of week
-    throw UnimplementedError('getPeriodDates not implemented');
+    switch (budget.period) {
+      case BudgetPeriod.daily:
+        final start = DateTime(
+          currentDate.year,
+          currentDate.month,
+          currentDate.day,
+        );
+        final end = start
+            .add(const Duration(days: 1))
+            .subtract(const Duration(milliseconds: 1));
+        return (start, end);
+
+      case BudgetPeriod.weekly:
+        // Week starts on Monday (weekday 1)
+        final weekday = currentDate.weekday;
+        final daysToSubtract = weekday - 1; // Monday = 1, so subtract 0
+        final start = DateTime(
+          currentDate.year,
+          currentDate.month,
+          currentDate.day - daysToSubtract,
+        );
+        final end = start
+            .add(const Duration(days: 7))
+            .subtract(const Duration(milliseconds: 1));
+        return (start, end);
+
+      case BudgetPeriod.monthly:
+        final start = DateTime(currentDate.year, currentDate.month, 1);
+        final end = DateTime(
+          currentDate.year,
+          currentDate.month + 1,
+          0,
+          23,
+          59,
+          59,
+        );
+        return (start, end);
+
+      case BudgetPeriod.yearly:
+        final start = DateTime(currentDate.year, 1, 1);
+        final end = DateTime(currentDate.year, 12, 31, 23, 59, 59);
+        return (start, end);
+    }
   }
 
   @override
@@ -102,4 +254,3 @@ class BudgetEngineImpl implements BudgetEngine {
     return remainingCents ~/ daysRemaining;
   }
 }
-
