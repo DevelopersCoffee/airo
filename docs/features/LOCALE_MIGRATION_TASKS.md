@@ -20,51 +20,30 @@ This document tracks remaining hardcoded locale assumptions in the codebase that
   - Changed: `generateWhatsAppMessage()` accepts `currencySymbol` parameter
   - Changed: `_confirmSplit()`, `_buildSummaryFooter()`, `_SummaryCard` updated
 
----
-
-## 🔄 Remaining Tasks
-
 ### Low Priority - Receipt Domain Models
-
-- [ ] **app/lib/features/bill_split/domain/models/receipt_item.dart**
-  - Line 85: `formattedPrice => '₹${(totalPricePaise / 100).toStringAsFixed(2)}'`
-  - Line 89: `formattedUnitPrice => '₹${(unitPricePaise / 100).toStringAsFixed(2)}'`
-  - **Current Value**: Hardcoded `₹` symbol
-  - **Recommended Change**: Add `formatPrice(CurrencyFormatter)` method, deprecate getter
-  - **Estimated Effort**: Low (1-2 hours)
-  - **Impact**: Limited - used for Indian receipt parsing only
-  - **Dependencies**: None
+- [x] **receipt_item.dart** - ReceiptItem, ReceiptFee, ParsedReceipt classes
+  - Commit: `fd2c623` - refactor(bill-split): use locale-aware currency formatting in receipt domain models
+  - Changed: Added `formatPrice()`, `formatUnitPrice()`, `formatAmount()`, `formatGrandTotal()`, `formatItemTotal()` methods that accept `CurrencyFormatter`
+  - Deprecated old getters for backward compatibility
+  - Updated `_MultiParticipantItemTile`, `_buildVendorHeader()`, `_buildFeesSection()` in itemized_split_screen.dart
 
 ### Low Priority - AI Service Prompts
-
-- [ ] **app/lib/core/services/gemini_api_service.dart**
-  - Line 72: AI prompt mentions "Indian currency (₹/Rs) values"
-  - **Current Value**: India-specific prompt
-  - **Recommended Change**: Make prompt locale-aware or use generic currency terms
-  - **Estimated Effort**: Low (1-2 hours)
-  - **Impact**: Affects AI receipt parsing accuracy for non-INR receipts
-  - **Dependencies**: May need regional prompt variants
+- [x] **gemini_api_service.dart** - AI prompt update
+  - Commit: `58eba36` - refactor(ai): use locale-agnostic currency terms in AI prompts
+  - Changed: Updated prompt from "Indian currency (₹/Rs) values" to "Extract currency values as decimal numbers without currency symbols"
 
 ### Low Priority - Database Defaults
-
-- [ ] **app/lib/core/database/app_database.dart**
-  - Lines 123, 158, 196: `withDefault(const Constant('INR'))`
-  - **Current Value**: Default currency = 'INR'
-  - **Recommended Change**: Keep as fallback, ensure user settings override
-  - **Estimated Effort**: Very Low (configuration only)
-  - **Impact**: Only affects new users without explicit currency selection
-  - **Dependencies**: User onboarding flow should collect currency preference
+- [x] **app_database.dart** - Currency default documentation
+  - Commit: `0099ae6` - docs(database): document INR as fallback currency default
+  - Changed: Added documentation comments to `defaultCurrency` and `currencyCode` columns in GroupEntries, SharedExpenseEntries, and SettlementEntries
+  - Documents that INR is a fallback default and user locale settings should override
 
 ### Low Priority - Bill Split Models
-
-- [ ] **app/lib/features/bill_split/domain/models/bill_split_models.dart**
-  - Line 5: `Currency` enum includes INR as default
-  - Lines 106, 147: Default `currency = Currency.inr`
-  - **Current Value**: INR as default currency enum value
-  - **Recommended Change**: Get default from user's locale settings
-  - **Estimated Effort**: Low (2-3 hours)
-  - **Impact**: Affects default currency in new splits
-  - **Dependencies**: Should integrate with locale settings
+- [x] **bill_split_models.dart** - Currency enum integration
+  - Commit: `997f822` - refactor(bill-split): add locale integration for default currency in domain models
+  - Changed: Added `Currency.fromSupportedCurrency()` conversion method
+  - Changed: Added `Currency.fromCode()` factory method
+  - Added documentation explaining INR defaults and how to use locale settings
 
 ---
 
@@ -115,9 +94,18 @@ The following files contain locale references that are **intentional configurati
 ## Progress Tracking
 
 - **Total Tasks**: 8
-- **Completed**: 4 ✅
-- **Remaining**: 4 🔄
-- **Completion**: 50%
+- **Completed**: 8 ✅
+- **Remaining**: 0 🔄
+- **Completion**: 100% ✅
 
 Last Updated: 2026-02-16
+
+### Commits in Order
+1. `3b33d33` - refactor(money): use locale-aware currency formatting in domain models
+2. `b441515` - refactor(bill-split): use currencyFormatterProvider for locale-aware currency display
+3. `0840bd3` - docs: add locale migration tracking document
+4. `fd2c623` - refactor(bill-split): use locale-aware currency formatting in receipt domain models
+5. `58eba36` - refactor(ai): use locale-agnostic currency terms in AI prompts
+6. `0099ae6` - docs(database): document INR as fallback currency default
+7. `997f822` - refactor(bill-split): add locale integration for default currency in domain models
 
