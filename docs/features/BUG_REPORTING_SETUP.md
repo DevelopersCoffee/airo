@@ -39,6 +39,34 @@ For security, create a dedicated bot account:
 
 ### Option A: Development (Local Testing)
 
+**Using Makefile (Recommended):**
+
+Set the environment variable and use the Makefile commands:
+
+```bash
+# Windows PowerShell
+$env:GITHUB_ISSUE_TOKEN="ghp_xxxxx"
+make run-android
+
+# Windows CMD
+set GITHUB_ISSUE_TOKEN=ghp_xxxxx
+make run-android
+
+# Linux/macOS
+export GITHUB_ISSUE_TOKEN=ghp_xxxxx
+make run-android
+
+# Or in one line (Linux/macOS)
+GITHUB_ISSUE_TOKEN=ghp_xxxxx make run-android
+```
+
+All Makefile run commands automatically include the token if set:
+- `make run-android` / `make run-android-auto` / `make run-pixel9`
+- `make run-ios` / `make run-iphone13`
+- `make run-web` / `make run-chrome` / `make run-chrome-html`
+
+**Using Flutter directly:**
+
 Pass the token via `--dart-define` when running the app:
 
 ```bash

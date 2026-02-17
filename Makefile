@@ -8,6 +8,20 @@ ANDROID_DIR := $(APP_DIR)/android
 IOS_DIR := $(APP_DIR)/ios
 WEB_DIR := $(APP_DIR)/web
 
+# Environment Variables for --dart-define
+# Set these in your shell or .env file before running make commands
+# Example: export GITHUB_ISSUE_TOKEN=ghp_xxxxx && make run-android
+DART_DEFINE_ARGS :=
+ifdef GITHUB_ISSUE_TOKEN
+DART_DEFINE_ARGS += --dart-define=GITHUB_ISSUE_TOKEN=$(GITHUB_ISSUE_TOKEN)
+endif
+ifdef GITHUB_ISSUE_PROXY_URL
+DART_DEFINE_ARGS += --dart-define=GITHUB_ISSUE_PROXY_URL=$(GITHUB_ISSUE_PROXY_URL)
+endif
+ifdef GITHUB_ISSUE_PROXY_API_KEY
+DART_DEFINE_ARGS += --dart-define=GITHUB_ISSUE_PROXY_API_KEY=$(GITHUB_ISSUE_PROXY_API_KEY)
+endif
+
 # Colors for output
 RED := \033[0;31m
 GREEN := \033[0;32m
@@ -98,17 +112,17 @@ devices: ## List all available devices
 .PHONY: run-android-auto
 run-android-auto: ## Run app on any connected Android device
 	@echo "$(BLUE)Running on Android (auto-detect)...$(NC)"
-	@cd $(APP_DIR) && flutter run -d android
+	@cd $(APP_DIR) && flutter run -d android $(DART_DEFINE_ARGS)
 
 .PHONY: run-android
 run-android: ## Run app on Android device/emulator (Pixel 9)
 	@echo "$(BLUE)Running on Android (Pixel 9)...$(NC)"
-	@cd $(APP_DIR) && flutter run --device-id "4C031VDAQ000GG"
+	@cd $(APP_DIR) && flutter run --device-id "4C031VDAQ000GG" $(DART_DEFINE_ARGS)
 
 .PHONY: run-pixel9
 run-pixel9: ## Run app specifically optimized for Pixel 9
 	@echo "$(BLUE)Running on Pixel 9 (Android)...$(NC)"
-	@cd $(APP_DIR) && flutter run --device-id "4C031VDAQ000GG" --target-platform android-arm64
+	@cd $(APP_DIR) && flutter run --device-id "4C031VDAQ000GG" --target-platform android-arm64 $(DART_DEFINE_ARGS)
 
 .PHONY: run-ios
 run-ios: ## Run app on iOS device/simulator
@@ -117,7 +131,7 @@ run-ios: ## Run app on iOS device/simulator
 		echo "$(RED)iOS development is only available on macOS$(NC)"; \
 		exit 1; \
 	fi
-	@cd $(APP_DIR) && flutter run -d ios
+	@cd $(APP_DIR) && flutter run -d ios $(DART_DEFINE_ARGS)
 
 .PHONY: run-iphone13
 run-iphone13: ## Run app on iPhone 13 Pro Max simulator
@@ -126,17 +140,17 @@ run-iphone13: ## Run app on iPhone 13 Pro Max simulator
 		echo "$(RED)iOS development is only available on macOS$(NC)"; \
 		exit 1; \
 	fi
-	@cd $(APP_DIR) && flutter run -d "iPhone 13 Pro Max"
+	@cd $(APP_DIR) && flutter run -d "iPhone 13 Pro Max" $(DART_DEFINE_ARGS)
 
 .PHONY: run-web
 run-web: ## Run app on web browser
 	@echo "$(BLUE)Running on web...$(NC)"
-	@cd $(APP_DIR) && flutter run -d web-server --web-port 8080
+	@cd $(APP_DIR) && flutter run -d web-server --web-port 8080 $(DART_DEFINE_ARGS)
 
 .PHONY: run-chrome
 run-chrome: ## Run app specifically on Chrome browser
 	@echo "$(BLUE)Running on Chrome...$(NC)"
-	@cd $(APP_DIR) && flutter run -d chrome --web-port 8080
+	@cd $(APP_DIR) && flutter run -d chrome --web-port 8080 $(DART_DEFINE_ARGS)
 
 # Build Commands
 .PHONY: build-android
@@ -233,7 +247,7 @@ test-device-ios: ## Run Patrol tests on iOS
 .PHONY: run-chrome-html
 run-chrome-html: ## Run Flutter Web with HTML renderer for E2E testing
 	@echo "$(BLUE)Running Flutter Web with HTML renderer on port 8080...$(NC)"
-	@cd $(APP_DIR) && flutter run -d chrome --web-renderer=html --web-port=8080
+	@cd $(APP_DIR) && flutter run -d chrome --web-renderer=html --web-port=8080 $(DART_DEFINE_ARGS)
 
 .PHONY: setup-e2e
 setup-e2e: ## Setup E2E test dependencies

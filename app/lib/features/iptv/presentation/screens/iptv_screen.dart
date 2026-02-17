@@ -52,6 +52,8 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen> {
 
   void _playChannel(IPTVChannel channel) {
     ref.read(iptvStreamingServiceProvider).playChannel(channel);
+    // Track recently watched for easy access
+    ref.read(addToRecentlyWatchedProvider(channel));
   }
 
   @override

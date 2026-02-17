@@ -1,7 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:core_ai/core_ai.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../../features/iptv/application/providers/iptv_providers.dart'
+    show sharedPreferencesProvider;
 import '../widgets/model_card.dart';
 import '../widgets/model_filter_bar.dart';
 import 'model_detail_screen.dart';
@@ -13,6 +18,127 @@ final modelRegistryProvider = Provider<ModelRegistry>((ref) {
   registry.registerModels(ModelCatalog.bundledModels);
   return registry;
 });
+
+/// Key for storing selected model ID in SharedPreferences.
+const String _selectedModelKey = 'selected_offline_model_id';
+
+/// Provider for the currently selected offline model ID.
+final selectedModelIdProvider =
+    StateNotifierProvider<SelectedModelNotifier, String?>((ref) {
+      return SelectedModelNotifier(ref);
+    });
+
+/// Notifier for managing selected model persistence.
+class SelectedModelNotifier extends StateNotifier<String?> {
+  SelectedModelNotifier(this._ref) : super(null) {
+    _loadFromStorage();
+  }
+
+  final Ref _ref;
+
+  Future<void> _loadFromStorage() async {
+    try {
+      final prefs = _ref.read(sharedPreferencesProvider);
+      state = prefs.getString(_selectedModelKey);
+    } catch (e) {
+      // SharedPreferences might not be initialized yet
+      final prefs = await SharedPreferences.getInstance();
+      state = prefs.getString(_selectedModelKey);
+    }
+  }
+
+  Future<void> setSelectedModel(String? modelId) async {
+    state = modelId;
+    try {
+      final prefs = _ref.read(sharedPreferencesProvider);
+      if (modelId != null) {
+        await prefs.setString(_selectedModelKey, modelId);
+      } else {
+        await prefs.remove(_selectedModelKey);
+      }
+    } catch (e) {
+      final prefs = await SharedPreferences.getInstance();
+      if (modelId != null) {
+        await prefs.setString(_selectedModelKey, modelId);
+      } else {
+        await prefs.remove(_selectedModelKey);
+      }
+    }
+  }
+}
+
+/// Provider for the currently selected model info.
+final selectedModelProvider = Provider<OfflineModelInfo?>((ref) {
+  final selectedId = ref.watch(selectedModelIdProvider);
+  if (selectedId == null) return null;
+
+  final registry = ref.watch(modelRegistryProvider);
+  final models = registry.downloadedModels;
+  return models.where((m) => m.id == selectedId).firstOrNull;
+});
+
+/// Provider for the model download service.
+final modelDownloadServiceProvider = Provider<ModelDownloadService>((ref) {
+  final service = ModelDownloadService();
+  ref.onDispose(() => service.dispose());
+  return service;
+});
+
+/// Provider for active downloads progress.
+final activeDownloadsProvider =
+    StateNotifierProvider<
+      ActiveDownloadsNotifier,
+      Map<String, ModelDownloadProgress>
+    >((ref) => ActiveDownloadsNotifier(ref));
+
+/// Notifier for managing active downloads.
+class ActiveDownloadsNotifier
+    extends StateNotifier<Map<String, ModelDownloadProgress>> {
+  ActiveDownloadsNotifier(this._ref) : super({});
+
+  final Ref _ref;
+  final Map<String, StreamSubscription<ModelDownloadProgress>> _subscriptions =
+      {};
+
+  /// Starts downloading a model.
+  void startDownload(OfflineModelInfo model) {
+    final service = _ref.read(modelDownloadServiceProvider);
+    final stream = service.downloadModel(model);
+
+    _subscriptions[model.id]?.cancel();
+    _subscriptions[model.id] = stream.listen((progress) {
+      state = {...state, model.id: progress};
+
+      // Clean up when complete or failed
+      if (progress.isComplete ||
+          progress.isFailed ||
+          progress.status == ModelDownloadStatus.cancelled) {
+        _subscriptions[model.id]?.cancel();
+        _subscriptions.remove(model.id);
+
+        // Remove from state after a delay
+        Future.delayed(const Duration(seconds: 2), () {
+          state = Map.from(state)..remove(model.id);
+        });
+      }
+    });
+  }
+
+  /// Cancels a download in progress.
+  void cancelDownload(String modelId) {
+    final service = _ref.read(modelDownloadServiceProvider);
+    service.cancelDownload(modelId);
+  }
+
+  @override
+  void dispose() {
+    for (final sub in _subscriptions.values) {
+      sub.cancel();
+    }
+    _subscriptions.clear();
+    super.dispose();
+  }
+}
 
 /// Provider for current filters state.
 final modelFiltersProvider = StateProvider<ModelFilters>((ref) {
@@ -116,6 +242,8 @@ class _AIModelsScreenState extends ConsumerState<AIModelsScreen>
     ModelRegistry registry, {
     String? emptyMessage,
   }) {
+    final activeDownloads = ref.watch(activeDownloadsProvider);
+
     if (models.isEmpty) {
       return Center(
         child: Column(
@@ -139,18 +267,35 @@ class _AIModelsScreenState extends ConsumerState<AIModelsScreen>
       );
     }
 
+    final selectedModelId = ref.watch(selectedModelIdProvider);
+
     return ListView.builder(
       padding: const EdgeInsets.symmetric(vertical: 8),
       itemCount: models.length,
       itemBuilder: (context, index) {
         final model = models[index];
+        final downloadProgress = activeDownloads[model.id];
+        final isDownloading = downloadProgress?.isInProgress ?? false;
+        final isActive = model.id == selectedModelId;
+
         return ModelCard(
           model: model,
-          isActive: false, // TODO: Check against active model
+          isActive: isActive,
+          isDownloading: isDownloading,
+          downloadProgress: downloadProgress?.progress,
+          downloadSpeed: isDownloading ? downloadProgress?.speedDisplay : null,
+          downloadEta: isDownloading ? downloadProgress?.etaDisplay : null,
           onTap: () => _openModelDetail(model),
-          onDownload: model.isDownloaded ? null : () => _downloadModel(model),
+          onDownload: model.isDownloaded || isDownloading
+              ? null
+              : () => _downloadModel(model),
           onDelete: model.isDownloaded ? () => _deleteModel(model) : null,
-          onSetActive: model.isDownloaded ? () => _setActiveModel(model) : null,
+          onSetActive: model.isDownloaded && !isActive
+              ? () => _setActiveModel(model)
+              : null,
+          onCancelDownload: isDownloading
+              ? () => _cancelDownload(model.id)
+              : null,
         );
       },
     );
@@ -162,11 +307,18 @@ class _AIModelsScreenState extends ConsumerState<AIModelsScreen>
     );
   }
 
-  Future<void> _downloadModel(OfflineModelInfo model) async {
-    // TODO: Implement download with progress tracking
+  void _downloadModel(OfflineModelInfo model) {
+    ref.read(activeDownloadsProvider.notifier).startDownload(model);
     ScaffoldMessenger.of(
       context,
-    ).showSnackBar(SnackBar(content: Text('Downloading ${model.name}...')));
+    ).showSnackBar(SnackBar(content: Text('Starting download: ${model.name}')));
+  }
+
+  void _cancelDownload(String modelId) {
+    ref.read(activeDownloadsProvider.notifier).cancelDownload(modelId);
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Download cancelled')));
   }
 
   Future<void> _deleteModel(OfflineModelInfo model) async {
@@ -194,17 +346,56 @@ class _AIModelsScreenState extends ConsumerState<AIModelsScreen>
     );
 
     if (confirmed == true && mounted) {
-      // TODO: Implement deletion
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('${model.name} deleted')));
+      try {
+        // Delete the model file
+        final downloadService = ref.read(modelDownloadServiceProvider);
+        final deleted = await downloadService.deleteModel(model.id);
+
+        if (deleted) {
+          // Update the registry to mark as removed
+          final registry = ref.read(modelRegistryProvider);
+          registry.markAsRemoved(model.id);
+
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('${model.name} deleted successfully'),
+                backgroundColor: Colors.green,
+              ),
+            );
+          }
+        } else {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('${model.name} file not found'),
+                backgroundColor: Colors.orange,
+              ),
+            );
+          }
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to delete: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
     }
   }
 
   Future<void> _setActiveModel(OfflineModelInfo model) async {
-    // TODO: Set as active model
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text('${model.name} is now active')));
+    await ref.read(selectedModelIdProvider.notifier).setSelectedModel(model.id);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${model.name} is now active'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    }
   }
 }

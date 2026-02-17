@@ -116,19 +116,14 @@ class ChannelListWidget extends ConsumerWidget {
             ),
           ),
 
-        // Channel list
+        // Channel list with recently watched section
         Expanded(
           child: channels.isEmpty
               ? _buildEmptyState()
-              : ListView.builder(
-                  itemCount: channels.length,
-                  itemBuilder: (context, index) {
-                    final channel = channels[index];
-                    return _ChannelListTile(
-                      channel: channel,
-                      onTap: () => onChannelTap(channel),
-                    );
-                  },
+              : _ChannelListWithRecent(
+                  channels: channels,
+                  onChannelTap: onChannelTap,
+                  showRecentlyWatched: !hasActiveFilter,
                 ),
         ),
       ],
@@ -144,6 +139,185 @@ class ChannelListWidget extends ConsumerWidget {
           SizedBox(height: 16),
           Text('No channels found', style: TextStyle(color: Colors.grey)),
         ],
+      ),
+    );
+  }
+}
+
+/// Channel list with recently watched section at top
+class _ChannelListWithRecent extends ConsumerWidget {
+  final List<IPTVChannel> channels;
+  final Function(IPTVChannel) onChannelTap;
+  final bool showRecentlyWatched;
+
+  const _ChannelListWithRecent({
+    required this.channels,
+    required this.onChannelTap,
+    this.showRecentlyWatched = true,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final recentAsync = ref.watch(recentlyWatchedChannelsProvider);
+
+    return ListView.builder(
+      itemCount: channels.length + (showRecentlyWatched ? 1 : 0),
+      itemBuilder: (context, index) {
+        // Recently watched section at top
+        if (showRecentlyWatched && index == 0) {
+          return recentAsync.when(
+            data: (recentChannels) {
+              if (recentChannels.isEmpty) {
+                return const SizedBox.shrink();
+              }
+              return _RecentlyWatchedSection(
+                channels: recentChannels,
+                onChannelTap: onChannelTap,
+                onClearRecent: () {
+                  ref.read(clearRecentlyWatchedProvider(null));
+                },
+              );
+            },
+            loading: () => const SizedBox.shrink(),
+            error: (_, _) => const SizedBox.shrink(),
+          );
+        }
+
+        // Regular channel list
+        final channelIndex = showRecentlyWatched ? index - 1 : index;
+        final channel = channels[channelIndex];
+        return _ChannelListTile(
+          channel: channel,
+          onTap: () => onChannelTap(channel),
+        );
+      },
+    );
+  }
+}
+
+/// Recently watched channels horizontal section
+class _RecentlyWatchedSection extends StatelessWidget {
+  final List<IPTVChannel> channels;
+  final Function(IPTVChannel) onChannelTap;
+  final VoidCallback onClearRecent;
+
+  const _RecentlyWatchedSection({
+    required this.channels,
+    required this.onChannelTap,
+    required this.onClearRecent,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Section header with clear button
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 8, 4),
+          child: Row(
+            children: [
+              Icon(Icons.history, size: 18, color: theme.primaryColor),
+              const SizedBox(width: 8),
+              Text(
+                'Recently Watched',
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const Spacer(),
+              TextButton.icon(
+                onPressed: onClearRecent,
+                icon: const Icon(Icons.clear_all, size: 16),
+                label: const Text('Clear'),
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  visualDensity: VisualDensity.compact,
+                  foregroundColor: Colors.grey[600],
+                ),
+              ),
+            ],
+          ),
+        ),
+        // Horizontal scrollable list
+        SizedBox(
+          height: 100,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            itemCount: channels.length,
+            itemBuilder: (context, index) {
+              final channel = channels[index];
+              return _RecentChannelCard(
+                channel: channel,
+                onTap: () => onChannelTap(channel),
+              );
+            },
+          ),
+        ),
+        const Divider(height: 16),
+      ],
+    );
+  }
+}
+
+/// Compact card for recently watched channel
+class _RecentChannelCard extends StatelessWidget {
+  final IPTVChannel channel;
+  final VoidCallback onTap;
+
+  const _RecentChannelCard({required this.channel, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        width: 80,
+        margin: const EdgeInsets.symmetric(horizontal: 4),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Channel logo
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Container(
+                width: 56,
+                height: 56,
+                color: Colors.grey[200],
+                child: channel.hasLogo
+                    ? Image.network(
+                        channel.logoUrl!,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, _, _) => _buildDefaultIcon(),
+                      )
+                    : _buildDefaultIcon(),
+              ),
+            ),
+            const SizedBox(height: 4),
+            // Channel name
+            Text(
+              channel.name,
+              maxLines: 2,
+              textAlign: TextAlign.center,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 11),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDefaultIcon() {
+    return Center(
+      child: Icon(
+        channel.isAudioOnly ? Icons.radio : Icons.live_tv,
+        color: Colors.grey,
+        size: 28,
       ),
     );
   }

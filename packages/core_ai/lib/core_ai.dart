@@ -30,6 +30,10 @@ export 'src/models/offline_model_info.dart';
 export 'src/registry/model_registry.dart';
 export 'src/registry/model_catalog.dart';
 
+// Model Download
+export 'src/download/model_download_progress.dart';
+export 'src/download/model_download_service.dart';
+
 // Prompt Management
 export 'src/prompts/prompt.dart';
 export 'src/prompts/prompt_template.dart';

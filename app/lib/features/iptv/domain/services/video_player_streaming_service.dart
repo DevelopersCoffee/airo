@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:video_player/video_player.dart';
 import '../../../../core/audio/audio_context_manager.dart';
+import '../../../../core/utils/logger.dart';
 import '../models/iptv_channel.dart';
 import '../models/streaming_state.dart';
 import 'iptv_streaming_service.dart';
@@ -44,6 +45,7 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
   void _setupLiveEdgeCallbacks() {
     _liveEdgeDetector.onStateUpdate = _handleLiveEdgeUpdate;
     _liveEdgeDetector.onDriftDetected = _handleDriftDetected;
+    _liveEdgeDetector.onDriftWarning = _handleDriftWarning;
   }
 
   void _handleLiveEdgeUpdate(LiveEdgeState liveState) {
@@ -61,10 +63,32 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
     );
   }
 
+  /// M2: Handle drift warning before auto-resync
+  void _handleDriftWarning(Duration delay) {
+    AppLogger.info(
+      'Drift detected: ${delay.inSeconds}s behind live edge',
+      tag: 'LIVE_DVR',
+    );
+    AppLogger.analytics(
+      'live_stream_drift_detected',
+      params: {
+        'channel': _state.currentChannel?.name,
+        'delaySeconds': delay.inSeconds,
+      },
+    );
+  }
+
   void _handleDriftDetected() {
     // Auto-resync to live edge when drift exceeds threshold
     // Only auto-resync if not paused by user
     if (_state.playbackState == PlaybackState.playing) {
+      AppLogger.analytics(
+        'live_stream_auto_resync',
+        params: {
+          'channel': _state.currentChannel?.name,
+          'delayBeforeResync': _state.liveDelay.inSeconds,
+        },
+      );
       goLive();
     }
   }
@@ -328,14 +352,53 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
   Future<void> seek(Duration position) async {
     // Notify live edge detector of manual seek
     _liveEdgeDetector.notifyUserSeek();
-    await _controller?.seekTo(position);
-    _updateState(_state.copyWith(position: position));
+
+    // M2: DVR boundary enforcement - clamp seek position to valid range
+    var clampedPosition = position;
+    if (_state.isLiveStream && _state.hasDvrSupport) {
+      final dvrStart = _state.dvrWindowStart ?? Duration.zero;
+      final liveEdge =
+          _state.liveEdge ?? _controller?.value.duration ?? Duration.zero;
+
+      if (position < dvrStart) {
+        clampedPosition = dvrStart;
+        AppLogger.info(
+          'Seek clamped to DVR start: ${dvrStart.inSeconds}s',
+          tag: 'LIVE_DVR',
+        );
+      } else if (position > liveEdge) {
+        clampedPosition = liveEdge;
+        AppLogger.info(
+          'Seek clamped to live edge: ${liveEdge.inSeconds}s',
+          tag: 'LIVE_DVR',
+        );
+      }
+    }
+
+    await _controller?.seekTo(clampedPosition);
+    _updateState(_state.copyWith(position: clampedPosition));
+
+    // M2: Analytics - log seek event for live streams
+    if (_state.isLiveStream) {
+      AppLogger.analytics(
+        'live_stream_seek',
+        params: {
+          'channel': _state.currentChannel?.name,
+          'seekTo': clampedPosition.inSeconds,
+          'wasClamped': clampedPosition != position,
+          'delay': _state.liveDelay.inSeconds,
+        },
+      );
+    }
   }
 
   @override
   Future<void> goLive() async {
     // P0-6: Seek to live edge
     if (!_state.isLiveStream) return;
+
+    // M2: Reset drift state since user explicitly went to live
+    _liveEdgeDetector.resetDriftState();
 
     final liveEdge = _state.liveEdge;
     if (liveEdge == null || liveEdge == Duration.zero) {
@@ -353,6 +416,15 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
         liveStreamState: LiveStreamState.live,
         liveDelay: Duration.zero,
       ),
+    );
+
+    // M2: Analytics - log Go Live button tap
+    AppLogger.analytics(
+      'go_live_tapped',
+      params: {
+        'channel': _state.currentChannel?.name,
+        'previousDelay': _state.liveDelay.inSeconds,
+      },
     );
   }
 

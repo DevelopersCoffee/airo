@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Network Security Configuration for Airo App
+    
+    Purpose: Allow cleartext HTTP traffic for IPTV streaming services.
+    Android 9+ (API 28+) blocks cleartext HTTP by default for security.
+    Many IPTV streams use HTTP URLs from legacy infrastructure.
+    
+    Security Note: This config uses domain/IP-specific rules rather than
+    global cleartextTrafficPermitted to maintain security for other app features.
+-->
+<network-security-config>
+    <!-- Base configuration: HTTPS required by default -->
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+
+    <!-- Domain-specific exceptions for IPTV streaming -->
+    <domain-config cleartextTrafficPermitted="true">
+        <!-- Known IPTV streaming IP addresses -->
+        <domain includeSubdomains="false">163.61.227.29</domain>
+        
+        <!-- Common IPTV streaming domains -->
+        <domain includeSubdomains="true">iptv-org.github.io</domain>
+        <domain includeSubdomains="true">raw.githubusercontent.com</domain>
+        
+        <!-- M3U playlist and stream providers -->
+        <domain includeSubdomains="true">m3u.cl</domain>
+        <domain includeSubdomains="true">m3uplus.com</domain>
+        <domain includeSubdomains="true">iptv-list.com</domain>
+        
+        <!-- Additional streaming CDN domains that may use HTTP -->
+        <domain includeSubdomains="true">cdn.iptv.org</domain>
+        <domain includeSubdomains="true">streams.iptv.org</domain>
+        
+        <!-- Local network streaming (common for home media servers) -->
+        <domain includeSubdomains="false">192.168.0.0</domain>
+        <domain includeSubdomains="false">192.168.1.0</domain>
+        <domain includeSubdomains="false">10.0.0.0</domain>
+        
+        <!-- Wildcard for common local IP ranges -->
+        <!-- Note: Android doesn't support true wildcards, so we list common ranges -->
+    </domain-config>
+
+    <!-- Debug configuration for development builds -->
+    <!-- Uncomment for debugging network issues with Charles/Fiddler proxy -->
+    <!--
+    <debug-overrides>
+        <trust-anchors>
+            <certificates src="user" />
+        </trust-anchors>
+    </debug-overrides>
+    -->
+</network-security-config>
+

@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../data/services/recently_watched_storage.dart';
 import '../../domain/models/iptv_channel.dart';
 import '../../domain/models/streaming_state.dart';
 import '../../domain/services/m3u_parser_service.dart';
@@ -352,4 +353,45 @@ final networkQualityProvider = Provider<NetworkQuality>((ref) {
     loading: () => NetworkQuality.good,
     error: (_, _) => NetworkQuality.offline,
   );
+});
+
+// =============================================================================
+// Recently Watched Channels Providers
+// =============================================================================
+
+/// Recently watched channels storage provider
+final recentlyWatchedStorageProvider = Provider<RecentlyWatchedStorage>((ref) {
+  final prefs = ref.watch(sharedPreferencesProvider);
+  return RecentlyWatchedStorage(prefs);
+});
+
+/// Recently watched channels provider
+/// Returns the list of recently watched channels (most recent first)
+final recentlyWatchedChannelsProvider = FutureProvider<List<IPTVChannel>>((
+  ref,
+) async {
+  final storage = ref.watch(recentlyWatchedStorageProvider);
+  return storage.getRecentlyWatched(limit: 10);
+});
+
+/// Clear recently watched channels
+/// Call this to clear the viewing history for privacy
+final clearRecentlyWatchedProvider = FutureProvider.family<void, void>((
+  ref,
+  _,
+) async {
+  final storage = ref.watch(recentlyWatchedStorageProvider);
+  await storage.clearRecent();
+  ref.invalidate(recentlyWatchedChannelsProvider);
+});
+
+/// Add channel to recently watched
+/// Use this when a channel starts playing
+final addToRecentlyWatchedProvider = FutureProvider.family<void, IPTVChannel>((
+  ref,
+  channel,
+) async {
+  final storage = ref.watch(recentlyWatchedStorageProvider);
+  await storage.addToRecent(channel);
+  ref.invalidate(recentlyWatchedChannelsProvider);
 });

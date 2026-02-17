@@ -10,6 +10,7 @@ import '../../domain/models/iptv_channel.dart';
 import '../../domain/models/streaming_state.dart';
 import '../../domain/services/video_player_streaming_service.dart';
 import '../utils/web_fullscreen.dart' as web_fullscreen;
+import 'live_indicators.dart';
 
 /// Video player widget with YouTube-like controls
 class VideoPlayerWidget extends ConsumerStatefulWidget {
@@ -262,11 +263,19 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                   child: _buildNetworkBadge(state.metrics!.networkQuality),
                 ),
 
-              // Quality indicator
+              // Quality indicator and Live badge
               Positioned(
                 top: 8,
                 left: 8,
-                child: _buildQualityBadge(state.currentQuality),
+                child: Row(
+                  children: [
+                    _buildQualityBadge(state.currentQuality),
+                    const SizedBox(width: 8),
+                    // Live badge - shows "LIVE" when at live edge
+                    LiveBadge(state: state, showWhenNotLive: true),
+                    // Note: DelayIndicator removed for cleaner UI per design spec
+                  ],
+                ),
               ),
 
               // Previous/Next channel buttons (for fullscreen mode)
@@ -521,23 +530,9 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
               ],
             ),
           ),
-        // Center - play/pause button
-        IconButton(
-          iconSize: 64,
-          icon: Icon(
-            state.isPlaying
-                ? Icons.pause_circle_filled
-                : Icons.play_circle_filled,
-            color: Colors.white,
-          ),
-          onPressed: () {
-            if (state.isPlaying) {
-              service.pause();
-            } else {
-              service.resume();
-            }
-          },
-        ),
+        // Center - smart play/pause or "Go Live" button
+        // Shows "Go Live" when behind live (delay > 3s), otherwise play/pause
+        _buildCenterButton(service, state),
         // Bottom bar - buffer & controls
         Padding(
           padding: const EdgeInsets.all(16),
@@ -556,6 +551,8 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                     ),
                     onPressed: () => service.toggleMute(),
                   ),
+                  // Note: Go Live button removed from here - now integrated into center button
+                  const Spacer(),
                   // Cinema mode toggle
                   IconButton(
                     icon: Icon(
@@ -581,6 +578,75 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
           ),
         ),
       ],
+    );
+  }
+
+  /// Builds the center button - either "Go Live" or play/pause based on state
+  ///
+  /// Behavior:
+  /// - Behind live (delay > 3s): Shows "Go Live" button with red styling
+  /// - At live edge & playing: Shows pause button
+  /// - At live edge & paused: Shows play button
+  Widget _buildCenterButton(
+    VideoPlayerStreamingService service,
+    StreamingState state,
+  ) {
+    // Check if we should show "Go Live" (behind live by more than 3 seconds)
+    // But NOT when paused - paused should show play button
+    final showGoLive =
+        state.isLiveStream && state.isBehindLive && state.isPlaying;
+
+    if (showGoLive) {
+      // "Go Live" button - red themed to indicate user is behind
+      return GestureDetector(
+        onTap: () => service.goLive(),
+        child: Container(
+          width: 80,
+          height: 80,
+          decoration: BoxDecoration(
+            color: Colors.red.shade700,
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.red.withValues(alpha: 0.4),
+                blurRadius: 16,
+                spreadRadius: 2,
+              ),
+            ],
+          ),
+          child: const Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.skip_next_rounded, color: Colors.white, size: 32),
+              Text(
+                'LIVE',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Standard play/pause button
+    return IconButton(
+      iconSize: 64,
+      icon: Icon(
+        state.isPlaying ? Icons.pause_circle_filled : Icons.play_circle_filled,
+        color: Colors.white,
+      ),
+      onPressed: () {
+        if (state.isPlaying) {
+          service.pause();
+        } else {
+          service.resume();
+        }
+      },
     );
   }
 

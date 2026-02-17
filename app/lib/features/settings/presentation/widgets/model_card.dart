@@ -14,11 +14,14 @@ class ModelCard extends StatelessWidget {
     this.isActive = false,
     this.isDownloading = false,
     this.downloadProgress,
+    this.downloadSpeed,
+    this.downloadEta,
     this.isCompatible = true,
     this.onTap,
     this.onDownload,
     this.onDelete,
     this.onSetActive,
+    this.onCancelDownload,
   });
 
   /// The model to display.
@@ -32,6 +35,12 @@ class ModelCard extends StatelessWidget {
 
   /// Download progress from 0.0 to 1.0.
   final double? downloadProgress;
+
+  /// Download speed display (e.g., "2.5 MB/s").
+  final String? downloadSpeed;
+
+  /// Estimated time remaining display (e.g., "5m 30s remaining").
+  final String? downloadEta;
 
   /// Whether the model is compatible with this device.
   final bool isCompatible;
@@ -47,6 +56,9 @@ class ModelCard extends StatelessWidget {
 
   /// Callback to set this model as active.
   final VoidCallback? onSetActive;
+
+  /// Callback to cancel an in-progress download.
+  final VoidCallback? onCancelDownload;
 
   @override
   Widget build(BuildContext context) {
@@ -166,6 +178,7 @@ class ModelCard extends StatelessWidget {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Progress info row
           Row(
             children: [
               const SizedBox(
@@ -175,12 +188,46 @@ class ModelCard extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               Text(
-                'Downloading... ${(downloadProgress! * 100).round()}%',
-                style: theme.textTheme.bodySmall,
+                '${(downloadProgress! * 100).round()}%',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
               ),
+              if (downloadSpeed != null) ...[
+                const SizedBox(width: 8),
+                Text(
+                  '• $downloadSpeed',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.primary,
+                  ),
+                ),
+              ],
+              const Spacer(),
+              // Cancel button
+              if (onCancelDownload != null)
+                IconButton(
+                  onPressed: onCancelDownload,
+                  icon: const Icon(Icons.close, size: 18),
+                  visualDensity: VisualDensity.compact,
+                  tooltip: 'Cancel download',
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 4),
+          // ETA display
+          if (downloadEta != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Text(
+                downloadEta!,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ),
+          // Progress bar
           ClipRRect(
             borderRadius: BorderRadius.circular(4),
             child: LinearProgressIndicator(
@@ -191,7 +238,6 @@ class ModelCard extends StatelessWidget {
         ],
       );
     }
-    // ... more status handling to be continued
     return _buildActionButtons(context, isDownloaded);
   }
 

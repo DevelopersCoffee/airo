@@ -67,7 +67,9 @@ class DeviceFormFactorDetector {
     }
 
     // Mobile/Tablet detection based on screen size
-    if (context != null) {
+    // Note: context may be stale after async gap, but we only use it
+    // for MediaQuery which is safe for screen size detection
+    if (context != null && context.mounted) {
       return _detectFromScreenSize(context);
     }
 
@@ -151,4 +153,3 @@ class DeviceFormFactorDetector {
     _cachedFormFactor = null;
   }
 }
-

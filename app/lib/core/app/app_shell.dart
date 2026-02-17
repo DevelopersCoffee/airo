@@ -174,38 +174,28 @@ class AppShell extends ConsumerWidget {
             ref.read(currentNavigationTabProvider.notifier).state = index;
             navigationShell.goBranch(index);
           },
-          destinations: [
+          destinations: const [
             NavigationDestination(
-              icon: Image.asset(
-                'assets/airo_icon.png',
-                width: 24,
-                height: 24,
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
-              selectedIcon: Image.asset(
-                'assets/airo_icon.png',
-                width: 24,
-                height: 24,
-                color: Theme.of(context).colorScheme.primary,
-              ),
+              icon: Icon(Icons.monetization_on_outlined),
+              selectedIcon: Icon(Icons.monetization_on),
               label: 'Coins',
             ),
-            const NavigationDestination(
+            NavigationDestination(
               icon: Icon(Icons.smart_toy),
               selectedIcon: Icon(Icons.smart_toy),
               label: 'Mind',
             ),
-            const NavigationDestination(
+            NavigationDestination(
               icon: Icon(Icons.play_circle),
               selectedIcon: Icon(Icons.play_circle_filled),
               label: 'Live',
             ),
-            const NavigationDestination(
+            NavigationDestination(
               icon: Icon(Icons.sports_esports),
               selectedIcon: Icon(Icons.sports_esports),
               label: 'Arena',
             ),
-            const NavigationDestination(
+            NavigationDestination(
               icon: Icon(Icons.menu_book_outlined),
               selectedIcon: Icon(Icons.menu_book),
               label: 'Tales',

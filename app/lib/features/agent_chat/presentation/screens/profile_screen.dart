@@ -130,6 +130,9 @@ class ProfileScreen extends ConsumerWidget {
               },
             ),
 
+            // Active Model Selection Dropdown
+            _ActiveModelSelector(),
+
             const SizedBox(height: 32),
 
             // Feature flags section
@@ -335,6 +338,70 @@ class ProfileScreen extends ConsumerWidget {
             child: const Text('Close'),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Widget for selecting the active offline AI model.
+class _ActiveModelSelector extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final registry = ref.watch(modelRegistryProvider);
+    final downloadedModels = registry.downloadedModels;
+    final selectedModelId = ref.watch(selectedModelIdProvider);
+    final selectedModel = ref.watch(selectedModelProvider);
+
+    if (downloadedModels.isEmpty) {
+      return ListTile(
+        leading: const Icon(Icons.smart_toy_outlined, color: Colors.grey),
+        title: const Text('Active Model'),
+        subtitle: const Text('No models downloaded'),
+        enabled: false,
+      );
+    }
+
+    return ListTile(
+      leading: const Icon(Icons.smart_toy),
+      title: const Text('Active Model'),
+      subtitle: Text(
+        selectedModel?.name ?? 'Select a model',
+        style: TextStyle(
+          color: selectedModel != null
+              ? Theme.of(context).colorScheme.primary
+              : Theme.of(context).colorScheme.onSurfaceVariant,
+        ),
+      ),
+      trailing: DropdownButton<String>(
+        value: selectedModelId,
+        hint: const Text('Select'),
+        underline: const SizedBox(),
+        items: downloadedModels.map((model) {
+          return DropdownMenuItem<String>(
+            value: model.id,
+            child: SizedBox(
+              width: 120,
+              child: Text(
+                model.name,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+            ),
+          );
+        }).toList(),
+        onChanged: (String? modelId) {
+          if (modelId != null) {
+            ref
+                .read(selectedModelIdProvider.notifier)
+                .setSelectedModel(modelId);
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Model switched'),
+                duration: const Duration(seconds: 1),
+              ),
+            );
+          }
+        },
       ),
     );
   }

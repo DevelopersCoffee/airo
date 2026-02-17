@@ -20,7 +20,7 @@ class MoneyCard extends StatelessWidget {
     this.icon,
     this.color,
     this.onTap,
-    this.currency = '\$',
+    this.currency = '₹', // Default to INR for India
     this.showTrend = false,
     this.trendValue,
     this.isPositiveTrend,
@@ -43,10 +43,7 @@ class MoneyCard extends StatelessWidget {
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [
-                cardColor,
-                cardColor.withOpacity(0.8),
-              ],
+              colors: [cardColor, cardColor.withOpacity(0.8)],
             ),
           ),
           child: Column(
@@ -71,11 +68,7 @@ class MoneyCard extends StatelessWidget {
                         color: Colors.white.withOpacity(0.2),
                         shape: BoxShape.circle,
                       ),
-                      child: Icon(
-                        icon,
-                        color: Colors.white,
-                        size: 24,
-                      ),
+                      child: Icon(icon, color: Colors.white, size: 24),
                     ),
                 ],
               ),
@@ -96,20 +89,28 @@ class MoneyCard extends StatelessWidget {
                   ),
                 ),
               ],
-              if (showTrend && trendValue != null && isPositiveTrend != null) ...[
+              if (showTrend &&
+                  trendValue != null &&
+                  isPositiveTrend != null) ...[
                 const SizedBox(height: 8),
                 Row(
                   children: [
                     Icon(
-                      isPositiveTrend! ? Icons.trending_up : Icons.trending_down,
-                      color: isPositiveTrend! ? Colors.green[300] : Colors.red[300],
+                      isPositiveTrend!
+                          ? Icons.trending_up
+                          : Icons.trending_down,
+                      color: isPositiveTrend!
+                          ? Colors.green[300]
+                          : Colors.red[300],
                       size: 16,
                     ),
                     const SizedBox(width: 4),
                     Text(
                       '${isPositiveTrend! ? '+' : '-'}${trendValue!.abs().toStringAsFixed(1)}%',
                       style: theme.textTheme.bodySmall?.copyWith(
-                        color: isPositiveTrend! ? Colors.green[300] : Colors.red[300],
+                        color: isPositiveTrend!
+                            ? Colors.green[300]
+                            : Colors.red[300],
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -146,7 +147,7 @@ class CompactMoneyCard extends StatelessWidget {
     required this.icon,
     required this.color,
     this.onTap,
-    this.currency = '\$',
+    this.currency = '₹', // Default to INR for India
   });
 
   @override
@@ -168,11 +169,7 @@ class CompactMoneyCard extends StatelessWidget {
                   color: color.withOpacity(0.1),
                   shape: BoxShape.circle,
                 ),
-                child: Icon(
-                  icon,
-                  color: color,
-                  size: 24,
-                ),
+                child: Icon(icon, color: color, size: 24),
               ),
               const SizedBox(width: 16),
               Expanded(

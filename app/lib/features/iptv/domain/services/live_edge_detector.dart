@@ -9,7 +9,7 @@ import '../models/streaming_state.dart';
 /// - Current live edge position
 /// - Delay from live edge
 /// - DVR window boundaries
-/// - Drift for auto-resync
+/// - Drift for auto-resync (with exponential backoff)
 class LiveEdgeDetector {
   final LiveEdgeConfig _config;
   Timer? _updateTimer;
@@ -19,9 +19,18 @@ class LiveEdgeDetector {
   void Function(LiveEdgeState)? onStateUpdate;
   void Function()? onDriftDetected;
 
+  /// Called before auto-resync to give UI chance to show notification
+  void Function(Duration delay)? onDriftWarning;
+
   // Internal tracking
   DateTime? _lastUserSeek;
-  Duration _lastKnownPosition = Duration.zero;
+  DateTime? _lastDriftNotification;
+  int _driftNotificationCount = 0;
+
+  /// M2: Exponential backoff multiplier for drift notifications
+  /// First notification: immediate, Second: 30s cooldown, Third: 60s, etc.
+  static const int _baseCooldownSeconds = 30;
+  static const int _maxCooldownMultiplier = 4;
 
   LiveEdgeDetector({LiveEdgeConfig? config})
     : _config = config ?? LiveEdgeConfig.defaultConfig;
@@ -81,8 +90,6 @@ class LiveEdgeDetector {
 
     // Detect DVR window
     final dvrWindow = _detectDvrWindow(value.buffered, position);
-
-    _lastKnownPosition = position;
 
     onStateUpdate?.call(
       LiveEdgeState(
@@ -148,7 +155,12 @@ class LiveEdgeDetector {
     return LiveStreamState.behindLive;
   }
 
-  /// Check for drift and trigger auto-resync callback
+  /// Check for drift and trigger auto-resync callback with exponential backoff
+  ///
+  /// M2 Enhancement: Uses exponential backoff to avoid spamming notifications
+  /// - First notification: immediate
+  /// - Subsequent notifications: cooldown period doubles each time
+  /// - Max cooldown: 4x base (120s)
   void _checkForDrift(Duration delay) {
     // Only check if no recent user seek
     if (_lastUserSeek != null) {
@@ -157,8 +169,40 @@ class LiveEdgeDetector {
     }
 
     if (delay > _config.autoResyncThreshold) {
+      final now = DateTime.now();
+
+      // Check exponential backoff cooldown
+      if (_lastDriftNotification != null) {
+        final multiplier = (_driftNotificationCount).clamp(
+          1,
+          _maxCooldownMultiplier,
+        );
+        final cooldown = Duration(seconds: _baseCooldownSeconds * multiplier);
+        final timeSinceLastNotification = now.difference(
+          _lastDriftNotification!,
+        );
+
+        if (timeSinceLastNotification < cooldown) {
+          return; // Still in cooldown period
+        }
+      }
+
+      // Send warning notification first (gives UI chance to show toast)
+      onDriftWarning?.call(delay);
+
+      // Then trigger auto-resync
       onDriftDetected?.call();
+
+      // Update backoff tracking
+      _lastDriftNotification = now;
+      _driftNotificationCount++;
     }
+  }
+
+  /// Reset drift notification state (call after successful manual Go Live)
+  void resetDriftState() {
+    _lastDriftNotification = null;
+    _driftNotificationCount = 0;
   }
 
   /// Detect DVR window boundaries
