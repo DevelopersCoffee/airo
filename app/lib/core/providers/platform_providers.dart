@@ -35,8 +35,8 @@ final deviceFormFactorProvider = Provider<DeviceFormFactor>((ref) {
 /// ```
 final deviceFormFactorSyncProvider =
     Provider.family<DeviceFormFactor, BuildContext>((ref, context) {
-  return DeviceFormFactorDetector.detectSync(context);
-});
+      return DeviceFormFactorDetector.detectSync(context);
+    });
 
 /// Async provider for full TV detection (uses platform channels)
 ///
@@ -53,8 +53,8 @@ final deviceFormFactorSyncProvider =
 /// ```
 final deviceFormFactorAsyncProvider =
     FutureProvider.family<DeviceFormFactor, BuildContext?>((ref, context) {
-  return DeviceFormFactorDetector.detect(context);
-});
+      return DeviceFormFactorDetector.detect(context);
+    });
 
 /// Provider for checking if current device is TV
 ///
@@ -75,8 +75,10 @@ final isTvDeviceProvider = Provider.family<bool, BuildContext>((ref, context) {
 /// ```dart
 /// final minTarget = ref.watch(minTouchTargetProvider(context));
 /// ```
-final minTouchTargetProvider =
-    Provider.family<double, BuildContext>((ref, context) {
+final minTouchTargetProvider = Provider.family<double, BuildContext>((
+  ref,
+  context,
+) {
   final formFactor = ref.watch(deviceFormFactorSyncProvider(context));
   return DeviceFormFactorDetector.getMinTouchTarget(formFactor);
 });
@@ -88,9 +90,45 @@ final minTouchTargetProvider =
 /// ```dart
 /// final needsDpad = ref.watch(supportsDpadNavigationProvider(context));
 /// ```
-final supportsDpadNavigationProvider =
-    Provider.family<bool, BuildContext>((ref, context) {
+final supportsDpadNavigationProvider = Provider.family<bool, BuildContext>((
+  ref,
+  context,
+) {
   final formFactor = ref.watch(deviceFormFactorSyncProvider(context));
   return DeviceFormFactorDetector.supportsDpadNavigation(formFactor);
 });
 
+/// Provider for TV platform type (Fire TV, Android TV, etc.)
+///
+/// Usage:
+/// ```dart
+/// final tvPlatform = await ref.watch(tvPlatformProvider.future);
+/// if (tvPlatform == TvPlatform.fireTv) {
+///   // Apply Fire TV specific adjustments
+/// }
+/// ```
+final tvPlatformProvider = FutureProvider<TvPlatform>((ref) {
+  return DeviceFormFactorDetector.getTvPlatform();
+});
+
+/// Provider for Fire TV detection
+///
+/// Usage:
+/// ```dart
+/// final isFireTv = await ref.watch(isFireTvProvider.future);
+/// ```
+final isFireTvProvider = FutureProvider<bool>((ref) {
+  return DeviceFormFactorDetector.isFireTv();
+});
+
+/// Provider for Fire TV safe zone insets
+///
+/// Returns appropriate safe zone insets for Fire TV.
+/// Usage:
+/// ```dart
+/// final safeZone = ref.watch(fireTvSafeZoneProvider);
+/// return Padding(padding: safeZone, child: content);
+/// ```
+final fireTvSafeZoneProvider = Provider<EdgeInsets>((ref) {
+  return DeviceFormFactorDetector.getFireTvSafeZone();
+});

@@ -25,6 +25,21 @@ enum DeviceFormFactor {
   desktop,
 }
 
+/// TV platform type for platform-specific adjustments
+enum TvPlatform {
+  /// Amazon Fire TV (Fire TV Stick, Fire TV Cube, etc.)
+  fireTv,
+
+  /// Google Android TV (NVIDIA Shield, Sony, etc.)
+  androidTv,
+
+  /// Generic TV (other Leanback-enabled devices)
+  genericTv,
+
+  /// Not a TV device
+  none,
+}
+
 /// Device form factor detection service
 ///
 /// Detects device type for adaptive UI rendering.
@@ -33,6 +48,7 @@ class DeviceFormFactorDetector {
   DeviceFormFactorDetector._();
 
   static DeviceFormFactor? _cachedFormFactor;
+  static TvPlatform? _cachedTvPlatform;
   static const _tvChannel = MethodChannel('com.airo/device_info');
 
   /// Detect device form factor
@@ -116,7 +132,12 @@ class DeviceFormFactorDetector {
     try {
       // Check for TV features via platform channel
       final result = await _tvChannel.invokeMethod<bool>('isTV');
-      return result ?? false;
+      if (result == true) {
+        // Also detect TV platform type
+        await _detectTvPlatform();
+        return true;
+      }
+      return false;
     } on MissingPluginException {
       // Platform channel not implemented yet - use fallback
       return _isAndroidTVFallback();
@@ -125,11 +146,66 @@ class DeviceFormFactorDetector {
     }
   }
 
+  /// Detect the specific TV platform (Fire TV, Android TV, etc.)
+  static Future<TvPlatform> _detectTvPlatform() async {
+    if (_cachedTvPlatform != null) return _cachedTvPlatform!;
+
+    try {
+      // Try to get TV platform from platform channel
+      final platformStr = await _tvChannel.invokeMethod<String>(
+        'getTvPlatform',
+      );
+
+      if (platformStr == 'fire_tv') {
+        _cachedTvPlatform = TvPlatform.fireTv;
+      } else if (platformStr == 'android_tv') {
+        _cachedTvPlatform = TvPlatform.androidTv;
+      } else {
+        _cachedTvPlatform = TvPlatform.genericTv;
+      }
+    } on MissingPluginException {
+      // Fallback detection
+      _cachedTvPlatform = _detectTvPlatformFallback();
+    } catch (_) {
+      _cachedTvPlatform = _detectTvPlatformFallback();
+    }
+
+    return _cachedTvPlatform!;
+  }
+
+  /// Fallback TV platform detection using heuristics
+  static TvPlatform _detectTvPlatformFallback() {
+    // Fire TV devices have specific manufacturer strings
+    // This is a best-effort fallback - actual implementation would check
+    // Build.MANUFACTURER on Android
+    return TvPlatform.genericTv;
+  }
+
   /// Fallback TV detection using environment heuristics
   static bool _isAndroidTVFallback() {
     // Check environment variables (set by some TV launchers)
     // This is a best-effort fallback
     return false;
+  }
+
+  /// Get the current TV platform type
+  ///
+  /// Returns [TvPlatform.none] if not running on a TV.
+  static Future<TvPlatform> getTvPlatform() async {
+    if (!Platform.isAndroid) return TvPlatform.none;
+    if (_cachedTvPlatform != null) return _cachedTvPlatform!;
+
+    final isTV = await _isAndroidTV();
+    if (!isTV) {
+      _cachedTvPlatform = TvPlatform.none;
+    }
+    return _cachedTvPlatform ?? TvPlatform.none;
+  }
+
+  /// Check if running on Fire TV specifically
+  static Future<bool> isFireTv() async {
+    final platform = await getTvPlatform();
+    return platform == TvPlatform.fireTv;
   }
 
   /// Check if device supports D-pad navigation
@@ -147,9 +223,21 @@ class DeviceFormFactorDetector {
     return formFactor == DeviceFormFactor.tv ? 56.0 : 48.0;
   }
 
+  /// Get Fire TV safe zone insets
+  ///
+  /// Fire TV has recommended safe zones to avoid UI clipping.
+  /// See: https://developer.amazon.com/docs/fire-tv/design-and-user-experience-guidelines.html
+  static EdgeInsets getFireTvSafeZone() {
+    return const EdgeInsets.symmetric(
+      horizontal: 48.0, // 3% of 1920 ≈ 48dp
+      vertical: 27.0, // 2.5% of 1080 ≈ 27dp
+    );
+  }
+
   /// Clear cached form factor (for testing)
   @visibleForTesting
   static void clearCache() {
     _cachedFormFactor = null;
+    _cachedTvPlatform = null;
   }
 }

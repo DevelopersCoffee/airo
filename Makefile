@@ -152,6 +152,22 @@ run-chrome: ## Run app specifically on Chrome browser
 	@echo "$(BLUE)Running on Chrome...$(NC)"
 	@cd $(APP_DIR) && flutter run -d chrome --web-port 8080 $(DART_DEFINE_ARGS)
 
+# Fire TV Commands
+.PHONY: run-firetv
+run-firetv: ## Run app on Fire TV (auto-detect TV emulator/device)
+	@echo "$(BLUE)Running on Fire TV...$(NC)"
+	@cd $(APP_DIR) && flutter run -d android $(DART_DEFINE_ARGS)
+
+.PHONY: run-firetv-emulator
+run-firetv-emulator: ## Run app on Fire TV emulator by name
+	@echo "$(BLUE)Running on Fire TV emulator...$(NC)"
+	@cd $(APP_DIR) && flutter run -d "Fire_TV_Stick_4K" $(DART_DEFINE_ARGS)
+
+.PHONY: run-androidtv
+run-androidtv: ## Run app on Android TV emulator
+	@echo "$(BLUE)Running on Android TV...$(NC)"
+	@cd $(APP_DIR) && flutter run -d "Android_TV" $(DART_DEFINE_ARGS)
+
 # Build Commands
 .PHONY: build-android
 build-android: ## Build Android APK
@@ -162,6 +178,16 @@ build-android: ## Build Android APK
 build-android-bundle: ## Build Android App Bundle for Play Store
 	@echo "$(BLUE)Building Android App Bundle...$(NC)"
 	@cd $(APP_DIR) && flutter build appbundle --release
+
+.PHONY: build-firetv
+build-firetv: ## Build Fire TV optimized APK (arm64)
+	@echo "$(BLUE)Building Fire TV APK...$(NC)"
+	@cd $(APP_DIR) && flutter build apk --release --target-platform android-arm64
+
+.PHONY: build-androidtv
+build-androidtv: ## Build Android TV APK
+	@echo "$(BLUE)Building Android TV APK...$(NC)"
+	@cd $(APP_DIR) && flutter build apk --release --target-platform android-arm64
 
 .PHONY: build-ios
 build-ios: ## Build iOS app
