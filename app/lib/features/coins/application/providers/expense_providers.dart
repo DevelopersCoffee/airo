@@ -4,7 +4,8 @@ import '../../../money/application/providers/money_provider.dart';
 import '../../domain/entities/transaction.dart';
 import '../../domain/repositories/transaction_repository.dart';
 import '../../data/repositories/transaction_repository_impl.dart';
-import '../../data/datasources/coins_local_datasource_impl.dart';
+import '../../data/datasources/coins_local_datasource_impl_stub.dart'
+    if (dart.library.io) '../../data/datasources/coins_local_datasource_impl.dart';
 import '../../data/mappers/transaction_mapper.dart';
 
 /// Coins local datasource provider - singleton
