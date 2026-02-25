@@ -198,15 +198,20 @@ build-android-bundle: ## Build Android App Bundle for Play Store
 # =============================================================================
 
 .PHONY: build-tv
-build-tv: ## Build Android TV APK (IPTV only, <120MB target)
-	@echo "$(BLUE)Building Android TV APK...$(NC)"
-	@cd $(APP_DIR) && flutter build apk --release \
-		--target=lib/main_tv.dart \
-		--dart-define=APP_VARIANT=tv \
-		--dart-define=APP_PLATFORM=androidTv \
-		--split-per-abi \
-		--tree-shake-icons
-	@echo "$(GREEN)✓ TV APK created$(NC)"
+build-tv: ## Build Android TV APK (IPTV only, <30MB target with lightweight deps)
+ifeq ($(OS),Windows_NT)
+	@powershell -ExecutionPolicy Bypass -File scripts/build-tv.ps1
+else
+	@bash scripts/build-tv.sh
+endif
+
+.PHONY: build-tv-full
+build-tv-full: ## Build Android TV APK with all dependencies (for testing, ~145MB)
+ifeq ($(OS),Windows_NT)
+	@powershell -ExecutionPolicy Bypass -File scripts/build-tv.ps1 -Full
+else
+	@bash scripts/build-tv.sh --full
+endif
 
 .PHONY: build-streaming
 build-streaming: ## Build Mobile Streaming APK (Music + IPTV, <150MB target)

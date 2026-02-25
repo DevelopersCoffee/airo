@@ -1,0 +1,8 @@
+name: google_mlkit_text_recognition
+description: Stub implementation of google_mlkit_text_recognition for TV builds (no OCR native libs)
+version: 0.15.1
+publish_to: none
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+

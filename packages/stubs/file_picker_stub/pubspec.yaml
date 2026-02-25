@@ -1,0 +1,8 @@
+name: file_picker
+description: Stub implementation of file_picker for TV builds
+version: 10.3.10
+publish_to: none
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+

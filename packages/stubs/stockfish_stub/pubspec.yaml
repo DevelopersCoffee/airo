@@ -1,0 +1,8 @@
+name: stockfish
+description: Stub implementation of stockfish package for TV builds (no native libs)
+version: 1.8.1
+publish_to: none
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+

@@ -1,0 +1,169 @@
+# TV-specific pubspec - excludes heavy dependencies (stockfish, flame, mlkit)
+# This file reduces APK size from ~145MB to ~28MB for Android TV builds
+#
+# Usage: Copy this to pubspec.yaml before TV builds, or use the build script
+# Heavy dependencies excluded:
+# - stockfish: 1.8.1 (~108MB native libs)
+# - flame: 1.35.0 + flame_audio: 2.11.13 (~5MB)
+# - google_mlkit_text_recognition: 0.15.1 (~10MB)
+# - chess: 0.8.1 (requires stockfish)
+
+name: airo_app
+description: "Airo TV - IPTV streaming for Android TV"
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.9.2 <4.0.0"
+  flutter: ">=3.35.7"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Routing & Navigation
+  go_router: 17.1.0
+
+  # State Management
+  riverpod: 2.6.1
+  flutter_riverpod: 2.6.1
+
+  # Storage & Persistence
+  shared_preferences: 2.5.4
+  drift: ^2.18.0
+  sqlite3_flutter_libs: ^0.5.41
+  hive: 2.2.3
+  hive_flutter: 1.1.0
+  path: 1.9.1
+  path_provider: 2.1.5
+
+  # Connectivity
+  connectivity_plus: 7.0.0
+
+  # Networking
+  dio: 5.9.1
+
+  # Firebase & Authentication
+  firebase_core: 4.4.0
+  firebase_auth: 6.1.4
+  google_sign_in: 7.2.0
+
+  # Audio & Media (TV variant - no background audio service needed)
+  video_player: 2.10.1
+  wakelock_plus: 1.4.0
+
+  # Utilities
+  intl: 0.20.2
+  uuid: 4.5.2
+
+  # Local packages - Core
+  core_domain:
+    path: ../packages/core_domain
+  core_data:
+    path: ../packages/core_data
+  core_ui:
+    path: ../packages/core_ui
+  core_ai:
+    path: ../packages/core_ai
+  core_auth:
+    path: ../packages/core_auth
+
+  # Local packages - Features (only IPTV-related)
+  airo:
+    path: ../packages/airo
+
+  # UI
+  cupertino_icons: 1.0.8
+  equatable: 2.0.8
+  cached_network_image: 3.4.1
+
+  # TV-specific
+  package_info_plus: 9.0.0
+
+  # Dependencies with stub overrides (required for compilation but using lightweight stubs)
+  # These are overridden by dependency_overrides section below
+  stockfish: 1.8.1
+  chess: 0.8.1
+  flame: 1.35.0
+  google_mlkit_text_recognition: 0.15.1
+  audio_service: 0.18.18
+  just_audio: 0.10.5
+  audioplayers: 6.5.1
+  flutter_tts: 4.2.5
+  image_picker: 1.2.1
+  file_picker: 10.3.10
+  share_plus: 10.1.4
+  flutter_image_compress: 2.4.0
+  flutter_contacts: 1.1.9+2
+  permission_handler: 12.0.0+1
+
+  # EXCLUDED for TV builds (heavy dependencies):
+  # - flame: 1.35.0 (game engine - not needed)
+  # - flame_audio: 2.11.13 (game audio - not needed)
+  # - chess: 0.8.1 (chess logic - not needed)
+  # - stockfish: 1.8.1 (chess AI - 108MB native libs!)
+  # - google_mlkit_text_recognition: 0.15.1 (OCR - not needed)
+  # - audio_service: (background audio - TV uses foreground)
+  # - just_audio: (music player - not needed)
+  # - audioplayers: (game audio - not needed)
+  # - flutter_tts: (TTS - not needed)
+  # - flutter_contacts: (contacts - not needed)
+  # - permission_handler: (permissions - TV has limited permissions)
+  # - image_picker: (camera - not on TV)
+  # - file_picker: (file picker - limited on TV)
+  # - share_plus: (sharing - not on TV)
+  # - screenshot: (screenshots - not needed)
+  # - flutter_image_compress: (image compression - not needed)
+  # - flutter_local_notifications: (notifications - TV uses different approach)
+  # - airomoney: (finance features - not on TV)
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: 6.0.0
+
+# Dependency overrides - point heavy packages to lightweight stubs
+# This allows code that imports these packages to compile while
+# avoiding the heavy native libraries
+dependency_overrides:
+  # Heavy native library stubs (major size savings)
+  stockfish:
+    path: ../packages/stubs/stockfish_stub
+  chess:
+    path: ../packages/stubs/chess_stub
+  flame:
+    path: ../packages/stubs/flame_stub
+  google_mlkit_text_recognition:
+    path: ../packages/stubs/mlkit_stub
+
+  # Audio package stubs (not needed for TV)
+  audio_service:
+    path: ../packages/stubs/audio_service_stub
+  just_audio:
+    path: ../packages/stubs/just_audio_stub
+  audioplayers:
+    path: ../packages/stubs/audioplayers_stub
+
+  # Utility package stubs (limited functionality on TV)
+  flutter_tts:
+    path: ../packages/stubs/flutter_tts_stub
+  image_picker:
+    path: ../packages/stubs/image_picker_stub
+  file_picker:
+    path: ../packages/stubs/file_picker_stub
+  share_plus:
+    path: ../packages/stubs/share_plus_stub
+  flutter_image_compress:
+    path: ../packages/stubs/flutter_image_compress_stub
+  flutter_contacts:
+    path: ../packages/stubs/flutter_contacts_stub
+  permission_handler:
+    path: ../packages/stubs/permission_handler_stub
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/iptv_channels_fallback.json
+    - assets/iptv_channels.json
+    - assets/airo_icon.png
+

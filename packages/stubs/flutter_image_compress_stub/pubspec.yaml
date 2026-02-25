@@ -1,0 +1,8 @@
+name: flutter_image_compress
+description: Stub implementation of flutter_image_compress for TV builds
+version: 2.4.0
+publish_to: none
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+

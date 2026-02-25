@@ -1,0 +1,8 @@
+name: audioplayers
+description: Stub implementation of audioplayers for TV builds
+version: 6.5.1
+publish_to: none
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
