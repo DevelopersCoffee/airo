@@ -12,6 +12,9 @@
 /// - Live DVR with Go Live functionality
 library;
 
+// Feature Module
+export 'iptv_feature_module.dart';
+
 // Models
 export 'domain/models/iptv_channel.dart';
 export 'domain/models/streaming_state.dart';

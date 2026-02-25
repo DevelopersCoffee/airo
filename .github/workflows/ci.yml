@@ -249,10 +249,16 @@ jobs:
           cd app
           flutter build apk --debug
 
-      - name: Build APK (Release)
+      - name: Build APK (Release) - Split per ABI
         run: |
           cd app
-          flutter build apk --release
+          # Build separate APKs per ABI for ~66% size reduction
+          # 323MB fat APK → ~110MB per ABI
+          flutter build apk --release \
+            --split-per-abi \
+            --tree-shake-icons \
+            --split-debug-info=build/debug-info \
+            --obfuscate
 
       - name: Upload Debug APK
         uses: actions/upload-artifact@v6
@@ -261,12 +267,33 @@ jobs:
           path: app/build/app/outputs/flutter-apk/app-debug.apk
           retention-days: 7
 
-      - name: Upload Release APK
+      - name: Upload Release APKs (arm64-v8a)
         uses: actions/upload-artifact@v6
         with:
-          name: android-release-apk
-          path: app/build/app/outputs/flutter-apk/app-release.apk
+          name: android-release-arm64
+          path: app/build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
           retention-days: 14
+
+      - name: Upload Release APKs (armeabi-v7a)
+        uses: actions/upload-artifact@v6
+        with:
+          name: android-release-armeabi
+          path: app/build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk
+          retention-days: 14
+
+      - name: Upload Release APKs (x86_64)
+        uses: actions/upload-artifact@v6
+        with:
+          name: android-release-x86_64
+          path: app/build/app/outputs/flutter-apk/app-x86_64-release.apk
+          retention-days: 14
+
+      - name: Upload Debug Info (for crash symbolication)
+        uses: actions/upload-artifact@v6
+        with:
+          name: android-debug-info
+          path: app/build/debug-info/
+          retention-days: 90
 
   # ============================================
   # Build Web

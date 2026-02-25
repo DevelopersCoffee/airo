@@ -1,18 +1,57 @@
-// File generated for Firebase configuration
-// To get web config: Firebase Console → Project Settings → Your apps → Web app
+// Firebase configuration with multi-platform variant support
+// Supports: Mobile Full (io.airo.app), Mobile Streaming (io.airo.streaming), Android TV (io.airo.tv)
+//
+// To configure:
+// 1. Register all package IDs in Firebase Console under the same project
+// 2. Download combined google-services.json (contains all package IDs)
+// 3. Update appId values below after registering new apps
+//
+// Build with variant:
+//   flutter build apk --dart-define=APP_VARIANT=tv
+//   flutter build apk --dart-define=APP_VARIANT=streaming
+//   flutter build apk --dart-define=APP_VARIANT=full (default)
+
 import 'package:firebase_core/firebase_core.dart' show FirebaseOptions;
 import 'package:flutter/foundation.dart'
     show defaultTargetPlatform, kIsWeb, TargetPlatform;
 
+/// App variant for Firebase configuration selection
+/// Set via --dart-define=APP_VARIANT=<value>
+enum AppVariant {
+  full, // io.airo.app - All features
+  streaming, // io.airo.streaming - Music + IPTV
+  tv, // io.airo.tv - IPTV only
+}
+
 /// Default [FirebaseOptions] for use with your Firebase apps.
+/// Supports multiple Android app variants under the same Firebase project.
 class DefaultFirebaseOptions {
+  /// Current app variant from dart-define
+  static const String _variantString = String.fromEnvironment(
+    'APP_VARIANT',
+    defaultValue: 'full',
+  );
+
+  /// Get the current app variant
+  static AppVariant get currentVariant {
+    switch (_variantString) {
+      case 'tv':
+        return AppVariant.tv;
+      case 'streaming':
+        return AppVariant.streaming;
+      default:
+        return AppVariant.full;
+    }
+  }
+
+  /// Get Firebase options for the current platform and variant
   static FirebaseOptions get currentPlatform {
     if (kIsWeb) {
       return web;
     }
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
-        return android;
+        return _getAndroidOptions();
       case TargetPlatform.iOS:
         return ios;
       case TargetPlatform.macOS:
@@ -31,7 +70,21 @@ class DefaultFirebaseOptions {
     }
   }
 
-  // Web configuration - from Firebase Console
+  /// Get Android options based on current build variant
+  static FirebaseOptions _getAndroidOptions() {
+    switch (currentVariant) {
+      case AppVariant.tv:
+        return androidTv;
+      case AppVariant.streaming:
+        return androidStreaming;
+      case AppVariant.full:
+        return android;
+    }
+  }
+
+  // ===========================================================================
+  // Web Configuration
+  // ===========================================================================
   static const FirebaseOptions web = FirebaseOptions(
     apiKey: 'AIzaSyAXwAHFzEmvM0VMq_OVR-J_rm3aemlmq5A',
     appId: '1:906799550225:web:28533fb091ebbb3d2206b0',
@@ -41,7 +94,11 @@ class DefaultFirebaseOptions {
     storageBucket: 'devscoffee-airo.firebasestorage.app',
   );
 
-  // Android configuration - from google-services.json
+  // ===========================================================================
+  // Android Configurations (Multiple variants, same Firebase project)
+  // ===========================================================================
+
+  /// Android Mobile Full - io.airo.app (existing)
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyCBhj62CjX9G7-QNbF3e-53BiM3FYcWNxw',
     appId: '1:906799550225:android:8052938d459ef9832206b0',
@@ -50,7 +107,27 @@ class DefaultFirebaseOptions {
     storageBucket: 'devscoffee-airo.firebasestorage.app',
   );
 
-  // iOS configuration - TODO: Add from GoogleService-Info.plist
+  /// Android TV - io.airo.tv
+  static const FirebaseOptions androidTv = FirebaseOptions(
+    apiKey: 'AIzaSyCBhj62CjX9G7-QNbF3e-53BiM3FYcWNxw',
+    appId: '1:906799550225:android:fdb3b2c6a2ad90722206b0',
+    messagingSenderId: '906799550225',
+    projectId: 'devscoffee-airo',
+    storageBucket: 'devscoffee-airo.firebasestorage.app',
+  );
+
+  /// Android Streaming - io.airo.streaming
+  static const FirebaseOptions androidStreaming = FirebaseOptions(
+    apiKey: 'AIzaSyCBhj62CjX9G7-QNbF3e-53BiM3FYcWNxw',
+    appId: '1:906799550225:android:ef8d5550c68807722206b0',
+    messagingSenderId: '906799550225',
+    projectId: 'devscoffee-airo',
+    storageBucket: 'devscoffee-airo.firebasestorage.app',
+  );
+
+  // ===========================================================================
+  // iOS Configuration
+  // ===========================================================================
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyCBhj62CjX9G7-QNbF3e-53BiM3FYcWNxw',
     appId:
@@ -61,7 +138,9 @@ class DefaultFirebaseOptions {
     iosBundleId: 'com.developerscoffee.airo',
   );
 
-  // macOS configuration
+  // ===========================================================================
+  // Desktop Configurations
+  // ===========================================================================
   static const FirebaseOptions macos = FirebaseOptions(
     apiKey: 'AIzaSyCBhj62CjX9G7-QNbF3e-53BiM3FYcWNxw',
     appId:
@@ -72,7 +151,6 @@ class DefaultFirebaseOptions {
     iosBundleId: 'com.developerscoffee.airo',
   );
 
-  // Windows configuration
   static const FirebaseOptions windows = FirebaseOptions(
     apiKey: 'AIzaSyCBhj62CjX9G7-QNbF3e-53BiM3FYcWNxw',
     appId:

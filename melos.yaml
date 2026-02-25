@@ -95,3 +95,62 @@ scripts:
       melos run format:fix
       melos run analyze
 
+  # =============================================================================
+  # Platform-Specific Builds (Phase 0.5+ Multi-Platform Strategy)
+  # =============================================================================
+
+  # Build Android TV APK (IPTV only)
+  build:tv:
+    description: Build Android TV APK (<120MB target)
+    run: |
+      cd app
+      flutter build apk --release \
+        --target=lib/main_tv.dart \
+        --dart-define=APP_VARIANT=tv \
+        --dart-define=APP_PLATFORM=androidTv \
+        --split-per-abi \
+        --tree-shake-icons
+      echo "✓ TV APK created at build/app/outputs/flutter-apk/"
+
+  # Build Mobile Streaming APK (Music + IPTV)
+  build:streaming:
+    description: Build Mobile Streaming APK (<150MB target)
+    run: |
+      cd app
+      flutter build apk --release \
+        --target=lib/main_mobile_streaming.dart \
+        --dart-define=APP_VARIANT=streaming \
+        --dart-define=APP_PLATFORM=mobileStreaming \
+        --split-per-abi \
+        --tree-shake-icons
+      echo "✓ Streaming APK created at build/app/outputs/flutter-apk/"
+
+  # Build Mobile Full APK (all features)
+  build:full:
+    description: Build Mobile Full APK (all features)
+    run: |
+      cd app
+      flutter build apk --release \
+        --target=lib/main.dart \
+        --dart-define=APP_VARIANT=full \
+        --dart-define=APP_PLATFORM=mobileFull \
+        --split-per-abi \
+        --tree-shake-icons
+      echo "✓ Full APK created at build/app/outputs/flutter-apk/"
+
+  # Build all platform variants
+  build:all-platforms:
+    description: Build APKs for all platforms (TV, Streaming, Full)
+    run: |
+      melos run build:tv
+      melos run build:streaming
+      melos run build:full
+      echo "✓ All platform APKs created!"
+
+  # Analyze APK sizes
+  apk:sizes:
+    description: Show APK sizes for all built variants
+    run: |
+      echo "=== APK Sizes ==="
+      ls -lh app/build/app/outputs/flutter-apk/*.apk 2>/dev/null || echo "No APKs found. Run build:all-platforms first."
+

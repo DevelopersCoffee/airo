@@ -170,24 +170,78 @@ run-androidtv: ## Run app on Android TV emulator
 
 # Build Commands
 .PHONY: build-android
-build-android: ## Build Android APK
-	@echo "$(BLUE)Building Android APK...$(NC)"
+build-android: ## Build Android APK (split-per-abi for smaller APKs)
+	@echo "$(BLUE)Building Android APK (split-per-abi)...$(NC)"
+	@cd $(APP_DIR) && flutter build apk --release \
+		--split-per-abi \
+		--tree-shake-icons \
+		--dart-define=APP_VARIANT=full \
+		--dart-define=APP_PLATFORM=mobileFull
+	@echo "$(GREEN)✓ APKs created:$(NC)"
+	@ls -lh $(APP_DIR)/build/app/outputs/flutter-apk/*.apk 2>/dev/null || echo "  Check $(APP_DIR)/build/app/outputs/flutter-apk/"
+
+.PHONY: build-android-fat
+build-android-fat: ## Build Android APK (fat APK with all ABIs - larger size)
+	@echo "$(BLUE)Building Android APK (fat)...$(NC)"
 	@cd $(APP_DIR) && flutter build apk --release
 
 .PHONY: build-android-bundle
 build-android-bundle: ## Build Android App Bundle for Play Store
 	@echo "$(BLUE)Building Android App Bundle...$(NC)"
-	@cd $(APP_DIR) && flutter build appbundle --release
+	@cd $(APP_DIR) && flutter build appbundle --release \
+		--tree-shake-icons \
+		--dart-define=APP_VARIANT=full \
+		--dart-define=APP_PLATFORM=mobileFull
+
+# =============================================================================
+# PLATFORM-SPECIFIC BUILDS (Phase 0.5+ Multi-Platform Strategy)
+# =============================================================================
+
+.PHONY: build-tv
+build-tv: ## Build Android TV APK (IPTV only, <120MB target)
+	@echo "$(BLUE)Building Android TV APK...$(NC)"
+	@cd $(APP_DIR) && flutter build apk --release \
+		--target=lib/main_tv.dart \
+		--dart-define=APP_VARIANT=tv \
+		--dart-define=APP_PLATFORM=androidTv \
+		--split-per-abi \
+		--tree-shake-icons
+	@echo "$(GREEN)✓ TV APK created$(NC)"
+
+.PHONY: build-streaming
+build-streaming: ## Build Mobile Streaming APK (Music + IPTV, <150MB target)
+	@echo "$(BLUE)Building Mobile Streaming APK...$(NC)"
+	@cd $(APP_DIR) && flutter build apk --release \
+		--target=lib/main_mobile_streaming.dart \
+		--dart-define=APP_VARIANT=streaming \
+		--dart-define=APP_PLATFORM=mobileStreaming \
+		--split-per-abi \
+		--tree-shake-icons
+	@echo "$(GREEN)✓ Streaming APK created$(NC)"
+
+.PHONY: build-full
+build-full: ## Build Mobile Full APK (all features)
+	@echo "$(BLUE)Building Mobile Full APK...$(NC)"
+	@cd $(APP_DIR) && flutter build apk --release \
+		--target=lib/main.dart \
+		--dart-define=APP_VARIANT=full \
+		--dart-define=APP_PLATFORM=mobileFull \
+		--split-per-abi \
+		--tree-shake-icons
+	@echo "$(GREEN)✓ Full APK created$(NC)"
 
 .PHONY: build-firetv
-build-firetv: ## Build Fire TV optimized APK (arm64)
+build-firetv: ## Build Fire TV optimized APK (arm64 only)
 	@echo "$(BLUE)Building Fire TV APK...$(NC)"
-	@cd $(APP_DIR) && flutter build apk --release --target-platform android-arm64
+	@cd $(APP_DIR) && flutter build apk --release \
+		--target=lib/main_tv.dart \
+		--dart-define=APP_VARIANT=tv \
+		--dart-define=APP_PLATFORM=androidTv \
+		--target-platform android-arm64 \
+		--tree-shake-icons
 
 .PHONY: build-androidtv
-build-androidtv: ## Build Android TV APK
-	@echo "$(BLUE)Building Android TV APK...$(NC)"
-	@cd $(APP_DIR) && flutter build apk --release --target-platform android-arm64
+build-androidtv: build-tv ## Alias for build-tv
 
 .PHONY: build-ios
 build-ios: ## Build iOS app
