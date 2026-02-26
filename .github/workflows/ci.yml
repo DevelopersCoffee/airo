@@ -173,12 +173,44 @@ jobs:
           name: flutter-coverage
 
   # ============================================
-  # Build Android (Debug + Release APK)
+  # Build Android - Multi-Platform Matrix
+  # ============================================
+  # Builds all platform variants:
+  # - mobile-full: All features (~145MB)
+  # - mobile-streaming: IPTV + Music (<30MB)
+  # - tv: IPTV only (<30MB)
   # ============================================
   build-android:
     runs-on: ubuntu-latest
     needs: [analyze, test-app]
     if: github.event_name == 'push'
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - name: mobile-full
+            target: lib/main.dart
+            variant: full
+            app_platform: mobileFull
+            use_stubs: false
+            size_target_mb: 150
+            description: "Full app with all features"
+          - name: mobile-streaming
+            target: lib/main_mobile_streaming.dart
+            variant: streaming
+            app_platform: mobileStreaming
+            use_stubs: true
+            pubspec: pubspec_streaming.yaml
+            size_target_mb: 50
+            description: "Streaming app (IPTV + Music)"
+          - name: tv
+            target: lib/main_tv.dart
+            variant: tv
+            app_platform: androidTv
+            use_stubs: true
+            pubspec: pubspec_tv.yaml
+            size_target_mb: 50
+            description: "Android TV (IPTV only)"
     steps:
       - uses: actions/checkout@v6
 
@@ -201,8 +233,10 @@ jobs:
           path: |
             ~/.pub-cache
             app/.dart_tool
-          key: pub-${{ runner.os }}-${{ hashFiles('**/pubspec.lock') }}
-          restore-keys: pub-${{ runner.os }}-
+          key: pub-${{ runner.os }}-${{ matrix.platform.name }}-${{ hashFiles('**/pubspec.lock') }}
+          restore-keys: |
+            pub-${{ runner.os }}-${{ matrix.platform.name }}-
+            pub-${{ runner.os }}-
 
       - name: Cache Gradle
         uses: actions/cache@v5
@@ -215,9 +249,6 @@ jobs:
 
       # ===========================================
       # Firebase Configuration Setup
-      # ===========================================
-      # Required for Firebase features in Android builds.
-      # Secret should be base64-encoded google-services.json
       # ===========================================
       - name: Create Firebase Config
         env:
@@ -235,6 +266,18 @@ jobs:
           fi
           echo "✅ Firebase configuration created successfully"
 
+      # ===========================================
+      # Apply Platform-Specific Pubspec (if using stubs)
+      # ===========================================
+      - name: Apply platform-specific pubspec
+        if: matrix.platform.use_stubs
+        run: |
+          cd app
+          echo "📦 Applying ${{ matrix.platform.pubspec }} for ${{ matrix.platform.name }} build..."
+          cp pubspec.yaml pubspec.yaml.backup
+          cp ${{ matrix.platform.pubspec }} pubspec.yaml
+          echo "✅ Platform-specific pubspec applied"
+
       - name: Get dependencies
         run: |
           cd packages/core_domain && flutter pub get
@@ -244,56 +287,112 @@ jobs:
           cd ../core_auth && flutter pub get
           cd ../../app && flutter pub get
 
-      - name: Build APK (Debug)
+      - name: Run code generation
+        if: matrix.platform.name == 'mobile-full'
         run: |
           cd app
-          flutter build apk --debug
+          dart run build_runner build --delete-conflicting-outputs
 
-      - name: Build APK (Release) - Split per ABI
+      - name: Build APK (Release) - ${{ matrix.platform.description }}
         run: |
           cd app
-          # Build separate APKs per ABI for ~66% size reduction
-          # 323MB fat APK → ~110MB per ABI
+          echo "🔨 Building ${{ matrix.platform.name }} APK..."
           flutter build apk --release \
+            --target=${{ matrix.platform.target }} \
+            --dart-define=APP_VARIANT=${{ matrix.platform.variant }} \
+            --dart-define=APP_PLATFORM=${{ matrix.platform.app_platform }} \
             --split-per-abi \
             --tree-shake-icons \
-            --split-debug-info=build/debug-info \
+            --split-debug-info=build/debug-info-${{ matrix.platform.name }} \
             --obfuscate
+          echo "✅ Build complete"
 
-      - name: Upload Debug APK
+      # ===========================================
+      # Verify APK Size Targets
+      # ===========================================
+      - name: Check APK sizes
+        id: apk_sizes
+        run: |
+          cd app/build/app/outputs/flutter-apk
+          echo "## 📱 ${{ matrix.platform.name }} APK Sizes" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| ABI | Size | Target | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----|------|--------|--------|" >> $GITHUB_STEP_SUMMARY
+
+          SIZE_OK=true
+          for apk in app-*-release.apk; do
+            if [ -f "$apk" ]; then
+              SIZE_BYTES=$(stat -c%s "$apk")
+              SIZE_MB=$(echo "scale=2; $SIZE_BYTES / 1048576" | bc)
+              ABI=$(echo "$apk" | sed 's/app-\(.*\)-release.apk/\1/')
+              TARGET=${{ matrix.platform.size_target_mb }}
+
+              if (( $(echo "$SIZE_MB > $TARGET" | bc -l) )); then
+                STATUS="❌ Over target"
+                SIZE_OK=false
+              else
+                STATUS="✅ OK"
+              fi
+
+              echo "| $ABI | ${SIZE_MB}MB | <${TARGET}MB | $STATUS |" >> $GITHUB_STEP_SUMMARY
+              echo "$ABI: ${SIZE_MB}MB"
+            fi
+          done
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "$SIZE_OK" = false ]; then
+            echo "::warning::Some APKs exceed the size target of ${{ matrix.platform.size_target_mb }}MB"
+          fi
+
+      # ===========================================
+      # Restore Original Pubspec (if using stubs)
+      # ===========================================
+      - name: Restore original pubspec
+        if: matrix.platform.use_stubs && always()
+        run: |
+          cd app
+          if [ -f pubspec.yaml.backup ]; then
+            mv pubspec.yaml.backup pubspec.yaml
+            echo "✅ Original pubspec restored"
+          fi
+
+      - name: Upload Release APKs
         uses: actions/upload-artifact@v6
         with:
-          name: android-debug-apk
-          path: app/build/app/outputs/flutter-apk/app-debug.apk
-          retention-days: 7
-
-      - name: Upload Release APKs (arm64-v8a)
-        uses: actions/upload-artifact@v6
-        with:
-          name: android-release-arm64
-          path: app/build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
+          name: android-${{ matrix.platform.name }}-release
+          path: app/build/app/outputs/flutter-apk/app-*-release.apk
           retention-days: 14
 
-      - name: Upload Release APKs (armeabi-v7a)
+      - name: Upload Debug Info
         uses: actions/upload-artifact@v6
         with:
-          name: android-release-armeabi
-          path: app/build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk
-          retention-days: 14
-
-      - name: Upload Release APKs (x86_64)
-        uses: actions/upload-artifact@v6
-        with:
-          name: android-release-x86_64
-          path: app/build/app/outputs/flutter-apk/app-x86_64-release.apk
-          retention-days: 14
-
-      - name: Upload Debug Info (for crash symbolication)
-        uses: actions/upload-artifact@v6
-        with:
-          name: android-debug-info
-          path: app/build/debug-info/
+          name: android-${{ matrix.platform.name }}-debug-info
+          path: app/build/debug-info-${{ matrix.platform.name }}/
           retention-days: 90
+
+  # ============================================
+  # Build Summary Job
+  # ============================================
+  build-summary:
+    runs-on: ubuntu-latest
+    needs: [build-android]
+    if: github.event_name == 'push'
+    steps:
+      - name: Generate Build Summary
+        run: |
+          echo "# 🚀 Multi-Platform Build Complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "All platform variants have been built successfully." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Available Artifacts" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Platform | Description | Target Size |" >> $GITHUB_STEP_SUMMARY
+          echo "|----------|-------------|-------------|" >> $GITHUB_STEP_SUMMARY
+          echo "| mobile-full | All features | <150MB |" >> $GITHUB_STEP_SUMMARY
+          echo "| mobile-streaming | IPTV + Music | <50MB |" >> $GITHUB_STEP_SUMMARY
+          echo "| tv | IPTV only | <50MB |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Download artifacts from the Actions tab." >> $GITHUB_STEP_SUMMARY
 
   # ============================================
   # Build Web
