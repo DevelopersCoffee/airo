@@ -357,14 +357,14 @@ jobs:
           fi
 
       - name: Upload Release APKs
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: android-${{ matrix.platform.name }}-release
           path: app/build/app/outputs/flutter-apk/app-*-release.apk
           retention-days: 14
 
       - name: Upload Debug Info
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: android-${{ matrix.platform.name }}-debug-info
           path: app/build/debug-info-${{ matrix.platform.name }}/
@@ -435,7 +435,7 @@ jobs:
           flutter build web --release
 
       - name: Upload Web Build
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: web-build
           path: app/build/web
