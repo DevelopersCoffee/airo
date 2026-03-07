@@ -9,10 +9,11 @@ import UIKit
   ) -> Bool {
     GeneratedPluginRegistrant.register(with: self)
 
-    // Register GeminiNanoPlugin for memory detection and device info
-    if let registrar = self.registrar(forPlugin: "GeminiNanoPlugin") {
-      GeminiNanoPlugin.register(with: registrar)
-    }
+    // TODO: Register GeminiNanoPlugin for memory detection and device info
+    // Temporarily disabled for SPM migration testing
+    // if let registrar = self.registrar(forPlugin: "GeminiNanoPlugin") {
+    //   GeminiNanoPlugin.register(with: registrar)
+    // }
 
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }

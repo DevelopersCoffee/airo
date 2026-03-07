@@ -13,7 +13,7 @@ dependencies:
     path: ../core_domain
   core_data:
     path: ../core_data
-  meta: 1.16.0
+  meta: 1.17.0
 
 dev_dependencies:
   flutter_test:

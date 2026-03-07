@@ -162,7 +162,7 @@ make emulators      # List available emulators
 #### iOS Development (macOS only)
 - **Xcode**: 15.0 or later
 - **iOS SDK**: 12.0 or later
-- **CocoaPods**: Latest version
+- **Swift Package Manager**: Built into Xcode (no CocoaPods needed)
 
 #### Web Development
 - **Chrome**: Latest version (recommended)

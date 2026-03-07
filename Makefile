@@ -94,7 +94,8 @@ setup-ios: ## Setup iOS development environment (macOS only)
 		if ! command -v xcodebuild &> /dev/null; then \
 			echo "$(RED)Xcode is not installed. Please install Xcode from App Store.$(NC)"; \
 		else \
-			cd $(IOS_DIR) && pod install; \
+			echo "$(GREEN)iOS uses Swift Package Manager (SPM) - no additional setup needed$(NC)"; \
+			echo "$(GREEN)Run 'make build-ios' to build the app$(NC)"; \
 		fi \
 	fi
 
