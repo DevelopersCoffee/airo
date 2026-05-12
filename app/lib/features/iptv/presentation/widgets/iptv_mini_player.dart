@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../application/providers/iptv_providers.dart';
+import '../../../../core/providers/navigation_provider.dart';
+import '../../application/providers/iptv_providers.dart'
+    hide currentNavigationTabProvider;
 import '../../domain/models/streaming_state.dart';
 
 /// Mini player widget for IPTV background playback
@@ -16,9 +18,7 @@ class IPTVMiniPlayer extends ConsumerWidget {
     final streamingState = ref.watch(streamingStateProvider);
     final currentTab = ref.watch(currentNavigationTabProvider);
 
-    // Live tab is at index 2 (0=Coins, 1=Mind, 2=Live, 3=Arena, 4=Quest)
-    const liveTabIndex = 2;
-    final isOnLiveTab = currentTab == liveTabIndex;
+    final isOnStreamTab = currentTab == AppNavigationTab.stream.index;
 
     return streamingState.when(
       data: (state) {
@@ -27,17 +27,17 @@ class IPTVMiniPlayer extends ConsumerWidget {
           return const SizedBox.shrink();
         }
 
-        // Don't show if on Live tab (video player is visible there)
+        // Don't show if on Stream tab (video player is visible there)
         // unless it's an audio-only channel
-        if (isOnLiveTab && !state.currentChannel!.isAudioOnly) {
+        if (isOnStreamTab && !state.currentChannel!.isAudioOnly) {
           return const SizedBox.shrink();
         }
 
         return GestureDetector(
           onTap: () {
-            // Navigate to Live tab and update provider
-            ref.read(currentNavigationTabProvider.notifier).state = 2;
-            context.go('/live');
+            ref.read(currentNavigationTabProvider.notifier).state =
+                AppNavigationTab.stream.index;
+            context.go(AppNavigationTab.stream.path);
           },
           child: Container(
             height: 64,

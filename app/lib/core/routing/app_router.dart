@@ -5,9 +5,12 @@ import '../../features/money/presentation/screens/money_overview_screen.dart';
 import '../../features/bill_split/presentation/screens/bill_split_screen.dart';
 import '../../features/agent_chat/presentation/screens/chat_screen.dart';
 import '../../features/agent_chat/presentation/screens/profile_screen.dart';
-import '../../features/live/presentation/screens/live_screen.dart';
+import '../../features/music/presentation/screens/music_screen.dart';
+import '../../features/iptv/presentation/screens/iptv_screen.dart';
 import '../../features/games/presentation/screens/games_hub_screen.dart';
-import '../../features/reader/presentation/screens/reader_screen.dart';
+import '../../features/quest/presentation/screens/quest_chat_screen.dart';
+import '../../features/quest/presentation/screens/quest_list_screen.dart';
+import '../../features/quest/presentation/screens/quest_upload_screen.dart';
 import '../../features/coins/presentation/screens/coins_dashboard_screen.dart';
 import '../../features/coins/presentation/screens/add_expense_screen.dart';
 import '../../features/coins/presentation/screens/budget_management_screen.dart';
@@ -139,13 +142,23 @@ class AppRouter {
               ),
             ],
           ),
-          // Live branch (Music + IPTV/Stream unified with toggle)
+          // Beats branch
           StatefulShellBranch(
             routes: [
               GoRoute(
-                path: '/live',
-                name: 'Live',
-                builder: (context, state) => const LiveScreen(),
+                path: '/beats',
+                name: 'Beats',
+                builder: (context, state) => const MusicScreenBody(),
+              ),
+            ],
+          ),
+          // Stream branch
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/stream',
+                name: 'Stream',
+                builder: (context, state) => const IPTVScreenBody(),
               ),
             ],
           ),
@@ -159,13 +172,28 @@ class AppRouter {
               ),
             ],
           ),
-          // Tales branch (Reader/Manga)
+          // Quest branch
           StatefulShellBranch(
             routes: [
               GoRoute(
-                path: '/tales',
-                name: 'Tales',
-                builder: (context, state) => const ReaderScreen(),
+                path: '/quest',
+                name: 'Quest',
+                builder: (context, state) => const QuestListScreen(),
+                routes: [
+                  GoRoute(
+                    path: 'new',
+                    name: 'quest_new',
+                    builder: (context, state) => const QuestUploadScreen(),
+                  ),
+                  GoRoute(
+                    path: ':questId',
+                    name: 'quest_detail',
+                    builder: (context, state) {
+                      final questId = state.pathParameters['questId']!;
+                      return QuestChatScreen(questId: questId);
+                    },
+                  ),
+                ],
               ),
             ],
           ),

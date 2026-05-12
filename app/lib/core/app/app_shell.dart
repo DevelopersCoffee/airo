@@ -5,12 +5,13 @@ import 'package:go_router/go_router.dart';
 import '../auth/auth_service.dart';
 import '../auth/google_auth_service.dart';
 import '../providers/bedtime_mode_provider.dart';
+import '../providers/navigation_provider.dart';
 import '../routing/route_names.dart';
 import '../theme/bedtime_theme.dart';
 import '../../features/music/presentation/widgets/mini_player.dart';
 import '../../features/iptv/presentation/widgets/iptv_mini_player.dart';
-import '../../features/iptv/application/providers/iptv_providers.dart';
-import '../../features/live/presentation/screens/live_screen.dart';
+import '../../features/iptv/application/providers/iptv_providers.dart'
+    hide currentNavigationTabProvider;
 
 /// Get initials from a name (e.g., "Uday Chauhan" -> "UC", "Uday" -> "U")
 String _getInitials(String name) {
@@ -20,7 +21,7 @@ String _getInitials(String name) {
   return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
 }
 
-/// App shell with bottom navigation for 5 feature tabs (Live combines Music & TV)
+/// App shell with bottom navigation for the six primary feature tabs.
 class AppShell extends ConsumerWidget {
   const AppShell({super.key, required this.navigationShell});
 
@@ -41,9 +42,8 @@ class AppShell extends ConsumerWidget {
       );
     }
 
-    // Get current page name based on navigation index
-    final pageNames = ['Coins', 'Mind', 'Live', 'Arena', 'Tales'];
-    final currentPageName = pageNames[navigationShell.currentIndex];
+    final navigationTabs = ref.watch(appNavigationTabsProvider);
+    final currentPageName = navigationTabs[navigationShell.currentIndex].label;
 
     return Theme(
       data: isBedtimeMode ? BedtimeTheme.bedtimeTheme : Theme.of(context),
@@ -174,32 +174,13 @@ class AppShell extends ConsumerWidget {
             ref.read(currentNavigationTabProvider.notifier).state = index;
             navigationShell.goBranch(index);
           },
-          destinations: const [
-            NavigationDestination(
-              icon: Icon(Icons.monetization_on_outlined),
-              selectedIcon: Icon(Icons.monetization_on),
-              label: 'Coins',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.smart_toy),
-              selectedIcon: Icon(Icons.smart_toy),
-              label: 'Mind',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.play_circle),
-              selectedIcon: Icon(Icons.play_circle_filled),
-              label: 'Live',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.sports_esports),
-              selectedIcon: Icon(Icons.sports_esports),
-              label: 'Arena',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.menu_book_outlined),
-              selectedIcon: Icon(Icons.menu_book),
-              label: 'Tales',
-            ),
+          destinations: [
+            for (final tab in navigationTabs)
+              NavigationDestination(
+                icon: Icon(tab.icon),
+                selectedIcon: Icon(tab.selectedIcon),
+                label: tab.label,
+              ),
           ],
         ),
         // Sleep timer overlay
@@ -217,9 +198,7 @@ class AppShell extends ConsumerWidget {
   }
 }
 
-/// Context-aware mini players that show based on current mode
-/// - Music mini player: Shows when NOT on Live tab in TV mode
-/// - IPTV mini player: Shows when NOT on Live tab in Music mode
+/// Context-aware mini players that hide on their owning media tabs.
 class _ContextAwareMiniPlayers extends ConsumerWidget {
   final int currentIndex;
   final Widget child;
@@ -231,20 +210,14 @@ class _ContextAwareMiniPlayers extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final liveMode = ref.watch(liveModeProvider);
-    final isOnLiveTab = currentIndex == 2; // Live tab is at index 2
+    final isOnBeatsTab = currentIndex == AppNavigationTab.beats.index;
+    final isOnStreamTab = currentIndex == AppNavigationTab.stream.index;
 
     return Column(
       children: [
         Expanded(child: child),
-        // Show music mini player only when:
-        // - Not on Live tab, OR
-        // - On Live tab but in TV mode (so music plays in background)
-        if (!isOnLiveTab || liveMode == LiveMode.tv) const MiniPlayer(),
-        // Show IPTV mini player only when:
-        // - Not on Live tab, OR
-        // - On Live tab but in Music mode (so TV plays in background)
-        if (!isOnLiveTab || liveMode == LiveMode.music) const IPTVMiniPlayer(),
+        if (!isOnBeatsTab) const MiniPlayer(),
+        if (!isOnStreamTab) const IPTVMiniPlayer(),
       ],
     );
   }
