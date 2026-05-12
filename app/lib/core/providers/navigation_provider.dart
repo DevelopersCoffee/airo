@@ -62,3 +62,21 @@ final currentNavigationTabProvider = StateProvider<int>(
 final appNavigationTabsProvider = Provider<List<AppNavigationTab>>(
   (ref) => AppNavigationTab.values,
 );
+
+class MiniPlayerVisibility {
+  const MiniPlayerVisibility({
+    required this.showMusicPlayer,
+    required this.showIptvPlayer,
+  });
+
+  final bool showMusicPlayer;
+  final bool showIptvPlayer;
+}
+
+final miniPlayerVisibilityProvider =
+    Provider.family<MiniPlayerVisibility, int>((ref, currentIndex) {
+      return MiniPlayerVisibility(
+        showMusicPlayer: currentIndex == AppNavigationTab.beats.index,
+        showIptvPlayer: currentIndex == AppNavigationTab.stream.index,
+      );
+    });

@@ -210,14 +210,13 @@ class _ContextAwareMiniPlayers extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final isOnBeatsTab = currentIndex == AppNavigationTab.beats.index;
-    final isOnStreamTab = currentIndex == AppNavigationTab.stream.index;
+    final visibility = ref.watch(miniPlayerVisibilityProvider(currentIndex));
 
     return Column(
       children: [
         Expanded(child: child),
-        if (!isOnBeatsTab) const MiniPlayer(),
-        if (!isOnStreamTab) const IPTVMiniPlayer(),
+        if (visibility.showMusicPlayer) const MiniPlayer(),
+        if (visibility.showIptvPlayer) const IPTVMiniPlayer(),
       ],
     );
   }
