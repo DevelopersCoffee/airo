@@ -1,5 +1,3 @@
-import '../../domain/entities/shared_expense.dart';
-import '../../domain/entities/settlement.dart';
 import '../../domain/repositories/group_repository.dart';
 import '../../domain/repositories/settlement_repository.dart';
 import '../../domain/services/balance_engine.dart';
@@ -57,7 +55,9 @@ class CalculateBalancesUseCase {
     );
 
     // Simplify debts
-    final simplifiedDebts = _debtSimplifier.fromNetBalances(summary.netBalances);
+    final simplifiedDebts = _debtSimplifier.fromNetBalances(
+      summary.netBalances,
+    );
 
     return (
       data: summary.copyWith(simplifiedDebts: simplifiedDebts),
@@ -90,4 +90,3 @@ class CalculateBalancesUseCase {
     return (data: summaryResult.data!.simplifiedDebts, error: null);
   }
 }
-

@@ -1,6 +1,5 @@
 import '../../domain/entities/transaction.dart';
 import '../../domain/repositories/transaction_repository.dart';
-import '../../domain/errors/coins_errors.dart';
 
 /// Result type for use case operations
 typedef Result<T> = ({T? data, String? error});
@@ -23,31 +22,19 @@ class AddExpenseUseCase {
   Future<Result<Transaction>> execute(AddExpenseParams params) async {
     // Validate required fields
     if (params.description.trim().isEmpty) {
-      return (
-        data: null,
-        error: 'Description is required',
-      );
+      return (data: null, error: 'Description is required');
     }
 
     if (params.amountCents <= 0) {
-      return (
-        data: null,
-        error: 'Amount must be greater than zero',
-      );
+      return (data: null, error: 'Amount must be greater than zero');
     }
 
     if (params.categoryId.isEmpty) {
-      return (
-        data: null,
-        error: 'Category is required',
-      );
+      return (data: null, error: 'Category is required');
     }
 
     if (params.accountId.isEmpty) {
-      return (
-        data: null,
-        error: 'Account is required',
-      );
+      return (data: null, error: 'Account is required');
     }
 
     // Create the transaction entity
@@ -101,4 +88,3 @@ class AddExpenseParams {
     this.tags = const [],
   });
 }
-

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/entities/budget.dart';
-import '../../domain/models/budget_status.dart';
 import '../../application/providers/budget_providers.dart';
 
 /// Budget Management Screen

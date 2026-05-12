@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../domain/entities/group.dart';
 import '../../domain/entities/shared_expense.dart';
 import '../../application/providers/group_providers.dart';
 import '../../application/providers/settlement_providers.dart';
@@ -23,9 +22,6 @@ class GroupDetailScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final groupAsync = ref.watch(groupByIdProvider(groupId));
-    final expensesAsync = ref.watch(groupExpensesProvider(groupId));
-    final membersAsync = ref.watch(groupMembersProvider(groupId));
-
     return groupAsync.when(
       loading: () => Scaffold(
         appBar: AppBar(),
@@ -61,10 +57,7 @@ class GroupDetailScreen extends ConsumerWidget {
                       value: 'settings',
                       child: Text('Group Settings'),
                     ),
-                    const PopupMenuItem(
-                      value: 'export',
-                      child: Text('Export'),
-                    ),
+                    const PopupMenuItem(value: 'export', child: Text('Export')),
                     const PopupMenuItem(
                       value: 'leave',
                       child: Text('Leave Group'),
@@ -183,16 +176,26 @@ class _BalancesTab extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Group Summary', style: Theme.of(context).textTheme.titleMedium),
+                    Text(
+                      'Group Summary',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
                     const SizedBox(height: 8),
-                    Text('Total expenses: ₹${(summary.totalExpensesCents / 100).toStringAsFixed(2)}'),
-                    Text('Total settled: ₹${(summary.totalSettlementsCents / 100).toStringAsFixed(2)}'),
+                    Text(
+                      'Total expenses: ₹${(summary.totalExpensesCents / 100).toStringAsFixed(2)}',
+                    ),
+                    Text(
+                      'Total settled: ₹${(summary.totalSettlementsCents / 100).toStringAsFixed(2)}',
+                    ),
                   ],
                 ),
               ),
             ),
             const SizedBox(height: 16),
-            Text('Simplified Debts', style: Theme.of(context).textTheme.titleMedium),
+            Text(
+              'Simplified Debts',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
             const SizedBox(height: 8),
             // TODO: Show simplified debts list
             const Text('All debts settled!'),
@@ -241,4 +244,3 @@ class _MembersTab extends ConsumerWidget {
     );
   }
 }
-

@@ -42,7 +42,7 @@ class BudgetProgressCard extends StatelessWidget {
                 children: [
                   Expanded(
                     child: Text(
-                      budget.name,
+                      budget.displayName,
                       style: theme.textTheme.titleMedium,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -155,4 +155,3 @@ class _StatusChip extends StatelessWidget {
     );
   }
 }
-

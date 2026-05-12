@@ -48,11 +48,11 @@ class RecordSettlementUseCase {
       status: params.markAsCompleted
           ? SettlementStatus.completed
           : SettlementStatus.pending,
-      paymentMethod: params.paymentMethod,
+      paymentMethod: params.paymentMethod ?? PaymentMethod.cash,
       paymentReference: params.paymentReference,
       notes: params.notes,
+      settlementDate: now,
       createdAt: now,
-      completedAt: params.markAsCompleted ? now : null,
     );
 
     return _repository.create(settlement);
@@ -97,4 +97,3 @@ class RecordSettlementParams {
     this.markAsCompleted = false,
   });
 }
-

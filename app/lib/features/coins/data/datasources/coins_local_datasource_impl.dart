@@ -2,7 +2,7 @@ import 'dart:math';
 
 import 'package:drift/drift.dart';
 
-import '../../../../core/database/app_database.dart';
+import '../../../../core/database/app_database_native.dart';
 import 'coins_local_datasource.dart';
 
 /// Implementation of CoinsLocalDatasource using Drift

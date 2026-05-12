@@ -32,7 +32,7 @@ class _AddSplitExpenseScreenState extends ConsumerState<AddSplitExpenseScreen> {
 
   String? _paidByUserId;
   SplitType _splitType = SplitType.equal;
-  List<String> _selectedParticipantIds = [];
+  final List<String> _selectedParticipantIds = [];
 
   @override
   void dispose() {
@@ -50,10 +50,7 @@ class _AddSplitExpenseScreenState extends ConsumerState<AddSplitExpenseScreen> {
       appBar: AppBar(
         title: const Text('Add Expense'),
         actions: [
-          TextButton(
-            onPressed: _saveExpense,
-            child: const Text('Save'),
-          ),
+          TextButton(onPressed: _saveExpense, child: const Text('Save')),
         ],
       ),
       body: Form(
@@ -67,7 +64,10 @@ class _AddSplitExpenseScreenState extends ConsumerState<AddSplitExpenseScreen> {
               TextFormField(
                 controller: _amountController,
                 keyboardType: TextInputType.number,
-                style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+                style: const TextStyle(
+                  fontSize: 32,
+                  fontWeight: FontWeight.bold,
+                ),
                 decoration: const InputDecoration(
                   labelText: 'Amount',
                   prefixText: '₹ ',
@@ -99,7 +99,8 @@ class _AddSplitExpenseScreenState extends ConsumerState<AddSplitExpenseScreen> {
               const SizedBox(height: 8),
               membersAsync.when(
                 loading: () => const CircularProgressIndicator(),
-                error: (_, __) => const Text('Error loading members'),
+                error: (error, stackTrace) =>
+                    const Text('Error loading members'),
                 data: (members) => Wrap(
                   spacing: 8,
                   children: members.map((member) {
@@ -117,33 +118,45 @@ class _AddSplitExpenseScreenState extends ConsumerState<AddSplitExpenseScreen> {
               const SizedBox(height: 24),
 
               // Split Type
-              Text('Split type', style: Theme.of(context).textTheme.titleMedium),
+              Text(
+                'Split type',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
               const SizedBox(height: 8),
               SegmentedButton<SplitType>(
                 segments: SplitType.values
                     .where((t) => t != SplitType.itemized)
-                    .map((type) => ButtonSegment(
-                          value: type,
-                          label: Text(type.displayName),
-                        ))
+                    .map(
+                      (type) => ButtonSegment(
+                        value: type,
+                        label: Text(type.displayName),
+                      ),
+                    )
                     .toList(),
                 selected: {selectedSplitType},
                 onSelectionChanged: (types) {
-                  ref.read(selectedSplitTypeProvider.notifier).state = types.first;
+                  ref.read(selectedSplitTypeProvider.notifier).state =
+                      types.first;
                   setState(() => _splitType = types.first);
                 },
               ),
               const SizedBox(height: 24),
 
               // Participants
-              Text('Split between', style: Theme.of(context).textTheme.titleMedium),
+              Text(
+                'Split between',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
               const SizedBox(height: 8),
               membersAsync.when(
                 loading: () => const CircularProgressIndicator(),
-                error: (_, __) => const Text('Error loading members'),
+                error: (error, stackTrace) =>
+                    const Text('Error loading members'),
                 data: (members) => Column(
                   children: members.map((member) {
-                    final isSelected = _selectedParticipantIds.contains(member.userId);
+                    final isSelected = _selectedParticipantIds.contains(
+                      member.userId,
+                    );
                     return CheckboxListTile(
                       value: isSelected,
                       onChanged: (selected) {
@@ -167,7 +180,10 @@ class _AddSplitExpenseScreenState extends ConsumerState<AddSplitExpenseScreen> {
 
               // Split Preview
               if (_selectedParticipantIds.isNotEmpty) ...[
-                Text('Split preview', style: Theme.of(context).textTheme.titleMedium),
+                Text(
+                  'Split preview',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
                 const SizedBox(height: 8),
                 _SplitPreviewCard(
                   groupId: widget.groupId,
@@ -192,9 +208,9 @@ class _AddSplitExpenseScreenState extends ConsumerState<AddSplitExpenseScreen> {
   void _saveExpense() {
     if (!_formKey.currentState!.validate()) return;
     if (_paidByUserId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select who paid')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Please select who paid')));
       return;
     }
     if (_selectedParticipantIds.isEmpty) {
@@ -233,12 +249,16 @@ class _SplitPreviewCard extends ConsumerWidget {
       );
     }
 
-    final splits = ref.watch(splitPreviewProvider(SplitPreviewParams(
-      expenseId: 'preview',
-      totalAmountCents: totalAmountCents,
-      splitType: splitType,
-      participantIds: participantIds,
-    )));
+    final splits = ref.watch(
+      splitPreviewProvider(
+        SplitPreviewParams(
+          expenseId: 'preview',
+          totalAmountCents: totalAmountCents,
+          splitType: splitType,
+          participantIds: participantIds,
+        ),
+      ),
+    );
 
     return Card(
       child: Padding(
@@ -248,7 +268,9 @@ class _SplitPreviewCard extends ConsumerWidget {
             return ListTile(
               contentPadding: EdgeInsets.zero,
               title: Text(split.userId),
-              trailing: Text('₹${(split.amountCents / 100).toStringAsFixed(2)}'),
+              trailing: Text(
+                '₹${(split.amountCents / 100).toStringAsFixed(2)}',
+              ),
             );
           }).toList(),
         ),
@@ -256,4 +278,3 @@ class _SplitPreviewCard extends ConsumerWidget {
     );
   }
 }
-

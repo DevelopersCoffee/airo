@@ -1,21 +1,8 @@
-import '../../domain/entities/transaction.dart';
-import '../../domain/entities/group.dart';
-import '../../domain/entities/settlement.dart';
-
 /// Sync status for tracking offline operations
-enum SyncStatus {
-  synced,
-  pending,
-  failed,
-  conflict,
-}
+enum SyncStatus { synced, pending, failed, conflict }
 
 /// Sync operation types
-enum SyncOperation {
-  create,
-  update,
-  delete,
-}
+enum SyncOperation { create, update, delete }
 
 /// Sync queue item
 class SyncQueueItem {
@@ -128,4 +115,3 @@ class CoinsSyncServiceImpl implements CoinsSyncService {
     yield SyncStatus.synced;
   }
 }
-

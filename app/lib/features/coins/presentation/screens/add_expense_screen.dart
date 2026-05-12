@@ -234,6 +234,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
       accountId: _selectedAccountId!,
       transactionDate: _selectedDate,
       notes: _notesController.text.isEmpty ? null : _notesController.text,
+      receiptId: _receiptImagePath,
       tags: [],
       createdAt: DateTime.now(),
       isDeleted: false,

@@ -28,8 +28,9 @@ class SetBudgetUseCase {
       return (data: null, error: 'Budget limit must be greater than zero');
     }
 
-    if (params.alertThresholdPercent < 0 ||
-        params.alertThresholdPercent > 100) {
+    final alertThresholdPercent = params.alertThresholdPercent;
+    if (alertThresholdPercent != null &&
+        (alertThresholdPercent < 0 || alertThresholdPercent > 100)) {
       return (data: null, error: 'Alert threshold must be between 0 and 100');
     }
 
@@ -105,4 +106,3 @@ class SetBudgetParams {
     this.endDate,
   });
 }
-

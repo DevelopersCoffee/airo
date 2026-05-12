@@ -16,7 +16,7 @@ import 'package:flutter/foundation.dart'
     show defaultTargetPlatform, kIsWeb, TargetPlatform;
 
 /// App variant for Firebase configuration selection
-/// Set via --dart-define=APP_VARIANT=<value>
+// Set via --dart-define=APP_VARIANT=<value>
 enum AppVariant {
   full, // io.airo.app - All features
   streaming, // io.airo.streaming - Music + IPTV

@@ -2,7 +2,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/entities/shared_expense.dart';
 import '../../domain/entities/split_entry.dart';
 import '../../domain/services/split_calculator.dart';
-import '../../domain/repositories/group_repository.dart';
 import 'group_providers.dart';
 
 /// Split calculator provider
@@ -18,41 +17,40 @@ final selectedSplitTypeProvider = StateProvider<SplitType>((ref) {
 });
 
 /// Split preview - calculates splits before saving
-final splitPreviewProvider = Provider.family<List<SplitEntry>, SplitPreviewParams>(
-  (ref, params) {
-    final calculator = ref.watch(splitCalculatorProvider);
+final splitPreviewProvider =
+    Provider.family<List<SplitEntry>, SplitPreviewParams>((ref, params) {
+      final calculator = ref.watch(splitCalculatorProvider);
 
-    switch (params.splitType) {
-      case SplitType.equal:
-        return calculator.calculateEqualSplit(
-          sharedExpenseId: params.expenseId,
-          totalAmountCents: params.totalAmountCents,
-          participantIds: params.participantIds,
-        );
-      case SplitType.percentage:
-        return calculator.calculatePercentageSplit(
-          sharedExpenseId: params.expenseId,
-          totalAmountCents: params.totalAmountCents,
-          percentages: params.percentages ?? {},
-        );
-      case SplitType.exact:
-        return calculator.calculateExactSplit(
-          sharedExpenseId: params.expenseId,
-          totalAmountCents: params.totalAmountCents,
-          amounts: params.exactAmounts ?? {},
-        );
-      case SplitType.shares:
-        return calculator.calculateSharesSplit(
-          sharedExpenseId: params.expenseId,
-          totalAmountCents: params.totalAmountCents,
-          shares: params.shares ?? {},
-        );
-      case SplitType.itemized:
-        // TODO: Implement itemized split
-        return [];
-    }
-  },
-);
+      switch (params.splitType) {
+        case SplitType.equal:
+          return calculator.calculateEqualSplit(
+            sharedExpenseId: params.expenseId,
+            totalAmountCents: params.totalAmountCents,
+            participantIds: params.participantIds,
+          );
+        case SplitType.percentage:
+          return calculator.calculatePercentageSplit(
+            sharedExpenseId: params.expenseId,
+            totalAmountCents: params.totalAmountCents,
+            percentages: params.percentages ?? {},
+          );
+        case SplitType.exact:
+          return calculator.calculateExactSplit(
+            sharedExpenseId: params.expenseId,
+            totalAmountCents: params.totalAmountCents,
+            amounts: params.exactAmounts ?? {},
+          );
+        case SplitType.shares:
+          return calculator.calculateSharesSplit(
+            sharedExpenseId: params.expenseId,
+            totalAmountCents: params.totalAmountCents,
+            shares: params.shares ?? {},
+          );
+        case SplitType.itemized:
+          // TODO: Implement itemized split
+          return [];
+      }
+    });
 
 /// Parameters for split preview
 class SplitPreviewParams {
@@ -76,12 +74,14 @@ class SplitPreviewParams {
 }
 
 /// Add shared expense state notifier
-final addSharedExpenseProvider = StateNotifierProvider.autoDispose<
-    AddSharedExpenseNotifier, AsyncValue<SharedExpense?>>(
-  (ref) => AddSharedExpenseNotifier(ref),
-);
+final addSharedExpenseProvider =
+    StateNotifierProvider.autoDispose<
+      AddSharedExpenseNotifier,
+      AsyncValue<SharedExpense?>
+    >((ref) => AddSharedExpenseNotifier(ref));
 
-class AddSharedExpenseNotifier extends StateNotifier<AsyncValue<SharedExpense?>> {
+class AddSharedExpenseNotifier
+    extends StateNotifier<AsyncValue<SharedExpense?>> {
   final Ref _ref;
 
   AddSharedExpenseNotifier(this._ref) : super(const AsyncValue.data(null));
@@ -127,4 +127,3 @@ class AddSharedExpenseNotifier extends StateNotifier<AsyncValue<SharedExpense?>>
     }
   }
 }
-

@@ -26,6 +26,9 @@ class SafeToSpend extends Equatable {
   final int daysRemaining;
   final double percentUsed;
   final BudgetHealth health;
+  final String currencyCode;
+  final bool hasBudget;
+  final String? message;
   final DateTime calculatedAt;
 
   const SafeToSpend({
@@ -37,6 +40,9 @@ class SafeToSpend extends Equatable {
     required this.daysRemaining,
     required this.percentUsed,
     required this.health,
+    this.currencyCode = 'INR',
+    this.hasBudget = true,
+    this.message,
     required this.calculatedAt,
   });
 
@@ -58,6 +64,12 @@ class SafeToSpend extends Equatable {
   /// Get amount remaining for the month
   int get remainingCents => monthlyBudgetCents - spentThisMonthCents;
 
+  /// Backward-compatible UI alias for today's spendable amount.
+  int get dailyAmountCents => amountCents;
+
+  /// Backward-compatible UI alias for remaining monthly budget.
+  int get remainingBudgetCents => remainingCents;
+
   /// Create a copy with updated fields
   SafeToSpend copyWith({
     int? amountCents,
@@ -68,6 +80,9 @@ class SafeToSpend extends Equatable {
     int? daysRemaining,
     double? percentUsed,
     BudgetHealth? health,
+    String? currencyCode,
+    bool? hasBudget,
+    String? message,
     DateTime? calculatedAt,
   }) {
     return SafeToSpend(
@@ -79,21 +94,26 @@ class SafeToSpend extends Equatable {
       daysRemaining: daysRemaining ?? this.daysRemaining,
       percentUsed: percentUsed ?? this.percentUsed,
       health: health ?? this.health,
+      currencyCode: currencyCode ?? this.currencyCode,
+      hasBudget: hasBudget ?? this.hasBudget,
+      message: message ?? this.message,
       calculatedAt: calculatedAt ?? this.calculatedAt,
     );
   }
 
   @override
   List<Object?> get props => [
-        amountCents,
-        dailyLimitCents,
-        spentTodayCents,
-        spentThisMonthCents,
-        monthlyBudgetCents,
-        daysRemaining,
-        percentUsed,
-        health,
-        calculatedAt,
-      ];
+    amountCents,
+    dailyLimitCents,
+    spentTodayCents,
+    spentThisMonthCents,
+    monthlyBudgetCents,
+    daysRemaining,
+    percentUsed,
+    health,
+    currencyCode,
+    hasBudget,
+    message,
+    calculatedAt,
+  ];
 }
-
