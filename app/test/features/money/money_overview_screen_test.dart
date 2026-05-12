@@ -87,5 +87,23 @@ void main() {
       expect(find.textContaining('Good morning'), findsNothing);
       expect(find.textContaining('music', findRichText: true), findsNothing);
     });
+
+    testWidgets('labels the primary FAB for the expense form it opens', (
+      tester,
+    ) async {
+      await tester.pumpWidget(buildScreen());
+      await tester.pump();
+
+      final fab = find.byType(FloatingActionButton);
+
+      expect(fab, findsOneWidget);
+      expect(find.byTooltip('Add Expense'), findsOneWidget);
+      expect(
+        find.descendant(of: fab, matching: find.text('Add Expense')),
+        findsOneWidget,
+      );
+      expect(find.byTooltip('Add Money'), findsNothing);
+      expect(find.text('Add Money'), findsNothing);
+    });
   });
 }

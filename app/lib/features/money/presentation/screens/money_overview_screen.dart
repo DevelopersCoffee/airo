@@ -439,9 +439,9 @@ class MoneyOverviewScreen extends ConsumerWidget {
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _navigateToAddExpense(context),
-        tooltip: 'Add Money',
+        tooltip: 'Add Expense',
         icon: const Icon(Icons.add),
-        label: const Text('Add Money'),
+        label: const Text('Add Expense'),
       ),
     );
   }
