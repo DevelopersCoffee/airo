@@ -4,6 +4,7 @@ import '../../domain/entities/group.dart';
 import '../../domain/entities/group_member.dart';
 import '../../domain/entities/shared_expense.dart';
 import '../../domain/repositories/group_repository.dart';
+import '../use_cases/create_group_use_case.dart';
 import '../../data/repositories/group_repository_impl.dart';
 import '../../data/mappers/group_mapper.dart';
 import 'expense_providers.dart';
@@ -67,6 +68,10 @@ final selectedGroupProvider = Provider<AsyncValue<Group?>>((ref) {
   return ref.watch(groupByIdProvider(groupId));
 });
 
+final createGroupUseCaseProvider = Provider<CreateGroupUseCase>((ref) {
+  return CreateGroupUseCase(ref.watch(groupRepositoryProvider));
+});
+
 /// Create group state notifier
 final createGroupProvider =
     StateNotifierProvider.autoDispose<CreateGroupNotifier, AsyncValue<Group?>>(
@@ -83,6 +88,33 @@ class CreateGroupNotifier extends StateNotifier<AsyncValue<Group?>> {
     try {
       final repo = _ref.read(groupRepositoryProvider);
       final result = await repo.create(group);
+      if (result.error != null) {
+        state = AsyncValue.error(result.error!, StackTrace.current);
+      } else {
+        state = AsyncValue.data(result.data);
+      }
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+    }
+  }
+
+  Future<void> createGroupFromInput({
+    required String name,
+    String? description,
+    required String creatorId,
+    String creatorDisplayName = 'You',
+  }) async {
+    state = const AsyncValue.loading();
+    try {
+      final useCase = _ref.read(createGroupUseCaseProvider);
+      final result = await useCase.execute(
+        CreateGroupParams(
+          name: name,
+          description: description,
+          creatorId: creatorId,
+          creatorDisplayName: creatorDisplayName,
+        ),
+      );
       if (result.error != null) {
         state = AsyncValue.error(result.error!, StackTrace.current);
       } else {

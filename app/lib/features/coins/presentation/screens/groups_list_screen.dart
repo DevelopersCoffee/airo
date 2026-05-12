@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/entities/group.dart';
 import '../../application/providers/group_providers.dart';
+import 'group_detail_screen.dart';
 
 /// Groups List Screen
 ///
@@ -56,7 +57,10 @@ class GroupsListScreen extends ConsumerWidget {
         ),
         data: (groups) {
           if (groups.isEmpty) {
-            return const _EmptyGroupsView();
+            return _EmptyGroupsView(
+              onCreateGroup: () => _showCreateGroupDialog(context, ref),
+              onJoinGroup: () => _showJoinGroupDialog(context),
+            );
           }
           return ListView.builder(
             padding: const EdgeInsets.all(16),
@@ -68,13 +72,99 @@ class GroupsListScreen extends ConsumerWidget {
         },
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          // TODO: Navigate to create group screen
-        },
+        onPressed: () => _showCreateGroupDialog(context, ref),
         icon: const Icon(Icons.add),
         label: const Text('New Group'),
       ),
     );
+  }
+
+  void _showCreateGroupDialog(BuildContext context, WidgetRef ref) {
+    final nameController = TextEditingController();
+    final descriptionController = TextEditingController();
+
+    final dialog = showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Create Group'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: nameController,
+              autofocus: true,
+              decoration: const InputDecoration(
+                labelText: 'Group name',
+                hintText: 'Roommates, Goa trip, Office lunch',
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: descriptionController,
+              decoration: const InputDecoration(
+                labelText: 'Description',
+                hintText: 'Optional',
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              final name = nameController.text.trim();
+              if (name.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Group name is required')),
+                );
+                return;
+              }
+
+              await ref
+                  .read(createGroupProvider.notifier)
+                  .createGroupFromInput(
+                    name: name,
+                    description: descriptionController.text.trim().isEmpty
+                        ? null
+                        : descriptionController.text.trim(),
+                    creatorId: 'local_user',
+                    creatorDisplayName: 'You',
+                  );
+
+              final created = ref.read(createGroupProvider);
+              if (!context.mounted || !dialogContext.mounted) return;
+
+              created.whenOrNull(
+                data: (group) {
+                  Navigator.pop(dialogContext);
+                  if (group != null) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => GroupDetailScreen(groupId: group.id),
+                      ),
+                    );
+                  }
+                },
+                error: (error, _) {
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(SnackBar(content: Text(error.toString())));
+                },
+              );
+            },
+            child: const Text('Create'),
+          ),
+        ],
+      ),
+    );
+    dialog.whenComplete(() {
+      nameController.dispose();
+      descriptionController.dispose();
+    });
   }
 
   void _showJoinGroupDialog(BuildContext context) {
@@ -111,7 +201,13 @@ class GroupsListScreen extends ConsumerWidget {
 }
 
 class _EmptyGroupsView extends StatelessWidget {
-  const _EmptyGroupsView();
+  final VoidCallback onCreateGroup;
+  final VoidCallback onJoinGroup;
+
+  const _EmptyGroupsView({
+    required this.onCreateGroup,
+    required this.onJoinGroup,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -139,17 +235,13 @@ class _EmptyGroupsView extends StatelessWidget {
             ),
             const SizedBox(height: 24),
             FilledButton.icon(
-              onPressed: () {
-                // TODO: Navigate to create group
-              },
+              onPressed: onCreateGroup,
               icon: const Icon(Icons.add),
               label: const Text('Create Group'),
             ),
             const SizedBox(height: 12),
             OutlinedButton.icon(
-              onPressed: () {
-                // TODO: Join group with code
-              },
+              onPressed: onJoinGroup,
               icon: const Icon(Icons.link),
               label: const Text('Join with Code'),
             ),
@@ -170,7 +262,12 @@ class _GroupCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 12),
       child: InkWell(
         onTap: () {
-          // TODO: Navigate to group detail
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => GroupDetailScreen(groupId: group.id),
+            ),
+          );
         },
         borderRadius: BorderRadius.circular(12),
         child: Padding(
@@ -216,9 +313,9 @@ class _GroupCard extends StatelessWidget {
                 children: [
                   Text(
                     '₹0',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          color: Colors.green,
-                        ),
+                    style: Theme.of(
+                      context,
+                    ).textTheme.titleMedium?.copyWith(color: Colors.green),
                   ),
                   Text(
                     'you are owed',
@@ -235,4 +332,3 @@ class _GroupCard extends StatelessWidget {
     );
   }
 }
-

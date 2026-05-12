@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/entities/shared_expense.dart';
 import '../../domain/entities/split_entry.dart';
 import '../../domain/services/split_calculator.dart';
+import '../use_cases/add_split_use_case.dart';
 import 'group_providers.dart';
 
 /// Split calculator provider
@@ -14,6 +15,13 @@ final splitCalculatorProvider = Provider<SplitCalculator>((ref) {
 /// Currently selected split type
 final selectedSplitTypeProvider = StateProvider<SplitType>((ref) {
   return SplitType.equal;
+});
+
+final addSplitUseCaseProvider = Provider<AddSplitUseCase>((ref) {
+  return AddSplitUseCase(
+    ref.watch(groupRepositoryProvider),
+    ref.watch(splitCalculatorProvider),
+  );
 });
 
 /// Split preview - calculates splits before saving

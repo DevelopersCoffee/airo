@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/entities/shared_expense.dart';
 import '../../application/providers/group_providers.dart';
 import '../../application/providers/settlement_providers.dart';
+import 'add_split_expense_screen.dart';
 
 /// Group Detail Screen
 ///
@@ -90,7 +91,12 @@ class GroupDetailScreen extends ConsumerWidget {
             ),
             floatingActionButton: FloatingActionButton.extended(
               onPressed: () {
-                // TODO: Navigate to add shared expense
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => AddSplitExpenseScreen(groupId: groupId),
+                  ),
+                );
               },
               icon: const Icon(Icons.add),
               label: const Text('Add Expense'),

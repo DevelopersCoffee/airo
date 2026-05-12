@@ -33,10 +33,12 @@ class CreateGroupUseCase {
 
     final now = DateTime.now();
 
+    final groupId = _generateGroupId();
+
     // Create creator as admin member
     final creatorMember = GroupMember(
       id: _generateMemberId(),
-      groupId: '', // Will be set after group creation
+      groupId: groupId,
       userId: params.creatorId,
       displayName: params.creatorDisplayName ?? 'You',
       role: MemberRole.admin,
@@ -46,19 +48,29 @@ class CreateGroupUseCase {
 
     // Create the group
     final group = Group(
-      id: _generateGroupId(),
+      id: groupId,
       name: params.name.trim(),
       description: params.description,
       iconUrl: params.iconUrl,
       defaultCurrencyCode: params.defaultCurrencyCode,
-      members: [creatorMember.copyWith(groupId: _generateGroupId())],
+      members: [creatorMember],
       settings: params.settings ?? const GroupSettings(),
       creatorId: params.creatorId,
       createdAt: now,
       isArchived: false,
     );
 
-    return _repository.create(group);
+    final groupResult = await _repository.create(group);
+    if (groupResult.error != null) {
+      return groupResult;
+    }
+
+    final memberResult = await _repository.addMember(creatorMember);
+    if (memberResult.error != null) {
+      return (data: null, error: memberResult.error);
+    }
+
+    return (data: groupResult.data, error: null);
   }
 
   String _generateGroupId() {
@@ -90,4 +102,3 @@ class CreateGroupParams {
     this.settings,
   });
 }
-

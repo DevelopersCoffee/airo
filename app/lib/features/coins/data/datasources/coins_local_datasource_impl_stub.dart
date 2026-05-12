@@ -201,6 +201,26 @@ class CoinsLocalDatasourceImpl implements CoinsLocalDatasource {
   Stream<List<GroupMemberEntity>> watchGroupMembers(String groupId) =>
       Stream.error(_unsupported());
 
+  @override
+  Future<List<SharedExpenseEntity>> getSharedExpensesByGroup(String groupId) =>
+      _unsupported();
+
+  @override
+  Future<void> insertSharedExpense(SharedExpenseEntity entity) =>
+      _unsupported();
+
+  @override
+  Future<void> updateSharedExpense(SharedExpenseEntity entity) =>
+      _unsupported();
+
+  @override
+  Future<void> softDeleteSharedExpense(String id) => _unsupported();
+
+  @override
+  Stream<List<SharedExpenseEntity>> watchSharedExpensesByGroup(
+    String groupId,
+  ) => Stream.error(_unsupported());
+
   // Settlement Operations
   @override
   Future<SettlementEntity?> getSettlementById(String id) => _unsupported();

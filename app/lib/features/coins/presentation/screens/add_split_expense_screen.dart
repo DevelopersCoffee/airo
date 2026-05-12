@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/entities/split_entry.dart';
 import '../../application/providers/split_providers.dart';
 import '../../application/providers/group_providers.dart';
+import '../../application/use_cases/add_split_use_case.dart';
 
 /// Add Split Expense Screen
 ///
@@ -33,6 +34,7 @@ class _AddSplitExpenseScreenState extends ConsumerState<AddSplitExpenseScreen> {
   String? _paidByUserId;
   SplitType _splitType = SplitType.equal;
   final List<String> _selectedParticipantIds = [];
+  bool _isSaving = false;
 
   @override
   void dispose() {
@@ -50,7 +52,10 @@ class _AddSplitExpenseScreenState extends ConsumerState<AddSplitExpenseScreen> {
       appBar: AppBar(
         title: const Text('Add Expense'),
         actions: [
-          TextButton(onPressed: _saveExpense, child: const Text('Save')),
+          TextButton(
+            onPressed: _isSaving ? null : _saveExpense,
+            child: _isSaving ? const Text('Saving...') : const Text('Save'),
+          ),
         ],
       ),
       body: Form(
@@ -205,7 +210,7 @@ class _AddSplitExpenseScreenState extends ConsumerState<AddSplitExpenseScreen> {
     return (amount * 100).round();
   }
 
-  void _saveExpense() {
+  Future<void> _saveExpense() async {
     if (!_formKey.currentState!.validate()) return;
     if (_paidByUserId == null) {
       ScaffoldMessenger.of(
@@ -220,7 +225,31 @@ class _AddSplitExpenseScreenState extends ConsumerState<AddSplitExpenseScreen> {
       return;
     }
 
-    // TODO: Create and save the shared expense
+    setState(() => _isSaving = true);
+    final result = await ref
+        .read(addSplitUseCaseProvider)
+        .execute(
+          AddSplitParams(
+            groupId: widget.groupId,
+            description: _descriptionController.text,
+            totalAmountCents: _parseAmount(),
+            paidByUserId: _paidByUserId!,
+            splitType: _splitType,
+            participantIds: List.unmodifiable(_selectedParticipantIds),
+          ),
+        );
+
+    if (!mounted) return;
+    setState(() => _isSaving = false);
+
+    if (result.error != null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(result.error!)));
+      return;
+    }
+
+    ref.invalidate(groupExpensesProvider(widget.groupId));
     Navigator.pop(context);
   }
 }
