@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/utils/locale_settings.dart';
 import '../../domain/models/safe_to_spend.dart';
 
 /// Safe to Spend Card Widget
@@ -7,19 +9,16 @@ import '../../domain/models/safe_to_spend.dart';
 /// Displays the amount prominently with supporting info.
 ///
 /// Phase: 1 (Foundation)
-class SafeToSpendCard extends StatelessWidget {
+class SafeToSpendCard extends ConsumerWidget {
   final SafeToSpend? safeToSpend;
   final VoidCallback? onTap;
 
-  const SafeToSpendCard({
-    super.key,
-    this.safeToSpend,
-    this.onTap,
-  });
+  const SafeToSpendCard({super.key, this.safeToSpend, this.onTap});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final formatter = ref.watch(currencyFormatterProvider);
     final amount = safeToSpend?.dailyAmountCents ?? 0;
     final isNegative = amount < 0;
 
@@ -38,7 +37,10 @@ class SafeToSpendCard extends StatelessWidget {
               end: Alignment.bottomRight,
               colors: isNegative
                   ? [Colors.red.shade700, Colors.red.shade900]
-                  : [theme.colorScheme.primary, theme.colorScheme.primaryContainer],
+                  : [
+                      theme.colorScheme.primary,
+                      theme.colorScheme.primaryContainer,
+                    ],
             ),
           ),
           child: Column(
@@ -55,7 +57,7 @@ class SafeToSpendCard extends StatelessWidget {
 
               // Amount
               Text(
-                '₹${(amount.abs() / 100).toStringAsFixed(0)}',
+                formatter.formatCents(amount.abs()),
                 style: theme.textTheme.displayMedium?.copyWith(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
@@ -65,14 +67,20 @@ class SafeToSpendCard extends StatelessWidget {
               if (isNegative) ...[
                 const SizedBox(height: 8),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: const Text(
                     'Over budget!',
-                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ),
               ],
@@ -86,7 +94,9 @@ class SafeToSpendCard extends StatelessWidget {
                   children: [
                     _InfoItem(
                       label: 'Remaining',
-                      value: '₹${(safeToSpend!.remainingBudgetCents / 100).toStringAsFixed(0)}',
+                      value: formatter.formatCents(
+                        safeToSpend!.remainingBudgetCents,
+                      ),
                     ),
                     const SizedBox(width: 24),
                     _InfoItem(
@@ -134,4 +144,3 @@ class _InfoItem extends StatelessWidget {
     );
   }
 }
-

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/utils/locale_settings.dart';
 import '../../application/services/coins_platform_support.dart';
 import '../../domain/entities/group.dart';
 import '../../application/providers/group_providers.dart';
@@ -277,12 +278,13 @@ class _EmptyGroupsView extends StatelessWidget {
   }
 }
 
-class _GroupCard extends StatelessWidget {
+class _GroupCard extends ConsumerWidget {
   final Group group;
   const _GroupCard({required this.group});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final formatter = ref.watch(currencyFormatterProvider);
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: InkWell(
@@ -337,7 +339,7 @@ class _GroupCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
-                    '₹0',
+                    formatter.formatCents(0),
                     style: Theme.of(
                       context,
                     ).textTheme.titleMedium?.copyWith(color: Colors.green),

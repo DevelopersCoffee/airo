@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/utils/locale_settings.dart';
 import '../../domain/entities/budget.dart';
 import '../../domain/models/budget_status.dart';
 
@@ -8,7 +10,7 @@ import '../../domain/models/budget_status.dart';
 /// Shows spent vs limit with color-coded status.
 ///
 /// Phase: 1 (Foundation)
-class BudgetProgressCard extends StatelessWidget {
+class BudgetProgressCard extends ConsumerWidget {
   final Budget budget;
   final BudgetStatus? status;
   final VoidCallback? onTap;
@@ -21,8 +23,9 @@ class BudgetProgressCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final formatter = ref.watch(currencyFormatterProvider);
     final percentUsed = status?.percentUsed ?? 0.0;
     final spentCents = status?.spentCents ?? 0;
 
@@ -72,11 +75,11 @@ class BudgetProgressCard extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    '₹${(spentCents / 100).toStringAsFixed(0)} spent',
+                    '${formatter.formatCents(spentCents)} spent',
                     style: theme.textTheme.bodySmall,
                   ),
                   Text(
-                    '₹${(budget.limitCents / 100).toStringAsFixed(0)} limit',
+                    '${formatter.formatCents(budget.limitCents)} limit',
                     style: theme.textTheme.bodySmall,
                   ),
                 ],

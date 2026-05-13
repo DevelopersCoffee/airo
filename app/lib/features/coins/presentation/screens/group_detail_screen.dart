@@ -206,12 +206,13 @@ class _ExpensesTab extends ConsumerWidget {
   }
 }
 
-class _ExpenseListTile extends StatelessWidget {
+class _ExpenseListTile extends ConsumerWidget {
   final SharedExpense expense;
   const _ExpenseListTile({required this.expense});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final formatter = ref.watch(currencyFormatterProvider);
     return ListTile(
       leading: CircleAvatar(
         child: Text(expense.description.substring(0, 1).toUpperCase()),
@@ -219,7 +220,7 @@ class _ExpenseListTile extends StatelessWidget {
       title: Text(expense.description),
       subtitle: Text('Paid by ${expense.paidByUserId}'),
       trailing: Text(
-        '₹${(expense.totalAmountCents / 100).toStringAsFixed(2)}',
+        formatter.formatCents(expense.totalAmountCents),
         style: Theme.of(context).textTheme.titleMedium,
       ),
       onTap: () {
@@ -258,10 +259,10 @@ class _BalancesTab extends ConsumerWidget {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Total expenses: ₹${(summary.totalExpensesCents / 100).toStringAsFixed(2)}',
+                      'Total expenses: ${formatter.formatCents(summary.totalExpensesCents)}',
                     ),
                     Text(
-                      'Total settled: ₹${(summary.totalSettlementsCents / 100).toStringAsFixed(2)}',
+                      'Total settled: ${formatter.formatCents(summary.totalSettlementsCents)}',
                     ),
                   ],
                 ),

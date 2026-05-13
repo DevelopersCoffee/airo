@@ -270,6 +270,7 @@ class _SplitPreviewCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final formatter = ref.watch(currencyFormatterProvider);
     if (totalAmountCents <= 0) {
       return const Card(
         child: Padding(
@@ -298,9 +299,7 @@ class _SplitPreviewCard extends ConsumerWidget {
             return ListTile(
               contentPadding: EdgeInsets.zero,
               title: Text(split.userId),
-              trailing: Text(
-                '₹${(split.amountCents / 100).toStringAsFixed(2)}',
-              ),
+              trailing: Text(formatter.formatCents(split.amountCents)),
             );
           }).toList(),
         ),

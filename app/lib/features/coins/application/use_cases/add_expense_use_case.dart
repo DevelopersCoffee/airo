@@ -37,12 +37,16 @@ class AddExpenseUseCase {
       return (data: null, error: 'Account is required');
     }
 
+    final signedAmountCents = params.type == TransactionType.expense
+        ? -params.amountCents.abs()
+        : params.amountCents.abs();
+
     // Create the transaction entity
     final now = DateTime.now();
     final transaction = Transaction(
       id: _generateId(),
       description: params.description.trim(),
-      amountCents: params.amountCents,
+      amountCents: signedAmountCents,
       type: params.type,
       categoryId: params.categoryId,
       accountId: params.accountId,

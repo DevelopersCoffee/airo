@@ -49,4 +49,32 @@ void main() {
     expect(find.text('2 groups'), findsOneWidget);
     expect(find.text('1 pending settlement'), findsOneWidget);
   });
+
+  testWidgets('opens add expense from the dashboard add action', (
+    tester,
+  ) async {
+    var openedAddExpense = false;
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          dashboardDataProvider.overrideWith(
+            (ref) async => const DashboardData(),
+          ),
+        ],
+        child: MaterialApp(
+          home: CoinsDashboardScreen(
+            onOpenAddExpense: () => openedAddExpense = true,
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    final addAction = tester.widget<FloatingActionButton>(
+      find.byType(FloatingActionButton),
+    );
+    addAction.onPressed!();
+
+    expect(openedAddExpense, isTrue);
+  });
 }

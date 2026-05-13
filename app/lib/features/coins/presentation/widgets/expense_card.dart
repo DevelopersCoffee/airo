@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/utils/locale_settings.dart';
 import '../../domain/entities/transaction.dart';
 
 /// Expense Card Widget
@@ -7,7 +9,7 @@ import '../../domain/entities/transaction.dart';
 /// Shows amount, description, category, and date.
 ///
 /// Phase: 1 (Foundation)
-class ExpenseCard extends StatelessWidget {
+class ExpenseCard extends ConsumerWidget {
   final Transaction transaction;
   final VoidCallback? onTap;
   final VoidCallback? onLongPress;
@@ -20,9 +22,10 @@ class ExpenseCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final isExpense = transaction.type == TransactionType.expense;
+    final formatter = ref.watch(currencyFormatterProvider);
 
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
@@ -70,7 +73,7 @@ class ExpenseCard extends StatelessWidget {
 
               // Amount
               Text(
-                '${isExpense ? '-' : '+'}₹${transaction.amount.toStringAsFixed(2)}',
+                formatter.formatCentsWithSign(transaction.amountCents),
                 style: theme.textTheme.titleMedium?.copyWith(
                   color: isExpense ? Colors.red : Colors.green,
                   fontWeight: FontWeight.bold,
@@ -98,4 +101,3 @@ class ExpenseCard extends StatelessWidget {
     }
   }
 }
-

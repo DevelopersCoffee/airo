@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/utils/locale_settings.dart';
 import '../../application/providers/dashboard_providers.dart';
+import 'add_expense_screen.dart';
+import 'groups_list_screen.dart';
 
 /// Coins Dashboard Screen
 ///
@@ -15,7 +17,9 @@ import '../../application/providers/dashboard_providers.dart';
 /// Phase: 1 (Foundation)
 /// See: docs/features/coins/UI_WIREFRAMES.md (Screen 1)
 class CoinsDashboardScreen extends ConsumerWidget {
-  const CoinsDashboardScreen({super.key});
+  final VoidCallback? onOpenAddExpense;
+
+  const CoinsDashboardScreen({super.key, this.onOpenAddExpense});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -70,7 +74,7 @@ class CoinsDashboardScreen extends ConsumerWidget {
                   const SizedBox(height: 16),
 
                   // Quick Actions
-                  _QuickActionsRow(),
+                  const _QuickActionsRow(),
                   const SizedBox(height: 24),
 
                   // Today's Summary
@@ -89,14 +93,25 @@ class CoinsDashboardScreen extends ConsumerWidget {
           ),
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          // TODO: Navigate to add expense screen
-        },
-        icon: const Icon(Icons.add),
-        label: const Text('Add Expense'),
+      floatingActionButton: Builder(
+        builder: (buttonContext) => FloatingActionButton.extended(
+          onPressed: () => _openAddExpense(buttonContext),
+          icon: const Icon(Icons.add),
+          label: const Text('Add Expense'),
+        ),
       ),
     );
+  }
+
+  void _openAddExpense(BuildContext context) {
+    final override = onOpenAddExpense;
+    if (override != null) {
+      override();
+      return;
+    }
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const AddExpenseScreen()));
   }
 }
 
@@ -139,16 +154,29 @@ class _SafeToSpendCard extends ConsumerWidget {
 }
 
 class _QuickActionsRow extends StatelessWidget {
+  const _QuickActionsRow();
+
   @override
   Widget build(BuildContext context) {
-    // TODO: Implement quick actions (Add, Split, Transfer, Scan)
-    return const Row(
+    return Row(
       mainAxisAlignment: MainAxisAlignment.spaceAround,
       children: [
-        _QuickActionButton(icon: Icons.add, label: 'Add'),
-        _QuickActionButton(icon: Icons.call_split, label: 'Split'),
-        _QuickActionButton(icon: Icons.swap_horiz, label: 'Transfer'),
-        _QuickActionButton(icon: Icons.camera_alt, label: 'Scan'),
+        _QuickActionButton(
+          icon: Icons.add,
+          label: 'Add',
+          onTap: () => Navigator.of(
+            context,
+          ).push(MaterialPageRoute(builder: (_) => const AddExpenseScreen())),
+        ),
+        _QuickActionButton(
+          icon: Icons.call_split,
+          label: 'Split',
+          onTap: () => Navigator.of(
+            context,
+          ).push(MaterialPageRoute(builder: (_) => const GroupsListScreen())),
+        ),
+        const _QuickActionButton(icon: Icons.swap_horiz, label: 'Transfer'),
+        const _QuickActionButton(icon: Icons.camera_alt, label: 'Scan'),
       ],
     );
   }
@@ -157,16 +185,28 @@ class _QuickActionsRow extends StatelessWidget {
 class _QuickActionButton extends StatelessWidget {
   final IconData icon;
   final String label;
-  const _QuickActionButton({required this.icon, required this.label});
+  final VoidCallback? onTap;
+  const _QuickActionButton({
+    required this.icon,
+    required this.label,
+    this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        CircleAvatar(child: Icon(icon)),
-        const SizedBox(height: 4),
-        Text(label, style: const TextStyle(fontSize: 12)),
-      ],
+    return InkWell(
+      borderRadius: BorderRadius.circular(36),
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+        child: Column(
+          children: [
+            CircleAvatar(child: Icon(icon)),
+            const SizedBox(height: 4),
+            Text(label, style: const TextStyle(fontSize: 12)),
+          ],
+        ),
+      ),
     );
   }
 }

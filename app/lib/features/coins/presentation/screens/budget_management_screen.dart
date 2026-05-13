@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/utils/locale_settings.dart';
 import '../../domain/entities/budget.dart';
 import '../../application/providers/budget_providers.dart';
 
@@ -114,12 +115,13 @@ class _EmptyBudgetsView extends StatelessWidget {
   }
 }
 
-class _BudgetCard extends StatelessWidget {
+class _BudgetCard extends ConsumerWidget {
   final Budget budget;
   const _BudgetCard({required this.budget});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final formatter = ref.watch(currencyFormatterProvider);
     // TODO: Get actual budget status from provider
     const percentUsed = 0.6; // Placeholder
 
@@ -177,11 +179,11 @@ class _BudgetCard extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    '₹${(budget.limitCents * percentUsed / 100).toStringAsFixed(0)} spent',
+                    '${formatter.formatCents((budget.limitCents * percentUsed).round())} spent',
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                   Text(
-                    '₹${(budget.limitCents / 100).toStringAsFixed(0)} limit',
+                    '${formatter.formatCents(budget.limitCents)} limit',
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                 ],
