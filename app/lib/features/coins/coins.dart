@@ -68,6 +68,7 @@ export 'application/providers/split_providers.dart';
 
 // Application - Use Cases
 export 'application/use_cases/add_expense_use_case.dart' hide Result;
+export 'application/use_cases/add_group_member_use_case.dart' hide Result;
 export 'application/use_cases/add_split_use_case.dart' hide Result;
 export 'application/use_cases/calculate_balances_use_case.dart' hide Result;
 export 'application/use_cases/calculate_safe_to_spend_use_case.dart'
@@ -80,6 +81,7 @@ export 'application/use_cases/update_expense_use_case.dart' hide Result;
 
 // Application - Services
 export 'application/services/coins_notification_service.dart';
+export 'application/services/coins_platform_support.dart';
 export 'application/services/coins_sync_service.dart';
 
 // Data - Repositories

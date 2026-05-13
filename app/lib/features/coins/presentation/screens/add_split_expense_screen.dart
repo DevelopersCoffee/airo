@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/utils/locale_settings.dart';
 import '../../domain/entities/split_entry.dart';
 import '../../application/providers/split_providers.dart';
 import '../../application/providers/group_providers.dart';
@@ -46,7 +47,7 @@ class _AddSplitExpenseScreenState extends ConsumerState<AddSplitExpenseScreen> {
   @override
   Widget build(BuildContext context) {
     final membersAsync = ref.watch(groupMembersProvider(widget.groupId));
-    final selectedSplitType = ref.watch(selectedSplitTypeProvider);
+    final currencyFormatter = ref.watch(currencyFormatterProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -75,9 +76,8 @@ class _AddSplitExpenseScreenState extends ConsumerState<AddSplitExpenseScreen> {
                 ),
                 decoration: const InputDecoration(
                   labelText: 'Amount',
-                  prefixText: '₹ ',
                   hintText: '0.00',
-                ),
+                ).copyWith(prefixText: '${currencyFormatter.currency.symbol} '),
                 validator: (value) {
                   if (value == null || value.isEmpty) return 'Required';
                   return null;
@@ -130,7 +130,7 @@ class _AddSplitExpenseScreenState extends ConsumerState<AddSplitExpenseScreen> {
               const SizedBox(height: 8),
               SegmentedButton<SplitType>(
                 segments: SplitType.values
-                    .where((t) => t != SplitType.itemized)
+                    .where((t) => t == SplitType.equal)
                     .map(
                       (type) => ButtonSegment(
                         value: type,
@@ -138,7 +138,7 @@ class _AddSplitExpenseScreenState extends ConsumerState<AddSplitExpenseScreen> {
                       ),
                     )
                     .toList(),
-                selected: {selectedSplitType},
+                selected: {_splitType},
                 onSelectionChanged: (types) {
                   ref.read(selectedSplitTypeProvider.notifier).state =
                       types.first;
@@ -233,6 +233,7 @@ class _AddSplitExpenseScreenState extends ConsumerState<AddSplitExpenseScreen> {
             groupId: widget.groupId,
             description: _descriptionController.text,
             totalAmountCents: _parseAmount(),
+            currencyCode: ref.read(currencyFormatterProvider).currency.code,
             paidByUserId: _paidByUserId!,
             splitType: _splitType,
             participantIds: List.unmodifiable(_selectedParticipantIds),

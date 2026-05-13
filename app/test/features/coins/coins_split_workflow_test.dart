@@ -8,6 +8,8 @@ import 'package:airo_app/features/coins/domain/entities/group.dart';
 import 'package:airo_app/features/coins/domain/entities/group_member.dart';
 import 'package:airo_app/features/coins/domain/entities/split_entry.dart';
 import 'package:airo_app/features/coins/domain/services/split_calculator.dart';
+import 'package:airo_app/features/coins/domain/entities/settlement.dart';
+import 'package:airo_app/features/coins/domain/services/balance_engine.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -110,6 +112,56 @@ void main() {
           expense.splits.map((split) => split.amountCents),
           unorderedEquals([5000, 5000]),
         );
+      },
+    );
+
+    test(
+      'uses group currency for created split expenses and balances',
+      () async {
+        final groupResult = await createGroupUseCase.execute(
+          const CreateGroupParams(
+            name: 'US Trip',
+            creatorId: 'uday',
+            creatorDisplayName: 'Uday',
+            defaultCurrencyCode: 'USD',
+          ),
+        );
+        expect(groupResult.error, isNull);
+
+        final memberResult = await repository.addMember(
+          GroupMember(
+            id: 'member_rahul',
+            groupId: groupResult.data!.id,
+            userId: 'rahul',
+            displayName: 'Rahul',
+            currencyCode: 'USD',
+            joinedAt: DateTime(2026, 5, 13),
+          ),
+        );
+        expect(memberResult.error, isNull);
+
+        final expenseResult = await addSplitUseCase.execute(
+          AddSplitParams(
+            groupId: groupResult.data!.id,
+            description: 'Cab',
+            totalAmountCents: 2500,
+            currencyCode: groupResult.data!.defaultCurrencyCode,
+            paidByUserId: 'uday',
+            participantIds: const ['uday', 'rahul'],
+          ),
+        );
+        expect(expenseResult.error, isNull);
+        expect(expenseResult.data!.currencyCode, 'USD');
+
+        final expenses = await repository.getExpenses(groupResult.data!.id);
+        final summary = await BalanceEngineImpl().calculateBalanceSummary(
+          groupId: groupResult.data!.id,
+          expenses: expenses.data!,
+          settlements: const <Settlement>[],
+        );
+
+        expect(summary.simplifiedDebts, hasLength(1));
+        expect(summary.simplifiedDebts.single.currencyCode, 'USD');
       },
     );
   });

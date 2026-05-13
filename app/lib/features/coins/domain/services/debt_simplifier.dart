@@ -37,7 +37,10 @@ class DebtSimplifierImpl implements DebtSimplifier {
           (balances[debt.toUserId] ?? 0) + debt.amountCents;
     }
 
-    return fromNetBalances(balances);
+    return fromNetBalances(
+      balances,
+      currencyCode: debts.isEmpty ? 'INR' : debts.first.currencyCode,
+    );
   }
 
   @override
@@ -76,16 +79,19 @@ class DebtSimplifierImpl implements DebtSimplifier {
       final creditorOwed = creditorAmounts[creditorIdx];
 
       // Transfer minimum of what debtor owes and creditor is owed
-      final transferAmount =
-          debtorOwes < creditorOwed ? debtorOwes : creditorOwed;
+      final transferAmount = debtorOwes < creditorOwed
+          ? debtorOwes
+          : creditorOwed;
 
       if (transferAmount > 0) {
-        result.add(DebtEntry(
-          fromUserId: debtorId,
-          toUserId: creditorId,
-          amountCents: transferAmount,
-          currencyCode: currencyCode,
-        ));
+        result.add(
+          DebtEntry(
+            fromUserId: debtorId,
+            toUserId: creditorId,
+            amountCents: transferAmount,
+            currencyCode: currencyCode,
+          ),
+        );
 
         debtorAmounts[debtorIdx] -= transferAmount;
         creditorAmounts[creditorIdx] -= transferAmount;
@@ -99,4 +105,3 @@ class DebtSimplifierImpl implements DebtSimplifier {
     return result;
   }
 }
-

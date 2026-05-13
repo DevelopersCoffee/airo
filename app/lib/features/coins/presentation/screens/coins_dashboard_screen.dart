@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/utils/locale_settings.dart';
 import '../../application/providers/dashboard_providers.dart';
 
 /// Coins Dashboard Screen
@@ -77,15 +78,11 @@ class CoinsDashboardScreen extends ConsumerWidget {
                   const SizedBox(height: 24),
 
                   // Recent Transactions
-                  _RecentTransactionsSection(
-                    transactions: data.recentExpenses,
-                  ),
+                  _RecentTransactionsSection(transactions: data.recentExpenses),
                   const SizedBox(height: 24),
 
                   // Budget Overview
-                  _BudgetOverviewSection(
-                    budgetStatuses: data.budgetStatuses,
-                  ),
+                  _BudgetOverviewSection(budgetStatuses: data.budgetStatuses),
                 ],
               ),
             ),
@@ -104,21 +101,36 @@ class CoinsDashboardScreen extends ConsumerWidget {
 }
 
 // TODO: Implement these widget classes in separate files
-class _SafeToSpendCard extends StatelessWidget {
+class _SafeToSpendCard extends ConsumerWidget {
   final DashboardData data;
   const _SafeToSpendCard({required this.data});
 
   @override
-  Widget build(BuildContext context) {
-    // TODO: Implement safe-to-spend card UI
-    return const Card(
+  Widget build(BuildContext context, WidgetRef ref) {
+    final formatter = ref.watch(currencyFormatterProvider);
+    final safeToSpend = data.safeToSpend;
+    final amount = safeToSpend == null
+        ? formatter.formatCents(0)
+        : formatter.formatCents(safeToSpend.amountCents);
+
+    return Card(
       child: Padding(
-        padding: EdgeInsets.all(24),
+        padding: const EdgeInsets.all(24),
         child: Column(
           children: [
-            Text('Safe to Spend Today'),
-            SizedBox(height: 8),
-            Text('₹0', style: TextStyle(fontSize: 48, fontWeight: FontWeight.bold)),
+            const Text('Safe to Spend Today'),
+            const SizedBox(height: 8),
+            Text(
+              amount,
+              style: const TextStyle(fontSize: 48, fontWeight: FontWeight.bold),
+            ),
+            if (safeToSpend != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                '${safeToSpend.daysRemaining} days left · '
+                '${formatter.formatCents(safeToSpend.remainingCents)} remain',
+              ),
+            ],
           ],
         ),
       ),
@@ -159,14 +171,28 @@ class _QuickActionButton extends StatelessWidget {
   }
 }
 
-class _TodaySummarySection extends StatelessWidget {
+class _TodaySummarySection extends ConsumerWidget {
   final DashboardData data;
   const _TodaySummarySection({required this.data});
 
   @override
-  Widget build(BuildContext context) {
-    // TODO: Implement today's summary UI
-    return const Card(child: Padding(padding: EdgeInsets.all(16), child: Text('Today\'s Summary')));
+  Widget build(BuildContext context, WidgetRef ref) {
+    final formatter = ref.watch(currencyFormatterProvider);
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Today\'s Summary'),
+            const SizedBox(height: 8),
+            Text('Spent today: ${formatter.formatCents(data.spentTodayCents)}'),
+            Text('${data.totalGroups} groups'),
+            Text('${data.pendingSettlements} pending settlement'),
+          ],
+        ),
+      ),
+    );
   }
 }
 
@@ -176,8 +202,30 @@ class _RecentTransactionsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // TODO: Implement recent transactions list
-    return const Card(child: Padding(padding: EdgeInsets.all(16), child: Text('Recent Transactions')));
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Recent Transactions'),
+            const SizedBox(height: 8),
+            if (transactions.isEmpty)
+              const Text('No recent transactions')
+            else
+              ...transactions.take(5).map((transaction) {
+                return ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(transaction.description as String),
+                  trailing: _FormattedAmount(
+                    amountCents: transaction.amountCents as int,
+                  ),
+                );
+              }),
+          ],
+        ),
+      ),
+    );
   }
 }
 
@@ -187,8 +235,43 @@ class _BudgetOverviewSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // TODO: Implement budget overview
-    return const Card(child: Padding(padding: EdgeInsets.all(16), child: Text('Budget Overview')));
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Budget Overview'),
+            const SizedBox(height: 8),
+            if (budgetStatuses.isEmpty)
+              const Text('No active budgets')
+            else
+              ...budgetStatuses.take(4).map((status) {
+                final percentUsed = status.percentUsed as double;
+                return ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(status.budget.displayName as String),
+                  subtitle: LinearProgressIndicator(
+                    value: (percentUsed / 100).clamp(0, 1),
+                  ),
+                  trailing: Text('${percentUsed.round()}%'),
+                );
+              }),
+          ],
+        ),
+      ),
+    );
   }
 }
 
+class _FormattedAmount extends ConsumerWidget {
+  final int amountCents;
+
+  const _FormattedAmount({required this.amountCents});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final formatter = ref.watch(currencyFormatterProvider);
+    return Text(formatter.formatCentsWithSign(amountCents));
+  }
+}

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../application/services/coins_platform_support.dart';
 import '../../domain/entities/group.dart';
 import '../../application/providers/group_providers.dart';
 import 'group_detail_screen.dart';
@@ -18,6 +19,10 @@ class GroupsListScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    if (!CoinsPlatformSupport.groupsAvailable()) {
+      return const _UnsupportedGroupsView();
+    }
+
     final groupsAsync = ref.watch(allGroupsProvider);
 
     return Scaffold(
@@ -195,6 +200,26 @@ class GroupsListScreen extends ConsumerWidget {
             child: const Text('Join'),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _UnsupportedGroupsView extends StatelessWidget {
+  const _UnsupportedGroupsView();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Groups')),
+      body: const Center(
+        child: Padding(
+          padding: EdgeInsets.all(24),
+          child: Text(
+            'Group expense splitting is available on mobile and desktop. Web support needs a non-SQLite storage backend.',
+            textAlign: TextAlign.center,
+          ),
+        ),
       ),
     );
   }
