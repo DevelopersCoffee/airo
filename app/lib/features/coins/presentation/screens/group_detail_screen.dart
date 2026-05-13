@@ -183,6 +183,7 @@ class _ExpensesTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final expensesAsync = ref.watch(groupExpensesProvider(groupId));
+    final membersAsync = ref.watch(groupMembersProvider(groupId));
 
     return expensesAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
@@ -193,12 +194,21 @@ class _ExpensesTab extends ConsumerWidget {
             child: Text('No expenses yet.\nAdd your first expense!'),
           );
         }
+        final namesByUserId = membersAsync.maybeWhen(
+          data: (members) => {
+            for (final member in members) member.userId: member.displayName,
+          },
+          orElse: () => const <String, String>{},
+        );
         return ListView.builder(
           padding: const EdgeInsets.all(16),
           itemCount: expenses.length,
           itemBuilder: (context, index) {
             final expense = expenses[index];
-            return _ExpenseListTile(expense: expense);
+            return _ExpenseListTile(
+              expense: expense,
+              payerName: namesByUserId[expense.paidByUserId],
+            );
           },
         );
       },
@@ -208,7 +218,9 @@ class _ExpensesTab extends ConsumerWidget {
 
 class _ExpenseListTile extends ConsumerWidget {
   final SharedExpense expense;
-  const _ExpenseListTile({required this.expense});
+  final String? payerName;
+
+  const _ExpenseListTile({required this.expense, this.payerName});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -218,7 +230,7 @@ class _ExpenseListTile extends ConsumerWidget {
         child: Text(expense.description.substring(0, 1).toUpperCase()),
       ),
       title: Text(expense.description),
-      subtitle: Text('Paid by ${expense.paidByUserId}'),
+      subtitle: Text('Paid by ${payerName ?? expense.paidByUserId}'),
       trailing: Text(
         formatter.formatCents(expense.totalAmountCents),
         style: Theme.of(context).textTheme.titleMedium,
@@ -238,6 +250,7 @@ class _BalancesTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final balancesAsync = ref.watch(groupBalanceSummaryProvider(groupId));
     final membersAsync = ref.watch(groupMembersProvider(groupId));
+    final settlementsAsync = ref.watch(groupSettlementsProvider(groupId));
     final formatter = ref.watch(currencyFormatterProvider);
 
     return balancesAsync.when(
@@ -301,6 +314,54 @@ class _BalancesTab extends ConsumerWidget {
                         ),
                       )
                       .toList(),
+                );
+              },
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'Settlement History',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 8),
+            settlementsAsync.when(
+              loading: () => const CircularProgressIndicator(),
+              error: (error, _) => Text('Error loading settlements: $error'),
+              data: (settlements) {
+                final completedSettlements = settlements
+                    .where((settlement) => settlement.isCompleted)
+                    .toList();
+                if (completedSettlements.isEmpty) {
+                  return const Text('No settlements yet.');
+                }
+
+                return membersAsync.when(
+                  loading: () => const CircularProgressIndicator(),
+                  error: (error, _) => Text('Error loading members: $error'),
+                  data: (members) {
+                    final namesByUserId = {
+                      for (final member in members)
+                        member.userId: member.displayName,
+                    };
+                    return Column(
+                      children: completedSettlements
+                          .map(
+                            (settlement) => _SettlementTile(
+                              fromName:
+                                  namesByUserId[settlement.fromUserId] ??
+                                  settlement.fromUserId,
+                              toName:
+                                  namesByUserId[settlement.toUserId] ??
+                                  settlement.toUserId,
+                              amountLabel: formatter.formatCents(
+                                settlement.amountCents,
+                              ),
+                              paymentMethod:
+                                  settlement.paymentMethod.displayName,
+                            ),
+                          )
+                          .toList(),
+                    );
+                  },
                 );
               },
             ),
@@ -368,6 +429,34 @@ class _DebtTile extends ConsumerWidget {
           ref.invalidate(groupBalanceSummaryProvider(groupId));
         },
         child: const Text('Settle'),
+      ),
+    );
+  }
+}
+
+class _SettlementTile extends StatelessWidget {
+  final String fromName;
+  final String toName;
+  final String amountLabel;
+  final String paymentMethod;
+
+  const _SettlementTile({
+    required this.fromName,
+    required this.toName,
+    required this.amountLabel,
+    required this.paymentMethod,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: const Icon(Icons.check_circle_outline),
+      title: Text('$fromName paid $toName'),
+      subtitle: Text(paymentMethod),
+      trailing: Text(
+        amountLabel,
+        style: Theme.of(context).textTheme.titleMedium,
       ),
     );
   }
