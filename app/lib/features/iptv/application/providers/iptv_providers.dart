@@ -1,6 +1,8 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+export '../../../../core/providers/navigation_provider.dart'
+    show currentNavigationTabProvider;
 import '../../data/services/recently_watched_storage.dart';
 import '../../domain/models/iptv_channel.dart';
 import '../../domain/models/streaming_state.dart';
@@ -15,10 +17,6 @@ final sharedPreferencesProvider = Provider<SharedPreferences>((ref) {
     'Override in main with SharedPreferences.getInstance()',
   );
 });
-
-/// Current navigation tab index provider (0=Coins, 1=Mind, 2=Live, 3=Arena, 4=Tales)
-/// Used to detect when user navigates away from media tabs for mini player display
-final currentNavigationTabProvider = StateProvider<int>((ref) => 1);
 
 /// Global fullscreen mode provider - when true, hides bottom navigation and app bar
 final isFullscreenModeProvider = StateProvider<bool>((ref) => false);

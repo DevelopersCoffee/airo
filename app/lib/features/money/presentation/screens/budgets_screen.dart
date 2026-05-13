@@ -11,7 +11,7 @@ class BudgetsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final budgetsAsync = ref.watch(budgetsStreamProvider);
+    final budgetsAsync = ref.watch(budgetsProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Budgets')),
@@ -372,7 +372,7 @@ class _BudgetFormDialogState extends State<_BudgetFormDialog> {
               controller: _limitController,
               decoration: const InputDecoration(
                 labelText: 'Monthly Limit',
-                prefixText: '\$ ',
+                prefixText: '₹ ',
                 border: OutlineInputBorder(),
               ),
               keyboardType: const TextInputType.numberWithOptions(

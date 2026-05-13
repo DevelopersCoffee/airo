@@ -1,8 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/entities/transaction.dart';
+import '../../domain/entities/group.dart';
+import '../../domain/entities/settlement.dart';
 import '../../domain/models/safe_to_spend.dart';
 import '../../domain/models/budget_status.dart';
-import '../../domain/models/balance_summary.dart';
 import 'expense_providers.dart';
 import 'budget_providers.dart';
 import 'group_providers.dart';
@@ -35,34 +36,62 @@ class DashboardData {
 ///
 /// Phase: 1 (Foundation)
 final dashboardDataProvider = FutureProvider<DashboardData>((ref) async {
-  // Fetch all required data in parallel
-  final results = await Future.wait([
-    // Safe to spend
-    ref.watch(safeToSpendProvider.future).catchError((_) => null),
-    // Recent expenses
-    ref.watch(recentExpensesProvider.future).catchError((_) => <Transaction>[]),
-    // Budget statuses
-    ref.watch(allBudgetStatusProvider.future).catchError((_) => <BudgetStatus>[]),
-    // Groups count
-    ref.watch(activeGroupsProvider.future).catchError((_) => []),
-    // Pending settlements
-    ref.watch(pendingSettlementsProvider.future).catchError((_) => []),
-    // Spent today
-    ref.watch(spentTodayProvider.future).catchError((_) => 0),
-    // Spent this month
-    ref.watch(spentThisMonthProvider.future).catchError((_) => 0),
-  ]);
+  final safeToSpend = await _nullable(ref.watch(safeToSpendProvider.future));
+  final recentExpenses = await _listOrEmpty<Transaction>(
+    ref.watch(recentExpensesProvider.future),
+  );
+  final budgetStatuses = await _listOrEmpty<BudgetStatus>(
+    ref.watch(allBudgetStatusProvider.future),
+  );
+  final groups = await _listOrEmpty<Group>(
+    ref.watch(activeGroupsProvider.future),
+  );
+  final pendingSettlements = await _listOrEmpty<Settlement>(
+    ref.watch(pendingSettlementsProvider.future),
+  );
+  final spentTodayCents = await _valueOr(
+    ref.watch(spentTodayProvider.future),
+    0,
+  );
+  final spentThisMonthCents = await _valueOr(
+    ref.watch(spentThisMonthProvider.future),
+    0,
+  );
 
   return DashboardData(
-    safeToSpend: results[0] as SafeToSpend?,
-    recentExpenses: results[1] as List<Transaction>,
-    budgetStatuses: results[2] as List<BudgetStatus>,
-    totalGroups: (results[3] as List).length,
-    pendingSettlements: (results[4] as List).length,
-    spentTodayCents: results[5] as int,
-    spentThisMonthCents: results[6] as int,
+    safeToSpend: safeToSpend,
+    recentExpenses: recentExpenses,
+    budgetStatuses: budgetStatuses,
+    totalGroups: groups.length,
+    pendingSettlements: pendingSettlements.length,
+    spentTodayCents: spentTodayCents,
+    spentThisMonthCents: spentThisMonthCents,
   );
 });
+
+Future<T?> _nullable<T>(Future<T> future) async {
+  try {
+    return await future;
+  } catch (_) {
+    return null;
+  }
+}
+
+Future<List<T>> _listOrEmpty<T>(Future<List<T>> future) async {
+  try {
+    return await future;
+  } catch (_) {
+    return <T>[];
+  }
+}
+
+Future<T> _valueOr<T>(Future<T> future, T fallback) async {
+  try {
+    return await future;
+  } catch (_) {
+    return fallback;
+  }
+}
 
 /// Force refresh dashboard data
 final dashboardRefreshProvider = FutureProvider<void>((ref) async {
@@ -118,4 +147,3 @@ double _calculateOverallHealth(List<BudgetStatus> statuses) {
   final avgUsed = totalUsed / statuses.length;
   return (100 - avgUsed).clamp(0, 100);
 }
-

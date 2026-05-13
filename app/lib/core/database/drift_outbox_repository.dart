@@ -2,7 +2,7 @@ import 'package:core_data/core_data.dart';
 import 'package:core_domain/core_domain.dart';
 import 'package:drift/drift.dart';
 
-import 'app_database.dart';
+import 'app_database_native.dart';
 
 /// Drift-based implementation of OutboxRepository for persistent sync operations.
 class DriftOutboxRepository implements OutboxRepository {

@@ -1,36 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:drift/native.dart';
 
-import 'package:airo_app/core/database/app_database.dart';
 import 'package:airo_app/features/money/application/providers/money_provider.dart';
-import 'package:airo_app/features/money/data/repositories/local_budgets_repository.dart';
 import 'package:airo_app/features/money/presentation/screens/budgets_screen.dart';
 
 void main() {
-  late AppDatabase db;
   late ProviderContainer container;
+  late FakeBudgetsRepository budgetsRepo;
 
-  setUp(() {
-    db = AppDatabase.forTesting(NativeDatabase.memory());
+  setUp(() async {
+    budgetsRepo = FakeBudgetsRepository();
+    await budgetsRepo.clear();
     container = ProviderContainer(
-      overrides: [
-        appDatabaseProvider.overrideWithValue(db),
-        budgetsRepositoryProvider.overrideWith(
-          (ref) => LocalBudgetsRepository(db),
-        ),
-      ],
+      overrides: [budgetsRepositoryProvider.overrideWithValue(budgetsRepo)],
     );
   });
 
   tearDown(() async {
-    // Dispose Riverpod container first to close all streams
     container.dispose();
-    // Small delay to allow microtasks to complete
-    await Future<void>.delayed(const Duration(milliseconds: 10));
-    // Then close the database
-    await db.close();
   });
 
   Widget createTestWidget() {
@@ -94,14 +82,16 @@ void main() {
 
       // Should show the created budget
       expect(find.text('Food & Drink'), findsOneWidget);
-      expect(find.text('\$0.00 / \$500.00'), findsOneWidget);
+      expect(find.text('₹0.00 / ₹500.00'), findsOneWidget);
     });
 
     testWidgets('shows budget progress correctly', (tester) async {
       // Pre-populate a budget
-      final repo = LocalBudgetsRepository(db);
-      await repo.create(tag: 'Entertainment', limitCents: 10000);
-      await repo.deductFromBudget('Entertainment', -5000);
+      final result = await budgetsRepo.create(
+        tag: 'Entertainment',
+        limitCents: 10000,
+      );
+      await budgetsRepo.updateUsage(result.getOrNull()!.id, 5000);
 
       await tester.pumpWidget(createTestWidget());
       await tester.pumpAndSettle();
@@ -113,9 +103,11 @@ void main() {
 
     testWidgets('shows exceeded budget warning', (tester) async {
       // Pre-populate an exceeded budget
-      final repo = LocalBudgetsRepository(db);
-      await repo.create(tag: 'Shopping', limitCents: 5000);
-      await repo.deductFromBudget('Shopping', -7500);
+      final result = await budgetsRepo.create(
+        tag: 'Shopping',
+        limitCents: 5000,
+      );
+      await budgetsRepo.updateUsage(result.getOrNull()!.id, 7500);
 
       await tester.pumpWidget(createTestWidget());
       await tester.pumpAndSettle();
@@ -126,8 +118,7 @@ void main() {
 
     testWidgets('can delete a budget', (tester) async {
       // Pre-populate a budget
-      final repo = LocalBudgetsRepository(db);
-      await repo.create(tag: 'Healthcare', limitCents: 20000);
+      await budgetsRepo.create(tag: 'Healthcare', limitCents: 20000);
 
       await tester.pumpWidget(createTestWidget());
       await tester.pumpAndSettle();

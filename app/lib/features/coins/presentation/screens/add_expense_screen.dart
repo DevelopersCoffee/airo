@@ -5,8 +5,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../bill_split/domain/models/receipt_item.dart';
 import '../../../bill_split/domain/services/receipt_parser_service.dart';
+import '../../../../core/utils/locale_settings.dart';
+import '../../domain/entities/account.dart';
+import '../../domain/entities/category.dart' as coins;
 import '../../domain/entities/transaction.dart';
 import '../../application/providers/expense_providers.dart';
+import '../../application/use_cases/add_expense_use_case.dart';
 
 /// Provider for receipt parser service
 final _receiptParserProvider = Provider<ReceiptParserService>((ref) {
@@ -60,6 +64,9 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
   @override
   Widget build(BuildContext context) {
     final addExpenseState = ref.watch(addExpenseProvider);
+    final categories = ref.watch(expenseCategoryOptionsProvider);
+    final accountsAsync = ref.watch(expenseAccountOptionsProvider);
+    final currencyFormatter = ref.watch(currencyFormatterProvider);
 
     ref.listen<AsyncValue<void>>(addExpenseProvider, (_, state) {
       state.whenOrNull(
@@ -125,7 +132,10 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
               const SizedBox(height: 24),
 
               // Amount Input
-              _AmountInputField(controller: _amountController),
+              _AmountInputField(
+                controller: _amountController,
+                currencySymbol: currencyFormatter.currency.symbol,
+              ),
               const SizedBox(height: 16),
 
               // Description
@@ -145,19 +155,27 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
               ),
               const SizedBox(height: 16),
 
-              // Category Selector
-              // TODO: Implement category picker
-              const _PlaceholderField(
-                label: 'Category',
-                icon: Icons.category_outlined,
+              _CategorySelector(
+                categories: categories
+                    .where(
+                      (category) =>
+                          category.type == coins.CategoryType.expense ||
+                          category.type == coins.CategoryType.both,
+                    )
+                    .toList(),
+                selectedCategoryId: _selectedCategoryId,
+                onSelected: (categoryId) {
+                  setState(() => _selectedCategoryId = categoryId);
+                },
               ),
               const SizedBox(height: 16),
 
-              // Account Selector
-              // TODO: Implement account picker
-              const _PlaceholderField(
-                label: 'Account',
-                icon: Icons.account_balance_wallet_outlined,
+              _AccountSelector(
+                accountsAsync: accountsAsync,
+                selectedAccountId: _selectedAccountId,
+                onSelected: (accountId) {
+                  setState(() => _selectedAccountId = accountId);
+                },
               ),
               const SizedBox(height: 16),
 
@@ -225,21 +243,20 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
       return;
     }
 
-    final transaction = Transaction(
-      id: 'temp_${DateTime.now().millisecondsSinceEpoch}',
-      description: _descriptionController.text,
-      amountCents: amountCents,
-      type: _transactionType,
-      categoryId: _selectedCategoryId!,
-      accountId: _selectedAccountId!,
-      transactionDate: _selectedDate,
-      notes: _notesController.text.isEmpty ? null : _notesController.text,
-      tags: [],
-      createdAt: DateTime.now(),
-      isDeleted: false,
-    );
-
-    ref.read(addExpenseProvider.notifier).addExpense(transaction);
+    ref
+        .read(addExpenseProvider.notifier)
+        .addExpenseFromInput(
+          AddExpenseParams(
+            description: _descriptionController.text,
+            amountCents: amountCents,
+            type: _transactionType,
+            categoryId: _selectedCategoryId!,
+            accountId: _selectedAccountId!,
+            transactionDate: _selectedDate,
+            notes: _notesController.text.isEmpty ? null : _notesController.text,
+            receiptId: _receiptImagePath,
+          ),
+        );
   }
 
   /// Build the receipt scanning section
@@ -278,6 +295,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
   /// Show scanned receipt details
   Widget _buildScannedReceiptCard() {
     final receipt = _scannedReceipt!;
+    final formatter = ref.watch(currencyFormatterProvider);
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -327,9 +345,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        Text(
-                          '₹${(item.totalPricePaise / 100).toStringAsFixed(2)}',
-                        ),
+                        Text(formatter.formatCents(item.totalPricePaise)),
                       ],
                     ),
                   ),
@@ -348,7 +364,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
                 Text(
-                  '₹${(receipt.grandTotalPaise / 100).toStringAsFixed(2)}',
+                  formatter.formatCents(receipt.grandTotalPaise),
                   style: const TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 18,
@@ -450,10 +466,11 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
         });
 
         // Show success message
+        final formatter = ref.read(currencyFormatterProvider);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'Found ${receipt.items.length} items totaling ₹${(receipt.grandTotalPaise / 100).toStringAsFixed(2)}',
+              'Found ${receipt.items.length} items totaling ${formatter.formatCents(receipt.grandTotalPaise)}',
             ),
             backgroundColor: Colors.green,
           ),
@@ -487,10 +504,11 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
     }
 
     // Add item details to notes
+    final formatter = ref.read(currencyFormatterProvider);
     final itemsList = receipt.items
         .map(
           (item) =>
-              '• ${item.name}: ₹${(item.totalPricePaise / 100).toStringAsFixed(2)}',
+              '• ${item.name}: ${formatter.formatCents(item.totalPricePaise)}',
         )
         .join('\n');
     _notesController.text = 'Receipt items:\n$itemsList';
@@ -506,7 +524,11 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
 
 class _AmountInputField extends StatelessWidget {
   final TextEditingController controller;
-  const _AmountInputField({required this.controller});
+  final String currencySymbol;
+  const _AmountInputField({
+    required this.controller,
+    required this.currencySymbol,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -514,9 +536,9 @@ class _AmountInputField extends StatelessWidget {
       controller: controller,
       keyboardType: TextInputType.number,
       style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
-      decoration: const InputDecoration(
+      decoration: InputDecoration(
         labelText: 'Amount',
-        prefixText: '₹ ',
+        prefixText: '$currencySymbol ',
         hintText: '0.00',
       ),
       validator: (value) {
@@ -527,21 +549,74 @@ class _AmountInputField extends StatelessWidget {
   }
 }
 
-class _PlaceholderField extends StatelessWidget {
-  final String label;
-  final IconData icon;
-  const _PlaceholderField({required this.label, required this.icon});
+class _CategorySelector extends StatelessWidget {
+  final List<coins.Category> categories;
+  final String? selectedCategoryId;
+  final ValueChanged<String> onSelected;
+
+  const _CategorySelector({
+    required this.categories,
+    required this.selectedCategoryId,
+    required this.onSelected,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return ListTile(
-      leading: Icon(icon),
-      title: Text(label),
-      subtitle: const Text('Tap to select'),
-      trailing: const Icon(Icons.chevron_right),
-      onTap: () {
-        // TODO: Implement picker
-      },
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Category', style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: categories.map((category) {
+            return ChoiceChip(
+              label: Text(category.name),
+              selected: selectedCategoryId == category.id,
+              onSelected: (_) => onSelected(category.id),
+            );
+          }).toList(),
+        ),
+      ],
+    );
+  }
+}
+
+class _AccountSelector extends StatelessWidget {
+  final AsyncValue<List<Account>> accountsAsync;
+  final String? selectedAccountId;
+  final ValueChanged<String> onSelected;
+
+  const _AccountSelector({
+    required this.accountsAsync,
+    required this.selectedAccountId,
+    required this.onSelected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return accountsAsync.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (error, _) => Text('Error loading accounts: $error'),
+      data: (accounts) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Account', style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: accounts.map((account) {
+              return ChoiceChip(
+                label: Text(account.name),
+                selected: selectedAccountId == account.id,
+                onSelected: (_) => onSelected(account.id),
+              );
+            }).toList(),
+          ),
+        ],
+      ),
     );
   }
 }

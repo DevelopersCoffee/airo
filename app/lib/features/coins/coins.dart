@@ -20,7 +20,7 @@
 /// ```dart
 /// import 'package:app/features/coins/coins.dart';
 /// ```
-library coins;
+library;
 
 // Domain - Entities
 export 'domain/entities/account.dart';
@@ -43,11 +43,11 @@ export 'domain/models/debt_entry.dart';
 export 'domain/models/safe_to_spend.dart';
 
 // Domain - Repositories
-export 'domain/repositories/account_repository.dart';
-export 'domain/repositories/budget_repository.dart';
-export 'domain/repositories/group_repository.dart';
-export 'domain/repositories/settlement_repository.dart';
-export 'domain/repositories/transaction_repository.dart';
+export 'domain/repositories/account_repository.dart' hide Result;
+export 'domain/repositories/budget_repository.dart' hide Result;
+export 'domain/repositories/group_repository.dart' hide Result;
+export 'domain/repositories/settlement_repository.dart' hide Result;
+export 'domain/repositories/transaction_repository.dart' hide Result;
 
 // Domain - Services
 export 'domain/services/balance_engine.dart';
@@ -67,18 +67,21 @@ export 'application/providers/settlement_providers.dart';
 export 'application/providers/split_providers.dart';
 
 // Application - Use Cases
-export 'application/use_cases/add_expense_use_case.dart';
-export 'application/use_cases/add_split_use_case.dart';
-export 'application/use_cases/calculate_balances_use_case.dart';
-export 'application/use_cases/calculate_safe_to_spend_use_case.dart';
-export 'application/use_cases/create_group_use_case.dart';
-export 'application/use_cases/delete_expense_use_case.dart';
-export 'application/use_cases/record_settlement_use_case.dart';
-export 'application/use_cases/set_budget_use_case.dart';
-export 'application/use_cases/update_expense_use_case.dart';
+export 'application/use_cases/add_expense_use_case.dart' hide Result;
+export 'application/use_cases/add_group_member_use_case.dart' hide Result;
+export 'application/use_cases/add_split_use_case.dart' hide Result;
+export 'application/use_cases/calculate_balances_use_case.dart' hide Result;
+export 'application/use_cases/calculate_safe_to_spend_use_case.dart'
+    hide Result;
+export 'application/use_cases/create_group_use_case.dart' hide Result;
+export 'application/use_cases/delete_expense_use_case.dart' hide Result;
+export 'application/use_cases/record_settlement_use_case.dart' hide Result;
+export 'application/use_cases/set_budget_use_case.dart' hide Result;
+export 'application/use_cases/update_expense_use_case.dart' hide Result;
 
 // Application - Services
 export 'application/services/coins_notification_service.dart';
+export 'application/services/coins_platform_support.dart';
 export 'application/services/coins_sync_service.dart';
 
 // Data - Repositories
@@ -112,4 +115,3 @@ export 'presentation/widgets/budget_progress_card.dart';
 export 'presentation/widgets/expense_card.dart';
 export 'presentation/widgets/member_avatar.dart';
 export 'presentation/widgets/safe_to_spend_card.dart';
-

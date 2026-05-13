@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../domain/entities/group.dart';
+import '../../../../core/utils/locale_settings.dart';
+import '../../domain/entities/settlement.dart';
 import '../../domain/entities/shared_expense.dart';
 import '../../application/providers/group_providers.dart';
 import '../../application/providers/settlement_providers.dart';
+import '../../application/services/coins_platform_support.dart';
+import 'add_split_expense_screen.dart';
 
 /// Group Detail Screen
 ///
@@ -22,10 +25,22 @@ class GroupDetailScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final groupAsync = ref.watch(groupByIdProvider(groupId));
-    final expensesAsync = ref.watch(groupExpensesProvider(groupId));
-    final membersAsync = ref.watch(groupMembersProvider(groupId));
+    if (!CoinsPlatformSupport.groupsAvailable()) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Groups')),
+        body: const Center(
+          child: Padding(
+            padding: EdgeInsets.all(24),
+            child: Text(
+              'Group expense splitting is available on mobile and desktop. Web support needs a non-SQLite storage backend.',
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
+      );
+    }
 
+    final groupAsync = ref.watch(groupByIdProvider(groupId));
     return groupAsync.when(
       loading: () => Scaffold(
         appBar: AppBar(),
@@ -52,7 +67,7 @@ class GroupDetailScreen extends ConsumerWidget {
                 IconButton(
                   icon: const Icon(Icons.person_add_outlined),
                   onPressed: () {
-                    // TODO: Add member / share invite
+                    _showAddMemberDialog(context, ref, groupId);
                   },
                 ),
                 PopupMenuButton(
@@ -61,10 +76,7 @@ class GroupDetailScreen extends ConsumerWidget {
                       value: 'settings',
                       child: Text('Group Settings'),
                     ),
-                    const PopupMenuItem(
-                      value: 'export',
-                      child: Text('Export'),
-                    ),
+                    const PopupMenuItem(value: 'export', child: Text('Export')),
                     const PopupMenuItem(
                       value: 'leave',
                       child: Text('Leave Group'),
@@ -97,7 +109,12 @@ class GroupDetailScreen extends ConsumerWidget {
             ),
             floatingActionButton: FloatingActionButton.extended(
               onPressed: () {
-                // TODO: Navigate to add shared expense
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => AddSplitExpenseScreen(groupId: groupId),
+                  ),
+                );
               },
               icon: const Icon(Icons.add),
               label: const Text('Add Expense'),
@@ -106,6 +123,56 @@ class GroupDetailScreen extends ConsumerWidget {
         );
       },
     );
+  }
+
+  void _showAddMemberDialog(
+    BuildContext context,
+    WidgetRef ref,
+    String groupId,
+  ) {
+    final nameController = TextEditingController();
+    final dialog = showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Add Member'),
+        content: TextField(
+          controller: nameController,
+          autofocus: true,
+          decoration: const InputDecoration(
+            labelText: 'Member name',
+            hintText: 'Rahul',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              await ref
+                  .read(addMemberProvider.notifier)
+                  .addMemberFromInput(
+                    groupId: groupId,
+                    displayName: nameController.text,
+                  );
+              if (!context.mounted || !dialogContext.mounted) return;
+              final state = ref.read(addMemberProvider);
+              state.whenOrNull(
+                data: (_) => Navigator.pop(dialogContext),
+                error: (error, _) {
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(SnackBar(content: Text(error.toString())));
+                },
+              );
+            },
+            child: const Text('Add'),
+          ),
+        ],
+      ),
+    );
+    dialog.whenComplete(nameController.dispose);
   }
 }
 
@@ -139,12 +206,13 @@ class _ExpensesTab extends ConsumerWidget {
   }
 }
 
-class _ExpenseListTile extends StatelessWidget {
+class _ExpenseListTile extends ConsumerWidget {
   final SharedExpense expense;
   const _ExpenseListTile({required this.expense});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final formatter = ref.watch(currencyFormatterProvider);
     return ListTile(
       leading: CircleAvatar(
         child: Text(expense.description.substring(0, 1).toUpperCase()),
@@ -152,7 +220,7 @@ class _ExpenseListTile extends StatelessWidget {
       title: Text(expense.description),
       subtitle: Text('Paid by ${expense.paidByUserId}'),
       trailing: Text(
-        '₹${(expense.totalAmountCents / 100).toStringAsFixed(2)}',
+        formatter.formatCents(expense.totalAmountCents),
         style: Theme.of(context).textTheme.titleMedium,
       ),
       onTap: () {
@@ -169,6 +237,8 @@ class _BalancesTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final balancesAsync = ref.watch(groupBalanceSummaryProvider(groupId));
+    final membersAsync = ref.watch(groupMembersProvider(groupId));
+    final formatter = ref.watch(currencyFormatterProvider);
 
     return balancesAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
@@ -183,22 +253,122 @@ class _BalancesTab extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Group Summary', style: Theme.of(context).textTheme.titleMedium),
+                    Text(
+                      'Group Summary',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
                     const SizedBox(height: 8),
-                    Text('Total expenses: ₹${(summary.totalExpensesCents / 100).toStringAsFixed(2)}'),
-                    Text('Total settled: ₹${(summary.totalSettlementsCents / 100).toStringAsFixed(2)}'),
+                    Text(
+                      'Total expenses: ${formatter.formatCents(summary.totalExpensesCents)}',
+                    ),
+                    Text(
+                      'Total settled: ${formatter.formatCents(summary.totalSettlementsCents)}',
+                    ),
                   ],
                 ),
               ),
             ),
             const SizedBox(height: 16),
-            Text('Simplified Debts', style: Theme.of(context).textTheme.titleMedium),
+            Text(
+              'Simplified Debts',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
             const SizedBox(height: 8),
-            // TODO: Show simplified debts list
-            const Text('All debts settled!'),
+            membersAsync.when(
+              loading: () => const CircularProgressIndicator(),
+              error: (error, _) => Text('Error loading members: $error'),
+              data: (members) {
+                if (summary.simplifiedDebts.isEmpty) {
+                  return const Text('All debts settled!');
+                }
+                final namesByUserId = {
+                  for (final member in members)
+                    member.userId: member.displayName,
+                };
+                return Column(
+                  children: summary.simplifiedDebts
+                      .map(
+                        (debt) => _DebtTile(
+                          groupId: groupId,
+                          fromName:
+                              namesByUserId[debt.fromUserId] ?? debt.fromUserId,
+                          toName: namesByUserId[debt.toUserId] ?? debt.toUserId,
+                          fromUserId: debt.fromUserId,
+                          toUserId: debt.toUserId,
+                          amountCents: debt.amountCents,
+                          currencyCode: debt.currencyCode,
+                          amountLabel: formatter.formatCents(debt.amountCents),
+                        ),
+                      )
+                      .toList(),
+                );
+              },
+            ),
           ],
         );
       },
+    );
+  }
+}
+
+class _DebtTile extends ConsumerWidget {
+  final String groupId;
+  final String fromName;
+  final String toName;
+  final String fromUserId;
+  final String toUserId;
+  final int amountCents;
+  final String currencyCode;
+  final String amountLabel;
+
+  const _DebtTile({
+    required this.groupId,
+    required this.fromName,
+    required this.toName,
+    required this.fromUserId,
+    required this.toUserId,
+    required this.amountCents,
+    required this.currencyCode,
+    required this.amountLabel,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      title: Text('$fromName owes $toName'),
+      subtitle: Text(amountLabel),
+      trailing: FilledButton(
+        onPressed: () async {
+          final now = DateTime.now();
+          await ref
+              .read(recordSettlementProvider.notifier)
+              .recordSettlement(
+                Settlement(
+                  id: 'settlement_${now.microsecondsSinceEpoch}',
+                  groupId: groupId,
+                  fromUserId: fromUserId,
+                  toUserId: toUserId,
+                  amountCents: amountCents,
+                  currencyCode: currencyCode,
+                  status: SettlementStatus.completed,
+                  settlementDate: now,
+                  createdAt: now,
+                ),
+              );
+          if (!context.mounted) return;
+          final state = ref.read(recordSettlementProvider);
+          if (state.hasError) {
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(SnackBar(content: Text(state.error.toString())));
+            return;
+          }
+          ref.invalidate(groupSettlementsProvider(groupId));
+          ref.invalidate(groupBalanceSummaryProvider(groupId));
+        },
+        child: const Text('Settle'),
+      ),
     );
   }
 }
@@ -241,4 +411,3 @@ class _MembersTab extends ConsumerWidget {
     );
   }
 }
-

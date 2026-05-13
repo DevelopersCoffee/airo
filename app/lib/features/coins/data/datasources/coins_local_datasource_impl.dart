@@ -2,7 +2,7 @@ import 'dart:math';
 
 import 'package:drift/drift.dart';
 
-import '../../../../core/database/app_database.dart';
+import '../../../../core/database/app_database_native.dart';
 import 'coins_local_datasource.dart';
 
 /// Implementation of CoinsLocalDatasource using Drift
@@ -734,6 +734,168 @@ class CoinsLocalDatasourceImpl implements CoinsLocalDatasource {
       role: entry.role,
       currencyCode: 'INR', // Default
       joinedAt: entry.joinedAt,
+    );
+  }
+
+  // ==================== Shared Expense Operations ====================
+
+  @override
+  Future<List<SharedExpenseEntity>> getSharedExpensesByGroup(
+    String groupId,
+  ) async {
+    final rows =
+        await (_db.select(_db.sharedExpenseEntries)
+              ..where((e) => e.groupId.equals(groupId) & e.isDeleted.not())
+              ..orderBy([(e) => OrderingTerm.desc(e.expenseDate)]))
+            .get();
+
+    final expenses = <SharedExpenseEntity>[];
+    for (final row in rows) {
+      expenses.add(await _mapSharedExpenseEntry(row));
+    }
+    return expenses;
+  }
+
+  @override
+  Future<void> insertSharedExpense(SharedExpenseEntity entity) async {
+    await _db.transaction(() async {
+      await _db
+          .into(_db.sharedExpenseEntries)
+          .insert(
+            SharedExpenseEntriesCompanion.insert(
+              uuid: entity.id,
+              groupId: entity.groupId,
+              description: entity.description,
+              totalAmountCents: entity.totalAmountCents,
+              currencyCode: Value(entity.currencyCode),
+              paidByUserId: entity.paidByUserId,
+              categoryId: Value(entity.categoryId),
+              splitType: Value(entity.splitType),
+              notes: Value(entity.notes),
+              receiptUrl: Value(entity.receiptId),
+              isDeleted: Value(entity.isDeleted),
+              syncStatus: const Value('pending'),
+              expenseDate: entity.expenseDate,
+            ),
+          );
+
+      for (final split in entity.splits) {
+        await _insertSplitEntry(split);
+      }
+    });
+  }
+
+  @override
+  Future<void> updateSharedExpense(SharedExpenseEntity entity) async {
+    await _db.transaction(() async {
+      await (_db.update(
+        _db.sharedExpenseEntries,
+      )..where((e) => e.uuid.equals(entity.id))).write(
+        SharedExpenseEntriesCompanion(
+          groupId: Value(entity.groupId),
+          description: Value(entity.description),
+          totalAmountCents: Value(entity.totalAmountCents),
+          currencyCode: Value(entity.currencyCode),
+          paidByUserId: Value(entity.paidByUserId),
+          categoryId: Value(entity.categoryId),
+          splitType: Value(entity.splitType),
+          notes: Value(entity.notes),
+          receiptUrl: Value(entity.receiptId),
+          isDeleted: Value(entity.isDeleted),
+          syncStatus: const Value('pending'),
+          expenseDate: Value(entity.expenseDate),
+          updatedAt: Value(DateTime.now()),
+        ),
+      );
+
+      await (_db.delete(
+        _db.splitEntryRecords,
+      )..where((s) => s.sharedExpenseId.equals(entity.id))).go();
+      for (final split in entity.splits) {
+        await _insertSplitEntry(split);
+      }
+    });
+  }
+
+  @override
+  Future<void> softDeleteSharedExpense(String id) async {
+    await (_db.update(
+      _db.sharedExpenseEntries,
+    )..where((e) => e.uuid.equals(id))).write(
+      SharedExpenseEntriesCompanion(
+        isDeleted: const Value(true),
+        syncStatus: const Value('pending'),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
+  }
+
+  @override
+  Stream<List<SharedExpenseEntity>> watchSharedExpensesByGroup(String groupId) {
+    return (_db.select(_db.sharedExpenseEntries)
+          ..where((e) => e.groupId.equals(groupId) & e.isDeleted.not())
+          ..orderBy([(e) => OrderingTerm.desc(e.expenseDate)]))
+        .watch()
+        .asyncMap((rows) async {
+          final expenses = <SharedExpenseEntity>[];
+          for (final row in rows) {
+            expenses.add(await _mapSharedExpenseEntry(row));
+          }
+          return expenses;
+        });
+  }
+
+  Future<void> _insertSplitEntry(SplitEntryEntity entity) async {
+    await _db
+        .into(_db.splitEntryRecords)
+        .insert(
+          SplitEntryRecordsCompanion.insert(
+            uuid: entity.id,
+            sharedExpenseId: entity.sharedExpenseId,
+            userId: entity.userId,
+            amountCents: entity.amountCents,
+            shareValue: Value(entity.shareValue),
+            isSettled: Value(entity.isSettled),
+            syncStatus: const Value('pending'),
+          ),
+        );
+  }
+
+  Future<SharedExpenseEntity> _mapSharedExpenseEntry(
+    SharedExpenseEntry entry,
+  ) async {
+    final splitRows = await (_db.select(
+      _db.splitEntryRecords,
+    )..where((s) => s.sharedExpenseId.equals(entry.uuid))).get();
+    return SharedExpenseEntity(
+      id: entry.uuid,
+      groupId: entry.groupId,
+      description: entry.description,
+      totalAmountCents: entry.totalAmountCents,
+      currencyCode: entry.currencyCode,
+      paidByUserId: entry.paidByUserId,
+      splitType: entry.splitType,
+      splits: splitRows.map(_mapSplitEntryRecord).toList(),
+      categoryId: entry.categoryId,
+      notes: entry.notes,
+      receiptId: entry.receiptUrl,
+      expenseDate: entry.expenseDate,
+      isDeleted: entry.isDeleted,
+      createdAt: entry.createdAt,
+      updatedAt: entry.updatedAt,
+    );
+  }
+
+  SplitEntryEntity _mapSplitEntryRecord(SplitEntryRecord entry) {
+    return SplitEntryEntity(
+      id: entry.uuid,
+      sharedExpenseId: entry.sharedExpenseId,
+      userId: entry.userId,
+      amountCents: entry.amountCents,
+      shareValue: entry.shareValue,
+      isSettled: entry.isSettled,
+      createdAt: entry.createdAt,
+      updatedAt: entry.updatedAt,
     );
   }
 

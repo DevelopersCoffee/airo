@@ -9,7 +9,10 @@ abstract class CoinsLocalDatasource {
   // ==================== Transaction Operations ====================
 
   Future<TransactionEntity?> getTransactionById(String id);
-  Future<List<TransactionEntity>> getTransactionsByDateRange(DateTime start, DateTime end);
+  Future<List<TransactionEntity>> getTransactionsByDateRange(
+    DateTime start,
+    DateTime end,
+  );
   Future<List<TransactionEntity>> getTransactionsByCategory(String categoryId);
   Future<List<TransactionEntity>> getTransactionsByAccount(String accountId);
   Future<List<TransactionEntity>> getRecentTransactions(int limit);
@@ -19,7 +22,9 @@ abstract class CoinsLocalDatasource {
   Future<void> hardDeleteTransaction(String id);
   Future<void> restoreTransaction(String id);
   Stream<List<TransactionEntity>> watchAllTransactions();
-  Stream<List<TransactionEntity>> watchTransactionsByCategory(String categoryId);
+  Stream<List<TransactionEntity>> watchTransactionsByCategory(
+    String categoryId,
+  );
   Stream<List<TransactionEntity>> watchTransactionsByDate(DateTime date);
   Future<int> getTotalSpent(DateTime start, DateTime end);
   Future<Map<String, int>> getSpentByCategory(DateTime start, DateTime end);
@@ -76,6 +81,14 @@ abstract class CoinsLocalDatasource {
   Future<void> updateGroupMember(GroupMemberEntity entity);
   Future<void> removeGroupMember(String groupId, String userId);
   Stream<List<GroupMemberEntity>> watchGroupMembers(String groupId);
+
+  // ==================== Shared Expense Operations ====================
+
+  Future<List<SharedExpenseEntity>> getSharedExpensesByGroup(String groupId);
+  Future<void> insertSharedExpense(SharedExpenseEntity entity);
+  Future<void> updateSharedExpense(SharedExpenseEntity entity);
+  Future<void> softDeleteSharedExpense(String id);
+  Stream<List<SharedExpenseEntity>> watchSharedExpensesByGroup(String groupId);
 
   // ==================== Settlement Operations ====================
 
@@ -249,6 +262,64 @@ class GroupMemberEntity {
   });
 }
 
+class SharedExpenseEntity {
+  final String id;
+  final String groupId;
+  final String description;
+  final int totalAmountCents;
+  final String currencyCode;
+  final String paidByUserId;
+  final String splitType;
+  final List<SplitEntryEntity> splits;
+  final String? categoryId;
+  final String? notes;
+  final String? receiptId;
+  final DateTime expenseDate;
+  final bool isDeleted;
+  final DateTime createdAt;
+  final DateTime? updatedAt;
+
+  SharedExpenseEntity({
+    required this.id,
+    required this.groupId,
+    required this.description,
+    required this.totalAmountCents,
+    required this.currencyCode,
+    required this.paidByUserId,
+    required this.splitType,
+    required this.splits,
+    this.categoryId,
+    this.notes,
+    this.receiptId,
+    required this.expenseDate,
+    this.isDeleted = false,
+    required this.createdAt,
+    this.updatedAt,
+  });
+}
+
+class SplitEntryEntity {
+  final String id;
+  final String sharedExpenseId;
+  final String userId;
+  final int amountCents;
+  final int shareValue;
+  final bool isSettled;
+  final DateTime createdAt;
+  final DateTime? updatedAt;
+
+  SplitEntryEntity({
+    required this.id,
+    required this.sharedExpenseId,
+    required this.userId,
+    required this.amountCents,
+    required this.shareValue,
+    this.isSettled = false,
+    required this.createdAt,
+    this.updatedAt,
+  });
+}
+
 class SettlementEntity {
   final String id;
   final String groupId;
@@ -278,4 +349,3 @@ class SettlementEntity {
     this.completedAt,
   });
 }
-

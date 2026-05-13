@@ -1,11 +1,18 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/utils/locale_settings.dart';
 import '../../../money/application/providers/money_provider.dart';
+import '../../domain/entities/account.dart';
+import '../../domain/entities/category.dart' as coins;
 import '../../domain/entities/transaction.dart';
+import '../../domain/repositories/account_repository.dart';
 import '../../domain/repositories/transaction_repository.dart';
+import '../use_cases/add_expense_use_case.dart';
+import '../../data/repositories/account_repository_impl.dart';
 import '../../data/repositories/transaction_repository_impl.dart';
 import '../../data/datasources/coins_local_datasource_impl_stub.dart'
     if (dart.library.io) '../../data/datasources/coins_local_datasource_impl.dart';
+import '../../data/mappers/account_mapper.dart';
 import '../../data/mappers/transaction_mapper.dart';
 
 /// Coins local datasource provider - singleton
@@ -27,6 +34,90 @@ final transactionRepositoryProvider = Provider<TransactionRepository>((ref) {
   }
   final datasource = ref.watch(coinsLocalDatasourceProvider);
   return TransactionRepositoryImpl(datasource, TransactionMapper());
+});
+
+final accountRepositoryProvider = Provider<AccountRepository>((ref) {
+  if (kIsWeb) {
+    throw UnimplementedError('Coins feature not supported on web (no SQLite)');
+  }
+  final datasource = ref.watch(coinsLocalDatasourceProvider);
+  return AccountRepositoryImpl(datasource, AccountMapper());
+});
+
+final expenseCategoryOptionsProvider = Provider<List<coins.Category>>((ref) {
+  final now = DateTime(2026);
+  return [
+    coins.Category(
+      id: 'food',
+      name: 'Food',
+      type: coins.CategoryType.expense,
+      iconName: 'restaurant',
+      color: '#16A34A',
+      isSystem: true,
+      sortOrder: 1,
+      createdAt: now,
+    ),
+    coins.Category(
+      id: 'transport',
+      name: 'Transport',
+      type: coins.CategoryType.expense,
+      iconName: 'directions_car',
+      color: '#2563EB',
+      isSystem: true,
+      sortOrder: 2,
+      createdAt: now,
+    ),
+    coins.Category(
+      id: 'shopping',
+      name: 'Shopping',
+      type: coins.CategoryType.expense,
+      iconName: 'shopping_bag',
+      color: '#9333EA',
+      isSystem: true,
+      sortOrder: 3,
+      createdAt: now,
+    ),
+    coins.Category(
+      id: 'salary',
+      name: 'Salary',
+      type: coins.CategoryType.income,
+      iconName: 'payments',
+      color: '#0F766E',
+      isSystem: true,
+      sortOrder: 4,
+      createdAt: now,
+    ),
+  ];
+});
+
+final expenseAccountOptionsProvider = FutureProvider<List<Account>>((
+  ref,
+) async {
+  try {
+    final repo = ref.watch(accountRepositoryProvider);
+    final result = await repo.findActive();
+    final accounts = result.data ?? [];
+    if (accounts.isNotEmpty) return accounts;
+  } catch (_) {
+    // Use a first-run fallback when the local account store is not ready.
+  }
+
+  final currencyCode = ref.watch(currencyFormatterProvider).currency.code;
+  return [
+    Account(
+      id: 'cash_default',
+      name: 'Cash',
+      type: AccountType.cash,
+      balanceCents: 0,
+      currencyCode: currencyCode,
+      isDefault: true,
+      createdAt: DateTime.now(),
+    ),
+  ];
+});
+
+final addExpenseUseCaseProvider = Provider<AddExpenseUseCase>((ref) {
+  return AddExpenseUseCase(ref.watch(transactionRepositoryProvider));
 });
 
 /// Watch all transactions stream
@@ -123,6 +214,24 @@ class AddExpenseNotifier extends StateNotifier<AsyncValue<void>> {
       } else {
         state = const AsyncValue.data(null);
       }
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+    }
+  }
+
+  Future<void> addExpenseFromInput(AddExpenseParams params) async {
+    state = const AsyncValue.loading();
+    try {
+      final result = await _ref.read(addExpenseUseCaseProvider).execute(params);
+      if (result.error != null) {
+        state = AsyncValue.error(result.error!, StackTrace.current);
+        return;
+      }
+      _ref.invalidate(allExpensesProvider);
+      _ref.invalidate(recentExpensesProvider);
+      _ref.invalidate(spentTodayProvider);
+      _ref.invalidate(spentThisMonthProvider);
+      state = const AsyncValue.data(null);
     } catch (e, st) {
       state = AsyncValue.error(e, st);
     }

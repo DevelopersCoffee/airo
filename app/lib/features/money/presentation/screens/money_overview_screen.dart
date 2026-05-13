@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import '../../../../core/dictionary/dictionary.dart';
-import '../../../../core/routing/route_names.dart';
 import '../../application/providers/money_provider.dart';
 import '../../domain/models/money_models.dart';
 // ignore: unused_import
@@ -27,8 +25,22 @@ class MoneyOverviewScreen extends ConsumerWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    // No AppBar here - global AppBar is in AppShell
     return Scaffold(
+      appBar: AppBar(
+        title: const Text('Airo'),
+        actions: [
+          IconButton(
+            tooltip: 'History',
+            icon: const Icon(Icons.history),
+            onPressed: () => _navigateToAllTransactions(context),
+          ),
+          IconButton(
+            tooltip: 'Help',
+            icon: const Icon(Icons.help_outline),
+            onPressed: () => _showHelp(context),
+          ),
+        ],
+      ),
       body: DictionarySelectionArea(
         child: ResponsiveCenter(
           maxWidth: ResponsiveBreakpoints.contentMaxWidth,
@@ -114,36 +126,24 @@ class MoneyOverviewScreen extends ConsumerWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
                     _PrimaryActionButton(
-                      icon: Icons.call_split,
-                      label: 'Split Bill',
-                      onTap: () => context.push(RouteNames.billSplit),
-                    ),
-                    _PrimaryActionButton(
-                      icon: Icons.qr_code_scanner,
-                      label: 'Scan',
-                      onTap: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Coming soon!')),
-                        );
-                      },
-                    ),
-                    _PrimaryActionButton(
                       icon: Icons.send,
-                      label: 'Send Money',
-                      onTap: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Coming soon!')),
-                        );
-                      },
+                      label: 'Send',
+                      onTap: () => _showComingSoon(context),
                     ),
                     _PrimaryActionButton(
                       icon: Icons.request_page,
                       label: 'Request',
-                      onTap: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Coming soon!')),
-                        );
-                      },
+                      onTap: () => _showComingSoon(context),
+                    ),
+                    _PrimaryActionButton(
+                      icon: Icons.payments_outlined,
+                      label: 'Pay',
+                      onTap: () => _navigateToAddExpense(context),
+                    ),
+                    _PrimaryActionButton(
+                      icon: Icons.qr_code_scanner,
+                      label: 'Scan',
+                      onTap: () => _showComingSoon(context),
                     ),
                   ],
                 ),
@@ -439,9 +439,9 @@ class MoneyOverviewScreen extends ConsumerWidget {
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _navigateToAddExpense(context),
-        tooltip: 'Add Money',
+        tooltip: 'Add Expense',
         icon: const Icon(Icons.add),
-        label: const Text('Add Money'),
+        label: const Text('Add Expense'),
       ),
     );
   }
@@ -462,6 +462,18 @@ class MoneyOverviewScreen extends ConsumerWidget {
     Navigator.of(
       context,
     ).push(MaterialPageRoute(builder: (_) => const TransactionsListScreen()));
+  }
+
+  void _showComingSoon(BuildContext context) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Coming soon')));
+  }
+
+  void _showHelp(BuildContext context) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Help coming soon')));
   }
 
   // ignore: unused_element

@@ -147,13 +147,12 @@ class DeckOfCardsService {
         path += 'random/';
       }
 
-      final response = await _dio.get(
-        path,
-        queryParameters: {
-          if (cards != null) 'cards': cards.join(','),
-          if (count != null) 'count': count,
-        },
-      );
+      final queryParameters = <String, dynamic>{};
+      final cardsValue = cards?.join(',');
+      if (cardsValue != null) queryParameters['cards'] = cardsValue;
+      if (count != null) queryParameters['count'] = count;
+
+      final response = await _dio.get(path, queryParameters: queryParameters);
 
       return DrawResponse.fromJson(response.data as Map<String, dynamic>);
     } catch (e) {

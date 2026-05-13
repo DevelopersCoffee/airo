@@ -19,8 +19,10 @@ enum BudgetPeriod {
 /// See: docs/features/coins/DOMAIN_API_CONTRACTS.md
 class Budget extends Equatable {
   final String id;
+  final String? name;
   final String categoryId;
   final int limitCents; // Budget limit in smallest currency unit
+  final String currencyCode;
   final BudgetPeriod period;
   final DateTime startDate;
   final DateTime? endDate;
@@ -31,8 +33,10 @@ class Budget extends Equatable {
 
   const Budget({
     required this.id,
+    this.name,
     required this.categoryId,
     required this.limitCents,
+    this.currencyCode = 'INR',
     required this.period,
     required this.startDate,
     this.endDate,
@@ -45,14 +49,19 @@ class Budget extends Equatable {
   /// Get limit in major currency unit (rupees/dollars)
   double get limit => limitCents / 100;
 
+  /// Display name used by budget UI.
+  String get displayName => name ?? categoryId;
+
   /// Check if budget is recurring (no end date)
   bool get isRecurring => endDate == null;
 
   /// Create a copy with updated fields
   Budget copyWith({
     String? id,
+    String? name,
     String? categoryId,
     int? limitCents,
+    String? currencyCode,
     BudgetPeriod? period,
     DateTime? startDate,
     DateTime? endDate,
@@ -63,8 +72,10 @@ class Budget extends Equatable {
   }) {
     return Budget(
       id: id ?? this.id,
+      name: name ?? this.name,
       categoryId: categoryId ?? this.categoryId,
       limitCents: limitCents ?? this.limitCents,
+      currencyCode: currencyCode ?? this.currencyCode,
       period: period ?? this.period,
       startDate: startDate ?? this.startDate,
       endDate: endDate ?? this.endDate,
@@ -78,16 +89,17 @@ class Budget extends Equatable {
 
   @override
   List<Object?> get props => [
-        id,
-        categoryId,
-        limitCents,
-        period,
-        startDate,
-        endDate,
-        isActive,
-        alertThresholdPercent,
-        createdAt,
-        updatedAt,
-      ];
+    id,
+    name,
+    categoryId,
+    limitCents,
+    currencyCode,
+    period,
+    startDate,
+    endDate,
+    isActive,
+    alertThresholdPercent,
+    createdAt,
+    updatedAt,
+  ];
 }
-

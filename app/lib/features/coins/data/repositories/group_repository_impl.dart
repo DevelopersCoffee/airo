@@ -185,8 +185,15 @@ class GroupRepositoryImpl implements GroupRepository {
 
   @override
   Future<Result<List<SharedExpense>>> getExpenses(String groupId) async {
-    // TODO: Implement
-    return (data: <SharedExpense>[], error: null);
+    try {
+      final entities = await _localDatasource.getSharedExpensesByGroup(groupId);
+      return (
+        data: entities.map(_mapper.expenseToDomain).toList(),
+        error: null,
+      );
+    } catch (e) {
+      return (data: null, error: 'Failed to fetch expenses: $e');
+    }
   }
 
   @override
@@ -194,31 +201,62 @@ class GroupRepositoryImpl implements GroupRepository {
     String groupId,
     String userId,
   ) async {
-    // TODO: Implement
-    return (data: <SharedExpense>[], error: null);
+    try {
+      final expenses = await getExpenses(groupId);
+      if (expenses.error != null) {
+        return (data: null, error: expenses.error);
+      }
+      return (
+        data: expenses.data!
+            .where(
+              (expense) =>
+                  expense.paidByUserId == userId ||
+                  expense.splits.any((split) => split.userId == userId),
+            )
+            .toList(),
+        error: null,
+      );
+    } catch (e) {
+      return (data: null, error: 'Failed to fetch member expenses: $e');
+    }
   }
 
   @override
   Future<Result<SharedExpense>> addExpense(SharedExpense expense) async {
-    // TODO: Implement
-    return (data: expense, error: null);
+    try {
+      final entity = _mapper.expenseToEntity(expense);
+      await _localDatasource.insertSharedExpense(entity);
+      return (data: expense, error: null);
+    } catch (e) {
+      return (data: null, error: 'Failed to add expense: $e');
+    }
   }
 
   @override
   Future<Result<SharedExpense>> updateExpense(SharedExpense expense) async {
-    // TODO: Implement
-    return (data: expense, error: null);
+    try {
+      final entity = _mapper.expenseToEntity(expense);
+      await _localDatasource.updateSharedExpense(entity);
+      return (data: expense, error: null);
+    } catch (e) {
+      return (data: null, error: 'Failed to update expense: $e');
+    }
   }
 
   @override
   Future<Result<void>> deleteExpense(String expenseId) async {
-    // TODO: Implement
-    return (data: null, error: null);
+    try {
+      await _localDatasource.softDeleteSharedExpense(expenseId);
+      return (data: null, error: null);
+    } catch (e) {
+      return (data: null, error: 'Failed to delete expense: $e');
+    }
   }
 
   @override
   Stream<List<SharedExpense>> watchExpenses(String groupId) {
-    // TODO: Implement
-    return Stream.value(<SharedExpense>[]);
+    return _localDatasource
+        .watchSharedExpensesByGroup(groupId)
+        .map((entities) => entities.map(_mapper.expenseToDomain).toList());
   }
 }

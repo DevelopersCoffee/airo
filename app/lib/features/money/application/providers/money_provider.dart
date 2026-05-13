@@ -261,7 +261,6 @@ class FakeBudgetsRepository implements BudgetsRepository {
 
   @override
   Future<Result<List<Budget>>> fetchAll() async {
-    await Future.delayed(const Duration(milliseconds: 300));
     return Ok(_budgets.values.toList());
   }
 

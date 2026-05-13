@@ -53,7 +53,10 @@ class AddSplitUseCase {
         break;
       case SplitType.percentage:
         if (params.percentages == null) {
-          return (data: null, error: 'Percentages required for percentage split');
+          return (
+            data: null,
+            error: 'Percentages required for percentage split',
+          );
         }
         splits = _calculator.calculatePercentageSplit(
           sharedExpenseId: expenseId,
@@ -101,9 +104,9 @@ class AddSplitUseCase {
       paidByUserId: params.paidByUserId,
       splitType: params.splitType,
       splits: splits,
-      categoryId: params.categoryId,
+      categoryId: params.categoryId ?? 'general',
       notes: params.notes,
-      receiptUrl: params.receiptUrl,
+      receiptId: params.receiptUrl,
       expenseDate: params.expenseDate ?? now,
       createdAt: now,
       isDeleted: false,
@@ -151,4 +154,3 @@ class AddSplitParams {
     this.expenseDate,
   });
 }
-

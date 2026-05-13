@@ -91,7 +91,17 @@ class BalanceEngineImpl implements BalanceEngine {
       settlements: settlements,
     );
 
-    final debts = calculateDebts(netBalances);
+    var currencyCode = 'INR';
+    for (final expense in expenses) {
+      if (!expense.isDeleted) {
+        currencyCode = expense.currencyCode;
+        break;
+      }
+    }
+    final debts = _simplifier.fromNetBalances(
+      netBalances,
+      currencyCode: currencyCode,
+    );
     final simplifiedDebts = _simplifier.simplify(debts);
 
     final totalExpenses = expenses

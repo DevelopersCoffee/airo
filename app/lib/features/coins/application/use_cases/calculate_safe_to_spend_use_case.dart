@@ -1,5 +1,3 @@
-import '../../domain/entities/budget.dart';
-import '../../domain/entities/transaction.dart';
 import '../../domain/repositories/budget_repository.dart';
 import '../../domain/repositories/transaction_repository.dart';
 import '../../domain/services/budget_engine.dart';
@@ -44,6 +42,13 @@ class CalculateSafeToSpendUseCase {
       return (
         data: SafeToSpend(
           amountCents: 0,
+          dailyLimitCents: 0,
+          spentTodayCents: 0,
+          spentThisMonthCents: 0,
+          monthlyBudgetCents: 0,
+          daysRemaining: 0,
+          percentUsed: 0,
+          health: BudgetHealth.healthy,
           currencyCode: 'INR',
           hasBudget: false,
           calculatedAt: now,
@@ -90,4 +95,3 @@ class CalculateSafeToSpendUseCase {
     return (data: result.data?.amountCents ?? 0, error: null);
   }
 }
-

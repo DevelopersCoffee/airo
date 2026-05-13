@@ -13,5 +13,6 @@
 /// ```
 library;
 
-// Conditional import: Use native SQLite on native platforms, Hive on web
-export 'app_database_web.dart' if (dart.library.io) 'app_database_native.dart';
+// Conditional export: use native SQLite by default and Hive/IndexedDB on web.
+export 'app_database_native.dart'
+    if (dart.library.html) 'app_database_web.dart';

@@ -3,9 +3,7 @@ import 'dart:convert';
 import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
 
-// Conditional imports for native platforms only
-import '../../../../core/database/app_database.dart'
-    if (dart.library.html) '../../../../core/database/app_database_stub.dart';
+import '../../../../core/database/app_database_native.dart';
 import '../../../../core/utils/result.dart';
 import '../../domain/models/money_models.dart';
 import '../../domain/repositories/money_repositories.dart';
