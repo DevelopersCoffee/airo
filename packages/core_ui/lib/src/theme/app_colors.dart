@@ -53,5 +53,19 @@ abstract final class AppColors {
   static const Color onSurfaceDark = Color(0xFFE6E1E5);
   static const Color primaryDark = Color(0xFFD0BCFF);
   static const Color onPrimaryDark = Color(0xFF381E72);
-}
 
+  // Airo Cyber colors
+  static const Color cyberBackground = Color(0xFF021515);
+  static const Color cyberSurface = Color(0xFF082424);
+  static const Color cyberSurfaceHigh = Color(0xFF0D3030);
+  static const Color cyberChrome = Color(0xFF071F1F);
+  static const Color cyberPrimary = Color(0xFFFFB23F);
+  static const Color cyberOnPrimary = Color(0xFF211200);
+  static const Color cyberSecondary = Color(0xFF6CE5D8);
+  static const Color cyberTertiary = Color(0xFFA5E66E);
+  static const Color cyberText = Color(0xFFFFE8CF);
+  static const Color cyberMutedText = Color(0xFFC8B79F);
+  static const Color cyberOutline = Color(0x6649F2D2);
+  static const Color cyberGridLine = Color(0x3349F2D2);
+  static const Color cyberGlow = Color(0x55FFB23F);
+}

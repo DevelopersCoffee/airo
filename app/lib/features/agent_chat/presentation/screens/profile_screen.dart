@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:core_ui/core_ui.dart';
 import '../../../../core/auth/auth_service.dart';
 import '../../../../core/auth/google_auth_service.dart';
 import '../../../../core/http/http_dog.dart';
 import '../../../../core/dictionary/dictionary.dart';
+import '../../../../core/providers/app_theme_provider.dart';
 import '../../../../core/routing/route_names.dart';
 import '../../../../shared/widgets/bug_report_dialog.dart';
 import '../../../quotes/presentation/widgets/daily_quote_card.dart';
@@ -63,6 +65,30 @@ class ProfileScreen extends ConsumerWidget {
             // Settings section
             Text('Settings', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 16),
+
+            // Appearance
+            Text('Appearance', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 8),
+            RadioGroup<AppThemeId>(
+              groupValue: ref.watch(appThemeProvider),
+              onChanged: (themeId) {
+                if (themeId != null) {
+                  ref.read(appThemeProvider.notifier).setTheme(themeId);
+                }
+              },
+              child: Column(
+                children: [
+                  for (final theme in AppTheme.themes)
+                    RadioListTile<AppThemeId>(
+                      value: theme.id,
+                      title: Text(theme.name),
+                      subtitle: Text(theme.description),
+                    ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 24),
 
             // Bedtime mode toggle
             ListTile(

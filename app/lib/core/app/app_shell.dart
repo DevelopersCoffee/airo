@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:core_ui/core_ui.dart';
 import '../auth/auth_service.dart';
 import '../auth/google_auth_service.dart';
 import '../providers/bedtime_mode_provider.dart';
 import '../providers/navigation_provider.dart';
 import '../routing/route_names.dart';
-import '../theme/bedtime_theme.dart';
 import '../../features/music/presentation/widgets/mini_player.dart';
 import '../../features/iptv/presentation/widgets/iptv_mini_player.dart';
 import '../../features/iptv/application/providers/iptv_providers.dart'
@@ -154,9 +154,11 @@ class AppShell extends ConsumerWidget {
             const SizedBox(width: 8),
           ],
         ),
-        body: _ContextAwareMiniPlayers(
-          currentIndex: navigationShell.currentIndex,
-          child: navigationShell,
+        body: _AiroShellBackdrop(
+          child: _ContextAwareMiniPlayers(
+            currentIndex: navigationShell.currentIndex,
+            child: navigationShell,
+          ),
         ),
         bottomNavigationBar: NavigationBar(
           selectedIndex: navigationShell.currentIndex,
@@ -195,6 +197,54 @@ class AppShell extends ConsumerWidget {
             : null,
       ),
     );
+  }
+}
+
+class _AiroShellBackdrop extends StatelessWidget {
+  const _AiroShellBackdrop({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = Theme.of(context).extension<AiroThemeTokens>();
+    if (tokens == null) {
+      return child;
+    }
+
+    return ColoredBox(
+      color: Theme.of(context).scaffoldBackgroundColor,
+      child: CustomPaint(
+        painter: _AiroGridPainter(tokens.gridLine),
+        child: child,
+      ),
+    );
+  }
+}
+
+class _AiroGridPainter extends CustomPainter {
+  const _AiroGridPainter(this.gridLine);
+
+  final Color gridLine;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = gridLine
+      ..strokeWidth = 1;
+
+    const spacing = 32.0;
+    for (var x = 0.0; x <= size.width; x += spacing) {
+      canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint);
+    }
+    for (var y = 0.0; y <= size.height; y += spacing) {
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _AiroGridPainter oldDelegate) {
+    return oldDelegate.gridLine != gridLine;
   }
 }
 
