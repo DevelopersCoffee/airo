@@ -25,6 +25,18 @@ void main() {
       expect(notifier.currentTheme.name, 'Airo Classic');
     });
 
+    test('migrates old persisted Bedtime default back to Cyber once', () async {
+      SharedPreferences.setMockInitialValues({
+        AppThemeNotifier.storageKey: AppThemeId.bedtime.storageValue,
+      });
+      final prefs = await SharedPreferences.getInstance();
+      final notifier = AppThemeNotifier.withPreferences(prefs);
+
+      expect(notifier.state, AppThemeId.cyber);
+      expect(prefs.getString(AppThemeNotifier.storageKey), 'cyber');
+      expect(prefs.getBool(AppThemeNotifier.bedtimeMigrationKey), isTrue);
+    });
+
     test('persists selected theme changes', () async {
       SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
@@ -34,6 +46,19 @@ void main() {
 
       expect(notifier.state, AppThemeId.bedtime);
       expect(prefs.getString(AppThemeNotifier.storageKey), 'bedtime');
+    });
+
+    test('resetToDefault selects and persists Airo Cyber', () async {
+      SharedPreferences.setMockInitialValues({
+        AppThemeNotifier.storageKey: AppThemeId.bedtime.storageValue,
+      });
+      final prefs = await SharedPreferences.getInstance();
+      final notifier = AppThemeNotifier.withPreferences(prefs);
+
+      await notifier.resetToDefault();
+
+      expect(notifier.state, AppThemeId.cyber);
+      expect(prefs.getString(AppThemeNotifier.storageKey), 'cyber');
     });
   });
 }

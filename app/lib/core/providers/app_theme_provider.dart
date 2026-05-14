@@ -5,6 +5,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// Persists and exposes the selected app theme.
 class AppThemeNotifier extends StateNotifier<AppThemeId> {
   static const String storageKey = 'airo_app_theme_id';
+  static const String bedtimeMigrationKey =
+      'airo_bedtime_theme_default_migrated';
 
   SharedPreferences? _preferences;
 
@@ -14,7 +16,7 @@ class AppThemeNotifier extends StateNotifier<AppThemeId> {
 
   AppThemeNotifier.withPreferences(SharedPreferences preferences)
     : _preferences = preferences,
-      super(AppThemeId.fromStorageValue(preferences.getString(storageKey)));
+      super(_themeFromPreferences(preferences));
 
   AppThemeDefinition get currentTheme => AppTheme.byId(state);
 
@@ -25,10 +27,27 @@ class AppThemeNotifier extends StateNotifier<AppThemeId> {
     await preferences.setString(storageKey, themeId.storageValue);
   }
 
+  Future<void> resetToDefault() async {
+    await setTheme(AppTheme.defaultThemeId);
+  }
+
   Future<void> _load() async {
     final preferences = await SharedPreferences.getInstance();
     _preferences = preferences;
-    state = AppThemeId.fromStorageValue(preferences.getString(storageKey));
+    state = _themeFromPreferences(preferences);
+  }
+
+  static AppThemeId _themeFromPreferences(SharedPreferences preferences) {
+    final savedTheme = AppThemeId.fromStorageValue(
+      preferences.getString(storageKey),
+    );
+    final migrated = preferences.getBool(bedtimeMigrationKey) ?? false;
+    if (savedTheme == AppThemeId.bedtime && !migrated) {
+      preferences.setString(storageKey, AppTheme.defaultThemeId.storageValue);
+      preferences.setBool(bedtimeMigrationKey, true);
+      return AppTheme.defaultThemeId;
+    }
+    return savedTheme;
   }
 }
 

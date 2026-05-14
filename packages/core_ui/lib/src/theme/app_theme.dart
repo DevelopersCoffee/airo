@@ -153,21 +153,121 @@ abstract final class AppTheme {
   );
 
   static ThemeData get _cyberDark {
+    final editorialTextTheme = const TextTheme(
+      displayLarge: TextStyle(
+        fontFamily: 'AiroRulesExpanded',
+        fontWeight: FontWeight.w700,
+        fontSize: 56,
+        height: 0.98,
+        letterSpacing: 0,
+      ),
+      displayMedium: TextStyle(
+        fontFamily: 'AiroRulesExpanded',
+        fontWeight: FontWeight.w700,
+        fontSize: 44,
+        height: 1,
+        letterSpacing: 0,
+      ),
+      displaySmall: TextStyle(
+        fontFamily: 'AiroRulesExpanded',
+        fontWeight: FontWeight.w700,
+        fontSize: 32,
+        height: 1,
+        letterSpacing: 0,
+      ),
+      headlineLarge: TextStyle(
+        fontFamily: 'AiroRulesExpanded',
+        fontWeight: FontWeight.w700,
+        fontSize: 30,
+        height: 1.1,
+        letterSpacing: 0,
+      ),
+      headlineMedium: TextStyle(
+        fontFamily: 'AiroRulesExpanded',
+        fontWeight: FontWeight.w700,
+        fontSize: 24,
+        height: 1.15,
+        letterSpacing: 0,
+      ),
+      headlineSmall: TextStyle(
+        fontFamily: 'AiroRulesExpanded',
+        fontWeight: FontWeight.w700,
+        fontSize: 20,
+        height: 1.2,
+        letterSpacing: 0,
+      ),
+      titleLarge: TextStyle(
+        fontFamily: 'AiroMondwest',
+        fontSize: 21,
+        height: 1.2,
+        letterSpacing: 2.8,
+      ),
+      titleMedium: TextStyle(
+        fontFamily: 'AiroMondwest',
+        fontSize: 17,
+        height: 1.25,
+        letterSpacing: 2.4,
+      ),
+      titleSmall: TextStyle(
+        fontFamily: 'AiroMondwest',
+        fontSize: 14,
+        height: 1.25,
+        letterSpacing: 2,
+      ),
+      bodyLarge: TextStyle(
+        fontFamily: 'AiroMondwest',
+        fontSize: 18,
+        height: 1.6,
+        letterSpacing: 0,
+      ),
+      bodyMedium: TextStyle(
+        fontFamily: 'AiroMondwest',
+        fontSize: 16,
+        height: 1.55,
+        letterSpacing: 0,
+      ),
+      bodySmall: TextStyle(
+        fontFamily: 'AiroMondwest',
+        fontSize: 13,
+        height: 1.45,
+        letterSpacing: 0,
+      ),
+      labelLarge: TextStyle(
+        fontFamily: 'AiroMondwest',
+        fontSize: 15,
+        height: 1.2,
+        letterSpacing: 2.6,
+      ),
+      labelMedium: TextStyle(
+        fontFamily: 'AiroMondwest',
+        fontSize: 12,
+        height: 1.2,
+        letterSpacing: 2.2,
+      ),
+      labelSmall: TextStyle(
+        fontFamily: 'AiroMondwest',
+        fontSize: 10,
+        height: 1.2,
+        letterSpacing: 1.8,
+      ),
+    ).apply(bodyColor: AppColors.cyberText, displayColor: AppColors.cyberText);
+
     final base = ThemeData(
       useMaterial3: true,
       brightness: Brightness.dark,
+      fontFamily: 'AiroMondwest',
       colorScheme: const ColorScheme.dark(
         primary: AppColors.cyberPrimary,
         onPrimary: AppColors.cyberOnPrimary,
-        primaryContainer: AppColors.cyberSurfaceHigh,
+        primaryContainer: AppColors.cyberBackground,
         onPrimaryContainer: AppColors.cyberText,
         secondary: AppColors.cyberSecondary,
         onSecondary: AppColors.cyberBackground,
-        secondaryContainer: Color(0xFF123D3C),
+        secondaryContainer: AppColors.cyberSurfaceHigh,
         onSecondaryContainer: AppColors.cyberText,
         tertiary: AppColors.cyberTertiary,
         onTertiary: AppColors.cyberBackground,
-        tertiaryContainer: Color(0xFF223C18),
+        tertiaryContainer: AppColors.cyberSurfaceHigh,
         onTertiaryContainer: AppColors.cyberText,
         error: Color(0xFFFF6B6B),
         onError: Color(0xFF2A0000),
@@ -181,10 +281,7 @@ abstract final class AppTheme {
         outlineVariant: AppColors.cyberGridLine,
       ),
       scaffoldBackgroundColor: AppColors.cyberBackground,
-      textTheme: AppTypography.textTheme.apply(
-        bodyColor: AppColors.cyberText,
-        displayColor: AppColors.cyberText,
-      ),
+      textTheme: editorialTextTheme,
       appBarTheme: const AppBarTheme(
         centerTitle: true,
         elevation: 0,
@@ -198,7 +295,7 @@ abstract final class AppTheme {
         elevation: 0,
         surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.zero,
           side: const BorderSide(color: AppColors.cyberGridLine),
         ),
       ),
@@ -216,7 +313,7 @@ abstract final class AppTheme {
       ),
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: AppColors.cyberChrome,
-        indicatorColor: AppColors.cyberPrimary,
+        indicatorColor: AppColors.cyberPrimary.withValues(alpha: 0.12),
         surfaceTintColor: Colors.transparent,
         labelTextStyle: WidgetStateProperty.resolveWith((states) {
           final color = states.contains(WidgetState.selected)
@@ -237,7 +334,8 @@ abstract final class AppTheme {
           foregroundColor: AppColors.cyberOnPrimary,
           elevation: 0,
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+          textStyle: editorialTextTheme.labelLarge,
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
@@ -245,25 +343,29 @@ abstract final class AppTheme {
           foregroundColor: AppColors.cyberPrimary,
           side: const BorderSide(color: AppColors.cyberOutline),
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+          textStyle: editorialTextTheme.labelLarge,
         ),
       ),
       textButtonTheme: TextButtonThemeData(
-        style: TextButton.styleFrom(foregroundColor: AppColors.cyberPrimary),
+        style: TextButton.styleFrom(
+          foregroundColor: AppColors.cyberPrimary,
+          textStyle: editorialTextTheme.labelLarge,
+        ),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: AppColors.cyberSurface,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
+        fillColor: AppColors.cyberBackground.withValues(alpha: 0.4),
+        border: const OutlineInputBorder(
+          borderRadius: BorderRadius.zero,
           borderSide: const BorderSide(color: AppColors.cyberGridLine),
         ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
+        enabledBorder: const OutlineInputBorder(
+          borderRadius: BorderRadius.zero,
           borderSide: const BorderSide(color: AppColors.cyberGridLine),
         ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
+        focusedBorder: const OutlineInputBorder(
+          borderRadius: BorderRadius.zero,
           borderSide: const BorderSide(color: AppColors.cyberPrimary),
         ),
         labelStyle: const TextStyle(color: AppColors.cyberMutedText),

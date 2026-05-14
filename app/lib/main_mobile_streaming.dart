@@ -45,13 +45,17 @@ void main() async {
 
   // Initialize Firebase with streaming variant configuration
   try {
-    await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
-    );
-    isFirebaseInitialized = true;
-    debugPrint(
-      '✅ Firebase initialized (Streaming variant: ${DefaultFirebaseOptions.currentVariant.name})',
-    );
+    final options = DefaultFirebaseOptions.currentPlatform;
+    if (DefaultFirebaseOptions.isConfigured(options)) {
+      await Firebase.initializeApp(options: options);
+      isFirebaseInitialized = true;
+      debugPrint(
+        '✅ Firebase initialized (Streaming variant: ${DefaultFirebaseOptions.currentVariant.name})',
+      );
+    } else {
+      isFirebaseInitialized = false;
+      debugPrint('⚠️ Firebase skipped: platform options are placeholders.');
+    }
   } catch (e) {
     isFirebaseInitialized = false;
     debugPrint('⚠️ Firebase initialization failed: $e');

@@ -22,17 +22,20 @@ void main() {
       expect(AppTheme.byId(AppThemeId.bedtime).name, 'Bedtime');
     });
 
-    test('cyber theme exposes futuristic dark tokens', () {
+    test('cyber theme exposes Hermes-style editorial tokens', () {
       final theme = AppTheme.byId(AppThemeId.cyber).darkTheme;
       final tokens = theme.extension<AiroThemeTokens>();
 
       expect(theme.brightness, Brightness.dark);
-      expect(theme.colorScheme.primary, const Color(0xFFFFB23F));
-      expect(theme.colorScheme.secondary, const Color(0xFF6CE5D8));
+      expect(theme.scaffoldBackgroundColor, const Color(0xFF041C1C));
+      expect(theme.colorScheme.primary, const Color(0xFFFFE6CB));
+      expect(theme.colorScheme.secondary, const Color(0xFFFFFF89));
+      expect(theme.textTheme.bodyMedium?.fontFamily, 'AiroMondwest');
+      expect(theme.textTheme.displayLarge?.fontFamily, 'AiroRulesExpanded');
       expect(theme.cardTheme.shape, isA<RoundedRectangleBorder>());
       expect(tokens, isNotNull);
-      expect(tokens!.gridLine, const Color(0x3349F2D2));
-      expect(tokens.chromeSurface, const Color(0xFF071F1F));
+      expect(tokens!.gridLine, const Color(0x33FFE6CB));
+      expect(tokens.chromeSurface, const Color(0xFF041C1C));
     });
 
     test('light theme returns valid ThemeData', () {
