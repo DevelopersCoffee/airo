@@ -1,7 +1,7 @@
 # =============================================================================
 # Continuous Integration Workflow - Optimized
 # =============================================================================
-# On PR: Runs quick checks only (analyze, lint, core package tests)
+# On PR: Runs checks plus multi-platform APK size guardrails
 # On Push to main: Runs comprehensive checks including app tests with coverage
 # =============================================================================
 name: Continuous Integration
@@ -176,14 +176,13 @@ jobs:
   # Build Android - Multi-Platform Matrix
   # ============================================
   # Builds all platform variants:
-  # - mobile-full: All features (~145MB)
-  # - mobile-streaming: IPTV + Music (<30MB)
-  # - tv: IPTV only (<30MB)
+  # - mobile-full: All features
+  # - mobile-streaming: IPTV + Music
+  # - tv: IPTV only
   # ============================================
   build-android:
     runs-on: ubuntu-latest
-    needs: [test-core]  # Temporarily removed analyze/test-app dependency to unblock matrix builds
-    if: github.event_name == 'push'
+    if: github.event_name == 'push' || github.event_name == 'pull_request'
     strategy:
       fail-fast: false
       matrix:
@@ -193,7 +192,7 @@ jobs:
             variant: full
             app_platform: mobileFull
             use_stubs: false
-            size_target_mb: 150
+            size_target_mb: 35
             description: "Full app with all features"
           - name: mobile-streaming
             target: lib/main_mobile_streaming.dart
@@ -201,7 +200,7 @@ jobs:
             app_platform: mobileStreaming
             use_stubs: true
             pubspec: pubspec_streaming.yaml
-            size_target_mb: 50
+            size_target_mb: 35
             description: "Streaming app (IPTV + Music)"
           - name: tv
             target: lib/main_tv.dart
@@ -209,7 +208,7 @@ jobs:
             app_platform: androidTv
             use_stubs: true
             pubspec: pubspec_tv.yaml
-            size_target_mb: 50
+            size_target_mb: 35
             description: "Android TV (IPTV only)"
     steps:
       - uses: actions/checkout@v6
@@ -255,11 +254,42 @@ jobs:
           GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
         run: |
           cd app
-          if [ -z "$GOOGLE_SERVICES_JSON" ]; then
-            echo "::warning::GOOGLE_SERVICES_JSON secret not set. Firebase features may not work correctly."
-            exit 0
+          if [ "${{ github.event_name }}" != "pull_request" ] && [ -n "$GOOGLE_SERVICES_JSON" ]; then
+            echo "$GOOGLE_SERVICES_JSON" | base64 -d > android/app/google-services.json
+          else
+            echo "::warning::Using CI placeholder Firebase config for APK size build."
+            cat > android/app/google-services.json <<'JSON'
+          {
+            "project_info": {
+              "project_number": "000000000000",
+              "project_id": "airo-ci-placeholder",
+              "storage_bucket": "airo-ci-placeholder.appspot.com"
+            },
+            "client": [
+              {
+                "client_info": {
+                  "mobilesdk_app_id": "1:000000000000:android:0000000000000000000000",
+                  "android_client_info": {
+                    "package_name": "io.airo.app"
+                  }
+                },
+                "oauth_client": [],
+                "api_key": [
+                  {
+                    "current_key": "ci-placeholder"
+                  }
+                ],
+                "services": {
+                  "appinvite_service": {
+                    "other_platform_oauth_client": []
+                  }
+                }
+              }
+            ],
+            "configuration_version": "1"
+          }
+          JSON
           fi
-          echo "$GOOGLE_SERVICES_JSON" | base64 -d > android/app/google-services.json
           if [ ! -f android/app/google-services.json ] || [ ! -s android/app/google-services.json ]; then
             echo "::error::Failed to create google-services.json."
             exit 1
@@ -312,37 +342,45 @@ jobs:
       # ===========================================
       - name: Check APK sizes
         id: apk_sizes
+        env:
+          APK_SIZE_COMPONENT: ${{ matrix.platform.name }}
+          APK_SIZE_APK_GLOB: app/build/app/outputs/flutter-apk/app-*-release.apk
+          APK_SIZE_REPORT_FILE: apk-size-${{ matrix.platform.name }}.md
         run: |
-          cd app/build/app/outputs/flutter-apk
-          echo "## 📱 ${{ matrix.platform.name }} APK Sizes" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| ABI | Size | Target | Status |" >> $GITHUB_STEP_SUMMARY
-          echo "|-----|------|--------|--------|" >> $GITHUB_STEP_SUMMARY
+          scripts/check-apk-size.sh
 
-          SIZE_OK=true
-          for apk in app-*-release.apk; do
-            if [ -f "$apk" ]; then
-              SIZE_BYTES=$(stat -c%s "$apk")
-              SIZE_MB=$(echo "scale=2; $SIZE_BYTES / 1048576" | bc)
-              ABI=$(echo "$apk" | sed 's/app-\(.*\)-release.apk/\1/')
-              TARGET=${{ matrix.platform.size_target_mb }}
+      - name: Upload APK size report
+        if: github.event_name == 'pull_request' && always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: apk-size-report-${{ matrix.platform.name }}
+          path: apk-size-${{ matrix.platform.name }}.md
+          if-no-files-found: ignore
+          retention-days: 7
 
-              if (( $(echo "$SIZE_MB > $TARGET" | bc -l) )); then
-                STATUS="❌ Over target"
-                SIZE_OK=false
-              else
-                STATUS="✅ OK"
-              fi
-
-              echo "| $ABI | ${SIZE_MB}MB | <${TARGET}MB | $STATUS |" >> $GITHUB_STEP_SUMMARY
-              echo "$ABI: ${SIZE_MB}MB"
-            fi
+      - name: Generate APK baseline update
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          APK_SIZE_COMPONENT: ${{ matrix.platform.name }}
+          APK_SIZE_BUDGET_MB: ${{ matrix.platform.size_target_mb }}
+        run: |
+          mkdir -p apk-size-baselines
+          output="apk-size-baselines/${APK_SIZE_COMPONENT}.tsv"
+          : > "$output"
+          for apk in app/build/app/outputs/flutter-apk/app-*-release.apk; do
+            [ -f "$apk" ] || continue
+            bytes=$(stat -c%s "$apk")
+            artifact=$(basename "$apk")
+            printf '%s\t%s\t%s\t%s\n' "$APK_SIZE_COMPONENT" "$artifact" "$bytes" "$APK_SIZE_BUDGET_MB" >> "$output"
           done
-          echo "" >> $GITHUB_STEP_SUMMARY
 
-          if [ "$SIZE_OK" = false ]; then
-            echo "::warning::Some APKs exceed the size target of ${{ matrix.platform.size_target_mb }}MB"
-          fi
+      - name: Upload APK baseline update
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v6
+        with:
+          name: apk-size-baseline-${{ matrix.platform.name }}
+          path: apk-size-baselines/${{ matrix.platform.name }}.tsv
+          retention-days: 7
 
       # ===========================================
       # Restore Original Pubspec (if using stubs)
@@ -371,6 +409,116 @@ jobs:
           retention-days: 90
 
   # ============================================
+  # PR APK Size Report Comment
+  # ============================================
+  comment-apk-size-report:
+    runs-on: ubuntu-latest
+    needs: [build-android]
+    if: github.event_name == 'pull_request' && always()
+    permissions:
+      actions: read
+      issues: write
+      pull-requests: read
+    steps:
+      - name: Download APK size reports
+        uses: actions/download-artifact@v6
+        with:
+          pattern: apk-size-report-*
+          path: apk-size-reports
+          merge-multiple: true
+
+      - name: Combine APK size reports
+        run: |
+          {
+            echo "# APK Size Guardrail Report"
+            echo ""
+            for report in apk-size-reports/*.md; do
+              [ -f "$report" ] || continue
+              cat "$report"
+              echo ""
+            done
+          } > apk-size-report.md
+
+      - name: Comment PR with APK size report
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const fs = require('fs');
+            const marker = '<!-- apk-size-guardrail -->';
+            const body = `${marker}\n${fs.readFileSync('apk-size-report.md', 'utf8')}\n\n[View run details](https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})`;
+            const comments = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              per_page: 100,
+            });
+            const existing = comments.data.find((comment) =>
+              comment.user.type === 'Bot' && comment.body.includes(marker)
+            );
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
+
+  # ============================================
+  # Update APK Size Baselines (main only)
+  # ============================================
+  update-apk-size-baselines:
+    runs-on: ubuntu-latest
+    needs: [build-android]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Download APK baseline updates
+        uses: actions/download-artifact@v6
+        with:
+          pattern: apk-size-baseline-*
+          path: apk-size-baseline-updates
+          merge-multiple: true
+
+      - name: Commit updated APK size baselines
+        run: |
+          {
+            echo "# APK size guardrail baselines."
+            echo "#"
+            echo "# Columns:"
+            echo "# component: CI build component that produced the APK."
+            echo "# artifact: APK file name produced by Flutter."
+            echo "# baseline_bytes: approved baseline size in bytes."
+            echo "# budget_mb: absolute artifact budget in MiB."
+            echo "#"
+            echo "# This file is updated automatically after successful main builds."
+            echo -e "component\tartifact\tbaseline_bytes\tbudget_mb"
+            sort apk-size-baseline-updates/*.tsv
+          } > .github/apk-size-baselines.tsv
+
+          if git diff --quiet -- .github/apk-size-baselines.tsv; then
+            echo "APK size baselines are unchanged."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .github/apk-size-baselines.tsv
+          git commit -m "ci: update APK size baselines"
+          git push
+
+  # ============================================
   # Build Summary Job
   # ============================================
   build-summary:
@@ -388,9 +536,9 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Platform | Description | Target Size |" >> $GITHUB_STEP_SUMMARY
           echo "|----------|-------------|-------------|" >> $GITHUB_STEP_SUMMARY
-          echo "| mobile-full | All features | <150MB |" >> $GITHUB_STEP_SUMMARY
-          echo "| mobile-streaming | IPTV + Music | <50MB |" >> $GITHUB_STEP_SUMMARY
-          echo "| tv | IPTV only | <50MB |" >> $GITHUB_STEP_SUMMARY
+          echo "| mobile-full | All features | <35MB |" >> $GITHUB_STEP_SUMMARY
+          echo "| mobile-streaming | IPTV + Music | <35MB |" >> $GITHUB_STEP_SUMMARY
+          echo "| tv | IPTV only | <35MB |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "Download artifacts from the Actions tab." >> $GITHUB_STEP_SUMMARY
 
@@ -561,4 +709,3 @@ jobs:
         with:
           sarif_file: snyk.sarif
         continue-on-error: true
-

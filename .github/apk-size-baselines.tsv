@@ -1,0 +1,21 @@
+# APK size guardrail baselines.
+#
+# Columns:
+# component: CI build component that produced the APK.
+# artifact: APK file name produced by Flutter.
+# baseline_bytes: approved baseline size in bytes.
+# budget_mb: absolute artifact budget in MiB.
+#
+# The initial baseline is the issue #163 ceiling: 35 MiB. After successful main
+# builds, CI updates baseline_bytes to the measured value for each artifact while
+# keeping budget_mb at or below 35.
+component	artifact	baseline_bytes	budget_mb
+mobile-full	app-arm64-v8a-release.apk	36700160	35
+mobile-full	app-armeabi-v7a-release.apk	36700160	35
+mobile-full	app-x86_64-release.apk	36700160	35
+mobile-streaming	app-arm64-v8a-release.apk	36700160	35
+mobile-streaming	app-armeabi-v7a-release.apk	36700160	35
+mobile-streaming	app-x86_64-release.apk	36700160	35
+tv	app-arm64-v8a-release.apk	36700160	35
+tv	app-armeabi-v7a-release.apk	36700160	35
+tv	app-x86_64-release.apk	36700160	35
