@@ -29,8 +29,9 @@ export 'src/sync/outbox_repository.dart';
 // Base Repository
 export 'src/repositories/base_repository.dart';
 
-// Plugin Storage
+// Plugin Storage and Runtime Controls
 export 'src/plugins/local_plugin_storage.dart';
+export 'src/plugins/plugin_kill_switch_service.dart';
 
 // Bug Reporting
 export 'src/bug_report/bug_report_model.dart';
