@@ -4,6 +4,10 @@
 *.pem
 *.p12
 *.jks
+*.keystore
+app/android/key.properties
+app/android/*.jks
+app/android/*.keystore
 google-services.json
 firebase-adminsdk*.json
 GoogleService-Info.plist

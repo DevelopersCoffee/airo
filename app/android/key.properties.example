@@ -1,0 +1,14 @@
+# Android release signing template for local release builds.
+# Copy this file to app/android/key.properties and fill in local values.
+# Never commit key.properties or the keystore file.
+#
+# CI uses GitHub Secrets to create this file automatically:
+# - ANDROID_RELEASE_KEYSTORE_BASE64
+# - KEYSTORE_PASSWORD
+# - KEY_ALIAS
+# - KEY_PASSWORD
+
+storeFile=release.keystore
+storePassword=change-me
+keyAlias=airo-release
+keyPassword=change-me
