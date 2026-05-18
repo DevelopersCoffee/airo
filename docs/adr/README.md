@@ -33,4 +33,3 @@ An Architecture Decision Record (ADR) captures an important architectural decisi
 
 - [Architecture Overview](../architecture/README.md)
 - [Package Structure](../architecture/package-structure.md)
-
