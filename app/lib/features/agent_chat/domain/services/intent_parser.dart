@@ -8,6 +8,7 @@ enum IntentType {
   openMoney,
   openBudget,
   openExpenses,
+  coinsQuestion,
   playGames,
   playChess,
   openOffers,
@@ -89,6 +90,15 @@ class IntentParser {
   static Intent parse(String text) {
     final lowerText = text.toLowerCase().trim();
 
+    if (_isCoinsQuestion(lowerText)) {
+      return Intent(
+        type: IntentType.coinsQuestion,
+        originalText: text,
+        parameters: {'question': _cleanCoinsQuestion(lowerText)},
+        confidence: 0.9,
+      );
+    }
+
     // Try exact matches first
     if (_phraseMap.containsKey(lowerText)) {
       return Intent(type: _phraseMap[lowerText]!, originalText: text);
@@ -111,6 +121,18 @@ class IntentParser {
       parameters: parameters,
       confidence: 0.0,
     );
+  }
+
+  static bool _isCoinsQuestion(String text) {
+    return text.startsWith('@coins') ||
+        text.contains('spending insight') ||
+        text.contains('subscription review') ||
+        text.contains('can i save') ||
+        text.contains('save more this month');
+  }
+
+  static String _cleanCoinsQuestion(String text) {
+    return text.replaceFirst('@coins', '').trim();
   }
 
   /// Extract parameters from text (e.g., search query, artist name)
@@ -143,6 +165,8 @@ class IntentParser {
         return 'Opening Budget';
       case IntentType.openExpenses:
         return 'Opening Expenses';
+      case IntentType.coinsQuestion:
+        return 'Answering Coins finance question';
       case IntentType.playGames:
         return 'Opening Games';
       case IntentType.playChess:

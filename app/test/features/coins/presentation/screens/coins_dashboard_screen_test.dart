@@ -2,6 +2,7 @@ import 'package:airo_app/core/utils/currency_formatter.dart';
 import 'package:airo_app/core/utils/locale_settings.dart';
 import 'package:airo_app/features/coins/application/providers/dashboard_providers.dart';
 import 'package:airo_app/features/coins/domain/models/safe_to_spend.dart';
+import 'package:airo_app/features/coins/domain/services/finance_insight_service.dart';
 import 'package:airo_app/features/coins/presentation/screens/coins_dashboard_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -76,5 +77,32 @@ void main() {
     addAction.onPressed!();
 
     expect(openedAddExpense, isTrue);
+  });
+
+  testWidgets('shows Coins insights from dashboard data', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          dashboardDataProvider.overrideWith(
+            (ref) async => const DashboardData(
+              financeInsights: [
+                FinanceInsight(
+                  title: 'Dining budget needs attention',
+                  message: '86% used with 5 expenses this period.',
+                  actionLabel: 'Open budget',
+                  severity: FinanceInsightSeverity.warning,
+                ),
+              ],
+            ),
+          ),
+        ],
+        child: const MaterialApp(home: CoinsDashboardScreen()),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('Coins insights'), findsOneWidget);
+    expect(find.text('Dining budget needs attention'), findsOneWidget);
+    expect(find.text('86% used with 5 expenses this period.'), findsOneWidget);
   });
 }
