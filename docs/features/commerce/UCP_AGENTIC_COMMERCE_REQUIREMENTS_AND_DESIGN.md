@@ -170,19 +170,6 @@ Requirements:
 - Prevent discount stacking that violates merchant rules.
 - Keep loyalty account linking optional for v1.
 
-### 6.5.1 Identity Linking
-
-Identity linking must use OAuth 2.0 when an agent needs buyer-specific account benefits.
-
-Requirements:
-
-- Support OAuth 2.0 Authorization Code flow before any buyer-specific loyalty or order-history access.
-- Publish OAuth authorization server metadata at `/.well-known/oauth-authorization-server` when identity linking is enabled.
-- Use scoped authorization for commerce actions, with UCP capability scopes such as checkout-session access.
-- Support token revocation for account unlinking and compromised-token response.
-- Treat loyalty benefits as inputs to server-side checkout pricing; the agent may suggest redemption, but Airo remains authoritative for final totals.
-- Never expose raw passwords, long-lived refresh tokens, or private loyalty account metadata to the agent.
-
 ### 6.6 Payment
 
 Payments must use tokenized payment instruments through payment handlers.
@@ -195,7 +182,6 @@ Requirements:
 - Support `requires_buyer_input` states for 3DS, wallet challenge, or final confirmation.
 - Separate authorization and capture if the merchant acceptance workflow requires it.
 - Record PSP reference IDs and reconciliation metadata.
-- Store monetary amounts in minor units in durable records.
 
 ### 6.7 Human Handoff
 
@@ -238,20 +224,6 @@ Requirements:
 - Emit lifecycle events to subscribed platforms or internal notification channels.
 - Include timestamps, reason codes, and actor metadata.
 - Support partial refunds and item-level cancellation later, but not in v1.
-- Sign outbound order webhooks using RFC 9421 HTTP Message Signatures.
-
-### 6.9 Inventory and Reservation
-
-Restaurant and hyperlocal commerce flows must prevent overselling.
-
-Requirements:
-
-- Maintain `available_to_promise` separately from raw stock where inventory applies.
-- Reserve scarce items when checkout is created or updated, with a short expiration window.
-- Release reservations when checkout expires, is cancelled, or completion fails permanently.
-- Reprice or reject checkout completion when inventory changes invalidate the session.
-- Emit inventory availability changes to internal catalog indexes; public UCP inventory webhooks should be added only if supported by the selected platform contract.
-- Return partial availability when some items remain purchasable and others are sold out, so the agent can ask the buyer whether to proceed with a revised cart.
 
 ---
 
@@ -264,9 +236,6 @@ Requirements:
 - Use OAuth 2.0 or equivalent account-linking flow for buyer-specific benefits.
 - Store signing keys and payment configuration in secure storage.
 - Add replay protection using request IDs, timestamps, and idempotency keys.
-- Publish public signing keys in the UCP profile and rotate keys with a dual-key grace period.
-- Prefer RFC 9421 HTTP Message Signatures for UCP request/response authentication where permissionless partner verification is required.
-- Use HMAC signatures only for private, non-UCP internal webhooks or third-party systems that explicitly require shared secrets.
 
 ### Privacy
 
@@ -287,21 +256,12 @@ Requirements:
 - Log request ID, agent ID, merchant ID, checkout ID, order ID, capability, status, latency, and error code.
 - Emit metrics for checkout conversion, agent retries, payment challenge rate, handoff rate, and order rejection rate.
 - Redact PII and payment tokens from logs.
-- Emit security anomaly events for unsigned transactional requests, rate-limit violations, high-cardinality agent failures, and repeated payment declines.
 
 ### Compatibility
 
 - Version all UCP adapter endpoints.
 - Support server-selected capability negotiation.
 - Keep internal domain commands stable even if UCP payload versions change.
-
-### Rate Limiting
-
-- Cache `GET /.well-known/ucp` at the CDN edge.
-- Protect checkout create/update with IP, merchant, and agent identity limits.
-- Protect checkout completion with stricter user/session/payment-attempt limits.
-- Return HTTP `429` with `Retry-After` for protocol-level rate limits.
-- Keep limits configurable per merchant and environment.
 
 ---
 
@@ -365,40 +325,6 @@ erDiagram
 - `createdAt`
 - `acceptedAt`
 - `completedAt`
-
-#### InventoryReservation
-
-- `id`
-- `merchantId`
-- `checkoutSessionId`
-- `sku`
-- `quantity`
-- `expiresAt`
-- `status`
-- `createdAt`
-
-#### AgentSessionLedger
-
-- `sessionId`
-- `buyerRef`
-- `agentClientId`
-- `authorizedScopes`
-- `createdAt`
-- `expiresAt`
-
-#### TransactionLedger
-
-- `transactionId`
-- `orderId`
-- `checkoutSessionId`
-- `agentSessionId`
-- `currency`
-- `amountMinorUnits`
-- `paymentHandler`
-- `pspReference`
-- `signatureKeyId`
-- `status`
-- `processedAt`
 
 ---
 
@@ -491,7 +417,6 @@ Use stable machine-readable error codes.
 | `payment_requires_buyer_input` | Buyer must complete challenge/handoff. | Yes |
 | `checkout_expired` | Session expired. | Yes |
 | `merchant_closed` | Merchant is not accepting orders. | Yes |
-| `partial_availability` | Some line items became unavailable. | Yes |
 | `order_rejected` | Merchant rejected the order. | No |
 | `invalid_signature` | Request authentication failed. | No |
 
@@ -509,17 +434,13 @@ Use stable machine-readable error codes.
 - Mock payment handler for development.
 - Order lifecycle events in local/internal event bus.
 - Idempotency and request ID support.
-- Inventory reservation for scarce or countable items.
-- RFC 9421 signing model documented for outbound order events.
 
 ### Should Have
 
 - Public `/.well-known/ucp` in staging.
 - Google Pay-compatible handler configuration in non-production mode.
 - Discount code support.
-- OAuth identity-linking design for loyalty and buyer-specific order access.
 - Staff-console handoff status.
-- CDN and rate-limit configuration for public discovery and checkout endpoints.
 - Conformance-oriented fixtures and contract tests.
 
 ### Later
@@ -528,8 +449,6 @@ Use stable machine-readable error codes.
 - Delivery fulfillment.
 - Loyalty account linking.
 - AP2 mandate flow.
-- ONDC bridge or other regional commerce network adapter.
-- UCP order webhook delivery to external platforms.
 - Partner-specific rollout dashboards.
 - Full UCP conformance suite integration.
 
@@ -545,8 +464,6 @@ Use stable machine-readable error codes.
 - Order status changes emit lifecycle events.
 - No raw payment credentials or buyer PII are written to application logs.
 - Public UCP exposure can be disabled by merchant or environment feature flag.
-- A sold-out item during checkout completion produces a recoverable revised-cart response or a terminal stock error.
-- Signature verification tests reject tampered request bodies.
 
 ---
 
@@ -560,8 +477,6 @@ Use stable machine-readable error codes.
 | Restaurant menus have complex modifier rules. | Make modifier validation server-authoritative and test with real menus. |
 | Agents retry completion and duplicate orders. | Require idempotency keys and transactional order creation. |
 | Human handoff breaks the agent flow. | Persist session state and provide explicit continuation statuses. |
-| Public manifests invite crawler traffic. | Cache the profile at the CDN and rate-limit transactional endpoints by agent, IP, merchant, and buyer/session. |
-| Loyalty/account linking expands privacy scope. | Use OAuth scopes, token revocation, PII minimization, and short retention windows. |
 
 ---
 
@@ -603,14 +518,6 @@ Use stable machine-readable error codes.
 - Add conformance checks.
 - Prepare staging rollout with selected merchants.
 
-### Milestone 6: Hyperlocal and Regional Commerce
-
-- Add delivery-zone resolution with radius, polygon, hours, fee, and minimum-order rules.
-- Add inventory reservation and expiration.
-- Add loyalty identity-linking flow.
-- Add regional network adapter spike for ONDC or another local commerce network.
-- Add production security dashboards for scraping/card-testing signals.
-
 ---
 
 ## 16. Open Questions
@@ -620,28 +527,10 @@ Use stable machine-readable error codes.
 - Should merchant staff acceptance be required for every order, or only for exceptions?
 - Does v1 need delivery, or should it ship with dine-in and pickup only?
 - Which platform is the first target for agent distribution: Google/Gemini UCP, ChatGPT/ACP, or Airo's own agent?
-- Should delivery zones be stored as distance radii, polygons, postal codes, or a combination?
-- Should ONDC be a first-class adapter or a later integration once UCP checkout is stable?
-- What is the retention window for agent session, order, and payment audit records under DPDP/GDPR/CCPA requirements?
 
 ---
 
-## 17. Validation Notes on Recent Blueprint Input
-
-The following points should guide implementation decisions:
-
-- UCP can reduce integration friction, but it does not guarantee free visibility or automatic ranking on Google, Gemini, ChatGPT, or any marketplace.
-- UCP keeps the merchant as Merchant of Record in the intended model, but payment, platform, and delivery fees may still apply depending on provider contracts.
-- ONDC and UCP should be treated as complementary but separate systems. Airo would need an adapter that maps UCP checkout/menu intent into ONDC network APIs; this is not automatic UCP behavior.
-- Hyperlocal delivery zones are valid product requirements, but the exact JSON shape in Airo should be an internal fulfillment model first, then mapped to the selected UCP capability schema or partner extension.
-- UCP order webhooks and signed REST traffic should use RFC 9421 HTTP Message Signatures with `Signature`, `Signature-Input`, and `Content-Digest`. Do not document HMAC-only `UCP-Signature` as the UCP standard.
-- Use minor units for durable transaction amounts. Avoid floating-point totals in storage or payment reconciliation.
-- Inventory webhooks are useful operationally, but UCP's standard order capability defines order lifecycle webhooks; public inventory event delivery should be treated as platform-specific until confirmed by the target integration.
-- Google Merchant Center onboarding, feed attributes, and certification steps must be re-verified against official Google docs before implementation. Do not assume non-primary claims such as specific feed attribute names are stable.
-
----
-
-## 18. References
+## 17. References
 
 - [Universal Commerce Protocol](https://ucp.dev/)
 - [UCP GitHub Repository](https://github.com/Universal-Commerce-Protocol/ucp)
@@ -650,7 +539,3 @@ The following points should guide implementation decisions:
 - [Shopify Engineering: Building the Universal Commerce Protocol](https://shopify.engineering/UCP)
 - [Agentic Commerce Protocol](https://www.agenticcommerce.dev/)
 - [ACP GitHub Repository](https://github.com/agentic-commerce-protocol/agentic-commerce-protocol)
-- [UCP Checkout REST Binding](https://ucp.dev/latest/specification/checkout-rest/)
-- [UCP Order Capability](https://ucp.dev/2026-04-08/specification/order/)
-- [UCP Identity Linking Capability](https://ucp.dev/2026-01-23/specification/identity-linking/)
-- [UCP Profile Guide](https://developers.google.com/merchant/ucp/guides/ucp-profile)
