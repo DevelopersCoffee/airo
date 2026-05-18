@@ -128,6 +128,34 @@ jobs:
 
           echo "✅ Firebase configuration created successfully"
 
+      - name: Configure Android release signing
+        env:
+          ANDROID_RELEASE_KEYSTORE_BASE64: ${{ secrets.ANDROID_RELEASE_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          cd app/android
+          missing=0
+          for name in ANDROID_RELEASE_KEYSTORE_BASE64 KEYSTORE_PASSWORD KEY_ALIAS KEY_PASSWORD; do
+            if [ -z "${!name}" ]; then
+              echo "::error::Missing required Android release signing secret: $name"
+              missing=1
+            fi
+          done
+          if [ "$missing" -ne 0 ]; then
+            exit 1
+          fi
+
+          echo "$ANDROID_RELEASE_KEYSTORE_BASE64" | base64 -d > release.keystore
+          cat > key.properties <<EOF
+          storeFile=release.keystore
+          storePassword=$KEYSTORE_PASSWORD
+          keyAlias=$KEY_ALIAS
+          keyPassword=$KEY_PASSWORD
+          EOF
+          chmod 600 release.keystore key.properties
+
       - name: Get dependencies
         run: |
           cd packages/core_domain && flutter pub get
@@ -231,6 +259,34 @@ jobs:
           fi
           echo "✅ Firebase configuration created successfully"
 
+      - name: Configure Android release signing
+        env:
+          ANDROID_RELEASE_KEYSTORE_BASE64: ${{ secrets.ANDROID_RELEASE_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          cd app/android
+          missing=0
+          for name in ANDROID_RELEASE_KEYSTORE_BASE64 KEYSTORE_PASSWORD KEY_ALIAS KEY_PASSWORD; do
+            if [ -z "${!name}" ]; then
+              echo "::error::Missing required Android release signing secret: $name"
+              missing=1
+            fi
+          done
+          if [ "$missing" -ne 0 ]; then
+            exit 1
+          fi
+
+          echo "$ANDROID_RELEASE_KEYSTORE_BASE64" | base64 -d > release.keystore
+          cat > key.properties <<EOF
+          storeFile=release.keystore
+          storePassword=$KEYSTORE_PASSWORD
+          keyAlias=$KEY_ALIAS
+          keyPassword=$KEY_PASSWORD
+          EOF
+          chmod 600 release.keystore key.properties
+
       - name: Get dependencies
         run: |
           cd packages/core_domain && flutter pub get
@@ -315,6 +371,34 @@ jobs:
             exit 1
           fi
           echo "✅ Firebase configuration created successfully"
+
+      - name: Configure Android release signing
+        env:
+          ANDROID_RELEASE_KEYSTORE_BASE64: ${{ secrets.ANDROID_RELEASE_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          cd app/android
+          missing=0
+          for name in ANDROID_RELEASE_KEYSTORE_BASE64 KEYSTORE_PASSWORD KEY_ALIAS KEY_PASSWORD; do
+            if [ -z "${!name}" ]; then
+              echo "::error::Missing required Android release signing secret: $name"
+              missing=1
+            fi
+          done
+          if [ "$missing" -ne 0 ]; then
+            exit 1
+          fi
+
+          echo "$ANDROID_RELEASE_KEYSTORE_BASE64" | base64 -d > release.keystore
+          cat > key.properties <<EOF
+          storeFile=release.keystore
+          storePassword=$KEYSTORE_PASSWORD
+          keyAlias=$KEY_ALIAS
+          keyPassword=$KEY_PASSWORD
+          EOF
+          chmod 600 release.keystore key.properties
 
       - name: Get dependencies
         run: |
@@ -571,16 +655,25 @@ jobs:
         continue-on-error: true
 
       - name: Generate release notes
+        env:
+          VERSION: ${{ needs.changelog.outputs.version }}
+          CHANGELOG: ${{ needs.changelog.outputs.changelog }}
+          FLUTTER_VERSION: ${{ env.FLUTTER_VERSION }}
         run: |
-          VERSION="${{ needs.changelog.outputs.version }}"
-          CHANGELOG='${{ needs.changelog.outputs.changelog }}'
+          python3 <<'PY'
+          import os
+          import textwrap
+          from pathlib import Path
 
-          cat > RELEASE_NOTES.md << EOF
-          # Airo Super App ${VERSION}
+          version = os.environ["VERSION"]
+          changelog = os.environ.get("CHANGELOG") or "See commit history for changes."
+          flutter_version = os.environ["FLUTTER_VERSION"]
+
+          release_notes = textwrap.dedent(f"""# Airo Super App {version}
 
           ## What's Changed
 
-          ${CHANGELOG:-See commit history for changes.}
+          {changelog}
 
           ---
 
@@ -588,31 +681,31 @@ jobs:
 
           | Platform | File | Description |
           |----------|------|-------------|
-          | Android | \`airo-${VERSION}-arm64-v8a.apk\` | For modern 64-bit devices (recommended) |
-          | Android | \`airo-${VERSION}-armeabi-v7a.apk\` | For older 32-bit devices |
-          | Android | \`airo-${VERSION}-x86_64.apk\` | For emulators/Chromebooks |
-          | Android | \`airo-${VERSION}.aab\` | For Google Play Store |
-          | iOS | \`airo-${VERSION}-ios.ipa\` | Requires signing (may be unavailable) |
-          | Web | \`airo-${VERSION}-web.zip\` | Run in browser |
-          | Windows | \`airo-${VERSION}-windows-x64.zip\` | Windows 10/11 |
-          | Linux | \`airo-${VERSION}-linux-x64.tar.gz\` | Linux x64 |
+          | Android | `airo-{version}-arm64-v8a.apk` | For modern 64-bit devices (recommended) |
+          | Android | `airo-{version}-armeabi-v7a.apk` | For older 32-bit devices |
+          | Android | `airo-{version}-x86_64.apk` | For emulators/Chromebooks |
+          | Android | `airo-{version}.aab` | For Google Play Store |
+          | iOS | `airo-{version}-ios.ipa` | Requires signing (may be unavailable) |
+          | Web | `airo-{version}-web.zip` | Run in browser |
+          | Windows | `airo-{version}-windows-x64.zip` | Windows 10/11 |
+          | Linux | `airo-{version}-linux-x64.tar.gz` | Linux x64 |
 
           > **Note**: iOS build may be unavailable due to a known upstream issue with the Stockfish chess engine package.
 
           ## 🚀 Quick Start
 
           ### Android
-          \`\`\`bash
+          ```bash
           # For most modern devices (Pixel, Samsung Galaxy S/A series, etc.)
-          adb install airo-${VERSION}-arm64-v8a.apk
+          adb install airo-{version}-arm64-v8a.apk
           # For older 32-bit devices
-          adb install airo-${VERSION}-armeabi-v7a.apk
+          adb install airo-{version}-armeabi-v7a.apk
           # For emulators or Chromebooks
-          adb install airo-${VERSION}-x86_64.apk
-          \`\`\`
+          adb install airo-{version}-x86_64.apk
+          ```
 
           ### Web
-          Extract zip, open \`index.html\` in browser
+          Extract zip, open `index.html` in browser
 
           ## 📋 Features
           - 💰 Coins - Money management & bill splitting
@@ -627,8 +720,17 @@ jobs:
           - HTTPS enforced
 
           ---
-          *Built with Flutter ${{ env.FLUTTER_VERSION }}*
-          EOF
+          *Built with Flutter {flutter_version}*
+          """)
+
+          Path("RELEASE_NOTES.md").write_text(release_notes, encoding="utf-8")
+          PY
+
+          if grep -Eq '\\+(```|bash)' RELEASE_NOTES.md; then
+            echo "::error::Release notes contain escaped markdown code fences."
+            exit 1
+          fi
+          grep -q '```bash' RELEASE_NOTES.md
 
       - name: List downloaded artifacts
         run: |

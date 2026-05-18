@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/utils/locale_settings.dart';
 import '../../application/providers/dashboard_providers.dart';
+import '../../domain/services/finance_insight_service.dart';
 import 'add_expense_screen.dart';
 import 'groups_list_screen.dart';
 
@@ -87,6 +88,9 @@ class CoinsDashboardScreen extends ConsumerWidget {
 
                   // Budget Overview
                   _BudgetOverviewSection(budgetStatuses: data.budgetStatuses),
+                  const SizedBox(height: 24),
+
+                  _FinanceInsightsSection(insights: data.financeInsights),
                 ],
               ),
             ),
@@ -301,6 +305,74 @@ class _BudgetOverviewSection extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+class _FinanceInsightsSection extends StatelessWidget {
+  final List<FinanceInsight> insights;
+
+  const _FinanceInsightsSection({required this.insights});
+
+  @override
+  Widget build(BuildContext context) {
+    if (insights.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    final theme = Theme.of(context);
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Coins insights'),
+            const SizedBox(height: 8),
+            ...insights
+                .take(3)
+                .map(
+                  (insight) => ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: Icon(
+                      _iconForSeverity(insight.severity),
+                      color: _colorForSeverity(theme, insight.severity),
+                    ),
+                    title: Text(insight.title),
+                    subtitle: Text(insight.message),
+                    trailing: Text(insight.actionLabel),
+                  ),
+                ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  IconData _iconForSeverity(FinanceInsightSeverity severity) {
+    switch (severity) {
+      case FinanceInsightSeverity.success:
+        return Icons.check_circle_outline;
+      case FinanceInsightSeverity.warning:
+        return Icons.warning_amber_outlined;
+      case FinanceInsightSeverity.danger:
+        return Icons.error_outline;
+      case FinanceInsightSeverity.info:
+        return Icons.insights_outlined;
+    }
+  }
+
+  Color _colorForSeverity(ThemeData theme, FinanceInsightSeverity severity) {
+    switch (severity) {
+      case FinanceInsightSeverity.success:
+        return Colors.green;
+      case FinanceInsightSeverity.warning:
+        return Colors.orange;
+      case FinanceInsightSeverity.danger:
+        return theme.colorScheme.error;
+      case FinanceInsightSeverity.info:
+        return theme.colorScheme.primary;
+    }
   }
 }
 

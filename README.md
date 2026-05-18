@@ -190,6 +190,42 @@ export PATH=$PATH:/Applications/Xcode.app/Contents/Developer/usr/bin
 - **Multidex**: Enabled
 - **Gemini Nano**: Integrated for AI features
 
+#### Android Release Signing
+Release APKs and AABs must be signed with a private release keystore. Debug keys are never used for release builds.
+
+For local release builds:
+
+```bash
+cd app/android
+cp key.properties.example key.properties
+# Put your release keystore at app/android/release.keystore, or update storeFile.
+# Fill in storePassword, keyAlias, and keyPassword in key.properties.
+cd ../..
+flutter build apk --release
+```
+
+Never commit `app/android/key.properties` or keystore files. They are ignored by `.gitignore`.
+
+For GitHub Actions releases, configure these repository secrets:
+
+- `ANDROID_RELEASE_KEYSTORE_BASE64`: base64-encoded release keystore file
+- `KEYSTORE_PASSWORD`: keystore password
+- `KEY_ALIAS`: release key alias
+- `KEY_PASSWORD`: release key password
+
+Generate and encode a new keystore with:
+
+```bash
+keytool -genkeypair \
+  -v \
+  -keystore release.keystore \
+  -alias airo-release \
+  -keyalg RSA \
+  -keysize 4096 \
+  -validity 10000
+base64 -i release.keystore | tr -d '\n' > release.keystore.base64
+```
+
 #### iOS (iPhone 13 Pro Max Optimization)
 - **Deployment Target**: 12.0
 - **Target**: iOS 18

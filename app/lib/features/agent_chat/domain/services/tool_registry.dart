@@ -71,7 +71,8 @@ class MoneyTool implements Tool {
   bool canHandle(Intent intent) {
     return intent.type == IntentType.openMoney ||
         intent.type == IntentType.openBudget ||
-        intent.type == IntentType.openExpenses;
+        intent.type == IntentType.openExpenses ||
+        intent.type == IntentType.coinsQuestion;
   }
 
   @override
@@ -90,6 +91,13 @@ class MoneyTool implements Tool {
           route: '/money',
           parameters: {'tab': 'expenses'},
           message: 'Opening Expenses',
+        );
+      case IntentType.coinsQuestion:
+        return NavTarget(
+          route: '/money',
+          parameters: {'tab': 'insights'},
+          message:
+              'Coins can review your spending, budgets, subscriptions, and safe-to-spend context in read-only mode. Open Coins to see current insights, then ask about a specific goal like saving more this month or reducing recurring charges. This is not a replacement for professional financial advice.',
         );
       default:
         return null;

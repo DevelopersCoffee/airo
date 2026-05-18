@@ -1,3 +1,6 @@
+import java.io.FileInputStream
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("kotlin-android")
@@ -40,14 +43,45 @@ android {
     // Do NOT add splits.abi here as it conflicts with Flutter's NDK filters
     // See: https://developer.android.com/studio/build/configure-apk-splits
 
+    val keystorePropertiesFile = rootProject.file("key.properties")
+    val keystoreProperties = Properties()
+    if (keystorePropertiesFile.exists()) {
+        keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+    }
+
+    val signingPropertyNames = listOf("storeFile", "storePassword", "keyAlias", "keyPassword")
+    val missingSigningProperties = signingPropertyNames.filter { keystoreProperties.getProperty(it).isNullOrBlank() }
+    val hasReleaseSigningConfig = missingSigningProperties.isEmpty()
+    val requestedReleaseBuild = gradle.startParameter.taskNames.any { taskName ->
+        val normalized = taskName.lowercase()
+        normalized.contains("release") || normalized.contains("bundle")
+    }
+
+    if (!hasReleaseSigningConfig && requestedReleaseBuild) {
+        throw GradleException(
+            "Missing Android release signing properties: ${missingSigningProperties.joinToString()}. " +
+                "Copy app/android/key.properties.example to app/android/key.properties " +
+                "or configure the GitHub release signing secrets."
+        )
+    }
+
+    signingConfigs {
+        create("release") {
+            if (hasReleaseSigningConfig) {
+                storeFile = rootProject.file(keystoreProperties.getProperty("storeFile"))
+                storePassword = keystoreProperties.getProperty("storePassword")
+                keyAlias = keystoreProperties.getProperty("keyAlias")
+                keyPassword = keystoreProperties.getProperty("keyPassword")
+            }
+        }
+    }
+
     buildTypes {
         debug {
             // Enable test plugins for debug/test builds
         }
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("release")
 
             // Enable code shrinking (R8/ProGuard)
             isMinifyEnabled = true
