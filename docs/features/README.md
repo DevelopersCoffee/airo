@@ -13,6 +13,12 @@ Feature documentation and implementation guides.
 - File upload for receipts
 - Analytics and reports
 
+### [commerce/UCP_AGENTIC_COMMERCE_REQUIREMENTS_AND_DESIGN.md](./commerce/UCP_AGENTIC_COMMERCE_REQUIREMENTS_AND_DESIGN.md)
+**Agentic commerce / UCP readiness**:
+- UCP-compatible restaurant ordering requirements
+- Checkout, fulfillment, payment handler, and order lifecycle design
+- Adoption roadmap for UCP, ACP, and MCP interoperability
+
 ### [CHESS_IMPLEMENTATION_COMPLETE.md](./CHESS_IMPLEMENTATION_COMPLETE.md)
 **Chess game feature**:
 - Game implementation
@@ -39,6 +45,7 @@ Feature documentation and implementation guides.
 | **Loot** | ✅ Complete | Deals & offers |
 | **Chess** | ✅ Complete | Play chess games |
 | **Reminders** | ✅ Complete | Smart notifications |
+| **Agentic Commerce** | 📝 Draft | UCP-compatible ordering design |
 
 ---
 
@@ -90,4 +97,3 @@ Feature documentation and implementation guides.
 ---
 
 **Ready?** → [Explore Features](./MONEY_FEATURE_COMPLETE.md)
-

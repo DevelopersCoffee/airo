@@ -14,6 +14,7 @@ An Architecture Decision Record (ADR) captures an important architectural decisi
 | [0002](0002-state-management.md) | Riverpod for State Management | Accepted | 2025-11-30 |
 | [0003](0003-offline-first.md) | Offline-First Architecture | Accepted | 2025-11-30 |
 | [0004](0004-ai-abstraction.md) | AI Provider Abstraction Layer | Accepted | 2025-11-30 |
+| [0005](0005-ucp-compatible-commerce-adapter.md) | UCP-Compatible Commerce Adapter | Proposed | 2026-05-19 |
 
 ## Creating a New ADR
 
@@ -33,4 +34,3 @@ An Architecture Decision Record (ADR) captures an important architectural decisi
 
 - [Architecture Overview](../architecture/README.md)
 - [Package Structure](../architecture/package-structure.md)
-
