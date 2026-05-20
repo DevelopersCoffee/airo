@@ -22,6 +22,7 @@ class ChannelListWidget extends ConsumerWidget {
     final searchQuery = ref.watch(channelSearchQueryProvider);
     final counts = ref.watch(categoryCounts);
     final hasActiveFilter = ref.watch(hasActiveFilterProvider);
+    final colorScheme = Theme.of(context).colorScheme;
 
     return Column(
       children: [
@@ -35,7 +36,7 @@ class ChannelListWidget extends ConsumerWidget {
                 hintText: 'Search channels...',
                 prefixIcon: const Icon(Icons.search, size: 20),
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(0),
                 ),
                 contentPadding: const EdgeInsets.symmetric(
                   horizontal: 12,
@@ -79,6 +80,10 @@ class ChannelListWidget extends ConsumerWidget {
                     // Show count in label for better UX feedback
                     label: Text('${category.label} ($count)'),
                     selected: isSelected,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(6),
+                      side: BorderSide(color: colorScheme.outlineVariant),
+                    ),
                     onSelected: (_) =>
                         ref.read(selectedCategoryProvider.notifier).state =
                             category,
@@ -336,11 +341,11 @@ class _ChannelListTile extends ConsumerWidget {
 
     return ListTile(
       leading: ClipRRect(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(6),
         child: Container(
           width: 48,
           height: 48,
-          color: Colors.grey[200],
+          color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.42),
           child: channel.hasLogo
               ? Image.network(
                   channel.logoUrl!,

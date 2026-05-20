@@ -19,10 +19,11 @@ class GamesHubScreen extends ConsumerWidget {
 
     // No AppBar here - global AppBar is in AppShell
     return Scaffold(
+      backgroundColor: Colors.transparent,
       body: ResponsiveCenter(
         maxWidth: ResponsiveBreakpoints.dashboardMaxWidth,
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -87,7 +88,7 @@ class GamesHubScreen extends ConsumerWidget {
                                 crossAxisCount: columns,
                                 crossAxisSpacing: 12,
                                 mainAxisSpacing: 12,
-                                childAspectRatio: 0.85,
+                                childAspectRatio: columns <= 2 ? 0.92 : 1.12,
                               ),
                           itemCount: games.length,
                           itemBuilder: (context, index) {
@@ -136,14 +137,20 @@ class GamesHubScreen extends ConsumerWidget {
 
   Widget _buildGameTile(BuildContext context, WidgetRef ref, GameInfo game) {
     // Use RepaintBoundary to prevent unnecessary repaints
+    final colorScheme = Theme.of(context).colorScheme;
     return RepaintBoundary(
-      child: Card(
+      child: Material(
+        color: Colors.transparent,
         child: InkWell(
           onTap: game.isAvailable ? () => _playGame(context, ref, game) : null,
-          child: Opacity(
-            opacity: game.isAvailable ? 1.0 : 0.6,
-            child: Padding(
-              padding: const EdgeInsets.all(12),
+          child: Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: colorScheme.surface.withValues(alpha: 0.3),
+              border: Border.all(color: colorScheme.outlineVariant),
+            ),
+            child: Opacity(
+              opacity: game.isAvailable ? 1.0 : 0.6,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -156,7 +163,7 @@ class GamesHubScreen extends ConsumerWidget {
                           color: game.isAvailable
                               ? game.difficulty.color.withValues(alpha: 0.1)
                               : Colors.grey.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(6),
                         ),
                         child: Icon(
                           game.icon,
@@ -194,7 +201,10 @@ class GamesHubScreen extends ConsumerWidget {
                   // Game description
                   Text(
                     game.shortDescription,
-                    style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: colorScheme.primary.withValues(alpha: 0.64),
+                    ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -203,14 +213,18 @@ class GamesHubScreen extends ConsumerWidget {
                   // Game info
                   Row(
                     children: [
-                      Icon(Icons.person, size: 12, color: Colors.grey[600]),
+                      Icon(
+                        Icons.person,
+                        size: 12,
+                        color: colorScheme.primary.withValues(alpha: 0.58),
+                      ),
                       const SizedBox(width: 4),
                       Expanded(
                         child: Text(
                           game.playerCountDisplay,
                           style: TextStyle(
                             fontSize: 10,
-                            color: Colors.grey[600],
+                            color: colorScheme.primary.withValues(alpha: 0.58),
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,

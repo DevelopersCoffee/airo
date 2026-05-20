@@ -14,17 +14,11 @@ enum AppNavigationTab {
     icon: Icons.smart_toy_outlined,
     selectedIcon: Icons.smart_toy,
   ),
-  beats(
-    label: 'Beats',
-    path: '/beats',
-    icon: Icons.music_note_outlined,
-    selectedIcon: Icons.music_note,
-  ),
-  stream(
-    label: 'Stream',
-    path: '/stream',
-    icon: Icons.live_tv_outlined,
-    selectedIcon: Icons.live_tv,
+  media(
+    label: 'Media',
+    path: '/media',
+    icon: Icons.video_library_outlined,
+    selectedIcon: Icons.video_library,
   ),
   arena(
     label: 'Arena',
@@ -54,7 +48,7 @@ enum AppNavigationTab {
 
 /// Current navigation tab index.
 ///
-/// Order: Coins | Mind | Beats | Stream | Arena | Quest
+/// Order: Coins | Mind | Media | Arena | Quest
 final currentNavigationTabProvider = StateProvider<int>(
   (ref) => AppNavigationTab.mind.index,
 );
@@ -73,10 +67,11 @@ class MiniPlayerVisibility {
   final bool showIptvPlayer;
 }
 
-final miniPlayerVisibilityProvider =
-    Provider.family<MiniPlayerVisibility, int>((ref, currentIndex) {
-      return MiniPlayerVisibility(
-        showMusicPlayer: currentIndex == AppNavigationTab.beats.index,
-        showIptvPlayer: currentIndex == AppNavigationTab.stream.index,
-      );
-    });
+final miniPlayerVisibilityProvider = Provider.family<MiniPlayerVisibility, int>(
+  (ref, currentIndex) {
+    return const MiniPlayerVisibility(
+      showMusicPlayer: false,
+      showIptvPlayer: false,
+    );
+  },
+);

@@ -180,13 +180,11 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen> {
   }
 
   Widget _buildPlayerPlaceholder() {
+    final colorScheme = Theme.of(context).colorScheme;
     return Container(
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Colors.blueGrey.shade800, Colors.blueGrey.shade900],
-        ),
+        color: colorScheme.surface.withValues(alpha: 0.42),
+        border: Border.all(color: colorScheme.outlineVariant),
       ),
       child: Center(
         child: Column(
@@ -195,12 +193,14 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen> {
             Icon(
               Icons.live_tv,
               size: 64,
-              color: Colors.white.withValues(alpha: 0.7),
+              color: colorScheme.primary.withValues(alpha: 0.7),
             ),
             const SizedBox(height: 16),
             Text(
               'Select a channel to start watching',
-              style: TextStyle(color: Colors.white.withValues(alpha: 0.7)),
+              style: TextStyle(
+                color: colorScheme.primary.withValues(alpha: 0.7),
+              ),
             ),
           ],
         ),
@@ -214,7 +214,7 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen> {
         if (state.currentChannel == null) return const SizedBox.shrink();
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          color: Colors.grey[100],
+          color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.42),
           child: Row(
             children: [
               Expanded(
@@ -260,8 +260,10 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
         decoration: BoxDecoration(
-          color: Colors.grey[300],
-          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: Theme.of(context).colorScheme.outlineVariant,
+          ),
+          borderRadius: BorderRadius.circular(999),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -469,13 +471,11 @@ class _IPTVScreenBodyState extends ConsumerState<IPTVScreenBody> {
   }
 
   Widget _buildPlayerPlaceholder() {
+    final colorScheme = Theme.of(context).colorScheme;
     return Container(
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Colors.blueGrey.shade800, Colors.blueGrey.shade900],
-        ),
+        color: colorScheme.surface.withValues(alpha: 0.42),
+        border: Border.all(color: colorScheme.outlineVariant),
       ),
       child: Center(
         child: Column(
@@ -484,12 +484,14 @@ class _IPTVScreenBodyState extends ConsumerState<IPTVScreenBody> {
             Icon(
               Icons.live_tv,
               size: 64,
-              color: Colors.white.withValues(alpha: 0.7),
+              color: colorScheme.primary.withValues(alpha: 0.7),
             ),
             const SizedBox(height: 16),
             Text(
               'Select a channel to start watching',
-              style: TextStyle(color: Colors.white.withValues(alpha: 0.7)),
+              style: TextStyle(
+                color: colorScheme.primary.withValues(alpha: 0.7),
+              ),
             ),
           ],
         ),

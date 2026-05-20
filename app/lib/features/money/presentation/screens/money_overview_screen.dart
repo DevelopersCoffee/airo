@@ -21,15 +21,21 @@ class MoneyOverviewScreen extends ConsumerWidget {
     // Use stream provider for reactive transactions
     final transactionsStream = ref.watch(transactionsStreamProvider);
     final budgetsStream = ref.watch(budgetsStreamProvider);
+    final isCompact = MediaQuery.sizeOf(context).width < 600;
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: DictionarySelectionArea(
         child: SingleChildScrollView(
+          padding: EdgeInsets.only(bottom: isCompact ? 72 : 88),
           child: Column(
             children: [
-              _CoinsHeroSection(
-                totalBalance: totalBalance,
+              _CoinsHeroSection(totalBalance: totalBalance),
+              _CoinsDashboardSection(
+                accounts: accounts,
+                transactionsStream: transactionsStream,
+                budgetsStream: budgetsStream,
                 onAddExpense: () => _navigateToAddExpense(context),
+                onBudgets: () => _navigateToBudgets(context),
                 onTransactions: () => _navigateToAllTransactions(context),
               ),
               _CoinsDemoSection(
@@ -48,12 +54,14 @@ class MoneyOverviewScreen extends ConsumerWidget {
           ),
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _navigateToAddExpense(context),
-        tooltip: 'Add Expense',
-        icon: const Icon(Icons.add),
-        label: const Text('Add Expense'),
-      ),
+      floatingActionButton: isCompact
+          ? null
+          : FloatingActionButton.extended(
+              onPressed: () => _navigateToAddExpense(context),
+              tooltip: 'Add Expense',
+              icon: const Icon(Icons.add),
+              label: const Text('Add Expense'),
+            ),
     );
   }
 
@@ -128,27 +136,25 @@ class MoneyOverviewScreen extends ConsumerWidget {
 }
 
 class _CoinsHeroSection extends StatelessWidget {
-  const _CoinsHeroSection({
-    required this.totalBalance,
-    required this.onAddExpense,
-    required this.onTransactions,
-  });
+  const _CoinsHeroSection({required this.totalBalance});
 
   final AsyncValue<int> totalBalance;
-  final VoidCallback onAddExpense;
-  final VoidCallback onTransactions;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final isCompact = MediaQuery.sizeOf(context).width < 600;
     return _HermesSection(
-      minHeight: MediaQuery.sizeOf(context).height * 0.5,
+      minHeight: isCompact ? 340 : 360,
       child: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 620),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 44),
+            padding: EdgeInsets.symmetric(
+              horizontal: isCompact ? 16 : 24,
+              vertical: isCompact ? 28 : 40,
+            ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -162,10 +168,15 @@ class _CoinsHeroSection extends StatelessWidget {
                 const SizedBox(height: 20),
                 Text(
                   'THE MONEY THAT\nWORKS WITH YOU.',
-                  style: theme.textTheme.displayLarge,
+                  style: isCompact
+                      ? theme.textTheme.displayLarge?.copyWith(
+                          fontSize: 46,
+                          height: 0.92,
+                        )
+                      : theme.textTheme.displayLarge,
                   textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 28),
+                SizedBox(height: isCompact ? 18 : 28),
                 totalBalance.when(
                   data: (balance) {
                     final dollars = balance ~/ 100;
@@ -186,24 +197,202 @@ class _CoinsHeroSection extends StatelessWidget {
                     ),
                   ),
                 ),
-                const SizedBox(height: 36),
-                _CommandRow(
-                  index: '1.',
-                  title: 'Create',
-                  command: 'add expense --split equal --settle later',
-                  onCopy: onAddExpense,
-                ),
-                const SizedBox(height: 18),
-                _CommandRow(
-                  index: '2.',
-                  title: 'Review',
-                  command: 'open ledger --recent --budget warnings',
-                  onCopy: onTransactions,
-                ),
               ],
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _CoinsDashboardSection extends StatelessWidget {
+  const _CoinsDashboardSection({
+    required this.accounts,
+    required this.transactionsStream,
+    required this.budgetsStream,
+    required this.onAddExpense,
+    required this.onBudgets,
+    required this.onTransactions,
+  });
+
+  final AsyncValue<List<MoneyAccount>> accounts;
+  final AsyncValue<List<Transaction>> transactionsStream;
+  final AsyncValue<List<Budget>> budgetsStream;
+  final VoidCallback onAddExpense;
+  final VoidCallback onBudgets;
+  final VoidCallback onTransactions;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return _HermesSection(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const _SectionTitle('FINANCE STATUS'),
+            const SizedBox(height: 16),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final columns = constraints.maxWidth >= 900 ? 3 : 1;
+                return GridView.count(
+                  crossAxisCount: columns,
+                  childAspectRatio: columns == 1 ? 3.6 : 2.4,
+                  crossAxisSpacing: 12,
+                  mainAxisSpacing: 12,
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  children: [
+                    _StatusPanel(
+                      title: 'Accounts',
+                      value: accounts.when(
+                        data: (items) => items.isEmpty
+                            ? 'No accounts'
+                            : '${items.length} active',
+                        loading: () => 'Loading',
+                        error: (_, _) => 'Unavailable',
+                      ),
+                      detail: accounts.when(
+                        data: (items) => items.isEmpty
+                            ? 'Add checking, savings, or cards.'
+                            : items
+                                  .take(2)
+                                  .map(
+                                    (a) => '${a.name}: ${a.balanceFormatted}',
+                                  )
+                                  .join('\n'),
+                        loading: () => 'Fetching balances...',
+                        error: (_, _) => 'Account data failed to load.',
+                      ),
+                    ),
+                    _StatusPanel(
+                      title: 'Ledger',
+                      value: transactionsStream.when(
+                        data: (items) => items.isEmpty
+                            ? 'No entries'
+                            : '${items.length} entries',
+                        loading: () => 'Loading',
+                        error: (_, _) => 'Unavailable',
+                      ),
+                      detail: transactionsStream.when(
+                        data: (items) => items.isEmpty
+                            ? 'Create the first expense to start tracking.'
+                            : items
+                                  .take(2)
+                                  .map(
+                                    (t) =>
+                                        '${t.description}: ${t.amountFormatted}',
+                                  )
+                                  .join('\n'),
+                        loading: () => 'Opening recent activity...',
+                        error: (_, _) => 'Recent activity failed to load.',
+                      ),
+                    ),
+                    _StatusPanel(
+                      title: 'Budgets',
+                      value: budgetsStream.when(
+                        data: (items) => items.isEmpty
+                            ? 'Not set'
+                            : '${items.length} active',
+                        loading: () => 'Loading',
+                        error: (_, _) => 'Unavailable',
+                      ),
+                      detail: budgetsStream.when(
+                        data: (items) => items.isEmpty
+                            ? 'Create dining, travel, and recurring limits.'
+                            : items
+                                  .take(2)
+                                  .map(
+                                    (b) =>
+                                        '${b.tag}: ${b.usedFormatted} / ${b.limitFormatted}',
+                                  )
+                                  .join('\n'),
+                        loading: () => 'Checking guardrails...',
+                        error: (_, _) => 'Budget data failed to load.',
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+            const SizedBox(height: 14),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                FilledButton.icon(
+                  onPressed: onAddExpense,
+                  icon: const Icon(Icons.add),
+                  label: const Text('Add Expense'),
+                ),
+                OutlinedButton.icon(
+                  onPressed: onTransactions,
+                  icon: const Icon(Icons.receipt_long),
+                  label: const Text('Review Ledger'),
+                ),
+                OutlinedButton.icon(
+                  onPressed: onBudgets,
+                  icon: const Icon(Icons.pie_chart_outline),
+                  label: const Text('Manage Budgets'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Fast entry, recent activity, and spending guardrails stay visible before exploration content.',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: colorScheme.primary.withValues(alpha: 0.58),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _StatusPanel extends StatelessWidget {
+  const _StatusPanel({
+    required this.title,
+    required this.value,
+    required this.detail,
+  });
+
+  final String title;
+  final String value;
+  final String detail;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: colorScheme.surface.withValues(alpha: 0.28),
+        border: Border.all(color: colorScheme.outlineVariant),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title.toUpperCase(), style: theme.textTheme.labelLarge),
+          const SizedBox(height: 8),
+          Text(value, style: theme.textTheme.headlineSmall),
+          const SizedBox(height: 8),
+          Expanded(
+            child: Text(
+              detail,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: colorScheme.primary.withValues(alpha: 0.72),
+              ),
+              overflow: TextOverflow.fade,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -397,59 +586,6 @@ class _CoinsFeatureGrid extends StatelessWidget {
           _HermesFooterStrip(onAddExpense: onAddExpense, onBudgets: onBudgets),
         ],
       ),
-    );
-  }
-}
-
-class _CommandRow extends StatelessWidget {
-  const _CommandRow({
-    required this.index,
-    required this.title,
-    required this.command,
-    required this.onCopy,
-  });
-
-  final String index;
-  final String title;
-  final String command;
-  final VoidCallback onCopy;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Text(
-              '$index  $title'.toUpperCase(),
-              style: theme.textTheme.labelLarge?.copyWith(
-                color: colorScheme.primary.withValues(alpha: 0.56),
-              ),
-            ),
-            const Spacer(),
-            TextButton(onPressed: onCopy, child: const Text('COPY')),
-          ],
-        ),
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-          decoration: BoxDecoration(
-            color: colorScheme.surface.withValues(alpha: 0.32),
-            border: Border.all(color: colorScheme.outlineVariant),
-          ),
-          child: Text(
-            command,
-            style: const TextStyle(
-              fontFamily: 'Courier',
-              fontSize: 13,
-              height: 1.3,
-            ),
-          ),
-        ),
-      ],
     );
   }
 }

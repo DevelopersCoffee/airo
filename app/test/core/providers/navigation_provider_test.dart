@@ -4,21 +4,27 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('AppNavigationTab', () {
-    test('uses the six-tab information architecture order', () {
-      expect(
-        AppNavigationTab.values.map((tab) => tab.label),
-        ['Coins', 'Mind', 'Beats', 'Stream', 'Arena', 'Quest'],
-      );
+    test('groups music and TV into one media tab', () {
+      expect(AppNavigationTab.values.map((tab) => tab.label), [
+        'Coins',
+        'Mind',
+        'Media',
+        'Arena',
+        'Quest',
+      ]);
     });
 
     test('uses stable root paths for each tab', () {
-      expect(
-        AppNavigationTab.values.map((tab) => tab.path),
-        ['/money', '/agent', '/beats', '/stream', '/games', '/quest'],
-      );
+      expect(AppNavigationTab.values.map((tab) => tab.path), [
+        '/money',
+        '/agent',
+        '/media',
+        '/games',
+        '/quest',
+      ]);
     });
 
-    test('limits persistent mini players to media tabs', () {
+    test('hides mini players on the grouped media tab', () {
       final container = ProviderContainer();
       addTearDown(container.dispose);
 
@@ -29,12 +35,12 @@ void main() {
 
         expect(
           visibility.showMusicPlayer,
-          tab == AppNavigationTab.beats,
+          isFalse,
           reason: '${tab.label} music mini player visibility',
         );
         expect(
           visibility.showIptvPlayer,
-          tab == AppNavigationTab.stream,
+          isFalse,
           reason: '${tab.label} IPTV mini player visibility',
         );
       }

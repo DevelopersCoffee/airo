@@ -44,7 +44,7 @@ void main() {
   }
 
   group('MoneyOverviewScreen', () {
-    testWidgets('shows Hermes-style Coins hero and command actions', (
+    testWidgets('shows Hermes-style Coins hero without command actions', (
       tester,
     ) async {
       await tester.pumpWidget(buildScreen());
@@ -52,8 +52,13 @@ void main() {
 
       expect(find.text('OPEN FINANCE • AIRO COINS'), findsOneWidget);
       expect(find.text('THE MONEY THAT\nWORKS WITH YOU.'), findsOneWidget);
-      expect(find.text('1.  CREATE'), findsOneWidget);
-      expect(find.text('2.  REVIEW'), findsOneWidget);
+      expect(find.text('1.  CREATE'), findsNothing);
+      expect(find.text('2.  REVIEW'), findsNothing);
+      expect(
+        find.text('add expense --split equal --settle later'),
+        findsNothing,
+      );
+      expect(find.text('open ledger --recent --budget warnings'), findsNothing);
       expect(find.text('SEE IT IN ACTION'), findsOneWidget);
       expect(find.text('Split Bill'), findsNothing);
       expect(find.text('Send Money'), findsNothing);

@@ -5,8 +5,7 @@ import '../../features/money/presentation/screens/money_overview_screen.dart';
 import '../../features/bill_split/presentation/screens/bill_split_screen.dart';
 import '../../features/agent_chat/presentation/screens/chat_screen.dart';
 import '../../features/agent_chat/presentation/screens/profile_screen.dart';
-import '../../features/music/presentation/screens/music_screen.dart';
-import '../../features/iptv/presentation/screens/iptv_screen.dart';
+import '../../features/media/presentation/screens/media_hub_screen.dart';
 import '../../features/games/presentation/screens/games_hub_screen.dart';
 import '../../features/quest/presentation/screens/quest_chat_screen.dart';
 import '../../features/quest/presentation/screens/quest_list_screen.dart';
@@ -142,23 +141,36 @@ class AppRouter {
               ),
             ],
           ),
-          // Beats branch
+          // Media branch: music and TV live together.
           StatefulShellBranch(
             routes: [
+              GoRoute(
+                path: '/media',
+                name: 'Media',
+                redirect: (context, state) =>
+                    state.uri.path == '/media' ? '/media/music' : null,
+                routes: [
+                  GoRoute(
+                    path: 'music',
+                    name: 'media_music',
+                    builder: (context, state) =>
+                        const MediaHubScreen(section: MediaSection.music),
+                  ),
+                  GoRoute(
+                    path: 'tv',
+                    name: 'media_tv',
+                    builder: (context, state) =>
+                        const MediaHubScreen(section: MediaSection.tv),
+                  ),
+                ],
+              ),
               GoRoute(
                 path: '/beats',
-                name: 'Beats',
-                builder: (context, state) => const MusicScreenBody(),
+                redirect: (context, state) => '/media/music',
               ),
-            ],
-          ),
-          // Stream branch
-          StatefulShellBranch(
-            routes: [
               GoRoute(
                 path: '/stream',
-                name: 'Stream',
-                builder: (context, state) => const IPTVScreenBody(),
+                redirect: (context, state) => '/media/tv',
               ),
             ],
           ),

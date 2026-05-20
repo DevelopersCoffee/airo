@@ -131,7 +131,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   @override
   Widget build(BuildContext context) {
     // No AppBar here - global AppBar is in AppShell
+    final colorScheme = Theme.of(context).colorScheme;
     return Scaffold(
+      backgroundColor: Colors.transparent,
       body: DictionarySelectionArea(
         child: Column(
           children: [
@@ -164,8 +166,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                         vertical: 12,
                       ),
                       decoration: BoxDecoration(
-                        color: message.isUser ? Colors.blue : Colors.grey[200],
-                        borderRadius: BorderRadius.circular(16),
+                        color: message.isUser
+                            ? colorScheme.primary.withValues(alpha: 0.16)
+                            : colorScheme.surface.withValues(alpha: 0.72),
+                        border: Border.all(color: colorScheme.outlineVariant),
+                        borderRadius: BorderRadius.circular(8),
                       ),
                       constraints: BoxConstraints(
                         maxWidth: MediaQuery.of(context).size.width * 0.75,
@@ -173,7 +178,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                       child: Text(
                         message.text,
                         style: TextStyle(
-                          color: message.isUser ? Colors.white : Colors.black,
+                          color: colorScheme.primary.withValues(alpha: 0.9),
                         ),
                       ),
                     ),
@@ -186,8 +191,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
+                color: colorScheme.surface.withValues(alpha: 0.34),
                 border: Border(
-                  top: BorderSide(color: Colors.grey.withValues(alpha: 0.2)),
+                  top: BorderSide(color: colorScheme.outlineVariant),
                 ),
               ),
               child: Row(
@@ -198,7 +204,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                       decoration: InputDecoration(
                         hintText: 'Type a message...',
                         border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(24),
+                          borderRadius: BorderRadius.circular(0),
                         ),
                         contentPadding: const EdgeInsets.symmetric(
                           horizontal: 16,
@@ -211,10 +217,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  FloatingActionButton(
-                    mini: true,
+                  IconButton.filled(
                     onPressed: _sendMessage,
-                    child: const Icon(Icons.send),
+                    icon: const Icon(Icons.send),
                   ),
                 ],
               ),
@@ -269,84 +274,45 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Padding(
+        Padding(
           padding: EdgeInsets.symmetric(horizontal: 4, vertical: 8),
           child: Text(
-            'Try these prompts:',
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: Colors.black54,
+            'WORKFLOWS',
+            style: Theme.of(context).textTheme.labelLarge?.copyWith(
+              color: Theme.of(
+                context,
+              ).colorScheme.primary.withValues(alpha: 0.62),
             ),
           ),
         ),
-        GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
-            childAspectRatio: 1.5,
-            crossAxisSpacing: 12,
-            mainAxisSpacing: 12,
-          ),
-          itemCount: prompts.length,
-          itemBuilder: (context, index) {
-            final prompt = prompts[index];
-            final color = prompt['color'] as Color;
-
-            return InkWell(
-              onTap: () {
-                _messageController.text = prompt['description'] as String;
-              },
-              borderRadius: BorderRadius.circular(16),
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      color.withValues(alpha: 0.1),
-                      color.withValues(alpha: 0.05),
-                    ],
-                  ),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: color.withValues(alpha: 0.3),
-                    width: 1,
-                  ),
-                ),
-                padding: const EdgeInsets.all(12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(prompt['icon'] as IconData, size: 28, color: color),
-                    const SizedBox(height: 8),
-                    Text(
-                      prompt['title'] as String,
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                        color: color,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      prompt['description'] as String,
-                      style: const TextStyle(
-                        fontSize: 11,
-                        color: Colors.black54,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final columns = constraints.maxWidth >= 720 ? 3 : 2;
+            return GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: columns,
+                childAspectRatio: constraints.maxWidth < 420 ? 1.55 : 2.35,
+                crossAxisSpacing: 10,
+                mainAxisSpacing: 10,
               ),
+              itemCount: prompts.length,
+              itemBuilder: (context, index) {
+                final prompt = prompts[index];
+                return _WorkflowPromptTile(
+                  icon: prompt['icon'] as IconData,
+                  title: prompt['title'] as String,
+                  description: prompt['description'] as String,
+                  onTap: () {
+                    _messageController.text = prompt['description'] as String;
+                  },
+                );
+              },
             );
           },
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 24),
       ],
     );
   }
@@ -504,6 +470,54 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             label: const Text('Look Up'),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _WorkflowPromptTile extends StatelessWidget {
+  const _WorkflowPromptTile({
+    required this.icon,
+    required this.title,
+    required this.description,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final String description;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: colorScheme.surface.withValues(alpha: 0.3),
+          border: Border.all(color: colorScheme.outlineVariant),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 24, color: colorScheme.primary),
+            const SizedBox(height: 8),
+            Text(title, style: theme.textTheme.titleSmall),
+            const SizedBox(height: 4),
+            Text(
+              description,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: colorScheme.primary.withValues(alpha: 0.62),
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ),
       ),
     );
   }

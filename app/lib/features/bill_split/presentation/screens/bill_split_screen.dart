@@ -167,7 +167,7 @@ class _BillSplitScreenState extends ConsumerState<BillSplitScreen> {
 
     return Scaffold(
       key: const Key(BillSplitTestIds.screen),
-      backgroundColor: theme.colorScheme.surface,
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         title: const Text('Add expense'),
         centerTitle: true,
@@ -215,6 +215,7 @@ class _BillSplitScreenState extends ConsumerState<BillSplitScreen> {
     final currencySymbol = ref.watch(currencyFormatterProvider).currency.symbol;
 
     return SingleChildScrollView(
+      padding: const EdgeInsets.only(bottom: 96),
       child: Column(
         children: [
           // Amount input section (Splitwise style - large centered)
