@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../core/utils/locale_settings.dart';
 import '../../application/services/coins_platform_support.dart';
 import '../../domain/entities/group.dart';
@@ -27,6 +28,7 @@ class GroupsListScreen extends ConsumerWidget {
     final groupsAsync = ref.watch(allGroupsProvider);
 
     return Scaffold(
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         title: const Text('Groups'),
         actions: [
@@ -212,13 +214,47 @@ class _UnsupportedGroupsView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.transparent,
       appBar: AppBar(title: const Text('Groups')),
-      body: const Center(
+      body: Center(
         child: Padding(
-          padding: EdgeInsets.all(24),
-          child: Text(
-            'Group expense splitting is available on mobile and desktop. Web support needs a non-SQLite storage backend.',
-            textAlign: TextAlign.center,
+          padding: const EdgeInsets.all(24),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 420),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.groups_outlined,
+                  size: 64,
+                  color: Theme.of(context).colorScheme.secondary,
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  'Groups are coming to web',
+                  style: Theme.of(context).textTheme.headlineSmall,
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  'Split groups need the web storage backend before they can save members, balances, and settlements here.',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+                const SizedBox(height: 24),
+                FilledButton.icon(
+                  onPressed: () => context.go('/money/split'),
+                  icon: const Icon(Icons.call_split),
+                  label: const Text('Create One-Time Split'),
+                ),
+                const SizedBox(height: 12),
+                OutlinedButton.icon(
+                  onPressed: () => context.go('/money/dashboard'),
+                  icon: const Icon(Icons.account_balance_wallet_outlined),
+                  label: const Text('Back to Coins Dashboard'),
+                ),
+              ],
+            ),
           ),
         ),
       ),

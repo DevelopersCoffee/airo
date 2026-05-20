@@ -51,6 +51,7 @@ class AppShell extends ConsumerWidget {
             builder: (context, constraints) {
               final isCompact = constraints.maxWidth < 760;
               final pagePadding = isCompact ? 12.0 : 32.0;
+              final footerHeight = isCompact ? 56.0 : 64.0;
               return Center(
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 1600),
@@ -74,14 +75,22 @@ class AppShell extends ConsumerWidget {
                           },
                         ),
                         Expanded(
-                          child: _ContextAwareMiniPlayers(
-                            currentIndex: navigationShell.currentIndex,
-                            child: navigationShell,
+                          child: Padding(
+                            padding: EdgeInsets.only(
+                              bottom: isCompact ? 8 : 12,
+                            ),
+                            child: ClipRect(
+                              child: _ContextAwareMiniPlayers(
+                                currentIndex: navigationShell.currentIndex,
+                                child: navigationShell,
+                              ),
+                            ),
                           ),
                         ),
                         _HermesFooterNavigation(
                           navigationTabs: navigationTabs,
                           selectedIndex: navigationShell.currentIndex,
+                          height: footerHeight,
                           onSelected: (index) {
                             if (ref.read(isFullscreenModeProvider)) {
                               ref
@@ -144,6 +153,18 @@ class _HermesHeaderGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final width = MediaQuery.sizeOf(context).width;
+
+    if (width < 600) {
+      return _HermesMobileHeader(
+        currentPageName: currentPageName,
+        user: user,
+        onHome: onHome,
+        onProfile: onProfile,
+        onLogout: onLogout,
+      );
+    }
+
     final titleStyle = const TextStyle(
       fontFamily: 'AiroCollapse',
       fontSize: 42,
@@ -180,7 +201,7 @@ class _HermesHeaderGrid extends StatelessWidget {
                 child: Text(currentPageName.toUpperCase(), style: labelStyle),
               ),
             ),
-            if (MediaQuery.sizeOf(context).width >= 720)
+            if (width >= 720)
               Expanded(
                 flex: 2,
                 child: _HermesGridCell(
@@ -294,20 +315,171 @@ class _HermesHeaderGrid extends StatelessWidget {
   }
 }
 
+class _HermesMobileHeader extends StatelessWidget {
+  const _HermesMobileHeader({
+    required this.currentPageName,
+    required this.user,
+    required this.onHome,
+    required this.onProfile,
+    required this.onLogout,
+  });
+
+  final String currentPageName;
+  final dynamic user;
+  final VoidCallback onHome;
+  final VoidCallback onProfile;
+  final Future<void> Function() onLogout;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final labelStyle = theme.textTheme.labelLarge;
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        border: Border(
+          top: BorderSide(color: colorScheme.outlineVariant),
+          left: BorderSide(color: colorScheme.outlineVariant),
+          right: BorderSide(color: colorScheme.outlineVariant),
+          bottom: BorderSide(color: colorScheme.outlineVariant),
+        ),
+      ),
+      child: SizedBox(
+        height: 72,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SizedBox(
+              width: 82,
+              child: _HermesCellButton(
+                onTap: onHome,
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'AIRO',
+                  maxLines: 1,
+                  overflow: TextOverflow.clip,
+                  style: const TextStyle(
+                    fontFamily: 'AiroCollapse',
+                    fontSize: 28,
+                    height: 1,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.6,
+                  ),
+                ),
+              ),
+            ),
+            Expanded(
+              child: _HermesGridCell(
+                alignment: Alignment.center,
+                child: Text(
+                  currentPageName.toUpperCase(),
+                  style: labelStyle,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ),
+            PopupMenuButton<String>(
+              color: colorScheme.surface,
+              surfaceTintColor: Colors.transparent,
+              shape: const RoundedRectangleBorder(),
+              onSelected: (value) async {
+                if (value == 'profile') {
+                  onProfile();
+                } else if (value == 'logout') {
+                  await onLogout();
+                }
+              },
+              itemBuilder: (context) => [
+                PopupMenuItem(
+                  value: 'profile',
+                  child: Row(
+                    children: [
+                      const Icon(Icons.person),
+                      const SizedBox(width: 8),
+                      Text(user?.username ?? 'Guest'),
+                    ],
+                  ),
+                ),
+                const PopupMenuDivider(),
+                const PopupMenuItem(
+                  value: 'logout',
+                  child: Row(
+                    children: [
+                      Icon(Icons.logout),
+                      SizedBox(width: 8),
+                      Text('Logout'),
+                    ],
+                  ),
+                ),
+              ],
+              child: SizedBox(
+                width: 56,
+                child: _HermesGridCell(
+                  child: CircleAvatar(
+                    radius: 14,
+                    backgroundColor: colorScheme.primary.withValues(
+                      alpha: 0.08,
+                    ),
+                    child: Text(
+                      _getInitials(user?.username ?? 'U'),
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: colorScheme.primary,
+                        letterSpacing: 0,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            SizedBox(
+              width: 56,
+              child: _HermesGridCell(
+                child: Container(
+                  width: 34,
+                  height: 22,
+                  padding: const EdgeInsets.all(3),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: colorScheme.outlineVariant),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  alignment: Alignment.centerRight,
+                  child: Container(
+                    width: 14,
+                    height: 14,
+                    decoration: BoxDecoration(
+                      color: colorScheme.primary,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _HermesFooterNavigation extends StatelessWidget {
   const _HermesFooterNavigation({
     required this.navigationTabs,
     required this.selectedIndex,
+    required this.height,
     required this.onSelected,
   });
 
   final List<dynamic> navigationTabs;
   final int selectedIndex;
+  final double height;
   final ValueChanged<int> onSelected;
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final isCompact = MediaQuery.sizeOf(context).width < 600;
     return DecoratedBox(
       decoration: BoxDecoration(
         border: Border(
@@ -316,33 +488,43 @@ class _HermesFooterNavigation extends StatelessWidget {
         ),
       ),
       child: SizedBox(
-        height: 64,
+        height: height,
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             for (var i = 0; i < navigationTabs.length; i++)
               Expanded(
-                child: _HermesCellButton(
-                  onTap: () => onSelected(i),
-                  selected: i == selectedIndex,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        i == selectedIndex
-                            ? navigationTabs[i].selectedIcon
-                            : navigationTabs[i].icon,
-                        size: 18,
-                      ),
-                      const SizedBox(width: 8),
-                      Flexible(
-                        child: Text(
-                          navigationTabs[i].label.toUpperCase(),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
+                child: Tooltip(
+                  message: navigationTabs[i].label,
+                  child: _HermesCellButton(
+                    onTap: () => onSelected(i),
+                    selected: i == selectedIndex,
+                    child: isCompact
+                        ? Icon(
+                            i == selectedIndex
+                                ? navigationTabs[i].selectedIcon
+                                : navigationTabs[i].icon,
+                            size: 20,
+                          )
+                        : Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                i == selectedIndex
+                                    ? navigationTabs[i].selectedIcon
+                                    : navigationTabs[i].icon,
+                                size: 18,
+                              ),
+                              const SizedBox(width: 8),
+                              Flexible(
+                                child: Text(
+                                  navigationTabs[i].label.toUpperCase(),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
                   ),
                 ),
               ),
@@ -378,7 +560,9 @@ class _HermesGridCell extends StatelessWidget {
         ),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(
+          MediaQuery.sizeOf(context).width < 600 ? 10 : 16,
+        ),
         child: Align(
           alignment: alignment,
           child: DefaultTextStyle.merge(

@@ -106,105 +106,110 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
       body: Form(
         key: _formKey,
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Transaction Type Toggle
-              SegmentedButton<TransactionType>(
-                segments: const [
-                  ButtonSegment(
-                    value: TransactionType.expense,
-                    label: Text('Expense'),
-                    icon: Icon(Icons.remove_circle_outline),
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 104),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 880),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Transaction Type Toggle
+                  SegmentedButton<TransactionType>(
+                    segments: const [
+                      ButtonSegment(
+                        value: TransactionType.expense,
+                        label: Text('Expense'),
+                        icon: Icon(Icons.remove_circle_outline),
+                      ),
+                      ButtonSegment(
+                        value: TransactionType.income,
+                        label: Text('Income'),
+                        icon: Icon(Icons.add_circle_outline),
+                      ),
+                    ],
+                    selected: {_transactionType},
+                    onSelectionChanged: (types) {
+                      setState(() => _transactionType = types.first);
+                    },
                   ),
-                  ButtonSegment(
-                    value: TransactionType.income,
-                    label: Text('Income'),
-                    icon: Icon(Icons.add_circle_outline),
+                  const SizedBox(height: 24),
+
+                  // Amount Input
+                  _AmountInputField(
+                    controller: _amountController,
+                    currencySymbol: currencyFormatter.currency.symbol,
                   ),
+                  const SizedBox(height: 16),
+
+                  // Description
+                  TextFormField(
+                    controller: _descriptionController,
+                    decoration: const InputDecoration(
+                      labelText: 'Description',
+                      hintText: 'What was this for?',
+                      prefixIcon: Icon(Icons.description_outlined),
+                    ),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Description is required';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 16),
+
+                  _CategorySelector(
+                    categories: categories
+                        .where(
+                          (category) =>
+                              category.type == coins.CategoryType.expense ||
+                              category.type == coins.CategoryType.both,
+                        )
+                        .toList(),
+                    selectedCategoryId: _selectedCategoryId,
+                    onSelected: (categoryId) {
+                      setState(() => _selectedCategoryId = categoryId);
+                    },
+                  ),
+                  const SizedBox(height: 16),
+
+                  _AccountSelector(
+                    accountsAsync: accountsAsync,
+                    selectedAccountId: _selectedAccountId,
+                    onSelected: (accountId) {
+                      setState(() => _selectedAccountId = accountId);
+                    },
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Date Picker
+                  ListTile(
+                    leading: const Icon(Icons.calendar_today),
+                    title: const Text('Date'),
+                    subtitle: Text(
+                      '${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}',
+                    ),
+                    onTap: _selectDate,
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Notes
+                  TextFormField(
+                    controller: _notesController,
+                    decoration: const InputDecoration(
+                      labelText: 'Notes (optional)',
+                      hintText: 'Add any additional details',
+                      prefixIcon: Icon(Icons.note_outlined),
+                    ),
+                    maxLines: 3,
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Receipt Attachment
+                  _buildReceiptSection(),
                 ],
-                selected: {_transactionType},
-                onSelectionChanged: (types) {
-                  setState(() => _transactionType = types.first);
-                },
               ),
-              const SizedBox(height: 24),
-
-              // Amount Input
-              _AmountInputField(
-                controller: _amountController,
-                currencySymbol: currencyFormatter.currency.symbol,
-              ),
-              const SizedBox(height: 16),
-
-              // Description
-              TextFormField(
-                controller: _descriptionController,
-                decoration: const InputDecoration(
-                  labelText: 'Description',
-                  hintText: 'What was this for?',
-                  prefixIcon: Icon(Icons.description_outlined),
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Description is required';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-
-              _CategorySelector(
-                categories: categories
-                    .where(
-                      (category) =>
-                          category.type == coins.CategoryType.expense ||
-                          category.type == coins.CategoryType.both,
-                    )
-                    .toList(),
-                selectedCategoryId: _selectedCategoryId,
-                onSelected: (categoryId) {
-                  setState(() => _selectedCategoryId = categoryId);
-                },
-              ),
-              const SizedBox(height: 16),
-
-              _AccountSelector(
-                accountsAsync: accountsAsync,
-                selectedAccountId: _selectedAccountId,
-                onSelected: (accountId) {
-                  setState(() => _selectedAccountId = accountId);
-                },
-              ),
-              const SizedBox(height: 16),
-
-              // Date Picker
-              ListTile(
-                leading: const Icon(Icons.calendar_today),
-                title: const Text('Date'),
-                subtitle: Text(
-                  '${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}',
-                ),
-                onTap: _selectDate,
-              ),
-              const SizedBox(height: 16),
-
-              // Notes
-              TextFormField(
-                controller: _notesController,
-                decoration: const InputDecoration(
-                  labelText: 'Notes (optional)',
-                  hintText: 'Add any additional details',
-                  prefixIcon: Icon(Icons.note_outlined),
-                ),
-                maxLines: 3,
-              ),
-              const SizedBox(height: 16),
-
-              // Receipt Attachment
-              _buildReceiptSection(),
-            ],
+            ),
           ),
         ),
       ),
