@@ -162,7 +162,8 @@ make emulators      # List available emulators
 #### iOS Development (macOS only)
 - **Xcode**: 15.0 or later
 - **iOS SDK**: 12.0 or later
-- **Swift Package Manager**: Built into Xcode (no CocoaPods needed)
+- **CocoaPods**: Required for Flutter plugins that still ship iOS podspecs
+- **Swift Package Manager**: Built into Xcode; Flutter may use it where supported
 
 #### Web Development
 - **Chrome**: Latest version (recommended)

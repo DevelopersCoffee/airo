@@ -93,8 +93,13 @@ setup-ios: ## Setup iOS development environment (macOS only)
 	else \
 		if ! command -v xcodebuild &> /dev/null; then \
 			echo "$(RED)Xcode is not installed. Please install Xcode from App Store.$(NC)"; \
+		elif ! command -v pod &> /dev/null; then \
+			echo "$(RED)CocoaPods is required for this app's current Flutter plugin set.$(NC)"; \
+			echo "$(YELLOW)Install CocoaPods, then run 'make setup-ios' again.$(NC)"; \
+			exit 1; \
 		else \
-			echo "$(GREEN)iOS uses Swift Package Manager (SPM) - no additional setup needed$(NC)"; \
+			cd $(APP_DIR) && flutter pub get && cd ios && pod install || exit 1; \
+			echo "$(GREEN)iOS is configured as hybrid: Flutter may use SPM, plugins still use CocoaPods.$(NC)"; \
 			echo "$(GREEN)Run 'make build-ios' to build the app$(NC)"; \
 		fi \
 	fi
@@ -263,7 +268,12 @@ build-ios: ## Build iOS app
 	@if [ "$$(uname)" != "Darwin" ]; then \
 		echo "$(RED)iOS building is only available on macOS$(NC)"; \
 		exit 1; \
+	elif ! command -v pod &> /dev/null; then \
+		echo "$(RED)CocoaPods is required for iOS builds in this project.$(NC)"; \
+		exit 1; \
 	fi
+	@cd $(APP_DIR) && flutter pub get
+	@cd $(IOS_DIR) && pod install
 	@cd $(APP_DIR) && flutter build ios --release
 
 .PHONY: build-web
