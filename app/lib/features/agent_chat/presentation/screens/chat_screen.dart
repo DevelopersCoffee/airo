@@ -2,19 +2,38 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/dictionary/dictionary.dart';
+import '../../../agent_chat/data/connectors/calendar_connector.dart';
+import '../../../agent_chat/data/connectors/date_time_connector.dart';
+import '../../../agent_chat/data/services/assistant_runtime_service.dart';
+import '../../../agent_chat/data/services/selected_runtime_agent_skill_model_client.dart';
+import '../../../agent_chat/domain/models/agent_skill.dart';
+import '../../../agent_chat/domain/models/assistant_runtime_ids.dart';
+import '../../../agent_chat/domain/services/agent_connector_registry.dart';
+import '../../../agent_chat/domain/services/agent_skill_orchestrator.dart';
+import '../../../agent_chat/domain/services/agent_skill_registry.dart';
 import '../../../agent_chat/domain/services/intent_parser.dart';
 import '../../../agent_chat/domain/services/tool_registry.dart';
+import '../../../agent_chat/presentation/widgets/manage_skills_sheet.dart';
+import '../../../agent_chat/presentation/widgets/skill_action_trace_card.dart';
 import '../../../quotes/presentation/widgets/daily_quote_card.dart';
+import '../../../settings/presentation/screens/ai_models_screen.dart';
 import '../../../../core/services/gemini_nano_service.dart';
+import '../../../../core/services/litert_lm_service.dart';
+import 'model_library_screen.dart';
 
 /// Chat message model
 class ChatMessage {
   final String text;
   final bool isUser;
   final DateTime timestamp;
+  final List<AgentActionTrace> traces;
 
-  ChatMessage({required this.text, required this.isUser, DateTime? timestamp})
-    : timestamp = timestamp ?? DateTime.now();
+  ChatMessage({
+    required this.text,
+    required this.isUser,
+    DateTime? timestamp,
+    this.traces = const [],
+  }) : timestamp = timestamp ?? DateTime.now();
 }
 
 /// Agent chat screen
@@ -29,17 +48,37 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   late TextEditingController _messageController;
   final List<ChatMessage> _messages = [];
   final ToolRegistry _toolRegistry = ToolRegistry();
+  final AgentSkillRegistry _skillRegistry = AgentSkillRegistry();
   final GeminiNanoService _geminiNano = GeminiNanoService();
+  final LiteRtLmService _liteRtLm = LiteRtLmService();
+  late final AssistantRuntimeService _assistantRuntime;
+  late final AgentSkillOrchestrator _skillOrchestrator;
   bool _isDeviceSupported = false;
 
   @override
   void initState() {
     super.initState();
     _messageController = TextEditingController();
+    _assistantRuntime = AssistantRuntimeService(
+      geminiNano: _geminiNano,
+      liteRtLm: _liteRtLm,
+    );
+    _skillOrchestrator = AgentSkillOrchestrator(
+      skillRegistry: _skillRegistry,
+      connectorRegistry: AgentConnectorRegistry(
+        connectors: [DateTimeConnector(), NativeCalendarConnector()],
+      ),
+      modelClient: SelectedRuntimeAgentSkillModelClient(
+        runtimeService: _assistantRuntime,
+        selectedModelId: () => ref.read(selectedAssistantModelIdProvider),
+      ),
+      useFallbackModelClient: false,
+    );
     // Add welcome message
     _messages.add(
       ChatMessage(
-        text: 'Hi! I\'m your AI assistant. How can I help you today?',
+        text:
+            'Hi! I can chat, use enabled skills, check your schedule, split bills, draft diet plans, plan routines, and open Airo tools from here.',
         isUser: false,
       ),
     );
@@ -93,7 +132,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   Text(
                     _isDeviceSupported
                         ? 'Optimized for Your Device'
-                        : 'Cloud AI Mode',
+                        : 'Choose AI Runtime',
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 13,
@@ -102,8 +141,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   ),
                   Text(
                     _isDeviceSupported
-                        ? 'On-device AI ready • Fast & Private'
-                        : 'On-device AI not available',
+                        ? 'On-device AI ready - fast and private'
+                        : 'On-device AI is not available here',
                     style: const TextStyle(fontSize: 11, color: Colors.white70),
                   ),
                 ],
@@ -130,6 +169,17 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final selectedAssistantModelId = ref.watch(
+      selectedAssistantModelIdProvider,
+    );
+
+    if (selectedAssistantModelId == null) {
+      return ModelLibraryScreen(
+        onModelSelected: _selectAssistantModel,
+        onOpenModelManager: _openModelManager,
+      );
+    }
+
     // No AppBar here - global AppBar is in AppShell
     return Scaffold(
       body: DictionarySelectionArea(
@@ -140,6 +190,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               padding: EdgeInsets.fromLTRB(16, 8, 16, 0),
               elevation: 1,
             ),
+            _buildSelectedModelBar(selectedAssistantModelId),
 
             // Messages list
             Expanded(
@@ -153,31 +204,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   }
 
                   final message = _messages[index];
-                  return Align(
-                    alignment: message.isUser
-                        ? Alignment.centerRight
-                        : Alignment.centerLeft,
-                    child: Container(
-                      margin: const EdgeInsets.symmetric(vertical: 8),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
-                      ),
-                      decoration: BoxDecoration(
-                        color: message.isUser ? Colors.blue : Colors.grey[200],
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      constraints: BoxConstraints(
-                        maxWidth: MediaQuery.of(context).size.width * 0.75,
-                      ),
-                      child: Text(
-                        message.text,
-                        style: TextStyle(
-                          color: message.isUser ? Colors.white : Colors.black,
-                        ),
-                      ),
-                    ),
-                  );
+                  return _buildMessage(message);
                 },
               ),
             ),
@@ -192,8 +219,16 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               ),
               child: Row(
                 children: [
+                  OutlinedButton.icon(
+                    key: const Key('agent_chat_skills_button'),
+                    onPressed: _showManageSkills,
+                    icon: const Icon(Icons.auto_fix_high, size: 18),
+                    label: const Text('Skills'),
+                  ),
+                  const SizedBox(width: 8),
                   Expanded(
                     child: TextField(
+                      key: const Key('agent_chat_input'),
                       controller: _messageController,
                       decoration: InputDecoration(
                         hintText: 'Type a message...',
@@ -212,6 +247,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   ),
                   const SizedBox(width: 8),
                   FloatingActionButton(
+                    key: const Key('agent_chat_send_button'),
                     mini: true,
                     onPressed: _sendMessage,
                     child: const Icon(Icons.send),
@@ -225,46 +261,57 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     );
   }
 
+  Widget _buildSelectedModelBar(String selectedModelId) {
+    final library = ref.watch(assistantModelLibraryProvider);
+
+    return library.maybeWhen(
+      data: (state) {
+        final candidate = state.candidateById(selectedModelId);
+        final label = candidate?.name ?? 'Selected model';
+        final runtime = candidate?.runtime ?? selectedModelId;
+
+        return Container(
+          margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surfaceContainerHighest,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                candidate?.local == false
+                    ? Icons.cloud_outlined
+                    : Icons.memory_outlined,
+                size: 18,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  '$label - $runtime',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ),
+              TextButton(
+                onPressed: () {
+                  ref
+                      .read(selectedAssistantModelIdProvider.notifier)
+                      .select(null);
+                },
+                child: const Text('Change'),
+              ),
+            ],
+          ),
+        );
+      },
+      orElse: () => const SizedBox.shrink(),
+    );
+  }
+
   Widget _buildSamplePrompts() {
-    final prompts = [
-      {
-        'icon': Icons.summarize,
-        'title': 'Summarize',
-        'description': 'Summarize the key points from this document',
-        'color': Colors.blue,
-      },
-      {
-        'icon': Icons.image,
-        'title': 'Describe Image',
-        'description': 'Describe what you see in this image in detail',
-        'color': Colors.purple,
-      },
-      {
-        'icon': Icons.edit,
-        'title': 'Writing Help',
-        'description': 'Help me improve and rewrite this text professionally',
-        'color': Colors.orange,
-      },
-      {
-        'icon': Icons.restaurant,
-        'title': 'Diet Plan',
-        'description':
-            'Create a 7-day healthy diet plan based on my preferences',
-        'color': Colors.green,
-      },
-      {
-        'icon': Icons.receipt,
-        'title': 'Split Bill',
-        'description': 'Help me split this bill equally among friends',
-        'color': Colors.teal,
-      },
-      {
-        'icon': Icons.description,
-        'title': 'Fill Form',
-        'description': 'Extract information from this document to fill a form',
-        'color': Colors.indigo,
-      },
-    ];
+    final prompts = _toolRegistry.getSkillCards();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -292,11 +339,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           itemCount: prompts.length,
           itemBuilder: (context, index) {
             final prompt = prompts[index];
-            final color = prompt['color'] as Color;
+            final color = _colorForSkill(prompt.key);
 
             return InkWell(
               onTap: () {
-                _messageController.text = prompt['description'] as String;
+                _messageController.text = _promptForSkill(prompt);
               },
               borderRadius: BorderRadius.circular(16),
               child: Container(
@@ -320,10 +367,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(prompt['icon'] as IconData, size: 28, color: color),
+                    Icon(_iconForSkill(prompt.iconKey), size: 28, color: color),
                     const SizedBox(height: 8),
                     Text(
-                      prompt['title'] as String,
+                      prompt.title,
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.bold,
@@ -332,7 +379,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      prompt['description'] as String,
+                      prompt.description,
                       style: const TextStyle(
                         fontSize: 11,
                         color: Colors.black54,
@@ -351,6 +398,42 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     );
   }
 
+  Widget _buildMessage(ChatMessage message) {
+    final maxWidth =
+        MediaQuery.of(context).size.width *
+        (message.traces.isNotEmpty ? 0.86 : 0.75);
+
+    return Align(
+      alignment: message.isUser ? Alignment.centerRight : Alignment.centerLeft,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: maxWidth),
+        child: Column(
+          crossAxisAlignment: message.isUser
+              ? CrossAxisAlignment.end
+              : CrossAxisAlignment.start,
+          children: [
+            if (message.traces.isNotEmpty)
+              SkillActionTraceCard(traces: message.traces),
+            Container(
+              margin: const EdgeInsets.symmetric(vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: message.isUser ? Colors.blue : Colors.grey[200],
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Text(
+                message.text,
+                style: TextStyle(
+                  color: message.isUser ? Colors.white : Colors.black,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _sendMessage() async {
     final message = _messageController.text.trim();
     if (message.isEmpty) return;
@@ -361,6 +444,20 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     setState(() {
       _messages.add(ChatMessage(text: message, isUser: true));
     });
+
+    final skillResult = await _skillOrchestrator.run(message);
+    if (skillResult.handled) {
+      setState(() {
+        _messages.add(
+          ChatMessage(
+            text: skillResult.message,
+            isUser: false,
+            traces: skillResult.traces,
+          ),
+        );
+      });
+      return;
+    }
 
     // Parse intent first to check for navigation commands
     final intent = IntentParser.parse(message);
@@ -373,25 +470,31 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
     // Handle navigation intents (play music, open games, etc.)
     if (intent.type != IntentType.unknown) {
-      final navTarget = await _toolRegistry.handleIntent(intent);
+      final toolResult = await _toolRegistry.executeIntent(intent);
 
-      if (navTarget != null && navTarget.route != '/agent') {
-        // Add agent response
+      if (!toolResult.isError) {
         setState(() {
-          _messages.add(
-            ChatMessage(text: navTarget.message ?? 'Done!', isUser: false),
-          );
+          _messages.add(ChatMessage(text: toolResult.message, isUser: false));
         });
 
-        // Navigate to target
-        if (mounted) {
-          context.go(navTarget.route);
+        if (toolResult.shouldNavigate && mounted) {
+          context.go(toolResult.route!, extra: toolResult.parameters);
         }
         return;
       }
     }
 
-    // For all other queries, use AI to generate response
+    final selectedModelId = ref.read(selectedAssistantModelIdProvider);
+    if (selectedModelId == null) {
+      setState(() {
+        _messages.add(
+          ChatMessage(text: noAssistantModelSelectedMessage, isUser: false),
+        );
+      });
+      return;
+    }
+
+    // For all other queries, use the selected AI runtime to generate response.
     setState(() {
       _messages.add(
         ChatMessage(text: '', isUser: false), // Placeholder for streaming
@@ -399,18 +502,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     });
 
     try {
-      String fullResponse = '';
-
-      // Use streaming response from Gemini Nano
-      await for (final chunk in _geminiNano.generateContentStream(message)) {
-        fullResponse = chunk;
-        setState(() {
-          _messages[_messages.length - 1] = ChatMessage(
-            text: fullResponse,
-            isUser: false,
-          );
-        });
-      }
+      await _generateSelectedModelResponse(selectedModelId, message);
     } catch (e) {
       // If AI fails, show error message
       setState(() {
@@ -420,6 +512,119 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         );
       });
     }
+  }
+
+  Future<void> _generateSelectedModelResponse(
+    String selectedModelId,
+    String message,
+  ) async {
+    try {
+      await for (final chunk in _assistantRuntime.generateTextStream(
+        selectedModelId: selectedModelId,
+        prompt: message,
+      )) {
+        _replaceStreamingMessage(chunk);
+      }
+    } on AssistantRuntimeUnavailableException catch (e) {
+      _replaceStreamingMessage(e.message);
+    }
+  }
+
+  void _replaceStreamingMessage(String text) {
+    if (!mounted || _messages.isEmpty) return;
+    setState(() {
+      _messages[_messages.length - 1] = ChatMessage(text: text, isUser: false);
+    });
+  }
+
+  Future<void> _selectAssistantModel(AssistantModelCandidate candidate) async {
+    await ref
+        .read(selectedAssistantModelIdProvider.notifier)
+        .select(candidate.id);
+
+    if (!mounted) return;
+    setState(() {
+      _messages.add(
+        ChatMessage(
+          text:
+              'Using ${candidate.name}. Runtime: ${candidate.runtime}. ${candidate.local ? 'This is an on-device path.' : 'This sends prompts to the configured API.'}',
+          isUser: false,
+        ),
+      );
+    });
+  }
+
+  void _openModelManager() {
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (context) => const AIModelsScreen()));
+  }
+
+  IconData _iconForSkill(String iconKey) {
+    return switch (iconKey) {
+      'chat' => Icons.chat_bubble_outline,
+      'send' => Icons.send_outlined,
+      'calendar' => Icons.calendar_month_outlined,
+      'receipt' => Icons.receipt_long,
+      'restaurant' => Icons.restaurant,
+      'task' => Icons.task_alt,
+      'image' => Icons.image_outlined,
+      'mic' => Icons.mic_none,
+      'bolt' => Icons.bolt_outlined,
+      'model' => Icons.model_training,
+      'sports_esports' => Icons.sports_esports,
+      _ => Icons.auto_awesome,
+    };
+  }
+
+  Color _colorForSkill(String key) {
+    return switch (key) {
+      'ai_chat' => Colors.blue,
+      'agent_skills' => Colors.deepPurple,
+      'calendar_today' => Colors.cyan.shade700,
+      'split_bill' => Colors.teal,
+      'diet_plan' => Colors.green,
+      'routine_planner' => Colors.orange,
+      'ask_image' => Colors.red,
+      'audio_scribe' => Colors.green.shade700,
+      'mobile_actions' => Colors.indigo,
+      'model_management' => Colors.blueGrey,
+      'arena_games' => Colors.pink,
+      _ => Colors.blue,
+    };
+  }
+
+  String _promptForSkill(AgentSkillCard skill) {
+    return switch (skill.key) {
+      'ai_chat' => 'Help me think through a task',
+      'agent_skills' => 'What can you do in Airo?',
+      'calendar_today' => 'Check my schedule for today',
+      'split_bill' => 'Split this ₹2400 bill with Asha, Ben and Chen',
+      'diet_plan' => 'Make me a 7 day vegetarian diet plan',
+      'routine_planner' => 'Create a morning study routine for tomorrow',
+      'ask_image' => 'Ask image about this receipt',
+      'audio_scribe' => 'Audio scribe this recording',
+      'mobile_actions' => 'Open mobile actions',
+      'model_management' => 'Manage offline models',
+      'arena_games' => 'I am bored, start chess',
+      _ => skill.description,
+    };
+  }
+
+  void _showManageSkills() {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (context) {
+        return ManageSkillsSheet(
+          registry: _skillRegistry,
+          onChanged: () {
+            if (mounted) setState(() {});
+          },
+        );
+      },
+    );
   }
 
   void _handleBoredom() {
