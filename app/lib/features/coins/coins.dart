@@ -53,6 +53,7 @@ export 'domain/repositories/transaction_repository.dart' hide Result;
 export 'domain/services/balance_engine.dart';
 export 'domain/services/budget_engine.dart';
 export 'domain/services/debt_simplifier.dart';
+export 'domain/services/finance_message_parser.dart';
 export 'domain/services/split_calculator.dart';
 
 // Domain - Errors
@@ -83,6 +84,7 @@ export 'application/use_cases/update_expense_use_case.dart' hide Result;
 export 'application/services/coins_notification_service.dart';
 export 'application/services/coins_platform_support.dart';
 export 'application/services/coins_sync_service.dart';
+export 'application/services/finance_chat_ingestion_service.dart';
 
 // Data - Repositories
 export 'data/repositories/account_repository_impl.dart';

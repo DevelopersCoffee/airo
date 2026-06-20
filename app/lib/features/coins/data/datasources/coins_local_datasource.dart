@@ -15,6 +15,7 @@ abstract class CoinsLocalDatasource {
   );
   Future<List<TransactionEntity>> getTransactionsByCategory(String categoryId);
   Future<List<TransactionEntity>> getTransactionsByAccount(String accountId);
+  Future<List<TransactionEntity>> getTransactionsByTag(String tag);
   Future<List<TransactionEntity>> getRecentTransactions(int limit);
   Future<void> insertTransaction(TransactionEntity entity);
   Future<void> updateTransaction(TransactionEntity entity);

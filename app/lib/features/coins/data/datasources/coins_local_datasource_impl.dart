@@ -68,6 +68,19 @@ class CoinsLocalDatasourceImpl implements CoinsLocalDatasource {
   }
 
   @override
+  Future<List<TransactionEntity>> getTransactionsByTag(String tag) async {
+    final results =
+        await (_db.select(_db.transactionEntries)
+              ..where(
+                (t) =>
+                    t.tags.contains(tag) & t.syncStatus.equals('deleted').not(),
+              )
+              ..orderBy([(t) => OrderingTerm.desc(t.timestamp)]))
+            .get();
+    return results.map(_mapTransactionEntry).toList();
+  }
+
+  @override
   Future<List<TransactionEntity>> getRecentTransactions(int limit) async {
     final results =
         await (_db.select(_db.transactionEntries)

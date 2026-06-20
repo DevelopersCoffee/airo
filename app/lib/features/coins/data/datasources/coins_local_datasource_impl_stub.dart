@@ -33,6 +33,10 @@ class CoinsLocalDatasourceImpl implements CoinsLocalDatasource {
   ) => _unsupported();
 
   @override
+  Future<List<TransactionEntity>> getTransactionsByTag(String tag) =>
+      _unsupported();
+
+  @override
   Future<void> insertTransaction(TransactionEntity entity) => _unsupported();
 
   @override

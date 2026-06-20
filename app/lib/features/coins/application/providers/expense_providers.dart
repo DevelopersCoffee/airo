@@ -7,6 +7,8 @@ import '../../domain/entities/category.dart' as coins;
 import '../../domain/entities/transaction.dart';
 import '../../domain/repositories/account_repository.dart';
 import '../../domain/repositories/transaction_repository.dart';
+import '../../domain/services/finance_message_parser.dart';
+import '../services/finance_chat_ingestion_service.dart';
 import '../use_cases/add_expense_use_case.dart';
 import '../../data/repositories/account_repository_impl.dart';
 import '../../data/repositories/transaction_repository_impl.dart';
@@ -119,6 +121,18 @@ final expenseAccountOptionsProvider = FutureProvider<List<Account>>((
 final addExpenseUseCaseProvider = Provider<AddExpenseUseCase>((ref) {
   return AddExpenseUseCase(ref.watch(transactionRepositoryProvider));
 });
+
+final financeMessageParserProvider = Provider<FinanceMessageParser>((ref) {
+  return const FinanceMessageParser();
+});
+
+final financeChatIngestionServiceProvider =
+    Provider<FinanceChatIngestionService>((ref) {
+      return FinanceChatIngestionService(
+        parser: ref.watch(financeMessageParserProvider),
+        repository: ref.watch(transactionRepositoryProvider),
+      );
+    });
 
 /// Watch all transactions stream
 final allExpensesProvider = StreamProvider<List<Transaction>>((ref) {
