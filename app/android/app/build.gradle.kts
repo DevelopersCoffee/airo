@@ -112,6 +112,9 @@ dependencies {
     // Based on: https://developers.google.com/ml-kit/genai/prompt/android/get-started
     implementation("com.google.mlkit:genai-prompt:1.0.0-beta1")
 
+    // LiteRT-LM for local on-device LLM inference.
+    implementation("com.google.ai.edge.litertlm:litertlm-android:latest.release")
+
     // Coroutines and lifecycle dependencies for async operations
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.10.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")

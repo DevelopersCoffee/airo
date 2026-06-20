@@ -156,6 +156,25 @@ class GeminiNanoService {
     }
   }
 
+  /// Generate content without substituting canned fallback responses.
+  ///
+  /// Use this for model-runtime routing where unavailable runtimes must be
+  /// reported explicitly instead of being mistaken for real LLM output.
+  Future<String> generateContentStrict(String prompt) async {
+    if (kIsWeb) {
+      throw UnsupportedError('Gemini Nano is not available on web.');
+    }
+
+    if (!_isInitialized) {
+      throw StateError('Gemini Nano is not initialized.');
+    }
+
+    final String? response = await _channel.invokeMethod('generateContent', {
+      'prompt': prompt,
+    });
+    return response ?? '';
+  }
+
   /// Generate content with streaming support
   /// Returns a stream of accumulated text chunks
   /// On web, yields a single fallback response
@@ -183,6 +202,22 @@ class GeminiNanoService {
     } catch (e) {
       debugPrint('Error generating content stream: $e');
       yield _getWebFallbackResponse(prompt);
+    }
+  }
+
+  /// Streaming generation without substituting canned fallback responses.
+  Stream<String> generateContentStreamStrict(String prompt) async* {
+    if (kIsWeb) {
+      throw UnsupportedError('Gemini Nano is not available on web.');
+    }
+
+    if (!_isInitialized) {
+      throw StateError('Gemini Nano is not initialized.');
+    }
+
+    await _channel.invokeMethod('generateContentStream', {'prompt': prompt});
+    await for (final chunk in _eventChannel.receiveBroadcastStream()) {
+      yield chunk.toString();
     }
   }
 
