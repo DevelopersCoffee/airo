@@ -20,7 +20,7 @@ class MiniPlayer extends ConsumerWidget {
 
         return GestureDetector(
           onTap: () {
-            context.go('/live');
+            context.go('/media/music');
           },
           child: Container(
             decoration: BoxDecoration(

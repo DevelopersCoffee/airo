@@ -24,6 +24,19 @@ void main() {
       ]);
     });
 
+    test('keeps music and tv inside the media architecture', () {
+      final rootLabels = AppNavigationTab.values.map((tab) => tab.label);
+      final rootPaths = AppNavigationTab.values.map((tab) => tab.path);
+
+      expect(AppNavigationTab.values.length, 5);
+      expect(rootLabels, contains('Media'));
+      expect(rootLabels, isNot(contains('Music')));
+      expect(rootLabels, isNot(contains('TV')));
+      expect(rootPaths, contains('/media'));
+      expect(rootPaths, isNot(contains('/beats')));
+      expect(rootPaths, isNot(contains('/stream')));
+    });
+
     test('hides mini players on the grouped media tab', () {
       final container = ProviderContainer();
       addTearDown(container.dispose);
