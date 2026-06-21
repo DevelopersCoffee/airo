@@ -280,7 +280,7 @@ After calendar is stable:
 
 - [ ] Add calendar package to mobile pubspec after validating build mode.
 - [x] Add Android/iOS permissions.
-- [ ] Implement permission request/status adapter.
+- [x] Implement permission request/status adapter.
 - [x] Implement read events for a date.
 - [x] Implement create event with confirmation.
 - [x] Add unit tests around adapter using fake connector.

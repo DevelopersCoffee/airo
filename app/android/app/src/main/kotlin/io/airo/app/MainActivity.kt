@@ -5,7 +5,9 @@ import android.content.ContentUris
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.provider.CalendarContract
+import android.provider.Settings
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.EventChannel
@@ -65,6 +67,8 @@ class MainActivity : FlutterActivity() {
                             result = result
                         )
                     }
+                    "getCalendarPermissionStatus" -> getCalendarPermissionStatus(result)
+                    "openCalendarPermissionSettings" -> openCalendarPermissionSettings(result)
                     else -> result.notImplemented()
                 }
             }
@@ -176,6 +180,25 @@ class MainActivity : FlutterActivity() {
                 "message" to (error.message ?: "Calendar events could not be read.")
             ))
         }
+    }
+
+
+    private fun getCalendarPermissionStatus(result: MethodChannel.Result) {
+        val granted = checkSelfPermission(Manifest.permission.READ_CALENDAR) == PackageManager.PERMISSION_GRANTED
+        result.success(mapOf(
+            "status" to if (granted) "granted" else "denied",
+            "granted" to granted,
+            "can_request" to !granted,
+            "permission" to Manifest.permission.READ_CALENDAR
+        ))
+    }
+
+    private fun openCalendarPermissionSettings(result: MethodChannel.Result) {
+        val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+            data = Uri.fromParts("package", packageName, null)
+        }
+        startActivity(intent)
+        result.success(mapOf("opened" to true))
     }
 
     private fun createCalendarEvent(

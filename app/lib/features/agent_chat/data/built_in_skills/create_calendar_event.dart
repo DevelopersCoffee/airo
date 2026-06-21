@@ -8,7 +8,11 @@ final createCalendarEventSkill = AgentSkill(
       'Use this when the user asks to create, add, or schedule a calendar '
       'event. Gather title, date, start time, and end time before calling '
       'create_calendar_event. Writes require explicit user confirmation.',
-  tools: const ['get_current_date_time', 'create_calendar_event'],
+  tools: const [
+    'calendar_permission_status',
+    'get_current_date_time',
+    'create_calendar_event',
+  ],
   capabilities: const [SkillCapability.calendarWrite],
   enabled: false,
 );

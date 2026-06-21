@@ -192,3 +192,50 @@ class NativeCreateCalendarEventConnector implements AgentConnector {
     }
   }
 }
+
+class NativeCalendarPermissionConnector implements AgentConnector {
+  NativeCalendarPermissionConnector({
+    MethodChannel channel = const MethodChannel('com.airo.agent_connectors'),
+  }) : _channel = channel;
+
+  final MethodChannel _channel;
+
+  @override
+  String get name => 'calendar_permission_status';
+
+  @override
+  Set<SkillCapability> get requiredCapabilities => const {};
+
+  @override
+  Future<ConnectorResult> execute(Map<String, dynamic> arguments) async {
+    final shouldOpenSettings = arguments['open_settings'] == true;
+    if (shouldOpenSettings && arguments['confirmed'] != true) {
+      return const ConnectorResult.error(
+        code: 'confirmation_required',
+        message: 'Please confirm before opening calendar permission settings.',
+      );
+    }
+
+    try {
+      final response = await _channel.invokeMapMethod<String, dynamic>(
+        shouldOpenSettings
+            ? 'openCalendarPermissionSettings'
+            : 'getCalendarPermissionStatus',
+        const {},
+      );
+      return ConnectorResult(data: response ?? const {});
+    } on MissingPluginException {
+      return const ConnectorResult.error(
+        code: 'calendar_channel_unavailable',
+        message:
+            'Calendar permission status is not available on this device yet.',
+      );
+    } on PlatformException catch (error) {
+      return ConnectorResult.error(
+        code: error.code,
+        message:
+            error.message ?? 'Calendar permission status could not be read.',
+      );
+    }
+  }
+}

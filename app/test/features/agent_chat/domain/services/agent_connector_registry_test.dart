@@ -120,6 +120,73 @@ void main() {
         expect(calls.single.arguments, containsPair('title', 'Design review'));
       },
     );
+
+    test('reads calendar permission status through app channel', () async {
+      const channel = MethodChannel(
+        'com.airo.agent_connectors.permission_test',
+      );
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, (call) async {
+            expect(call.method, 'getCalendarPermissionStatus');
+            return <String, dynamic>{'status': 'granted', 'granted': true};
+          });
+      addTearDown(() {
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, null);
+      });
+      final registry = AgentConnectorRegistry(
+        connectors: [NativeCalendarPermissionConnector(channel: channel)],
+      );
+
+      final result = await registry.execute(
+        'calendar_permission_status',
+        const {},
+      );
+
+      expect(result.isError, false);
+      expect(result.data['status'], 'granted');
+      expect(result.data['granted'], true);
+    });
+
+    test('requires confirmation before opening calendar settings', () async {
+      final registry = AgentConnectorRegistry(
+        connectors: [NativeCalendarPermissionConnector()],
+      );
+
+      final result = await registry.execute(
+        'calendar_permission_status',
+        const {'open_settings': true},
+      );
+
+      expect(result.isError, true);
+      expect(result.errorCode, 'confirmation_required');
+    });
+
+    test('opens calendar permission settings after confirmation', () async {
+      const channel = MethodChannel('com.airo.agent_connectors.settings_test');
+      final calls = <MethodCall>[];
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, (call) async {
+            calls.add(call);
+            return <String, dynamic>{'opened': true};
+          });
+      addTearDown(() {
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, null);
+      });
+      final registry = AgentConnectorRegistry(
+        connectors: [NativeCalendarPermissionConnector(channel: channel)],
+      );
+
+      final result = await registry.execute(
+        'calendar_permission_status',
+        const {'open_settings': true, 'confirmed': true},
+      );
+
+      expect(result.isError, false);
+      expect(result.data['opened'], true);
+      expect(calls.single.method, 'openCalendarPermissionSettings');
+    });
   });
 }
 

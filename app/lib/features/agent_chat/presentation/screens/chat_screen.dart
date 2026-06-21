@@ -77,6 +77,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       connectorRegistry: AgentConnectorRegistry(
         connectors: [
           DateTimeConnector(),
+          NativeCalendarPermissionConnector(),
           NativeCalendarConnector(),
           NativeCreateCalendarEventConnector(),
           ScheduleNotificationConnector(),
