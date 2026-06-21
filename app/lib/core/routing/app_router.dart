@@ -124,12 +124,12 @@ class AppRouter {
               ),
             ],
           ),
-          // Agent Chat branch
+          // Brain branch
           StatefulShellBranch(
             routes: [
               GoRoute(
                 path: '/agent',
-                name: 'Mind',
+                name: 'Brain',
                 builder: (context, state) => const ChatScreen(),
                 routes: [
                   GoRoute(

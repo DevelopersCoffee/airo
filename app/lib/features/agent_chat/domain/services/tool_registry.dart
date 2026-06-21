@@ -120,7 +120,7 @@ class MusicTool implements Tool {
   }
 }
 
-/// Money and model-management routing tool.
+/// Coins and model-management routing tool.
 class MoneyTool implements Tool {
   @override
   String get key => 'Coins';
@@ -141,10 +141,7 @@ class MoneyTool implements Tool {
   Future<AgentToolResult?> handle(Intent intent) async {
     switch (intent.type) {
       case IntentType.openMoney:
-        return const AgentToolResult(
-          route: '/money',
-          message: 'Opening Money app',
-        );
+        return const AgentToolResult(route: '/money', message: 'Opening Coins');
       case IntentType.openBudget:
         return const AgentToolResult(
           route: '/money',

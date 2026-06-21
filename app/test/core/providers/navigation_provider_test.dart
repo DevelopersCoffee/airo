@@ -7,7 +7,7 @@ void main() {
     test('groups music and TV into one media tab', () {
       expect(AppNavigationTab.values.map((tab) => tab.label), [
         'Coins',
-        'Mind',
+        'Brain',
         'Media',
         'Arena',
         'Quest',

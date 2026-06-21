@@ -8,8 +8,8 @@ enum AppNavigationTab {
     icon: Icons.monetization_on_outlined,
     selectedIcon: Icons.monetization_on,
   ),
-  mind(
-    label: 'Mind',
+  brain(
+    label: 'Brain',
     path: '/agent',
     icon: Icons.smart_toy_outlined,
     selectedIcon: Icons.smart_toy,
@@ -48,9 +48,9 @@ enum AppNavigationTab {
 
 /// Current navigation tab index.
 ///
-/// Order: Coins | Mind | Media | Arena | Quest
+/// Order: Coins | Brain | Media | Arena | Quest
 final currentNavigationTabProvider = StateProvider<int>(
-  (ref) => AppNavigationTab.mind.index,
+  (ref) => AppNavigationTab.brain.index,
 );
 
 final appNavigationTabsProvider = Provider<List<AppNavigationTab>>(
