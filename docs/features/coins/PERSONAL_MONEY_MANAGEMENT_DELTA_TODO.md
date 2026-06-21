@@ -1,6 +1,6 @@
 # Coins Personal Money Management Delta TODO
 
-Last updated: 2026-06-21
+Last updated: 2026-06-22
 
 ## Current Delta
 
@@ -10,6 +10,8 @@ The Coins base now has the first local-first money-management pieces in place:
 - Dashboard-level finance insights for current spending awareness.
 - Quick-add parsing for human expense text.
 - Chat-to-ledger ingestion for pasted finance SMS text.
+- Chat/SMS imports now enter a local transaction review queue instead of being silently final.
+- Imported transaction review supports edit, approve, reject, and duplicate marking while keeping source hash/parser/raw text metadata local for audit.
 - Agent skill plumbing so the Brain/agent chat can route tool-like requests.
 - Local LLM service scaffolding for on-device extraction and private finance reasoning.
 - Receipt and invoice parsing pipeline hooks for bill split and imported documents.
@@ -32,9 +34,9 @@ This is enough for a first private financial inbox loop: user pastes or enters f
 ### Ledger Correctness
 
 - [ ] Raw financial record vault is not implemented yet.
-- [ ] Source hashing and reparse support are not implemented.
-- [ ] Transaction dedupe across SMS, UPI export, card statement, and bank statement is not implemented.
-- [ ] Confidence scoring and review queue are not implemented.
+- [x] Source hashing exists for chat/SMS imports; full reparse support remains pending.
+- [ ] Transaction dedupe across UPI export, card statement, and bank statement is not implemented; chat/SMS duplicate marking exists as a manual review action.
+- [x] Confidence scoring and review queue are implemented for chat/SMS imports.
 - [ ] Merchant alias learning is not implemented.
 - [ ] Refund, reversal, failed-payment, and duplicate-charge handling needs deterministic rules.
 
@@ -65,8 +67,8 @@ This is enough for a first private financial inbox loop: user pastes or enters f
 
 - [ ] Awareness dashboard needs today/week/month spend cards with clear budget-left numbers.
 - [ ] Category breakdown needs drill-down to transactions.
-- [ ] Review queue is needed for uncertain parsed transactions.
-- [ ] Undo/edit flow is needed for chat-ingested and parser-ingested transactions.
+- [x] Review queue is implemented for chat/SMS imported transactions.
+- [x] Edit/reject/duplicate/approve flow is implemented for chat/SMS imported transactions; broader undo across all parser-ingested sources remains pending.
 - [ ] First-run education is needed for privacy, permissions, and supported data sources.
 - [ ] India-first examples and copy are needed for UPI, cards, wallets, EMI, and bills.
 
@@ -84,11 +86,11 @@ This is enough for a first private financial inbox loop: user pastes or enters f
 
 ### Milestone 1: Transaction Review Loop
 
-- [ ] Add `raw_financial_records` and `financial_sources`.
-- [ ] Store source hash, parser name, parser version, confidence, and raw record reference.
-- [ ] Add review queue UI for uncertain transactions.
-- [ ] Add edit/undo for chat-ingested transactions.
-- [ ] Add tests for duplicate paste prevention.
+- [ ] Add first-class `raw_financial_records` and `financial_sources` tables beyond the current local tag-backed metadata.
+- [x] Store source hash, parser name, parser version, confidence, and local raw record reference for chat/SMS imports.
+- [x] Add review queue UI for imported chat/SMS transactions.
+- [x] Add edit/reject/duplicate/approve flow for chat-ingested transactions.
+- [x] Add tests for duplicate paste prevention and manual duplicate marking.
 
 ### Milestone 2: Android SMS And Notification Import
 

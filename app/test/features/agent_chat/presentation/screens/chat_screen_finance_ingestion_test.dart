@@ -67,7 +67,11 @@ void main() {
     expect(repository.transactions.single.description, 'Swiggy');
     expect(repository.transactions.single.amountCents, -45000);
     expect(repository.transactions.single.categoryId, 'food');
-    expect(find.textContaining('Added to Coins: Swiggy'), findsOneWidget);
+    expect(repository.transactions.single.tags, contains('review:pending'));
+    expect(
+      find.textContaining('Queued for Coins review: Swiggy'),
+      findsOneWidget,
+    );
   });
 }
 

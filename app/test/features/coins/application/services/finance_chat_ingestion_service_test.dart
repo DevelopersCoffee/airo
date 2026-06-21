@@ -6,30 +6,49 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('FinanceChatIngestionService', () {
-    test('creates transaction from high-confidence finance SMS', () async {
-      final repository = _InMemoryTransactionRepository();
-      final service = FinanceChatIngestionService(
-        parser: FinanceMessageParser(now: () => DateTime(2026, 6, 20)),
-        repository: repository,
-      );
+    test(
+      'queues transaction from high-confidence finance SMS for review',
+      () async {
+        final repository = _InMemoryTransactionRepository();
+        final service = FinanceChatIngestionService(
+          parser: FinanceMessageParser(now: () => DateTime(2026, 6, 20)),
+          repository: repository,
+        );
 
-      final result = await service.ingest(
-        'INR 299.00 spent on your card at Zomato on 20-06-26.',
-        accountId: 'cash_default',
-      );
+        final result = await service.ingest(
+          'INR 299.00 spent on your card at Zomato on 20-06-26.',
+          accountId: 'cash_default',
+        );
 
-      expect(result.status, FinanceChatIngestionStatus.created);
-      expect(repository.transactions, hasLength(1));
-      expect(repository.transactions.single.amountCents, -29900);
-      expect(repository.transactions.single.description, 'Zomato');
-      expect(repository.transactions.single.tags, contains('source:chat'));
-      expect(
-        repository.transactions.single.tags.any(
-          (tag) => tag.startsWith('source:chat_sms:'),
-        ),
-        isTrue,
-      );
-    });
+        expect(result.status, FinanceChatIngestionStatus.needsReview);
+        expect(repository.transactions, hasLength(1));
+        expect(result.transaction, repository.transactions.single);
+        expect(repository.transactions.single.amountCents, -29900);
+        expect(repository.transactions.single.description, 'Zomato');
+        expect(repository.transactions.single.tags, contains('source:chat'));
+        expect(repository.transactions.single.tags, contains('review:pending'));
+        expect(
+          repository.transactions.single.tags,
+          contains('source:parser:finance_message_parser'),
+        );
+        expect(
+          repository.transactions.single.tags,
+          contains('parser_version:v1'),
+        );
+        expect(
+          repository.transactions.single.tags.any(
+            (tag) => tag.startsWith('source:chat_sms:'),
+          ),
+          isTrue,
+        );
+        expect(
+          repository.transactions.single.tags.any(
+            (tag) => tag.startsWith('source:raw_text_b64:'),
+          ),
+          isTrue,
+        );
+      },
+    );
 
     test('updates existing transaction for the same SMS source tag', () async {
       final repository = _InMemoryTransactionRepository();
@@ -43,11 +62,12 @@ void main() {
       final first = await service.ingest(sms, accountId: 'cash_default');
       final second = await service.ingest(sms, accountId: 'bank_default');
 
-      expect(first.status, FinanceChatIngestionStatus.created);
-      expect(second.status, FinanceChatIngestionStatus.updated);
+      expect(first.status, FinanceChatIngestionStatus.needsReview);
+      expect(second.status, FinanceChatIngestionStatus.needsReview);
       expect(repository.transactions, hasLength(1));
       expect(repository.transactions.single.accountId, 'bank_default');
       expect(repository.transactions.single.categoryId, 'transport');
+      expect(repository.transactions.single.tags, contains('review:pending'));
     });
 
     test('ignores unrelated chat text', () async {

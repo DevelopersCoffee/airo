@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/utils/locale_settings.dart';
 import '../../application/providers/dashboard_providers.dart';
+import '../../application/providers/expense_providers.dart';
+import '../../application/services/transaction_review_service.dart';
 import '../../domain/entities/transaction.dart';
 import '../../domain/models/budget_status.dart';
 import '../../domain/services/finance_insight_service.dart';
@@ -83,6 +85,12 @@ class CoinsDashboardScreen extends ConsumerWidget {
                   const _QuickAddExpenseCard(),
                   const SizedBox(height: 16),
 
+                  _TransactionReviewQueueSection(
+                    transactions: data.pendingTransactionReviews,
+                  ),
+                  if (data.pendingTransactionReviews.isNotEmpty)
+                    const SizedBox(height: 16),
+
                   // Quick Actions
                   const _QuickActionsRow(),
                   const SizedBox(height: 16),
@@ -124,6 +132,261 @@ class CoinsDashboardScreen extends ConsumerWidget {
     Navigator.of(
       context,
     ).push(MaterialPageRoute(builder: (_) => const AddExpenseScreen()));
+  }
+}
+
+class _TransactionReviewQueueSection extends ConsumerWidget {
+  final List<Transaction> transactions;
+
+  const _TransactionReviewQueueSection({required this.transactions});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (transactions.isEmpty) return const SizedBox.shrink();
+
+    final theme = Theme.of(context);
+    return Card(
+      elevation: 0,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Review imported transactions',
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Imported SMS/chat transactions stay pending until you approve, edit, reject, or mark duplicates.',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 12),
+            ...transactions
+                .take(5)
+                .map(
+                  (transaction) =>
+                      _TransactionReviewTile(transaction: transaction),
+                ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TransactionReviewTile extends ConsumerWidget {
+  final Transaction transaction;
+
+  const _TransactionReviewTile({required this.transaction});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final formatter = ref.watch(currencyFormatterProvider);
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: const Icon(Icons.fact_check_outlined),
+      title: Text(transaction.description),
+      subtitle: Text(
+        '${formatter.formatCentsWithSign(transaction.amountCents)} · '
+        '${transaction.categoryId} · ${transaction.accountId}',
+      ),
+      trailing: Wrap(
+        spacing: 4,
+        children: [
+          IconButton(
+            tooltip: 'Edit imported transaction',
+            icon: const Icon(Icons.edit_outlined),
+            onPressed: () => _showEditDialog(context, ref),
+          ),
+          IconButton(
+            tooltip: 'Approve imported transaction',
+            icon: const Icon(Icons.check_circle_outline),
+            onPressed: () => _runReviewAction(
+              context,
+              ref,
+              () => ref
+                  .read(transactionReviewServiceProvider)
+                  .approve(transaction.id),
+              'Transaction approved.',
+            ),
+          ),
+          IconButton(
+            tooltip: 'Reject imported transaction',
+            icon: const Icon(Icons.close_outlined),
+            onPressed: () => _runReviewAction(
+              context,
+              ref,
+              () => ref
+                  .read(transactionReviewServiceProvider)
+                  .reject(transaction.id),
+              'Transaction rejected.',
+            ),
+          ),
+          IconButton(
+            tooltip: 'Mark imported transaction duplicate',
+            icon: const Icon(Icons.content_copy_outlined),
+            onPressed: () => _runReviewAction(
+              context,
+              ref,
+              () => ref
+                  .read(transactionReviewServiceProvider)
+                  .markDuplicate(transaction.id),
+              'Transaction marked duplicate.',
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _showEditDialog(BuildContext context, WidgetRef ref) async {
+    final merchantController = TextEditingController(
+      text: transaction.description,
+    );
+    final amountController = TextEditingController(
+      text: (transaction.amountCents.abs() / 100).toStringAsFixed(2),
+    );
+    final dateController = TextEditingController(
+      text:
+          '${transaction.transactionDate.year.toString().padLeft(4, '0')}-'
+          '${transaction.transactionDate.month.toString().padLeft(2, '0')}-'
+          '${transaction.transactionDate.day.toString().padLeft(2, '0')}',
+    );
+    final categoryController = TextEditingController(
+      text: transaction.categoryId,
+    );
+    final accountController = TextEditingController(
+      text: transaction.accountId,
+    );
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Edit imported transaction'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  key: const ValueKey('transaction_review_merchant_field'),
+                  controller: merchantController,
+                  decoration: const InputDecoration(labelText: 'Merchant'),
+                ),
+                TextField(
+                  key: const ValueKey('transaction_review_amount_field'),
+                  controller: amountController,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(labelText: 'Amount'),
+                ),
+                TextField(
+                  key: const ValueKey('transaction_review_date_field'),
+                  controller: dateController,
+                  decoration: const InputDecoration(
+                    labelText: 'Date YYYY-MM-DD',
+                  ),
+                ),
+                TextField(
+                  key: const ValueKey('transaction_review_category_field'),
+                  controller: categoryController,
+                  decoration: const InputDecoration(labelText: 'Category'),
+                ),
+                TextField(
+                  key: const ValueKey('transaction_review_account_field'),
+                  controller: accountController,
+                  decoration: const InputDecoration(labelText: 'Account'),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () async {
+                final amount = double.tryParse(amountController.text.trim());
+                final date = DateTime.tryParse(dateController.text.trim());
+                if (amount == null || date == null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Enter a valid amount and date.'),
+                    ),
+                  );
+                  return;
+                }
+                final signedAmount = transaction.type == TransactionType.expense
+                    ? -(amount * 100).round().abs()
+                    : (amount * 100).round().abs();
+                final result = await ref
+                    .read(transactionReviewServiceProvider)
+                    .edit(
+                      transaction.id,
+                      TransactionReviewEdit(
+                        amountCents: signedAmount,
+                        transactionDate: DateTime(
+                          date.year,
+                          date.month,
+                          date.day,
+                        ),
+                        merchant: merchantController.text,
+                        categoryId: categoryController.text,
+                        accountId: accountController.text,
+                      ),
+                    );
+                if (result.error == null && dialogContext.mounted) {
+                  Navigator.of(dialogContext).pop();
+                  _refreshReviewProviders(ref);
+                }
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        result.error == null
+                            ? 'Transaction updated for review.'
+                            : result.error!,
+                      ),
+                    ),
+                  );
+                }
+              },
+              child: const Text('Save edit'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _runReviewAction(
+    BuildContext context,
+    WidgetRef ref,
+    Future<dynamic> Function() action,
+    String successMessage,
+  ) async {
+    final result = await action();
+    _refreshReviewProviders(ref);
+    if (!context.mounted) return;
+    final error = result is ({Object? data, String? error})
+        ? result.error
+        : null;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(error ?? successMessage)));
+  }
+
+  void _refreshReviewProviders(WidgetRef ref) {
+    ref.invalidate(pendingTransactionReviewsProvider);
+    ref.invalidate(recentExpensesProvider);
+    ref.invalidate(spentTodayProvider);
+    ref.invalidate(spentThisMonthProvider);
+    ref.invalidate(dashboardDataProvider);
   }
 }
 

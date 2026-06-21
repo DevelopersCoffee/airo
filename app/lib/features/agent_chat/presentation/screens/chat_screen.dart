@@ -597,6 +597,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       case FinanceChatIngestionStatus.updated:
         return 'Updated Coins: ${parsed.description} - $amount - ${parsed.categoryId}.';
       case FinanceChatIngestionStatus.needsReview:
+        if (result.transaction != null) {
+          return 'Queued for Coins review: ${parsed.description} - $amount - ${parsed.categoryId}.';
+        }
         return 'I found a possible transaction for ${parsed.description} - $amount, but it needs review before I add it.';
       case FinanceChatIngestionStatus.failed:
         return result.message ?? 'I could not update Coins from this message.';
