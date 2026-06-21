@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/dictionary/dictionary.dart';
+import '../../../../core/utils/locale_settings.dart';
 import '../../../agent_chat/data/connectors/calendar_connector.dart';
 import '../../../agent_chat/data/connectors/date_time_connector.dart';
 import '../../../agent_chat/data/services/assistant_runtime_service.dart';
@@ -15,6 +16,9 @@ import '../../../agent_chat/domain/services/intent_parser.dart';
 import '../../../agent_chat/domain/services/tool_registry.dart';
 import '../../../agent_chat/presentation/widgets/manage_skills_sheet.dart';
 import '../../../agent_chat/presentation/widgets/skill_action_trace_card.dart';
+import '../../../coins/application/providers/dashboard_providers.dart';
+import '../../../coins/application/providers/expense_providers.dart';
+import '../../../coins/application/services/finance_chat_ingestion_service.dart';
 import '../../../quotes/presentation/widgets/daily_quote_card.dart';
 import '../../../settings/presentation/screens/ai_models_screen.dart';
 import '../../../../core/services/gemini_nano_service.dart';
@@ -460,6 +464,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       _messages.add(ChatMessage(text: message, isUser: true));
     });
 
+    if (await _tryIngestFinanceMessage(message)) {
+      return;
+    }
+
     final skillResult = await _skillOrchestrator.run(message);
     if (skillResult.handled) {
       setState(() {
@@ -526,6 +534,69 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           isUser: false,
         );
       });
+    }
+  }
+
+  Future<bool> _tryIngestFinanceMessage(String message) async {
+    try {
+      final accounts = await ref.read(expenseAccountOptionsProvider.future);
+      final defaultAccount = accounts
+          .where((account) => account.isDefault)
+          .fold(accounts.first, (selected, account) => account);
+      final accountId = defaultAccount.id;
+
+      final result = await ref
+          .read(financeChatIngestionServiceProvider)
+          .ingest(message, accountId: accountId);
+
+      if (result.status == FinanceChatIngestionStatus.ignored) {
+        return false;
+      }
+
+      if (result.changedLedger) {
+        _refreshCoinsProviders();
+      }
+
+      if (!mounted) return true;
+      final response = _financeIngestionResponse(result);
+      setState(() {
+        _messages.add(ChatMessage(text: response, isUser: false));
+      });
+      return true;
+    } catch (e) {
+      debugPrint('Finance SMS ingestion failed: $e');
+      return false;
+    }
+  }
+
+  void _refreshCoinsProviders() {
+    ref.invalidate(allExpensesProvider);
+    ref.invalidate(recentExpensesProvider);
+    ref.invalidate(spentTodayProvider);
+    ref.invalidate(spentThisMonthProvider);
+    ref.invalidate(monthlySpendingByCategoryProvider);
+    ref.invalidate(dashboardDataProvider);
+  }
+
+  String _financeIngestionResponse(FinanceChatIngestionResult result) {
+    final formatter = ref.read(currencyFormatterProvider);
+    final parsed = result.parsed;
+    if (parsed == null) {
+      return 'I could not read this as a finance transaction.';
+    }
+
+    final amount = formatter.formatCents(parsed.amountCents);
+    switch (result.status) {
+      case FinanceChatIngestionStatus.created:
+        return 'Added to Coins: ${parsed.description} - $amount - ${parsed.categoryId}.';
+      case FinanceChatIngestionStatus.updated:
+        return 'Updated Coins: ${parsed.description} - $amount - ${parsed.categoryId}.';
+      case FinanceChatIngestionStatus.needsReview:
+        return 'I found a possible transaction for ${parsed.description} - $amount, but it needs review before I add it.';
+      case FinanceChatIngestionStatus.failed:
+        return result.message ?? 'I could not update Coins from this message.';
+      case FinanceChatIngestionStatus.ignored:
+        return 'I could not read this as a finance transaction.';
     }
   }
 

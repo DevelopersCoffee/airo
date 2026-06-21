@@ -79,6 +79,10 @@ class _CapturingTransactionRepository implements TransactionRepository {
       (data: <Transaction>[], error: null);
 
   @override
+  Future<Result<List<Transaction>>> findByTag(String tag) async =>
+      (data: <Transaction>[], error: null);
+
+  @override
   Future<Result<Map<String, int>>> getSpentByCategory(
     DateTime start,
     DateTime end,
