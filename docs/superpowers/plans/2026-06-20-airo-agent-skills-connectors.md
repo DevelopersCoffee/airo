@@ -279,11 +279,11 @@ After calendar is stable:
 ### Task 4: Calendar Native Integration
 
 - [ ] Add calendar package to mobile pubspec after validating build mode.
-- [ ] Add Android/iOS permissions.
+- [x] Add Android/iOS permissions.
 - [ ] Implement permission request/status adapter.
-- [ ] Implement read events for a date.
-- [ ] Implement create event with confirmation.
-- [ ] Add unit tests around adapter using fake connector.
+- [x] Implement read events for a date.
+- [x] Implement create event with confirmation.
+- [x] Add unit tests around adapter using fake connector.
 - [ ] Add one device smoke test for Android calendar read.
 
 ### Task 5: Skill Orchestrator

@@ -3,6 +3,7 @@ package io.airo.app
 import android.Manifest
 import android.content.ContentUris
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.provider.CalendarContract
 import io.flutter.embedding.android.FlutterActivity
@@ -53,6 +54,16 @@ class MainActivity : FlutterActivity() {
                         } else {
                             readCalendarEvents(date, result)
                         }
+                    }
+                    "createCalendarEvent" -> {
+                        createCalendarEvent(
+                            title = call.argument<String>("title"),
+                            start = call.argument<String>("start"),
+                            end = call.argument<String>("end"),
+                            description = call.argument<String>("description"),
+                            location = call.argument<String>("location"),
+                            result = result
+                        )
                     }
                     else -> result.notImplemented()
                 }
@@ -165,5 +176,69 @@ class MainActivity : FlutterActivity() {
                 "message" to (error.message ?: "Calendar events could not be read.")
             ))
         }
+    }
+
+    private fun createCalendarEvent(
+        title: String?,
+        start: String?,
+        end: String?,
+        description: String?,
+        location: String?,
+        result: MethodChannel.Result
+    ) {
+        if (title.isNullOrBlank() || start.isNullOrBlank() || end.isNullOrBlank()) {
+            result.success(mapOf(
+                "error" to "invalid_calendar_event",
+                "message" to "Calendar event requires title, start, and end."
+            ))
+            return
+        }
+
+        val dateTimeFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", Locale.US)
+        dateTimeFormat.isLenient = false
+        val startMillis = try {
+            dateTimeFormat.parse(start)?.time
+        } catch (_: Exception) {
+            null
+        }
+        val endMillis = try {
+            dateTimeFormat.parse(end)?.time
+        } catch (_: Exception) {
+            null
+        }
+        if (startMillis == null || endMillis == null || endMillis <= startMillis) {
+            result.success(mapOf(
+                "error" to "invalid_calendar_event_time",
+                "message" to "Calendar event times must use ISO-8601 and end after start."
+            ))
+            return
+        }
+
+        val intent = Intent(Intent.ACTION_INSERT).apply {
+            data = CalendarContract.Events.CONTENT_URI
+            putExtra(CalendarContract.Events.TITLE, title)
+            putExtra(CalendarContract.EXTRA_EVENT_BEGIN_TIME, startMillis)
+            putExtra(CalendarContract.EXTRA_EVENT_END_TIME, endMillis)
+            if (!description.isNullOrBlank()) {
+                putExtra(CalendarContract.Events.DESCRIPTION, description)
+            }
+            if (!location.isNullOrBlank()) {
+                putExtra(CalendarContract.Events.EVENT_LOCATION, location)
+            }
+        }
+
+        if (intent.resolveActivity(packageManager) == null) {
+            result.success(mapOf(
+                "error" to "calendar_app_unavailable",
+                "message" to "No calendar app is available to create this event."
+            ))
+            return
+        }
+
+        startActivity(intent)
+        result.success(mapOf(
+            "created" to true,
+            "confirmation" to "native_calendar_app"
+        ))
     }
 }

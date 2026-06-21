@@ -120,3 +120,75 @@ class NativeCalendarConnector implements AgentConnector {
     }
   }
 }
+
+class NativeCreateCalendarEventConnector implements AgentConnector {
+  NativeCreateCalendarEventConnector({
+    MethodChannel channel = const MethodChannel('com.airo.agent_connectors'),
+  }) : _channel = channel;
+
+  final MethodChannel _channel;
+
+  @override
+  String get name => 'create_calendar_event';
+
+  @override
+  Set<SkillCapability> get requiredCapabilities => {
+    SkillCapability.calendarWrite,
+  };
+
+  @override
+  Future<ConnectorResult> execute(Map<String, dynamic> arguments) async {
+    if (arguments['confirmed'] != true) {
+      return const ConnectorResult.error(
+        code: 'confirmation_required',
+        message: 'Please confirm before creating this calendar event.',
+      );
+    }
+
+    final title = arguments['title'] as String?;
+    final start = arguments['start'] as String?;
+    final end = arguments['end'] as String?;
+    if (title == null || title.trim().isEmpty || start == null || end == null) {
+      return const ConnectorResult.error(
+        code: 'invalid_calendar_event',
+        message: 'create_calendar_event requires title, start, and end.',
+      );
+    }
+
+    try {
+      final response = await _channel
+          .invokeMapMethod<String, dynamic>('createCalendarEvent', {
+            'title': title,
+            'start': start,
+            'end': end,
+            if (arguments['description'] is String)
+              'description': arguments['description'],
+            if (arguments['location'] is String)
+              'location': arguments['location'],
+          });
+      if (response == null) {
+        return const ConnectorResult(data: {'created': true});
+      }
+      if (response['error'] is String) {
+        return ConnectorResult.error(
+          code: response['error'] as String,
+          message:
+              response['message'] as String? ??
+              'Calendar event could not be created.',
+          data: response,
+        );
+      }
+      return ConnectorResult(data: response);
+    } on MissingPluginException {
+      return const ConnectorResult.error(
+        code: 'calendar_channel_unavailable',
+        message: 'Calendar event creation is not available on this device yet.',
+      );
+    } on PlatformException catch (error) {
+      return ConnectorResult.error(
+        code: error.code,
+        message: error.message ?? 'Calendar event could not be created.',
+      );
+    }
+  }
+}

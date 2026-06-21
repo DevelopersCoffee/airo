@@ -78,6 +78,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         connectors: [
           DateTimeConnector(),
           NativeCalendarConnector(),
+          NativeCreateCalendarEventConnector(),
           ScheduleNotificationConnector(),
         ],
       ),
