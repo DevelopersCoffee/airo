@@ -51,7 +51,9 @@ class IntentParser {
     'next song': IntentType.nextTrack,
     'skip': IntentType.nextTrack,
 
-    // Money intents
+    // Coins intents
+    'open coins': IntentType.openMoney,
+    'coins': IntentType.openMoney,
     'open money': IntentType.openMoney,
     'show budget': IntentType.openBudget,
     'budget': IntentType.openBudget,
@@ -138,7 +140,7 @@ class IntentParser {
       case IntentType.nextTrack:
         return 'Skipping to next track';
       case IntentType.openMoney:
-        return 'Opening Money app';
+        return 'Opening Coins';
       case IntentType.openBudget:
         return 'Opening Budget';
       case IntentType.openExpenses:

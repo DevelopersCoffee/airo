@@ -6,7 +6,7 @@
 /// ## Features
 /// - **Phase 1**: Core expense tracking, budget management, safe-to-spend
 /// - **Phase 2**: Group expense splitting, settlements, debt simplification
-/// - **Phase 3**: Mind AI conversational interface
+/// - **Phase 3**: Brain AI conversational interface
 /// - **Phase 4**: Receipt OCR scanning
 ///
 /// ## Architecture

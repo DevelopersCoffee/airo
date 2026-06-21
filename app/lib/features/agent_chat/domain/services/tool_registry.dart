@@ -59,7 +59,7 @@ class MusicTool implements Tool {
   }
 }
 
-/// Money tool
+/// Coins tool
 class MoneyTool implements Tool {
   @override
   String get key => 'Coins';
@@ -78,7 +78,7 @@ class MoneyTool implements Tool {
   Future<NavTarget?> handle(Intent intent) async {
     switch (intent.type) {
       case IntentType.openMoney:
-        return NavTarget(route: '/money', message: 'Opening Money app');
+        return NavTarget(route: '/money', message: 'Opening Coins');
       case IntentType.openBudget:
         return NavTarget(
           route: '/money',
