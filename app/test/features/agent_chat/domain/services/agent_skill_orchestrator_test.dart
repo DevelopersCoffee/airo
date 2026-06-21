@@ -120,6 +120,87 @@ void main() {
       expect(result.isError, true);
       expect(result.message, contains('unsupported action'));
     });
+
+    test('builds skill-selection prompt from enabled skill summaries', () {
+      final orchestrator = _buildOrchestrator();
+
+      final prompt = orchestrator.buildSkillSelectionPrompt(
+        'Check my schedule for today',
+      );
+
+      expect(prompt, contains('Available enabled skills'));
+      expect(prompt, contains('read-calendar-events'));
+      expect(prompt, contains('schedule-notification'));
+      expect(prompt, isNot(contains('create-calendar-event')));
+      expect(prompt, contains('Return JSON only'));
+    });
+
+    test(
+      'blocks connectors when selected skill lacks required capability',
+      () async {
+        final orchestrator = _buildOrchestrator(
+          skills: [
+            AgentSkill(
+              id: 'read-calendar-events',
+              name: 'Read Calendar Events',
+              description: 'Read calendar without declared capability.',
+              instructions: 'Try to read calendar events.',
+              tools: ['read_calendar_events'],
+              capabilities: [],
+            ),
+          ],
+          modelClient: _FixedActionModelClient(
+            selectedSkillId: 'read-calendar-events',
+            actions: [
+              const SkillModelAction.toolCall(
+                tool: 'read_calendar_events',
+                arguments: {'date': '2026-06-20'},
+              ),
+            ],
+          ),
+        );
+
+        final result = await orchestrator.run('Check my schedule for today');
+
+        expect(result.handled, true);
+        expect(result.isError, true);
+        expect(result.message, contains('permission'));
+        expect(result.traces.last.title, 'Blocked capability');
+      },
+    );
+
+    test('returns an error for malformed model JSON actions', () async {
+      final orchestrator = _buildOrchestrator(
+        modelClient: _JsonModelClient(
+          selectedSkillJson: '{"skill_id":"read-calendar-events"}',
+          actionJson: 'not json',
+        ),
+      );
+
+      final result = await orchestrator.run('Check my schedule for today');
+
+      expect(result.handled, true);
+      expect(result.isError, true);
+      expect(result.message, contains('could not complete'));
+    });
+
+    test('stops after max tool steps', () async {
+      final orchestrator = _buildOrchestrator(
+        maxSteps: 1,
+        modelClient: _FixedActionModelClient(
+          selectedSkillId: 'read-calendar-events',
+          actions: [
+            const SkillModelAction.toolCall(tool: 'get_current_date_time'),
+          ],
+        ),
+      );
+
+      final result = await orchestrator.run('Check my schedule for today');
+
+      expect(result.handled, true);
+      expect(result.isError, true);
+      expect(result.message, contains('too many steps'));
+    });
   });
 }
 
@@ -127,9 +208,11 @@ AgentSkillOrchestrator _buildOrchestrator({
   Map<String, List<CalendarEventData>>? events,
   InMemoryNotificationScheduler? notificationScheduler,
   AgentSkillModelClient? modelClient,
+  List<AgentSkill>? skills,
+  int maxSteps = 4,
 }) {
   return AgentSkillOrchestrator(
-    skillRegistry: AgentSkillRegistry(),
+    skillRegistry: AgentSkillRegistry(skills: skills),
     connectorRegistry: AgentConnectorRegistry(
       connectors: [
         DateTimeConnector(now: () => DateTime(2026, 6, 20, 9, 3)),
@@ -140,6 +223,7 @@ AgentSkillOrchestrator _buildOrchestrator({
       ],
     ),
     modelClient: modelClient,
+    maxSteps: maxSteps,
   );
 }
 
@@ -159,5 +243,60 @@ class _UnsupportedToolModelClient implements AgentSkillModelClient {
     required List<Map<String, dynamic>> toolResults,
   }) async {
     return const SkillModelAction.toolCall(tool: 'delete_calendar_events');
+  }
+}
+
+class _FixedActionModelClient implements AgentSkillModelClient {
+  _FixedActionModelClient({
+    required this.selectedSkillId,
+    required List<SkillModelAction> actions,
+  }) : _actions = List.of(actions);
+
+  final String selectedSkillId;
+  final List<SkillModelAction> _actions;
+
+  @override
+  Future<String?> selectSkill({
+    required String prompt,
+    required List<AgentSkill> enabledSkills,
+  }) async {
+    return selectedSkillId;
+  }
+
+  @override
+  Future<SkillModelAction?> nextAction({
+    required String prompt,
+    required AgentSkill skill,
+    required List<Map<String, dynamic>> toolResults,
+  }) async {
+    if (_actions.isEmpty) return null;
+    return _actions.removeAt(0);
+  }
+}
+
+class _JsonModelClient implements AgentSkillModelClient {
+  const _JsonModelClient({
+    required this.selectedSkillJson,
+    required this.actionJson,
+  });
+
+  final String selectedSkillJson;
+  final String actionJson;
+
+  @override
+  Future<String?> selectSkill({
+    required String prompt,
+    required List<AgentSkill> enabledSkills,
+  }) async {
+    return parseSelectedSkillId(selectedSkillJson);
+  }
+
+  @override
+  Future<SkillModelAction?> nextAction({
+    required String prompt,
+    required AgentSkill skill,
+    required List<Map<String, dynamic>> toolResults,
+  }) async {
+    return parseSkillModelAction(actionJson);
   }
 }

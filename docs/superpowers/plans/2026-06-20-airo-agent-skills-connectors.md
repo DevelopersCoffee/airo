@@ -257,24 +257,24 @@ After calendar is stable:
 
 ### Task 1: Skill Domain and Parser
 
-- [ ] Add `AgentSkill` domain model.
-- [ ] Parse YAML frontmatter and markdown body.
-- [ ] Validate required fields and kebab-case IDs.
-- [ ] Unit test valid and invalid `SKILL.md` files.
+- [x] Add `AgentSkill` domain model.
+- [x] Parse YAML frontmatter and markdown body.
+- [x] Validate required fields and kebab-case IDs.
+- [x] Unit test valid and invalid `SKILL.md` files.
 
 ### Task 2: Built-In Skill Repository
 
-- [ ] Add in-memory built-in skills.
-- [ ] Add enable/disable state.
-- [ ] Expose enabled skill summaries for prompts.
-- [ ] Unit test filtering, search, enable all, disable all.
+- [x] Add in-memory built-in skills.
+- [x] Add enable/disable state.
+- [x] Expose enabled skill summaries for prompts.
+- [x] Unit test filtering, search, enable all, disable all.
 
 ### Task 3: Connector Registry
 
-- [ ] Add `AgentConnector` interface.
-- [ ] Add date/time connector.
-- [ ] Add fake calendar connector for tests.
-- [ ] Unit test connector dispatch and schema validation.
+- [x] Add `AgentConnector` interface.
+- [x] Add date/time connector.
+- [x] Add fake calendar connector for tests.
+- [x] Unit test connector dispatch and schema validation.
 
 ### Task 4: Calendar Native Integration
 
@@ -288,12 +288,12 @@ After calendar is stable:
 
 ### Task 5: Skill Orchestrator
 
-- [ ] Build skill-selection prompt from enabled skill summaries.
-- [ ] Parse model JSON with `LLMJsonParser`.
-- [ ] Execute bounded tool loop.
-- [ ] Record `AgentActionTrace` for UI.
-- [ ] Fall back to existing `IntentParser` for simple route commands.
-- [ ] Unit test no-skill, one-tool, multi-tool, denied-permission, malformed-JSON, and max-step cases.
+- [x] Build skill-selection prompt from enabled skill summaries.
+- [x] Parse model JSON with `LLMJsonParser`.
+- [x] Execute bounded tool loop.
+- [x] Record `AgentActionTrace` for UI.
+- [x] Fall back to existing `IntentParser` for simple route commands.
+- [x] Unit test no-skill, one-tool, multi-tool, denied-permission, malformed-JSON, and max-step cases.
 
 ### Task 6: Chat UI
 

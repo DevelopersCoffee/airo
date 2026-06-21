@@ -3,6 +3,8 @@ import 'dart:convert';
 import '../models/agent_skill.dart';
 import 'agent_connector_registry.dart';
 import 'agent_skill_registry.dart';
+import 'intent_parser.dart';
+import 'tool_registry.dart';
 
 enum SkillModelActionType { toolCall, finalAnswer }
 
@@ -188,19 +190,35 @@ class AgentSkillOrchestrator {
   AgentSkillOrchestrator({
     required AgentSkillRegistry skillRegistry,
     required AgentConnectorRegistry connectorRegistry,
+    ToolRegistry? toolRegistry,
     AgentSkillModelClient? modelClient,
     int maxSteps = 4,
   }) : _skillRegistry = skillRegistry,
        _connectorRegistry = connectorRegistry,
+       _toolRegistry = toolRegistry ?? ToolRegistry(),
        _modelClient = modelClient ?? RuleBasedAgentSkillModelClient(),
+       _allowRuleBasedFallback = modelClient == null,
        _fallbackModelClient = RuleBasedAgentSkillModelClient(),
        _maxSteps = maxSteps;
 
   final AgentSkillRegistry _skillRegistry;
   final AgentConnectorRegistry _connectorRegistry;
+  final ToolRegistry _toolRegistry;
   final AgentSkillModelClient _modelClient;
+  final bool _allowRuleBasedFallback;
   final RuleBasedAgentSkillModelClient _fallbackModelClient;
   final int _maxSteps;
+
+  String buildSkillSelectionPrompt(String userPrompt) {
+    final summaries = _skillRegistry.enabledSkillSummariesForPrompt();
+    return [
+      'Choose one Airo Agent Skill for the user request, or choose no skill.',
+      'Return JSON only: {"skill_id":"skill-id"} or {"skill_id":null}.',
+      'Available enabled skills:',
+      if (summaries.isEmpty) '- none' else ...summaries,
+      'User request: $userPrompt',
+    ].join('\n');
+  }
 
   Future<AgentRunResult> run(String prompt) async {
     final enabledSkills = _skillRegistry.getEnabledSkills();
@@ -209,13 +227,15 @@ class AgentSkillOrchestrator {
           prompt: prompt,
           enabledSkills: enabledSkills,
         ) ??
-        await _fallbackModelClient.selectSkill(
-          prompt: prompt,
-          enabledSkills: enabledSkills,
-        );
+        (_allowRuleBasedFallback
+            ? await _fallbackModelClient.selectSkill(
+                prompt: prompt,
+                enabledSkills: enabledSkills,
+              )
+            : null);
 
     if (selectedSkillId == null) {
-      return const AgentRunResult.notHandled();
+      return _fallbackToRouteIntent(prompt);
     }
 
     final skill = _skillRegistry.getById(selectedSkillId);
@@ -233,11 +253,13 @@ class AgentSkillOrchestrator {
             skill: skill,
             toolResults: toolResults,
           ) ??
-          await _fallbackModelClient.nextAction(
-            prompt: prompt,
-            skill: skill,
-            toolResults: toolResults,
-          );
+          (_allowRuleBasedFallback
+              ? await _fallbackModelClient.nextAction(
+                  prompt: prompt,
+                  skill: skill,
+                  toolResults: toolResults,
+                )
+              : null);
 
       if (action == null) {
         return AgentRunResult(
@@ -341,6 +363,44 @@ class AgentSkillOrchestrator {
       traces: traces,
       isError: true,
     );
+  }
+
+  Future<AgentRunResult> _fallbackToRouteIntent(String prompt) async {
+    final intent = IntentParser.parse(prompt);
+    if (!_isSimpleRouteIntent(intent.type)) {
+      return const AgentRunResult.notHandled();
+    }
+    final result = await _toolRegistry.executeIntent(intent);
+    if (!result.shouldNavigate) return const AgentRunResult.notHandled();
+    return AgentRunResult(
+      handled: true,
+      message: result.message,
+      traces: [
+        AgentActionTrace(
+          title: 'Fallback intent',
+          detail: IntentParser.describe(intent),
+          parameters: result.parameters,
+        ),
+      ],
+      isError: result.isError,
+    );
+  }
+
+  bool _isSimpleRouteIntent(IntentType type) {
+    return type == IntentType.openMoney ||
+        type == IntentType.openBudget ||
+        type == IntentType.openExpenses ||
+        type == IntentType.playMusic ||
+        type == IntentType.pauseMusic ||
+        type == IntentType.nextTrack ||
+        type == IntentType.playGames ||
+        type == IntentType.playChess ||
+        type == IntentType.playGame ||
+        type == IntentType.openOffers ||
+        type == IntentType.openReader ||
+        type == IntentType.openChat ||
+        type == IntentType.askImage ||
+        type == IntentType.modelManagement;
   }
 }
 

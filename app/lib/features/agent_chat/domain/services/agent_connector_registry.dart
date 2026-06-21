@@ -10,6 +10,12 @@ class AgentConnectorRegistry {
 
   AgentConnector? getConnector(String name) => _connectors[name];
 
+  List<String> allowedNamesForSkill(List<String> declaredTools) {
+    return declaredTools
+        .where((name) => _connectors.containsKey(name))
+        .toList(growable: false);
+  }
+
   Future<ConnectorResult> execute(
     String name,
     Map<String, dynamic> arguments,
