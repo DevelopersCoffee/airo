@@ -38,8 +38,16 @@ class AgentSkillRegistry {
       description: 'Schedule a reminder notification.',
       instructions:
           'Use this when the user asks to create a reminder or notification. '
-          'Gather title, message, hour, minute, whether it repeats daily, and '
-          'date when needed. Then call schedule_notification.',
+          'Call schedule_notification with title, message, hour, minute, '
+          'repeat_daily, optional date, category, schedule_type, metadata, and '
+          'optional times for multiple notifications, requires_completion, and '
+          'follow_up_policy. Valid categories include general, billing, '
+          'medicine, family, and habit. Valid schedule_type values include '
+          'one_time, due_date, daily_time, interval_hours, and meal_relative. '
+          'Use follow_up_policy=daily_until_done when the user asks to keep '
+          'asking until the task is done. For medicine reminders, only schedule '
+          'what the user requested; do not infer dosage or provide medical '
+          'advice.',
       tools: ['get_current_date_time', 'schedule_notification'],
       capabilities: [SkillCapability.notificationsSchedule],
     ),
