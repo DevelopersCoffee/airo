@@ -12,16 +12,16 @@ dependencies:
     sdk: flutter
   core_domain:
     path: ../core_domain
-  dio: 5.9.1
+  dio: ^5.9.2
   meta: 1.17.0
   path: 1.9.1
-  path_provider: 2.1.5
+  path_provider: ^2.1.6
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: 6.0.0
-  mocktail: 1.0.4
+  mocktail: ^1.0.5
 
 flutter:
   plugin:

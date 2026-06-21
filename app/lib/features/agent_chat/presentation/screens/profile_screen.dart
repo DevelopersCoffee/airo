@@ -4,10 +4,13 @@ import 'package:go_router/go_router.dart';
 import 'package:core_ui/core_ui.dart';
 import '../../../../core/auth/auth_service.dart';
 import '../../../../core/auth/google_auth_service.dart';
+import '../../../../core/auth/repositories/user_profile_repository.dart';
 import '../../../../core/http/http_dog.dart';
 import '../../../../core/dictionary/dictionary.dart';
 import '../../../../core/providers/app_theme_provider.dart';
 import '../../../../core/routing/route_names.dart';
+import '../../../../core/utils/currency_formatter.dart';
+import '../../../../core/utils/locale_settings.dart';
 import '../../../../shared/widgets/bug_report_dialog.dart';
 import '../../../quotes/presentation/widgets/daily_quote_card.dart';
 import '../../../settings/presentation/screens/ai_models_screen.dart';
@@ -125,6 +128,8 @@ class ProfileScreen extends ConsumerWidget {
                 },
               ),
             ),
+
+            const _CurrencySelector(),
 
             // Audio Settings (Context-Aware Audio)
             ListTile(
@@ -364,6 +369,49 @@ class ProfileScreen extends ConsumerWidget {
             child: const Text('Close'),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _CurrencySelector extends ConsumerWidget {
+  const _CurrencySelector();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final settings = ref.watch(localeSettingsProvider);
+    final selectedCurrency = SupportedCurrency.fromCode(settings.currency);
+
+    return ListTile(
+      leading: const Icon(Icons.payments_outlined),
+      title: const Text('Currency'),
+      subtitle: Text('${selectedCurrency.code} (${selectedCurrency.symbol})'),
+      trailing: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: selectedCurrency.code,
+          items: SupportedCurrency.values.map((currency) {
+            return DropdownMenuItem<String>(
+              value: currency.code,
+              child: Text('${currency.symbol} ${currency.code}'),
+            );
+          }).toList(),
+          onChanged: (value) async {
+            if (value == null || value == settings.currency) return;
+
+            final updatedSettings = settings.copyWith(currency: value);
+            await ref
+                .read(localeSettingsProvider.notifier)
+                .updateSettings(updatedSettings);
+
+            final repository = ref.read(userProfileRepositoryProvider);
+            final currentProfile = (await repository.getCurrentProfile())
+                .getOrNull();
+            if (currentProfile != null) {
+              await repository.updateProfile(localeSettings: updatedSettings);
+              ref.invalidate(currentUserProfileProvider);
+            }
+          },
+        ),
       ),
     );
   }

@@ -44,6 +44,16 @@ class RuleBasedAgentSkillModelClient implements AgentSkillModelClient {
     required List<AgentSkill> enabledSkills,
   }) async {
     final lower = prompt.toLowerCase();
+    final wantsReminder =
+        lower.contains('reminder') ||
+        lower.contains('notification') ||
+        lower.contains('notify me') ||
+        lower.contains('alert me');
+    if (wantsReminder &&
+        enabledSkills.any((skill) => skill.id == 'schedule-notification')) {
+      return 'schedule-notification';
+    }
+
     final wantsCalendar =
         lower.contains('calendar') ||
         lower.contains('meeting') ||
@@ -68,6 +78,13 @@ class RuleBasedAgentSkillModelClient implements AgentSkillModelClient {
     required AgentSkill skill,
     required List<Map<String, dynamic>> toolResults,
   }) async {
+    if (skill.id == 'schedule-notification') {
+      return _nextScheduleNotificationAction(
+        prompt: prompt,
+        toolResults: toolResults,
+      );
+    }
+
     if (skill.id != 'read-calendar-events') return null;
 
     final hasDateTime = toolResults.any(
@@ -109,6 +126,61 @@ class RuleBasedAgentSkillModelClient implements AgentSkillModelClient {
         })
         .join('\n');
     return SkillModelAction.finalAnswer('Here is your schedule:\n$lines');
+  }
+
+  SkillModelAction _nextScheduleNotificationAction({
+    required String prompt,
+    required List<Map<String, dynamic>> toolResults,
+  }) {
+    final notificationResult = toolResults
+        .cast<Map<String, dynamic>?>()
+        .firstWhere(
+          (result) => result?['tool'] == 'schedule_notification',
+          orElse: () => null,
+        );
+    if (notificationResult != null) {
+      final result =
+          notificationResult['result'] as Map<String, dynamic>? ?? const {};
+      final title = result['title'] as String? ?? 'reminder';
+      final repeatDaily = result['repeat_daily'] as bool? ?? false;
+      final hour = result['hour'] as int? ?? 9;
+      final minute = result['minute'] as int? ?? 0;
+      final time = _formatClockTime(hour, minute);
+      if (repeatDaily && _isScheduleCheck(prompt)) {
+        return SkillModelAction.finalAnswer(
+          'The daily reminder to check your schedule for today has been '
+          'successfully scheduled for $time.',
+        );
+      }
+      final cadence = repeatDaily ? 'daily reminder' : 'reminder';
+      return SkillModelAction.finalAnswer(
+        'The $cadence "$title" has been successfully scheduled for $time.',
+      );
+    }
+
+    final needsCurrentDate =
+        _mentionsToday(prompt) || _mentionsTomorrow(prompt);
+    final hasDateTime = toolResults.any(
+      (result) => result['tool'] == 'get_current_date_time',
+    );
+    if (needsCurrentDate && !hasDateTime) {
+      return const SkillModelAction.toolCall(tool: 'get_current_date_time');
+    }
+
+    final parsed = _parseNotificationPrompt(
+      prompt: prompt,
+      currentDate: _currentDateFromToolResults(toolResults),
+    );
+    if (parsed == null) {
+      return const SkillModelAction.finalAnswer(
+        'Please include a reminder time, like 9 AM or 2:30 PM.',
+      );
+    }
+
+    return SkillModelAction.toolCall(
+      tool: 'schedule_notification',
+      arguments: parsed,
+    );
   }
 }
 
@@ -319,4 +391,105 @@ String _formatEventTime(dynamic value) {
   final text = value?.toString() ?? '';
   if (text.length >= 16) return text.substring(11, 16);
   return text;
+}
+
+Map<String, dynamic>? _parseNotificationPrompt({
+  required String prompt,
+  required String? currentDate,
+}) {
+  final time = _parseTime(prompt);
+  if (time == null) return null;
+
+  final repeatDaily = _isDaily(prompt);
+  final scheduleCheck = _isScheduleCheck(prompt);
+  final title =
+      _quotedText(prompt) ??
+      (scheduleCheck ? 'Daily Schedule Check' : 'Reminder');
+  final message = scheduleCheck
+      ? 'Check your schedule for today.'
+      : 'Reminder: $title';
+  final date = repeatDaily ? null : _dateFromPrompt(prompt, currentDate);
+
+  return {
+    'title': title,
+    'message': message,
+    'hour': time.$1,
+    'minute': time.$2,
+    'repeat_daily': repeatDaily,
+    'date': ?date,
+  };
+}
+
+(int, int)? _parseTime(String prompt) {
+  final match = RegExp(
+    r'(?:\bat\s+|@\s*)?(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\b',
+    caseSensitive: false,
+  ).firstMatch(prompt);
+  if (match == null) return null;
+
+  var hour = int.tryParse(match.group(1) ?? '');
+  final minute = int.tryParse(match.group(2) ?? '0') ?? 0;
+  final meridiem = match.group(3)?.toLowerCase();
+  if (hour == null || minute < 0 || minute > 59) return null;
+  if (meridiem == 'pm' && hour < 12) hour += 12;
+  if (meridiem == 'am' && hour == 12) hour = 0;
+  if (hour < 0 || hour > 23) return null;
+  return (hour, minute);
+}
+
+String? _dateFromPrompt(String prompt, String? currentDate) {
+  if (currentDate == null) return null;
+  final current = DateTime.tryParse(currentDate);
+  if (current == null) return null;
+  if (_mentionsTomorrow(prompt)) {
+    return _formatDate(current.add(const Duration(days: 1)));
+  }
+  if (_mentionsToday(prompt)) return _formatDate(current);
+  return null;
+}
+
+String? _currentDateFromToolResults(List<Map<String, dynamic>> toolResults) {
+  final dateResult = toolResults.cast<Map<String, dynamic>?>().firstWhere(
+    (result) => result?['tool'] == 'get_current_date_time',
+    orElse: () => null,
+  );
+  final data = dateResult?['result'] as Map<String, dynamic>?;
+  return data?['date'] as String?;
+}
+
+String? _quotedText(String prompt) {
+  final match = RegExp(r'"([^"]+)"').firstMatch(prompt);
+  return match?.group(1)?.trim();
+}
+
+bool _isDaily(String prompt) {
+  final lower = prompt.toLowerCase();
+  return lower.contains('daily') ||
+      lower.contains('every day') ||
+      lower.contains('each day');
+}
+
+bool _isScheduleCheck(String prompt) {
+  final lower = prompt.toLowerCase();
+  return lower.contains('check my schedule') ||
+      lower.contains('check your schedule');
+}
+
+bool _mentionsToday(String prompt) => prompt.toLowerCase().contains('today');
+
+bool _mentionsTomorrow(String prompt) {
+  return prompt.toLowerCase().contains('tomorrow');
+}
+
+String _formatDate(DateTime value) {
+  return '${value.year.toString().padLeft(4, '0')}-'
+      '${value.month.toString().padLeft(2, '0')}-'
+      '${value.day.toString().padLeft(2, '0')}';
+}
+
+String _formatClockTime(int hour, int minute) {
+  final period = hour >= 12 ? 'PM' : 'AM';
+  final hour12 = hour % 12 == 0 ? 12 : hour % 12;
+  if (minute == 0) return '$hour12:00 $period';
+  return '$hour12:${minute.toString().padLeft(2, '0')} $period';
 }

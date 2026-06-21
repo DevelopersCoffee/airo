@@ -9,6 +9,7 @@ import '../../../../core/utils/locale_settings.dart';
 import '../../domain/entities/account.dart';
 import '../../domain/entities/category.dart' as coins;
 import '../../domain/entities/transaction.dart';
+import '../../domain/services/quick_add_expense_parser.dart';
 import '../../application/providers/expense_providers.dart';
 import '../../application/use_cases/add_expense_use_case.dart';
 
@@ -30,7 +31,9 @@ final _receiptParserProvider = Provider<ReceiptParserService>((ref) {
 /// Phase: 1 (Foundation)
 /// See: docs/features/coins/UI_WIREFRAMES.md (Screen 2)
 class AddExpenseScreen extends ConsumerStatefulWidget {
-  const AddExpenseScreen({super.key});
+  final QuickExpenseDraft? initialDraft;
+
+  const AddExpenseScreen({super.key, this.initialDraft});
 
   @override
   ConsumerState<AddExpenseScreen> createState() => _AddExpenseScreenState();
@@ -41,12 +44,16 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
   final _descriptionController = TextEditingController();
   final _amountController = TextEditingController();
   final _notesController = TextEditingController();
+  final _budgetTagController = TextEditingController();
   final _imagePicker = ImagePicker();
 
   String? _selectedCategoryId;
   String? _selectedAccountId;
+  String? _categoryError;
+  String? _accountError;
   DateTime _selectedDate = DateTime.now();
   TransactionType _transactionType = TransactionType.expense;
+  bool _isRecurring = false;
 
   // Receipt scanning state
   bool _isScanning = false;
@@ -54,10 +61,27 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
   String? _receiptImagePath;
 
   @override
+  void initState() {
+    super.initState();
+    final draft = widget.initialDraft;
+    if (draft == null) return;
+
+    _descriptionController.text = draft.description;
+    _amountController.text = (draft.amountCents / 100).toStringAsFixed(2);
+    _budgetTagController.text = draft.budgetTag;
+    _selectedCategoryId = draft.categoryId;
+    _isRecurring = draft.isRecurring;
+    if (draft.isSplit && draft.participants.isNotEmpty) {
+      _notesController.text = 'Split with ${draft.participants.join(', ')}';
+    }
+  }
+
+  @override
   void dispose() {
     _descriptionController.dispose();
     _amountController.dispose();
     _notesController.dispose();
+    _budgetTagController.dispose();
     super.dispose();
   }
 
@@ -106,110 +130,139 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
       body: Form(
         key: _formKey,
         child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 104),
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 880),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // Transaction Type Toggle
-                  SegmentedButton<TransactionType>(
-                    segments: const [
-                      ButtonSegment(
-                        value: TransactionType.expense,
-                        label: Text('Expense'),
-                        icon: Icon(Icons.remove_circle_outline),
-                      ),
-                      ButtonSegment(
-                        value: TransactionType.income,
-                        label: Text('Income'),
-                        icon: Icon(Icons.add_circle_outline),
-                      ),
-                    ],
-                    selected: {_transactionType},
-                    onSelectionChanged: (types) {
-                      setState(() => _transactionType = types.first);
-                    },
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Transaction Type Toggle
+              SegmentedButton<TransactionType>(
+                segments: const [
+                  ButtonSegment(
+                    value: TransactionType.expense,
+                    label: Text('Expense'),
+                    icon: Icon(Icons.remove_circle_outline),
                   ),
-                  const SizedBox(height: 24),
-
-                  // Amount Input
-                  _AmountInputField(
-                    controller: _amountController,
-                    currencySymbol: currencyFormatter.currency.symbol,
+                  ButtonSegment(
+                    value: TransactionType.income,
+                    label: Text('Income'),
+                    icon: Icon(Icons.add_circle_outline),
                   ),
-                  const SizedBox(height: 16),
-
-                  // Description
-                  TextFormField(
-                    controller: _descriptionController,
-                    decoration: const InputDecoration(
-                      labelText: 'Description',
-                      hintText: 'What was this for?',
-                      prefixIcon: Icon(Icons.description_outlined),
-                    ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Description is required';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 16),
-
-                  _CategorySelector(
-                    categories: categories
-                        .where(
-                          (category) =>
-                              category.type == coins.CategoryType.expense ||
-                              category.type == coins.CategoryType.both,
-                        )
-                        .toList(),
-                    selectedCategoryId: _selectedCategoryId,
-                    onSelected: (categoryId) {
-                      setState(() => _selectedCategoryId = categoryId);
-                    },
-                  ),
-                  const SizedBox(height: 16),
-
-                  _AccountSelector(
-                    accountsAsync: accountsAsync,
-                    selectedAccountId: _selectedAccountId,
-                    onSelected: (accountId) {
-                      setState(() => _selectedAccountId = accountId);
-                    },
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Date Picker
-                  ListTile(
-                    leading: const Icon(Icons.calendar_today),
-                    title: const Text('Date'),
-                    subtitle: Text(
-                      '${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}',
-                    ),
-                    onTap: _selectDate,
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Notes
-                  TextFormField(
-                    controller: _notesController,
-                    decoration: const InputDecoration(
-                      labelText: 'Notes (optional)',
-                      hintText: 'Add any additional details',
-                      prefixIcon: Icon(Icons.note_outlined),
-                    ),
-                    maxLines: 3,
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Receipt Attachment
-                  _buildReceiptSection(),
                 ],
+                selected: {_transactionType},
+                onSelectionChanged: (types) {
+                  setState(() => _transactionType = types.first);
+                },
               ),
-            ),
+              const SizedBox(height: 24),
+
+              // Amount Input
+              _AmountInputField(
+                controller: _amountController,
+                currencySymbol: currencyFormatter.currency.symbol,
+              ),
+              const SizedBox(height: 16),
+
+              // Description
+              TextFormField(
+                key: const ValueKey('add_expense_description_field'),
+                controller: _descriptionController,
+                decoration: const InputDecoration(
+                  labelText: 'Description',
+                  hintText: 'Example: Dinner at Haldiram\'s',
+                  helperText: 'Merchant or short note',
+                  prefixIcon: Icon(Icons.description_outlined),
+                ),
+                textInputAction: TextInputAction.next,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Description is required';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+
+              _CategorySelector(
+                categories: categories
+                    .where(
+                      (category) =>
+                          category.type == coins.CategoryType.expense ||
+                          category.type == coins.CategoryType.both,
+                    )
+                    .toList(),
+                selectedCategoryId: _selectedCategoryId,
+                errorText: _categoryError,
+                onSelected: (categoryId) {
+                  setState(() {
+                    _selectedCategoryId = categoryId;
+                    _categoryError = null;
+                  });
+                },
+              ),
+              const SizedBox(height: 16),
+
+              _AccountSelector(
+                accountsAsync: accountsAsync,
+                selectedAccountId: _selectedAccountId,
+                errorText: _accountError,
+                onSelected: (accountId) {
+                  setState(() {
+                    _selectedAccountId = accountId;
+                    _accountError = null;
+                  });
+                },
+              ),
+              const SizedBox(height: 16),
+
+              TextFormField(
+                key: const ValueKey('add_expense_budget_tag_field'),
+                controller: _budgetTagController,
+                decoration: const InputDecoration(
+                  labelText: 'Budget tag',
+                  hintText: 'Food, Travel, Bills',
+                  helperText: 'Optional: connects this expense to budget views',
+                  prefixIcon: Icon(Icons.sell_outlined),
+                ),
+                textInputAction: TextInputAction.next,
+              ),
+              const SizedBox(height: 8),
+
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Recurring expense'),
+                subtitle: const Text('Mark rent, subscriptions, or bills'),
+                value: _isRecurring,
+                onChanged: (value) => setState(() => _isRecurring = value),
+              ),
+              const SizedBox(height: 8),
+
+              // Date Picker
+              ListTile(
+                leading: const Icon(Icons.calendar_today),
+                title: const Text('Date'),
+                subtitle: Text(
+                  '${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}',
+                ),
+                onTap: _selectDate,
+              ),
+              const SizedBox(height: 16),
+
+              // Notes
+              TextFormField(
+                key: const ValueKey('add_expense_notes_field'),
+                controller: _notesController,
+                decoration: const InputDecoration(
+                  labelText: 'Notes (optional)',
+                  hintText: 'Add any additional details',
+                  prefixIcon: Icon(Icons.note_outlined),
+                ),
+                maxLines: 3,
+              ),
+              const SizedBox(height: 16),
+
+              // Receipt Attachment
+              _buildReceiptSection(),
+            ],
           ),
         ),
       ),
@@ -230,10 +283,15 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
 
   void _saveExpense() {
     if (!_formKey.currentState!.validate()) return;
-    if (_selectedCategoryId == null || _selectedAccountId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select category and account')),
-      );
+    final hasSelectionErrors =
+        _selectedCategoryId == null || _selectedAccountId == null;
+    if (hasSelectionErrors) {
+      setState(() {
+        _categoryError = _selectedCategoryId == null
+            ? 'Choose a category'
+            : null;
+        _accountError = _selectedAccountId == null ? 'Choose who paid' : null;
+      });
       return;
     }
 
@@ -248,6 +306,12 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
       return;
     }
 
+    final tags = <String>[
+      if (_budgetTagController.text.trim().isNotEmpty)
+        _budgetTagController.text.trim(),
+      if (_isRecurring) 'recurring',
+    ];
+
     ref
         .read(addExpenseProvider.notifier)
         .addExpenseFromInput(
@@ -260,6 +324,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
             transactionDate: _selectedDate,
             notes: _notesController.text.isEmpty ? null : _notesController.text,
             receiptId: _receiptImagePath,
+            tags: tags,
           ),
         );
   }
@@ -517,6 +582,9 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
         )
         .join('\n');
     _notesController.text = 'Receipt items:\n$itemsList';
+    if (receipt.vendor != null && _budgetTagController.text.isEmpty) {
+      _budgetTagController.text = _suggestBudgetTag(receipt.vendor!);
+    }
 
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
@@ -524,6 +592,16 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
         backgroundColor: Colors.green,
       ),
     );
+  }
+
+  String _suggestBudgetTag(String merchant) {
+    final text = merchant.toLowerCase();
+    if (text.contains('uber') || text.contains('ola')) return 'Travel';
+    if (text.contains('netflix') || text.contains('spotify')) {
+      return 'Entertainment';
+    }
+    if (text.contains('mart') || text.contains('grocery')) return 'Groceries';
+    return 'Food';
   }
 }
 
@@ -538,13 +616,17 @@ class _AmountInputField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return TextFormField(
+      key: const ValueKey('add_expense_amount_field'),
       controller: controller,
       keyboardType: TextInputType.number,
+      autofocus: true,
+      textInputAction: TextInputAction.next,
       style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
       decoration: InputDecoration(
         labelText: 'Amount',
         prefixText: '$currencySymbol ',
         hintText: '0.00',
+        helperText: 'Example: 250.00',
       ),
       validator: (value) {
         if (value == null || value.isEmpty) return 'Amount is required';
@@ -557,11 +639,13 @@ class _AmountInputField extends StatelessWidget {
 class _CategorySelector extends StatelessWidget {
   final List<coins.Category> categories;
   final String? selectedCategoryId;
+  final String? errorText;
   final ValueChanged<String> onSelected;
 
   const _CategorySelector({
     required this.categories,
     required this.selectedCategoryId,
+    required this.errorText,
     required this.onSelected,
   });
 
@@ -583,6 +667,13 @@ class _CategorySelector extends StatelessWidget {
             );
           }).toList(),
         ),
+        if (errorText != null) ...[
+          const SizedBox(height: 8),
+          Text(
+            errorText!,
+            style: TextStyle(color: Theme.of(context).colorScheme.error),
+          ),
+        ],
       ],
     );
   }
@@ -591,11 +682,13 @@ class _CategorySelector extends StatelessWidget {
 class _AccountSelector extends StatelessWidget {
   final AsyncValue<List<Account>> accountsAsync;
   final String? selectedAccountId;
+  final String? errorText;
   final ValueChanged<String> onSelected;
 
   const _AccountSelector({
     required this.accountsAsync,
     required this.selectedAccountId,
+    required this.errorText,
     required this.onSelected,
   });
 
@@ -607,7 +700,7 @@ class _AccountSelector extends StatelessWidget {
       data: (accounts) => Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Account', style: Theme.of(context).textTheme.titleMedium),
+          Text('Who paid?', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 8),
           Wrap(
             spacing: 8,
@@ -620,6 +713,13 @@ class _AccountSelector extends StatelessWidget {
               );
             }).toList(),
           ),
+          if (errorText != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              errorText!,
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
+          ],
         ],
       ),
     );

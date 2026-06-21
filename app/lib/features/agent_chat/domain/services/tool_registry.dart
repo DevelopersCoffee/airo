@@ -120,7 +120,7 @@ class MusicTool implements Tool {
   }
 }
 
-/// Coins and model-management routing tool.
+/// Money and model-management routing tool.
 class MoneyTool implements Tool {
   @override
   String get key => 'Coins';
@@ -133,7 +133,6 @@ class MoneyTool implements Tool {
     return intent.type == IntentType.openMoney ||
         intent.type == IntentType.openBudget ||
         intent.type == IntentType.openExpenses ||
-        intent.type == IntentType.coinsQuestion ||
         intent.type == IntentType.modelManagement;
   }
 
@@ -141,7 +140,10 @@ class MoneyTool implements Tool {
   Future<AgentToolResult?> handle(Intent intent) async {
     switch (intent.type) {
       case IntentType.openMoney:
-        return const AgentToolResult(route: '/money', message: 'Opening Coins');
+        return const AgentToolResult(
+          route: '/money',
+          message: 'Opening Money app',
+        );
       case IntentType.openBudget:
         return const AgentToolResult(
           route: '/money',
@@ -153,13 +155,6 @@ class MoneyTool implements Tool {
           route: '/money',
           parameters: {'tab': 'expenses'},
           message: 'Opening Expenses',
-        );
-      case IntentType.coinsQuestion:
-        return const AgentToolResult(
-          route: '/money',
-          parameters: {'tab': 'insights'},
-          message:
-              'Coins can review your spending, budgets, subscriptions, and safe-to-spend context in read-only mode. Open Coins to see current insights, then ask about a specific goal like saving more this month or reducing recurring charges. This is not a replacement for professional financial advice.',
         );
       case IntentType.modelManagement:
         return const AgentToolResult(

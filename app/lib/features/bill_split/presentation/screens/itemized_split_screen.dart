@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../core/utils/locale_settings.dart';
@@ -14,6 +15,7 @@ class ItemizedSplitTestIds {
   static const String screen = 'itemized-split-screen';
   static const String cameraButton = 'itemized-camera-button';
   static const String galleryButton = 'itemized-gallery-button';
+  static const String fileButton = 'itemized-file-button';
   static const String loadingIndicator = 'itemized-loading-indicator';
   static const String vendorHeader = 'itemized-vendor-header';
   static const String itemsList = 'itemized-items-list';
@@ -165,11 +167,13 @@ class ItemizedSplitItem {
 /// Screen for itemized bill splitting with multiple participants
 class ItemizedSplitScreen extends ConsumerStatefulWidget {
   final List<String> participantNames;
+  final List<ItemParticipant>? initialParticipants;
   final String? imagePath;
 
   const ItemizedSplitScreen({
     super.key,
     this.participantNames = const ['Roommate'],
+    this.initialParticipants,
     this.imagePath,
   });
 
@@ -196,6 +200,14 @@ class _ItemizedSplitScreenState extends ConsumerState<ItemizedSplitScreen> {
   }
 
   void _initParticipants() {
+    if (widget.initialParticipants != null &&
+        widget.initialParticipants!.isNotEmpty) {
+      _participants = List<ItemParticipant>.unmodifiable(
+        widget.initialParticipants!,
+      );
+      return;
+    }
+
     // Always add "Me" as first participant - use local state only
     _participants = [ItemParticipant.me];
     // Add other participants from names
@@ -215,7 +227,14 @@ class _ItemizedSplitScreenState extends ConsumerState<ItemizedSplitScreen> {
         imageQuality: 85,
       );
       if (image != null && mounted) {
-        await _loadReceiptFromPath(image.path);
+        if (kIsWeb) {
+          await _loadReceiptFromBytes(
+            await image.readAsBytes(),
+            mimeType: _mimeTypeForName(image.name),
+          );
+        } else {
+          await _loadReceiptFromPath(image.path);
+        }
       }
     } catch (e, stack) {
       debugPrint('Image picker error: $e\n$stack');
@@ -224,6 +243,81 @@ class _ItemizedSplitScreenState extends ConsumerState<ItemizedSplitScreen> {
           context,
         ).showSnackBar(SnackBar(content: Text('Failed to pick image: $e')));
       }
+    }
+  }
+
+  Future<void> _pickReceiptFile() async {
+    try {
+      final result = await FilePicker.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: const ['jpg', 'jpeg', 'png', 'webp', 'pdf'],
+        withData: kIsWeb,
+      );
+      if (result == null || result.files.isEmpty || !mounted) return;
+
+      final pickedFile = result.files.first;
+      final mimeType = _mimeTypeForName(pickedFile.name);
+      final isPdf = mimeType == 'application/pdf';
+
+      final path = pickedFile.path;
+      if (!kIsWeb && path != null) {
+        if (isPdf) {
+          await _loadReceiptPdfFromPath(path);
+        } else {
+          await _loadReceiptFromPath(path);
+        }
+        return;
+      }
+
+      final bytes =
+          pickedFile.bytes ??
+          (path != null ? await File(path).readAsBytes() : null);
+      if (bytes == null) {
+        throw Exception('File bytes unavailable');
+      }
+
+      await _loadReceiptFromBytes(bytes, mimeType: mimeType);
+    } catch (e, stack) {
+      debugPrint('Receipt file picker error: $e\n$stack');
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to pick receipt: $e')));
+      }
+    }
+  }
+
+  Future<void> _loadReceiptPdfFromPath(String pdfPath) async {
+    if (!mounted) return;
+    setState(() => _isLoading = true);
+
+    try {
+      final parser = ref.read(receiptParserProvider);
+      final file = File(pdfPath);
+
+      if (!await file.exists()) {
+        throw Exception('PDF file not found at: $pdfPath');
+      }
+
+      final receipt = await parser.parseReceiptPdf(file, allowFallback: false);
+
+      if (!mounted) return;
+      ref.read(receiptItemsProvider.notifier).setItems(receipt.items);
+
+      setState(() {
+        _receipt = receipt;
+        _hasReceipt = true;
+        _isLoading = false;
+      });
+    } catch (e, stack) {
+      debugPrint('Receipt PDF parse error: $e\n$stack');
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Couldn't parse this PDF locally. Add items manually."),
+        ),
+      );
     }
   }
 
@@ -239,7 +333,7 @@ class _ItemizedSplitScreenState extends ConsumerState<ItemizedSplitScreen> {
         throw Exception('Image file not found at: $imagePath');
       }
 
-      final receipt = await parser.parseReceipt(file);
+      final receipt = await parser.parseReceipt(file, allowFallback: false);
 
       if (!mounted) return;
       ref.read(receiptItemsProvider.notifier).setItems(receipt.items);
@@ -257,6 +351,47 @@ class _ItemizedSplitScreenState extends ConsumerState<ItemizedSplitScreen> {
         context,
       ).showSnackBar(SnackBar(content: Text('Failed to parse receipt: $e')));
     }
+  }
+
+  Future<void> _loadReceiptFromBytes(
+    List<int> bytes, {
+    required String mimeType,
+  }) async {
+    if (!mounted) return;
+    setState(() => _isLoading = true);
+
+    try {
+      final parser = ref.read(receiptParserProvider);
+      final receipt = await parser.parseReceiptFromBytes(
+        bytes,
+        mimeType: mimeType,
+        allowFallback: false,
+      );
+
+      if (!mounted) return;
+      ref.read(receiptItemsProvider.notifier).setItems(receipt.items);
+
+      setState(() {
+        _receipt = receipt;
+        _hasReceipt = true;
+        _isLoading = false;
+      });
+    } catch (e, stack) {
+      debugPrint('Receipt byte parse error: $e\n$stack');
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to parse receipt: $e')));
+    }
+  }
+
+  String _mimeTypeForName(String? name) {
+    final lower = (name ?? '').toLowerCase();
+    if (lower.endsWith('.pdf')) return 'application/pdf';
+    if (lower.endsWith('.png')) return 'image/png';
+    if (lower.endsWith('.webp')) return 'image/webp';
+    return 'image/jpeg';
   }
 
   @override
@@ -316,15 +451,17 @@ class _ItemizedSplitScreenState extends ConsumerState<ItemizedSplitScreen> {
             Text('Upload Receipt', style: theme.textTheme.headlineSmall),
             const SizedBox(height: 8),
             Text(
-              'Take a photo or choose from gallery',
+              'Take a photo or upload an image/PDF receipt',
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 32),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+            const SizedBox(height: 20),
+            Wrap(
+              alignment: WrapAlignment.center,
+              spacing: 12,
+              runSpacing: 12,
               children: [
                 FilledButton.icon(
                   key: const Key(ItemizedSplitTestIds.cameraButton),
@@ -334,12 +471,17 @@ class _ItemizedSplitScreenState extends ConsumerState<ItemizedSplitScreen> {
                   icon: const Icon(Icons.camera_alt),
                   label: const Text('Camera'),
                 ),
-                const SizedBox(width: 16),
                 OutlinedButton.icon(
                   key: const Key(ItemizedSplitTestIds.galleryButton),
                   onPressed: () => _pickImage(ImageSource.gallery),
                   icon: const Icon(Icons.photo_library),
                   label: const Text('Gallery'),
+                ),
+                OutlinedButton.icon(
+                  key: const Key(ItemizedSplitTestIds.fileButton),
+                  onPressed: _pickReceiptFile,
+                  icon: const Icon(Icons.attach_file),
+                  label: const Text('File'),
                 ),
               ],
             ),
@@ -522,19 +664,52 @@ class _ItemizedSplitScreenState extends ConsumerState<ItemizedSplitScreen> {
   }
 
   Map<String, int> _calculateSummary(List<ReceiptItem> items) {
-    // Use the receipt's built-in calculation
-    if (_receipt != null) {
-      return _receipt!.calculateParticipantTotals(_participants);
+    final totals = <String, int>{};
+    for (final participant in _participants) {
+      totals[participant.id] = 0;
     }
-    return {};
+
+    for (final item in items) {
+      final assignedIds = item.assignedParticipantIds.isEmpty
+          ? _participants.map((p) => p.id).toList()
+          : item.assignedParticipantIds.toList();
+      if (assignedIds.isEmpty) continue;
+
+      final share = item.totalPricePaise ~/ assignedIds.length;
+      final remainder = item.totalPricePaise % assignedIds.length;
+      for (var i = 0; i < assignedIds.length; i++) {
+        totals[assignedIds[i]] =
+            (totals[assignedIds[i]] ?? 0) + share + (i < remainder ? 1 : 0);
+      }
+    }
+
+    final itemTotal = items.fold<int>(
+      0,
+      (sum, item) => sum + item.totalPricePaise,
+    );
+    final feesTotal =
+        _receipt?.fees
+            .where((fee) => !fee.isFree)
+            .fold<int>(0, (sum, fee) => sum + fee.amountPaise) ??
+        0;
+
+    if (feesTotal > 0 && itemTotal > 0) {
+      for (final participant in _participants) {
+        final ratio = (totals[participant.id] ?? 0) / itemTotal;
+        totals[participant.id] =
+            (totals[participant.id] ?? 0) + (feesTotal * ratio).round();
+      }
+    }
+
+    return totals;
   }
 
   void _confirmSplit(Map<String, int> summary) {
     // Get currency symbol from locale settings
     final currencySymbol = ref.read(currencyFormatterProvider).currency.symbol;
 
-    // Get items from receipt
-    final items = _receipt?.items ?? [];
+    // Get current assigned items from state
+    final items = ref.read(receiptItemsProvider);
 
     // Calculate total amount from all items
     final totalPaise =

@@ -27,7 +27,6 @@ class FinanceInsightService {
     final recurring = recentTransactions
         .where((transaction) => transaction.tags.contains('recurring'))
         .toList(growable: false);
-
     if (recurring.isNotEmpty) {
       final transaction = recurring.first;
       return [
@@ -46,7 +45,6 @@ class FinanceInsightService {
             .where((status) => status.isOverBudget || status.isWarning)
             .toList(growable: false)
           ..sort((a, b) => b.percentUsed.compareTo(a.percentUsed));
-
     if (atRiskBudgets.isNotEmpty) {
       final status = atRiskBudgets.first;
       return [

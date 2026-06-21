@@ -1,5 +1,6 @@
 import 'package:airo_app/features/agent_chat/data/connectors/calendar_connector.dart';
 import 'package:airo_app/features/agent_chat/data/connectors/date_time_connector.dart';
+import 'package:airo_app/features/agent_chat/data/connectors/notification_connector.dart';
 import 'package:airo_app/features/agent_chat/domain/models/agent_skill.dart';
 import 'package:airo_app/features/agent_chat/domain/services/agent_connector_registry.dart';
 import 'package:airo_app/features/agent_chat/domain/services/agent_skill_orchestrator.dart';
@@ -55,6 +56,59 @@ void main() {
       expect(result.message, contains('10:00'));
     });
 
+    test('schedules a daily notification reminder', () async {
+      final notificationScheduler = InMemoryNotificationScheduler(
+        now: () => DateTime(2026, 6, 20, 9, 3),
+      );
+      final orchestrator = _buildOrchestrator(
+        notificationScheduler: notificationScheduler,
+      );
+
+      final result = await orchestrator.run(
+        'Set a daily reminder at 9am to check my schedule for today.',
+      );
+
+      expect(result.handled, true);
+      expect(result.message, contains('successfully scheduled for 9:00 AM'));
+      expect(
+        result.traces.map((trace) => trace.detail),
+        containsAll(['schedule-notification', 'schedule_notification']),
+      );
+      expect(notificationScheduler.scheduled, hasLength(1));
+      expect(
+        notificationScheduler.scheduled.single.title,
+        'Daily Schedule Check',
+      );
+      expect(
+        notificationScheduler.scheduled.single.message,
+        'Check your schedule for today.',
+      );
+      expect(notificationScheduler.scheduled.single.hour, 9);
+      expect(notificationScheduler.scheduled.single.minute, 0);
+      expect(notificationScheduler.scheduled.single.repeatDaily, true);
+    });
+
+    test('schedules a one-time notification for tomorrow', () async {
+      final notificationScheduler = InMemoryNotificationScheduler(
+        now: () => DateTime(2026, 6, 20, 9, 3),
+      );
+      final orchestrator = _buildOrchestrator(
+        notificationScheduler: notificationScheduler,
+      );
+
+      final result = await orchestrator.run(
+        'Create a reminder at 2:30pm tomorrow for "team meeting"',
+      );
+
+      expect(result.handled, true);
+      expect(result.message, contains('"team meeting"'));
+      expect(notificationScheduler.scheduled.single.title, 'team meeting');
+      expect(notificationScheduler.scheduled.single.hour, 14);
+      expect(notificationScheduler.scheduled.single.minute, 30);
+      expect(notificationScheduler.scheduled.single.repeatDaily, false);
+      expect(notificationScheduler.scheduled.single.date, '2026-06-21');
+    });
+
     test('stops unsupported tool calls', () async {
       final orchestrator = _buildOrchestrator(
         modelClient: _UnsupportedToolModelClient(),
@@ -66,27 +120,13 @@ void main() {
       expect(result.isError, true);
       expect(result.message, contains('unsupported action'));
     });
-
-    test(
-      'can disable rule-based fallback so runtime planning fails closed',
-      () async {
-        final orchestrator = _buildOrchestrator(
-          modelClient: _NullModelClient(),
-          useFallbackModelClient: false,
-        );
-
-        final result = await orchestrator.run('Check my schedule for today');
-
-        expect(result.handled, false);
-      },
-    );
   });
 }
 
 AgentSkillOrchestrator _buildOrchestrator({
   Map<String, List<CalendarEventData>>? events,
+  InMemoryNotificationScheduler? notificationScheduler,
   AgentSkillModelClient? modelClient,
-  bool useFallbackModelClient = true,
 }) {
   return AgentSkillOrchestrator(
     skillRegistry: AgentSkillRegistry(),
@@ -94,30 +134,13 @@ AgentSkillOrchestrator _buildOrchestrator({
       connectors: [
         DateTimeConnector(now: () => DateTime(2026, 6, 20, 9, 3)),
         InMemoryCalendarConnector(events: events),
+        ScheduleNotificationConnector(
+          scheduler: notificationScheduler ?? InMemoryNotificationScheduler(),
+        ),
       ],
     ),
     modelClient: modelClient,
-    useFallbackModelClient: useFallbackModelClient,
   );
-}
-
-class _NullModelClient implements AgentSkillModelClient {
-  @override
-  Future<String?> selectSkill({
-    required String prompt,
-    required List<AgentSkill> enabledSkills,
-  }) async {
-    return null;
-  }
-
-  @override
-  Future<SkillModelAction?> nextAction({
-    required String prompt,
-    required AgentSkill skill,
-    required List<Map<String, dynamic>> toolResults,
-  }) async {
-    return null;
-  }
 }
 
 class _UnsupportedToolModelClient implements AgentSkillModelClient {

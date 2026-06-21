@@ -71,27 +71,5 @@ void main() {
       expect(models.route, '/agent/models');
       expect(models.message, contains('Assistant Model Library'));
     });
-
-    test(
-      'answers @Coins questions with safe read-only finance guidance',
-      () async {
-        final result = await registry.handleIntent(
-          const Intent(
-            type: IntentType.coinsQuestion,
-            originalText: '@Coins can I save more this month?',
-            parameters: {'question': 'can i save more this month?'},
-          ),
-        );
-
-        expect(result, isNotNull);
-        expect(result!.route, '/money');
-        expect(result.message, contains('Coins can review your spending'));
-        expect(result.message, contains('read-only'));
-        expect(
-          result.message,
-          contains('not a replacement for professional financial advice'),
-        );
-      },
-    );
   });
 }

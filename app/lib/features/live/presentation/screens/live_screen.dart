@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../../music/presentation/screens/music_screen.dart';
 import '../../../iptv/presentation/screens/iptv_screen.dart';
 import '../../../iptv/application/providers/iptv_providers.dart';
@@ -7,17 +8,15 @@ import '../../../iptv/application/providers/iptv_providers.dart';
 /// Live mode enum for toggling between Music and TV
 enum LiveMode { music, tv }
 
-/// Provider to track current live mode (music or tv)
-final liveModeProvider = StateProvider<LiveMode>((ref) => LiveMode.music);
-
 /// Combined Live screen with toggle between Music and TV modes
 /// Reduces bottom navigation from 6 items to 5
 class LiveScreen extends ConsumerWidget {
-  const LiveScreen({super.key});
+  const LiveScreen({super.key, required this.mode});
+
+  final LiveMode mode;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final liveMode = ref.watch(liveModeProvider);
     final isFullscreen = ref.watch(isFullscreenModeProvider);
 
     // Use consistent widget structure - always Scaffold, just hide AppBar in fullscreen
@@ -32,7 +31,7 @@ class LiveScreen extends ConsumerWidget {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
-                children: [_LiveModeToggle()],
+                children: [_LiveModeToggle(mode: mode)],
               ),
             ),
           // Main content
@@ -42,7 +41,7 @@ class LiveScreen extends ConsumerWidget {
               transitionBuilder: (child, animation) {
                 return FadeTransition(opacity: animation, child: child);
               },
-              child: liveMode == LiveMode.music
+              child: mode == LiveMode.music
                   ? const MusicScreenBody(key: ValueKey('music'))
                   : const IPTVScreenBody(key: ValueKey('tv')),
             ),
@@ -54,10 +53,13 @@ class LiveScreen extends ConsumerWidget {
 }
 
 /// Mode toggle widget - segmented button for Music/TV
-class _LiveModeToggle extends ConsumerWidget {
+class _LiveModeToggle extends StatelessWidget {
+  const _LiveModeToggle({required this.mode});
+
+  final LiveMode mode;
+
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final liveMode = ref.watch(liveModeProvider);
+  Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Container(
@@ -72,16 +74,14 @@ class _LiveModeToggle extends ConsumerWidget {
           _ToggleButton(
             icon: Icons.music_note_rounded,
             label: 'Music',
-            isSelected: liveMode == LiveMode.music,
-            onTap: () =>
-                ref.read(liveModeProvider.notifier).state = LiveMode.music,
+            isSelected: mode == LiveMode.music,
+            onTap: () => context.go('/live/music'),
           ),
           _ToggleButton(
             icon: Icons.live_tv_rounded,
             label: 'TV',
-            isSelected: liveMode == LiveMode.tv,
-            onTap: () =>
-                ref.read(liveModeProvider.notifier).state = LiveMode.tv,
+            isSelected: mode == LiveMode.tv,
+            onTap: () => context.go('/live/tv'),
           ),
         ],
       ),

@@ -8,7 +8,6 @@ enum IntentType {
   openMoney,
   openBudget,
   openExpenses,
-  coinsQuestion,
   splitBill,
   createDietPlan,
   createRoutine,
@@ -60,9 +59,7 @@ class IntentParser {
     'next song': IntentType.nextTrack,
     'skip': IntentType.nextTrack,
 
-    // Coins and routine intents
-    'open coins': IntentType.openMoney,
-    'coins': IntentType.openMoney,
+    // Money and routine intents
     'open money': IntentType.openMoney,
     'show budget': IntentType.openBudget,
     'budget': IntentType.openBudget,
@@ -137,15 +134,6 @@ class IntentParser {
       );
     }
 
-    if (_isCoinsQuestion(lowerText)) {
-      return Intent(
-        type: IntentType.coinsQuestion,
-        originalText: text,
-        parameters: {'question': _cleanCoinsQuestion(lowerText)},
-        confidence: 0.9,
-      );
-    }
-
     // Try exact matches first
     if (_phraseMap.containsKey(lowerText)) {
       return Intent(
@@ -174,18 +162,6 @@ class IntentParser {
       parameters: parameters,
       confidence: 0.0,
     );
-  }
-
-  static bool _isCoinsQuestion(String text) {
-    return text.startsWith('@coins') ||
-        text.contains('spending insight') ||
-        text.contains('subscription review') ||
-        text.contains('can i save') ||
-        text.contains('save more this month');
-  }
-
-  static String _cleanCoinsQuestion(String text) {
-    return text.replaceFirst('@coins', '').trim();
   }
 
   static IntentType? _classifyStructured(String text) {
@@ -331,13 +307,11 @@ class IntentParser {
       case IntentType.nextTrack:
         return 'Skipping to next track';
       case IntentType.openMoney:
-        return 'Opening Coins';
+        return 'Opening Money app';
       case IntentType.openBudget:
         return 'Opening Budget';
       case IntentType.openExpenses:
         return 'Opening Expenses';
-      case IntentType.coinsQuestion:
-        return 'Answering Coins finance question';
       case IntentType.splitBill:
         return 'Splitting a bill';
       case IntentType.createDietPlan:

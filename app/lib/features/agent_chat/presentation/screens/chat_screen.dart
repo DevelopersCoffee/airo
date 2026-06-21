@@ -5,6 +5,7 @@ import '../../../../core/dictionary/dictionary.dart';
 import '../../../../core/utils/locale_settings.dart';
 import '../../../agent_chat/data/connectors/calendar_connector.dart';
 import '../../../agent_chat/data/connectors/date_time_connector.dart';
+import '../../../agent_chat/data/connectors/notification_connector.dart';
 import '../../../agent_chat/data/services/assistant_runtime_service.dart';
 import '../../../agent_chat/data/services/selected_runtime_agent_skill_model_client.dart';
 import '../../../agent_chat/domain/models/agent_skill.dart';
@@ -70,7 +71,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     _skillOrchestrator = AgentSkillOrchestrator(
       skillRegistry: _skillRegistry,
       connectorRegistry: AgentConnectorRegistry(
-        connectors: [DateTimeConnector(), NativeCalendarConnector()],
+        connectors: [
+          DateTimeConnector(),
+          NativeCalendarConnector(),
+          ScheduleNotificationConnector(),
+        ],
       ),
       modelClient: SelectedRuntimeAgentSkillModelClient(
         runtimeService: _assistantRuntime,

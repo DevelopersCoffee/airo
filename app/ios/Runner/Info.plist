@@ -58,6 +58,10 @@
 	<string>This app needs microphone access for voice commands</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>This app needs location access for location-based features</string>
+	<key>NSCalendarsUsageDescription</key>
+	<string>Airo needs calendar access to check your schedule when you use calendar skills.</string>
+	<key>NSCalendarsFullAccessUsageDescription</key>
+	<string>Airo needs calendar access to read your schedule when you use calendar skills.</string>
 	<!-- Background audio playback -->
 	<key>UIBackgroundModes</key>
 	<array>

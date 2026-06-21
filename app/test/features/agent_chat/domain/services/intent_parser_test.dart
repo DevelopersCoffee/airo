@@ -67,20 +67,5 @@ void main() {
         IntentType.modelManagement,
       );
     });
-
-    test('parses @Coins prompts as contextual finance questions', () {
-      final intent = IntentParser.parse('@Coins can I save more this month?');
-
-      expect(intent.type, IntentType.coinsQuestion);
-      expect(intent.parameters['question'], 'can i save more this month?');
-      expect(intent.confidence, 0.9);
-    });
-
-    test('parses natural spending insight prompts as Coins questions', () {
-      final intent = IntentParser.parse('show my spending insight');
-
-      expect(intent.type, IntentType.coinsQuestion);
-      expect(intent.parameters['question'], 'show my spending insight');
-    });
   });
 }

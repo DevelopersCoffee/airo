@@ -68,7 +68,7 @@ class AccountEntries extends Table {
   TextColumn get uuid => text().unique()();
   TextColumn get name => text()();
   TextColumn get accountType => text()(); // checking, savings, credit_card
-  TextColumn get currency => text().withDefault(const Constant('USD'))();
+  TextColumn get currency => text().withDefault(const Constant('INR'))();
   IntColumn get balanceCents => integer().withDefault(const Constant(0))();
   TextColumn get syncStatus => text().withDefault(const Constant('pending'))();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();

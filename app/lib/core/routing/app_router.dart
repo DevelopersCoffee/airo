@@ -1,11 +1,14 @@
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../features/auth/screens/login_screen.dart';
 import '../../features/auth/screens/register_screen.dart';
-import '../../features/money/presentation/screens/money_overview_screen.dart';
 import '../../features/bill_split/presentation/screens/bill_split_screen.dart';
 import '../../features/agent_chat/presentation/screens/chat_screen.dart';
+import '../../features/agent_chat/presentation/screens/model_library_screen.dart';
+import '../../features/agent_chat/presentation/screens/notifications_screen.dart';
 import '../../features/agent_chat/presentation/screens/profile_screen.dart';
-import '../../features/media/presentation/screens/media_hub_screen.dart';
+import '../../features/settings/presentation/screens/ai_models_screen.dart';
+import '../../features/live/presentation/screens/live_screen.dart';
 import '../../features/games/presentation/screens/games_hub_screen.dart';
 import '../../features/quest/presentation/screens/quest_chat_screen.dart';
 import '../../features/quest/presentation/screens/quest_list_screen.dart';
@@ -26,7 +29,7 @@ class AppRouter {
   AppRouter._();
 
   static final GoRouter router = GoRouter(
-    initialLocation: '/agent',
+    initialLocation: '/money',
     redirect: (context, state) async {
       // Initialize auth service if not already done
       await AuthService.instance.initialize();
@@ -41,16 +44,18 @@ class AppRouter {
         return RouteNames.login;
       }
 
-      // If logged in and on login page, redirect to agent tab
+      // If logged in and on login page, redirect to the finance dashboard.
       if (isLoggedIn && isLoginRoute) {
-        return '/agent';
+        return '/money';
       }
 
       return null; // No redirect needed
     },
     routes: [
-      // Redirect root to agent
-      GoRoute(path: '/', redirect: (context, state) => '/agent'),
+      // Redirect root to finance dashboard.
+      GoRoute(path: '/', redirect: (context, state) => '/money'),
+      GoRoute(path: '/beats', redirect: (context, state) => '/live/music'),
+      GoRoute(path: '/stream', redirect: (context, state) => '/live/tv'),
       GoRoute(
         path: RouteNames.login,
         name: RouteNames.login,
@@ -71,8 +76,8 @@ class AppRouter {
             routes: [
               GoRoute(
                 path: '/money',
-                name: 'Coins',
-                builder: (context, state) => const MoneyOverviewScreen(),
+                name: 'Dashboard',
+                builder: (context, state) => const CoinsDashboardScreen(),
                 routes: [
                   GoRoute(
                     path: 'split',
@@ -124,53 +129,66 @@ class AppRouter {
               ),
             ],
           ),
-          // Brain branch
+          // Agent Chat branch
           StatefulShellBranch(
             routes: [
               GoRoute(
                 path: '/agent',
-                name: 'Brain',
+                name: 'Assistant',
                 builder: (context, state) => const ChatScreen(),
                 routes: [
+                  GoRoute(
+                    path: 'notifications',
+                    name: 'agent_notifications',
+                    builder: (context, state) => const NotificationsScreen(),
+                  ),
                   GoRoute(
                     path: 'profile',
                     name: 'profile',
                     builder: (context, state) => const ProfileScreen(),
                   ),
+                  GoRoute(
+                    path: 'models',
+                    name: 'assistant_models',
+                    builder: (context, state) => ModelLibraryScreen(
+                      onModelSelected: (candidate) {
+                        context.go('/agent');
+                      },
+                      onOpenModelManager: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) => const AIModelsScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
                 ],
               ),
             ],
           ),
-          // Media branch: music and TV live together.
+          // Entertainment branch: Music + TV in one bottom tab
           StatefulShellBranch(
             routes: [
               GoRoute(
-                path: '/media',
-                name: 'Media',
-                redirect: (context, state) =>
-                    state.uri.path == '/media' ? '/media/music' : null,
+                path: '/live',
+                name: 'Entertainment',
+                builder: (context, state) =>
+                    const LiveScreen(mode: LiveMode.music),
                 routes: [
                   GoRoute(
                     path: 'music',
-                    name: 'media_music',
+                    name: 'EntertainmentMusic',
                     builder: (context, state) =>
-                        const MediaHubScreen(section: MediaSection.music),
+                        const LiveScreen(mode: LiveMode.music),
                   ),
                   GoRoute(
                     path: 'tv',
-                    name: 'media_tv',
+                    name: 'EntertainmentTV',
                     builder: (context, state) =>
-                        const MediaHubScreen(section: MediaSection.tv),
+                        const LiveScreen(mode: LiveMode.tv),
                   ),
                 ],
-              ),
-              GoRoute(
-                path: '/beats',
-                redirect: (context, state) => '/media/music',
-              ),
-              GoRoute(
-                path: '/stream',
-                redirect: (context, state) => '/media/tv',
               ),
             ],
           ),
@@ -179,7 +197,7 @@ class AppRouter {
             routes: [
               GoRoute(
                 path: '/games',
-                name: 'Arena',
+                name: 'Games',
                 builder: (context, state) => const GamesHubScreen(),
               ),
             ],
@@ -189,7 +207,7 @@ class AppRouter {
             routes: [
               GoRoute(
                 path: '/quest',
-                name: 'Quest',
+                name: 'Tasks',
                 builder: (context, state) => const QuestListScreen(),
                 routes: [
                   GoRoute(
@@ -215,7 +233,7 @@ class AppRouter {
     errorBuilder: (context, state) => HttpDogErrorScreen(
       statusCode: 404,
       customMessage: 'Page not found: ${state.matchedLocation}',
-      onRetry: () => context.go('/agent'),
+      onRetry: () => context.go('/money'),
     ),
   );
 }

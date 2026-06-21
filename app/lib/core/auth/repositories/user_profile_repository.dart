@@ -37,6 +37,7 @@ abstract interface class UserProfileRepository {
 class LocalUserProfileRepository implements UserProfileRepository {
   static const String _profileKey = 'airo_user_profile';
   static const String _currentUserIdKey = 'airo_current_user_id';
+  static const String _localeSettingsKey = 'airo_locale_settings';
 
   SharedPreferences? _prefs;
   UserProfile? _cachedProfile;
@@ -85,6 +86,10 @@ class LocalUserProfileRepository implements UserProfileRepository {
 
       final updatedProfile = profile.copyWith(updatedAt: DateTime.now());
       await prefs.setString(key, jsonEncode(updatedProfile.toJson()));
+      await prefs.setString(
+        _localeSettingsKey,
+        jsonEncode(updatedProfile.localeSettings.toJson()),
+      );
       _cachedProfile = updatedProfile;
 
       return Ok(updatedProfile);

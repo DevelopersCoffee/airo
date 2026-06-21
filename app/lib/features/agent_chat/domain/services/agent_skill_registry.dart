@@ -37,10 +37,11 @@ class AgentSkillRegistry {
       name: 'Schedule Notification',
       description: 'Schedule a reminder notification.',
       instructions:
-          'Use this when the user asks to create a reminder or notification.',
-      tools: ['get_current_date_time'],
+          'Use this when the user asks to create a reminder or notification. '
+          'Gather title, message, hour, minute, whether it repeats daily, and '
+          'date when needed. Then call schedule_notification.',
+      tools: ['get_current_date_time', 'schedule_notification'],
       capabilities: [SkillCapability.notificationsSchedule],
-      enabled: false,
     ),
     AgentSkill(
       id: 'open-airo-feature',

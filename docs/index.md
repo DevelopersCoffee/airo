@@ -48,6 +48,11 @@ An advanced Flutter super app that brings powerful AI capabilities to your devic
 
 ## 📚 Documentation
 
+### Public Wiki
+- [Airo User Guide](./wiki/Home.md) - Public capability guide
+- [What Airo Can Do](./wiki/1.-Overview.md) - Current app capabilities
+- [Using Core Capabilities](./wiki/4.-Using-Core-Capabilities.md) - User workflows
+
 ### Getting Started
 - [Start Here](./getting-started/START_HERE.md) - New to Airo?
 - [Quick Reference](./getting-started/QUICK_REFERENCE.md) - Common commands
@@ -162,4 +167,3 @@ This project is licensed under the MIT License.
 **Last Updated**: November 29, 2025
 **Version**: 1.1.0
 **Status**: ✅ Production Ready
-

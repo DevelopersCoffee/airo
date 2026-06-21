@@ -4,40 +4,50 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('AppNavigationTab', () {
-    test('groups music and TV into one media tab', () {
+    test('uses the five-tab information architecture order', () {
       expect(AppNavigationTab.values.map((tab) => tab.label), [
-        'Coins',
-        'Brain',
-        'Media',
-        'Arena',
-        'Quest',
+        'Dashboard',
+        'Assistant',
+        'Entertainment',
+        'Games',
+        'Tasks',
       ]);
+    });
+
+    test('defaults to the finance dashboard for daily-use speed', () {
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+
+      expect(
+        container.read(currentNavigationTabProvider),
+        AppNavigationTab.coins.index,
+      );
     });
 
     test('uses stable root paths for each tab', () {
       expect(AppNavigationTab.values.map((tab) => tab.path), [
         '/money',
         '/agent',
-        '/media',
+        '/live',
         '/games',
         '/quest',
       ]);
     });
 
-    test('keeps music and tv inside the media architecture', () {
+    test('keeps music and tv inside the entertainment architecture', () {
       final rootLabels = AppNavigationTab.values.map((tab) => tab.label);
       final rootPaths = AppNavigationTab.values.map((tab) => tab.path);
 
       expect(AppNavigationTab.values.length, 5);
-      expect(rootLabels, contains('Media'));
+      expect(rootLabels, contains('Entertainment'));
       expect(rootLabels, isNot(contains('Music')));
       expect(rootLabels, isNot(contains('TV')));
-      expect(rootPaths, contains('/media'));
+      expect(rootPaths, contains('/live'));
       expect(rootPaths, isNot(contains('/beats')));
       expect(rootPaths, isNot(contains('/stream')));
     });
 
-    test('hides mini players on the grouped media tab', () {
+    test('hides persistent mini players on the owning media tab', () {
       final container = ProviderContainer();
       addTearDown(container.dispose);
 
@@ -48,12 +58,12 @@ void main() {
 
         expect(
           visibility.showMusicPlayer,
-          isFalse,
+          tab != AppNavigationTab.entertainment,
           reason: '${tab.label} music mini player visibility',
         );
         expect(
           visibility.showIptvPlayer,
-          isFalse,
+          tab != AppNavigationTab.entertainment,
           reason: '${tab.label} IPTV mini player visibility',
         );
       }

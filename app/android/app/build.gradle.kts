@@ -37,6 +37,13 @@ android {
 
         // Enable multidex for larger apps
         multiDexEnabled = true
+
+        testInstrumentationRunner = "pl.leancode.patrol.PatrolJUnitRunner"
+        testInstrumentationRunnerArguments["clearPackageData"] = "true"
+    }
+
+    testOptions {
+        execution = "ANDROIDX_TEST_ORCHESTRATOR"
     }
 
     // NOTE: ABI splitting is handled by Flutter's --split-per-abi flag

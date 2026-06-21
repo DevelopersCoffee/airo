@@ -17,7 +17,7 @@ class _AttachmentButtonState extends State<AttachmentButton> {
   Future<void> _pickFile() async {
     setState(() => _isLoading = true);
     try {
-      final result = await FilePicker.platform.pickFiles(
+      final result = await FilePicker.pickFiles(
         type: FileType.custom,
         allowedExtensions: [
           'pdf',
