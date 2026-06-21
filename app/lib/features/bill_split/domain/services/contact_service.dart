@@ -50,17 +50,16 @@ class DeviceContactService implements ContactService {
 
     // Try to fetch real contacts
     try {
-      final contacts = await FlutterContacts.getContacts(
-        withProperties: true,
-        withPhoto: false,
+      final contacts = await FlutterContacts.getAll(
+        properties: ContactProperties.allProperties,
       );
 
       _cachedContacts = contacts
-          .where((c) => c.displayName.isNotEmpty)
+          .where((c) => (c.displayName ?? '').isNotEmpty)
           .map(
             (c) => Participant(
-              id: c.id,
-              name: c.displayName,
+              id: c.id ?? c.displayName ?? 'contact',
+              name: c.displayName ?? 'Unknown contact',
               phone: c.phones.isNotEmpty ? c.phones.first.number : null,
               email: c.emails.isNotEmpty ? c.emails.first.address : null,
             ),

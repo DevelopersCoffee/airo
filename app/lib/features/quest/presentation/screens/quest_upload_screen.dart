@@ -27,7 +27,7 @@ class _QuestUploadScreenState extends ConsumerState<QuestUploadScreen> {
 
   Future<void> _pickFiles() async {
     try {
-      final result = await FilePicker.platform.pickFiles(
+      final result = await FilePicker.pickFiles(
         allowMultiple: true,
         type: FileType.custom,
         allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png', 'txt', 'doc', 'docx'],

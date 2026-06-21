@@ -496,85 +496,101 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
     VideoPlayerStreamingService service,
     StreamingState state,
   ) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return Stack(
+      fit: StackFit.expand,
       children: [
-        // Top bar - channel info
         if (state.currentChannel != null)
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                if (state.currentChannel!.logoUrl != null)
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(4),
-                    child: Image.network(
-                      state.currentChannel!.logoUrl!,
-                      width: 32,
-                      height: 32,
-                      errorBuilder: (_, _, _) => const SizedBox.shrink(),
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: SafeArea(
+              bottom: false,
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    if (state.currentChannel!.logoUrl != null)
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: Image.network(
+                          state.currentChannel!.logoUrl!,
+                          width: 32,
+                          height: 32,
+                          errorBuilder: (_, _, _) => const SizedBox.shrink(),
+                        ),
+                      ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        state.currentChannel!.name,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
-                  ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    state.currentChannel!.name,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
+                  ],
                 ),
-              ],
+              ),
             ),
           ),
-        // Center - smart play/pause or "Go Live" button
-        // Shows "Go Live" when behind live (delay > 3s), otherwise play/pause
-        _buildCenterButton(service, state),
-        // Bottom bar - buffer & controls
-        Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            children: [
-              _buildBufferIndicator(state),
-              const SizedBox(height: 8),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        Center(child: _buildCenterButton(service, state)),
+        Positioned(
+          left: 0,
+          right: 0,
+          bottom: 0,
+          child: SafeArea(
+            top: false,
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Mute button
-                  IconButton(
-                    icon: Icon(
-                      state.isMuted ? Icons.volume_off : Icons.volume_up,
-                      color: Colors.white,
-                    ),
-                    onPressed: () => service.toggleMute(),
-                  ),
-                  // Note: Go Live button removed from here - now integrated into center button
-                  const Spacer(),
-                  // Cinema mode toggle
-                  IconButton(
-                    icon: Icon(
-                      _isCinemaMode ? Icons.wb_sunny : Icons.theaters,
-                      color: _isCinemaMode ? Colors.amber : Colors.white,
-                    ),
-                    tooltip: _isCinemaMode ? 'Standard Mode' : 'Cinema Mode',
-                    onPressed: () {
-                      setState(() => _isCinemaMode = !_isCinemaMode);
-                    },
-                  ),
-                  // Fullscreen button
-                  IconButton(
-                    icon: Icon(
-                      _isFullscreen ? Icons.fullscreen_exit : Icons.fullscreen,
-                      color: Colors.white,
-                    ),
-                    onPressed: _toggleFullscreen,
+                  _buildBufferIndicator(state),
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      // Mute button
+                      IconButton(
+                        icon: Icon(
+                          state.isMuted ? Icons.volume_off : Icons.volume_up,
+                          color: Colors.white,
+                        ),
+                        onPressed: () => service.toggleMute(),
+                      ),
+                      const Spacer(),
+                      // Cinema mode toggle
+                      IconButton(
+                        icon: Icon(
+                          _isCinemaMode ? Icons.wb_sunny : Icons.theaters,
+                          color: _isCinemaMode ? Colors.amber : Colors.white,
+                        ),
+                        tooltip: _isCinemaMode
+                            ? 'Standard Mode'
+                            : 'Cinema Mode',
+                        onPressed: () {
+                          setState(() => _isCinemaMode = !_isCinemaMode);
+                        },
+                      ),
+                      // Fullscreen button
+                      IconButton(
+                        icon: Icon(
+                          _isFullscreen
+                              ? Icons.fullscreen_exit
+                              : Icons.fullscreen,
+                          color: Colors.white,
+                        ),
+                        onPressed: _toggleFullscreen,
+                      ),
+                    ],
                   ),
                 ],
               ),
-            ],
+            ),
           ),
         ),
       ],

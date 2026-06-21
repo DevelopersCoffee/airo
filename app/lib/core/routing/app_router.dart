@@ -1,12 +1,13 @@
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../features/auth/screens/login_screen.dart';
 import '../../features/auth/screens/register_screen.dart';
-import '../../features/money/presentation/screens/money_overview_screen.dart';
 import '../../features/bill_split/presentation/screens/bill_split_screen.dart';
 import '../../features/agent_chat/presentation/screens/chat_screen.dart';
+import '../../features/agent_chat/presentation/screens/model_library_screen.dart';
 import '../../features/agent_chat/presentation/screens/profile_screen.dart';
-import '../../features/music/presentation/screens/music_screen.dart';
-import '../../features/iptv/presentation/screens/iptv_screen.dart';
+import '../../features/settings/presentation/screens/ai_models_screen.dart';
+import '../../features/live/presentation/screens/live_screen.dart';
 import '../../features/games/presentation/screens/games_hub_screen.dart';
 import '../../features/quest/presentation/screens/quest_chat_screen.dart';
 import '../../features/quest/presentation/screens/quest_list_screen.dart';
@@ -27,7 +28,7 @@ class AppRouter {
   AppRouter._();
 
   static final GoRouter router = GoRouter(
-    initialLocation: '/agent',
+    initialLocation: '/money',
     redirect: (context, state) async {
       // Initialize auth service if not already done
       await AuthService.instance.initialize();
@@ -42,16 +43,18 @@ class AppRouter {
         return RouteNames.login;
       }
 
-      // If logged in and on login page, redirect to agent tab
+      // If logged in and on login page, redirect to the finance dashboard.
       if (isLoggedIn && isLoginRoute) {
-        return '/agent';
+        return '/money';
       }
 
       return null; // No redirect needed
     },
     routes: [
-      // Redirect root to agent
-      GoRoute(path: '/', redirect: (context, state) => '/agent'),
+      // Redirect root to finance dashboard.
+      GoRoute(path: '/', redirect: (context, state) => '/money'),
+      GoRoute(path: '/beats', redirect: (context, state) => '/live/music'),
+      GoRoute(path: '/stream', redirect: (context, state) => '/live/tv'),
       GoRoute(
         path: RouteNames.login,
         name: RouteNames.login,
@@ -72,8 +75,8 @@ class AppRouter {
             routes: [
               GoRoute(
                 path: '/money',
-                name: 'Coins',
-                builder: (context, state) => const MoneyOverviewScreen(),
+                name: 'Dashboard',
+                builder: (context, state) => const CoinsDashboardScreen(),
                 routes: [
                   GoRoute(
                     path: 'split',
@@ -130,7 +133,7 @@ class AppRouter {
             routes: [
               GoRoute(
                 path: '/agent',
-                name: 'Mind',
+                name: 'Assistant',
                 builder: (context, state) => const ChatScreen(),
                 routes: [
                   GoRoute(
@@ -138,27 +141,48 @@ class AppRouter {
                     name: 'profile',
                     builder: (context, state) => const ProfileScreen(),
                   ),
+                  GoRoute(
+                    path: 'models',
+                    name: 'assistant_models',
+                    builder: (context, state) => ModelLibraryScreen(
+                      onModelSelected: (candidate) {
+                        context.go('/agent');
+                      },
+                      onOpenModelManager: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) => const AIModelsScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
                 ],
               ),
             ],
           ),
-          // Beats branch
+          // Entertainment branch: Music + TV in one bottom tab
           StatefulShellBranch(
             routes: [
               GoRoute(
-                path: '/beats',
-                name: 'Beats',
-                builder: (context, state) => const MusicScreenBody(),
-              ),
-            ],
-          ),
-          // Stream branch
-          StatefulShellBranch(
-            routes: [
-              GoRoute(
-                path: '/stream',
-                name: 'Stream',
-                builder: (context, state) => const IPTVScreenBody(),
+                path: '/live',
+                name: 'Entertainment',
+                builder: (context, state) =>
+                    const LiveScreen(mode: LiveMode.music),
+                routes: [
+                  GoRoute(
+                    path: 'music',
+                    name: 'EntertainmentMusic',
+                    builder: (context, state) =>
+                        const LiveScreen(mode: LiveMode.music),
+                  ),
+                  GoRoute(
+                    path: 'tv',
+                    name: 'EntertainmentTV',
+                    builder: (context, state) =>
+                        const LiveScreen(mode: LiveMode.tv),
+                  ),
+                ],
               ),
             ],
           ),
@@ -167,7 +191,7 @@ class AppRouter {
             routes: [
               GoRoute(
                 path: '/games',
-                name: 'Arena',
+                name: 'Games',
                 builder: (context, state) => const GamesHubScreen(),
               ),
             ],
@@ -177,7 +201,7 @@ class AppRouter {
             routes: [
               GoRoute(
                 path: '/quest',
-                name: 'Quest',
+                name: 'Tasks',
                 builder: (context, state) => const QuestListScreen(),
                 routes: [
                   GoRoute(
@@ -203,7 +227,7 @@ class AppRouter {
     errorBuilder: (context, state) => HttpDogErrorScreen(
       statusCode: 404,
       customMessage: 'Page not found: ${state.matchedLocation}',
-      onRetry: () => context.go('/agent'),
+      onRetry: () => context.go('/money'),
     ),
   );
 }

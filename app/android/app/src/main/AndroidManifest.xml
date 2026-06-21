@@ -1,6 +1,12 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.INTERNET"/>
+
     <!-- Contacts permission for bill splitting -->
     <uses-permission android:name="android.permission.READ_CONTACTS"/>
+
+    <!-- Calendar permission for Agent Skills schedule lookup -->
+    <uses-permission android:name="android.permission.READ_CALENDAR"/>
+    <uses-permission android:name="android.permission.WRITE_CALENDAR"/>
 
     <!-- Audio service permissions for background music playback -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
@@ -39,6 +45,17 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+
+        <!-- Optional GPU acceleration libraries used by LiteRT-LM. -->
+        <uses-native-library
+            android:name="libOpenCL.so"
+            android:required="false" />
+        <uses-native-library
+            android:name="libOpenCL-car.so"
+            android:required="false" />
+        <uses-native-library
+            android:name="libOpenCL-pixel.so"
+            android:required="false" />
 
         <!-- Audio service for background music playback -->
         <service

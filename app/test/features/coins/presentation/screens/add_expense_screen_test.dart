@@ -4,6 +4,7 @@ import 'package:airo_app/features/coins/application/providers/expense_providers.
 import 'package:airo_app/features/coins/domain/entities/account.dart';
 import 'package:airo_app/features/coins/domain/entities/transaction.dart';
 import 'package:airo_app/features/coins/domain/repositories/transaction_repository.dart';
+import 'package:airo_app/features/coins/domain/services/quick_add_expense_parser.dart';
 import 'package:airo_app/features/coins/presentation/screens/add_expense_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -54,6 +55,70 @@ void main() {
     expect(repository.createdTransaction?.amountCents, -1250);
     expect(repository.createdTransaction?.categoryId, 'food');
     expect(repository.createdTransaction?.accountId, 'cash');
+  });
+
+  testWidgets('surfaces finance-focused entry aids and inline errors', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          expenseAccountOptionsProvider.overrideWith(
+            (ref) async => [
+              Account(
+                id: 'cash',
+                name: 'Cash',
+                type: AccountType.cash,
+                balanceCents: 10000,
+                currencyCode: 'INR',
+                createdAt: DateTime(2026, 5, 13),
+              ),
+            ],
+          ),
+        ],
+        child: const MaterialApp(home: AddExpenseScreen()),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.text('Budget tag'), findsOneWidget);
+    expect(find.text('Recurring expense'), findsOneWidget);
+
+    await tester.enterText(find.byType(TextFormField).at(0), '850');
+    await tester.enterText(find.byType(TextFormField).at(1), 'Dinner');
+    await tester.tap(find.text('Save'));
+    await tester.pump();
+
+    expect(find.text('Choose a category'), findsOneWidget);
+    expect(find.text('Choose who paid'), findsOneWidget);
+  });
+
+  testWidgets('prefills an expense from a quick-add draft', (tester) async {
+    await tester.pumpWidget(
+      const ProviderScope(
+        child: MaterialApp(
+          home: AddExpenseScreen(
+            initialDraft: QuickExpenseDraft(
+              description: 'Netflix',
+              amountCents: 64900,
+              categoryId: 'shopping',
+              budgetTag: 'Entertainment',
+              isRecurring: true,
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.widgetWithText(TextFormField, 'Netflix'), findsOneWidget);
+    expect(find.widgetWithText(TextFormField, '649.00'), findsOneWidget);
+    expect(find.widgetWithText(TextFormField, 'Entertainment'), findsOneWidget);
+    expect(
+      tester.widget<SwitchListTile>(find.byType(SwitchListTile)).value,
+      isTrue,
+    );
   });
 }
 

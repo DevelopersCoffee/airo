@@ -164,5 +164,86 @@ void main() {
         expect(summary.simplifiedDebts.single.currencyCode, 'USD');
       },
     );
+
+    test('creates an itemized receipt split with per-item ownership', () async {
+      final now = DateTime(2026, 5, 20);
+      final group = Group(
+        id: 'instamart_group',
+        name: 'Flat groceries',
+        defaultCurrencyCode: 'INR',
+        creatorId: 'uday',
+        createdAt: now,
+      );
+
+      await repository.create(group);
+      await repository.addMember(
+        GroupMember(
+          id: 'member_uday',
+          groupId: group.id,
+          userId: 'uday',
+          displayName: 'Uday',
+          role: MemberRole.admin,
+          joinedAt: now,
+        ),
+      );
+      await repository.addMember(
+        GroupMember(
+          id: 'member_rahul',
+          groupId: group.id,
+          userId: 'rahul',
+          displayName: 'Rahul',
+          joinedAt: now,
+        ),
+      );
+
+      final result = await addSplitUseCase.execute(
+        AddSplitParams(
+          groupId: group.id,
+          description: 'Instamart (3 items)',
+          totalAmountCents: 22300,
+          paidByUserId: 'uday',
+          splitType: SplitType.itemized,
+          participantIds: const ['uday', 'rahul'],
+          itemizedItems: const [
+            ItemizedSplitInput(
+              itemId: 'potato',
+              name: 'Potato',
+              amountCents: 4500,
+              participantIds: ['uday'],
+            ),
+            ItemizedSplitInput(
+              itemId: 'milk',
+              name: 'Milk',
+              amountCents: 5800,
+              participantIds: ['rahul'],
+            ),
+            ItemizedSplitInput(
+              itemId: 'rice',
+              name: 'Rice',
+              amountCents: 12000,
+              participantIds: ['uday', 'rahul'],
+            ),
+          ],
+          expenseDate: now,
+        ),
+      );
+
+      expect(result.error, isNull);
+      final expense = result.data!;
+      expect(expense.splitType, SplitType.itemized);
+      expect(expense.areSplitsValid, isTrue);
+      expect(
+        expense.splits.map((split) => (split.userId, split.amountCents)),
+        unorderedEquals([('uday', 10500), ('rahul', 11800)]),
+      );
+      expect(
+        expense.splits.firstWhere((split) => split.userId == 'uday').itemIds,
+        unorderedEquals(['potato', 'rice']),
+      );
+      expect(
+        expense.splits.firstWhere((split) => split.userId == 'rahul').itemIds,
+        unorderedEquals(['milk', 'rice']),
+      );
+    });
   });
 }

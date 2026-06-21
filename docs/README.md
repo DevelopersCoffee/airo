@@ -15,6 +15,13 @@ Welcome to the Airo Super App documentation! This is your complete guide to unde
 
 ## 📖 Documentation Structure
 
+### 🌐 [Public Wiki Source](./wiki/)
+User-facing GitHub Wiki pages:
+- **Home.md** - Public wiki landing page
+- **1.-Overview.md** - What Airo can do
+- **4.-Using-Core-Capabilities.md** - Main user workflows
+- **README.md** - Publishing and PR update rule
+
 ### 🎯 [Getting Started](./getting-started/)
 Everything you need to get up and running:
 - **START_HERE.md** - Begin here if you're new
@@ -93,6 +100,10 @@ API documentation:
 ```
 docs/
 ├── README.md (this file)
+├── wiki/
+│   ├── Home.md
+│   ├── 1.-Overview.md
+│   └── 4.-Using-Core-Capabilities.md
 ├── getting-started/
 │   ├── START_HERE.md
 │   ├── QUICK_REFERENCE.md
@@ -178,4 +189,3 @@ This documentation is part of the Airo Super App project.
 **Last Updated**: November 2, 2025
 **Status**: ✅ Complete
 **Version**: 1.0.0
-

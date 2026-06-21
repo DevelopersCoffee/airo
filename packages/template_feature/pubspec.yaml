@@ -4,7 +4,7 @@ version: 0.0.1
 
 environment:
   sdk: ^3.9.2
-  flutter: ">=3.24.0"
+  flutter: ">=3.35.7"
 
 dependencies:
   flutter:
@@ -15,12 +15,11 @@ dependencies:
     path: ../core_data
   core_ui:
     path: ../core_ui
-  flutter_riverpod: ^2.6.1
-  riverpod: ^2.6.1
+  flutter_riverpod: ^3.3.2
+  riverpod: ^3.3.2
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^5.0.0
-  mocktail: ^1.0.0
-
+  flutter_lints: ^6.0.0
+  mocktail: ^1.0.5

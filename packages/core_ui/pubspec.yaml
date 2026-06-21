@@ -9,13 +9,13 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  cupertino_icons: 1.0.8
+  cupertino_icons: ^1.0.9
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: 6.0.0
-  alchemist: ^0.13.0  # Golden testing (replaces discontinued golden_toolkit)
+  alchemist: ^0.14.0  # Golden testing (replaces discontinued golden_toolkit)
 
 flutter:
   uses-material-design: true

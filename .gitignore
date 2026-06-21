@@ -53,6 +53,9 @@ vendor/
 # Logs
 *.log
 logs/
+artifacts/agent-skills-journey/
+$CODEX_HOME/
+app/pubspec.yaml.backup
 
 # Database
 *.db
@@ -69,6 +72,10 @@ release-artifacts/
 *.apk
 *.aab
 *.ipa
+
+# Patrol generated test bundles
+app/patrol_test/test_bundle.dart
+app/patrol_test/Users/
 
 # ===========================================
 # Python (iptv-data/)

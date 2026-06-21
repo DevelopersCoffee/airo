@@ -4,6 +4,8 @@ platform :ios, '15.5'
 # CocoaPods analytics sends network stats synchronously affecting flutter build latency.
 ENV['COCOAPODS_DISABLE_STATS'] = 'true'
 
+require 'fileutils'
+
 project 'Runner', {
   'Debug' => :debug,
   'Profile' => :release,
@@ -37,6 +39,26 @@ target 'Runner' do
 end
 
 post_install do |installer|
+  stockfish_src = File.join(__dir__, '.symlinks', 'plugins', 'stockfish', 'ios', 'Stockfish', 'src')
+  if Dir.exist?(stockfish_src)
+    {
+      'nn-c288c895ea92.nnue' => 'https://tests.stockfishchess.org/api/nn/nn-c288c895ea92.nnue',
+      'nn-37f18f62d772.nnue' => 'https://tests.stockfishchess.org/api/nn/nn-37f18f62d772.nnue',
+    }.each do |file_name, url|
+      destination = File.join(stockfish_src, file_name)
+      next if File.exist?(destination)
+
+      unless system('curl', '--fail', '--location', '--output', destination, url)
+        raise "Failed to download Stockfish NNUE asset: #{file_name}"
+      end
+    end
+
+    Dir.mkdir(File.join(__dir__, 'Pods')) unless Dir.exist?(File.join(__dir__, 'Pods'))
+    Dir.glob(File.join(stockfish_src, 'nn-*.nnue')).each do |asset|
+      FileUtils.cp(asset, File.join(__dir__, 'Pods', File.basename(asset)))
+    end
+  end
+
   installer.pods_project.targets.each do |target|
     flutter_additional_ios_build_settings(target)
   end

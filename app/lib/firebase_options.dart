@@ -70,6 +70,39 @@ class DefaultFirebaseOptions {
     }
   }
 
+  /// Whether the selected platform has a real Firebase app id configured.
+  ///
+  /// The iOS/macOS/windows entries currently use placeholder app ids. Passing
+  /// those placeholders into Firebase iOS causes a native NSException before
+  /// Dart can handle the error, so callers should skip initialization when this
+  /// returns false.
+  static bool get isCurrentPlatformConfigured {
+    if (kIsWeb) {
+      return _isConfigured(web);
+    }
+    switch (defaultTargetPlatform) {
+      case TargetPlatform.android:
+        return _isConfigured(_getAndroidOptions());
+      case TargetPlatform.iOS:
+        return _isConfigured(ios);
+      case TargetPlatform.macOS:
+        return _isConfigured(macos);
+      case TargetPlatform.windows:
+        return _isConfigured(windows);
+      case TargetPlatform.linux:
+        return false;
+      default:
+        return false;
+    }
+  }
+
+  static bool _isConfigured(FirebaseOptions options) {
+    final appId = options.appId;
+    return appId.isNotEmpty &&
+        !appId.contains('YOUR_') &&
+        !appId.contains('TODO');
+  }
+
   /// Get Android options based on current build variant
   static FirebaseOptions _getAndroidOptions() {
     switch (currentVariant) {

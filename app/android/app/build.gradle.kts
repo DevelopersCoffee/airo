@@ -37,6 +37,13 @@ android {
 
         // Enable multidex for larger apps
         multiDexEnabled = true
+
+        testInstrumentationRunner = "pl.leancode.patrol.PatrolJUnitRunner"
+        testInstrumentationRunnerArguments["clearPackageData"] = "true"
+    }
+
+    testOptions {
+        execution = "ANDROIDX_TEST_ORCHESTRATOR"
     }
 
     // NOTE: ABI splitting is handled by Flutter's --split-per-abi flag
@@ -111,6 +118,9 @@ dependencies {
     // ML Kit GenAI Prompt API for on-device Gemini Nano
     // Based on: https://developers.google.com/ml-kit/genai/prompt/android/get-started
     implementation("com.google.mlkit:genai-prompt:1.0.0-beta1")
+
+    // LiteRT-LM for local on-device LLM inference.
+    implementation("com.google.ai.edge.litertlm:litertlm-android:latest.release")
 
     // Coroutines and lifecycle dependencies for async operations
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.10.0")

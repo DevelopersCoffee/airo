@@ -94,6 +94,8 @@ class LocaleSettings {
 /// Provider for locale settings
 class LocaleSettingsNotifier extends StateNotifier<LocaleSettings> {
   static const String _storageKey = 'airo_locale_settings';
+  static const String _profileKey = 'airo_user_profile';
+  static const String _currentUserIdKey = 'airo_current_user_id';
   SharedPreferences? _prefs;
 
   LocaleSettingsNotifier() : super(LocaleSettings.india) {
@@ -103,6 +105,16 @@ class LocaleSettingsNotifier extends StateNotifier<LocaleSettings> {
   Future<void> _initialize() async {
     try {
       _prefs = await SharedPreferences.getInstance();
+      final profileSettings = _loadCurrentProfileLocaleSettings(_prefs!);
+      if (profileSettings != null) {
+        state = profileSettings;
+        await _prefs?.setString(
+          _storageKey,
+          jsonEncode(profileSettings.toJson()),
+        );
+        return;
+      }
+
       final jsonStr = _prefs?.getString(_storageKey);
       if (jsonStr != null) {
         state = LocaleSettings.fromJson(jsonDecode(jsonStr));
@@ -116,6 +128,7 @@ class LocaleSettingsNotifier extends StateNotifier<LocaleSettings> {
   Future<void> updateSettings(LocaleSettings settings) async {
     state = settings;
     await _prefs?.setString(_storageKey, jsonEncode(settings.toJson()));
+    await _persistCurrentProfileSettings(settings);
   }
 
   Future<void> setCurrency(String currency) async {
@@ -128,6 +141,43 @@ class LocaleSettingsNotifier extends StateNotifier<LocaleSettings> {
 
   Future<void> resetToDefaults() async {
     await updateSettings(LocaleSettings.india);
+  }
+
+  LocaleSettings? _loadCurrentProfileLocaleSettings(SharedPreferences prefs) {
+    final userId = prefs.getString(_currentUserIdKey) ?? 'default';
+    final profileJson = prefs.getString('${_profileKey}_$userId');
+    if (profileJson == null) return null;
+
+    final decoded = jsonDecode(profileJson);
+    if (decoded is! Map<String, dynamic>) return null;
+
+    final localeJson = decoded['localeSettings'];
+    if (localeJson is! Map<String, dynamic>) return null;
+
+    return LocaleSettings.fromJson(localeJson);
+  }
+
+  Future<void> _persistCurrentProfileSettings(LocaleSettings settings) async {
+    final prefs = _prefs;
+    if (prefs == null) return;
+
+    final userId = prefs.getString(_currentUserIdKey) ?? 'default';
+    final key = '${_profileKey}_$userId';
+    final profileJson = prefs.getString(key);
+    if (profileJson == null) return;
+
+    try {
+      final decoded = jsonDecode(profileJson);
+      if (decoded is! Map<String, dynamic>) return;
+
+      final updatedProfile = Map<String, dynamic>.from(decoded)
+        ..['localeSettings'] = settings.toJson()
+        ..['updatedAt'] = DateTime.now().toIso8601String();
+
+      await prefs.setString(key, jsonEncode(updatedProfile));
+    } catch (e) {
+      debugPrint('Error syncing locale settings to profile: $e');
+    }
   }
 }
 

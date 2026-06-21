@@ -1466,7 +1466,7 @@ class $AccountEntriesTable extends AccountEntries
     false,
     type: DriftSqlType.string,
     requiredDuringInsert: false,
-    defaultValue: const Constant('USD'),
+    defaultValue: const Constant('INR'),
   );
   static const VerificationMeta _balanceCentsMeta = const VerificationMeta(
     'balanceCents',

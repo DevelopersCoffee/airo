@@ -42,6 +42,12 @@ void main() async {
         isFirebaseInitialized = true;
         debugPrint('✅ Firebase initialized successfully (web)');
       }
+    } else if (!DefaultFirebaseOptions.isCurrentPlatformConfigured) {
+      isFirebaseInitialized = false;
+      debugPrint('⚠️ Firebase not configured for this platform; skipping init');
+      debugPrint(
+        '📝 Demo login (admin/admin) available. Google Sign-In needs Firebase.',
+      );
     } else {
       // Native platforms
       await Firebase.initializeApp(

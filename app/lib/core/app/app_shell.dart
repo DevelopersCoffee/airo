@@ -52,7 +52,7 @@ class AppShell extends ConsumerWidget {
           // Airo logo/title on left - clickable to go to default page
           leading: InkWell(
             onTap: () {
-              // Go to first tab (Coins) as default/home
+              // Go to first tab (Dashboard) as default/home
               ref.read(currentNavigationTabProvider.notifier).state = 0;
               navigationShell.goBranch(0);
             },

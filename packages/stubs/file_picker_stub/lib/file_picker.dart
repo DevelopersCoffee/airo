@@ -51,16 +51,9 @@ enum FilePickerStatus {
 }
 
 /// Stub FilePicker - returns null on TV
-class FilePicker {
-  static final FilePicker _instance = FilePicker._();
-  
-  FilePicker._();
-  
-  /// Get platform instance
-  static FilePicker get platform => _instance;
-  
+abstract final class FilePicker {
   /// Pick files - returns null on TV
-  Future<FilePickerResult?> pickFiles({
+  static Future<FilePickerResult?> pickFiles({
     String? dialogTitle,
     String? initialDirectory,
     FileType type = FileType.any,
@@ -72,7 +65,7 @@ class FilePicker {
   }) async => null;
   
   /// Save file - returns null on TV
-  Future<String?> saveFile({
+  static Future<String?> saveFile({
     String? dialogTitle,
     String? fileName,
     String? initialDirectory,
@@ -82,13 +75,12 @@ class FilePicker {
   }) async => null;
   
   /// Get directory path - returns null on TV
-  Future<String?> getDirectoryPath({
+  static Future<String?> getDirectoryPath({
     String? dialogTitle,
     String? initialDirectory,
     bool lockParentWindow = false,
   }) async => null;
   
   /// Clear temporary files
-  Future<bool?> clearTemporaryFiles() async => true;
+  static Future<bool?> clearTemporaryFiles() async => true;
 }
-

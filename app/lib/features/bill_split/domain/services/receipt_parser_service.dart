@@ -2,35 +2,129 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
 import '../../../../core/services/gemini_nano_service.dart';
-import '../../../../core/services/gemini_api_service.dart';
 import '../models/receipt_item.dart';
+import 'receipt_litert_lm_extraction_service.dart';
+import 'receipt_pdf_renderer_service.dart';
 
 /// Service for parsing receipts from images using OCR
 abstract class ReceiptParserService {
   /// Parse a receipt image and extract items
-  Future<ParsedReceipt> parseReceipt(File imageFile);
+  Future<ParsedReceipt> parseReceipt(
+    File imageFile, {
+    bool allowFallback = false,
+  });
 
-  /// Parse receipt from image bytes (for web)
-  Future<ParsedReceipt> parseReceiptFromBytes(List<int> bytes);
+  /// Render a PDF locally, OCR pages in order, and extract receipt items.
+  Future<ParsedReceipt> parseReceiptPdf(
+    File pdfFile, {
+    bool allowFallback = false,
+  });
+
+  /// Render PDF bytes locally, OCR pages in order, and extract receipt items.
+  Future<ParsedReceipt> parseReceiptPdfBytes(
+    List<int> bytes, {
+    bool allowFallback = false,
+  });
+
+  /// Parse receipt from image bytes.
+  Future<ParsedReceipt> parseReceiptFromBytes(
+    List<int> bytes, {
+    String mimeType = 'image/jpeg',
+    bool allowFallback = false,
+  });
+}
+
+/// Extension point for a later non-local parser.
+///
+/// The production default is intentionally disabled. This keeps receipt parsing
+/// local-first today while preserving a single hook for a future server/API path.
+abstract class ReceiptParsingFallback {
+  Future<ParsedReceipt?> parseImageFile(File imageFile);
+
+  Future<ParsedReceipt?> parseBytes(
+    List<int> bytes, {
+    required String mimeType,
+  });
+}
+
+class DisabledReceiptParsingFallback implements ReceiptParsingFallback {
+  const DisabledReceiptParsingFallback();
+
+  @override
+  Future<ParsedReceipt?> parseImageFile(File imageFile) async => null;
+
+  @override
+  Future<ParsedReceipt?> parseBytes(
+    List<int> bytes, {
+    required String mimeType,
+  }) async => null;
+}
+
+abstract class RenderedReceiptPageTextExtractor {
+  Future<String> extractText(RenderedPdfPage page);
+}
+
+class MLKitRenderedReceiptPageTextExtractor
+    implements RenderedReceiptPageTextExtractor {
+  final TextRecognizer _textRecognizer;
+
+  MLKitRenderedReceiptPageTextExtractor({TextRecognizer? textRecognizer})
+    : _textRecognizer =
+          textRecognizer ?? TextRecognizer(script: TextRecognitionScript.latin);
+
+  @override
+  Future<String> extractText(RenderedPdfPage page) async {
+    final tempDir = await getTemporaryDirectory();
+    final tempFile = File(
+      '${tempDir.path}/airo_receipt_pdf_page_${page.pageNumber}.png',
+    );
+    await tempFile.writeAsBytes(page.bytes, flush: true);
+    final recognizedText = await _textRecognizer.processImage(
+      InputImage.fromFile(tempFile),
+    );
+    return recognizedText.text;
+  }
+
+  Future<void> close() => _textRecognizer.close();
+}
+
+class ReceiptParsingException implements Exception {
+  final String message;
+
+  const ReceiptParsingException(this.message);
+
+  @override
+  String toString() => message;
 }
 
 /// Hybrid ML Kit + AI implementation for intelligent receipt parsing
 ///
 /// Parsing Strategy (with TODO for optimization):
-/// 1. Try Gemini API Vision (managed, accurate) - TODO: Replace with on-device
-/// 2. Try ML Kit OCR + Gemini Nano (on-device, private)
-/// 3. Fallback to regex parsing (fast, works offline)
-///
-/// TODO: OPTIMIZATION - Preferred on-device flow:
 /// 1. ML Kit OCR (on-device, fast)
-/// 2. Gemini Nano parsing (on-device, private)
-/// 3. Cloud API only for complex/failed receipts (user consent required)
+/// 2. LiteRT-LM receipt extraction where available
+/// 3. Gemini Nano parsing where available
+/// 4. Regex parsing (fast, works offline)
+/// 5. Optional fallback hook, disabled until a future implementation is wired
 class MLKitReceiptParserService implements ReceiptParserService {
   final _uuid = const Uuid();
   final _textRecognizer = TextRecognizer(script: TextRecognitionScript.latin);
   final _geminiNano = GeminiNanoService();
+  final _liteRtLmReceiptParser = ReceiptLiteRtLmExtractionService();
+  final ReceiptParsingFallback _fallback;
+  final ReceiptPdfRenderer _pdfRenderer;
+  final RenderedReceiptPageTextExtractor _pdfPageTextExtractor;
+
+  MLKitReceiptParserService({
+    ReceiptParsingFallback fallback = const DisabledReceiptParsingFallback(),
+    ReceiptPdfRenderer pdfRenderer = const PdfxReceiptPdfRenderer(),
+    RenderedReceiptPageTextExtractor? pdfPageTextExtractor,
+  }) : _fallback = fallback,
+       _pdfRenderer = pdfRenderer,
+       _pdfPageTextExtractor =
+           pdfPageTextExtractor ?? MLKitRenderedReceiptPageTextExtractor();
 
   // Detect vendor names
   static const _knownVendors = [
@@ -44,6 +138,7 @@ class MLKitReceiptParserService implements ReceiptParserService {
     'DMart',
     'Dunzo',
     'Zomato',
+    'Urban Company',
   ];
 
   // Words to filter out - these are NOT item names
@@ -69,23 +164,11 @@ class MLKitReceiptParserService implements ReceiptParserService {
   ];
 
   @override
-  Future<ParsedReceipt> parseReceipt(File imageFile) async {
-    // Strategy 1: Try Gemini API Vision for best accuracy
-    // TODO: OPTIMIZATION - Make this opt-in for cloud processing
-    // Only use cloud when user explicitly enables it or on-device fails
-    if (geminiApiService.isAvailable) {
-      try {
-        final result = await _parseWithGeminiApi(imageFile);
-        if (result != null && result.items.isNotEmpty) {
-          debugPrint('Parsed with Gemini API: ${result.items.length} items');
-          return result;
-        }
-      } catch (e) {
-        debugPrint('Gemini API failed, trying on-device: $e');
-      }
-    }
-
-    // Strategy 2: ML Kit OCR + Gemini Nano (on-device)
+  Future<ParsedReceipt> parseReceipt(
+    File imageFile, {
+    bool allowFallback = false,
+  }) async {
+    // Strategy 1: ML Kit OCR, then local LiteRT-LM receipt extraction.
     final inputImage = InputImage.fromFile(imageFile);
     final recognizedText = await _textRecognizer.processImage(inputImage);
 
@@ -93,7 +176,22 @@ class MLKitReceiptParserService implements ReceiptParserService {
       '=== OCR Raw Text ===\n${recognizedText.text}\n===================',
     );
 
-    // Try Gemini Nano for on-device intelligent parsing
+    try {
+      final liteRtLmResult = await _liteRtLmReceiptParser.parseReceiptText(
+        recognizedText.text,
+        imagePath: imageFile.path,
+      );
+      if (liteRtLmResult != null && liteRtLmResult.items.isNotEmpty) {
+        debugPrint(
+          'Parsed with LiteRT-LM: ${liteRtLmResult.items.length} items',
+        );
+        return liteRtLmResult;
+      }
+    } catch (e) {
+      debugPrint('LiteRT-LM parsing failed, trying Gemini Nano: $e');
+    }
+
+    // Strategy 2: Gemini Nano for on-device intelligent parsing
     if (await _geminiNano.isSupported()) {
       try {
         return await _parseWithGeminiNano(recognizedText.text, imageFile.path);
@@ -102,71 +200,117 @@ class MLKitReceiptParserService implements ReceiptParserService {
       }
     }
 
-    // Strategy 3: Fallback to regex parsing (works offline)
-    return _parseTextWithRegex(recognizedText.text, imageFile.path);
-  }
-
-  /// Parse receipt using Gemini API Vision (cloud-based)
-  /// TODO: OPTIMIZATION - Replace with on-device processing:
-  /// - ML Kit OCR for text extraction
-  /// - Gemini Nano for intelligent parsing
-  /// - Only use cloud API for complex receipts with user consent
-  Future<ParsedReceipt?> _parseWithGeminiApi(File imageFile) async {
-    final result = await geminiApiService.parseReceiptImage(imageFile);
-    if (result == null) return null;
-
-    final items = <ReceiptItem>[];
-    int itemTotal = 0;
-
-    final itemsList = result['items'] as List<dynamic>?;
-    if (itemsList != null) {
-      for (final item in itemsList) {
-        final name = item['name']?.toString() ?? '';
-        final price = (item['price'] is num)
-            ? (item['price'] as num).toDouble()
-            : double.tryParse(item['price']?.toString() ?? '0') ?? 0;
-        final qty = item['quantity'] ?? 1;
-
-        if (name.isNotEmpty && price > 0) {
-          final paise = (price * 100).round();
-          items.add(
-            ReceiptItem(
-              id: _uuid.v4(),
-              name: name,
-              quantity: qty is int ? qty : 1,
-              unitPricePaise: paise,
-              totalPricePaise: paise * (qty is int ? qty : 1),
-            ),
+    // Strategy 3: Optional later fallback hook. Disabled by default.
+    if (allowFallback) {
+      try {
+        final fallbackResult = await _fallback.parseImageFile(imageFile);
+        if (fallbackResult != null && fallbackResult.items.isNotEmpty) {
+          debugPrint(
+            'Parsed with fallback hook: ${fallbackResult.items.length} items',
           );
-          itemTotal += paise * (qty is int ? qty : 1);
+          return fallbackResult;
         }
+      } catch (e) {
+        debugPrint('Receipt fallback hook failed, falling back to regex: $e');
       }
     }
 
-    if (items.isEmpty) return null;
-
-    final total = result['total'] is num
-        ? ((result['total'] as num) * 100).round()
-        : itemTotal;
-
-    return ParsedReceipt(
-      id: _uuid.v4(),
-      vendor: result['vendor']?.toString(),
-      orderId: null,
-      orderDate: DateTime.now(),
-      items: items,
-      fees: const [],
-      itemTotalPaise: itemTotal,
-      grandTotalPaise: total,
-      imagePath: imageFile.path,
-      parsedAt: DateTime.now(),
-    );
+    // Strategy 4: Fallback to regex parsing (works offline)
+    return _parseTextWithRegex(recognizedText.text, imageFile.path);
   }
 
   @override
-  Future<ParsedReceipt> parseReceiptFromBytes(List<int> bytes) async {
-    await Future.delayed(const Duration(seconds: 1));
-    return _createMockReceipt(null);
+  Future<ParsedReceipt> parseReceiptPdf(
+    File pdfFile, {
+    bool allowFallback = false,
+  }) async {
+    try {
+      final pages = await _pdfRenderer.renderFile(pdfFile);
+      return await _parseRenderedPdfPages(pages, imagePath: pdfFile.path);
+    } catch (e) {
+      if (allowFallback) {
+        final fallbackResult = await _fallback.parseImageFile(pdfFile);
+        if (fallbackResult != null && fallbackResult.items.isNotEmpty) {
+          return fallbackResult;
+        }
+      }
+      throw ReceiptParsingException(
+        "Couldn't parse this PDF locally. Add items manually.",
+      );
+    }
+  }
+
+  @override
+  Future<ParsedReceipt> parseReceiptPdfBytes(
+    List<int> bytes, {
+    bool allowFallback = false,
+  }) async {
+    try {
+      final pages = await _pdfRenderer.renderBytes(bytes);
+      return await _parseRenderedPdfPages(pages);
+    } catch (e) {
+      if (allowFallback) {
+        final fallbackResult = await _fallback.parseBytes(
+          bytes,
+          mimeType: 'application/pdf',
+        );
+        if (fallbackResult != null && fallbackResult.items.isNotEmpty) {
+          return fallbackResult;
+        }
+      }
+      throw ReceiptParsingException(
+        "Couldn't parse this PDF locally. Add items manually.",
+      );
+    }
+  }
+
+  @override
+  Future<ParsedReceipt> parseReceiptFromBytes(
+    List<int> bytes, {
+    String mimeType = 'image/jpeg',
+    bool allowFallback = false,
+  }) async {
+    if (mimeType == 'application/pdf') {
+      return parseReceiptPdfBytes(bytes, allowFallback: allowFallback);
+    }
+
+    if (allowFallback) {
+      try {
+        final fallbackResult = await _fallback.parseBytes(
+          bytes,
+          mimeType: mimeType,
+        );
+        if (fallbackResult != null && fallbackResult.items.isNotEmpty) {
+          return fallbackResult;
+        }
+      } catch (e) {
+        debugPrint('Receipt byte fallback hook failed: $e');
+      }
+    }
+
+    throw UnsupportedError(
+      'Local byte receipt parsing is not available yet. Use an image file path.',
+    );
+  }
+
+  Future<ParsedReceipt> _parseRenderedPdfPages(
+    List<RenderedPdfPage> pages, {
+    String? imagePath,
+  }) async {
+    if (pages.isEmpty) {
+      throw const ReceiptParsingException(
+        "Couldn't parse this PDF locally. Add items manually.",
+      );
+    }
+
+    final orderedPages = [...pages]
+      ..sort((a, b) => a.pageNumber.compareTo(b.pageNumber));
+    final pageTexts = <String>[];
+    for (final page in orderedPages) {
+      pageTexts.add(await _pdfPageTextExtractor.extractText(page));
+    }
+
+    return parseRecognizedPageTextsForTesting(pageTexts, imagePath: imagePath);
   }
 
   /// Parse receipt using Gemini Nano for intelligent extraction
@@ -304,11 +448,7 @@ JSON output:''';
     }
 
     // Detect order ID (long number)
-    String? orderId;
-    final orderIdMatch = RegExp(r'#?\s*(\d{10,})').firstMatch(rawText);
-    if (orderIdMatch != null) {
-      orderId = orderIdMatch.group(1);
-    }
+    final orderId = _detectOrderId(lines, rawText);
 
     // Strategy: Try Instamart-style parsing first (items & prices on separate lines)
     var result = _parseInstamartStyle(lines, vendor, orderId, imagePath);
@@ -316,8 +456,123 @@ JSON output:''';
       return result;
     }
 
+    // Strategy: Try invoice-style parsing where item labels and totals are
+    // separated into table regions.
+    result = _parseInvoiceStyle(lines, vendor, orderId, imagePath);
+    if (result.items.isNotEmpty) {
+      return result;
+    }
+
     // Fallback: Try inline parsing (item and price on same line)
     return _parseInlineStyle(lines, vendor, orderId, imagePath);
+  }
+
+  @visibleForTesting
+  ParsedReceipt parseRecognizedTextForTesting(
+    String rawText, {
+    String? imagePath,
+  }) {
+    return _parseTextWithRegex(rawText, imagePath);
+  }
+
+  @visibleForTesting
+  ParsedReceipt parseRecognizedPageTextsForTesting(
+    List<String> pageTexts, {
+    String? imagePath,
+  }) {
+    final mergedText = pageTexts
+        .map((text) => text.trim())
+        .where((text) => text.isNotEmpty)
+        .join('\n');
+    if (mergedText.isEmpty) {
+      throw const ReceiptParsingException(
+        "Couldn't parse this PDF locally. Add items manually.",
+      );
+    }
+
+    final receipt = _parseTextWithRegex(mergedText, imagePath);
+    if (_isMockReceipt(receipt)) {
+      throw const ReceiptParsingException(
+        "Couldn't parse this PDF locally. Add items manually.",
+      );
+    }
+    return receipt;
+  }
+
+  ParsedReceipt _mergePageReceipts(
+    List<ParsedReceipt> receipts, {
+    String? imagePath,
+  }) {
+    if (receipts.length == 1) {
+      return receipts.single;
+    }
+
+    final items = receipts.expand((receipt) => receipt.items).toList();
+    final fees = receipts.expand((receipt) => receipt.fees).toList();
+    final itemTotal = receipts.fold<int>(
+      0,
+      (sum, receipt) => sum + receipt.itemTotalPaise,
+    );
+    final grandTotal = receipts.fold<int>(
+      0,
+      (sum, receipt) => sum + receipt.grandTotalPaise,
+    );
+
+    return ParsedReceipt(
+      id: _uuid.v4(),
+      vendor: _firstNonEmptyString(receipts.map((receipt) => receipt.vendor)),
+      orderId: _firstNonEmptyString(receipts.map((receipt) => receipt.orderId)),
+      orderDate: _firstDate(receipts.map((receipt) => receipt.orderDate)),
+      items: items,
+      fees: fees,
+      itemTotalPaise: itemTotal,
+      grandTotalPaise: grandTotal,
+      imagePath: imagePath,
+      parsedAt: DateTime.now(),
+    );
+  }
+
+  String? _firstNonEmptyString(Iterable<String?> values) {
+    for (final value in values) {
+      if (value != null && value.isNotEmpty) {
+        return value;
+      }
+    }
+    return null;
+  }
+
+  DateTime? _firstDate(Iterable<DateTime?> values) {
+    for (final value in values) {
+      if (value != null) {
+        return value;
+      }
+    }
+    return null;
+  }
+
+  bool _isMockReceipt(ParsedReceipt receipt) {
+    return receipt.vendor == 'Unknown' &&
+        receipt.items.length == 1 &&
+        receipt.items.single.name.contains('OCR failed');
+  }
+
+  String? _detectOrderId(List<String> lines, String rawText) {
+    for (var i = 0; i < lines.length; i++) {
+      final lower = lines[i].toLowerCase();
+      if (!lower.contains('invoice no') && !lower.contains('order no')) {
+        continue;
+      }
+
+      final searchLimit = (i + 4).clamp(0, lines.length);
+      for (var j = i; j < searchLimit; j++) {
+        final match = RegExp(r'([A-Z]*\d{8,})').firstMatch(lines[j]);
+        if (match == null) continue;
+        return match.group(1)!.replaceAll(RegExp(r'\D'), '');
+      }
+    }
+
+    final orderIdMatch = RegExp(r'#?\s*(\d{10,})').firstMatch(rawText);
+    return orderIdMatch?.group(1);
   }
 
   /// Parse Instamart-style receipts where items start with "V 1x" and prices are on separate lines
@@ -481,6 +736,184 @@ JSON output:''';
     return corrected;
   }
 
+  /// Parse invoice layouts where OCR groups labels and monetary values in
+  /// separate table columns rather than keeping item and price on one line.
+  ParsedReceipt _parseInvoiceStyle(
+    List<String> lines,
+    String? vendor,
+    String? orderId,
+    String? imagePath,
+  ) {
+    final hasInvoiceMarker = lines.any((line) {
+      final lower = line.toLowerCase();
+      return lower.contains('tax invoice') ||
+          lower.contains('invoice no') ||
+          lower.contains('total amount');
+    });
+    if (!hasInvoiceMarker) {
+      return _emptyReceipt(vendor, orderId, imagePath);
+    }
+
+    final receipts = _splitInvoiceSections(lines)
+        .map(
+          (section) => _parseInvoiceSection(
+            section,
+            vendor,
+            _detectOrderId(section, section.join('\n')) ?? orderId,
+            imagePath,
+          ),
+        )
+        .where((receipt) => receipt.items.isNotEmpty)
+        .toList();
+
+    if (receipts.isEmpty) {
+      return _emptyReceipt(vendor, orderId, imagePath);
+    }
+
+    return _mergePageReceipts(receipts, imagePath: imagePath);
+  }
+
+  List<List<String>> _splitInvoiceSections(List<String> lines) {
+    final sections = <List<String>>[];
+    var current = <String>[];
+
+    for (final line in lines) {
+      final lower = line.toLowerCase();
+      final startsNextInvoice =
+          lower.contains('tax invoice') || lower.contains('invoice no');
+      if (startsNextInvoice &&
+          current.isNotEmpty &&
+          _invoiceSectionHasItems(current) &&
+          _findInvoiceGrandTotal(current) != null) {
+        sections.add(current);
+        current = <String>[];
+      }
+      current.add(line);
+    }
+
+    if (current.isNotEmpty) {
+      sections.add(current);
+    }
+
+    return sections;
+  }
+
+  bool _invoiceSectionHasItems(List<String> lines) {
+    return lines.any((line) => line.toLowerCase() == 'items');
+  }
+
+  ParsedReceipt _parseInvoiceSection(
+    List<String> lines,
+    String? vendor,
+    String? orderId,
+    String? imagePath,
+  ) {
+    final itemNames = <String>[];
+    var inItemsSection = false;
+    for (final line in lines) {
+      final lower = line.toLowerCase();
+      if (lower == 'items') {
+        inItemsSection = true;
+        continue;
+      }
+      if (!inItemsSection) continue;
+      if (lower.contains('total amount') ||
+          lower.contains('tax invoice') ||
+          lower.contains('gross amount') ||
+          lower.contains('taxable value') ||
+          lower.contains('delivery service provider')) {
+        break;
+      }
+      if (lower.startsWith('sac:')) continue;
+      if (line.length > 2 &&
+          !_excludePatterns.any((pattern) => lower.contains(pattern))) {
+        itemNames.add(line);
+      }
+    }
+
+    final totalAmount = _findInvoiceGrandTotal(lines);
+    if (itemNames.isEmpty || totalAmount == null || totalAmount <= 0) {
+      return _emptyReceipt(vendor, orderId, imagePath);
+    }
+
+    final itemAmount = totalAmount ~/ itemNames.length;
+    var remainder = totalAmount % itemNames.length;
+    final items = <ReceiptItem>[];
+    var itemTotal = 0;
+    for (final name in itemNames) {
+      final paise = itemAmount + (remainder > 0 ? 1 : 0);
+      if (remainder > 0) remainder--;
+      items.add(
+        ReceiptItem(
+          id: _uuid.v4(),
+          name: name,
+          quantity: 1,
+          unitPricePaise: paise,
+          totalPricePaise: paise,
+        ),
+      );
+      itemTotal += paise;
+    }
+
+    return ParsedReceipt(
+      id: _uuid.v4(),
+      vendor: vendor,
+      orderId: orderId,
+      orderDate: DateTime.now(),
+      items: items,
+      fees: const [],
+      itemTotalPaise: itemTotal,
+      grandTotalPaise: totalAmount,
+      imagePath: imagePath,
+      parsedAt: DateTime.now(),
+    );
+  }
+
+  ParsedReceipt _emptyReceipt(
+    String? vendor,
+    String? orderId,
+    String? imagePath,
+  ) {
+    return ParsedReceipt(
+      id: _uuid.v4(),
+      vendor: vendor,
+      orderId: orderId,
+      orderDate: DateTime.now(),
+      items: const [],
+      fees: const [],
+      itemTotalPaise: 0,
+      grandTotalPaise: 0,
+      imagePath: imagePath,
+      parsedAt: DateTime.now(),
+    );
+  }
+
+  int? _findInvoiceGrandTotal(List<String> lines) {
+    for (var i = 0; i < lines.length; i++) {
+      if (!lines[i].toLowerCase().contains('total amount')) continue;
+
+      final sameLine = _extractMoneyAmount(lines[i]);
+      if (sameLine != null) return sameLine;
+    }
+
+    final amounts = lines
+        .map(_extractMoneyAmount)
+        .whereType<int>()
+        .where((amount) => amount > 0)
+        .toList();
+    if (amounts.isEmpty) return null;
+    return amounts.last;
+  }
+
+  int? _extractMoneyAmount(String line) {
+    final match = RegExp(
+      r'(?:₹|rs\.?)\s*-?\s*(\d+(?:[.,]\d{1,2})?)',
+      caseSensitive: false,
+    ).firstMatch(line);
+    if (match == null) return null;
+    return _parsePriceToPaise(match.group(1)!);
+  }
+
   /// Parse inline-style receipts where item and price are on the same line
   ParsedReceipt _parseInlineStyle(
     List<String> lines,
@@ -626,5 +1059,9 @@ JSON output:''';
 
   void dispose() {
     _textRecognizer.close();
+    final pdfExtractor = _pdfPageTextExtractor;
+    if (pdfExtractor is MLKitRenderedReceiptPageTextExtractor) {
+      pdfExtractor.close();
+    }
   }
 }

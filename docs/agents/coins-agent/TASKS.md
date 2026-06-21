@@ -94,12 +94,18 @@ cd app && flutter pub run build_runner build
 - `app/test/features/money/budgets_screen_test.dart` - Widget tests for budgets screen
 - `app/test/features/money/money_integration_test.dart` - Full integration tests
 
+### Coins DB Documentation
+- `docs/features/coins/DB_SCHEMA_CHANGELOG.md` - Coins database schema changelog, migration runbook, and rollback notes
+
 ## Deliverables
 
 - [x] TASKS.md updated with completion status
 - [ ] PR with clear changelog of DB schema changes
-- [ ] Migration steps documented
+- [x] Migration steps documented
 - [ ] Unit + widget tests passing
+
+Test evidence:
+- 2026-05-15: `cd app && flutter test test/features/coins test/features/money` passed with 271 tests. Checkbox remains open because this was the targeted Coins/Money suite, not the full unit + widget suite.
 
 ## Checks Before PR
 

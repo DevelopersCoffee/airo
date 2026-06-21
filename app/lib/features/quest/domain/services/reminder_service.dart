@@ -38,7 +38,7 @@ class FakeReminderService implements ReminderService {
       iOS: iosSettings,
     );
 
-    await _notificationsPlugin.initialize(initSettings);
+    await _notificationsPlugin.initialize(settings: initSettings);
   }
 
   @override
@@ -58,11 +58,11 @@ class FakeReminderService implements ReminderService {
 
       // Schedule for future time
       await _notificationsPlugin.zonedSchedule(
-        reminder.id.hashCode,
-        reminder.title,
-        reminder.description,
-        tzDateTime,
-        const NotificationDetails(
+        id: reminder.id.hashCode,
+        title: reminder.title,
+        body: reminder.description,
+        scheduledDate: tzDateTime,
+        notificationDetails: const NotificationDetails(
           android: AndroidNotificationDetails(
             'quest_reminders',
             'Quest Reminders',
@@ -80,7 +80,7 @@ class FakeReminderService implements ReminderService {
   @override
   Future<void> cancelReminder(String reminderId) async {
     _reminders.remove(reminderId);
-    await _notificationsPlugin.cancel(reminderId.hashCode);
+    await _notificationsPlugin.cancel(id: reminderId.hashCode);
   }
 
   @override
@@ -98,10 +98,10 @@ class FakeReminderService implements ReminderService {
 
   Future<void> _showNotification(QuestReminder reminder) async {
     await _notificationsPlugin.show(
-      reminder.id.hashCode,
-      reminder.title,
-      reminder.description,
-      const NotificationDetails(
+      id: reminder.id.hashCode,
+      title: reminder.title,
+      body: reminder.description,
+      notificationDetails: const NotificationDetails(
         android: AndroidNotificationDetails(
           'quest_reminders',
           'Quest Reminders',

@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:airo_app/core/auth/models/user_profile.dart';
@@ -88,6 +90,12 @@ void main() {
         final updated = result.getOrNull();
         expect(updated!.localeSettings.currency, 'USD');
         expect(updated.localeSettings.locale, 'en_US');
+
+        final prefs = await SharedPreferences.getInstance();
+        final localeJson =
+            jsonDecode(prefs.getString('airo_locale_settings')!)
+                as Map<String, dynamic>;
+        expect(localeJson['currency'], 'USD');
       });
 
       test('should return error when no profile exists', () async {

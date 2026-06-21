@@ -62,6 +62,51 @@ enum EmailLabel {
   other,
 }
 
+/// Contact properties supported by the real plugin.
+enum ContactProperty {
+  name,
+  phone,
+  email,
+  address,
+  organization,
+  website,
+  socialMedia,
+  event,
+  relation,
+  note,
+  favorite,
+  ringtone,
+  sendToVoicemail,
+  photoThumbnail,
+  photoFullRes,
+  timestamp,
+  identifiers,
+}
+
+/// Common property sets supported by the real plugin.
+class ContactProperties {
+  ContactProperties._();
+
+  static const Set<ContactProperty> none = <ContactProperty>{};
+  static const Set<ContactProperty> allProperties = {
+    ContactProperty.name,
+    ContactProperty.phone,
+    ContactProperty.email,
+    ContactProperty.address,
+    ContactProperty.organization,
+    ContactProperty.website,
+    ContactProperty.socialMedia,
+    ContactProperty.event,
+    ContactProperty.relation,
+    ContactProperty.note,
+    ContactProperty.favorite,
+    ContactProperty.ringtone,
+    ContactProperty.sendToVoicemail,
+    ContactProperty.timestamp,
+    ContactProperty.identifiers,
+  };
+}
+
 /// Stub FlutterContacts - returns empty list on TV
 class FlutterContacts {
   /// Request permission - returns false on TV
@@ -76,6 +121,12 @@ class FlutterContacts {
     bool withGroups = false,
     bool sorted = true,
     bool deduplicateProperties = true,
+  }) async => [];
+
+  /// Get all contacts - returns empty list on TV
+  static Future<List<Contact>> getAll({
+    Set<ContactProperty>? properties,
+    int? limit,
   }) async => [];
   
   /// Get contact - returns null on TV
@@ -101,4 +152,3 @@ class FlutterContacts {
   /// Open external insert - returns null on TV
   static Future<Contact?> openExternalInsert([Contact? contact]) async => null;
 }
-

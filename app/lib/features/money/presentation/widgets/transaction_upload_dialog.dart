@@ -20,7 +20,7 @@ class _TransactionUploadDialogState extends State<TransactionUploadDialog> {
 
   Future<void> _pickFile(String fileType) async {
     try {
-      final result = await FilePicker.platform.pickFiles(
+      final result = await FilePicker.pickFiles(
         type: _getFileType(fileType),
         allowedExtensions: _getAllowedExtensions(fileType),
       );
