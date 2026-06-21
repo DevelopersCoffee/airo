@@ -297,11 +297,11 @@ After calendar is stable:
 
 ### Task 6: Chat UI
 
-- [ ] Add Skills chip to input area.
-- [ ] Add Manage Skills sheet.
-- [ ] Add action trace cards.
-- [ ] Wire orchestrator before normal Gemini chat fallback.
-- [ ] Add widget tests for skill sheet and trace rendering.
+- [x] Add Skills chip to input area.
+- [x] Add Manage Skills sheet.
+- [x] Add action trace cards.
+- [x] Wire orchestrator before normal Gemini chat fallback.
+- [x] Add widget tests for skill sheet and trace rendering.
 
 ### Task 7: Remote/Community Skills Later
 

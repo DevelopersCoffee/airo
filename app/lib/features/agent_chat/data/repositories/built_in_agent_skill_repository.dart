@@ -4,12 +4,20 @@ import '../built_in_skills/calendar_today.dart';
 import '../built_in_skills/create_calendar_event.dart';
 
 class BuiltInAgentSkillRepository implements AgentSkillRepository {
-  BuiltInAgentSkillRepository({List<AgentSkill>? skills})
-    : _skills = {
-        for (final skill in skills ?? builtInAgentSkills) skill.id: skill,
-      };
+  BuiltInAgentSkillRepository({
+    List<AgentSkill>? skills,
+    Map<String, bool> initialEnabledState = const {},
+    void Function(Map<String, bool> enabledState)? onEnabledStateChanged,
+  }) : _onEnabledStateChanged = onEnabledStateChanged,
+       _skills = {
+         for (final skill in skills ?? builtInAgentSkills)
+           skill.id: initialEnabledState.containsKey(skill.id)
+               ? skill.copyWith(enabled: initialEnabledState[skill.id])
+               : skill,
+       };
 
   final Map<String, AgentSkill> _skills;
+  final void Function(Map<String, bool> enabledState)? _onEnabledStateChanged;
 
   @override
   List<AgentSkill> getAllSkills() => List.unmodifiable(_skills.values);
@@ -48,6 +56,7 @@ class BuiltInAgentSkillRepository implements AgentSkillRepository {
     final skill = _skills[id];
     if (skill == null) return;
     _skills[id] = skill.copyWith(enabled: enabled);
+    _notifyEnabledStateChanged();
   }
 
   @override
@@ -55,6 +64,7 @@ class BuiltInAgentSkillRepository implements AgentSkillRepository {
     for (final skill in getAllSkills()) {
       _skills[skill.id] = skill.copyWith(enabled: true);
     }
+    _notifyEnabledStateChanged();
   }
 
   @override
@@ -62,6 +72,13 @@ class BuiltInAgentSkillRepository implements AgentSkillRepository {
     for (final skill in getAllSkills()) {
       _skills[skill.id] = skill.copyWith(enabled: false);
     }
+    _notifyEnabledStateChanged();
+  }
+
+  void _notifyEnabledStateChanged() {
+    _onEnabledStateChanged?.call({
+      for (final skill in getAllSkills()) skill.id: skill.isEnabled,
+    });
   }
 }
 

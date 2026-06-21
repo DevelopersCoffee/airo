@@ -48,27 +48,18 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   late TextEditingController _messageController;
   final List<ChatMessage> _messages = [];
   final ToolRegistry _toolRegistry = ToolRegistry();
-  final AgentSkillRegistry _skillRegistry = AgentSkillRegistry();
+  AgentSkillRegistry _skillRegistry = AgentSkillRegistry();
   final GeminiNanoService _geminiNano = GeminiNanoService();
   final LiteRtLmService _liteRtLm = LiteRtLmService();
-  late final AgentSkillOrchestrator _skillOrchestrator;
+  late AgentSkillOrchestrator _skillOrchestrator;
   bool _isDeviceSupported = false;
 
   @override
   void initState() {
     super.initState();
     _messageController = TextEditingController();
-    _skillOrchestrator = AgentSkillOrchestrator(
-      skillRegistry: _skillRegistry,
-      connectorRegistry: AgentConnectorRegistry(
-        connectors: [
-          DateTimeConnector(),
-          NativeCalendarConnector(),
-          ScheduleNotificationConnector(),
-        ],
-      ),
-      modelClient: GeminiAgentSkillModelClient(_geminiNano),
-    );
+    _skillOrchestrator = _buildSkillOrchestrator(_skillRegistry);
+    _loadPersistedSkillRegistry();
     // Add welcome message
     _messages.add(
       ChatMessage(
@@ -78,6 +69,29 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       ),
     );
     _initializeAI();
+  }
+
+  AgentSkillOrchestrator _buildSkillOrchestrator(AgentSkillRegistry registry) {
+    return AgentSkillOrchestrator(
+      skillRegistry: registry,
+      connectorRegistry: AgentConnectorRegistry(
+        connectors: [
+          DateTimeConnector(),
+          NativeCalendarConnector(),
+          ScheduleNotificationConnector(),
+        ],
+      ),
+      modelClient: GeminiAgentSkillModelClient(_geminiNano),
+    );
+  }
+
+  Future<void> _loadPersistedSkillRegistry() async {
+    final registry = await AgentSkillRegistry.loadPersisted();
+    if (!mounted) return;
+    setState(() {
+      _skillRegistry = registry;
+      _skillOrchestrator = _buildSkillOrchestrator(registry);
+    });
   }
 
   Future<void> _initializeAI() async {
