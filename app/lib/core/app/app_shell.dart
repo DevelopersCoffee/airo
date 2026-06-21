@@ -71,6 +71,11 @@ class AppShell extends ConsumerWidget {
           title: Text(currentPageName),
           centerTitle: true,
           actions: [
+            IconButton(
+              tooltip: 'Notifications',
+              onPressed: () => context.push('/agent/notifications'),
+              icon: const Icon(Icons.notifications_outlined),
+            ),
             // User profile avatar with menu
             PopupMenuButton<String>(
               icon: CircleAvatar(

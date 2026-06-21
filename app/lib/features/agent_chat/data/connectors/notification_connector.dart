@@ -3,9 +3,8 @@ import '../../domain/services/agent_connector.dart';
 import '../services/agent_notification_scheduler.dart';
 
 class ScheduleNotificationConnector implements AgentConnector {
-  ScheduleNotificationConnector({
-    AgentNotificationSchedulingService? scheduler,
-  }) : _scheduler = scheduler ?? LocalAgentNotificationScheduler.instance;
+  ScheduleNotificationConnector({AgentNotificationSchedulingService? scheduler})
+    : _scheduler = scheduler ?? LocalAgentNotificationScheduler.instance;
 
   final AgentNotificationSchedulingService _scheduler;
 
@@ -104,10 +103,9 @@ class InMemoryNotificationScheduler
             request.hour,
             request.minute,
           )
-        : DateTime.parse(request.date!).copyWith(
-            hour: request.hour,
-            minute: request.minute,
-          );
+        : DateTime.parse(
+            request.date!,
+          ).copyWith(hour: request.hour, minute: request.minute);
     final notification = ScheduledAgentNotification(
       id: scheduled.length + 1,
       title: request.title,

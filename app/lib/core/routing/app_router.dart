@@ -5,6 +5,7 @@ import '../../features/auth/screens/register_screen.dart';
 import '../../features/bill_split/presentation/screens/bill_split_screen.dart';
 import '../../features/agent_chat/presentation/screens/chat_screen.dart';
 import '../../features/agent_chat/presentation/screens/model_library_screen.dart';
+import '../../features/agent_chat/presentation/screens/notifications_screen.dart';
 import '../../features/agent_chat/presentation/screens/profile_screen.dart';
 import '../../features/settings/presentation/screens/ai_models_screen.dart';
 import '../../features/live/presentation/screens/live_screen.dart';
@@ -136,6 +137,11 @@ class AppRouter {
                 name: 'Assistant',
                 builder: (context, state) => const ChatScreen(),
                 routes: [
+                  GoRoute(
+                    path: 'notifications',
+                    name: 'agent_notifications',
+                    builder: (context, state) => const NotificationsScreen(),
+                  ),
                   GoRoute(
                     path: 'profile',
                     name: 'profile',

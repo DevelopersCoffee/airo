@@ -52,9 +52,11 @@ class ScheduledAgentNotification {
       minute: json['minute'] as int? ?? 0,
       repeatDaily: json['repeat_daily'] as bool? ?? false,
       date: json['date'] as String?,
-      scheduledAt: DateTime.tryParse(json['scheduled_at'] as String? ?? '') ??
+      scheduledAt:
+          DateTime.tryParse(json['scheduled_at'] as String? ?? '') ??
           DateTime.now(),
-      createdAt: DateTime.tryParse(json['created_at'] as String? ?? '') ??
+      createdAt:
+          DateTime.tryParse(json['created_at'] as String? ?? '') ??
           DateTime.now(),
     );
   }
@@ -127,8 +129,13 @@ class LocalAgentNotificationScheduler
 
     final createdAt = DateTime.now();
     final scheduledDate = _scheduledDateFor(request);
-    if (!request.repeatDaily && !scheduledDate.isAfter(tz.TZDateTime.now(tz.local))) {
-      throw ArgumentError.value(request.date, 'date', 'Reminder time is in the past.');
+    if (!request.repeatDaily &&
+        !scheduledDate.isAfter(tz.TZDateTime.now(tz.local))) {
+      throw ArgumentError.value(
+        request.date,
+        'date',
+        'Reminder time is in the past.',
+      );
     }
 
     final notification = ScheduledAgentNotification(
@@ -159,8 +166,9 @@ class LocalAgentNotificationScheduler
         iOS: DarwinNotificationDetails(),
       ),
       androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
-      matchDateTimeComponents:
-          request.repeatDaily ? DateTimeComponents.time : null,
+      matchDateTimeComponents: request.repeatDaily
+          ? DateTimeComponents.time
+          : null,
     );
 
     final notifications = await getScheduledNotifications();
@@ -178,14 +186,11 @@ class LocalAgentNotificationScheduler
     if (raw == null || raw.isEmpty) return const [];
     try {
       final decoded = jsonDecode(raw) as List<dynamic>;
-      final notifications = decoded
-          .whereType<Map>()
-          .map((item) {
-            return ScheduledAgentNotification.fromJson(
-              item.cast<String, dynamic>(),
-            );
-          })
-          .toList();
+      final notifications = decoded.whereType<Map>().map((item) {
+        return ScheduledAgentNotification.fromJson(
+          item.cast<String, dynamic>(),
+        );
+      }).toList();
       notifications.sort((a, b) => a.scheduledAt.compareTo(b.scheduledAt));
       return notifications;
     } catch (_) {

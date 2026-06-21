@@ -399,7 +399,8 @@ Map<String, dynamic>? _parseNotificationPrompt({
 
   final repeatDaily = _isDaily(prompt);
   final scheduleCheck = _isScheduleCheck(prompt);
-  final title = _quotedText(prompt) ??
+  final title =
+      _quotedText(prompt) ??
       (scheduleCheck ? 'Daily Schedule Check' : 'Reminder');
   final message = scheduleCheck
       ? 'Check your schedule for today.'
@@ -412,7 +413,7 @@ Map<String, dynamic>? _parseNotificationPrompt({
     'hour': time.$1,
     'minute': time.$2,
     'repeat_daily': repeatDaily,
-    if (date != null) 'date': date,
+    'date': ?date,
   };
 }
 
