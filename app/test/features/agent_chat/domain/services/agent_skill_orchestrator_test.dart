@@ -109,6 +109,110 @@ void main() {
       expect(notificationScheduler.scheduled.single.date, '2026-06-21');
     });
 
+    test('schedules medicine reminders in a 12 hour window', () async {
+      final notificationScheduler = InMemoryNotificationScheduler(
+        now: () => DateTime(2026, 6, 20, 9, 3),
+      );
+      final orchestrator = _buildOrchestrator(
+        notificationScheduler: notificationScheduler,
+      );
+
+      final result = await orchestrator.run(
+        'Remind me to take Minoxidil every 12 hours starting at 8am',
+      );
+
+      expect(result.handled, true);
+      expect(result.message, contains('2 medicine reminders'));
+      expect(notificationScheduler.scheduled, hasLength(2));
+      expect(notificationScheduler.scheduled.first.category, 'medicine');
+      expect(
+        notificationScheduler.scheduled.first.scheduleType,
+        'interval_hours',
+      );
+      expect(notificationScheduler.scheduled.first.hour, 8);
+      expect(notificationScheduler.scheduled.last.hour, 20);
+      expect(
+        notificationScheduler.scheduled.first.metadata['medicine_name'],
+        'Minoxidil',
+      );
+    });
+
+    test('schedules medicine reminders relative to meals', () async {
+      final notificationScheduler = InMemoryNotificationScheduler(
+        now: () => DateTime(2026, 6, 20, 9, 3),
+      );
+      final orchestrator = _buildOrchestrator(
+        notificationScheduler: notificationScheduler,
+      );
+
+      final result = await orchestrator.run(
+        'Remind me to take Metformin after breakfast and dinner',
+      );
+
+      expect(result.handled, true);
+      expect(notificationScheduler.scheduled, hasLength(2));
+      expect(notificationScheduler.scheduled.first.hour, 8);
+      expect(notificationScheduler.scheduled.first.minute, 30);
+      expect(notificationScheduler.scheduled.last.hour, 20);
+      expect(notificationScheduler.scheduled.last.minute, 30);
+      expect(notificationScheduler.scheduled.first.category, 'medicine');
+      expect(
+        notificationScheduler.scheduled.first.scheduleType,
+        'meal_relative',
+      );
+    });
+
+    test('schedules family tasks from natural language', () async {
+      final notificationScheduler = InMemoryNotificationScheduler(
+        now: () => DateTime(2026, 6, 20, 9, 3),
+      );
+      final orchestrator = _buildOrchestrator(
+        notificationScheduler: notificationScheduler,
+      );
+
+      final result = await orchestrator.run(
+        'Drop my children to tuition every day at four o clock',
+      );
+
+      expect(result.handled, true);
+      expect(
+        notificationScheduler.scheduled.single.title,
+        'Drop children to tuition',
+      );
+      expect(notificationScheduler.scheduled.single.hour, 4);
+      expect(notificationScheduler.scheduled.single.category, 'family');
+    });
+
+    test('schedules due-date reminders until completed', () async {
+      final notificationScheduler = InMemoryNotificationScheduler(
+        now: () => DateTime(2026, 6, 20, 9, 3),
+      );
+      final orchestrator = _buildOrchestrator(
+        notificationScheduler: notificationScheduler,
+      );
+
+      final result = await orchestrator.run(
+        'Remind me to recharge my electricity bill tomorrow by tomorrow and keep asking until I do it',
+      );
+
+      expect(result.handled, true);
+      expect(result.message, contains('keep asking until you mark it done'));
+      expect(
+        notificationScheduler.scheduled.single.title,
+        'Recharge electricity bill',
+      );
+      expect(notificationScheduler.scheduled.single.category, 'billing');
+      expect(notificationScheduler.scheduled.single.scheduleType, 'due_date');
+      expect(notificationScheduler.scheduled.single.date, '2026-06-21');
+      expect(notificationScheduler.scheduled.single.hour, 9);
+      expect(notificationScheduler.scheduled.single.repeatDaily, true);
+      expect(notificationScheduler.scheduled.single.requiresCompletion, true);
+      expect(
+        notificationScheduler.scheduled.single.followUpPolicy,
+        'daily_until_done',
+      );
+    });
+
     test('stops unsupported tool calls', () async {
       final orchestrator = _buildOrchestrator(
         modelClient: _UnsupportedToolModelClient(),

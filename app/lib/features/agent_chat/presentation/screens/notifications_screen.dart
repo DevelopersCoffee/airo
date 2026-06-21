@@ -78,6 +78,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         return _NotificationCard(
           notification: notifications[index],
           onDelete: () => _deleteNotification(notifications[index].id),
+          onComplete: () => _completeNotification(notifications[index].id),
         );
       },
     );
@@ -90,13 +91,26 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       _notificationsFuture = _scheduler.getScheduledNotifications();
     });
   }
+
+  Future<void> _completeNotification(int id) async {
+    await _scheduler.markNotificationComplete(id);
+    if (!mounted) return;
+    setState(() {
+      _notificationsFuture = _scheduler.getScheduledNotifications();
+    });
+  }
 }
 
 class _NotificationCard extends StatelessWidget {
-  const _NotificationCard({required this.notification, required this.onDelete});
+  const _NotificationCard({
+    required this.notification,
+    required this.onDelete,
+    required this.onComplete,
+  });
 
   final ScheduledAgentNotification notification;
   final VoidCallback onDelete;
+  final VoidCallback onComplete;
 
   @override
   Widget build(BuildContext context) {
@@ -117,6 +131,33 @@ class _NotificationCard extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(notification.message, style: theme.textTheme.bodyMedium),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                Chip(
+                  visualDensity: VisualDensity.compact,
+                  label: Text(_categoryLabel(notification.category)),
+                ),
+                if (notification.requiresCompletion)
+                  const Chip(
+                    visualDensity: VisualDensity.compact,
+                    avatar: Icon(Icons.repeat, size: 16),
+                    label: Text('Until done'),
+                  ),
+                Chip(
+                  visualDensity: VisualDensity.compact,
+                  avatar: const Icon(Icons.local_fire_department, size: 16),
+                  label: Text('${notification.streakCount} day streak'),
+                ),
+                Chip(
+                  visualDensity: VisualDensity.compact,
+                  avatar: const Icon(Icons.stars, size: 16),
+                  label: Text('${notification.points} pts'),
+                ),
+              ],
+            ),
             const SizedBox(height: 20),
             Row(
               children: [
@@ -132,13 +173,23 @@ class _NotificationCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 16),
-            Align(
-              alignment: Alignment.centerRight,
-              child: OutlinedButton.icon(
-                onPressed: onDelete,
-                icon: const Icon(Icons.delete_outline, size: 18),
-                label: const Text('Delete'),
-              ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                OutlinedButton.icon(
+                  onPressed: onDelete,
+                  icon: const Icon(Icons.delete_outline, size: 18),
+                  label: const Text('Delete'),
+                ),
+                const SizedBox(width: 8),
+                FilledButton.icon(
+                  onPressed: _completedToday(notification) ? null : onComplete,
+                  icon: const Icon(Icons.check_circle_outline, size: 18),
+                  label: Text(
+                    _completedToday(notification) ? 'Done today' : 'Done',
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -151,4 +202,23 @@ String _formatTime(int hour, int minute) {
   final period = hour >= 12 ? 'PM' : 'AM';
   final hour12 = hour % 12 == 0 ? 12 : hour % 12;
   return '$hour12:${minute.toString().padLeft(2, '0')} $period';
+}
+
+String _categoryLabel(String category) {
+  return switch (category) {
+    'medicine' => 'Medicine',
+    'billing' => 'Bills',
+    'family' => 'Family',
+    'habit' => 'Habit',
+    _ => 'Reminder',
+  };
+}
+
+bool _completedToday(ScheduledAgentNotification notification) {
+  final now = DateTime.now();
+  final today =
+      '${now.year.toString().padLeft(4, '0')}-'
+      '${now.month.toString().padLeft(2, '0')}-'
+      '${now.day.toString().padLeft(2, '0')}';
+  return notification.completedDates.contains(today);
 }
