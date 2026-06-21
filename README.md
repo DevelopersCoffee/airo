@@ -3,7 +3,7 @@
 [![Download APK](https://img.shields.io/github/v/release/DevelopersCoffee/airo?label=Download%20APK&color=success)](https://github.com/DevelopersCoffee/airo/releases/latest/download/app-release.apk)
 [![GitHub Release](https://img.shields.io/github/v/release/DevelopersCoffee/airo)](https://github.com/DevelopersCoffee/airo/releases)
 [![License](https://img.shields.io/github/license/DevelopersCoffee/airo)](LICENSE)
-[![Flutter](https://img.shields.io/badge/Flutter-3.24.0+-blue.svg)](https://flutter.dev/)
+[![Flutter](https://img.shields.io/badge/Flutter-3.35.7+-blue.svg)](https://flutter.dev/)
 
 A Flutter-based super app combining AI-powered features and financial management tools.
 
@@ -148,8 +148,8 @@ make emulators      # List available emulators
 ## 📋 Prerequisites
 
 ### Required
-- **Flutter SDK**: 3.24.0 or later
-- **Dart SDK**: 3.5.0 or later
+- **Flutter SDK**: 3.35.7 or later
+- **Dart SDK**: 3.9.2 or later
 
 ### Platform-Specific Requirements
 
@@ -161,8 +161,9 @@ make emulators      # List available emulators
 
 #### iOS Development (macOS only)
 - **Xcode**: 15.0 or later
-- **iOS SDK**: 12.0 or later
-- **Swift Package Manager**: Built into Xcode (no CocoaPods needed)
+- **iOS SDK**: 15.5 or later
+- **CocoaPods**: Required by the checked-in Flutter iOS integration (`app/ios/Podfile`)
+- **Note**: Normal Flutter commands handle pod integration; manual `pod install` is usually not needed
 
 #### Web Development
 - **Chrome**: Latest version (recommended)

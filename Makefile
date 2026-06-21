@@ -93,9 +93,12 @@ setup-ios: ## Setup iOS development environment (macOS only)
 	else \
 		if ! command -v xcodebuild &> /dev/null; then \
 			echo "$(RED)Xcode is not installed. Please install Xcode from App Store.$(NC)"; \
+		elif ! command -v pod &> /dev/null; then \
+			echo "$(RED)CocoaPods is not installed. Install it before building iOS targets.$(NC)"; \
+			echo "$(YELLOW)Example: sudo gem install cocoapods$(NC)"; \
 		else \
-			echo "$(GREEN)iOS uses Swift Package Manager (SPM) - no additional setup needed$(NC)"; \
-			echo "$(GREEN)Run 'make build-ios' to build the app$(NC)"; \
+			echo "$(GREEN)iOS dependencies are managed through the checked-in Podfile.$(NC)"; \
+			echo "$(GREEN)Run 'make build-ios' or 'flutter build ios' to let Flutter handle pod integration.$(NC)"; \
 		fi \
 	fi
 

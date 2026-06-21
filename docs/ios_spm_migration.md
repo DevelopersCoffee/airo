@@ -1,18 +1,18 @@
-# iOS Swift Package Manager (SPM) Migration Guide
+# iOS Dependency Integration Status
 
 ## Overview
 
-This document describes the migration from CocoaPods to Swift Package Manager (SPM) for iOS dependency management in the Airo project.
+This document records the attempted migration from CocoaPods to Swift Package Manager (SPM) for iOS dependency management in the Airo project and clarifies the current repository state.
 
-**Status**: ✅ **Migration Complete** (SPM Enabled)
+**Status**: ⚠️ **Migration Not Completed** (repository still uses CocoaPods)
 
-**Date**: March 8, 2026
+**Last Reviewed**: June 21, 2026
 
 ---
 
 ## Migration Summary
 
-### What Changed
+### Historical Migration Work
 
 1. **Flutter SPM Support Enabled**: `flutter config --enable-swift-package-manager`
 2. **SPM Package Generated**: `FlutterGeneratedPluginSwiftPackage` created in `app/ios/Flutter/ephemeral/Packages/`
@@ -20,21 +20,21 @@ This document describes the migration from CocoaPods to Swift Package Manager (S
 4. **Makefile Updated**: Removed `pod install` commands from `setup-ios` target
 5. **Dependencies Updated**: Fixed `meta` package version conflicts across all core packages
 
-### What Was Removed
+### Current Repository Reality
 
-- ❌ No `Podfile` in version control (Flutter may generate one temporarily during builds)
-- ❌ No `Podfile.lock`
-- ❌ No `Pods/` directory
-- ❌ No CocoaPods installation required
+- `app/ios/Podfile` is committed and calls `flutter_install_all_ios_pods`
+- The standard contributor path still depends on CocoaPods being installed locally
+- Flutter may still generate SPM-related intermediate files, but they are not the source of truth for this repository
+- Older docs that describe a completed SPM migration should be treated as historical notes, not current setup guidance
 
 ---
 
 ## Current State
 
-### ✅ Completed Steps
+### Signals That SPM Was Evaluated
 
-1. **SPM Enabled**: Flutter is configured to use Swift Package Manager
-2. **Package Generated**: All 22 iOS plugins are managed via SPM:
+1. **SPM Enabled**: Flutter was configured to experiment with Swift Package Manager support
+2. **Package Generated**: Flutter generated an SPM package for these plugins at one point:
    - `firebase_core`, `firebase_auth`
    - `google_sign_in_ios`
    - `audio_service`, `just_audio`, `audioplayers_darwin`
@@ -48,21 +48,19 @@ This document describes the migration from CocoaPods to Swift Package Manager (S
    - `flutter_secure_storage_darwin`
    - `integration_test`
 
-3. **Workspace Configured**: `Runner.xcworkspace/contents.xcworkspacedata` includes SPM package reference
+3. **Workspace Configured**: `Runner.xcworkspace/contents.xcworkspacedata` was updated during migration experiments
 
-### ⚠️ Known Limitations
+### Why The Migration Cannot Be Treated As Complete
 
-1. **CocoaPods Warning**: Flutter build system may still show warnings about CocoaPods not being installed. This is a known issue in Flutter's SPM implementation and can be safely ignored.
-
-2. **Temporary Podfile**: Flutter may generate a temporary `Podfile` during builds. This is part of the migration process and should not be committed to version control.
-
-3. **Build System Transition**: Flutter's SPM support is still maturing. Some build commands may show CocoaPods-related warnings even though SPM is being used.
+1. **Checked-in Podfile**: The repository still contains a committed `Podfile`, not just ephemeral Flutter output.
+2. **Current Setup Instructions**: iOS setup still has to account for CocoaPods on developer machines.
+3. **Build Reliability**: Until iOS CI and local validation pass without CocoaPods, SPM-only guidance is misleading.
 
 ---
 
-## Dependencies Managed by SPM
+## Historical SPM Output
 
-All Flutter plugins are now managed via Swift Package Manager. The generated `Package.swift` file includes:
+Flutter generated an SPM package during migration work. That does not override the current Podfile-based setup. The generated `Package.swift` looked like:
 
 ```swift
 // Location: app/ios/Flutter/ephemeral/Packages/FlutterGeneratedPluginSwiftPackage/Package.swift
@@ -83,7 +81,7 @@ let package = Package(
 
 - macOS with Xcode installed
 - Flutter SDK 3.35.7+
-- No CocoaPods installation required
+- CocoaPods installed locally
 
 ### Build Commands
 
@@ -92,7 +90,7 @@ let package = Package(
 cd app
 flutter clean
 
-# Get dependencies (regenerates SPM package)
+# Get dependencies
 flutter pub get
 
 # Build for simulator
@@ -108,7 +106,7 @@ flutter run -d <simulator-id>
 ### Using Makefile
 
 ```bash
-# Setup iOS (no longer runs pod install)
+# Setup iOS (verifies Xcode and CocoaPods are available)
 make setup-ios
 
 # Build iOS app
@@ -119,14 +117,11 @@ make build-ios
 
 ## Testing Instructions
 
-### 1. Verify SPM Package Generation
+### 1. Verify CocoaPods Tooling
 
 ```bash
-# Check that SPM package exists
-ls -la app/ios/Flutter/ephemeral/Packages/FlutterGeneratedPluginSwiftPackage/
-
-# View Package.swift
-cat app/ios/Flutter/ephemeral/Packages/FlutterGeneratedPluginSwiftPackage/Package.swift
+pod --version
+test -f app/ios/Podfile
 ```
 
 ### 2. Build on Simulator
@@ -193,7 +188,7 @@ Test each high-risk plugin identified in the audit:
 
 **Symptom**: Build shows warning about CocoaPods not being installed
 
-**Solution**: This is expected behavior. Flutter's SPM implementation still shows this warning, but it can be safely ignored. The build uses SPM for dependency management.
+**Solution**: Install CocoaPods and rerun the build. For the current repository state, this warning should be treated as actionable.
 
 ### Issue: Build Fails with Missing Plugins
 
@@ -286,7 +281,7 @@ flutter build ios
 - [x] Enable Flutter SPM support
 - [x] Clean and regenerate dependencies
 - [x] Verify SPM package generation
-- [x] Update Makefile to remove CocoaPods references
+- [x] Update Makefile during the migration experiment
 - [x] Update workspace configuration
 - [x] Fix dependency version conflicts
 - [ ] Test build on simulator (requires Xcode setup)
@@ -299,16 +294,14 @@ flutter build ios
 
 ## Next Steps
 
-1. **Complete Testing**: Build and test on actual iOS devices to verify all plugins work correctly
-2. **CI/CD Updates**: Update GitHub Actions or other CI/CD workflows to use SPM instead of CocoaPods
-3. **Team Communication**: Notify team members about the migration and new build process
-4. **Monitor Issues**: Track any plugin-related issues that arise after migration
-5. **Update Documentation**: Keep this document updated with any new findings or solutions
+1. **Decide Source of Truth**: Either finish the SPM migration or explicitly standardize on CocoaPods for now
+2. **Complete Testing**: Build and test on actual iOS devices to verify all plugins work correctly
+3. **CI/CD Updates**: Update GitHub Actions only after iOS builds pass without CocoaPods
+4. **Team Communication**: Notify team members that older SPM-only instructions are historical
+5. **Update Documentation**: Keep this document aligned with the checked-in iOS integration files
 
 ---
 
-**Migration Completed By**: Augment Code AI Assistant
-**Last Updated**: March 8, 2026
-
-
+**Status Maintained By**: Codex automation
+**Last Updated**: June 21, 2026
 
