@@ -12,17 +12,27 @@ class SkillModelAction {
     required this.tool,
     this.arguments = const {},
   }) : type = SkillModelActionType.toolCall,
-       message = null;
+       message = null,
+       pendingCalendarEvent = null;
 
   const SkillModelAction.finalAnswer(this.message)
     : type = SkillModelActionType.finalAnswer,
       tool = null,
-      arguments = const {};
+      arguments = const {},
+      pendingCalendarEvent = null;
+
+  const SkillModelAction.finalAnswerWithCalendarPrompt({
+    required this.message,
+    required this.pendingCalendarEvent,
+  }) : type = SkillModelActionType.finalAnswer,
+       tool = null,
+       arguments = const {};
 
   final SkillModelActionType type;
   final String? tool;
   final Map<String, dynamic> arguments;
   final String? message;
+  final Map<String, dynamic>? pendingCalendarEvent;
 }
 
 abstract interface class AgentSkillModelClient {
@@ -158,33 +168,43 @@ class RuleBasedAgentSkillModelClient implements AgentSkillModelClient {
         final noun = category == 'medicine'
             ? 'medicine reminders'
             : 'reminders';
-        return SkillModelAction.finalAnswer(
-          'I scheduled ${notifications.length} $noun for "$title".',
+        return _reminderFinalAnswer(
+          message: 'I scheduled ${notifications.length} $noun for "$title".',
+          result: result,
+          currentDate: _currentDateFromToolResults(toolResults),
         );
       }
       if (repeatDaily && _reminderParser.isScheduleCheck(prompt)) {
-        return SkillModelAction.finalAnswer(
-          'The daily reminder to check your schedule for today has been '
-          'successfully scheduled for $time.',
+        return _reminderFinalAnswer(
+          message:
+              'The daily reminder to check your schedule for today has been '
+              'successfully scheduled for $time.',
+          result: result,
+          currentDate: _currentDateFromToolResults(toolResults),
         );
       }
       final cadence = repeatDaily ? 'daily reminder' : 'reminder';
       if (requiresCompletion) {
-        return SkillModelAction.finalAnswer(
-          'The $cadence "$title" has been scheduled for $time and will keep '
-          'asking until you mark it done.',
+        return _reminderFinalAnswer(
+          message:
+              'The $cadence "$title" has been scheduled for $time and will '
+              'keep asking until you mark it done.',
+          result: result,
+          currentDate: _currentDateFromToolResults(toolResults),
         );
       }
-      return SkillModelAction.finalAnswer(
-        'The $cadence "$title" has been successfully scheduled for $time.',
+      return _reminderFinalAnswer(
+        message:
+            'The $cadence "$title" has been successfully scheduled for $time.',
+        result: result,
+        currentDate: _currentDateFromToolResults(toolResults),
       );
     }
 
-    final needsCurrentDate = _reminderParser.needsCurrentDate(prompt);
     final hasDateTime = toolResults.any(
       (result) => result['tool'] == 'get_current_date_time',
     );
-    if (needsCurrentDate && !hasDateTime) {
+    if (!hasDateTime) {
       return const SkillModelAction.toolCall(tool: 'get_current_date_time');
     }
 
@@ -201,6 +221,24 @@ class RuleBasedAgentSkillModelClient implements AgentSkillModelClient {
     return SkillModelAction.toolCall(
       tool: 'schedule_notification',
       arguments: parsed.toConnectorArguments(),
+    );
+  }
+
+  SkillModelAction _reminderFinalAnswer({
+    required String message,
+    required Map<String, dynamic> result,
+    required String? currentDate,
+  }) {
+    final pendingCalendarEvent = _calendarEventFromNotificationResult(
+      result,
+      currentDate: currentDate,
+    );
+    if (pendingCalendarEvent == null) {
+      return SkillModelAction.finalAnswer(message);
+    }
+    return SkillModelAction.finalAnswerWithCalendarPrompt(
+      message: _withCalendarPrompt(message),
+      pendingCalendarEvent: pendingCalendarEvent,
     );
   }
 }
@@ -281,6 +319,7 @@ class AgentSkillOrchestrator {
           handled: true,
           message: action.message ?? '',
           traces: traces,
+          pendingCalendarEvent: action.pendingCalendarEvent,
         );
       }
 
@@ -378,6 +417,49 @@ class AgentSkillOrchestrator {
       return null;
     }
   }
+}
+
+String _withCalendarPrompt(String message) {
+  return '$message Do you want me to add this to your calendar too so it can '
+      'sync across devices?';
+}
+
+Map<String, dynamic>? _calendarEventFromNotificationResult(
+  Map<String, dynamic> result, {
+  required String? currentDate,
+}) {
+  final notifications = result['notifications'] as List? ?? const [];
+  if (notifications.length > 1) return null;
+
+  final notification = notifications.whereType<Map>().firstOrNull ?? result;
+  final title = notification['title'] as String? ?? result['title'] as String?;
+  final date =
+      notification['date'] as String? ??
+      result['date'] as String? ??
+      currentDate;
+  final hour = notification['hour'] as int? ?? result['hour'] as int?;
+  final minute =
+      notification['minute'] as int? ?? result['minute'] as int? ?? 0;
+  if (title == null || title.isEmpty || date == null || hour == null) {
+    return null;
+  }
+
+  return {
+    'title': title,
+    'message':
+        notification['message'] as String? ??
+        result['message'] as String? ??
+        'Reminder: $title',
+    'date': date,
+    'hour': hour,
+    'minute': minute,
+    'duration_minutes': 30,
+    'repeat_daily':
+        notification['repeat_daily'] as bool? ??
+        result['repeat_daily'] as bool? ??
+        false,
+    'source': 'reminder_confirmation',
+  };
 }
 
 SkillModelAction? parseSkillModelAction(String text) {

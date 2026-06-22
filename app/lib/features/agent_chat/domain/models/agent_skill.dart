@@ -90,20 +90,29 @@ class AgentRunResult extends Equatable {
   final String message;
   final List<AgentActionTrace> traces;
   final bool isError;
+  final Map<String, dynamic>? pendingCalendarEvent;
 
   const AgentRunResult({
     required this.handled,
     required this.message,
     this.traces = const [],
     this.isError = false,
+    this.pendingCalendarEvent,
   });
 
   const AgentRunResult.notHandled()
     : handled = false,
       message = '',
       traces = const [],
-      isError = false;
+      isError = false,
+      pendingCalendarEvent = null;
 
   @override
-  List<Object?> get props => [handled, message, traces, isError];
+  List<Object?> get props => [
+    handled,
+    message,
+    traces,
+    isError,
+    pendingCalendarEvent,
+  ];
 }
