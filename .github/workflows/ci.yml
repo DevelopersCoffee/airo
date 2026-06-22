@@ -344,6 +344,9 @@ jobs:
           cd ../core_auth && flutter pub get
           cd ../../app && flutter pub get
 
+      - name: Patch Android plugin Gradle files
+        run: scripts/patch-android-plugin-gradle.sh
+
       - name: Run code generation
         if: matrix.platform.name == 'mobile-full'
         run: |
