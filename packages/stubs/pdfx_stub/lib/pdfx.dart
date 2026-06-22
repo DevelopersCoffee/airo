@@ -1,36 +1,9 @@
+/// Stub implementation of pdfx for lean Android variants.
 library;
 
 import 'dart:typed_data';
 
-class PdfDocument {
-  PdfDocument._();
-
-  int get pagesCount => 0;
-
-  static Future<PdfDocument> openFile(String path) async => PdfDocument._();
-
-  static Future<PdfDocument> openData(Uint8List data) async => PdfDocument._();
-
-  Future<PdfPage> getPage(int pageNumber) async => PdfPage._();
-
-  Future<void> close() async {}
-}
-
-class PdfPage {
-  PdfPage._();
-
-  double get width => 1;
-  double get height => 1;
-
-  Future<PdfPageImage?> render({
-    required double width,
-    required double height,
-    required PdfPageImageFormat format,
-    String? backgroundColor,
-  }) async => null;
-
-  Future<void> close() async {}
-}
+enum PdfPageImageFormat { png, jpeg }
 
 class PdfPageImage {
   const PdfPageImage({
@@ -44,4 +17,33 @@ class PdfPageImage {
   final int height;
 }
 
-enum PdfPageImageFormat { png }
+class PdfPage {
+  const PdfPage({this.width = 1, this.height = 1});
+
+  final double width;
+  final double height;
+
+  Future<PdfPageImage?> render({
+    required double width,
+    required double height,
+    PdfPageImageFormat format = PdfPageImageFormat.png,
+    String? backgroundColor,
+  }) async => null;
+
+  Future<void> close() async {}
+}
+
+class PdfDocument {
+  const PdfDocument({this.pagesCount = 0});
+
+  final int pagesCount;
+
+  static Future<PdfDocument> openFile(String path) async => const PdfDocument();
+
+  static Future<PdfDocument> openData(Uint8List data) async =>
+      const PdfDocument();
+
+  Future<PdfPage> getPage(int pageNumber) async => const PdfPage();
+
+  Future<void> close() async {}
+}

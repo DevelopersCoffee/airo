@@ -2,6 +2,23 @@ import java.io.FileInputStream
 import java.util.Base64
 import java.util.Properties
 
+fun dartDefine(name: String): String? {
+    val encodedDefines = providers.gradleProperty("dart-defines").orNull ?: return null
+    return encodedDefines
+        .split(",")
+        .asSequence()
+        .mapNotNull { encoded ->
+            runCatching {
+                String(Base64.getDecoder().decode(encoded))
+            }.getOrNull()
+        }
+        .firstOrNull { it.startsWith("$name=") }
+        ?.substringAfter("=")
+}
+
+val appVariant = dartDefine("APP_VARIANT") ?: "full"
+val isLeanVariant = appVariant != "full"
+
 plugins {
     id("com.android.application")
     id("kotlin-android")
@@ -15,18 +32,6 @@ android {
     namespace = "io.airo.app"
     compileSdk = 36 // Android 15 (API level 35) for Pixel 9 compatibility
     ndkVersion = flutter.ndkVersion
-    val dartDefines = providers.gradleProperty("dart-defines").orNull
-        ?.split(",")
-        ?.mapNotNull { encoded ->
-            runCatching {
-                String(Base64.getDecoder().decode(encoded))
-            }.getOrNull()
-        }
-        ?: emptyList()
-    val appPlatform = dartDefines
-        .firstOrNull { it.startsWith("APP_PLATFORM=") }
-        ?.substringAfter("=")
-    val isReducedVariant = appPlatform == "androidTv" || appPlatform == "mobileStreaming"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -123,13 +128,13 @@ android {
         }
     }
 
-    if (isReducedVariant) {
-        packaging {
-            jniLibs {
+    packaging {
+        jniLibs {
+            if (isLeanVariant) {
                 excludes += setOf(
-                    "**/libLiteRt.so",
-                    "**/libLiteRtClGlAccelerator.so",
                     "**/liblitertlm_jni.so",
+                    "**/libLiteRt.so",
+                    "**/libLiteRtClGlAccelerator.so"
                 )
             }
         }
@@ -141,8 +146,7 @@ dependencies {
     // Core library desugaring for flutter_local_notifications
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
 
-    // ML Kit GenAI Prompt API for on-device Gemini Nano
-    // Based on: https://developers.google.com/ml-kit/genai/prompt/android/get-started
+    // ML Kit GenAI Prompt API for on-device Gemini Nano.
     implementation("com.google.mlkit:genai-prompt:1.0.0-beta1")
 
     // LiteRT-LM for local on-device LLM inference.

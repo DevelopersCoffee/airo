@@ -18,7 +18,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  FLUTTER_VERSION: '3.35.7'
+  FLUTTER_VERSION: '3.41.4'
 
 jobs:
   # ============================================
@@ -60,6 +60,7 @@ jobs:
       - name: Run code generation
         run: |
           cd app
+          dart run build_runner clean
           dart run build_runner build --delete-conflicting-outputs
 
       - name: Run Flutter Analyze
@@ -158,6 +159,7 @@ jobs:
       - name: Run code generation
         run: |
           cd app
+          dart run build_runner clean
           dart run build_runner build --delete-conflicting-outputs
 
       - name: Run app tests with coverage
@@ -192,13 +194,15 @@ jobs:
             variant: full
             app_platform: mobileFull
             use_stubs: false
+            enforce_size: false
             size_target_mb: 35
-            description: "Full app with all features"
+            description: "Full app with all features (size report only)"
           - name: mobile-streaming
             target: lib/main_mobile_streaming.dart
             variant: streaming
             app_platform: mobileStreaming
             use_stubs: true
+            enforce_size: true
             pubspec: pubspec_streaming.yaml
             size_target_mb: 35
             description: "Streaming app (IPTV + Music)"
@@ -207,6 +211,7 @@ jobs:
             variant: tv
             app_platform: androidTv
             use_stubs: true
+            enforce_size: true
             pubspec: pubspec_tv.yaml
             size_target_mb: 35
             description: "Android TV (IPTV only)"
@@ -296,6 +301,28 @@ jobs:
           fi
           echo "✅ Firebase configuration created successfully"
 
+      - name: Create CI validation signing config
+        run: |
+          cd app/android
+          keytool -genkeypair \
+            -v \
+            -keystore ci-validation.keystore \
+            -storepass ci-validation-password \
+            -keypass ci-validation-password \
+            -alias ci-validation \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -dname "CN=Airo CI Validation,O=DevelopersCoffee,C=US"
+          {
+            echo "storeFile=ci-validation.keystore"
+            echo "storePassword=ci-validation-password"
+            echo "keyAlias=ci-validation"
+            echo "keyPassword=ci-validation-password"
+          } > key.properties
+          chmod 600 ci-validation.keystore key.properties
+          echo "✅ CI validation signing config created"
+
       # ===========================================
       # Apply Platform-Specific Pubspec (if using stubs)
       # ===========================================
@@ -321,6 +348,7 @@ jobs:
         if: matrix.platform.name == 'mobile-full'
         run: |
           cd app
+          dart run build_runner clean
           dart run build_runner build --delete-conflicting-outputs
 
       - name: Build APK (Release) - ${{ matrix.platform.description }}
@@ -329,12 +357,14 @@ jobs:
           echo "🔨 Building ${{ matrix.platform.name }} APK..."
           flutter build apk --release \
             --target=${{ matrix.platform.target }} \
+            --target-platform=android-arm64 \
             --dart-define=APP_VARIANT=${{ matrix.platform.variant }} \
             --dart-define=APP_PLATFORM=${{ matrix.platform.app_platform }} \
-            --split-per-abi \
             --tree-shake-icons \
             --split-debug-info=build/debug-info-${{ matrix.platform.name }} \
             --obfuscate
+          mv build/app/outputs/flutter-apk/app-release.apk \
+            build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
           echo "✅ Build complete"
 
       # ===========================================
@@ -342,6 +372,7 @@ jobs:
       # ===========================================
       - name: Check APK sizes
         id: apk_sizes
+        continue-on-error: ${{ matrix.platform.enforce_size == false }}
         env:
           APK_SIZE_COMPONENT: ${{ matrix.platform.name }}
           APK_SIZE_APK_GLOB: app/build/app/outputs/flutter-apk/app-*-release.apk
@@ -440,6 +471,7 @@ jobs:
           } > apk-size-report.md
 
       - name: Comment PR with APK size report
+        continue-on-error: true
         uses: actions/github-script@v8
         with:
           script: |

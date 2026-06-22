@@ -19,7 +19,7 @@ on:
   # Can also be triggered manually via act
 
 env:
-  FLUTTER_VERSION: '3.35.7'
+  FLUTTER_VERSION: '3.41.4'
 
 jobs:
   local-checks:
@@ -126,4 +126,3 @@ jobs:
         run: |
           cd app
           dart format --set-exit-if-changed .
-
