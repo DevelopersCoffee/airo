@@ -23,7 +23,7 @@ dependencies:
   flutter_riverpod: 2.6.1
 
   # Storage & Persistence
-  shared_preferences: 2.5.4
+  shared_preferences: 2.5.5
   drift: ^2.18.0
   sqlite3_flutter_libs: ^0.5.41
   hive: 2.2.3
@@ -32,10 +32,10 @@ dependencies:
   path_provider: 2.1.5
 
   # Connectivity
-  connectivity_plus: 7.0.0
+  connectivity_plus: 7.1.1
 
   # Networking
-  dio: 5.9.1
+  dio: 5.9.2
 
   # Firebase & Authentication
   firebase_core: 4.4.0
@@ -68,7 +68,7 @@ dependencies:
   airomoney:
     path: ../packages/airomoney
 
-  cupertino_icons: 1.0.8
+  cupertino_icons: 1.0.9
   equatable: 2.0.8
   flame: 1.35.0
   flame_audio: 2.11.13

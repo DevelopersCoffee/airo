@@ -29,7 +29,7 @@ dependencies:
   flutter_riverpod: 2.6.1
 
   # Storage & Persistence
-  shared_preferences: 2.5.4
+  shared_preferences: 2.5.5
   drift: ^2.18.0
   sqlite3_flutter_libs: ^0.5.41
   hive: 2.2.3
@@ -38,10 +38,10 @@ dependencies:
   path_provider: 2.1.5
 
   # Connectivity
-  connectivity_plus: 7.0.0
+  connectivity_plus: 7.1.1
 
   # Networking
-  dio: 5.9.1
+  dio: 5.9.2
 
   # Firebase & Authentication
   firebase_core: 4.4.0
@@ -51,6 +51,9 @@ dependencies:
   # Audio & Media (TV variant - no background audio service needed)
   video_player: 2.10.1
   wakelock_plus: 1.4.0
+  pdfx: 2.9.2
+  flutter_local_notifications: 20.1.0
+  timezone: 0.10.1
 
   # Utilities
   intl: 0.20.2
@@ -73,7 +76,7 @@ dependencies:
     path: ../packages/airo
 
   # UI
-  cupertino_icons: 1.0.8
+  cupertino_icons: 1.0.9
   equatable: 2.0.8
   cached_network_image: 3.4.1
 
@@ -159,6 +162,12 @@ dependency_overrides:
     path: ../packages/stubs/flutter_contacts_stub
   permission_handler:
     path: ../packages/stubs/permission_handler_stub
+  flutter_local_notifications:
+    path: ../packages/stubs/flutter_local_notifications_stub
+  timezone:
+    path: ../packages/stubs/timezone_stub
+  pdfx:
+    path: ../packages/stubs/pdfx_stub
 
 flutter:
   uses-material-design: true
@@ -166,4 +175,3 @@ flutter:
     - assets/iptv_channels_fallback.json
     - assets/iptv_channels.json
     - assets/airo_icon.png
-

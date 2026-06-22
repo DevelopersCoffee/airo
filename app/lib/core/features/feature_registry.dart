@@ -124,8 +124,7 @@ class FeatureRegistry {
       List.unmodifiable(_features);
 
   /// Check if a specific feature is registered
-  static bool isRegistered(String name) =>
-      _features.any((f) => f.name == name);
+  static bool isRegistered(String name) => _features.any((f) => f.name == name);
 
   /// Get feature count
   static int get featureCount => _features.length;
@@ -133,4 +132,3 @@ class FeatureRegistry {
   /// Get feature names for logging
   static List<String> get featureNames => _features.map((f) => f.name).toList();
 }
-

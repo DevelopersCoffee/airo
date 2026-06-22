@@ -1,0 +1,12 @@
+name: flutter_local_notifications
+description: Stub implementation of flutter_local_notifications for TV builds
+version: 20.1.0
+publish_to: none
+
+environment:
+  sdk: ">=3.9.2 <4.0.0"
+  flutter: ">=3.35.7"
+
+dependencies:
+  flutter:
+    sdk: flutter

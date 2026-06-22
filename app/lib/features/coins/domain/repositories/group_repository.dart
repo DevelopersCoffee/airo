@@ -87,4 +87,3 @@ abstract class GroupRepository {
   /// Watch group expenses
   Stream<List<SharedExpense>> watchExpenses(String groupId);
 }
-

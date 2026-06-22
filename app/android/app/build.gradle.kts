@@ -1,4 +1,5 @@
 import java.io.FileInputStream
+import java.util.Base64
 import java.util.Properties
 
 plugins {
@@ -14,6 +15,18 @@ android {
     namespace = "io.airo.app"
     compileSdk = 36 // Android 15 (API level 35) for Pixel 9 compatibility
     ndkVersion = flutter.ndkVersion
+    val dartDefines = providers.gradleProperty("dart-defines").orNull
+        ?.split(",")
+        ?.mapNotNull { encoded ->
+            runCatching {
+                String(Base64.getDecoder().decode(encoded))
+            }.getOrNull()
+        }
+        ?: emptyList()
+    val appPlatform = dartDefines
+        .firstOrNull { it.startsWith("APP_PLATFORM=") }
+        ?.substringAfter("=")
+    val isReducedVariant = appPlatform == "androidTv" || appPlatform == "mobileStreaming"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -38,10 +51,6 @@ android {
         // Enable multidex for larger apps
         multiDexEnabled = true
 
-        ndk {
-            abiFilters += listOf("arm64-v8a", "x86_64")
-        }
-
         testInstrumentationRunner = "pl.leancode.patrol.PatrolJUnitRunner"
         testInstrumentationRunnerArguments["clearPackageData"] = "true"
     }
@@ -63,8 +72,9 @@ android {
         val normalized = taskName.lowercase()
         normalized.contains("release") || normalized.contains("bundle")
     }
+    val isCiBuild = providers.environmentVariable("CI").orNull.equals("true", ignoreCase = true)
 
-    if (!hasReleaseSigningConfig && requestedReleaseBuild) {
+    if (!hasReleaseSigningConfig && requestedReleaseBuild && !isCiBuild) {
         throw GradleException(
             "Missing Android release signing properties: ${missingSigningProperties.joinToString()}. " +
                 "Copy app/android/key.properties.example to app/android/key.properties " +
@@ -88,7 +98,11 @@ android {
             // Enable test plugins for debug/test builds
         }
         release {
-            signingConfig = signingConfigs.getByName("release")
+            signingConfig = if (hasReleaseSigningConfig) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
 
             // Enable code shrinking (R8/ProGuard)
             isMinifyEnabled = true
@@ -106,6 +120,18 @@ android {
     sourceSets {
         getByName("main") {
             kotlin.srcDir("src/main/kotlin")
+        }
+    }
+
+    if (isReducedVariant) {
+        packaging {
+            jniLibs {
+                excludes += setOf(
+                    "**/libLiteRt.so",
+                    "**/libLiteRtClGlAccelerator.so",
+                    "**/liblitertlm_jni.so",
+                )
+            }
         }
     }
 

@@ -52,4 +52,3 @@ abstract class AccountRepository {
   /// Get total balance across all accounts
   Future<Result<int>> getTotalBalance();
 }
-

@@ -63,4 +63,3 @@ abstract class SettlementRepository {
     int limit = 20,
   });
 }
-

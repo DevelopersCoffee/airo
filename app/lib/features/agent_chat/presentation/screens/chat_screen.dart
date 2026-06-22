@@ -85,6 +85,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         runtimeService: _assistantRuntime,
         selectedModelId: () => ref.read(selectedAssistantModelIdProvider),
       ),
+      useFallbackModelClient: false,
     );
     // Add welcome message
     _messages.add(
@@ -568,6 +569,56 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     }
   }
 
+  Future<void> _createPendingCalendarEvent(
+    Map<String, dynamic> calendarEvent,
+  ) async {
+    final result = await _connectorRegistry.execute(
+      'create_calendar_event',
+      calendarEvent,
+    );
+    final title = calendarEvent['title'] as String? ?? 'reminder';
+    setState(() {
+      _messages.add(
+        ChatMessage(
+          text: result.isError
+              ? result.message ??
+                    'I could not add "$title" to Calendar on this device yet.'
+              : 'I added "$title" to your calendar.',
+          isUser: false,
+          traces: [
+            AgentActionTrace(
+              title: 'Execute action',
+              detail: 'create_calendar_event',
+              parameters: calendarEvent,
+              success: !result.isError,
+            ),
+          ],
+        ),
+      );
+    });
+  }
+
+  bool _isCalendarConfirmation(String message) {
+    final lower = message.toLowerCase().trim();
+    return lower == 'yes' ||
+        lower == 'yeah' ||
+        lower == 'yep' ||
+        lower == 'sure' ||
+        lower.contains('add it') ||
+        lower.contains('add to calendar') ||
+        lower.contains('calendar too');
+  }
+
+  bool _isCalendarRejection(String message) {
+    final lower = message.toLowerCase().trim();
+    return lower == 'no' ||
+        lower == 'nope' ||
+        lower.contains('do not') ||
+        lower.contains("don't") ||
+        lower.contains('skip') ||
+        lower.contains('not now');
+  }
+
   Future<bool> _tryIngestFinanceMessage(String message) async {
     try {
       final accounts = await ref.read(expenseAccountOptionsProvider.future);
@@ -629,56 +680,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       case FinanceChatIngestionStatus.ignored:
         return 'I could not read this as a finance transaction.';
     }
-  }
-
-  Future<void> _createPendingCalendarEvent(
-    Map<String, dynamic> calendarEvent,
-  ) async {
-    final result = await _connectorRegistry.execute(
-      'create_calendar_event',
-      calendarEvent,
-    );
-    final title = calendarEvent['title'] as String? ?? 'reminder';
-    setState(() {
-      _messages.add(
-        ChatMessage(
-          text: result.isError
-              ? result.message ??
-                    'I could not add "$title" to Calendar on this device yet.'
-              : 'I added "$title" to your calendar.',
-          isUser: false,
-          traces: [
-            AgentActionTrace(
-              title: 'Execute action',
-              detail: 'create_calendar_event',
-              parameters: calendarEvent,
-              success: !result.isError,
-            ),
-          ],
-        ),
-      );
-    });
-  }
-
-  bool _isCalendarConfirmation(String message) {
-    final lower = message.toLowerCase().trim();
-    return lower == 'yes' ||
-        lower == 'yeah' ||
-        lower == 'yep' ||
-        lower == 'sure' ||
-        lower.contains('add it') ||
-        lower.contains('add to calendar') ||
-        lower.contains('calendar too');
-  }
-
-  bool _isCalendarRejection(String message) {
-    final lower = message.toLowerCase().trim();
-    return lower == 'no' ||
-        lower == 'nope' ||
-        lower.contains('do not') ||
-        lower.contains("don't") ||
-        lower.contains('skip') ||
-        lower.contains('not now');
   }
 
   Future<void> _generateSelectedModelResponse(

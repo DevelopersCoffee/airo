@@ -1,0 +1,3 @@
+library;
+
+void initializeTimeZones() {}

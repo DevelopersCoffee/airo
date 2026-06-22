@@ -5,8 +5,9 @@ import 'package:airo_app/features/iptv/presentation/widgets/go_live_button.dart'
 
 void main() {
   group('GoLiveButton', () {
-    testWidgets('should not render when shouldShowGoLive is false',
-        (tester) async {
+    testWidgets('should not render when shouldShowGoLive is false', (
+      tester,
+    ) async {
       // State at live edge, playing - should not show button
       final state = const StreamingState().copyWith(
         isLiveStream: true,
@@ -17,10 +18,7 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: GoLiveButton(
-              state: state,
-              onGoLive: () {},
-            ),
+            body: GoLiveButton(state: state, onGoLive: () {}),
           ),
         ),
       );
@@ -39,10 +37,7 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: GoLiveButton(
-              state: state,
-              onGoLive: () {},
-            ),
+            body: GoLiveButton(state: state, onGoLive: () {}),
           ),
         ),
       );
@@ -60,10 +55,7 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: GoLiveButton(
-              state: state,
-              onGoLive: () {},
-            ),
+            body: GoLiveButton(state: state, onGoLive: () {}),
           ),
         ),
       );
@@ -71,8 +63,7 @@ void main() {
       expect(find.text('Go Live'), findsOneWidget);
     });
 
-    testWidgets('should trigger onGoLive callback when tapped',
-        (tester) async {
+    testWidgets('should trigger onGoLive callback when tapped', (tester) async {
       bool callbackTriggered = false;
       final state = const StreamingState().copyWith(
         isLiveStream: true,
@@ -137,11 +128,7 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: GoLiveButton(
-              state: state,
-              onGoLive: () {},
-              compact: true,
-            ),
+            body: GoLiveButton(state: state, onGoLive: () {}, compact: true),
           ),
         ),
       );
@@ -152,4 +139,3 @@ void main() {
     });
   });
 }
-

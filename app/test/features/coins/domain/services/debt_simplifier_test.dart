@@ -50,20 +50,17 @@ void main() {
 
       test('should handle multiple debtors and creditors', () {
         // A owes ₹150, B owes ₹50, C is owed ₹100, D is owed ₹100
-        final balances = {
-          'A': -15000,
-          'B': -5000,
-          'C': 10000,
-          'D': 10000,
-        };
+        final balances = {'A': -15000, 'B': -5000, 'C': 10000, 'D': 10000};
 
         final result = simplifier.fromNetBalances(balances);
 
         // Should produce minimal transfers
         // A -> C (₹100), A -> D (₹50), B -> D (₹50)
         // or similar combination totaling ₹200
-        final totalTransferred =
-            result.fold<int>(0, (sum, d) => sum + d.amountCents);
+        final totalTransferred = result.fold<int>(
+          0,
+          (sum, d) => sum + d.amountCents,
+        );
         expect(totalTransferred, 20000);
 
         // Verify balances net out
@@ -82,11 +79,7 @@ void main() {
       test('should handle equal split among 3 people', () {
         // Classic: A paid ₹300 for 3 people, each owes ₹100
         // A is owed ₹200, B owes ₹100, C owes ₹100
-        final balances = {
-          'A': 20000,
-          'B': -10000,
-          'C': -10000,
-        };
+        final balances = {'A': 20000, 'B': -10000, 'C': -10000};
 
         final result = simplifier.fromNetBalances(balances);
 
@@ -111,8 +104,10 @@ void main() {
       test('should use custom currency when provided', () {
         final balances = {'user1': -10000, 'user2': 10000};
 
-        final result =
-            simplifier.fromNetBalances(balances, currencyCode: 'USD');
+        final result = simplifier.fromNetBalances(
+          balances,
+          currencyCode: 'USD',
+        );
 
         expect(result[0].currencyCode, 'USD');
       });

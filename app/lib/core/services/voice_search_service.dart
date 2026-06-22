@@ -53,10 +53,7 @@ class VoiceSearchResult {
 
   /// Factory for error result
   factory VoiceSearchResult.error(String message) {
-    return VoiceSearchResult(
-      errorMessage: message,
-      isSuccess: false,
-    );
+    return VoiceSearchResult(errorMessage: message, isSuccess: false);
   }
 
   /// Factory for empty result (no speech detected)
@@ -159,4 +156,3 @@ final voiceSearchAvailableProvider = FutureProvider<bool>((ref) async {
   final service = ref.watch(voiceSearchServiceProvider);
   return service.isAvailable();
 });
-

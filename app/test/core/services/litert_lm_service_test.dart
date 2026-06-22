@@ -4,15 +4,18 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('LiteRtLmService', () {
-    test('reports unavailable when no active model or model URL exists', () async {
-      final client = _FakeLiteRtLmClient(hasActiveModel: false);
-      final service = LiteRtLmService(client: client);
+    test(
+      'reports unavailable when no active model or model URL exists',
+      () async {
+        final client = _FakeLiteRtLmClient(hasActiveModel: false);
+        final service = LiteRtLmService(client: client);
 
-      final available = await service.isAvailable();
+        final available = await service.isAvailable();
 
-      expect(available, isFalse);
-      expect(client.installCalls, isEmpty);
-    });
+        expect(available, isFalse);
+        expect(client.installCalls, isEmpty);
+      },
+    );
 
     test('installs configured model before generating text', () async {
       final client = _FakeLiteRtLmClient(hasActiveModel: false);
@@ -39,45 +42,53 @@ void main() {
       expect(client.maxTokens.single, 512);
     });
 
-    test('method channel client initializes from cached downloaded path', () async {
-      TestWidgetsFlutterBinding.ensureInitialized();
-      const channel = MethodChannel('test.litert_lm');
-      final calls = <MethodCall>[];
+    test(
+      'method channel client initializes from cached downloaded path',
+      () async {
+        TestWidgetsFlutterBinding.ensureInitialized();
+        const channel = MethodChannel('test.litert_lm');
+        final calls = <MethodCall>[];
 
-      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-          .setMockMethodCallHandler(channel, (call) async {
-            calls.add(call);
-            return switch (call.method) {
-              'isAvailable' => call.arguments['modelPath'] ==
-                  '/app/files/litert_lm_models/gemma.task',
-              'installModel' => '/app/files/litert_lm_models/gemma.task',
-              'initialize' => true,
-              'generateContent' => 'done',
-              _ => null,
-            };
-          });
-      addTearDown(() {
         TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-            .setMockMethodCallHandler(channel, null);
-      });
+            .setMockMethodCallHandler(channel, (call) async {
+              calls.add(call);
+              return switch (call.method) {
+                'isAvailable' =>
+                  call.arguments['modelPath'] ==
+                      '/app/files/litert_lm_models/gemma.task',
+                'installModel' => '/app/files/litert_lm_models/gemma.task',
+                'initialize' => true,
+                'generateContent' => 'done',
+                _ => null,
+              };
+            });
+        addTearDown(() {
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+              .setMockMethodCallHandler(channel, null);
+        });
 
-      final client = MethodChannelLiteRtLmClient(
-        config: const LiteRtLmConfig(modelUrl: 'https://example.com/gemma.task'),
-        channel: channel,
-      );
-      final service = LiteRtLmService(
-        client: client,
-        config: const LiteRtLmConfig(modelUrl: 'https://example.com/gemma.task'),
-      );
+        final client = MethodChannelLiteRtLmClient(
+          config: const LiteRtLmConfig(
+            modelUrl: 'https://example.com/gemma.task',
+          ),
+          channel: channel,
+        );
+        final service = LiteRtLmService(
+          client: client,
+          config: const LiteRtLmConfig(
+            modelUrl: 'https://example.com/gemma.task',
+          ),
+        );
 
-      final response = await service.generateText('hello');
+        final response = await service.generateText('hello');
 
-      expect(response, 'done');
-      expect(
-        calls.where((call) => call.method == 'initialize').single.arguments,
-        containsPair('modelPath', '/app/files/litert_lm_models/gemma.task'),
-      );
-    });
+        expect(response, 'done');
+        expect(
+          calls.where((call) => call.method == 'initialize').single.arguments,
+          containsPair('modelPath', '/app/files/litert_lm_models/gemma.task'),
+        );
+      },
+    );
   });
 }
 

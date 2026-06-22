@@ -75,16 +75,15 @@ class SplitEntry extends Equatable {
 
   @override
   List<Object?> get props => [
-        id,
-        sharedExpenseId,
-        userId,
-        amountCents,
-        percentage,
-        shares,
-        itemIds,
-        isPaid,
-        paidAt,
-        createdAt,
-      ];
+    id,
+    sharedExpenseId,
+    userId,
+    amountCents,
+    percentage,
+    shares,
+    itemIds,
+    isPaid,
+    paidAt,
+    createdAt,
+  ];
 }
-

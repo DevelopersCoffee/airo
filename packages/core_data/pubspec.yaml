@@ -16,12 +16,11 @@ dependencies:
   flutter_secure_storage: ^10.3.1
   connectivity_plus: ^7.1.1
   path: 1.9.1
-  path_provider: ^2.1.6
-  meta: 1.17.0
+  path_provider: ^2.1.5
+  meta: ^1.16.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: 6.0.0
   mocktail: ^1.0.5
-

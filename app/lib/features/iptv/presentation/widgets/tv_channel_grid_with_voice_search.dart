@@ -112,8 +112,7 @@ class _TvChannelGridWithVoiceSearchState
 ///   }
 /// }
 /// ```
-mixin TvVoiceSearchMixin<T extends ConsumerStatefulWidget>
-    on ConsumerState<T> {
+mixin TvVoiceSearchMixin<T extends ConsumerStatefulWidget> on ConsumerState<T> {
   bool _voiceSearchVisible = false;
 
   /// Whether voice search overlay is currently visible
@@ -147,12 +146,8 @@ mixin TvVoiceSearchMixin<T extends ConsumerStatefulWidget>
     return Stack(
       children: [
         child,
-        if (_voiceSearchVisible)
-          VoiceSearchOverlay(
-            onDismiss: hideVoiceSearch,
-          ),
+        if (_voiceSearchVisible) VoiceSearchOverlay(onDismiss: hideVoiceSearch),
       ],
     );
   }
 }
-

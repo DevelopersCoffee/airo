@@ -147,4 +147,3 @@ class AppDatabase {
   Future<Box<Map<dynamic, dynamic>>> get syncMetadataBox =>
       _openBox(_syncMetadataBox);
 }
-

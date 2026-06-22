@@ -7,7 +7,7 @@ import '../../domain/models/streaming_state.dart';
 /// Animates between states for smooth transitions.
 class LiveBadge extends StatelessWidget {
   final StreamingState state;
-  
+
   /// Whether to show the badge even when not live (grayed out)
   final bool showWhenNotLive;
 
@@ -25,7 +25,7 @@ class LiveBadge extends StatelessWidget {
     }
 
     final isAtLive = state.isAtLiveEdge;
-    
+
     // Hide if not at live and showWhenNotLive is false
     if (!isAtLive && !showWhenNotLive) {
       return const SizedBox.shrink();
@@ -35,9 +35,7 @@ class LiveBadge extends StatelessWidget {
       duration: const Duration(milliseconds: 200),
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: isAtLive 
-            ? Colors.red.shade700 
-            : Colors.grey.shade700,
+        color: isAtLive ? Colors.red.shade700 : Colors.grey.shade700,
         borderRadius: BorderRadius.circular(4),
         boxShadow: isAtLive
             ? [
@@ -80,7 +78,8 @@ class _LiveDot extends StatefulWidget {
   State<_LiveDot> createState() => _LiveDotState();
 }
 
-class _LiveDotState extends State<_LiveDot> with SingleTickerProviderStateMixin {
+class _LiveDotState extends State<_LiveDot>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _animation;
 
@@ -91,9 +90,10 @@ class _LiveDotState extends State<_LiveDot> with SingleTickerProviderStateMixin 
       duration: const Duration(milliseconds: 1000),
       vsync: this,
     );
-    _animation = Tween<double>(begin: 0.6, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
+    _animation = Tween<double>(
+      begin: 0.6,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
     if (widget.isActive) {
       _controller.repeat(reverse: true);
     }
@@ -125,7 +125,7 @@ class _LiveDotState extends State<_LiveDot> with SingleTickerProviderStateMixin 
           width: 6,
           height: 6,
           decoration: BoxDecoration(
-            color: widget.isActive 
+            color: widget.isActive
                 ? Colors.white.withValues(alpha: _animation.value)
                 : Colors.white54,
             shape: BoxShape.circle,
@@ -141,15 +141,11 @@ class _LiveDotState extends State<_LiveDot> with SingleTickerProviderStateMixin 
 /// Shows "45s behind" or "2m 30s behind" when user is behind live.
 class DelayIndicator extends StatelessWidget {
   final StreamingState state;
-  
+
   /// Text style override
   final TextStyle? style;
 
-  const DelayIndicator({
-    super.key,
-    required this.state,
-    this.style,
-  });
+  const DelayIndicator({super.key, required this.state, this.style});
 
   @override
   Widget build(BuildContext context) {
@@ -169,14 +165,15 @@ class DelayIndicator extends StatelessWidget {
         ),
         child: Text(
           state.formattedDelay,
-          style: style ?? const TextStyle(
-            color: Colors.white70,
-            fontSize: 12,
-            fontWeight: FontWeight.w500,
-          ),
+          style:
+              style ??
+              const TextStyle(
+                color: Colors.white70,
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
         ),
       ),
     );
   }
 }
-

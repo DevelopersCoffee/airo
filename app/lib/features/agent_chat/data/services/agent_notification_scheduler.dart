@@ -397,7 +397,7 @@ class LocalAgentNotificationScheduler
     tz.setLocalLocation(
       tz.Location('local', [tz.minTime], [0], [
         tz.TimeZone(
-          now.timeZoneOffset,
+          now.timeZoneOffset.inMilliseconds,
           isDst: abbreviation.toUpperCase().contains('DT'),
           abbreviation: abbreviation,
         ),

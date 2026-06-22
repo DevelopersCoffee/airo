@@ -50,7 +50,10 @@ class AccountRepositoryImpl implements AccountRepository {
   Future<Result<Account?>> findDefault() async {
     try {
       final entity = await _localDatasource.getDefaultAccount();
-      return (data: entity != null ? _mapper.toDomain(entity) : null, error: null);
+      return (
+        data: entity != null ? _mapper.toDomain(entity) : null,
+        error: null,
+      );
     } catch (e) {
       return (data: null, error: 'Failed to fetch default account: $e');
     }
@@ -134,9 +137,9 @@ class AccountRepositoryImpl implements AccountRepository {
 
   @override
   Stream<List<Account>> watchActive() {
-    return _localDatasource
-        .watchActiveAccounts()
-        .map((entities) => entities.map(_mapper.toDomain).toList());
+    return _localDatasource.watchActiveAccounts().map(
+      (entities) => entities.map(_mapper.toDomain).toList(),
+    );
   }
 
   @override
@@ -154,4 +157,3 @@ class AccountRepositoryImpl implements AccountRepository {
     }
   }
 }
-
