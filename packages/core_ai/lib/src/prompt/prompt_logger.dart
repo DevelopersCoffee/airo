@@ -1,8 +1,7 @@
-/// Logging infrastructure for prompt execution and regression detection.
-///
-/// Tracks prompt executions with inputs, outputs, and metadata for
-/// debugging and regression detection.
-library;
+// Logging infrastructure for prompt execution and regression detection.
+//
+// Tracks prompt executions with inputs, outputs, and metadata for
+// debugging and regression detection.
 
 /// A single prompt execution log entry.
 class PromptExecutionLog {

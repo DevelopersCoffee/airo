@@ -1,7 +1,6 @@
-/// Core AI package for Airo
-///
-/// Contains LLM client abstractions, prompt management, and AI utilities.
-library;
+// Core AI package for Airo.
+//
+// Contains LLM client abstractions, prompt management, and AI utilities.
 
 // AI Provider
 export 'src/provider/ai_provider.dart';
