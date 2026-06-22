@@ -59,6 +59,10 @@ void main() {
         IntentType.audioScribe,
       );
       expect(
+        IntentParser.parse('start live notes for this team discussion').type,
+        IntentType.liveNotes,
+      );
+      expect(
         IntentParser.parse('open mobile actions').type,
         IntentType.mobileActions,
       );

@@ -323,12 +323,12 @@ class AgentSkillOrchestrator {
         );
       }
 
-      final tool = action.tool;
+      final tool = _normalizeToolName(action.tool, skill);
       if (tool == null || !skill.tools.contains(tool)) {
         traces.add(
           AgentActionTrace(
             title: 'Blocked action',
-            detail: tool ?? 'unknown',
+            detail: action.tool ?? 'unknown',
             success: false,
           ),
         );
@@ -400,6 +400,19 @@ class AgentSkillOrchestrator {
           isError: true,
         );
       }
+
+      if (tool == 'open_route') {
+        final route = result.data['route'] as String?;
+        return AgentRunResult(
+          handled: true,
+          message: result.data['message'] as String? ?? 'Opening Airo feature.',
+          traces: traces,
+          route: route,
+          parameters:
+              (result.data['parameters'] as Map?)?.cast<String, dynamic>() ??
+              const {},
+        );
+      }
     }
 
     return AgentRunResult(
@@ -417,6 +430,24 @@ class AgentSkillOrchestrator {
       return null;
     }
   }
+}
+
+String? _normalizeToolName(String? tool, AgentSkill skill) {
+  if (tool == null) return null;
+  if (skill.tools.contains(tool)) return tool;
+
+  final normalized = tool
+      .trim()
+      .toLowerCase()
+      .replaceAll(RegExp(r'[^a-z0-9]+'), '_')
+      .replaceAll(RegExp(r'^_+|_+$'), '');
+  if (skill.tools.contains(normalized)) return normalized;
+
+  if (normalized == 'open_root' && skill.tools.contains('open_route')) {
+    return 'open_route';
+  }
+
+  return tool;
 }
 
 String _withCalendarPrompt(String message) {

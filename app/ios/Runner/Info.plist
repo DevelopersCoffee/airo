@@ -55,7 +55,7 @@
 	<key>NSCameraUsageDescription</key>
 	<string>This app needs camera access for AI features</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>This app needs microphone access for voice commands</string>
+	<string>Airo uses the microphone only when you explicitly start Meeting Intelligence or voice features. Meeting audio is processed on-device by default.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>This app needs location access for location-based features</string>
 	<key>NSCalendarsUsageDescription</key>

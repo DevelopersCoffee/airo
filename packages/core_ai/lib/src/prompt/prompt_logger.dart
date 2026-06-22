@@ -2,6 +2,7 @@
 ///
 /// Tracks prompt executions with inputs, outputs, and metadata for
 /// debugging and regression detection.
+library;
 
 /// A single prompt execution log entry.
 class PromptExecutionLog {
@@ -195,4 +196,3 @@ class InMemoryPromptLogger implements PromptLogger {
   /// Clear all logs (for testing).
   void clear() => _logs.clear();
 }
-

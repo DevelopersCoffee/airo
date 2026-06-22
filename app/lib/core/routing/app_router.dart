@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../features/auth/screens/login_screen.dart';
 import '../../features/auth/screens/register_screen.dart';
@@ -7,7 +6,7 @@ import '../../features/agent_chat/presentation/screens/chat_screen.dart';
 import '../../features/agent_chat/presentation/screens/model_library_screen.dart';
 import '../../features/agent_chat/presentation/screens/notifications_screen.dart';
 import '../../features/agent_chat/presentation/screens/profile_screen.dart';
-import '../../features/settings/presentation/screens/ai_models_screen.dart';
+import '../../features/meeting/presentation/screens/meeting_home_screen.dart';
 import '../../features/live/presentation/screens/live_screen.dart';
 import '../../features/games/presentation/screens/games_hub_screen.dart';
 import '../../features/quest/presentation/screens/quest_chat_screen.dart';
@@ -65,6 +64,10 @@ class AppRouter {
         path: RouteNames.register,
         name: RouteNames.register,
         builder: (context, state) => const RegisterScreen(),
+      ),
+      GoRoute(
+        path: '/meetings',
+        redirect: (context, state) => '/agent/live-notes',
       ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) {
@@ -143,6 +146,15 @@ class AppRouter {
                     builder: (context, state) => const NotificationsScreen(),
                   ),
                   GoRoute(
+                    path: 'meetings',
+                    redirect: (context, state) => '/agent/live-notes',
+                  ),
+                  GoRoute(
+                    path: 'live-notes',
+                    name: 'assistant_live_notes',
+                    builder: (context, state) => const MeetingHomeScreen(),
+                  ),
+                  GoRoute(
                     path: 'profile',
                     name: 'profile',
                     builder: (context, state) => const ProfileScreen(),
@@ -155,11 +167,7 @@ class AppRouter {
                         context.go('/agent');
                       },
                       onOpenModelManager: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (context) => const AIModelsScreen(),
-                          ),
-                        );
+                        context.push('/agent/profile');
                       },
                     ),
                   ),

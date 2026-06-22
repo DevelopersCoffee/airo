@@ -60,6 +60,59 @@ enum ModelFamily {
   final String description;
 }
 
+/// Input/output modalities supported by a local package.
+enum ModelModality {
+  text('Text'),
+  image('Image'),
+  audio('Audio'),
+  toolCall('Tool call');
+
+  const ModelModality(this.displayName);
+
+  final String displayName;
+}
+
+/// Product capabilities a local package can power.
+enum ModelCapability {
+  chat('Chat'),
+  reasoning('Reasoning'),
+  promptLab('Prompt Lab'),
+  documents('Documents'),
+  imageUnderstanding('Image understanding'),
+  audioUnderstanding('Audio understanding'),
+  agentSkills('Agent skills'),
+  mobileActions('Mobile actions'),
+  benchmark('Benchmark');
+
+  const ModelCapability(this.displayName);
+
+  final String displayName;
+}
+
+/// Preferred execution backend for a model package.
+enum ModelBackendPreference {
+  auto('Auto'),
+  cpu('CPU'),
+  gpu('GPU'),
+  npu('NPU'),
+  aiCore('AICore');
+
+  const ModelBackendPreference(this.displayName);
+
+  final String displayName;
+}
+
+/// External license/download gate state.
+enum ModelLicenseState {
+  open('Open'),
+  gated('Login required'),
+  unknown('Unknown');
+
+  const ModelLicenseState(this.displayName);
+
+  final String displayName;
+}
+
 /// Information about an offline LLM model available in the registry.
 ///
 /// Contains all metadata needed to display, filter, and load a model.
@@ -78,6 +131,10 @@ class OfflineModelInfo {
     this.contextLength = 2048,
     this.supportsVision = false,
     this.supportsFunctionCalling = false,
+    this.modalities = const [ModelModality.text],
+    this.capabilities = const [ModelCapability.chat],
+    this.backendPreference = ModelBackendPreference.auto,
+    this.licenseState = ModelLicenseState.open,
     this.languages = const ['en'],
     this.credibility = ModelCredibility.community,
     this.provider = AIProvider.gguf,
@@ -125,6 +182,18 @@ class OfflineModelInfo {
   /// Whether the model supports function calling.
   final bool supportsFunctionCalling;
 
+  /// Modalities accepted by this package.
+  final List<ModelModality> modalities;
+
+  /// Product capabilities supported by this package.
+  final List<ModelCapability> capabilities;
+
+  /// Preferred runtime backend.
+  final ModelBackendPreference backendPreference;
+
+  /// Whether downloading requires external license/login acknowledgement.
+  final ModelLicenseState licenseState;
+
   /// Supported languages (ISO 639-1 codes).
   final List<String> languages;
 
@@ -163,6 +232,9 @@ class OfflineModelInfo {
 
   /// Whether the model is downloaded and available locally.
   bool get isDownloaded => filePath != null;
+
+  /// Whether the model supports audio input.
+  bool get supportsAudio => modalities.contains(ModelModality.audio);
 
   /// File size in megabytes.
   double get fileSizeMB => fileSizeBytes / (1024 * 1024);
@@ -217,6 +289,10 @@ class OfflineModelInfo {
     int? contextLength,
     bool? supportsVision,
     bool? supportsFunctionCalling,
+    List<ModelModality>? modalities,
+    List<ModelCapability>? capabilities,
+    ModelBackendPreference? backendPreference,
+    ModelLicenseState? licenseState,
     List<String>? languages,
     ModelCredibility? credibility,
     AIProvider? provider,
@@ -243,6 +319,10 @@ class OfflineModelInfo {
       supportsVision: supportsVision ?? this.supportsVision,
       supportsFunctionCalling:
           supportsFunctionCalling ?? this.supportsFunctionCalling,
+      modalities: modalities ?? this.modalities,
+      capabilities: capabilities ?? this.capabilities,
+      backendPreference: backendPreference ?? this.backendPreference,
+      licenseState: licenseState ?? this.licenseState,
       languages: languages ?? this.languages,
       credibility: credibility ?? this.credibility,
       provider: provider ?? this.provider,
@@ -272,6 +352,10 @@ class OfflineModelInfo {
     'contextLength': contextLength,
     'supportsVision': supportsVision,
     'supportsFunctionCalling': supportsFunctionCalling,
+    'modalities': modalities.map((modality) => modality.name).toList(),
+    'capabilities': capabilities.map((capability) => capability.name).toList(),
+    'backendPreference': backendPreference.name,
+    'licenseState': licenseState.name,
     'languages': languages,
     'credibility': credibility.name,
     'provider': provider.name,
@@ -307,6 +391,34 @@ class OfflineModelInfo {
       supportsVision: json['supportsVision'] as bool? ?? false,
       supportsFunctionCalling:
           json['supportsFunctionCalling'] as bool? ?? false,
+      modalities:
+          (json['modalities'] as List?)
+              ?.map(
+                (value) => ModelModality.values.firstWhere(
+                  (modality) => modality.name == value,
+                  orElse: () => ModelModality.text,
+                ),
+              )
+              .toList() ??
+          const [ModelModality.text],
+      capabilities:
+          (json['capabilities'] as List?)
+              ?.map(
+                (value) => ModelCapability.values.firstWhere(
+                  (capability) => capability.name == value,
+                  orElse: () => ModelCapability.chat,
+                ),
+              )
+              .toList() ??
+          const [ModelCapability.chat],
+      backendPreference: ModelBackendPreference.values.firstWhere(
+        (backend) => backend.name == json['backendPreference'],
+        orElse: () => ModelBackendPreference.auto,
+      ),
+      licenseState: ModelLicenseState.values.firstWhere(
+        (state) => state.name == json['licenseState'],
+        orElse: () => ModelLicenseState.open,
+      ),
       languages: List<String>.from(json['languages'] ?? ['en']),
       credibility: ModelCredibility.values.firstWhere(
         (c) => c.name == json['credibility'],
