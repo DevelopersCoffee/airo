@@ -3,7 +3,7 @@ description: "Core domain layer: entities, repository interfaces, and use cases"
 version: 0.0.1
 
 environment:
-  sdk: ">=3.9.2 <4.0.0"
+  sdk: ">=3.11.1 <4.0.0"
 
 dependencies:
   equatable: 2.0.8
@@ -14,4 +14,3 @@ dev_dependencies:
     sdk: flutter
   flutter_lints: 6.0.0
   mocktail: ^1.0.5
-
