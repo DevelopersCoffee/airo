@@ -12,16 +12,76 @@ import 'expense_providers.dart';
 /// Budget repository provider
 ///
 /// Uses local datasource for offline-first storage.
-/// On web, throws UnimplementedError (no SQLite support).
+/// On web, uses an empty repository so the UI can show a planned state instead
+/// of leaking SQLite implementation details.
 ///
 /// Phase: 1 (Foundation)
 final budgetRepositoryProvider = Provider<BudgetRepository>((ref) {
   if (kIsWeb) {
-    throw UnimplementedError('Coins feature not supported on web (no SQLite)');
+    return WebEmptyBudgetRepository();
   }
   final datasource = ref.watch(coinsLocalDatasourceProvider);
   return BudgetRepositoryImpl(datasource, BudgetMapper());
 });
+
+class WebEmptyBudgetRepository implements BudgetRepository {
+  const WebEmptyBudgetRepository();
+
+  @override
+  Future<Result<Budget>> findById(String id) async {
+    return (data: null, error: 'Budgets are not saved on web yet.');
+  }
+
+  @override
+  Future<Result<Budget?>> findByCategory(String categoryId) async {
+    return (data: null, error: null);
+  }
+
+  @override
+  Future<Result<List<Budget>>> findActive() async {
+    return (data: const <Budget>[], error: null);
+  }
+
+  @override
+  Future<Result<List<Budget>>> findAll() async {
+    return (data: const <Budget>[], error: null);
+  }
+
+  @override
+  Future<Result<Budget>> create(Budget budget) async {
+    return (data: null, error: 'Budget creation is coming to web.');
+  }
+
+  @override
+  Future<Result<Budget>> update(Budget budget) async {
+    return (data: null, error: 'Budget editing is coming to web.');
+  }
+
+  @override
+  Future<Result<void>> deactivate(String id) async {
+    return (data: null, error: 'Budget editing is coming to web.');
+  }
+
+  @override
+  Future<Result<void>> delete(String id) async {
+    return (data: null, error: 'Budget editing is coming to web.');
+  }
+
+  @override
+  Stream<List<Budget>> watchActive() {
+    return Stream.value(const <Budget>[]);
+  }
+
+  @override
+  Stream<Budget?> watchById(String id) {
+    return Stream.value(null);
+  }
+
+  @override
+  Future<Result<bool>> hasBudget(String categoryId) async {
+    return (data: false, error: null);
+  }
+}
 
 /// Budget engine provider
 final budgetEngineProvider = Provider<BudgetEngine>((ref) {

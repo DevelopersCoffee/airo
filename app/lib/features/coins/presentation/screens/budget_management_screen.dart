@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/utils/locale_settings.dart';
 import '../../domain/entities/budget.dart';
@@ -21,16 +22,19 @@ class BudgetManagementScreen extends ConsumerWidget {
     final budgetsAsync = ref.watch(activeBudgetsProvider);
 
     return Scaffold(
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         title: const Text('Budgets'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.add),
-            onPressed: () {
-              // TODO: Navigate to add budget screen
-            },
-          ),
-        ],
+        actions: kIsWeb
+            ? null
+            : [
+                IconButton(
+                  icon: const Icon(Icons.add),
+                  onPressed: () {
+                    // TODO: Navigate to add budget screen
+                  },
+                ),
+              ],
       ),
       body: budgetsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
@@ -62,13 +66,15 @@ class BudgetManagementScreen extends ConsumerWidget {
           );
         },
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          // TODO: Navigate to add budget screen
-        },
-        icon: const Icon(Icons.add),
-        label: const Text('Add Budget'),
-      ),
+      floatingActionButton: kIsWeb
+          ? null
+          : FloatingActionButton.extended(
+              onPressed: () {
+                // TODO: Navigate to add budget screen
+              },
+              icon: const Icon(Icons.add),
+              label: const Text('Add Budget'),
+            ),
     );
   }
 }
@@ -91,22 +97,27 @@ class _EmptyBudgetsView extends StatelessWidget {
             ),
             const SizedBox(height: 24),
             Text(
-              'No budgets yet',
+              kIsWeb ? 'Budgets for web are coming soon' : 'No budgets yet',
               style: Theme.of(context).textTheme.headlineSmall,
+              textAlign: TextAlign.center,
             ),
             const SizedBox(height: 8),
             Text(
-              'Set up budgets to track your spending and see your daily safe-to-spend amount.',
+              kIsWeb
+                  ? 'Your dashboard can still track spending today. Budget persistence needs the web storage backend before it can save rules here.'
+                  : 'Set up budgets to track your spending and see your daily safe-to-spend amount.',
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodyMedium,
             ),
             const SizedBox(height: 24),
             FilledButton.icon(
-              onPressed: () {
-                // TODO: Navigate to add budget
-              },
-              icon: const Icon(Icons.add),
-              label: const Text('Create Your First Budget'),
+              onPressed: kIsWeb
+                  ? null
+                  : () {
+                      // TODO: Navigate to add budget
+                    },
+              icon: Icon(kIsWeb ? Icons.lock_clock : Icons.add),
+              label: Text(kIsWeb ? 'Storage Backend Pending' : 'Create Budget'),
             ),
           ],
         ),

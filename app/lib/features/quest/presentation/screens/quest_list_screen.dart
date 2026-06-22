@@ -10,17 +10,24 @@ class QuestListScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final questsAsync = ref.watch(questListProvider);
+    final hasQuests = questsAsync.maybeWhen(
+      data: (quests) => quests.isNotEmpty,
+      orElse: () => false,
+    );
 
     return Scaffold(
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         title: const Text('Quests'),
         centerTitle: true,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.add),
-            onPressed: () => context.go('/quest/new'),
-          ),
-        ],
+        actions: hasQuests
+            ? [
+                IconButton(
+                  icon: const Icon(Icons.add),
+                  onPressed: () => context.go('/quest/new'),
+                ),
+              ]
+            : null,
       ),
       body: questsAsync.when(
         data: (quests) {
@@ -130,10 +137,6 @@ class QuestListScreen extends ConsumerWidget {
             ],
           ),
         ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => context.go('/quest/new'),
-        child: const Icon(Icons.add),
       ),
     );
   }

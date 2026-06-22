@@ -248,19 +248,22 @@ class AgentSkillOrchestrator {
     required AgentSkillRegistry skillRegistry,
     required AgentConnectorRegistry connectorRegistry,
     AgentSkillModelClient? modelClient,
+    bool useFallbackModelClient = true,
     int maxSteps = 4,
     Duration modelActionTimeout = const Duration(seconds: 3),
   }) : _skillRegistry = skillRegistry,
        _connectorRegistry = connectorRegistry,
        _modelClient = modelClient ?? RuleBasedAgentSkillModelClient(),
-       _fallbackModelClient = RuleBasedAgentSkillModelClient(),
+       _fallbackModelClient = useFallbackModelClient
+           ? RuleBasedAgentSkillModelClient()
+           : null,
        _maxSteps = maxSteps,
        _modelActionTimeout = modelActionTimeout;
 
   final AgentSkillRegistry _skillRegistry;
   final AgentConnectorRegistry _connectorRegistry;
   final AgentSkillModelClient _modelClient;
-  final RuleBasedAgentSkillModelClient _fallbackModelClient;
+  final RuleBasedAgentSkillModelClient? _fallbackModelClient;
   final int _maxSteps;
   final Duration _modelActionTimeout;
 
@@ -273,7 +276,7 @@ class AgentSkillOrchestrator {
             enabledSkills: enabledSkills,
           ),
         ) ??
-        await _fallbackModelClient.selectSkill(
+        await _fallbackModelClient?.selectSkill(
           prompt: prompt,
           enabledSkills: enabledSkills,
         );
@@ -299,7 +302,7 @@ class AgentSkillOrchestrator {
               toolResults: toolResults,
             ),
           ) ??
-          await _fallbackModelClient.nextAction(
+          await _fallbackModelClient?.nextAction(
             prompt: prompt,
             skill: skill,
             toolResults: toolResults,

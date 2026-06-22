@@ -117,91 +117,111 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
       appBar: AppBar(title: const Text('Add Expense')),
       body: Form(
         key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            // Amount field
-            TextFormField(
-              controller: _amountController,
-              decoration: const InputDecoration(
-                labelText: 'Amount',
-                prefixText: '\$ ',
-                border: OutlineInputBorder(),
-              ),
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
-              ),
-              inputFormatters: [
-                FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return ListView(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
+              children: [
+                Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 720),
+                    child: Column(
+                      children: [
+                        TextFormField(
+                          controller: _amountController,
+                          decoration: const InputDecoration(
+                            labelText: 'Amount',
+                            prefixText: '\$ ',
+                            border: OutlineInputBorder(),
+                          ),
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
+                          inputFormatters: [
+                            FilteringTextInputFormatter.allow(
+                              RegExp(r'^\d+\.?\d{0,2}'),
+                            ),
+                          ],
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return 'Enter an amount';
+                            }
+                            final amount = double.tryParse(value);
+                            if (amount == null || amount <= 0) {
+                              return 'Enter a valid amount';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 16),
+                        TextFormField(
+                          controller: _descriptionController,
+                          decoration: const InputDecoration(
+                            labelText: 'Description',
+                            hintText: 'e.g., Coffee at Starbucks',
+                            border: OutlineInputBorder(),
+                          ),
+                          validator: (value) {
+                            if (value == null || value.trim().isEmpty) {
+                              return 'Enter a description';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 16),
+                        DropdownButtonFormField<String>(
+                          initialValue: _selectedCategory,
+                          decoration: const InputDecoration(
+                            labelText: 'Category',
+                            border: OutlineInputBorder(),
+                          ),
+                          items: _categories
+                              .map(
+                                (cat) => DropdownMenuItem(
+                                  value: cat,
+                                  child: Text(cat),
+                                ),
+                              )
+                              .toList(),
+                          onChanged: (value) {
+                            if (value != null) {
+                              setState(() => _selectedCategory = value);
+                            }
+                          },
+                        ),
+                        const SizedBox(height: 16),
+                        ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          leading: const Icon(Icons.calendar_today),
+                          title: const Text('Date'),
+                          subtitle: Text(
+                            '${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}',
+                          ),
+                          onTap: _selectDate,
+                        ),
+                        const SizedBox(height: 24),
+                        SizedBox(
+                          width: double.infinity,
+                          child: FilledButton(
+                            onPressed: _isLoading ? null : _saveExpense,
+                            child: _isLoading
+                                ? const SizedBox(
+                                    height: 20,
+                                    width: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : const Text('Save Expense'),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               ],
-              validator: (value) {
-                if (value == null || value.isEmpty) return 'Enter an amount';
-                final amount = double.tryParse(value);
-                if (amount == null || amount <= 0) {
-                  return 'Enter a valid amount';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 16),
-
-            // Description field
-            TextFormField(
-              controller: _descriptionController,
-              decoration: const InputDecoration(
-                labelText: 'Description',
-                hintText: 'e.g., Coffee at Starbucks',
-                border: OutlineInputBorder(),
-              ),
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return 'Enter a description';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 16),
-
-            // Category dropdown
-            DropdownButtonFormField<String>(
-              initialValue: _selectedCategory,
-              decoration: const InputDecoration(
-                labelText: 'Category',
-                border: OutlineInputBorder(),
-              ),
-              items: _categories
-                  .map((cat) => DropdownMenuItem(value: cat, child: Text(cat)))
-                  .toList(),
-              onChanged: (value) {
-                if (value != null) setState(() => _selectedCategory = value);
-              },
-            ),
-            const SizedBox(height: 16),
-
-            // Date picker
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: const Icon(Icons.calendar_today),
-              title: const Text('Date'),
-              subtitle: Text(
-                '${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}',
-              ),
-              onTap: _selectDate,
-            ),
-            const SizedBox(height: 24),
-
-            // Save button
-            FilledButton(
-              onPressed: _isLoading ? null : _saveExpense,
-              child: _isLoading
-                  ? const SizedBox(
-                      height: 20,
-                      width: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Text('Save Expense'),
-            ),
-          ],
+            );
+          },
         ),
       ),
     );

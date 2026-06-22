@@ -8,7 +8,6 @@ import '../widgets/transaction_upload_dialog.dart';
 import 'add_expense_screen.dart';
 import 'budgets_screen.dart';
 import 'transactions_list_screen.dart';
-import '../../../../shared/widgets/responsive_center.dart';
 
 /// Money overview screen - Finance Hub
 /// Purpose: Money management & transactions
@@ -22,427 +21,47 @@ class MoneyOverviewScreen extends ConsumerWidget {
     // Use stream provider for reactive transactions
     final transactionsStream = ref.watch(transactionsStreamProvider);
     final budgetsStream = ref.watch(budgetsStreamProvider);
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
+    final isCompact = MediaQuery.sizeOf(context).width < 600;
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Airo'),
-        actions: [
-          IconButton(
-            tooltip: 'History',
-            icon: const Icon(Icons.history),
-            onPressed: () => _navigateToAllTransactions(context),
-          ),
-          IconButton(
-            tooltip: 'Help',
-            icon: const Icon(Icons.help_outline),
-            onPressed: () => _showHelp(context),
-          ),
-        ],
-      ),
+      backgroundColor: Colors.transparent,
       body: DictionarySelectionArea(
-        child: ResponsiveCenter(
-          maxWidth: ResponsiveBreakpoints.contentMaxWidth,
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Balance Hero - Above the fold
-                totalBalance.when(
-                  data: (balance) {
-                    final dollars = balance ~/ 100;
-                    final cents = (balance % 100).abs();
-                    return Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(
-                        vertical: 32,
-                        horizontal: 24,
-                      ),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            colorScheme.primaryContainer,
-                            colorScheme.primaryContainer.withValues(alpha: 0.7),
-                          ],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          Text(
-                            'Available Balance',
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              color: colorScheme.onPrimaryContainer.withValues(
-                                alpha: 0.8,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            '\$$dollars.${cents.toString().padLeft(2, '0')}',
-                            style: theme.textTheme.displayMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: colorScheme.onPrimaryContainer,
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                  loading: () => Container(
-                    width: double.infinity,
-                    height: 120,
-                    decoration: BoxDecoration(
-                      color: colorScheme.primaryContainer.withValues(
-                        alpha: 0.5,
-                      ),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: const Center(child: CircularProgressIndicator()),
-                  ),
-                  error: (_, _) => Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      color: colorScheme.errorContainer,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      'Error loading balance',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: colorScheme.onErrorContainer),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 24),
-
-                // Primary Actions - Above the fold
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    _PrimaryActionButton(
-                      icon: Icons.send,
-                      label: 'Send',
-                      onTap: () => _showComingSoon(context),
-                    ),
-                    _PrimaryActionButton(
-                      icon: Icons.request_page,
-                      label: 'Request',
-                      onTap: () => _showComingSoon(context),
-                    ),
-                    _PrimaryActionButton(
-                      icon: Icons.payments_outlined,
-                      label: 'Pay',
-                      onTap: () => _navigateToAddExpense(context),
-                    ),
-                    _PrimaryActionButton(
-                      icon: Icons.qr_code_scanner,
-                      label: 'Scan',
-                      onTap: () => _showComingSoon(context),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 24),
-
-                // Accounts section
-                Text('Accounts', style: theme.textTheme.titleLarge),
-                const SizedBox(height: 12),
-                accounts.when(
-                  data: (accountsList) {
-                    if (accountsList.isEmpty) {
-                      return Card(
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Column(
-                            children: [
-                              const ListTile(
-                                title: Text('No accounts yet'),
-                                subtitle: Text(
-                                  'Add your first account to get started',
-                                ),
-                                leading: Icon(Icons.account_balance_wallet),
-                              ),
-                              const SizedBox(height: 12),
-                              ElevatedButton.icon(
-                                onPressed: () {
-                                  // TODO: Navigate to add account screen
-                                },
-                                icon: const Icon(Icons.add),
-                                label: const Text('Add Account'),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    }
-                    return Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Column(
-                          children: accountsList
-                              .map(
-                                (account) => ListTile(
-                                  title: Text(account.name),
-                                  subtitle: Text(account.type),
-                                  trailing: Text(
-                                    account.balanceFormatted,
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                              )
-                              .toList(),
-                        ),
-                      ),
-                    );
-                  },
-                  loading: () => const Card(
-                    child: Padding(
-                      padding: EdgeInsets.all(16),
-                      child: CircularProgressIndicator(),
-                    ),
-                  ),
-                  error: (_, _) => const Card(
-                    child: Padding(
-                      padding: EdgeInsets.all(16),
-                      child: Text('Error loading accounts'),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 24),
-
-                // Recent transactions section
-                Text(
-                  'Recent Transactions',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-                const SizedBox(height: 12),
-                transactionsStream.when(
-                  data: (txnList) {
-                    if (txnList.isEmpty) {
-                      return Card(
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Column(
-                            children: [
-                              Icon(
-                                Icons.receipt_long,
-                                size: 48,
-                                color: Colors.grey[400],
-                              ),
-                              const SizedBox(height: 12),
-                              const Text(
-                                'No transactions yet',
-                                style: TextStyle(fontWeight: FontWeight.bold),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                'Add your first expense to start tracking',
-                                style: TextStyle(color: Colors.grey[600]),
-                              ),
-                              const SizedBox(height: 16),
-                              FilledButton.icon(
-                                onPressed: () => _navigateToAddExpense(context),
-                                icon: const Icon(Icons.add),
-                                label: const Text('Add Expense'),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    }
-                    return Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Column(
-                          children: [
-                            ...txnList
-                                .take(5)
-                                .map(
-                                  (txn) => ListTile(
-                                    title: Text(txn.description),
-                                    subtitle: Text(txn.category),
-                                    trailing: Text(
-                                      txn.amountFormatted,
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        color: txn.isExpense
-                                            ? Colors.red
-                                            : Colors.green,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                            if (txnList.length > 5)
-                              TextButton(
-                                onPressed: () =>
-                                    _navigateToAllTransactions(context),
-                                child: const Text('View All Transactions'),
-                              ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                  loading: () => const Card(
-                    child: Padding(
-                      padding: EdgeInsets.all(16),
-                      child: Center(child: CircularProgressIndicator()),
-                    ),
-                  ),
-                  error: (_, _) => const Card(
-                    child: Padding(
-                      padding: EdgeInsets.all(16),
-                      child: Text('Error loading transactions'),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 24),
-
-                // Budgets section
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Budgets',
-                      style: Theme.of(context).textTheme.titleLarge,
-                    ),
-                    TextButton(
-                      onPressed: () => _navigateToBudgets(context),
-                      child: const Text('Manage'),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                budgetsStream.when(
-                  data: (budgetList) {
-                    if (budgetList.isEmpty) {
-                      return Card(
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Column(
-                            children: [
-                              Icon(
-                                Icons.trending_down,
-                                size: 48,
-                                color: Colors.grey[400],
-                              ),
-                              const SizedBox(height: 12),
-                              const Text(
-                                'No budgets yet',
-                                style: TextStyle(fontWeight: FontWeight.bold),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                'Create budgets to track your spending',
-                                style: TextStyle(color: Colors.grey[600]),
-                              ),
-                              const SizedBox(height: 16),
-                              FilledButton.icon(
-                                onPressed: () => _navigateToBudgets(context),
-                                icon: const Icon(Icons.add),
-                                label: const Text('Create Budget'),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    }
-                    return Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Column(
-                          children: budgetList.map((budget) {
-                            // Color based on warning level
-                            Color progressColor;
-                            switch (budget.warningLevel) {
-                              case BudgetWarningLevel.exceeded:
-                                progressColor = Colors.red;
-                                break;
-                              case BudgetWarningLevel.warning:
-                                progressColor = Colors.orange;
-                                break;
-                              case BudgetWarningLevel.normal:
-                                progressColor = Colors.green;
-                                break;
-                            }
-                            return Column(
-                              children: [
-                                ListTile(
-                                  title: Text(budget.tag),
-                                  subtitle: Text(
-                                    '${budget.usedFormatted} / ${budget.limitFormatted}',
-                                  ),
-                                  trailing: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      if (budget.warningLevel !=
-                                          BudgetWarningLevel.normal)
-                                        Padding(
-                                          padding: const EdgeInsets.only(
-                                            right: 4,
-                                          ),
-                                          child: Icon(
-                                            budget.warningLevel ==
-                                                    BudgetWarningLevel.exceeded
-                                                ? Icons.error
-                                                : Icons.warning_amber,
-                                            color: progressColor,
-                                            size: 18,
-                                          ),
-                                        ),
-                                      Text(
-                                        '${(budget.percentageUsed * 100).toStringAsFixed(0)}%',
-                                        style: TextStyle(
-                                          color: progressColor,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                LinearProgressIndicator(
-                                  value: budget.percentageUsedClamped,
-                                  color: progressColor,
-                                ),
-                                const SizedBox(height: 12),
-                              ],
-                            );
-                          }).toList(),
-                        ),
-                      ),
-                    );
-                  },
-                  loading: () => const Card(
-                    child: Padding(
-                      padding: EdgeInsets.all(16),
-                      child: Center(child: CircularProgressIndicator()),
-                    ),
-                  ),
-                  error: (_, _) => const Card(
-                    child: Padding(
-                      padding: EdgeInsets.all(16),
-                      child: Text('Error loading budgets'),
-                    ),
-                  ),
-                ),
-              ],
-            ),
+        child: SingleChildScrollView(
+          padding: EdgeInsets.only(bottom: isCompact ? 72 : 88),
+          child: Column(
+            children: [
+              _CoinsHeroSection(totalBalance: totalBalance),
+              _CoinsDashboardSection(
+                accounts: accounts,
+                transactionsStream: transactionsStream,
+                budgetsStream: budgetsStream,
+                onAddExpense: () => _navigateToAddExpense(context),
+                onBudgets: () => _navigateToBudgets(context),
+                onTransactions: () => _navigateToAllTransactions(context),
+              ),
+              _CoinsDemoSection(
+                transactionsStream: transactionsStream,
+                onAddExpense: () => _navigateToAddExpense(context),
+              ),
+              _CoinsFeatureGrid(
+                accounts: accounts,
+                transactionsStream: transactionsStream,
+                budgetsStream: budgetsStream,
+                onAddExpense: () => _navigateToAddExpense(context),
+                onBudgets: () => _navigateToBudgets(context),
+                onTransactions: () => _navigateToAllTransactions(context),
+              ),
+            ],
           ),
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _navigateToAddExpense(context),
-        tooltip: 'Add Expense',
-        icon: const Icon(Icons.add),
-        label: const Text('Add Expense'),
-      ),
+      floatingActionButton: isCompact
+          ? null
+          : FloatingActionButton.extended(
+              onPressed: () => _navigateToAddExpense(context),
+              tooltip: 'Add Expense',
+              icon: const Icon(Icons.add),
+              label: const Text('Add Expense'),
+            ),
     );
   }
 
@@ -462,18 +81,6 @@ class MoneyOverviewScreen extends ConsumerWidget {
     Navigator.of(
       context,
     ).push(MaterialPageRoute(builder: (_) => const TransactionsListScreen()));
-  }
-
-  void _showComingSoon(BuildContext context) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Coming soon')));
-  }
-
-  void _showHelp(BuildContext context) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Help coming soon')));
   }
 
   // ignore: unused_element
@@ -528,53 +135,695 @@ class MoneyOverviewScreen extends ConsumerWidget {
   }
 }
 
-/// Primary action button for Coins screen
-class _PrimaryActionButton extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
+class _CoinsHeroSection extends StatelessWidget {
+  const _CoinsHeroSection({required this.totalBalance});
 
-  const _PrimaryActionButton({
-    required this.icon,
-    required this.label,
-    required this.onTap,
+  final AsyncValue<int> totalBalance;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isCompact = MediaQuery.sizeOf(context).width < 600;
+    return _HermesSection(
+      minHeight: isCompact ? 340 : 360,
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 620),
+          child: Padding(
+            padding: EdgeInsets.symmetric(
+              horizontal: isCompact ? 16 : 24,
+              vertical: isCompact ? 28 : 40,
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  'OPEN FINANCE • AIRO COINS',
+                  style: theme.textTheme.labelLarge?.copyWith(
+                    color: colorScheme.primary.withValues(alpha: 0.72),
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  'THE MONEY THAT\nWORKS WITH YOU.',
+                  style: isCompact
+                      ? theme.textTheme.displayLarge?.copyWith(
+                          fontSize: 46,
+                          height: 0.92,
+                        )
+                      : theme.textTheme.displayLarge,
+                  textAlign: TextAlign.center,
+                ),
+                SizedBox(height: isCompact ? 18 : 28),
+                totalBalance.when(
+                  data: (balance) {
+                    final dollars = balance ~/ 100;
+                    final cents = (balance % 100).abs();
+                    return Text(
+                      'Available balance: \$$dollars.${cents.toString().padLeft(2, '0')}',
+                      style: theme.textTheme.bodyLarge?.copyWith(
+                        color: colorScheme.primary.withValues(alpha: 0.64),
+                      ),
+                      textAlign: TextAlign.center,
+                    );
+                  },
+                  loading: () => const CircularProgressIndicator(),
+                  error: (_, _) => Text(
+                    'Balance temporarily unavailable',
+                    style: theme.textTheme.bodyLarge?.copyWith(
+                      color: colorScheme.error,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CoinsDashboardSection extends StatelessWidget {
+  const _CoinsDashboardSection({
+    required this.accounts,
+    required this.transactionsStream,
+    required this.budgetsStream,
+    required this.onAddExpense,
+    required this.onBudgets,
+    required this.onTransactions,
   });
+
+  final AsyncValue<List<MoneyAccount>> accounts;
+  final AsyncValue<List<Transaction>> transactionsStream;
+  final AsyncValue<List<Budget>> budgetsStream;
+  final VoidCallback onAddExpense;
+  final VoidCallback onBudgets;
+  final VoidCallback onTransactions;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
+    return _HermesSection(
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+        padding: const EdgeInsets.all(16),
         child: Column(
-          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const _SectionTitle('FINANCE STATUS'),
+            const SizedBox(height: 16),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final columns = constraints.maxWidth >= 900 ? 3 : 1;
+                return GridView.count(
+                  crossAxisCount: columns,
+                  childAspectRatio: columns == 1 ? 3.6 : 2.4,
+                  crossAxisSpacing: 12,
+                  mainAxisSpacing: 12,
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  children: [
+                    _StatusPanel(
+                      title: 'Accounts',
+                      value: accounts.when(
+                        data: (items) => items.isEmpty
+                            ? 'No accounts'
+                            : '${items.length} active',
+                        loading: () => 'Loading',
+                        error: (_, _) => 'Unavailable',
+                      ),
+                      detail: accounts.when(
+                        data: (items) => items.isEmpty
+                            ? 'Add checking, savings, or cards.'
+                            : items
+                                  .take(2)
+                                  .map(
+                                    (a) => '${a.name}: ${a.balanceFormatted}',
+                                  )
+                                  .join('\n'),
+                        loading: () => 'Fetching balances...',
+                        error: (_, _) => 'Account data failed to load.',
+                      ),
+                    ),
+                    _StatusPanel(
+                      title: 'Ledger',
+                      value: transactionsStream.when(
+                        data: (items) => items.isEmpty
+                            ? 'No entries'
+                            : '${items.length} entries',
+                        loading: () => 'Loading',
+                        error: (_, _) => 'Unavailable',
+                      ),
+                      detail: transactionsStream.when(
+                        data: (items) => items.isEmpty
+                            ? 'Create the first expense to start tracking.'
+                            : items
+                                  .take(2)
+                                  .map(
+                                    (t) =>
+                                        '${t.description}: ${t.amountFormatted}',
+                                  )
+                                  .join('\n'),
+                        loading: () => 'Opening recent activity...',
+                        error: (_, _) => 'Recent activity failed to load.',
+                      ),
+                    ),
+                    _StatusPanel(
+                      title: 'Budgets',
+                      value: budgetsStream.when(
+                        data: (items) => items.isEmpty
+                            ? 'Not set'
+                            : '${items.length} active',
+                        loading: () => 'Loading',
+                        error: (_, _) => 'Unavailable',
+                      ),
+                      detail: budgetsStream.when(
+                        data: (items) => items.isEmpty
+                            ? 'Create dining, travel, and recurring limits.'
+                            : items
+                                  .take(2)
+                                  .map(
+                                    (b) =>
+                                        '${b.tag}: ${b.usedFormatted} / ${b.limitFormatted}',
+                                  )
+                                  .join('\n'),
+                        loading: () => 'Checking guardrails...',
+                        error: (_, _) => 'Budget data failed to load.',
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+            const SizedBox(height: 14),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                FilledButton.icon(
+                  onPressed: onAddExpense,
+                  icon: const Icon(Icons.add),
+                  label: const Text('Add Expense'),
+                ),
+                OutlinedButton.icon(
+                  onPressed: onTransactions,
+                  icon: const Icon(Icons.receipt_long),
+                  label: const Text('Review Ledger'),
+                ),
+                OutlinedButton.icon(
+                  onPressed: onBudgets,
+                  icon: const Icon(Icons.pie_chart_outline),
+                  label: const Text('Manage Budgets'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Fast entry, recent activity, and spending guardrails stay visible before exploration content.',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: colorScheme.primary.withValues(alpha: 0.58),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _StatusPanel extends StatelessWidget {
+  const _StatusPanel({
+    required this.title,
+    required this.value,
+    required this.detail,
+  });
+
+  final String title;
+  final String value;
+  final String detail;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: colorScheme.surface.withValues(alpha: 0.28),
+        border: Border.all(color: colorScheme.outlineVariant),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title.toUpperCase(), style: theme.textTheme.labelLarge),
+          const SizedBox(height: 8),
+          Text(value, style: theme.textTheme.headlineSmall),
+          const SizedBox(height: 8),
+          Expanded(
+            child: Text(
+              detail,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: colorScheme.primary.withValues(alpha: 0.72),
+              ),
+              overflow: TextOverflow.fade,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CoinsDemoSection extends StatelessWidget {
+  const _CoinsDemoSection({
+    required this.transactionsStream,
+    required this.onAddExpense,
+  });
+
+  final AsyncValue<List<Transaction>> transactionsStream;
+  final VoidCallback onAddExpense;
+
+  @override
+  Widget build(BuildContext context) {
+    final lines = transactionsStream.maybeWhen(
+      data: (transactions) {
+        if (transactions.isEmpty) {
+          return const [
+            '> Create a dinner expense and split it with the group',
+            '',
+            'expense create "Team dinner"        0.2s',
+            'split equal --participants 4       0.1s',
+            'budget check dining                0.1s',
+            'settlement preview                 0.3s',
+            '',
+            'No transactions yet. Add the first expense.',
+          ];
+        }
+        return [
+          '> Review recent Airo Coins activity',
+          '',
+          for (final txn in transactions.take(5))
+            '${txn.description.padRight(28).substring(0, 28)} ${txn.amountFormatted}',
+          '',
+          'Found ${transactions.length} ledger entries.',
+        ];
+      },
+      orElse: () => const ['> Loading the Airo ledger...'],
+    );
+
+    return _HermesTwoColumnSection(
+      left: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _SectionTitle('SEE IT IN ACTION'),
+            const SizedBox(height: 16),
+            SizedBox(
+              height: 300,
+              child: _TerminalPanel(lines: lines, onAddExpense: onAddExpense),
+            ),
+          ],
+        ),
+      ),
+      right: Stack(
+        fit: StackFit.expand,
+        children: [
+          Image.asset(
+            'assets/hermes/images/filler-bg0.jpg',
+            fit: BoxFit.cover,
+            color: Theme.of(
+              context,
+            ).colorScheme.secondary.withValues(alpha: 0.45),
+            colorBlendMode: BlendMode.modulate,
+          ),
+          Positioned(
+            right: 20,
+            bottom: 18,
+            child: Text(
+              'AIRO COINS',
+              style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                color: Theme.of(context).colorScheme.secondary,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CoinsFeatureGrid extends StatelessWidget {
+  const _CoinsFeatureGrid({
+    required this.accounts,
+    required this.transactionsStream,
+    required this.budgetsStream,
+    required this.onAddExpense,
+    required this.onBudgets,
+    required this.onTransactions,
+  });
+
+  final AsyncValue<List<MoneyAccount>> accounts;
+  final AsyncValue<List<Transaction>> transactionsStream;
+  final AsyncValue<List<Budget>> budgetsStream;
+  final VoidCallback onAddExpense;
+  final VoidCallback onBudgets;
+  final VoidCallback onTransactions;
+
+  @override
+  Widget build(BuildContext context) {
+    return _HermesSection(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Padding(
+            padding: EdgeInsets.all(16),
+            child: _SectionTitle('FEATURES'),
+          ),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final columns = constraints.maxWidth >= 920
+                  ? 3
+                  : constraints.maxWidth >= 620
+                  ? 2
+                  : 1;
+              return GridView.count(
+                crossAxisCount: columns,
+                childAspectRatio: columns == 1 ? 3.2 : 2.3,
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                children: [
+                  _FeatureCell(
+                    title: 'Accounts',
+                    body: accounts.when(
+                      data: (items) => items.isEmpty
+                          ? 'Add checking, savings, or credit accounts to make the ledger real.'
+                          : items
+                                .map((a) => '${a.name}: ${a.balanceFormatted}')
+                                .join('\n'),
+                      loading: () => 'Loading account balances...',
+                      error: (_, _) => 'Account balances unavailable.',
+                    ),
+                  ),
+                  _FeatureCell(
+                    title: 'Expense Workflow',
+                    body:
+                        'Create expenses, tag categories, attach receipts, and route splits from one action.',
+                    onTap: onAddExpense,
+                  ),
+                  _FeatureCell(
+                    title: 'Recent Ledger',
+                    body: transactionsStream.when(
+                      data: (items) => items.isEmpty
+                          ? 'No transactions yet. Add the first expense to start tracking.'
+                          : items
+                                .take(3)
+                                .map(
+                                  (t) =>
+                                      '${t.description}: ${t.amountFormatted}',
+                                )
+                                .join('\n'),
+                      loading: () => 'Loading recent transactions...',
+                      error: (_, _) => 'Recent transactions unavailable.',
+                    ),
+                    onTap: onTransactions,
+                  ),
+                  _FeatureCell(
+                    title: 'Budgets',
+                    body: budgetsStream.when(
+                      data: (items) => items.isEmpty
+                          ? 'Create budgets to track dining, travel, and recurring spending.'
+                          : items
+                                .take(3)
+                                .map(
+                                  (b) =>
+                                      '${b.tag}: ${b.usedFormatted} / ${b.limitFormatted}',
+                                )
+                                .join('\n'),
+                      loading: () => 'Loading budget controls...',
+                      error: (_, _) => 'Budget controls unavailable.',
+                    ),
+                    onTap: onBudgets,
+                  ),
+                  const _FeatureCell(
+                    title: 'Splitwise Defaults',
+                    body:
+                        'Equal split first, itemized split when needed, settlement preview before saving.',
+                  ),
+                  const _FeatureCell(
+                    title: 'Investment Ready',
+                    body:
+                        'The finance shell is ready for net worth, positions, and credit-card intelligence.',
+                  ),
+                ],
+              );
+            },
+          ),
+          _HermesFooterStrip(onAddExpense: onAddExpense, onBudgets: onBudgets),
+        ],
+      ),
+    );
+  }
+}
+
+class _HermesSection extends StatelessWidget {
+  const _HermesSection({required this.child, this.minHeight});
+
+  final Widget child;
+  final double? minHeight;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Container(
+      width: double.infinity,
+      constraints: BoxConstraints(minHeight: minHeight ?? 0),
+      decoration: BoxDecoration(
+        border: Border(
+          left: BorderSide(color: colorScheme.outlineVariant),
+          right: BorderSide(color: colorScheme.outlineVariant),
+          bottom: BorderSide(color: colorScheme.outlineVariant),
+        ),
+      ),
+      child: child,
+    );
+  }
+}
+
+class _HermesTwoColumnSection extends StatelessWidget {
+  const _HermesTwoColumnSection({required this.left, required this.right});
+
+  final Widget left;
+  final Widget right;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return _HermesSection(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          if (constraints.maxWidth < 760) {
+            return Column(
+              children: [
+                left,
+                SizedBox(height: 280, child: right),
+              ],
+            );
+          }
+          return SizedBox(
+            height: 420,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(child: left),
+                Expanded(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      border: Border(
+                        left: BorderSide(color: colorScheme.outlineVariant),
+                      ),
+                    ),
+                    child: right,
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _TerminalPanel extends StatelessWidget {
+  const _TerminalPanel({required this.lines, required this.onAddExpense});
+
+  final List<String> lines;
+  final VoidCallback onAddExpense;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return InkWell(
+      onTap: onAddExpense,
+      child: Container(
+        decoration: BoxDecoration(
+          color: colorScheme.surface.withValues(alpha: 0.36),
+          border: Border.all(color: colorScheme.primary, width: 2),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
-              padding: const EdgeInsets.all(12),
+              height: 34,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
               decoration: BoxDecoration(
-                color: colorScheme.primaryContainer,
-                shape: BoxShape.circle,
+                border: Border(
+                  bottom: BorderSide(color: colorScheme.outlineVariant),
+                ),
               ),
-              child: Icon(
-                icon,
-                color: colorScheme.onPrimaryContainer,
-                size: 24,
+              child: Row(
+                children: [
+                  for (final alpha in const [1.0, 0.6, 0.3]) ...[
+                    Container(
+                      width: 9,
+                      height: 9,
+                      decoration: BoxDecoration(
+                        color: colorScheme.primary.withValues(alpha: alpha),
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 7),
+                  ],
+                  const SizedBox(width: 6),
+                  Text(
+                    'AIRO',
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: colorScheme.primary.withValues(alpha: 0.42),
+                    ),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 8),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(18),
+                child: Text(
+                  lines.join('\n'),
+                  style: TextStyle(
+                    fontFamily: 'Courier',
+                    color: colorScheme.primary.withValues(alpha: 0.84),
+                    fontSize: 14,
+                    height: 1.7,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SectionTitle extends StatelessWidget {
+  const _SectionTitle(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(text, style: Theme.of(context).textTheme.headlineSmall);
+  }
+}
+
+class _FeatureCell extends StatelessWidget {
+  const _FeatureCell({required this.title, required this.body, this.onTap});
+
+  final String title;
+  final String body;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          border: Border(
+            top: BorderSide(color: colorScheme.outlineVariant),
+            right: BorderSide(color: colorScheme.outlineVariant),
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
             Text(
-              label,
-              style: theme.textTheme.labelSmall?.copyWith(
-                fontWeight: FontWeight.w500,
-              ),
-              textAlign: TextAlign.center,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
+              title.toUpperCase(),
+              style: Theme.of(context).textTheme.titleMedium,
             ),
+            const SizedBox(height: 10),
+            Expanded(
+              child: Text(
+                body,
+                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                  color: colorScheme.primary.withValues(alpha: 0.68),
+                ),
+                overflow: TextOverflow.fade,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _HermesFooterStrip extends StatelessWidget {
+  const _HermesFooterStrip({
+    required this.onAddExpense,
+    required this.onBudgets,
+  });
+
+  final VoidCallback onAddExpense;
+  final VoidCallback onBudgets;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        border: Border(top: BorderSide(color: colorScheme.outlineVariant)),
+      ),
+      child: SizedBox(
+        height: 66,
+        child: Row(
+          children: [
+            Expanded(
+              child: TextButton(
+                onPressed: onAddExpense,
+                child: const Align(
+                  alignment: Alignment.centerLeft,
+                  child: Padding(
+                    padding: EdgeInsets.only(left: 16),
+                    child: Text('ADD EXPENSE'),
+                  ),
+                ),
+              ),
+            ),
+            Expanded(
+              child: TextButton(
+                onPressed: onBudgets,
+                child: const Text('MANAGE BUDGETS'),
+              ),
+            ),
+            const Expanded(child: Text('AIRO COINS v0.13.0')),
           ],
         ),
       ),

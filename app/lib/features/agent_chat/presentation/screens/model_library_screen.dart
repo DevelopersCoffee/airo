@@ -7,10 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/services/gemini_api_service.dart';
 import '../../../../core/services/gemini_nano_service.dart';
 import '../../../../core/services/litert_lm_service.dart';
-
-const String geminiNanoAssistantModelId = 'gemini-nano';
-const String litertGemmaAssistantModelId = 'litert-gemma-mobile';
-const String geminiCloudAssistantModelId = 'gemini-cloud';
+import '../../domain/models/assistant_runtime_ids.dart';
 
 const String _selectedAssistantModelKey = 'selected_assistant_model_id';
 
