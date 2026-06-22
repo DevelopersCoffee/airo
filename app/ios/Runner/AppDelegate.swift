@@ -25,6 +25,19 @@ import UIKit
         binaryMessenger: controller.binaryMessenger
       ).setMethodCallHandler { [weak self] call, result in
         switch call.method {
+        case "readCalendarEvents":
+          guard
+            let arguments = call.arguments as? [String: Any],
+            let date = arguments["date"] as? String,
+            !date.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+          else {
+            result([
+              "error": "missing_date",
+              "message": "Calendar lookup requires a date.",
+            ])
+            return
+          }
+          self?.readCalendarEvents(date: date, result: result)
         case "createCalendarEvent":
           guard let arguments = call.arguments as? [String: Any] else {
             result([
@@ -41,6 +54,62 @@ import UIKit
     }
 
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
+  }
+
+  private func readCalendarEvents(date: String, result: @escaping FlutterResult) {
+    requestCalendarAccess { [weak self] granted in
+      guard let self else { return }
+      guard granted else {
+        result([
+          "error": "calendar_permission_denied",
+          "message": "Calendar permission is required to check your schedule.",
+        ])
+        return
+      }
+
+      guard let startDate = self.dayStart(from: date) else {
+        result([
+          "error": "invalid_date",
+          "message": "Calendar date must use YYYY-MM-DD.",
+        ])
+        return
+      }
+
+      guard let endDate = Calendar.current.date(byAdding: .day, value: 1, to: startDate) else {
+        result([
+          "error": "invalid_date",
+          "message": "Calendar date must use YYYY-MM-DD.",
+        ])
+        return
+      }
+
+      let predicate = self.eventStore.predicateForEvents(
+        withStart: startDate,
+        end: endDate,
+        calendars: nil
+      )
+      let formatter = ISO8601DateFormatter()
+      formatter.formatOptions = [.withInternetDateTime, .withColonSeparatorInTimeZone]
+
+      let events = self.eventStore.events(matching: predicate)
+        .sorted { $0.startDate < $1.startDate }
+        .map { event in
+          var payload = [
+            "title": event.title ?? "Untitled event",
+            "start": formatter.string(from: event.startDate),
+            "end": formatter.string(from: event.endDate),
+          ] as [String: Any]
+          if let calendarTitle = event.calendar?.title {
+            payload["calendar"] = calendarTitle
+          }
+          return payload
+        }
+
+      result([
+        "date": date,
+        "events": events,
+      ])
+    }
   }
 
   private func createCalendarEvent(arguments: [String: Any], result: @escaping FlutterResult) {
@@ -111,6 +180,17 @@ import UIKit
         ])
       }
     }
+  }
+
+  private func dayStart(from date: String) -> Date? {
+    let formatter = DateFormatter()
+    formatter.calendar = Calendar(identifier: .gregorian)
+    formatter.locale = Locale(identifier: "en_US_POSIX")
+    formatter.timeZone = .current
+    formatter.dateFormat = "yyyy-MM-dd"
+    formatter.isLenient = false
+    guard let parsedDate = formatter.date(from: date) else { return nil }
+    return Calendar.current.startOfDay(for: parsedDate)
   }
 
   private func requestCalendarAccess(completion: @escaping (Bool) -> Void) {
