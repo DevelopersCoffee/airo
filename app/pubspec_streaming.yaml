@@ -57,6 +57,9 @@ dependencies:
   # Video - KEPT for IPTV!
   video_player: ^2.11.1
   wakelock_plus: 1.4.0
+  pdfx: 2.9.2
+  flutter_local_notifications: 20.1.0
+  timezone: 0.10.1
 
   # Utilities
   intl: 0.20.2
@@ -132,6 +135,12 @@ dependency_overrides:
     path: ../packages/stubs/flutter_contacts_stub
   permission_handler:
     path: ../packages/stubs/permission_handler_stub
+  flutter_local_notifications:
+    path: ../packages/stubs/flutter_local_notifications_stub
+  timezone:
+    path: ../packages/stubs/timezone_stub
+  pdfx:
+    path: ../packages/stubs/pdfx_stub
 
 flutter:
   uses-material-design: true

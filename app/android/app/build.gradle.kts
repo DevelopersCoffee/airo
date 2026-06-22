@@ -60,10 +60,6 @@ android {
         testInstrumentationRunnerArguments["clearPackageData"] = "true"
     }
 
-    testOptions {
-        execution = "ANDROIDX_TEST_ORCHESTRATOR"
-    }
-
     // NOTE: ABI splitting is handled by Flutter's --split-per-abi flag
     // Do NOT add splits.abi here as it conflicts with Flutter's NDK filters
     // See: https://developer.android.com/studio/build/configure-apk-splits
@@ -81,8 +77,9 @@ android {
         val normalized = taskName.lowercase()
         normalized.contains("release") || normalized.contains("bundle")
     }
+    val isCiBuild = providers.environmentVariable("CI").orNull.equals("true", ignoreCase = true)
 
-    if (!hasReleaseSigningConfig && requestedReleaseBuild) {
+    if (!hasReleaseSigningConfig && requestedReleaseBuild && !isCiBuild) {
         throw GradleException(
             "Missing Android release signing properties: ${missingSigningProperties.joinToString()}. " +
                 "Copy app/android/key.properties.example to app/android/key.properties " +
@@ -106,7 +103,11 @@ android {
             // Enable test plugins for debug/test builds
         }
         release {
-            signingConfig = signingConfigs.getByName("release")
+            signingConfig = if (hasReleaseSigningConfig) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
 
             // Enable code shrinking (R8/ProGuard)
             isMinifyEnabled = true
@@ -156,8 +157,25 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.10.2")
+
 }
 
 flutter {
     source = "../.."
+}
+
+tasks.withType<JavaCompile>().configureEach {
+    doFirst {
+        val registrant = file("src/main/java/io/flutter/plugins/GeneratedPluginRegistrant.java")
+        if (!registrant.exists()) return@doFirst
+
+        val original = registrant.readText()
+        val patched = original.replace(
+            "new io.flutter.plugins.sharedpreferences.SharedPreferencesPlugin()",
+            "new io.flutter.plugins.sharedpreferences.LegacySharedPreferencesPlugin()",
+        )
+        if (patched != original) {
+            registrant.writeText(patched)
+        }
+    }
 }

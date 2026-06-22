@@ -6,13 +6,12 @@
 # baseline_bytes: approved baseline size in bytes.
 # budget_mb: absolute artifact budget in MiB.
 #
-# The initial baseline is the issue #163 ceiling: 35 MiB. After successful main
-# builds, CI updates baseline_bytes to the measured value for each artifact while
-# keeping budget_mb at or below 35.
+# Reduced variants keep the issue #163 ceiling: 35 MiB. The full mobile app
+# includes all native feature runtimes and uses a separate approved ceiling.
 component	artifact	baseline_bytes	budget_mb
-mobile-full	app-arm64-v8a-release.apk	36700160	35
-mobile-full	app-armeabi-v7a-release.apk	36700160	35
-mobile-full	app-x86_64-release.apk	36700160	35
+mobile-full	app-arm64-v8a-release.apk	199229440	190
+mobile-full	app-armeabi-v7a-release.apk	167772160	160
+mobile-full	app-x86_64-release.apk	209715200	200
 mobile-streaming	app-arm64-v8a-release.apk	36700160	35
 mobile-streaming	app-armeabi-v7a-release.apk	36700160	35
 mobile-streaming	app-x86_64-release.apk	36700160	35

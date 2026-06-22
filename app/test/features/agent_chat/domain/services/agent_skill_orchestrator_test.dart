@@ -70,9 +70,18 @@ void main() {
 
       expect(result.handled, true);
       expect(result.message, contains('successfully scheduled for 9:00 AM'));
+      expect(result.message, contains('add this to your calendar'));
+      expect(result.pendingCalendarEvent, isNotNull);
+      expect(result.pendingCalendarEvent!['title'], 'Daily Schedule Check');
+      expect(result.pendingCalendarEvent!['date'], '2026-06-20');
+      expect(result.pendingCalendarEvent!['hour'], 9);
       expect(
         result.traces.map((trace) => trace.detail),
-        containsAll(['schedule-notification', 'schedule_notification']),
+        containsAll([
+          'schedule-notification',
+          'get_current_date_time',
+          'schedule_notification',
+        ]),
       );
       expect(notificationScheduler.scheduled, hasLength(1));
       expect(
@@ -102,6 +111,12 @@ void main() {
 
       expect(result.handled, true);
       expect(result.message, contains('"team meeting"'));
+      expect(result.message, contains('add this to your calendar'));
+      expect(result.pendingCalendarEvent, isNotNull);
+      expect(result.pendingCalendarEvent!['title'], 'team meeting');
+      expect(result.pendingCalendarEvent!['date'], '2026-06-21');
+      expect(result.pendingCalendarEvent!['hour'], 14);
+      expect(result.pendingCalendarEvent!['minute'], 30);
       expect(notificationScheduler.scheduled.single.title, 'team meeting');
       expect(notificationScheduler.scheduled.single.hour, 14);
       expect(notificationScheduler.scheduled.single.minute, 30);
@@ -123,6 +138,8 @@ void main() {
 
       expect(result.handled, true);
       expect(result.message, contains('2 medicine reminders'));
+      expect(result.message, isNot(contains('add this to your calendar')));
+      expect(result.pendingCalendarEvent, isNull);
       expect(notificationScheduler.scheduled, hasLength(2));
       expect(notificationScheduler.scheduled.first.category, 'medicine');
       expect(
@@ -238,6 +255,7 @@ AgentSkillOrchestrator _buildOrchestrator({
       connectors: [
         DateTimeConnector(now: () => DateTime(2026, 6, 20, 9, 3)),
         InMemoryCalendarConnector(events: events),
+        InMemoryCreateCalendarEventConnector(),
         ScheduleNotificationConnector(
           scheduler: notificationScheduler ?? InMemoryNotificationScheduler(),
         ),
