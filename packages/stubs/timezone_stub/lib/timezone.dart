@@ -56,4 +56,8 @@ class TZDateTime extends DateTime {
         other.millisecond,
         other.microsecond,
       );
+
+  @override
+  TZDateTime add(Duration duration) =>
+      TZDateTime.from(super.add(duration), local);
 }
