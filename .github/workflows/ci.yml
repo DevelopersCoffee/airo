@@ -354,13 +354,14 @@ jobs:
           echo "🔨 Building ${{ matrix.platform.name }} APK..."
           flutter build apk --release \
             --target=${{ matrix.platform.target }} \
-            --target-platform=android-arm,android-arm64,android-x64 \
+            --target-platform=android-arm64 \
             --dart-define=APP_VARIANT=${{ matrix.platform.variant }} \
             --dart-define=APP_PLATFORM=${{ matrix.platform.app_platform }} \
-            --split-per-abi \
             --tree-shake-icons \
             --split-debug-info=build/debug-info-${{ matrix.platform.name }} \
             --obfuscate
+          mv build/app/outputs/flutter-apk/app-release.apk \
+            build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
           echo "✅ Build complete"
 
       # ===========================================
