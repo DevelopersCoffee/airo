@@ -298,6 +298,28 @@ jobs:
           fi
           echo "✅ Firebase configuration created successfully"
 
+      - name: Create CI validation signing config
+        run: |
+          cd app/android
+          keytool -genkeypair \
+            -v \
+            -keystore ci-validation.keystore \
+            -storepass ci-validation-password \
+            -keypass ci-validation-password \
+            -alias ci-validation \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -dname "CN=Airo CI Validation,O=DevelopersCoffee,C=US"
+          {
+            echo "storeFile=ci-validation.keystore"
+            echo "storePassword=ci-validation-password"
+            echo "keyAlias=ci-validation"
+            echo "keyPassword=ci-validation-password"
+          } > key.properties
+          chmod 600 ci-validation.keystore key.properties
+          echo "✅ CI validation signing config created"
+
       # ===========================================
       # Apply Platform-Specific Pubspec (if using stubs)
       # ===========================================
