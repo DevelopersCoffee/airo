@@ -99,21 +99,20 @@ class SharedExpense extends Equatable {
 
   @override
   List<Object?> get props => [
-        id,
-        groupId,
-        description,
-        totalAmountCents,
-        currencyCode,
-        categoryId,
-        paidByUserId,
-        splitType,
-        splits,
-        notes,
-        receiptId,
-        expenseDate,
-        isDeleted,
-        createdAt,
-        updatedAt,
-      ];
+    id,
+    groupId,
+    description,
+    totalAmountCents,
+    currencyCode,
+    categoryId,
+    paidByUserId,
+    splitType,
+    splits,
+    notes,
+    receiptId,
+    expenseDate,
+    isDeleted,
+    createdAt,
+    updatedAt,
+  ];
 }
-

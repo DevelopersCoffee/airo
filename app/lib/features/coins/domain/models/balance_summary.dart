@@ -82,13 +82,12 @@ class BalanceSummary extends Equatable {
 
   @override
   List<Object?> get props => [
-        groupId,
-        netBalances,
-        debts,
-        simplifiedDebts,
-        totalExpensesCents,
-        totalSettlementsCents,
-        calculatedAt,
-      ];
+    groupId,
+    netBalances,
+    debts,
+    simplifiedDebts,
+    totalExpensesCents,
+    totalSettlementsCents,
+    calculatedAt,
+  ];
 }
-

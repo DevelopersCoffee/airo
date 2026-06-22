@@ -60,16 +60,9 @@ class MemberAvatar extends StatelessWidget {
               decoration: BoxDecoration(
                 color: Colors.amber,
                 shape: BoxShape.circle,
-                border: Border.all(
-                  color: theme.colorScheme.surface,
-                  width: 2,
-                ),
+                border: Border.all(color: theme.colorScheme.surface, width: 2),
               ),
-              child: Icon(
-                Icons.star,
-                size: size * 0.2,
-                color: Colors.white,
-              ),
+              child: Icon(Icons.star, size: size * 0.2, color: Colors.white),
             ),
           ),
       ],
@@ -150,4 +143,3 @@ class MemberAvatarStack extends StatelessWidget {
     );
   }
 }
-

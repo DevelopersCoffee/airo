@@ -86,18 +86,17 @@ class GroupMember extends Equatable {
 
   @override
   List<Object?> get props => [
-        id,
-        groupId,
-        userId,
-        displayName,
-        avatarUrl,
-        email,
-        phoneNumber,
-        role,
-        currencyCode,
-        isActive,
-        joinedAt,
-        leftAt,
-      ];
+    id,
+    groupId,
+    userId,
+    displayName,
+    avatarUrl,
+    email,
+    phoneNumber,
+    role,
+    currencyCode,
+    isActive,
+    joinedAt,
+    leftAt,
+  ];
 }
-

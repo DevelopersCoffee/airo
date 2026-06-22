@@ -119,22 +119,21 @@ class Investment extends Equatable {
 
   @override
   List<Object?> get props => [
-        id,
-        name,
-        type,
-        investedAmountCents,
-        currentValueCents,
-        currencyCode,
-        units,
-        currentPricePerUnit,
-        symbol,
-        broker,
-        purchaseDate,
-        lastUpdated,
-        isActive,
-        notes,
-        createdAt,
-        updatedAt,
-      ];
+    id,
+    name,
+    type,
+    investedAmountCents,
+    currentValueCents,
+    currencyCode,
+    units,
+    currentPricePerUnit,
+    symbol,
+    broker,
+    purchaseDate,
+    lastUpdated,
+    isActive,
+    notes,
+    createdAt,
+    updatedAt,
+  ];
 }
-

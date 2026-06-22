@@ -25,27 +25,18 @@ class UpdateExpenseUseCase {
 
     final existing = existingResult.data;
     if (existing == null) {
-      return (
-        data: null,
-        error: 'Transaction not found',
-      );
+      return (data: null, error: 'Transaction not found');
     }
 
     // Validate updated fields
     final description = params.description ?? existing.description;
     if (description.trim().isEmpty) {
-      return (
-        data: null,
-        error: 'Description is required',
-      );
+      return (data: null, error: 'Description is required');
     }
 
     final amountCents = params.amountCents ?? existing.amountCents;
     if (amountCents <= 0) {
-      return (
-        data: null,
-        error: 'Amount must be greater than zero',
-      );
+      return (data: null, error: 'Amount must be greater than zero');
     }
 
     // Create updated transaction
@@ -95,4 +86,3 @@ class UpdateExpenseParams {
     this.tags,
   });
 }
-

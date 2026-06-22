@@ -110,18 +110,9 @@ class PlatformFeatures {
       AppFeature.reader,
       AppFeature.ocr,
     },
-    AppPlatform.mobileStreaming: {
-      AppFeature.iptv,
-      AppFeature.music,
-    },
-    AppPlatform.androidTv: {
-      AppFeature.iptv,
-    },
-    AppPlatform.iPad: {
-      AppFeature.iptv,
-      AppFeature.music,
-      AppFeature.reader,
-    },
+    AppPlatform.mobileStreaming: {AppFeature.iptv, AppFeature.music},
+    AppPlatform.androidTv: {AppFeature.iptv},
+    AppPlatform.iPad: {AppFeature.iptv, AppFeature.music, AppFeature.reader},
   };
 
   /// Get features enabled for current platform
@@ -150,4 +141,3 @@ class PlatformFeatures {
   /// Get platform name for logging/analytics
   static String get platformName => current.name;
 }
-

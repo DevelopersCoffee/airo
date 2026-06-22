@@ -99,19 +99,18 @@ class Settlement extends Equatable {
 
   @override
   List<Object?> get props => [
-        id,
-        groupId,
-        fromUserId,
-        toUserId,
-        amountCents,
-        currencyCode,
-        paymentMethod,
-        paymentReference,
-        notes,
-        status,
-        settlementDate,
-        createdAt,
-        updatedAt,
-      ];
+    id,
+    groupId,
+    fromUserId,
+    toUserId,
+    amountCents,
+    currencyCode,
+    paymentMethod,
+    paymentReference,
+    notes,
+    status,
+    settlementDate,
+    createdAt,
+    updatedAt,
+  ];
 }
-
