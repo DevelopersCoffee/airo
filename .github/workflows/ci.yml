@@ -60,6 +60,7 @@ jobs:
       - name: Run code generation
         run: |
           cd app
+          dart run build_runner clean
           dart run build_runner build --delete-conflicting-outputs
 
       - name: Run Flutter Analyze
@@ -158,6 +159,7 @@ jobs:
       - name: Run code generation
         run: |
           cd app
+          dart run build_runner clean
           dart run build_runner build --delete-conflicting-outputs
 
       - name: Run app tests with coverage
@@ -321,6 +323,7 @@ jobs:
         if: matrix.platform.name == 'mobile-full'
         run: |
           cd app
+          dart run build_runner clean
           dart run build_runner build --delete-conflicting-outputs
 
       - name: Build APK (Release) - ${{ matrix.platform.description }}

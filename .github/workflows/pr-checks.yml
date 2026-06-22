@@ -86,6 +86,7 @@ jobs:
       - name: Run code generation
         run: |
           cd app
+          dart run build_runner clean
           dart run build_runner build --delete-conflicting-outputs
 
       - name: Run Flutter Analyze
