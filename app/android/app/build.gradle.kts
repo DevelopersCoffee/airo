@@ -147,16 +147,16 @@ dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
 
     // ML Kit GenAI Prompt API for on-device Gemini Nano.
-    implementation("com.google.mlkit:genai-prompt:1.0.0-beta1")
+    implementation("com.google.mlkit:genai-prompt:1.0.0-beta2")
 
     // LiteRT-LM for local on-device LLM inference.
     implementation("com.google.ai.edge.litertlm:litertlm-android:latest.release")
 
     // Coroutines and lifecycle dependencies for async operations
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.10.0")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.10.2")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.11.0")
 
 }
 
