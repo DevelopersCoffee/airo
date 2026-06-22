@@ -57,7 +57,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   final GeminiNanoService _geminiNano = GeminiNanoService();
   final LiteRtLmService _liteRtLm = LiteRtLmService();
   late final AssistantRuntimeService _assistantRuntime;
+  late final AgentConnectorRegistry _connectorRegistry;
   late final AgentSkillOrchestrator _skillOrchestrator;
+  Map<String, dynamic>? _pendingCalendarEvent;
   bool _isDeviceSupported = false;
 
   @override
@@ -68,20 +70,21 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       geminiNano: _geminiNano,
       liteRtLm: _liteRtLm,
     );
+    _connectorRegistry = AgentConnectorRegistry(
+      connectors: [
+        DateTimeConnector(),
+        NativeCalendarConnector(),
+        NativeCreateCalendarEventConnector(),
+        ScheduleNotificationConnector(),
+      ],
+    );
     _skillOrchestrator = AgentSkillOrchestrator(
       skillRegistry: _skillRegistry,
-      connectorRegistry: AgentConnectorRegistry(
-        connectors: [
-          DateTimeConnector(),
-          NativeCalendarConnector(),
-          ScheduleNotificationConnector(),
-        ],
-      ),
+      connectorRegistry: _connectorRegistry,
       modelClient: SelectedRuntimeAgentSkillModelClient(
         runtimeService: _assistantRuntime,
         selectedModelId: () => ref.read(selectedAssistantModelIdProvider),
       ),
-      useFallbackModelClient: false,
     );
     // Add welcome message
     _messages.add(
@@ -460,7 +463,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   void _sendMessage() async {
     final message = _messageController.text.trim();
-    if (message.isEmpty) return;
+    if (message.isEmpty) {
+      return;
+    }
 
     _messageController.clear();
 
@@ -469,12 +474,33 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       _messages.add(ChatMessage(text: message, isUser: true));
     });
 
+    final pendingCalendarEvent = _pendingCalendarEvent;
+    if (pendingCalendarEvent != null && _isCalendarConfirmation(message)) {
+      _pendingCalendarEvent = null;
+      await _createPendingCalendarEvent(pendingCalendarEvent);
+      return;
+    }
+    if (pendingCalendarEvent != null && _isCalendarRejection(message)) {
+      _pendingCalendarEvent = null;
+      setState(() {
+        _messages.add(
+          ChatMessage(
+            text:
+                'Okay, I will keep it as an Airo notification and will not add it to Calendar.',
+            isUser: false,
+          ),
+        );
+      });
+      return;
+    }
+
     if (await _tryIngestFinanceMessage(message)) {
       return;
     }
 
     final skillResult = await _skillOrchestrator.run(message);
     if (skillResult.handled) {
+      _pendingCalendarEvent = skillResult.pendingCalendarEvent;
       setState(() {
         _messages.add(
           ChatMessage(
@@ -603,6 +629,56 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       case FinanceChatIngestionStatus.ignored:
         return 'I could not read this as a finance transaction.';
     }
+  }
+
+  Future<void> _createPendingCalendarEvent(
+    Map<String, dynamic> calendarEvent,
+  ) async {
+    final result = await _connectorRegistry.execute(
+      'create_calendar_event',
+      calendarEvent,
+    );
+    final title = calendarEvent['title'] as String? ?? 'reminder';
+    setState(() {
+      _messages.add(
+        ChatMessage(
+          text: result.isError
+              ? result.message ??
+                    'I could not add "$title" to Calendar on this device yet.'
+              : 'I added "$title" to your calendar.',
+          isUser: false,
+          traces: [
+            AgentActionTrace(
+              title: 'Execute action',
+              detail: 'create_calendar_event',
+              parameters: calendarEvent,
+              success: !result.isError,
+            ),
+          ],
+        ),
+      );
+    });
+  }
+
+  bool _isCalendarConfirmation(String message) {
+    final lower = message.toLowerCase().trim();
+    return lower == 'yes' ||
+        lower == 'yeah' ||
+        lower == 'yep' ||
+        lower == 'sure' ||
+        lower.contains('add it') ||
+        lower.contains('add to calendar') ||
+        lower.contains('calendar too');
+  }
+
+  bool _isCalendarRejection(String message) {
+    final lower = message.toLowerCase().trim();
+    return lower == 'no' ||
+        lower == 'nope' ||
+        lower.contains('do not') ||
+        lower.contains("don't") ||
+        lower.contains('skip') ||
+        lower.contains('not now');
   }
 
   Future<void> _generateSelectedModelResponse(

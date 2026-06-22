@@ -182,6 +182,7 @@ class AppShell extends ConsumerWidget {
           destinations: [
             for (final tab in navigationTabs)
               NavigationDestination(
+                key: ValueKey('app_nav_${tab.name}'),
                 icon: Icon(tab.icon),
                 selectedIcon: Icon(tab.selectedIcon),
                 label: tab.label,
