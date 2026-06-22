@@ -62,6 +62,20 @@ void main() {
         fileSizeBytes: 1500000000,
         quantization: ModelQuantization.q4,
         credibility: ModelCredibility.official,
+        supportsVision: true,
+        supportsFunctionCalling: true,
+        modalities: [
+          ModelModality.text,
+          ModelModality.image,
+          ModelModality.toolCall,
+        ],
+        capabilities: [
+          ModelCapability.chat,
+          ModelCapability.imageUnderstanding,
+          ModelCapability.mobileActions,
+        ],
+        backendPreference: ModelBackendPreference.gpu,
+        licenseState: ModelLicenseState.gated,
         tags: ['chat', 'mobile'],
       );
 
@@ -73,6 +87,12 @@ void main() {
       expect(restored.family, original.family);
       expect(restored.quantization, original.quantization);
       expect(restored.credibility, original.credibility);
+      expect(restored.supportsVision, true);
+      expect(restored.supportsFunctionCalling, true);
+      expect(restored.modalities, original.modalities);
+      expect(restored.capabilities, original.capabilities);
+      expect(restored.backendPreference, original.backendPreference);
+      expect(restored.licenseState, original.licenseState);
       expect(restored.tags, original.tags);
     });
 
@@ -259,6 +279,39 @@ void main() {
       expect(chatResults.first.id, 'llama-chat');
     });
 
+    test('should query models by modality and capability', () {
+      registry.registerModels([
+        const OfflineModelInfo(
+          id: 'image-model',
+          name: 'Image Model',
+          family: ModelFamily.gemma,
+          fileSizeBytes: 1000000000,
+          supportsVision: true,
+          modalities: [ModelModality.text, ModelModality.image],
+          capabilities: [ModelCapability.imageUnderstanding],
+        ),
+        const OfflineModelInfo(
+          id: 'actions-model',
+          name: 'Actions Model',
+          family: ModelFamily.gemma,
+          fileSizeBytes: 300000000,
+          supportsFunctionCalling: true,
+          modalities: [ModelModality.text, ModelModality.toolCall],
+          capabilities: [ModelCapability.mobileActions],
+        ),
+      ]);
+
+      final imageModels = registry.queryModels(modality: ModelModality.image);
+      expect(imageModels, hasLength(1));
+      expect(imageModels.first.id, 'image-model');
+
+      final actionModels = registry.queryModels(
+        capability: ModelCapability.mobileActions,
+      );
+      expect(actionModels, hasLength(1));
+      expect(actionModels.first.id, 'actions-model');
+    });
+
     test('should emit events on changes', () async {
       final events = <ModelRegistryEvent>[];
       registry.changes.listen(events.add);
@@ -319,6 +372,24 @@ void main() {
       for (final model in officialModels) {
         expect(model.credibility, ModelCredibility.official);
       }
+    });
+
+    test('should expose Gallery-style packages by capability', () {
+      final imagePackages = ModelCatalog.byCapability(
+        ModelCapability.imageUnderstanding,
+      );
+      expect(
+        imagePackages.map((model) => model.id),
+        contains('gemma-3n-e2b-it-litertlm'),
+      );
+
+      final actionPackages = ModelCatalog.byCapability(
+        ModelCapability.mobileActions,
+      );
+      expect(
+        actionPackages.map((model) => model.id),
+        contains('mobile-actions-270m-litertlm'),
+      );
     });
   });
 }

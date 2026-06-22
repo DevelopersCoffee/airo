@@ -1,6 +1,7 @@
 import 'package:airo_app/features/agent_chat/data/connectors/calendar_connector.dart';
 import 'package:airo_app/features/agent_chat/data/connectors/date_time_connector.dart';
 import 'package:airo_app/features/agent_chat/data/connectors/notification_connector.dart';
+import 'package:airo_app/features/agent_chat/data/connectors/route_connector.dart';
 import 'package:airo_app/features/agent_chat/domain/models/agent_skill.dart';
 import 'package:airo_app/features/agent_chat/domain/services/agent_connector_registry.dart';
 import 'package:airo_app/features/agent_chat/domain/services/agent_skill_orchestrator.dart';
@@ -241,6 +242,27 @@ void main() {
       expect(result.isError, true);
       expect(result.message, contains('unsupported action'));
     });
+
+    test(
+      'normalizes route tool typo and executes open route connector',
+      () async {
+        final orchestrator = _buildOrchestrator(
+          modelClient: _OpenRouteTypoModelClient(),
+        );
+
+        final result = await orchestrator.run('Open money');
+
+        expect(result.handled, true);
+        expect(result.isError, false);
+        expect(result.message, 'Opening Money.');
+        expect(result.route, '/money');
+        expect(result.shouldNavigate, true);
+        expect(
+          result.traces.map((trace) => trace.detail),
+          containsAll(['open-airo-feature', 'open_route']),
+        );
+      },
+    );
   });
 }
 
@@ -259,6 +281,7 @@ AgentSkillOrchestrator _buildOrchestrator({
         ScheduleNotificationConnector(
           scheduler: notificationScheduler ?? InMemoryNotificationScheduler(),
         ),
+        RouteConnector(),
       ],
     ),
     modelClient: modelClient,
@@ -281,5 +304,27 @@ class _UnsupportedToolModelClient implements AgentSkillModelClient {
     required List<Map<String, dynamic>> toolResults,
   }) async {
     return const SkillModelAction.toolCall(tool: 'delete_calendar_events');
+  }
+}
+
+class _OpenRouteTypoModelClient implements AgentSkillModelClient {
+  @override
+  Future<String?> selectSkill({
+    required String prompt,
+    required List<AgentSkill> enabledSkills,
+  }) async {
+    return 'open-airo-feature';
+  }
+
+  @override
+  Future<SkillModelAction?> nextAction({
+    required String prompt,
+    required AgentSkill skill,
+    required List<Map<String, dynamic>> toolResults,
+  }) async {
+    return const SkillModelAction.toolCall(
+      tool: 'Open_root',
+      arguments: {'feature': 'money'},
+    );
   }
 }

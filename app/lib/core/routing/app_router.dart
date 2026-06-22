@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../features/auth/screens/login_screen.dart';
 import '../../features/auth/screens/register_screen.dart';
@@ -7,7 +6,6 @@ import '../../features/agent_chat/presentation/screens/chat_screen.dart';
 import '../../features/agent_chat/presentation/screens/model_library_screen.dart';
 import '../../features/agent_chat/presentation/screens/notifications_screen.dart';
 import '../../features/agent_chat/presentation/screens/profile_screen.dart';
-import '../../features/settings/presentation/screens/ai_models_screen.dart';
 import '../../features/live/presentation/screens/live_screen.dart';
 import '../../features/games/presentation/screens/games_hub_screen.dart';
 import '../../features/quest/presentation/screens/quest_chat_screen.dart';
@@ -155,11 +153,7 @@ class AppRouter {
                         context.go('/agent');
                       },
                       onOpenModelManager: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (context) => const AIModelsScreen(),
-                          ),
-                        );
+                        context.push('/agent/profile');
                       },
                     ),
                   ),
