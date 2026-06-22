@@ -56,8 +56,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   final AgentSkillRegistry _skillRegistry = AgentSkillRegistry();
   final GeminiNanoService _geminiNano = GeminiNanoService();
   final LiteRtLmService _liteRtLm = LiteRtLmService();
-  late final AgentConnectorRegistry _connectorRegistry;
   late final AssistantRuntimeService _assistantRuntime;
+  late final AgentConnectorRegistry _connectorRegistry;
   late final AgentSkillOrchestrator _skillOrchestrator;
   Map<String, dynamic>? _pendingCalendarEvent;
   bool _isDeviceSupported = false;

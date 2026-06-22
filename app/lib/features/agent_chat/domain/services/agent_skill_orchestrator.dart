@@ -200,7 +200,6 @@ class RuleBasedAgentSkillModelClient implements AgentSkillModelClient {
         currentDate: _currentDateFromToolResults(toolResults),
       );
     }
-
     final hasDateTime = toolResults.any(
       (result) => result['tool'] == 'get_current_date_time',
     );
