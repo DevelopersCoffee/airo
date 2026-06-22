@@ -37,7 +37,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Check file changes
-        uses: dorny/paths-filter@v3
+        uses: dorny/paths-filter@v4
         id: changes
         with:
           filters: |
@@ -153,7 +153,7 @@ jobs:
     if: always()
     steps:
       - name: Comment PR with summary
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           script: |
             const prValidation = '${{ needs.pr-validation.result }}';
