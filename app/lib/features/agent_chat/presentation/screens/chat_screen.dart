@@ -431,7 +431,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   void _sendMessage() async {
     final message = _messageController.text.trim();
-    if (message.isEmpty) return;
+    if (message.isEmpty) {
+      return;
+    }
 
     _messageController.clear();
 
@@ -600,6 +602,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       'chat' => Icons.chat_bubble_outline,
       'send' => Icons.send_outlined,
       'calendar' => Icons.calendar_month_outlined,
+      'notifications' => Icons.notifications_active_outlined,
       'receipt' => Icons.receipt_long,
       'restaurant' => Icons.restaurant,
       'task' => Icons.task_alt,
@@ -617,6 +620,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       'ai_chat' => Colors.blue,
       'agent_skills' => Colors.deepPurple,
       'calendar_today' => Colors.cyan.shade700,
+      'smart_reminders' => Colors.purple.shade700,
       'split_bill' => Colors.teal,
       'diet_plan' => Colors.green,
       'routine_planner' => Colors.orange,
@@ -634,6 +638,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       'ai_chat' => 'Help me think through a task',
       'agent_skills' => 'What can you do in Airo?',
       'calendar_today' => 'Check my schedule for today',
+      'smart_reminders' =>
+        'Remind me to take Minoxidil every 12 hours starting at 8am',
       'split_bill' => 'Split this ₹2400 bill with Asha, Ben and Chen',
       'diet_plan' => 'Make me a 7 day vegetarian diet plan',
       'routine_planner' => 'Create a morning study routine for tomorrow',

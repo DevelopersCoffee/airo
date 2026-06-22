@@ -53,6 +53,7 @@ class _ManageSkillsSheetState extends State<ManageSkillsSheet> {
                   ),
                 ),
                 IconButton(
+                  key: const Key('manage_skills_close_button'),
                   tooltip: 'Close',
                   onPressed: () => Navigator.of(context).pop(),
                   icon: const Icon(Icons.close),

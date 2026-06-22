@@ -438,6 +438,13 @@ class ToolRegistry {
         featured: true,
       ),
       AgentSkillCard(
+        key: 'smart_reminders',
+        title: 'Smart Reminders',
+        description: 'Schedule medicine, family, and habit reminders',
+        iconKey: 'notifications',
+        featured: true,
+      ),
+      AgentSkillCard(
         key: 'split_bill',
         title: 'Split Bill',
         description: 'Calculate shares or open bill split',

@@ -3,6 +3,7 @@ import 'dart:convert';
 import '../models/agent_skill.dart';
 import 'agent_connector_registry.dart';
 import 'agent_skill_registry.dart';
+import 'reminder_request_parser.dart';
 
 enum SkillModelActionType { toolCall, finalAnswer }
 
@@ -38,22 +39,19 @@ abstract interface class AgentSkillModelClient {
 }
 
 class RuleBasedAgentSkillModelClient implements AgentSkillModelClient {
+  static const _reminderParser = ReminderRequestParser();
+
   @override
   Future<String?> selectSkill({
     required String prompt,
     required List<AgentSkill> enabledSkills,
   }) async {
-    final lower = prompt.toLowerCase();
-    final wantsReminder =
-        lower.contains('reminder') ||
-        lower.contains('notification') ||
-        lower.contains('notify me') ||
-        lower.contains('alert me');
-    if (wantsReminder &&
+    if (_reminderParser.shouldSelectReminderSkill(prompt) &&
         enabledSkills.any((skill) => skill.id == 'schedule-notification')) {
       return 'schedule-notification';
     }
 
+    final lower = prompt.toLowerCase();
     final wantsCalendar =
         lower.contains('calendar') ||
         lower.contains('meeting') ||
@@ -141,25 +139,48 @@ class RuleBasedAgentSkillModelClient implements AgentSkillModelClient {
     if (notificationResult != null) {
       final result =
           notificationResult['result'] as Map<String, dynamic>? ?? const {};
+      final notifications = result['notifications'] as List? ?? const [];
       final title = result['title'] as String? ?? 'reminder';
+      final firstNotification = notifications.whereType<Map>().firstOrNull;
+      final category =
+          result['category'] as String? ??
+          firstNotification?['category'] as String? ??
+          'general';
       final repeatDaily = result['repeat_daily'] as bool? ?? false;
+      final requiresCompletion =
+          result['requires_completion'] as bool? ??
+          (result['metadata'] as Map?)?['requires_completion'] as bool? ??
+          false;
       final hour = result['hour'] as int? ?? 9;
       final minute = result['minute'] as int? ?? 0;
       final time = _formatClockTime(hour, minute);
-      if (repeatDaily && _isScheduleCheck(prompt)) {
+      if (notifications.length > 1) {
+        final noun = category == 'medicine'
+            ? 'medicine reminders'
+            : 'reminders';
+        return SkillModelAction.finalAnswer(
+          'I scheduled ${notifications.length} $noun for "$title".',
+        );
+      }
+      if (repeatDaily && _reminderParser.isScheduleCheck(prompt)) {
         return SkillModelAction.finalAnswer(
           'The daily reminder to check your schedule for today has been '
           'successfully scheduled for $time.',
         );
       }
       final cadence = repeatDaily ? 'daily reminder' : 'reminder';
+      if (requiresCompletion) {
+        return SkillModelAction.finalAnswer(
+          'The $cadence "$title" has been scheduled for $time and will keep '
+          'asking until you mark it done.',
+        );
+      }
       return SkillModelAction.finalAnswer(
         'The $cadence "$title" has been successfully scheduled for $time.',
       );
     }
 
-    final needsCurrentDate =
-        _mentionsToday(prompt) || _mentionsTomorrow(prompt);
+    final needsCurrentDate = _reminderParser.needsCurrentDate(prompt);
     final hasDateTime = toolResults.any(
       (result) => result['tool'] == 'get_current_date_time',
     );
@@ -167,7 +188,7 @@ class RuleBasedAgentSkillModelClient implements AgentSkillModelClient {
       return const SkillModelAction.toolCall(tool: 'get_current_date_time');
     }
 
-    final parsed = _parseNotificationPrompt(
+    final parsed = _reminderParser.parse(
       prompt: prompt,
       currentDate: _currentDateFromToolResults(toolResults),
     );
@@ -179,7 +200,7 @@ class RuleBasedAgentSkillModelClient implements AgentSkillModelClient {
 
     return SkillModelAction.toolCall(
       tool: 'schedule_notification',
-      arguments: parsed,
+      arguments: parsed.toConnectorArguments(),
     );
   }
 }
@@ -190,24 +211,29 @@ class AgentSkillOrchestrator {
     required AgentConnectorRegistry connectorRegistry,
     AgentSkillModelClient? modelClient,
     int maxSteps = 4,
+    Duration modelActionTimeout = const Duration(seconds: 3),
   }) : _skillRegistry = skillRegistry,
        _connectorRegistry = connectorRegistry,
        _modelClient = modelClient ?? RuleBasedAgentSkillModelClient(),
        _fallbackModelClient = RuleBasedAgentSkillModelClient(),
-       _maxSteps = maxSteps;
+       _maxSteps = maxSteps,
+       _modelActionTimeout = modelActionTimeout;
 
   final AgentSkillRegistry _skillRegistry;
   final AgentConnectorRegistry _connectorRegistry;
   final AgentSkillModelClient _modelClient;
   final RuleBasedAgentSkillModelClient _fallbackModelClient;
   final int _maxSteps;
+  final Duration _modelActionTimeout;
 
   Future<AgentRunResult> run(String prompt) async {
     final enabledSkills = _skillRegistry.getEnabledSkills();
     final selectedSkillId =
-        await _modelClient.selectSkill(
-          prompt: prompt,
-          enabledSkills: enabledSkills,
+        await _tryModelCall(
+          () => _modelClient.selectSkill(
+            prompt: prompt,
+            enabledSkills: enabledSkills,
+          ),
         ) ??
         await _fallbackModelClient.selectSkill(
           prompt: prompt,
@@ -228,10 +254,12 @@ class AgentSkillOrchestrator {
 
     for (var step = 0; step < _maxSteps; step++) {
       final action =
-          await _modelClient.nextAction(
-            prompt: prompt,
-            skill: skill,
-            toolResults: toolResults,
+          await _tryModelCall(
+            () => _modelClient.nextAction(
+              prompt: prompt,
+              skill: skill,
+              toolResults: toolResults,
+            ),
           ) ??
           await _fallbackModelClient.nextAction(
             prompt: prompt,
@@ -342,6 +370,14 @@ class AgentSkillOrchestrator {
       isError: true,
     );
   }
+
+  Future<T?> _tryModelCall<T>(Future<T?> Function() call) async {
+    try {
+      return await call().timeout(_modelActionTimeout);
+    } catch (_) {
+      return null;
+    }
+  }
 }
 
 SkillModelAction? parseSkillModelAction(String text) {
@@ -390,61 +426,6 @@ String _formatEventTime(dynamic value) {
   return text;
 }
 
-Map<String, dynamic>? _parseNotificationPrompt({
-  required String prompt,
-  required String? currentDate,
-}) {
-  final time = _parseTime(prompt);
-  if (time == null) return null;
-
-  final repeatDaily = _isDaily(prompt);
-  final scheduleCheck = _isScheduleCheck(prompt);
-  final title =
-      _quotedText(prompt) ??
-      (scheduleCheck ? 'Daily Schedule Check' : 'Reminder');
-  final message = scheduleCheck
-      ? 'Check your schedule for today.'
-      : 'Reminder: $title';
-  final date = repeatDaily ? null : _dateFromPrompt(prompt, currentDate);
-
-  return {
-    'title': title,
-    'message': message,
-    'hour': time.$1,
-    'minute': time.$2,
-    'repeat_daily': repeatDaily,
-    'date': ?date,
-  };
-}
-
-(int, int)? _parseTime(String prompt) {
-  final match = RegExp(
-    r'(?:\bat\s+|@\s*)?(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\b',
-    caseSensitive: false,
-  ).firstMatch(prompt);
-  if (match == null) return null;
-
-  var hour = int.tryParse(match.group(1) ?? '');
-  final minute = int.tryParse(match.group(2) ?? '0') ?? 0;
-  final meridiem = match.group(3)?.toLowerCase();
-  if (hour == null || minute < 0 || minute > 59) return null;
-  if (meridiem == 'pm' && hour < 12) hour += 12;
-  if (meridiem == 'am' && hour == 12) hour = 0;
-  if (hour < 0 || hour > 23) return null;
-  return (hour, minute);
-}
-
-String? _dateFromPrompt(String prompt, String? currentDate) {
-  if (currentDate == null) return null;
-  final current = DateTime.tryParse(currentDate);
-  if (current == null) return null;
-  if (_mentionsTomorrow(prompt)) {
-    return _formatDate(current.add(const Duration(days: 1)));
-  }
-  if (_mentionsToday(prompt)) return _formatDate(current);
-  return null;
-}
-
 String? _currentDateFromToolResults(List<Map<String, dynamic>> toolResults) {
   final dateResult = toolResults.cast<Map<String, dynamic>?>().firstWhere(
     (result) => result?['tool'] == 'get_current_date_time',
@@ -452,36 +433,6 @@ String? _currentDateFromToolResults(List<Map<String, dynamic>> toolResults) {
   );
   final data = dateResult?['result'] as Map<String, dynamic>?;
   return data?['date'] as String?;
-}
-
-String? _quotedText(String prompt) {
-  final match = RegExp(r'"([^"]+)"').firstMatch(prompt);
-  return match?.group(1)?.trim();
-}
-
-bool _isDaily(String prompt) {
-  final lower = prompt.toLowerCase();
-  return lower.contains('daily') ||
-      lower.contains('every day') ||
-      lower.contains('each day');
-}
-
-bool _isScheduleCheck(String prompt) {
-  final lower = prompt.toLowerCase();
-  return lower.contains('check my schedule') ||
-      lower.contains('check your schedule');
-}
-
-bool _mentionsToday(String prompt) => prompt.toLowerCase().contains('today');
-
-bool _mentionsTomorrow(String prompt) {
-  return prompt.toLowerCase().contains('tomorrow');
-}
-
-String _formatDate(DateTime value) {
-  return '${value.year.toString().padLeft(4, '0')}-'
-      '${value.month.toString().padLeft(2, '0')}-'
-      '${value.day.toString().padLeft(2, '0')}';
 }
 
 String _formatClockTime(int hour, int minute) {
