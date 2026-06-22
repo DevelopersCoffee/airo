@@ -1,0 +1,7 @@
+name: pdfx
+description: Stub implementation of pdfx for TV builds
+version: 2.9.2
+publish_to: none
+
+environment:
+  sdk: ">=3.9.2 <4.0.0"

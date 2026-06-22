@@ -129,6 +129,12 @@ dependency_overrides:
     path: ../packages/stubs/flutter_contacts_stub
   permission_handler:
     path: ../packages/stubs/permission_handler_stub
+  flutter_local_notifications:
+    path: ../packages/stubs/flutter_local_notifications_stub
+  timezone:
+    path: ../packages/stubs/timezone_stub
+  pdfx:
+    path: ../packages/stubs/pdfx_stub
 
 flutter:
   uses-material-design: true
