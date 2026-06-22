@@ -3,7 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../domain/models/iptv_channel.dart';
 
 /// Storage service for persisting recently watched IPTV channels
-/// 
+///
 /// Uses SharedPreferences for local device storage.
 /// Maintains privacy by storing data only on device.
 class RecentlyWatchedStorage {
@@ -15,7 +15,7 @@ class RecentlyWatchedStorage {
   RecentlyWatchedStorage(this._prefs);
 
   /// Add channel to recently watched list
-  /// 
+  ///
   /// If channel already exists, moves it to the top.
   /// Maintains max size of [_maxRecentSize] channels.
   Future<void> addToRecent(IPTVChannel channel) async {
@@ -41,7 +41,7 @@ class RecentlyWatchedStorage {
   }
 
   /// Get list of recently watched channels
-  /// 
+  ///
   /// Returns channels in order of most recently watched first.
   Future<List<IPTVChannel>> getRecentlyWatched({int? limit}) async {
     try {
@@ -52,7 +52,7 @@ class RecentlyWatchedStorage {
       final channels = list
           .map((item) => IPTVChannel.fromJson(item as Map<String, dynamic>))
           .toList();
-      
+
       if (limit != null && channels.length > limit) {
         return channels.take(limit).toList();
       }
@@ -64,7 +64,7 @@ class RecentlyWatchedStorage {
   }
 
   /// Clear all recently watched history
-  /// 
+  ///
   /// Used for privacy - allows users to clear their viewing history.
   Future<void> clearRecent() async {
     await _prefs.remove(_recentKey);
@@ -98,4 +98,3 @@ class RecentlyWatchedStorage {
     await _prefs.setString(_recentKey, json);
   }
 }
-

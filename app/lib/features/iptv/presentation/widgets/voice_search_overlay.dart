@@ -12,11 +12,7 @@ class VoiceSearchOverlay extends ConsumerStatefulWidget {
   /// Callback when overlay is dismissed
   final VoidCallback? onDismiss;
 
-  const VoiceSearchOverlay({
-    super.key,
-    this.onSearchComplete,
-    this.onDismiss,
-  });
+  const VoiceSearchOverlay({super.key, this.onSearchComplete, this.onDismiss});
 
   @override
   ConsumerState<VoiceSearchOverlay> createState() => _VoiceSearchOverlayState();
@@ -114,8 +110,9 @@ class _VoiceSearchOverlayState extends ConsumerState<VoiceSearchOverlay>
                         boxShadow: _isListening
                             ? [
                                 BoxShadow(
-                                  color: theme.colorScheme.primary
-                                      .withValues(alpha: 0.5),
+                                  color: theme.colorScheme.primary.withValues(
+                                    alpha: 0.5,
+                                  ),
                                   blurRadius: 30,
                                   spreadRadius: 10,
                                 ),
@@ -140,8 +137,8 @@ class _VoiceSearchOverlayState extends ConsumerState<VoiceSearchOverlay>
                 _isListening
                     ? 'Listening...'
                     : _recognizedText != null
-                        ? 'Searching for "$_recognizedText"'
-                        : 'No speech detected',
+                    ? 'Searching for "$_recognizedText"'
+                    : 'No speech detected',
                 style: theme.textTheme.headlineSmall?.copyWith(
                   color: Colors.white,
                 ),
@@ -217,6 +214,5 @@ class VoiceSearchOverlayController extends ChangeNotifier {
 /// Provider for voice search overlay controller
 final voiceSearchOverlayControllerProvider =
     ChangeNotifierProvider<VoiceSearchOverlayController>((ref) {
-  return VoiceSearchOverlayController();
-});
-
+      return VoiceSearchOverlayController();
+    });

@@ -30,7 +30,10 @@ class BudgetRepositoryImpl implements BudgetRepository {
   Future<Result<Budget?>> findByCategory(String categoryId) async {
     try {
       final entity = await _localDatasource.getBudgetByCategory(categoryId);
-      return (data: entity != null ? _mapper.toDomain(entity) : null, error: null);
+      return (
+        data: entity != null ? _mapper.toDomain(entity) : null,
+        error: null,
+      );
     } catch (e) {
       return (data: null, error: 'Failed to fetch budget: $e');
     }
@@ -100,9 +103,9 @@ class BudgetRepositoryImpl implements BudgetRepository {
 
   @override
   Stream<List<Budget>> watchActive() {
-    return _localDatasource
-        .watchActiveBudgets()
-        .map((entities) => entities.map(_mapper.toDomain).toList());
+    return _localDatasource.watchActiveBudgets().map(
+      (entities) => entities.map(_mapper.toDomain).toList(),
+    );
   }
 
   @override
@@ -122,4 +125,3 @@ class BudgetRepositoryImpl implements BudgetRepository {
     }
   }
 }
-

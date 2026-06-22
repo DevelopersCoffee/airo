@@ -92,7 +92,11 @@ mixin TvAwareMixin<T extends ConsumerStatefulWidget> on ConsumerState<T> {
   TvFocusManager get tvFocusManager => ref.watch(tvFocusManagerProvider);
 
   /// Save focus state for later restoration
-  void saveTvFocusState({required String screenId, String? itemId, int? index}) {
+  void saveTvFocusState({
+    required String screenId,
+    String? itemId,
+    int? index,
+  }) {
     if (isTvMode) {
       tvFocusManager.saveFocusState(
         screenId: screenId,
@@ -110,4 +114,3 @@ mixin TvAwareMixin<T extends ConsumerStatefulWidget> on ConsumerState<T> {
     return null;
   }
 }
-

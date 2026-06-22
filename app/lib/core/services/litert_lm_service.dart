@@ -101,9 +101,7 @@ class LiteRtLmService {
       );
     }
 
-    await _client.initialize(
-      huggingFaceToken: config.optionalHuggingFaceToken,
-    );
+    await _client.initialize(huggingFaceToken: config.optionalHuggingFaceToken);
     _initialized = true;
     return true;
   }

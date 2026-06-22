@@ -116,12 +116,8 @@ class _TvNavigationRail extends ConsumerWidget {
           errorBuilder: (_, _, _) => const Icon(Icons.tv, size: 48),
         ),
         const SizedBox(height: 8),
-        Text(
-          'Airo TV',
-          style: Theme.of(context).textTheme.titleSmall,
-        ),
+        Text('Airo TV', style: Theme.of(context).textTheme.titleSmall),
       ],
     );
   }
 }
-
