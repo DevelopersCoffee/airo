@@ -63,8 +63,9 @@ android {
         val normalized = taskName.lowercase()
         normalized.contains("release") || normalized.contains("bundle")
     }
+    val isCiBuild = providers.environmentVariable("CI").orNull.equals("true", ignoreCase = true)
 
-    if (!hasReleaseSigningConfig && requestedReleaseBuild) {
+    if (!hasReleaseSigningConfig && requestedReleaseBuild && !isCiBuild) {
         throw GradleException(
             "Missing Android release signing properties: ${missingSigningProperties.joinToString()}. " +
                 "Copy app/android/key.properties.example to app/android/key.properties " +
@@ -88,7 +89,11 @@ android {
             // Enable test plugins for debug/test builds
         }
         release {
-            signingConfig = signingConfigs.getByName("release")
+            signingConfig = if (hasReleaseSigningConfig) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
 
             // Enable code shrinking (R8/ProGuard)
             isMinifyEnabled = true
