@@ -354,6 +354,7 @@ jobs:
           echo "🔨 Building ${{ matrix.platform.name }} APK..."
           flutter build apk --release \
             --target=${{ matrix.platform.target }} \
+            --target-platform=android-arm,android-arm64,android-x64 \
             --dart-define=APP_VARIANT=${{ matrix.platform.variant }} \
             --dart-define=APP_PLATFORM=${{ matrix.platform.app_platform }} \
             --split-per-abi \
