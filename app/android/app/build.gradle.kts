@@ -38,10 +38,6 @@ android {
         // Enable multidex for larger apps
         multiDexEnabled = true
 
-        ndk {
-            abiFilters += listOf("arm64-v8a", "x86_64")
-        }
-
         testInstrumentationRunner = "pl.leancode.patrol.PatrolJUnitRunner"
         testInstrumentationRunnerArguments["clearPackageData"] = "true"
     }
