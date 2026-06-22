@@ -51,6 +51,9 @@ dependencies:
   # Audio & Media (TV variant - no background audio service needed)
   video_player: 2.10.1
   wakelock_plus: 1.4.0
+  pdfx: 2.9.2
+  flutter_local_notifications: 20.1.0
+  timezone: 0.10.1
 
   # Utilities
   intl: 0.20.2
