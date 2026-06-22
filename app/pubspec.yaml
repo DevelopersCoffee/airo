@@ -89,7 +89,7 @@ dependencies:
   cupertino_icons: ^1.0.9
   equatable: 2.0.8
   flame: ^1.37.0
-  flame_audio: ^2.12.1
+  flame_audio: 2.11.14
   share_plus: ^10.1.4
   url_launcher: 6.3.2
   file_picker: ^11.0.2
