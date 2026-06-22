@@ -1,4 +1,5 @@
 import java.io.FileInputStream
+import java.util.Base64
 import java.util.Properties
 
 plugins {
@@ -14,6 +15,18 @@ android {
     namespace = "io.airo.app"
     compileSdk = 36 // Android 15 (API level 35) for Pixel 9 compatibility
     ndkVersion = flutter.ndkVersion
+    val dartDefines = providers.gradleProperty("dart-defines").orNull
+        ?.split(",")
+        ?.mapNotNull { encoded ->
+            runCatching {
+                String(Base64.getDecoder().decode(encoded))
+            }.getOrNull()
+        }
+        ?: emptyList()
+    val appPlatform = dartDefines
+        .firstOrNull { it.startsWith("APP_PLATFORM=") }
+        ?.substringAfter("=")
+    val isReducedVariant = appPlatform == "androidTv" || appPlatform == "mobileStreaming"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -107,6 +120,18 @@ android {
     sourceSets {
         getByName("main") {
             kotlin.srcDir("src/main/kotlin")
+        }
+    }
+
+    if (isReducedVariant) {
+        packaging {
+            jniLibs {
+                excludes += setOf(
+                    "**/libLiteRt.so",
+                    "**/libLiteRtClGlAccelerator.so",
+                    "**/liblitertlm_jni.so",
+                )
+            }
         }
     }
 
