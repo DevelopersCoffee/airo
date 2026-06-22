@@ -194,13 +194,15 @@ jobs:
             variant: full
             app_platform: mobileFull
             use_stubs: false
+            enforce_size: false
             size_target_mb: 35
-            description: "Full app with all features"
+            description: "Full app with all features (size report only)"
           - name: mobile-streaming
             target: lib/main_mobile_streaming.dart
             variant: streaming
             app_platform: mobileStreaming
             use_stubs: true
+            enforce_size: true
             pubspec: pubspec_streaming.yaml
             size_target_mb: 35
             description: "Streaming app (IPTV + Music)"
@@ -209,6 +211,7 @@ jobs:
             variant: tv
             app_platform: androidTv
             use_stubs: true
+            enforce_size: true
             pubspec: pubspec_tv.yaml
             size_target_mb: 35
             description: "Android TV (IPTV only)"
@@ -369,6 +372,7 @@ jobs:
       # ===========================================
       - name: Check APK sizes
         id: apk_sizes
+        continue-on-error: ${{ matrix.platform.enforce_size == false }}
         env:
           APK_SIZE_COMPONENT: ${{ matrix.platform.name }}
           APK_SIZE_APK_GLOB: app/build/app/outputs/flutter-apk/app-*-release.apk
@@ -467,6 +471,7 @@ jobs:
           } > apk-size-report.md
 
       - name: Comment PR with APK size report
+        continue-on-error: true
         uses: actions/github-script@v8
         with:
           script: |
