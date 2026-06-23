@@ -117,7 +117,7 @@ jobs:
       - name: Generate Smoke Test Report
         run: |
           mkdir -p reports
-          cat > reports/smoke-test-summary.md << 'EOF'
+          cat > reports/smoke-test-summary.md <<EOF
           # 🔥 Smoke Test Summary
           
           **Date**: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
