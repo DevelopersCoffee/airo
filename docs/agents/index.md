@@ -9,6 +9,7 @@
 | [📋 Project Board](https://github.com/orgs/DevelopersCoffee/projects/2) | Live task tracking |
 | [🎯 Coordination Issue](https://github.com/DevelopersCoffee/airo/issues/17) | Central status tracker |
 | [📜 Rules](./RULES.md) | Agent operating rules |
+| [🧭 Agent Policy](./AGENT_POLICY.md) | Ownership, lifecycle gates, contracts, and Critical Agent workflow |
 | [🔄 SDLC](./SDLC.md) | Development workflow |
 | [📅 Sequence](./SEQUENCE.md) | Agent activation order |
 
@@ -38,10 +39,11 @@
 ### For New Agents
 
 1. **Read the Rules:** [RULES.md](./RULES.md)
-2. **Understand the Process:** [SDLC.md](./SDLC.md)
-3. **Check the Sequence:** [SEQUENCE.md](./SEQUENCE.md)
-4. **Find your Issue:** Check the table above
-5. **Start Working:** Follow the SDLC workflow
+2. **Complete the Agent Policy gates:** [AGENT_POLICY.md](./AGENT_POLICY.md)
+3. **Understand the Process:** [SDLC.md](./SDLC.md)
+4. **Check the Sequence:** [SEQUENCE.md](./SEQUENCE.md)
+5. **Find your Issue:** Check the table above
+6. **Start Working:** Follow the SDLC workflow
 
 ### For Project Maintainers
 
@@ -69,4 +71,3 @@ Track these on the Project Board:
 2. Create PR modifying `docs/agents/*.md`
 3. Get approval from maintainer
 4. Merge and announce change
-
