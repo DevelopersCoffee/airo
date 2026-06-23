@@ -21,6 +21,17 @@ Framework code is decided by framework-owning agents. Application behavior is
 decided by application/domain-owning agents. Cross-boundary work requires an
 explicit contract before code changes.
 
+## Spec-Driven Rule
+
+AI can accelerate implementation, but it does not remove the need for explicit
+requirements, architecture, verification, and human review. Every non-trivial
+change must start with a Feature Packet that captures the problem, owner,
+contract, deterministic use cases, automation flows, evaluation plan,
+security/privacy posture, and rollback plan.
+
+The Kaggle adoption plan records how Airo applies these practices:
+`docs/agents/KAGGLE_VIBE_CODING_ADOPTION.md`.
+
 ## Agent Roles
 
 ### Critical Agent

@@ -10,6 +10,7 @@
 | [🎯 Coordination Issue](https://github.com/DevelopersCoffee/airo/issues/17) | Central status tracker |
 | [📜 Rules](./RULES.md) | Agent operating rules |
 | [🧭 Agent Policy](./AGENT_POLICY.md) | Ownership, lifecycle gates, contracts, and Critical Agent workflow |
+| [🧪 Kaggle Adoption](./KAGGLE_VIBE_CODING_ADOPTION.md) | Spec-driven, skills, tools, security, and evaluation adoption plan |
 | [🔄 SDLC](./SDLC.md) | Development workflow |
 | [📅 Sequence](./SEQUENCE.md) | Agent activation order |
 
