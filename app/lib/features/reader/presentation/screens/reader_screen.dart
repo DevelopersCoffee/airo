@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/dictionary/dictionary.dart';
-import '../../../quotes/presentation/widgets/daily_quote_card.dart';
 import '../../../../shared/widgets/responsive_center.dart';
 
 /// Reader screen
@@ -19,10 +18,6 @@ class ReaderScreen extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Daily quote card
-                const CompactQuoteCard(),
-                const SizedBox(height: 24),
-
                 // Continue reading section
                 Text(
                   'Continue Reading',
