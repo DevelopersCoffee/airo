@@ -100,12 +100,39 @@ class GeminiNanoPlugin(private val context: Context) : MethodChannel.MethodCallH
         when (call.method) {
             "isAvailable" -> checkAvailability(result)
             "initialize" -> initialize(call, result)
+            "warmup" -> warmup(result)
             "generateContent" -> generateContent(call, result)
             "generateContentStream" -> generateContentStream(call, result)
             "getDeviceInfo" -> getDeviceInfo(result)
             "getMemoryInfo" -> getMemoryInfo(result)
             "getCapabilities" -> getCapabilities(result)
             else -> result.notImplemented()
+        }
+    }
+
+    /**
+     * Warm up Gemini Nano by issuing a lightweight local inference request.
+     *
+     * ML Kit does not expose a dedicated preload API, so a whitespace prompt is
+     * used to force the runtime to load the model weights before the first
+     * user-visible request.
+     */
+    private fun warmup(result: MethodChannel.Result) {
+        coroutineScope.launch {
+            try {
+                if (!ensureInitialized()) {
+                    result.error("NOT_INITIALIZED", "Gemini Nano not initialized", null)
+                    return@launch
+                }
+
+                val request = GenerateContentRequest.Builder(TextPart(" ")).build()
+                generativeModel!!.generateContent(request)
+                Log.d(TAG, "Gemini Nano warmup complete")
+                result.success(true)
+            } catch (e: Exception) {
+                Log.e(TAG, "Warmup failed: ${e.message}", e)
+                result.error("WARMUP_FAILED", e.message, null)
+            }
         }
     }
     
