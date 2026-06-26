@@ -89,6 +89,33 @@ class LiteRtLmService {
     );
   }
 
+  /// Pre-warm an already-installed LiteRT-LM model with a private dummy prompt.
+  ///
+  /// This method intentionally does not install or download a model. It only
+  /// warms the local runtime when an active model file already exists.
+  Future<bool> warmupInstalledModel() async {
+    if (kIsWeb) return false;
+
+    try {
+      if (!await _client.activeModelExists()) return false;
+      if (!_initialized) {
+        await _client.initialize(
+          huggingFaceToken: config.optionalHuggingFaceToken,
+        );
+        _initialized = true;
+      }
+      await _client.generate(
+        prompt: ' ',
+        backend: config.backend,
+        maxTokens: 1,
+      );
+      return true;
+    } catch (e) {
+      debugPrint('LiteRT-LM warmup skipped: $e');
+      return false;
+    }
+  }
+
   Future<bool> _ensureInitialized() async {
     if (_initialized) return true;
 
@@ -101,9 +128,7 @@ class LiteRtLmService {
       );
     }
 
-    await _client.initialize(
-      huggingFaceToken: config.optionalHuggingFaceToken,
-    );
+    await _client.initialize(huggingFaceToken: config.optionalHuggingFaceToken);
     _initialized = true;
     return true;
   }

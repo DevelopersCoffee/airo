@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart' hide Intent;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -99,7 +101,20 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       if (isSupported) {
         final initialized = await _geminiNano.initialize();
         debugPrint('Gemini Nano initialized: $initialized');
+        if (initialized) {
+          unawaited(
+            _geminiNano.warmup().then((warmed) {
+              debugPrint('Gemini Nano warmup completed: $warmed');
+            }),
+          );
+        }
       }
+
+      unawaited(
+        _liteRtLm.warmupInstalledModel().then((warmed) {
+          debugPrint('LiteRT-LM warmup completed: $warmed');
+        }),
+      );
 
       // Show bottom banner popup
       if (mounted) {
