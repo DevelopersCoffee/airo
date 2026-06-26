@@ -1,8 +1,6 @@
-/// Core data layer for Airo
-///
-/// Contains API clients, database access, and repository implementations.
-library core_data;
-
+// Core data layer for Airo.
+//
+// Contains API clients, database access, and repository implementations.
 // HTTP Client
 export 'src/http/api_client.dart';
 export 'src/http/api_exception.dart';

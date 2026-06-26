@@ -2,7 +2,7 @@
 # Cross-platform build and development automation
 
 # Variables
-FLUTTER_VERSION := 3.35.7
+FLUTTER_VERSION := 3.41.4
 APP_DIR := app
 ANDROID_DIR := $(APP_DIR)/android
 IOS_DIR := $(APP_DIR)/ios
