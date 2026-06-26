@@ -34,11 +34,25 @@ def bump_version(version: str, release_type: str) -> str:
     return f"{major}.{minor}.{patch}+{build}"
 
 
-def update_pubspec(pubspec_path: Path, release_type: str) -> str:
-    text = pubspec_path.read_text()
+def validate_pubspec_path(pubspec_path: Path, repo_root: Path | None = None) -> Path:
+    root = (repo_root or Path.cwd()).resolve()
+    resolved_path = pubspec_path.resolve()
+
+    if resolved_path.name != "pubspec.yaml":
+        raise ValueError("Version bump target must be a pubspec.yaml file")
+
+    if resolved_path == root or root not in resolved_path.parents:
+        raise ValueError(f"Version bump target must be inside {root}")
+
+    return resolved_path
+
+
+def update_pubspec(pubspec_path: Path, release_type: str, repo_root: Path | None = None) -> str:
+    safe_pubspec_path = validate_pubspec_path(pubspec_path, repo_root)
+    text = safe_pubspec_path.read_text()
     match = re.search(r"^version:\s*(\S+)\s*$", text, re.MULTILINE)
     if not match:
-        raise ValueError(f"Could not find version in {pubspec_path}")
+        raise ValueError(f"Could not find version in {safe_pubspec_path}")
 
     current_version = match.group(1)
     new_version = bump_version(current_version, release_type)
@@ -49,7 +63,7 @@ def update_pubspec(pubspec_path: Path, release_type: str) -> str:
         count=1,
         flags=re.MULTILINE,
     )
-    pubspec_path.write_text(updated_text)
+    safe_pubspec_path.write_text(updated_text)
     return new_version
 
 

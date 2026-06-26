@@ -7,7 +7,12 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from bump_pubspec_version import bump_version, parse_version, update_pubspec
+from bump_pubspec_version import (
+    bump_version,
+    parse_version,
+    update_pubspec,
+    validate_pubspec_path,
+)
 
 
 class ParseVersionTest(unittest.TestCase):
@@ -36,10 +41,40 @@ class UpdatePubspecTest(unittest.TestCase):
             pubspec = Path(tmpdir) / "pubspec.yaml"
             pubspec.write_text("name: demo\nversion: 1.0.0+1\ndescription: sample\n")
 
-            new_version = update_pubspec(pubspec, "patch")
+            new_version = update_pubspec(pubspec, "patch", Path(tmpdir))
 
             self.assertEqual(new_version, "1.0.1+2")
             self.assertIn("version: 1.0.1+2", pubspec.read_text())
+
+
+class ValidatePubspecPathTest(unittest.TestCase):
+    def test_validate_pubspec_path_allows_pubspec_inside_repo(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            app_dir = root / "app"
+            app_dir.mkdir()
+            pubspec = app_dir / "pubspec.yaml"
+            pubspec.write_text("name: demo\nversion: 1.0.0+1\n")
+
+            self.assertEqual(validate_pubspec_path(pubspec, root), pubspec.resolve())
+
+    def test_validate_pubspec_path_rejects_non_pubspec_file(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            other = root / "version.txt"
+            other.write_text("1.0.0+1\n")
+
+            with self.assertRaises(ValueError):
+                validate_pubspec_path(other, root)
+
+    def test_validate_pubspec_path_rejects_file_outside_repo(self) -> None:
+        with tempfile.TemporaryDirectory() as root_dir:
+            with tempfile.TemporaryDirectory() as outside_dir:
+                outside = Path(outside_dir) / "pubspec.yaml"
+                outside.write_text("name: outside\nversion: 1.0.0+1\n")
+
+                with self.assertRaises(ValueError):
+                    validate_pubspec_path(outside, Path(root_dir))
 
 
 if __name__ == "__main__":
