@@ -4,6 +4,26 @@
 
 ## 🔄 Development Workflow
 
+### 0. Spec Gate
+
+Every implementation issue must complete the agent policy gates before code
+starts. This is the default entry requirement for feature, bug, framework,
+security, QA, and automation work.
+
+Required artifacts:
+- Critical Agent Gate
+- Feature Packet
+- Cross-Agent Contract when more than one module or owner is involved
+- Deterministic Use Cases
+- Automation Flow
+- Security/privacy posture for data, tools, memory, model, network, file,
+  finance, health, location, notification, and background work
+
+See:
+- [Agent Policy](./AGENT_POLICY.md)
+- [Kaggle Vibe-Coding Adoption Plan](./KAGGLE_VIBE_CODING_ADOPTION.md)
+- [Deterministic use-case tracker](https://github.com/DevelopersCoffee/airo/issues/323)
+
 ### 1. Issue Assignment
 ```
 Issue Created → Backlog → Ready (when dependencies met) → Assigned
@@ -12,17 +32,18 @@ Issue Created → Backlog → Ready (when dependencies met) → Assigned
 ### 2. Development Flow
 ```mermaid
 graph LR
-    A[Pick Issue] --> B[Create Branch]
-    B --> C[Implement]
-    C --> D[Local CI: act]
-    D --> E{Passes?}
-    E -->|No| C
-    E -->|Yes| F[Create PR]
-    F --> G[Code Review]
-    G --> H{Approved?}
-    H -->|No| C
-    H -->|Yes| I[Merge]
-    I --> J[Close Issue]
+    A[Pick Issue] --> B[Complete Spec Gate]
+    B --> C[Create Branch]
+    C --> D[Implement]
+    D --> E[Local CI: act]
+    E --> F{Passes?}
+    F -->|No| D
+    F -->|Yes| G[Create PR]
+    G --> H[Code Review]
+    H --> I{Approved?}
+    I -->|No| D
+    I -->|Yes| J[Merge]
+    J --> K[Close Issue]
 ```
 
 ### 3. Branch Naming
@@ -164,4 +185,3 @@ Examples:
 3. Create PR to update RULES.md or SDLC.md
 4. Get approval
 5. Merge and announce
-

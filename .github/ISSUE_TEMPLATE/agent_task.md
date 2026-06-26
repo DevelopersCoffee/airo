@@ -20,6 +20,40 @@ assignees: ''
 ## Description
 <!-- Describe the task -->
 
+## Critical Agent Gate
+
+**Problem:**
+
+**User / actor:**
+
+**Framework or application layer:**
+
+**Owning agent:**
+
+**Reviewing agents:**
+
+**Impacted modules/files:**
+
+**Open questions:**
+
+**Decision:** Ready / Blocked
+
+## Feature Packet
+
+**Contract:**
+
+**Deterministic use cases:**
+
+**Automation flows:**
+
+**Security/privacy posture:**
+
+**Eval plan:**
+
+**Observability/traces:**
+
+**Rollback/migration plan:**
+
 ## Acceptance Criteria
 <!-- List specific, testable criteria -->
 - [ ] 
@@ -45,4 +79,3 @@ path/to/file2
 
 ## Release Note Required?
 <!-- yes/no - Does this need to be mentioned in release notes? -->
-

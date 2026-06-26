@@ -9,6 +9,14 @@
 - [ ] CI-only change validated with local script/YAML checks
 - [ ] Manual device/simulator verification documented, or not applicable
 
+## Agent Policy
+
+- [ ] Linked issue includes a Critical Agent Gate.
+- [ ] Linked issue includes a Feature Packet or documents why one is not needed.
+- [ ] Cross-agent contract is documented for framework/application boundary work.
+- [ ] Deterministic use cases and automation flows are linked or included.
+- [ ] AI/tool/memory/routine changes include eval, trace, and redaction coverage.
+
 ## User-Facing Documentation
 
 Every PR must keep the Airo public capability wiki accurate.
