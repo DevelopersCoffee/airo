@@ -105,8 +105,8 @@ dependencies:
   image_picker: ^1.2.2
   google_mlkit_text_recognition: 0.15.1
   video_player: 2.10.0
-  wakelock_plus: ^1.4.0
-  package_info_plus: ^9.0.0
+  wakelock_plus: ^1.5.2
+  package_info_plus: ^9.0.1
   screenshot: 3.0.0
   flutter_image_compress: 2.4.0
   pdfx: ^2.9.2

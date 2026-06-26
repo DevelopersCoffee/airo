@@ -50,7 +50,7 @@ dependencies:
 
   # Audio & Media (TV variant - no background audio service needed)
   video_player: ^2.11.1
-  wakelock_plus: 1.4.0
+  wakelock_plus: 1.5.2
   pdfx: 2.9.2
   flutter_local_notifications: 20.1.0
   timezone: 0.10.1
@@ -81,7 +81,7 @@ dependencies:
   cached_network_image: 3.4.1
 
   # TV-specific
-  package_info_plus: 9.0.0
+  package_info_plus: 9.0.1
 
   # Dependencies with stub overrides (required for compilation but using lightweight stubs)
   # These are overridden by dependency_overrides section below
