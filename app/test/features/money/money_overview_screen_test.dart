@@ -90,7 +90,7 @@ void main() {
       expect(find.textContaining('music', findRichText: true), findsNothing);
     });
 
-    testWidgets('labels the primary FAB for the expense form it opens', (
+    testWidgets('labels the primary FAB as Add Money for the Coins tab', (
       tester,
     ) async {
       await tester.pumpWidget(buildScreen());
@@ -99,13 +99,16 @@ void main() {
       final fab = find.byType(FloatingActionButton);
 
       expect(fab, findsOneWidget);
-      expect(find.byTooltip('Add Expense'), findsOneWidget);
+      expect(find.byTooltip('Add Money'), findsOneWidget);
       expect(
-        find.descendant(of: fab, matching: find.text('Add Expense')),
+        find.descendant(of: fab, matching: find.text('Add Money')),
         findsOneWidget,
       );
-      expect(find.byTooltip('Add Money'), findsNothing);
-      expect(find.text('Add Money'), findsNothing);
+      expect(find.byTooltip('Add Expense'), findsNothing);
+      expect(
+        find.descendant(of: fab, matching: find.text('Add Expense')),
+        findsNothing,
+      );
     });
   });
 }
