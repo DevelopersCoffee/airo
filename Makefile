@@ -36,6 +36,7 @@ ANDROID_AVD ?= Pixel_9_API_$(ANDROID_API)
 ANDROID_RUN_DEVICE ?= android
 ANDROID_PACKAGE ?= io.airo.app
 ANDROID_EMULATOR_FLAGS ?= -no-boot-anim -no-snapshot-save -gpu host -memory 2048 -cores 2
+AIRO_ALLOW_ANDROID_EMULATOR ?= false
 ADB ?= $(shell command -v adb 2>/dev/null || printf '%s' "$(ANDROID_SDK)/platform-tools/adb")
 AVDMANAGER ?= $(shell command -v avdmanager 2>/dev/null || printf '%s' "$(ANDROID_SDK)/cmdline-tools/latest/bin/avdmanager")
 SDKMANAGER ?= $(shell command -v sdkmanager 2>/dev/null || printf '%s' "$(ANDROID_SDK)/cmdline-tools/latest/bin/sdkmanager")
@@ -178,6 +179,15 @@ check-android-tools: ## Validate Android SDK tools needed for local Pixel 9 AVD
 		exit 1; \
 	fi
 
+.PHONY: check-android-emulator-opt-in
+check-android-emulator-opt-in: ## Require explicit opt-in before booting Android Emulator/qemu
+	@if [ "$(AIRO_ALLOW_ANDROID_EMULATOR)" != "true" ]; then \
+		echo "$(RED)Android Emulator is disabled by default for agent runs.$(NC)"; \
+		echo "$(YELLOW)The emulator/qemu runtime can crash on macOS 26.x hosts and lose test state.$(NC)"; \
+		echo "$(YELLOW)Use host checks, a connected physical Android device, or rerun with AIRO_ALLOW_ANDROID_EMULATOR=true.$(NC)"; \
+		exit 78; \
+	fi
+
 .PHONY: setup-pixel9-avd
 setup-pixel9-avd: check-android-tools ## Create/update lightweight Pixel 9 Android emulator
 	@echo "$(BLUE)Preparing Android AVD: $(ANDROID_AVD)$(NC)"
@@ -204,7 +214,7 @@ setup-pixel9-avd: check-android-tools ## Create/update lightweight Pixel 9 Andro
 	@echo "$(GREEN)✓ Pixel 9 AVD ready: $(ANDROID_AVD)$(NC)"
 
 .PHONY: boot-pixel9
-boot-pixel9: setup-pixel9-avd ## Boot/reuse the local Pixel 9 emulator
+boot-pixel9: check-android-emulator-opt-in setup-pixel9-avd ## Boot/reuse the local Pixel 9 emulator (requires AIRO_ALLOW_ANDROID_EMULATOR=true)
 	@echo "$(BLUE)Booting Pixel 9 emulator: $(ANDROID_AVD)$(NC)"
 	@if [ ! -x "$(ANDROID_EMULATOR)" ]; then \
 		echo "$(RED)Android emulator not found at $(ANDROID_EMULATOR).$(NC)"; \
@@ -670,12 +680,16 @@ test-device-ios: ## Run Patrol tests on iOS
 	@cd $(APP_DIR) && patrol test -t integration_test/patrol_test.dart --target ios
 
 .PHONY: test-agent-skills-journey
-test-agent-skills-journey: ## Boot simulator and run the Agent Skills calendar journey test
+test-agent-skills-journey: ## Run the Agent Skills calendar journey on the default iOS simulator
 	@./scripts/run_agent_skills_journey.sh
 
 .PHONY: test-agent-skills-journey-android
-test-agent-skills-journey-android: ## Boot Pixel 9 emulator and run Agent Skills journey
+test-agent-skills-journey-android: ## Run Agent Skills journey on a connected Android device
 	@AIRO_JOURNEY_PLATFORM=android ./scripts/run_agent_skills_journey.sh
+
+.PHONY: test-agent-skills-journey-android-emulator
+test-agent-skills-journey-android-emulator: ## Explicitly opt in to Pixel 9 emulator Agent Skills journey
+	@AIRO_JOURNEY_PLATFORM=android AIRO_ALLOW_ANDROID_EMULATOR=true ./scripts/run_agent_skills_journey.sh
 
 .PHONY: test-agent-skills-journey-ios
 test-agent-skills-journey-ios: ## Boot iPhone simulator and run Agent Skills journey
