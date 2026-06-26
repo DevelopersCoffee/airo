@@ -73,7 +73,7 @@ class AppShell extends ConsumerWidget {
           actions: [
             IconButton(
               tooltip: 'Notifications',
-              onPressed: () => context.push('/agent/notifications'),
+              onPressed: () => context.push('/mind/notifications'),
               icon: const Icon(Icons.notifications_outlined),
             ),
             // User profile avatar with menu
@@ -121,7 +121,7 @@ class AppShell extends ConsumerWidget {
                     context.go(RouteNames.login);
                   }
                 } else if (value == 'profile') {
-                  context.push('/agent/profile');
+                  context.push('/mind/profile');
                 }
               },
               itemBuilder: (context) => [
@@ -204,7 +204,7 @@ class AppShell extends ConsumerWidget {
   }
 }
 
-/// Context-aware mini players that hide on their owning media tabs.
+/// Context-aware mini players shown only on their owning media tabs.
 class _ContextAwareMiniPlayers extends ConsumerWidget {
   final int currentIndex;
   final Widget child;
