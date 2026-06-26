@@ -4,13 +4,14 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('AppNavigationTab', () {
-    test('uses the five-tab information architecture order', () {
+    test('uses the six-tab information architecture order', () {
       expect(AppNavigationTab.values.map((tab) => tab.label), [
-        'Dashboard',
-        'Assistant',
-        'Entertainment',
-        'Games',
-        'Tasks',
+        'Coins',
+        'Mind',
+        'Beats',
+        'Stream',
+        'Arena',
+        'Quest',
       ]);
     });
 
@@ -27,27 +28,24 @@ void main() {
     test('uses stable root paths for each tab', () {
       expect(AppNavigationTab.values.map((tab) => tab.path), [
         '/money',
-        '/agent',
-        '/live',
+        '/mind',
+        '/music',
+        '/iptv',
         '/games',
         '/quest',
       ]);
     });
 
-    test('keeps music and tv inside the entertainment architecture', () {
+    test('separates beats and stream into distinct primary tabs', () {
       final rootLabels = AppNavigationTab.values.map((tab) => tab.label);
       final rootPaths = AppNavigationTab.values.map((tab) => tab.path);
 
-      expect(AppNavigationTab.values.length, 5);
-      expect(rootLabels, contains('Entertainment'));
-      expect(rootLabels, isNot(contains('Music')));
-      expect(rootLabels, isNot(contains('TV')));
-      expect(rootPaths, contains('/live'));
-      expect(rootPaths, isNot(contains('/beats')));
-      expect(rootPaths, isNot(contains('/stream')));
+      expect(AppNavigationTab.values.length, 6);
+      expect(rootLabels, containsAll(['Beats', 'Stream']));
+      expect(rootPaths, containsAll(['/music', '/iptv']));
     });
 
-    test('hides persistent mini players on the owning media tab', () {
+    test('shows each persistent mini player only on its owning media tab', () {
       final container = ProviderContainer();
       addTearDown(container.dispose);
 
@@ -58,12 +56,12 @@ void main() {
 
         expect(
           visibility.showMusicPlayer,
-          tab != AppNavigationTab.entertainment,
+          tab == AppNavigationTab.beats,
           reason: '${tab.label} music mini player visibility',
         );
         expect(
           visibility.showIptvPlayer,
-          tab != AppNavigationTab.entertainment,
+          tab == AppNavigationTab.stream,
           reason: '${tab.label} IPTV mini player visibility',
         );
       }

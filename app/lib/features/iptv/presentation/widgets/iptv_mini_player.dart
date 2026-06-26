@@ -18,8 +18,7 @@ class IPTVMiniPlayer extends ConsumerWidget {
     final streamingState = ref.watch(streamingStateProvider);
     final currentTab = ref.watch(currentNavigationTabProvider);
 
-    final isOnEntertainmentTab =
-        currentTab == AppNavigationTab.entertainment.index;
+    final isOnStreamTab = currentTab == AppNavigationTab.stream.index;
 
     return streamingState.when(
       data: (state) {
@@ -28,17 +27,17 @@ class IPTVMiniPlayer extends ConsumerWidget {
           return const SizedBox.shrink();
         }
 
-        // Don't show if on Entertainment tab (video player is visible there)
+        // Don't show if on Stream tab (video player is visible there)
         // unless it's an audio-only channel
-        if (isOnEntertainmentTab && !state.currentChannel!.isAudioOnly) {
+        if (isOnStreamTab && !state.currentChannel!.isAudioOnly) {
           return const SizedBox.shrink();
         }
 
         return GestureDetector(
           onTap: () {
             ref.read(currentNavigationTabProvider.notifier).state =
-                AppNavigationTab.entertainment.index;
-            context.go('/live/tv');
+                AppNavigationTab.stream.index;
+            context.go('/iptv');
           },
           child: Container(
             height: 64,

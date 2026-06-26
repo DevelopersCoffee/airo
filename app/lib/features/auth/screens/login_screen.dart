@@ -59,8 +59,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (result.success) {
         if (mounted) {
-          // Navigate to main app (agent tab)
-          context.go('/agent');
+          // Navigate to main app (mind tab)
+          context.go('/mind');
         }
       } else {
         setState(() {
@@ -111,7 +111,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (result.success) {
         if (mounted) {
-          context.go('/agent');
+          context.go('/mind');
         }
       } else {
         setState(() {
