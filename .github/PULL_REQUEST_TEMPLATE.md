@@ -31,6 +31,10 @@ Every PR must keep the Airo public capability wiki accurate.
 - [ ] No `docs/wiki` update is needed because this PR has no user-visible
       behavior or documentation impact.
 
+Docs bypass for intentional exceptions:
+use the `docs-not-needed` PR label or include `docs-not-needed` in the commit
+message.
+
 ## Plugin and Size Impact
 
 - [ ] This PR adds new dependencies
