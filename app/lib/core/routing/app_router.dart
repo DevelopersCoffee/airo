@@ -8,6 +8,7 @@ import '../../features/agent_chat/presentation/screens/notifications_screen.dart
 import '../../features/agent_chat/presentation/screens/profile_screen.dart';
 import '../../features/iptv/presentation/screens/iptv_screen.dart';
 import '../../features/games/presentation/screens/games_hub_screen.dart';
+import '../../features/mind/presentation/screens/mind_screen.dart';
 import '../../features/money/presentation/screens/money_overview_screen.dart';
 import '../../features/music/presentation/screens/music_screen.dart';
 import '../../features/quest/presentation/screens/quest_chat_screen.dart';
@@ -151,8 +152,13 @@ class AppRouter {
               GoRoute(
                 path: '/mind',
                 name: 'Mind',
-                builder: (context, state) => const ChatScreen(),
+                builder: (context, state) => const MindScreen(),
                 routes: [
+                  GoRoute(
+                    path: 'chat',
+                    name: 'mind_chat',
+                    builder: (context, state) => const ChatScreen(),
+                  ),
                   GoRoute(
                     path: 'notifications',
                     name: 'agent_notifications',
