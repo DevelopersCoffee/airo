@@ -115,6 +115,52 @@ void main() {
       );
       expect(model7B.parameterCountDisplay, '7.0B');
     });
+
+    test('should derive learn more URL from huggingFaceId', () {
+      const model = OfflineModelInfo(
+        id: 'gemma',
+        name: 'Gemma',
+        family: ModelFamily.gemma,
+        fileSizeBytes: 1024,
+        huggingFaceId: 'litert-community/gemma-4-E2B-it-litert-lm',
+      );
+
+      expect(
+        model.learnMoreUri,
+        Uri.parse(
+          'https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm',
+        ),
+      );
+    });
+
+    test('should prefer explicit learn more URL when it is safe', () {
+      const model = OfflineModelInfo(
+        id: 'gemma',
+        name: 'Gemma',
+        family: ModelFamily.gemma,
+        fileSizeBytes: 1024,
+        learnMoreUrl: 'https://example.com/models/gemma-4-e2b-it',
+        huggingFaceId: 'litert-community/gemma-4-E2B-it-litert-lm',
+      );
+
+      expect(
+        model.learnMoreUri,
+        Uri.parse('https://example.com/models/gemma-4-e2b-it'),
+      );
+    });
+
+    test('should reject raw artifact URLs for learn more', () {
+      const model = OfflineModelInfo(
+        id: 'gemma',
+        name: 'Gemma',
+        family: ModelFamily.gemma,
+        fileSizeBytes: 1024,
+        learnMoreUrl:
+            'https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm/resolve/main/gemma-4-E2B-it.litertlm',
+      );
+
+      expect(model.learnMoreUri, isNull);
+    });
   });
 
   group('ModelCredibility', () {

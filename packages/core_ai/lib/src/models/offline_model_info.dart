@@ -142,6 +142,7 @@ class OfflineModelInfo {
     this.version,
     this.author,
     this.license,
+    this.learnMoreUrl,
     this.huggingFaceId,
     this.sha256,
     this.tags = const [],
@@ -215,6 +216,9 @@ class OfflineModelInfo {
   /// License type (e.g., 'Apache-2.0', 'MIT', 'Llama 2 Community').
   final String? license;
 
+  /// Human-readable source or model detail page.
+  final String? learnMoreUrl;
+
   /// HuggingFace model ID (e.g., 'google/gemma-2b-it-GGUF').
   final String? huggingFaceId;
 
@@ -276,6 +280,21 @@ class OfflineModelInfo {
     return (fileSizeBytes * 1.5).round();
   }
 
+  /// Safe external page for learning more about the model.
+  ///
+  /// Rejects direct artifact URLs and only allows HTTPS pages.
+  Uri? get learnMoreUri {
+    final explicit = _parseLearnMoreUri(learnMoreUrl);
+    if (explicit != null) return explicit;
+
+    final trimmedHuggingFaceId = huggingFaceId?.trim();
+    if (trimmedHuggingFaceId == null || trimmedHuggingFaceId.isEmpty) {
+      return null;
+    }
+
+    return _parseLearnMoreUri('https://huggingface.co/$trimmedHuggingFaceId');
+  }
+
   /// Creates a copy with modified fields.
   OfflineModelInfo copyWith({
     String? id,
@@ -300,6 +319,7 @@ class OfflineModelInfo {
     String? version,
     String? author,
     String? license,
+    String? learnMoreUrl,
     String? huggingFaceId,
     String? sha256,
     List<String>? tags,
@@ -330,6 +350,7 @@ class OfflineModelInfo {
       version: version ?? this.version,
       author: author ?? this.author,
       license: license ?? this.license,
+      learnMoreUrl: learnMoreUrl ?? this.learnMoreUrl,
       huggingFaceId: huggingFaceId ?? this.huggingFaceId,
       sha256: sha256 ?? this.sha256,
       tags: tags ?? this.tags,
@@ -363,6 +384,7 @@ class OfflineModelInfo {
     'version': version,
     'author': author,
     'license': license,
+    'learnMoreUrl': learnMoreUrl,
     'huggingFaceId': huggingFaceId,
     'sha256': sha256,
     'tags': tags,
@@ -432,6 +454,7 @@ class OfflineModelInfo {
       version: json['version'] as String?,
       author: json['author'] as String?,
       license: json['license'] as String?,
+      learnMoreUrl: json['learnMoreUrl'] as String?,
       huggingFaceId: json['huggingFaceId'] as String?,
       sha256: json['sha256'] as String?,
       tags: List<String>.from(json['tags'] ?? []),
@@ -453,4 +476,22 @@ class OfflineModelInfo {
   String toString() =>
       'OfflineModelInfo($name, ${quantization.displayName}, '
       '$fileSizeDisplay)';
+
+  static Uri? _parseLearnMoreUri(String? candidate) {
+    final value = candidate?.trim();
+    if (value == null || value.isEmpty) return null;
+
+    final uri = Uri.tryParse(value);
+    if (uri == null || uri.scheme != 'https' || uri.host.isEmpty) {
+      return null;
+    }
+
+    final path = uri.path.toLowerCase();
+    if (path.contains('/resolve/')) return null;
+
+    const artifactExtensions = ['.litertlm', '.gguf', '.bin', '.task', '.onnx'];
+    if (artifactExtensions.any(path.endsWith)) return null;
+
+    return uri;
+  }
 }
