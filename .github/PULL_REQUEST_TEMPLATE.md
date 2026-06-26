@@ -9,6 +9,8 @@
 - [ ] CI-only change validated with local script/YAML checks
 - [ ] Manual device/simulator verification documented, or not applicable
 
+**Verification environment:** Host-only / Physical Android / iOS simulator / Android Emulator with explicit opt-in
+
 ## Agent Policy
 
 - [ ] Linked issue includes a Critical Agent Gate.
@@ -16,6 +18,8 @@
 - [ ] Cross-agent contract is documented for framework/application boundary work.
 - [ ] Deterministic use cases and automation flows are linked or included.
 - [ ] AI/tool/memory/routine changes include eval, trace, and redaction coverage.
+- [ ] Android Emulator was not used unless the linked issue explicitly accepted
+      `AIRO_ALLOW_ANDROID_EMULATOR=true`.
 
 ## User-Facing Documentation
 

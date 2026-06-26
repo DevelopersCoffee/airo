@@ -54,6 +54,10 @@ assignees: ''
 
 **Rollback/migration plan:**
 
+**Verification environment:** Host-only / Physical Android / iOS simulator / Android Emulator with explicit opt-in
+
+**Android Emulator risk accepted?** No / Yes (`AIRO_ALLOW_ANDROID_EMULATOR=true`)
+
 ## Acceptance Criteria
 <!-- List specific, testable criteria -->
 - [ ] 
@@ -64,6 +68,8 @@ assignees: ''
 - [ ] `act` local run passed
 - [ ] `flutter analyze` clean
 - [ ] `flutter test` passes
+- [ ] Device-only checks identify the exact environment used
+- [ ] Android Emulator was not used unless the issue explicitly accepts the risk
 - [ ] Unit tests added
 - [ ] Widget/golden tests added (if UI)
 - [ ] Docs/ADRs updated (if applicable)

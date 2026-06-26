@@ -16,6 +16,8 @@ Required artifacts:
 - Cross-Agent Contract when more than one module or owner is involved
 - Deterministic Use Cases
 - Automation Flow
+- Verification environment: host-only, physical device, simulator, or explicit
+  emulator opt-in
 - Security/privacy posture for data, tools, memory, model, network, file,
   finance, health, location, notification, and background work
 
@@ -74,9 +76,31 @@ Examples:
 - [ ] `act` local CI passes
 - [ ] `flutter analyze` clean
 - [ ] `flutter test` passes
+- [ ] Android Emulator was not used unless explicitly approved with
+      `AIRO_ALLOW_ANDROID_EMULATOR=true`
 - [ ] Issue linked in PR description
 - [ ] Acceptance criteria met
 - [ ] No merge conflicts
+
+### 6. Device Verification Policy
+
+Android Emulator/QEMU crashes on macOS are treated as infrastructure failures.
+They do not prove an Airo app regression. If a run produces
+`qemu-system-aarch64 EXC_BAD_ACCESS / KERN_INVALID_ADDRESS`, agents must stop
+the emulator path, preserve the report, and continue with host-only tests or a
+physical Android device.
+
+Default local verification must stay host-only:
+- `flutter analyze`
+- `flutter test`
+- package tests
+- Playwright/web checks
+- APK build checks
+
+Device-only tests must name the environment in the issue and PR. Android
+Emulator verification requires explicit risk acceptance by setting
+`AIRO_ALLOW_ANDROID_EMULATOR=true`; otherwise agents should use a connected
+physical Android device via `AIRO_JOURNEY_ANDROID_DEVICE=<adb-serial>`.
 
 ---
 

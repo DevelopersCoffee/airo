@@ -238,6 +238,14 @@ No cross-boundary code should be merged without this contract.
 Every implementation ticket must include deterministic use cases and automation
 flows. Use the tracker in issue `#323`.
 
+Automation flows must declare their execution environment: host-only, physical
+Android device, iOS simulator, or Android Emulator with explicit opt-in.
+Android Emulator/QEMU crashes are infrastructure failures. If a run reports
+`qemu-system-aarch64 EXC_BAD_ACCESS / KERN_INVALID_ADDRESS`, agents must stop
+that path, preserve the report, and switch to host-only checks or a physical
+device. Retrying the same emulator loop is blocked unless the issue explicitly
+accepts `AIRO_ALLOW_ANDROID_EMULATOR=true`.
+
 Minimum format:
 
 ```markdown
@@ -292,6 +300,9 @@ Before completion:
 - persistence and cleanup are verified
 - tool traces and memory writes are asserted where relevant
 - accessibility and timeout expectations are covered for UI
+- device-only verification names the exact device/simulator/emulator used
+- Android Emulator was not used unless the issue explicitly accepted
+  `AIRO_ALLOW_ANDROID_EMULATOR=true`
 
 ### 9. Release Ready
 
@@ -331,6 +342,7 @@ Agents should add this to a GitHub issue before coding:
 - Application files:
 - Tests:
 - Docs:
+- Verification environment:
 ```
 
 ## Merge Policy
