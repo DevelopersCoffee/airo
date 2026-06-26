@@ -40,7 +40,7 @@ of current agent work.
 2. **Complete the Agent Policy gates:** [AGENT_POLICY.md](./AGENT_POLICY.md)
 3. **Understand the Process:** [SDLC.md](./SDLC.md)
 4. **Check the Sequence:** [SEQUENCE.md](./SEQUENCE.md)
-5. **Find your Issue:** Check the table above
+5. **Find your Issue:** Use the GitHub Project Board and current issue queue
 6. **Start Working:** Follow the SDLC workflow
 
 ### For Project Maintainers
