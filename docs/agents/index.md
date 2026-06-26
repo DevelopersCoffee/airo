@@ -7,7 +7,6 @@
 | Resource | Description |
 |----------|-------------|
 | [📋 Project Board](https://github.com/orgs/DevelopersCoffee/projects/2) | Live task tracking |
-| [🎯 Coordination Issue](https://github.com/DevelopersCoffee/airo/issues/17) | Central status tracker |
 | [📜 Rules](./RULES.md) | Agent operating rules |
 | [🧭 Agent Policy](./AGENT_POLICY.md) | Ownership, lifecycle gates, contracts, and Critical Agent workflow |
 | [🧪 Kaggle Adoption](./KAGGLE_VIBE_CODING_ADOPTION.md) | Spec-driven, skills, tools, security, and evaluation adoption plan |
@@ -16,22 +15,20 @@
 
 ---
 
-## 📊 Agent Overview
+## 📊 Current Planning Model
 
-| # | Agent | Issue | Priority | Phase |
-|---|-------|-------|----------|-------|
-| 01 | 🏗️ Core Architecture | [#5](https://github.com/DevelopersCoffee/airo/issues/5) | P0 | Foundation |
-| 02 | 🔄 Offline & Sync | [#6](https://github.com/DevelopersCoffee/airo/issues/6) | P0 | Infrastructure |
-| 03 | 🤖 AI / LLM | [#7](https://github.com/DevelopersCoffee/airo/issues/7) | P0 | Features |
-| 04 | 📱 Mobile UI | [#11](https://github.com/DevelopersCoffee/airo/issues/11) | P1 | Features |
-| 05 | 💰 Finance | [#8](https://github.com/DevelopersCoffee/airo/issues/8) | P0 | Features |
-| 06 | 🔒 Security | [#9](https://github.com/DevelopersCoffee/airo/issues/9) | P0 | Foundation |
-| 07 | 🚀 CI/CD | [#10](https://github.com/DevelopersCoffee/airo/issues/10) | P0 | Foundation |
-| 08 | 🧪 QA Testing | [#12](https://github.com/DevelopersCoffee/airo/issues/12) | P1 | Quality |
-| 09 | 📊 Observability | [#15](https://github.com/DevelopersCoffee/airo/issues/15) | P2 | Polish |
-| 10 | 🛠️ DevEx | [#13](https://github.com/DevelopersCoffee/airo/issues/13) | P1 | Infrastructure |
-| 11 | 📦 Release | [#14](https://github.com/DevelopersCoffee/airo/issues/14) | P1 | Quality |
-| 12 | 📚 Docs | [#16](https://github.com/DevelopersCoffee/airo/issues/16) | P2 | Polish |
+Agent ownership and activation no longer depend on one long-lived coordination
+issue. Current work is routed through:
+
+- the GitHub Project Board for queue state and sequencing
+- [AGENT_POLICY.md](./AGENT_POLICY.md) for ownership, readiness gates, and
+  cross-agent contracts
+- [RULES.md](./RULES.md) and [SEQUENCE.md](./SEQUENCE.md) for operating
+  constraints and rough activation order
+
+Historical bootstrap issues such as `#7`, `#11`, `#12`, `#13`, and `#16` were
+useful during the initial repo setup, but they are no longer the canonical map
+of current agent work.
 
 ---
 
@@ -49,9 +46,10 @@
 ### For Project Maintainers
 
 1. **Review Project Board:** https://github.com/orgs/DevelopersCoffee/projects/2
-2. **Check Coordination Issue:** #17
+2. **Check readiness gates:** [AGENT_POLICY.md](./AGENT_POLICY.md)
 3. **Assign Agents:** Move issues to "Ready" when dependencies met
-4. **Update Phases:** Mark checkboxes in #17 when issues close
+4. **Track status in GitHub issues/PRs and the board**, not in a separate
+   coordination tracker
 
 ---
 
