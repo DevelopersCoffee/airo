@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:core_ai/core_ai.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../../core/ai/model_learn_more_launcher.dart';
 import '../../../../features/iptv/application/providers/iptv_providers.dart'
     show sharedPreferencesProvider;
 import '../widgets/model_card.dart';
@@ -295,6 +296,9 @@ class _AIModelsScreenState extends ConsumerState<AIModelsScreen>
               : null,
           onCancelDownload: isDownloading
               ? () => _cancelDownload(model.id)
+              : null,
+          onLearnMore: model.learnMoreUri != null
+              ? () => launchModelLearnMore(context, model)
               : null,
         );
       },

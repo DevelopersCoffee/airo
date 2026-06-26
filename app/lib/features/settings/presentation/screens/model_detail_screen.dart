@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:core_ai/core_ai.dart';
 
+import '../../../../core/ai/model_learn_more_launcher.dart';
 import '../widgets/credibility_badge.dart';
 
 /// Detail screen for viewing and managing a single AI model.
@@ -9,9 +10,14 @@ import '../widgets/credibility_badge.dart';
 /// Shows comprehensive model information, compatibility details,
 /// and provides download/delete actions.
 class ModelDetailScreen extends ConsumerWidget {
-  const ModelDetailScreen({super.key, required this.model});
+  const ModelDetailScreen({
+    super.key,
+    required this.model,
+    this.launchUrlCallback,
+  });
 
   final OfflineModelInfo model;
+  final LaunchModelUrl? launchUrlCallback;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -19,11 +25,11 @@ class ModelDetailScreen extends ConsumerWidget {
       appBar: AppBar(
         title: Text(model.name),
         actions: [
-          if (model.huggingFaceId != null)
+          if (model.learnMoreUri != null)
             IconButton(
               icon: const Icon(Icons.open_in_new),
-              tooltip: 'View on HuggingFace',
-              onPressed: () => _openHuggingFace(context),
+              tooltip: 'Learn more',
+              onPressed: () => _openLearnMore(context),
             ),
         ],
       ),
@@ -255,11 +261,12 @@ class ModelDetailScreen extends ConsumerWidget {
     return '${mb.toStringAsFixed(0)} MB';
   }
 
-  void _openHuggingFace(BuildContext context) {
-    // TODO: Launch URL to HuggingFace
-    ScaffoldMessenger.of(
+  Future<void> _openLearnMore(BuildContext context) {
+    return launchModelLearnMore(
       context,
-    ).showSnackBar(SnackBar(content: Text('Opening ${model.huggingFaceId}')));
+      model,
+      launchUrlCallback: launchUrlCallback,
+    );
   }
 
   void _setActive(BuildContext context) {
