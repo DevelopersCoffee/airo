@@ -47,6 +47,17 @@ jobs:
             docs:
               - '**.md'
 
+      - name: Enforce docs completeness
+        env:
+          AIRO_DOCS_BYPASS: ${{ contains(join(github.event.pull_request.labels.*.name, ' '), 'docs-not-needed') && 'true' || 'false' }}
+          AIRO_DOCS_BASE: ${{ github.event.pull_request.base.sha }}
+          AIRO_DOCS_HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          chmod +x scripts/check-docs-completeness.sh
+          scripts/check-docs-completeness.sh \
+            --base "$AIRO_DOCS_BASE" \
+            --head "$AIRO_DOCS_HEAD"
+
   # ============================================
   # Code Quality (analyze, format) - ~2 minutes
   # ============================================

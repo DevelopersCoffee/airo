@@ -3,9 +3,17 @@ import '../../../../core/audio/audio_context_manager.dart';
 import '../models/chess_models.dart';
 import 'move_event_dispatcher.dart';
 
+abstract class ChessVoicePlayer {
+  Future<void> initialize();
+
+  Future<String> playMoveVoice(MoveEvent event, {required bool isPlayerMove});
+
+  Future<void> dispose();
+}
+
 /// Text-to-Speech manager for chess game voice lines
 /// Generates real-time DotA-style voice responses using TTS
-class ChessTTSManager {
+class ChessTTSManager implements ChessVoicePlayer {
   final FlutterTts _tts = FlutterTts();
   final AudioContextManager _audioContext;
   bool _isInitialized = false;
@@ -15,6 +23,7 @@ class ChessTTSManager {
     : _audioContext = audioContext ?? AudioContextManager();
 
   /// Initialize TTS with custom settings
+  @override
   Future<void> initialize() async {
     if (_isInitialized) return;
 
@@ -92,6 +101,7 @@ class ChessTTSManager {
   }
 
   /// Dispose TTS resources
+  @override
   Future<void> dispose() async {
     if (_isInitialized) {
       await _tts.stop();
@@ -102,6 +112,7 @@ class ChessTTSManager {
   }
 
   /// Play move voice line based on move event
+  @override
   Future<String> playMoveVoice(
     MoveEvent event, {
     required bool isPlayerMove,

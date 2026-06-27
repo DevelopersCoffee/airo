@@ -4,10 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../application/assistant_model_preferences.dart';
+import '../../../../core/ai/model_learn_more_launcher.dart';
 import '../../../../core/services/gemini_api_service.dart';
 import '../../../../core/services/gemini_nano_service.dart';
 import '../../../../core/services/litert_lm_service.dart';
-import '../../domain/models/assistant_model_selection.dart';
+import '../../domain/models/assistant_runtime_ids.dart';
 
 final selectedAssistantTaskProvider = StateProvider<AssistantTask>((ref) {
   return AssistantTask.chat;
@@ -557,6 +558,14 @@ class _ModelLibraryContent extends ConsumerWidget {
               selected:
                   selectedModelId == state.recommendedFor(template.task).id,
               onStart: () => _handleStartProject(context, ref, template),
+              onLearnMore: () {
+                final model =
+                    state.packageFor(template.task) ??
+                    state.recommendedFor(template.task).package;
+                if (model != null) {
+                  launchModelLearnMore(context, model);
+                }
+              },
             ),
           ),
         const SizedBox(height: 8),
@@ -655,6 +664,11 @@ class _ModelLibraryContent extends ConsumerWidget {
           ],
         ),
         actions: [
+          if (selectedPackage?.learnMoreUri != null)
+            TextButton(
+              onPressed: () => launchModelLearnMore(context, selectedPackage!),
+              child: const Text('Learn more'),
+            ),
           TextButton(
             onPressed: () => Navigator.pop(context, false),
             child: const Text('Not now'),
@@ -748,6 +762,7 @@ class _ProjectTemplateCard extends StatelessWidget {
     required this.package,
     required this.selected,
     required this.onStart,
+    required this.onLearnMore,
   });
 
   final AssistantProjectTemplate template;
@@ -755,6 +770,7 @@ class _ProjectTemplateCard extends StatelessWidget {
   final OfflineModelInfo? package;
   final bool selected;
   final VoidCallback onStart;
+  final VoidCallback onLearnMore;
 
   @override
   Widget build(BuildContext context) {
@@ -871,18 +887,29 @@ class _ProjectTemplateCard extends StatelessWidget {
             const SizedBox(height: 12),
             Align(
               alignment: Alignment.centerRight,
-              child: FilledButton.icon(
-                onPressed: onStart,
-                icon: Icon(
-                  candidate.opensModelManager
-                      ? Icons.settings_outlined
-                      : Icons.play_arrow,
-                ),
-                label: Text(
-                  candidate.opensModelManager
-                      ? 'Download package'
-                      : template.primaryAction,
-                ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if ((package ?? candidate.package)?.learnMoreUri != null)
+                    TextButton(
+                      onPressed: onLearnMore,
+                      child: const Text('Learn more'),
+                    ),
+                  const SizedBox(width: 8),
+                  FilledButton.icon(
+                    onPressed: onStart,
+                    icon: Icon(
+                      candidate.opensModelManager
+                          ? Icons.settings_outlined
+                          : Icons.play_arrow,
+                    ),
+                    label: Text(
+                      candidate.opensModelManager
+                          ? 'Download package'
+                          : template.primaryAction,
+                    ),
+                  ),
+                ],
               ),
             ),
           ],

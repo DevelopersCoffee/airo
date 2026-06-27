@@ -2,7 +2,7 @@
 # Cross-platform build and development automation
 
 # Variables
-FLUTTER_VERSION := 3.35.7
+FLUTTER_VERSION := 3.41.4
 APP_DIR := app
 ANDROID_DIR := $(APP_DIR)/android
 IOS_DIR := $(APP_DIR)/ios
@@ -11,6 +11,8 @@ IPTV_DIR := iptv-data
 IPTV_PYTHON ?= python3
 IPTV_CONFIG ?= config/default.yaml
 IPTV_SKIP_VALIDATION ?= false
+QUANTIZE_PYTHON ?= python3
+QUANTIZE_ARGS ?=
 
 # Local simulator targets. Override any of these from the shell when your
 # installed Android/Xcode runtimes use different names.
@@ -90,6 +92,13 @@ help: ## Show this help message
 	@echo ""
 	@echo "$(YELLOW)IPTV Data Commands:$(NC)"
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | grep -E '^iptv-' | awk 'BEGIN {FS = ":.*?## "}; {printf "  $(GREEN)%-20s$(NC) %s\n", $$1, $$2}'
+	@echo ""
+	@echo "$(YELLOW)Model Tooling:$(NC)"
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | grep -E '^quantize-model' | awk 'BEGIN {FS = ":.*?## "}; {printf "  $(GREEN)%-20s$(NC) %s\n", $$1, $$2}'
+
+.PHONY: quantize-model
+quantize-model: ## Run the model quantization helper; set QUANTIZE_ARGS="..."
+	@$(QUANTIZE_PYTHON) scripts/quantize_model.py $(if $(HELP),--help,$(QUANTIZE_ARGS))
 
 # Setup Commands
 .PHONY: setup

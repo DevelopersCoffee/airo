@@ -13,7 +13,23 @@ For every feature, bug fix, or architecture change:
 3. Define the cross-agent contract if more than one module is touched.
 4. Add deterministic use cases and automation flows to the GitHub issue.
 5. Confirm whether the work belongs in framework code, application code, or both.
-6. Only then start implementation.
+6. Sync the task branch or worktree from the latest `origin/main` before writing code.
+7. Only then start implementation.
+
+## Worktree Sync Rule
+
+When an LLM, agent, or human starts a new task, creates a branch, or creates a
+worktree, the starting point must be the latest `origin/main`, not a stale
+local branch or an older worktree snapshot.
+
+Minimum requirement:
+
+1. `git fetch origin main`
+2. create the branch or worktree from `origin/main`
+3. verify the task branch/worktree is based on the fetched `origin/main`
+
+If this sync step is skipped, implementation must stop until the worktree is
+rebased, recreated, or reset onto the current `origin/main`.
 
 Framework agents own reusable contracts, runtime boundaries, storage schemas,
 security rules, and platform abstractions. Application agents own product

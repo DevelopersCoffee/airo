@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flame/game.dart';
 import 'package:flame/events.dart';
 import 'package:flutter/material.dart';
@@ -10,11 +12,27 @@ import '../../domain/services/move_event_dispatcher.dart';
 
 /// Flame-based chess game
 class ChessGameFlame extends FlameGame with TapCallbacks {
+  ChessGameFlame({
+    required this.difficulty,
+    this.engineOverride,
+    this.audioManagerOverride,
+    this.voicePlayerOverride,
+    this.initialPlayerColor,
+    this.aiThinkingDelayOverride,
+    Random? random,
+  }) : _random = random ?? Random();
+
   late ChessEngine engine;
   late ChessAudioManager audioManager;
-  late ChessTTSManager ttsManager;
+  late ChessVoicePlayer ttsManager;
   late MoveEventDispatcher dispatcher;
   late ChessDifficulty difficulty;
+  final ChessEngine? engineOverride;
+  final ChessAudioManager? audioManagerOverride;
+  final ChessVoicePlayer? voicePlayerOverride;
+  final ChessColor? initialPlayerColor;
+  final Duration? aiThinkingDelayOverride;
+  final Random _random;
 
   // Player color (randomly assigned)
   late ChessColor playerColor;
@@ -43,30 +61,39 @@ class ChessGameFlame extends FlameGame with TapCallbacks {
   late double squareSize;
   late Offset boardOffset;
 
-  ChessGameFlame({required this.difficulty}) : super();
+  static ChessColor pickPlayerColor(Random random) {
+    return random.nextBool() ? ChessColor.white : ChessColor.black;
+  }
+
+  static ChessColor oppositeColor(ChessColor color) {
+    return color == ChessColor.white ? ChessColor.black : ChessColor.white;
+  }
+
+  static int displayRowForPlayerPerspective(int row, ChessColor playerColor) {
+    return playerColor == ChessColor.white ? 7 - row : row;
+  }
 
   @override
   Future<void> onLoad() async {
     await super.onLoad();
 
-    // Player is always white (white moves first in chess)
-    playerColor = ChessColor.white;
-    aiColor = ChessColor.black;
+    playerColor = initialPlayerColor ?? pickPlayerColor(_random);
+    aiColor = oppositeColor(playerColor);
 
     print(
       '[CHESS] Player is ${playerColor.name.toUpperCase()}, AI is ${aiColor.name.toUpperCase()}',
     );
 
     // Initialize engine and audio (using factory for platform compatibility)
-    engine = ChessEngineFactory.create();
+    engine = engineOverride ?? ChessEngineFactory.create();
 
     // Wait for engine to be ready (on native platforms, this waits for Stockfish)
     if (engine is ChessEngineAsync) {
       await (engine as ChessEngineAsync).waitForReady();
     }
 
-    audioManager = FakeChessAudioManager();
-    ttsManager = ChessTTSManager();
+    audioManager = audioManagerOverride ?? FakeChessAudioManager();
+    ttsManager = voicePlayerOverride ?? ChessTTSManager();
     dispatcher = MoveEventDispatcher();
 
     // Setup paints
@@ -90,8 +117,9 @@ class ChessGameFlame extends FlameGame with TapCallbacks {
     // Play background music
     await audioManager.playBackgroundMusic(engine.getBoardState());
 
-    // Player is always white, so player moves first
-    // No need to trigger AI move here
+    if (playerColor == ChessColor.black) {
+      await _makeAIMove();
+    }
   }
 
   @override
@@ -121,7 +149,7 @@ class ChessGameFlame extends FlameGame with TapCallbacks {
     // Convert display row back to actual board row based on player's perspective
     // If player is white, flip board (white at bottom)
     // If player is black, don't flip (black at bottom)
-    final row = playerColor == ChessColor.white ? 7 - displayRow : displayRow;
+    final row = displayRowForPlayerPerspective(displayRow, playerColor);
     final index = row * 8 + col;
 
     print('[CHESS] Tap at col=$col, row=$row, index=$index');
@@ -206,12 +234,14 @@ class ChessGameFlame extends FlameGame with TapCallbacks {
     gameStatus = 'AI is thinking...';
 
     // Add delay based on difficulty (harder = longer thinking time)
-    final thinkingDelay = switch (difficulty) {
-      ChessDifficulty.easy => const Duration(milliseconds: 800),
-      ChessDifficulty.medium => const Duration(milliseconds: 1200),
-      ChessDifficulty.hard => const Duration(milliseconds: 1800),
-      ChessDifficulty.expert => const Duration(milliseconds: 2500),
-    };
+    final thinkingDelay =
+        aiThinkingDelayOverride ??
+        switch (difficulty) {
+          ChessDifficulty.easy => const Duration(milliseconds: 800),
+          ChessDifficulty.medium => const Duration(milliseconds: 1200),
+          ChessDifficulty.hard => const Duration(milliseconds: 1800),
+          ChessDifficulty.expert => const Duration(milliseconds: 2500),
+        };
 
     await Future.delayed(thinkingDelay);
 
@@ -314,7 +344,7 @@ class ChessGameFlame extends FlameGame with TapCallbacks {
         // Flip the board based on player's perspective
         // If player is white, flip board (white at bottom)
         // If player is black, don't flip (black at bottom)
-        final displayRow = playerColor == ChessColor.white ? 7 - row : row;
+        final displayRow = displayRowForPlayerPerspective(row, playerColor);
         final index = row * 8 + col;
 
         // Chess board: a1 (bottom-left for white) is dark square
@@ -479,7 +509,7 @@ class ChessGameFlame extends FlameGame with TapCallbacks {
       // Flip the board based on player's perspective
       // If player is white, flip board (white at bottom)
       // If player is black, don't flip (black at bottom)
-      final displayRow = playerColor == ChessColor.white ? 7 - row : row;
+      final displayRow = displayRowForPlayerPerspective(row, playerColor);
 
       // Get the correct symbol based on piece color
       final symbol = piece.color == ChessColor.white
@@ -532,7 +562,7 @@ class ChessGameFlame extends FlameGame with TapCallbacks {
     final col = speakingPieceIndex! % 8;
 
     // Calculate display position based on player's perspective
-    final displayRow = playerColor == ChessColor.white ? 7 - row : row;
+    final displayRow = displayRowForPlayerPerspective(row, playerColor);
 
     // Position bubble above the piece
     final pieceX = col * squareSize + squareSize / 2;

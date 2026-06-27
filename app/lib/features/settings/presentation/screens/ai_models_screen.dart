@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:core_ai/core_ai.dart';
 
 import '../../application/ai_model_management.dart';
+import '../../../../core/ai/model_learn_more_launcher.dart';
 import '../widgets/model_card.dart';
 import '../widgets/model_filter_bar.dart';
 import 'model_detail_screen.dart';
@@ -160,6 +161,9 @@ class _AIModelsScreenState extends ConsumerState<AIModelsScreen>
               : null,
           onCancelDownload: isDownloading
               ? () => _cancelDownload(model.id)
+              : null,
+          onLearnMore: model.learnMoreUri != null
+              ? () => launchModelLearnMore(context, model)
               : null,
         );
       },
