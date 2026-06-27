@@ -37,6 +37,7 @@ export 'src/download/model_download_service.dart';
 // Agent Skill Schemas
 export 'src/skills/ai_trajectory_trace.dart';
 export 'src/skills/routine_dag_executor.dart';
+export 'src/skills/skill_adversarial_eval_harness.dart';
 export 'src/skills/skill_permission_engine.dart';
 export 'src/skills/skill_schema.dart';
 export 'src/skills/skill_trigger_eval.dart';
