@@ -1,90 +1,56 @@
+import '../../data/repositories/built_in_agent_skill_repository.dart';
+import '../../data/repositories/shared_preferences_agent_skill_state_store.dart';
 import '../models/agent_skill.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class AgentSkillRegistry {
   AgentSkillRegistry({List<AgentSkill>? skills})
-    : _skills = {for (final skill in skills ?? builtInSkills) skill.id: skill};
+    : _repository = BuiltInAgentSkillRepository(skills: skills);
 
-  final Map<String, AgentSkill> _skills;
+  AgentSkillRegistry._({required BuiltInAgentSkillRepository repository})
+    : _repository = repository;
 
-  static const builtInSkills = [
-    AgentSkill(
-      id: 'read-calendar-events',
-      name: 'Read Calendar Events',
-      description: 'Read OS calendar events for a specific date.',
-      instructions:
-          'Use this when the user asks about their schedule, agenda, '
-          'meetings, appointments, or calendar events. First call '
-          'get_current_date_time. Then call read_calendar_events with date in '
-          'YYYY-MM-DD format. Summarize events by time. If there are no '
-          'events, say there are no events scheduled.',
-      tools: ['get_current_date_time', 'read_calendar_events'],
-      capabilities: [SkillCapability.calendarRead],
-    ),
-    AgentSkill(
-      id: 'create-calendar-event',
-      name: 'Create Calendar Event',
-      description: 'Prepare a calendar event after user confirmation.',
-      instructions:
-          'Use this when the user asks to create, add, or schedule a calendar '
-          'event. Gather title, date, start time, and end time before calling '
-          'create_calendar_event.',
-      tools: ['get_current_date_time', 'create_calendar_event'],
-      capabilities: [SkillCapability.calendarWrite],
-      enabled: false,
-    ),
-    AgentSkill(
-      id: 'schedule-notification',
-      name: 'Schedule Notification',
-      description: 'Schedule a reminder notification.',
-      instructions:
-          'Use this when the user asks to create a reminder or notification. '
-          'Call schedule_notification with title, message, hour, minute, '
-          'repeat_daily, optional date, category, schedule_type, metadata, and '
-          'optional times for multiple notifications, requires_completion, and '
-          'follow_up_policy. Valid categories include general, billing, '
-          'medicine, family, and habit. Valid schedule_type values include '
-          'one_time, due_date, daily_time, interval_hours, and meal_relative. '
-          'Use follow_up_policy=daily_until_done when the user asks to keep '
-          'asking until the task is done. For medicine reminders, only schedule '
-          'what the user requested; do not infer dosage or provide medical '
-          'advice.',
-      tools: ['get_current_date_time', 'schedule_notification'],
-      capabilities: [SkillCapability.notificationsSchedule],
-    ),
-    AgentSkill(
-      id: 'open-airo-feature',
-      name: 'Open Airo Feature',
-      description: 'Open Money, Quest, Beats, Games, Stream, or Reader.',
-      instructions: 'Use this when the user asks to open an Airo feature.',
-      tools: ['open_route'],
-      capabilities: [SkillCapability.routeOpen],
-      enabled: true,
-    ),
-  ];
+  final BuiltInAgentSkillRepository _repository;
 
-  List<AgentSkill> getAllSkills() => _skills.values.toList();
+  static final builtInSkills = builtInAgentSkills;
 
-  List<AgentSkill> getEnabledSkills() {
-    return getAllSkills().where((skill) => skill.enabled).toList();
+  static Future<AgentSkillRegistry> loadPersisted({
+    List<AgentSkill>? skills,
+  }) async {
+    final preferences = await SharedPreferences.getInstance();
+    final store = SharedPreferencesAgentSkillStateStore(preferences);
+    return AgentSkillRegistry._(
+      repository: BuiltInAgentSkillRepository(
+        skills: skills,
+        initialEnabledState: store.loadEnabledState(),
+        onEnabledStateChanged: (enabledState) {
+          store.saveEnabledState(enabledState);
+        },
+      ),
+    );
   }
 
-  AgentSkill? getById(String id) => _skills[id];
+  List<AgentSkill> getAllSkills() => _repository.getAllSkills();
+
+  List<AgentSkill> getEnabledSkills() => _repository.getEnabledSkills();
+
+  AgentSkill? getById(String id) => _repository.getById(id);
+
+  List<AgentSkill> search(String query) => _repository.search(query);
+
+  List<String> enabledSkillSummariesForPrompt() {
+    return _repository.enabledSkillSummariesForPrompt();
+  }
 
   void setSkillEnabled(String id, bool enabled) {
-    final skill = _skills[id];
-    if (skill == null) return;
-    _skills[id] = skill.copyWith(enabled: enabled);
+    _repository.setSkillEnabled(id, enabled);
   }
 
   void enableAll() {
-    for (final skill in getAllSkills()) {
-      _skills[skill.id] = skill.copyWith(enabled: true);
-    }
+    _repository.enableAll();
   }
 
   void disableAll() {
-    for (final skill in getAllSkills()) {
-      _skills[skill.id] = skill.copyWith(enabled: false);
-    }
+    _repository.disableAll();
   }
 }

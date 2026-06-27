@@ -258,16 +258,16 @@ After calendar is stable:
 ### Task 1: Skill Domain and Parser
 
 - [x] Add `AgentSkill` domain model.
-- [ ] Parse YAML frontmatter and markdown body.
-- [ ] Validate required fields and kebab-case IDs.
-- [ ] Unit test valid and invalid `SKILL.md` files.
+- [x] Parse YAML frontmatter and markdown body.
+- [x] Validate required fields and kebab-case IDs.
+- [x] Unit test valid and invalid `SKILL.md` files.
 
 ### Task 2: Built-In Skill Repository
 
 - [x] Add in-memory built-in skills.
 - [x] Add enable/disable state.
 - [x] Expose enabled skill summaries for prompts.
-- [ ] Unit test filtering, search, enable all, disable all.
+- [x] Unit test filtering, search, enable all, disable all.
 
 ### Task 3: Connector Registry
 
@@ -279,21 +279,21 @@ After calendar is stable:
 ### Task 4: Calendar Native Integration
 
 - [ ] Add calendar package to mobile pubspec after validating build mode.
-- [ ] Add Android/iOS permissions.
-- [ ] Implement permission request/status adapter.
-- [ ] Implement read events for a date.
-- [ ] Implement create event with confirmation.
-- [ ] Add unit tests around adapter using fake connector.
+- [x] Add Android/iOS permissions.
+- [x] Implement permission request/status adapter.
+- [x] Implement read events for a date.
+- [x] Implement create event with confirmation.
+- [x] Add unit tests around adapter using fake connector.
 - [ ] Add one device smoke test for Android calendar read.
 
 ### Task 5: Skill Orchestrator
 
-- [ ] Build skill-selection prompt from enabled skill summaries.
-- [ ] Parse model JSON with `LLMJsonParser`.
+- [x] Build skill-selection prompt from enabled skill summaries.
+- [x] Parse model JSON with `LLMJsonParser`.
 - [x] Execute bounded tool loop.
 - [x] Record `AgentActionTrace` for UI.
 - [x] Fall back to existing `IntentParser` for simple route commands.
-- [ ] Unit test no-skill, one-tool, multi-tool, denied-permission, malformed-JSON, and max-step cases.
+- [x] Unit test no-skill, one-tool, multi-tool, denied-permission, malformed-JSON, and max-step cases.
 
 ### Task 6: Chat UI
 
@@ -301,7 +301,7 @@ After calendar is stable:
 - [x] Add Manage Skills sheet.
 - [x] Add action trace cards.
 - [x] Wire orchestrator before normal Gemini chat fallback.
-- [ ] Add widget tests for skill sheet and trace rendering.
+- [x] Add widget tests for skill sheet and trace rendering.
 
 ### Task 7: Remote/Community Skills Later
 

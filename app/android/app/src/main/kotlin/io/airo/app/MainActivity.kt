@@ -4,8 +4,11 @@ import android.Manifest
 import android.content.ContentUris
 import android.content.ContentValues
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.provider.CalendarContract
+import android.provider.Settings
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.EventChannel
@@ -72,6 +75,8 @@ class MainActivity : FlutterActivity() {
                             createCalendarEvent(arguments, result)
                         }
                     }
+                    "getCalendarPermissionStatus" -> getCalendarPermissionStatus(result)
+                    "openCalendarPermissionSettings" -> openCalendarPermissionSettings(result)
                     else -> result.notImplemented()
                 }
             }
@@ -243,20 +248,90 @@ class MainActivity : FlutterActivity() {
         }
     }
 
+    private fun getCalendarPermissionStatus(result: MethodChannel.Result) {
+        val granted = checkSelfPermission(Manifest.permission.READ_CALENDAR) == PackageManager.PERMISSION_GRANTED
+        result.success(mapOf(
+            "status" to if (granted) "granted" else "denied",
+            "granted" to granted,
+            "can_request" to !granted,
+            "permission" to Manifest.permission.READ_CALENDAR
+        ))
+    }
+
+    private fun openCalendarPermissionSettings(result: MethodChannel.Result) {
+        val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+            data = Uri.fromParts("package", packageName, null)
+        }
+        startActivity(intent)
+        result.success(mapOf("opened" to true))
+    }
+
     private fun createCalendarEvent(arguments: Map<String, Any?>, result: MethodChannel.Result) {
-        val hasReadPermission = checkSelfPermission(Manifest.permission.READ_CALENDAR) == PackageManager.PERMISSION_GRANTED
-        val hasWritePermission = checkSelfPermission(Manifest.permission.WRITE_CALENDAR) == PackageManager.PERMISSION_GRANTED
-        if (!hasReadPermission || !hasWritePermission) {
-            pendingCalendarCreateResult = result
-            pendingCalendarCreateArguments = arguments
-            requestPermissions(
-                arrayOf(Manifest.permission.READ_CALENDAR, Manifest.permission.WRITE_CALENDAR),
-                CALENDAR_WRITE_PERMISSION_REQUEST
-            )
+        val title = arguments["title"] as? String
+        val start = arguments["start"] as? String
+        val end = arguments["end"] as? String
+
+        if (start != null && end != null) {
+            val description = arguments["description"] as? String
+            val location = arguments["location"] as? String
+
+            if (title.isNullOrBlank()) {
+                result.success(mapOf(
+                    "error" to "invalid_calendar_event",
+                    "message" to "Calendar event requires title, start, and end."
+                ))
+                return
+            }
+
+            val dateTimeFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", Locale.US)
+            dateTimeFormat.isLenient = false
+            val startMillis = try {
+                dateTimeFormat.parse(start)?.time
+            } catch (_: Exception) {
+                null
+            }
+            val endMillis = try {
+                dateTimeFormat.parse(end)?.time
+            } catch (_: Exception) {
+                null
+            }
+            if (startMillis == null || endMillis == null || endMillis <= startMillis) {
+                result.success(mapOf(
+                    "error" to "invalid_calendar_event_time",
+                    "message" to "Calendar event times must use ISO-8601 and end after start."
+                ))
+                return
+            }
+
+            val intent = Intent(Intent.ACTION_INSERT).apply {
+                data = CalendarContract.Events.CONTENT_URI
+                putExtra(CalendarContract.Events.TITLE, title)
+                putExtra(CalendarContract.EXTRA_EVENT_BEGIN_TIME, startMillis)
+                putExtra(CalendarContract.EXTRA_EVENT_END_TIME, endMillis)
+                if (!description.isNullOrBlank()) {
+                    putExtra(CalendarContract.Events.DESCRIPTION, description)
+                }
+                if (!location.isNullOrBlank()) {
+                    putExtra(CalendarContract.Events.EVENT_LOCATION, location)
+                }
+            }
+
+            if (intent.resolveActivity(packageManager) == null) {
+                result.success(mapOf(
+                    "error" to "calendar_app_unavailable",
+                    "message" to "No calendar app is available to create this event."
+                ))
+                return
+            }
+
+            startActivity(intent)
+            result.success(mapOf(
+                "created" to true,
+                "confirmation" to "native_calendar_app"
+            ))
             return
         }
 
-        val title = arguments["title"] as? String
         val date = arguments["date"] as? String
         val hour = (arguments["hour"] as? Number)?.toInt()
         val minute = (arguments["minute"] as? Number)?.toInt() ?: 0
@@ -272,16 +347,28 @@ class MainActivity : FlutterActivity() {
             return
         }
 
-        val start = calendarFor(date, hour, minute)
-        if (start == null) {
+        val hasReadPermission = checkSelfPermission(Manifest.permission.READ_CALENDAR) == PackageManager.PERMISSION_GRANTED
+        val hasWritePermission = checkSelfPermission(Manifest.permission.WRITE_CALENDAR) == PackageManager.PERMISSION_GRANTED
+        if (!hasReadPermission || !hasWritePermission) {
+            pendingCalendarCreateResult = result
+            pendingCalendarCreateArguments = arguments
+            requestPermissions(
+                arrayOf(Manifest.permission.READ_CALENDAR, Manifest.permission.WRITE_CALENDAR),
+                CALENDAR_WRITE_PERMISSION_REQUEST
+            )
+            return
+        }
+
+        val startCal = calendarFor(date, hour, minute)
+        if (startCal == null) {
             result.success(mapOf(
                 "error" to "invalid_date",
                 "message" to "Calendar date must use YYYY-MM-DD."
             ))
             return
         }
-        val end = start.clone() as Calendar
-        end.add(Calendar.MINUTE, durationMinutes.coerceAtLeast(1))
+        val endCal = startCal.clone() as Calendar
+        endCal.add(Calendar.MINUTE, durationMinutes.coerceAtLeast(1))
 
         val calendarId = writableCalendarId()
         if (calendarId == null) {
@@ -297,8 +384,8 @@ class MainActivity : FlutterActivity() {
                 put(CalendarContract.Events.CALENDAR_ID, calendarId)
                 put(CalendarContract.Events.TITLE, title)
                 put(CalendarContract.Events.DESCRIPTION, message)
-                put(CalendarContract.Events.DTSTART, start.timeInMillis)
-                put(CalendarContract.Events.DTEND, end.timeInMillis)
+                put(CalendarContract.Events.DTSTART, startCal.timeInMillis)
+                put(CalendarContract.Events.DTEND, endCal.timeInMillis)
                 put(CalendarContract.Events.EVENT_TIMEZONE, TimeZone.getDefault().id)
                 if (repeatDaily) {
                     put(CalendarContract.Events.RRULE, "FREQ=DAILY")
@@ -368,5 +455,6 @@ class MainActivity : FlutterActivity() {
             val idIndex = cursor.getColumnIndex(CalendarContract.Calendars._ID)
             if (cursor.moveToFirst()) cursor.getLong(idIndex) else null
         }
+>>>>>>> origin/main
     }
 }

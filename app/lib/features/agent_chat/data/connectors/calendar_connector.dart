@@ -184,8 +184,27 @@ class NativeCreateCalendarEventConnector implements AgentConnector {
 
   @override
   Future<ConnectorResult> execute(Map<String, dynamic> arguments) async {
-    final validationError = _validateCalendarEvent(arguments);
-    if (validationError != null) return validationError;
+    final isIsoEvent = arguments.containsKey('start');
+    if (isIsoEvent) {
+      if (arguments['confirmed'] != true) {
+        return const ConnectorResult.error(
+          code: 'confirmation_required',
+          message: 'Please confirm before creating this calendar event.',
+        );
+      }
+      final title = arguments['title'] as String?;
+      final start = arguments['start'] as String?;
+      final end = arguments['end'] as String?;
+      if (title == null || title.trim().isEmpty || start == null || end == null) {
+        return const ConnectorResult.error(
+          code: 'invalid_calendar_event',
+          message: 'create_calendar_event requires title, start, and end.',
+        );
+      }
+    } else {
+      final validationError = _validateCalendarEvent(arguments);
+      if (validationError != null) return validationError;
+    }
 
     try {
       final response = await _channel.invokeMapMethod<String, dynamic>(
@@ -206,7 +225,7 @@ class NativeCreateCalendarEventConnector implements AgentConnector {
       }
       return ConnectorResult(data: response);
     } on MissingPluginException {
-      return ConnectorResult.error(
+      return const ConnectorResult.error(
         code: 'calendar_write_unavailable',
         message: 'Calendar event creation is not available on this device yet.',
         data: {'source': 'calendar_channel_unavailable'},
@@ -215,6 +234,53 @@ class NativeCreateCalendarEventConnector implements AgentConnector {
       return ConnectorResult.error(
         code: error.code,
         message: error.message ?? 'Calendar event could not be created.',
+      );
+    }
+  }
+}
+
+class NativeCalendarPermissionConnector implements AgentConnector {
+  NativeCalendarPermissionConnector({
+    MethodChannel channel = const MethodChannel('com.airo.agent_connectors'),
+  }) : _channel = channel;
+
+  final MethodChannel _channel;
+
+  @override
+  String get name => 'calendar_permission_status';
+
+  @override
+  Set<SkillCapability> get requiredCapabilities => const {};
+
+  @override
+  Future<ConnectorResult> execute(Map<String, dynamic> arguments) async {
+    final shouldOpenSettings = arguments['open_settings'] == true;
+    if (shouldOpenSettings && arguments['confirmed'] != true) {
+      return const ConnectorResult.error(
+        code: 'confirmation_required',
+        message: 'Please confirm before opening calendar permission settings.',
+      );
+    }
+
+    try {
+      final response = await _channel.invokeMapMethod<String, dynamic>(
+        shouldOpenSettings
+            ? 'openCalendarPermissionSettings'
+            : 'getCalendarPermissionStatus',
+        const {},
+      );
+      return ConnectorResult(data: response ?? const {});
+    } on MissingPluginException {
+      return const ConnectorResult.error(
+        code: 'calendar_channel_unavailable',
+        message:
+            'Calendar permission status is not available on this device yet.',
+      );
+    } on PlatformException catch (error) {
+      return ConnectorResult.error(
+        code: error.code,
+        message:
+            error.message ?? 'Calendar permission status could not be read.',
       );
     }
   }

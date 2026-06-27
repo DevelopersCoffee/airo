@@ -3,6 +3,8 @@ import 'dart:convert';
 import '../models/agent_skill.dart';
 import 'agent_connector_registry.dart';
 import 'agent_skill_registry.dart';
+import 'intent_parser.dart';
+import 'tool_registry.dart';
 import 'reminder_request_parser.dart';
 
 enum SkillModelActionType { toolCall, finalAnswer }
@@ -246,12 +248,14 @@ class AgentSkillOrchestrator {
   AgentSkillOrchestrator({
     required AgentSkillRegistry skillRegistry,
     required AgentConnectorRegistry connectorRegistry,
+    ToolRegistry? toolRegistry,
     AgentSkillModelClient? modelClient,
     bool useFallbackModelClient = true,
     int maxSteps = 4,
     Duration modelActionTimeout = const Duration(seconds: 3),
   }) : _skillRegistry = skillRegistry,
        _connectorRegistry = connectorRegistry,
+       _toolRegistry = toolRegistry ?? ToolRegistry(),
        _modelClient = modelClient ?? RuleBasedAgentSkillModelClient(),
        _fallbackModelClient = useFallbackModelClient
            ? RuleBasedAgentSkillModelClient()
@@ -261,10 +265,22 @@ class AgentSkillOrchestrator {
 
   final AgentSkillRegistry _skillRegistry;
   final AgentConnectorRegistry _connectorRegistry;
+  final ToolRegistry _toolRegistry;
   final AgentSkillModelClient _modelClient;
   final RuleBasedAgentSkillModelClient? _fallbackModelClient;
   final int _maxSteps;
   final Duration _modelActionTimeout;
+
+  String buildSkillSelectionPrompt(String userPrompt) {
+    final summaries = _skillRegistry.enabledSkillSummariesForPrompt();
+    return [
+      'Choose one Airo Agent Skill for the user request, or choose no skill.',
+      'Return JSON only: {"skill_id":"skill-id"} or {"skill_id":null}.',
+      'Available enabled skills:',
+      if (summaries.isEmpty) '- none' else ...summaries,
+      'User request: $userPrompt',
+    ].join('\n');
+  }
 
   Future<AgentRunResult> run(String prompt) async {
     final enabledSkills = _skillRegistry.getEnabledSkills();
@@ -281,7 +297,7 @@ class AgentSkillOrchestrator {
         );
 
     if (selectedSkillId == null) {
-      return const AgentRunResult.notHandled();
+      return _fallbackToRouteIntent(prompt);
     }
 
     final skill = _skillRegistry.getById(selectedSkillId);
@@ -425,6 +441,44 @@ class AgentSkillOrchestrator {
     );
   }
 
+  Future<AgentRunResult> _fallbackToRouteIntent(String prompt) async {
+    final intent = IntentParser.parse(prompt);
+    if (!_isSimpleRouteIntent(intent.type)) {
+      return const AgentRunResult.notHandled();
+    }
+    final result = await _toolRegistry.executeIntent(intent);
+    if (!result.shouldNavigate) return const AgentRunResult.notHandled();
+    return AgentRunResult(
+      handled: true,
+      message: result.message,
+      traces: [
+        AgentActionTrace(
+          title: 'Fallback intent',
+          detail: IntentParser.describe(intent),
+          parameters: result.parameters,
+        ),
+      ],
+      isError: result.isError,
+    );
+  }
+
+  bool _isSimpleRouteIntent(IntentType type) {
+    return type == IntentType.openMoney ||
+        type == IntentType.openBudget ||
+        type == IntentType.openExpenses ||
+        type == IntentType.playMusic ||
+        type == IntentType.pauseMusic ||
+        type == IntentType.nextTrack ||
+        type == IntentType.playGames ||
+        type == IntentType.playChess ||
+        type == IntentType.playGame ||
+        type == IntentType.openOffers ||
+        type == IntentType.openReader ||
+        type == IntentType.openChat ||
+        type == IntentType.askImage ||
+        type == IntentType.modelManagement;
+  }
+
   Future<T?> _tryModelCall<T>(Future<T?> Function() call) async {
     try {
       return await call().timeout(_modelActionTimeout);
@@ -493,6 +547,7 @@ Map<String, dynamic>? _calendarEventFromNotificationResult(
         false,
     'source': 'reminder_confirmation',
   };
+}
 }
 
 SkillModelAction? parseSkillModelAction(String text) {

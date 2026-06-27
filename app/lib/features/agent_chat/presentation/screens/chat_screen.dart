@@ -54,12 +54,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   late TextEditingController _messageController;
   final List<ChatMessage> _messages = [];
   final ToolRegistry _toolRegistry = ToolRegistry();
-  final AgentSkillRegistry _skillRegistry = AgentSkillRegistry();
+  AgentSkillRegistry _skillRegistry = AgentSkillRegistry();
   final GeminiNanoService _geminiNano = GeminiNanoService();
   final LiteRtLmService _liteRtLm = LiteRtLmService();
   late final AssistantRuntimeService _assistantRuntime;
-  late final AgentConnectorRegistry _connectorRegistry;
-  late final AgentSkillOrchestrator _skillOrchestrator;
+  late AgentSkillOrchestrator _skillOrchestrator;
   Map<String, dynamic>? _pendingCalendarEvent;
   bool _isDeviceSupported = false;
 
@@ -71,24 +70,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       geminiNano: _geminiNano,
       liteRtLm: _liteRtLm,
     );
-    _connectorRegistry = AgentConnectorRegistry(
-      connectors: [
-        DateTimeConnector(),
-        NativeCalendarConnector(),
-        NativeCreateCalendarEventConnector(),
-        ScheduleNotificationConnector(),
-        RouteConnector(),
-      ],
-    );
-    _skillOrchestrator = AgentSkillOrchestrator(
-      skillRegistry: _skillRegistry,
-      connectorRegistry: _connectorRegistry,
-      modelClient: SelectedRuntimeAgentSkillModelClient(
-        runtimeService: _assistantRuntime,
-        selectedModelId: () => ref.read(selectedAssistantModelIdProvider),
-      ),
-      useFallbackModelClient: false,
-    );
+    _skillOrchestrator = _buildSkillOrchestrator(_skillRegistry);
+    _loadPersistedSkillRegistry();
     // Add welcome message
     _messages.add(
       ChatMessage(
@@ -98,6 +81,36 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       ),
     );
     _initializeAI();
+  }
+
+  AgentSkillOrchestrator _buildSkillOrchestrator(AgentSkillRegistry registry) {
+    return AgentSkillOrchestrator(
+      skillRegistry: registry,
+      connectorRegistry: AgentConnectorRegistry(
+        connectors: [
+          DateTimeConnector(),
+          NativeCalendarPermissionConnector(),
+          NativeCalendarConnector(),
+          NativeCreateCalendarEventConnector(),
+          ScheduleNotificationConnector(),
+          RouteConnector(),
+        ],
+      ),
+      modelClient: SelectedRuntimeAgentSkillModelClient(
+        runtimeService: _assistantRuntime,
+        selectedModelId: () => ref.read(selectedAssistantModelIdProvider),
+      ),
+      useFallbackModelClient: false,
+    );
+  }
+
+  Future<void> _loadPersistedSkillRegistry() async {
+    final registry = await AgentSkillRegistry.loadPersisted();
+    if (!mounted) return;
+    setState(() {
+      _skillRegistry = registry;
+      _skillOrchestrator = _buildSkillOrchestrator(registry);
+    });
   }
 
   Future<void> _initializeAI() async {

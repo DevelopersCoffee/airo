@@ -4,6 +4,8 @@ enum SkillCapability {
   calendarRead('calendar.read', 'Calendar read'),
   calendarWrite('calendar.write', 'Calendar write'),
   notificationsSchedule('notifications.schedule', 'Notifications'),
+  locationRead('location.read', 'Location read'),
+  webFetch('web.fetch', 'Web fetch'),
   routeOpen('route.open', 'Open route');
 
   const SkillCapability(this.key, this.label);
@@ -19,39 +21,62 @@ enum SkillCapability {
   }
 }
 
-enum SkillRuntime { native }
+enum SkillRuntime {
+  native('native');
 
-class AgentSkill extends Equatable {
+  const SkillRuntime(this.key);
+
+  final String key;
+
+  static SkillRuntime? fromKey(String key) {
+    for (final runtime in values) {
+      if (runtime.key == key) return runtime;
+    }
+    return null;
+  }
+}
+
+enum SkillSource { builtIn, local, remote }
+
+enum SkillInstallState { enabled, disabled, notInstalled }
+
+class AgentSkillManifest extends Equatable {
   final String id;
   final String name;
   final String description;
-  final String instructions;
-  final List<String> tools;
-  final List<SkillCapability> capabilities;
+  final String version;
+  final String author;
   final SkillRuntime runtime;
-  final bool enabled;
+  final SkillSource source;
+  final SkillInstallState installState;
+  final List<SkillCapability> capabilities;
+  final List<String> tools;
 
-  const AgentSkill({
+  const AgentSkillManifest({
     required this.id,
     required this.name,
     required this.description,
-    required this.instructions,
-    required this.tools,
+    required this.version,
+    required this.author,
+    required this.runtime,
+    required this.source,
+    required this.installState,
     required this.capabilities,
-    this.runtime = SkillRuntime.native,
-    this.enabled = true,
+    required this.tools,
   });
 
-  AgentSkill copyWith({bool? enabled}) {
-    return AgentSkill(
+  AgentSkillManifest copyWith({SkillInstallState? installState}) {
+    return AgentSkillManifest(
       id: id,
       name: name,
       description: description,
-      instructions: instructions,
-      tools: tools,
-      capabilities: capabilities,
+      version: version,
+      author: author,
       runtime: runtime,
-      enabled: enabled ?? this.enabled,
+      source: source,
+      installState: installState ?? this.installState,
+      capabilities: capabilities,
+      tools: tools,
     );
   }
 
@@ -60,12 +85,83 @@ class AgentSkill extends Equatable {
     id,
     name,
     description,
-    instructions,
-    tools,
-    capabilities,
+    version,
+    author,
     runtime,
-    enabled,
+    source,
+    installState,
+    capabilities,
+    tools,
   ];
+}
+
+class AgentSkill extends Equatable {
+  final AgentSkillManifest manifest;
+  final String instructions;
+
+  AgentSkill({
+    required String id,
+    required String name,
+    required String description,
+    String version = '1.0.0',
+    String author = 'Airo',
+    SkillRuntime runtime = SkillRuntime.native,
+    SkillSource source = SkillSource.builtIn,
+    bool enabled = true,
+    List<String> tools = const [],
+    List<SkillCapability> capabilities = const [],
+    required this.instructions,
+  }) : manifest = AgentSkillManifest(
+         id: id,
+         name: name,
+         description: description,
+         version: version,
+         author: author,
+         runtime: runtime,
+         source: source,
+         installState: enabled
+             ? SkillInstallState.enabled
+             : SkillInstallState.disabled,
+         capabilities: capabilities,
+         tools: tools,
+       );
+
+  const AgentSkill.fromManifest({
+    required this.manifest,
+    required this.instructions,
+  });
+
+  String get id => manifest.id;
+  String get name => manifest.name;
+  String get description => manifest.description;
+  List<String> get tools => manifest.tools;
+  List<SkillCapability> get capabilities => manifest.capabilities;
+  SkillRuntime get runtime => manifest.runtime;
+  bool get enabled => manifest.installState == SkillInstallState.enabled;
+  bool get isEnabled => enabled;
+
+  String get summaryForPrompt {
+    final normalizedDescription = description.endsWith('.')
+        ? description.substring(0, description.length - 1)
+        : description;
+    return '- $id: $name — $normalizedDescription. Tools: ${tools.join(', ')}';
+  }
+
+  AgentSkill copyWith({bool? enabled}) {
+    return AgentSkill.fromManifest(
+      manifest: manifest.copyWith(
+        installState: enabled == null
+            ? manifest.installState
+            : (enabled
+                  ? SkillInstallState.enabled
+                  : SkillInstallState.disabled),
+      ),
+      instructions: instructions,
+    );
+  }
+
+  @override
+  List<Object?> get props => [manifest, instructions];
 }
 
 class AgentActionTrace extends Equatable {
