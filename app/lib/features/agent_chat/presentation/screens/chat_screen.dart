@@ -7,7 +7,9 @@ import '../../../agent_chat/data/connectors/date_time_connector.dart';
 import '../../../agent_chat/data/connectors/notification_connector.dart';
 import '../../../agent_chat/data/connectors/route_connector.dart';
 import '../../../agent_chat/data/services/gemini_agent_skill_model_client.dart';
+import '../../../agent_chat/application/assistant_model_preferences.dart';
 import '../../../agent_chat/domain/models/agent_skill.dart';
+import '../../../agent_chat/domain/models/assistant_model_selection.dart';
 import '../../../agent_chat/domain/services/agent_connector_registry.dart';
 import '../../../agent_chat/domain/services/agent_skill_orchestrator.dart';
 import '../../../agent_chat/domain/services/agent_skill_registry.dart';
@@ -625,8 +627,33 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         return;
 
       default:
+        final offlineModelId = offlineModelIdFromAssistantModelId(
+          selectedModelId,
+        );
+        if (offlineModelId != null) {
+          final libraryState = await ref.read(
+            assistantModelLibraryProvider.future,
+          );
+          final candidate = libraryState.candidateById(selectedModelId);
+          final package = candidate?.package;
+          if (package == null) {
+            _replaceStreamingMessage(
+              'The selected offline package is no longer in the catalog. Open Project setup and choose another model.',
+            );
+            return;
+          }
+          final response = await _liteRtLm.generateTextForModel(
+            package,
+            message,
+          );
+          _replaceStreamingMessage(
+            response ??
+                'This offline package is not installed on this device yet. Open Profile > AI Models to download it or choose another runtime.',
+          );
+          return;
+        }
         _replaceStreamingMessage(
-          'This package is downloaded, but chat inference is not wired to it yet. Use Gemini Nano or the Gemma mobile package, or manage packages in Profile.',
+          'This assistant runtime is not available. Open Project setup and choose another model.',
         );
     }
   }
