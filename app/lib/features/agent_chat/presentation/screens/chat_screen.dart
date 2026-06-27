@@ -120,6 +120,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         }
       }
 
+      unawaited(
+        _liteRtLm.warmupInstalledModel().then((warmed) {
+          debugPrint('LiteRT-LM warmup completed: $warmed');
+        }),
+      );
+
       // Show bottom banner popup
       if (mounted) {
         _showBottomBanner();

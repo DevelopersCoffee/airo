@@ -98,6 +98,38 @@ class LiteRtLmService {
     );
   }
 
+  /// Pre-warm an already-installed LiteRT-LM model with a private dummy prompt.
+  ///
+  /// This method intentionally does not install or download a model. It only
+  /// warms the local runtime when an active model file already exists.
+  Future<bool> warmupInstalledModel() async {
+    if (kIsWeb) return false;
+
+    try {
+      final defaultModelPath = config.hasModelPath ? config.modelPath.trim() : null;
+      if (!await _client.activeModelExists(modelPath: defaultModelPath)) return false;
+
+      if (_initializedModelPath == null || _initializedModelPath != defaultModelPath) {
+        await _client.initialize(
+          huggingFaceToken: config.optionalHuggingFaceToken,
+          modelPath: defaultModelPath,
+          backend: config.backend,
+          maxTokens: config.maxTokens,
+        );
+        _initializedModelPath = defaultModelPath;
+      }
+      await _client.generate(
+        prompt: ' ',
+        backend: config.backend,
+        maxTokens: 1,
+      );
+      return true;
+    } catch (e) {
+      debugPrint('LiteRT-LM warmup skipped: $e');
+      return false;
+    }
+  }
+
   Future<String?> generateTextForModel(
     OfflineModelInfo model,
     String prompt, {
@@ -198,6 +230,7 @@ class LiteRtLmService {
         resolvedModelPath ??
         installUrl?.trim() ??
         (config.hasModelPath ? config.modelPath.trim() : null);
+>>>>>>> origin/main
     return true;
   }
 

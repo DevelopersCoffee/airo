@@ -11,6 +11,24 @@ class GeminiNanoService {
 
   GeminiNanoService._();
 
+  /// Pre-warm Gemini Nano with a native local-only dummy inference.
+  ///
+  /// Returns false instead of throwing when the runtime is unavailable or the
+  /// device is in a low-memory state.
+  Future<bool> warmup() async {
+    try {
+      if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
+        return false;
+      }
+
+      final bool warmed = await _channel.invokeMethod('warmup');
+      return warmed;
+    } catch (e) {
+      debugPrint('Error warming up Gemini Nano: $e');
+      return false;
+    }
+  }
+
   /// Check if Gemini Nano is available on the current device
   Future<bool> isAvailable() async {
     try {

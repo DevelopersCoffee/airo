@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import '../gemini_nano_service.dart';
 // Using standard Flutter widgets instead of custom ones
@@ -44,6 +46,9 @@ class _GeminiNanoChatScreenState extends State<GeminiNanoChatScreen> {
       if (_isAvailable) {
         // Initialize with default config
         _isInitialized = await GeminiNanoService.instance.initialize();
+        if (_isInitialized) {
+          unawaited(GeminiNanoService.instance.warmup());
+        }
 
         // Get device info
         final deviceInfo = await GeminiNanoService.instance.getDeviceInfo();

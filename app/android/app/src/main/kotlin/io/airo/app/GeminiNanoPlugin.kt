@@ -37,6 +37,7 @@ class GeminiNanoPlugin(private val context: Context) : MethodChannel.MethodCallH
         private const val TAG = "GeminiNanoPlugin"
         private const val CHANNEL_NAME = "com.airo.gemini_nano"
         private const val EVENT_CHANNEL_NAME = "com.airo.gemini_nano/stream"
+        private const val WARMUP_PROMPT = " "
 
         fun registerWith(flutterEngine: FlutterEngine) {
             val context = flutterEngine.dartExecutor.binaryMessenger.let { messenger ->
@@ -312,6 +313,48 @@ class GeminiNanoPlugin(private val context: Context) : MethodChannel.MethodCallH
     }
 
     /**
+     * Pre-warm Gemini Nano by issuing a lightweight local-only dummy inference.
+     *
+     * ML Kit GenAI currently lazy-loads model weights on first inference. This
+     * method intentionally performs the smallest possible private prompt to
+     * load weights before the user's first real prompt. It is best-effort and
+     * returns false for unsupported or low-memory devices instead of throwing.
+     */
+    private fun warmup(result: MethodChannel.Result) {
+        coroutineScope.launch {
+            try {
+                if (isLowMemory()) {
+                    Log.w(TAG, "Gemini Nano warmup skipped: device reports low memory")
+                    result.success(false)
+                    return@launch
+                }
+
+                if (generativeModel == null) {
+                    generativeModel = Generation.getClient()
+                }
+
+                val status: Int = generativeModel!!.checkStatus()
+                if (status != FeatureStatus.AVAILABLE) {
+                    Log.w(TAG, "Gemini Nano warmup skipped: model status is $status")
+                    result.success(false)
+                    return@launch
+                }
+
+                isInitialized = true
+                withContext(Dispatchers.Default) {
+                    val request = GenerateContentRequest.Builder(TextPart(WARMUP_PROMPT)).build()
+                    generativeModel!!.generateContent(request)
+                }
+                Log.d(TAG, "Gemini Nano warmup completed")
+                result.success(true)
+            } catch (e: Exception) {
+                Log.w(TAG, "Gemini Nano warmup failed: ${e.message}", e)
+                result.success(false)
+            }
+        }
+    }
+
+    /**
      * Generate content using Gemini Nano (non-streaming)
      */
     private fun generateContent(call: MethodCall, result: MethodChannel.Result) {
@@ -472,5 +515,17 @@ class GeminiNanoPlugin(private val context: Context) : MethodChannel.MethodCallH
                  device.contains("caiman") ||  // Pixel 9 Pro
                  device.contains("tokay") ||   // Pixel 9 Pro XL
                  device.contains("comet")))    // Pixel 9 Pro Fold
+    }
+
+    private fun isLowMemory(): Boolean {
+        return try {
+            val activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+            val memoryInfo = ActivityManager.MemoryInfo()
+            activityManager.getMemoryInfo(memoryInfo)
+            memoryInfo.lowMemory
+        } catch (e: Exception) {
+            Log.w(TAG, "Unable to read memory state before warmup: ${e.message}", e)
+            false
+        }
     }
 }

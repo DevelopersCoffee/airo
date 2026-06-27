@@ -50,6 +50,57 @@ class GeminiNanoClient implements LLMClient {
   /// Gets the last memory check result, if available.
   MemoryCheckResult? get lastMemoryCheck => _lastMemoryCheck;
 
+  /// Pre-warms Gemini Nano by asking the native runtime to perform a local
+  /// lightweight inference.
+  ///
+  /// Warmup is best-effort: unsupported devices, low-memory states, and native
+  /// failures return false instead of surfacing exceptions to app startup.
+  Future<bool> warmup({bool skipMemoryCheck = false}) async {
+    try {
+      if (!await isAvailable()) {
+        developer.log(
+          'Gemini Nano warmup skipped: device is not supported or model is unavailable',
+          name: 'GeminiNanoClient',
+          level: 900,
+        );
+        return false;
+      }
+
+      if (!skipMemoryCheck) {
+        final memoryCheck = await checkMemoryForLoading();
+        if (!memoryCheck.canLoad) {
+          developer.log(
+            'Gemini Nano warmup skipped: ${memoryCheck.severity.description}. '
+            'Estimated usage: ${memoryCheck.estimatedUsageMB.toStringAsFixed(0)}MB, '
+            'Available: ${memoryCheck.memoryInfo.availableMB.toStringAsFixed(0)}MB',
+            name: 'GeminiNanoClient',
+            level: 1000,
+          );
+          return false;
+        }
+
+        if (memoryCheck.shouldWarn) {
+          developer.log(
+            'Gemini Nano warmup proceeding with memory warning: '
+            '${memoryCheck.severity.description}',
+            name: 'GeminiNanoClient',
+            level: 900,
+          );
+        }
+      }
+
+      final warmed = await _channel.invokeMethod<bool>('warmup');
+      return warmed ?? false;
+    } catch (e) {
+      developer.log(
+        'Gemini Nano warmup failed: $e',
+        name: 'GeminiNanoClient',
+        error: e,
+      );
+      return false;
+    }
+  }
+
   /// Performs a memory check for loading Gemini Nano.
   ///
   /// Returns a [MemoryCheckResult] with severity and recommendations.
