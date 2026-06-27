@@ -16,7 +16,6 @@ enum IntentType {
   playGame,
   askImage,
   audioScribe,
-  liveNotes,
   mobileActions,
   modelManagement,
   openOffers,
@@ -93,12 +92,6 @@ class IntentParser {
     'describe image': IntentType.askImage,
     'audio scribe': IntentType.audioScribe,
     'transcribe audio': IntentType.audioScribe,
-    'live notes': IntentType.liveNotes,
-    'start live notes': IntentType.liveNotes,
-    'take notes': IntentType.liveNotes,
-    'start taking notes': IntentType.liveNotes,
-    'meeting notes': IntentType.liveNotes,
-    'team notes': IntentType.liveNotes,
     'mobile actions': IntentType.mobileActions,
     'open mobile actions': IntentType.mobileActions,
     'manage models': IntentType.modelManagement,
@@ -195,17 +188,6 @@ class IntentParser {
       'translate audio',
     ])) {
       return IntentType.audioScribe;
-    }
-
-    if (_containsAny(text, [
-      'live notes',
-      'take notes',
-      'taking notes',
-      'meeting notes',
-      'team notes',
-      'conversation notes',
-    ])) {
-      return IntentType.liveNotes;
     }
 
     if (_containsAny(text, ['mobile actions', 'device control'])) {
@@ -346,8 +328,6 @@ class IntentParser {
         return 'Opening Ask Image';
       case IntentType.audioScribe:
         return 'Opening Audio Scribe';
-      case IntentType.liveNotes:
-        return 'Opening Live Notes';
       case IntentType.mobileActions:
         return 'Opening Mobile Actions';
       case IntentType.modelManagement:

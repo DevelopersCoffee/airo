@@ -31,6 +31,9 @@ class _AddSplitExpenseScreenState extends ConsumerState<AddSplitExpenseScreen> {
   final _formKey = GlobalKey<FormState>();
   final _descriptionController = TextEditingController();
   final _amountController = TextEditingController();
+  final Map<String, TextEditingController> _percentageControllers = {};
+  final Map<String, TextEditingController> _exactAmountControllers = {};
+  final Map<String, TextEditingController> _shareControllers = {};
 
   String? _paidByUserId;
   SplitType _splitType = SplitType.equal;
@@ -41,6 +44,15 @@ class _AddSplitExpenseScreenState extends ConsumerState<AddSplitExpenseScreen> {
   void dispose() {
     _descriptionController.dispose();
     _amountController.dispose();
+    for (final controller in _percentageControllers.values) {
+      controller.dispose();
+    }
+    for (final controller in _exactAmountControllers.values) {
+      controller.dispose();
+    }
+    for (final controller in _shareControllers.values) {
+      controller.dispose();
+    }
     super.dispose();
   }
 
@@ -130,7 +142,7 @@ class _AddSplitExpenseScreenState extends ConsumerState<AddSplitExpenseScreen> {
               const SizedBox(height: 8),
               SegmentedButton<SplitType>(
                 segments: SplitType.values
-                    .where((t) => t == SplitType.equal)
+                    .where((t) => t != SplitType.itemized)
                     .map(
                       (type) => ButtonSegment(
                         value: type,
@@ -168,6 +180,7 @@ class _AddSplitExpenseScreenState extends ConsumerState<AddSplitExpenseScreen> {
                         setState(() {
                           if (selected == true) {
                             _selectedParticipantIds.add(member.userId);
+                            _ensureCustomControllers(member.userId);
                           } else {
                             _selectedParticipantIds.remove(member.userId);
                           }
@@ -183,6 +196,36 @@ class _AddSplitExpenseScreenState extends ConsumerState<AddSplitExpenseScreen> {
               ),
               const SizedBox(height: 24),
 
+              if (_splitType != SplitType.equal &&
+                  _selectedParticipantIds.isNotEmpty) ...[
+                Text(
+                  'Custom split',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const SizedBox(height: 8),
+                membersAsync.when(
+                  loading: () => const CircularProgressIndicator(),
+                  error: (error, stackTrace) =>
+                      const Text('Error loading members'),
+                  data: (members) {
+                    final namesByUserId = {
+                      for (final member in members)
+                        member.userId: member.displayName,
+                    };
+                    return _CustomSplitInputList(
+                      splitType: _splitType,
+                      participantIds: _selectedParticipantIds,
+                      namesByUserId: namesByUserId,
+                      percentageControllers: _percentageControllers,
+                      exactAmountControllers: _exactAmountControllers,
+                      shareControllers: _shareControllers,
+                      onChanged: () => setState(() {}),
+                    );
+                  },
+                ),
+                const SizedBox(height: 24),
+              ],
+
               // Split Preview
               if (_selectedParticipantIds.isNotEmpty) ...[
                 Text(
@@ -195,6 +238,16 @@ class _AddSplitExpenseScreenState extends ConsumerState<AddSplitExpenseScreen> {
                   totalAmountCents: _parseAmount(),
                   splitType: _splitType,
                   participantIds: _selectedParticipantIds,
+                  percentages: _splitType == SplitType.percentage
+                      ? _parsePercentages()
+                      : null,
+                  exactAmounts: _splitType == SplitType.exact
+                      ? _parseExactAmounts()
+                      : null,
+                  shares: _splitType == SplitType.shares
+                      ? _parseShares()
+                      : null,
+                  validationMessage: _customSplitValidationMessage(),
                 ),
               ],
             ],
@@ -208,6 +261,78 @@ class _AddSplitExpenseScreenState extends ConsumerState<AddSplitExpenseScreen> {
     final text = _amountController.text.replaceAll(',', '');
     final amount = double.tryParse(text) ?? 0;
     return (amount * 100).round();
+  }
+
+  double _parseDecimal(String text) {
+    return double.tryParse(text.trim().replaceAll(',', '')) ?? 0;
+  }
+
+  Map<String, double> _parsePercentages() {
+    return {
+      for (final userId in _selectedParticipantIds)
+        userId: _parseDecimal(_percentageControllers[userId]?.text ?? ''),
+    };
+  }
+
+  Map<String, int> _parseExactAmounts() {
+    return {
+      for (final userId in _selectedParticipantIds)
+        userId:
+            (_parseDecimal(_exactAmountControllers[userId]?.text ?? '') * 100)
+                .round(),
+    };
+  }
+
+  Map<String, int> _parseShares() {
+    return {
+      for (final userId in _selectedParticipantIds)
+        userId: int.tryParse(_shareControllers[userId]?.text.trim() ?? '') ?? 0,
+    };
+  }
+
+  String? _customSplitValidationMessage() {
+    if (_splitType == SplitType.equal || _selectedParticipantIds.isEmpty) {
+      return null;
+    }
+
+    switch (_splitType) {
+      case SplitType.percentage:
+        final total = _parsePercentages().values.fold<double>(
+          0,
+          (sum, value) => sum + value,
+        );
+        if ((total - 100).abs() > 0.01) {
+          return 'Enter percentages that total 100';
+        }
+        return null;
+      case SplitType.exact:
+        final total = _parseExactAmounts().values.fold<int>(
+          0,
+          (sum, value) => sum + value,
+        );
+        if (total != _parseAmount()) {
+          return 'Enter amounts that total the expense amount';
+        }
+        return null;
+      case SplitType.shares:
+        final total = _parseShares().values.fold<int>(
+          0,
+          (sum, value) => sum + value,
+        );
+        if (total <= 0) {
+          return 'Enter at least one share';
+        }
+        return null;
+      case SplitType.equal:
+      case SplitType.itemized:
+        return null;
+    }
+  }
+
+  void _ensureCustomControllers(String userId) {
+    _percentageControllers.putIfAbsent(userId, TextEditingController.new);
+    _exactAmountControllers.putIfAbsent(userId, TextEditingController.new);
+    _shareControllers.putIfAbsent(userId, TextEditingController.new);
   }
 
   Future<void> _saveExpense() async {
@@ -224,6 +349,13 @@ class _AddSplitExpenseScreenState extends ConsumerState<AddSplitExpenseScreen> {
       );
       return;
     }
+    final customSplitError = _customSplitValidationMessage();
+    if (customSplitError != null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(customSplitError)));
+      return;
+    }
 
     setState(() => _isSaving = true);
     final result = await ref
@@ -237,6 +369,13 @@ class _AddSplitExpenseScreenState extends ConsumerState<AddSplitExpenseScreen> {
             paidByUserId: _paidByUserId!,
             splitType: _splitType,
             participantIds: List.unmodifiable(_selectedParticipantIds),
+            percentages: _splitType == SplitType.percentage
+                ? _parsePercentages()
+                : null,
+            exactAmounts: _splitType == SplitType.exact
+                ? _parseExactAmounts()
+                : null,
+            shares: _splitType == SplitType.shares ? _parseShares() : null,
           ),
         );
 
@@ -255,17 +394,83 @@ class _AddSplitExpenseScreenState extends ConsumerState<AddSplitExpenseScreen> {
   }
 }
 
+class _CustomSplitInputList extends StatelessWidget {
+  final SplitType splitType;
+  final List<String> participantIds;
+  final Map<String, String> namesByUserId;
+  final Map<String, TextEditingController> percentageControllers;
+  final Map<String, TextEditingController> exactAmountControllers;
+  final Map<String, TextEditingController> shareControllers;
+  final VoidCallback onChanged;
+
+  const _CustomSplitInputList({
+    required this.splitType,
+    required this.participantIds,
+    required this.namesByUserId,
+    required this.percentageControllers,
+    required this.exactAmountControllers,
+    required this.shareControllers,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: participantIds.map((userId) {
+        final name = namesByUserId[userId] ?? userId;
+        final controller = switch (splitType) {
+          SplitType.percentage => percentageControllers[userId]!,
+          SplitType.exact => exactAmountControllers[userId]!,
+          SplitType.shares => shareControllers[userId]!,
+          SplitType.equal ||
+          SplitType.itemized => percentageControllers[userId]!,
+        };
+        final label = switch (splitType) {
+          SplitType.percentage => '$name %',
+          SplitType.exact => '$name amount',
+          SplitType.shares => '$name shares',
+          SplitType.equal || SplitType.itemized => name,
+        };
+        final suffix = switch (splitType) {
+          SplitType.percentage => '%',
+          SplitType.exact => null,
+          SplitType.shares => 'shares',
+          SplitType.equal || SplitType.itemized => null,
+        };
+
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: TextFormField(
+            controller: controller,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            decoration: InputDecoration(labelText: label, suffixText: suffix),
+            onChanged: (_) => onChanged(),
+          ),
+        );
+      }).toList(),
+    );
+  }
+}
+
 class _SplitPreviewCard extends ConsumerWidget {
   final String groupId;
   final int totalAmountCents;
   final SplitType splitType;
   final List<String> participantIds;
+  final Map<String, double>? percentages;
+  final Map<String, int>? exactAmounts;
+  final Map<String, int>? shares;
+  final String? validationMessage;
 
   const _SplitPreviewCard({
     required this.groupId,
     required this.totalAmountCents,
     required this.splitType,
     required this.participantIds,
+    this.percentages,
+    this.exactAmounts,
+    this.shares,
+    this.validationMessage,
   });
 
   @override
@@ -280,6 +485,15 @@ class _SplitPreviewCard extends ConsumerWidget {
       );
     }
 
+    if (validationMessage != null) {
+      return Card(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Text(validationMessage!),
+        ),
+      );
+    }
+
     final splits = ref.watch(
       splitPreviewProvider(
         SplitPreviewParams(
@@ -287,6 +501,9 @@ class _SplitPreviewCard extends ConsumerWidget {
           totalAmountCents: totalAmountCents,
           splitType: splitType,
           participantIds: participantIds,
+          percentages: percentages,
+          exactAmounts: exactAmounts,
+          shares: shares,
         ),
       ),
     );

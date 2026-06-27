@@ -2,43 +2,13 @@ import 'package:core_ai/core_ai.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../application/assistant_model_preferences.dart';
+import '../../../../core/ai/model_learn_more_launcher.dart';
 import '../../../../core/services/gemini_api_service.dart';
 import '../../../../core/services/gemini_nano_service.dart';
 import '../../../../core/services/litert_lm_service.dart';
-
-const String geminiNanoAssistantModelId = 'gemini-nano';
-const String litertGemmaAssistantModelId = 'litert-gemma-mobile';
-const String geminiCloudAssistantModelId = 'gemini-cloud';
-
-const String _selectedAssistantModelKey = 'selected_assistant_model_id';
-
-final selectedAssistantModelIdProvider =
-    StateNotifierProvider<SelectedAssistantModelNotifier, String?>((ref) {
-      return SelectedAssistantModelNotifier();
-    });
-
-class SelectedAssistantModelNotifier extends StateNotifier<String?> {
-  SelectedAssistantModelNotifier() : super(null) {
-    _load();
-  }
-
-  Future<void> _load() async {
-    final prefs = await SharedPreferences.getInstance();
-    state = prefs.getString(_selectedAssistantModelKey);
-  }
-
-  Future<void> select(String? modelId) async {
-    state = modelId;
-    final prefs = await SharedPreferences.getInstance();
-    if (modelId == null) {
-      await prefs.remove(_selectedAssistantModelKey);
-    } else {
-      await prefs.setString(_selectedAssistantModelKey, modelId);
-    }
-  }
-}
+import '../../domain/models/assistant_runtime_ids.dart';
 
 final selectedAssistantTaskProvider = StateProvider<AssistantTask>((ref) {
   return AssistantTask.chat;
@@ -180,11 +150,12 @@ class AssistantModelLibraryState {
     final nanoService = GeminiNanoService();
     final nanoSupported = await nanoService.isSupported();
     final deviceInfo = await nanoService.getDeviceInfo();
-    final liteRtAvailable = await LiteRtLmService().isAvailable();
+    final liteRtService = LiteRtLmService();
+    final liteRtAvailable = await liteRtService.isAvailable();
 
     await geminiApiService.initialize();
     final cloudAvailable = geminiApiService.isAvailable;
-    final defaultPackages = _defaultPackages();
+    final defaultPackages = await _defaultPackages(liteRtService);
     final balancedPackage = defaultPackages[AssistantTask.reasoning];
 
     final platformLabel = kIsWeb
@@ -275,7 +246,11 @@ class AssistantModelLibraryState {
       ),
     );
     for (final model in ModelCatalog.mobileRecommended.take(3)) {
-      addCandidate(AssistantModelCandidate.fromOfflineModel(model));
+      addCandidate(
+        AssistantModelCandidate.fromOfflineModel(
+          await liteRtService.hydrateDownloadedModel(model),
+        ),
+      );
     }
     for (final task in [
       AssistantTask.image,
@@ -310,22 +285,22 @@ class AssistantModelLibraryState {
       AssistantTask.chat => [
         geminiNanoAssistantModelId,
         litertGemmaAssistantModelId,
-        if (package != null) 'offline-${package.id}',
+        if (package != null) assistantModelIdForOfflineModel(package.id),
       ],
       AssistantTask.actions => [
         geminiNanoAssistantModelId,
-        if (package != null) 'offline-${package.id}',
+        if (package != null) assistantModelIdForOfflineModel(package.id),
       ],
       AssistantTask.reasoning || AssistantTask.documents => [
         litertGemmaAssistantModelId,
-        if (package != null) 'offline-${package.id}',
+        if (package != null) assistantModelIdForOfflineModel(package.id),
       ],
       AssistantTask.skills => [
         litertGemmaAssistantModelId,
-        if (package != null) 'offline-${package.id}',
+        if (package != null) assistantModelIdForOfflineModel(package.id),
       ],
       AssistantTask.image || AssistantTask.audio => [
-        if (package != null) 'offline-${package.id}',
+        if (package != null) assistantModelIdForOfflineModel(package.id),
         geminiCloudAssistantModelId,
       ],
     };
@@ -374,14 +349,22 @@ class AssistantModelLibraryState {
     return defaultPackages[task];
   }
 
-  static Map<AssistantTask, OfflineModelInfo> _defaultPackages() {
+  static Future<Map<AssistantTask, OfflineModelInfo>> _defaultPackages(
+    LiteRtLmService liteRtService,
+  ) async {
     OfflineModelInfo byId(String id) {
       return ModelCatalog.bundledModels.firstWhere((model) => model.id == id);
     }
 
-    final gemma4E2b = byId('gemma-4-e2b-it-litertlm');
-    final gemma3n = byId('gemma-3n-e2b-it-litertlm');
-    final functionGemma = byId('mobile-actions-270m-litertlm');
+    final gemma4E2b = await liteRtService.hydrateDownloadedModel(
+      byId('gemma-4-e2b-it-litertlm'),
+    );
+    final gemma3n = await liteRtService.hydrateDownloadedModel(
+      byId('gemma-3n-e2b-it-litertlm'),
+    );
+    final functionGemma = await liteRtService.hydrateDownloadedModel(
+      byId('mobile-actions-270m-litertlm'),
+    );
 
     return {
       AssistantTask.chat: gemma4E2b,
@@ -415,7 +398,7 @@ class AssistantModelCandidate {
 
   factory AssistantModelCandidate.fromOfflineModel(OfflineModelInfo model) {
     return AssistantModelCandidate(
-      id: 'offline-${model.id}',
+      id: assistantModelIdForOfflineModel(model.id),
       name: model.name,
       runtime: '${model.family.displayName} ${model.provider.displayName}',
       description:
@@ -575,6 +558,14 @@ class _ModelLibraryContent extends ConsumerWidget {
               selected:
                   selectedModelId == state.recommendedFor(template.task).id,
               onStart: () => _handleStartProject(context, ref, template),
+              onLearnMore: () {
+                final model =
+                    state.packageFor(template.task) ??
+                    state.recommendedFor(template.task).package;
+                if (model != null) {
+                  launchModelLearnMore(context, model);
+                }
+              },
             ),
           ),
         const SizedBox(height: 8),
@@ -673,6 +664,11 @@ class _ModelLibraryContent extends ConsumerWidget {
           ],
         ),
         actions: [
+          if (selectedPackage?.learnMoreUri != null)
+            TextButton(
+              onPressed: () => launchModelLearnMore(context, selectedPackage!),
+              child: const Text('Learn more'),
+            ),
           TextButton(
             onPressed: () => Navigator.pop(context, false),
             child: const Text('Not now'),
@@ -766,6 +762,7 @@ class _ProjectTemplateCard extends StatelessWidget {
     required this.package,
     required this.selected,
     required this.onStart,
+    required this.onLearnMore,
   });
 
   final AssistantProjectTemplate template;
@@ -773,6 +770,7 @@ class _ProjectTemplateCard extends StatelessWidget {
   final OfflineModelInfo? package;
   final bool selected;
   final VoidCallback onStart;
+  final VoidCallback onLearnMore;
 
   @override
   Widget build(BuildContext context) {
@@ -889,18 +887,29 @@ class _ProjectTemplateCard extends StatelessWidget {
             const SizedBox(height: 12),
             Align(
               alignment: Alignment.centerRight,
-              child: FilledButton.icon(
-                onPressed: onStart,
-                icon: Icon(
-                  candidate.opensModelManager
-                      ? Icons.settings_outlined
-                      : Icons.play_arrow,
-                ),
-                label: Text(
-                  candidate.opensModelManager
-                      ? 'Download package'
-                      : template.primaryAction,
-                ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if ((package ?? candidate.package)?.learnMoreUri != null)
+                    TextButton(
+                      onPressed: onLearnMore,
+                      child: const Text('Learn more'),
+                    ),
+                  const SizedBox(width: 8),
+                  FilledButton.icon(
+                    onPressed: onStart,
+                    icon: Icon(
+                      candidate.opensModelManager
+                          ? Icons.settings_outlined
+                          : Icons.play_arrow,
+                    ),
+                    label: Text(
+                      candidate.opensModelManager
+                          ? 'Download package'
+                          : template.primaryAction,
+                    ),
+                  ),
+                ],
               ),
             ),
           ],

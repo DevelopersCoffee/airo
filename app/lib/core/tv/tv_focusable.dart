@@ -117,11 +117,8 @@ class _TvFocusableState extends State<TvFocusable>
 
         // Announce focus to screen readers if enabled (CP-AC-003)
         if (widget.announceFocus && widget.semanticLabel != null) {
-          SemanticsService.sendAnnouncement(
-            View.of(context),
-            widget.semanticLabel!,
-            TextDirection.ltr,
-          );
+          // ignore: deprecated_member_use
+          SemanticsService.announce(widget.semanticLabel!, TextDirection.ltr);
         }
       } else {
         _animationController.reverse();

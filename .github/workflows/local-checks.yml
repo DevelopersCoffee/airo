@@ -19,7 +19,7 @@ on:
   # Can also be triggered manually via act
 
 env:
-  FLUTTER_VERSION: '3.35.7'
+  FLUTTER_VERSION: '3.41.4'
 
 jobs:
   local-checks:
@@ -99,7 +99,7 @@ jobs:
           flutter test --coverage
 
       - name: Upload coverage
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: coverage-report
@@ -126,4 +126,3 @@ jobs:
         run: |
           cd app
           dart format --set-exit-if-changed .
-

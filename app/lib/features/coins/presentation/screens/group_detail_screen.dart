@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:share_plus/share_plus.dart';
 import '../../../../core/utils/locale_settings.dart';
+import '../../application/providers/cloud_mode_provider.dart';
+import '../../application/services/coins_invite_link_service.dart';
+import '../../domain/entities/group.dart';
 import '../../../bill_split/domain/models/receipt_item.dart';
 import '../../../bill_split/presentation/screens/itemized_split_screen.dart';
 import '../../domain/entities/settlement.dart';
@@ -70,6 +74,11 @@ class GroupDetailScreen extends ConsumerWidget {
               title: Text(group.name),
               actions: [
                 IconButton(
+                  icon: const Icon(Icons.ios_share_outlined),
+                  tooltip: 'Share invite',
+                  onPressed: () => _shareGroupInvite(context, ref, group),
+                ),
+                IconButton(
                   icon: const Icon(Icons.person_add_outlined),
                   onPressed: () {
                     _showAddMemberDialog(context, ref, groupId);
@@ -120,6 +129,78 @@ class GroupDetailScreen extends ConsumerWidget {
           ),
         );
       },
+    );
+  }
+
+  Future<void> _shareGroupInvite(
+    BuildContext context,
+    WidgetRef ref,
+    Group group,
+  ) async {
+    final cloudState = ref.read(coinsCloudModeControllerProvider).valueOrNull;
+    var isCloudMode = cloudState?.isCloudMode == true;
+    var user = cloudState?.user;
+
+    if (!isCloudMode || user?.isGoogleUser != true) {
+      final shouldEnable = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Switch to cloud sharing?'),
+          content: const Text(
+            'Group invites need your Google identity so peers can sync shared expenses. Personal transactions stay local.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Not now'),
+            ),
+            FilledButton.icon(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              icon: const Icon(Icons.cloud_outlined),
+              label: const Text('Use Cloud'),
+            ),
+          ],
+        ),
+      );
+      if (shouldEnable != true || !context.mounted) return;
+
+      isCloudMode = await ref
+          .read(coinsCloudModeControllerProvider.notifier)
+          .enableCloudMode();
+      user = ref.read(coinsCloudModeControllerProvider).valueOrNull?.user;
+      if (!context.mounted) return;
+      if (!isCloudMode || user?.isGoogleUser != true) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Google sign-in is required to share')),
+        );
+        return;
+      }
+    }
+
+    var inviteCode = group.inviteCode;
+    if (inviteCode == null || inviteCode.isEmpty) {
+      final result = await ref
+          .read(groupRepositoryProvider)
+          .generateInviteCode(group.id);
+      if (!context.mounted) return;
+      if (result.error != null || result.data == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(result.error ?? 'Could not create invite')),
+        );
+        return;
+      }
+      inviteCode = result.data!;
+    }
+
+    final link = const CoinsInviteLinkService().buildInviteLink(
+      groupId: group.id,
+      inviteCode: inviteCode,
+      ownerUserId: user!.id,
+      cloudMode: true,
+    );
+    await Share.share(
+      'Join ${group.name} on Airo Coins: $link',
+      subject: 'Airo Coins group invite',
     );
   }
 
@@ -333,6 +414,7 @@ class GroupDetailScreen extends ConsumerWidget {
       builder: (dialogContext) => AlertDialog(
         title: const Text('Add Member'),
         content: TextField(
+          key: const ValueKey('add_member_name_field'),
           controller: nameController,
           autofocus: true,
           decoration: const InputDecoration(
@@ -380,6 +462,7 @@ class _ExpensesTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final expensesAsync = ref.watch(groupExpensesProvider(groupId));
+    final membersAsync = ref.watch(groupMembersProvider(groupId));
 
     return expensesAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
@@ -390,12 +473,21 @@ class _ExpensesTab extends ConsumerWidget {
             child: Text('No expenses yet.\nAdd your first expense!'),
           );
         }
+        final namesByUserId = membersAsync.maybeWhen(
+          data: (members) => {
+            for (final member in members) member.userId: member.displayName,
+          },
+          orElse: () => const <String, String>{},
+        );
         return ListView.builder(
           padding: const EdgeInsets.all(16),
           itemCount: expenses.length,
           itemBuilder: (context, index) {
             final expense = expenses[index];
-            return _ExpenseListTile(expense: expense);
+            return _ExpenseListTile(
+              expense: expense,
+              payerName: namesByUserId[expense.paidByUserId],
+            );
           },
         );
       },
@@ -405,7 +497,9 @@ class _ExpensesTab extends ConsumerWidget {
 
 class _ExpenseListTile extends ConsumerWidget {
   final SharedExpense expense;
-  const _ExpenseListTile({required this.expense});
+  final String? payerName;
+
+  const _ExpenseListTile({required this.expense, this.payerName});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -415,7 +509,7 @@ class _ExpenseListTile extends ConsumerWidget {
         child: Text(expense.description.substring(0, 1).toUpperCase()),
       ),
       title: Text(expense.description),
-      subtitle: Text('Paid by ${expense.paidByUserId}'),
+      subtitle: Text('Paid by ${payerName ?? expense.paidByUserId}'),
       trailing: Text(
         formatter.formatCents(expense.totalAmountCents),
         style: Theme.of(context).textTheme.titleMedium,
@@ -435,6 +529,7 @@ class _BalancesTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final balancesAsync = ref.watch(groupBalanceSummaryProvider(groupId));
     final membersAsync = ref.watch(groupMembersProvider(groupId));
+    final settlementsAsync = ref.watch(groupSettlementsProvider(groupId));
     final formatter = ref.watch(currencyFormatterProvider);
 
     return balancesAsync.when(
@@ -498,6 +593,54 @@ class _BalancesTab extends ConsumerWidget {
                         ),
                       )
                       .toList(),
+                );
+              },
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'Settlement History',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 8),
+            settlementsAsync.when(
+              loading: () => const CircularProgressIndicator(),
+              error: (error, _) => Text('Error loading settlements: $error'),
+              data: (settlements) {
+                final completedSettlements = settlements
+                    .where((settlement) => settlement.isCompleted)
+                    .toList();
+                if (completedSettlements.isEmpty) {
+                  return const Text('No settlements yet.');
+                }
+
+                return membersAsync.when(
+                  loading: () => const CircularProgressIndicator(),
+                  error: (error, _) => Text('Error loading members: $error'),
+                  data: (members) {
+                    final namesByUserId = {
+                      for (final member in members)
+                        member.userId: member.displayName,
+                    };
+                    return Column(
+                      children: completedSettlements
+                          .map(
+                            (settlement) => _SettlementTile(
+                              fromName:
+                                  namesByUserId[settlement.fromUserId] ??
+                                  settlement.fromUserId,
+                              toName:
+                                  namesByUserId[settlement.toUserId] ??
+                                  settlement.toUserId,
+                              amountLabel: formatter.formatCents(
+                                settlement.amountCents,
+                              ),
+                              paymentMethod:
+                                  settlement.paymentMethod.displayName,
+                            ),
+                          )
+                          .toList(),
+                    );
+                  },
                 );
               },
             ),
@@ -565,6 +708,34 @@ class _DebtTile extends ConsumerWidget {
           ref.invalidate(groupBalanceSummaryProvider(groupId));
         },
         child: const Text('Settle'),
+      ),
+    );
+  }
+}
+
+class _SettlementTile extends StatelessWidget {
+  final String fromName;
+  final String toName;
+  final String amountLabel;
+  final String paymentMethod;
+
+  const _SettlementTile({
+    required this.fromName,
+    required this.toName,
+    required this.amountLabel,
+    required this.paymentMethod,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: const Icon(Icons.check_circle_outline),
+      title: Text('$fromName paid $toName'),
+      subtitle: Text(paymentMethod),
+      trailing: Text(
+        amountLabel,
+        style: Theme.of(context).textTheme.titleMedium,
       ),
     );
   }

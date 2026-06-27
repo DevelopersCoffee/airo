@@ -1,125 +1,73 @@
-import '../../domain/entities/meeting.dart';
 import '../../domain/entities/meeting_intelligence.dart';
+import '../../domain/entities/meeting_record.dart';
+import '../../domain/entities/meeting_summary.dart';
 import '../../domain/entities/transcript_chunk.dart';
 import '../../domain/repositories/meeting_repository.dart';
 
 class InMemoryMeetingRepository implements MeetingRepository {
-  final Map<String, Meeting> _meetings = {};
-  final Map<String, List<TranscriptChunk>> _chunks = {};
-  final Map<String, MeetingIntelligence> _intelligence = {};
-  final List<MeetingActionItem> _actionItems = [];
-  final List<_EmbeddingRecord> _embeddings = [];
+  final Map<String, MeetingRecord> _records = {};
+  final Map<String, List<TranscriptChunk>> _chunksByMeeting = {};
+  final Map<String, MeetingSummary> _summaries = {};
+  final Map<String, String> _searchTextByMeeting = {};
 
   @override
-  Future<void> saveMeeting(Meeting meeting) async {
-    _meetings[meeting.id] = meeting;
+  Future<void> saveIntelligence(MeetingIntelligenceDraft draft) async {
+    _records[draft.record.id] = draft.record;
+    _chunksByMeeting[draft.record.id] = List.unmodifiable(draft.redactedChunks);
+    _summaries[draft.record.id] = draft.summary;
+    _searchTextByMeeting[draft.record.id] = draft.searchableText;
   }
 
   @override
-  Future<Meeting?> getMeeting(String meetingId) async => _meetings[meetingId];
-
-  @override
-  Future<List<Meeting>> listMeetings() async {
-    final meetings = _meetings.values.toList(growable: false);
-    meetings.sort((a, b) => b.startedAt.compareTo(a.startedAt));
-    return meetings;
+  Future<MeetingRecord?> meetingById(String meetingId) async {
+    return _records[meetingId];
   }
 
   @override
-  Future<void> saveTranscriptChunk(TranscriptChunk chunk) async {
-    _chunks.putIfAbsent(chunk.meetingId, () => []).add(chunk);
+  Future<List<TranscriptChunk>> transcriptChunksForMeeting(
+    String meetingId,
+  ) async {
+    return List.unmodifiable(_chunksByMeeting[meetingId] ?? const []);
   }
 
   @override
-  Future<List<TranscriptChunk>> getTranscriptChunks(String meetingId) async {
-    return List.unmodifiable(_chunks[meetingId] ?? const []);
+  Future<MeetingSummary?> summaryForMeeting(String meetingId) async {
+    return _summaries[meetingId];
   }
 
   @override
-  Future<void> saveIntelligence(MeetingIntelligence intelligence) async {
-    _intelligence[intelligence.meetingId] = intelligence;
-    await saveEmbedding(
-      meetingId: intelligence.embedding.meetingId,
-      chunkId: intelligence.embedding.chunkId,
-      vector: intelligence.embedding.vector,
-      searchableText: intelligence.embedding.searchableText,
-    );
-    await saveActionItems(intelligence.actionItems);
-  }
+  Future<List<MeetingSearchResult>> searchMeetings(String query) async {
+    final normalizedQuery = query.trim().toLowerCase();
+    if (normalizedQuery.isEmpty) {
+      return const [];
+    }
 
-  @override
-  Future<MeetingIntelligence?> getIntelligence(String meetingId) async =>
-      _intelligence[meetingId];
-
-  @override
-  Future<void> saveActionItems(List<MeetingActionItem> actionItems) async {
-    _actionItems.removeWhere(
-      (item) => actionItems.any(
-        (incoming) =>
-            incoming.id == item.id && incoming.meetingId == item.meetingId,
-      ),
-    );
-    _actionItems.addAll(actionItems);
-  }
-
-  @override
-  Future<void> saveEmbedding({
-    required String meetingId,
-    required String chunkId,
-    required List<double> vector,
-    required String searchableText,
-  }) async {
-    _embeddings.removeWhere(
-      (record) => record.meetingId == meetingId && record.chunkId == chunkId,
-    );
-    _embeddings.add(
-      _EmbeddingRecord(meetingId, chunkId, vector, searchableText),
-    );
-  }
-
-  @override
-  Future<List<MeetingSearchResult>> search(
-    String query, {
-    int limit = 10,
-  }) async {
-    final queryTokens = _tokens(query);
-    final results = _embeddings
-        .map((record) {
-          final recordTokens = _tokens(record.searchableText);
-          final overlap = queryTokens.intersection(recordTokens).length;
-          final score = queryTokens.isEmpty
-              ? 0.0
-              : overlap / queryTokens.length;
+    return _searchTextByMeeting.entries
+        .where((entry) => entry.value.toLowerCase().contains(normalizedQuery))
+        .map((entry) {
+          final record = _records[entry.key];
           return MeetingSearchResult(
-            meetingId: record.meetingId,
-            chunkId: record.chunkId,
-            matchedText: record.searchableText,
-            score: score,
+            meetingId: entry.key,
+            title: record?.title ?? 'Untitled meeting',
+            snippet: _snippetFor(entry.value, normalizedQuery),
           );
         })
-        .where((result) => result.score > 0)
-        .toList();
-    results.sort((a, b) => b.score.compareTo(a.score));
-    return results.take(limit).toList(growable: false);
+        .toList(growable: false);
   }
 
-  Set<String> _tokens(String value) => value
-      .toLowerCase()
-      .split(RegExp(r'[^a-z0-9]+'))
-      .where((token) => token.length > 2)
-      .toSet();
-}
-
-class _EmbeddingRecord {
-  const _EmbeddingRecord(
-    this.meetingId,
-    this.chunkId,
-    this.vector,
-    this.searchableText,
-  );
-
-  final String meetingId;
-  final String chunkId;
-  final List<double> vector;
-  final String searchableText;
+  String _snippetFor(String searchableText, String normalizedQuery) {
+    final lowerText = searchableText.toLowerCase();
+    final index = lowerText.indexOf(normalizedQuery);
+    if (index < 0) {
+      return searchableText.length <= 120
+          ? searchableText
+          : searchableText.substring(0, 120);
+    }
+    final start = index - 40 < 0 ? 0 : index - 40;
+    final end = index + normalizedQuery.length + 40;
+    return searchableText.substring(
+      start,
+      end > searchableText.length ? searchableText.length : end,
+    );
+  }
 }

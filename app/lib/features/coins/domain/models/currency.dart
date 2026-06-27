@@ -95,12 +95,11 @@ class Currency extends Equatable {
 
   @override
   List<Object?> get props => [
-        code,
-        symbol,
-        name,
-        decimalPlaces,
-        exchangeRateToBase,
-        rateUpdatedAt,
-      ];
+    code,
+    symbol,
+    name,
+    decimalPlaces,
+    exchangeRateToBase,
+    rateUpdatedAt,
+  ];
 }
-

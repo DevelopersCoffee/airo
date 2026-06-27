@@ -43,4 +43,3 @@ abstract class BudgetRepository {
   /// Check if a category has an active budget
   Future<Result<bool>> hasBudget(String categoryId);
 }
-

@@ -50,11 +50,15 @@ void main() async {
       );
     } else {
       // Native platforms
-      await Firebase.initializeApp(
-        options: DefaultFirebaseOptions.currentPlatform,
-      );
-      isFirebaseInitialized = true;
-      debugPrint('✅ Firebase initialized successfully');
+      final options = DefaultFirebaseOptions.currentPlatform;
+      if (DefaultFirebaseOptions.isConfigured(options)) {
+        await Firebase.initializeApp(options: options);
+        isFirebaseInitialized = true;
+        debugPrint('✅ Firebase initialized successfully');
+      } else {
+        isFirebaseInitialized = false;
+        debugPrint('⚠️ Firebase skipped: platform options are placeholders.');
+      }
     }
   } catch (e) {
     // On web, Firebase might already be initialized from index.html

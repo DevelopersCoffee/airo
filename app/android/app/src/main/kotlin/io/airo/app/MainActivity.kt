@@ -4,13 +4,8 @@ import android.Manifest
 import android.content.ContentUris
 import android.content.ContentValues
 import android.content.Context
-import android.content.Intent
 import android.content.pm.PackageManager
-import android.os.Bundle
 import android.provider.CalendarContract
-import android.speech.RecognitionListener
-import android.speech.RecognizerIntent
-import android.speech.SpeechRecognizer
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.EventChannel
@@ -25,25 +20,14 @@ class MainActivity : FlutterActivity() {
     private val GEMINI_NANO_EVENT_CHANNEL = "com.airo.gemini_nano/stream"
     private val LITERT_LM_CHANNEL = "com.airo.litert_lm"
     private val AGENT_CONNECTORS_CHANNEL = "com.airo.agent_connectors"
-    private val MEETING_TRANSCRIPTION_CHANNEL = "com.airo.meeting/transcription"
-    private val MEETING_TRANSCRIPTION_EVENTS_CHANNEL = "com.airo.meeting/transcription_events"
     private val CALENDAR_READ_PERMISSION_REQUEST = 9001
     private val CALENDAR_WRITE_PERMISSION_REQUEST = 9002
-    private val MEETING_AUDIO_PERMISSION_REQUEST = 9003
 
     private var pendingCalendarResult: MethodChannel.Result? = null
     private var pendingCalendarDate: String? = null
+    private var pendingCalendarEndDate: String? = null
     private var pendingCalendarCreateResult: MethodChannel.Result? = null
     private var pendingCalendarCreateArguments: Map<String, Any?>? = null
-    private var pendingMeetingStartResult: MethodChannel.Result? = null
-    private var pendingMeetingStartArguments: Map<String, Any?>? = null
-    private var speechRecognizer: SpeechRecognizer? = null
-    private var speechEventSink: EventChannel.EventSink? = null
-    private var speechMeetingId: String? = null
-    private var speechLanguageCode: String = Locale.getDefault().toLanguageTag()
-    private var speechChunkIndex = 0
-    private var speechPaused = false
-    private var speechActive = false
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -62,62 +46,19 @@ class MainActivity : FlutterActivity() {
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, LITERT_LM_CHANNEL)
             .setMethodCallHandler(LiteRtLmPlugin(this))
 
-        EventChannel(flutterEngine.dartExecutor.binaryMessenger, MEETING_TRANSCRIPTION_EVENTS_CHANNEL)
-            .setStreamHandler(object : EventChannel.StreamHandler {
-                override fun onListen(arguments: Any?, events: EventChannel.EventSink?) {
-                    speechEventSink = events
-                }
-
-                override fun onCancel(arguments: Any?) {
-                    speechEventSink = null
-                }
-            })
-
-        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, MEETING_TRANSCRIPTION_CHANNEL)
-            .setMethodCallHandler { call, result ->
-                when (call.method) {
-                    "startRealtimeTranscription" -> {
-                        val arguments = call.arguments as? Map<String, Any?>
-                        if (arguments == null) {
-                            result.error(
-                                "missing_arguments",
-                                "Live Notes requires a meeting id and language.",
-                                null
-                            )
-                        } else {
-                            startMeetingTranscription(arguments, result)
-                        }
-                    }
-                    "pauseRealtimeTranscription" -> {
-                        speechPaused = true
-                        speechRecognizer?.stopListening()
-                        result.success(null)
-                    }
-                    "resumeRealtimeTranscription" -> {
-                        speechPaused = false
-                        startSpeechListening()
-                        result.success(null)
-                    }
-                    "stopRealtimeTranscription" -> {
-                        stopMeetingTranscription()
-                        result.success(null)
-                    }
-                    else -> result.notImplemented()
-                }
-            }
-
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, AGENT_CONNECTORS_CHANNEL)
             .setMethodCallHandler { call, result ->
                 when (call.method) {
                     "readCalendarEvents" -> {
                         val date = call.argument<String>("date")
+                        val endDate = call.argument<String>("end_date")
                         if (date.isNullOrBlank()) {
                             result.success(mapOf(
                                 "error" to "missing_date",
                                 "message" to "Calendar lookup requires a date."
                             ))
                         } else {
-                            readCalendarEvents(date, result)
+                            readCalendarEvents(date, endDate, result)
                         }
                     }
                     "createCalendarEvent" -> {
@@ -147,13 +88,15 @@ class MainActivity : FlutterActivity() {
             CALENDAR_READ_PERMISSION_REQUEST -> {
                 val result = pendingCalendarResult
                 val date = pendingCalendarDate
+                val endDate = pendingCalendarEndDate
                 pendingCalendarResult = null
                 pendingCalendarDate = null
+                pendingCalendarEndDate = null
 
                 if (result == null || date == null) return
 
                 if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    readCalendarEvents(date, result)
+                    readCalendarEvents(date, endDate, result)
                 } else {
                     result.success(mapOf(
                         "error" to "calendar_permission_denied",
@@ -178,171 +121,69 @@ class MainActivity : FlutterActivity() {
                     ))
                 }
             }
-            MEETING_AUDIO_PERMISSION_REQUEST -> {
-                val result = pendingMeetingStartResult
-                val arguments = pendingMeetingStartArguments
-                pendingMeetingStartResult = null
-                pendingMeetingStartArguments = null
-
-                if (result == null || arguments == null) return
-
-                if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    startMeetingTranscription(arguments, result)
-                } else {
-                    result.error(
-                        "microphone_permission_denied",
-                        "Microphone permission is required to start Live Notes.",
-                        null
-                    )
-                }
-            }
         }
     }
 
-    private fun startMeetingTranscription(arguments: Map<String, Any?>, result: MethodChannel.Result) {
-        val meetingId = arguments["meetingId"] as? String
-        val languageCode = arguments["languageCode"] as? String ?: Locale.getDefault().toLanguageTag()
-        if (meetingId.isNullOrBlank()) {
-            result.error("missing_meeting_id", "Live Notes requires a meeting id.", null)
-            return
-        }
-        if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
-            pendingMeetingStartResult = result
-            pendingMeetingStartArguments = arguments
-            requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), MEETING_AUDIO_PERMISSION_REQUEST)
-            return
-        }
-        if (!SpeechRecognizer.isRecognitionAvailable(this)) {
-            result.error(
-                "speech_recognizer_unavailable",
-                "This device does not expose Android speech recognition.",
-                null
-            )
-            return
-        }
-
-        stopMeetingTranscription()
-        speechMeetingId = meetingId
-        speechLanguageCode = languageCode
-        speechChunkIndex = 0
-        speechPaused = false
-        speechActive = true
-        speechRecognizer = SpeechRecognizer.createSpeechRecognizer(this).also { recognizer ->
-            recognizer.setRecognitionListener(meetingRecognitionListener())
-        }
-        startSpeechListening()
-        result.success(null)
-    }
-
-    private fun stopMeetingTranscription() {
-        speechActive = false
-        speechPaused = false
-        speechRecognizer?.cancel()
-        speechRecognizer?.destroy()
-        speechRecognizer = null
-        speechMeetingId = null
-    }
-
-    private fun startSpeechListening() {
-        if (!speechActive || speechPaused || speechRecognizer == null) return
-        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-            putExtra(RecognizerIntent.EXTRA_LANGUAGE, speechLanguageCode)
-            putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
-            putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, true)
-        }
-        speechRecognizer?.startListening(intent)
-    }
-
-    private fun meetingRecognitionListener(): RecognitionListener {
-        return object : RecognitionListener {
-            override fun onReadyForSpeech(params: Bundle?) = Unit
-            override fun onBeginningOfSpeech() = Unit
-            override fun onRmsChanged(rmsdB: Float) = Unit
-            override fun onBufferReceived(buffer: ByteArray?) = Unit
-            override fun onEndOfSpeech() = Unit
-            override fun onEvent(eventType: Int, params: Bundle?) = Unit
-
-            override fun onPartialResults(partialResults: Bundle?) {
-                val text = bestSpeechText(partialResults) ?: return
-                emitSpeechChunk(text, isFinal = false)
-            }
-
-            override fun onResults(results: Bundle?) {
-                val text = bestSpeechText(results)
-                if (text != null) {
-                    emitSpeechChunk(text, isFinal = true)
-                    speechChunkIndex += 1
-                }
-                if (speechActive && !speechPaused) {
-                    startSpeechListening()
-                }
-            }
-
-            override fun onError(error: Int) {
-                if (speechActive && !speechPaused) {
-                    startSpeechListening()
-                }
-            }
-        }
-    }
-
-    private fun bestSpeechText(bundle: Bundle?): String? {
-        val matches = bundle
-            ?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
-            ?.map { it.trim() }
-            ?.filter { it.isNotEmpty() }
-        return matches?.firstOrNull()
-    }
-
-    private fun emitSpeechChunk(text: String, isFinal: Boolean) {
-        val meetingId = speechMeetingId ?: return
-        val startMs = speechChunkIndex * 8000
-        val endMs = startMs + 8000
-        speechEventSink?.success(
-            mapOf(
-                "id" to "android_speech_${speechChunkIndex}_${if (isFinal) "final" else "partial"}",
-                "meetingId" to meetingId,
-                "text" to text,
-                "startMs" to startMs,
-                "endMs" to endMs,
-                "isFinal" to isFinal,
-                "confidence" to 0.8
-            )
-        )
-    }
-
-    private fun readCalendarEvents(date: String, result: MethodChannel.Result) {
+    private fun readCalendarEvents(date: String, endDate: String?, result: MethodChannel.Result) {
         if (checkSelfPermission(Manifest.permission.READ_CALENDAR) != PackageManager.PERMISSION_GRANTED) {
             pendingCalendarResult = result
             pendingCalendarDate = date
+            pendingCalendarEndDate = endDate
             requestPermissions(arrayOf(Manifest.permission.READ_CALENDAR), CALENDAR_READ_PERMISSION_REQUEST)
             return
         }
 
         val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.US)
         dateFormat.isLenient = false
-        val parsedDate = try {
+        val parsedStartDate = try {
             dateFormat.parse(date)
         } catch (_: Exception) {
             null
         }
-        if (parsedDate == null) {
+        if (parsedStartDate == null) {
             result.success(mapOf(
                 "error" to "invalid_date",
                 "message" to "Calendar date must use YYYY-MM-DD."
             ))
             return
         }
+        val parsedEndDate = if (endDate.isNullOrBlank()) {
+            parsedStartDate
+        } else {
+            try {
+                dateFormat.parse(endDate)
+            } catch (_: Exception) {
+                null
+            }
+        }
+        if (parsedEndDate == null) {
+            result.success(mapOf(
+                "error" to "invalid_end_date",
+                "message" to "Calendar end_date must use YYYY-MM-DD."
+            ))
+            return
+        }
+        if (parsedEndDate.before(parsedStartDate)) {
+            result.success(mapOf(
+                "error" to "invalid_date_range",
+                "message" to "Calendar end_date must be on or after date."
+            ))
+            return
+        }
 
         val start = Calendar.getInstance()
-        start.time = parsedDate
+        start.time = parsedStartDate
         start.set(Calendar.HOUR_OF_DAY, 0)
         start.set(Calendar.MINUTE, 0)
         start.set(Calendar.SECOND, 0)
         start.set(Calendar.MILLISECOND, 0)
 
-        val end = start.clone() as Calendar
+        val end = Calendar.getInstance()
+        end.time = parsedEndDate
+        end.set(Calendar.HOUR_OF_DAY, 0)
+        end.set(Calendar.MINUTE, 0)
+        end.set(Calendar.SECOND, 0)
+        end.set(Calendar.MILLISECOND, 0)
         end.add(Calendar.DAY_OF_MONTH, 1)
 
         val builder = CalendarContract.Instances.CONTENT_URI.buildUpon()
@@ -385,7 +226,15 @@ class MainActivity : FlutterActivity() {
                     ))
                 }
             }
-            result.success(mapOf("date" to date, "events" to events))
+            result.success(
+                buildMap<String, Any?> {
+                    put("date", date)
+                    if (!endDate.isNullOrBlank()) {
+                        put("end_date", endDate)
+                    }
+                    put("events", events)
+                }
+            )
         } catch (error: Exception) {
             result.success(mapOf(
                 "error" to "calendar_read_failed",

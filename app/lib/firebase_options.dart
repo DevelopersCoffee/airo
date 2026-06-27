@@ -44,6 +44,12 @@ class DefaultFirebaseOptions {
     }
   }
 
+  /// Returns false for generated placeholder options that would crash native
+  /// Firebase initialization before Dart can recover.
+  static bool isConfigured(FirebaseOptions options) {
+    return options.appId.isNotEmpty && !options.appId.contains('YOUR_');
+  }
+
   /// Get Firebase options for the current platform and variant
   static FirebaseOptions get currentPlatform {
     if (kIsWeb) {

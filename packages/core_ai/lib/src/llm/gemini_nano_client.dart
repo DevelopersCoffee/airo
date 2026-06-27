@@ -22,11 +22,13 @@ class GeminiNanoClient implements LLMClient {
   GeminiNanoClient({
     LLMConfig? config,
     MemoryBudgetManager? memoryBudgetManager,
+    MethodChannel? channel,
+    EventChannel? eventChannel,
   }) : _config = config ?? LLMConfig.geminiNano,
-       _memoryBudgetManager = memoryBudgetManager ?? MemoryBudgetManager();
-
-  static const _channel = MethodChannel('com.airo.gemini_nano');
-  static const _eventChannel = EventChannel('com.airo.gemini_nano/stream');
+       _memoryBudgetManager = memoryBudgetManager ?? MemoryBudgetManager(),
+       _channel = channel ?? const MethodChannel('com.airo.gemini_nano'),
+       _eventChannel =
+           eventChannel ?? const EventChannel('com.airo.gemini_nano/stream');
 
   /// Estimated Gemini Nano model size in bytes (~2.5GB).
   /// This is used for memory budget calculations.
@@ -34,6 +36,8 @@ class GeminiNanoClient implements LLMClient {
 
   final LLMConfig _config;
   final MemoryBudgetManager _memoryBudgetManager;
+  final MethodChannel _channel;
+  final EventChannel _eventChannel;
   bool _isInitialized = false;
   MemoryCheckResult? _lastMemoryCheck;
 
@@ -170,6 +174,29 @@ class GeminiNanoClient implements LLMClient {
       final result = await _channel.invokeMethod<bool>('isAvailable');
       return result ?? false;
     } catch (e) {
+      return false;
+    }
+  }
+
+  /// Warms the model by issuing a lightweight native inference request.
+  ///
+  /// This ensures Gemini Nano has loaded its weights before the first
+  /// user-visible prompt.
+  Future<bool> warmup() async {
+    final initialized = _isInitialized || await initialize();
+    if (!initialized) {
+      return false;
+    }
+
+    try {
+      final result = await _channel.invokeMethod<bool>('warmup');
+      return result ?? false;
+    } catch (e) {
+      developer.log(
+        'Gemini Nano warmup failed: $e',
+        name: 'GeminiNanoClient',
+        error: e,
+      );
       return false;
     }
   }

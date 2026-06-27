@@ -79,6 +79,7 @@ void main() {
       expect(request.followUpPolicy, 'daily_until_done');
 
       final args = request.toConnectorArguments();
+      expect(args['date'], '2026-06-21');
       expect(args['requires_completion'], true);
       expect(args['follow_up_policy'], 'daily_until_done');
     });

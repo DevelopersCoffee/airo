@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/utils/locale_settings.dart';
+import '../../application/providers/cloud_mode_provider.dart';
 import '../../application/services/coins_platform_support.dart';
+import '../../application/services/coins_invite_link_service.dart';
 import '../../domain/entities/group.dart';
 import '../../application/providers/group_providers.dart';
 import 'group_detail_screen.dart';
@@ -25,6 +27,7 @@ class GroupsListScreen extends ConsumerWidget {
     }
 
     final groupsAsync = ref.watch(allGroupsProvider);
+    final cloudModeAsync = ref.watch(coinsCloudModeControllerProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -32,14 +35,12 @@ class GroupsListScreen extends ConsumerWidget {
         actions: [
           IconButton(
             icon: const Icon(Icons.qr_code_scanner),
-            onPressed: () {
-              // TODO: Scan invite QR code
-            },
+            onPressed: () => _showJoinGroupDialog(context, ref),
             tooltip: 'Scan QR Code',
           ),
           IconButton(
             icon: const Icon(Icons.link),
-            onPressed: () => _showJoinGroupDialog(context),
+            onPressed: () => _showJoinGroupDialog(context, ref),
             tooltip: 'Join with Code',
           ),
         ],
@@ -62,18 +63,25 @@ class GroupsListScreen extends ConsumerWidget {
           ),
         ),
         data: (groups) {
-          if (groups.isEmpty) {
-            return _EmptyGroupsView(
-              onCreateGroup: () => _showCreateGroupDialog(context, ref),
-              onJoinGroup: () => _showJoinGroupDialog(context),
-            );
-          }
-          return ListView.builder(
+          return ListView(
             padding: const EdgeInsets.all(16),
-            itemCount: groups.length,
-            itemBuilder: (context, index) {
-              return _GroupCard(group: groups[index]);
-            },
+            children: [
+              _CloudModeCard(
+                stateAsync: cloudModeAsync,
+                onEnableCloud: () => _enableCloudMode(context, ref),
+                onUseLocal: () => ref
+                    .read(coinsCloudModeControllerProvider.notifier)
+                    .useLocalMode(),
+              ),
+              const SizedBox(height: 12),
+              if (groups.isEmpty)
+                _EmptyGroupsView(
+                  onCreateGroup: () => _showCreateGroupDialog(context, ref),
+                  onJoinGroup: () => _showJoinGroupDialog(context, ref),
+                )
+              else
+                ...groups.map((group) => _GroupCard(group: group)),
+            ],
           );
         },
       ),
@@ -83,6 +91,24 @@ class GroupsListScreen extends ConsumerWidget {
         label: const Text('New Group'),
       ),
     );
+  }
+
+  Future<bool> _enableCloudMode(BuildContext context, WidgetRef ref) async {
+    final enabled = await ref
+        .read(coinsCloudModeControllerProvider.notifier)
+        .enableCloudMode();
+    if (!context.mounted) return enabled;
+    final state = ref.read(coinsCloudModeControllerProvider).valueOrNull;
+    if (!enabled) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            state?.errorMessage ?? 'Cloud mode needs Google sign-in',
+          ),
+        ),
+      );
+    }
+    return enabled;
   }
 
   void _showCreateGroupDialog(BuildContext context, WidgetRef ref) {
@@ -97,6 +123,7 @@ class GroupsListScreen extends ConsumerWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(
+              key: const ValueKey('create_group_name_field'),
               controller: nameController,
               autofocus: true,
               decoration: const InputDecoration(
@@ -106,6 +133,7 @@ class GroupsListScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 12),
             TextField(
+              key: const ValueKey('create_group_desc_field'),
               controller: descriptionController,
               decoration: const InputDecoration(
                 labelText: 'Description',
@@ -128,6 +156,18 @@ class GroupsListScreen extends ConsumerWidget {
                 );
                 return;
               }
+              final cloudState = ref
+                  .read(coinsCloudModeControllerProvider)
+                  .valueOrNull;
+              final user = cloudState?.user;
+              final creatorId =
+                  cloudState?.isCloudMode == true && user?.isGoogleUser == true
+                  ? user!.id
+                  : 'local_user';
+              final creatorDisplayName =
+                  cloudState?.isCloudMode == true && user?.isGoogleUser == true
+                  ? user!.username
+                  : 'You';
 
               await ref
                   .read(createGroupProvider.notifier)
@@ -136,8 +176,8 @@ class GroupsListScreen extends ConsumerWidget {
                     description: descriptionController.text.trim().isEmpty
                         ? null
                         : descriptionController.text.trim(),
-                    creatorId: 'local_user',
-                    creatorDisplayName: 'You',
+                    creatorId: creatorId,
+                    creatorDisplayName: creatorDisplayName,
                   );
 
               final created = ref.read(createGroupProvider);
@@ -173,34 +213,192 @@ class GroupsListScreen extends ConsumerWidget {
     });
   }
 
-  void _showJoinGroupDialog(BuildContext context) {
-    showDialog(
+  void _showJoinGroupDialog(BuildContext context, WidgetRef ref) {
+    final codeController = TextEditingController();
+    var errorText = '';
+
+    final dialog = showDialog<void>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Join Group'),
-        content: TextField(
-          decoration: const InputDecoration(
-            labelText: 'Invite Code',
-            hintText: 'Enter the group invite code',
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Join Group'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: codeController,
+                autofocus: true,
+                decoration: const InputDecoration(
+                  labelText: 'Invite code or QR link',
+                  hintText: 'ABC12345',
+                  prefixIcon: Icon(Icons.qr_code_2),
+                ),
+                textCapitalization: TextCapitalization.characters,
+                onSubmitted: (_) => _joinGroupWithCode(
+                  context,
+                  dialogContext,
+                  ref,
+                  codeController.text,
+                  (message) => setDialogState(() => errorText = message),
+                ),
+              ),
+              if (errorText.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Text(
+                  errorText,
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                ),
+              ],
+            ],
           ),
-          onSubmitted: (code) {
-            // TODO: Join group with code
-            Navigator.pop(context);
-          },
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => _joinGroupWithCode(
+                context,
+                dialogContext,
+                ref,
+                codeController.text,
+                (message) => setDialogState(() => errorText = message),
+              ),
+              child: const Text('Join'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () {
-              // TODO: Join group
-              Navigator.pop(context);
-            },
-            child: const Text('Join'),
-          ),
-        ],
+      ),
+    );
+    dialog.whenComplete(codeController.dispose);
+  }
+
+  Future<void> _joinGroupWithCode(
+    BuildContext context,
+    BuildContext dialogContext,
+    WidgetRef ref,
+    String rawCode,
+    ValueChanged<String> setError,
+  ) async {
+    final code = _extractInviteCode(rawCode);
+    if (code.isEmpty) {
+      setError('Enter an invite code or QR link');
+      return;
+    }
+
+    final result = await ref
+        .read(groupRepositoryProvider)
+        .findByInviteCode(code);
+    if (!context.mounted || !dialogContext.mounted) return;
+    if (result.error != null) {
+      setError(result.error!);
+      return;
+    }
+    final group = result.data;
+    if (group == null) {
+      setError('No group found for $code');
+      return;
+    }
+
+    Navigator.pop(dialogContext);
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => GroupDetailScreen(groupId: group.id)),
+    );
+  }
+
+  String _extractInviteCode(String value) =>
+      const CoinsInviteLinkService().extractInviteCode(value);
+}
+
+class _CloudModeCard extends StatelessWidget {
+  final AsyncValue<CoinsCloudModeState> stateAsync;
+  final Future<bool> Function() onEnableCloud;
+  final Future<void> Function() onUseLocal;
+
+  const _CloudModeCard({
+    required this.stateAsync,
+    required this.onEnableCloud,
+    required this.onUseLocal,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final state = stateAsync.valueOrNull;
+    final isCloud = state?.isCloudMode == true;
+
+    return Card(
+      elevation: 0,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  isCloud ? Icons.cloud_done_outlined : Icons.lock_outline,
+                  color: isCloud
+                      ? theme.colorScheme.primary
+                      : theme.colorScheme.onSurfaceVariant,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    isCloud ? 'Cloud sharing' : 'Local-first mode',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              isCloud
+                  ? 'Shared groups can use your Google identity. Personal money tracking stays local unless shared.'
+                  : 'Your personal transactions stay on this device. Turn on cloud sharing only when you invite people.',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            if (state?.userLabel != 'Not signed in') ...[
+              const SizedBox(height: 8),
+              Text(
+                state!.userLabel,
+                style: theme.textTheme.labelMedium?.copyWith(
+                  color: theme.colorScheme.primary,
+                ),
+              ),
+            ],
+            const SizedBox(height: 12),
+            SegmentedButton<CoinsStorageMode>(
+              segments: const [
+                ButtonSegment(
+                  value: CoinsStorageMode.local,
+                  label: Text('Local'),
+                  icon: Icon(Icons.phone_android_outlined),
+                ),
+                ButtonSegment(
+                  value: CoinsStorageMode.cloud,
+                  label: Text('Cloud'),
+                  icon: Icon(Icons.cloud_outlined),
+                ),
+              ],
+              selected: {state?.mode ?? CoinsStorageMode.local},
+              onSelectionChanged: stateAsync.isLoading
+                  ? null
+                  : (selection) {
+                      if (selection.first == CoinsStorageMode.cloud) {
+                        onEnableCloud();
+                      } else {
+                        onUseLocal();
+                      }
+                    },
+            ),
+          ],
+        ),
       ),
     );
   }

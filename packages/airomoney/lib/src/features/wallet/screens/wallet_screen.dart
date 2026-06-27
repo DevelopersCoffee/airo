@@ -71,7 +71,10 @@ class WalletScreen extends StatelessWidget {
             // Total net worth
             MoneyCard(
               title: 'Net Worth',
-              amount: mockWallets.fold(0.0, (sum, wallet) => sum + wallet.balance),
+              amount: mockWallets.fold(
+                0.0,
+                (sum, wallet) => sum + wallet.balance,
+              ),
               subtitle: 'Total across all accounts',
               icon: Icons.account_balance_wallet,
               color: Colors.blue,
@@ -87,9 +90,9 @@ class WalletScreen extends StatelessWidget {
               children: [
                 Text(
                   'Your Wallets',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
                 ),
                 TextButton.icon(
                   onPressed: () {
@@ -133,11 +136,7 @@ class WalletScreen extends StatelessWidget {
             color: color.withOpacity(0.1),
             shape: BoxShape.circle,
           ),
-          child: Icon(
-            icon,
-            color: color,
-            size: 24,
-          ),
+          child: Icon(icon, color: color, size: 24),
         ),
         title: Text(
           wallet.name,

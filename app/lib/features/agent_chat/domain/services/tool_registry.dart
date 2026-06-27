@@ -355,7 +355,6 @@ class SocialTool implements Tool {
     return intent.type == IntentType.openChat ||
         intent.type == IntentType.askImage ||
         intent.type == IntentType.audioScribe ||
-        intent.type == IntentType.liveNotes ||
         intent.type == IntentType.mobileActions;
   }
 
@@ -371,12 +370,6 @@ class SocialTool implements Tool {
         return const AgentToolResult(
           message:
               'Audio Scribe is mapped to Airo voice workflows. Use voice input now; full offline transcription can plug into the meeting-minutes pipeline.',
-        );
-      case IntentType.liveNotes:
-        return const AgentToolResult(
-          route: '/agent/live-notes',
-          message:
-              'Opening Live Notes. Start it explicitly when you want Airo to listen and capture local notes.',
         );
       case IntentType.mobileActions:
         return const AgentToolResult(
@@ -478,12 +471,10 @@ class ToolRegistry {
         route: '/quest/new',
       ),
       AgentSkillCard(
-        key: 'live_notes',
-        title: 'Live Notes',
-        description: 'Listen with permission and capture local follow-ups',
+        key: 'audio_scribe',
+        title: 'Audio Scribe',
+        description: 'Prepare offline transcription workflows',
         iconKey: 'mic',
-        route: '/agent/live-notes',
-        featured: true,
       ),
       AgentSkillCard(
         key: 'mobile_actions',

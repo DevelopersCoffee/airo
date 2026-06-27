@@ -20,7 +20,7 @@ void main() {
         expect(titles, contains('Agent Skills'));
         expect(titles, contains('Split Bill'));
         expect(titles, contains('Diet Plan'));
-        expect(titles, contains('Live Notes'));
+        expect(titles, contains('Audio Scribe'));
         expect(titles, contains('Mobile Actions'));
         expect(titles, contains('Model Management'));
         expect(titles, contains('Arena Games'));
@@ -70,16 +70,6 @@ void main() {
       expect(game.parameters['game'], 'chess');
       expect(models.route, '/agent/profile');
       expect(models.message, contains('Profile model settings'));
-    });
-
-    test('routes live notes into the Assistant planning surface', () async {
-      final result = await registry.executeIntent(
-        IntentParser.parse('start live notes for this team discussion'),
-      );
-
-      expect(result.route, '/agent/live-notes');
-      expect(result.message, contains('Live Notes'));
-      expect(result.message, contains('listen'));
     });
   });
 }

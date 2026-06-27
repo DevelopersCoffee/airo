@@ -91,12 +91,6 @@ _RouteTarget? _resolveTarget(String rawTarget) {
     'image' ||
     'ask_image' ||
     'upload' => const _RouteTarget('/quest/new', 'Quest Upload'),
-    'live_notes' ||
-    'team_notes' ||
-    'meeting_notes' ||
-    'conversation_notes' ||
-    'meetings' ||
-    'meeting' => const _RouteTarget('/agent/live-notes', 'Live Notes'),
     _ => null,
   };
 }
@@ -111,11 +105,6 @@ _RouteTarget? _knownPath(String path) {
       'Add Expense',
     ),
     '/agent' => const _RouteTarget('/agent', 'Assistant'),
-    '/agent/live-notes' => const _RouteTarget(
-      '/agent/live-notes',
-      'Live Notes',
-    ),
-    '/agent/meetings' => const _RouteTarget('/agent/live-notes', 'Live Notes'),
     '/agent/models' => const _RouteTarget('/agent/models', 'Project setup'),
     '/agent/profile' => const _RouteTarget(
       '/agent/profile',
@@ -126,7 +115,6 @@ _RouteTarget? _knownPath(String path) {
     '/games' => const _RouteTarget('/games', 'Arena'),
     '/quest' => const _RouteTarget('/quest', 'Quest'),
     '/quest/new' => const _RouteTarget('/quest/new', 'Quest Upload'),
-    '/meetings' => const _RouteTarget('/agent/live-notes', 'Live Notes'),
     _ => null,
   };
 }

@@ -148,6 +148,31 @@ class GeminiNanoService {
     }
   }
 
+  /// Warm the model with a lightweight native inference request.
+  ///
+  /// This is intended to hide the first-request cold start after the chat
+  /// screen loads on supported Android devices.
+  Future<bool> warmup() async {
+    if (kIsWeb) {
+      return false;
+    }
+
+    try {
+      if (!_isInitialized) {
+        final initialized = await initialize();
+        if (!initialized) {
+          return false;
+        }
+      }
+
+      final warmed = await _channel.invokeMethod<bool>('warmup');
+      return warmed ?? false;
+    } catch (e) {
+      debugPrint('Error warming up Gemini Nano: $e');
+      return false;
+    }
+  }
+
   /// Generate content from a prompt
   /// Returns the generated text response, or fallback message on web/uninitialized
   Future<String> generateContent(String prompt) async {
@@ -170,6 +195,25 @@ class GeminiNanoService {
       debugPrint('Error generating content: $e');
       return _getWebFallbackResponse(prompt);
     }
+  }
+
+  /// Generate content without substituting canned fallback responses.
+  ///
+  /// Use this for model-runtime routing where unavailable runtimes must be
+  /// reported explicitly instead of being mistaken for real LLM output.
+  Future<String> generateContentStrict(String prompt) async {
+    if (kIsWeb) {
+      throw UnsupportedError('Gemini Nano is not available on web.');
+    }
+
+    if (!_isInitialized) {
+      throw StateError('Gemini Nano is not initialized.');
+    }
+
+    final String? response = await _channel.invokeMethod('generateContent', {
+      'prompt': prompt,
+    });
+    return response ?? '';
   }
 
   /// Generate content with streaming support
@@ -199,6 +243,22 @@ class GeminiNanoService {
     } catch (e) {
       debugPrint('Error generating content stream: $e');
       yield _getWebFallbackResponse(prompt);
+    }
+  }
+
+  /// Streaming generation without substituting canned fallback responses.
+  Stream<String> generateContentStreamStrict(String prompt) async* {
+    if (kIsWeb) {
+      throw UnsupportedError('Gemini Nano is not available on web.');
+    }
+
+    if (!_isInitialized) {
+      throw StateError('Gemini Nano is not initialized.');
+    }
+
+    await _channel.invokeMethod('generateContentStream', {'prompt': prompt});
+    await for (final chunk in _eventChannel.receiveBroadcastStream()) {
+      yield chunk.toString();
     }
   }
 

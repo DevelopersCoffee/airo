@@ -4,11 +4,14 @@ import 'package:flutter/material.dart' hide Intent;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/dictionary/dictionary.dart';
+import '../../../../core/utils/locale_settings.dart';
 import '../../../agent_chat/data/connectors/calendar_connector.dart';
 import '../../../agent_chat/data/connectors/date_time_connector.dart';
 import '../../../agent_chat/data/connectors/notification_connector.dart';
 import '../../../agent_chat/data/connectors/route_connector.dart';
-import '../../../agent_chat/data/services/gemini_agent_skill_model_client.dart';
+import '../../../agent_chat/data/services/assistant_runtime_service.dart';
+import '../../../agent_chat/data/services/selected_runtime_agent_skill_model_client.dart';
+import '../../../agent_chat/application/assistant_model_preferences.dart';
 import '../../../agent_chat/domain/models/agent_skill.dart';
 import '../../../agent_chat/domain/services/agent_connector_registry.dart';
 import '../../../agent_chat/domain/services/agent_skill_orchestrator.dart';
@@ -17,7 +20,9 @@ import '../../../agent_chat/domain/services/intent_parser.dart';
 import '../../../agent_chat/domain/services/tool_registry.dart';
 import '../../../agent_chat/presentation/widgets/manage_skills_sheet.dart';
 import '../../../agent_chat/presentation/widgets/skill_action_trace_card.dart';
-import '../../../../core/services/gemini_api_service.dart';
+import '../../../coins/application/providers/dashboard_providers.dart';
+import '../../../coins/application/providers/expense_providers.dart';
+import '../../../coins/application/services/finance_chat_ingestion_service.dart';
 import '../../../../core/services/gemini_nano_service.dart';
 import '../../../../core/services/litert_lm_service.dart';
 import 'model_library_screen.dart';
@@ -52,6 +57,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   final AgentSkillRegistry _skillRegistry = AgentSkillRegistry();
   final GeminiNanoService _geminiNano = GeminiNanoService();
   final LiteRtLmService _liteRtLm = LiteRtLmService();
+  late final AssistantRuntimeService _assistantRuntime;
   late final AgentConnectorRegistry _connectorRegistry;
   late final AgentSkillOrchestrator _skillOrchestrator;
   Map<String, dynamic>? _pendingCalendarEvent;
@@ -61,6 +67,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   void initState() {
     super.initState();
     _messageController = TextEditingController();
+    _assistantRuntime = AssistantRuntimeService(
+      geminiNano: _geminiNano,
+      liteRtLm: _liteRtLm,
+    );
     _connectorRegistry = AgentConnectorRegistry(
       connectors: [
         DateTimeConnector(),
@@ -73,7 +83,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     _skillOrchestrator = AgentSkillOrchestrator(
       skillRegistry: _skillRegistry,
       connectorRegistry: _connectorRegistry,
-      modelClient: GeminiAgentSkillModelClient(_geminiNano),
+      modelClient: SelectedRuntimeAgentSkillModelClient(
+        runtimeService: _assistantRuntime,
+        selectedModelId: () => ref.read(selectedAssistantModelIdProvider),
+      ),
+      useFallbackModelClient: false,
     );
     // Add welcome message
     _messages.add(
@@ -102,11 +116,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         final initialized = await _geminiNano.initialize();
         debugPrint('Gemini Nano initialized: $initialized');
         if (initialized) {
-          unawaited(
-            _geminiNano.warmup().then((warmed) {
-              debugPrint('Gemini Nano warmup completed: $warmed');
-            }),
-          );
+          unawaited(_warmupGeminiNano());
         }
       }
 
@@ -123,6 +133,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     } catch (e) {
       debugPrint('Error initializing AI: $e');
     }
+  }
+
+  Future<void> _warmupGeminiNano() async {
+    final warmed = await _geminiNano.warmup();
+    debugPrint('Gemini Nano warmed up: $warmed');
   }
 
   void _showBottomBanner() {
@@ -195,7 +210,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     }
 
     // No AppBar here - global AppBar is in AppShell
+    final colorScheme = Theme.of(context).colorScheme;
     return Scaffold(
+      backgroundColor: Colors.transparent,
       body: DictionarySelectionArea(
         child: Column(
           children: [
@@ -222,8 +239,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
+                color: colorScheme.surface.withValues(alpha: 0.34),
                 border: Border(
-                  top: BorderSide(color: Colors.grey.withValues(alpha: 0.2)),
+                  top: BorderSide(color: colorScheme.outlineVariant),
                 ),
               ),
               child: Row(
@@ -242,7 +260,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                       decoration: InputDecoration(
                         hintText: 'Type a message...',
                         border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(24),
+                          borderRadius: BorderRadius.circular(0),
                         ),
                         contentPadding: const EdgeInsets.symmetric(
                           horizontal: 16,
@@ -255,11 +273,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  FloatingActionButton(
+                  IconButton.filled(
                     key: const Key('agent_chat_send_button'),
-                    mini: true,
                     onPressed: _sendMessage,
-                    child: const Icon(Icons.send),
+                    icon: const Icon(Icons.send),
                   ),
                 ],
               ),
@@ -375,10 +392,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 side: BorderSide(color: color.withValues(alpha: 0.35)),
                 backgroundColor: color.withValues(alpha: 0.08),
                 onPressed: () {
-                  if (prompt.route != null && prompt.key == 'live_notes') {
-                    context.go(prompt.route!);
-                    return;
-                  }
                   _messageController.text = _promptForSkill(prompt);
                   _messageController.selection = TextSelection.collapsed(
                     offset: _messageController.text.length,
@@ -419,6 +432,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   Widget _buildMessage(ChatMessage message) {
+    final colorScheme = Theme.of(context).colorScheme;
     final maxWidth =
         MediaQuery.of(context).size.width *
         (message.traces.isNotEmpty ? 0.86 : 0.75);
@@ -438,13 +452,16 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               margin: const EdgeInsets.symmetric(vertical: 8),
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
-                color: message.isUser ? Colors.blue : Colors.grey[200],
-                borderRadius: BorderRadius.circular(16),
+                color: message.isUser
+                    ? colorScheme.primary.withValues(alpha: 0.16)
+                    : colorScheme.surface.withValues(alpha: 0.72),
+                border: Border.all(color: colorScheme.outlineVariant),
+                borderRadius: BorderRadius.circular(8),
               ),
               child: Text(
                 message.text,
                 style: TextStyle(
-                  color: message.isUser ? Colors.white : Colors.black,
+                  color: colorScheme.primary.withValues(alpha: 0.9),
                 ),
               ),
             ),
@@ -484,6 +501,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           ),
         );
       });
+      return;
+    }
+
+    if (await _tryIngestFinanceMessage(message)) {
       return;
     }
 
@@ -593,56 +614,118 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         lower.contains('not now');
   }
 
+  Future<bool> _tryIngestFinanceMessage(String message) async {
+    try {
+      final accounts = await ref.read(expenseAccountOptionsProvider.future);
+      final defaultAccount = accounts
+          .where((account) => account.isDefault)
+          .fold(accounts.first, (selected, account) => account);
+      final accountId = defaultAccount.id;
+
+      final result = await ref
+          .read(financeChatIngestionServiceProvider)
+          .ingest(message, accountId: accountId);
+
+      if (result.status == FinanceChatIngestionStatus.ignored) {
+        return false;
+      }
+
+      if (result.changedLedger) {
+        _refreshCoinsProviders();
+      }
+
+      if (!mounted) return true;
+      final response = _financeIngestionResponse(result);
+      setState(() {
+        _messages.add(ChatMessage(text: response, isUser: false));
+      });
+      _showFinanceIngestionUndo(result);
+      return true;
+    } catch (e) {
+      debugPrint('Finance SMS ingestion failed: $e');
+      return false;
+    }
+  }
+
+  void _refreshCoinsProviders() {
+    ref.invalidate(allExpensesProvider);
+    ref.invalidate(recentExpensesProvider);
+    ref.invalidate(spentTodayProvider);
+    ref.invalidate(spentThisMonthProvider);
+    ref.invalidate(monthlySpendingByCategoryProvider);
+    ref.invalidate(dashboardDataProvider);
+  }
+
+  void _showFinanceIngestionUndo(FinanceChatIngestionResult result) {
+    final transaction = result.transaction;
+    if (transaction == null ||
+        result.status != FinanceChatIngestionStatus.created ||
+        !mounted) {
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Added ${transaction.description} to Coins.'),
+        action: SnackBarAction(
+          label: 'Undo',
+          onPressed: () async {
+            final deleteResult = await ref
+                .read(transactionRepositoryProvider)
+                .delete(transaction.id);
+            if (deleteResult.error != null || !mounted) {
+              return;
+            }
+            _refreshCoinsProviders();
+            setState(() {
+              _messages.add(
+                ChatMessage(
+                  text: 'Removed ${transaction.description} from Coins.',
+                  isUser: false,
+                ),
+              );
+            });
+          },
+        ),
+      ),
+    );
+  }
+
+  String _financeIngestionResponse(FinanceChatIngestionResult result) {
+    final formatter = ref.read(currencyFormatterProvider);
+    final parsed = result.parsed;
+    if (parsed == null) {
+      return 'I could not read this as a finance transaction.';
+    }
+
+    final amount = formatter.formatCents(parsed.amountCents);
+    switch (result.status) {
+      case FinanceChatIngestionStatus.created:
+        return 'Added to Coins: ${parsed.description} - $amount - ${parsed.categoryId}.';
+      case FinanceChatIngestionStatus.updated:
+        return 'Updated Coins: ${parsed.description} - $amount - ${parsed.categoryId}.';
+      case FinanceChatIngestionStatus.needsReview:
+        return 'I found a possible transaction for ${parsed.description} - $amount, but it needs review before I add it.';
+      case FinanceChatIngestionStatus.failed:
+        return result.message ?? 'I could not update Coins from this message.';
+      case FinanceChatIngestionStatus.ignored:
+        return 'I could not read this as a finance transaction.';
+    }
+  }
+
   Future<void> _generateSelectedModelResponse(
     String selectedModelId,
     String message,
   ) async {
-    switch (selectedModelId) {
-      case geminiNanoAssistantModelId:
-        if (!_isDeviceSupported && !await _geminiNano.isSupported()) {
-          _replaceStreamingMessage(
-            'Gemini Nano is not available on this device. Open Project setup and choose another category.',
-          );
-          return;
-        }
-        if (!_geminiNano.isInitialized) {
-          final initialized = await _geminiNano.initialize();
-          if (!initialized) {
-            _replaceStreamingMessage(
-              'Gemini Nano did not initialize on this device. Open Project setup and choose another category.',
-            );
-            return;
-          }
-        }
-        await for (final chunk in _geminiNano.generateContentStream(message)) {
-          _replaceStreamingMessage(chunk);
-        }
-        return;
-
-      case litertGemmaAssistantModelId:
-        final response = await _liteRtLm.generateText(message);
-        _replaceStreamingMessage(
-          response ??
-              'LiteRT-LM is not configured. Install a local model or set LITERT_LM_MODEL_PATH/LITERT_LM_MODEL_URL.',
-        );
-        return;
-
-      case geminiCloudAssistantModelId:
-        await geminiApiService.initialize();
-        if (!geminiApiService.isAvailable) {
-          _replaceStreamingMessage(
-            'Gemini Cloud is not configured. Launch with --dart-define=GEMINI_API_KEY=... to use this real API path.',
-          );
-          return;
-        }
-        final response = await geminiApiService.generateText(message);
-        _replaceStreamingMessage(response ?? 'Gemini Cloud returned no text.');
-        return;
-
-      default:
-        _replaceStreamingMessage(
-          'This package is downloaded, but chat inference is not wired to it yet. Use Gemini Nano or the Gemma mobile package, or manage packages in Profile.',
-        );
+    try {
+      await for (final chunk in _assistantRuntime.generateTextStream(
+        selectedModelId: selectedModelId,
+        prompt: message,
+      )) {
+        _replaceStreamingMessage(chunk);
+      }
+    } on AssistantRuntimeUnavailableException catch (e) {
+      _replaceStreamingMessage(e.message);
     }
   }
 
@@ -702,7 +785,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       'diet_plan' => Colors.green,
       'routine_planner' => Colors.orange,
       'ask_image' => Colors.red,
-      'live_notes' => Colors.green.shade700,
       'mobile_actions' => Colors.indigo,
       'model_management' => Colors.blueGrey,
       'arena_games' => Colors.pink,
@@ -721,7 +803,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       'diet_plan' => 'Make me a 7 day vegetarian diet plan',
       'routine_planner' => 'Create a morning study routine for tomorrow',
       'ask_image' => 'Ask image about this receipt',
-      'live_notes' => 'Start live notes',
       'mobile_actions' => 'Open mobile actions',
       'model_management' => 'Manage offline models',
       'arena_games' => 'I am bored, start chess',

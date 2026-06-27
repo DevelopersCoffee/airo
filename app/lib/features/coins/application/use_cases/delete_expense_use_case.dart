@@ -42,4 +42,3 @@ class DeleteExpenseUseCase {
     return _repository.restore(transactionId);
   }
 }
-

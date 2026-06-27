@@ -17,7 +17,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  FLUTTER_VERSION: '3.35.7'
+  FLUTTER_VERSION: '3.41.4'
 
 jobs:
   # ============================================
@@ -37,7 +37,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Check file changes
-        uses: dorny/paths-filter@v3
+        uses: dorny/paths-filter@v4
         id: changes
         with:
           filters: |
@@ -46,6 +46,22 @@ jobs:
               - 'packages/**'
             docs:
               - '**.md'
+
+      - name: Enforce docs completeness
+        env:
+          AIRO_DOCS_BYPASS: ${{ contains(join(github.event.pull_request.labels.*.name, ' '), 'docs-not-needed') && 'true' || 'false' }}
+          AIRO_DOCS_BASE: ${{ github.event.pull_request.base.sha }}
+          AIRO_DOCS_HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          chmod +x scripts/check-docs-completeness.sh
+          scripts/check-docs-completeness.sh \
+            --base "$AIRO_DOCS_BASE" \
+            --head "$AIRO_DOCS_HEAD"
+
+      - name: Enforce bundled model artifact guardrail
+        run: |
+          chmod +x scripts/check-bundled-model-artifacts.sh
+          scripts/check-bundled-model-artifacts.sh
 
   # ============================================
   # Code Quality (analyze, format) - ~2 minutes
@@ -86,6 +102,7 @@ jobs:
       - name: Run code generation
         run: |
           cd app
+          dart run build_runner clean
           dart run build_runner build --delete-conflicting-outputs
 
       - name: Run Flutter Analyze
@@ -152,7 +169,7 @@ jobs:
     if: always()
     steps:
       - name: Comment PR with summary
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           script: |
             const prValidation = '${{ needs.pr-validation.result }}';
@@ -165,7 +182,7 @@ jobs:
 
             | Check | Status | Description |
             |-------|--------|-------------|
-            | PR Validation | ${getEmoji(prValidation)} ${prValidation} | Title format, file changes |
+            | PR Validation | ${getEmoji(prValidation)} ${prValidation} | Title format, docs, bundled model guardrail |
             | Code Quality | ${getEmoji(codeQuality)} ${codeQuality} | Analyze, formatting |
             | Core Tests | ${getEmoji(tests)} ${tests} | Core package unit tests |
 

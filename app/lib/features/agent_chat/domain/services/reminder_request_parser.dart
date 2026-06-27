@@ -71,7 +71,7 @@ class ParsedReminderRequest {
       'metadata': metadata,
       'requires_completion': requiresCompletion,
       'follow_up_policy': followUpPolicy,
-      'date': date,
+      if (date != null) 'date': date,
     };
   }
 }

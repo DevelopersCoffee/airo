@@ -1,5 +1,23 @@
 import java.io.FileInputStream
+import java.util.Base64
 import java.util.Properties
+
+fun dartDefine(name: String): String? {
+    val encodedDefines = providers.gradleProperty("dart-defines").orNull ?: return null
+    return encodedDefines
+        .split(",")
+        .asSequence()
+        .mapNotNull { encoded ->
+            runCatching {
+                String(Base64.getDecoder().decode(encoded))
+            }.getOrNull()
+        }
+        .firstOrNull { it.startsWith("$name=") }
+        ?.substringAfter("=")
+}
+
+val appVariant = dartDefine("APP_VARIANT") ?: "full"
+val isLeanVariant = appVariant != "full"
 
 plugins {
     id("com.android.application")
@@ -38,10 +56,6 @@ android {
         // Enable multidex for larger apps
         multiDexEnabled = true
 
-        ndk {
-            abiFilters += listOf("arm64-v8a", "x86_64")
-        }
-
         testInstrumentationRunner = "pl.leancode.patrol.PatrolJUnitRunner"
         testInstrumentationRunnerArguments["clearPackageData"] = "true"
     }
@@ -63,8 +77,9 @@ android {
         val normalized = taskName.lowercase()
         normalized.contains("release") || normalized.contains("bundle")
     }
+    val isCiBuild = providers.environmentVariable("CI").orNull.equals("true", ignoreCase = true)
 
-    if (!hasReleaseSigningConfig && requestedReleaseBuild) {
+    if (!hasReleaseSigningConfig && requestedReleaseBuild && !isCiBuild) {
         throw GradleException(
             "Missing Android release signing properties: ${missingSigningProperties.joinToString()}. " +
                 "Copy app/android/key.properties.example to app/android/key.properties " +
@@ -88,7 +103,11 @@ android {
             // Enable test plugins for debug/test builds
         }
         release {
-            signingConfig = signingConfigs.getByName("release")
+            signingConfig = if (hasReleaseSigningConfig) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
 
             // Enable code shrinking (R8/ProGuard)
             isMinifyEnabled = true
@@ -109,24 +128,35 @@ android {
         }
     }
 
+    packaging {
+        jniLibs {
+            if (isLeanVariant) {
+                excludes += setOf(
+                    "**/liblitertlm_jni.so",
+                    "**/libLiteRt.so",
+                    "**/libLiteRtClGlAccelerator.so"
+                )
+            }
+        }
+    }
+
 }
 
 dependencies {
     // Core library desugaring for flutter_local_notifications
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
 
-    // ML Kit GenAI Prompt API for on-device Gemini Nano
-    // Based on: https://developers.google.com/ml-kit/genai/prompt/android/get-started
-    implementation("com.google.mlkit:genai-prompt:1.0.0-beta1")
+    // ML Kit GenAI Prompt API for on-device Gemini Nano.
+    implementation("com.google.mlkit:genai-prompt:1.0.0-beta2")
 
     // LiteRT-LM for local on-device LLM inference.
     implementation("com.google.ai.edge.litertlm:litertlm-android:latest.release")
 
     // Coroutines and lifecycle dependencies for async operations
-    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.10.0")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.10.2")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.11.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.11.0")
 
 }
 

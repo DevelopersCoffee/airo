@@ -35,3 +35,4 @@ export 'src/plugins/plugin_registry_service.dart';
 export 'src/plugins/plugin_loader_service.dart';
 export 'src/plugins/plugin_downloader_service.dart';
 export 'src/plugins/plugin_storage_service.dart';
+export 'src/plugins/kill_switch.dart';

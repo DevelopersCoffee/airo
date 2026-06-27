@@ -1,10 +1,11 @@
 name: core_data
 description: "Core data layer: database, API clients, and repository implementations"
 version: 0.0.1
+publish_to: 'none'
 
 environment:
-  sdk: ">=3.9.2 <4.0.0"
-  flutter: ">=3.35.7"
+  sdk: ">=3.11.1 <4.0.0"
+  flutter: ">=3.41.4"
 
 dependencies:
   flutter:
@@ -17,11 +18,10 @@ dependencies:
   connectivity_plus: ^7.1.1
   path: 1.9.1
   path_provider: ^2.1.6
-  meta: 1.17.0
+  meta: ^1.16.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: 6.0.0
   mocktail: ^1.0.5
-

@@ -5,6 +5,39 @@ import 'package:core_ui/core_ui.dart';
 
 void main() {
   group('AppTheme', () {
+    test('defaults to Airo Cyber', () {
+      expect(AppTheme.defaultThemeId, AppThemeId.cyber);
+      expect(AppTheme.defaultTheme.id, AppThemeId.cyber);
+      expect(AppTheme.defaultTheme.name, 'Airo Cyber');
+      expect(AppTheme.defaultTheme.themeMode, ThemeMode.dark);
+    });
+
+    test('registry exposes all supported themes', () {
+      expect(AppTheme.themes.map((theme) => theme.id), [
+        AppThemeId.cyber,
+        AppThemeId.classic,
+        AppThemeId.bedtime,
+      ]);
+      expect(AppTheme.byId(AppThemeId.classic).name, 'Airo Classic');
+      expect(AppTheme.byId(AppThemeId.bedtime).name, 'Bedtime');
+    });
+
+    test('cyber theme exposes Hermes-style editorial tokens', () {
+      final theme = AppTheme.byId(AppThemeId.cyber).darkTheme;
+      final tokens = theme.extension<AiroThemeTokens>();
+
+      expect(theme.brightness, Brightness.dark);
+      expect(theme.scaffoldBackgroundColor, const Color(0xFF041C1C));
+      expect(theme.colorScheme.primary, const Color(0xFFFFE6CB));
+      expect(theme.colorScheme.secondary, const Color(0xFFFFFF89));
+      expect(theme.textTheme.bodyMedium?.fontFamily, 'AiroMondwest');
+      expect(theme.textTheme.displayLarge?.fontFamily, 'AiroRulesExpanded');
+      expect(theme.cardTheme.shape, isA<RoundedRectangleBorder>());
+      expect(tokens, isNotNull);
+      expect(tokens!.gridLine, const Color(0x33FFE6CB));
+      expect(tokens.chromeSurface, const Color(0xFF041C1C));
+    });
+
     test('light theme returns valid ThemeData', () {
       final theme = AppTheme.light;
       expect(theme, isA<ThemeData>());
@@ -17,6 +50,12 @@ void main() {
       expect(theme, isA<ThemeData>());
       expect(theme.useMaterial3, isTrue);
       expect(theme.brightness, Brightness.dark);
+    });
+
+    test('typography avoids negative letter spacing', () {
+      expect(AppTypography.displayLarge.letterSpacing, 0);
+      expect(AppTypography.displayMedium.letterSpacing, 0);
+      expect(AppTypography.displaySmall.letterSpacing, 0);
     });
   });
 

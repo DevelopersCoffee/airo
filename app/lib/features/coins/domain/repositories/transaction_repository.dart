@@ -29,6 +29,9 @@ abstract class TransactionRepository {
   /// Find recent transactions
   Future<Result<List<Transaction>>> findRecent({int limit = 10});
 
+  /// Find transactions that contain a specific tag
+  Future<Result<List<Transaction>>> findByTag(String tag);
+
   /// Create a new transaction
   Future<Result<Transaction>> create(Transaction transaction);
 
@@ -65,4 +68,3 @@ abstract class TransactionRepository {
   /// Search transactions by description
   Future<Result<List<Transaction>>> search(String query);
 }
-

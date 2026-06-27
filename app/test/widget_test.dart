@@ -8,11 +8,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:airo_app/core/app/airo_app.dart';
 
 void main() {
   testWidgets('Airo app smoke test', (WidgetTester tester) async {
+    SharedPreferences.setMockInitialValues({});
+
     // Build our app and trigger a frame.
     await tester.pumpWidget(const ProviderScope(child: AiroApp()));
 

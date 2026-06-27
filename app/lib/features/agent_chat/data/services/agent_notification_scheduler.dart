@@ -180,7 +180,7 @@ class LocalAgentNotificationScheduler
     SharedPreferencesAsync? preferences,
   }) : _notificationsPlugin =
            notificationsPlugin ?? FlutterLocalNotificationsPlugin(),
-       _preferences = preferences ?? SharedPreferencesAsync();
+       _preferences = preferences;
 
   static final LocalAgentNotificationScheduler instance =
       LocalAgentNotificationScheduler();
@@ -191,9 +191,13 @@ class LocalAgentNotificationScheduler
   static const _channelDescription = 'Reminders scheduled by Airo agent skills';
 
   final FlutterLocalNotificationsPlugin _notificationsPlugin;
-  final SharedPreferencesAsync _preferences;
+  SharedPreferencesAsync? _preferences;
   bool _initialized = false;
   bool _timeZoneInitialized = false;
+
+  SharedPreferencesAsync get _asyncPreferences {
+    return _preferences ??= SharedPreferencesAsync();
+  }
 
   @override
   Future<ScheduledAgentNotification> scheduleNotification(
@@ -267,7 +271,7 @@ class LocalAgentNotificationScheduler
 
   @override
   Future<List<ScheduledAgentNotification>> getScheduledNotifications() async {
-    final raw = await _preferences.getString(_storageKey);
+    final raw = await _asyncPreferences.getString(_storageKey);
     if (raw == null || raw.isEmpty) return const [];
     try {
       final decoded = jsonDecode(raw) as List<dynamic>;
@@ -393,7 +397,7 @@ class LocalAgentNotificationScheduler
     tz.setLocalLocation(
       tz.Location('local', [tz.minTime], [0], [
         tz.TimeZone(
-          now.timeZoneOffset,
+          now.timeZoneOffset.inMilliseconds,
           isDst: abbreviation.toUpperCase().contains('DT'),
           abbreviation: abbreviation,
         ),
@@ -434,7 +438,7 @@ class LocalAgentNotificationScheduler
   Future<void> _saveScheduledNotifications(
     List<ScheduledAgentNotification> notifications,
   ) async {
-    await _preferences.setString(
+    await _asyncPreferences.setString(
       _storageKey,
       jsonEncode(notifications.map((item) => item.toJson()).toList()),
     );
