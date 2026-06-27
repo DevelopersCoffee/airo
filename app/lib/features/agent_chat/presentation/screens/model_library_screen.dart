@@ -2,40 +2,12 @@ import 'package:core_ai/core_ai.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../application/assistant_model_preferences.dart';
 import '../../../../core/services/gemini_api_service.dart';
 import '../../../../core/services/gemini_nano_service.dart';
 import '../../../../core/services/litert_lm_service.dart';
-import '../../domain/models/assistant_runtime_ids.dart';
-
-const String _selectedAssistantModelKey = 'selected_assistant_model_id';
-
-final selectedAssistantModelIdProvider =
-    StateNotifierProvider<SelectedAssistantModelNotifier, String?>((ref) {
-      return SelectedAssistantModelNotifier();
-    });
-
-class SelectedAssistantModelNotifier extends StateNotifier<String?> {
-  SelectedAssistantModelNotifier() : super(null) {
-    _load();
-  }
-
-  Future<void> _load() async {
-    final prefs = await SharedPreferences.getInstance();
-    state = prefs.getString(_selectedAssistantModelKey);
-  }
-
-  Future<void> select(String? modelId) async {
-    state = modelId;
-    final prefs = await SharedPreferences.getInstance();
-    if (modelId == null) {
-      await prefs.remove(_selectedAssistantModelKey);
-    } else {
-      await prefs.setString(_selectedAssistantModelKey, modelId);
-    }
-  }
-}
+import '../../domain/models/assistant_model_selection.dart';
 
 final selectedAssistantTaskProvider = StateProvider<AssistantTask>((ref) {
   return AssistantTask.chat;
@@ -177,11 +149,12 @@ class AssistantModelLibraryState {
     final nanoService = GeminiNanoService();
     final nanoSupported = await nanoService.isSupported();
     final deviceInfo = await nanoService.getDeviceInfo();
-    final liteRtAvailable = await LiteRtLmService().isAvailable();
+    final liteRtService = LiteRtLmService();
+    final liteRtAvailable = await liteRtService.isAvailable();
 
     await geminiApiService.initialize();
     final cloudAvailable = geminiApiService.isAvailable;
-    final defaultPackages = _defaultPackages();
+    final defaultPackages = await _defaultPackages(liteRtService);
     final balancedPackage = defaultPackages[AssistantTask.reasoning];
 
     final platformLabel = kIsWeb
@@ -272,7 +245,11 @@ class AssistantModelLibraryState {
       ),
     );
     for (final model in ModelCatalog.mobileRecommended.take(3)) {
-      addCandidate(AssistantModelCandidate.fromOfflineModel(model));
+      addCandidate(
+        AssistantModelCandidate.fromOfflineModel(
+          await liteRtService.hydrateDownloadedModel(model),
+        ),
+      );
     }
     for (final task in [
       AssistantTask.image,
@@ -307,22 +284,22 @@ class AssistantModelLibraryState {
       AssistantTask.chat => [
         geminiNanoAssistantModelId,
         litertGemmaAssistantModelId,
-        if (package != null) 'offline-${package.id}',
+        if (package != null) assistantModelIdForOfflineModel(package.id),
       ],
       AssistantTask.actions => [
         geminiNanoAssistantModelId,
-        if (package != null) 'offline-${package.id}',
+        if (package != null) assistantModelIdForOfflineModel(package.id),
       ],
       AssistantTask.reasoning || AssistantTask.documents => [
         litertGemmaAssistantModelId,
-        if (package != null) 'offline-${package.id}',
+        if (package != null) assistantModelIdForOfflineModel(package.id),
       ],
       AssistantTask.skills => [
         litertGemmaAssistantModelId,
-        if (package != null) 'offline-${package.id}',
+        if (package != null) assistantModelIdForOfflineModel(package.id),
       ],
       AssistantTask.image || AssistantTask.audio => [
-        if (package != null) 'offline-${package.id}',
+        if (package != null) assistantModelIdForOfflineModel(package.id),
         geminiCloudAssistantModelId,
       ],
     };
@@ -371,14 +348,22 @@ class AssistantModelLibraryState {
     return defaultPackages[task];
   }
 
-  static Map<AssistantTask, OfflineModelInfo> _defaultPackages() {
+  static Future<Map<AssistantTask, OfflineModelInfo>> _defaultPackages(
+    LiteRtLmService liteRtService,
+  ) async {
     OfflineModelInfo byId(String id) {
       return ModelCatalog.bundledModels.firstWhere((model) => model.id == id);
     }
 
-    final gemma4E2b = byId('gemma-4-e2b-it-litertlm');
-    final gemma3n = byId('gemma-3n-e2b-it-litertlm');
-    final functionGemma = byId('mobile-actions-270m-litertlm');
+    final gemma4E2b = await liteRtService.hydrateDownloadedModel(
+      byId('gemma-4-e2b-it-litertlm'),
+    );
+    final gemma3n = await liteRtService.hydrateDownloadedModel(
+      byId('gemma-3n-e2b-it-litertlm'),
+    );
+    final functionGemma = await liteRtService.hydrateDownloadedModel(
+      byId('mobile-actions-270m-litertlm'),
+    );
 
     return {
       AssistantTask.chat: gemma4E2b,
@@ -412,7 +397,7 @@ class AssistantModelCandidate {
 
   factory AssistantModelCandidate.fromOfflineModel(OfflineModelInfo model) {
     return AssistantModelCandidate(
-      id: 'offline-${model.id}',
+      id: assistantModelIdForOfflineModel(model.id),
       name: model.name,
       runtime: '${model.family.displayName} ${model.provider.displayName}',
       description:
