@@ -58,6 +58,11 @@ jobs:
             --base "$AIRO_DOCS_BASE" \
             --head "$AIRO_DOCS_HEAD"
 
+      - name: Enforce bundled model artifact guardrail
+        run: |
+          chmod +x scripts/check-bundled-model-artifacts.sh
+          scripts/check-bundled-model-artifacts.sh
+
   # ============================================
   # Code Quality (analyze, format) - ~2 minutes
   # ============================================
@@ -177,7 +182,7 @@ jobs:
 
             | Check | Status | Description |
             |-------|--------|-------------|
-            | PR Validation | ${getEmoji(prValidation)} ${prValidation} | Title format, file changes |
+            | PR Validation | ${getEmoji(prValidation)} ${prValidation} | Title format, docs, bundled model guardrail |
             | Code Quality | ${getEmoji(codeQuality)} ${codeQuality} | Analyze, formatting |
             | Core Tests | ${getEmoji(tests)} ${tests} | Core package unit tests |
 

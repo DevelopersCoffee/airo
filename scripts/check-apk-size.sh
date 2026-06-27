@@ -10,6 +10,7 @@ MAX_MB="${APK_SIZE_MAX_MB:-35}"
 MAX_BYTES="${APK_SIZE_MAX_BYTES:-}"
 MAX_INCREASE_PERCENT="${APK_SIZE_MAX_INCREASE_PERCENT:-5}"
 REPORT_FILE="${APK_SIZE_REPORT_FILE:-apk-size-report.md}"
+TOP_ENTRIES="${APK_SIZE_TOP_ENTRIES:-20}"
 
 cd "$ROOT_DIR"
 
@@ -120,6 +121,19 @@ write_breakdown() {
         }
       }
     ' | sort -k2,2nr | awk -F '\t' '{ printf "| %s | %.2f MB |\n", $1, $2 / 1048576 }'
+  } >>"$REPORT_FILE"
+
+  {
+    echo ""
+    echo "#### Largest APK entries"
+    echo ""
+    echo "| Entry | Size |"
+    echo "|-------|------|"
+    unzip -l "$apk" | awk '
+      NR > 3 && $1 ~ /^[0-9]+$/ && NF >= 4 && $4 != "" {
+        printf "%d\t%s\n", $1, $4
+      }
+    ' | sort -k1,1nr | awk -F '\t' -v limit="$TOP_ENTRIES" 'NR <= limit { printf "| %s | %.2f MB |\n", $2, $1 / 1048576 }'
   } >>"$REPORT_FILE"
 }
 
