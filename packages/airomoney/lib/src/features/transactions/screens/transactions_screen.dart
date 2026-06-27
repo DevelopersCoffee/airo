@@ -51,10 +51,9 @@ class _TransactionsScreenState extends State<TransactionsScreen>
               });
             },
             itemBuilder: (context) => _filters
-                .map((filter) => PopupMenuItem(
-                      value: filter,
-                      child: Text(filter),
-                    ))
+                .map(
+                  (filter) => PopupMenuItem(value: filter, child: Text(filter)),
+                )
                 .toList(),
           ),
         ],
@@ -127,7 +126,8 @@ class _TransactionsScreenState extends State<TransactionsScreen>
         final dayTransactions = groupedTransactions[dateKey]!;
         final totalAmount = dayTransactions.fold<double>(
           0,
-          (sum, t) => sum + (t.type == TransactionType.income ? t.amount : -t.amount),
+          (sum, t) =>
+              sum + (t.type == TransactionType.income ? t.amount : -t.amount),
         );
 
         return Column(
@@ -154,13 +154,15 @@ class _TransactionsScreenState extends State<TransactionsScreen>
                 ],
               ),
             ),
-            ...dayTransactions.map((transaction) => TransactionTile(
-                  transaction: transaction,
-                  showDate: false,
-                  onTap: () {
-                    // TODO: Navigate to transaction details
-                  },
-                )),
+            ...dayTransactions.map(
+              (transaction) => TransactionTile(
+                transaction: transaction,
+                showDate: false,
+                onTap: () {
+                  // TODO: Navigate to transaction details
+                },
+              ),
+            ),
             const SizedBox(height: 16),
           ],
         );
@@ -169,13 +171,28 @@ class _TransactionsScreenState extends State<TransactionsScreen>
   }
 
   Widget _buildSummaryTab(List<Transaction> transactions) {
-    final incomeTransactions = transactions.where((t) => t.type == TransactionType.income).toList();
-    final expenseTransactions = transactions.where((t) => t.type == TransactionType.expense).toList();
-    final transferTransactions = transactions.where((t) => t.type == TransactionType.transfer).toList();
+    final incomeTransactions = transactions
+        .where((t) => t.type == TransactionType.income)
+        .toList();
+    final expenseTransactions = transactions
+        .where((t) => t.type == TransactionType.expense)
+        .toList();
+    final transferTransactions = transactions
+        .where((t) => t.type == TransactionType.transfer)
+        .toList();
 
-    final totalIncome = incomeTransactions.fold<double>(0, (sum, t) => sum + t.amount);
-    final totalExpense = expenseTransactions.fold<double>(0, (sum, t) => sum + t.amount);
-    final totalTransfer = transferTransactions.fold<double>(0, (sum, t) => sum + t.amount);
+    final totalIncome = incomeTransactions.fold<double>(
+      0,
+      (sum, t) => sum + t.amount,
+    );
+    final totalExpense = expenseTransactions.fold<double>(
+      0,
+      (sum, t) => sum + t.amount,
+    );
+    final totalTransfer = transferTransactions.fold<double>(
+      0,
+      (sum, t) => sum + t.amount,
+    );
 
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -198,10 +215,11 @@ class _TransactionsScreenState extends State<TransactionsScreen>
                       ),
                       Text(
                         '\$${totalIncome.toStringAsFixed(2)}',
-                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                          color: Colors.green,
-                          fontWeight: FontWeight.bold,
-                        ),
+                        style: Theme.of(context).textTheme.headlineSmall
+                            ?.copyWith(
+                              color: Colors.green,
+                              fontWeight: FontWeight.bold,
+                            ),
                       ),
                     ],
                   ),
@@ -224,10 +242,11 @@ class _TransactionsScreenState extends State<TransactionsScreen>
                       ),
                       Text(
                         '\$${totalExpense.toStringAsFixed(2)}',
-                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                          color: Colors.red,
-                          fontWeight: FontWeight.bold,
-                        ),
+                        style: Theme.of(context).textTheme.headlineSmall
+                            ?.copyWith(
+                              color: Colors.red,
+                              fontWeight: FontWeight.bold,
+                            ),
                       ),
                     ],
                   ),
@@ -240,8 +259,8 @@ class _TransactionsScreenState extends State<TransactionsScreen>
 
         // Net income card
         Card(
-          color: (totalIncome - totalExpense) >= 0 
-              ? Colors.green.withOpacity(0.1) 
+          color: (totalIncome - totalExpense) >= 0
+              ? Colors.green.withOpacity(0.1)
               : Colors.red.withOpacity(0.1),
           child: Padding(
             padding: const EdgeInsets.all(16),
@@ -250,14 +269,16 @@ class _TransactionsScreenState extends State<TransactionsScreen>
               children: [
                 Text(
                   'Net Income',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
                 ),
                 Text(
                   '\$${(totalIncome - totalExpense).toStringAsFixed(2)}',
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    color: (totalIncome - totalExpense) >= 0 ? Colors.green : Colors.red,
+                    color: (totalIncome - totalExpense) >= 0
+                        ? Colors.green
+                        : Colors.red,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -270,12 +291,12 @@ class _TransactionsScreenState extends State<TransactionsScreen>
         // Category breakdown
         Text(
           'By Category',
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
+          style: Theme.of(
+            context,
+          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 12),
-        
+
         // Group by category
         ..._buildCategorySummary(transactions),
       ],
@@ -287,9 +308,9 @@ class _TransactionsScreenState extends State<TransactionsScreen>
     final categoryCounts = <TransactionCategory, int>{};
 
     for (final transaction in transactions) {
-      categoryTotals[transaction.category] = 
+      categoryTotals[transaction.category] =
           (categoryTotals[transaction.category] ?? 0) + transaction.amount;
-      categoryCounts[transaction.category] = 
+      categoryCounts[transaction.category] =
           (categoryCounts[transaction.category] ?? 0) + 1;
     }
 
@@ -360,12 +381,12 @@ class _TransactionsScreenState extends State<TransactionsScreen>
 
   List<Transaction> _filterTransactions(List<Transaction> transactions) {
     if (_selectedFilter == 'All') return transactions;
-    
+
     final filterType = TransactionType.values.firstWhere(
       (type) => type.name.toLowerCase() == _selectedFilter.toLowerCase(),
       orElse: () => TransactionType.income,
     );
-    
+
     return transactions.where((t) => t.type == filterType).toList();
   }
 
