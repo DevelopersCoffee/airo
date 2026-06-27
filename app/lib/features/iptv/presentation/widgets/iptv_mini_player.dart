@@ -11,7 +11,9 @@ import '../../domain/models/streaming_state.dart';
 /// - Playing audio-only channels (always visible)
 /// - Playing any channel when user navigates away from Stream tab
 class IPTVMiniPlayer extends ConsumerWidget {
-  const IPTVMiniPlayer({super.key});
+  const IPTVMiniPlayer({super.key, this.forceVisible = false});
+
+  final bool forceVisible;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -29,7 +31,7 @@ class IPTVMiniPlayer extends ConsumerWidget {
 
         // Don't show if on Stream tab (video player is visible there)
         // unless it's an audio-only channel
-        if (isOnStreamTab && !state.currentChannel!.isAudioOnly) {
+        if (isOnStreamTab && !forceVisible) {
           return const SizedBox.shrink();
         }
 
