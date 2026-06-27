@@ -34,6 +34,9 @@ export 'src/registry/model_catalog.dart';
 export 'src/download/model_download_progress.dart';
 export 'src/download/model_download_service.dart';
 
+// Agent Skill Schemas
+export 'src/skills/skill_schema.dart';
+
 // Prompt Management
 export 'src/prompts/prompt.dart';
 export 'src/prompts/prompt_template.dart';
