@@ -10,6 +10,15 @@ enum TransactionType {
   const TransactionType(this.displayName);
 }
 
+enum TransactionReviewStatus {
+  reviewed('Reviewed'),
+  pendingReview('Pending Review');
+
+  const TransactionReviewStatus(this.label);
+
+  final String label;
+}
+
 /// Transaction entity representing a financial transaction
 ///
 /// Core business entity for expense tracking in Coins feature.
@@ -50,6 +59,14 @@ class Transaction extends Equatable {
 
   /// Get amount in major currency unit (rupees/dollars)
   double get amount => amountCents / 100;
+
+  bool get isChatIngested => tags.contains('source:chat');
+
+  TransactionReviewStatus get reviewStatus {
+    return isChatIngested
+        ? TransactionReviewStatus.pendingReview
+        : TransactionReviewStatus.reviewed;
+  }
 
   /// Create a copy with updated fields
   Transaction copyWith({

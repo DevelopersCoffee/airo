@@ -6,6 +6,7 @@ import '../../domain/entities/transaction.dart';
 import '../../domain/models/budget_status.dart';
 import '../../domain/services/finance_insight_service.dart';
 import '../../domain/services/quick_add_expense_parser.dart';
+import '../widgets/expense_card.dart';
 import 'add_expense_screen.dart';
 import 'groups_list_screen.dart';
 
@@ -572,19 +573,7 @@ class _RecentTransactionsSection extends StatelessWidget {
               const Text('Add your first expense to begin tracking spending.')
             else
               ...transactions.take(5).map((transaction) {
-                return ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.payments_outlined),
-                  title: Text(transaction.description),
-                  subtitle: Text(
-                    '${transaction.transactionDate.day}/'
-                    '${transaction.transactionDate.month}/'
-                    '${transaction.transactionDate.year}',
-                  ),
-                  trailing: _FormattedAmount(
-                    amountCents: transaction.amountCents,
-                  ),
-                );
+                return ExpenseCard(transaction: transaction);
               }),
           ],
         ),
@@ -728,17 +717,5 @@ class _FinanceInsightsSection extends StatelessWidget {
       FinanceInsightSeverity.danger => theme.colorScheme.error,
       FinanceInsightSeverity.info => theme.colorScheme.primary,
     };
-  }
-}
-
-class _FormattedAmount extends ConsumerWidget {
-  final int amountCents;
-
-  const _FormattedAmount({required this.amountCents});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final formatter = ref.watch(currencyFormatterProvider);
-    return Text(formatter.formatCentsWithSign(amountCents));
   }
 }
