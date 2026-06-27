@@ -25,6 +25,7 @@ class MainActivity : FlutterActivity() {
 
     private var pendingCalendarResult: MethodChannel.Result? = null
     private var pendingCalendarDate: String? = null
+    private var pendingCalendarEndDate: String? = null
     private var pendingCalendarCreateResult: MethodChannel.Result? = null
     private var pendingCalendarCreateArguments: Map<String, Any?>? = null
 
@@ -50,13 +51,14 @@ class MainActivity : FlutterActivity() {
                 when (call.method) {
                     "readCalendarEvents" -> {
                         val date = call.argument<String>("date")
+                        val endDate = call.argument<String>("end_date")
                         if (date.isNullOrBlank()) {
                             result.success(mapOf(
                                 "error" to "missing_date",
                                 "message" to "Calendar lookup requires a date."
                             ))
                         } else {
-                            readCalendarEvents(date, result)
+                            readCalendarEvents(date, endDate, result)
                         }
                     }
                     "createCalendarEvent" -> {
@@ -86,13 +88,15 @@ class MainActivity : FlutterActivity() {
             CALENDAR_READ_PERMISSION_REQUEST -> {
                 val result = pendingCalendarResult
                 val date = pendingCalendarDate
+                val endDate = pendingCalendarEndDate
                 pendingCalendarResult = null
                 pendingCalendarDate = null
+                pendingCalendarEndDate = null
 
                 if (result == null || date == null) return
 
                 if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    readCalendarEvents(date, result)
+                    readCalendarEvents(date, endDate, result)
                 } else {
                     result.success(mapOf(
                         "error" to "calendar_permission_denied",
@@ -120,37 +124,66 @@ class MainActivity : FlutterActivity() {
         }
     }
 
-    private fun readCalendarEvents(date: String, result: MethodChannel.Result) {
+    private fun readCalendarEvents(date: String, endDate: String?, result: MethodChannel.Result) {
         if (checkSelfPermission(Manifest.permission.READ_CALENDAR) != PackageManager.PERMISSION_GRANTED) {
             pendingCalendarResult = result
             pendingCalendarDate = date
+            pendingCalendarEndDate = endDate
             requestPermissions(arrayOf(Manifest.permission.READ_CALENDAR), CALENDAR_READ_PERMISSION_REQUEST)
             return
         }
 
         val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.US)
         dateFormat.isLenient = false
-        val parsedDate = try {
+        val parsedStartDate = try {
             dateFormat.parse(date)
         } catch (_: Exception) {
             null
         }
-        if (parsedDate == null) {
+        if (parsedStartDate == null) {
             result.success(mapOf(
                 "error" to "invalid_date",
                 "message" to "Calendar date must use YYYY-MM-DD."
             ))
             return
         }
+        val parsedEndDate = if (endDate.isNullOrBlank()) {
+            parsedStartDate
+        } else {
+            try {
+                dateFormat.parse(endDate)
+            } catch (_: Exception) {
+                null
+            }
+        }
+        if (parsedEndDate == null) {
+            result.success(mapOf(
+                "error" to "invalid_end_date",
+                "message" to "Calendar end_date must use YYYY-MM-DD."
+            ))
+            return
+        }
+        if (parsedEndDate.before(parsedStartDate)) {
+            result.success(mapOf(
+                "error" to "invalid_date_range",
+                "message" to "Calendar end_date must be on or after date."
+            ))
+            return
+        }
 
         val start = Calendar.getInstance()
-        start.time = parsedDate
+        start.time = parsedStartDate
         start.set(Calendar.HOUR_OF_DAY, 0)
         start.set(Calendar.MINUTE, 0)
         start.set(Calendar.SECOND, 0)
         start.set(Calendar.MILLISECOND, 0)
 
-        val end = start.clone() as Calendar
+        val end = Calendar.getInstance()
+        end.time = parsedEndDate
+        end.set(Calendar.HOUR_OF_DAY, 0)
+        end.set(Calendar.MINUTE, 0)
+        end.set(Calendar.SECOND, 0)
+        end.set(Calendar.MILLISECOND, 0)
         end.add(Calendar.DAY_OF_MONTH, 1)
 
         val builder = CalendarContract.Instances.CONTENT_URI.buildUpon()
@@ -193,7 +226,15 @@ class MainActivity : FlutterActivity() {
                     ))
                 }
             }
-            result.success(mapOf("date" to date, "events" to events))
+            result.success(
+                buildMap<String, Any?> {
+                    put("date", date)
+                    if (!endDate.isNullOrBlank()) {
+                        put("end_date", endDate)
+                    }
+                    put("events", events)
+                }
+            )
         } catch (error: Exception) {
             result.success(mapOf(
                 "error" to "calendar_read_failed",

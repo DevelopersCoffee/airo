@@ -3,11 +3,13 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 APP_DIR="$ROOT_DIR/app"
-PLATFORM="${AIRO_JOURNEY_PLATFORM:-android}"
+PLATFORM="${AIRO_JOURNEY_PLATFORM:-ios}"
 TARGET="${AIRO_JOURNEY_TARGET:-patrol_test/agent_skills_journey_test.dart}"
 PROMPT="${AIRO_AGENT_SKILLS_PROMPT:-}"
 ANDROID_SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/opt/homebrew/share/android-commandlinetools}}"
-ANDROID_DEVICE="${AIRO_JOURNEY_ANDROID_DEVICE:-emulator-5554}"
+ADB="${ADB:-$ANDROID_SDK/platform-tools/adb}"
+ANDROID_DEVICE="${AIRO_JOURNEY_ANDROID_DEVICE:-}"
+ALLOW_ANDROID_EMULATOR="${AIRO_ALLOW_ANDROID_EMULATOR:-false}"
 IOS_DEVICE="${AIRO_JOURNEY_IOS_DEVICE:-iPhone 17 Pro Max iOS 26.5}"
 TIMEOUT_SECONDS="${AIRO_JOURNEY_TIMEOUT_SECONDS:-900}"
 STAMP="$(date -u +"%Y%m%dT%H%M%SZ")"
@@ -19,14 +21,57 @@ TIMEOUT_MARKER="$OUTPUT_DIR/.timed_out"
 mkdir -p "$OUTPUT_DIR"
 export PATH="$HOME/.pub-cache/bin:$ANDROID_SDK/platform-tools:$PATH"
 
-if ! command -v patrol >/dev/null 2>&1; then
-  echo "patrol is required. Run: dart pub global activate patrol_cli" >&2
-  exit 127
-fi
+find_physical_android_device() {
+  if [ ! -x "$ADB" ]; then
+    return 1
+  fi
+
+  "$ADB" devices | awk '
+    NR > 1 && $2 == "device" && $1 !~ /^emulator-/ {
+      print $1
+      exit
+    }
+  '
+}
+
+android_device_is_emulator() {
+  [ "$1" = "android" ] || [[ "$1" == emulator-* ]]
+}
+
+require_android_emulator_opt_in() {
+  if [ "$ALLOW_ANDROID_EMULATOR" != "true" ]; then
+    cat >&2 <<'EOF'
+Android emulator journey tests are disabled by default for agent runs.
+
+The Android Emulator/qemu process can crash the macOS host runtime and lose test
+state. Use host checks or a connected physical Android device for routine agent
+verification.
+
+Allowed paths:
+- Physical Android: set AIRO_JOURNEY_ANDROID_DEVICE=<adb-serial>
+- iOS simulator: set AIRO_JOURNEY_PLATFORM=ios
+- Explicit emulator opt-in: set AIRO_ALLOW_ANDROID_EMULATOR=true
+EOF
+    exit 78
+  fi
+}
 
 case "$PLATFORM" in
   android)
-    (cd "$ROOT_DIR" && make boot-pixel9)
+    if [ -z "$ANDROID_DEVICE" ]; then
+      ANDROID_DEVICE="$(find_physical_android_device || true)"
+    fi
+
+    if [ -z "$ANDROID_DEVICE" ]; then
+      require_android_emulator_opt_in
+      ANDROID_DEVICE="emulator-5554"
+    fi
+
+    if android_device_is_emulator "$ANDROID_DEVICE"; then
+      require_android_emulator_opt_in
+      (cd "$ROOT_DIR" && make boot-pixel9)
+    fi
+
     DEVICE="$ANDROID_DEVICE"
     ;;
   ios)
@@ -38,6 +83,11 @@ case "$PLATFORM" in
     exit 2
     ;;
 esac
+
+if ! command -v patrol >/dev/null 2>&1; then
+  echo "patrol is required. Run: dart pub global activate patrol_cli" >&2
+  exit 127
+fi
 
 START_EPOCH="$(date +%s)"
 STATUS="passed"

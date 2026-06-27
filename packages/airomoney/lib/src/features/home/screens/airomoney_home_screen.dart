@@ -99,9 +99,9 @@ class AiroMoneyHomeScreen extends StatelessWidget {
             // Welcome section
             Text(
               'Welcome back!',
-              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
             Text(
@@ -115,7 +115,10 @@ class AiroMoneyHomeScreen extends StatelessWidget {
             // Total balance card
             MoneyCard(
               title: 'Total Balance',
-              amount: mockWallets.fold(0.0, (sum, wallet) => sum + wallet.balance),
+              amount: mockWallets.fold(
+                0.0,
+                (sum, wallet) => sum + wallet.balance,
+              ),
               subtitle: 'Across all accounts',
               icon: Icons.account_balance_wallet,
               color: Colors.blue,
@@ -125,9 +128,9 @@ class AiroMoneyHomeScreen extends StatelessWidget {
             // Quick actions
             Text(
               'Quick Actions',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 12),
             Row(
@@ -193,9 +196,9 @@ class AiroMoneyHomeScreen extends StatelessWidget {
               children: [
                 Text(
                   'Recent Transactions',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
                 ),
                 TextButton(
                   onPressed: () {
@@ -206,37 +209,39 @@ class AiroMoneyHomeScreen extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 12),
-            ...mockTransactions.map((transaction) => Card(
-              margin: const EdgeInsets.only(bottom: 8),
-              child: ListTile(
-                leading: CircleAvatar(
-                  backgroundColor: transaction.type == TransactionType.income
-                      ? Colors.green.withOpacity(0.1)
-                      : Colors.red.withOpacity(0.1),
-                  child: Icon(
-                    transaction.type == TransactionType.income
-                        ? Icons.arrow_downward
-                        : Icons.arrow_upward,
-                    color: transaction.type == TransactionType.income
-                        ? Colors.green
-                        : Colors.red,
+            ...mockTransactions.map(
+              (transaction) => Card(
+                margin: const EdgeInsets.only(bottom: 8),
+                child: ListTile(
+                  leading: CircleAvatar(
+                    backgroundColor: transaction.type == TransactionType.income
+                        ? Colors.green.withOpacity(0.1)
+                        : Colors.red.withOpacity(0.1),
+                    child: Icon(
+                      transaction.type == TransactionType.income
+                          ? Icons.arrow_downward
+                          : Icons.arrow_upward,
+                      color: transaction.type == TransactionType.income
+                          ? Colors.green
+                          : Colors.red,
+                    ),
                   ),
-                ),
-                title: Text(transaction.title),
-                subtitle: Text(
-                  '${transaction.category.name} • ${_formatDate(transaction.date)}',
-                ),
-                trailing: Text(
-                  '${transaction.type == TransactionType.income ? '+' : '-'}₹${transaction.amount.toStringAsFixed(2)}',
-                  style: TextStyle(
-                    color: transaction.type == TransactionType.income
-                        ? Colors.green
-                        : Colors.red,
-                    fontWeight: FontWeight.bold,
+                  title: Text(transaction.title),
+                  subtitle: Text(
+                    '${transaction.category.name} • ${_formatDate(transaction.date)}',
+                  ),
+                  trailing: Text(
+                    '${transaction.type == TransactionType.income ? '+' : '-'}₹${transaction.amount.toStringAsFixed(2)}',
+                    style: TextStyle(
+                      color: transaction.type == TransactionType.income
+                          ? Colors.green
+                          : Colors.red,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ),
-            )),
+            ),
           ],
         ),
       ),
@@ -268,9 +273,9 @@ class AiroMoneyHomeScreen extends StatelessWidget {
               const SizedBox(height: 8),
               Text(
                 title,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  fontWeight: FontWeight.w500,
-                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
                 textAlign: TextAlign.center,
               ),
             ],

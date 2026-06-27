@@ -11,9 +11,7 @@ An Architecture Decision Record (ADR) captures an important architectural decisi
 | ID | Title | Status | Date |
 |----|-------|--------|------|
 | [0001](0001-package-structure.md) | Modular Package Structure | Accepted | 2025-11-30 |
-| [0002](0002-state-management.md) | Riverpod for State Management | Accepted | 2025-11-30 |
-| [0003](0003-offline-first.md) | Offline-First Architecture | Accepted | 2025-11-30 |
-| [0004](0004-ai-abstraction.md) | AI Provider Abstraction Layer | Accepted | 2025-11-30 |
+| [0006](0006-mobile-ui-governance-and-shell-ownership.md) | Mobile UI Governance and Shell Ownership | Accepted | 2026-06-27 |
 
 ## Creating a New ADR
 

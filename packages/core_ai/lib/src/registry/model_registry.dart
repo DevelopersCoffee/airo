@@ -130,6 +130,8 @@ class ModelRegistry {
     ModelQuantization? quantization,
     bool? downloaded,
     bool? supportsVision,
+    ModelModality? modality,
+    ModelCapability? capability,
     String? language,
     int? maxFileSizeMB,
     String? searchQuery,
@@ -145,6 +147,12 @@ class ModelRegistry {
       }
       if (downloaded != null && model.isDownloaded != downloaded) return false;
       if (supportsVision == true && !model.supportsVision) return false;
+      if (modality != null && !model.modalities.contains(modality)) {
+        return false;
+      }
+      if (capability != null && !model.capabilities.contains(capability)) {
+        return false;
+      }
       if (language != null && !model.languages.contains(language)) return false;
       if (maxFileSizeMB != null && model.fileSizeMB > maxFileSizeMB) {
         return false;

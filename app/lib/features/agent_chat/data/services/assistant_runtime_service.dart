@@ -1,7 +1,9 @@
 import '../../../../core/services/gemini_api_service.dart';
 import '../../../../core/services/gemini_nano_service.dart';
 import '../../../../core/services/litert_lm_service.dart';
+import '../../presentation/screens/model_library_screen.dart';
 import '../../domain/models/assistant_runtime_ids.dart';
+import 'package:core_ai/core_ai.dart';
 
 typedef GeminiNanoSupportCheck = Future<bool> Function();
 typedef GeminiNanoInitializer = Future<bool> Function();
@@ -9,6 +11,12 @@ typedef GeminiNanoTextGenerator = Future<String> Function(String prompt);
 typedef GeminiNanoStreamGenerator = Stream<String> Function(String prompt);
 typedef LiteRtTextGenerator =
     Future<String?> Function(String prompt, {String? systemPrompt});
+typedef LiteRtModelTextGenerator =
+    Future<String?> Function(
+      OfflineModelInfo model,
+      String prompt, {
+      String? systemPrompt,
+    });
 typedef CloudInitializer = Future<void> Function();
 typedef CloudAvailabilityCheck = bool Function();
 typedef CloudTextGenerator = Future<String?> Function(String prompt);
@@ -33,9 +41,11 @@ class AssistantRuntimeService {
     GeminiNanoTextGenerator? generateGeminiNanoText,
     GeminiNanoStreamGenerator? generateGeminiNanoStream,
     LiteRtTextGenerator? generateLiteRtText,
+    LiteRtModelTextGenerator? generateLiteRtModelText,
     CloudInitializer? initializeCloud,
     CloudAvailabilityCheck? isCloudAvailable,
     CloudTextGenerator? generateCloudText,
+    Future<AssistantModelLibraryState> Function()? loadAssistantModelLibrary,
   }) : _geminiNano = geminiNano ?? GeminiNanoService(),
        _liteRtLm = liteRtLm ?? LiteRtLmService(),
        _geminiCloud = geminiCloud ?? geminiApiService,
@@ -44,9 +54,11 @@ class AssistantRuntimeService {
        _generateGeminiNanoTextOverride = generateGeminiNanoText,
        _generateGeminiNanoStreamOverride = generateGeminiNanoStream,
        _generateLiteRtTextOverride = generateLiteRtText,
+       _generateLiteRtModelTextOverride = generateLiteRtModelText,
        _initializeCloudOverride = initializeCloud,
        _isCloudAvailableOverride = isCloudAvailable,
-       _generateCloudTextOverride = generateCloudText;
+       _generateCloudTextOverride = generateCloudText,
+       _loadAssistantModelLibraryOverride = loadAssistantModelLibrary;
 
   final GeminiNanoService _geminiNano;
   final LiteRtLmService _liteRtLm;
@@ -56,9 +68,12 @@ class AssistantRuntimeService {
   final GeminiNanoTextGenerator? _generateGeminiNanoTextOverride;
   final GeminiNanoStreamGenerator? _generateGeminiNanoStreamOverride;
   final LiteRtTextGenerator? _generateLiteRtTextOverride;
+  final LiteRtModelTextGenerator? _generateLiteRtModelTextOverride;
   final CloudInitializer? _initializeCloudOverride;
   final CloudAvailabilityCheck? _isCloudAvailableOverride;
   final CloudTextGenerator? _generateCloudTextOverride;
+  final Future<AssistantModelLibraryState> Function()?
+  _loadAssistantModelLibraryOverride;
 
   Future<String> generateText({
     required String? selectedModelId,
@@ -107,9 +122,27 @@ class AssistantRuntimeService {
         );
 
       default:
-        throw AssistantRuntimeUnavailableException(
+        final offlineModelId = offlineModelIdFromAssistantModelId(runtimeId);
+        if (offlineModelId == null) {
+          throw AssistantRuntimeUnavailableException(
+            runtimeId,
+            unsupportedAssistantRuntimeMessage,
+          );
+        }
+        final package = await _resolveOfflinePackage(runtimeId);
+        return _nonEmptyOrUnavailable(
           runtimeId,
-          unsupportedAssistantRuntimeMessage,
+          await (_generateLiteRtModelTextOverride?.call(
+                package,
+                prompt,
+                systemPrompt: systemPrompt,
+              ) ??
+              _liteRtLm.generateTextForModel(
+                package,
+                prompt,
+                systemPrompt: systemPrompt,
+              )),
+          offlinePackageUnavailableMessage,
         );
     }
   }
@@ -198,5 +231,19 @@ class AssistantRuntimeService {
       throw AssistantRuntimeUnavailableException(runtimeId, message);
     }
     return trimmed;
+  }
+
+  Future<OfflineModelInfo> _resolveOfflinePackage(String runtimeId) async {
+    final library =
+        await (_loadAssistantModelLibraryOverride?.call() ??
+            AssistantModelLibraryState.load(task: AssistantTask.chat));
+    final package = library.candidateById(runtimeId)?.package;
+    if (package == null) {
+      throw AssistantRuntimeUnavailableException(
+        runtimeId,
+        offlinePackageCatalogMissingMessage,
+      );
+    }
+    return package;
   }
 }

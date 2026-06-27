@@ -16,18 +16,17 @@ on:
 jobs:
   version-bump:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v6
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
       
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
+      - name: Setup Python
+        uses: actions/setup-python@v6
         with:
-          node-version: '18'
-      
-      - name: Install dependencies
-        run: npm install -g standard-version
+          python-version: '3.11'
       
       - name: Get current version
         id: version
@@ -36,28 +35,24 @@ jobs:
           echo "current_version=$VERSION" >> $GITHUB_OUTPUT
       
       - name: Bump version
+        id: bump
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          standard-version --release-as ${{ github.event.inputs.version_type }}
-      
+          python3 scripts/bump_pubspec_version.py app/pubspec.yaml ${{ github.event.inputs.version_type }} >> $GITHUB_OUTPUT
+
       - name: Get new version
         id: new_version
         run: |
           VERSION=$(grep "version:" app/pubspec.yaml | head -1 | awk '{print $2}')
           echo "new_version=$VERSION" >> $GITHUB_OUTPUT
       
-      - name: Update pubspec.yaml
-        run: |
-          NEW_VERSION=${{ steps.new_version.outputs.new_version }}
-          sed -i "s/version: .*/version: $NEW_VERSION/" app/pubspec.yaml
-      
       - name: Push changes
         run: |
-          git add .
+          git add app/pubspec.yaml
           if ! git diff --cached --quiet; then
             git commit -m "chore: bump version to ${{ steps.new_version.outputs.new_version }}"
-            git tag -a v${{ steps.new_version.outputs.new_version }} -m "Release v${{ steps.new_version.outputs.new_version }}"
+            git tag -a ${{ steps.bump.outputs.tag }} -m "Release ${{ steps.bump.outputs.tag }}"
             git push origin main --follow-tags
           else
             echo "No changes to commit."
@@ -67,10 +62,10 @@ jobs:
         uses: softprops/action-gh-release@v2
         if: steps.new_version.outputs.new_version != ''
         with:
-          tag_name: v${{ steps.new_version.outputs.new_version }}
-          name: Release v${{ steps.new_version.outputs.new_version }}
+          tag_name: ${{ steps.bump.outputs.tag }}
+          name: Release ${{ steps.bump.outputs.tag }}
           body: |
-            ## Version ${{ steps.new_version.outputs.new_version }}
+            ## Version ${{ steps.bump.outputs.build_name }}
 
             See CHANGELOG.md for details.
           draft: false
@@ -80,6 +75,7 @@ jobs:
 
   generate-changelog:
     runs-on: ubuntu-latest
+    needs: version-bump
     steps:
       - uses: actions/checkout@v6
         with:
@@ -102,4 +98,3 @@ jobs:
           git commit -m "docs: update changelog" || true
           git push origin main || true
         continue-on-error: true
-

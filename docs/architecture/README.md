@@ -21,6 +21,12 @@ Technical architecture and design decisions for Airo Super App.
 - Model optimization
 - Integration points
 
+### [MODEL_DELIVERY_AND_SIZE_GUARDRAILS.md](./MODEL_DELIVERY_AND_SIZE_GUARDRAILS.md)
+**Release bundle size policy**:
+- Runtime delivery for large AI model artifacts
+- CI checks that prevent accidental model bundling
+- APK size investigation workflow
+
 ---
 
 ## 🎯 Key Components
@@ -88,4 +94,3 @@ Technical architecture and design decisions for Airo Super App.
 ---
 
 **Ready?** → [Read Technical Architecture](./TECHNICAL_ARCHITECTURE.md)
-

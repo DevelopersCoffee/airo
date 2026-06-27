@@ -8,11 +8,13 @@ import '../../domain/models/iptv_channel.dart';
 class ChannelListWidget extends ConsumerWidget {
   final Function(IPTVChannel) onChannelTap;
   final bool showCategories;
+  final bool showSearchBar;
 
   const ChannelListWidget({
     super.key,
     required this.onChannelTap,
     this.showCategories = true,
+    this.showSearchBar = true,
   });
 
   @override
@@ -27,40 +29,41 @@ class ChannelListWidget extends ConsumerWidget {
     return Column(
       children: [
         // Search bar - compact to prevent overflow
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          child: SizedBox(
-            height: 44,
-            child: TextField(
-              decoration: InputDecoration(
-                hintText: 'Search channels...',
-                prefixIcon: const Icon(Icons.search, size: 20),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(0),
+        if (showSearchBar)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            child: SizedBox(
+              height: 44,
+              child: TextField(
+                decoration: InputDecoration(
+                  hintText: 'Search channels...',
+                  prefixIcon: const Icon(Icons.search, size: 20),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(0),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  isDense: true,
+                  suffixIcon: searchQuery.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear, size: 18),
+                          onPressed: () =>
+                              ref
+                                      .read(channelSearchQueryProvider.notifier)
+                                      .state =
+                                  '',
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                        )
+                      : null,
                 ),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
-                ),
-                isDense: true,
-                suffixIcon: searchQuery.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.clear, size: 18),
-                        onPressed: () =>
-                            ref
-                                    .read(channelSearchQueryProvider.notifier)
-                                    .state =
-                                '',
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
-                      )
-                    : null,
+                onChanged: (value) =>
+                    ref.read(channelSearchQueryProvider.notifier).state = value,
               ),
-              onChanged: (value) =>
-                  ref.read(channelSearchQueryProvider.notifier).state = value,
             ),
           ),
-        ),
 
         // Category tabs with counts - compact height
         if (showCategories)
@@ -409,6 +412,8 @@ class _ChannelListTile extends ConsumerWidget {
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
+          if (!channel.isAudioOnly) const _LiveStatusPill(),
+          if (!channel.isAudioOnly) const SizedBox(width: 8),
           // Playing indicator with animation
           if (isPlaying)
             Icon(
@@ -425,5 +430,35 @@ class _ChannelListTile extends ConsumerWidget {
   Widget _buildDefaultIcon() {
     // Use shared AppIconPlaceholder for brand consistency and optimized caching
     return AppIconPlaceholder.channel(isAudioOnly: channel.isAudioOnly);
+  }
+}
+
+class _LiveStatusPill extends StatelessWidget {
+  const _LiveStatusPill();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+      decoration: BoxDecoration(
+        color: Colors.red.shade700,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: const Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.circle, size: 6, color: Colors.white),
+          SizedBox(width: 4),
+          Text(
+            'LIVE',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

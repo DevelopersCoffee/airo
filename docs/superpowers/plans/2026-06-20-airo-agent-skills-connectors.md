@@ -257,24 +257,24 @@ After calendar is stable:
 
 ### Task 1: Skill Domain and Parser
 
-- [ ] Add `AgentSkill` domain model.
+- [x] Add `AgentSkill` domain model.
 - [ ] Parse YAML frontmatter and markdown body.
 - [ ] Validate required fields and kebab-case IDs.
 - [ ] Unit test valid and invalid `SKILL.md` files.
 
 ### Task 2: Built-In Skill Repository
 
-- [ ] Add in-memory built-in skills.
-- [ ] Add enable/disable state.
-- [ ] Expose enabled skill summaries for prompts.
+- [x] Add in-memory built-in skills.
+- [x] Add enable/disable state.
+- [x] Expose enabled skill summaries for prompts.
 - [ ] Unit test filtering, search, enable all, disable all.
 
 ### Task 3: Connector Registry
 
-- [ ] Add `AgentConnector` interface.
-- [ ] Add date/time connector.
-- [ ] Add fake calendar connector for tests.
-- [ ] Unit test connector dispatch and schema validation.
+- [x] Add `AgentConnector` interface.
+- [x] Add date/time connector.
+- [x] Add fake calendar connector for tests.
+- [x] Unit test connector dispatch and schema validation.
 
 ### Task 4: Calendar Native Integration
 
@@ -290,17 +290,17 @@ After calendar is stable:
 
 - [ ] Build skill-selection prompt from enabled skill summaries.
 - [ ] Parse model JSON with `LLMJsonParser`.
-- [ ] Execute bounded tool loop.
-- [ ] Record `AgentActionTrace` for UI.
-- [ ] Fall back to existing `IntentParser` for simple route commands.
+- [x] Execute bounded tool loop.
+- [x] Record `AgentActionTrace` for UI.
+- [x] Fall back to existing `IntentParser` for simple route commands.
 - [ ] Unit test no-skill, one-tool, multi-tool, denied-permission, malformed-JSON, and max-step cases.
 
 ### Task 6: Chat UI
 
-- [ ] Add Skills chip to input area.
-- [ ] Add Manage Skills sheet.
-- [ ] Add action trace cards.
-- [ ] Wire orchestrator before normal Gemini chat fallback.
+- [x] Add Skills chip to input area.
+- [x] Add Manage Skills sheet.
+- [x] Add action trace cards.
+- [x] Wire orchestrator before normal Gemini chat fallback.
 - [ ] Add widget tests for skill sheet and trace rendering.
 
 ### Task 7: Remote/Community Skills Later

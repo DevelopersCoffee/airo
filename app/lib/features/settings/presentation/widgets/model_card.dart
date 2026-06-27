@@ -22,6 +22,7 @@ class ModelCard extends StatelessWidget {
     this.onDelete,
     this.onSetActive,
     this.onCancelDownload,
+    this.onLearnMore,
   });
 
   /// The model to display.
@@ -59,6 +60,9 @@ class ModelCard extends StatelessWidget {
 
   /// Callback to cancel an in-progress download.
   final VoidCallback? onCancelDownload;
+
+  /// Callback to open the model source page.
+  final VoidCallback? onLearnMore;
 
   @override
   Widget build(BuildContext context) {
@@ -105,6 +109,13 @@ class ModelCard extends StatelessWidget {
                     credibility: model.credibility,
                     size: CredibilityBadgeSize.small,
                   ),
+                  if (onLearnMore != null)
+                    IconButton(
+                      onPressed: onLearnMore,
+                      icon: const Icon(Icons.open_in_new, size: 18),
+                      visualDensity: VisualDensity.compact,
+                      tooltip: 'Learn more',
+                    ),
                 ],
               ),
               const SizedBox(height: 12),

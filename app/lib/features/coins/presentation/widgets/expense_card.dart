@@ -67,6 +67,8 @@ class ExpenseCard extends ConsumerWidget {
                         color: theme.colorScheme.onSurfaceVariant,
                       ),
                     ),
+                    const SizedBox(height: 6),
+                    _ReviewStatusBadge(status: transaction.reviewStatus),
                   ],
                 ),
               ),
@@ -99,5 +101,37 @@ class ExpenseCard extends ConsumerWidget {
     } else {
       return '${date.day}/${date.month}/${date.year}';
     }
+  }
+}
+
+class _ReviewStatusBadge extends StatelessWidget {
+  const _ReviewStatusBadge({required this.status});
+
+  final TransactionReviewStatus status;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isPending = status == TransactionReviewStatus.pendingReview;
+    final foreground = isPending
+        ? theme.colorScheme.secondary
+        : theme.colorScheme.primary;
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: foreground.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        child: Text(
+          status.label,
+          style: theme.textTheme.labelSmall?.copyWith(
+            color: foreground,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ),
+    );
   }
 }

@@ -23,9 +23,9 @@ class AiroAppBar extends StatelessWidget implements PreferredSizeWidget {
     return AppBar(
       title: Text(
         title,
-        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-          fontWeight: FontWeight.w600,
-        ),
+        style: Theme.of(
+          context,
+        ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
       ),
       centerTitle: centerTitle,
       elevation: elevation,
@@ -33,11 +33,11 @@ class AiroAppBar extends StatelessWidget implements PreferredSizeWidget {
       backgroundColor: backgroundColor,
       leading: leading,
       actions: actions,
-      shape: elevation > 0 ? const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(
-          bottom: Radius.circular(16),
-        ),
-      ) : null,
+      shape: elevation > 0
+          ? const RoundedRectangleBorder(
+              borderRadius: BorderRadius.vertical(bottom: Radius.circular(16)),
+            )
+          : null,
     );
   }
 

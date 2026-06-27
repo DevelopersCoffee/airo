@@ -90,6 +90,8 @@ class AgentRunResult extends Equatable {
   final String message;
   final List<AgentActionTrace> traces;
   final bool isError;
+  final String? route;
+  final Map<String, dynamic> parameters;
   final Map<String, dynamic>? pendingCalendarEvent;
 
   const AgentRunResult({
@@ -97,6 +99,8 @@ class AgentRunResult extends Equatable {
     required this.message,
     this.traces = const [],
     this.isError = false,
+    this.route,
+    this.parameters = const {},
     this.pendingCalendarEvent,
   });
 
@@ -105,7 +109,11 @@ class AgentRunResult extends Equatable {
       message = '',
       traces = const [],
       isError = false,
+      route = null,
+      parameters = const {},
       pendingCalendarEvent = null;
+
+  bool get shouldNavigate => route != null && route != '/agent';
 
   @override
   List<Object?> get props => [
@@ -113,6 +121,8 @@ class AgentRunResult extends Equatable {
     message,
     traces,
     isError,
+    route,
+    parameters,
     pendingCalendarEvent,
   ];
 }

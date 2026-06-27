@@ -1,6 +1,7 @@
 import 'package:airo_app/core/utils/currency_formatter.dart';
 import 'package:airo_app/core/utils/locale_settings.dart';
 import 'package:airo_app/features/coins/application/providers/dashboard_providers.dart';
+import 'package:airo_app/features/coins/domain/entities/transaction.dart';
 import 'package:airo_app/features/coins/domain/models/safe_to_spend.dart';
 import 'package:airo_app/features/coins/presentation/screens/add_expense_screen.dart';
 import 'package:airo_app/features/coins/presentation/screens/coins_dashboard_screen.dart';
@@ -135,5 +136,48 @@ void main() {
     expect(find.text('Split with Alex'), findsOneWidget);
     expect(find.widgetWithText(TextFormField, 'Pizza'), findsOneWidget);
     expect(find.widgetWithText(TextFormField, '420.00'), findsOneWidget);
+  });
+
+  testWidgets('shows reviewed and pending review badges in recent expenses', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          dashboardDataProvider.overrideWith(
+            (ref) async => DashboardData(
+              recentExpenses: [
+                Transaction(
+                  id: 'manual-1',
+                  description: 'Coffee',
+                  amountCents: -450,
+                  type: TransactionType.expense,
+                  categoryId: 'food',
+                  accountId: 'cash',
+                  transactionDate: DateTime(2026, 6, 27),
+                  createdAt: DateTime(2026, 6, 27),
+                ),
+                Transaction(
+                  id: 'chat-1',
+                  description: 'Swiggy',
+                  amountCents: -1200,
+                  type: TransactionType.expense,
+                  categoryId: 'food',
+                  accountId: 'cash',
+                  transactionDate: DateTime(2026, 6, 27),
+                  tags: const ['source:chat'],
+                  createdAt: DateTime(2026, 6, 27),
+                ),
+              ],
+            ),
+          ),
+        ],
+        child: const MaterialApp(home: CoinsDashboardScreen()),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('Reviewed'), findsOneWidget);
+    expect(find.text('Pending Review'), findsOneWidget);
   });
 }
