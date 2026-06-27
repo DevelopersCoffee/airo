@@ -177,6 +177,18 @@ The issue must state:
 - known constraints
 - links to parent roadmap issues
 
+Before any branch, worktree, or implementation starts, the task owner must
+sync against the latest `origin/main`. No agent may start from an older local
+branch tip, a stale worktree, or an unverified checkout.
+
+Required bootstrap sequence:
+- `git fetch origin main`
+- create the task branch or worktree from `origin/main`
+- verify the task branch/worktree base matches the fetched `origin/main`
+
+If new commits land on `main` before implementation starts, the agent must
+repeat this sync step and restack or recreate the worktree as needed.
+
 ### 2. Critical Agent Clarity Gate
 
 Before coding, add a comment or issue section:
@@ -190,6 +202,7 @@ Before coding, add a comment or issue section:
 **Owning agent:** ...
 **Reviewing agents:** ...
 **Impacted modules/files:** ...
+**Base branch/worktree:** <confirmed from latest origin/main: yes/no>
 **Open questions:** ...
 **Decision:** Ready / Blocked
 ```
