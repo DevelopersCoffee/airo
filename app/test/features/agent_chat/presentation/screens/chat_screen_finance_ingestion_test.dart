@@ -68,6 +68,13 @@ void main() {
     expect(repository.transactions.single.amountCents, -45000);
     expect(repository.transactions.single.categoryId, 'food');
     expect(find.textContaining('Added to Coins: Swiggy'), findsOneWidget);
+    expect(find.text('Undo'), findsOneWidget);
+
+    await tester.tap(find.text('Undo'));
+    await tester.pumpAndSettle();
+
+    expect(repository.transactions, isEmpty);
+    expect(find.textContaining('Removed Swiggy from Coins.'), findsOneWidget);
   });
 }
 
@@ -105,7 +112,10 @@ class _InMemoryTransactionRepository implements TransactionRepository {
   }
 
   @override
-  Future<Result<void>> delete(String id) async => (data: null, error: null);
+  Future<Result<void>> delete(String id) async {
+    transactions.removeWhere((transaction) => transaction.id == id);
+    return (data: null, error: null);
+  }
 
   @override
   Future<Result<List<Transaction>>> findByAccount(String accountId) async =>

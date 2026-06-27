@@ -633,6 +633,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       setState(() {
         _messages.add(ChatMessage(text: response, isUser: false));
       });
+      _showFinanceIngestionUndo(result);
       return true;
     } catch (e) {
       debugPrint('Finance SMS ingestion failed: $e');
@@ -647,6 +648,41 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     ref.invalidate(spentThisMonthProvider);
     ref.invalidate(monthlySpendingByCategoryProvider);
     ref.invalidate(dashboardDataProvider);
+  }
+
+  void _showFinanceIngestionUndo(FinanceChatIngestionResult result) {
+    final transaction = result.transaction;
+    if (transaction == null ||
+        result.status != FinanceChatIngestionStatus.created ||
+        !mounted) {
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Added ${transaction.description} to Coins.'),
+        action: SnackBarAction(
+          label: 'Undo',
+          onPressed: () async {
+            final deleteResult = await ref
+                .read(transactionRepositoryProvider)
+                .delete(transaction.id);
+            if (deleteResult.error != null || !mounted) {
+              return;
+            }
+            _refreshCoinsProviders();
+            setState(() {
+              _messages.add(
+                ChatMessage(
+                  text: 'Removed ${transaction.description} from Coins.',
+                  isUser: false,
+                ),
+              );
+            });
+          },
+        ),
+      ),
+    );
   }
 
   String _financeIngestionResponse(FinanceChatIngestionResult result) {
