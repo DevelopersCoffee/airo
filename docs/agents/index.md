@@ -10,6 +10,7 @@
 | [📜 Rules](./RULES.md) | Agent operating rules |
 | [🧭 Agent Policy](./AGENT_POLICY.md) | Ownership, lifecycle gates, contracts, and Critical Agent workflow |
 | [🧪 Kaggle Adoption](./KAGGLE_VIBE_CODING_ADOPTION.md) | Spec-driven, skills, tools, security, and evaluation adoption plan |
+| [📱 Mobile UI Agent](./mobile-ui-agent/README.md) | Shell ownership, header governance, UI standards, and execution tasks |
 | [🔄 SDLC](./SDLC.md) | Development workflow |
 | [📅 Sequence](./SEQUENCE.md) | Agent activation order |
 
