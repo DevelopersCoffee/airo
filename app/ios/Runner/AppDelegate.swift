@@ -37,7 +37,11 @@ import UIKit
             ])
             return
           }
-          self?.readCalendarEvents(date: date, result: result)
+          self?.readCalendarEvents(
+            date: date,
+            endDate: arguments["end_date"] as? String,
+            result: result
+          )
         case "createCalendarEvent":
           guard let arguments = call.arguments as? [String: Any] else {
             result([
@@ -56,7 +60,11 @@ import UIKit
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 
-  private func readCalendarEvents(date: String, result: @escaping FlutterResult) {
+  private func readCalendarEvents(
+    date: String,
+    endDate: String?,
+    result: @escaping FlutterResult
+  ) {
     requestCalendarAccess { [weak self] granted in
       guard let self else { return }
       guard granted else {
@@ -75,7 +83,28 @@ import UIKit
         return
       }
 
-      guard let endDate = Calendar.current.date(byAdding: .day, value: 1, to: startDate) else {
+      let inclusiveEndDate: Date
+      if let endDate, !endDate.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+        guard let parsedEndDate = self.dayStart(from: endDate) else {
+          result([
+            "error": "invalid_end_date",
+            "message": "Calendar end_date must use YYYY-MM-DD.",
+          ])
+          return
+        }
+        guard parsedEndDate >= startDate else {
+          result([
+            "error": "invalid_date_range",
+            "message": "Calendar end_date must be on or after date.",
+          ])
+          return
+        }
+        inclusiveEndDate = parsedEndDate
+      } else {
+        inclusiveEndDate = startDate
+      }
+
+      guard let queryEndDate = Calendar.current.date(byAdding: .day, value: 1, to: inclusiveEndDate) else {
         result([
           "error": "invalid_date",
           "message": "Calendar date must use YYYY-MM-DD.",
@@ -85,7 +114,7 @@ import UIKit
 
       let predicate = self.eventStore.predicateForEvents(
         withStart: startDate,
-        end: endDate,
+        end: queryEndDate,
         calendars: nil
       )
       let formatter = ISO8601DateFormatter()
@@ -105,10 +134,14 @@ import UIKit
           return payload
         }
 
-      result([
+      var payload: [String: Any] = [
         "date": date,
         "events": events,
-      ])
+      ]
+      if let endDate, !endDate.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+        payload["end_date"] = endDate
+      }
+      result(payload)
     }
   }
 
