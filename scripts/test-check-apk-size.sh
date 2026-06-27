@@ -100,4 +100,30 @@ run_case "fails-missing-baseline" 1 \
     "$SCRIPT"
 grep -q "No APK size baseline" "$TMP_DIR/fails-missing-baseline.out"
 
+if command -v zip >/dev/null 2>&1; then
+  zip_root="$TMP_DIR/zip-root"
+  mkdir -p "$zip_root/lib/arm64-v8a" "$zip_root/assets"
+  make_file "$zip_root/lib/arm64-v8a/liblitertlm_jni.so" 2048
+  make_file "$zip_root/assets/flutter_assets.bin" 1024
+  zip_apk="$TMP_DIR/zipped.apk"
+  (cd "$zip_root" && zip -qr "$zip_apk" .)
+
+  zip_size="$(wc -c < "$zip_apk" | tr -d ' ')"
+  cat >>"$baseline_file" <<EOF
+demo	zipped.apk	$zip_size	1
+EOF
+
+  run_case "reports-largest-apk-entries" 0 \
+    env APK_SIZE_APK_GLOB="$zip_apk" \
+      APK_SIZE_COMPONENT=demo \
+      APK_SIZE_BASELINE_FILE="$baseline_file" \
+      APK_SIZE_REPORT_FILE="$TMP_DIR/zip-report.md" \
+      APK_SIZE_MAX_BYTES=200000 \
+      APK_SIZE_MAX_INCREASE_PERCENT=5 \
+      APK_SIZE_TOP_ENTRIES=2 \
+      "$SCRIPT"
+  grep -q "Largest APK entries" "$TMP_DIR/zip-report.md"
+  grep -q "liblitertlm_jni.so" "$TMP_DIR/zip-report.md"
+fi
+
 echo "check-apk-size tests passed"

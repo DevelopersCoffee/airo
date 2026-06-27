@@ -11,8 +11,6 @@ on:
         options:
           - staging
           - production
-  release:
-    types: [published]
 
 jobs:
   smoke-test-web:
@@ -39,7 +37,7 @@ jobs:
         continue-on-error: true
       
       - name: Upload Test Report
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: smoke-test-report-web
@@ -61,7 +59,7 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.35.7'
+          flutter-version: '3.41.4'
           channel: 'stable'
 
       - name: Get dependencies
@@ -93,7 +91,7 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.35.7'
+          flutter-version: '3.41.4'
           channel: 'stable'
       
       - name: Get dependencies
@@ -117,7 +115,7 @@ jobs:
       - name: Generate Smoke Test Report
         run: |
           mkdir -p reports
-          cat > reports/smoke-test-summary.md << 'EOF'
+          cat > reports/smoke-test-summary.md <<EOF
           # 🔥 Smoke Test Summary
           
           **Date**: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
@@ -134,9 +132,8 @@ jobs:
           EOF
       
       - name: Upload Summary
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: smoke-test-summary
           path: reports/
           retention-days: 30
-

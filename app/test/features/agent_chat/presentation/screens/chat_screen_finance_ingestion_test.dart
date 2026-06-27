@@ -1,8 +1,8 @@
 import 'package:airo_app/core/utils/currency_formatter.dart';
 import 'package:airo_app/core/utils/locale_settings.dart';
+import 'package:airo_app/features/agent_chat/application/assistant_model_preferences.dart';
 import 'package:airo_app/features/agent_chat/domain/models/assistant_runtime_ids.dart';
 import 'package:airo_app/features/agent_chat/presentation/screens/chat_screen.dart';
-import 'package:airo_app/features/agent_chat/presentation/screens/model_library_screen.dart';
 import 'package:airo_app/features/coins/application/providers/expense_providers.dart';
 import 'package:airo_app/features/coins/domain/entities/account.dart';
 import 'package:airo_app/features/coins/domain/entities/transaction.dart';
@@ -72,6 +72,13 @@ void main() {
       find.textContaining('Queued for Coins review: Swiggy'),
       findsOneWidget,
     );
+    expect(find.text('Undo'), findsOneWidget);
+
+    await tester.tap(find.text('Undo'));
+    await tester.pumpAndSettle();
+
+    expect(repository.transactions, isEmpty);
+    expect(find.textContaining('Removed Swiggy from Coins.'), findsOneWidget);
   });
 }
 
@@ -109,7 +116,10 @@ class _InMemoryTransactionRepository implements TransactionRepository {
   }
 
   @override
-  Future<Result<void>> delete(String id) async => (data: null, error: null);
+  Future<Result<void>> delete(String id) async {
+    transactions.removeWhere((transaction) => transaction.id == id);
+    return (data: null, error: null);
+  }
 
   @override
   Future<Result<List<Transaction>>> findByAccount(String accountId) async =>

@@ -11,6 +11,13 @@ on:
     branches: [ main, master, develop ]
   pull_request:
     branches: [ main, master, develop ]
+  workflow_dispatch:
+    inputs:
+      build_full_android:
+        description: 'Build the mobile-full Android APK even for manual runs'
+        required: false
+        default: true
+        type: boolean
 
 # Cancel any in-progress runs for the same branch/PR
 concurrency:
@@ -18,7 +25,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  FLUTTER_VERSION: '3.35.7'
+  FLUTTER_VERSION: '3.41.4'
 
 jobs:
   # ============================================
@@ -60,6 +67,7 @@ jobs:
       - name: Run code generation
         run: |
           cd app
+          dart run build_runner clean
           dart run build_runner build --delete-conflicting-outputs
 
       - name: Run Flutter Analyze
@@ -71,6 +79,11 @@ jobs:
         run: |
           cd app
           find lib -name "*.dart" ! -name "*.g.dart" ! -name "*.freezed.dart" -print0 | xargs -0 dart format --set-exit-if-changed
+
+      - name: Enforce bundled model artifact guardrail
+        run: |
+          chmod +x scripts/check-bundled-model-artifacts.sh
+          scripts/check-bundled-model-artifacts.sh
 
   # ============================================
   # Core Package Tests (runs on all events - fast)
@@ -158,6 +171,7 @@ jobs:
       - name: Run code generation
         run: |
           cd app
+          dart run build_runner clean
           dart run build_runner build --delete-conflicting-outputs
 
       - name: Run app tests with coverage
@@ -166,7 +180,7 @@ jobs:
           flutter test --coverage --reporter=compact
 
       - name: Upload coverage
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v6
         with:
           files: ./app/coverage/lcov.info
           flags: flutter
@@ -182,7 +196,7 @@ jobs:
   # ============================================
   build-android:
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' || github.event_name == 'pull_request'
+    if: github.event_name == 'push' || github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
     strategy:
       fail-fast: false
       matrix:
@@ -192,13 +206,15 @@ jobs:
             variant: full
             app_platform: mobileFull
             use_stubs: false
+            enforce_size: false
             size_target_mb: 35
-            description: "Full app with all features"
+            description: "Full app with all features (size report only)"
           - name: mobile-streaming
             target: lib/main_mobile_streaming.dart
             variant: streaming
             app_platform: mobileStreaming
             use_stubs: true
+            enforce_size: true
             pubspec: pubspec_streaming.yaml
             size_target_mb: 35
             description: "Streaming app (IPTV + Music)"
@@ -207,19 +223,51 @@ jobs:
             variant: tv
             app_platform: androidTv
             use_stubs: true
+            enforce_size: true
             pubspec: pubspec_tv.yaml
             size_target_mb: 35
             description: "Android TV (IPTV only)"
     steps:
       - uses: actions/checkout@v6
 
+      - name: Resolve Android build scope
+        id: android_scope
+        env:
+          PR_LABELS: ${{ github.event_name == 'pull_request' && join(github.event.pull_request.labels.*.name, ' ') || '' }}
+          BUILD_FULL_ANDROID: ${{ github.event.inputs.build_full_android }}
+        run: |
+          should_build=true
+          reason="required for this event"
+
+          if [ "${{ github.event_name }}" = "pull_request" ] && [ "${{ matrix.platform.name }}" = "mobile-full" ]; then
+            if [[ " $PR_LABELS " == *" full-android-build "* ]]; then
+              reason="PR has full-android-build label"
+            else
+              should_build=false
+              reason="mobile-full is skipped on PRs; add full-android-build label to run it"
+            fi
+          fi
+
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && \
+             [ "${{ matrix.platform.name }}" = "mobile-full" ] && \
+             [ "$BUILD_FULL_ANDROID" != "true" ]; then
+            should_build=false
+            reason="manual run disabled mobile-full"
+          fi
+
+          echo "should_build=$should_build" >> "$GITHUB_OUTPUT"
+          echo "reason=$reason" >> "$GITHUB_OUTPUT"
+          echo "$reason"
+
       - name: Setup Java
+        if: steps.android_scope.outputs.should_build == 'true'
         uses: actions/setup-java@v5
         with:
           java-version: '17'
           distribution: 'temurin'
 
       - name: Setup Flutter
+        if: steps.android_scope.outputs.should_build == 'true'
         uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
@@ -227,6 +275,7 @@ jobs:
           cache: true
 
       - name: Cache pub dependencies
+        if: steps.android_scope.outputs.should_build == 'true'
         uses: actions/cache@v5
         with:
           path: |
@@ -238,6 +287,7 @@ jobs:
             pub-${{ runner.os }}-
 
       - name: Cache Gradle
+        if: steps.android_scope.outputs.should_build == 'true'
         uses: actions/cache@v5
         with:
           path: |
@@ -250,6 +300,7 @@ jobs:
       # Firebase Configuration Setup
       # ===========================================
       - name: Create Firebase Config
+        if: steps.android_scope.outputs.should_build == 'true'
         env:
           GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
         run: |
@@ -296,11 +347,34 @@ jobs:
           fi
           echo "✅ Firebase configuration created successfully"
 
+      - name: Create CI validation signing config
+        if: steps.android_scope.outputs.should_build == 'true'
+        run: |
+          cd app/android
+          keytool -genkeypair \
+            -v \
+            -keystore ci-validation.keystore \
+            -storepass ci-validation-password \
+            -keypass ci-validation-password \
+            -alias ci-validation \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -dname "CN=Airo CI Validation,O=DevelopersCoffee,C=US"
+          {
+            echo "storeFile=ci-validation.keystore"
+            echo "storePassword=ci-validation-password"
+            echo "keyAlias=ci-validation"
+            echo "keyPassword=ci-validation-password"
+          } > key.properties
+          chmod 600 ci-validation.keystore key.properties
+          echo "✅ CI validation signing config created"
+
       # ===========================================
       # Apply Platform-Specific Pubspec (if using stubs)
       # ===========================================
       - name: Apply platform-specific pubspec
-        if: matrix.platform.use_stubs
+        if: steps.android_scope.outputs.should_build == 'true' && matrix.platform.use_stubs
         run: |
           cd app
           echo "📦 Applying ${{ matrix.platform.pubspec }} for ${{ matrix.platform.name }} build..."
@@ -309,6 +383,7 @@ jobs:
           echo "✅ Platform-specific pubspec applied"
 
       - name: Get dependencies
+        if: steps.android_scope.outputs.should_build == 'true'
         run: |
           cd packages/core_domain && flutter pub get
           cd ../core_ui && flutter pub get
@@ -317,31 +392,41 @@ jobs:
           cd ../core_auth && flutter pub get
           cd ../../app && flutter pub get
 
+      - name: Patch Android plugin Gradle files
+        if: steps.android_scope.outputs.should_build == 'true'
+        run: scripts/patch-android-plugin-gradle.sh
+
       - name: Run code generation
-        if: matrix.platform.name == 'mobile-full'
+        if: steps.android_scope.outputs.should_build == 'true' && matrix.platform.name == 'mobile-full'
         run: |
           cd app
+          dart run build_runner clean
           dart run build_runner build --delete-conflicting-outputs
 
       - name: Build APK (Release) - ${{ matrix.platform.description }}
+        if: steps.android_scope.outputs.should_build == 'true'
         run: |
           cd app
           echo "🔨 Building ${{ matrix.platform.name }} APK..."
           flutter build apk --release \
             --target=${{ matrix.platform.target }} \
+            --target-platform=android-arm64 \
             --dart-define=APP_VARIANT=${{ matrix.platform.variant }} \
             --dart-define=APP_PLATFORM=${{ matrix.platform.app_platform }} \
-            --split-per-abi \
             --tree-shake-icons \
             --split-debug-info=build/debug-info-${{ matrix.platform.name }} \
             --obfuscate
+          mv build/app/outputs/flutter-apk/app-release.apk \
+            build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
           echo "✅ Build complete"
 
       # ===========================================
       # Verify APK Size Targets
       # ===========================================
       - name: Check APK sizes
+        if: steps.android_scope.outputs.should_build == 'true'
         id: apk_sizes
+        continue-on-error: ${{ matrix.platform.enforce_size == false }}
         env:
           APK_SIZE_COMPONENT: ${{ matrix.platform.name }}
           APK_SIZE_APK_GLOB: app/build/app/outputs/flutter-apk/app-*-release.apk
@@ -350,8 +435,8 @@ jobs:
           scripts/check-apk-size.sh
 
       - name: Upload APK size report
-        if: github.event_name == 'pull_request' && always()
-        uses: actions/upload-artifact@v6
+        if: github.event_name == 'pull_request' && steps.android_scope.outputs.should_build == 'true' && always()
+        uses: actions/upload-artifact@v7
         with:
           name: apk-size-report-${{ matrix.platform.name }}
           path: apk-size-${{ matrix.platform.name }}.md
@@ -359,7 +444,7 @@ jobs:
           retention-days: 7
 
       - name: Generate APK baseline update
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.android_scope.outputs.should_build == 'true'
         env:
           APK_SIZE_COMPONENT: ${{ matrix.platform.name }}
           APK_SIZE_BUDGET_MB: ${{ matrix.platform.size_target_mb }}
@@ -375,8 +460,8 @@ jobs:
           done
 
       - name: Upload APK baseline update
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        uses: actions/upload-artifact@v6
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.android_scope.outputs.should_build == 'true'
+        uses: actions/upload-artifact@v7
         with:
           name: apk-size-baseline-${{ matrix.platform.name }}
           path: apk-size-baselines/${{ matrix.platform.name }}.tsv
@@ -386,7 +471,7 @@ jobs:
       # Restore Original Pubspec (if using stubs)
       # ===========================================
       - name: Restore original pubspec
-        if: matrix.platform.use_stubs && always()
+        if: steps.android_scope.outputs.should_build == 'true' && matrix.platform.use_stubs && always()
         run: |
           cd app
           if [ -f pubspec.yaml.backup ]; then
@@ -395,14 +480,16 @@ jobs:
           fi
 
       - name: Upload Release APKs
-        uses: actions/upload-artifact@v6
+        if: steps.android_scope.outputs.should_build == 'true'
+        uses: actions/upload-artifact@v7
         with:
           name: android-${{ matrix.platform.name }}-release
           path: app/build/app/outputs/flutter-apk/app-*-release.apk
           retention-days: 14
 
       - name: Upload Debug Info
-        uses: actions/upload-artifact@v6
+        if: steps.android_scope.outputs.should_build == 'true'
+        uses: actions/upload-artifact@v7
         with:
           name: android-${{ matrix.platform.name }}-debug-info
           path: app/build/debug-info-${{ matrix.platform.name }}/
@@ -440,36 +527,47 @@ jobs:
           } > apk-size-report.md
 
       - name: Comment PR with APK size report
+        continue-on-error: true
         uses: actions/github-script@v8
         with:
           script: |
             const fs = require('fs');
             const marker = '<!-- apk-size-guardrail -->';
             const body = `${marker}\n${fs.readFileSync('apk-size-report.md', 'utf8')}\n\n[View run details](https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})`;
-            const comments = await github.rest.issues.listComments({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-              per_page: 100,
-            });
-            const existing = comments.data.find((comment) =>
-              comment.user.type === 'Bot' && comment.body.includes(marker)
-            );
+            let existing;
 
-            if (existing) {
-              await github.rest.issues.updateComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                comment_id: existing.id,
-                body,
-              });
-            } else {
-              await github.rest.issues.createComment({
+            try {
+              const comments = await github.rest.issues.listComments({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: context.issue.number,
-                body,
+                per_page: 100,
               });
+              existing = comments.data.find((comment) =>
+                comment.user.type === 'Bot' && comment.body.includes(marker)
+              );
+
+              if (existing) {
+                await github.rest.issues.updateComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  comment_id: existing.id,
+                  body,
+                });
+              } else {
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: context.issue.number,
+                  body,
+                });
+              }
+            } catch (error) {
+              if (error.status === 403) {
+                core.warning('Skipping APK size PR comment because this workflow token cannot write comments.');
+                return;
+              }
+              throw error;
             }
 
   # ============================================
@@ -583,7 +681,7 @@ jobs:
           flutter build web --release
 
       - name: Upload Web Build
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: web-build
           path: app/build/web

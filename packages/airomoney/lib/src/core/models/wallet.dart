@@ -1,10 +1,4 @@
-enum WalletType {
-  cash,
-  bank,
-  credit,
-  investment,
-  crypto,
-}
+enum WalletType { cash, bank, credit, investment, crypto }
 
 class Wallet {
   final String id;
@@ -154,9 +148,7 @@ class Wallet {
       name: json['name'] as String,
       description: json['description'] as String?,
       balance: (json['balance'] as num).toDouble(),
-      type: WalletType.values.firstWhere(
-        (e) => e.name == json['type'],
-      ),
+      type: WalletType.values.firstWhere((e) => e.name == json['type']),
       currency: json['currency'] as String? ?? 'INR',
       bankName: json['bankName'] as String?,
       accountNumber: json['accountNumber'] as String?,

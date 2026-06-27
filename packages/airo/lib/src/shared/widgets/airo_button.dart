@@ -1,17 +1,8 @@
 import 'package:flutter/material.dart';
 
-enum AiroButtonType {
-  primary,
-  secondary,
-  outlined,
-  text,
-}
+enum AiroButtonType { primary, secondary, outlined, text }
 
-enum AiroButtonSize {
-  small,
-  medium,
-  large,
-}
+enum AiroButtonSize { small, medium, large }
 
 class AiroButton extends StatelessWidget {
   final String text;
@@ -102,9 +93,7 @@ class AiroButton extends StatelessWidget {
     buttonStyle = buttonStyle.copyWith(
       padding: WidgetStateProperty.all(padding),
       shape: WidgetStateProperty.all(
-        RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
-        ),
+        RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
     );
 
@@ -164,10 +153,7 @@ class AiroButton extends StatelessWidget {
     }
 
     if (width != null) {
-      return SizedBox(
-        width: width,
-        child: button,
-      );
+      return SizedBox(width: width, child: button);
     }
 
     return button;

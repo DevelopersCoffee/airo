@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../assets/shell_asset_registry.dart';
+
 /// A shared widget that displays the Airo app icon as a placeholder.
 ///
 /// This widget centralizes app icon usage to:
@@ -28,8 +30,11 @@ class AppIconPlaceholder extends StatelessWidget {
   /// Use fallbackIcon directly instead of loading the app icon asset.
   final bool forceFallback;
 
+  /// Optional builder for asset load failures.
+  final ImageErrorWidgetBuilder? errorBuilder;
+
   /// Path to the app icon asset
-  static const String assetPath = 'assets/airo_icon.png';
+  static const String assetPath = ShellAssetRegistry.appIconRaster;
 
   const AppIconPlaceholder({
     super.key,
@@ -38,6 +43,7 @@ class AppIconPlaceholder extends StatelessWidget {
     this.fallbackIcon,
     this.fit = BoxFit.contain,
     this.forceFallback = false,
+    this.errorBuilder,
   });
 
   /// Creates a placeholder with padding and optional size constraints
@@ -48,6 +54,7 @@ class AppIconPlaceholder extends StatelessWidget {
     this.fallbackIcon,
     this.fit = BoxFit.contain,
     this.forceFallback = false,
+    this.errorBuilder,
   });
 
   /// Creates a placeholder for channel icons (with standard channel size)
@@ -85,8 +92,11 @@ class AppIconPlaceholder extends StatelessWidget {
         // Cache the image for better performance
         cacheWidth: size != null ? (size! * 2).toInt() : null,
         cacheHeight: size != null ? (size! * 2).toInt() : null,
-        errorBuilder: (_, _, _) =>
-            fallbackIcon ?? Icon(Icons.image, color: Colors.grey, size: size),
+        errorBuilder:
+            errorBuilder ??
+            (_, _, _) =>
+                fallbackIcon ??
+                Icon(Icons.image, color: Colors.grey, size: size),
       ),
     );
   }

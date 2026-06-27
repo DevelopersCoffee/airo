@@ -13,6 +13,7 @@ import '../../../../core/utils/currency_formatter.dart';
 import '../../../../core/utils/locale_settings.dart';
 import '../../../../shared/widgets/bug_report_dialog.dart';
 import '../../../quotes/presentation/widgets/daily_quote_card.dart';
+import '../../../settings/application/ai_model_management.dart';
 import '../../../settings/presentation/screens/ai_models_screen.dart';
 import '../../../settings/presentation/screens/audio_settings_screen.dart';
 

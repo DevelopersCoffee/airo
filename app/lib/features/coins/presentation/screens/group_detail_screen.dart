@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:share_plus/share_plus.dart';
 import '../../../../core/utils/locale_settings.dart';
+import '../../application/providers/cloud_mode_provider.dart';
+import '../../application/services/coins_invite_link_service.dart';
+import '../../domain/entities/group.dart';
 import '../../../bill_split/domain/models/receipt_item.dart';
 import '../../../bill_split/presentation/screens/itemized_split_screen.dart';
 import '../../domain/entities/settlement.dart';
@@ -70,6 +74,11 @@ class GroupDetailScreen extends ConsumerWidget {
               title: Text(group.name),
               actions: [
                 IconButton(
+                  icon: const Icon(Icons.ios_share_outlined),
+                  tooltip: 'Share invite',
+                  onPressed: () => _shareGroupInvite(context, ref, group),
+                ),
+                IconButton(
                   icon: const Icon(Icons.person_add_outlined),
                   onPressed: () {
                     _showAddMemberDialog(context, ref, groupId);
@@ -120,6 +129,78 @@ class GroupDetailScreen extends ConsumerWidget {
           ),
         );
       },
+    );
+  }
+
+  Future<void> _shareGroupInvite(
+    BuildContext context,
+    WidgetRef ref,
+    Group group,
+  ) async {
+    final cloudState = ref.read(coinsCloudModeControllerProvider).valueOrNull;
+    var isCloudMode = cloudState?.isCloudMode == true;
+    var user = cloudState?.user;
+
+    if (!isCloudMode || user?.isGoogleUser != true) {
+      final shouldEnable = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Switch to cloud sharing?'),
+          content: const Text(
+            'Group invites need your Google identity so peers can sync shared expenses. Personal transactions stay local.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Not now'),
+            ),
+            FilledButton.icon(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              icon: const Icon(Icons.cloud_outlined),
+              label: const Text('Use Cloud'),
+            ),
+          ],
+        ),
+      );
+      if (shouldEnable != true || !context.mounted) return;
+
+      isCloudMode = await ref
+          .read(coinsCloudModeControllerProvider.notifier)
+          .enableCloudMode();
+      user = ref.read(coinsCloudModeControllerProvider).valueOrNull?.user;
+      if (!context.mounted) return;
+      if (!isCloudMode || user?.isGoogleUser != true) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Google sign-in is required to share')),
+        );
+        return;
+      }
+    }
+
+    var inviteCode = group.inviteCode;
+    if (inviteCode == null || inviteCode.isEmpty) {
+      final result = await ref
+          .read(groupRepositoryProvider)
+          .generateInviteCode(group.id);
+      if (!context.mounted) return;
+      if (result.error != null || result.data == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(result.error ?? 'Could not create invite')),
+        );
+        return;
+      }
+      inviteCode = result.data!;
+    }
+
+    final link = const CoinsInviteLinkService().buildInviteLink(
+      groupId: group.id,
+      inviteCode: inviteCode,
+      ownerUserId: user!.id,
+      cloudMode: true,
+    );
+    await Share.share(
+      'Join ${group.name} on Airo Coins: $link',
+      subject: 'Airo Coins group invite',
     );
   }
 
@@ -333,6 +414,7 @@ class GroupDetailScreen extends ConsumerWidget {
       builder: (dialogContext) => AlertDialog(
         title: const Text('Add Member'),
         content: TextField(
+          key: const ValueKey('add_member_name_field'),
           controller: nameController,
           autofocus: true,
           decoration: const InputDecoration(

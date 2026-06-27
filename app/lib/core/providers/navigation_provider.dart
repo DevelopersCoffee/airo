@@ -3,31 +3,37 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 enum AppNavigationTab {
   coins(
-    label: 'Dashboard',
+    label: 'Coins',
     path: '/money',
     icon: Icons.monetization_on_outlined,
     selectedIcon: Icons.monetization_on,
   ),
   mind(
-    label: 'Assistant',
-    path: '/agent',
-    icon: Icons.smart_toy_outlined,
-    selectedIcon: Icons.smart_toy,
+    label: 'Mind',
+    path: '/mind',
+    icon: Icons.psychology_outlined,
+    selectedIcon: Icons.psychology,
   ),
-  entertainment(
-    label: 'Entertainment',
-    path: '/live',
+  beats(
+    label: 'Beats',
+    path: '/music',
     icon: Icons.subscriptions_outlined,
     selectedIcon: Icons.subscriptions,
   ),
+  stream(
+    label: 'Stream',
+    path: '/iptv',
+    icon: Icons.live_tv_outlined,
+    selectedIcon: Icons.live_tv,
+  ),
   arena(
-    label: 'Games',
+    label: 'Arena',
     path: '/games',
     icon: Icons.sports_esports_outlined,
     selectedIcon: Icons.sports_esports,
   ),
   quest(
-    label: 'Tasks',
+    label: 'Quest',
     path: '/quest',
     icon: Icons.workspace_premium_outlined,
     selectedIcon: Icons.workspace_premium,
@@ -48,7 +54,7 @@ enum AppNavigationTab {
 
 /// Current navigation tab index.
 ///
-/// Order: Dashboard | Assistant | Entertainment | Games | Tasks
+/// Order: Coins | Mind | Beats | Stream | Arena | Quest
 final currentNavigationTabProvider = StateProvider<int>(
   (ref) => AppNavigationTab.coins.index,
 );
@@ -70,8 +76,8 @@ class MiniPlayerVisibility {
 final miniPlayerVisibilityProvider = Provider.family<MiniPlayerVisibility, int>(
   (ref, currentIndex) {
     return MiniPlayerVisibility(
-      showMusicPlayer: currentIndex != AppNavigationTab.entertainment.index,
-      showIptvPlayer: currentIndex != AppNavigationTab.entertainment.index,
+      showMusicPlayer: currentIndex == AppNavigationTab.beats.index,
+      showIptvPlayer: currentIndex == AppNavigationTab.stream.index,
     );
   },
 );

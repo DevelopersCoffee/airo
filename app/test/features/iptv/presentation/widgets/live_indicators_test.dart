@@ -10,9 +10,7 @@ void main() {
 
       await tester.pumpWidget(
         MaterialApp(
-          home: Scaffold(
-            body: LiveBadge(state: state),
-          ),
+          home: Scaffold(body: LiveBadge(state: state)),
         ),
       );
 
@@ -27,17 +25,16 @@ void main() {
 
       await tester.pumpWidget(
         MaterialApp(
-          home: Scaffold(
-            body: LiveBadge(state: state),
-          ),
+          home: Scaffold(body: LiveBadge(state: state)),
         ),
       );
 
       expect(find.text('LIVE'), findsOneWidget);
     });
 
-    testWidgets('should render when behind live with showWhenNotLive=true',
-        (tester) async {
+    testWidgets('should render when behind live with showWhenNotLive=true', (
+      tester,
+    ) async {
       final state = const StreamingState().copyWith(
         isLiveStream: true,
         liveDelay: const Duration(seconds: 30),
@@ -45,38 +42,32 @@ void main() {
 
       await tester.pumpWidget(
         MaterialApp(
-          home: Scaffold(
-            body: LiveBadge(
-              state: state,
-              showWhenNotLive: true,
-            ),
-          ),
+          home: Scaffold(body: LiveBadge(state: state, showWhenNotLive: true)),
         ),
       );
 
       expect(find.text('LIVE'), findsOneWidget);
     });
 
-    testWidgets('should not render when behind live with showWhenNotLive=false',
-        (tester) async {
-      final state = const StreamingState().copyWith(
-        isLiveStream: true,
-        liveDelay: const Duration(seconds: 30),
-      );
+    testWidgets(
+      'should not render when behind live with showWhenNotLive=false',
+      (tester) async {
+        final state = const StreamingState().copyWith(
+          isLiveStream: true,
+          liveDelay: const Duration(seconds: 30),
+        );
 
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: LiveBadge(
-              state: state,
-              showWhenNotLive: false,
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: LiveBadge(state: state, showWhenNotLive: false),
             ),
           ),
-        ),
-      );
+        );
 
-      expect(find.text('LIVE'), findsNothing);
-    });
+        expect(find.text('LIVE'), findsNothing);
+      },
+    );
   });
 
   group('DelayIndicator', () {
@@ -88,9 +79,7 @@ void main() {
 
       await tester.pumpWidget(
         MaterialApp(
-          home: Scaffold(
-            body: DelayIndicator(state: state),
-          ),
+          home: Scaffold(body: DelayIndicator(state: state)),
         ),
       );
 
@@ -105,17 +94,16 @@ void main() {
 
       await tester.pumpWidget(
         MaterialApp(
-          home: Scaffold(
-            body: DelayIndicator(state: state),
-          ),
+          home: Scaffold(body: DelayIndicator(state: state)),
         ),
       );
 
       expect(find.text('45s behind'), findsOneWidget);
     });
 
-    testWidgets('should render minutes format for large delays',
-        (tester) async {
+    testWidgets('should render minutes format for large delays', (
+      tester,
+    ) async {
       final state = const StreamingState().copyWith(
         isLiveStream: true,
         liveDelay: const Duration(minutes: 2, seconds: 15),
@@ -123,9 +111,7 @@ void main() {
 
       await tester.pumpWidget(
         MaterialApp(
-          home: Scaffold(
-            body: DelayIndicator(state: state),
-          ),
+          home: Scaffold(body: DelayIndicator(state: state)),
         ),
       );
 
@@ -155,4 +141,3 @@ void main() {
     });
   });
 }
-

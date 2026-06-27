@@ -112,4 +112,3 @@ class CoinsNotificationServiceImpl implements CoinsNotificationService {
     // TODO: Clear all pending and displayed notifications
   }
 }
-

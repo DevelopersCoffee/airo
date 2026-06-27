@@ -8,8 +8,8 @@ publish_to: 'none'
 version: 1.0.0+1
 
 environment:
-  sdk: ">=3.9.2 <4.0.0"
-  flutter: ">=3.35.7"
+  sdk: ">=3.11.1 <4.0.0"
+  flutter: ">=3.41.4"
 
 dependencies:
   flutter:
@@ -23,19 +23,19 @@ dependencies:
   flutter_riverpod: 2.6.1
 
   # Storage & Persistence
-  shared_preferences: 2.5.4
+  shared_preferences: ^2.5.5
   drift: ^2.18.0
   sqlite3_flutter_libs: ^0.5.41
   hive: 2.2.3
   hive_flutter: 1.1.0
   path: 1.9.1
-  path_provider: 2.1.5
+  path_provider: ^2.1.6
 
   # Connectivity
-  connectivity_plus: 7.0.0
+  connectivity_plus: ^7.1.1
 
   # Networking
-  dio: 5.9.1
+  dio: ^5.9.2
 
   # Firebase & Authentication
   firebase_core: 4.4.0
@@ -68,14 +68,15 @@ dependencies:
   airomoney:
     path: ../packages/airomoney
 
-  cupertino_icons: 1.0.8
+  cupertino_icons: ^1.0.9
   equatable: 2.0.8
   flame: 1.35.0
   flame_audio: 2.11.13
   share_plus: ^10.0.0
   url_launcher: 6.3.2
   file_picker: 10.3.10
-  flutter_local_notifications: 19.5.0
+  pdfx: 2.9.2
+  flutter_local_notifications: 20.1.0
   timezone: 0.10.1
   audioplayers: 6.5.1
   cached_network_image: 3.4.1
@@ -86,9 +87,9 @@ dependencies:
   permission_handler: 12.0.0+1
   image_picker: 1.2.1
   google_mlkit_text_recognition: 0.15.1
-  video_player: 2.10.1
-  wakelock_plus: 1.4.0
-  package_info_plus: 9.0.0
+  video_player: ^2.11.1
+  wakelock_plus: 1.5.2
+  package_info_plus: 9.0.1
   screenshot: 3.0.0
   flutter_image_compress: 2.4.0
 
@@ -143,6 +144,12 @@ dependency_overrides:
     path: ../packages/stubs/flutter_contacts_stub
   permission_handler:
     path: ../packages/stubs/permission_handler_stub
+  flutter_local_notifications:
+    path: ../packages/stubs/flutter_local_notifications_stub
+  timezone:
+    path: ../packages/stubs/timezone_stub
+  pdfx:
+    path: ../packages/stubs/pdfx_stub
 
 flutter:
   uses-material-design: true

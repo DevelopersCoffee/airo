@@ -1,8 +1,4 @@
-enum TransactionType {
-  income,
-  expense,
-  transfer,
-}
+enum TransactionType { income, expense, transfer }
 
 enum TransactionCategory {
   // Income categories
@@ -11,7 +7,7 @@ enum TransactionCategory {
   investment,
   gift,
   other_income,
-  
+
   // Expense categories
   food,
   transport,
@@ -95,9 +91,7 @@ class Transaction {
       title: json['title'] as String,
       description: json['description'] as String?,
       amount: (json['amount'] as num).toDouble(),
-      type: TransactionType.values.firstWhere(
-        (e) => e.name == json['type'],
-      ),
+      type: TransactionType.values.firstWhere((e) => e.name == json['type']),
       category: TransactionCategory.values.firstWhere(
         (e) => e.name == json['category'],
       ),

@@ -1,18 +1,22 @@
 import 'package:airo_app/core/services/litert_lm_service.dart';
+import 'package:core_ai/core_ai.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('LiteRtLmService', () {
-    test('reports unavailable when no active model or model URL exists', () async {
-      final client = _FakeLiteRtLmClient(hasActiveModel: false);
-      final service = LiteRtLmService(client: client);
+    test(
+      'reports unavailable when no active model or model URL exists',
+      () async {
+        final client = _FakeLiteRtLmClient(hasActiveModel: false);
+        final service = LiteRtLmService(client: client);
 
-      final available = await service.isAvailable();
+        final available = await service.isAvailable();
 
-      expect(available, isFalse);
-      expect(client.installCalls, isEmpty);
-    });
+        expect(available, isFalse);
+        expect(client.installCalls, isEmpty);
+      },
+    );
 
     test('installs configured model before generating text', () async {
       final client = _FakeLiteRtLmClient(hasActiveModel: false);
@@ -37,46 +41,88 @@ void main() {
       expect(client.generatedSystemPrompts.single, 'Return JSON only.');
       expect(client.backends.single, LiteRtLmBackend.gpu);
       expect(client.maxTokens.single, 512);
+      expect(client.initializeModelPaths, [null]);
     });
 
-    test('method channel client initializes from cached downloaded path', () async {
-      TestWidgetsFlutterBinding.ensureInitialized();
-      const channel = MethodChannel('test.litert_lm');
-      final calls = <MethodCall>[];
+    test(
+      'method channel client initializes from cached downloaded path',
+      () async {
+        TestWidgetsFlutterBinding.ensureInitialized();
+        const channel = MethodChannel('test.litert_lm');
+        final calls = <MethodCall>[];
 
-      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-          .setMockMethodCallHandler(channel, (call) async {
-            calls.add(call);
-            return switch (call.method) {
-              'isAvailable' => call.arguments['modelPath'] ==
-                  '/app/files/litert_lm_models/gemma.task',
-              'installModel' => '/app/files/litert_lm_models/gemma.task',
-              'initialize' => true,
-              'generateContent' => 'done',
-              _ => null,
-            };
-          });
-      addTearDown(() {
         TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-            .setMockMethodCallHandler(channel, null);
-      });
+            .setMockMethodCallHandler(channel, (call) async {
+              calls.add(call);
+              return switch (call.method) {
+                'isAvailable' =>
+                  call.arguments['modelPath'] ==
+                      '/app/files/litert_lm_models/gemma.task',
+                'installModel' => '/app/files/litert_lm_models/gemma.task',
+                'initialize' => true,
+                'generateContent' => 'done',
+                _ => null,
+              };
+            });
+        addTearDown(() {
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+              .setMockMethodCallHandler(channel, null);
+        });
 
-      final client = MethodChannelLiteRtLmClient(
-        config: const LiteRtLmConfig(modelUrl: 'https://example.com/gemma.task'),
-        channel: channel,
+        final client = MethodChannelLiteRtLmClient(
+          config: const LiteRtLmConfig(
+            modelUrl: 'https://example.com/gemma.task',
+          ),
+          channel: channel,
+        );
+        final service = LiteRtLmService(
+          client: client,
+          config: const LiteRtLmConfig(
+            modelUrl: 'https://example.com/gemma.task',
+          ),
+        );
+
+        final response = await service.generateText('hello');
+
+        expect(response, 'done');
+        expect(
+          calls.where((call) => call.method == 'initialize').single.arguments,
+          containsPair('modelPath', '/app/files/litert_lm_models/gemma.task'),
+        );
+      },
+    );
+
+    test('uses downloaded model path for specific offline package', () async {
+      final client = _FakeLiteRtLmClient(hasActiveModel: true);
+      final downloadService = _FakeModelDownloadService(
+        downloadedPaths: {'gemma-4': '/models/gemma-4-e2b-it.litertlm'},
       );
       final service = LiteRtLmService(
         client: client,
-        config: const LiteRtLmConfig(modelUrl: 'https://example.com/gemma.task'),
+        downloadService: downloadService,
       );
 
-      final response = await service.generateText('hello');
+      final response = await service.generateTextForModel(
+        const OfflineModelInfo(
+          id: 'gemma-4',
+          name: 'Gemma 4',
+          family: ModelFamily.gemma,
+          fileSizeBytes: 1024,
+          backendPreference: ModelBackendPreference.npu,
+        ),
+        'Plan my day',
+      );
 
-      expect(response, 'done');
+      expect(response, 'ok');
       expect(
-        calls.where((call) => call.method == 'initialize').single.arguments,
-        containsPair('modelPath', '/app/files/litert_lm_models/gemma.task'),
+        client.activeModelExistsPaths,
+        contains('/models/gemma-4-e2b-it.litertlm'),
       );
+      expect(
+        client.initializeModelPaths,
+        contains('/models/gemma-4-e2b-it.litertlm'),
+      );
+      expect(client.backends.single, LiteRtLmBackend.npu);
     });
   });
 }
@@ -86,13 +132,18 @@ class _FakeLiteRtLmClient implements LiteRtLmClient {
 
   bool hasActiveModel;
   final installCalls = <String>[];
+  final activeModelExistsPaths = <String?>[];
   final generatedPrompts = <String>[];
   final generatedSystemPrompts = <String?>[];
+  final initializeModelPaths = <String?>[];
   final backends = <LiteRtLmBackend>[];
   final maxTokens = <int>[];
 
   @override
-  Future<bool> activeModelExists() async => hasActiveModel;
+  Future<bool> activeModelExists({String? modelPath}) async {
+    activeModelExistsPaths.add(modelPath);
+    return hasActiveModel;
+  }
 
   @override
   Future<String> generate({
@@ -109,7 +160,14 @@ class _FakeLiteRtLmClient implements LiteRtLmClient {
   }
 
   @override
-  Future<void> initialize({String? huggingFaceToken}) async {}
+  Future<void> initialize({
+    String? huggingFaceToken,
+    String? modelPath,
+    LiteRtLmBackend? backend,
+    int? maxTokens,
+  }) async {
+    initializeModelPaths.add(modelPath);
+  }
 
   @override
   Future<void> installModel({
@@ -119,5 +177,21 @@ class _FakeLiteRtLmClient implements LiteRtLmClient {
   }) async {
     installCalls.add(url);
     hasActiveModel = true;
+  }
+}
+
+class _FakeModelDownloadService extends ModelDownloadService {
+  _FakeModelDownloadService({required this.downloadedPaths});
+
+  final Map<String, String> downloadedPaths;
+
+  @override
+  Future<String> getModelPath(String modelId) async {
+    return downloadedPaths[modelId] ?? '/missing/$modelId';
+  }
+
+  @override
+  Future<bool> isModelDownloaded(String modelId) async {
+    return downloadedPaths.containsKey(modelId);
   }
 }

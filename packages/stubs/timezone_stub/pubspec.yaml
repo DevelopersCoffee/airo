@@ -1,0 +1,7 @@
+name: timezone
+description: Stub implementation of timezone for TV builds
+version: 0.10.1
+publish_to: none
+
+environment:
+  sdk: ">=3.9.2 <4.0.0"

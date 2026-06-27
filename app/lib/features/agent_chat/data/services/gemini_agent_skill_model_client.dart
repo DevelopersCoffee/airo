@@ -79,10 +79,36 @@ or:
 
     final action = parseSkillModelAction(response);
     if (action == null) return null;
-    if (action.type == SkillModelActionType.toolCall &&
-        !skill.tools.contains(action.tool)) {
-      return null;
+    if (action.type == SkillModelActionType.toolCall) {
+      final tool = _normalizeToolName(action.tool, skill);
+      if (tool == null || !skill.tools.contains(tool)) {
+        return null;
+      }
+      if (tool != action.tool) {
+        return SkillModelAction.toolCall(
+          tool: tool,
+          arguments: action.arguments,
+        );
+      }
     }
     return action;
   }
+}
+
+String? _normalizeToolName(String? tool, AgentSkill skill) {
+  if (tool == null) return null;
+  if (skill.tools.contains(tool)) return tool;
+
+  final normalized = tool
+      .trim()
+      .toLowerCase()
+      .replaceAll(RegExp(r'[^a-z0-9]+'), '_')
+      .replaceAll(RegExp(r'^_+|_+$'), '');
+  if (skill.tools.contains(normalized)) return normalized;
+
+  if (normalized == 'open_root' && skill.tools.contains('open_route')) {
+    return 'open_route';
+  }
+
+  return tool;
 }

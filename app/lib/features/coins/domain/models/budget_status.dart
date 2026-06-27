@@ -37,7 +37,8 @@ class BudgetStatus extends Equatable {
   double get remaining => remainingCents / 100;
 
   /// Get the amount over budget (if any)
-  int get overBudgetCents => isOverBudget ? (spentCents - budget.limitCents) : 0;
+  int get overBudgetCents =>
+      isOverBudget ? (spentCents - budget.limitCents) : 0;
 
   /// Get days remaining in the budget period
   int daysRemaining(DateTime now) => periodEnd.difference(now).inDays;
@@ -79,15 +80,14 @@ class BudgetStatus extends Equatable {
 
   @override
   List<Object?> get props => [
-        budget,
-        spentCents,
-        remainingCents,
-        percentUsed,
-        isOverBudget,
-        isWarning,
-        transactionCount,
-        periodStart,
-        periodEnd,
-      ];
+    budget,
+    spentCents,
+    remainingCents,
+    percentUsed,
+    isOverBudget,
+    isWarning,
+    transactionCount,
+    periodStart,
+    periodEnd,
+  ];
 }
-

@@ -16,6 +16,15 @@ class ScheduledAgentNotification {
     required this.repeatDaily,
     required this.scheduledAt,
     required this.createdAt,
+    this.category = 'general',
+    this.scheduleType = 'daily_time',
+    this.groupId,
+    this.metadata = const {},
+    this.requiresCompletion = false,
+    this.followUpPolicy = 'none',
+    this.completedDates = const [],
+    this.streakCount = 0,
+    this.points = 0,
     this.date,
   });
 
@@ -28,6 +37,42 @@ class ScheduledAgentNotification {
   final String? date;
   final DateTime scheduledAt;
   final DateTime createdAt;
+  final String category;
+  final String scheduleType;
+  final String? groupId;
+  final Map<String, dynamic> metadata;
+  final bool requiresCompletion;
+  final String followUpPolicy;
+  final List<String> completedDates;
+  final int streakCount;
+  final int points;
+
+  ScheduledAgentNotification copyWith({
+    List<String>? completedDates,
+    int? streakCount,
+    int? points,
+  }) {
+    return ScheduledAgentNotification(
+      id: id,
+      title: title,
+      message: message,
+      hour: hour,
+      minute: minute,
+      repeatDaily: repeatDaily,
+      scheduledAt: scheduledAt,
+      createdAt: createdAt,
+      category: category,
+      scheduleType: scheduleType,
+      groupId: groupId,
+      metadata: metadata,
+      requiresCompletion: requiresCompletion,
+      followUpPolicy: followUpPolicy,
+      completedDates: completedDates ?? this.completedDates,
+      streakCount: streakCount ?? this.streakCount,
+      points: points ?? this.points,
+      date: date,
+    );
+  }
 
   Map<String, dynamic> toJson() {
     return {
@@ -37,6 +82,15 @@ class ScheduledAgentNotification {
       'hour': hour,
       'minute': minute,
       'repeat_daily': repeatDaily,
+      'category': category,
+      'schedule_type': scheduleType,
+      if (groupId != null) 'group_id': groupId,
+      if (metadata.isNotEmpty) 'metadata': metadata,
+      'requires_completion': requiresCompletion,
+      'follow_up_policy': followUpPolicy,
+      'completed_dates': completedDates,
+      'streak_count': streakCount,
+      'points': points,
       if (date != null) 'date': date,
       'scheduled_at': scheduledAt.toIso8601String(),
       'created_at': createdAt.toIso8601String(),
@@ -51,6 +105,17 @@ class ScheduledAgentNotification {
       hour: json['hour'] as int? ?? 9,
       minute: json['minute'] as int? ?? 0,
       repeatDaily: json['repeat_daily'] as bool? ?? false,
+      category: json['category'] as String? ?? 'general',
+      scheduleType: json['schedule_type'] as String? ?? 'daily_time',
+      groupId: json['group_id'] as String?,
+      metadata: (json['metadata'] as Map?)?.cast<String, dynamic>() ?? const {},
+      requiresCompletion: json['requires_completion'] as bool? ?? false,
+      followUpPolicy: json['follow_up_policy'] as String? ?? 'none',
+      completedDates:
+          (json['completed_dates'] as List?)?.whereType<String>().toList() ??
+          const [],
+      streakCount: json['streak_count'] as int? ?? 0,
+      points: json['points'] as int? ?? 0,
       date: json['date'] as String?,
       scheduledAt:
           DateTime.tryParse(json['scheduled_at'] as String? ?? '') ??
@@ -70,6 +135,12 @@ class ScheduleAgentNotificationRequest {
     required this.minute,
     this.repeatDaily = false,
     this.date,
+    this.category = 'general',
+    this.scheduleType = 'daily_time',
+    this.groupId,
+    this.metadata = const {},
+    this.requiresCompletion = false,
+    this.followUpPolicy = 'none',
   });
 
   final String title;
@@ -78,6 +149,12 @@ class ScheduleAgentNotificationRequest {
   final int minute;
   final bool repeatDaily;
   final String? date;
+  final String category;
+  final String scheduleType;
+  final String? groupId;
+  final Map<String, dynamic> metadata;
+  final bool requiresCompletion;
+  final String followUpPolicy;
 }
 
 abstract interface class AgentNotificationSchedulingService {
@@ -88,6 +165,8 @@ abstract interface class AgentNotificationSchedulingService {
   Future<List<ScheduledAgentNotification>> getScheduledNotifications();
 
   Future<void> cancelNotification(int id);
+
+  Future<ScheduledAgentNotification?> markNotificationComplete(int id);
 }
 
 class NotificationPermissionDeniedException implements Exception {
@@ -152,6 +231,12 @@ class LocalAgentNotificationScheduler
       date: request.date,
       scheduledAt: scheduledDate.toLocal(),
       createdAt: createdAt,
+      category: request.category,
+      scheduleType: request.scheduleType,
+      groupId: request.groupId,
+      metadata: request.metadata,
+      requiresCompletion: request.requiresCompletion,
+      followUpPolicy: request.followUpPolicy,
     );
 
     await _notificationsPlugin.zonedSchedule(
@@ -210,6 +295,41 @@ class LocalAgentNotificationScheduler
     await _saveScheduledNotifications(
       notifications.where((item) => item.id != id).toList(),
     );
+  }
+
+  @override
+  Future<ScheduledAgentNotification?> markNotificationComplete(int id) async {
+    final notifications = await getScheduledNotifications();
+    final index = notifications.indexWhere((item) => item.id == id);
+    if (index == -1) return null;
+
+    final today = _formatDate(DateTime.now());
+    final notification = notifications[index];
+    if (notification.completedDates.contains(today)) {
+      return notification;
+    }
+
+    final lastCompletedDate = notification.completedDates.isEmpty
+        ? null
+        : DateTime.tryParse(notification.completedDates.last);
+    final yesterday = DateTime.now().subtract(const Duration(days: 1));
+    final continuesStreak =
+        lastCompletedDate != null &&
+        _formatDate(lastCompletedDate) == _formatDate(yesterday);
+
+    final updated = notification.copyWith(
+      completedDates: [...notification.completedDates, today],
+      streakCount: continuesStreak ? notification.streakCount + 1 : 1,
+      points: notification.points + 10,
+    );
+    notifications[index] = updated;
+    if (updated.requiresCompletion &&
+        updated.followUpPolicy == 'daily_until_done') {
+      await _ensureInitialized();
+      await _notificationsPlugin.cancel(id: id);
+    }
+    await _saveScheduledNotifications(notifications);
+    return updated;
   }
 
   Future<void> _ensureInitialized() async {
@@ -277,7 +397,7 @@ class LocalAgentNotificationScheduler
     tz.setLocalLocation(
       tz.Location('local', [tz.minTime], [0], [
         tz.TimeZone(
-          now.timeZoneOffset,
+          now.timeZoneOffset.inMilliseconds,
           isDst: abbreviation.toUpperCase().contains('DT'),
           abbreviation: abbreviation,
         ),
@@ -288,7 +408,7 @@ class LocalAgentNotificationScheduler
 
   tz.TZDateTime _scheduledDateFor(ScheduleAgentNotificationRequest request) {
     final date = request.date;
-    if (!request.repeatDaily && date != null && date.isNotEmpty) {
+    if (date != null && date.isNotEmpty) {
       final parsed = DateTime.parse(date);
       return tz.TZDateTime(
         tz.local,
@@ -350,4 +470,10 @@ class LocalAgentNotificationScheduler
       );
     }
   }
+}
+
+String _formatDate(DateTime value) {
+  return '${value.year.toString().padLeft(4, '0')}-'
+      '${value.month.toString().padLeft(2, '0')}-'
+      '${value.day.toString().padLeft(2, '0')}';
 }

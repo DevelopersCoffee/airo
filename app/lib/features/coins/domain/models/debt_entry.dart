@@ -59,11 +59,5 @@ class DebtEntry extends Equatable {
   }
 
   @override
-  List<Object?> get props => [
-        fromUserId,
-        toUserId,
-        amountCents,
-        currencyCode,
-      ];
+  List<Object?> get props => [fromUserId, toUserId, amountCents, currencyCode];
 }
-

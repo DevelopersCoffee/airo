@@ -12,6 +12,145 @@ class ModelCatalog {
 
   /// Gets the default/bundled model catalog.
   static List<OfflineModelInfo> get bundledModels => [
+    // Google AI Edge Gallery style LiteRT-LM packages.
+    const OfflineModelInfo(
+      id: 'gemma-4-e2b-it-litertlm',
+      name: 'Gemma-4-E2B-it',
+      family: ModelFamily.gemma,
+      fileSizeBytes: 2583085056,
+      downloadUrl:
+          'https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm/resolve/main/gemma-4-E2B-it.litertlm',
+      quantization: ModelQuantization.q4,
+      parameterCount: 2000000000,
+      contextLength: 32000,
+      supportsVision: true,
+      credibility: ModelCredibility.official,
+      provider: AIProvider.gemma,
+      description:
+          'Gallery Android allowlist package for chat, Prompt Lab, Agent Chat, image, and audio tasks.',
+      author: 'Google',
+      license: 'Apache-2.0',
+      huggingFaceId: 'litert-community/gemma-4-E2B-it-litert-lm',
+      modalities: [
+        ModelModality.text,
+        ModelModality.image,
+        ModelModality.audio,
+      ],
+      capabilities: [
+        ModelCapability.chat,
+        ModelCapability.reasoning,
+        ModelCapability.promptLab,
+        ModelCapability.documents,
+        ModelCapability.imageUnderstanding,
+        ModelCapability.audioUnderstanding,
+        ModelCapability.agentSkills,
+        ModelCapability.benchmark,
+      ],
+      backendPreference: ModelBackendPreference.gpu,
+      tags: ['gallery', 'litert-lm', 'chat', 'reasoning', 'prompt-lab'],
+      minMemoryBytes: 3500000000,
+      recommendedMemoryBytes: 4500000000,
+    ),
+    const OfflineModelInfo(
+      id: 'gemma-4-e4b-it-litertlm',
+      name: 'Gemma-4-E4B-it',
+      family: ModelFamily.gemma,
+      fileSizeBytes: 3654467584,
+      downloadUrl:
+          'https://huggingface.co/litert-community/gemma-4-E4B-it-litert-lm/resolve/main/gemma-4-E4B-it.litertlm',
+      quantization: ModelQuantization.q4,
+      parameterCount: 4000000000,
+      contextLength: 32000,
+      supportsVision: true,
+      credibility: ModelCredibility.official,
+      provider: AIProvider.gemma,
+      description:
+          'Higher-capability Gallery Android allowlist package for stronger devices.',
+      author: 'Google',
+      license: 'Apache-2.0',
+      huggingFaceId: 'litert-community/gemma-4-E4B-it-litert-lm',
+      modalities: [
+        ModelModality.text,
+        ModelModality.image,
+        ModelModality.audio,
+      ],
+      capabilities: [
+        ModelCapability.chat,
+        ModelCapability.reasoning,
+        ModelCapability.promptLab,
+        ModelCapability.documents,
+        ModelCapability.imageUnderstanding,
+        ModelCapability.audioUnderstanding,
+        ModelCapability.agentSkills,
+        ModelCapability.benchmark,
+      ],
+      backendPreference: ModelBackendPreference.gpu,
+      tags: ['gallery', 'litert-lm', 'high-capability', 'thinking'],
+      minMemoryBytes: 5500000000,
+      recommendedMemoryBytes: 7000000000,
+    ),
+    const OfflineModelInfo(
+      id: 'gemma-3n-e2b-it-litertlm',
+      name: 'Gemma-3n-E2B-it',
+      family: ModelFamily.gemma,
+      fileSizeBytes: 3655827456,
+      downloadUrl:
+          'https://huggingface.co/google/gemma-3n-E2B-it-litert-lm/resolve/main/gemma-3n-E2B-it-int4.litertlm',
+      quantization: ModelQuantization.q4,
+      parameterCount: 2000000000,
+      contextLength: 4096,
+      supportsVision: true,
+      credibility: ModelCredibility.official,
+      provider: AIProvider.gemma,
+      description:
+          'Gallery Android allowlist package best suited for Ask Image and Audio Scribe workflows.',
+      author: 'Google',
+      license: 'Gemma',
+      huggingFaceId: 'google/gemma-3n-E2B-it-litert-lm',
+      modalities: [
+        ModelModality.text,
+        ModelModality.image,
+        ModelModality.audio,
+      ],
+      capabilities: [
+        ModelCapability.chat,
+        ModelCapability.imageUnderstanding,
+        ModelCapability.audioUnderstanding,
+        ModelCapability.promptLab,
+        ModelCapability.benchmark,
+      ],
+      backendPreference: ModelBackendPreference.gpu,
+      tags: ['gallery', 'litert-lm', 'multimodal', 'image', 'audio'],
+      licenseState: ModelLicenseState.gated,
+      minMemoryBytes: 4200000000,
+      recommendedMemoryBytes: 5500000000,
+    ),
+    const OfflineModelInfo(
+      id: 'mobile-actions-270m-litertlm',
+      name: 'MobileActions-270M',
+      family: ModelFamily.gemma,
+      fileSizeBytes: 288964608,
+      downloadUrl:
+          'https://huggingface.co/litert-community/functiongemma-270m-ft-mobile-actions/resolve/main/mobile_actions_q8_ekv1024.litertlm',
+      quantization: ModelQuantization.q8,
+      parameterCount: 270000000,
+      contextLength: 1024,
+      supportsFunctionCalling: true,
+      credibility: ModelCredibility.official,
+      provider: AIProvider.gemma,
+      description:
+          'Gallery Android allowlist package fine-tuned for offline mobile actions.',
+      author: 'Google',
+      license: 'Apache-2.0',
+      huggingFaceId: 'litert-community/functiongemma-270m-ft-mobile-actions',
+      modalities: [ModelModality.text, ModelModality.toolCall],
+      capabilities: [ModelCapability.mobileActions, ModelCapability.benchmark],
+      backendPreference: ModelBackendPreference.cpu,
+      tags: ['gallery', 'function-calling', 'actions', 'small'],
+      minMemoryBytes: 700000000,
+      recommendedMemoryBytes: 1000000000,
+    ),
+
     // Gemma 2B models (small, mobile-friendly)
     const OfflineModelInfo(
       id: 'gemma-2b-it-q4',
@@ -31,6 +170,12 @@ class ModelCatalog {
       author: 'Google',
       license: 'Apache-2.0',
       huggingFaceId: 'google/gemma-2b-it-GGUF',
+      modalities: [ModelModality.text],
+      capabilities: [
+        ModelCapability.chat,
+        ModelCapability.promptLab,
+        ModelCapability.documents,
+      ],
       tags: ['chat', 'instruction', 'small', 'mobile-friendly'],
     ),
 
@@ -53,6 +198,12 @@ class ModelCatalog {
       author: 'Microsoft',
       license: 'MIT',
       huggingFaceId: 'microsoft/Phi-3-mini-4k-instruct-gguf',
+      modalities: [ModelModality.text],
+      capabilities: [
+        ModelCapability.chat,
+        ModelCapability.reasoning,
+        ModelCapability.promptLab,
+      ],
       tags: ['chat', 'instruction', 'reasoning', 'mobile-friendly'],
     ),
 
@@ -73,6 +224,8 @@ class ModelCatalog {
       author: 'Meta',
       license: 'Llama 3.2 Community',
       huggingFaceId: 'meta-llama/Llama-3.2-1B-Instruct-GGUF',
+      modalities: [ModelModality.text],
+      capabilities: [ModelCapability.chat, ModelCapability.promptLab],
       tags: ['chat', 'instruction', 'ultra-small', 'mobile-friendly'],
     ),
 
@@ -93,6 +246,12 @@ class ModelCatalog {
       author: 'Meta',
       license: 'Llama 3.2 Community',
       huggingFaceId: 'meta-llama/Llama-3.2-3B-Instruct-GGUF',
+      modalities: [ModelModality.text],
+      capabilities: [
+        ModelCapability.chat,
+        ModelCapability.reasoning,
+        ModelCapability.promptLab,
+      ],
       tags: ['chat', 'instruction', 'balanced', 'mobile-friendly'],
     ),
 
@@ -114,6 +273,13 @@ class ModelCatalog {
       license: 'Apache-2.0',
       huggingFaceId: 'Qwen/Qwen2-1.5B-Instruct-GGUF',
       languages: ['en', 'zh'],
+      modalities: [ModelModality.text],
+      capabilities: [
+        ModelCapability.chat,
+        ModelCapability.reasoning,
+        ModelCapability.promptLab,
+        ModelCapability.documents,
+      ],
       tags: ['chat', 'instruction', 'long-context', 'multilingual'],
     ),
 
@@ -134,6 +300,13 @@ class ModelCatalog {
       author: 'Mistral AI',
       license: 'Apache-2.0',
       huggingFaceId: 'mistralai/Mistral-7B-Instruct-v0.3-GGUF',
+      modalities: [ModelModality.text],
+      capabilities: [
+        ModelCapability.chat,
+        ModelCapability.reasoning,
+        ModelCapability.promptLab,
+        ModelCapability.documents,
+      ],
       tags: ['chat', 'instruction', 'high-capability', 'long-context'],
       minMemoryBytes: 5000000000,
       recommendedMemoryBytes: 6000000000,
@@ -143,6 +316,18 @@ class ModelCatalog {
   /// Gets recommended models for mobile devices (< 3GB).
   static List<OfflineModelInfo> get mobileRecommended =>
       bundledModels.where((m) => m.fileSizeBytes < 3000000000).toList();
+
+  /// Gets Gallery-style packages by capability.
+  static List<OfflineModelInfo> byCapability(ModelCapability capability) =>
+      bundledModels
+          .where((model) => model.capabilities.contains(capability))
+          .toList();
+
+  /// Gets Gallery-style packages by modality.
+  static List<OfflineModelInfo> byModality(ModelModality modality) =>
+      bundledModels
+          .where((model) => model.modalities.contains(modality))
+          .toList();
 
   /// Gets models by family.
   static List<OfflineModelInfo> byFamily(ModelFamily family) =>

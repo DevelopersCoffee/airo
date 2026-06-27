@@ -172,6 +172,49 @@ void main() {
       isNot(contains('review:pending')),
     );
   });
+
+  testWidgets('shows reviewed and pending review badges in recent expenses', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          dashboardDataProvider.overrideWith(
+            (ref) async => DashboardData(
+              recentExpenses: [
+                Transaction(
+                  id: 'manual-1',
+                  description: 'Coffee',
+                  amountCents: -450,
+                  type: TransactionType.expense,
+                  categoryId: 'food',
+                  accountId: 'cash',
+                  transactionDate: DateTime(2026, 6, 27),
+                  createdAt: DateTime(2026, 6, 27),
+                ),
+                Transaction(
+                  id: 'chat-1',
+                  description: 'Swiggy',
+                  amountCents: -1200,
+                  type: TransactionType.expense,
+                  categoryId: 'food',
+                  accountId: 'cash',
+                  transactionDate: DateTime(2026, 6, 27),
+                  tags: const ['source:chat'],
+                  createdAt: DateTime(2026, 6, 27),
+                ),
+              ],
+            ),
+          ),
+        ],
+        child: const MaterialApp(home: CoinsDashboardScreen()),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('Reviewed'), findsOneWidget);
+    expect(find.text('Pending Review'), findsOneWidget);
+  });
 }
 
 Transaction _pendingImportedTransaction() {

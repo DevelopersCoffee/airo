@@ -1,7 +1,7 @@
 # 🤖 Airo Agent Operating Rules
 
-> **Last Updated:** 2025-11-30  
-> **Version:** 1.0.0  
+> **Last Updated:** 2026-06-27  
+> **Version:** 1.1.0  
 > **Project Board:** https://github.com/orgs/DevelopersCoffee/projects/2
 
 ## 📋 Rule Updates
@@ -40,6 +40,7 @@ When updating these rules:
 ### Phase 0: Foundation (Must Complete First)
 | Priority | Agent | Issue | Blocks | Duration |
 |----------|-------|-------|--------|----------|
+| 🔴 P0-0 | DevEx / QA Host Stability | P0 emulator guardrail | All device E2E | Immediate |
 | 🔴 P0-1 | Core Architecture | #5 | All others | Week 1 |
 | 🔴 P0-2 | CI/CD (remaining) | #10 | Releases | Week 1 |
 | 🔴 P0-3 | Security (remaining) | #9 | All data work | Week 1 |
@@ -113,6 +114,32 @@ DORMANT → ACTIVATED → IN_PROGRESS → REVIEW → COMPLETE → DORMANT
 4. Keep commits small and focused
 5. Document blockers immediately
 
+### Host Stability Guardrail
+LLM agents must not use the Android Emulator as the default verification path.
+The attached crash signature `qemu-system-aarch64 EXC_BAD_ACCESS /
+KERN_INVALID_ADDRESS` is an infrastructure failure, not an app failure. When it
+appears, stop device testing, preserve the crash report, and switch to
+host-only checks or a physical device.
+
+Allowed verification order:
+1. Host-only deterministic checks: `flutter test`, `flutter analyze`, package
+   tests, web/Playwright checks, and APK builds.
+2. Physical Android device when Android-only behavior must be verified.
+3. iOS simulator for iOS/macOS-local smoke coverage when the issue requires it.
+4. Android Emulator only with explicit opt-in:
+   `AIRO_ALLOW_ANDROID_EMULATOR=true`.
+
+Agent rules:
+- Do not run `make boot-pixel9`, `make run-pixel9`, or Android Patrol emulator
+  tests unless the issue or maintainer explicitly accepts emulator risk.
+- If Android E2E is required, prefer `AIRO_JOURNEY_ANDROID_DEVICE=<adb-serial>`
+  with a physical device.
+- If the emulator crashes, do not retry in a loop. Mark the emulator path
+  blocked, attach the crash report, and continue with host/physical-device
+  verification.
+- PRs must say which environment was used: host-only, physical Android, iOS
+  simulator, or explicit Android Emulator opt-in.
+
 ### Completing Work
 1. Ensure all acceptance criteria met
 2. Create PR with issue link
@@ -140,6 +167,7 @@ DORMANT → ACTIVATED → IN_PROGRESS → REVIEW → COMPLETE → DORMANT
 | Direct push to main | Always use PR |
 | Hardcode secrets | Use environment/secrets |
 | Skip tests | Add tests for new code |
+| Retry Android Emulator after QEMU crash | Stop, preserve report, use host checks or physical device |
 
 ---
 
@@ -230,4 +258,3 @@ See **Issue #53**: [Add Firebase Authentication with Google Sign-In](https://git
 - [SDLC Process](./SDLC.md) - Development workflow
 - [Agent Sequence](./SEQUENCE.md) - When agents activate
 - [Project Board](https://github.com/orgs/DevelopersCoffee/projects/2) - Live status
-

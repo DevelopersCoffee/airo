@@ -93,7 +93,12 @@ void main() {
       });
 
       test('generates valid base64 content', () {
-        final bytes = Uint8List.fromList([0x89, 0x50, 0x4E, 0x47]); // PNG header
+        final bytes = Uint8List.fromList([
+          0x89,
+          0x50,
+          0x4E,
+          0x47,
+        ]); // PNG header
 
         final dataUrl = ScreenshotService.toBase64DataUrl(bytes);
 
@@ -146,4 +151,3 @@ void main() {
     });
   });
 }
-

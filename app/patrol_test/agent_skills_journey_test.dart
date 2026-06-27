@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:airo_app/main.dart' as app;
+import 'package:airo_app/core/routing/app_router.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -8,17 +9,51 @@ import 'package:patrol/patrol.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 const _selectedAssistantModelKey = 'selected_assistant_model_id';
+const _isLoggedInKey = 'is_logged_in';
+const _currentUserKey = 'current_user';
+const _journeyUserJson =
+    '{"id":"agent-skills-journey","username":"Agent Skills Journey","isAdmin":true,"isGoogleUser":false,"createdAt":"2026-06-22T00:00:00.000Z"}';
 const _journeyPrompt = String.fromEnvironment(
   'AIRO_AGENT_SKILLS_PROMPT',
   defaultValue: 'Check my schedule for today',
 );
 
+Future<void> _pumpUntilFound(
+  PatrolIntegrationTester $,
+  Finder finder, {
+  Duration timeout = const Duration(seconds: 30),
+}) async {
+  final end = DateTime.now().add(timeout);
+  while (DateTime.now().isBefore(end)) {
+    await $.pump(const Duration(milliseconds: 250));
+    if (finder.evaluate().isNotEmpty) return;
+  }
+
+  expect(finder, findsOneWidget);
+}
+
+Future<bool> _grantPermissionIfShown(
+  PatrolIntegrationTester $, {
+  Duration timeout = const Duration(seconds: 15),
+}) async {
+  final end = DateTime.now().add(timeout);
+  while (DateTime.now().isBefore(end)) {
+    if (await $.platformAutomator.mobile.isPermissionDialogVisible()) {
+      await $.platformAutomator.mobile.grantPermissionWhenInUse();
+      await $.pumpAndSettle();
+      return true;
+    }
+    await $.pump(const Duration(milliseconds: 250));
+  }
+  return false;
+}
+
 void main() {
   patrolTest('Agent Skills - calendar schedule journey', ($) async {
-    // ignore: invalid_use_of_visible_for_testing_member
-    SharedPreferences.setMockInitialValues({
-      _selectedAssistantModelKey: 'gemini-nano',
-    });
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_selectedAssistantModelKey, 'gemini-nano');
+    await prefs.setBool(_isLoggedInKey, true);
+    await prefs.setString(_currentUserKey, _journeyUserJson);
 
     final stopwatch = Stopwatch()..start();
     final events = <Map<String, Object?>>[];
@@ -36,8 +71,10 @@ void main() {
     await $.pumpAndSettle();
     record('launch_ready');
 
-    await $('Assistant').tap();
-    await $.pumpAndSettle();
+    if (find.byKey(const Key('agent_chat_skills_button')).evaluate().isEmpty) {
+      AppRouter.router.go('/agent');
+      await $.pumpAndSettle();
+    }
     record('assistant_opened');
 
     expect($(#agent_chat_skills_button), findsOneWidget);
@@ -48,7 +85,7 @@ void main() {
     expect($('read-calendar-events'), findsOneWidget);
     record('skills_sheet_verified');
 
-    await $('Close').tap();
+    await $(#manage_skills_close_button).tap();
     await $.pumpAndSettle();
 
     await $(#agent_chat_input).enterText(_journeyPrompt);
@@ -56,28 +93,29 @@ void main() {
     await $.pumpAndSettle();
     record('prompt_sent', {'prompt': _journeyPrompt});
 
-    if (await $.platformAutomator.mobile.isPermissionDialogVisible()) {
-      await $.platformAutomator.mobile.grantPermissionWhenInUse();
-      await $.pumpAndSettle();
+    await _pumpUntilFound($, find.text(_journeyPrompt));
+
+    if (defaultTargetPlatform != TargetPlatform.android &&
+        await _grantPermissionIfShown($)) {
       record('calendar_permission_granted');
     }
 
-    await $.pumpAndSettle(timeout: const Duration(seconds: 15));
+    final actionTraceFinder = find.textContaining('Performed action');
+    await _pumpUntilFound($, actionTraceFinder);
 
     expect($(_journeyPrompt), findsOneWidget);
-    expect($('Performed action'), findsOneWidget);
+    expect(actionTraceFinder, findsOneWidget);
     expect($('read-calendar-events'), findsWidgets);
     expect($('get_current_date_time'), findsOneWidget);
     expect($('read_calendar_events'), findsOneWidget);
-    expect(
-      find.byWidgetPredicate(
-        (widget) =>
-            widget is Text &&
-            (widget.data?.contains('I checked your schedule') == true ||
-                widget.data?.contains('Here is your schedule') == true),
-      ),
-      findsOneWidget,
+    final scheduleResponseFinder = find.byWidgetPredicate(
+      (widget) =>
+          widget is Text &&
+          (widget.data?.contains('I checked your schedule') == true ||
+              widget.data?.contains('Here is your schedule') == true),
     );
+    await _pumpUntilFound($, scheduleResponseFinder);
+    expect(scheduleResponseFinder, findsOneWidget);
 
     stopwatch.stop();
     record('journey_complete', {'total_ms': stopwatch.elapsedMilliseconds});

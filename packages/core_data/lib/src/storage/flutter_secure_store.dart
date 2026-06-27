@@ -27,7 +27,7 @@ class FlutterSecureStore implements SecureStore {
         aOptions: AndroidOptions(
           // v10+: encryptedSharedPreferences removed, using new secure ciphers
           // Auto-migration from old storage happens automatically
-          sharedPreferencesName: 'airo_secure_prefs',
+          storageNamespace: 'airo_secure_prefs',
           preferencesKeyPrefix: 'airo_',
         ),
         iOptions: IOSOptions(

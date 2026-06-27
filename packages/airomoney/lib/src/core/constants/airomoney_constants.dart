@@ -102,7 +102,8 @@ class AiroMoneyConstants {
   // Notification Types
   static const String budgetExceededNotification = 'budget_exceeded';
   static const String lowBalanceNotification = 'low_balance';
-  static const String recurringTransactionNotification = 'recurring_transaction';
+  static const String recurringTransactionNotification =
+      'recurring_transaction';
   static const String monthlyReportNotification = 'monthly_report';
 
   // Analytics Periods

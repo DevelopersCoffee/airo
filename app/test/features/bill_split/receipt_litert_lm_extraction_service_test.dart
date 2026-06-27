@@ -46,7 +46,7 @@ class _FakeLiteRtLmClient implements LiteRtLmClient {
   final generatedSystemPrompts = <String?>[];
 
   @override
-  Future<bool> activeModelExists() async => true;
+  Future<bool> activeModelExists({String? modelPath}) async => true;
 
   @override
   Future<String> generate({
@@ -61,7 +61,12 @@ class _FakeLiteRtLmClient implements LiteRtLmClient {
   }
 
   @override
-  Future<void> initialize({String? huggingFaceToken}) async {}
+  Future<void> initialize({
+    String? huggingFaceToken,
+    String? modelPath,
+    LiteRtLmBackend? backend,
+    int? maxTokens,
+  }) async {}
 
   @override
   Future<void> installModel({

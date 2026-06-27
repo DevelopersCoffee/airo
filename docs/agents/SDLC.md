@@ -4,6 +4,28 @@
 
 ## 🔄 Development Workflow
 
+### 0. Spec Gate
+
+Every implementation issue must complete the agent policy gates before code
+starts. This is the default entry requirement for feature, bug, framework,
+security, QA, and automation work.
+
+Required artifacts:
+- Critical Agent Gate
+- Feature Packet
+- Cross-Agent Contract when more than one module or owner is involved
+- Deterministic Use Cases
+- Automation Flow
+- Verification environment: host-only, physical device, simulator, or explicit
+  emulator opt-in
+- Security/privacy posture for data, tools, memory, model, network, file,
+  finance, health, location, notification, and background work
+
+See:
+- [Agent Policy](./AGENT_POLICY.md)
+- [Kaggle Vibe-Coding Adoption Plan](./KAGGLE_VIBE_CODING_ADOPTION.md)
+- [Deterministic use-case tracker](https://github.com/DevelopersCoffee/airo/issues/323)
+
 ### 1. Issue Assignment
 ```
 Issue Created → Backlog → Ready (when dependencies met) → Assigned
@@ -12,17 +34,18 @@ Issue Created → Backlog → Ready (when dependencies met) → Assigned
 ### 2. Development Flow
 ```mermaid
 graph LR
-    A[Pick Issue] --> B[Create Branch]
-    B --> C[Implement]
-    C --> D[Local CI: act]
-    D --> E{Passes?}
-    E -->|No| C
-    E -->|Yes| F[Create PR]
-    F --> G[Code Review]
-    G --> H{Approved?}
-    H -->|No| C
-    H -->|Yes| I[Merge]
-    I --> J[Close Issue]
+    A[Pick Issue] --> B[Complete Spec Gate]
+    B --> C[Create Branch]
+    C --> D[Implement]
+    D --> E[Local CI: act]
+    E --> F{Passes?}
+    F -->|No| D
+    F -->|Yes| G[Create PR]
+    G --> H[Code Review]
+    H --> I{Approved?}
+    I -->|No| D
+    I -->|Yes| J[Merge]
+    J --> K[Close Issue]
 ```
 
 ### 3. Branch Naming
@@ -53,9 +76,31 @@ Examples:
 - [ ] `act` local CI passes
 - [ ] `flutter analyze` clean
 - [ ] `flutter test` passes
+- [ ] Android Emulator was not used unless explicitly approved with
+      `AIRO_ALLOW_ANDROID_EMULATOR=true`
 - [ ] Issue linked in PR description
 - [ ] Acceptance criteria met
 - [ ] No merge conflicts
+
+### 6. Device Verification Policy
+
+Android Emulator/QEMU crashes on macOS are treated as infrastructure failures.
+They do not prove an Airo app regression. If a run produces
+`qemu-system-aarch64 EXC_BAD_ACCESS / KERN_INVALID_ADDRESS`, agents must stop
+the emulator path, preserve the report, and continue with host-only tests or a
+physical Android device.
+
+Default local verification must stay host-only:
+- `flutter analyze`
+- `flutter test`
+- package tests
+- Playwright/web checks
+- APK build checks
+
+Device-only tests must name the environment in the issue and PR. Android
+Emulator verification requires explicit risk acceptance by setting
+`AIRO_ALLOW_ANDROID_EMULATOR=true`; otherwise agents should use a connected
+physical Android device via `AIRO_JOURNEY_ANDROID_DEVICE=<adb-serial>`.
 
 ---
 
@@ -164,4 +209,3 @@ Examples:
 3. Create PR to update RULES.md or SDLC.md
 4. Get approval
 5. Merge and announce
-

@@ -15,9 +15,9 @@ class AiroDashboardScreen extends StatelessWidget {
           children: [
             Text(
               'Airo Dashboard',
-              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
             Text(
@@ -89,11 +89,7 @@ class AiroDashboardScreen extends StatelessWidget {
                 color: color.withOpacity(0.1),
                 shape: BoxShape.circle,
               ),
-              child: Icon(
-                icon,
-                size: 24,
-                color: color,
-              ),
+              child: Icon(icon, size: 24, color: color),
             ),
             const SizedBox(width: 16),
             Expanded(

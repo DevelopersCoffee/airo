@@ -1,4 +1,6 @@
-import 'package:flutter/material.dart';
+import 'dart:async';
+
+import 'package:flutter/material.dart' hide Intent;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/dictionary/dictionary.dart';
@@ -6,10 +8,11 @@ import '../../../../core/utils/locale_settings.dart';
 import '../../../agent_chat/data/connectors/calendar_connector.dart';
 import '../../../agent_chat/data/connectors/date_time_connector.dart';
 import '../../../agent_chat/data/connectors/notification_connector.dart';
+import '../../../agent_chat/data/connectors/route_connector.dart';
 import '../../../agent_chat/data/services/assistant_runtime_service.dart';
 import '../../../agent_chat/data/services/selected_runtime_agent_skill_model_client.dart';
+import '../../../agent_chat/application/assistant_model_preferences.dart';
 import '../../../agent_chat/domain/models/agent_skill.dart';
-import '../../../agent_chat/domain/models/assistant_runtime_ids.dart';
 import '../../../agent_chat/domain/services/agent_connector_registry.dart';
 import '../../../agent_chat/domain/services/agent_skill_orchestrator.dart';
 import '../../../agent_chat/domain/services/agent_skill_registry.dart';
@@ -20,8 +23,6 @@ import '../../../agent_chat/presentation/widgets/skill_action_trace_card.dart';
 import '../../../coins/application/providers/dashboard_providers.dart';
 import '../../../coins/application/providers/expense_providers.dart';
 import '../../../coins/application/services/finance_chat_ingestion_service.dart';
-import '../../../quotes/presentation/widgets/daily_quote_card.dart';
-import '../../../settings/presentation/screens/ai_models_screen.dart';
 import '../../../../core/services/gemini_nano_service.dart';
 import '../../../../core/services/litert_lm_service.dart';
 import 'model_library_screen.dart';
@@ -57,7 +58,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   final GeminiNanoService _geminiNano = GeminiNanoService();
   final LiteRtLmService _liteRtLm = LiteRtLmService();
   late final AssistantRuntimeService _assistantRuntime;
+  late final AgentConnectorRegistry _connectorRegistry;
   late final AgentSkillOrchestrator _skillOrchestrator;
+  Map<String, dynamic>? _pendingCalendarEvent;
   bool _isDeviceSupported = false;
 
   @override
@@ -68,15 +71,18 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       geminiNano: _geminiNano,
       liteRtLm: _liteRtLm,
     );
+    _connectorRegistry = AgentConnectorRegistry(
+      connectors: [
+        DateTimeConnector(),
+        NativeCalendarConnector(),
+        NativeCreateCalendarEventConnector(),
+        ScheduleNotificationConnector(),
+        RouteConnector(),
+      ],
+    );
     _skillOrchestrator = AgentSkillOrchestrator(
       skillRegistry: _skillRegistry,
-      connectorRegistry: AgentConnectorRegistry(
-        connectors: [
-          DateTimeConnector(),
-          NativeCalendarConnector(),
-          ScheduleNotificationConnector(),
-        ],
-      ),
+      connectorRegistry: _connectorRegistry,
       modelClient: SelectedRuntimeAgentSkillModelClient(
         runtimeService: _assistantRuntime,
         selectedModelId: () => ref.read(selectedAssistantModelIdProvider),
@@ -109,6 +115,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       if (isSupported) {
         final initialized = await _geminiNano.initialize();
         debugPrint('Gemini Nano initialized: $initialized');
+        if (initialized) {
+          unawaited(_warmupGeminiNano());
+        }
       }
 
       // Show bottom banner popup
@@ -118,6 +127,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     } catch (e) {
       debugPrint('Error initializing AI: $e');
     }
+  }
+
+  Future<void> _warmupGeminiNano() async {
+    final warmed = await _geminiNano.warmup();
+    debugPrint('Gemini Nano warmed up: $warmed');
   }
 
   void _showBottomBanner() {
@@ -196,20 +210,15 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       body: DictionarySelectionArea(
         child: Column(
           children: [
-            // Daily quote card
-            const DailyQuoteCard(
-              padding: EdgeInsets.fromLTRB(16, 8, 16, 0),
-              elevation: 1,
-            ),
             _buildSelectedModelBar(selectedAssistantModelId),
 
             // Messages list
             Expanded(
               child: ListView.builder(
-                padding: const EdgeInsets.all(16),
-                itemCount: _messages.length + 1, // +1 for sample prompts
+                padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+                itemCount:
+                    _messages.length + (_shouldShowPromptSuggestions ? 1 : 0),
                 itemBuilder: (context, index) {
-                  // Show sample prompts at the end
                   if (index == _messages.length) {
                     return _buildSamplePrompts();
                   }
@@ -272,6 +281,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     );
   }
 
+  bool get _shouldShowPromptSuggestions {
+    return !_messages.any((message) => message.isUser);
+  }
+
   Widget _buildSelectedModelBar(String selectedModelId) {
     final library = ref.watch(assistantModelLibraryProvider);
 
@@ -282,8 +295,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         final runtime = candidate?.runtime ?? selectedModelId;
 
         return Container(
-          margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          margin: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
           decoration: BoxDecoration(
             color: Theme.of(context).colorScheme.surfaceContainerHighest,
             borderRadius: BorderRadius.circular(8),
@@ -298,20 +311,40 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: Text(
-                  '$label - $runtime',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.bodySmall,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.labelLarge,
+                    ),
+                    Text(
+                      runtime,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              TextButton(
+              IconButton(
+                tooltip: 'Change model',
                 onPressed: () {
                   ref
                       .read(selectedAssistantModelIdProvider.notifier)
                       .select(null);
                 },
-                child: const Text('Change'),
+                constraints: const BoxConstraints.tightFor(
+                  width: 36,
+                  height: 36,
+                ),
+                padding: EdgeInsets.zero,
+                icon: const Icon(Icons.swap_horiz, size: 20),
               ),
             ],
           ),
@@ -323,99 +356,73 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   Widget _buildSamplePrompts() {
     final prompts = _toolRegistry.getSkillCards();
+    final theme = Theme.of(context);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(4, 4, 4, 8),
           child: Text(
-            'Try these prompts:',
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: Colors.black54,
+            'Try a prompt',
+            style: theme.textTheme.labelLarge?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
         ),
-        LayoutBuilder(
-          builder: (context, constraints) {
-            final columns = constraints.maxWidth >= 720 ? 3 : 2;
-            return GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: columns,
-                childAspectRatio: constraints.maxWidth < 420 ? 1.55 : 2.35,
-                crossAxisSpacing: 10,
-                mainAxisSpacing: 10,
-              ),
-              itemCount: prompts.length,
-              itemBuilder: (context, index) {
-                final prompt = prompts[index];
-                final color = _colorForSkill(prompt.key);
+        SizedBox(
+          height: 48,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: prompts.length,
+            separatorBuilder: (_, _) => const SizedBox(width: 8),
+            itemBuilder: (context, index) {
+              final prompt = prompts[index];
+              final color = _colorForSkill(prompt.key);
 
-                return InkWell(
-                  onTap: () {
-                    _messageController.text = _promptForSkill(prompt);
-                  },
-                  borderRadius: BorderRadius.circular(16),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          color.withValues(alpha: 0.1),
-                          color.withValues(alpha: 0.05),
-                        ],
-                      ),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: color.withValues(alpha: 0.3),
-                        width: 1,
-                      ),
-                    ),
-                    padding: const EdgeInsets.all(12),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          _iconForSkill(prompt.iconKey),
-                          size: 28,
-                          color: color,
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          prompt.title,
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                            color: color,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          prompt.description,
-                          style: const TextStyle(
-                            fontSize: 11,
-                            color: Colors.black54,
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            );
-          },
+              return ActionChip(
+                avatar: Icon(_iconForSkill(prompt.iconKey), size: 18),
+                label: Text(prompt.title),
+                side: BorderSide(color: color.withValues(alpha: 0.35)),
+                backgroundColor: color.withValues(alpha: 0.08),
+                onPressed: () {
+                  _messageController.text = _promptForSkill(prompt);
+                  _messageController.selection = TextSelection.collapsed(
+                    offset: _messageController.text.length,
+                  );
+                },
+              );
+            },
+          ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 8),
       ],
     );
+  }
+
+  Future<bool> _handleParsedIntent(Intent intent) async {
+    if (intent.type == IntentType.unknown) {
+      return false;
+    }
+
+    if (intent.type == IntentType.boredom) {
+      _handleBoredom();
+      return true;
+    }
+
+    final toolResult = await _toolRegistry.executeIntent(intent);
+    if (toolResult.isError) {
+      return false;
+    }
+
+    setState(() {
+      _messages.add(ChatMessage(text: toolResult.message, isUser: false));
+    });
+
+    if (toolResult.shouldNavigate && mounted) {
+      context.go(toolResult.route!, extra: toolResult.parameters);
+    }
+    return true;
   }
 
   Widget _buildMessage(ChatMessage message) {
@@ -460,7 +467,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   void _sendMessage() async {
     final message = _messageController.text.trim();
-    if (message.isEmpty) return;
+    if (message.isEmpty) {
+      return;
+    }
 
     _messageController.clear();
 
@@ -469,12 +478,38 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       _messages.add(ChatMessage(text: message, isUser: true));
     });
 
+    final pendingCalendarEvent = _pendingCalendarEvent;
+    if (pendingCalendarEvent != null && _isCalendarConfirmation(message)) {
+      _pendingCalendarEvent = null;
+      await _createPendingCalendarEvent(pendingCalendarEvent);
+      return;
+    }
+    if (pendingCalendarEvent != null && _isCalendarRejection(message)) {
+      _pendingCalendarEvent = null;
+      setState(() {
+        _messages.add(
+          ChatMessage(
+            text:
+                'Okay, I will keep it as an Airo notification and will not add it to Calendar.',
+            isUser: false,
+          ),
+        );
+      });
+      return;
+    }
+
     if (await _tryIngestFinanceMessage(message)) {
+      return;
+    }
+
+    final intent = IntentParser.parse(message);
+    if (await _handleParsedIntent(intent)) {
       return;
     }
 
     final skillResult = await _skillOrchestrator.run(message);
     if (skillResult.handled) {
+      _pendingCalendarEvent = skillResult.pendingCalendarEvent;
       setState(() {
         _messages.add(
           ChatMessage(
@@ -484,39 +519,20 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           ),
         );
       });
-      return;
-    }
-
-    // Parse intent first to check for navigation commands
-    final intent = IntentParser.parse(message);
-
-    // Handle boredom intent
-    if (intent.type == IntentType.boredom) {
-      _handleBoredom();
-      return;
-    }
-
-    // Handle navigation intents (play music, open games, etc.)
-    if (intent.type != IntentType.unknown) {
-      final toolResult = await _toolRegistry.executeIntent(intent);
-
-      if (!toolResult.isError) {
-        setState(() {
-          _messages.add(ChatMessage(text: toolResult.message, isUser: false));
-        });
-
-        if (toolResult.shouldNavigate && mounted) {
-          context.go(toolResult.route!, extra: toolResult.parameters);
-        }
-        return;
+      if (skillResult.shouldNavigate && mounted) {
+        context.go(skillResult.route!, extra: skillResult.parameters);
       }
+      return;
     }
 
     final selectedModelId = ref.read(selectedAssistantModelIdProvider);
     if (selectedModelId == null) {
       setState(() {
         _messages.add(
-          ChatMessage(text: noAssistantModelSelectedMessage, isUser: false),
+          ChatMessage(
+            text: 'Choose a project category before starting chat.',
+            isUser: false,
+          ),
         );
       });
       return;
@@ -540,6 +556,56 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         );
       });
     }
+  }
+
+  Future<void> _createPendingCalendarEvent(
+    Map<String, dynamic> calendarEvent,
+  ) async {
+    final result = await _connectorRegistry.execute(
+      'create_calendar_event',
+      calendarEvent,
+    );
+    final title = calendarEvent['title'] as String? ?? 'reminder';
+    setState(() {
+      _messages.add(
+        ChatMessage(
+          text: result.isError
+              ? result.message ??
+                    'I could not add "$title" to Calendar on this device yet.'
+              : 'I added "$title" to your calendar.',
+          isUser: false,
+          traces: [
+            AgentActionTrace(
+              title: 'Execute action',
+              detail: 'create_calendar_event',
+              parameters: calendarEvent,
+              success: !result.isError,
+            ),
+          ],
+        ),
+      );
+    });
+  }
+
+  bool _isCalendarConfirmation(String message) {
+    final lower = message.toLowerCase().trim();
+    return lower == 'yes' ||
+        lower == 'yeah' ||
+        lower == 'yep' ||
+        lower == 'sure' ||
+        lower.contains('add it') ||
+        lower.contains('add to calendar') ||
+        lower.contains('calendar too');
+  }
+
+  bool _isCalendarRejection(String message) {
+    final lower = message.toLowerCase().trim();
+    return lower == 'no' ||
+        lower == 'nope' ||
+        lower.contains('do not') ||
+        lower.contains("don't") ||
+        lower.contains('skip') ||
+        lower.contains('not now');
   }
 
   Future<bool> _tryIngestFinanceMessage(String message) async {
@@ -567,6 +633,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       setState(() {
         _messages.add(ChatMessage(text: response, isUser: false));
       });
+      _showFinanceIngestionUndo(result);
       return true;
     } catch (e) {
       debugPrint('Finance SMS ingestion failed: $e');
@@ -581,6 +648,42 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     ref.invalidate(spentThisMonthProvider);
     ref.invalidate(monthlySpendingByCategoryProvider);
     ref.invalidate(dashboardDataProvider);
+  }
+
+  void _showFinanceIngestionUndo(FinanceChatIngestionResult result) {
+    final transaction = result.transaction;
+    if (transaction == null ||
+        (result.status != FinanceChatIngestionStatus.created &&
+            result.status != FinanceChatIngestionStatus.needsReview) ||
+        !mounted) {
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Added ${transaction.description} to Coins.'),
+        action: SnackBarAction(
+          label: 'Undo',
+          onPressed: () async {
+            final deleteResult = await ref
+                .read(transactionRepositoryProvider)
+                .delete(transaction.id);
+            if (deleteResult.error != null || !mounted) {
+              return;
+            }
+            _refreshCoinsProviders();
+            setState(() {
+              _messages.add(
+                ChatMessage(
+                  text: 'Removed ${transaction.description} from Coins.',
+                  isUser: false,
+                ),
+              );
+            });
+          },
+        ),
+      ),
+    );
   }
 
   String _financeIngestionResponse(FinanceChatIngestionResult result) {
@@ -641,7 +744,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       _messages.add(
         ChatMessage(
           text:
-              'Using ${candidate.name}. Runtime: ${candidate.runtime}. ${candidate.local ? 'This is an on-device path.' : 'This sends prompts to the configured API.'}',
+              'Project ready. I picked ${candidate.name} for this category. ${candidate.local ? 'It runs on this device when available.' : 'This category uses the configured cloud fallback.'}',
           isUser: false,
         ),
       );
@@ -649,9 +752,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   void _openModelManager() {
-    Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (context) => const AIModelsScreen()));
+    context.push('/agent/profile');
   }
 
   IconData _iconForSkill(String iconKey) {
@@ -659,6 +760,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       'chat' => Icons.chat_bubble_outline,
       'send' => Icons.send_outlined,
       'calendar' => Icons.calendar_month_outlined,
+      'notifications' => Icons.notifications_active_outlined,
       'receipt' => Icons.receipt_long,
       'restaurant' => Icons.restaurant,
       'task' => Icons.task_alt,
@@ -676,11 +778,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       'ai_chat' => Colors.blue,
       'agent_skills' => Colors.deepPurple,
       'calendar_today' => Colors.cyan.shade700,
+      'smart_reminders' => Colors.purple.shade700,
       'split_bill' => Colors.teal,
       'diet_plan' => Colors.green,
       'routine_planner' => Colors.orange,
       'ask_image' => Colors.red,
-      'audio_scribe' => Colors.green.shade700,
       'mobile_actions' => Colors.indigo,
       'model_management' => Colors.blueGrey,
       'arena_games' => Colors.pink,
@@ -693,11 +795,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       'ai_chat' => 'Help me think through a task',
       'agent_skills' => 'What can you do in Airo?',
       'calendar_today' => 'Check my schedule for today',
+      'smart_reminders' =>
+        'Remind me to take Minoxidil every 12 hours starting at 8am',
       'split_bill' => 'Split this ₹2400 bill with Asha, Ben and Chen',
       'diet_plan' => 'Make me a 7 day vegetarian diet plan',
       'routine_planner' => 'Create a morning study routine for tomorrow',
       'ask_image' => 'Ask image about this receipt',
-      'audio_scribe' => 'Audio scribe this recording',
       'mobile_actions' => 'Open mobile actions',
       'model_management' => 'Manage offline models',
       'arena_games' => 'I am bored, start chess',

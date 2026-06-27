@@ -5,10 +5,10 @@ import 'package:flutter/services.dart';
 /// Service for integrating with Gemini Nano on Pixel 9 and compatible devices
 class GeminiNanoService {
   static const MethodChannel _channel = MethodChannel('com.airo.gemini_nano');
-  
+
   static GeminiNanoService? _instance;
   static GeminiNanoService get instance => _instance ??= GeminiNanoService._();
-  
+
   GeminiNanoService._();
 
   /// Check if Gemini Nano is available on the current device
@@ -41,7 +41,7 @@ class GeminiNanoService {
         'topK': topK,
         'maxOutputTokens': maxOutputTokens,
       });
-      
+
       return initialized;
     } catch (e) {
       debugPrint('Error initializing Gemini Nano: $e');
@@ -59,7 +59,7 @@ class GeminiNanoService {
       final String? response = await _channel.invokeMethod('generateContent', {
         'prompt': prompt,
       });
-      
+
       return response;
     } catch (e) {
       debugPrint('Error generating content: $e');
@@ -75,12 +75,12 @@ class GeminiNanoService {
       }
 
       // Set up event channel for streaming
-      const EventChannel eventChannel = EventChannel('com.airo.gemini_nano/stream');
-      
+      const EventChannel eventChannel = EventChannel(
+        'com.airo.gemini_nano/stream',
+      );
+
       // Start streaming generation
-      await _channel.invokeMethod('generateContentStream', {
-        'prompt': prompt,
-      });
+      await _channel.invokeMethod('generateContentStream', {'prompt': prompt});
 
       // Listen to streaming responses
       await for (final dynamic event in eventChannel.receiveBroadcastStream()) {
@@ -89,11 +89,11 @@ class GeminiNanoService {
         } else if (event is Map) {
           final String? text = event['text'] as String?;
           final String? error = event['error'] as String?;
-          
+
           if (error != null) {
             throw Exception(error);
           }
-          
+
           if (text != null) {
             yield text;
           }
@@ -113,7 +113,7 @@ class GeminiNanoService {
   }) async {
     try {
       final Map<String, dynamic> config = {};
-      
+
       if (temperature != null) config['temperature'] = temperature;
       if (topK != null) config['topK'] = topK;
       if (maxOutputTokens != null) config['maxOutputTokens'] = maxOutputTokens;
@@ -140,7 +140,9 @@ class GeminiNanoService {
   /// Get device information for Gemini Nano compatibility
   Future<Map<String, dynamic>> getDeviceInfo() async {
     try {
-      final Map<dynamic, dynamic> info = await _channel.invokeMethod('getDeviceInfo');
+      final Map<dynamic, dynamic> info = await _channel.invokeMethod(
+        'getDeviceInfo',
+      );
       return Map<String, dynamic>.from(info);
     } catch (e) {
       debugPrint('Error getting device info: $e');
@@ -157,7 +159,8 @@ class GeminiNanoService {
       final int? sdkVersion = deviceInfo['sdkVersion'] as int?;
 
       // Check for Pixel 9 or compatible devices
-      if (brand?.toLowerCase() == 'google' && model?.contains('Pixel') == true) {
+      if (brand?.toLowerCase() == 'google' &&
+          model?.contains('Pixel') == true) {
         // Pixel 9 series or newer
         if (model!.contains('9') || (sdkVersion != null && sdkVersion >= 31)) {
           return true;
@@ -214,7 +217,8 @@ class GeminiNanoException implements Exception {
   const GeminiNanoException(this.message, [this.code]);
 
   @override
-  String toString() => 'GeminiNanoException: $message${code != null ? ' (Code: $code)' : ''}';
+  String toString() =>
+      'GeminiNanoException: $message${code != null ? ' (Code: $code)' : ''}';
 }
 
 /// Utility class for Gemini Nano operations
