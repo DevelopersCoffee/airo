@@ -1,5 +1,7 @@
 import 'package:meta/meta.dart';
 
+import 'skill_trigger_eval.dart';
+
 /// Current version for skill package manifests.
 const String kSkillPackageSchemaVersion = '1.0';
 
@@ -235,6 +237,7 @@ class SkillPackage {
     this.capabilityProfileIds = const [],
     this.permissions = const [],
     this.evalCases = const [],
+    this.triggerEvalCases = const [],
   });
 
   final String schemaVersion;
@@ -249,6 +252,7 @@ class SkillPackage {
   final List<SkillPermission> permissions;
   final SkillProvenance provenance;
   final List<SkillEvalCase> evalCases;
+  final List<SkillTriggerEvalCase> triggerEvalCases;
 
   factory SkillPackage.fromJson(Map<String, dynamic> json) {
     final validation = validateJson(json);
@@ -275,6 +279,9 @@ class SkillPackage {
       evalCases: _mapList(
         json['eval_cases'],
       ).map(SkillEvalCase.fromJson).toList(),
+      triggerEvalCases: _mapList(
+        json['trigger_eval_cases'],
+      ).map(SkillTriggerEvalCase.fromJson).toList(),
     );
   }
 
@@ -347,6 +354,9 @@ class SkillPackage {
         .toList(),
     'provenance': provenance.toJson(),
     'eval_cases': evalCases.map((evalCase) => evalCase.toJson()).toList(),
+    'trigger_eval_cases': triggerEvalCases
+        .map((evalCase) => evalCase.toJson())
+        .toList(),
   };
 }
 

@@ -39,6 +39,7 @@ export 'src/skills/ai_trajectory_trace.dart';
 export 'src/skills/routine_dag_executor.dart';
 export 'src/skills/skill_permission_engine.dart';
 export 'src/skills/skill_schema.dart';
+export 'src/skills/skill_trigger_eval.dart';
 
 // Prompt Management
 export 'src/prompts/prompt.dart';
