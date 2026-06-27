@@ -14,11 +14,7 @@ abstract class CoinsError implements Exception {
 class ValidationError extends CoinsError {
   final String field;
 
-  const ValidationError(
-    super.message, {
-    required this.field,
-    super.code,
-  });
+  const ValidationError(super.message, {required this.field, super.code});
 
   @override
   String toString() => 'ValidationError[$field]: $message';
@@ -41,11 +37,7 @@ class NotFoundError extends CoinsError {
 
 /// Database error for persistence failures
 class DatabaseError extends CoinsError {
-  const DatabaseError(
-    super.message, {
-    super.code,
-    super.originalError,
-  });
+  const DatabaseError(super.message, {super.code, super.originalError});
 
   @override
   String toString() => 'DatabaseError: $message';
@@ -56,11 +48,10 @@ class AuthorizationError extends CoinsError {
   final String action;
   final String? resourceId;
 
-  const AuthorizationError({
-    required this.action,
-    this.resourceId,
-    super.code,
-  }) : super('Not authorized to $action${resourceId != null ? ' on $resourceId' : ''}');
+  const AuthorizationError({required this.action, this.resourceId, super.code})
+    : super(
+        'Not authorized to $action${resourceId != null ? ' on $resourceId' : ''}',
+      );
 
   @override
   String toString() => 'AuthorizationError: Not authorized to $action';
@@ -133,4 +124,3 @@ class SyncError extends CoinsError {
   @override
   String toString() => 'SyncError: $message (retryable: $isRetryable)';
 }
-

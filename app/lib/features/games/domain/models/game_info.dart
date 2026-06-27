@@ -5,7 +5,7 @@ enum GameCategory {
   card('Card Games', Icons.casino),
   board('Board Games', Icons.grid_on),
   puzzle('Puzzle Games', Icons.extension),
-  strategy('Strategy Games', Icons.psychology),
+  strategy('Strategy', Icons.psychology),
   arcade('Arcade Games', Icons.sports_esports),
   casual('Casual Games', Icons.games);
 
@@ -256,7 +256,7 @@ class GameRegistry {
     description:
         'Classic strategy board game where you checkmate your opponent\'s king.',
     shortDescription: 'Checkmate the king',
-    category: GameCategory.board,
+    category: GameCategory.strategy,
     minPlayers: 2,
     maxPlayers: 2,
     difficulty: GameDifficulty.hard,
@@ -282,6 +282,64 @@ class GameRegistry {
     routePath: '/games/chess',
   );
 
+  static const checkers = GameInfo(
+    id: 'checkers',
+    name: 'Checkers',
+    description:
+        'Classic tactical board game focused on captures, positioning, and promotion to kings.',
+    shortDescription: 'Capture pieces and control the board',
+    category: GameCategory.strategy,
+    minPlayers: 2,
+    maxPlayers: 2,
+    difficulty: GameDifficulty.medium,
+    objective:
+        'Capture all opposing pieces or block your opponent from making a legal move.',
+    rules: [
+      'Pieces move diagonally on dark squares only',
+      'Regular pieces move forward one space diagonally',
+      'Captures are made by jumping over an opposing piece',
+      'If a capture is available, it must be taken',
+      'Reach the opposite edge to crown a king',
+    ],
+    howToPlay: [
+      '1. Players alternate turns moving one piece diagonally',
+      '2. Jump over opponent pieces to capture them',
+      '3. Chain captures when multiple jumps are available',
+      '4. Reach the far edge to create a king',
+      '5. Win by removing or trapping all opposing pieces',
+    ],
+    isAvailable: false,
+  );
+
+  static const wordQuest = GameInfo(
+    id: 'word_quest',
+    name: 'Word Quest',
+    description:
+        'A relaxed word puzzle where you connect letters into themed chains before the timer runs out.',
+    shortDescription: 'Connect letters into themed words',
+    category: GameCategory.puzzle,
+    minPlayers: 1,
+    maxPlayers: 1,
+    difficulty: GameDifficulty.easy,
+    objective:
+        'Create valid words from the letter board and clear your target score before time expires.',
+    rules: [
+      'Letters can only be connected to adjacent tiles',
+      'Each tile can be used once per word',
+      'Longer words grant bonus points',
+      'Theme rounds unlock multipliers for matching words',
+      'The round ends when the timer expires',
+    ],
+    howToPlay: [
+      '1. Drag across adjacent letters to form a word',
+      '2. Release to submit the word',
+      '3. Build longer chains for score boosts',
+      '4. Complete theme goals to unlock bonuses',
+      '5. Reach the target score before time runs out',
+    ],
+    isAvailable: false,
+  );
+
   // ============================================================================
   // ALL GAMES REGISTRY
   // ============================================================================
@@ -296,15 +354,23 @@ class GameRegistry {
 
     // Board Games
     chess,
+
+    // Coming Soon
+    checkers,
+    wordQuest,
   ];
 
   static final List<GameInfo> available = all
       .where((game) => game.isAvailable)
       .toList();
 
-  static Map<GameCategory, List<GameInfo>> get byCategory {
+  static final List<GameInfo> comingSoon = all
+      .where((game) => !game.isAvailable)
+      .toList();
+
+  static Map<GameCategory, List<GameInfo>> get availableByCategory {
     final map = <GameCategory, List<GameInfo>>{};
-    for (final game in all) {
+    for (final game in available) {
       map.putIfAbsent(game.category, () => []).add(game);
     }
     return map;

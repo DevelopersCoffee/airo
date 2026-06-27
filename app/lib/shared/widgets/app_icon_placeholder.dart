@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../assets/shell_asset_registry.dart';
+
 /// A shared widget that displays the Airo app icon as a placeholder.
 ///
 /// This widget centralizes app icon usage to:
@@ -25,8 +27,14 @@ class AppIconPlaceholder extends StatelessWidget {
   /// How the icon should be scaled within its bounds
   final BoxFit fit;
 
+  /// Use fallbackIcon directly instead of loading the app icon asset.
+  final bool forceFallback;
+
+  /// Optional builder for asset load failures.
+  final ImageErrorWidgetBuilder? errorBuilder;
+
   /// Path to the app icon asset
-  static const String assetPath = 'assets/airo_icon.png';
+  static const String assetPath = ShellAssetRegistry.appIconRaster;
 
   const AppIconPlaceholder({
     super.key,
@@ -34,6 +42,8 @@ class AppIconPlaceholder extends StatelessWidget {
     this.padding = EdgeInsets.zero,
     this.fallbackIcon,
     this.fit = BoxFit.contain,
+    this.forceFallback = false,
+    this.errorBuilder,
   });
 
   /// Creates a placeholder with padding and optional size constraints
@@ -43,17 +53,16 @@ class AppIconPlaceholder extends StatelessWidget {
     this.size,
     this.fallbackIcon,
     this.fit = BoxFit.contain,
+    this.forceFallback = false,
+    this.errorBuilder,
   });
 
   /// Creates a placeholder for channel icons (with standard channel size)
   factory AppIconPlaceholder.channel({Key? key, bool isAudioOnly = false}) {
     return AppIconPlaceholder(
       key: key,
-      padding: const EdgeInsets.all(8),
-      fallbackIcon: Icon(
-        isAudioOnly ? Icons.radio : Icons.live_tv,
-        color: Colors.grey,
-      ),
+      fallbackIcon: _ChannelIconFallback(isAudioOnly: isAudioOnly),
+      forceFallback: true,
     );
   }
 
@@ -69,6 +78,10 @@ class AppIconPlaceholder extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (forceFallback) {
+      return fallbackIcon ?? Icon(Icons.image, color: Colors.grey, size: size);
+    }
+
     return Padding(
       padding: padding,
       child: Image.asset(
@@ -79,8 +92,11 @@ class AppIconPlaceholder extends StatelessWidget {
         // Cache the image for better performance
         cacheWidth: size != null ? (size! * 2).toInt() : null,
         cacheHeight: size != null ? (size! * 2).toInt() : null,
-        errorBuilder: (_, _, _) =>
-            fallbackIcon ?? Icon(Icons.image, color: Colors.grey, size: size),
+        errorBuilder:
+            errorBuilder ??
+            (_, _, _) =>
+                fallbackIcon ??
+                Icon(Icons.image, color: Colors.grey, size: size),
       ),
     );
   }
@@ -89,5 +105,26 @@ class AppIconPlaceholder extends StatelessWidget {
   /// Call this in main.dart or during app initialization
   static Future<void> precache(BuildContext context) async {
     await precacheImage(const AssetImage(assetPath), context);
+  }
+}
+
+class _ChannelIconFallback extends StatelessWidget {
+  const _ChannelIconFallback({required this.isAudioOnly});
+
+  final bool isAudioOnly;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return ColoredBox(
+      color: colorScheme.surface.withValues(alpha: 0.52),
+      child: Center(
+        child: Icon(
+          isAudioOnly ? Icons.radio : Icons.live_tv,
+          color: colorScheme.primary.withValues(alpha: 0.72),
+          size: 24,
+        ),
+      ),
+    );
   }
 }

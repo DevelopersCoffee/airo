@@ -49,14 +49,55 @@ class InMemoryCalendarConnector implements AgentConnector {
         message: 'read_calendar_events requires a date.',
       );
     }
+    final endDate = arguments['end_date'] as String?;
+    if (endDate != null &&
+        endDate.isNotEmpty &&
+        !_isValidIsoDate(endDate)) {
+      return const ConnectorResult.error(
+        code: 'invalid_end_date',
+        message: 'read_calendar_events end_date must be YYYY-MM-DD.',
+      );
+    }
 
+    final requestedDates = _expandRequestedDates(date, endDate);
+    if (requestedDates == null) {
+      return const ConnectorResult.error(
+        code: 'invalid_date_range',
+        message: 'read_calendar_events end_date must be on or after date.',
+      );
+    }
     return ConnectorResult(
       data: {
         'date': date,
-        'events': (_events[date] ?? const [])
+        if (endDate != null && endDate.isNotEmpty) 'end_date': endDate,
+        'events': requestedDates
+            .expand((requestedDate) => _events[requestedDate] ?? const [])
             .map((event) => event.toJson())
             .toList(),
       },
+    );
+  }
+}
+
+class InMemoryCreateCalendarEventConnector implements AgentConnector {
+  final createdEvents = <Map<String, dynamic>>[];
+
+  @override
+  String get name => 'create_calendar_event';
+
+  @override
+  Set<SkillCapability> get requiredCapabilities => {
+    SkillCapability.calendarWrite,
+  };
+
+  @override
+  Future<ConnectorResult> execute(Map<String, dynamic> arguments) async {
+    final validationError = _validateCalendarEvent(arguments);
+    if (validationError != null) return validationError;
+
+    createdEvents.add(Map<String, dynamic>.from(arguments));
+    return ConnectorResult(
+      data: {...arguments, 'created': true, 'source': 'in_memory_calendar'},
     );
   }
 }
@@ -89,7 +130,12 @@ class NativeCalendarConnector implements AgentConnector {
     try {
       final response = await _channel.invokeMapMethod<String, dynamic>(
         'readCalendarEvents',
-        {'date': date},
+        {
+          'date': date,
+          if (arguments['end_date'] case final String endDate
+              when endDate.isNotEmpty)
+            'end_date': endDate,
+        },
       );
       if (response == null) {
         return ConnectorResult(data: {'date': date, 'events': const []});
@@ -138,36 +184,35 @@ class NativeCreateCalendarEventConnector implements AgentConnector {
 
   @override
   Future<ConnectorResult> execute(Map<String, dynamic> arguments) async {
-    if (arguments['confirmed'] != true) {
-      return const ConnectorResult.error(
-        code: 'confirmation_required',
-        message: 'Please confirm before creating this calendar event.',
-      );
-    }
-
-    final title = arguments['title'] as String?;
-    final start = arguments['start'] as String?;
-    final end = arguments['end'] as String?;
-    if (title == null || title.trim().isEmpty || start == null || end == null) {
-      return const ConnectorResult.error(
-        code: 'invalid_calendar_event',
-        message: 'create_calendar_event requires title, start, and end.',
-      );
+    final isIsoEvent = arguments.containsKey('start');
+    if (isIsoEvent) {
+      if (arguments['confirmed'] != true) {
+        return const ConnectorResult.error(
+          code: 'confirmation_required',
+          message: 'Please confirm before creating this calendar event.',
+        );
+      }
+      final title = arguments['title'] as String?;
+      final start = arguments['start'] as String?;
+      final end = arguments['end'] as String?;
+      if (title == null || title.trim().isEmpty || start == null || end == null) {
+        return const ConnectorResult.error(
+          code: 'invalid_calendar_event',
+          message: 'create_calendar_event requires title, start, and end.',
+        );
+      }
+    } else {
+      final validationError = _validateCalendarEvent(arguments);
+      if (validationError != null) return validationError;
     }
 
     try {
-      final response = await _channel
-          .invokeMapMethod<String, dynamic>('createCalendarEvent', {
-            'title': title,
-            'start': start,
-            'end': end,
-            if (arguments['description'] is String)
-              'description': arguments['description'],
-            if (arguments['location'] is String)
-              'location': arguments['location'],
-          });
+      final response = await _channel.invokeMapMethod<String, dynamic>(
+        'createCalendarEvent',
+        arguments,
+      );
       if (response == null) {
-        return const ConnectorResult(data: {'created': true});
+        return ConnectorResult(data: {...arguments, 'created': true});
       }
       if (response['error'] is String) {
         return ConnectorResult.error(
@@ -181,8 +226,9 @@ class NativeCreateCalendarEventConnector implements AgentConnector {
       return ConnectorResult(data: response);
     } on MissingPluginException {
       return const ConnectorResult.error(
-        code: 'calendar_channel_unavailable',
+        code: 'calendar_write_unavailable',
         message: 'Calendar event creation is not available on this device yet.',
+        data: {'source': 'calendar_channel_unavailable'},
       );
     } on PlatformException catch (error) {
       return ConnectorResult.error(
@@ -238,4 +284,76 @@ class NativeCalendarPermissionConnector implements AgentConnector {
       );
     }
   }
+}
+
+ConnectorResult? _validateCalendarEvent(Map<String, dynamic> arguments) {
+  final title = (arguments['title'] as String?)?.trim();
+  if (title == null || title.isEmpty) {
+    return const ConnectorResult.error(
+      code: 'missing_title',
+      message: 'create_calendar_event requires a title.',
+    );
+  }
+
+  final date = (arguments['date'] as String?)?.trim();
+  if (date == null || date.isEmpty) {
+    return const ConnectorResult.error(
+      code: 'missing_date',
+      message: 'create_calendar_event requires a date.',
+    );
+  }
+  if (!RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(date)) {
+    return const ConnectorResult.error(
+      code: 'invalid_date',
+      message: 'create_calendar_event date must be YYYY-MM-DD.',
+    );
+  }
+
+  final hour = _readInt(arguments['hour']);
+  final minute = _readInt(arguments['minute']) ?? 0;
+  if (hour == null || hour < 0 || hour > 23) {
+    return const ConnectorResult.error(
+      code: 'invalid_hour',
+      message: 'create_calendar_event requires hour in 0-23 format.',
+    );
+  }
+  if (minute < 0 || minute > 59) {
+    return const ConnectorResult.error(
+      code: 'invalid_minute',
+      message: 'create_calendar_event requires minute in 0-59 format.',
+    );
+  }
+
+  return null;
+}
+
+int? _readInt(Object? value) {
+  if (value is int) return value;
+  if (value is num) return value.toInt();
+  if (value is String) return int.tryParse(value);
+  return null;
+}
+
+bool _isValidIsoDate(String value) {
+  return RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(value);
+}
+
+List<String>? _expandRequestedDates(String date, String? endDate) {
+  if (!_isValidIsoDate(date)) return null;
+  if (endDate == null || endDate.isEmpty) return [date];
+  if (!_isValidIsoDate(endDate)) return null;
+
+  final start = DateTime.tryParse(date);
+  final end = DateTime.tryParse(endDate);
+  if (start == null || end == null || end.isBefore(start)) return null;
+
+  final dates = <String>[];
+  for (
+    var current = start;
+    !current.isAfter(end);
+    current = current.add(const Duration(days: 1))
+  ) {
+    dates.add(current.toIso8601String().substring(0, 10));
+  }
+  return dates;
 }

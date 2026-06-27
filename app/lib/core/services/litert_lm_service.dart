@@ -1,3 +1,4 @@
+import 'package:core_ai/core_ai.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
@@ -42,9 +43,14 @@ class LiteRtLmConfig {
 
 /// Thin boundary around the concrete LiteRT-LM runtime implementation.
 abstract class LiteRtLmClient {
-  Future<void> initialize({String? huggingFaceToken});
+  Future<void> initialize({
+    String? huggingFaceToken,
+    String? modelPath,
+    LiteRtLmBackend? backend,
+    int? maxTokens,
+  });
 
-  Future<bool> activeModelExists();
+  Future<bool> activeModelExists({String? modelPath});
 
   Future<void> installModel({
     required String url,
@@ -65,11 +71,14 @@ class LiteRtLmService {
   LiteRtLmService({
     LiteRtLmClient? client,
     this.config = const LiteRtLmConfig(),
-  }) : _client = client ?? MethodChannelLiteRtLmClient(config: config);
+    ModelDownloadService? downloadService,
+  }) : _client = client ?? MethodChannelLiteRtLmClient(config: config),
+       _downloadService = downloadService ?? ModelDownloadService();
 
   final LiteRtLmClient _client;
   final LiteRtLmConfig config;
-  bool _initialized = false;
+  final ModelDownloadService _downloadService;
+  String? _initializedModelPath;
 
   Future<bool> isAvailable() async {
     if (kIsWeb) return false;
@@ -79,7 +88,7 @@ class LiteRtLmService {
 
   Future<String?> generateText(String prompt, {String? systemPrompt}) async {
     if (prompt.trim().isEmpty) return null;
-    if (!await _ensureInitialized()) return null;
+    if (!await _ensureDefaultInitialized()) return null;
 
     return _client.generate(
       prompt: prompt,
@@ -89,23 +98,117 @@ class LiteRtLmService {
     );
   }
 
-  Future<bool> _ensureInitialized() async {
-    if (_initialized) return true;
+  Future<String?> generateTextForModel(
+    OfflineModelInfo model,
+    String prompt, {
+    String? systemPrompt,
+  }) async {
+    if (kIsWeb || prompt.trim().isEmpty) return null;
 
-    if (!await _client.activeModelExists()) {
-      if (!config.hasModelUrl) return false;
-      await _client.installModel(
-        url: config.modelUrl.trim(),
-        modelKind: config.modelKind,
-        huggingFaceToken: config.optionalHuggingFaceToken,
-      );
+    final hydratedModel = await hydrateDownloadedModel(model);
+    final modelPath = hydratedModel.filePath?.trim();
+    if (modelPath == null || modelPath.isEmpty) {
+      return null;
     }
 
+    final backend = _backendFor(hydratedModel.backendPreference);
+    if (!await _ensureInitializedForRequest(
+      modelPath: modelPath,
+      backend: backend,
+      maxTokens: config.maxTokens,
+    )) {
+      return null;
+    }
+
+    return _client.generate(
+      prompt: prompt,
+      systemPrompt: systemPrompt,
+      backend: backend,
+      maxTokens: config.maxTokens,
+    );
+  }
+
+  Future<OfflineModelInfo> hydrateDownloadedModel(
+    OfflineModelInfo model,
+  ) async {
+    if (kIsWeb) return model;
+    if (model.filePath?.trim().isNotEmpty == true) {
+      return model;
+    }
+
+    final modelPath = await downloadedModelPath(model.id);
+    if (modelPath == null) {
+      return model;
+    }
+    return model.copyWith(filePath: modelPath);
+  }
+
+  Future<String?> downloadedModelPath(String modelId) async {
+    if (kIsWeb) return null;
+    final isDownloaded = await _downloadService.isModelDownloaded(modelId);
+    if (!isDownloaded) return null;
+    return _downloadService.getModelPath(modelId);
+  }
+
+  Future<bool> _ensureDefaultInitialized() async {
+    return _ensureInitializedForRequest(
+      modelPath: config.hasModelPath ? config.modelPath.trim() : null,
+      backend: config.backend,
+      maxTokens: config.maxTokens,
+      installUrl: config.hasModelUrl ? config.modelUrl.trim() : null,
+      modelKind: config.modelKind,
+    );
+  }
+
+  Future<bool> _ensureInitializedForRequest({
+    String? modelPath,
+    LiteRtLmBackend? backend,
+    int? maxTokens,
+    String? installUrl,
+    LiteRtLmModelKind? modelKind,
+  }) async {
+    final trimmedModelPath = modelPath?.trim();
+    if (_initializedModelPath != null &&
+        trimmedModelPath != null &&
+        _initializedModelPath == trimmedModelPath) {
+      return true;
+    }
+
+    var resolvedModelPath = trimmedModelPath;
+
+    if (!await _client.activeModelExists(modelPath: resolvedModelPath)) {
+      final resolvedInstallUrl = installUrl?.trim();
+      if (resolvedInstallUrl == null || resolvedInstallUrl.isEmpty) {
+        return false;
+      }
+      await _client.installModel(
+        url: resolvedInstallUrl,
+        modelKind: modelKind ?? config.modelKind,
+        huggingFaceToken: config.optionalHuggingFaceToken,
+      );
+      resolvedModelPath = null;
+    }
     await _client.initialize(
       huggingFaceToken: config.optionalHuggingFaceToken,
+      modelPath: resolvedModelPath,
+      backend: backend ?? config.backend,
+      maxTokens: maxTokens ?? config.maxTokens,
     );
-    _initialized = true;
+    _initializedModelPath =
+        resolvedModelPath ??
+        installUrl?.trim() ??
+        (config.hasModelPath ? config.modelPath.trim() : null);
     return true;
+  }
+
+  LiteRtLmBackend _backendFor(ModelBackendPreference preference) {
+    return switch (preference) {
+      ModelBackendPreference.cpu => LiteRtLmBackend.cpu,
+      ModelBackendPreference.gpu => LiteRtLmBackend.gpu,
+      ModelBackendPreference.npu ||
+      ModelBackendPreference.aiCore => LiteRtLmBackend.npu,
+      ModelBackendPreference.auto => config.backend,
+    };
   }
 }
 
@@ -130,12 +233,14 @@ class MethodChannelLiteRtLmClient implements LiteRtLmClient {
   }
 
   @override
-  Future<bool> activeModelExists() async {
-    final modelPath = _activeModelPath;
-    if (modelPath == null) return false;
+  Future<bool> activeModelExists({String? modelPath}) async {
+    final resolvedModelPath = (modelPath?.trim().isNotEmpty ?? false)
+        ? modelPath!.trim()
+        : _activeModelPath;
+    if (resolvedModelPath == null) return false;
     try {
       final available = await _channel.invokeMethod<bool>('isAvailable', {
-        'modelPath': modelPath,
+        'modelPath': resolvedModelPath,
       });
       return available ?? false;
     } on PlatformException catch (e) {
@@ -163,16 +268,23 @@ class MethodChannelLiteRtLmClient implements LiteRtLmClient {
   }
 
   @override
-  Future<void> initialize({String? huggingFaceToken}) async {
-    final modelPath = _activeModelPath;
-    if (modelPath == null) {
+  Future<void> initialize({
+    String? huggingFaceToken,
+    String? modelPath,
+    LiteRtLmBackend? backend,
+    int? maxTokens,
+  }) async {
+    final resolvedModelPath = (modelPath?.trim().isNotEmpty ?? false)
+        ? modelPath!.trim()
+        : _activeModelPath;
+    if (resolvedModelPath == null) {
       throw StateError('LiteRT-LM model path is not configured');
     }
 
     await _channel.invokeMethod<bool>('initialize', {
-      'modelPath': modelPath,
-      'backend': _config.backend.name,
-      'maxTokens': _config.maxTokens,
+      'modelPath': resolvedModelPath,
+      'backend': (backend ?? _config.backend).name,
+      'maxTokens': maxTokens ?? _config.maxTokens,
     });
   }
 

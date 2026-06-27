@@ -158,8 +158,8 @@ class MoneyTool implements Tool {
         );
       case IntentType.modelManagement:
         return const AgentToolResult(
-          route: '/agent/models',
-          message: 'Opening the Assistant Model Library.',
+          route: '/agent/profile',
+          message: 'Opening Profile model settings.',
         );
       default:
         return null;
@@ -435,6 +435,13 @@ class ToolRegistry {
         title: 'Calendar',
         description: 'Check today\'s schedule with a skill',
         iconKey: 'calendar',
+        featured: true,
+      ),
+      AgentSkillCard(
+        key: 'smart_reminders',
+        title: 'Smart Reminders',
+        description: 'Schedule medicine, family, and habit reminders',
+        iconKey: 'notifications',
         featured: true,
       ),
       AgentSkillCard(

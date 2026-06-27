@@ -12,6 +12,7 @@ import '../../features/music/presentation/widgets/mini_player.dart';
 import '../../features/iptv/presentation/widgets/iptv_mini_player.dart';
 import '../../features/iptv/application/providers/iptv_providers.dart'
     hide currentNavigationTabProvider;
+import '../../shared/widgets/app_icon_placeholder.dart';
 
 /// Get initials from a name (e.g., "Uday Chauhan" -> "UC", "Uday" -> "U")
 String _getInitials(String name) {
@@ -59,10 +60,8 @@ class AppShell extends ConsumerWidget {
             borderRadius: BorderRadius.circular(20),
             child: Padding(
               padding: const EdgeInsets.all(8.0),
-              child: Image.asset(
-                'assets/images/app_icon.png',
-                width: 32,
-                height: 32,
+              child: AppIconPlaceholder(
+                size: 32,
                 errorBuilder: (_, _, _) => const Icon(Icons.home),
               ),
             ),
@@ -73,7 +72,7 @@ class AppShell extends ConsumerWidget {
           actions: [
             IconButton(
               tooltip: 'Notifications',
-              onPressed: () => context.push('/agent/notifications'),
+              onPressed: () => context.push('/mind/notifications'),
               icon: const Icon(Icons.notifications_outlined),
             ),
             // User profile avatar with menu
@@ -121,7 +120,7 @@ class AppShell extends ConsumerWidget {
                     context.go(RouteNames.login);
                   }
                 } else if (value == 'profile') {
-                  context.push('/agent/profile');
+                  context.push('/mind/profile');
                 }
               },
               itemBuilder: (context) => [
@@ -182,6 +181,7 @@ class AppShell extends ConsumerWidget {
           destinations: [
             for (final tab in navigationTabs)
               NavigationDestination(
+                key: ValueKey('app_nav_${tab.name}'),
                 icon: Icon(tab.icon),
                 selectedIcon: Icon(tab.selectedIcon),
                 label: tab.label,
@@ -203,7 +203,7 @@ class AppShell extends ConsumerWidget {
   }
 }
 
-/// Context-aware mini players that hide on their owning media tabs.
+/// Context-aware mini players shown only on their owning media tabs.
 class _ContextAwareMiniPlayers extends ConsumerWidget {
   final int currentIndex;
   final Widget child;

@@ -15,14 +15,29 @@ class GamesHubScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final gamesByCategory = GameRegistry.byCategory;
+    final sections = [
+      ...GameRegistry.availableByCategory.entries.map(
+        (entry) => _GameSection(
+          title: entry.key.displayName,
+          icon: entry.key.icon,
+          games: entry.value,
+        ),
+      ),
+      if (GameRegistry.comingSoon.isNotEmpty)
+        _GameSection(
+          title: 'Coming Soon',
+          icon: Icons.construction,
+          games: GameRegistry.comingSoon,
+        ),
+    ];
 
     // No AppBar here - global AppBar is in AppShell
     return Scaffold(
+      backgroundColor: Colors.transparent,
       body: ResponsiveCenter(
         maxWidth: ResponsiveBreakpoints.dashboardMaxWidth,
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -42,24 +57,21 @@ class GamesHubScreen extends ConsumerWidget {
               const SizedBox(height: 24),
 
               // Game categories in grid
-              ...gamesByCategory.entries.map((entry) {
-                final category = entry.key;
-                final games = entry.value;
-
+              ...sections.map((section) {
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // Category header
                     Row(
                       children: [
-                        Icon(category.icon, size: 20),
+                        Icon(section.icon, size: 20),
                         const SizedBox(width: 8),
                         Text(
-                          category.displayName,
+                          section.title,
                           style: Theme.of(context).textTheme.titleLarge,
                         ),
                         const Spacer(),
-                        if (games.length > 4)
+                        if (section.games.length > 4)
                           TextButton(
                             onPressed: () {
                               // TODO: View all in category
@@ -87,11 +99,15 @@ class GamesHubScreen extends ConsumerWidget {
                                 crossAxisCount: columns,
                                 crossAxisSpacing: 12,
                                 mainAxisSpacing: 12,
-                                childAspectRatio: 0.85,
+                                childAspectRatio: columns <= 2 ? 0.92 : 1.12,
                               ),
-                          itemCount: games.length,
+                          itemCount: section.games.length,
                           itemBuilder: (context, index) {
-                            return _buildGameTile(context, ref, games[index]);
+                            return _buildGameTile(
+                              context,
+                              ref,
+                              section.games[index],
+                            );
                           },
                         );
                       },
@@ -136,14 +152,20 @@ class GamesHubScreen extends ConsumerWidget {
 
   Widget _buildGameTile(BuildContext context, WidgetRef ref, GameInfo game) {
     // Use RepaintBoundary to prevent unnecessary repaints
+    final colorScheme = Theme.of(context).colorScheme;
     return RepaintBoundary(
-      child: Card(
+      child: Material(
+        color: Colors.transparent,
         child: InkWell(
-          onTap: game.isAvailable ? () => _playGame(context, ref, game) : null,
-          child: Opacity(
-            opacity: game.isAvailable ? 1.0 : 0.6,
-            child: Padding(
-              padding: const EdgeInsets.all(12),
+          onTap: () => _playGame(context, ref, game),
+          child: Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: colorScheme.surface.withValues(alpha: 0.3),
+              border: Border.all(color: colorScheme.outlineVariant),
+            ),
+            child: Opacity(
+              opacity: game.isAvailable ? 1.0 : 0.6,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -156,7 +178,7 @@ class GamesHubScreen extends ConsumerWidget {
                           color: game.isAvailable
                               ? game.difficulty.color.withValues(alpha: 0.1)
                               : Colors.grey.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(6),
                         ),
                         child: Icon(
                           game.icon,
@@ -194,7 +216,10 @@ class GamesHubScreen extends ConsumerWidget {
                   // Game description
                   Text(
                     game.shortDescription,
-                    style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: colorScheme.primary.withValues(alpha: 0.64),
+                    ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -203,14 +228,18 @@ class GamesHubScreen extends ConsumerWidget {
                   // Game info
                   Row(
                     children: [
-                      Icon(Icons.person, size: 12, color: Colors.grey[600]),
+                      Icon(
+                        Icons.person,
+                        size: 12,
+                        color: colorScheme.primary.withValues(alpha: 0.58),
+                      ),
                       const SizedBox(width: 4),
                       Expanded(
                         child: Text(
                           game.playerCountDisplay,
                           style: TextStyle(
                             fontSize: 10,
-                            color: Colors.grey[600],
+                            color: colorScheme.primary.withValues(alpha: 0.58),
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -282,6 +311,15 @@ class GamesHubScreen extends ConsumerWidget {
   }
 
   void _playGame(BuildContext context, WidgetRef ref, GameInfo game) {
+    if (!game.isAvailable) {
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => GameComingSoonScreen(game: game),
+        ),
+      );
+      return;
+    }
+
     switch (game.id) {
       case 'blackjack':
         _playBlackjack(context, ref);
@@ -332,4 +370,16 @@ class GamesHubScreen extends ConsumerWidget {
       ),
     );
   }
+}
+
+class _GameSection {
+  const _GameSection({
+    required this.title,
+    required this.icon,
+    required this.games,
+  });
+
+  final String title;
+  final IconData icon;
+  final List<GameInfo> games;
 }

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:core_ai/core_ai.dart';
 
+import '../../application/ai_model_management.dart';
+import '../../../../core/ai/model_learn_more_launcher.dart';
 import '../widgets/credibility_badge.dart';
 
 /// Detail screen for viewing and managing a single AI model.
@@ -9,9 +11,14 @@ import '../widgets/credibility_badge.dart';
 /// Shows comprehensive model information, compatibility details,
 /// and provides download/delete actions.
 class ModelDetailScreen extends ConsumerWidget {
-  const ModelDetailScreen({super.key, required this.model});
+  const ModelDetailScreen({
+    super.key,
+    required this.model,
+    this.launchUrlCallback,
+  });
 
   final OfflineModelInfo model;
+  final LaunchModelUrl? launchUrlCallback;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -19,11 +26,11 @@ class ModelDetailScreen extends ConsumerWidget {
       appBar: AppBar(
         title: Text(model.name),
         actions: [
-          if (model.huggingFaceId != null)
+          if (model.learnMoreUri != null)
             IconButton(
               icon: const Icon(Icons.open_in_new),
-              tooltip: 'View on HuggingFace',
-              onPressed: () => _openHuggingFace(context),
+              tooltip: 'Learn more',
+              onPressed: () => _openLearnMore(context),
             ),
         ],
       ),
@@ -104,7 +111,7 @@ class ModelDetailScreen extends ConsumerWidget {
           const SizedBox(height: 24),
 
           // Action button
-          _buildActionButton(context),
+          _buildActionButton(context, ref),
         ],
       ),
     );
@@ -216,22 +223,25 @@ class ModelDetailScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildActionButton(BuildContext context) {
+  Widget _buildActionButton(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final activeDownloads = ref.watch(activeDownloadsProvider);
+    final downloadProgress = activeDownloads[model.id];
+    final isDownloading = downloadProgress?.isInProgress ?? false;
 
     if (model.isDownloaded) {
       return Row(
         children: [
           Expanded(
             child: FilledButton.icon(
-              onPressed: () => _setActive(context),
+              onPressed: () => _setActive(context, ref),
               icon: const Icon(Icons.play_arrow),
               label: const Text('Set as Active Model'),
             ),
           ),
           const SizedBox(width: 12),
           OutlinedButton(
-            onPressed: () => _deleteModel(context),
+            onPressed: () => _deleteModel(context, ref),
             style: OutlinedButton.styleFrom(
               foregroundColor: theme.colorScheme.error,
             ),
@@ -242,9 +252,13 @@ class ModelDetailScreen extends ConsumerWidget {
     }
 
     return FilledButton.icon(
-      onPressed: () => _downloadModel(context),
-      icon: const Icon(Icons.download),
-      label: Text('Download (${model.fileSizeDisplay})'),
+      onPressed: isDownloading ? null : () => _downloadModel(context, ref),
+      icon: Icon(isDownloading ? Icons.downloading : Icons.download),
+      label: Text(
+        isDownloading
+            ? 'Downloading ${downloadProgress?.progressPercent ?? 0}%'
+            : 'Download (${model.fileSizeDisplay})',
+      ),
     );
   }
 
@@ -255,27 +269,31 @@ class ModelDetailScreen extends ConsumerWidget {
     return '${mb.toStringAsFixed(0)} MB';
   }
 
-  void _openHuggingFace(BuildContext context) {
-    // TODO: Launch URL to HuggingFace
-    ScaffoldMessenger.of(
+  Future<void> _openLearnMore(BuildContext context) {
+    return launchModelLearnMore(
       context,
-    ).showSnackBar(SnackBar(content: Text('Opening ${model.huggingFaceId}')));
+      model,
+      launchUrlCallback: launchUrlCallback,
+    );
   }
 
-  void _setActive(BuildContext context) {
+  Future<void> _setActive(BuildContext context, WidgetRef ref) async {
+    await activateOfflineModel(ref, model);
+    if (!context.mounted) return;
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(SnackBar(content: Text('${model.name} is now active')));
     Navigator.pop(context);
   }
 
-  Future<void> _downloadModel(BuildContext context) async {
+  Future<void> _downloadModel(BuildContext context, WidgetRef ref) async {
+    ref.read(activeDownloadsProvider.notifier).startDownload(model);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('Starting download of ${model.name}...')),
     );
   }
 
-  Future<void> _deleteModel(BuildContext context) async {
+  Future<void> _deleteModel(BuildContext context, WidgetRef ref) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -300,10 +318,38 @@ class ModelDetailScreen extends ConsumerWidget {
     );
 
     if (confirmed == true && context.mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('${model.name} deleted')));
-      Navigator.pop(context);
+      try {
+        final downloadService = ref.read(modelDownloadServiceProvider);
+        final deleted = await downloadService.deleteModel(model.id);
+
+        if (deleted) {
+          ref.read(modelRegistryProvider).markAsRemoved(model.id);
+          await clearOfflineModelSelections(ref, model);
+          if (!context.mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('${model.name} deleted successfully'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          Navigator.pop(context);
+        } else if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('${model.name} file not found'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+      } catch (e) {
+        if (!context.mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to delete: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 }

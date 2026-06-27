@@ -47,8 +47,9 @@ class TransactionRepositoryImpl implements TransactionRepository {
   @override
   Future<Result<List<Transaction>>> findByCategory(String categoryId) async {
     try {
-      final entities =
-          await _localDatasource.getTransactionsByCategory(categoryId);
+      final entities = await _localDatasource.getTransactionsByCategory(
+        categoryId,
+      );
       return (data: entities.map(_mapper.toDomain).toList(), error: null);
     } catch (e) {
       return (data: null, error: 'Failed to fetch transactions: $e');
@@ -58,8 +59,9 @@ class TransactionRepositoryImpl implements TransactionRepository {
   @override
   Future<Result<List<Transaction>>> findByAccount(String accountId) async {
     try {
-      final entities =
-          await _localDatasource.getTransactionsByAccount(accountId);
+      final entities = await _localDatasource.getTransactionsByAccount(
+        accountId,
+      );
       return (data: entities.map(_mapper.toDomain).toList(), error: null);
     } catch (e) {
       return (data: null, error: 'Failed to fetch transactions: $e');
@@ -73,6 +75,16 @@ class TransactionRepositoryImpl implements TransactionRepository {
       return (data: entities.map(_mapper.toDomain).toList(), error: null);
     } catch (e) {
       return (data: null, error: 'Failed to fetch transactions: $e');
+    }
+  }
+
+  @override
+  Future<Result<List<Transaction>>> findByTag(String tag) async {
+    try {
+      final entities = await _localDatasource.getTransactionsByTag(tag);
+      return (data: entities.map(_mapper.toDomain).toList(), error: null);
+    } catch (e) {
+      return (data: null, error: 'Failed to fetch transactions by tag: $e');
     }
   }
 
@@ -134,9 +146,9 @@ class TransactionRepositoryImpl implements TransactionRepository {
 
   @override
   Stream<List<Transaction>> watchAll() {
-    return _localDatasource
-        .watchAllTransactions()
-        .map((entities) => entities.map(_mapper.toDomain).toList());
+    return _localDatasource.watchAllTransactions().map(
+      (entities) => entities.map(_mapper.toDomain).toList(),
+    );
   }
 
   @override
@@ -186,4 +198,3 @@ class TransactionRepositoryImpl implements TransactionRepository {
     }
   }
 }
-

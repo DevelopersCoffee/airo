@@ -7,7 +7,7 @@ void main() {
     test('AiroMoneyConstants has expected default values', () {
       expect(AiroMoneyConstants.packageName, 'airomoney');
       expect(AiroMoneyConstants.packageVersion, isNotEmpty);
-      expect(AiroMoneyConstants.defaultCurrency, 'USD');
+      expect(AiroMoneyConstants.defaultCurrency, 'INR');
       expect(AiroMoneyConstants.defaultDecimalPlaces, 2);
     });
 

@@ -1,17 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../error/global_error_handler.dart';
+import '../providers/app_theme_provider.dart';
 import '../routing/app_router.dart';
-import '../theme/app_theme.dart';
 import '../platform/platform_config.dart';
 
-class AiroApp extends StatefulWidget {
+class AiroApp extends ConsumerStatefulWidget {
   const AiroApp({super.key});
 
   @override
-  State<AiroApp> createState() => _AiroAppState();
+  ConsumerState<AiroApp> createState() => _AiroAppState();
 }
 
-class _AiroAppState extends State<AiroApp> {
+class _AiroAppState extends ConsumerState<AiroApp> {
   @override
   void initState() {
     super.initState();
@@ -24,11 +25,15 @@ class _AiroAppState extends State<AiroApp> {
 
   @override
   Widget build(BuildContext context) {
+    final themeDefinition = ref.watch(appThemeDefinitionProvider);
+
     return MaterialApp.router(
       title: 'Airo Super App',
-      theme: PlatformConfig.adjustThemeForPlatform(AppTheme.light),
-      darkTheme: PlatformConfig.adjustThemeForPlatform(AppTheme.dark),
-      themeMode: ThemeMode.system,
+      theme: PlatformConfig.adjustThemeForPlatform(themeDefinition.lightTheme),
+      darkTheme: PlatformConfig.adjustThemeForPlatform(
+        themeDefinition.darkTheme,
+      ),
+      themeMode: themeDefinition.themeMode,
       routerConfig: AppRouter.router,
       debugShowCheckedModeBanner: false,
       // Platform-specific scroll behavior

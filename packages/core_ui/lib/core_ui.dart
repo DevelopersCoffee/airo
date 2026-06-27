@@ -4,9 +4,12 @@
 library core_ui;
 
 // Theme
+export 'src/theme/airo_theme_tokens.dart';
 export 'src/theme/app_colors.dart';
 export 'src/theme/app_spacing.dart';
 export 'src/theme/app_typography.dart';
+export 'src/theme/app_theme_definition.dart';
+export 'src/theme/app_theme_id.dart';
 export 'src/theme/app_theme.dart';
 export 'src/theme/bedtime_theme.dart';
 

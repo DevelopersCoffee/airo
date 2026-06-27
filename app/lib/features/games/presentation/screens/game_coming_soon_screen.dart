@@ -34,137 +34,141 @@ class GameComingSoonScreen extends StatelessWidget {
             ],
           ),
         ),
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                // Game icon
-                Container(
-                  padding: const EdgeInsets.all(32),
-                  decoration: BoxDecoration(
-                    color: game.difficulty.color.withValues(alpha: 0.2),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    game.icon,
-                    size: 80,
-                    color: game.difficulty.color,
-                  ),
-                ),
-                const SizedBox(height: 32),
-
-                // Game name
-                Text(
-                  game.name,
-                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 16),
-
-                // Description
-                Text(
-                  game.description,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.bodyLarge?.copyWith(color: Colors.grey[600]),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 32),
-
-                // Coming soon badge
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: 12,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.orange.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(24),
-                    border: Border.all(color: Colors.orange, width: 2),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(
-                        Icons.construction,
-                        color: Colors.orange,
-                        size: 20,
+        child: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 720),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    // Game icon
+                    Container(
+                      padding: const EdgeInsets.all(32),
+                      decoration: BoxDecoration(
+                        color: game.difficulty.color.withValues(alpha: 0.2),
+                        shape: BoxShape.circle,
                       ),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Full Gameplay Coming Soon',
-                        style: TextStyle(
-                          color: Colors.orange[800],
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
+                      child: Icon(
+                        game.icon,
+                        size: 80,
+                        color: game.difficulty.color,
+                      ),
+                    ),
+                    const SizedBox(height: 32),
+
+                    // Game name
+                    Text(
+                      game.name,
+                      style: Theme.of(context).textTheme.headlineMedium
+                          ?.copyWith(fontWeight: FontWeight.bold),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Description
+                    Text(
+                      game.description,
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodyLarge?.copyWith(color: Colors.grey[600]),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 32),
+
+                    // Coming soon badge
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 12,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(color: Colors.orange, width: 2),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.construction,
+                            color: Colors.orange,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Full Gameplay Coming Soon',
+                            style: TextStyle(
+                              color: Colors.orange[800],
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 32),
+
+                    // Game info
+                    Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          children: [
+                            _buildInfoRow(
+                              Icons.people,
+                              'Players',
+                              game.playerCountDisplay,
+                            ),
+                            const Divider(),
+                            _buildInfoRow(
+                              Icons.speed,
+                              'Difficulty',
+                              game.difficulty.displayName,
+                            ),
+                            const Divider(),
+                            _buildInfoRow(
+                              Icons.category,
+                              'Category',
+                              game.category.displayName,
+                            ),
+                          ],
                         ),
                       ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 32),
-
-                // Game info
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      children: [
-                        _buildInfoRow(
-                          Icons.people,
-                          'Players',
-                          game.playerCountDisplay,
-                        ),
-                        const Divider(),
-                        _buildInfoRow(
-                          Icons.speed,
-                          'Difficulty',
-                          game.difficulty.displayName,
-                        ),
-                        const Divider(),
-                        _buildInfoRow(
-                          Icons.category,
-                          'Category',
-                          game.category.displayName,
-                        ),
-                      ],
                     ),
-                  ),
-                ),
-                const SizedBox(height: 24),
+                    const SizedBox(height: 24),
 
-                // View rules button
-                ElevatedButton.icon(
-                  onPressed: () {
-                    UnifiedGameRulesDialog.show(context, game);
-                  },
-                  icon: const Icon(Icons.menu_book),
-                  label: const Text('View Rules & How to Play'),
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 16,
+                    // View rules button
+                    ElevatedButton.icon(
+                      onPressed: () {
+                        UnifiedGameRulesDialog.show(context, game);
+                      },
+                      icon: const Icon(Icons.menu_book),
+                      label: const Text('View Rules & How to Play'),
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 16,
+                        ),
+                        backgroundColor: game.difficulty.color,
+                        foregroundColor: Colors.white,
+                      ),
                     ),
-                    backgroundColor: game.difficulty.color,
-                    foregroundColor: Colors.white,
-                  ),
-                ),
-                const SizedBox(height: 16),
+                    const SizedBox(height: 16),
 
-                // Status message
-                Text(
-                  'This game is currently under development.\nCheck back soon for the full experience!',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Colors.grey[500],
-                    fontStyle: FontStyle.italic,
-                  ),
-                  textAlign: TextAlign.center,
+                    // Status message
+                    Text(
+                      'This game is currently under development.\nCheck back soon for the full experience!',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Colors.grey[500],
+                        fontStyle: FontStyle.italic,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
           ),
         ),

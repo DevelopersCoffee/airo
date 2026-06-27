@@ -17,11 +17,11 @@ class GroupSettings extends Equatable {
 
   @override
   List<Object?> get props => [
-        simplifyDebts,
-        defaultEqualSplit,
-        allowMultiCurrency,
-        defaultCurrencyCode,
-      ];
+    simplifyDebts,
+    defaultEqualSplit,
+    allowMultiCurrency,
+    defaultCurrencyCode,
+  ];
 }
 
 /// Group entity for split bill management
@@ -111,18 +111,17 @@ class Group extends Equatable {
 
   @override
   List<Object?> get props => [
-        id,
-        name,
-        description,
-        iconUrl,
-        defaultCurrencyCode,
-        members,
-        settings,
-        creatorId,
-        inviteCode,
-        isArchived,
-        createdAt,
-        updatedAt,
-      ];
+    id,
+    name,
+    description,
+    iconUrl,
+    defaultCurrencyCode,
+    members,
+    settings,
+    creatorId,
+    inviteCode,
+    isArchived,
+    createdAt,
+    updatedAt,
+  ];
 }
-

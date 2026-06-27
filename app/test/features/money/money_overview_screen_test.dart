@@ -44,20 +44,22 @@ void main() {
   }
 
   group('MoneyOverviewScreen', () {
-    testWidgets('shows Finance Hub app bar and required quick actions', (
+    testWidgets('shows Hermes-style Coins hero without command actions', (
       tester,
     ) async {
       await tester.pumpWidget(buildScreen());
       await tester.pump();
 
-      expect(find.widgetWithText(AppBar, 'Airo'), findsOneWidget);
-      expect(find.byTooltip('History'), findsOneWidget);
-      expect(find.byTooltip('Help'), findsOneWidget);
-
-      final actionLabels = ['Send', 'Request', 'Pay', 'Scan'];
-      for (final label in actionLabels) {
-        expect(find.text(label), findsOneWidget);
-      }
+      expect(find.text('OPEN FINANCE • AIRO COINS'), findsOneWidget);
+      expect(find.text('THE MONEY THAT\nWORKS WITH YOU.'), findsOneWidget);
+      expect(find.text('1.  CREATE'), findsNothing);
+      expect(find.text('2.  REVIEW'), findsNothing);
+      expect(
+        find.text('add expense --split equal --settle later'),
+        findsNothing,
+      );
+      expect(find.text('open ledger --recent --budget warnings'), findsNothing);
+      expect(find.text('SEE IT IN ACTION'), findsOneWidget);
       expect(find.text('Split Bill'), findsNothing);
       expect(find.text('Send Money'), findsNothing);
     });
@@ -71,10 +73,10 @@ void main() {
       await tester.pump();
 
       for (var i = 1; i <= 5; i++) {
-        expect(find.text('Transaction $i'), findsOneWidget);
+        expect(find.textContaining('Transaction $i'), findsWidgets);
       }
-      expect(find.text('Transaction 6'), findsNothing);
-      expect(find.text('View All Transactions'), findsOneWidget);
+      expect(find.textContaining('Transaction 6'), findsNothing);
+      expect(find.textContaining('Found 6 ledger entries.'), findsOneWidget);
     });
 
     testWidgets('keeps unrelated lifestyle content out of Coins tab', (
@@ -88,7 +90,7 @@ void main() {
       expect(find.textContaining('music', findRichText: true), findsNothing);
     });
 
-    testWidgets('labels the primary FAB for the expense form it opens', (
+    testWidgets('labels the primary FAB as Add Money for the Coins tab', (
       tester,
     ) async {
       await tester.pumpWidget(buildScreen());
@@ -97,13 +99,16 @@ void main() {
       final fab = find.byType(FloatingActionButton);
 
       expect(fab, findsOneWidget);
-      expect(find.byTooltip('Add Expense'), findsOneWidget);
+      expect(find.byTooltip('Add Money'), findsOneWidget);
       expect(
-        find.descendant(of: fab, matching: find.text('Add Expense')),
+        find.descendant(of: fab, matching: find.text('Add Money')),
         findsOneWidget,
       );
-      expect(find.byTooltip('Add Money'), findsNothing);
-      expect(find.text('Add Money'), findsNothing);
+      expect(find.byTooltip('Add Expense'), findsNothing);
+      expect(
+        find.descendant(of: fab, matching: find.text('Add Expense')),
+        findsNothing,
+      );
     });
   });
 }

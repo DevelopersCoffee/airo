@@ -4,6 +4,7 @@ import '../../domain/entities/group.dart';
 import '../../domain/entities/settlement.dart';
 import '../../domain/models/safe_to_spend.dart';
 import '../../domain/models/budget_status.dart';
+import '../../domain/services/finance_insight_service.dart';
 import 'expense_providers.dart';
 import 'budget_providers.dart';
 import 'group_providers.dart';
@@ -18,6 +19,7 @@ class DashboardData {
   final int pendingSettlements;
   final int spentTodayCents;
   final int spentThisMonthCents;
+  final List<FinanceInsight> financeInsights;
 
   const DashboardData({
     this.safeToSpend,
@@ -27,6 +29,7 @@ class DashboardData {
     this.pendingSettlements = 0,
     this.spentTodayCents = 0,
     this.spentThisMonthCents = 0,
+    this.financeInsights = const [],
   });
 }
 
@@ -57,6 +60,11 @@ final dashboardDataProvider = FutureProvider<DashboardData>((ref) async {
     ref.watch(spentThisMonthProvider.future),
     0,
   );
+  const insightService = FinanceInsightService();
+  final financeInsights = insightService.generate(
+    recentTransactions: recentExpenses,
+    budgetStatuses: budgetStatuses,
+  );
 
   return DashboardData(
     safeToSpend: safeToSpend,
@@ -66,6 +74,7 @@ final dashboardDataProvider = FutureProvider<DashboardData>((ref) async {
     pendingSettlements: pendingSettlements.length,
     spentTodayCents: spentTodayCents,
     spentThisMonthCents: spentThisMonthCents,
+    financeInsights: financeInsights,
   );
 });
 

@@ -20,9 +20,9 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-# Expected versions (from LTS strategy)
-EXPECTED_FLUTTER="3.35.7"
-EXPECTED_DART_MIN="3.9.2"
+# Expected versions (from the current repository baseline)
+EXPECTED_FLUTTER="3.41.4"
+EXPECTED_DART_MIN="3.11.1"
 EXPECTED_DART_MAX="4.0.0"
 
 # Counters
@@ -78,12 +78,41 @@ echo ""
 echo "Expected Dart SDK: >=${EXPECTED_DART_MIN} <${EXPECTED_DART_MAX}"
 echo ""
 
-# Find all pubspec.yaml files
-find . -name "pubspec.yaml" -not -path "*/.*" -not -path "*/build/*" | while read -r pubspec; do
+PUBSPECS=()
+while IFS= read -r pubspec; do
+    PUBSPECS+=("$pubspec")
+done < <(find . -name "pubspec.yaml" -not -path "*/.*" -not -path "*/build/*" | sort)
+
+extract_pubspec_value() {
+    local key="$1"
+    local pubspec="$2"
+    awk -v key="$key" '
+        $0 ~ "^  " key ":[[:space:]]*" {
+            value = $0
+            sub(/^[[:space:]]*[^:]+:[[:space:]]*/, "", value)
+            sub(/[[:space:]]+#.*$/, "", value)
+            gsub(/["'\'']/, "", value)
+            print value
+            exit
+        }
+    ' "$pubspec"
+}
+
+for pubspec in "${PUBSPECS[@]}"; do
     echo -n "Checking $(dirname $pubspec)... "
-    
-    # Extract SDK constraint
-    SDK_CONSTRAINT=$(grep "sdk:" "$pubspec" | grep -v "flutter:" | sed 's/.*sdk: //' | tr -d '"' | tr -d "'")
+
+    SDK_CONSTRAINT=$(awk '
+        /^[[:space:]]*environment:[[:space:]]*$/ { in_environment = 1; next }
+        in_environment && /^[^[:space:]]/ { in_environment = 0 }
+        in_environment && /^[[:space:]]*sdk:/ {
+            value = $0
+            sub(/^[[:space:]]*sdk:[[:space:]]*/, "", value)
+            sub(/[[:space:]]+#.*$/, "", value)
+            gsub(/["'\'']/, "", value)
+            print value
+            exit
+        }
+    ' "$pubspec")
     
     if [[ "$SDK_CONSTRAINT" =~ ^\^?${EXPECTED_DART_MIN} ]] || [[ "$SDK_CONSTRAINT" =~ \>=${EXPECTED_DART_MIN} ]]; then
         echo -e "${GREEN}✓ $SDK_CONSTRAINT${NC}"
@@ -105,7 +134,7 @@ echo "Caret constraints allow automatic minor updates and should be avoided in p
 echo ""
 
 CARET_COUNT=0
-find . -name "pubspec.yaml" -not -path "*/.*" -not -path "*/build/*" | while read -r pubspec; do
+for pubspec in "${PUBSPECS[@]}"; do
     CARETS=$(grep -c "^\s*[a-z_]*: \^" "$pubspec" || true)
     if [ "$CARETS" -gt 0 ]; then
         echo -e "${YELLOW}⚠ $(dirname $pubspec): $CARETS caret constraints found${NC}"
@@ -135,10 +164,11 @@ COMMON_PACKAGES=("flutter_lints" "mocktail" "equatable" "meta" "path" "path_prov
 for package in "${COMMON_PACKAGES[@]}"; do
     echo -n "Checking $package... "
     
-    # Find all versions of this package
-    VERSIONS=$(find . -name "pubspec.yaml" -not -path "*/.*" -not -path "*/build/*" -exec grep -H "^\s*$package:" {} \; | sed "s/.*$package: //" | tr -d '"' | tr -d "'" | sort -u)
+    VERSIONS=$(for pubspec in "${PUBSPECS[@]}"; do
+        extract_pubspec_value "$package" "$pubspec"
+    done | sed '/^$/d' | sed 's/^\^//' | sort -u)
     
-    VERSION_COUNT=$(echo "$VERSIONS" | wc -l)
+    VERSION_COUNT=$(printf "%s\n" "$VERSIONS" | sed '/^$/d' | wc -l | tr -d ' ')
     
     if [ "$VERSION_COUNT" -eq 1 ]; then
         echo -e "${GREEN}✓ Consistent ($VERSIONS)${NC}"
@@ -162,15 +192,21 @@ echo ""
 BETA_COUNT=0
 
 # Check Dart packages
-find . -name "pubspec.yaml" -not -path "*/.*" -not -path "*/build/*" -exec grep -H "beta\|alpha\|rc\|dev" {} \; | while read -r line; do
-    echo -e "${YELLOW}⚠ Beta/unstable dependency: $line${NC}"
-    ((BETA_COUNT++))
+for pubspec in "${PUBSPECS[@]}"; do
+    while IFS= read -r line; do
+        echo -e "${YELLOW}⚠ Beta/unstable dependency: $pubspec:$line${NC}"
+        ((BETA_COUNT++))
+    done < <(awk '
+        /^[[:space:]]*(dependencies|dev_dependencies|dependency_overrides):[[:space:]]*$/ { in_dependencies = 1; next }
+        in_dependencies && /^[^[:space:]]/ { in_dependencies = 0 }
+        in_dependencies && /^[[:space:]]*[A-Za-z0-9_]+:[[:space:]]*[^#]*(alpha|beta|rc|dev)/ { print }
+    ' "$pubspec")
 done
 
 # Check Android dependencies
-if grep -q "beta\|alpha\|rc" app/android/app/build.gradle.kts; then
+if grep -Eq '("[^"]*(alpha|beta|rc)[0-9][^"]*"|'\''[^'\'']*(alpha|beta|rc)[0-9][^'\'']*'\'')' app/android/app/build.gradle.kts; then
     echo -e "${YELLOW}⚠ Beta/unstable Android dependencies found:${NC}"
-    grep "beta\|alpha\|rc" app/android/app/build.gradle.kts | sed 's/^/    /'
+    grep -E '("[^"]*(alpha|beta|rc)[0-9][^"]*"|'\''[^'\'']*(alpha|beta|rc)[0-9][^'\'']*'\'')' app/android/app/build.gradle.kts | sed 's/^/    /'
     ((BETA_COUNT++))
 fi
 
@@ -210,4 +246,3 @@ else
     echo ""
     exit 1
 fi
-

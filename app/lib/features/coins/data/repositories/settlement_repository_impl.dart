@@ -73,8 +73,9 @@ class SettlementRepositoryImpl implements SettlementRepository {
   @override
   Future<Result<List<Settlement>>> findPendingForUser(String userId) async {
     try {
-      final entities =
-          await _localDatasource.getPendingSettlementsForUser(userId);
+      final entities = await _localDatasource.getPendingSettlementsForUser(
+        userId,
+      );
       return (data: entities.map(_mapper.toDomain).toList(), error: null);
     } catch (e) {
       return (data: null, error: 'Failed to fetch settlements: $e');
@@ -183,4 +184,3 @@ class SettlementRepositoryImpl implements SettlementRepository {
     }
   }
 }
-
