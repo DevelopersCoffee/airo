@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../shared/widgets/app_icon_placeholder.dart';
 import '../tv/tv.dart';
 import 'tv_router.dart';
 
@@ -109,10 +110,8 @@ class _TvNavigationRail extends ConsumerWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Image.asset(
-          'assets/images/app_icon.png',
-          width: 48,
-          height: 48,
+        AppIconPlaceholder(
+          size: 48,
           errorBuilder: (_, _, _) => const Icon(Icons.tv, size: 48),
         ),
         const SizedBox(height: 8),

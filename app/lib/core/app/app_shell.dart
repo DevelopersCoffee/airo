@@ -12,6 +12,7 @@ import '../../features/music/presentation/widgets/mini_player.dart';
 import '../../features/iptv/presentation/widgets/iptv_mini_player.dart';
 import '../../features/iptv/application/providers/iptv_providers.dart'
     hide currentNavigationTabProvider;
+import '../../shared/widgets/app_icon_placeholder.dart';
 
 /// Get initials from a name (e.g., "Uday Chauhan" -> "UC", "Uday" -> "U")
 String _getInitials(String name) {
@@ -59,10 +60,8 @@ class AppShell extends ConsumerWidget {
             borderRadius: BorderRadius.circular(20),
             child: Padding(
               padding: const EdgeInsets.all(8.0),
-              child: Image.asset(
-                'assets/images/app_icon.png',
-                width: 32,
-                height: 32,
+              child: AppIconPlaceholder(
+                size: 32,
                 errorBuilder: (_, _, _) => const Icon(Icons.home),
               ),
             ),
