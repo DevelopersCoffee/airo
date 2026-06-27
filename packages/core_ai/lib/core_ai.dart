@@ -35,6 +35,7 @@ export 'src/download/model_download_progress.dart';
 export 'src/download/model_download_service.dart';
 
 // Agent Skill Schemas
+export 'src/skills/routine_dag_executor.dart';
 export 'src/skills/skill_permission_engine.dart';
 export 'src/skills/skill_schema.dart';
 
