@@ -9,6 +9,7 @@ import '../../domain/repositories/account_repository.dart';
 import '../../domain/repositories/transaction_repository.dart';
 import '../../domain/services/finance_message_parser.dart';
 import '../services/finance_chat_ingestion_service.dart';
+import '../services/transaction_review_service.dart';
 import '../use_cases/add_expense_use_case.dart';
 import '../../data/repositories/account_repository_impl.dart';
 import '../../data/repositories/transaction_repository_impl.dart';
@@ -133,6 +134,26 @@ final financeChatIngestionServiceProvider =
         repository: ref.watch(transactionRepositoryProvider),
       );
     });
+
+final transactionReviewServiceProvider = Provider<TransactionReviewService>((
+  ref,
+) {
+  return TransactionReviewService(
+    repository: ref.watch(transactionRepositoryProvider),
+  );
+});
+
+final pendingTransactionReviewsProvider = FutureProvider<List<Transaction>>((
+  ref,
+) async {
+  final result = await ref
+      .watch(transactionReviewServiceProvider)
+      .pendingImportedTransactions();
+  if (result.error != null) {
+    throw Exception(result.error);
+  }
+  return result.data ?? const <Transaction>[];
+});
 
 /// Watch all transactions stream
 final allExpensesProvider = StreamProvider<List<Transaction>>((ref) {

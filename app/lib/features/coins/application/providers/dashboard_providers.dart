@@ -19,6 +19,7 @@ class DashboardData {
   final int pendingSettlements;
   final int spentTodayCents;
   final int spentThisMonthCents;
+  final List<Transaction> pendingTransactionReviews;
   final List<FinanceInsight> financeInsights;
 
   const DashboardData({
@@ -29,6 +30,7 @@ class DashboardData {
     this.pendingSettlements = 0,
     this.spentTodayCents = 0,
     this.spentThisMonthCents = 0,
+    this.pendingTransactionReviews = const [],
     this.financeInsights = const [],
   });
 }
@@ -60,6 +62,9 @@ final dashboardDataProvider = FutureProvider<DashboardData>((ref) async {
     ref.watch(spentThisMonthProvider.future),
     0,
   );
+  final pendingTransactionReviews = await _listOrEmpty<Transaction>(
+    ref.watch(pendingTransactionReviewsProvider.future),
+  );
   const insightService = FinanceInsightService();
   final financeInsights = insightService.generate(
     recentTransactions: recentExpenses,
@@ -74,6 +79,7 @@ final dashboardDataProvider = FutureProvider<DashboardData>((ref) async {
     pendingSettlements: pendingSettlements.length,
     spentTodayCents: spentTodayCents,
     spentThisMonthCents: spentThisMonthCents,
+    pendingTransactionReviews: pendingTransactionReviews,
     financeInsights: financeInsights,
   );
 });
@@ -112,6 +118,7 @@ final dashboardRefreshProvider = FutureProvider<void>((ref) async {
   ref.invalidate(pendingSettlementsProvider);
   ref.invalidate(spentTodayProvider);
   ref.invalidate(spentThisMonthProvider);
+  ref.invalidate(pendingTransactionReviewsProvider);
 });
 
 /// Quick stats for dashboard header

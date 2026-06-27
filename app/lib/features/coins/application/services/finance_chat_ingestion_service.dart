@@ -1,6 +1,9 @@
+import 'dart:convert';
+
 import '../../domain/entities/transaction.dart';
 import '../../domain/repositories/transaction_repository.dart';
 import '../../domain/services/finance_message_parser.dart';
+import 'transaction_review_service.dart';
 
 enum FinanceChatIngestionStatus {
   ignored,
@@ -25,7 +28,8 @@ class FinanceChatIngestionResult {
 
   bool get changedLedger =>
       status == FinanceChatIngestionStatus.created ||
-      status == FinanceChatIngestionStatus.updated;
+      status == FinanceChatIngestionStatus.updated ||
+      (status == FinanceChatIngestionStatus.needsReview && transaction != null);
 }
 
 /// Turns pasted finance SMS/notifications into local Coins transactions.
@@ -77,7 +81,7 @@ class FinanceChatIngestionService {
         categoryId: parsed.categoryId,
         accountId: accountId,
         transactionDate: parsed.transactionDate,
-        tags: _mergeTags(current.tags, parsed),
+        tags: _mergeTags(current.tags, parsed, text),
         updatedAt: DateTime.now(),
       );
       final updateResult = await _repository.update(updated);
@@ -89,9 +93,10 @@ class FinanceChatIngestionService {
         );
       }
       return FinanceChatIngestionResult(
-        status: FinanceChatIngestionStatus.updated,
+        status: FinanceChatIngestionStatus.needsReview,
         parsed: parsed,
         transaction: updateResult.data,
+        message: 'Queued imported transaction for review.',
       );
     }
 
@@ -104,7 +109,7 @@ class FinanceChatIngestionService {
       categoryId: parsed.categoryId,
       accountId: accountId,
       transactionDate: parsed.transactionDate,
-      tags: _mergeTags(const [], parsed),
+      tags: _mergeTags(const [], parsed, text),
       createdAt: now,
     );
     final createResult = await _repository.create(transaction);
@@ -116,9 +121,10 @@ class FinanceChatIngestionService {
       );
     }
     return FinanceChatIngestionResult(
-      status: FinanceChatIngestionStatus.created,
+      status: FinanceChatIngestionStatus.needsReview,
       parsed: parsed,
       transaction: createResult.data,
+      message: 'Queued imported transaction for review.',
     );
   }
 
@@ -131,13 +137,18 @@ class FinanceChatIngestionService {
   List<String> _mergeTags(
     List<String> currentTags,
     ParsedFinanceMessage parsed,
+    String rawText,
   ) {
     return <String>{
       ...currentTags,
       'source:chat',
       'source:finance_sms',
+      'source:parser:finance_message_parser',
+      'parser_version:v1',
       parsed.sourceTag,
       'confidence:${parsed.confidence.toStringAsFixed(2)}',
+      transactionReviewPendingTag,
+      'source:raw_text_b64:${base64Url.encode(utf8.encode(rawText))}',
     }.toList(growable: false);
   }
 }
