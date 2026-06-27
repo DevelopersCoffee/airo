@@ -11,8 +11,6 @@ on:
         options:
           - staging
           - production
-  release:
-    types: [published]
 
 jobs:
   smoke-test-web:
