@@ -133,7 +133,7 @@ write_breakdown() {
       NR > 3 && $1 ~ /^[0-9]+$/ && NF >= 4 && $4 != "" {
         printf "%d\t%s\n", $1, $4
       }
-    ' | sort -k1,1nr | head -n "$TOP_ENTRIES" | awk -F '\t' '{ printf "| %s | %.2f MB |\n", $2, $1 / 1048576 }'
+    ' | sort -k1,1nr | awk -F '\t' -v limit="$TOP_ENTRIES" 'NR <= limit { printf "| %s | %.2f MB |\n", $2, $1 / 1048576 }'
   } >>"$REPORT_FILE"
 }
 
