@@ -88,6 +88,14 @@ class _TraceRow extends StatelessWidget {
                     fontWeight: FontWeight.w700,
                   ),
                 ),
+                if (trace.durationMs != null)
+                  Text(
+                    _formatDuration(trace.durationMs!),
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 const SizedBox(height: 2),
                 Text(trace.detail, style: theme.textTheme.bodySmall),
                 if (trace.parameters.isNotEmpty) ...[
@@ -106,4 +114,11 @@ class _TraceRow extends StatelessWidget {
       ),
     );
   }
+}
+
+String _formatDuration(int durationMs) {
+  if (durationMs < 1000) {
+    return '${durationMs}ms';
+  }
+  return '${(durationMs / 1000).toStringAsFixed(1)}s';
 }

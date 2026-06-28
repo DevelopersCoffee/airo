@@ -394,13 +394,16 @@ class AgentSkillOrchestrator {
         );
       }
 
+      final actionStopwatch = Stopwatch()..start();
       final result = await _connectorRegistry.execute(tool, action.arguments);
+      actionStopwatch.stop();
       traces.add(
         AgentActionTrace(
           title: 'Execute action',
           detail: tool,
           parameters: action.arguments,
           success: !result.isError,
+          durationMs: actionStopwatch.elapsedMilliseconds,
         ),
       );
       toolResults.add({
