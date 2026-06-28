@@ -159,6 +159,8 @@ class AssistantModelLibraryState {
     final cloudAvailable = geminiApiService.isAvailable;
     final defaultPackages = await _defaultPackages(liteRtService);
     final balancedPackage = defaultPackages[AssistantTask.reasoning];
+    final hasDownloadedBalancedPackage = balancedPackage?.isDownloaded ?? false;
+    final liteRtReady = liteRtAvailable || hasDownloadedBalancedPackage;
 
     final platformLabel = kIsWeb
         ? 'Web'
@@ -214,13 +216,13 @@ class AssistantModelLibraryState {
         tags: const ['Local', 'Downloadable', 'Gemma'],
         privacyLabel: 'Prompt stays on device',
         sizeLabel: balancedPackage?.fileSizeDisplay ?? '2 GB to 4 GB typical',
-        available: liteRtAvailable,
-        actionLabel: liteRtAvailable ? 'Start' : 'Download package',
-        unavailableReason: liteRtAvailable
+        available: liteRtReady,
+        actionLabel: liteRtReady ? 'Start' : 'Download package',
+        unavailableReason: liteRtReady
             ? null
             : 'Set LITERT_LM_MODEL_PATH or LITERT_LM_MODEL_URL, or install a compatible local model.',
         local: true,
-        opensModelManager: !liteRtAvailable,
+        opensModelManager: !liteRtReady,
         package: balancedPackage,
       ),
     );
@@ -591,9 +593,10 @@ class _ModelLibraryContent extends ConsumerWidget {
     AssistantProjectTemplate template,
   ) async {
     final candidate = state.recommendedFor(template.task);
+    final hasDownloadedPackage = candidate.package?.isDownloaded ?? false;
     ref.read(selectedAssistantTaskProvider.notifier).state = template.task;
 
-    if (candidate.opensModelManager) {
+    if (candidate.opensModelManager && !hasDownloadedPackage) {
       final confirmed = await _confirmPackageSetup(
         context,
         template: template,
@@ -605,7 +608,7 @@ class _ModelLibraryContent extends ConsumerWidget {
       }
       return;
     }
-    if (!candidate.available) {
+    if (!candidate.available && !hasDownloadedPackage) {
       await _showUnavailablePackage(
         context,
         template: template,
