@@ -31,10 +31,9 @@ class ChatResponseMetadata {
   final String? finishReason;
   final int? toolCount;
 
-  int? get totalTokens =>
-      promptTokens != null && completionTokens != null
-          ? promptTokens! + completionTokens!
-          : null;
+  int? get totalTokens => promptTokens != null && completionTokens != null
+      ? promptTokens! + completionTokens!
+      : null;
 }
 
 ChatResponseMetadata buildRuntimeChatResponseMetadata({
@@ -68,7 +67,9 @@ ChatResponseMetadata buildSkillChatResponseMetadata({
   required int totalDurationMs,
   DateTime? recordedAt,
 }) {
-  final toolCount = traces.where((trace) => trace.title == 'Execute action').length;
+  final toolCount = traces
+      .where((trace) => trace.title == 'Execute action')
+      .length;
   return ChatResponseMetadata(
     title: 'Agent Skills',
     runtime: 'Local skill orchestration',

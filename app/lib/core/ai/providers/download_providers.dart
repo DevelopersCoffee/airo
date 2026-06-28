@@ -10,13 +10,11 @@ final modelDownloadServiceProvider = Provider<ModelDownloadService>((ref) {
 });
 
 /// StateNotifier that listens to all model downloads.
-class ModelDownloadNotifier extends StateNotifier<Map<String, ModelDownloadProgress>> {
+class ModelDownloadNotifier
+    extends StateNotifier<Map<String, ModelDownloadProgress>> {
   ModelDownloadNotifier(this._service) : super(const {}) {
     _subscription = _service.globalProgressStream.listen((progress) {
-      state = {
-        ...state,
-        progress.modelId: progress,
-      };
+      state = {...state, progress.modelId: progress};
     });
   }
 
@@ -32,7 +30,10 @@ class ModelDownloadNotifier extends StateNotifier<Map<String, ModelDownloadProgr
 
 /// Provider tracking the progress maps of all downloads.
 final modelDownloadStateProvider =
-    StateNotifierProvider<ModelDownloadNotifier, Map<String, ModelDownloadProgress>>((ref) {
-  final service = ref.watch(modelDownloadServiceProvider);
-  return ModelDownloadNotifier(service);
-});
+    StateNotifierProvider<
+      ModelDownloadNotifier,
+      Map<String, ModelDownloadProgress>
+    >((ref) {
+      final service = ref.watch(modelDownloadServiceProvider);
+      return ModelDownloadNotifier(service);
+    });

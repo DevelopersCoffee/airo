@@ -552,7 +552,6 @@ Map<String, dynamic>? _calendarEventFromNotificationResult(
   };
 }
 
-
 SkillModelAction? parseSkillModelAction(String text) {
   try {
     final decoded = jsonDecode(_stripCodeFence(text));
