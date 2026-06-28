@@ -34,6 +34,18 @@ void main() {
       expect(state.error, isNull);
     });
 
+    test('discovering state defensively copies discovered devices', () {
+      const device = AiroCastDevice(id: 'tv-1', name: 'Sony Bravia');
+      final devices = [device];
+
+      final state = AiroCastDiscoveryState.discovering(devices: devices);
+      devices.clear();
+
+      expect(state.phase, AiroCastDiscoveryPhase.discovering);
+      expect(state.devices, [device]);
+      expect(() => state.devices.add(device), throwsUnsupportedError);
+    });
+
     test('failed state keeps a user-facing error message', () {
       final state = AiroCastDiscoveryState.failed('Local network unavailable');
 

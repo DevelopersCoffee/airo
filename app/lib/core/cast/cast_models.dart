@@ -83,9 +83,14 @@ class AiroCastDiscoveryState extends Equatable {
   const AiroCastDiscoveryState.permissionRequired()
     : this._(phase: AiroCastDiscoveryPhase.permissionRequired);
 
-  const AiroCastDiscoveryState.discovering({
+  factory AiroCastDiscoveryState.discovering({
     List<AiroCastDevice> devices = const [],
-  }) : this._(phase: AiroCastDiscoveryPhase.discovering, devices: devices);
+  }) {
+    return AiroCastDiscoveryState._(
+      phase: AiroCastDiscoveryPhase.discovering,
+      devices: List.unmodifiable(devices),
+    );
+  }
 
   factory AiroCastDiscoveryState.found(List<AiroCastDevice> devices) {
     return AiroCastDiscoveryState._(

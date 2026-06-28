@@ -13,10 +13,10 @@ class FakeAiroCastController implements AiroCastController {
   });
 
   final List<AiroCastDevice> devices;
-  final bool failDiscovery;
-  final bool denyPermission;
-  final bool failConnection;
-  final bool failMediaLoad;
+  bool failDiscovery;
+  bool denyPermission;
+  bool failConnection;
+  bool failMediaLoad;
 
   final List<String> recordedActions = [];
 
@@ -55,7 +55,7 @@ class FakeAiroCastController implements AiroCastController {
       _setDiscovery(const AiroCastDiscoveryState.permissionRequired());
       return;
     }
-    _setDiscovery(const AiroCastDiscoveryState.discovering());
+    _setDiscovery(AiroCastDiscoveryState.discovering());
     if (failDiscovery) {
       _setDiscovery(AiroCastDiscoveryState.failed('Cast discovery failed'));
       return;
@@ -75,8 +75,12 @@ class FakeAiroCastController implements AiroCastController {
 
   @override
   Future<void> connect(AiroCastDevice device) async {
-    if (_connectedDevice != null && _connectedDevice != device) {
-      recordedActions.add('disconnect:${_connectedDevice!.id}');
+    final previousDevice = _connectedDevice;
+    if (previousDevice != null) {
+      if (previousDevice != device) {
+        recordedActions.add('disconnect:${previousDevice.id}');
+      }
+      _connectedDevice = null;
     }
     recordedActions.add('connect:${device.id}');
     _setSession(AiroCastSessionSnapshot.connecting(device));
