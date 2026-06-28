@@ -82,12 +82,14 @@ Allowed behavior:
 
 - feature code consumes named shared assets
 - shell branding updates happen in one shared location
+- feature screens import `ShellAssetRegistry` when they need shell-owned imagery
 
 Disallowed behavior:
 
 - duplicate raw asset paths spread across widgets
 - feature-local copies of shell iconography
 - ad hoc branding changes inside screen files
+- direct references such as `assets/hermes/images/filler-bg0.jpg` outside the shared asset registry
 
 ## Verification Expectations
 

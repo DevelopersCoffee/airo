@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:airo_app/shared/assets/shell_asset_registry.dart';
 import '../../../../core/dictionary/dictionary.dart';
 import '../../application/providers/money_provider.dart';
 import '../../domain/models/money_models.dart';
@@ -454,7 +455,7 @@ class _CoinsDemoSection extends StatelessWidget {
         fit: StackFit.expand,
         children: [
           Image.asset(
-            'assets/hermes/images/filler-bg0.jpg',
+            ShellAssetRegistry.shellBackdrop,
             fit: BoxFit.cover,
             color: Theme.of(
               context,
