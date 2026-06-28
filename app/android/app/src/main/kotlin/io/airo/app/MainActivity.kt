@@ -3,15 +3,12 @@ package io.airo.app
 import android.Manifest
 import android.content.ContentUris
 import android.content.ContentValues
-import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.provider.CalendarContract
 import android.provider.Settings
 import com.ryanheise.audioservice.AudioServiceActivity
-import com.ryanheise.audioservice.AudioServicePlugin
-import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodChannel
 import java.text.SimpleDateFormat
@@ -32,14 +29,6 @@ class MainActivity : AudioServiceActivity() {
     private var pendingCalendarEndDate: String? = null
     private var pendingCalendarCreateResult: MethodChannel.Result? = null
     private var pendingCalendarCreateArguments: Map<String, Any?>? = null
-
-    override fun provideFlutterEngine(context: Context): FlutterEngine {
-        return AudioServicePlugin.getFlutterEngine(context)
-    }
-
-    override fun getCachedEngineId(): String {
-        return AudioServicePlugin.getFlutterEngineId()
-    }
 
     override fun shouldDestroyEngineWithHost(): Boolean {
         return false
