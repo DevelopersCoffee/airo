@@ -13,6 +13,8 @@ import '../../../agent_chat/data/services/assistant_runtime_service.dart';
 import '../../../agent_chat/data/services/selected_runtime_agent_skill_model_client.dart';
 import '../../../agent_chat/application/assistant_model_preferences.dart';
 import '../../../agent_chat/domain/models/agent_skill.dart';
+import '../../../agent_chat/domain/models/assistant_runtime_ids.dart';
+import '../../../agent_chat/domain/models/chat_response_metadata.dart';
 import '../../../agent_chat/domain/services/agent_connector_registry.dart';
 import '../../../agent_chat/domain/services/agent_skill_orchestrator.dart';
 import '../../../agent_chat/domain/services/agent_skill_registry.dart';
@@ -33,18 +35,31 @@ class ChatMessage {
   final bool isUser;
   final DateTime timestamp;
   final List<AgentActionTrace> traces;
+  final ChatResponseMetadata? metadata;
 
   ChatMessage({
     required this.text,
     required this.isUser,
     DateTime? timestamp,
     this.traces = const [],
+    this.metadata,
   }) : timestamp = timestamp ?? DateTime.now();
 }
 
 /// Agent chat screen
 class ChatScreen extends ConsumerStatefulWidget {
-  const ChatScreen({super.key});
+  const ChatScreen({
+    super.key,
+    this.assistantRuntimeService,
+    this.skillOrchestrator,
+    this.enableAiInitialization = true,
+    this.initialMessages,
+  });
+
+  final AssistantRuntimeService? assistantRuntimeService;
+  final AgentSkillOrchestrator? skillOrchestrator;
+  final bool enableAiInitialization;
+  final List<ChatMessage>? initialMessages;
 
   @override
   ConsumerState<ChatScreen> createState() => _ChatScreenState();
@@ -76,21 +91,31 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   void initState() {
     super.initState();
     _messageController = TextEditingController();
-    _assistantRuntime = AssistantRuntimeService(
-      geminiNano: _geminiNano,
-      liteRtLm: _liteRtLm,
-    );
-    _skillOrchestrator = _buildSkillOrchestrator(_skillRegistry);
-    _loadPersistedSkillRegistry();
+    _assistantRuntime =
+        widget.assistantRuntimeService ??
+        AssistantRuntimeService(
+          geminiNano: _geminiNano,
+          liteRtLm: _liteRtLm,
+        );
+    _skillOrchestrator =
+        widget.skillOrchestrator ?? _buildSkillOrchestrator(_skillRegistry);
+    if (widget.skillOrchestrator == null) {
+      _loadPersistedSkillRegistry();
+    }
     // Add welcome message
-    _messages.add(
-      ChatMessage(
-        text:
-            'Hi! I can chat, use enabled skills, check your schedule, split bills, draft diet plans, plan routines, and open Airo tools from here.',
-        isUser: false,
-      ),
+    _messages.addAll(
+      widget.initialMessages ??
+          [
+            ChatMessage(
+              text:
+                  'Hi! I can chat, use enabled skills, check your schedule, split bills, draft diet plans, plan routines, and open Airo tools from here.',
+              isUser: false,
+            ),
+          ],
     );
-    _initializeAI();
+    if (widget.enableAiInitialization) {
+      _initializeAI();
+    }
   }
 
   AgentSkillOrchestrator _buildSkillOrchestrator(AgentSkillRegistry registry) {
@@ -449,7 +474,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final colorScheme = Theme.of(context).colorScheme;
     final maxWidth =
         MediaQuery.of(context).size.width *
-        (message.traces.isNotEmpty ? 0.86 : 0.75);
+        (message.traces.isNotEmpty || message.metadata != null ? 0.86 : 0.75);
 
     return Align(
       alignment: message.isUser ? Alignment.centerRight : Alignment.centerLeft,
@@ -479,6 +504,28 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 ),
               ),
             ),
+            if (!message.isUser && message.metadata != null)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: OutlinedButton.icon(
+                    key: const Key('agent_chat_metadata_button'),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      visualDensity: VisualDensity.compact,
+                    ),
+                    onPressed: () => _showMetadataSheet(message),
+                    icon: const Icon(Icons.query_stats, size: 16),
+                    label: Text(_metadataSummary(message.metadata!)),
+                  ),
+                ),
+              ),
           ],
         ),
       ),
@@ -527,15 +574,22 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       return;
     }
 
+    final skillStopwatch = Stopwatch()..start();
     final skillResult = await _skillOrchestrator.run(message);
+    skillStopwatch.stop();
     if (skillResult.handled) {
       _pendingCalendarEvent = skillResult.pendingCalendarEvent;
+      final metadata = _buildSkillMetadata(
+        traces: skillResult.traces,
+        totalDuration: skillStopwatch.elapsed,
+      );
       setState(() {
         _messages.add(
           ChatMessage(
             text: skillResult.message,
             isUser: false,
             traces: skillResult.traces,
+            metadata: metadata,
           ),
         );
       });
@@ -566,7 +620,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     });
 
     try {
-      await _generateSelectedModelResponse(selectedModelId, message);
+      final metadata = await _generateSelectedModelResponse(
+        selectedModelId,
+        message,
+      );
+      if (metadata != null) {
+        _attachMetadataToLastAssistantMessage(metadata);
+      }
     } catch (e) {
       // If AI fails, show error message
       setState(() {
@@ -731,27 +791,188 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     }
   }
 
-  Future<void> _generateSelectedModelResponse(
+  Future<ChatResponseMetadata?> _generateSelectedModelResponse(
     String selectedModelId,
     String message,
   ) async {
+    final stopwatch = Stopwatch()..start();
+    int? timeToFirstTokenMs;
+    String latestChunk = '';
     try {
       await for (final chunk in _assistantRuntime.generateTextStream(
         selectedModelId: selectedModelId,
         prompt: message,
       )) {
+        timeToFirstTokenMs ??= stopwatch.elapsedMilliseconds;
+        latestChunk = chunk;
         _replaceStreamingMessage(chunk);
       }
+      stopwatch.stop();
+      if (latestChunk.trim().isEmpty) {
+        return null;
+      }
+      return _buildRuntimeMetadata(
+        selectedModelId: selectedModelId,
+        prompt: message,
+        response: latestChunk,
+        totalDuration: stopwatch.elapsed,
+        timeToFirstTokenMs: timeToFirstTokenMs,
+      );
     } on AssistantRuntimeUnavailableException catch (e) {
+      stopwatch.stop();
       _replaceStreamingMessage(e.message);
+      return null;
     }
   }
 
   void _replaceStreamingMessage(String text) {
     if (!mounted || _messages.isEmpty) return;
     setState(() {
-      _messages[_messages.length - 1] = ChatMessage(text: text, isUser: false);
+      final current = _messages.last;
+      _messages[_messages.length - 1] = ChatMessage(
+        text: text,
+        isUser: false,
+        timestamp: current.timestamp,
+        traces: current.traces,
+        metadata: current.metadata,
+      );
     });
+  }
+
+  Future<ChatResponseMetadata> _buildRuntimeMetadata({
+    required String selectedModelId,
+    required String prompt,
+    required String response,
+    required Duration totalDuration,
+    required int? timeToFirstTokenMs,
+  }) async {
+    AssistantModelCandidate? candidate;
+    try {
+      final state = await ref.read(assistantModelLibraryProvider.future);
+      candidate = state.candidateById(selectedModelId);
+    } catch (_) {
+      candidate = null;
+    }
+
+    final title = candidate?.name ?? selectedModelId;
+    final runtime = candidate?.runtime ?? selectedModelId;
+    final isLocal =
+        candidate?.local ?? selectedModelId != geminiCloudAssistantModelId;
+
+    return buildRuntimeChatResponseMetadata(
+      title: title,
+      runtime: runtime,
+      executionMode: isLocal ? 'Local' : 'Cloud',
+      recordedAt: DateTime.now(),
+      totalDurationMs: totalDuration.inMilliseconds,
+      modelId: selectedModelId,
+      timeToFirstTokenMs: timeToFirstTokenMs,
+      prompt: prompt,
+      response: response,
+    );
+  }
+
+  ChatResponseMetadata _buildSkillMetadata({
+    required List<AgentActionTrace> traces,
+    required Duration totalDuration,
+  }) {
+    return buildSkillChatResponseMetadata(
+      traces: traces,
+      totalDurationMs: totalDuration.inMilliseconds,
+      recordedAt: DateTime.now(),
+    );
+  }
+
+  void _attachMetadataToLastAssistantMessage(ChatResponseMetadata metadata) {
+    if (!mounted || _messages.isEmpty) return;
+    setState(() {
+      final current = _messages.last;
+      _messages[_messages.length - 1] = ChatMessage(
+        text: current.text,
+        isUser: current.isUser,
+        timestamp: current.timestamp,
+        traces: current.traces,
+        metadata: metadata,
+      );
+    });
+  }
+
+  String _metadataSummary(ChatResponseMetadata metadata) {
+    final duration = _formatDuration(metadata.totalDurationMs);
+    final toolCount = metadata.toolCount;
+    if (toolCount != null && toolCount > 0) {
+      return '$toolCount ${toolCount == 1 ? 'tool' : 'tools'} · $duration';
+    }
+    return '${metadata.title} · $duration';
+  }
+
+  void _showMetadataSheet(ChatMessage message) {
+    final metadata = message.metadata;
+    if (metadata == null) return;
+
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) {
+        final rows = <(String, String)>[
+          ('Model', metadata.title),
+          ('Runtime', metadata.runtime),
+          ('Execution', metadata.executionMode),
+          ('Total duration', _formatDuration(metadata.totalDurationMs)),
+          ('Timestamp', _formatTimestamp(metadata.recordedAt)),
+          if (metadata.timeToFirstTokenMs != null)
+            ('Time to first token', _formatDuration(metadata.timeToFirstTokenMs!)),
+          if (metadata.promptTokens != null)
+            ('Prompt tokens', '${metadata.promptTokens}'),
+          if (metadata.completionTokens != null)
+            ('Completion tokens', '${metadata.completionTokens}'),
+          if (metadata.totalTokens != null)
+            ('Total tokens', '${metadata.totalTokens}'),
+          if (metadata.toolCount != null) ('Tool calls', '${metadata.toolCount}'),
+          if (metadata.finishReason != null)
+            ('Finish reason', metadata.finishReason!),
+        ];
+
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Response details',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+                const SizedBox(height: 12),
+                for (final row in rows) ...[
+                  _MetadataRow(label: row.$1, value: row.$2),
+                  const SizedBox(height: 8),
+                ],
+                if (message.traces.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    'Action timings',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 8),
+                  for (final trace in message.traces)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: _MetadataRow(
+                        label: trace.detail,
+                        value: trace.durationMs == null
+                            ? (trace.success ? 'Completed' : 'Failed')
+                            : _formatDuration(trace.durationMs!),
+                      ),
+                    ),
+                ],
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   Future<void> _selectAssistantModel(AssistantModelCandidate candidate) async {
@@ -929,4 +1150,53 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       ),
     );
   }
+}
+
+class _MetadataRow extends StatelessWidget {
+  const _MetadataRow({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: Text(
+            label,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ),
+        const SizedBox(width: 16),
+        Flexible(
+          child: Text(
+            value,
+            textAlign: TextAlign.end,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+String _formatDuration(int durationMs) {
+  if (durationMs < 1000) {
+    return '${durationMs}ms';
+  }
+  return '${(durationMs / 1000).toStringAsFixed(1)}s';
+}
+
+String _formatTimestamp(DateTime value) {
+  final local = value.toLocal();
+  String twoDigits(int number) => number.toString().padLeft(2, '0');
+  return '${local.year}-${twoDigits(local.month)}-${twoDigits(local.day)} '
+      '${twoDigits(local.hour)}:${twoDigits(local.minute)}:${twoDigits(local.second)}';
 }

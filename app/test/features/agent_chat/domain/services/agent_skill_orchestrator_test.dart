@@ -61,6 +61,7 @@ void main() {
         ]),
       );
       expect(result.traces.last.parameters['date'], '2026-06-20');
+      expect(result.traces.last.durationMs, isNotNull);
     });
 
     test('summarizes calendar events when connector returns events', () async {
@@ -110,6 +111,12 @@ void main() {
           'get_current_date_time',
           'schedule_notification',
         ]),
+      );
+      expect(
+        result.traces
+            .where((trace) => trace.title == 'Execute action')
+            .every((trace) => trace.durationMs != null),
+        isTrue,
       );
       expect(notificationScheduler.scheduled, hasLength(1));
       expect(
@@ -324,6 +331,7 @@ void main() {
           selectedSkillJson: '{"skill_id":"read-calendar-events"}',
           actionJson: 'not json',
         ),
+        useFallbackModelClient: false,
       );
 
       final result = await orchestrator.run('Check my schedule for today');
@@ -362,7 +370,10 @@ void main() {
       expect(result.handled, true);
       expect(result.isError, true);
       expect(result.message, contains('too many steps'));
-      expect(result.traces.map((trace) => trace.detail), ['read-calendar-events']);
+      expect(
+        result.traces.map((trace) => trace.detail),
+        ['read-calendar-events', 'get_current_date_time'],
+      );
     });
 
     test('stops runs that exceed the bounded step limit', () async {

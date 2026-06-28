@@ -169,16 +169,18 @@ class AgentActionTrace extends Equatable {
   final String detail;
   final Map<String, dynamic> parameters;
   final bool success;
+  final int? durationMs;
 
   const AgentActionTrace({
     required this.title,
     required this.detail,
     this.parameters = const {},
     this.success = true,
+    this.durationMs,
   });
 
   @override
-  List<Object?> get props => [title, detail, parameters, success];
+  List<Object?> get props => [title, detail, parameters, success, durationMs];
 }
 
 class AgentRunResult extends Equatable {
