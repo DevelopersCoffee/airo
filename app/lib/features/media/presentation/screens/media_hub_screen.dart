@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../media_hub/application/providers/discovery_provider.dart';
+import '../../../media_hub/domain/models/discovery_state.dart';
+import '../../../media_hub/presentation/widgets/content_carousel.dart';
+import '../../../media_hub/presentation/widgets/content_grid.dart';
 import '../../../media_hub/application/providers/personalization_provider.dart';
 import '../../../media_hub/domain/models/media_mode.dart';
 import '../../../media_hub/domain/models/personalization_state.dart';
@@ -78,6 +82,8 @@ class MediaHubScreen extends ConsumerWidget {
     final recentItems = personalization.valueOrNull == null
         ? const <UnifiedMediaContent>[]
         : recentItemsForSection(personalization.valueOrNull!, section);
+    final discoveryMode = mediaModeForSection(section);
+    final discovery = ref.watch(mediaHubDiscoveryProvider(discoveryMode));
 
     return Column(
       children: [
@@ -99,6 +105,18 @@ class MediaHubScreen extends ConsumerWidget {
           },
         ),
         PersonalizationCarousel(title: 'Recently Played', items: recentItems),
+        _DiscoverySection(
+          section: section,
+          discovery: discovery,
+          onSelected: (item) async {
+            await _openItem(ref, item);
+          },
+          onLoadMore: () {
+            ref
+                .read(mediaHubDiscoveryProvider(discoveryMode).notifier)
+                .loadNextPage();
+          },
+        ),
         Expanded(
           child: AnimatedSwitcher(
             duration: const Duration(milliseconds: 180),
@@ -115,6 +133,13 @@ class MediaHubScreen extends ConsumerWidget {
       ],
     );
   }
+}
+
+MediaMode mediaModeForSection(MediaSection section) {
+  return switch (section) {
+    MediaSection.music => MediaMode.music,
+    MediaSection.tv => MediaMode.tv,
+  };
 }
 
 Future<void> _resumeItem(WidgetRef ref, UnifiedMediaContent item) async {
@@ -136,6 +161,22 @@ Future<void> _resumeItem(WidgetRef ref, UnifiedMediaContent item) async {
   }
 }
 
+Future<void> _openItem(WidgetRef ref, UnifiedMediaContent item) async {
+  await ref.read(personalizationProvider.notifier).addRecent(item);
+  switch (item.mode) {
+    case MediaMode.music:
+      final tracks = await ref.read(musicTracksProvider.future);
+      final track = _findById(tracks, item.id);
+      if (track == null) return;
+      await ref.read(musicControllerProvider).playTrack(track);
+    case MediaMode.tv:
+      final channels = await ref.read(iptvChannelsProvider.future);
+      final channel = _findById(channels, item.id);
+      if (channel == null) return;
+      await ref.read(iptvStreamingServiceProvider).playChannel(channel);
+  }
+}
+
 T? _findById<T>(Iterable<T> items, String id) {
   for (final item in items) {
     final dynamic value = item;
@@ -144,6 +185,80 @@ T? _findById<T>(Iterable<T> items, String id) {
     }
   }
   return null;
+}
+
+class _DiscoverySection extends StatelessWidget {
+  const _DiscoverySection({
+    required this.section,
+    required this.discovery,
+    required this.onSelected,
+    required this.onLoadMore,
+  });
+
+  final MediaSection section;
+  final AsyncValue<DiscoveryState> discovery;
+  final ValueChanged<UnifiedMediaContent> onSelected;
+  final VoidCallback onLoadMore;
+
+  @override
+  Widget build(BuildContext context) {
+    final title = section == MediaSection.music
+        ? 'Browse Music'
+        : 'Browse Live TV';
+    return discovery.when(
+      loading: () => Padding(
+        padding: const EdgeInsets.only(bottom: 8),
+        child: section == MediaSection.music
+            ? ContentCarousel.skeleton(title: title)
+            : ContentGrid.skeleton(title: title),
+      ),
+      error: (error, _) => Padding(
+        padding: const EdgeInsets.fromLTRB(12, 6, 12, 12),
+        child: Card(
+          child: ListTile(
+            title: Text(title),
+            subtitle: Text('Unable to load discovery right now: $error'),
+          ),
+        ),
+      ),
+      data: (state) {
+        final items = switch (section) {
+          MediaSection.music => state.visibleItems.take(8).toList(),
+          MediaSection.tv => state.visibleItems.take(4).toList(),
+        };
+        if (items.isEmpty) {
+          return const SizedBox.shrink();
+        }
+        return Column(
+          children: [
+            section == MediaSection.music
+                ? ContentCarousel(
+                    title: title,
+                    items: items,
+                    onSelected: onSelected,
+                  )
+                : ContentGrid(
+                    title: title,
+                    items: items,
+                    onSelected: onSelected,
+                  ),
+            if (state.hasMore)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton.icon(
+                    onPressed: onLoadMore,
+                    icon: const Icon(Icons.expand_more),
+                    label: const Text('Load more'),
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
 }
 
 class _MediaModeBar extends StatelessWidget {
