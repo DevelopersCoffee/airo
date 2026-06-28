@@ -16,9 +16,14 @@ import '../../features/iptv/application/providers/iptv_providers.dart'
 
 /// App shell with bottom navigation for the six primary feature tabs.
 class AppShell extends ConsumerWidget {
-  const AppShell({super.key, required this.navigationShell});
+  const AppShell({
+    super.key,
+    required this.navigationShell,
+    required this.currentLocation,
+  });
 
   final StatefulNavigationShell navigationShell;
+  final String currentLocation;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -37,31 +42,34 @@ class AppShell extends ConsumerWidget {
 
     final navigationTabs = ref.watch(appNavigationTabsProvider);
     final chromeConfig = ref.watch(appNavigationChromeConfigProvider);
+    final headerMode = ref.watch(appShellHeaderModeProvider(currentLocation));
     final currentPageName = navigationTabs[navigationShell.currentIndex].label;
 
     return Theme(
       data: isBedtimeMode ? BedtimeTheme.bedtimeTheme : Theme.of(context),
       child: Scaffold(
-        appBar: AppShellChrome(
-          title: Text(currentPageName),
-          user: user,
-          config: chromeConfig,
-          onHomeTap: () {
-            ref.read(currentNavigationTabProvider.notifier).state = 0;
-            navigationShell.goBranch(0);
-          },
-          onNotificationsTap: () => context.push('/mind/notifications'),
-          onProfileTap: () => context.push('/mind/profile'),
-          onLogoutTap: () async {
-            if (user?.isGoogleUser == true) {
-              await GoogleAuthService.instance.signOut();
-            }
-            await AuthService.instance.logout();
-            if (context.mounted) {
-              context.go(RouteNames.login);
-            }
-          },
-        ),
+        appBar: headerMode == AppShellHeaderMode.shell
+            ? AppShellChrome(
+                title: Text(currentPageName),
+                user: user,
+                config: chromeConfig,
+                onHomeTap: () {
+                  ref.read(currentNavigationTabProvider.notifier).state = 0;
+                  navigationShell.goBranch(0);
+                },
+                onNotificationsTap: () => context.push('/mind/notifications'),
+                onProfileTap: () => context.push('/mind/profile'),
+                onLogoutTap: () async {
+                  if (user?.isGoogleUser == true) {
+                    await GoogleAuthService.instance.signOut();
+                  }
+                  await AuthService.instance.logout();
+                  if (context.mounted) {
+                    context.go(RouteNames.login);
+                  }
+                },
+              )
+            : null,
         body: _ContextAwareMiniPlayers(
           currentIndex: navigationShell.currentIndex,
           child: navigationShell,

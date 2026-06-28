@@ -85,7 +85,10 @@ class AppRouter {
       ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) {
-          return AppShell(navigationShell: navigationShell);
+          return AppShell(
+            navigationShell: navigationShell,
+            currentLocation: state.uri.path,
+          );
         },
         branches: [
           // Money branch

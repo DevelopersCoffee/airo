@@ -79,5 +79,45 @@ void main() {
       ]);
       expect(chromeConfig.compactWidthBreakpoint, 600);
     });
+
+    test('keeps shell-owned headers only on routes without local app bars', () {
+      expect(appShellHeaderModeForLocation('/money'), AppShellHeaderMode.shell);
+      expect(appShellHeaderModeForLocation('/mind'), AppShellHeaderMode.shell);
+      expect(
+        appShellHeaderModeForLocation('/mind/chat'),
+        AppShellHeaderMode.shell,
+      );
+      expect(
+        appShellHeaderModeForLocation('/mind/models'),
+        AppShellHeaderMode.shell,
+      );
+      expect(appShellHeaderModeForLocation('/games'), AppShellHeaderMode.shell);
+    });
+
+    test('switches custom and nested routes to route-owned headers', () {
+      expect(appShellHeaderModeForLocation('/music'), AppShellHeaderMode.route);
+      expect(appShellHeaderModeForLocation('/iptv'), AppShellHeaderMode.route);
+      expect(appShellHeaderModeForLocation('/quest'), AppShellHeaderMode.route);
+      expect(
+        appShellHeaderModeForLocation('/quest/new'),
+        AppShellHeaderMode.route,
+      );
+      expect(
+        appShellHeaderModeForLocation('/money/dashboard'),
+        AppShellHeaderMode.route,
+      );
+      expect(
+        appShellHeaderModeForLocation('/money/groups/alpha'),
+        AppShellHeaderMode.route,
+      );
+      expect(
+        appShellHeaderModeForLocation('/mind/profile'),
+        AppShellHeaderMode.route,
+      );
+      expect(
+        appShellHeaderModeForLocation('/mind/notifications'),
+        AppShellHeaderMode.route,
+      );
+    });
   });
 }

@@ -81,6 +81,46 @@ final appNavigationChromeConfigProvider = Provider<AppNavigationChromeConfig>(
   ),
 );
 
+enum AppShellHeaderMode { shell, route }
+
+AppShellHeaderMode appShellHeaderModeForLocation(String location) {
+  final normalizedLocation = Uri.parse(location).path;
+
+  const shellOwnedExactLocations = {
+    '/money',
+    '/mind',
+    '/mind/chat',
+    '/mind/models',
+    '/games',
+  };
+  if (shellOwnedExactLocations.contains(normalizedLocation)) {
+    return AppShellHeaderMode.shell;
+  }
+
+  const routeOwnedPrefixes = [
+    '/money/',
+    '/mind/',
+    '/music',
+    '/iptv',
+    '/games/',
+    '/quest',
+  ];
+  for (final prefix in routeOwnedPrefixes) {
+    if (normalizedLocation == prefix || normalizedLocation.startsWith(prefix)) {
+      return AppShellHeaderMode.route;
+    }
+  }
+
+  return AppShellHeaderMode.shell;
+}
+
+final appShellHeaderModeProvider = Provider.family<AppShellHeaderMode, String>((
+  ref,
+  location,
+) {
+  return appShellHeaderModeForLocation(location);
+});
+
 class MiniPlayerVisibility {
   const MiniPlayerVisibility({
     required this.showMusicPlayer,
