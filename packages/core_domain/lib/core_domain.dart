@@ -1,8 +1,7 @@
-/// Core domain layer for Airo
-///
-/// Contains entities, repository interfaces, value objects, and use cases
-/// that define the business logic of the application.
-library core_domain;
+// Core domain layer for Airo.
+//
+// Contains entities, repository interfaces, value objects, and use cases
+// that define the business logic of the application.
 
 // Entities
 export 'src/entities/entity.dart';
