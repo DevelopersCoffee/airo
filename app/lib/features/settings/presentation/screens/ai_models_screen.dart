@@ -12,17 +12,72 @@ final modelFiltersProvider = StateProvider<ModelFilters>((ref) {
   return const ModelFilters();
 });
 
-final filteredModelsProvider = Provider<List<OfflineModelInfo>>((ref) {
+final filteredModelsProvider = FutureProvider<List<OfflineModelInfo>>((
+  ref,
+) async {
   final registry = ref.watch(modelRegistryProvider);
   final filters = ref.watch(modelFiltersProvider);
-
-  return registry.queryModels(
+  final matchingModels = registry.queryModels(
     family: filters.family,
     minCredibility: filters.credibility,
     downloaded: filters.downloaded,
     searchQuery: filters.searchQuery,
   );
+
+  if (!filters.showCompatibleOnly) {
+    return matchingModels;
+  }
+
+  final compatibleModels = <OfflineModelInfo>[];
+  for (final model in matchingModels) {
+    final compatibility = await registry.checkCompatibility(model);
+    if (compatibility.isCompatible) {
+      compatibleModels.add(model);
+    }
+  }
+
+  return compatibleModels;
 });
+
+final downloadedModelsProvider = FutureProvider<List<OfflineModelInfo>>((
+  ref,
+) async {
+  final registry = ref.watch(modelRegistryProvider);
+  final filters = ref.watch(modelFiltersProvider);
+  final matchingModels = registry.queryModels(
+    family: filters.family,
+    minCredibility: filters.credibility,
+    downloaded: true,
+    searchQuery: filters.searchQuery,
+  );
+
+  if (!filters.showCompatibleOnly) {
+    return matchingModels;
+  }
+
+  final compatibleModels = <OfflineModelInfo>[];
+  for (final model in matchingModels) {
+    final compatibility = await registry.checkCompatibility(model);
+    if (compatibility.isCompatible) {
+      compatibleModels.add(model);
+    }
+  }
+
+  return compatibleModels;
+});
+
+final modelCompatibilityProvider =
+    FutureProvider.family<ModelCompatibilityResult, String>((
+      ref,
+      modelId,
+    ) async {
+      final registry = ref.watch(modelRegistryProvider);
+      final model = registry.getModel(modelId);
+      if (model == null) {
+        return ModelCompatibilityResult.compatible(MemorySeverity.warning);
+      }
+      return registry.checkCompatibility(model);
+    });
 
 /// AI Models browser screen.
 ///
@@ -55,7 +110,7 @@ class _AIModelsScreenState extends ConsumerState<AIModelsScreen>
   Widget build(BuildContext context) {
     final filters = ref.watch(modelFiltersProvider);
     final models = ref.watch(filteredModelsProvider);
-    final registry = ref.watch(modelRegistryProvider);
+    final downloadedModels = ref.watch(downloadedModelsProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -85,12 +140,11 @@ class _AIModelsScreenState extends ConsumerState<AIModelsScreen>
               controller: _tabController,
               children: [
                 // All models tab
-                _buildModelsList(models, registry),
+                _buildModelsAsync(models),
 
                 // Downloaded models tab
-                _buildModelsList(
-                  registry.downloadedModels,
-                  registry,
+                _buildModelsAsync(
+                  downloadedModels,
                   emptyMessage:
                       'No downloaded models yet.\n'
                       'Browse the Text Models tab to download.',
@@ -103,9 +157,28 @@ class _AIModelsScreenState extends ConsumerState<AIModelsScreen>
     );
   }
 
+  Widget _buildModelsAsync(
+    AsyncValue<List<OfflineModelInfo>> models, {
+    String? emptyMessage,
+  }) {
+    return models.when(
+      data: (resolvedModels) =>
+          _buildModelsList(resolvedModels, emptyMessage: emptyMessage),
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (error, stackTrace) => Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Text(
+            'Could not load AI models.\n$error',
+            textAlign: TextAlign.center,
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildModelsList(
-    List<OfflineModelInfo> models,
-    ModelRegistry registry, {
+    List<OfflineModelInfo> models, {
     String? emptyMessage,
   }) {
     final activeDownloads = ref.watch(activeDownloadsProvider);
@@ -143,28 +216,83 @@ class _AIModelsScreenState extends ConsumerState<AIModelsScreen>
         final downloadProgress = activeDownloads[model.id];
         final isDownloading = downloadProgress?.isInProgress ?? false;
         final isActive = model.id == selectedModelId;
+        final compatibility = ref.watch(modelCompatibilityProvider(model.id));
 
-        return ModelCard(
-          model: model,
-          isActive: isActive,
-          isDownloading: isDownloading,
-          downloadProgress: downloadProgress?.progress,
-          downloadSpeed: isDownloading ? downloadProgress?.speedDisplay : null,
-          downloadEta: isDownloading ? downloadProgress?.etaDisplay : null,
-          onTap: () => _openModelDetail(model),
-          onDownload: model.isDownloaded || isDownloading
-              ? null
-              : () => _downloadModel(model),
-          onDelete: model.isDownloaded ? () => _deleteModel(model) : null,
-          onSetActive: model.isDownloaded && !isActive
-              ? () => _setActiveModel(model)
-              : null,
-          onCancelDownload: isDownloading
-              ? () => _cancelDownload(model.id)
-              : null,
-          onLearnMore: model.learnMoreUri != null
-              ? () => launchModelLearnMore(context, model)
-              : null,
+        return compatibility.when(
+          data: (result) => ModelCard(
+            model: model,
+            isActive: isActive,
+            isDownloading: isDownloading,
+            downloadProgress: downloadProgress?.progress,
+            downloadSpeed: isDownloading
+                ? downloadProgress?.speedDisplay
+                : null,
+            downloadEta: isDownloading ? downloadProgress?.etaDisplay : null,
+            isCompatible: result.isCompatible,
+            onTap: () => _openModelDetail(model),
+            onDownload: model.isDownloaded || isDownloading
+                ? null
+                : () => _downloadModel(model),
+            onDelete: model.isDownloaded ? () => _deleteModel(model) : null,
+            onSetActive: model.isDownloaded && !isActive
+                ? () => _setActiveModel(model)
+                : null,
+            onCancelDownload: isDownloading
+                ? () => _cancelDownload(model.id)
+                : null,
+            onLearnMore: model.learnMoreUri != null
+                ? () => launchModelLearnMore(context, model)
+                : null,
+          ),
+          loading: () => ModelCard(
+            model: model,
+            isActive: isActive,
+            isDownloading: isDownloading,
+            downloadProgress: downloadProgress?.progress,
+            downloadSpeed: isDownloading
+                ? downloadProgress?.speedDisplay
+                : null,
+            downloadEta: isDownloading ? downloadProgress?.etaDisplay : null,
+            onTap: () => _openModelDetail(model),
+            onDownload: model.isDownloaded || isDownloading
+                ? null
+                : () => _downloadModel(model),
+            onDelete: model.isDownloaded ? () => _deleteModel(model) : null,
+            onSetActive: model.isDownloaded && !isActive
+                ? () => _setActiveModel(model)
+                : null,
+            onCancelDownload: isDownloading
+                ? () => _cancelDownload(model.id)
+                : null,
+            onLearnMore: model.learnMoreUri != null
+                ? () => launchModelLearnMore(context, model)
+                : null,
+          ),
+          error: (_, _) => ModelCard(
+            model: model,
+            isActive: isActive,
+            isDownloading: isDownloading,
+            downloadProgress: downloadProgress?.progress,
+            downloadSpeed: isDownloading
+                ? downloadProgress?.speedDisplay
+                : null,
+            downloadEta: isDownloading ? downloadProgress?.etaDisplay : null,
+            isCompatible: false,
+            onTap: () => _openModelDetail(model),
+            onDownload: model.isDownloaded || isDownloading
+                ? null
+                : () => _downloadModel(model),
+            onDelete: model.isDownloaded ? () => _deleteModel(model) : null,
+            onSetActive: model.isDownloaded && !isActive
+                ? () => _setActiveModel(model)
+                : null,
+            onCancelDownload: isDownloading
+                ? () => _cancelDownload(model.id)
+                : null,
+            onLearnMore: model.learnMoreUri != null
+                ? () => launchModelLearnMore(context, model)
+                : null,
+          ),
         );
       },
     );
