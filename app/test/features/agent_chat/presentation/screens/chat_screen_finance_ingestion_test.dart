@@ -80,6 +80,66 @@ void main() {
     expect(repository.transactions, isEmpty);
     expect(find.textContaining('Removed Swiggy from Coins.'), findsOneWidget);
   });
+
+  testWidgets('low-confidence finance text is still queued for Coins review', (
+    tester,
+  ) async {
+    tester.view.devicePixelRatio = 1.0;
+    tester.view.physicalSize = const Size(1200, 1000);
+    addTearDown(() {
+      tester.view.resetDevicePixelRatio();
+      tester.view.resetPhysicalSize();
+    });
+
+    SharedPreferences.setMockInitialValues({
+      'selected_assistant_model_id': geminiNanoAssistantModelId,
+    });
+
+    final repository = _InMemoryTransactionRepository();
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          currencyFormatterProvider.overrideWithValue(
+            CurrencyFormatter.fromCode('INR'),
+          ),
+          selectedAssistantModelIdProvider.overrideWith(
+            (ref) => _SelectedAssistantModelNotifier(),
+          ),
+          transactionRepositoryProvider.overrideWithValue(repository),
+          expenseAccountOptionsProvider.overrideWith(
+            (ref) async => [
+              Account(
+                id: 'cash_default',
+                name: 'Cash',
+                type: AccountType.cash,
+                balanceCents: 0,
+                currencyCode: 'INR',
+                isDefault: true,
+                createdAt: DateTime(2026, 6, 20),
+              ),
+            ],
+          ),
+        ],
+        child: const MaterialApp(home: ChatScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byKey(const Key('agent_chat_input')), 'Rs 299 spent');
+    await tester.tap(find.byIcon(Icons.send));
+    await tester.pumpAndSettle();
+
+    expect(repository.transactions, hasLength(1));
+    expect(repository.transactions.single.description, 'Finance SMS transaction');
+    expect(repository.transactions.single.amountCents, -29900);
+    expect(repository.transactions.single.tags, contains('review:pending'));
+    expect(
+      find.textContaining('Queued for Coins review: Finance SMS transaction'),
+      findsOneWidget,
+    );
+    expect(find.text('Undo'), findsOneWidget);
+  });
 }
 
 class _SelectedAssistantModelNotifier extends SelectedAssistantModelNotifier {

@@ -54,14 +54,6 @@ class FinanceChatIngestionService {
       );
     }
 
-    if (!parsed.isHighConfidence) {
-      return FinanceChatIngestionResult(
-        status: FinanceChatIngestionStatus.needsReview,
-        parsed: parsed,
-        message: 'I found a possible transaction, but it needs review.',
-      );
-    }
-
     final existingResult = await _repository.findByTag(parsed.sourceTag);
     if (existingResult.error != null) {
       return FinanceChatIngestionResult(
@@ -96,7 +88,9 @@ class FinanceChatIngestionService {
         status: FinanceChatIngestionStatus.needsReview,
         parsed: parsed,
         transaction: updateResult.data,
-        message: 'Queued imported transaction for review.',
+        message: parsed.isHighConfidence
+            ? 'Queued imported transaction for review.'
+            : 'Queued possible transaction for review.',
       );
     }
 
@@ -124,7 +118,9 @@ class FinanceChatIngestionService {
       status: FinanceChatIngestionStatus.needsReview,
       parsed: parsed,
       transaction: createResult.data,
-      message: 'Queued imported transaction for review.',
+      message: parsed.isHighConfidence
+          ? 'Queued imported transaction for review.'
+          : 'Queued possible transaction for review.',
     );
   }
 
