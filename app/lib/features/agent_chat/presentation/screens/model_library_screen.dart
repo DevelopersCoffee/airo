@@ -1,9 +1,11 @@
 import 'package:core_ai/core_ai.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../application/assistant_model_preferences.dart';
+import '../../data/services/assistant_runtime_service.dart';
 import '../../../../core/ai/model_learn_more_launcher.dart';
 import '../../../../core/services/gemini_api_service.dart';
 import '../../../../core/services/gemini_nano_service.dart';
@@ -462,10 +464,12 @@ class ModelLibraryScreen extends ConsumerWidget {
     super.key,
     required this.onModelSelected,
     required this.onOpenModelManager,
+    this.runtimeService,
   });
 
   final ValueChanged<AssistantModelCandidate> onModelSelected;
   final VoidCallback onOpenModelManager;
+  final AssistantRuntimeService? runtimeService;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -478,6 +482,7 @@ class ModelLibraryScreen extends ConsumerWidget {
             state: state,
             onModelSelected: onModelSelected,
             onOpenModelManager: onOpenModelManager,
+            runtimeService: runtimeService ?? AssistantRuntimeService(),
           ),
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (error, _) => _ModelLibraryError(
@@ -495,11 +500,13 @@ class _ModelLibraryContent extends ConsumerWidget {
     required this.state,
     required this.onModelSelected,
     required this.onOpenModelManager,
+    required this.runtimeService,
   });
 
   final AssistantModelLibraryState state;
   final ValueChanged<AssistantModelCandidate> onModelSelected;
   final VoidCallback onOpenModelManager;
+  final AssistantRuntimeService runtimeService;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -606,10 +613,100 @@ class _ModelLibraryContent extends ConsumerWidget {
       );
       return;
     }
+    if (candidate.local) {
+      final result = await _prepareLocalRuntime(
+        context,
+        candidate: candidate,
+        template: template,
+      );
+      if (!context.mounted || !result.isReady) {
+        return;
+      }
+    }
     await ref
         .read(selectedAssistantModelIdProvider.notifier)
         .select(candidate.id);
     onModelSelected(candidate);
+  }
+
+  Future<AssistantRuntimePreparationResult> _prepareLocalRuntime(
+    BuildContext context, {
+    required AssistantModelCandidate candidate,
+    required AssistantProjectTemplate template,
+  }) async {
+    final progress = ValueNotifier(
+      const AssistantRuntimePreparationProgress(
+        phase: AssistantRuntimePreparationPhase.validate,
+        progress: 0,
+        label: 'Prepare runtime',
+        detail: 'Starting compatibility checks.',
+      ),
+    );
+    var cancelRequested = false;
+
+    final dialogFuture = showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return ValueListenableBuilder<AssistantRuntimePreparationProgress>(
+          valueListenable: progress,
+          builder: (context, value, _) {
+            return AlertDialog(
+              title: Text('${template.title} setup'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(value.label),
+                  const SizedBox(height: 8),
+                  LinearProgressIndicator(value: value.progress),
+                  const SizedBox(height: 12),
+                  Text(value.detail),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    cancelRequested = true;
+                  },
+                  child: Text(cancelRequested ? 'Stopping…' : 'Cancel'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    final result = await runtimeService.prepareRuntime(
+      candidate: candidate,
+      onProgress: (value) => progress.value = value,
+      isCancelled: () => cancelRequested,
+    );
+
+    progress.dispose();
+    if (context.mounted) {
+      Navigator.of(context, rootNavigator: true).pop();
+      await dialogFuture;
+    }
+
+    if (!context.mounted) {
+      return result;
+    }
+    if (result.status == AssistantRuntimePreparationStatus.cancelled) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${candidate.name} setup cancelled.')),
+      );
+      return result;
+    }
+    if (result.diagnostic != null) {
+      await _showPreparationFailure(
+        context,
+        diagnostic: result.diagnostic!,
+        candidate: candidate,
+      );
+    }
+    return result;
   }
 
   Future<bool?> _confirmPackageSetup(
@@ -708,6 +805,78 @@ class _ModelLibraryContent extends ConsumerWidget {
             },
             child: const Text('Open Profile settings'),
           ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _showPreparationFailure(
+    BuildContext context, {
+    required AssistantRuntimeDiagnosticEnvelope diagnostic,
+    required AssistantModelCandidate candidate,
+  }) {
+    return showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(diagnostic.summary),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(diagnostic.detail),
+              const SizedBox(height: 12),
+              Text(
+                'Device: ${diagnostic.deviceLabel}',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              Text(
+                'Platform: ${diagnostic.platformLabel}',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              if (diagnostic.repairActions.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Text(
+                  'Repair actions',
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+                const SizedBox(height: 8),
+                for (final action in diagnostic.repairActions)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: Text('• $action'),
+                  ),
+              ],
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () async {
+              await Clipboard.setData(
+                ClipboardData(text: diagnostic.toMarkdown()),
+              );
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Diagnostics copied')),
+                );
+              }
+            },
+            child: const Text('Copy diagnostics'),
+          ),
+          if (candidate.opensModelManager)
+            FilledButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                onOpenModelManager();
+              },
+              child: const Text('Open model settings'),
+            )
+          else
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Close'),
+            ),
         ],
       ),
     );
