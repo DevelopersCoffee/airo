@@ -22,15 +22,15 @@ sealed class AuthResult {
 
   /// Get the user if successful, null otherwise.
   User? get userOrNull => switch (this) {
-        AuthSuccess(user: final u) => u,
-        AuthFailure() => null,
-      };
+    AuthSuccess(user: final u) => u,
+    AuthFailure() => null,
+  };
 
   /// Get the error message if failed, null otherwise.
   String? get errorOrNull => switch (this) {
-        AuthSuccess() => null,
-        AuthFailure(message: final m) => m,
-      };
+    AuthSuccess() => null,
+    AuthFailure(message: final m) => m,
+  };
 }
 
 /// Successful authentication result.
@@ -39,11 +39,7 @@ class AuthSuccess extends AuthResult {
   final String? token;
   final String? refreshToken;
 
-  const AuthSuccess({
-    required this.user,
-    this.token,
-    this.refreshToken,
-  });
+  const AuthSuccess({required this.user, this.token, this.refreshToken});
 }
 
 /// Failed authentication result.
@@ -51,10 +47,7 @@ class AuthFailure extends AuthResult {
   final String message;
   final AuthErrorCode? code;
 
-  const AuthFailure({
-    required this.message,
-    this.code,
-  });
+  const AuthFailure({required this.message, this.code});
 }
 
 /// Authentication error codes.
@@ -76,18 +69,17 @@ enum AuthErrorCode {
 /// Extension to get human-readable messages for error codes.
 extension AuthErrorCodeMessage on AuthErrorCode {
   String get message => switch (this) {
-        AuthErrorCode.invalidCredentials => 'Invalid username or password',
-        AuthErrorCode.userNotFound => 'User not found',
-        AuthErrorCode.userDisabled => 'This account has been disabled',
-        AuthErrorCode.emailNotVerified => 'Please verify your email address',
-        AuthErrorCode.weakPassword => 'Password is too weak',
-        AuthErrorCode.emailAlreadyInUse => 'Email is already in use',
-        AuthErrorCode.usernameAlreadyInUse => 'Username is already taken',
-        AuthErrorCode.networkError => 'Network error. Please check your connection',
-        AuthErrorCode.serverError => 'Server error. Please try again later',
-        AuthErrorCode.tokenExpired => 'Session expired. Please login again',
-        AuthErrorCode.sessionExpired => 'Session expired. Please login again',
-        AuthErrorCode.unknown => 'An unknown error occurred',
-      };
+    AuthErrorCode.invalidCredentials => 'Invalid username or password',
+    AuthErrorCode.userNotFound => 'User not found',
+    AuthErrorCode.userDisabled => 'This account has been disabled',
+    AuthErrorCode.emailNotVerified => 'Please verify your email address',
+    AuthErrorCode.weakPassword => 'Password is too weak',
+    AuthErrorCode.emailAlreadyInUse => 'Email is already in use',
+    AuthErrorCode.usernameAlreadyInUse => 'Username is already taken',
+    AuthErrorCode.networkError => 'Network error. Please check your connection',
+    AuthErrorCode.serverError => 'Server error. Please try again later',
+    AuthErrorCode.tokenExpired => 'Session expired. Please login again',
+    AuthErrorCode.sessionExpired => 'Session expired. Please login again',
+    AuthErrorCode.unknown => 'An unknown error occurred',
+  };
 }
-

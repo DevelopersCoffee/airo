@@ -31,10 +31,9 @@ abstract final class LLMJsonParser {
 
       return Success(parsed);
     } on FormatException catch (e) {
-      return Failure(ValidationFailure(
-        message: 'Invalid JSON: ${e.message}',
-        cause: e,
-      ));
+      return Failure(
+        ValidationFailure(message: 'Invalid JSON: ${e.message}', cause: e),
+      );
     }
   }
 
@@ -57,10 +56,9 @@ abstract final class LLMJsonParser {
 
       return Success(parsed);
     } on FormatException catch (e) {
-      return Failure(ValidationFailure(
-        message: 'Invalid JSON: ${e.message}',
-        cause: e,
-      ));
+      return Failure(
+        ValidationFailure(message: 'Invalid JSON: ${e.message}', cause: e),
+      );
     }
   }
 
@@ -81,20 +79,21 @@ abstract final class LLMJsonParser {
     if (requiredFields != null) {
       final missing = requiredFields.where((f) => !obj.containsKey(f)).toList();
       if (missing.isNotEmpty) {
-        return Failure(ValidationFailure(
-          message: 'Missing required fields: ${missing.join(", ")}',
-          errors: {for (final f in missing) f: 'Required field missing'},
-        ));
+        return Failure(
+          ValidationFailure(
+            message: 'Missing required fields: ${missing.join(", ")}',
+            errors: {for (final f in missing) f: 'Required field missing'},
+          ),
+        );
       }
     }
 
     try {
       return Success(fromJson(obj));
     } catch (e) {
-      return Failure(ValidationFailure(
-        message: 'Failed to parse response: $e',
-        cause: e,
-      ));
+      return Failure(
+        ValidationFailure(message: 'Failed to parse response: $e', cause: e),
+      );
     }
   }
 
@@ -174,15 +173,15 @@ class ReceiptData {
   });
 
   factory ReceiptData.fromJson(Map<String, dynamic> json) => ReceiptData(
-        items: (json['items'] as List)
-            .map((e) => ReceiptItem.fromJson(e as Map<String, dynamic>))
-            .toList(),
-        total: (json['total'] as num).toDouble(),
-        vendor: json['vendor'] as String?,
-        date: json['date'] as String?,
-        subtotal: (json['subtotal'] as num?)?.toDouble(),
-        tax: (json['tax'] as num?)?.toDouble(),
-      );
+    items: (json['items'] as List)
+        .map((e) => ReceiptItem.fromJson(e as Map<String, dynamic>))
+        .toList(),
+    total: (json['total'] as num).toDouble(),
+    vendor: json['vendor'] as String?,
+    date: json['date'] as String?,
+    subtotal: (json['subtotal'] as num?)?.toDouble(),
+    tax: (json['tax'] as num?)?.toDouble(),
+  );
 
   final List<ReceiptItem> items;
   final double total;
@@ -201,10 +200,10 @@ class ReceiptItem {
   });
 
   factory ReceiptItem.fromJson(Map<String, dynamic> json) => ReceiptItem(
-        name: json['name'] as String,
-        price: (json['price'] as num).toDouble(),
-        quantity: json['quantity'] as int? ?? 1,
-      );
+    name: json['name'] as String,
+    price: (json['price'] as num).toDouble(),
+    quantity: json['quantity'] as int? ?? 1,
+  );
 
   final String name;
   final double price;
@@ -216,11 +215,11 @@ class BillSplitData {
   const BillSplitData({required this.splits, this.totalAmount});
 
   factory BillSplitData.fromJson(Map<String, dynamic> json) => BillSplitData(
-        splits: (json['splits'] as List)
-            .map((e) => PersonSplit.fromJson(e as Map<String, dynamic>))
-            .toList(),
-        totalAmount: (json['totalAmount'] as num?)?.toDouble(),
-      );
+    splits: (json['splits'] as List)
+        .map((e) => PersonSplit.fromJson(e as Map<String, dynamic>))
+        .toList(),
+    totalAmount: (json['totalAmount'] as num?)?.toDouble(),
+  );
 
   final List<PersonSplit> splits;
   final double? totalAmount;
@@ -231,13 +230,12 @@ class PersonSplit {
   const PersonSplit({required this.name, required this.amount, this.items});
 
   factory PersonSplit.fromJson(Map<String, dynamic> json) => PersonSplit(
-        name: json['name'] as String,
-        amount: (json['amount'] as num).toDouble(),
-        items: (json['items'] as List?)?.cast<String>(),
-      );
+    name: json['name'] as String,
+    amount: (json['amount'] as num).toDouble(),
+    items: (json['items'] as List?)?.cast<String>(),
+  );
 
   final String name;
   final double amount;
   final List<String>? items;
 }
-

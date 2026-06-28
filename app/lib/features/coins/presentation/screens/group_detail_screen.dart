@@ -198,9 +198,11 @@ class GroupDetailScreen extends ConsumerWidget {
       ownerUserId: user!.id,
       cloudMode: true,
     );
-    await Share.share(
-      'Join ${group.name} on Airo Coins: $link',
-      subject: 'Airo Coins group invite',
+    await SharePlus.instance.share(
+      ShareParams(
+        text: 'Join ${group.name} on Airo Coins: $link',
+        subject: 'Airo Coins group invite',
+      ),
     );
   }
 

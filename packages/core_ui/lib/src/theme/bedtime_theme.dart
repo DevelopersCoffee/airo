@@ -184,7 +184,7 @@ class BedtimeTheme {
         }),
         trackColor: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
-            return _warmTint.withOpacity(0.5);
+            return _warmTint.withValues(alpha: 0.5);
           }
           return _mediumGray;
         }),

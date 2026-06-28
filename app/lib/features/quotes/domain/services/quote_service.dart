@@ -34,9 +34,7 @@ class ZenQuotesService implements QuoteService {
   final Dio _dio;
   final SharedPreferences _prefs;
 
-  ZenQuotesService({required Dio dio, required SharedPreferences prefs})
-    : _dio = dio,
-      _prefs = prefs;
+  ZenQuotesService({required this._dio, required this._prefs});
 
   @override
   Future<Quote> getDailyQuote(String userId) async {
@@ -163,12 +161,10 @@ class ViewBitsService implements QuoteService {
   final QuoteSource _source;
 
   ViewBitsService({
-    required Dio dio,
-    required SharedPreferences prefs,
-    QuoteSource source = QuoteSource.fortuneCookie,
-  }) : _dio = dio,
-       _prefs = prefs,
-       _source = source;
+    required this._dio,
+    required this._prefs,
+    this._source = QuoteSource.fortuneCookie,
+  });
 
   @override
   Future<Quote> getDailyQuote(String userId) async {

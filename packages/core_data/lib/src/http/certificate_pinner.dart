@@ -147,4 +147,3 @@ class CertificatePinningException implements Exception {
   String toString() =>
       'CertificatePinningException: $message${host != null ? ' (host: $host)' : ''}';
 }
-

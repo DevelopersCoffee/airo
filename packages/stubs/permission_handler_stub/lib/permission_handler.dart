@@ -21,58 +21,56 @@ extension PermissionStatusExtension on PermissionStatus {
 }
 
 /// Permission class
-class Permission {
-  final int _value;
-  
+enum Permission {
+  camera._(0),
+  contacts._(1),
+  location._(2),
+  locationAlways._(3),
+  locationWhenInUse._(4),
+  mediaLibrary._(5),
+  microphone._(6),
+  phone._(7),
+  photos._(8),
+  photosAddOnly._(9),
+  reminders._(10),
+  sensors._(11),
+  sms._(12),
+  speech._(13),
+  storage._(14),
+  notification._(15),
+  bluetooth._(16),
+  manageExternalStorage._(17),
+  systemAlertWindow._(18),
+  requestInstallPackages._(19),
+  appTrackingTransparency._(20),
+  criticalAlerts._(21),
+  accessNotificationPolicy._(22),
+  bluetoothScan._(23),
+  bluetoothAdvertise._(24),
+  bluetoothConnect._(25),
+  nearbyWifiDevices._(26),
+  videos._(27),
+  audio._(28),
+  scheduleExactAlarm._(29),
+  sensorsAlways._(30),
+  calendarFullAccess._(31),
+  calendarWriteOnly._(32);
+
   const Permission._(this._value);
-  
-  static const Permission camera = Permission._(0);
-  static const Permission contacts = Permission._(1);
-  static const Permission location = Permission._(2);
-  static const Permission locationAlways = Permission._(3);
-  static const Permission locationWhenInUse = Permission._(4);
-  static const Permission mediaLibrary = Permission._(5);
-  static const Permission microphone = Permission._(6);
-  static const Permission phone = Permission._(7);
-  static const Permission photos = Permission._(8);
-  static const Permission photosAddOnly = Permission._(9);
-  static const Permission reminders = Permission._(10);
-  static const Permission sensors = Permission._(11);
-  static const Permission sms = Permission._(12);
-  static const Permission speech = Permission._(13);
-  static const Permission storage = Permission._(14);
-  static const Permission notification = Permission._(15);
-  static const Permission bluetooth = Permission._(16);
-  static const Permission manageExternalStorage = Permission._(17);
-  static const Permission systemAlertWindow = Permission._(18);
-  static const Permission requestInstallPackages = Permission._(19);
-  static const Permission appTrackingTransparency = Permission._(20);
-  static const Permission criticalAlerts = Permission._(21);
-  static const Permission accessNotificationPolicy = Permission._(22);
-  static const Permission bluetoothScan = Permission._(23);
-  static const Permission bluetoothAdvertise = Permission._(24);
-  static const Permission bluetoothConnect = Permission._(25);
-  static const Permission nearbyWifiDevices = Permission._(26);
-  static const Permission videos = Permission._(27);
-  static const Permission audio = Permission._(28);
-  static const Permission scheduleExactAlarm = Permission._(29);
-  static const Permission sensorsAlways = Permission._(30);
-  static const Permission calendarFullAccess = Permission._(31);
-  static const Permission calendarWriteOnly = Permission._(32);
-  
+  final int _value;
+
   /// Check if granted - returns denied on TV
   Future<bool> get isGranted async => false;
-  
+
   /// Check if denied - returns true on TV
   Future<bool> get isDenied async => true;
-  
+
   /// Request permission - returns denied on TV
   Future<PermissionStatus> request() async => PermissionStatus.denied;
-  
+
   /// Get status - returns denied on TV
   Future<PermissionStatus> get status async => PermissionStatus.denied;
 }
 
 /// Open app settings
 Future<bool> openAppSettings() async => false;
-

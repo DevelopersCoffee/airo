@@ -4,10 +4,7 @@ import 'package:template_feature/template_feature.dart';
 void main() {
   group('TemplateEntity', () {
     test('should create entity with required fields', () {
-      const entity = TemplateEntity(
-        id: '123',
-        name: 'Test Item',
-      );
+      const entity = TemplateEntity(id: '123', name: 'Test Item');
 
       expect(entity.id, '123');
       expect(entity.name, 'Test Item');
@@ -30,10 +27,7 @@ void main() {
     });
 
     test('copyWith should create new entity with updated fields', () {
-      const original = TemplateEntity(
-        id: '123',
-        name: 'Original',
-      );
+      const original = TemplateEntity(id: '123', name: 'Original');
 
       final updated = original.copyWith(
         name: 'Updated',
@@ -55,4 +49,3 @@ void main() {
     });
   });
 }
-

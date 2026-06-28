@@ -12,16 +12,26 @@ class ModelDownloadService {
     MethodChannel? methodChannel,
     EventChannel? eventChannel,
     ModelStorageManager? storageManager,
-  })  : _methodChannel = methodChannel ?? const MethodChannel('com.airo.model_download'),
-        _eventChannel = eventChannel ?? const EventChannel('com.airo.model_download/progress'),
-        _storageManager = storageManager ?? ModelStorageManager(channel: methodChannel ?? const MethodChannel('com.airo.model_download'));
+  }) : _methodChannel =
+           methodChannel ?? const MethodChannel('com.airo.model_download'),
+       _eventChannel =
+           eventChannel ??
+           const EventChannel('com.airo.model_download/progress'),
+       _storageManager =
+           storageManager ??
+           ModelStorageManager(
+             channel:
+                 methodChannel ??
+                 const MethodChannel('com.airo.model_download'),
+           );
 
   final MethodChannel _methodChannel;
   final EventChannel _eventChannel;
   final ModelStorageManager _storageManager;
 
   StreamSubscription? _progressSubscription;
-  final Map<String, StreamController<ModelDownloadProgress>> _progressStreams = {};
+  final Map<String, StreamController<ModelDownloadProgress>> _progressStreams =
+      {};
   final StreamController<ModelDownloadProgress> _globalProgressController =
       StreamController<ModelDownloadProgress>.broadcast();
 
@@ -103,7 +113,9 @@ class ModelDownloadService {
     }
   }
 
-  StreamController<ModelDownloadProgress> _getOrCreateController(String modelId) {
+  StreamController<ModelDownloadProgress> _getOrCreateController(
+    String modelId,
+  ) {
     if (_progressStreams.containsKey(modelId)) {
       return _progressStreams[modelId]!;
     }
@@ -146,33 +158,43 @@ class ModelDownloadService {
     final hasIntegrity = await _storageManager.verifyModelIntegrity(model);
     if (hasIntegrity) {
       final controller = _getOrCreateController(model.id);
-      controller.add(ModelDownloadProgress.completed(model.id, model.fileSizeBytes));
+      controller.add(
+        ModelDownloadProgress.completed(model.id, model.fileSizeBytes),
+      );
       return;
     }
 
-    final hasSpace = await _storageManager.hasEnoughDiskSpace(model.fileSizeBytes);
+    final hasSpace = await _storageManager.hasEnoughDiskSpace(
+      model.fileSizeBytes,
+    );
     if (!hasSpace) {
       final controller = _getOrCreateController(model.id);
-      controller.add(ModelDownloadProgress.failed(model.id, 'Insufficient disk space.'));
+      controller.add(
+        ModelDownloadProgress.failed(model.id, 'Insufficient disk space.'),
+      );
       return;
     }
 
     if (_activeModel != null) {
       // Put in FIFO queue
       _queue.add(model);
-      _emitProgress(ModelDownloadProgress.starting(model.id, model.fileSizeBytes));
+      _emitProgress(
+        ModelDownloadProgress.starting(model.id, model.fileSizeBytes),
+      );
       return;
     }
 
     // Start download immediately
     _activeModel = model;
-    _emitProgress(ModelDownloadProgress(
-      modelId: model.id,
-      totalBytes: model.fileSizeBytes,
-      downloadedBytes: 0,
-      status: ModelDownloadStatus.downloading,
-      startTime: DateTime.now(),
-    ));
+    _emitProgress(
+      ModelDownloadProgress(
+        modelId: model.id,
+        totalBytes: model.fileSizeBytes,
+        downloadedBytes: 0,
+        status: ModelDownloadStatus.downloading,
+        startTime: DateTime.now(),
+      ),
+    );
 
     try {
       final filePath = await _storageManager.getModelPath(model.id);
@@ -209,12 +231,14 @@ class ModelDownloadService {
     final queueIndex = _queue.indexWhere((m) => m.id == modelId);
     if (queueIndex != -1) {
       _queue.removeAt(queueIndex);
-      _emitProgress(ModelDownloadProgress(
-        modelId: modelId,
-        totalBytes: 0,
-        downloadedBytes: 0,
-        status: ModelDownloadStatus.cancelled,
-      ));
+      _emitProgress(
+        ModelDownloadProgress(
+          modelId: modelId,
+          totalBytes: 0,
+          downloadedBytes: 0,
+          status: ModelDownloadStatus.cancelled,
+        ),
+      );
       _cleanupController(modelId);
       return;
     }
@@ -222,9 +246,13 @@ class ModelDownloadService {
     // If it is active, tell native to cancel
     if (_activeModel?.id == modelId) {
       try {
-        await _methodChannel.invokeMethod('cancelDownload', {'modelId': modelId});
+        await _methodChannel.invokeMethod('cancelDownload', {
+          'modelId': modelId,
+        });
       } catch (e) {
-        _emitProgress(ModelDownloadProgress.failed(modelId, 'Cancel failed: $e'));
+        _emitProgress(
+          ModelDownloadProgress.failed(modelId, 'Cancel failed: $e'),
+        );
         _handleDownloadFinished(modelId);
       }
     }
@@ -240,7 +268,7 @@ class ModelDownloadService {
     final path = await getModelPath(modelId);
     final file = File(path);
     if (!await file.exists()) return false;
-    
+
     // Check integrity if size matches catalog spec roughly
     final stat = await file.stat();
     return stat.size > 0;

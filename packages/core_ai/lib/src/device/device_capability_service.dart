@@ -47,8 +47,9 @@ class DeviceCapabilityService {
     }
 
     try {
-      final Map<dynamic, dynamic> result =
-          await _channel.invokeMethod('getMemoryInfo');
+      final Map<dynamic, dynamic> result = await _channel.invokeMethod(
+        'getMemoryInfo',
+      );
 
       _cachedMemoryInfo = MemoryInfo(
         totalBytes: (result['totalBytes'] as num?)?.toInt() ?? 0,
@@ -70,8 +71,9 @@ class DeviceCapabilityService {
     }
 
     try {
-      final Map<dynamic, dynamic> result =
-          await _channel.invokeMethod('getDeviceInfo');
+      final Map<dynamic, dynamic> result = await _channel.invokeMethod(
+        'getDeviceInfo',
+      );
 
       return DeviceInfo(
         manufacturer: result['manufacturer'] as String? ?? 'Unknown',
@@ -100,10 +102,7 @@ class DeviceCapabilityService {
     // Web has limited memory access. Return a conservative estimate.
     // Modern browsers may expose navigator.deviceMemory but it's limited.
     // Default to 4GB total, 2GB available for web apps.
-    return MemoryInfo.fromMegabytes(
-      totalMB: 4096,
-      availableMB: 2048,
-    );
+    return MemoryInfo.fromMegabytes(totalMB: 4096, availableMB: 2048);
   }
 }
 
@@ -128,28 +127,27 @@ class DeviceInfo {
   });
 
   factory DeviceInfo.unknown() => const DeviceInfo(
-        manufacturer: 'Unknown',
-        model: 'Unknown',
-        brand: 'Unknown',
-        osVersion: 'Unknown',
-        sdkVersion: 0,
-        isPixelDevice: false,
-        supportsOnDeviceAI: false,
-      );
+    manufacturer: 'Unknown',
+    model: 'Unknown',
+    brand: 'Unknown',
+    osVersion: 'Unknown',
+    sdkVersion: 0,
+    isPixelDevice: false,
+    supportsOnDeviceAI: false,
+  );
 
   factory DeviceInfo.web() => const DeviceInfo(
-        manufacturer: 'Web',
-        model: 'Browser',
-        brand: 'Web',
-        osVersion: 'N/A',
-        sdkVersion: 0,
-        isPixelDevice: false,
-        supportsOnDeviceAI: false,
-      );
+    manufacturer: 'Web',
+    model: 'Browser',
+    brand: 'Web',
+    osVersion: 'N/A',
+    sdkVersion: 0,
+    isPixelDevice: false,
+    supportsOnDeviceAI: false,
+  );
 
   String get displayName => '$manufacturer $model';
 
   @override
   String toString() => 'DeviceInfo($displayName, OS: $osVersion)';
 }
-

@@ -3,8 +3,8 @@ description: "Core UI package: theme, design tokens, and shared widgets"
 version: 0.0.1
 
 environment:
-  sdk: ">=3.9.2 <4.0.0"
-  flutter: ">=3.35.7"
+  sdk: ">=3.12.2 <4.0.0"
+  flutter: ">=3.44.4"
 
 dependencies:
   flutter:

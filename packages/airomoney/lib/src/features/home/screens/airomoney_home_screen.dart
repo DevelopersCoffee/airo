@@ -215,8 +215,8 @@ class AiroMoneyHomeScreen extends StatelessWidget {
                 child: ListTile(
                   leading: CircleAvatar(
                     backgroundColor: transaction.type == TransactionType.income
-                        ? Colors.green.withOpacity(0.1)
-                        : Colors.red.withOpacity(0.1),
+                        ? Colors.green.withValues(alpha: 0.1)
+                        : Colors.red.withValues(alpha: 0.1),
                     child: Icon(
                       transaction.type == TransactionType.income
                           ? Icons.arrow_downward

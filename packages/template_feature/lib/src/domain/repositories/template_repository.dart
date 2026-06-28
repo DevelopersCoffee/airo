@@ -7,4 +7,3 @@ abstract class TemplateRepository extends Repository<TemplateEntity> {
   /// Custom method example - find by name
   Future<Result<List<TemplateEntity>>> findByName(String name);
 }
-

@@ -186,4 +186,3 @@ class SecureKeyValueStoreAdapter implements KeyValueStore {
     return true;
   }
 }
-

@@ -7,9 +7,8 @@ class BuiltInAgentSkillRepository implements AgentSkillRepository {
   BuiltInAgentSkillRepository({
     List<AgentSkill>? skills,
     Map<String, bool> initialEnabledState = const {},
-    void Function(Map<String, bool> enabledState)? onEnabledStateChanged,
-  }) : _onEnabledStateChanged = onEnabledStateChanged,
-       _skills = {
+    this._onEnabledStateChanged,
+  }) : _skills = {
          for (final skill in skills ?? builtInAgentSkills)
            skill.id: initialEnabledState.containsKey(skill.id)
                ? skill.copyWith(enabled: initialEnabledState[skill.id])

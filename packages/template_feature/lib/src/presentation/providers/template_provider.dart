@@ -26,8 +26,9 @@ class TemplateError extends TemplateState {
 }
 
 /// Notifier for managing template state
-class TemplateNotifier extends StateNotifier<TemplateState> {
-  TemplateNotifier() : super(const TemplateInitial());
+class TemplateNotifier extends Notifier<TemplateState> {
+  @override
+  TemplateState build() => const TemplateInitial();
 
   Future<void> load() async {
     state = const TemplateLoading();
@@ -48,8 +49,6 @@ class TemplateNotifier extends StateNotifier<TemplateState> {
 }
 
 /// Provider for template state
-final templateProvider =
-    StateNotifierProvider<TemplateNotifier, TemplateState>(
-  (ref) => TemplateNotifier(),
+final templateProvider = NotifierProvider<TemplateNotifier, TemplateState>(
+  TemplateNotifier.new,
 );
-

@@ -2,12 +2,7 @@ import 'package:core_domain/core_domain.dart';
 import 'offline_repository.dart';
 
 /// Sync engine state.
-enum SyncEngineState {
-  idle,
-  syncing,
-  paused,
-  error,
-}
+enum SyncEngineState { idle, syncing, paused, error }
 
 /// Sync engine configuration.
 class SyncConfig {
@@ -72,7 +67,10 @@ abstract interface class SyncEngine {
   Future<Result<SyncResult>> syncNow();
 
   /// Register a repository for sync.
-  void registerRepository<TId, T>(String name, SyncableRepository<TId, dynamic> repository);
+  void registerRepository<TId, T>(
+    String name,
+    SyncableRepository<TId, dynamic> repository,
+  );
 
   /// Unregister a repository.
   void unregisterRepository(String name);
@@ -113,4 +111,3 @@ abstract interface class ConnectivityChecker {
   /// Stream of connectivity changes.
   Stream<bool> get connectivityChanges;
 }
-

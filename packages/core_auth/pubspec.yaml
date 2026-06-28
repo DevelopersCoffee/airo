@@ -1,10 +1,11 @@
 name: core_auth
 description: "Core authentication package: login, session management, and secure storage"
+publish_to: none
 version: 0.0.1
 
 environment:
-  sdk: ">=3.11.1 <4.0.0"
-  flutter: ">=3.41.4"
+  sdk: ">=3.12.2 <4.0.0"
+  flutter: ">=3.44.4"
 
 dependencies:
   flutter:

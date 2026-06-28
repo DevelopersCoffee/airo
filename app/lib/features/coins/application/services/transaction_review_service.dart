@@ -25,8 +25,7 @@ class TransactionReviewEdit {
 class TransactionReviewService {
   final TransactionRepository _repository;
 
-  const TransactionReviewService({required TransactionRepository repository})
-    : _repository = repository;
+  const TransactionReviewService({required this._repository});
 
   Future<Result<List<Transaction>>> pendingImportedTransactions() async {
     return _repository.findByTag(transactionReviewPendingTag);

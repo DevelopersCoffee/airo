@@ -30,9 +30,7 @@ class ChannelDataService {
   final Dio _dio;
   final SharedPreferences _prefs;
 
-  ChannelDataService({required Dio dio, required SharedPreferences prefs})
-    : _dio = dio,
-      _prefs = prefs;
+  ChannelDataService({required this._dio, required this._prefs});
 
   /// Fetch channels with caching and fallback support
   Future<List<IPTVChannel>> fetchChannels({bool forceRefresh = false}) async {

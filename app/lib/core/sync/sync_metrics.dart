@@ -6,8 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 /// Metrics and monitoring for sync operations.
 class SyncMetrics {
-  SyncMetrics({required OutboxRepository outboxRepository})
-    : _outboxRepository = outboxRepository;
+  SyncMetrics({required this._outboxRepository});
 
   final OutboxRepository _outboxRepository;
   SharedPreferences? _prefs;

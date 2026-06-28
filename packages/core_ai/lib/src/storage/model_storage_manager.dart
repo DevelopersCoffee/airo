@@ -9,7 +9,7 @@ import '../models/offline_model_info.dart';
 /// Manages storage, SHA-256 integrity check, and space validation.
 class ModelStorageManager {
   ModelStorageManager({MethodChannel? channel})
-      : _channel = channel ?? const MethodChannel('com.airo.model_download');
+    : _channel = channel ?? const MethodChannel('com.airo.model_download');
 
   final MethodChannel _channel;
 
@@ -65,7 +65,9 @@ class ModelStorageManager {
   /// Checks if the device has enough free space for the model file, plus a safety margin.
   Future<bool> hasEnoughDiskSpace(int requiredBytes) async {
     try {
-      final int? freeBytes = await _channel.invokeMethod<int>('getFreeDiskSpace');
+      final int? freeBytes = await _channel.invokeMethod<int>(
+        'getFreeDiskSpace',
+      );
       if (freeBytes == null) {
         return true; // Fallback if native call returns null
       }
@@ -79,7 +81,9 @@ class ModelStorageManager {
 
   /// Scans the models directory and deletes any files that are not registered in [catalogModels].
   /// This detects and cleans up old temporary `.tmp` files and orphaned `.gguf` files.
-  Future<List<String>> cleanupOrphanedFiles(List<OfflineModelInfo> catalogModels) async {
+  Future<List<String>> cleanupOrphanedFiles(
+    List<OfflineModelInfo> catalogModels,
+  ) async {
     final dir = await getModelsDirectory();
     if (!await dir.exists()) return [];
 
@@ -89,7 +93,7 @@ class ModelStorageManager {
     await for (final entity in dir.list()) {
       if (entity is File) {
         final fileName = path.basename(entity.path);
-        
+
         // Match both final files (<id>.gguf) and temp files (<id>.gguf.tmp)
         String? modelId;
         if (fileName.endsWith('.gguf')) {

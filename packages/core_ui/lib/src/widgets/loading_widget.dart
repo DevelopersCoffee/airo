@@ -130,4 +130,3 @@ class LoadingButton extends StatelessWidget {
     return button;
   }
 }
-

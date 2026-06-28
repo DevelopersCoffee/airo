@@ -104,10 +104,9 @@ class CurrencyFormatter {
 
   CurrencyFormatter._({
     required this.currency,
-    required NumberFormat formatter,
-    required NumberFormat compactFormatter,
-  }) : _formatter = formatter,
-       _compactFormatter = compactFormatter;
+    required this._formatter,
+    required this._compactFormatter,
+  });
 
   /// Create formatter for a specific currency
   factory CurrencyFormatter.forCurrency(SupportedCurrency currency) {

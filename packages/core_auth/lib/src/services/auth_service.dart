@@ -9,7 +9,7 @@ import 'auth_state.dart';
 
 /// Service for managing authentication
 class AuthService {
-  AuthService({required AuthRepository repository}) : _repository = repository;
+  AuthService({required this._repository});
 
   final AuthRepository _repository;
   final _stateController = StreamController<AuthState>.broadcast();

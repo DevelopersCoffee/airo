@@ -48,10 +48,7 @@ void main() {
     });
 
     test('creates from megabytes', () {
-      final info = MemoryInfo.fromMegabytes(
-        totalMB: 4096,
-        availableMB: 2048,
-      );
+      final info = MemoryInfo.fromMegabytes(totalMB: 4096, availableMB: 2048);
 
       expect(info.totalMB, closeTo(4096, 1));
       expect(info.availableMB, closeTo(2048, 1));
@@ -111,4 +108,3 @@ void main() {
     });
   });
 }
-

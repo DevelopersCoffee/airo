@@ -50,20 +50,20 @@ class AppButton extends StatelessWidget {
 
     return switch (variant) {
       AppButtonVariant.primary => ElevatedButton(
-          onPressed: isLoading ? null : onPressed,
-          style: _getButtonStyle(context),
-          child: child,
-        ),
+        onPressed: isLoading ? null : onPressed,
+        style: _getButtonStyle(context),
+        child: child,
+      ),
       AppButtonVariant.secondary => OutlinedButton(
-          onPressed: isLoading ? null : onPressed,
-          style: _getButtonStyle(context),
-          child: child,
-        ),
+        onPressed: isLoading ? null : onPressed,
+        style: _getButtonStyle(context),
+        child: child,
+      ),
       AppButtonVariant.text => TextButton(
-          onPressed: isLoading ? null : onPressed,
-          style: _getButtonStyle(context),
-          child: child,
-        ),
+        onPressed: isLoading ? null : onPressed,
+        style: _getButtonStyle(context),
+        child: child,
+      ),
     };
   }
 
@@ -83,41 +83,42 @@ class AppButton extends StatelessWidget {
 
   ButtonStyle _getButtonStyle(BuildContext context) {
     final padding = switch (size) {
-      AppButtonSize.small =>
-        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      AppButtonSize.medium =>
-        const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-      AppButtonSize.large =>
-        const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+      AppButtonSize.small => const EdgeInsets.symmetric(
+        horizontal: 12,
+        vertical: 8,
+      ),
+      AppButtonSize.medium => const EdgeInsets.symmetric(
+        horizontal: 24,
+        vertical: 12,
+      ),
+      AppButtonSize.large => const EdgeInsets.symmetric(
+        horizontal: 32,
+        vertical: 16,
+      ),
     };
 
-    return ButtonStyle(
-      padding: WidgetStatePropertyAll(padding),
-    );
+    return ButtonStyle(padding: WidgetStatePropertyAll(padding));
   }
 
   double _getLoadingSize() => switch (size) {
-        AppButtonSize.small => 16,
-        AppButtonSize.medium => 20,
-        AppButtonSize.large => 24,
-      };
+    AppButtonSize.small => 16,
+    AppButtonSize.medium => 20,
+    AppButtonSize.large => 24,
+  };
 
   double _getIconSize() => switch (size) {
-        AppButtonSize.small => 16,
-        AppButtonSize.medium => 20,
-        AppButtonSize.large => 24,
-      };
+    AppButtonSize.small => 16,
+    AppButtonSize.medium => 20,
+    AppButtonSize.large => 24,
+  };
 
   Color _getForegroundColor(BuildContext context) => switch (variant) {
-        AppButtonVariant.primary =>
-          Theme.of(context).colorScheme.onPrimary,
-        AppButtonVariant.secondary ||
-        AppButtonVariant.text =>
-          Theme.of(context).colorScheme.primary,
-      };
+    AppButtonVariant.primary => Theme.of(context).colorScheme.onPrimary,
+    AppButtonVariant.secondary ||
+    AppButtonVariant.text => Theme.of(context).colorScheme.primary,
+  };
 }
 
 enum AppButtonVariant { primary, secondary, text }
 
 enum AppButtonSize { small, medium, large }
-

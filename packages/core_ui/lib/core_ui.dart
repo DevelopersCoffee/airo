@@ -1,7 +1,7 @@
 /// Core UI package for Airo
 ///
 /// Contains theme, design tokens, and shared widgets.
-library core_ui;
+library;
 
 // Theme
 export 'src/theme/airo_theme_tokens.dart';

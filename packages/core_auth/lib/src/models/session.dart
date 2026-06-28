@@ -24,8 +24,7 @@ class Session {
   final String? refreshToken;
 
   /// Whether the session has expired
-  bool get isExpired =>
-      expiresAt != null && DateTime.now().isAfter(expiresAt!);
+  bool get isExpired => expiresAt != null && DateTime.now().isAfter(expiresAt!);
 
   /// Whether the session is valid
   bool get isValid => !isExpired && token.isNotEmpty;
@@ -36,13 +35,12 @@ class Session {
     String? token,
     DateTime? expiresAt,
     String? refreshToken,
-  }) =>
-      Session(
-        user: user ?? this.user,
-        token: token ?? this.token,
-        expiresAt: expiresAt ?? this.expiresAt,
-        refreshToken: refreshToken ?? this.refreshToken,
-      );
+  }) => Session(
+    user: user ?? this.user,
+    token: token ?? this.token,
+    expiresAt: expiresAt ?? this.expiresAt,
+    refreshToken: refreshToken ?? this.refreshToken,
+  );
 
   @override
   String toString() => 'Session(user: ${user.username}, valid: $isValid)';
@@ -58,4 +56,3 @@ class Session {
   @override
   int get hashCode => Object.hash(user, token, expiresAt);
 }
-

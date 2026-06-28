@@ -90,4 +90,3 @@ Respond in JSON format with each person's share.
     description: 'Suggests bill split among participants',
   );
 }
-

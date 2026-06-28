@@ -38,10 +38,9 @@ class FinanceChatIngestionService {
   final TransactionRepository _repository;
 
   const FinanceChatIngestionService({
-    required FinanceMessageParser parser,
-    required TransactionRepository repository,
-  }) : _parser = parser,
-       _repository = repository;
+    required this._parser,
+    required this._repository,
+  });
 
   Future<FinanceChatIngestionResult> ingest(
     String text, {

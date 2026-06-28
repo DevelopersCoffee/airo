@@ -136,9 +136,7 @@ class GitHubIssueService {
   final GitHubIssueConfig _config;
   final Dio _dio;
 
-  GitHubIssueService({required GitHubIssueConfig config, Dio? dio})
-    : _config = config,
-      _dio = dio ?? Dio();
+  GitHubIssueService({required this._config, Dio? dio}) : _dio = dio ?? Dio();
 
   /// Checks if the service is properly configured.
   bool get isConfigured => _config.isConfigured;

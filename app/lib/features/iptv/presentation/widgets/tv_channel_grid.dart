@@ -88,10 +88,10 @@ class _TvChannelGridState extends ConsumerState<TvChannelGrid> {
     return TvInputHandler(
       onInput: (key) => _handleNavigation(key, channels),
       child: GridView.builder(
+        // ignore: deprecated_member_use
+        cacheExtent: dimensions.channelCardHeight * 3,
         controller: _scrollController,
         padding: padding,
-        // Enable cacheExtent for lazy loading performance
-        cacheExtent: dimensions.channelCardHeight * 3,
         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: _calculateCrossAxisCount(context, dimensions),
           childAspectRatio:

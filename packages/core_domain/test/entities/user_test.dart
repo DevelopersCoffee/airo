@@ -4,10 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   group('User', () {
     test('should create user with required fields', () {
-      const user = User(
-        id: '123',
-        username: 'testuser',
-      );
+      const user = User(id: '123', username: 'testuser');
 
       expect(user.id, '123');
       expect(user.username, 'testuser');
@@ -45,19 +42,13 @@ void main() {
     });
 
     test('name should return username when displayName is null', () {
-      const user = User(
-        id: '123',
-        username: 'testuser',
-      );
+      const user = User(id: '123', username: 'testuser');
 
       expect(user.name, 'testuser');
     });
 
     test('copyWith should create new user with updated fields', () {
-      const original = User(
-        id: '123',
-        username: 'testuser',
-      );
+      const original = User(id: '123', username: 'testuser');
 
       final updated = original.copyWith(
         displayName: 'Updated Name',
@@ -80,4 +71,3 @@ void main() {
     });
   });
 }
-

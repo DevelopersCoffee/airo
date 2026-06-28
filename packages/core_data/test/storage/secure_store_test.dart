@@ -81,10 +81,14 @@ void main() {
     });
 
     test('deriveFromPassphrase differs with different salts', () {
-      final key1 =
-          KeyDerivation.deriveFromPassphrase('password', salt: 'salt1');
-      final key2 =
-          KeyDerivation.deriveFromPassphrase('password', salt: 'salt2');
+      final key1 = KeyDerivation.deriveFromPassphrase(
+        'password',
+        salt: 'salt1',
+      );
+      final key2 = KeyDerivation.deriveFromPassphrase(
+        'password',
+        salt: 'salt2',
+      );
 
       expect(key1, isNot(equals(key2)));
     });
@@ -145,4 +149,3 @@ void main() {
     });
   });
 }
-

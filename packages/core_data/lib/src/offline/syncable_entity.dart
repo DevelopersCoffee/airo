@@ -32,4 +32,3 @@ mixin SyncableEntityMixin<TId> implements SyncableEntity<TId> {
   @override
   bool get hasSyncError => syncMetadata.hasError;
 }
-

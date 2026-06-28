@@ -34,11 +34,6 @@ class AppCard extends StatelessWidget {
       );
     }
 
-    return Card(
-      margin: margin,
-      elevation: elevation,
-      child: content,
-    );
+    return Card(margin: margin, elevation: elevation, child: content);
   }
 }
-

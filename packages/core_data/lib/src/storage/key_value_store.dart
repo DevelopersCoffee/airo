@@ -42,4 +42,3 @@ abstract class KeyValueStore {
   /// Clears all stored values
   Future<bool> clear();
 }
-

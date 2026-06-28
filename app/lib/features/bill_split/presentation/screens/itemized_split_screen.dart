@@ -251,6 +251,7 @@ class _ItemizedSplitScreenState extends ConsumerState<ItemizedSplitScreen> {
       final result = await FilePicker.pickFiles(
         type: FileType.custom,
         allowedExtensions: const ['jpg', 'jpeg', 'png', 'webp', 'pdf'],
+        // ignore: deprecated_member_use
         withData: kIsWeb,
       );
       if (result == null || result.files.isEmpty || !mounted) return;
@@ -270,6 +271,7 @@ class _ItemizedSplitScreenState extends ConsumerState<ItemizedSplitScreen> {
       }
 
       final bytes =
+          // ignore: deprecated_member_use
           pickedFile.bytes ??
           (path != null ? await File(path).readAsBytes() : null);
       if (bytes == null) {

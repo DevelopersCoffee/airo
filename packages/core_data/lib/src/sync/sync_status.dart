@@ -44,10 +44,9 @@ class SyncSyncing extends SyncStatus {
   final int? progress;
   final int? total;
 
-  double? get progressPercent =>
-      progress != null && total != null && total! > 0
-          ? progress! / total!
-          : null;
+  double? get progressPercent => progress != null && total != null && total! > 0
+      ? progress! / total!
+      : null;
 
   @override
   String toString() => 'SyncStatus.syncing($progress/$total)';
@@ -135,4 +134,3 @@ class SyncConfig {
     batchSize: 5,
   );
 }
-

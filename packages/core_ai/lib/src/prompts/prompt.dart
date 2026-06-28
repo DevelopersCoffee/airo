@@ -3,26 +3,18 @@ import 'package:meta/meta.dart';
 /// Represents a prompt message for LLM interaction
 @immutable
 class Prompt {
-  const Prompt({
-    required this.role,
-    required this.content,
-    this.name,
-  });
+  const Prompt({required this.role, required this.content, this.name});
 
   /// Creates a system prompt
-  const Prompt.system(this.content)
-      : role = PromptRole.system,
-        name = null;
+  const Prompt.system(this.content) : role = PromptRole.system, name = null;
 
   /// Creates a user prompt
-  const Prompt.user(this.content)
-      : role = PromptRole.user,
-        name = null;
+  const Prompt.user(this.content) : role = PromptRole.user, name = null;
 
   /// Creates an assistant prompt
   const Prompt.assistant(this.content)
-      : role = PromptRole.assistant,
-        name = null;
+    : role = PromptRole.assistant,
+      name = null;
 
   /// Role of this message
   final PromptRole role;
@@ -35,10 +27,10 @@ class Prompt {
 
   /// Converts to a map for API calls
   Map<String, dynamic> toMap() => {
-        'role': role.name,
-        'content': content,
-        if (name != null) 'name': name,
-      };
+    'role': role.name,
+    'content': content,
+    if (name != null) 'name': name,
+  };
 
   @override
   String toString() => '${role.name}: $content';
@@ -66,4 +58,3 @@ enum PromptRole {
   /// Assistant response
   assistant,
 }
-

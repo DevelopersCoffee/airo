@@ -156,4 +156,3 @@ class NetworkErrorWidget extends StatelessWidget {
     );
   }
 }
-

@@ -17,9 +17,7 @@ class M3UParserService {
     // Add fallback URLs here
   ];
 
-  M3UParserService({required Dio dio, required SharedPreferences prefs})
-    : _dio = dio,
-      _prefs = prefs;
+  M3UParserService({required this._dio, required this._prefs});
 
   /// Fetch and parse playlist with caching and fallback
   Future<List<IPTVChannel>> fetchPlaylist({bool forceRefresh = false}) async {

@@ -102,8 +102,8 @@ class InMemoryCreateCalendarEventConnector implements AgentConnector {
 
 class NativeCalendarConnector implements AgentConnector {
   NativeCalendarConnector({
-    MethodChannel channel = const MethodChannel('com.airo.agent_connectors'),
-  }) : _channel = channel;
+    this._channel = const MethodChannel('com.airo.agent_connectors'),
+  });
 
   final MethodChannel _channel;
 
@@ -165,8 +165,8 @@ class NativeCalendarConnector implements AgentConnector {
 
 class NativeCreateCalendarEventConnector implements AgentConnector {
   NativeCreateCalendarEventConnector({
-    MethodChannel channel = const MethodChannel('com.airo.agent_connectors'),
-  }) : _channel = channel;
+    this._channel = const MethodChannel('com.airo.agent_connectors'),
+  });
 
   final MethodChannel _channel;
 
@@ -240,8 +240,8 @@ class NativeCreateCalendarEventConnector implements AgentConnector {
 
 class NativeCalendarPermissionConnector implements AgentConnector {
   NativeCalendarPermissionConnector({
-    MethodChannel channel = const MethodChannel('com.airo.agent_connectors'),
-  }) : _channel = channel;
+    this._channel = const MethodChannel('com.airo.agent_connectors'),
+  });
 
   final MethodChannel _channel;
 

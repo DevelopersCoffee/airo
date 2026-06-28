@@ -35,19 +35,13 @@ class LocalRuntimePreloaderService {
   }
 
   LocalRuntimePreloaderService._({
-    required GeminiNanoService geminiNano,
-    required LiteRtLmService liteRtLm,
-    required ModelResidencyManager residencyManager,
-    required ModelPreloader preloader,
-    required Future<AssistantModelLibraryState> Function()
-    loadAssistantModelLibrary,
-    required String? Function() selectedModelId,
-  }) : _geminiNano = geminiNano,
-       _liteRtLm = liteRtLm,
-       _residencyManager = residencyManager,
-       _preloader = preloader,
-       _loadAssistantModelLibrary = loadAssistantModelLibrary,
-       _selectedModelId = selectedModelId;
+    required this._geminiNano,
+    required this._liteRtLm,
+    required this._residencyManager,
+    required this._preloader,
+    required this._loadAssistantModelLibrary,
+    required this._selectedModelId,
+  });
 
   final GeminiNanoService _geminiNano;
   final LiteRtLmService _liteRtLm;

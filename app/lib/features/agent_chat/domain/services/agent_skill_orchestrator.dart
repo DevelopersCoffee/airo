@@ -246,22 +246,18 @@ class RuleBasedAgentSkillModelClient implements AgentSkillModelClient {
 
 class AgentSkillOrchestrator {
   AgentSkillOrchestrator({
-    required AgentSkillRegistry skillRegistry,
-    required AgentConnectorRegistry connectorRegistry,
+    required this._skillRegistry,
+    required this._connectorRegistry,
     ToolRegistry? toolRegistry,
     AgentSkillModelClient? modelClient,
     bool useFallbackModelClient = true,
-    int maxSteps = 4,
-    Duration modelActionTimeout = const Duration(seconds: 3),
-  }) : _skillRegistry = skillRegistry,
-       _connectorRegistry = connectorRegistry,
-       _toolRegistry = toolRegistry ?? ToolRegistry(),
+    this._maxSteps = 4,
+    this._modelActionTimeout = const Duration(seconds: 3),
+  }) : _toolRegistry = toolRegistry ?? ToolRegistry(),
        _modelClient = modelClient ?? RuleBasedAgentSkillModelClient(),
        _fallbackModelClient = useFallbackModelClient
            ? RuleBasedAgentSkillModelClient()
-           : null,
-       _maxSteps = maxSteps,
-       _modelActionTimeout = modelActionTimeout;
+           : null;
 
   final AgentSkillRegistry _skillRegistry;
   final AgentConnectorRegistry _connectorRegistry;

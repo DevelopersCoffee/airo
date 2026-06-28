@@ -126,4 +126,3 @@ class SyncSummary {
   double get syncProgress => total > 0 ? synced / total : 1.0;
   bool get isFullySynced => pending == 0 && failed == 0 && conflicts == 0;
 }
-

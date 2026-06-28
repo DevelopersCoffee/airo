@@ -51,7 +51,7 @@ class MemoryBudgetManager {
   static const double multimodalModelOverhead = 2.0;
 
   MemoryBudgetManager({DeviceCapabilityService? deviceCapability})
-      : _deviceCapability = deviceCapability ?? DeviceCapabilityService();
+    : _deviceCapability = deviceCapability ?? DeviceCapabilityService();
 
   /// Estimates the runtime memory usage for a model.
   ///
@@ -127,8 +127,9 @@ class MemoryBudgetManager {
     required ModelType type,
     bool forceRefresh = false,
   }) async {
-    final memoryInfo =
-        await _deviceCapability.getMemoryInfo(forceRefresh: forceRefresh);
+    final memoryInfo = await _deviceCapability.getMemoryInfo(
+      forceRefresh: forceRefresh,
+    );
     final estimatedUsage = estimateMemoryUsage(fileSizeBytes, type);
     final severity = checkMemoryForModel(estimatedUsage, memoryInfo);
     final budget = calculateBudget(memoryInfo);
@@ -187,4 +188,3 @@ class MemoryCheckResult {
         '${budgetMB.toStringAsFixed(0)}MB budget)';
   }
 }
-

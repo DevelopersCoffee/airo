@@ -9,11 +9,10 @@ mixin TapCallbacks {
 
 /// Tap down event stub
 class TapDownEvent {
+  TapDownEvent({this.x = 0, this.y = 0});
   final double x;
   final double y;
-  
-  TapDownEvent({this.x = 0, this.y = 0});
-  
+
   /// Position of the tap
   ({double x, double y}) get localPosition => (x: x, y: y);
   ({double x, double y}) get canvasPosition => (x: x, y: y);
@@ -21,12 +20,10 @@ class TapDownEvent {
 
 /// Tap up event stub
 class TapUpEvent {
+  TapUpEvent({this.x = 0, this.y = 0});
   final double x;
   final double y;
-  
-  TapUpEvent({this.x = 0, this.y = 0});
 }
 
 /// Tap cancel event stub
 class TapCancelEvent {}
-

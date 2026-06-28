@@ -6,10 +6,9 @@ import 'assistant_runtime_service.dart';
 
 class SelectedRuntimeAgentSkillModelClient implements AgentSkillModelClient {
   SelectedRuntimeAgentSkillModelClient({
-    required AssistantRuntimeService runtimeService,
-    required FutureOr<String?> Function() selectedModelId,
-  }) : _runtimeService = runtimeService,
-       _selectedModelId = selectedModelId;
+    required this._runtimeService,
+    required this._selectedModelId,
+  });
 
   final AssistantRuntimeService _runtimeService;
   final FutureOr<String?> Function() _selectedModelId;

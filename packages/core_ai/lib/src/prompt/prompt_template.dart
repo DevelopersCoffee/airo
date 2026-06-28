@@ -148,4 +148,3 @@ class PromptRegistry {
   /// Clear all prompts.
   void clear() => _prompts.clear();
 }
-

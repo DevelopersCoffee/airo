@@ -342,7 +342,9 @@ class _ChannelListTile extends ConsumerWidget {
     final currentChannel = ref.watch(currentChannelProvider);
     final isPlaying = currentChannel?.id == channel.id;
 
-    return ListTile(
+    return Material(
+      type: MaterialType.transparency,
+      child: ListTile(
       leading: ClipRRect(
         borderRadius: BorderRadius.circular(6),
         child: Container(
@@ -424,6 +426,7 @@ class _ChannelListTile extends ConsumerWidget {
         ],
       ),
       onTap: onTap,
+    ),
     );
   }
 

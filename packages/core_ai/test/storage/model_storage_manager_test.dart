@@ -15,37 +15,38 @@ void main() {
 
   setUp(() async {
     log = <MethodCall>[];
-    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
-      channel,
-      (MethodCall methodCall) async {
-        log.add(methodCall);
-        if (methodCall.method == 'getFreeDiskSpace') {
-          return 2 * 1024 * 1024 * 1024; // 2 GB
-        }
-        return null;
-      },
-    );
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+          log.add(methodCall);
+          if (methodCall.method == 'getFreeDiskSpace') {
+            return 2 * 1024 * 1024 * 1024; // 2 GB
+          }
+          return null;
+        });
 
     storageManager = ModelStorageManager(channel: channel);
     tempDir = await Directory.systemTemp.createTemp('airo_storage_test');
-    
-    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
-      const MethodChannel('plugins.flutter.io/path_provider'),
-      (MethodCall methodCall) async {
-        if (methodCall.method == 'getApplicationDocumentsDirectory') {
-          return tempDir.path;
-        }
-        return null;
-      },
-    );
+
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(
+          const MethodChannel('plugins.flutter.io/path_provider'),
+          (MethodCall methodCall) async {
+            if (methodCall.method == 'getApplicationDocumentsDirectory') {
+              return tempDir.path;
+            }
+            return null;
+          },
+        );
   });
 
   tearDown(() async {
-    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(channel, null);
-    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
-      const MethodChannel('plugins.flutter.io/path_provider'),
-      null,
-    );
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, null);
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(
+          const MethodChannel('plugins.flutter.io/path_provider'),
+          null,
+        );
     if (await tempDir.exists()) {
       await tempDir.delete(recursive: true);
     }
@@ -54,9 +55,10 @@ void main() {
   test('calculateSHA256 computes correct hash', () async {
     final testFile = File(path.join(tempDir.path, 'test.txt'));
     await testFile.writeAsString('hello world');
-    
-    const expectedHash = 'b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9';
-    
+
+    const expectedHash =
+        'b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9';
+
     final hash = await storageManager.calculateSHA256(testFile);
     expect(hash, expectedHash);
   });
@@ -64,7 +66,7 @@ void main() {
   test('verifyModelIntegrity matches valid file', () async {
     final modelsDir = Directory(path.join(tempDir.path, 'models'));
     await modelsDir.create(recursive: true);
-    
+
     final file = File(path.join(modelsDir.path, 'gemma.gguf'));
     await file.writeAsString('hello world');
 
@@ -73,7 +75,8 @@ void main() {
       name: 'Gemma 2B',
       family: ModelFamily.gemma,
       fileSizeBytes: 11,
-      sha256: 'b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9',
+      sha256:
+          'b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9',
     );
 
     final isValid = await storageManager.verifyModelIntegrity(model);
@@ -83,7 +86,7 @@ void main() {
   test('verifyModelIntegrity fails invalid file', () async {
     final modelsDir = Directory(path.join(tempDir.path, 'models'));
     await modelsDir.create(recursive: true);
-    
+
     final file = File(path.join(modelsDir.path, 'gemma.gguf'));
     await file.writeAsString('wrong content');
 
@@ -92,7 +95,8 @@ void main() {
       name: 'Gemma 2B',
       family: ModelFamily.gemma,
       fileSizeBytes: 11,
-      sha256: 'b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9',
+      sha256:
+          'b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9',
     );
 
     final isValid = await storageManager.verifyModelIntegrity(model);
@@ -101,7 +105,10 @@ void main() {
 
   test('hasEnoughDiskSpace evaluates space correctly', () async {
     expect(await storageManager.hasEnoughDiskSpace(1024 * 1024 * 1024), isTrue);
-    expect(await storageManager.hasEnoughDiskSpace(1800 * 1024 * 1024), isFalse);
+    expect(
+      await storageManager.hasEnoughDiskSpace(1800 * 1024 * 1024),
+      isFalse,
+    );
   });
 
   test('cleanupOrphanedFiles deletes unregistered files', () async {
@@ -123,11 +130,11 @@ void main() {
         name: 'Registered',
         family: ModelFamily.gemma,
         fileSizeBytes: 10,
-      )
+      ),
     ];
 
     final deleted = await storageManager.cleanupOrphanedFiles(catalog);
-    
+
     expect(deleted, contains(orphanedFile.path));
     expect(deleted, contains(orphanedTmpFile.path));
     expect(deleted, isNot(contains(registeredFile.path)));

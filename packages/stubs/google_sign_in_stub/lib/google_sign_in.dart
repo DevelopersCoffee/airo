@@ -29,9 +29,7 @@ class GoogleSignInAccount {
 class GoogleSignInAuthorizationClient {
   Future<GoogleSignInAuthorizationResult> authorizeScopes(
     List<String> scopes,
-  ) async {
-    return const GoogleSignInAuthorizationResult(accessToken: null);
-  }
+  ) async => const GoogleSignInAuthorizationResult();
 }
 
 class GoogleSignInAuthorizationResult {
