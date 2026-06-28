@@ -89,4 +89,32 @@ void main() {
     await tester.pumpAndSettle();
     expect(tapped, isTrue);
   });
+
+  testWidgets('shows playback progress for resumable items', (tester) async {
+    const item = UnifiedMediaContent(
+      id: 'track-1',
+      mode: MediaMode.music,
+      category: MediaCategory.music,
+      title: 'Resume Track',
+      subtitle: 'Artist',
+      imageUrl: null,
+      streamUrl: 'https://example.com/one.mp3',
+      duration: Duration(minutes: 4),
+      lastPosition: Duration(minutes: 1, seconds: 30),
+    );
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: PersonalizationCarousel(
+            title: 'Continue Watching',
+            items: [item],
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('01:30 / 04:00'), findsOneWidget);
+    expect(find.byType(LinearProgressIndicator), findsOneWidget);
+  });
 }

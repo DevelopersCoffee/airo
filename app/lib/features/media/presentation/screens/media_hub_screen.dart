@@ -7,7 +7,10 @@ import '../../../media_hub/domain/models/media_mode.dart';
 import '../../../media_hub/domain/models/personalization_state.dart';
 import '../../../media_hub/domain/models/unified_media_content.dart';
 import '../../../media_hub/presentation/widgets/personalization_carousel.dart';
+import '../../../iptv/application/providers/iptv_providers.dart';
 import '../../../iptv/presentation/screens/iptv_screen.dart';
+import '../../../music/application/providers/music_provider.dart';
+import '../../../music/application/providers/music_tracks_provider.dart';
 import '../../../music/presentation/screens/music_screen.dart';
 
 enum MediaSection { music, tv }
@@ -37,6 +40,25 @@ List<UnifiedMediaContent> favoriteItemsForSection(
   return state.favorites.where((item) => item.mode == mode).toList();
 }
 
+List<UnifiedMediaContent> continueWatchingItemsForSection(
+  PersonalizationState state,
+  MediaSection section,
+) {
+  final mode = switch (section) {
+    MediaSection.music => MediaMode.music,
+    MediaSection.tv => MediaMode.tv,
+  };
+  return state.continueWatching
+      .where(
+        (item) =>
+            item.mode == mode &&
+            item.canResume &&
+            item.lastPosition > const Duration(seconds: 10),
+      )
+      .take(20)
+      .toList();
+}
+
 class MediaHubScreen extends ConsumerWidget {
   const MediaHubScreen({super.key, required this.section});
 
@@ -50,6 +72,9 @@ class MediaHubScreen extends ConsumerWidget {
     final favoriteItems = state == null
         ? const <UnifiedMediaContent>[]
         : favoriteItemsForSection(state, section);
+    final continueWatchingItems = state == null
+        ? const <UnifiedMediaContent>[]
+        : continueWatchingItemsForSection(state, section);
     final recentItems = personalization.valueOrNull == null
         ? const <UnifiedMediaContent>[]
         : recentItemsForSection(personalization.valueOrNull!, section);
@@ -64,6 +89,13 @@ class MediaHubScreen extends ConsumerWidget {
           isFavorite: (_) => true,
           onFavoriteToggle: (item) {
             personalizationNotifier.toggleFavorite(item);
+          },
+        ),
+        PersonalizationCarousel(
+          title: 'Continue Watching',
+          items: continueWatchingItems,
+          onSelected: (item) async {
+            await _resumeItem(ref, item);
           },
         ),
         PersonalizationCarousel(title: 'Recently Played', items: recentItems),
@@ -83,6 +115,35 @@ class MediaHubScreen extends ConsumerWidget {
       ],
     );
   }
+}
+
+Future<void> _resumeItem(WidgetRef ref, UnifiedMediaContent item) async {
+  switch (item.mode) {
+    case MediaMode.music:
+      final tracks = await ref.read(musicTracksProvider.future);
+      final track = _findById(tracks, item.id);
+      if (track == null) return;
+      final controller = ref.read(musicControllerProvider);
+      await controller.playTrack(track);
+      await controller.seek(item.lastPosition);
+    case MediaMode.tv:
+      final channels = await ref.read(iptvChannelsProvider.future);
+      final channel = _findById(channels, item.id);
+      if (channel == null) return;
+      final service = ref.read(iptvStreamingServiceProvider);
+      await service.playChannel(channel);
+      await service.seek(item.lastPosition);
+  }
+}
+
+T? _findById<T>(Iterable<T> items, String id) {
+  for (final item in items) {
+    final dynamic value = item;
+    if (value.id == id) {
+      return item;
+    }
+  }
+  return null;
 }
 
 class _MediaModeBar extends StatelessWidget {
