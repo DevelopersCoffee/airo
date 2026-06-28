@@ -66,5 +66,18 @@ void main() {
         );
       }
     });
+
+    test('centralizes shell chrome actions for compact and wide layouts', () {
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+
+      final chromeConfig = container.read(appNavigationChromeConfigProvider);
+
+      expect(chromeConfig.enabledActions, const [
+        AppShellAction.notifications,
+        AppShellAction.profileMenu,
+      ]);
+      expect(chromeConfig.compactWidthBreakpoint, 600);
+    });
   });
 }

@@ -63,6 +63,24 @@ final appNavigationTabsProvider = Provider<List<AppNavigationTab>>(
   (ref) => AppNavigationTab.values,
 );
 
+enum AppShellAction { notifications, profileMenu }
+
+class AppNavigationChromeConfig {
+  const AppNavigationChromeConfig({
+    required this.enabledActions,
+    this.compactWidthBreakpoint = 600,
+  });
+
+  final List<AppShellAction> enabledActions;
+  final double compactWidthBreakpoint;
+}
+
+final appNavigationChromeConfigProvider = Provider<AppNavigationChromeConfig>(
+  (ref) => const AppNavigationChromeConfig(
+    enabledActions: [AppShellAction.notifications, AppShellAction.profileMenu],
+  ),
+);
+
 class MiniPlayerVisibility {
   const MiniPlayerVisibility({
     required this.showMusicPlayer,
