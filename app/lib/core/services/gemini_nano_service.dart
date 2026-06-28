@@ -132,6 +132,22 @@ class GeminiNanoService {
     }
   }
 
+  /// Pre-warm Gemini Nano in the native runtime with a local dummy inference.
+  ///
+  /// This is best-effort and safe for app startup: unsupported platforms,
+  /// low-memory native refusals, and channel failures return false.
+  Future<bool> warmup() async {
+    if (kIsWeb) return false;
+
+    try {
+      final bool warmed = await _channel.invokeMethod('warmup');
+      return warmed;
+    } catch (e) {
+      debugPrint('Gemini Nano warmup skipped: $e');
+      return false;
+    }
+  }
+
   /// Generate content from a prompt
   /// Returns the generated text response, or fallback message on web/uninitialized
   Future<String> generateContent(String prompt) async {
