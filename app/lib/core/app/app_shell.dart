@@ -41,9 +41,17 @@ class AppShell extends ConsumerWidget {
     }
 
     final navigationTabs = ref.watch(appNavigationTabsProvider);
+    final navigationPolicy = ref.watch(appNavigationPolicyProvider);
     final chromeConfig = ref.watch(appNavigationChromeConfigProvider);
     final headerMode = ref.watch(appShellHeaderModeProvider(currentLocation));
     final currentPageName = navigationTabs[navigationShell.currentIndex].label;
+    final width = MediaQuery.sizeOf(context).width;
+    final navigationLayout = navigationPolicy.layoutForWidth(width);
+    final currentTab = navigationTabs[navigationShell.currentIndex];
+    final selectedNavIndex = _selectedNavigationIndexForTab(
+      currentTab,
+      navigationLayout,
+    );
 
     return Theme(
       data: isBedtimeMode ? BedtimeTheme.bedtimeTheme : Theme.of(context),
@@ -75,28 +83,37 @@ class AppShell extends ConsumerWidget {
           child: navigationShell,
         ),
         bottomNavigationBar: NavigationBar(
-          selectedIndex: navigationShell.currentIndex,
+          selectedIndex: selectedNavIndex,
           onDestinationSelected: (index) {
-            // Reset fullscreen mode and orientation when changing tabs
-            if (ref.read(isFullscreenModeProvider)) {
-              ref.read(isFullscreenModeProvider.notifier).state = false;
-              // Restore normal UI and portrait orientation
-              SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-              SystemChrome.setPreferredOrientations([
-                DeviceOrientation.portraitUp,
-              ]);
+            if (navigationLayout.usesOverflow &&
+                index == navigationLayout.persistentTabs.length) {
+              _showOverflowDestinations(
+                context,
+                ref,
+                navigationShell,
+                navigationLayout,
+                navigationTabs,
+              );
+              return;
             }
-            // Update the navigation tab provider for mini player visibility
-            ref.read(currentNavigationTabProvider.notifier).state = index;
-            navigationShell.goBranch(index);
+
+            final selectedTab = navigationLayout.persistentTabs[index];
+            _goToTab(ref, navigationShell, selectedTab.index);
           },
           destinations: [
-            for (final tab in navigationTabs)
+            for (final tab in navigationLayout.persistentTabs)
               NavigationDestination(
                 key: ValueKey('app_nav_${tab.name}'),
                 icon: Icon(tab.icon),
                 selectedIcon: Icon(tab.selectedIcon),
                 label: tab.label,
+              ),
+            if (navigationLayout.usesOverflow)
+              NavigationDestination(
+                key: const ValueKey('app_nav_overflow'),
+                icon: Icon(navigationLayout.overflow.icon),
+                selectedIcon: Icon(navigationLayout.overflow.selectedIcon),
+                label: navigationLayout.overflow.label,
               ),
           ],
         ),
@@ -112,6 +129,67 @@ class AppShell extends ConsumerWidget {
             : null,
       ),
     );
+  }
+
+  int _selectedNavigationIndexForTab(
+    AppNavigationTab currentTab,
+    AppNavigationLayoutConfig layout,
+  ) {
+    final directIndex = layout.persistentTabs.indexOf(currentTab);
+    if (directIndex != -1) {
+      return directIndex;
+    }
+    return layout.persistentTabs.length;
+  }
+
+  Future<void> _showOverflowDestinations(
+    BuildContext context,
+    WidgetRef ref,
+    StatefulNavigationShell navigationShell,
+    AppNavigationLayoutConfig layout,
+    List<AppNavigationTab> navigationTabs,
+  ) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      builder: (context) {
+        final currentTab = navigationTabs[navigationShell.currentIndex];
+
+        return SafeArea(
+          child: ListView(
+            shrinkWrap: true,
+            children: [
+              for (final tab in layout.overflowTabs)
+                ListTile(
+                  key: ValueKey('app_nav_overflow_entry_${tab.name}'),
+                  leading: Icon(tab.icon),
+                  title: Text(tab.label),
+                  selected: currentTab == tab,
+                  onTap: () {
+                    Navigator.of(context).pop();
+                    _goToTab(ref, navigationShell, tab.index);
+                  },
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _goToTab(
+    WidgetRef ref,
+    StatefulNavigationShell navigationShell,
+    int index,
+  ) {
+    // Reset fullscreen mode and orientation when changing tabs.
+    if (ref.read(isFullscreenModeProvider)) {
+      ref.read(isFullscreenModeProvider.notifier).state = false;
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+      SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+    }
+
+    ref.read(currentNavigationTabProvider.notifier).state = index;
+    navigationShell.goBranch(index);
   }
 }
 
