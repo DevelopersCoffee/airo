@@ -8,19 +8,11 @@ import '../providers/bedtime_mode_provider.dart';
 import '../providers/navigation_provider.dart';
 import '../routing/route_names.dart';
 import '../theme/bedtime_theme.dart';
+import 'app_shell_chrome.dart';
 import '../../features/music/presentation/widgets/mini_player.dart';
 import '../../features/iptv/presentation/widgets/iptv_mini_player.dart';
 import '../../features/iptv/application/providers/iptv_providers.dart'
     hide currentNavigationTabProvider;
-import '../../shared/widgets/app_icon_placeholder.dart';
-
-/// Get initials from a name (e.g., "Uday Chauhan" -> "UC", "Uday" -> "U")
-String _getInitials(String name) {
-  final parts = name.trim().split(' ').where((p) => p.isNotEmpty).toList();
-  if (parts.isEmpty) return 'U';
-  if (parts.length == 1) return parts[0][0].toUpperCase();
-  return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
-}
 
 /// App shell with bottom navigation for the six primary feature tabs.
 class AppShell extends ConsumerWidget {
@@ -44,119 +36,31 @@ class AppShell extends ConsumerWidget {
     }
 
     final navigationTabs = ref.watch(appNavigationTabsProvider);
+    final chromeConfig = ref.watch(appNavigationChromeConfigProvider);
     final currentPageName = navigationTabs[navigationShell.currentIndex].label;
 
     return Theme(
       data: isBedtimeMode ? BedtimeTheme.bedtimeTheme : Theme.of(context),
       child: Scaffold(
-        appBar: AppBar(
-          // Airo logo/title on left - clickable to go to default page
-          leading: InkWell(
-            onTap: () {
-              // Go to first tab (Dashboard) as default/home
-              ref.read(currentNavigationTabProvider.notifier).state = 0;
-              navigationShell.goBranch(0);
-            },
-            borderRadius: BorderRadius.circular(20),
-            child: Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: AppIconPlaceholder(
-                size: 32,
-                errorBuilder: (_, _, _) => const Icon(Icons.home),
-              ),
-            ),
-          ),
-          // Current page name in center
+        appBar: AppShellChrome(
           title: Text(currentPageName),
-          centerTitle: true,
-          actions: [
-            IconButton(
-              tooltip: 'Notifications',
-              onPressed: () => context.push('/mind/notifications'),
-              icon: const Icon(Icons.notifications_outlined),
-            ),
-            // User profile avatar with menu
-            PopupMenuButton<String>(
-              icon: CircleAvatar(
-                radius: 16,
-                backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-                child: user?.photoUrl != null
-                    ? ClipOval(
-                        child: Image.network(
-                          user!.photoUrl!,
-                          width: 32,
-                          height: 32,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, _, _) => Text(
-                            _getInitials(user.username),
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.onPrimaryContainer,
-                            ),
-                          ),
-                        ),
-                      )
-                    : Text(
-                        _getInitials(user?.username ?? 'U'),
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.onPrimaryContainer,
-                        ),
-                      ),
-              ),
-              onSelected: (value) async {
-                if (value == 'logout') {
-                  if (user?.isGoogleUser == true) {
-                    await GoogleAuthService.instance.signOut();
-                  }
-                  await AuthService.instance.logout();
-                  if (context.mounted) {
-                    context.go(RouteNames.login);
-                  }
-                } else if (value == 'profile') {
-                  context.push('/mind/profile');
-                }
-              },
-              itemBuilder: (context) => [
-                PopupMenuItem(
-                  value: 'profile',
-                  child: Row(
-                    children: [
-                      const Icon(Icons.person),
-                      const SizedBox(width: 8),
-                      Text(user?.username ?? 'Guest'),
-                      if (user?.isGoogleUser == true) ...[
-                        const SizedBox(width: 4),
-                        Icon(
-                          Icons.verified,
-                          size: 16,
-                          color: Theme.of(context).colorScheme.primary,
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-                const PopupMenuDivider(),
-                const PopupMenuItem(
-                  value: 'logout',
-                  child: Row(
-                    children: [
-                      Icon(Icons.logout, color: Colors.red),
-                      SizedBox(width: 8),
-                      Text('Logout', style: TextStyle(color: Colors.red)),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(width: 8),
-          ],
+          user: user,
+          config: chromeConfig,
+          onHomeTap: () {
+            ref.read(currentNavigationTabProvider.notifier).state = 0;
+            navigationShell.goBranch(0);
+          },
+          onNotificationsTap: () => context.push('/mind/notifications'),
+          onProfileTap: () => context.push('/mind/profile'),
+          onLogoutTap: () async {
+            if (user?.isGoogleUser == true) {
+              await GoogleAuthService.instance.signOut();
+            }
+            await AuthService.instance.logout();
+            if (context.mounted) {
+              context.go(RouteNames.login);
+            }
+          },
         ),
         body: _ContextAwareMiniPlayers(
           currentIndex: navigationShell.currentIndex,
