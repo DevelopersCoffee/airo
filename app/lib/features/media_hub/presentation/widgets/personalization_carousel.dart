@@ -87,6 +87,12 @@ class _PersonalizationTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final showProgress =
+        item.canResume && item.lastPosition > const Duration(seconds: 10);
+    final progress = item.duration.inMilliseconds == 0
+        ? 0.0
+        : (item.lastPosition.inMilliseconds / item.duration.inMilliseconds)
+              .clamp(0.0, 1.0);
     return SizedBox(
       width: 210,
       child: Material(
@@ -146,6 +152,15 @@ class _PersonalizationTile extends StatelessWidget {
                   style: theme.textTheme.bodySmall,
                 ),
                 const Spacer(),
+                if (showProgress) ...[
+                  LinearProgressIndicator(value: progress),
+                  const SizedBox(height: 6),
+                  Text(
+                    '${_formatDuration(item.lastPosition)} / ${_formatDuration(item.duration)}',
+                    style: theme.textTheme.labelSmall,
+                  ),
+                  const SizedBox(height: 6),
+                ],
                 Text(
                   item.mode.label,
                   style: theme.textTheme.labelMedium?.copyWith(
@@ -159,5 +174,15 @@ class _PersonalizationTile extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  String _formatDuration(Duration value) {
+    final minutes = value.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final seconds = value.inSeconds.remainder(60).toString().padLeft(2, '0');
+    if (value.inHours > 0) {
+      final hours = value.inHours.toString().padLeft(2, '0');
+      return '$hours:$minutes:$seconds';
+    }
+    return '$minutes:$seconds';
   }
 }

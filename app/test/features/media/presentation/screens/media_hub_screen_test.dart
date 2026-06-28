@@ -55,4 +55,51 @@ void main() {
     expect(favoriteItemsForSection(state, MediaSection.music), [musicItem]);
     expect(favoriteItemsForSection(state, MediaSection.tv), [tvItem]);
   });
+
+  test(
+    'continueWatchingItemsForSection keeps resumable items over 10 seconds',
+    () {
+      const resumableMusic = UnifiedMediaContent(
+        id: 'track-1',
+        mode: MediaMode.music,
+        category: MediaCategory.music,
+        title: 'Track',
+        subtitle: 'Artist',
+        imageUrl: null,
+        streamUrl: 'https://example.com/audio.mp3',
+        duration: Duration(minutes: 3),
+        lastPosition: Duration(seconds: 42),
+      );
+      const tooShort = UnifiedMediaContent(
+        id: 'track-2',
+        mode: MediaMode.music,
+        category: MediaCategory.music,
+        title: 'Short',
+        subtitle: 'Artist',
+        imageUrl: null,
+        streamUrl: 'https://example.com/audio-2.mp3',
+        duration: Duration(minutes: 3),
+        lastPosition: Duration(seconds: 9),
+      );
+      const liveTv = UnifiedMediaContent(
+        id: 'tv-1',
+        mode: MediaMode.tv,
+        category: MediaCategory.news,
+        title: 'News',
+        subtitle: 'TV',
+        imageUrl: null,
+        streamUrl: 'https://example.com/live.m3u8',
+        isLive: true,
+        lastPosition: Duration(minutes: 1),
+      );
+      const state = PersonalizationState(
+        continueWatching: [resumableMusic, tooShort, liveTv],
+      );
+
+      expect(continueWatchingItemsForSection(state, MediaSection.music), [
+        resumableMusic,
+      ]);
+      expect(continueWatchingItemsForSection(state, MediaSection.tv), isEmpty);
+    },
+  );
 }
