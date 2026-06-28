@@ -74,6 +74,70 @@ class UnifiedMediaContent extends Equatable {
   final int? viewerCount;
   final List<String> tags;
 
+  UnifiedMediaContent copyWith({
+    String? id,
+    MediaMode? mode,
+    MediaCategory? category,
+    String? title,
+    String? subtitle,
+    String? imageUrl,
+    String? streamUrl,
+    Duration? duration,
+    Duration? lastPosition,
+    bool? isLive,
+    int? viewerCount,
+    List<String>? tags,
+  }) {
+    return UnifiedMediaContent(
+      id: id ?? this.id,
+      mode: mode ?? this.mode,
+      category: category ?? this.category,
+      title: title ?? this.title,
+      subtitle: subtitle ?? this.subtitle,
+      imageUrl: imageUrl ?? this.imageUrl,
+      streamUrl: streamUrl ?? this.streamUrl,
+      duration: duration ?? this.duration,
+      lastPosition: lastPosition ?? this.lastPosition,
+      isLive: isLive ?? this.isLive,
+      viewerCount: viewerCount ?? this.viewerCount,
+      tags: tags ?? this.tags,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'mode': mode.name,
+      'category': category.name,
+      'title': title,
+      'subtitle': subtitle,
+      'imageUrl': imageUrl,
+      'streamUrl': streamUrl,
+      'durationMs': duration.inMilliseconds,
+      'lastPositionMs': lastPosition.inMilliseconds,
+      'isLive': isLive,
+      'viewerCount': viewerCount,
+      'tags': tags,
+    };
+  }
+
+  factory UnifiedMediaContent.fromJson(Map<String, dynamic> json) {
+    return UnifiedMediaContent(
+      id: json['id'] as String,
+      mode: MediaMode.values.byName(json['mode'] as String),
+      category: MediaCategory.values.byName(json['category'] as String),
+      title: json['title'] as String,
+      subtitle: json['subtitle'] as String,
+      imageUrl: json['imageUrl'] as String?,
+      streamUrl: json['streamUrl'] as String?,
+      duration: Duration(milliseconds: json['durationMs'] as int? ?? 0),
+      lastPosition: Duration(milliseconds: json['lastPositionMs'] as int? ?? 0),
+      isLive: json['isLive'] as bool? ?? false,
+      viewerCount: json['viewerCount'] as int?,
+      tags: (json['tags'] as List<dynamic>? ?? const []).cast<String>(),
+    );
+  }
+
   bool get canResume =>
       !isLive &&
       lastPosition > Duration.zero &&
