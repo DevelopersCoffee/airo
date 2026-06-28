@@ -63,6 +63,76 @@ final appNavigationTabsProvider = Provider<List<AppNavigationTab>>(
   (ref) => AppNavigationTab.values,
 );
 
+class AppNavigationOverflowConfig {
+  const AppNavigationOverflowConfig({
+    this.label = 'More',
+    this.icon = Icons.menu,
+    this.selectedIcon = Icons.menu_open,
+  });
+
+  final String label;
+  final IconData icon;
+  final IconData selectedIcon;
+}
+
+class AppNavigationLayoutConfig {
+  const AppNavigationLayoutConfig({
+    required this.persistentTabs,
+    required this.overflowTabs,
+    required this.overflow,
+  });
+
+  final List<AppNavigationTab> persistentTabs;
+  final List<AppNavigationTab> overflowTabs;
+  final AppNavigationOverflowConfig overflow;
+
+  bool get usesOverflow => overflowTabs.isNotEmpty;
+}
+
+class AppNavigationPolicy {
+  const AppNavigationPolicy({
+    required this.compactPrimaryTabs,
+    required this.overflowTabs,
+    this.compactWidthBreakpoint = 600,
+    this.overflow = const AppNavigationOverflowConfig(),
+  });
+
+  final List<AppNavigationTab> compactPrimaryTabs;
+  final List<AppNavigationTab> overflowTabs;
+  final double compactWidthBreakpoint;
+  final AppNavigationOverflowConfig overflow;
+
+  AppNavigationLayoutConfig layoutForWidth(double width) {
+    if (width >= compactWidthBreakpoint) {
+      return AppNavigationLayoutConfig(
+        persistentTabs: AppNavigationTab.values,
+        overflowTabs: const [],
+        overflow: overflow,
+      );
+    }
+
+    return AppNavigationLayoutConfig(
+      persistentTabs: compactPrimaryTabs,
+      overflowTabs: overflowTabs,
+      overflow: overflow,
+    );
+  }
+}
+
+const appNavigationPolicy = AppNavigationPolicy(
+  compactPrimaryTabs: [
+    AppNavigationTab.coins,
+    AppNavigationTab.mind,
+    AppNavigationTab.beats,
+    AppNavigationTab.stream,
+  ],
+  overflowTabs: [AppNavigationTab.arena, AppNavigationTab.quest],
+);
+
+final appNavigationPolicyProvider = Provider<AppNavigationPolicy>(
+  (ref) => appNavigationPolicy,
+);
+
 enum AppShellAction { notifications, profileMenu }
 
 class AppNavigationChromeConfig {

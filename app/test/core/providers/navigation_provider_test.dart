@@ -80,6 +80,32 @@ void main() {
       expect(chromeConfig.compactWidthBreakpoint, 600);
     });
 
+    test('uses one shared compact navigation overflow policy', () {
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+
+      final policy = container.read(appNavigationPolicyProvider);
+      final compactLayout = policy.layoutForWidth(420);
+      final wideLayout = policy.layoutForWidth(900);
+
+      expect(policy.compactWidthBreakpoint, 600);
+      expect(compactLayout.persistentTabs, const [
+        AppNavigationTab.coins,
+        AppNavigationTab.mind,
+        AppNavigationTab.beats,
+        AppNavigationTab.stream,
+      ]);
+      expect(compactLayout.overflowTabs, const [
+        AppNavigationTab.arena,
+        AppNavigationTab.quest,
+      ]);
+      expect(compactLayout.usesOverflow, isTrue);
+      expect(compactLayout.overflow.label, 'More');
+      expect(wideLayout.persistentTabs, AppNavigationTab.values);
+      expect(wideLayout.overflowTabs, isEmpty);
+      expect(wideLayout.usesOverflow, isFalse);
+    });
+
     test('keeps shell-owned headers only on routes without local app bars', () {
       expect(appShellHeaderModeForLocation('/money'), AppShellHeaderMode.shell);
       expect(appShellHeaderModeForLocation('/mind'), AppShellHeaderMode.shell);

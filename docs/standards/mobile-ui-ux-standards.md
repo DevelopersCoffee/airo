@@ -59,6 +59,14 @@ Primary destination overflow on phones must be handled centrally. Feature code
 must consume the shared navigation model instead of constructing its own bottom
 navigation items.
 
+Current default compact policy:
+
+- phones under the shared compact breakpoint keep `Coins`, `Mind`, `Beats`, and
+  `Stream` in persistent bottom navigation
+- `Arena` and `Quest` move into one shared `More` overflow entry
+- larger layouts keep the full primary destination set visible without a
+  feature-level fork
+
 ## Token Standard
 
 Shared visual roles belong in centralized tokens, including:
