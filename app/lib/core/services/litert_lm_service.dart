@@ -106,10 +106,15 @@ class LiteRtLmService {
     if (kIsWeb) return false;
 
     try {
-      final defaultModelPath = config.hasModelPath ? config.modelPath.trim() : null;
-      if (!await _client.activeModelExists(modelPath: defaultModelPath)) return false;
+      final defaultModelPath = config.hasModelPath
+          ? config.modelPath.trim()
+          : null;
+      if (!await _client.activeModelExists(modelPath: defaultModelPath)) {
+        return false;
+      }
 
-      if (_initializedModelPath == null || _initializedModelPath != defaultModelPath) {
+      if (_initializedModelPath == null ||
+          _initializedModelPath != defaultModelPath) {
         await _client.initialize(
           huggingFaceToken: config.optionalHuggingFaceToken,
           modelPath: defaultModelPath,
@@ -126,6 +131,35 @@ class LiteRtLmService {
       return true;
     } catch (e) {
       debugPrint('LiteRT-LM warmup skipped: $e');
+      return false;
+    }
+  }
+
+  Future<bool> warmupModel(OfflineModelInfo model) async {
+    if (kIsWeb) {
+      return false;
+    }
+
+    try {
+      final hydratedModel = await hydrateDownloadedModel(model);
+      final modelPath = hydratedModel.filePath?.trim();
+      if (modelPath == null || modelPath.isEmpty) {
+        return false;
+      }
+
+      final backend = _backendFor(hydratedModel.backendPreference);
+      if (!await _ensureInitializedForRequest(
+        modelPath: modelPath,
+        backend: backend,
+        maxTokens: config.maxTokens,
+      )) {
+        return false;
+      }
+
+      await _client.generate(prompt: ' ', backend: backend, maxTokens: 1);
+      return true;
+    } catch (e) {
+      debugPrint('LiteRT-LM model warmup skipped: $e');
       return false;
     }
   }

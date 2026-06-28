@@ -1,5 +1,7 @@
 import 'package:airo_app/features/agent_chat/data/services/assistant_runtime_service.dart';
 import 'package:airo_app/features/agent_chat/domain/models/assistant_runtime_ids.dart';
+import 'package:airo_app/features/agent_chat/presentation/screens/model_library_screen.dart';
+import 'package:core_ai/core_ai.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -64,6 +66,113 @@ void main() {
             geminiCloudUnavailableMessage,
           ),
         ),
+      );
+    });
+
+    test(
+      'builds a blocked preparation result for unsupported Gemini Nano',
+      () async {
+        final service = AssistantRuntimeService(
+          isGeminiNanoSupported: () async => false,
+          loadDeviceInfo: () async => {
+            'manufacturer': 'Google',
+            'model': 'Pixel 8',
+            'platform': 'android',
+          },
+        );
+
+        final result = await service.prepareRuntime(
+          candidate: const AssistantModelCandidate(
+            id: geminiNanoAssistantModelId,
+            name: 'Gemini Nano',
+            runtime: 'AICore on-device',
+            description: 'Local runtime',
+            bestFor: [AssistantTask.chat],
+            tags: ['Local'],
+            privacyLabel: 'Prompt stays on device',
+            sizeLabel: 'System managed',
+            available: true,
+            actionLabel: 'Start',
+            local: true,
+          ),
+        );
+
+        expect(result.status, AssistantRuntimePreparationStatus.blocked);
+        expect(
+          result.diagnostic?.summary,
+          'Gemini Nano is not supported on this device.',
+        );
+        expect(result.diagnostic?.deviceLabel, 'Google Pixel 8');
+      },
+    );
+
+    test('cancels preparation before runtime work starts', () async {
+      final service = AssistantRuntimeService(
+        loadDeviceInfo: () async => {'manufacturer': 'Web', 'model': 'Browser'},
+      );
+
+      final result = await service.prepareRuntime(
+        candidate: const AssistantModelCandidate(
+          id: geminiCloudAssistantModelId,
+          name: 'Gemini Cloud',
+          runtime: 'Cloud',
+          description: 'Cloud runtime',
+          bestFor: [AssistantTask.chat],
+          tags: ['Cloud'],
+          privacyLabel: 'Sends prompt to API',
+          sizeLabel: 'No local download',
+          available: true,
+          actionLabel: 'Start',
+          local: false,
+        ),
+        isCancelled: () => true,
+      );
+
+      expect(result.status, AssistantRuntimePreparationStatus.cancelled);
+    });
+
+    test('blocks LiteRT packages when compatibility fails', () async {
+      final package = OfflineModelInfo(
+        id: 'gemma-4-e2b-it-litertlm',
+        name: 'Gemma 4 E2B',
+        family: ModelFamily.gemma,
+        fileSizeBytes: 2 * 1024 * 1024 * 1024,
+        backendPreference: ModelBackendPreference.gpu,
+        provider: AIProvider.gemma,
+        capabilities: const [ModelCapability.chat],
+      );
+      final service = AssistantRuntimeService(
+        isLiteRtAvailable: () async => true,
+        loadDeviceInfo: () async => {
+          'manufacturer': 'Nothing',
+          'model': 'Phone',
+          'platform': 'android',
+        },
+        checkModelCompatibility: (_) async =>
+            ModelCompatibilityResult.incompatible('Insufficient memory.'),
+      );
+
+      final result = await service.prepareRuntime(
+        candidate: AssistantModelCandidate(
+          id: litertGemmaAssistantModelId,
+          name: 'Gemma mobile package',
+          runtime: 'LiteRT-LM local model',
+          description: 'Local package',
+          bestFor: const [AssistantTask.chat],
+          tags: const ['Local'],
+          privacyLabel: 'Prompt stays on device',
+          sizeLabel: package.fileSizeDisplay,
+          available: true,
+          actionLabel: 'Start',
+          local: true,
+          package: package,
+        ),
+      );
+
+      expect(result.status, AssistantRuntimePreparationStatus.blocked);
+      expect(
+        result.diagnostic?.summary,
+        'This local package exceeds the current device budget.',
       );
     });
   });
