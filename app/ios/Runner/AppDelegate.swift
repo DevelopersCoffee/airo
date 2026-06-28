@@ -15,7 +15,6 @@ import UIKit
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
     GeneratedPluginRegistrant.register(with: self)
-    ModelDownloadPlugin.register(with: self.registrar(forPlugin: "ModelDownloadPlugin")!)
 
     if let controller = window?.rootViewController as? FlutterViewController {
       let channel = FlutterMethodChannel(
@@ -167,58 +166,8 @@ import UIKit
     result(["date": date, "events": payload])
   }
 
-  private func createCalendarEvent(arguments: [String: Any], result: @escaping FlutterResult) {
-    guard let title = arguments["title"] as? String, !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-          let startRaw = arguments["start"] as? String,
-          let endRaw = arguments["end"] as? String
-    else {
-      result(["error": "invalid_calendar_event", "message": "Calendar event requires title, start, and end."])
-      return
-    }
 
-    let parser = ISO8601DateFormatter()
-    guard let start = parser.date(from: startRaw),
-          let end = parser.date(from: endRaw),
-          end > start
-    else {
-      result([
-        "error": "invalid_calendar_event_time",
-        "message": "Calendar event times must use ISO-8601 and end after start."
-      ])
-      return
-    }
 
-    if !hasCalendarWriteAccess() {
-      requestCalendarWriteAccess { [weak self] granted in
-        guard let self else { return }
-        if granted {
-          self.createCalendarEvent(arguments: arguments, result: result)
-        } else {
-          result([
-            "error": "calendar_permission_denied",
-            "message": "Calendar permission is required to create events."
-          ])
-        }
-      }
-      return
-    }
-
-    guard let controller = window?.rootViewController else {
-      result(["error": "calendar_ui_unavailable", "message": "Calendar confirmation UI is unavailable."])
-      return
-    }
-
-    let event = EKEvent(eventStore: eventStore)
-    event.title = title
-    event.startDate = start
-    event.endDate = end
-    event.notes = arguments["description"] as? String
-    event.location = arguments["location"] as? String
-    event.calendar = eventStore.defaultCalendarForNewEvents
-
-    let editController = EKEventEditViewController()
-    editController.eventStore = eventStore
-    editController.event = event
   private func openCalendarPermissionSettings(result: @escaping FlutterResult) {
     guard let url = URL(string: UIApplication.openSettingsURLString) else {
       result(["error": "settings_unavailable", "message": "Settings URL is unavailable."])
