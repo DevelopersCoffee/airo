@@ -2,8 +2,9 @@ import 'package:meta/meta.dart';
 
 import 'failure.dart' as failures;
 
-/// Type alias for the base Failure class from failure.dart
-/// This distinguishes it from the Failure<T> result wrapper class
+/// Type alias for the base Failure class from failure.dart.
+///
+/// This distinguishes it from the `Failure<T>` result wrapper class.
 typedef BaseFailure = failures.Failure;
 
 /// A Result type that represents either a success value or a failure.
