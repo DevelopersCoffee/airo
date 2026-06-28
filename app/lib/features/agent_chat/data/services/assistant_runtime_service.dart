@@ -332,7 +332,13 @@ class AssistantRuntimeService {
 
       case litertGemmaAssistantModelId:
       default:
+        final downloadedPackage = await _resolveDownloadedLiteRtPackage(
+          candidate.id,
+          preferredPackage: candidate.package,
+        );
+        final package = downloadedPackage ?? candidate.package;
         final available =
+            downloadedPackage != null ||
             await (_isLiteRtAvailableOverride?.call() ??
                 _liteRtLm.isAvailable());
         if (!available) {
@@ -354,7 +360,6 @@ class AssistantRuntimeService {
           );
         }
 
-        final package = candidate.package;
         if (package != null) {
           final compatibility =
               await (_checkModelCompatibilityOverride?.call(package) ??
@@ -392,7 +397,10 @@ class AssistantRuntimeService {
         );
         final loadCancel = cancelled();
         if (loadCancel != null) return loadCancel;
-        final warmed = package != null
+        final warmed = downloadedPackage != null
+            ? await (_warmupLiteRtModelOverride?.call(downloadedPackage) ??
+                  _liteRtLm.warmupModel(downloadedPackage))
+            : package != null
             ? await (_warmupLiteRtModelOverride?.call(package) ??
                   _liteRtLm.warmupModel(package))
             : await (_warmupLiteRtInstalledModelOverride?.call() ??
@@ -466,6 +474,23 @@ class AssistantRuntimeService {
         );
 
       case litertGemmaAssistantModelId:
+        final package = await _resolveDownloadedLiteRtPackage(runtimeId);
+        if (package != null) {
+          return _nonEmptyOrUnavailable(
+            runtimeId,
+            await (_generateLiteRtModelTextOverride?.call(
+                  package,
+                  prompt,
+                  systemPrompt: systemPrompt,
+                ) ??
+                _liteRtLm.generateTextForModel(
+                  package,
+                  prompt,
+                  systemPrompt: systemPrompt,
+                )),
+            litertGemmaUnavailableMessage,
+          );
+        }
         return _nonEmptyOrUnavailable(
           runtimeId,
           await (_generateLiteRtTextOverride?.call(
@@ -624,5 +649,34 @@ class AssistantRuntimeService {
   ) async {
     final registry = ModelRegistry()..registerModel(package);
     return registry.checkCompatibility(package);
+  }
+
+  Future<OfflineModelInfo?> _resolveDownloadedLiteRtPackage(
+    String runtimeId, {
+    OfflineModelInfo? preferredPackage,
+  }) async {
+    if (runtimeId != litertGemmaAssistantModelId) {
+      return null;
+    }
+
+    final package =
+        preferredPackage ?? await _resolveOfflinePackageOrNull(runtimeId);
+    if (package == null || !package.isDownloaded) {
+      return null;
+    }
+    return package;
+  }
+
+  Future<OfflineModelInfo?> _resolveOfflinePackageOrNull(
+    String runtimeId,
+  ) async {
+    try {
+      final library =
+          await (_loadAssistantModelLibraryOverride?.call() ??
+              AssistantModelLibraryState.load(task: AssistantTask.chat));
+      return library.candidateById(runtimeId)?.package;
+    } catch (_) {
+      return null;
+    }
   }
 }

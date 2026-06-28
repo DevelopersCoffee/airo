@@ -5,6 +5,8 @@ import 'package:core_ai/core_ai.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   group('AssistantRuntimeService', () {
     test(
       'reports Gemini Nano unavailable instead of using canned fallback',
@@ -46,6 +48,73 @@ void main() {
 
       expect(text, 'skill planner :: pick a tool');
     });
+
+    test(
+      'routes generic LiteRT runtime through a downloaded package when available',
+      () async {
+        final package = OfflineModelInfo(
+          id: 'gemma-4-e2b-it-litertlm',
+          name: 'Gemma 4 E2B',
+          family: ModelFamily.gemma,
+          fileSizeBytes: 2 * 1024 * 1024 * 1024,
+          filePath: '/models/gemma-4-e2b-it-litertlm.task',
+          backendPreference: ModelBackendPreference.gpu,
+          provider: AIProvider.gemma,
+          capabilities: const [ModelCapability.chat, ModelCapability.reasoning],
+        );
+        final service = AssistantRuntimeService(
+          generateLiteRtText: (_, {systemPrompt}) async =>
+              'generic ${systemPrompt ?? ''}'.trim(),
+          generateLiteRtModelText: (model, prompt, {systemPrompt}) async {
+            return '${model.id} :: ${systemPrompt ?? 'no-system'} :: $prompt';
+          },
+          loadAssistantModelLibrary: () async => AssistantModelLibraryState(
+            task: AssistantTask.chat,
+            deviceLabel: 'Pixel 9',
+            platformLabel: 'ANDROID',
+            candidates: [
+              AssistantModelCandidate(
+                id: litertGemmaAssistantModelId,
+                name: 'Gemma mobile package',
+                runtime: 'LiteRT-LM local model',
+                description: 'Local package',
+                bestFor: const [AssistantTask.chat, AssistantTask.reasoning],
+                tags: const ['Local'],
+                privacyLabel: 'Prompt stays on device',
+                sizeLabel: package.fileSizeDisplay,
+                available: true,
+                actionLabel: 'Start',
+                local: true,
+                package: package,
+              ),
+            ],
+            recommended: AssistantModelCandidate(
+              id: litertGemmaAssistantModelId,
+              name: 'Gemma mobile package',
+              runtime: 'LiteRT-LM local model',
+              description: 'Local package',
+              bestFor: const [AssistantTask.chat, AssistantTask.reasoning],
+              tags: const ['Local'],
+              privacyLabel: 'Prompt stays on device',
+              sizeLabel: package.fileSizeDisplay,
+              available: true,
+              actionLabel: 'Start',
+              local: true,
+              package: package,
+            ),
+            defaultPackages: {AssistantTask.chat: package},
+          ),
+        );
+
+        final text = await service.generateText(
+          selectedModelId: litertGemmaAssistantModelId,
+          systemPrompt: 'planner',
+          prompt: 'pick a tool',
+        );
+
+        expect(text, 'gemma-4-e2b-it-litertlm :: planner :: pick a tool');
+      },
+    );
 
     test('reports Gemini Cloud configuration errors explicitly', () async {
       final service = AssistantRuntimeService(
@@ -175,5 +244,60 @@ void main() {
         'This local package exceeds the current device budget.',
       );
     });
+
+    test(
+      'prepares generic LiteRT runtime from a downloaded package when default runtime is unavailable',
+      () async {
+        final package = OfflineModelInfo(
+          id: 'gemma-4-e2b-it-litertlm',
+          name: 'Gemma 4 E2B',
+          family: ModelFamily.gemma,
+          fileSizeBytes: 2 * 1024 * 1024 * 1024,
+          filePath: '/models/gemma-4-e2b-it-litertlm.task',
+          backendPreference: ModelBackendPreference.gpu,
+          provider: AIProvider.gemma,
+          capabilities: const [ModelCapability.chat, ModelCapability.reasoning],
+        );
+        var warmedPackageId = '';
+        var warmedInstalled = false;
+        final service = AssistantRuntimeService(
+          isLiteRtAvailable: () async => false,
+          warmupLiteRtInstalledModel: () async {
+            warmedInstalled = true;
+            return true;
+          },
+          warmupLiteRtModel: (model) async {
+            warmedPackageId = model.id;
+            return true;
+          },
+          loadDeviceInfo: () async => {
+            'manufacturer': 'Google',
+            'model': 'Pixel 9',
+            'platform': 'android',
+          },
+        );
+
+        final result = await service.prepareRuntime(
+          candidate: AssistantModelCandidate(
+            id: litertGemmaAssistantModelId,
+            name: 'Gemma mobile package',
+            runtime: 'LiteRT-LM local model',
+            description: 'Local package',
+            bestFor: const [AssistantTask.chat, AssistantTask.reasoning],
+            tags: const ['Local'],
+            privacyLabel: 'Prompt stays on device',
+            sizeLabel: package.fileSizeDisplay,
+            available: true,
+            actionLabel: 'Start',
+            local: true,
+            package: package,
+          ),
+        );
+
+        expect(result.status, AssistantRuntimePreparationStatus.ready);
+        expect(warmedPackageId, 'gemma-4-e2b-it-litertlm');
+        expect(warmedInstalled, isFalse);
+      },
+    );
   });
 }
