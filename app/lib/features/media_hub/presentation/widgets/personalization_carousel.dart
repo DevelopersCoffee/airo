@@ -10,12 +10,18 @@ class PersonalizationCarousel extends StatelessWidget {
     required this.items,
     this.emptyMessage,
     this.onSelected,
+    this.showFavoriteButton = false,
+    this.isFavorite,
+    this.onFavoriteToggle,
   });
 
   final String title;
   final List<UnifiedMediaContent> items;
   final String? emptyMessage;
   final ValueChanged<UnifiedMediaContent>? onSelected;
+  final bool showFavoriteButton;
+  final bool Function(UnifiedMediaContent item)? isFavorite;
+  final ValueChanged<UnifiedMediaContent>? onFavoriteToggle;
 
   @override
   Widget build(BuildContext context) {
@@ -48,6 +54,11 @@ class PersonalizationCarousel extends StatelessWidget {
               return _PersonalizationTile(
                 item: item,
                 onTap: onSelected == null ? null : () => onSelected!(item),
+                showFavoriteButton: showFavoriteButton,
+                isFavorite: isFavorite?.call(item) ?? false,
+                onFavoriteToggle: onFavoriteToggle == null
+                    ? null
+                    : () => onFavoriteToggle!(item),
               );
             },
           ),
@@ -58,10 +69,19 @@ class PersonalizationCarousel extends StatelessWidget {
 }
 
 class _PersonalizationTile extends StatelessWidget {
-  const _PersonalizationTile({required this.item, this.onTap});
+  const _PersonalizationTile({
+    required this.item,
+    this.onTap,
+    this.showFavoriteButton = false,
+    this.isFavorite = false,
+    this.onFavoriteToggle,
+  });
 
   final UnifiedMediaContent item;
   final VoidCallback? onTap;
+  final bool showFavoriteButton;
+  final bool isFavorite;
+  final VoidCallback? onFavoriteToggle;
 
   @override
   Widget build(BuildContext context) {
@@ -98,6 +118,24 @@ class _PersonalizationTile extends StatelessWidget {
                         ),
                       ),
                     ),
+                    if (showFavoriteButton)
+                      IconButton(
+                        tooltip: isFavorite
+                            ? 'Remove from favorites'
+                            : 'Add to favorites',
+                        onPressed: onFavoriteToggle,
+                        icon: AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 200),
+                          child: Icon(
+                            isFavorite ? Icons.favorite : Icons.favorite_border,
+                            key: ValueKey(isFavorite),
+                            color: isFavorite
+                                ? colorScheme.error
+                                : colorScheme.onSurfaceVariant,
+                            size: 20,
+                          ),
+                        ),
+                      ),
                   ],
                 ),
                 const SizedBox(height: 8),
