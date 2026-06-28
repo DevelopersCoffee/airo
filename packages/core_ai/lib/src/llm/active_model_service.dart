@@ -32,6 +32,48 @@ enum ActiveModelState {
   unloading,
 }
 
+enum ActiveRuntimeKind { gguf, liteRtLm }
+
+class ActiveRuntimeInfo {
+  const ActiveRuntimeInfo({
+    required this.runtimeKind,
+    required this.runtimeId,
+    required this.modelId,
+    required this.modelPath,
+    required this.displayName,
+    required this.state,
+    this.memoryUsageBytes,
+  });
+
+  final ActiveRuntimeKind runtimeKind;
+  final String runtimeId;
+  final String modelId;
+  final String modelPath;
+  final String displayName;
+  final ActiveModelState state;
+  final int? memoryUsageBytes;
+
+  bool get isReady => state == ActiveModelState.ready;
+
+  ActiveRuntimeInfo copyWith({
+    ActiveRuntimeKind? runtimeKind,
+    String? runtimeId,
+    String? modelId,
+    String? modelPath,
+    String? displayName,
+    ActiveModelState? state,
+    int? memoryUsageBytes,
+  }) => ActiveRuntimeInfo(
+    runtimeKind: runtimeKind ?? this.runtimeKind,
+    runtimeId: runtimeId ?? this.runtimeId,
+    modelId: modelId ?? this.modelId,
+    modelPath: modelPath ?? this.modelPath,
+    displayName: displayName ?? this.displayName,
+    state: state ?? this.state,
+    memoryUsageBytes: memoryUsageBytes ?? this.memoryUsageBytes,
+  );
+}
+
 /// Information about the currently active model.
 class ActiveModelInfo {
   const ActiveModelInfo({
@@ -118,7 +160,11 @@ class ActiveModelService {
   final MemoryBudgetManager _memoryBudgetManager;
 
   ActiveModelInfo? _activeModel;
+  ActiveRuntimeInfo? _activeRuntime;
+  Future<void> Function()? _activeRuntimeDispose;
   final _stateController = StreamController<ActiveModelInfo?>.broadcast();
+  final _runtimeStateController =
+      StreamController<ActiveRuntimeInfo?>.broadcast();
 
   /// Stream of active model state changes.
   Stream<ActiveModelInfo?> get stateStream => _stateController.stream;
@@ -126,9 +172,19 @@ class ActiveModelService {
   /// Gets the currently active model info, or null if no model is loaded.
   ActiveModelInfo? get activeModel => _activeModel;
 
+  /// Stream of generic runtime lifecycle changes.
+  Stream<ActiveRuntimeInfo?> get runtimeStateStream =>
+      _runtimeStateController.stream;
+
+  /// Gets the currently active runtime, including non-GGUF runtimes.
+  ActiveRuntimeInfo? get activeRuntime => _activeRuntime;
+
   /// Whether a model is currently loaded and ready.
   bool get hasActiveModel =>
       _activeModel != null && _activeModel!.state == ActiveModelState.ready;
+
+  bool get hasActiveRuntime =>
+      _activeRuntime != null && _activeRuntime!.state == ActiveModelState.ready;
 
   /// Whether a model is currently loading.
   bool get isLoading =>
@@ -173,6 +229,17 @@ class ActiveModelService {
       onMemoryWarning?.call(memoryCheck);
     }
 
+    _activeRuntime = ActiveRuntimeInfo(
+      runtimeKind: ActiveRuntimeKind.gguf,
+      runtimeId: 'gguf',
+      modelId: config.modelPath,
+      modelPath: config.modelPath,
+      displayName: config.modelName,
+      state: ActiveModelState.loading,
+      memoryUsageBytes: config.estimatedMemoryBytes,
+    );
+    _runtimeStateController.add(_activeRuntime);
+
     // Update state to loading
     _activeModel = ActiveModelInfo(
       config: config,
@@ -200,6 +267,8 @@ class ActiveModelService {
         loadedAt: DateTime.now(),
         memoryUsageBytes: config.estimatedMemoryBytes,
       );
+      _activeRuntime = _activeRuntime?.copyWith(state: ActiveModelState.ready);
+      _runtimeStateController.add(_activeRuntime);
       _stateController.add(_activeModel);
       onProgress?.call(1.0, 'Model ready');
 
@@ -223,6 +292,11 @@ class ActiveModelService {
         state: ActiveModelState.error,
         errorMessage: e.toString(),
       );
+      _activeRuntime = _activeRuntime?.copyWith(
+        state: ActiveModelState.error,
+        memoryUsageBytes: config.estimatedMemoryBytes,
+      );
+      _runtimeStateController.add(_activeRuntime);
       _stateController.add(_activeModel);
 
       return Err(e, stack);
@@ -231,22 +305,33 @@ class ActiveModelService {
 
   /// Unloads the currently active model.
   Future<void> unloadModel() async {
-    if (_activeModel == null) return;
+    if (_activeModel == null && _activeRuntime == null) return;
 
-    developer.log(
-      'Unloading model: ${_activeModel!.config.modelName}',
-      name: 'ActiveModelService',
-    );
+    developer.log('Unloading active runtime', name: 'ActiveModelService');
 
-    _activeModel = _activeModel!.copyWith(state: ActiveModelState.unloading);
-    _stateController.add(_activeModel);
+    if (_activeModel != null) {
+      _activeModel = _activeModel!.copyWith(state: ActiveModelState.unloading);
+      _stateController.add(_activeModel);
+    }
+    if (_activeRuntime != null) {
+      _activeRuntime = _activeRuntime!.copyWith(
+        state: ActiveModelState.unloading,
+      );
+      _runtimeStateController.add(_activeRuntime);
+    }
 
     try {
+      if (_activeRuntimeDispose != null) {
+        await _activeRuntimeDispose!.call();
+      }
       // TODO: Replace with actual llama.cpp FFI cleanup
       await Future.delayed(const Duration(milliseconds: 50));
 
       _activeModel = null;
       _stateController.add(null);
+      _activeRuntime = null;
+      _activeRuntimeDispose = null;
+      _runtimeStateController.add(null);
 
       developer.log('Model unloaded', name: 'ActiveModelService');
     } catch (e, stack) {
@@ -260,7 +345,45 @@ class ActiveModelService {
       // Force unload even on error
       _activeModel = null;
       _stateController.add(null);
+      _activeRuntime = null;
+      _activeRuntimeDispose = null;
+      _runtimeStateController.add(null);
     }
+  }
+
+  Future<void> activateRuntime({
+    required ActiveRuntimeKind runtimeKind,
+    required String runtimeId,
+    required String modelId,
+    required String modelPath,
+    required String displayName,
+    required int estimatedMemoryBytes,
+    Future<void> Function()? onDeactivate,
+  }) async {
+    final shouldReuseCurrent =
+        _activeRuntime != null &&
+        _activeRuntime!.runtimeKind == runtimeKind &&
+        _activeRuntime!.modelId == modelId &&
+        _activeRuntime!.state == ActiveModelState.ready;
+    if (shouldReuseCurrent) {
+      return;
+    }
+
+    if (_activeModel != null || _activeRuntime != null) {
+      await unloadModel();
+    }
+
+    _activeRuntime = ActiveRuntimeInfo(
+      runtimeKind: runtimeKind,
+      runtimeId: runtimeId,
+      modelId: modelId,
+      modelPath: modelPath,
+      displayName: displayName,
+      state: ActiveModelState.ready,
+      memoryUsageBytes: estimatedMemoryBytes,
+    );
+    _activeRuntimeDispose = onDeactivate;
+    _runtimeStateController.add(_activeRuntime);
   }
 
   /// Switches to a different model.
@@ -296,5 +419,6 @@ class ActiveModelService {
   Future<void> dispose() async {
     await unloadModel();
     await _stateController.close();
+    await _runtimeStateController.close();
   }
 }
