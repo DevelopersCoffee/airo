@@ -86,29 +86,35 @@ void main() {
       expect(repository.transactions, isEmpty);
     });
 
-    test('queues low-confidence finance text for review instead of dropping it', () async {
-      final repository = _InMemoryTransactionRepository();
-      final service = FinanceChatIngestionService(
-        parser: FinanceMessageParser(now: () => DateTime(2026, 6, 20)),
-        repository: repository,
-      );
+    test(
+      'queues low-confidence finance text for review instead of dropping it',
+      () async {
+        final repository = _InMemoryTransactionRepository();
+        final service = FinanceChatIngestionService(
+          parser: FinanceMessageParser(now: () => DateTime(2026, 6, 20)),
+          repository: repository,
+        );
 
-      final result = await service.ingest(
-        'Rs 299 spent',
-        accountId: 'cash_default',
-      );
+        final result = await service.ingest(
+          'Rs 299 spent',
+          accountId: 'cash_default',
+        );
 
-      expect(result.status, FinanceChatIngestionStatus.needsReview);
-      expect(result.transaction, isNotNull);
-      expect(repository.transactions, hasLength(1));
-      expect(repository.transactions.single.description, 'Finance SMS transaction');
-      expect(repository.transactions.single.amountCents, -29900);
-      expect(repository.transactions.single.tags, contains('review:pending'));
-      expect(
-        repository.transactions.single.tags,
-        contains('confidence:0.55'),
-      );
-    });
+        expect(result.status, FinanceChatIngestionStatus.needsReview);
+        expect(result.transaction, isNotNull);
+        expect(repository.transactions, hasLength(1));
+        expect(
+          repository.transactions.single.description,
+          'Finance SMS transaction',
+        );
+        expect(repository.transactions.single.amountCents, -29900);
+        expect(repository.transactions.single.tags, contains('review:pending'));
+        expect(
+          repository.transactions.single.tags,
+          contains('confidence:0.55'),
+        );
+      },
+    );
   });
 }
 

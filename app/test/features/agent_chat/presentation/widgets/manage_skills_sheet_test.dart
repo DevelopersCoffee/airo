@@ -26,29 +26,30 @@ void main() {
     expect(find.text('read-calendar-events'), findsNothing);
   });
 
-  testWidgets('manage skills sheet toggles registry state and notifies changes', (
-    tester,
-  ) async {
-    final registry = AgentSkillRegistry();
-    var changedCount = 0;
+  testWidgets(
+    'manage skills sheet toggles registry state and notifies changes',
+    (tester) async {
+      final registry = AgentSkillRegistry();
+      var changedCount = 0;
 
-    await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: ManageSkillsSheet(
-            registry: registry,
-            onChanged: () => changedCount++,
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: ManageSkillsSheet(
+              registry: registry,
+              onChanged: () => changedCount++,
+            ),
           ),
         ),
-      ),
-    );
+      );
 
-    expect(registry.getById('create-calendar-event')?.enabled, false);
+      expect(registry.getById('create-calendar-event')?.enabled, false);
 
-    await tester.tap(find.byType(Switch).at(1));
-    await tester.pump();
+      await tester.tap(find.byType(Switch).at(1));
+      await tester.pump();
 
-    expect(registry.getById('create-calendar-event')?.enabled, true);
-    expect(changedCount, 1);
-  });
+      expect(registry.getById('create-calendar-event')?.enabled, true);
+      expect(changedCount, 1);
+    },
+  );
 }

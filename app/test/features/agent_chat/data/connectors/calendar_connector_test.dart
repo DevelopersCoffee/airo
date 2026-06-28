@@ -113,7 +113,8 @@ void main() {
           .setMockMethodCallHandler(methodChannel, (_) async {
             return {
               'error': 'calendar_permission_denied',
-              'message': 'Calendar permission is required to check your schedule.',
+              'message':
+                  'Calendar permission is required to check your schedule.',
             };
           });
 
@@ -124,14 +125,17 @@ void main() {
       expect(result.errorCode, 'calendar_permission_denied');
     });
 
-    test('falls back cleanly when the platform channel is unavailable', () async {
-      final connector = NativeCalendarConnector(channel: methodChannel);
+    test(
+      'falls back cleanly when the platform channel is unavailable',
+      () async {
+        final connector = NativeCalendarConnector(channel: methodChannel);
 
-      final result = await connector.execute({'date': '2026-06-20'});
+        final result = await connector.execute({'date': '2026-06-20'});
 
-      expect(result.isError, false);
-      expect(result.data['source'], 'calendar_channel_unavailable');
-    });
+        expect(result.isError, false);
+        expect(result.data['source'], 'calendar_channel_unavailable');
+      },
+    );
   });
 
   group('NativeCreateCalendarEventConnector', () {
@@ -144,7 +148,9 @@ void main() {
             };
           });
 
-      final connector = NativeCreateCalendarEventConnector(channel: methodChannel);
+      final connector = NativeCreateCalendarEventConnector(
+        channel: methodChannel,
+      );
       final result = await connector.execute({
         'title': 'Bills review',
         'date': '2026-06-20',
@@ -155,16 +161,21 @@ void main() {
       expect(result.errorCode, 'calendar_permission_denied');
     });
 
-    test('returns unavailable error when the platform channel is missing', () async {
-      final connector = NativeCreateCalendarEventConnector(channel: methodChannel);
-      final result = await connector.execute({
-        'title': 'Bills review',
-        'date': '2026-06-20',
-        'hour': 19,
-      });
+    test(
+      'returns unavailable error when the platform channel is missing',
+      () async {
+        final connector = NativeCreateCalendarEventConnector(
+          channel: methodChannel,
+        );
+        final result = await connector.execute({
+          'title': 'Bills review',
+          'date': '2026-06-20',
+          'hour': 19,
+        });
 
-      expect(result.isError, true);
-      expect(result.errorCode, 'calendar_write_unavailable');
-    });
+        expect(result.isError, true);
+        expect(result.errorCode, 'calendar_write_unavailable');
+      },
+    );
   });
 }

@@ -19,23 +19,20 @@ void main() {
       expect(parseSelectedSkillId('not json'), isNull);
     });
 
-    test(
-      'parses tool calls from json and rejects malformed action payloads',
-      () {
-        final toolCall = parseSkillModelAction(
-          '```json\n{"type":"tool_call","tool":"open_route","arguments":{"feature":"money"}}\n```',
-        );
-        expect(toolCall?.type, SkillModelActionType.toolCall);
-        expect(toolCall?.tool, 'open_route');
-        expect(toolCall?.arguments, {'feature': 'money'});
+    test('parses tool calls from json and rejects malformed action payloads', () {
+      final toolCall = parseSkillModelAction(
+        '```json\n{"type":"tool_call","tool":"open_route","arguments":{"feature":"money"}}\n```',
+      );
+      expect(toolCall?.type, SkillModelActionType.toolCall);
+      expect(toolCall?.tool, 'open_route');
+      expect(toolCall?.arguments, {'feature': 'money'});
 
-        expect(
-          parseSkillModelAction('{"type":"final","message":"Done"}')?.message,
-          'Done',
-        );
-        expect(parseSkillModelAction('not json'), isNull);
-      },
-    );
+      expect(
+        parseSkillModelAction('{"type":"final","message":"Done"}')?.message,
+        'Done',
+      );
+      expect(parseSkillModelAction('not json'), isNull);
+    });
 
     test('does not handle prompts when no skill applies', () async {
       final orchestrator = _buildOrchestrator();
@@ -341,18 +338,21 @@ void main() {
       expect(result.message, contains('could not complete'));
     });
 
-    test('returns an error when model output is unusable without fallback', () async {
-      final orchestrator = _buildOrchestrator(
-        modelClient: _NullActionModelClient(),
-        useFallbackModelClient: false,
-      );
+    test(
+      'returns an error when model output is unusable without fallback',
+      () async {
+        final orchestrator = _buildOrchestrator(
+          modelClient: _NullActionModelClient(),
+          useFallbackModelClient: false,
+        );
 
-      final result = await orchestrator.run('Check my schedule for today');
+        final result = await orchestrator.run('Check my schedule for today');
 
-      expect(result.handled, true);
-      expect(result.isError, true);
-      expect(result.message, contains('could not complete'));
-    });
+        expect(result.handled, true);
+        expect(result.isError, true);
+        expect(result.message, contains('could not complete'));
+      },
+    );
 
     test('stops after max tool steps', () async {
       final orchestrator = _buildOrchestrator(
@@ -370,10 +370,10 @@ void main() {
       expect(result.handled, true);
       expect(result.isError, true);
       expect(result.message, contains('too many steps'));
-      expect(
-        result.traces.map((trace) => trace.detail),
-        ['read-calendar-events', 'get_current_date_time'],
-      );
+      expect(result.traces.map((trace) => trace.detail), [
+        'read-calendar-events',
+        'get_current_date_time',
+      ]);
     });
 
     test('stops runs that exceed the bounded step limit', () async {
