@@ -8,10 +8,7 @@ void main() {
     tester,
   ) async {
     const traces = [
-      AgentActionTrace(
-        title: 'Load skill',
-        detail: 'read-calendar-events',
-      ),
+      AgentActionTrace(title: 'Load skill', detail: 'read-calendar-events'),
       AgentActionTrace(
         title: 'Blocked action',
         detail: 'delete_calendar_events',
@@ -32,33 +29,37 @@ void main() {
     expect(find.byIcon(Icons.circle), findsOneWidget);
   });
 
-  testWidgets('trace card renders parameters and hides itself for empty traces', (
-    tester,
-  ) async {
-    await tester.pumpWidget(
-      const MaterialApp(
-        home: Scaffold(
-          body: SkillActionTraceCard(
-            traces: [
-              AgentActionTrace(
-                title: 'Execute action',
-                detail: 'open_route',
-                parameters: {'feature': 'money'},
-              ),
-            ],
+  testWidgets(
+    'trace card renders parameters and hides itself for empty traces',
+    (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: SkillActionTraceCard(
+              traces: [
+                AgentActionTrace(
+                  title: 'Execute action',
+                  detail: 'open_route',
+                  parameters: {'feature': 'money'},
+                ),
+              ],
+            ),
           ),
         ),
-      ),
-    );
+      );
 
-    expect(find.textContaining('Parameters: {feature: money}'), findsOneWidget);
+      expect(
+        find.textContaining('Parameters: {feature: money}'),
+        findsOneWidget,
+      );
 
-    await tester.pumpWidget(
-      const MaterialApp(
-        home: Scaffold(body: SkillActionTraceCard(traces: [])),
-      ),
-    );
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(body: SkillActionTraceCard(traces: [])),
+        ),
+      );
 
-    expect(find.text('Performed action'), findsNothing);
-  });
+      expect(find.text('Performed action'), findsNothing);
+    },
+  );
 }

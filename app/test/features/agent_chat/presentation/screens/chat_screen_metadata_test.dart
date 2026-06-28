@@ -50,7 +50,9 @@ void main() {
     expect(metadata.executionMode, 'Local');
   });
 
-  testWidgets('runtime responses expose timing metadata details', (tester) async {
+  testWidgets('runtime responses expose timing metadata details', (
+    tester,
+  ) async {
     await _pumpChatScreen(
       tester,
       initialMessages: [
@@ -135,19 +137,20 @@ void main() {
     expect(find.text('schedule_notification'), findsWidgets);
   });
 
-  testWidgets('assistant messages without metadata hide the metadata affordance', (
-    tester,
-  ) async {
-    await _pumpChatScreen(
-      tester,
-      initialMessages: [
-        ChatMessage(text: geminiNanoUnavailableMessage, isUser: false),
-      ],
-    );
+  testWidgets(
+    'assistant messages without metadata hide the metadata affordance',
+    (tester) async {
+      await _pumpChatScreen(
+        tester,
+        initialMessages: [
+          ChatMessage(text: geminiNanoUnavailableMessage, isUser: false),
+        ],
+      );
 
-    expect(find.text(geminiNanoUnavailableMessage), findsOneWidget);
-    expect(find.byKey(const Key('agent_chat_metadata_button')), findsNothing);
-  });
+      expect(find.text(geminiNanoUnavailableMessage), findsOneWidget);
+      expect(find.byKey(const Key('agent_chat_metadata_button')), findsNothing);
+    },
+  );
 }
 
 Future<void> _pumpChatScreen(

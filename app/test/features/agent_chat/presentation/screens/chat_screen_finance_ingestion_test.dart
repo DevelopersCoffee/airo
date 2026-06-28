@@ -126,12 +126,18 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.enterText(find.byKey(const Key('agent_chat_input')), 'Rs 299 spent');
+    await tester.enterText(
+      find.byKey(const Key('agent_chat_input')),
+      'Rs 299 spent',
+    );
     await tester.tap(find.byIcon(Icons.send));
     await tester.pumpAndSettle();
 
     expect(repository.transactions, hasLength(1));
-    expect(repository.transactions.single.description, 'Finance SMS transaction');
+    expect(
+      repository.transactions.single.description,
+      'Finance SMS transaction',
+    );
     expect(repository.transactions.single.amountCents, -29900);
     expect(repository.transactions.single.tags, contains('review:pending'));
     expect(

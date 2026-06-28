@@ -36,6 +36,11 @@ void main() {
       }
     }
 
-    expect(offenders, isEmpty, reason: 'Remaining hardcoded shell backdrop references must migrate to ShellAssetRegistry.');
+    expect(
+      offenders,
+      isEmpty,
+      reason:
+          'Remaining hardcoded shell backdrop references must migrate to ShellAssetRegistry.',
+    );
   });
 }
