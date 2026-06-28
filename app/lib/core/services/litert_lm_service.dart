@@ -230,7 +230,6 @@ class LiteRtLmService {
         resolvedModelPath ??
         installUrl?.trim() ??
         (config.hasModelPath ? config.modelPath.trim() : null);
->>>>>>> origin/main
     return true;
   }
 

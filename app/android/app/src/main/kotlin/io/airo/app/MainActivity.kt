@@ -455,6 +455,5 @@ class MainActivity : FlutterActivity() {
             val idIndex = cursor.getColumnIndex(CalendarContract.Calendars._ID)
             if (cursor.moveToFirst()) cursor.getLong(idIndex) else null
         }
->>>>>>> origin/main
     }
 }
