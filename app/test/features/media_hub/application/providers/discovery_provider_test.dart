@@ -1,6 +1,7 @@
 import 'package:airo_app/features/iptv/application/providers/iptv_providers.dart';
 import 'package:airo_app/features/iptv/domain/models/iptv_channel.dart';
 import 'package:airo_app/features/media_hub/application/providers/discovery_provider.dart';
+import 'package:airo_app/features/media_hub/domain/models/media_category.dart';
 import 'package:airo_app/features/media_hub/domain/models/media_mode.dart';
 import 'package:airo_app/features/music/application/providers/music_tracks_provider.dart';
 import 'package:airo_app/features/music/domain/services/music_service.dart';
@@ -19,17 +20,21 @@ void main() {
       ),
     ];
     final container = ProviderContainer(
-      overrides: [musicTracksProvider.overrideWith((ref) async => tracks)],
+      overrides: [
+        musicTracksProvider.overrideWith((ref) async => tracks),
+        mediaHubDiscoveryPageSizeProvider.overrideWith((ref) => 1),
+      ],
     );
     addTearDown(container.dispose);
 
-    await container.read(musicTracksProvider.future);
-    final data =
-        container.read(mediaHubDiscoveryProvider(MediaMode.music)).value ?? [];
+    final data = await container.read(
+      mediaHubDiscoveryProvider(MediaMode.music).future,
+    );
 
-    expect(data, hasLength(1));
-    expect(data.first.mode, MediaMode.music);
-    expect(data.first.title, 'Track');
+    expect(data.visibleItems, hasLength(1));
+    expect(data.visibleItems.first.mode, MediaMode.music);
+    expect(data.visibleItems.first.title, 'Track');
+    expect(data.hasMore, isFalse);
   });
 
   test('maps tv channels into unified discovery content', () async {
@@ -47,12 +52,76 @@ void main() {
     );
     addTearDown(container.dispose);
 
-    await container.read(iptvChannelsProvider.future);
-    final data =
-        container.read(mediaHubDiscoveryProvider(MediaMode.tv)).value ?? [];
+    final data = await container.read(
+      mediaHubDiscoveryProvider(MediaMode.tv).future,
+    );
 
-    expect(data, hasLength(1));
-    expect(data.first.mode, MediaMode.tv);
-    expect(data.first.title, 'Airo TV');
+    expect(data.visibleItems, hasLength(1));
+    expect(data.visibleItems.first.mode, MediaMode.tv);
+    expect(data.visibleItems.first.title, 'Airo TV');
+  });
+
+  test('supports search, category filtering, and pagination', () async {
+    final channels = [
+      const IPTVChannel(
+        id: 'tv-1',
+        name: 'Airo News',
+        streamUrl: 'https://example.com/news.m3u8',
+        group: 'News',
+        category: ChannelCategory.news,
+      ),
+      const IPTVChannel(
+        id: 'tv-2',
+        name: 'Airo Sports',
+        streamUrl: 'https://example.com/sports.m3u8',
+        group: 'Sports',
+        category: ChannelCategory.sports,
+      ),
+      const IPTVChannel(
+        id: 'tv-3',
+        name: 'Airo Movies',
+        streamUrl: 'https://example.com/movies.m3u8',
+        group: 'Movies',
+        category: ChannelCategory.movies,
+      ),
+    ];
+    final container = ProviderContainer(
+      overrides: [
+        iptvChannelsProvider.overrideWith((ref) async => channels),
+        mediaHubDiscoveryPageSizeProvider.overrideWith((ref) => 1),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    final initial = await container.read(
+      mediaHubDiscoveryProvider(MediaMode.tv).future,
+    );
+    expect(initial.visibleItems, hasLength(1));
+    expect(initial.hasMore, isTrue);
+
+    final notifier = container.read(
+      mediaHubDiscoveryProvider(MediaMode.tv).notifier,
+    );
+    notifier.loadNextPage();
+    final paged = container
+        .read(mediaHubDiscoveryProvider(MediaMode.tv))
+        .value!;
+    expect(paged.visibleItems, hasLength(2));
+    expect(paged.hasMore, isTrue);
+
+    notifier.setCategory(MediaCategory.sports);
+    final filtered = container
+        .read(mediaHubDiscoveryProvider(MediaMode.tv))
+        .value!;
+    expect(filtered.visibleItems, hasLength(1));
+    expect(filtered.visibleItems.first.title, 'Airo Sports');
+    expect(filtered.hasMore, isFalse);
+
+    notifier.setSearchQuery('movies');
+    final searched = container
+        .read(mediaHubDiscoveryProvider(MediaMode.tv))
+        .value!;
+    expect(searched.visibleItems, isEmpty);
+    expect(searched.filteredCount, 0);
   });
 }
