@@ -27,6 +27,7 @@ import '../../../coins/application/providers/expense_providers.dart';
 import '../../../coins/application/services/finance_chat_ingestion_service.dart';
 import '../../../../core/services/gemini_nano_service.dart';
 import '../../../../core/services/litert_lm_service.dart';
+import '../../../../core/services/local_runtime_preloader_service.dart';
 import 'model_library_screen.dart';
 
 /// Chat message model
@@ -51,12 +52,14 @@ class ChatScreen extends ConsumerStatefulWidget {
   const ChatScreen({
     super.key,
     this.assistantRuntimeService,
+    this.localRuntimePreloader,
     this.skillOrchestrator,
     this.enableAiInitialization = true,
     this.initialMessages,
   });
 
   final AssistantRuntimeService? assistantRuntimeService;
+  final LocalRuntimePreloaderService? localRuntimePreloader;
   final AgentSkillOrchestrator? skillOrchestrator;
   final bool enableAiInitialization;
   final List<ChatMessage>? initialMessages;
@@ -83,9 +86,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   final GeminiNanoService _geminiNano = GeminiNanoService();
   final LiteRtLmService _liteRtLm = LiteRtLmService();
   late final AssistantRuntimeService _assistantRuntime;
+  late final LocalRuntimePreloaderService _localRuntimePreloader;
   late AgentSkillOrchestrator _skillOrchestrator;
   Map<String, dynamic>? _pendingCalendarEvent;
   bool _isDeviceSupported = false;
+  bool _isGenerating = false;
 
   @override
   void initState() {
@@ -93,9 +98,16 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     _messageController = TextEditingController();
     _assistantRuntime =
         widget.assistantRuntimeService ??
-        AssistantRuntimeService(
+        AssistantRuntimeService(geminiNano: _geminiNano, liteRtLm: _liteRtLm);
+    _localRuntimePreloader =
+        widget.localRuntimePreloader ??
+        LocalRuntimePreloaderService(
           geminiNano: _geminiNano,
           liteRtLm: _liteRtLm,
+          loadAssistantModelLibrary: () =>
+              ref.read(assistantModelLibraryProvider.future),
+          selectedModelId: () => ref.read(selectedAssistantModelIdProvider),
+          isGenerationActive: () => _isGenerating,
         );
     _skillOrchestrator =
         widget.skillOrchestrator ?? _buildSkillOrchestrator(_skillRegistry);
@@ -150,20 +162,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         });
       }
 
-      // Initialize Gemini Nano if supported
-      if (isSupported) {
-        final initialized = await _geminiNano.initialize();
-        debugPrint('Gemini Nano initialized: $initialized');
-        if (initialized) {
-          unawaited(_warmupGeminiNano());
-        }
-      }
-
-      unawaited(
-        _liteRtLm.warmupInstalledModel().then((warmed) {
-          debugPrint('LiteRT-LM warmup completed: $warmed');
-        }),
-      );
+      unawaited(_preloadLocalRuntimes());
 
       // Show bottom banner popup
       if (mounted) {
@@ -174,9 +173,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     }
   }
 
-  Future<void> _warmupGeminiNano() async {
-    final warmed = await _geminiNano.warmup();
-    debugPrint('Gemini Nano warmed up: $warmed');
+  Future<void> _preloadLocalRuntimes() async {
+    final report = await _localRuntimePreloader.preloadSelectedModels();
+    debugPrint(
+      'Local preload completed: '
+      '${report.entries.map((entry) => '${entry.runtimeId}:${entry.reason}').join(', ')}',
+    );
   }
 
   void _showBottomBanner() {
@@ -231,6 +233,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   @override
   void dispose() {
+    _localRuntimePreloader.abortPreload();
     _messageController.dispose();
     super.dispose();
   }
@@ -617,6 +620,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       _messages.add(
         ChatMessage(text: '', isUser: false), // Placeholder for streaming
       );
+      _isGenerating = true;
     });
 
     try {
@@ -635,6 +639,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           isUser: false,
         );
       });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isGenerating = false;
+        });
+      } else {
+        _isGenerating = false;
+      }
     }
   }
 
@@ -921,14 +933,18 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           ('Total duration', _formatDuration(metadata.totalDurationMs)),
           ('Timestamp', _formatTimestamp(metadata.recordedAt)),
           if (metadata.timeToFirstTokenMs != null)
-            ('Time to first token', _formatDuration(metadata.timeToFirstTokenMs!)),
+            (
+              'Time to first token',
+              _formatDuration(metadata.timeToFirstTokenMs!),
+            ),
           if (metadata.promptTokens != null)
             ('Prompt tokens', '${metadata.promptTokens}'),
           if (metadata.completionTokens != null)
             ('Completion tokens', '${metadata.completionTokens}'),
           if (metadata.totalTokens != null)
             ('Total tokens', '${metadata.totalTokens}'),
-          if (metadata.toolCount != null) ('Tool calls', '${metadata.toolCount}'),
+          if (metadata.toolCount != null)
+            ('Tool calls', '${metadata.toolCount}'),
           if (metadata.finishReason != null)
             ('Finish reason', metadata.finishReason!),
         ];

@@ -10,6 +10,8 @@ export 'src/provider/ai_provider.dart';
 export 'src/device/device_capability_service.dart';
 export 'src/device/memory_budget_manager.dart';
 export 'src/device/memory_severity.dart';
+export 'src/residency/model_residency_manager.dart';
+export 'src/preload/model_preloader.dart';
 
 // LLM Client
 export 'src/llm/llm_client.dart';
