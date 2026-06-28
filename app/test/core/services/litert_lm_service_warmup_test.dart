@@ -57,10 +57,15 @@ class _FakeLiteRtLmClient implements LiteRtLmClient {
   final generatedPrompts = <String>[];
 
   @override
-  Future<bool> activeModelExists() async => activeModelExistsValue;
+  Future<bool> activeModelExists({String? modelPath}) async => activeModelExistsValue;
 
   @override
-  Future<void> initialize({String? huggingFaceToken}) async {
+  Future<void> initialize({
+    String? huggingFaceToken,
+    String? modelPath,
+    LiteRtLmBackend? backend,
+    int? maxTokens,
+  }) async {
     initializeCalls += 1;
   }
 

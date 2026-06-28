@@ -42,23 +42,24 @@ Downloading large LLM models (1-8GB) requires reliable background downloads that
 
 ### Proposed Enhancement
 1. Create `ModelDownloadService` for download orchestration
-2. Implement Android platform channel for DownloadManager
-3. Create iOS background download using URLSession
+2. Implement Android platform channel wrapping WorkManager + OkHttp for robust HTTP redirect handling
+3. Create iOS background download using URLSession with throttled delegate callbacks
 4. Add download progress tracking with Riverpod state
 5. Implement download queue with priority support
-6. Add storage management (usage tracking, cleanup)
+6. Add storage management (usage tracking, cleanup, SHA-256 verification)
 7. Handle download resume after network interruption
 
 ### User Value
 - Reliable downloads that complete even when app is backgrounded
-- Clear progress indication
+- Clear progress indication without main-thread UI lag
 - Ability to pause/resume downloads
-- Storage awareness before downloading
+- Storage awareness and SHA-256 verified files before loading
 
 ## Acceptance Criteria
 - [ ] `ModelDownloadService` interface created
-- [ ] Android DownloadManager platform channel implemented
-- [ ] iOS URLSession background download implemented
+- [ ] Android WorkManager + OkHttp background download worker implemented
+- [ ] iOS URLSession background download with throttled progress implemented
+- [ ] SHA-256 integrity verification implemented
 - [ ] Download progress state management working
 - [ ] Download queue with pause/resume functionality
 - [ ] Storage usage tracking implemented
@@ -74,10 +75,10 @@ Downloading large LLM models (1-8GB) requires reliable background downloads that
 
 ## Files to Modify
 ```
-packages/core_ai/lib/src/download/model_download_service.dart (new)
-packages/core_ai/lib/src/download/download_progress.dart (new)
+packages/core_ai/lib/src/download/model_download_service.dart (modify)
+packages/core_ai/lib/src/download/model_download_progress.dart (modify)
 packages/core_ai/lib/src/storage/model_storage_manager.dart (new)
-app/android/app/src/main/kotlin/.../ModelDownloadPlugin.kt (new)
+app/android/app/src/main/kotlin/io/airo/app/ModelDownloadPlugin.kt (new)
 app/ios/Runner/ModelDownloadPlugin.swift (new)
 app/lib/core/ai/providers/download_providers.dart (new)
 ```

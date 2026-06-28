@@ -132,31 +132,6 @@ class GeminiNanoService {
     }
   }
 
-  /// Warm the model with a lightweight native inference request.
-  ///
-  /// This is intended to hide the first-request cold start after the chat
-  /// screen loads on supported Android devices.
-  Future<bool> warmup() async {
-    if (kIsWeb) {
-      return false;
-    }
-
-    try {
-      if (!_isInitialized) {
-        final initialized = await initialize();
-        if (!initialized) {
-          return false;
-        }
-      }
-
-      final warmed = await _channel.invokeMethod<bool>('warmup');
-      return warmed ?? false;
-    } catch (e) {
-      debugPrint('Error warming up Gemini Nano: $e');
-      return false;
-    }
-  }
-
   /// Generate content from a prompt
   /// Returns the generated text response, or fallback message on web/uninitialized
   Future<String> generateContent(String prompt) async {
