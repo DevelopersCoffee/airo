@@ -55,4 +55,38 @@ void main() {
 
     expect(find.text('Recently Played'), findsNothing);
   });
+
+  testWidgets('shows filled heart for favorited items and handles toggle', (
+    tester,
+  ) async {
+    const item = UnifiedMediaContent(
+      id: 'track-1',
+      mode: MediaMode.music,
+      category: MediaCategory.music,
+      title: 'Favorite Track',
+      subtitle: 'Artist',
+      imageUrl: null,
+      streamUrl: 'https://example.com/one.mp3',
+    );
+    var tapped = false;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: PersonalizationCarousel(
+            title: 'Favorites',
+            items: const [item],
+            showFavoriteButton: true,
+            isFavorite: (_) => true,
+            onFavoriteToggle: (_) => tapped = true,
+          ),
+        ),
+      ),
+    );
+
+    expect(find.byIcon(Icons.favorite), findsOneWidget);
+    await tester.tap(find.byIcon(Icons.favorite));
+    await tester.pumpAndSettle();
+    expect(tapped, isTrue);
+  });
 }

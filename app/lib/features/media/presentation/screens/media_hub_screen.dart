@@ -26,6 +26,17 @@ List<UnifiedMediaContent> recentItemsForSection(
       .toList();
 }
 
+List<UnifiedMediaContent> favoriteItemsForSection(
+  PersonalizationState state,
+  MediaSection section,
+) {
+  final mode = switch (section) {
+    MediaSection.music => MediaMode.music,
+    MediaSection.tv => MediaMode.tv,
+  };
+  return state.favorites.where((item) => item.mode == mode).toList();
+}
+
 class MediaHubScreen extends ConsumerWidget {
   const MediaHubScreen({super.key, required this.section});
 
@@ -34,6 +45,11 @@ class MediaHubScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final personalization = ref.watch(personalizationProvider);
+    final personalizationNotifier = ref.read(personalizationProvider.notifier);
+    final state = personalization.valueOrNull;
+    final favoriteItems = state == null
+        ? const <UnifiedMediaContent>[]
+        : favoriteItemsForSection(state, section);
     final recentItems = personalization.valueOrNull == null
         ? const <UnifiedMediaContent>[]
         : recentItemsForSection(personalization.valueOrNull!, section);
@@ -41,6 +57,15 @@ class MediaHubScreen extends ConsumerWidget {
     return Column(
       children: [
         _MediaModeBar(section: section),
+        PersonalizationCarousel(
+          title: 'Favorites',
+          items: favoriteItems,
+          showFavoriteButton: true,
+          isFavorite: (_) => true,
+          onFavoriteToggle: (item) {
+            personalizationNotifier.toggleFavorite(item);
+          },
+        ),
         PersonalizationCarousel(title: 'Recently Played', items: recentItems),
         Expanded(
           child: AnimatedSwitcher(
