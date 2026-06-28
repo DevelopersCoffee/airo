@@ -174,4 +174,3 @@ class InMemoryEncryptedDatabase implements EncryptedDatabase {
   @override
   String get path => _path;
 }
-

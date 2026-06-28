@@ -5,7 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   late ActiveModelService activeModelService;
   late GGUFModelClient client;
-  
+
   const testConfig = GGUFModelConfig(
     modelPath: '/path/to/model.gguf',
     modelName: 'Test Model',
@@ -62,19 +62,22 @@ void main() {
       expect(activeModelService.hasActiveModel, true);
     });
 
-    test('ensureLoaded should return existing model if already loaded', () async {
-      await client.ensureLoaded();
-      final loadedAt1 = activeModelService.activeModel!.loadedAt;
+    test(
+      'ensureLoaded should return existing model if already loaded',
+      () async {
+        await client.ensureLoaded();
+        final loadedAt1 = activeModelService.activeModel!.loadedAt;
 
-      // Small delay to ensure different timestamp if reloaded
-      await Future.delayed(const Duration(milliseconds: 10));
+        // Small delay to ensure different timestamp if reloaded
+        await Future.delayed(const Duration(milliseconds: 10));
 
-      await client.ensureLoaded();
-      final loadedAt2 = activeModelService.activeModel!.loadedAt;
+        await client.ensureLoaded();
+        final loadedAt2 = activeModelService.activeModel!.loadedAt;
 
-      // Should be the same timestamp (not reloaded)
-      expect(loadedAt1, loadedAt2);
-    });
+        // Should be the same timestamp (not reloaded)
+        expect(loadedAt1, loadedAt2);
+      },
+    );
 
     test('generate should return LLMResponse', () async {
       final result = await client.generate('Test prompt');
@@ -97,7 +100,7 @@ void main() {
 
     test('generateStream should yield tokens', () async {
       final tokens = <String>[];
-      
+
       await for (final token in client.generateStream('Test prompt')) {
         tokens.add(token);
       }
@@ -123,7 +126,7 @@ void main() {
     test('dispose should not unload model', () async {
       await client.ensureLoaded();
       await client.dispose();
-      
+
       // Model should still be loaded (managed by ActiveModelService)
       expect(activeModelService.hasActiveModel, true);
     });
@@ -150,4 +153,3 @@ void main() {
     });
   });
 }
-

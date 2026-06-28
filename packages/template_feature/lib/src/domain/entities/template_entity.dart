@@ -23,12 +23,10 @@ class TemplateEntity extends Entity {
     String? name,
     String? description,
     DateTime? createdAt,
-  }) =>
-      TemplateEntity(
-        id: id ?? this.id,
-        name: name ?? this.name,
-        description: description ?? this.description,
-        createdAt: createdAt ?? this.createdAt,
-      );
+  }) => TemplateEntity(
+    id: id ?? this.id,
+    name: name ?? this.name,
+    description: description ?? this.description,
+    createdAt: createdAt ?? this.createdAt,
+  );
 }
-

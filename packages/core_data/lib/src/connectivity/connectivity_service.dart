@@ -5,7 +5,7 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 /// Service for monitoring network connectivity
 class ConnectivityService {
   ConnectivityService({Connectivity? connectivity})
-      : _connectivity = connectivity ?? Connectivity();
+    : _connectivity = connectivity ?? Connectivity();
 
   final Connectivity _connectivity;
 
@@ -19,12 +19,10 @@ class ConnectivityService {
     return _isConnected(result);
   }
 
-  bool _isConnected(List<ConnectivityResult> results) =>
-      results.any(
-        (r) =>
-            r == ConnectivityResult.mobile ||
-            r == ConnectivityResult.wifi ||
-            r == ConnectivityResult.ethernet,
-      );
+  bool _isConnected(List<ConnectivityResult> results) => results.any(
+    (r) =>
+        r == ConnectivityResult.mobile ||
+        r == ConnectivityResult.wifi ||
+        r == ConnectivityResult.ethernet,
+  );
 }
-

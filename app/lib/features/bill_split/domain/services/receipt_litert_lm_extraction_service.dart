@@ -9,9 +9,8 @@ import '../models/receipt_item.dart';
 class ReceiptLiteRtLmExtractionService {
   ReceiptLiteRtLmExtractionService({
     LiteRtLmService? llm,
-    Uuid uuid = const Uuid(),
-  }) : _llm = llm ?? LiteRtLmService(),
-       _uuid = uuid;
+    this._uuid = const Uuid(),
+  }) : _llm = llm ?? LiteRtLmService();
 
   final LiteRtLmService _llm;
   final Uuid _uuid;

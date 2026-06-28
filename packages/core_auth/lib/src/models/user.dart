@@ -103,4 +103,3 @@ class User {
   @override
   int get hashCode => id.hashCode;
 }
-

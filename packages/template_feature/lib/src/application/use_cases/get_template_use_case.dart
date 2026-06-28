@@ -22,4 +22,3 @@ class ListTemplatesUseCase implements NoInputUseCase<List<TemplateEntity>> {
   @override
   Future<Result<List<TemplateEntity>>> call() => _repository.findAll();
 }
-

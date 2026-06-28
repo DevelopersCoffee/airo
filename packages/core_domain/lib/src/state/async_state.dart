@@ -20,8 +20,16 @@ sealed class AsyncState<T> {
   factory AsyncState.data(T data) = AsyncData<T>;
 
   /// Create error state.
-  factory AsyncState.error(Object error, {StackTrace? stackTrace, T? previousData}) {
-    return AsyncError<T>(error, stackTrace: stackTrace, previousData: previousData);
+  factory AsyncState.error(
+    Object error, {
+    StackTrace? stackTrace,
+    T? previousData,
+  }) {
+    return AsyncError<T>(
+      error,
+      stackTrace: stackTrace,
+      previousData: previousData,
+    );
   }
 
   /// Check if in initial state.
@@ -38,28 +46,36 @@ sealed class AsyncState<T> {
 
   /// Get data if available.
   T? get dataOrNull => switch (this) {
-        AsyncData<T>(data: final d) => d,
-        AsyncLoading<T>(previousData: final d) => d,
-        AsyncError<T>(previousData: final d) => d,
-        _ => null,
-      };
+    AsyncData<T>(data: final d) => d,
+    AsyncLoading<T>(previousData: final d) => d,
+    AsyncError<T>(previousData: final d) => d,
+    _ => null,
+  };
 
   /// Get error if available.
   Object? get errorOrNull => switch (this) {
-        AsyncError<T>(error: final e) => e,
-        _ => null,
-      };
+    AsyncError<T>(error: final e) => e,
+    _ => null,
+  };
 
   /// Map the data to a new type.
   AsyncState<R> map<R>(R Function(T data) mapper) {
     return switch (this) {
       AsyncInitial<T>() => AsyncState<R>.initial(),
       AsyncLoading<T>(previousData: final d) => AsyncState<R>.loading(
+        previousData: d != null ? mapper(d) : null,
+      ),
+      AsyncData<T>(data: final d) => AsyncState<R>.data(mapper(d)),
+      AsyncError<T>(
+        error: final e,
+        stackTrace: final s,
+        previousData: final d,
+      ) =>
+        AsyncState<R>.error(
+          e,
+          stackTrace: s,
           previousData: d != null ? mapper(d) : null,
         ),
-      AsyncData<T>(data: final d) => AsyncState<R>.data(mapper(d)),
-      AsyncError<T>(error: final e, stackTrace: final s, previousData: final d) =>
-        AsyncState<R>.error(e, stackTrace: s, previousData: d != null ? mapper(d) : null),
     };
   }
 
@@ -68,13 +84,18 @@ sealed class AsyncState<T> {
     required R Function() initial,
     required R Function(T? previousData) loading,
     required R Function(T data) data,
-    required R Function(Object error, StackTrace? stackTrace, T? previousData) error,
+    required R Function(Object error, StackTrace? stackTrace, T? previousData)
+    error,
   }) {
     return switch (this) {
       AsyncInitial<T>() => initial(),
       AsyncLoading<T>(previousData: final d) => loading(d),
       AsyncData<T>(data: final d) => data(d),
-      AsyncError<T>(error: final e, stackTrace: final s, previousData: final d) =>
+      AsyncError<T>(
+        error: final e,
+        stackTrace: final s,
+        previousData: final d,
+      ) =>
         error(e, s, d),
     };
   }
@@ -91,7 +112,11 @@ sealed class AsyncState<T> {
       AsyncInitial<T>() => initial?.call() ?? orElse(),
       AsyncLoading<T>(previousData: final d) => loading?.call(d) ?? orElse(),
       AsyncData<T>(data: final d) => data?.call(d) ?? orElse(),
-      AsyncError<T>(error: final e, stackTrace: final s, previousData: final d) =>
+      AsyncError<T>(
+        error: final e,
+        stackTrace: final s,
+        previousData: final d,
+      ) =>
         error?.call(e, s, d) ?? orElse(),
     };
   }
@@ -124,4 +149,3 @@ class AsyncError<T> extends AsyncState<T> {
 
   const AsyncError(this.error, {this.stackTrace, this.previousData});
 }
-

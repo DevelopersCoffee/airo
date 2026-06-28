@@ -53,33 +53,31 @@ class LLMConfig {
     double? topP,
     List<String>? stopSequences,
     Duration? timeout,
-  }) =>
-      LLMConfig(
-        provider: provider ?? this.provider,
-        apiKey: apiKey ?? this.apiKey,
-        modelName: modelName ?? this.modelName,
-        temperature: temperature ?? this.temperature,
-        maxOutputTokens: maxOutputTokens ?? this.maxOutputTokens,
-        topK: topK ?? this.topK,
-        topP: topP ?? this.topP,
-        stopSequences: stopSequences ?? this.stopSequences,
-        timeout: timeout ?? this.timeout,
-      );
+  }) => LLMConfig(
+    provider: provider ?? this.provider,
+    apiKey: apiKey ?? this.apiKey,
+    modelName: modelName ?? this.modelName,
+    temperature: temperature ?? this.temperature,
+    maxOutputTokens: maxOutputTokens ?? this.maxOutputTokens,
+    topK: topK ?? this.topK,
+    topP: topP ?? this.topP,
+    stopSequences: stopSequences ?? this.stopSequences,
+    timeout: timeout ?? this.timeout,
+  );
 
   /// Default config for Gemini Nano (on-device)
   static const LLMConfig geminiNano = LLMConfig(
     provider: 'gemini-nano',
-    maxOutputTokens: 1024,  // Nano has limited output
+    maxOutputTokens: 1024, // Nano has limited output
     temperature: 0.7,
   );
 
   /// Default config for Gemini API (cloud)
   static LLMConfig geminiApi({required String apiKey}) => LLMConfig(
-        provider: 'gemini-api',
-        apiKey: apiKey,
-        modelName: 'gemini-1.5-flash',
-        maxOutputTokens: 2048,
-        temperature: 0.7,
-      );
+    provider: 'gemini-api',
+    apiKey: apiKey,
+    modelName: 'gemini-1.5-flash',
+    maxOutputTokens: 2048,
+    temperature: 0.7,
+  );
 }
-

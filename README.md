@@ -3,7 +3,7 @@
 [![Download APK](https://img.shields.io/github/v/release/DevelopersCoffee/airo?label=Download%20APK&color=success)](https://github.com/DevelopersCoffee/airo/releases/latest/download/app-release.apk)
 [![GitHub Release](https://img.shields.io/github/v/release/DevelopersCoffee/airo)](https://github.com/DevelopersCoffee/airo/releases)
 [![License](https://img.shields.io/github/license/DevelopersCoffee/airo)](LICENSE)
-[![Flutter](https://img.shields.io/badge/Flutter-3.41.4+-blue.svg)](https://flutter.dev/)
+[![Flutter](https://img.shields.io/badge/Flutter-3.44.4+-blue.svg)](https://flutter.dev/)
 
 A Flutter-based super app combining AI-powered features and financial management tools.
 
@@ -148,8 +148,8 @@ make emulators      # List available emulators
 ## 📋 Prerequisites
 
 ### Required
-- **Flutter SDK**: 3.41.4 or later
-- **Dart SDK**: 3.11.1 or later
+- **Flutter SDK**: 3.44.4 or later
+- **Dart SDK**: 3.12.2 or later
 
 ### Platform-Specific Requirements
 

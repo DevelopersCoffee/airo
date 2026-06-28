@@ -67,4 +67,3 @@ class InMemoryCacheRepository<TId, T> implements CacheRepository<TId, T> {
   @override
   Future<bool> exists(TId id) async => _cache.containsKey(id);
 }
-

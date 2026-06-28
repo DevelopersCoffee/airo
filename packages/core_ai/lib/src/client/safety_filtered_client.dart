@@ -10,11 +10,7 @@ class SafetyFilteredClient implements LLMClient {
   final LLMClient _delegate;
   final SafetyGuardrails _guardrails;
 
-  SafetyFilteredClient({
-    required LLMClient delegate,
-    required SafetyGuardrails guardrails,
-  })  : _delegate = delegate,
-        _guardrails = guardrails;
+  SafetyFilteredClient({required this._delegate, required this._guardrails});
 
   /// Create with default safety guardrails.
   factory SafetyFilteredClient.withDefaults(LLMClient delegate) {
@@ -142,4 +138,3 @@ class SafetyFilteredClient implements LLMClient {
   @override
   Future<void> dispose() => _delegate.dispose();
 }
-

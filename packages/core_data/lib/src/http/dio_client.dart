@@ -52,8 +52,8 @@ class DioClient {
     String? baseUrl,
     Duration connectTimeout = const Duration(seconds: 10),
     Duration receiveTimeout = const Duration(seconds: 30),
-    HttpSecurityConfig securityConfig = const HttpSecurityConfig(),
-  }) : _securityConfig = securityConfig {
+    this._securityConfig = const HttpSecurityConfig(),
+  }) {
     _dio = Dio(
       BaseOptions(
         baseUrl: baseUrl ?? '',

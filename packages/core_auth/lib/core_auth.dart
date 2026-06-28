@@ -1,7 +1,7 @@
 /// Core authentication package for Airo
 ///
 /// Contains authentication service, session management, and auth state.
-library core_auth;
+library;
 
 // Auth Service
 export 'src/services/auth_service.dart';

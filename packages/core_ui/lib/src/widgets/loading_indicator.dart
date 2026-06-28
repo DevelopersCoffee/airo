@@ -22,7 +22,9 @@ class LoadingIndicator extends StatelessWidget {
       height: _getSize(),
       child: CircularProgressIndicator(
         strokeWidth: _getStrokeWidth(),
-        valueColor: color != null ? AlwaysStoppedAnimation<Color>(color!) : null,
+        valueColor: color != null
+            ? AlwaysStoppedAnimation<Color>(color!)
+            : null,
       ),
     );
 
@@ -45,44 +47,40 @@ class LoadingIndicator extends StatelessWidget {
   }
 
   double _getSize() => switch (size) {
-        LoadingIndicatorSize.small => 20,
-        LoadingIndicatorSize.medium => 36,
-        LoadingIndicatorSize.large => 48,
-      };
+    LoadingIndicatorSize.small => 20,
+    LoadingIndicatorSize.medium => 36,
+    LoadingIndicatorSize.large => 48,
+  };
 
   double _getStrokeWidth() => switch (size) {
-        LoadingIndicatorSize.small => 2,
-        LoadingIndicatorSize.medium => 3,
-        LoadingIndicatorSize.large => 4,
-      };
+    LoadingIndicatorSize.small => 2,
+    LoadingIndicatorSize.medium => 3,
+    LoadingIndicatorSize.large => 4,
+  };
 }
 
 enum LoadingIndicatorSize { small, medium, large }
 
 /// Full screen loading overlay
 class LoadingOverlay extends StatelessWidget {
-  const LoadingOverlay({
-    super.key,
-    this.message,
-  });
+  const LoadingOverlay({super.key, this.message});
 
   final String? message;
 
   @override
   Widget build(BuildContext context) => Container(
-        color: Colors.black54,
-        child: Center(
-          child: Card(
-            margin: AppSpacing.paddingLg,
-            child: Padding(
-              padding: AppSpacing.paddingLg,
-              child: LoadingIndicator(
-                size: LoadingIndicatorSize.large,
-                message: message,
-              ),
-            ),
+    color: Colors.black54,
+    child: Center(
+      child: Card(
+        margin: AppSpacing.paddingLg,
+        child: Padding(
+          padding: AppSpacing.paddingLg,
+          child: LoadingIndicator(
+            size: LoadingIndicatorSize.large,
+            message: message,
           ),
         ),
-      );
+      ),
+    ),
+  );
 }
-

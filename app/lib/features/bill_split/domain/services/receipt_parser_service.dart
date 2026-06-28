@@ -118,12 +118,10 @@ class MLKitReceiptParserService implements ReceiptParserService {
   final RenderedReceiptPageTextExtractor _pdfPageTextExtractor;
 
   MLKitReceiptParserService({
-    ReceiptParsingFallback fallback = const DisabledReceiptParsingFallback(),
-    ReceiptPdfRenderer pdfRenderer = const PdfxReceiptPdfRenderer(),
+    this._fallback = const DisabledReceiptParsingFallback(),
+    this._pdfRenderer = const PdfxReceiptPdfRenderer(),
     RenderedReceiptPageTextExtractor? pdfPageTextExtractor,
-  }) : _fallback = fallback,
-       _pdfRenderer = pdfRenderer,
-       _pdfPageTextExtractor =
+  }) : _pdfPageTextExtractor =
            pdfPageTextExtractor ?? MLKitRenderedReceiptPageTextExtractor();
 
   // Detect vendor names

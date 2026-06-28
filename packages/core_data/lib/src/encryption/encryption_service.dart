@@ -7,8 +7,7 @@ import '../storage/secure_store.dart';
 /// - Key retrieval for database initialization
 /// - Key rotation (for security updates)
 class EncryptionService {
-  EncryptionService({required SecureStore secureStore})
-      : _secureStore = secureStore;
+  EncryptionService({required this._secureStore});
 
   final SecureStore _secureStore;
   String? _cachedKey;
@@ -23,8 +22,7 @@ class EncryptionService {
     }
 
     // Try to read from secure storage
-    final storedKey =
-        await _secureStore.read(key: SecureStoreKeys.databaseKey);
+    final storedKey = await _secureStore.read(key: SecureStoreKeys.databaseKey);
     if (storedKey != null) {
       _cachedKey = storedKey;
       return storedKey;
@@ -32,10 +30,7 @@ class EncryptionService {
 
     // Generate new key if none exists
     final newKey = KeyDerivation.generateKey();
-    await _secureStore.write(
-      key: SecureStoreKeys.databaseKey,
-      value: newKey,
-    );
+    await _secureStore.write(key: SecureStoreKeys.databaseKey, value: newKey);
     _cachedKey = newKey;
     return newKey;
   }
@@ -46,10 +41,7 @@ class EncryptionService {
   /// is suspected. Note: Existing databases will need to be re-encrypted.
   Future<String> rotateDatabaseKey() async {
     final newKey = KeyDerivation.generateKey();
-    await _secureStore.write(
-      key: SecureStoreKeys.databaseKey,
-      value: newKey,
-    );
+    await _secureStore.write(key: SecureStoreKeys.databaseKey, value: newKey);
     _cachedKey = newKey;
     return newKey;
   }
@@ -100,4 +92,3 @@ class EncryptionConfig {
     keyRotationDays: 0,
   );
 }
-

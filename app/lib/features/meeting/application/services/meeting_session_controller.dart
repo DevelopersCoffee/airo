@@ -6,12 +6,10 @@ import 'meeting_intelligence_pipeline.dart';
 
 class MeetingSessionController {
   MeetingSessionController({
-    required MeetingRepository repository,
-    required MeetingIntelligencePipeline pipeline,
+    required this._repository,
+    required this._pipeline,
     DateTime Function()? now,
-  }) : _repository = repository,
-       _pipeline = pipeline,
-       _now = now ?? DateTime.now;
+  }) : _now = now ?? DateTime.now;
 
   final MeetingRepository _repository;
   final MeetingIntelligencePipeline _pipeline;

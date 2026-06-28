@@ -6,9 +6,7 @@ import '../connectivity/connectivity_service.dart';
 ///
 /// Subclasses should implement the actual data source operations.
 abstract class BaseRepository<T extends Entity> implements Repository<T> {
-  BaseRepository({
-    required this.connectivityService,
-  });
+  BaseRepository({required this.connectivityService});
 
   final ConnectivityService connectivityService;
 
@@ -101,4 +99,3 @@ abstract class BaseRepository<T extends Entity> implements Repository<T> {
     });
   }
 }
-

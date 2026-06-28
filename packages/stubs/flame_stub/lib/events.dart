@@ -2,4 +2,3 @@
 library;
 
 export 'src/events.dart';
-

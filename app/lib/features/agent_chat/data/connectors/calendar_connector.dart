@@ -50,9 +50,7 @@ class InMemoryCalendarConnector implements AgentConnector {
       );
     }
     final endDate = arguments['end_date'] as String?;
-    if (endDate != null &&
-        endDate.isNotEmpty &&
-        !_isValidIsoDate(endDate)) {
+    if (endDate != null && endDate.isNotEmpty && !_isValidIsoDate(endDate)) {
       return const ConnectorResult.error(
         code: 'invalid_end_date',
         message: 'read_calendar_events end_date must be YYYY-MM-DD.',
@@ -104,8 +102,8 @@ class InMemoryCreateCalendarEventConnector implements AgentConnector {
 
 class NativeCalendarConnector implements AgentConnector {
   NativeCalendarConnector({
-    MethodChannel channel = const MethodChannel('com.airo.agent_connectors'),
-  }) : _channel = channel;
+    this._channel = const MethodChannel('com.airo.agent_connectors'),
+  });
 
   final MethodChannel _channel;
 
@@ -128,15 +126,13 @@ class NativeCalendarConnector implements AgentConnector {
     }
 
     try {
-      final response = await _channel.invokeMapMethod<String, dynamic>(
-        'readCalendarEvents',
-        {
-          'date': date,
-          if (arguments['end_date'] case final String endDate
-              when endDate.isNotEmpty)
-            'end_date': endDate,
-        },
-      );
+      final response = await _channel
+          .invokeMapMethod<String, dynamic>('readCalendarEvents', {
+            'date': date,
+            if (arguments['end_date'] case final String endDate
+                when endDate.isNotEmpty)
+              'end_date': endDate,
+          });
       if (response == null) {
         return ConnectorResult(data: {'date': date, 'events': const []});
       }
@@ -169,8 +165,8 @@ class NativeCalendarConnector implements AgentConnector {
 
 class NativeCreateCalendarEventConnector implements AgentConnector {
   NativeCreateCalendarEventConnector({
-    MethodChannel channel = const MethodChannel('com.airo.agent_connectors'),
-  }) : _channel = channel;
+    this._channel = const MethodChannel('com.airo.agent_connectors'),
+  });
 
   final MethodChannel _channel;
 
@@ -195,7 +191,10 @@ class NativeCreateCalendarEventConnector implements AgentConnector {
       final title = arguments['title'] as String?;
       final start = arguments['start'] as String?;
       final end = arguments['end'] as String?;
-      if (title == null || title.trim().isEmpty || start == null || end == null) {
+      if (title == null ||
+          title.trim().isEmpty ||
+          start == null ||
+          end == null) {
         return const ConnectorResult.error(
           code: 'invalid_calendar_event',
           message: 'create_calendar_event requires title, start, and end.',
@@ -241,8 +240,8 @@ class NativeCreateCalendarEventConnector implements AgentConnector {
 
 class NativeCalendarPermissionConnector implements AgentConnector {
   NativeCalendarPermissionConnector({
-    MethodChannel channel = const MethodChannel('com.airo.agent_connectors'),
-  }) : _channel = channel;
+    this._channel = const MethodChannel('com.airo.agent_connectors'),
+  });
 
   final MethodChannel _channel;
 

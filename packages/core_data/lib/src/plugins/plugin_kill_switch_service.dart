@@ -86,10 +86,9 @@ class RemotePluginKillSwitchService implements PluginKillSwitch {
 /// runtime kill switch disables the requested plugin.
 class KillSwitchAwarePluginLoader implements PluginLoaderService {
   KillSwitchAwarePluginLoader({
-    required PluginLoaderService delegate,
-    required PluginKillSwitch killSwitch,
-  }) : _delegate = delegate,
-       _killSwitch = killSwitch;
+    required this._delegate,
+    required this._killSwitch,
+  });
 
   final PluginLoaderService _delegate;
   final PluginKillSwitch _killSwitch;

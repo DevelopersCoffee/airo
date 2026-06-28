@@ -33,11 +33,10 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
   final LiveEdgeDetector _liveEdgeDetector;
 
   VideoPlayerStreamingService({
-    StreamingConfig config = StreamingConfig.youtube,
+    this._config = StreamingConfig.youtube,
     AudioContextManager? audioContext,
     LiveEdgeConfig? liveEdgeConfig,
-  }) : _config = config,
-       _audioContext = audioContext ?? AudioContextManager(),
+  }) : _audioContext = audioContext ?? AudioContextManager(),
        _liveEdgeDetector = LiveEdgeDetector(config: liveEdgeConfig) {
     _setupLiveEdgeCallbacks();
   }

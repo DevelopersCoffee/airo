@@ -4,43 +4,31 @@ library;
 import 'dart:async';
 
 /// Processing state
-enum ProcessingState {
-  idle,
-  loading,
-  buffering,
-  ready,
-  completed,
-}
+enum ProcessingState { idle, loading, buffering, ready, completed }
 
 /// Loop mode
-enum LoopMode {
-  off,
-  one,
-  all,
-}
+enum LoopMode { off, one, all }
 
 /// Playback event
 class PlaybackEvent {
-  final ProcessingState processingState;
-  final Duration? duration;
-  final int? currentIndex;
-
   PlaybackEvent({
     this.processingState = ProcessingState.idle,
     this.duration,
     this.currentIndex,
   });
+  final ProcessingState processingState;
+  final Duration? duration;
+  final int? currentIndex;
 }
 
 /// Player state
 class PlayerState {
-  final ProcessingState processingState;
-  final bool playing;
-
   PlayerState({
     this.processingState = ProcessingState.idle,
     this.playing = false,
   });
+  final ProcessingState processingState;
+  final bool playing;
 }
 
 /// Stub AudioPlayer
@@ -55,11 +43,11 @@ class AudioPlayer {
   final _playerStateController = StreamController<PlayerState>.broadcast();
 
   bool _playing = false;
-  ProcessingState _processingState = ProcessingState.idle;
+  final ProcessingState _processingState = ProcessingState.idle;
   Duration _position = Duration.zero;
-  Duration _bufferedPosition = Duration.zero;
+  final Duration _bufferedPosition = Duration.zero;
   Duration? _duration;
-  double _speed = 1.0;
+  final double _speed = 1;
 
   /// Stream of playback events
   Stream<PlaybackEvent> get playbackEventStream =>
@@ -104,19 +92,14 @@ class AudioPlayer {
   double get speed => _speed;
 
   /// Set audio source
-  Future<Duration?> setUrl(String url, {Map<String, String>? headers}) async {
-    return null;
-  }
+  Future<Duration?> setUrl(String url, {Map<String, String>? headers}) async =>
+      null;
 
   /// Set audio source from asset
-  Future<Duration?> setAsset(String asset) async {
-    return null;
-  }
+  Future<Duration?> setAsset(String asset) async => null;
 
   /// Set audio source from file
-  Future<Duration?> setFilePath(String filePath) async {
-    return null;
-  }
+  Future<Duration?> setFilePath(String filePath) async => null;
 
   /// Play
   Future<void> play() async {

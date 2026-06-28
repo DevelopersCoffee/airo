@@ -49,17 +49,13 @@ class MemoryInfo {
   int get usedBytes => totalBytes - availableBytes;
 
   /// Memory usage as a percentage (0.0 - 1.0).
-  double get usagePercent =>
-      totalBytes > 0 ? usedBytes / totalBytes : 0.0;
+  double get usagePercent => totalBytes > 0 ? usedBytes / totalBytes : 0.0;
 
   /// Available memory as a percentage (0.0 - 1.0).
   double get availablePercent =>
       totalBytes > 0 ? availableBytes / totalBytes : 0.0;
 
-  const MemoryInfo({
-    required this.totalBytes,
-    required this.availableBytes,
-  });
+  const MemoryInfo({required this.totalBytes, required this.availableBytes});
 
   /// Creates a MemoryInfo from megabytes.
   factory MemoryInfo.fromMegabytes({
@@ -113,4 +109,3 @@ class MemoryInfo {
   @override
   int get hashCode => Object.hash(totalBytes, availableBytes);
 }
-

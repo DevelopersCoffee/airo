@@ -24,16 +24,32 @@ class AppSpacing {
   static const EdgeInsets paddingXl = EdgeInsets.all(xl);
 
   // Horizontal padding presets
-  static const EdgeInsets paddingHorizontalXs = EdgeInsets.symmetric(horizontal: xs);
-  static const EdgeInsets paddingHorizontalSm = EdgeInsets.symmetric(horizontal: sm);
-  static const EdgeInsets paddingHorizontalMd = EdgeInsets.symmetric(horizontal: md);
-  static const EdgeInsets paddingHorizontalLg = EdgeInsets.symmetric(horizontal: lg);
+  static const EdgeInsets paddingHorizontalXs = EdgeInsets.symmetric(
+    horizontal: xs,
+  );
+  static const EdgeInsets paddingHorizontalSm = EdgeInsets.symmetric(
+    horizontal: sm,
+  );
+  static const EdgeInsets paddingHorizontalMd = EdgeInsets.symmetric(
+    horizontal: md,
+  );
+  static const EdgeInsets paddingHorizontalLg = EdgeInsets.symmetric(
+    horizontal: lg,
+  );
 
   // Vertical padding presets
-  static const EdgeInsets paddingVerticalXs = EdgeInsets.symmetric(vertical: xs);
-  static const EdgeInsets paddingVerticalSm = EdgeInsets.symmetric(vertical: sm);
-  static const EdgeInsets paddingVerticalMd = EdgeInsets.symmetric(vertical: md);
-  static const EdgeInsets paddingVerticalLg = EdgeInsets.symmetric(vertical: lg);
+  static const EdgeInsets paddingVerticalXs = EdgeInsets.symmetric(
+    vertical: xs,
+  );
+  static const EdgeInsets paddingVerticalSm = EdgeInsets.symmetric(
+    vertical: sm,
+  );
+  static const EdgeInsets paddingVerticalMd = EdgeInsets.symmetric(
+    vertical: md,
+  );
+  static const EdgeInsets paddingVerticalLg = EdgeInsets.symmetric(
+    vertical: lg,
+  );
 
   // Gap widgets for use in Row/Column
   static const SizedBox gapXs = SizedBox(width: xs, height: xs);
@@ -69,4 +85,3 @@ class AppSpacing {
   static BorderRadius get borderRadiusXl => BorderRadius.circular(radiusXl);
   static BorderRadius get borderRadiusFull => BorderRadius.circular(radiusFull);
 }
-

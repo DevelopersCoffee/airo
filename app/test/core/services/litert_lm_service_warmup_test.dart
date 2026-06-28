@@ -57,7 +57,8 @@ class _FakeLiteRtLmClient implements LiteRtLmClient {
   final generatedPrompts = <String>[];
 
   @override
-  Future<bool> activeModelExists({String? modelPath}) async => activeModelExistsValue;
+  Future<bool> activeModelExists({String? modelPath}) async =>
+      activeModelExistsValue;
 
   @override
   Future<void> initialize({

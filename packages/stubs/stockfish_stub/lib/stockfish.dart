@@ -24,10 +24,4 @@ class Stockfish {
 }
 
 /// Stockfish state enum
-enum StockfishState {
-  starting,
-  ready,
-  disposed,
-  error,
-}
-
+enum StockfishState { starting, ready, disposed, error }

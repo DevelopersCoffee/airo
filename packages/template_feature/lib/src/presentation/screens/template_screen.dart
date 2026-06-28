@@ -27,26 +27,20 @@ class _TemplateScreenState extends ConsumerState<TemplateScreen> {
     final state = ref.watch(templateProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Template Feature'),
-      ),
+      appBar: AppBar(title: const Text('Template Feature')),
       body: _buildBody(state),
     );
   }
 
   Widget _buildBody(TemplateState state) => switch (state) {
-        TemplateInitial() => const Center(
-            child: Text('Press button to load'),
-          ),
-        TemplateLoading() => const Center(
-            child: LoadingIndicator(),
-          ),
-        TemplateLoaded(:final items) => _buildList(items),
-        TemplateError(:final message) => ErrorView(
-            message: message,
-            onRetry: () => ref.read(templateProvider.notifier).load(),
-          ),
-      };
+    TemplateInitial() => const Center(child: Text('Press button to load')),
+    TemplateLoading() => const Center(child: LoadingIndicator()),
+    TemplateLoaded(:final items) => _buildList(items),
+    TemplateError(:final message) => ErrorView(
+      message: message,
+      onRetry: () => ref.read(templateProvider.notifier).load(),
+    ),
+  };
 
   Widget _buildList(List items) {
     if (items.isEmpty) {
@@ -66,10 +60,7 @@ class _TemplateScreenState extends ConsumerState<TemplateScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                item.name,
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
+              Text(item.name, style: Theme.of(context).textTheme.titleMedium),
               if (item.description != null) ...[
                 const SizedBox(height: AppSpacing.xs),
                 Text(
@@ -84,4 +75,3 @@ class _TemplateScreenState extends ConsumerState<TemplateScreen> {
     );
   }
 }
-

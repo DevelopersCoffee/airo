@@ -8,15 +8,24 @@ analyzer:
     must_be_immutable: error
     dead_code: warning
     unused_element: warning
-    unused_field: warning
+    unused_field: ignore
     unused_import: warning
     unused_local_variable: warning
+    prefer_initializing_formals: ignore
+    avoid_dynamic_calls: ignore
+    prefer_constructors_over_static_methods: ignore
+    avoid_positional_boolean_parameters: ignore
+    close_sinks: ignore
+    use_super_parameters: ignore
+    prefer_expression_function_bodies: ignore
+    avoid_setters_without_getters: ignore
+    flutter_style_todos: ignore
   exclude:
     - "**/*.g.dart"
     - "**/*.freezed.dart"
     - "**/*.mocks.dart"
     - "**/generated/**"
-    - "build/**"
+    - "**/build/**"
     - ".dart_tool/**"
 
 linter:

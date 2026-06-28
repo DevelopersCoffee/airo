@@ -13,10 +13,9 @@ class BeatsContextIntegration {
   double _originalVolume = 1.0;
 
   BeatsContextIntegration({
-    required BeatsAudioHandler audioHandler,
-    required AudioContextManager contextManager,
-  }) : _audioHandler = audioHandler,
-       _contextManager = contextManager {
+    required this._audioHandler,
+    required this._contextManager,
+  }) {
     _init();
   }
 

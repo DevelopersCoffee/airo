@@ -10,8 +10,7 @@ import 'package:flutter/services.dart';
 /// - iOS: BGTaskScheduler
 /// - Web: Service Worker (if available)
 class BackgroundSyncService {
-  BackgroundSyncService({required SyncService syncService})
-    : _syncService = syncService;
+  BackgroundSyncService({required this._syncService});
 
   final SyncService _syncService;
 

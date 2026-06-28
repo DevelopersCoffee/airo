@@ -59,15 +59,18 @@ class InMemoryOutboxRepository implements OutboxRepository {
 
   @override
   Future<Result<List<SyncOperation>>> getPending() async {
-    final pending = _operations.values
-        .where((op) => op.status == SyncOperationStatus.pending)
-        .toList()
-      ..sort((a, b) {
-        // Sort by priority (higher first), then by creation time
-        final priorityCompare = b.priority.index.compareTo(a.priority.index);
-        if (priorityCompare != 0) return priorityCompare;
-        return a.createdAt.compareTo(b.createdAt);
-      });
+    final pending =
+        _operations.values
+            .where((op) => op.status == SyncOperationStatus.pending)
+            .toList()
+          ..sort((a, b) {
+            // Sort by priority (higher first), then by creation time
+            final priorityCompare = b.priority.index.compareTo(
+              a.priority.index,
+            );
+            if (priorityCompare != 0) return priorityCompare;
+            return a.createdAt.compareTo(b.createdAt);
+          });
     return Success(pending);
   }
 
@@ -128,12 +131,16 @@ class InMemoryOutboxRepository implements OutboxRepository {
   }
 
   @override
-  Future<Result<int>> cleanup({Duration olderThan = const Duration(days: 7)}) async {
+  Future<Result<int>> cleanup({
+    Duration olderThan = const Duration(days: 7),
+  }) async {
     final cutoff = DateTime.now().subtract(olderThan);
     final toRemove = _operations.entries
-        .where((e) =>
-            e.value.status == SyncOperationStatus.completed &&
-            e.value.createdAt.isBefore(cutoff))
+        .where(
+          (e) =>
+              e.value.status == SyncOperationStatus.completed &&
+              e.value.createdAt.isBefore(cutoff),
+        )
         .map((e) => e.key)
         .toList();
     for (final id in toRemove) {
@@ -167,10 +174,12 @@ class InMemoryOutboxRepository implements OutboxRepository {
     String entityId,
   ) async {
     final toCancel = _operations.entries
-        .where((e) =>
-            e.value.entityType == entityType &&
-            e.value.entityId == entityId &&
-            e.value.status == SyncOperationStatus.pending)
+        .where(
+          (e) =>
+              e.value.entityType == entityType &&
+              e.value.entityId == entityId &&
+              e.value.status == SyncOperationStatus.pending,
+        )
         .map((e) => e.key)
         .toList();
     for (final id in toCancel) {
@@ -181,4 +190,3 @@ class InMemoryOutboxRepository implements OutboxRepository {
     return const Success(null);
   }
 }
-

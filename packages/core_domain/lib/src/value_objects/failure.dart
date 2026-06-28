@@ -8,11 +8,7 @@ import 'package:meta/meta.dart';
 /// error handling.
 @immutable
 abstract class Failure extends Equatable {
-  const Failure({
-    required this.message,
-    this.code,
-    this.cause,
-  });
+  const Failure({required this.message, this.code, this.cause});
 
   /// Human-readable error message
   final String message;
@@ -150,4 +146,3 @@ class UnexpectedFailure extends Failure {
     super.cause,
   });
 }
-

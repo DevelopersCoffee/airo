@@ -34,13 +34,13 @@ class User extends Entity {
 
   @override
   List<Object?> get props => [
-        ...super.props,
-        username,
-        displayName,
-        email,
-        avatarUrl,
-        createdAt,
-      ];
+    ...super.props,
+    username,
+    displayName,
+    email,
+    avatarUrl,
+    createdAt,
+  ];
 
   /// Creates a copy of this user with the given fields replaced
   User copyWith({
@@ -50,14 +50,12 @@ class User extends Entity {
     String? email,
     String? avatarUrl,
     DateTime? createdAt,
-  }) =>
-      User(
-        id: id ?? this.id,
-        username: username ?? this.username,
-        displayName: displayName ?? this.displayName,
-        email: email ?? this.email,
-        avatarUrl: avatarUrl ?? this.avatarUrl,
-        createdAt: createdAt ?? this.createdAt,
-      );
+  }) => User(
+    id: id ?? this.id,
+    username: username ?? this.username,
+    displayName: displayName ?? this.displayName,
+    email: email ?? this.email,
+    avatarUrl: avatarUrl ?? this.avatarUrl,
+    createdAt: createdAt ?? this.createdAt,
+  );
 }
-

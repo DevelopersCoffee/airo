@@ -879,9 +879,11 @@ class _BillSplitScreenState extends ConsumerState<BillSplitScreen> {
 
   void _shareAll(SplitResult splitResult) {
     final message = splitResult.generateSummaryMessage();
-    Share.share(
-      message,
-      subject: 'Bill Split - ${splitResult.bill.vendor ?? "Expense"}',
+    SharePlus.instance.share(
+      ShareParams(
+        text: message,
+        subject: 'Bill Split - ${splitResult.bill.vendor ?? "Expense"}',
+      ),
     );
   }
 
@@ -1110,6 +1112,8 @@ class _SplitResultTile extends StatelessWidget {
 
   void _remind(BuildContext context) {
     final message = splitResult.generateShareMessage(split);
-    Share.share(message, subject: 'Payment reminder');
+    SharePlus.instance.share(
+      ShareParams(text: message, subject: 'Payment reminder'),
+    );
   }
 }

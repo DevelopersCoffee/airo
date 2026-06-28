@@ -29,7 +29,8 @@ Provide:
 4. Suggestions for improvement
 
 Keep response concise and actionable.''',
-    systemPrompt: 'You are a helpful nutrition assistant. Provide accurate, '
+    systemPrompt:
+        'You are a helpful nutrition assistant. Provide accurate, '
         'evidence-based nutritional advice. Never provide medical diagnoses.',
     outputFormat: 'text',
     maxTokens: 512,
@@ -56,7 +57,8 @@ Provide a brief summary with:
 1. Total calories consumed
 2. Progress toward goals
 3. One actionable tip for tomorrow''',
-    systemPrompt: 'You are a supportive nutrition coach. Be encouraging '
+    systemPrompt:
+        'You are a supportive nutrition coach. Be encouraging '
         'while providing honest feedback.',
     outputFormat: 'text',
     maxTokens: 256,
@@ -84,7 +86,8 @@ Return a list of items with:
 - Price
 
 Format as structured data.''',
-    systemPrompt: 'You are a precise data extraction assistant. '
+    systemPrompt:
+        'You are a precise data extraction assistant. '
         'Extract only what is clearly visible in the receipt.',
     outputFormat: 'json',
     maxTokens: 1024,
@@ -111,7 +114,8 @@ Provide:
 3. One saving suggestion
 
 Keep response brief and actionable.''',
-    systemPrompt: 'You are a helpful financial assistant. Provide practical '
+    systemPrompt:
+        'You are a helpful financial assistant. Provide practical '
         'advice without giving specific investment recommendations.',
     outputFormat: 'text',
     maxTokens: 384,
@@ -130,7 +134,8 @@ Keep response brief and actionable.''',
     name: 'General Chat',
     description: 'General purpose chat assistant',
     template: '{{user_message}}',
-    systemPrompt: 'You are Airo, a helpful AI assistant. Be concise, '
+    systemPrompt:
+        'You are Airo, a helpful AI assistant. Be concise, '
         'friendly, and helpful. If asked about medical or financial advice, '
         'recommend consulting a professional.',
     outputFormat: 'text',
@@ -156,13 +161,13 @@ Keep response brief and actionable.''',
 
   /// Get all default prompts.
   static List<PromptTemplate> get all => [
-        dietMealAnalysis,
-        dietDailySummary,
-        financeReceiptParse,
-        financeSpendingAnalysis,
-        generalChat,
-        generalSummarize,
-      ];
+    dietMealAnalysis,
+    dietDailySummary,
+    financeReceiptParse,
+    financeSpendingAnalysis,
+    generalChat,
+    generalSummarize,
+  ];
 
   /// Register all default prompts in a registry.
   static void registerAll(PromptRegistry registry) {
@@ -171,4 +176,3 @@ Keep response brief and actionable.''',
     }
   }
 }
-

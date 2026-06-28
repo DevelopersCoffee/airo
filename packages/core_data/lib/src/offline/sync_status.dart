@@ -37,7 +37,8 @@ class SyncMetadata {
   });
 
   /// Check if needs sync.
-  bool get needsSync => status == SyncStatus.pending || status == SyncStatus.failed;
+  bool get needsSync =>
+      status == SyncStatus.pending || status == SyncStatus.failed;
 
   /// Check if has error.
   bool get hasError => status == SyncStatus.failed && errorMessage != null;
@@ -131,4 +132,3 @@ class SyncMetadata {
     );
   }
 }
-

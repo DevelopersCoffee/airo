@@ -123,8 +123,8 @@ class BeatsController {
   BeatsController(
     this._repository,
     this._musicController, {
-    BeatsAudioHandler? audioHandler,
-  }) : _audioHandler = audioHandler;
+    this._audioHandler,
+  });
 
   /// Check if background audio is available
   bool get hasBackgroundAudio => _audioHandler != null;

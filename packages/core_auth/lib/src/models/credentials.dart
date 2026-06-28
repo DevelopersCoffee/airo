@@ -3,10 +3,7 @@ import 'package:meta/meta.dart';
 /// User login credentials
 @immutable
 class Credentials {
-  const Credentials({
-    required this.username,
-    required this.password,
-  });
+  const Credentials({required this.username, required this.password});
 
   final String username;
   final String password;
@@ -27,4 +24,3 @@ class Credentials {
   @override
   int get hashCode => Object.hash(username, password);
 }
-

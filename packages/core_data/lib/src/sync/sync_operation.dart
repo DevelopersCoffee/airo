@@ -71,20 +71,19 @@ class SyncOperation {
     String? lastError,
     SyncPriority? priority,
     SyncOperationStatus? status,
-  }) =>
-      SyncOperation(
-        id: id ?? this.id,
-        entityType: entityType ?? this.entityType,
-        entityId: entityId ?? this.entityId,
-        operationType: operationType ?? this.operationType,
-        payload: payload ?? this.payload,
-        createdAt: createdAt ?? this.createdAt,
-        retryCount: retryCount ?? this.retryCount,
-        lastAttemptAt: lastAttemptAt ?? this.lastAttemptAt,
-        lastError: lastError ?? this.lastError,
-        priority: priority ?? this.priority,
-        status: status ?? this.status,
-      );
+  }) => SyncOperation(
+    id: id ?? this.id,
+    entityType: entityType ?? this.entityType,
+    entityId: entityId ?? this.entityId,
+    operationType: operationType ?? this.operationType,
+    payload: payload ?? this.payload,
+    createdAt: createdAt ?? this.createdAt,
+    retryCount: retryCount ?? this.retryCount,
+    lastAttemptAt: lastAttemptAt ?? this.lastAttemptAt,
+    lastError: lastError ?? this.lastError,
+    priority: priority ?? this.priority,
+    status: status ?? this.status,
+  );
 
   @override
   String toString() =>
@@ -92,11 +91,7 @@ class SyncOperation {
 }
 
 /// Type of sync operation
-enum SyncOperationType {
-  create,
-  update,
-  delete,
-}
+enum SyncOperationType { create, update, delete }
 
 /// Priority of sync operation
 enum SyncPriority {
@@ -130,4 +125,3 @@ enum SyncOperationStatus {
   /// Cancelled by user/system
   cancelled,
 }
-

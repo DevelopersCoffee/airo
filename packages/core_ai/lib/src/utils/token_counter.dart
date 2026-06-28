@@ -49,4 +49,3 @@ abstract final class TokenCounter {
   /// Gemini API token limits (approximate)
   static const int geminiApiMaxContextTokens = 32768;
 }
-

@@ -52,7 +52,10 @@ void main() {
 
     test('calculates multimodal model usage correctly', () {
       const fileSizeBytes = 1000000000; // 1GB
-      final usage = manager.estimateMemoryUsage(fileSizeBytes, ModelType.multimodal);
+      final usage = manager.estimateMemoryUsage(
+        fileSizeBytes,
+        ModelType.multimodal,
+      );
       expect(usage, equals(2000000000)); // 2.0GB
     });
   });
@@ -164,4 +167,3 @@ void main() {
     });
   });
 }
-

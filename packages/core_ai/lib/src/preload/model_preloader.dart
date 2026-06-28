@@ -64,11 +64,7 @@ class NoOpWarmupAdapter implements ModelWarmupAdapter {
 typedef ActiveGenerationCheck = bool Function();
 
 class ModelPreloader {
-  ModelPreloader({
-    required ModelResidencyManager residencyManager,
-    ActiveGenerationCheck? isGenerationActive,
-  }) : _residencyManager = residencyManager,
-       _isGenerationActive = isGenerationActive;
+  ModelPreloader({required this._residencyManager, this._isGenerationActive});
 
   final ModelResidencyManager _residencyManager;
   final ActiveGenerationCheck? _isGenerationActive;

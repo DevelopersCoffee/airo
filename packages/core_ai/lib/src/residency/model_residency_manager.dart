@@ -168,9 +168,8 @@ typedef ResidentLoadCallback = Future<bool> Function();
 class ModelResidencyManager {
   ModelResidencyManager({
     ResidencyBudgetLoader? loadBudgetBytes,
-    ModelResidencyPolicy policy = const ModelResidencyPolicy(),
-  }) : _loadBudgetBytes = loadBudgetBytes ?? _defaultBudgetBytes,
-       _policy = policy;
+    this._policy = const ModelResidencyPolicy(),
+  }) : _loadBudgetBytes = loadBudgetBytes ?? _defaultBudgetBytes;
 
   final ResidencyBudgetLoader _loadBudgetBytes;
   final ModelResidencyPolicy _policy;

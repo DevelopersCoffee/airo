@@ -16,12 +16,11 @@ import 'sync_status.dart';
 /// - Conflict resolution
 class SyncService {
   SyncService({
-    required OutboxRepository outboxRepository,
-    required ConnectivityService connectivityService,
+    required this._outboxRepository,
+    required this._connectivityService,
     this.onSyncOperation,
     this.conflictResolver,
-  }) : _outboxRepository = outboxRepository,
-       _connectivityService = connectivityService;
+  });
 
   final OutboxRepository _outboxRepository;
   final ConnectivityService _connectivityService;

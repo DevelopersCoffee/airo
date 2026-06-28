@@ -53,6 +53,6 @@ class LLMResponse {
           other.completionTokens == completionTokens;
 
   @override
-  int get hashCode => Object.hash(text, provider, promptTokens, completionTokens);
+  int get hashCode =>
+      Object.hash(text, provider, promptTokens, completionTokens);
 }
-

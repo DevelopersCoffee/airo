@@ -78,7 +78,7 @@ class AuditService {
 
   final String _userId;
 
-  AuditService({String userId = 'default_user'}) : _userId = userId;
+  AuditService({this._userId = 'default_user'});
 
   /// Log a financial operation
   Future<void> log({

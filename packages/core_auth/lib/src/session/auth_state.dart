@@ -28,9 +28,9 @@ sealed class AuthState {
 
   /// Get the current user if authenticated.
   User? get currentUser => switch (this) {
-        AuthAuthenticated(user: final u) => u,
-        _ => null,
-      };
+    AuthAuthenticated(user: final u) => u,
+    _ => null,
+  };
 }
 
 /// Initial authentication state (not yet determined).
@@ -49,11 +49,8 @@ class AuthAuthenticated extends AuthState {
   final String? token;
   final DateTime authenticatedAt;
 
-  AuthAuthenticated({
-    required this.user,
-    this.token,
-    DateTime? authenticatedAt,
-  }) : authenticatedAt = authenticatedAt ?? DateTime.now();
+  AuthAuthenticated({required this.user, this.token, DateTime? authenticatedAt})
+    : authenticatedAt = authenticatedAt ?? DateTime.now();
 
   AuthAuthenticated copyWith({
     User? user,
@@ -102,4 +99,3 @@ class RegisterCredentials {
     this.displayName,
   });
 }
-

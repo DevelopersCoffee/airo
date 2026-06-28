@@ -14,6 +14,13 @@ analyzer:
   plugins:
     - custom_lint
 
+  exclude:
+    - "build/**"
+    - ".dart_tool/**"
+    - "**/generated/**"
+    - "**/*.g.dart"
+    - "**/*.freezed.dart"
+
   # Treat warnings as info to prevent CI failures on non-critical issues
   # Errors will still cause CI to fail
   errors:

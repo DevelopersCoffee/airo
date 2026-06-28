@@ -15,9 +15,9 @@ sealed class AuthState {
 
   /// Gets the session if authenticated, null otherwise
   Session? get session => switch (this) {
-        Authenticated(:final session) => session,
-        _ => null,
-      };
+    Authenticated(:final session) => session,
+    _ => null,
+  };
 }
 
 /// Initial state before any auth check
@@ -37,6 +37,7 @@ class AuthLoading extends AuthState {
 class Authenticated extends AuthState {
   const Authenticated(this.session);
 
+  @override
   final Session session;
 
   @override
@@ -79,4 +80,3 @@ class AuthError extends AuthState {
   @override
   int get hashCode => message.hashCode;
 }
-

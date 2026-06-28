@@ -144,6 +144,15 @@ First public release of **Airo Super App** - an AI-powered Flutter super app wit
 
 ---
 
+## 🏗️ Technical Foundation Upgrades (v1.0.1 - Flutter Upgrade)
+The codebase has been migrated to the latest stable Flutter and Dart baseline to ensure long-term maintainability.
+- **Flutter SDK**: Upgraded to 3.44.4+
+- **Dart SDK**: Upgraded to 3.12.2+
+- **Android Toolchain**: Upgraded to Java 21, Gradle 9.6.1, compileSdk 36
+- **Dependencies**: All monorepo packages upgraded to their latest stable major versions.
+
+---
+
 ## 🔄 What's Next (v1.1.0)
 
 - [ ] Actual Gemini Nano AI integration (currently mock responses)

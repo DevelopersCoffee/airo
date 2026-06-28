@@ -4,12 +4,7 @@ library;
 import 'dart:typed_data';
 
 /// Compress format
-enum CompressFormat {
-  jpeg,
-  png,
-  webp,
-  heic,
-}
+enum CompressFormat { jpeg, png, webp, heic }
 
 /// Stub FlutterImageCompress - returns original image on TV
 class FlutterImageCompress {
@@ -28,7 +23,7 @@ class FlutterImageCompress {
     // Return original image on TV (no compression available)
     return image;
   }
-  
+
   /// Compress with file - returns original bytes on TV
   static Future<Uint8List?> compressWithFile(
     String file, {
@@ -40,10 +35,8 @@ class FlutterImageCompress {
     CompressFormat format = CompressFormat.jpeg,
     bool keepExif = false,
     int inSampleSize = 1,
-  }) async {
-    return null;
-  }
-  
+  }) async => null;
+
   /// Compress and get file - returns null on TV
   static Future<dynamic> compressAndGetFile(
     String file,
@@ -56,10 +49,8 @@ class FlutterImageCompress {
     CompressFormat format = CompressFormat.jpeg,
     bool keepExif = false,
     int inSampleSize = 1,
-  }) async {
-    return null;
-  }
-  
+  }) async => null;
+
   /// Compress asset - returns original bytes on TV
   static Future<Uint8List?> compressAssetImage(
     String assetName, {
@@ -71,8 +62,5 @@ class FlutterImageCompress {
     CompressFormat format = CompressFormat.jpeg,
     bool keepExif = false,
     int inSampleSize = 1,
-  }) async {
-    return null;
-  }
+  }) async => null;
 }
-

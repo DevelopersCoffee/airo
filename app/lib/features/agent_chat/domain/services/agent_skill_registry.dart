@@ -7,8 +7,7 @@ class AgentSkillRegistry {
   AgentSkillRegistry({List<AgentSkill>? skills})
     : _repository = BuiltInAgentSkillRepository(skills: skills);
 
-  AgentSkillRegistry._({required BuiltInAgentSkillRepository repository})
-    : _repository = repository;
+  AgentSkillRegistry._({required this._repository});
 
   final BuiltInAgentSkillRepository _repository;
 

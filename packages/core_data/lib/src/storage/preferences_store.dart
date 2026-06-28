@@ -25,8 +25,7 @@ class PreferencesStore implements KeyValueStore {
   Future<int?> getInt(String key) async => _prefs.getInt(key);
 
   @override
-  Future<bool> setInt(String key, int value) async =>
-      _prefs.setInt(key, value);
+  Future<bool> setInt(String key, int value) async => _prefs.setInt(key, value);
 
   @override
   Future<double?> getDouble(String key) async => _prefs.getDouble(key);
@@ -59,4 +58,3 @@ class PreferencesStore implements KeyValueStore {
   @override
   Future<bool> clear() async => _prefs.clear();
 }
-

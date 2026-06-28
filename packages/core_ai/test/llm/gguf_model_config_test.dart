@@ -87,18 +87,21 @@ void main() {
       expect(config.isVisionModel, false);
     });
 
-    test('estimatedMemoryBytes should calculate based on context and batch', () {
-      const config = GGUFModelConfig(
-        modelPath: '/path/to/model.gguf',
-        modelName: 'Test Model',
-        contextSize: 2048,
-        batchSize: 512,
-      );
+    test(
+      'estimatedMemoryBytes should calculate based on context and batch',
+      () {
+        const config = GGUFModelConfig(
+          modelPath: '/path/to/model.gguf',
+          modelName: 'Test Model',
+          contextSize: 2048,
+          batchSize: 512,
+        );
 
-      // contextSize * 4 * 2 + batchSize * 4 * 2
-      // 2048 * 4 * 2 + 512 * 4 * 2 = 16384 + 4096 = 20480
-      expect(config.estimatedMemoryBytes, 20480);
-    });
+        // contextSize * 4 * 2 + batchSize * 4 * 2
+        // 2048 * 4 * 2 + 512 * 4 * 2 = 16384 + 4096 = 20480
+        expect(config.estimatedMemoryBytes, 20480);
+      },
+    );
 
     test('copyWith should create new config with modified values', () {
       const original = GGUFModelConfig(
@@ -133,4 +136,3 @@ void main() {
     });
   });
 }
-

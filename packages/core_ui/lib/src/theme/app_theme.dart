@@ -358,15 +358,15 @@ abstract final class AppTheme {
         fillColor: AppColors.cyberBackground.withValues(alpha: 0.4),
         border: const OutlineInputBorder(
           borderRadius: BorderRadius.zero,
-          borderSide: const BorderSide(color: AppColors.cyberGridLine),
+          borderSide: BorderSide(color: AppColors.cyberGridLine),
         ),
         enabledBorder: const OutlineInputBorder(
           borderRadius: BorderRadius.zero,
-          borderSide: const BorderSide(color: AppColors.cyberGridLine),
+          borderSide: BorderSide(color: AppColors.cyberGridLine),
         ),
         focusedBorder: const OutlineInputBorder(
           borderRadius: BorderRadius.zero,
-          borderSide: const BorderSide(color: AppColors.cyberPrimary),
+          borderSide: BorderSide(color: AppColors.cyberPrimary),
         ),
         labelStyle: const TextStyle(color: AppColors.cyberMutedText),
         hintStyle: const TextStyle(color: AppColors.cyberMutedText),

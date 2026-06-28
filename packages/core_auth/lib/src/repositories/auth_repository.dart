@@ -88,4 +88,3 @@ class LocalAuthRepository implements AuthRepository {
     return Success(refreshed);
   }
 }
-

@@ -11,8 +11,8 @@ const meetingTranscriptionEventsChannelName =
 
 class NativeMeetingRecorderContract {
   NativeMeetingRecorderContract({
-    MethodChannel channel = const MethodChannel(meetingRecorderChannelName),
-  }) : _channel = channel;
+    this._channel = const MethodChannel(meetingRecorderChannelName),
+  });
 
   final MethodChannel _channel;
 
@@ -55,16 +55,12 @@ class NativeMeetingRecorderContract {
 
 class NativeMeetingTranscriptionContract {
   NativeMeetingTranscriptionContract({
-    MethodChannel channel = const MethodChannel(
-      meetingTranscriptionChannelName,
-    ),
-    EventChannel eventChannel = const EventChannel(
+    this._channel = const MethodChannel(meetingTranscriptionChannelName),
+    this._eventChannel = const EventChannel(
       meetingTranscriptionEventsChannelName,
     ),
     Stream<Object?> Function(EventChannel channel)? eventStreamFactory,
-  }) : _channel = channel,
-       _eventChannel = eventChannel,
-       _eventStreamFactory = eventStreamFactory ?? _defaultEventStreamFactory;
+  }) : _eventStreamFactory = eventStreamFactory ?? _defaultEventStreamFactory;
 
   final MethodChannel _channel;
   final EventChannel _eventChannel;

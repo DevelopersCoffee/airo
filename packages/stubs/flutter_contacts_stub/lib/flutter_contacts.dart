@@ -3,12 +3,6 @@ library;
 
 /// Contact class
 class Contact {
-  final String id;
-  final String displayName;
-  final Name name;
-  final List<Phone> phones;
-  final List<Email> emails;
-  
   Contact({
     this.id = '',
     this.displayName = '',
@@ -16,51 +10,40 @@ class Contact {
     this.phones = const [],
     this.emails = const [],
   }) : name = name ?? Name();
+  final String id;
+  final String displayName;
+  final Name name;
+  final List<Phone> phones;
+  final List<Email> emails;
 }
 
 /// Name class
 class Name {
+  Name({this.first = '', this.last = '', this.middle = ''});
   final String first;
   final String last;
   final String middle;
-  
-  Name({
-    this.first = '',
-    this.last = '',
-    this.middle = '',
-  });
 }
 
 /// Phone class
 class Phone {
+  Phone(this.number, {this.label = PhoneLabel.mobile});
   final String number;
   final PhoneLabel label;
-  
-  Phone(this.number, {this.label = PhoneLabel.mobile});
 }
 
 /// Phone label
-enum PhoneLabel {
-  mobile,
-  home,
-  work,
-  other,
-}
+enum PhoneLabel { mobile, home, work, other }
 
 /// Email class
 class Email {
+  Email(this.address, {this.label = EmailLabel.home});
   final String address;
   final EmailLabel label;
-  
-  Email(this.address, {this.label = EmailLabel.home});
 }
 
 /// Email label
-enum EmailLabel {
-  home,
-  work,
-  other,
-}
+enum EmailLabel { home, work, other }
 
 /// Contact properties supported by the real plugin.
 enum ContactProperty {
@@ -111,7 +94,7 @@ class ContactProperties {
 class FlutterContacts {
   /// Request permission - returns false on TV
   static Future<bool> requestPermission() async => false;
-  
+
   /// Get contacts - returns empty list on TV
   static Future<List<Contact>> getContacts({
     bool withProperties = false,
@@ -128,7 +111,7 @@ class FlutterContacts {
     Set<ContactProperty>? properties,
     int? limit,
   }) async => [];
-  
+
   /// Get contact - returns null on TV
   static Future<Contact?> getContact(
     String id, {
@@ -139,16 +122,16 @@ class FlutterContacts {
     bool withGroups = false,
     bool deduplicateProperties = true,
   }) async => null;
-  
+
   /// Open external pick - returns null on TV
   static Future<Contact?> openExternalPick() async => null;
-  
+
   /// Open external view - does nothing on TV
   static Future<void> openExternalView(String id) async {}
-  
+
   /// Open external edit - returns null on TV
   static Future<Contact?> openExternalEdit(String id) async => null;
-  
+
   /// Open external insert - returns null on TV
   static Future<Contact?> openExternalInsert([Contact? contact]) async => null;
 }

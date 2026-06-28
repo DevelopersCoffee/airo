@@ -127,4 +127,3 @@ abstract interface class EncryptedDatabase {
   /// Get database path.
   String get path;
 }
-
