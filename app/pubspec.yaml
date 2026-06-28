@@ -131,6 +131,13 @@ dev_dependencies:
 
   # Linting
   flutter_lints: 6.0.0
+  custom_lint: 0.6.4
+  riverpod_lint: 2.3.10
+
+dependency_overrides:
+  # flutter_chrome_cast 1.4.6 requires rxdart ^0.28.0, while the current
+  # custom_lint stack requires ^0.27.7. See docs/adr/0007-cast-rxdart-override.md.
+  rxdart: ^0.28.0
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
