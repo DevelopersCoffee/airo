@@ -2,6 +2,7 @@ import 'package:airo_app/features/agent_chat/application/assistant_model_prefere
 import 'package:airo_app/features/agent_chat/data/services/assistant_runtime_service.dart';
 import 'package:airo_app/features/agent_chat/domain/models/assistant_runtime_ids.dart';
 import 'package:airo_app/features/agent_chat/presentation/screens/model_library_screen.dart';
+import 'package:core_ai/core_ai.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -77,6 +78,81 @@ void main() {
       expect(selected, isFalse);
     },
   );
+
+  testWidgets('project cards do not overflow on narrow mobile widths', (
+    tester,
+  ) async {
+    tester.view.devicePixelRatio = 1.0;
+    tester.view.physicalSize = const Size(360, 900);
+    addTearDown(() {
+      tester.view.resetDevicePixelRatio();
+      tester.view.resetPhysicalSize();
+    });
+
+    SharedPreferences.setMockInitialValues({});
+
+    final package = OfflineModelInfo(
+      id: 'mobile-actions-270m-litertlm',
+      name: 'MobileActions-270M',
+      family: ModelFamily.gemma,
+      fileSizeBytes: 276 * 1024 * 1024,
+      backendPreference: ModelBackendPreference.npu,
+      provider: AIProvider.gemma,
+      capabilities: const [ModelCapability.mobileActions],
+      learnMoreUrl: 'https://example.com/models/mobile-actions',
+    );
+
+    final candidate = AssistantModelCandidate(
+      id: 'litert-gemma',
+      name: 'Gemma mobile package',
+      runtime: 'LiteRT-LM local model',
+      description:
+          'Default local package for planning, documents, and medium reasoning.',
+      bestFor: const [AssistantTask.chat],
+      tags: const ['Local', 'Downloadable', 'Gemma'],
+      privacyLabel: 'Prompt stays on device',
+      sizeLabel: '2 GB to 4 GB typical',
+      available: false,
+      actionLabel: 'Download package',
+      unavailableReason:
+          'Set LITERT_LM_MODEL_PATH or LITERT_LM_MODEL_URL, or install a compatible local model.',
+      local: true,
+      opensModelManager: true,
+      package: package,
+    );
+
+    final state = AssistantModelLibraryState(
+      task: AssistantTask.chat,
+      deviceLabel: 'Pixel 9',
+      platformLabel: 'ANDROID',
+      candidates: [candidate],
+      recommended: candidate,
+      defaultPackages: {AssistantTask.chat: package},
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          assistantModelLibraryProvider.overrideWith((ref) async => state),
+          selectedAssistantModelIdProvider.overrideWith(
+            (ref) => _SelectedAssistantModelNotifier(),
+          ),
+        ],
+        child: MaterialApp(
+          home: ModelLibraryScreen(
+            onModelSelected: (_) {},
+            onOpenModelManager: () {},
+          ),
+        ),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    expect(find.text('General Chat'), findsOneWidget);
+    expect(find.text('Download package'), findsWidgets);
+    expect(tester.takeException(), isNull);
+  });
 }
 
 class _SelectedAssistantModelNotifier extends SelectedAssistantModelNotifier {

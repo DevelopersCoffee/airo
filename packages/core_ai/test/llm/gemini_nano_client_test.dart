@@ -1,5 +1,4 @@
 import 'package:core_ai/core_ai.dart';
-import 'package:core_ai/src/device/memory_budget_manager.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 

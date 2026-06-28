@@ -35,6 +35,7 @@ export 'src/registry/model_catalog.dart';
 // Model Download
 export 'src/download/model_download_progress.dart';
 export 'src/download/model_download_service.dart';
+export 'src/storage/model_storage_manager.dart';
 
 // Agent Skill Schemas
 export 'src/skills/ai_trajectory_trace.dart';

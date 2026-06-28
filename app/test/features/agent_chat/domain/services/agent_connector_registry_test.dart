@@ -83,7 +83,7 @@ void main() {
       });
 
       expect(result.isError, true);
-      expect(result.errorCode, 'invalid_calendar_event');
+      expect(result.errorCode, 'missing_date');
     });
 
     test(

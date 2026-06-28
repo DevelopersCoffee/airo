@@ -1056,15 +1056,16 @@ class _ProjectTemplateCard extends StatelessWidget {
             const SizedBox(height: 12),
             Align(
               alignment: Alignment.centerRight,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
+              child: OverflowBar(
+                alignment: MainAxisAlignment.end,
+                spacing: 8,
+                overflowAlignment: OverflowBarAlignment.end,
                 children: [
                   if ((package ?? candidate.package)?.learnMoreUri != null)
                     TextButton(
                       onPressed: onLearnMore,
                       child: const Text('Learn more'),
                     ),
-                  const SizedBox(width: 8),
                   FilledButton.icon(
                     onPressed: onStart,
                     icon: Icon(

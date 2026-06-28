@@ -49,6 +49,12 @@ class MainActivity : FlutterActivity() {
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, LITERT_LM_CHANNEL)
             .setMethodCallHandler(LiteRtLmPlugin(this))
 
+        val downloadPlugin = ModelDownloadPlugin(this)
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.airo.model_download")
+            .setMethodCallHandler(downloadPlugin)
+        EventChannel(flutterEngine.dartExecutor.binaryMessenger, "com.airo.model_download/progress")
+            .setStreamHandler(downloadPlugin.progressStreamHandler)
+
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, AGENT_CONNECTORS_CHANNEL)
             .setMethodCallHandler { call, result ->
                 when (call.method) {
