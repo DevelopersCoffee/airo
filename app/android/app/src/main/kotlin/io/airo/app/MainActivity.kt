@@ -9,6 +9,7 @@ import android.net.Uri
 import android.provider.CalendarContract
 import android.provider.Settings
 import com.ryanheise.audioservice.AudioServiceActivity
+import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodChannel
 import java.text.SimpleDateFormat
@@ -33,7 +34,6 @@ class MainActivity : AudioServiceActivity() {
     override fun shouldDestroyEngineWithHost(): Boolean {
         return false
     }
-
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
 
