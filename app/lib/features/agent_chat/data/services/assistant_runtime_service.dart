@@ -631,10 +631,7 @@ class AssistantRuntimeService {
   }
 
   Future<OfflineModelInfo> _resolveOfflinePackage(String runtimeId) async {
-    final library =
-        await (_loadAssistantModelLibraryOverride?.call() ??
-            AssistantModelLibraryState.load(task: AssistantTask.chat));
-    final package = library.candidateById(runtimeId)?.package;
+    final package = await _resolveOfflinePackageOrNull(runtimeId);
     if (package == null) {
       throw AssistantRuntimeUnavailableException(
         runtimeId,

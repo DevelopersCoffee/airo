@@ -38,6 +38,26 @@ void main() {
         generateLiteRtText: (prompt, {systemPrompt}) async {
           return '${systemPrompt ?? 'no-system'} :: $prompt';
         },
+        loadAssistantModelLibrary: () async => const AssistantModelLibraryState(
+          task: AssistantTask.chat,
+          deviceLabel: 'Pixel 9',
+          platformLabel: 'ANDROID',
+          candidates: [],
+          recommended: AssistantModelCandidate(
+            id: geminiCloudAssistantModelId,
+            name: 'Gemini Cloud',
+            runtime: 'Cloud',
+            description: 'Cloud runtime',
+            bestFor: [AssistantTask.chat],
+            tags: ['Cloud'],
+            privacyLabel: 'Sends prompt to API',
+            sizeLabel: 'No local download',
+            available: true,
+            actionLabel: 'Start',
+            local: false,
+          ),
+          defaultPackages: {},
+        ),
       );
 
       final text = await service.generateText(
