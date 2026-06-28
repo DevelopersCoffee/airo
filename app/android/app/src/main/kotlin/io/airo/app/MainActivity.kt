@@ -9,7 +9,8 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.provider.CalendarContract
 import android.provider.Settings
-import io.flutter.embedding.android.FlutterActivity
+import com.ryanheise.audioservice.AudioServiceActivity
+import com.ryanheise.audioservice.AudioServicePlugin
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodChannel
@@ -18,7 +19,7 @@ import java.util.Calendar
 import java.util.Locale
 import java.util.TimeZone
 
-class MainActivity : FlutterActivity() {
+class MainActivity : AudioServiceActivity() {
     private val GEMINI_NANO_CHANNEL = "com.airo.gemini_nano"
     private val GEMINI_NANO_EVENT_CHANNEL = "com.airo.gemini_nano/stream"
     private val LITERT_LM_CHANNEL = "com.airo.litert_lm"
@@ -31,6 +32,18 @@ class MainActivity : FlutterActivity() {
     private var pendingCalendarEndDate: String? = null
     private var pendingCalendarCreateResult: MethodChannel.Result? = null
     private var pendingCalendarCreateArguments: Map<String, Any?>? = null
+
+    override fun provideFlutterEngine(context: Context): FlutterEngine {
+        return AudioServicePlugin.getFlutterEngine(context)
+    }
+
+    override fun getCachedEngineId(): String {
+        return AudioServicePlugin.getFlutterEngineId()
+    }
+
+    override fun shouldDestroyEngineWithHost(): Boolean {
+        return false
+    }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
