@@ -7,9 +7,12 @@ import 'gemini_api_client.dart';
 import 'gemini_nano_client.dart';
 import 'gguf_model_client.dart';
 import 'gguf_model_config.dart';
+import '../litert/litert_lm_runtime_adapter.dart';
 import 'llm_client.dart';
 import 'llm_config.dart';
 import 'llm_response.dart';
+import '../models/offline_model_info.dart';
+import '../runtime/local_inference_runtime_adapter.dart';
 import '../utils/token_counter.dart';
 
 /// Callback for memory-related events during LLM routing.
@@ -22,17 +25,26 @@ class LLMRouterImpl implements LLMRouter {
   LLMRouterImpl({
     this.geminiNanoClient,
     this.geminiApiClient,
+    this.liteRtLmAdapter,
     this.mockClient,
     this.preferOnDevice = true,
     this.onMemoryWarning,
+    LocalInferenceRuntimeRegistry? localRuntimeRegistry,
     ActiveModelService? activeModelService,
-  }) : _activeModelService = activeModelService ?? ActiveModelService.instance;
+  }) : _activeModelService = activeModelService ?? ActiveModelService.instance,
+       _localRuntimeRegistry =
+           localRuntimeRegistry ??
+           LocalInferenceRuntimeRegistry(
+             adapters: liteRtLmAdapter == null ? const [] : [liteRtLmAdapter],
+           );
 
   final GeminiNanoClient? geminiNanoClient;
   final GeminiApiClient? geminiApiClient;
+  final LiteRtLmRuntimeAdapter? liteRtLmAdapter;
   final LLMClient? mockClient;
   final bool preferOnDevice;
   final ActiveModelService _activeModelService;
+  final LocalInferenceRuntimeRegistry _localRuntimeRegistry;
 
   /// Currently loaded GGUF client (managed by ActiveModelService).
   GGUFModelClient? _ggufClient;
@@ -130,6 +142,7 @@ class LLMRouterImpl implements LLMRouter {
     LLMProvider.geminiNano => geminiNanoClient,
     LLMProvider.geminiApi => geminiApiClient,
     LLMProvider.gguf => _ggufClient,
+    LLMProvider.liteRtLm => liteRtLmAdapter,
     LLMProvider.mock => mockClient,
   };
 
@@ -150,8 +163,48 @@ class LLMRouterImpl implements LLMRouter {
     }
 
     results[LLMProvider.mock] = mockClient != null;
+    results[LLMProvider.liteRtLm] = liteRtLmAdapter != null
+        ? await liteRtLmAdapter!.isAvailable()
+        : false;
 
     return results;
+  }
+
+  Future<LLMClient> routeForOfflineModel({
+    required OfflineModelInfo model,
+    required RuntimeGenerationRequest request,
+  }) async {
+    final supportedAdapters = await _localRuntimeRegistry
+        .supportedAdaptersForModel(model);
+    for (final adapter in supportedAdapters) {
+      final capabilities = adapter.capabilitiesForModel(model);
+      if (request.requiresVision && !capabilities.supportsImages) {
+        throw UnsupportedError(
+          '${adapter.runtimeKind.name} does not support vision for ${model.id}.',
+        );
+      }
+      if (request.requiresToolCalling && !capabilities.supportsToolCalling) {
+        throw UnsupportedError(
+          '${adapter.runtimeKind.name} does not support tool calling for ${model.id}.',
+        );
+      }
+
+      if (await adapter.isAvailable()) {
+        return adapter;
+      }
+    }
+
+    if (request.localOnly) {
+      throw StateError(
+        'No local runtime adapter is available for ${model.id}. Cloud fallback is disabled.',
+      );
+    }
+
+    if (geminiApiClient != null) {
+      return geminiApiClient!;
+    }
+
+    throw StateError('No LLM client available');
   }
 
   /// Disposes all clients.

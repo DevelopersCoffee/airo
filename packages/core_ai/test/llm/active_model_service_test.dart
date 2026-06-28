@@ -145,6 +145,34 @@ void main() {
       service.updateMetrics(tokensPerSecond: 25.5);
       expect(service.activeModel, isNull);
     });
+
+    test('activateRuntime tracks non-GGUF runtimes and unloads them', () async {
+      final runtimeStates = <ActiveRuntimeInfo?>[];
+      final subscription = service.runtimeStateStream.listen(runtimeStates.add);
+      var deactivated = 0;
+
+      await service.activateRuntime(
+        runtimeKind: ActiveRuntimeKind.liteRtLm,
+        runtimeId: 'litert-lm',
+        modelId: 'gemma-4-e2b-it-litertlm',
+        modelPath: '/models/gemma-4-e2b-it.litertlm',
+        displayName: 'Gemma 4 E2B',
+        estimatedMemoryBytes: 1024,
+        onDeactivate: () async => deactivated++,
+      );
+
+      expect(service.hasActiveRuntime, isTrue);
+      expect(service.activeRuntime?.runtimeKind, ActiveRuntimeKind.liteRtLm);
+      expect(service.activeRuntime?.modelId, 'gemma-4-e2b-it-litertlm');
+
+      await service.unloadModel();
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+      await subscription.cancel();
+
+      expect(deactivated, 1);
+      expect(service.activeRuntime, isNull);
+      expect(runtimeStates.any((state) => state == null), isTrue);
+    });
   });
 
   group('ActiveModelInfo', () {

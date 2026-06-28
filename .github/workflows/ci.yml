@@ -301,15 +301,10 @@ jobs:
       # ===========================================
       - name: Create Firebase Config
         if: steps.android_scope.outputs.should_build == 'true'
-        env:
-          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
         run: |
           cd app
-          if [ "${{ github.event_name }}" != "pull_request" ] && [ -n "$GOOGLE_SERVICES_JSON" ]; then
-            echo "$GOOGLE_SERVICES_JSON" | base64 -d > android/app/google-services.json
-          else
-            echo "::warning::Using CI placeholder Firebase config for APK size build."
-            cat > android/app/google-services.json <<'JSON'
+          echo "::warning::Using CI placeholder Firebase config for validation build."
+          cat > android/app/google-services.json <<'JSON'
           {
             "project_info": {
               "project_number": "000000000000",
@@ -340,7 +335,6 @@ jobs:
             "configuration_version": "1"
           }
           JSON
-          fi
           if [ ! -f android/app/google-services.json ] || [ ! -s android/app/google-services.json ]; then
             echo "::error::Failed to create google-services.json."
             exit 1

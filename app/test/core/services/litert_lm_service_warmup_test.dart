@@ -55,6 +55,7 @@ class _FakeLiteRtLmClient implements LiteRtLmClient {
   int initializeCalls = 0;
   int installCalls = 0;
   final generatedPrompts = <String>[];
+  final initializeModelPaths = <String?>[];
 
   @override
   Future<bool> activeModelExists({String? modelPath}) async =>
@@ -68,6 +69,7 @@ class _FakeLiteRtLmClient implements LiteRtLmClient {
     int? maxTokens,
   }) async {
     initializeCalls += 1;
+    initializeModelPaths.add(modelPath);
   }
 
   @override

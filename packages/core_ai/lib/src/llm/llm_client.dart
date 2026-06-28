@@ -41,6 +41,9 @@ enum LLMProvider {
   /// GGUF model via llama.cpp
   gguf,
 
+  /// LiteRT-LM on-device runtime
+  liteRtLm,
+
   /// Fallback/mock for testing
   mock,
 }

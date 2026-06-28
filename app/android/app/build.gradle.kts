@@ -146,6 +146,8 @@ dependencies {
     // Core library desugaring for flutter_local_notifications
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
 
+    testImplementation("junit:junit:4.13.2")
+
     // ML Kit GenAI Prompt API for on-device Gemini Nano.
     implementation("com.google.mlkit:genai-prompt:1.0.0-beta2")
 
