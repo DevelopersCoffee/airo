@@ -102,4 +102,9 @@ void main() {
       expect(continueWatchingItemsForSection(state, MediaSection.tv), isEmpty);
     },
   );
+
+  test('mediaModeForSection maps sections to discovery modes', () {
+    expect(mediaModeForSection(MediaSection.music), MediaMode.music);
+    expect(mediaModeForSection(MediaSection.tv), MediaMode.tv);
+  });
 }
