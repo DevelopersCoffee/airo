@@ -178,29 +178,6 @@ class GeminiNanoClient implements LLMClient {
     }
   }
 
-  /// Warms the model by issuing a lightweight native inference request.
-  ///
-  /// This ensures Gemini Nano has loaded its weights before the first
-  /// user-visible prompt.
-  Future<bool> warmup() async {
-    final initialized = _isInitialized || await initialize();
-    if (!initialized) {
-      return false;
-    }
-
-    try {
-      final result = await _channel.invokeMethod<bool>('warmup');
-      return result ?? false;
-    } catch (e) {
-      developer.log(
-        'Gemini Nano warmup failed: $e',
-        name: 'GeminiNanoClient',
-        error: e,
-      );
-      return false;
-    }
-  }
-
   @override
   Future<Result<LLMResponse>> generate(String prompt) async {
     if (!_isInitialized) {

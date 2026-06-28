@@ -55,6 +55,16 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   final List<ChatMessage> _messages = [];
   final ToolRegistry _toolRegistry = ToolRegistry();
   AgentSkillRegistry _skillRegistry = AgentSkillRegistry();
+  final AgentConnectorRegistry _connectorRegistry = AgentConnectorRegistry(
+    connectors: [
+      DateTimeConnector(),
+      NativeCalendarPermissionConnector(),
+      NativeCalendarConnector(),
+      NativeCreateCalendarEventConnector(),
+      ScheduleNotificationConnector(),
+      RouteConnector(),
+    ],
+  );
   final GeminiNanoService _geminiNano = GeminiNanoService();
   final LiteRtLmService _liteRtLm = LiteRtLmService();
   late final AssistantRuntimeService _assistantRuntime;
@@ -86,16 +96,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   AgentSkillOrchestrator _buildSkillOrchestrator(AgentSkillRegistry registry) {
     return AgentSkillOrchestrator(
       skillRegistry: registry,
-      connectorRegistry: AgentConnectorRegistry(
-        connectors: [
-          DateTimeConnector(),
-          NativeCalendarPermissionConnector(),
-          NativeCalendarConnector(),
-          NativeCreateCalendarEventConnector(),
-          ScheduleNotificationConnector(),
-          RouteConnector(),
-        ],
-      ),
+      connectorRegistry: _connectorRegistry,
       modelClient: SelectedRuntimeAgentSkillModelClient(
         runtimeService: _assistantRuntime,
         selectedModelId: () => ref.read(selectedAssistantModelIdProvider),
