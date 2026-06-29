@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -77,18 +79,6 @@ void main() async {
   // Initialize AuthService
   await AuthService.instance.initialize();
 
-  // Initialize audio service for background music playback
-  // This must be done before runApp() for audio_service to work properly
-  if (!kIsWeb) {
-    try {
-      await initAudioService();
-      debugPrint('✅ Audio service initialized for background playback');
-    } catch (e) {
-      debugPrint('⚠️ Audio service initialization failed: $e');
-      debugPrint('📝 Background music playback may not work');
-    }
-  }
-
   // Initialize SharedPreferences for IPTV caching
   final prefs = await SharedPreferences.getInstance();
 
@@ -98,4 +88,22 @@ void main() async {
       child: const AiroApp(),
     ),
   );
+
+  _scheduleAudioServiceInitialization();
+}
+
+void _scheduleAudioServiceInitialization() {
+  if (kIsWeb) return;
+
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    unawaited(() async {
+      try {
+        await initAudioService();
+        debugPrint('✅ Audio service initialized for background playback');
+      } catch (e) {
+        debugPrint('⚠️ Audio service initialization failed: $e');
+        debugPrint('📝 Background music playback may not work');
+      }
+    }());
+  });
 }

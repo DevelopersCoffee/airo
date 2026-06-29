@@ -147,14 +147,14 @@ class _CoinsHeroSection extends StatelessWidget {
     final colorScheme = theme.colorScheme;
     final isCompact = MediaQuery.sizeOf(context).width < 600;
     return _HermesSection(
-      minHeight: isCompact ? 340 : 360,
+      minHeight: isCompact ? 220 : 320,
       child: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 620),
           child: Padding(
             padding: EdgeInsets.symmetric(
               horizontal: isCompact ? 16 : 24,
-              vertical: isCompact ? 28 : 40,
+              vertical: isCompact ? 20 : 36,
             ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -166,28 +166,59 @@ class _CoinsHeroSection extends StatelessWidget {
                   ),
                   textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 20),
+                SizedBox(height: isCompact ? 12 : 20),
                 Text(
-                  'THE MONEY THAT\nWORKS WITH YOU.',
+                  isCompact
+                      ? 'Money that works with you.'
+                      : 'THE MONEY THAT\nWORKS WITH YOU.',
                   style: isCompact
-                      ? theme.textTheme.displayLarge?.copyWith(
-                          fontSize: 46,
-                          height: 0.92,
-                        )
+                      ? theme.textTheme.headlineLarge?.copyWith(height: 1.0)
                       : theme.textTheme.displayLarge,
                   textAlign: TextAlign.center,
                 ),
-                SizedBox(height: isCompact ? 18 : 28),
+                SizedBox(height: isCompact ? 10 : 18),
+                Text(
+                  'Accounts, ledger, and budgets stay in one place.',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: colorScheme.primary.withValues(alpha: 0.64),
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                SizedBox(height: isCompact ? 16 : 24),
                 totalBalance.when(
                   data: (balance) {
                     final dollars = balance ~/ 100;
                     final cents = (balance % 100).abs();
-                    return Text(
-                      'Available balance: \$$dollars.${cents.toString().padLeft(2, '0')}',
-                      style: theme.textTheme.bodyLarge?.copyWith(
-                        color: colorScheme.primary.withValues(alpha: 0.64),
+                    return Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: isCompact ? 14 : 18,
+                        vertical: isCompact ? 10 : 12,
                       ),
-                      textAlign: TextAlign.center,
+                      decoration: BoxDecoration(
+                        color: colorScheme.surface.withValues(alpha: 0.28),
+                        border: Border.all(color: colorScheme.outlineVariant),
+                      ),
+                      child: Wrap(
+                        alignment: WrapAlignment.center,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        spacing: 10,
+                        runSpacing: 6,
+                        children: [
+                          const Icon(Icons.account_balance_wallet_outlined),
+                          Text(
+                            'Available balance',
+                            style: theme.textTheme.labelLarge?.copyWith(
+                              color: colorScheme.primary.withValues(
+                                alpha: 0.72,
+                              ),
+                            ),
+                          ),
+                          Text(
+                            '\$$dollars.${cents.toString().padLeft(2, '0')}',
+                            style: theme.textTheme.titleMedium,
+                          ),
+                        ],
+                      ),
                     );
                   },
                   loading: () => const CircularProgressIndicator(),
@@ -240,83 +271,96 @@ class _CoinsDashboardSection extends StatelessWidget {
             LayoutBuilder(
               builder: (context, constraints) {
                 final columns = constraints.maxWidth >= 900 ? 3 : 1;
+                final panels = [
+                  _StatusPanel(
+                    title: 'Accounts',
+                    value: accounts.when(
+                      data: (items) => items.isEmpty
+                          ? 'No accounts'
+                          : '${items.length} active',
+                      loading: () => 'Loading',
+                      error: (_, _) => 'Unavailable',
+                    ),
+                    detail: accounts.when(
+                      data: (items) => items.isEmpty
+                          ? 'Add checking, savings, or cards.'
+                          : items
+                                .take(2)
+                                .map((a) => '${a.name}: ${a.balanceFormatted}')
+                                .join('\n'),
+                      loading: () => 'Fetching balances...',
+                      error: (_, _) => 'Account data failed to load.',
+                    ),
+                    isCompact: columns == 1,
+                  ),
+                  _StatusPanel(
+                    title: 'Ledger',
+                    value: transactionsStream.when(
+                      data: (items) => items.isEmpty
+                          ? 'No entries'
+                          : '${items.length} entries',
+                      loading: () => 'Loading',
+                      error: (_, _) => 'Unavailable',
+                    ),
+                    detail: transactionsStream.when(
+                      data: (items) => items.isEmpty
+                          ? 'Create the first expense to start tracking.'
+                          : items
+                                .take(2)
+                                .map(
+                                  (t) =>
+                                      '${t.description}: ${t.amountFormatted}',
+                                )
+                                .join('\n'),
+                      loading: () => 'Opening recent activity...',
+                      error: (_, _) => 'Recent activity failed to load.',
+                    ),
+                    isCompact: columns == 1,
+                  ),
+                  _StatusPanel(
+                    title: 'Budgets',
+                    value: budgetsStream.when(
+                      data: (items) =>
+                          items.isEmpty ? 'Not set' : '${items.length} active',
+                      loading: () => 'Loading',
+                      error: (_, _) => 'Unavailable',
+                    ),
+                    detail: budgetsStream.when(
+                      data: (items) => items.isEmpty
+                          ? 'Create dining, travel, and recurring limits.'
+                          : items
+                                .take(2)
+                                .map(
+                                  (b) =>
+                                      '${b.tag}: ${b.usedFormatted} / ${b.limitFormatted}',
+                                )
+                                .join('\n'),
+                      loading: () => 'Checking guardrails...',
+                      error: (_, _) => 'Budget data failed to load.',
+                    ),
+                    isCompact: columns == 1,
+                  ),
+                ];
+
+                if (columns == 1) {
+                  return Column(
+                    children: [
+                      for (var i = 0; i < panels.length; i++) ...[
+                        panels[i],
+                        if (i < panels.length - 1) const SizedBox(height: 12),
+                      ],
+                    ],
+                  );
+                }
+
                 return GridView.count(
                   crossAxisCount: columns,
-                  childAspectRatio: columns == 1 ? 3.6 : 2.4,
+                  childAspectRatio: 2.4,
                   crossAxisSpacing: 12,
                   mainAxisSpacing: 12,
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
-                  children: [
-                    _StatusPanel(
-                      title: 'Accounts',
-                      value: accounts.when(
-                        data: (items) => items.isEmpty
-                            ? 'No accounts'
-                            : '${items.length} active',
-                        loading: () => 'Loading',
-                        error: (_, _) => 'Unavailable',
-                      ),
-                      detail: accounts.when(
-                        data: (items) => items.isEmpty
-                            ? 'Add checking, savings, or cards.'
-                            : items
-                                  .take(2)
-                                  .map(
-                                    (a) => '${a.name}: ${a.balanceFormatted}',
-                                  )
-                                  .join('\n'),
-                        loading: () => 'Fetching balances...',
-                        error: (_, _) => 'Account data failed to load.',
-                      ),
-                    ),
-                    _StatusPanel(
-                      title: 'Ledger',
-                      value: transactionsStream.when(
-                        data: (items) => items.isEmpty
-                            ? 'No entries'
-                            : '${items.length} entries',
-                        loading: () => 'Loading',
-                        error: (_, _) => 'Unavailable',
-                      ),
-                      detail: transactionsStream.when(
-                        data: (items) => items.isEmpty
-                            ? 'Create the first expense to start tracking.'
-                            : items
-                                  .take(2)
-                                  .map(
-                                    (t) =>
-                                        '${t.description}: ${t.amountFormatted}',
-                                  )
-                                  .join('\n'),
-                        loading: () => 'Opening recent activity...',
-                        error: (_, _) => 'Recent activity failed to load.',
-                      ),
-                    ),
-                    _StatusPanel(
-                      title: 'Budgets',
-                      value: budgetsStream.when(
-                        data: (items) => items.isEmpty
-                            ? 'Not set'
-                            : '${items.length} active',
-                        loading: () => 'Loading',
-                        error: (_, _) => 'Unavailable',
-                      ),
-                      detail: budgetsStream.when(
-                        data: (items) => items.isEmpty
-                            ? 'Create dining, travel, and recurring limits.'
-                            : items
-                                  .take(2)
-                                  .map(
-                                    (b) =>
-                                        '${b.tag}: ${b.usedFormatted} / ${b.limitFormatted}',
-                                  )
-                                  .join('\n'),
-                        loading: () => 'Checking guardrails...',
-                        error: (_, _) => 'Budget data failed to load.',
-                      ),
-                    ),
-                  ],
+                  children: panels,
                 );
               },
             ),
@@ -361,11 +405,13 @@ class _StatusPanel extends StatelessWidget {
     required this.title,
     required this.value,
     required this.detail,
+    this.isCompact = false,
   });
 
   final String title;
   final String value;
   final String detail;
+  final bool isCompact;
 
   @override
   Widget build(BuildContext context) {
@@ -379,19 +425,19 @@ class _StatusPanel extends StatelessWidget {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
           Text(title.toUpperCase(), style: theme.textTheme.labelLarge),
           const SizedBox(height: 8),
           Text(value, style: theme.textTheme.headlineSmall),
-          const SizedBox(height: 8),
-          Expanded(
-            child: Text(
-              detail,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: colorScheme.primary.withValues(alpha: 0.72),
-              ),
-              overflow: TextOverflow.fade,
+          SizedBox(height: isCompact ? 6 : 8),
+          Text(
+            detail,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: colorScheme.primary.withValues(alpha: 0.72),
             ),
+            maxLines: isCompact ? 2 : 4,
+            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),

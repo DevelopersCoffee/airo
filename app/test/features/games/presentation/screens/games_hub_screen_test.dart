@@ -23,6 +23,26 @@ void main() {
       expect(find.text('Coming Soon'), findsOneWidget);
     });
 
+    testWidgets('shows a compact preview and opens the full category sheet', (
+      tester,
+    ) async {
+      await tester.pumpWidget(buildScreen());
+      await tester.pumpAndSettle();
+
+      expect(find.text('Solitaire'), findsNothing);
+      expect(find.text('View All'), findsOneWidget);
+
+      await tester.tap(find.byKey(const ValueKey('games_view_all_card_games')));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const ValueKey('games_section_sheet_card_games')),
+        findsOneWidget,
+      );
+      expect(find.text('5 games'), findsOneWidget);
+      expect(find.text('Solitaire'), findsOneWidget);
+    });
+
     testWidgets(
       'opens the coming soon screen when an unavailable card is tapped',
       (tester) async {
