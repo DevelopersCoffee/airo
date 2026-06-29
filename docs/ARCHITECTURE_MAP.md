@@ -1,89 +1,92 @@
 # AIRO Architecture Map
 
-This document maps the major subsystems required for AIRO to function as an offline-first AI productivity platform.
+This document maps the major subsystems required for AIRO to function as a complete **offline-first AI Operating System**.
 
-| Subsystem | Introduced in Release | Current Maturity | Dependencies | AIRO Priority | Planned Implementation Phase |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| UI Framework | v0.0.2 | Stable | None | Critical | MVP |
-| Navigation | v0.0.2 | Stable | UI Framework | Critical | MVP |
-| ModelManager | v0.0.2 | Experimental | ModelInstallationService, Storage | Critical | MVP |
-| ModelInstallationService | Recent | Stable | Storage Layer | Critical | MVP |
-| PackageManifestParser | Recent | Stable | None | Critical | MVP |
-| DependencyValidator | Recent | Stable | None | Critical | MVP |
-| ImportWizard | Recent | Stable | ModelInstallationService | High | v1 |
-| DownloadWatchdog | Recent | Stable | ModelInstallationService | High | v1 |
-| InstallationRecoveryManager | Recent | Stable | Storage Layer | High | v1 |
-| InstallationDiagnosticsService | Recent | Stable | ModelInstallationService | Medium | v2 |
-| BackgroundInstallationWorker | Recent | Stable | InstallationRecoveryManager | Critical | MVP |
-| ModelCapabilityDatabase | Recent | Stable | ModelRegistry | Critical | MVP |
-| ModelRegistry | Recent | Stable | Storage Layer | Critical | MVP |
-| Document Processing Pipeline | v0.0.2-v0.0.43 | Stable | Storage Layer | Critical | MVP |
-| Offline RAG Pipeline | v0.0.2-v0.0.43 | Experimental | Vector Database, Storage | Critical | MVP |
-| Vector Database Layer | v0.0.2-v0.0.43 | Stable | Storage Layer | Critical | MVP |
-| Local Embedding Service | v0.0.2-v0.0.43 | Stable | AI Runtime | Critical | MVP |
-| Conversation Queue | v0.0.2-v0.0.43 | Stable | Background Worker | Critical | MVP |
-| AI Runtime | v0.0.2 | Stable | Model Manager | High | v1 |
-| STT Pipeline | v0.0.2 | Stable | AI Runtime, Audio Service | High | v1 |
-| TTS Pipeline | v0.0.2 | Experimental | AI Runtime | Medium | v2 |
-| Semantic Search Engine | v0.0.2-v0.0.43 | Stable | Vector Database | High | v1 |
-| Knowledge Base | v0.0.2-v0.0.43 | Experimental | Vector Database, Storage | Critical | MVP |
-| Conversation Memory | v0.0.2 | Experimental | Vector Database | High | v2 |
-| Storage Layer | v0.0.2 | Production | None | Critical | MVP |
-| Sync Layer | v0.0.2 | Experimental | Storage Layer, Auth | High | v2 |
-| Analytics | v0.0.2 | Experimental | Storage Layer | Low | Future |
-| Settings | v0.0.2 | Stable | Storage Layer | Medium | MVP |
-| Plugin System | v0.0.2 | Experimental | AI Runtime | Low | Future |
-| Model Metadata Registry | v0.0.2-v0.0.43 | Stable | Storage Layer | Critical | MVP |
-| Design Token System | v0.0.2-v0.0.43 | Stable | UI Framework | Critical | MVP |
-| KeyboardManager | v0.0.44-v0.0.48 | Stable | UI Framework | Critical | MVP |
-| ThemeManager | v0.0.44-v0.0.48 | Stable | UI Framework | High | v1 |
-| DeviceCapabilityService | v0.0.44-v0.0.48 | Stable | None | High | v1 |
-| PromptTemplateRegistry | v0.0.44-v0.0.48 | Stable | AI Runtime | Critical | MVP |
-| PlatformBehaviorService | v0.0.44-v0.0.48 | Stable | None | Critical | MVP |
-| UnifiedInputFramework | v0.0.44-v0.0.48 | Stable | UI Framework | High | v1 |
-| RuntimeCompatibilityService | v0.0.49+ | Stable | DeviceCapabilityService | Critical | MVP |
-| ModelCompatibilityEngine | v0.0.49+ | Stable | RuntimeCompatibilityService | Critical | MVP |
-| RuntimeRecommendationEngine | v0.0.49+ | Experimental | ModelCompatibilityEngine | Critical | MVP |
-| MemoryPersistenceService | v0.0.49+ | Stable | Storage Layer | Critical | MVP |
-| PrivacyManager | v0.0.49+ | Stable | Storage Layer | Critical | MVP |
-| ComplianceManager | v0.0.49+ | Stable | PlatformBehaviorService | Critical | MVP |
-| DistributionManager | v0.0.49+ | Stable | None | Critical | MVP |
-| RuntimeConfigurationService | v0.0.49+ | Stable | Settings | Critical | MVP |
-| ToolRegistry | Recent | Stable | AI Runtime | Critical | MVP |
-| ToolExecutionEngine | Recent | Stable | ToolRegistry, AI Runtime | Critical | MVP |
-| AdaptiveContextManager | Recent | Stable | RuntimeMemoryManager | High | v1 |
-| RuntimeMemoryManager | Recent | Stable | DeviceIntelligenceEngine | High | v1 |
-| DeviceIntelligenceEngine | Recent | Stable | None | Critical | MVP |
-| InferenceProfileManager | Recent | Stable | DeviceIntelligenceEngine | High | v1 |
-| PlatformRuntimeAdapters | Recent | Stable | DeviceIntelligenceEngine | High | v1 |
-| BackgroundJobScheduler | Recent | Production | Storage Layer | High | v1 |
-| VisionService | Recent | Stable | AI Runtime | High | v1 |
-| URLIngestionPipeline | Recent | Experimental | VisionService, Storage | High | v1 |
-| TelemetryManager | Recent | Stable | None | High | v1 |
-| NotificationManager | Recent | Stable | PlatformBehaviorService | High | v1 |
-| CapabilityRegistry | Recent | Stable | AI Runtime | Critical | MVP |
-| WorkspaceManager | Recent | Stable | Storage Layer | Critical | MVP |
-| WorkspaceConfigurationService | Recent | Stable | WorkspaceManager | Critical | MVP |
-| KnowledgeService | Recent | Stable | Storage Layer, WorkspaceManager | High | v1 |
-| SearchEngine | Recent | Stable | Vector Database, Storage Layer | High | v1 |
-| ThinkingProfileManager | Recent | Experimental | CapabilityRegistry | High | v1 |
-| AIProvider | Recent | Stable | AI Runtime | Critical | MVP |
-| AIControlCenter | Recent | Stable | TelemetryManager, RuntimeConfigurationService | High | v1 |
-| StartupOrchestrator | Recent | Stable | None | Critical | MVP |
-| DiscoveryService | Recent | Stable | None | Critical | MVP |
-| ContextManager | Recent | Stable | Storage Layer | Critical | MVP |
-| AttachmentPipeline | Recent | Stable | ContextManager | High | v1 |
-| NetworkIntelligenceService | Recent | Stable | PlatformBehaviorService | Medium | v2 |
-| StreamingEngine | Recent | Stable | None | Medium | v2 |
-| ProviderLifecycleManager | Recent | Stable | AIProvider | High | v1 |
-| NativeRuntimeBridge | Recent | Stable | None | Critical | MVP |
-| HealthMonitor | Recent | Stable | None | High | v1 |
-| ModelSourceRegistry | Recent | Stable | ModelRegistry | Medium | v2 |
-| ModelBrowserService | Recent | Stable | ModelRegistry | Medium | v2 |
-| LazyInitializationManager | Latest | Stable | None | Critical | MVP |
-| RecommendationEngine | Latest | Stable | DeviceCapabilityService | Medium | v2 |
-| BackendSelector | Latest | Stable | None | High | v1 |
-| RepairManager | Latest | Stable | Storage Layer | High | v1 |
-| WorkspaceIsolationService | Latest | Stable | WorkspaceManager | Critical | MVP |
-| DeviceProfileManager | Latest | Stable | DeviceCapabilityService | Medium | v2 |
-| PersistentJobStore | Latest | Stable | Storage Layer | Critical | MVP |
+## 1. Runtime
+| Subsystem | Current Maturity | Dependencies | AIRO Priority | Planned Phase |
+| :--- | :--- | :--- | :--- | :--- |
+| RuntimeOrchestrator | Stable | EngineRegistry | Critical | MVP |
+| ModelResidencyManager | Stable | DeviceCapabilityService | Critical | MVP |
+| RuntimeScheduler | Stable | RuntimeOrchestrator | Critical | MVP |
+| SessionManager | Stable | RuntimeOrchestrator | Critical | MVP |
+| EngineRegistry | Stable | NativeRuntimeBridge | Medium | v2 |
+| NativeRuntimeBridge | Stable | None | Critical | MVP |
+| AIProvider | Stable | EngineRegistry | Critical | MVP |
+| PlatformRuntimeAdapters | Stable | EngineRegistry | High | v1 |
+| AdaptiveContextManager | Stable | ModelResidencyManager | High | v1 |
+| ContextManager | Stable | Storage Layer | Critical | MVP |
+| LazyInitializationManager | Stable | None | Critical | MVP |
+
+## 2. Intelligence
+| Subsystem | Current Maturity | Dependencies | AIRO Priority | Planned Phase |
+| :--- | :--- | :--- | :--- | :--- |
+| WorkflowEngine | Stable | RuntimeOrchestrator | High | v1 |
+| CapabilityRegistry | Stable | RuntimeOrchestrator | Critical | MVP |
+| KnowledgeService | Stable | WorkspaceManager | High | v1 |
+| SearchEngine | Stable | Vector Database Layer | High | v1 |
+| EmbeddingService | Stable | RuntimeOrchestrator | Critical | MVP |
+| Document Processing Pipeline | Stable | Storage Layer | Critical | MVP |
+| Vector Database Layer | Stable | Storage Layer | Critical | MVP |
+| VisionService | Stable | RuntimeOrchestrator | High | v1 |
+| URLIngestionPipeline | Experimental | VisionService | High | v1 |
+| Semantic Search Engine | Stable | Vector Database Layer | High | v1 |
+| ThinkingProfileManager | Experimental | CapabilityRegistry | High | v1 |
+
+## 3. Audio
+| Subsystem | Current Maturity | Dependencies | AIRO Priority | Planned Phase |
+| :--- | :--- | :--- | :--- | :--- |
+| VoicePlatform | Stable | RuntimeOrchestrator | High | v1 |
+| SpeakerManager | Experimental | VoicePlatform | High | v1 |
+| AudioPipeline | Stable | VoicePlatform | High | v1 |
+| TTSService | Experimental | RuntimeOrchestrator | Medium | v2 |
+| STT Pipeline | Stable | VoicePlatform | High | v1 |
+
+## 4. Models
+| Subsystem | Current Maturity | Dependencies | AIRO Priority | Planned Phase |
+| :--- | :--- | :--- | :--- | :--- |
+| ModelInstallationService | Stable | Storage Layer | Critical | MVP |
+| ModelRegistry | Stable | Storage Layer | Critical | MVP |
+| RecommendationEngine | Stable | DeviceCapabilityService | Medium | v2 |
+| BackendSelector | Stable | DeviceCapabilityService | High | v1 |
+| ModelCapabilityDatabase | Stable | ModelRegistry | Critical | MVP |
+| PackageManifestParser | Stable | None | Critical | MVP |
+| DependencyValidator | Stable | None | Critical | MVP |
+| ImportWizard | Stable | ModelInstallationService | High | v1 |
+| DownloadWatchdog | Stable | ModelInstallationService | High | v1 |
+| InstallationRecoveryManager | Stable | Storage Layer | High | v1 |
+| BackgroundInstallationWorker | Stable | InstallationRecoveryManager | Critical | MVP |
+
+## 5. Extensibility
+| Subsystem | Current Maturity | Dependencies | AIRO Priority | Planned Phase |
+| :--- | :--- | :--- | :--- | :--- |
+| PluginFramework | Experimental | CapabilityRegistry | Medium | v2 |
+| ToolRegistry | Stable | RuntimeOrchestrator | Critical | MVP |
+| ProviderManager | Stable | AIProvider | Medium | v2 |
+| ToolExecutionEngine | Stable | ToolRegistry | Critical | MVP |
+| ProviderLifecycleManager | Stable | AIProvider | High | v1 |
+
+## 6. Operations
+| Subsystem | Current Maturity | Dependencies | AIRO Priority | Planned Phase |
+| :--- | :--- | :--- | :--- | :--- |
+| DiagnosticsService | Stable | TelemetryService | Medium | v2 |
+| HealthMonitor | Stable | None | High | v1 |
+| TelemetryService | Stable | None | High | v1 |
+| RepairManager | Stable | Storage Layer | High | v1 |
+| AIControlCenter | Stable | TelemetryService | High | v1 |
+| StartupOrchestrator | Stable | None | Critical | MVP |
+| DiscoveryService | Stable | None | Critical | MVP |
+| BackgroundJobScheduler | Production | Storage Layer | High | v1 |
+| PersistentJobStore | Stable | Storage Layer | Critical | MVP |
+| WorkspaceIsolationService | Stable | Storage Layer | Critical | MVP |
+| DeviceProfileManager | Stable | DeviceCapabilityService | Medium | v2 |
+
+## 7. Core Platform (Legacy / Base)
+| Subsystem | Current Maturity | Dependencies | AIRO Priority | Planned Phase |
+| :--- | :--- | :--- | :--- | :--- |
+| UI Framework | Stable | None | Critical | MVP |
+| Navigation | Stable | UI Framework | Critical | MVP |
+| Storage Layer | Production | None | Critical | MVP |
+| ThemeManager | Stable | UI Framework | High | v1 |
+| KeyboardManager | Stable | UI Framework | Critical | MVP |
+| DeviceCapabilityService | Stable | None | High | v1 |
+| WorkspaceManager | Stable | Storage Layer | Critical | MVP |

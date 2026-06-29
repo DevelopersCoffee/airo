@@ -1,13 +1,16 @@
 # AIRO Engineering Standards
 
-This document serves as the architectural constitution for AIRO, ensuring we build an **offline-first AI productivity platform** (not just a meeting app).
+This document serves as the architectural constitution for AIRO, ensuring we build an **offline-first AI Operating System** (not just a meeting app).
 
 ## Architecture Decisions
+- **Runtime as a Platform:** AIRO must evolve around core services (Runtime, Scheduler, Memory) rather than isolated features. Every feature composes these services.
 - **Offline-First**: All models, knowledge bases, and document ingestion must support local/offline execution seamlessly.
 - **Strict Service Layer**: Business logic must reside in service layers (e.g., `litert_lm_service.dart`) independent of UI.
 - **Model Installation Is a Platform Service:** A single `ModelInstallationService` must own downloads, local imports, dependencies, validation, and recovery.
 - **Service-Based Architecture**: Avoid monolithic logic; split distinct capabilities (Embeddings, RAG, STT) into isolated services.
 - **Runtime Isolation (Micro-Runtimes):** Separate AI implementations by capability. OCR, Speech, and LLMs must operate as independent micro-runtimes.
+- **Specialized Models Over One Large Model:** Prefer dedicated micro-models for speech, embeddings, and OCR rather than one monolithic LLM. This reduces resource usage and improves quality.
+- **Audio is a Platform Capability:** Do not treat recording as a standalone feature; audio is an application-wide capability (dictation, voice chat, meetings).
 - **Workspace-Centric Design:** Meetings do not exist independently; they belong to a workspace that owns knowledge, memory, and search.
 - **Workspace Isolation:** Strict boundary preventing state leakage; creating a new workspace must always start with clean state.
 - **Provider Independence:** All AI requests must route through an AIProvider interface to support future LAN/Cloud execution without changing feature logic.
@@ -17,6 +20,8 @@ This document serves as the architectural constitution for AIRO, ensuring we bui
 - **Build Platform Services:** Avoid screen-specific fixes; build centralized managers (KeyboardManager, ThemeManager).
 
 ## Engineering Practices (Features Worth Copying)
+- **Warm Frequently Used Resources:** Improve startup latency by keeping active models, tokenizers, and KV caches resident when memory allows.
+- **Build Extensibility from Day One:** Every future integration must fit into existing abstractions (Plugin Framework, Engine Registry). Avoid special-case implementations.
 - **Delay Work Until Necessary (Lazy Initialization):** Do not create expensive resources (meetings, AI contexts, indices) until the user takes a meaningful action.
 - **Automatic Recovery (RepairManager):** Build self-healing infrastructure that automatically repairs missing files, hashes, and interrupted installations without user intervention.
 - **Metadata-Driven Recommendations:** Model rankings must come from telemetry and hardware capability, not alphabetical lists.
@@ -54,12 +59,12 @@ This document serves as the architectural constitution for AIRO, ensuring we bui
 
 ## Platform Capabilities Priority
 AIRO prioritizes scalable platform capabilities over one-off features:
+- AI OS Foundations (RuntimeOrchestrator, EngineRegistry, ModelResidencyManager)
+- AI Workflow Engine & Multi-Model Orchestrations
 - Model Packaging & Installation Lifecycle
-- Orchestration Layers (Startup, Discovery, Context)
 - Capability Registry & Workspace Manager
 - Document Processing Pipeline (OCR, chunking)
 - Offline RAG Pipeline & Semantic Search
 - Local Model Manager (with intelligent routing)
-- Vector Databases
 - Tool Execution Engine & Sandbox
-- AI Provider Abstraction (Local/Network/Cloud)
+- Extensibility (PluginFramework)

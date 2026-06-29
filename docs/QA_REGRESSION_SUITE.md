@@ -37,7 +37,7 @@ Every bug fix in AIRO becomes a permanent regression test. All features must pas
 - [ ] External storage removal
 - [ ] USB disconnect
 
-## Whisper & Audio
+## Whisper & Audio Platform
 - [ ] Process long meetings (2+ hours) without crashing
 - [ ] Handle extended periods of silence
 - [ ] Handle excessive background noise
@@ -46,13 +46,18 @@ Every bug fix in AIRO becomes a permanent regression test. All features must pas
 - [ ] Handle recording interruptions (phone call, alarm)
 - [ ] Behavior on low RAM devices
 - [ ] Device rotation during recording
+- [ ] Interrupt TTS playback
+- [ ] Resume playback
+- [ ] Speaker switching in conversation
+- [ ] Background recording stability
+- [ ] Audio focus changes (e.g. phone call during playback)
 
 ## Speaker Diarization
 - [ ] Distinguish similar voices
 - [ ] Overlapping speech handling
 - [ ] Speaker persistence across meeting continuation
 
-## LLM Stability & Runtime Independence
+## LLM Stability & Runtime Orchestration
 - [ ] Model loading failure handling
 - [ ] Context overflow protection
 - [ ] Memory exhaustion safety
@@ -69,6 +74,11 @@ Every bug fix in AIRO becomes a permanent regression test. All features must pas
 - [ ] OCR only
 - [ ] Embedding only
 - [ ] Mixed runtime failures
+- [ ] Model eviction
+- [ ] Warm model reuse
+- [ ] Memory budget exceeded
+- [ ] Multiple active models simultaneously
+- [ ] Runtime restart
 
 ## Background Processing & Job Scheduler
 - [ ] App killed by OS (termination during execution)
@@ -82,6 +92,11 @@ Every bug fix in AIRO becomes a permanent regression test. All features must pas
 - [ ] Process kill
 - [ ] Foreground service restart
 - [ ] Queue persistence
+- [ ] High-priority transcription during indexing (Resource Starvation check)
+- [ ] Memory pressure during jobs
+- [ ] CPU contention
+- [ ] Battery saver mode
+- [ ] Thermal throttling context reduction
 
 ## Keyboard Handling
 - [ ] Tap outside to dismiss keyboard
@@ -137,7 +152,7 @@ Every bug fix in AIRO becomes a permanent regression test. All features must pas
 - [ ] Remove speaker profiles securely
 - [ ] Remove downloaded models frees disk space properly
 
-## Tool Calling & Execution
+## Tool Calling, Execution, & Plugins
 - [ ] Unknown tool
 - [ ] Invalid parameters
 - [ ] Tool timeout
@@ -154,6 +169,11 @@ Every bug fix in AIRO becomes a permanent regression test. All features must pas
 - [ ] Unsupported tools
 - [ ] Tool cancellation
 - [ ] Tool dependency failures
+- [ ] Plugin crash
+- [ ] Plugin permission denied
+- [ ] Slow plugin initialization
+- [ ] Plugin timeout
+- [ ] Plugin dependency failure
 
 ## Runtime Configuration & Adaptation
 - [ ] Change KV cache during runtime
@@ -277,3 +297,15 @@ Every bug fix in AIRO becomes a permanent regression test. All features must pas
 - [ ] Missing metadata handling
 - [ ] Corrupted recommendation cache
 - [ ] Recommendation refresh
+
+## Multi-Model Pipelines & Workflows
+- [ ] One model unavailable
+- [ ] Embedding failure in pipeline
+- [ ] Whisper failure in pipeline
+- [ ] Summarizer failure in pipeline
+- [ ] Pipeline recovery
+- [ ] Partial output generation (e.g. transcript exists but no summary)
+- [ ] Interrupted workflow
+- [ ] Retry failed stage
+- [ ] Concurrent workflows
+- [ ] Workflow cancellation

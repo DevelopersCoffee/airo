@@ -6,9 +6,13 @@ This document serves as the master engineering roadmap for AIRO, built by learni
 
 | Capability | First Release Introduced | Maturity | AIRO Priority | Planned AIRO Release | Status |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **Lazy Resource Initialization** | Latest | Stable | Critical | MVP | Planned |
-| **AI Runtime Independence (Micro-Runtimes)** | Latest | Stable | Critical | MVP | Planned |
-| **Workspace Isolation** | Latest | Stable | Critical | MVP | Planned |
+| **AI Runtime Orchestrator** | Latest | Stable | Critical | MVP | Planned |
+| **Model Residency Manager** | Latest | Stable | Critical | MVP | Planned |
+| **AI Session Manager** | Latest | Stable | Critical | MVP | Planned |
+| **Runtime Resource Scheduler** | Latest | Stable | Critical | MVP | Planned |
+| **Lazy Resource Initialization** | Recent | Stable | Critical | MVP | Planned |
+| **AI Runtime Independence (Micro-Runtimes)** | Recent | Stable | Critical | MVP | Planned |
+| **Workspace Isolation** | Recent | Stable | Critical | MVP | Planned |
 | **Model Installation Manager** | Recent | Stable | Critical | MVP | Planned |
 | **Multi-File Model Packaging** | Recent | Stable | Critical | MVP | Planned |
 | **Dependency Validation Engine** | Recent | Stable | Critical | MVP | Planned |
@@ -45,9 +49,13 @@ This document serves as the master engineering roadmap for AIRO, built by learni
 | **Knowledge Workspaces** | Recent | Stable | Critical | MVP | Planned |
 | **Dynamic Feature Discovery** | Recent | Stable | Critical | MVP | Planned |
 | **AI Provider Abstraction** | Recent | Stable | Critical | MVP | Planned |
-| **Backend Abstraction Layer** | Latest | Stable | High | v1 | Planned |
-| **Intelligent Backend Selection** | Latest | Stable | High | v1 | Planned |
-| **AI Repair Framework** | Latest | Stable | High | v1 | Planned |
+| **Multi-Model Orchestration (Pipelines)** | Latest | Stable | High | v1 | Planned |
+| **Audio-First Architecture** | Latest | Stable | High | v1 | Planned |
+| **AI Workflow Engine** | Latest | Stable | High | v1 | Planned |
+| **Voice Intelligence Platform** | Latest | Stable | High | v1 | Planned |
+| **Backend Abstraction Layer** | Recent | Stable | High | v1 | Planned |
+| **Intelligent Backend Selection** | Recent | Stable | High | v1 | Planned |
+| **AI Repair Framework** | Recent | Stable | High | v1 | Planned |
 | **Attachment Lifecycle Manager** | Recent | Stable | High | v1 | Planned |
 | **AI Health Monitoring** | Recent | Stable | High | v1 | Planned |
 | **AI Provider Lifecycle** | Recent | Stable | High | v1 | Planned |
@@ -80,8 +88,11 @@ This document serves as the master engineering roadmap for AIRO, built by learni
 | **AI Workspace Settings** | Recent | Stable | High | v1 | Planned |
 | **Unified Search Architecture** | Recent | Stable | High | v1 | Planned |
 | **AI Command Center** | Recent | Experimental | High | v1 | Planned |
-| **Recommendation Engine (Hardware Rank)**| Latest | Stable | Medium | v2 | Planned |
-| **Low-End Device Strategy** | Latest | Stable | Medium | v2 | Planned |
+| **AI Engine Registry** | Latest | Stable | Medium | v2 | Planned |
+| **Runtime Feature Flags** | Latest | Stable | Medium | v2 | Planned |
+| **AI Plugin Framework** | Latest | Experimental | Medium | v2 | Planned |
+| **Recommendation Engine (Hardware Rank)**| Recent | Stable | Medium | v2 | Planned |
+| **Low-End Device Strategy** | Recent | Stable | Medium | v2 | Planned |
 | **Network Intelligence Layer** | Recent | Experimental | Medium | v2 | Planned |
 | **Robust Streaming Framework** | Recent | Stable | Medium | v2 | Planned |
 | **Model Source Abstraction** | Recent | Experimental | Medium | v2 | Planned |
