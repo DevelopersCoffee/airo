@@ -13,8 +13,28 @@ import '../../iptv/application/providers/iptv_providers.dart'
 final modelRegistryProvider = Provider<ModelRegistry>((ref) {
   final registry = ModelRegistry();
   registry.registerModels(ModelCatalog.bundledModels);
+  unawaited(
+    _hydrateDownloadedModels(registry, ref.read(modelDownloadServiceProvider)),
+  );
   return registry;
 });
+
+Future<void> _hydrateDownloadedModels(
+  ModelRegistry registry,
+  ModelDownloadService service,
+) async {
+  for (final model in ModelCatalog.bundledModels) {
+    final existingPath = await service.resolveExistingModelPath(
+      model.id,
+      model: model,
+    );
+    final trimmedPath = existingPath?.trim();
+    if (trimmedPath == null || trimmedPath.isEmpty) {
+      continue;
+    }
+    registry.markAsDownloaded(model.id, trimmedPath);
+  }
+}
 
 const String _selectedModelKey = 'selected_offline_model_id';
 
