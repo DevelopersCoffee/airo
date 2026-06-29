@@ -59,6 +59,7 @@ class ChatScreen extends ConsumerStatefulWidget {
     this.skillOrchestrator,
     this.enableAiInitialization = true,
     this.initialMessages,
+    this.initialDraft,
   });
 
   final AssistantRuntimeService? assistantRuntimeService;
@@ -66,6 +67,7 @@ class ChatScreen extends ConsumerStatefulWidget {
   final AgentSkillOrchestrator? skillOrchestrator;
   final bool enableAiInitialization;
   final List<ChatMessage>? initialMessages;
+  final String? initialDraft;
 
   @override
   ConsumerState<ChatScreen> createState() => _ChatScreenState();
@@ -100,7 +102,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   @override
   void initState() {
     super.initState();
-    _messageController = TextEditingController();
+    _messageController = TextEditingController(text: widget.initialDraft ?? '');
+    _moveComposerCursorToEnd();
     _assistantRuntime =
         widget.assistantRuntimeService ??
         AssistantRuntimeService(geminiNano: _geminiNano, liteRtLm: _liteRtLm);
@@ -241,6 +244,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     _localRuntimePreloader.abortPreload();
     _messageController.dispose();
     super.dispose();
+  }
+
+  void _moveComposerCursorToEnd() {
+    _messageController.selection = TextSelection.collapsed(
+      offset: _messageController.text.length,
+    );
   }
 
   @override

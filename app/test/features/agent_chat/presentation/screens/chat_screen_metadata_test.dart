@@ -162,11 +162,27 @@ void main() {
       expect(find.byKey(const Key('agent_chat_metadata_button')), findsNothing);
     },
   );
+
+  testWidgets('chat screen prefills the composer draft when provided', (
+    tester,
+  ) async {
+    await _pumpChatScreen(
+      tester,
+      initialMessages: [ChatMessage(text: 'Hello from Airo', isUser: false)],
+      initialDraft: 'Follow up on my reminder',
+    );
+
+    final input = tester.widget<TextField>(
+      find.byKey(const Key('agent_chat_input')),
+    );
+    expect(input.controller?.text, 'Follow up on my reminder');
+  });
 }
 
 Future<void> _pumpChatScreen(
   WidgetTester tester, {
   required List<ChatMessage> initialMessages,
+  String? initialDraft,
 }) async {
   tester.view.devicePixelRatio = 1.0;
   tester.view.physicalSize = const Size(1200, 1000);
@@ -190,6 +206,7 @@ Future<void> _pumpChatScreen(
         home: ChatScreen(
           enableAiInitialization: false,
           initialMessages: initialMessages,
+          initialDraft: initialDraft,
         ),
       ),
     ),

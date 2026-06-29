@@ -160,7 +160,9 @@ class AppRouter {
                   GoRoute(
                     path: 'chat',
                     name: 'mind_chat',
-                    builder: (context, state) => const ChatScreen(),
+                    builder: (context, state) => ChatScreen(
+                      initialDraft: state.uri.queryParameters['prefill'],
+                    ),
                   ),
                   GoRoute(
                     path: 'notifications',
