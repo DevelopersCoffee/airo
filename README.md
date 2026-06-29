@@ -2,10 +2,62 @@
 
 [![Download APK](https://img.shields.io/github/v/release/DevelopersCoffee/airo?label=Download%20APK&color=success)](https://github.com/DevelopersCoffee/airo/releases/latest/download/app-release.apk)
 [![GitHub Release](https://img.shields.io/github/v/release/DevelopersCoffee/airo)](https://github.com/DevelopersCoffee/airo/releases)
-[![License](https://img.shields.io/github/license/DevelopersCoffee/airo)](LICENSE)
 [![Flutter](https://img.shields.io/badge/Flutter-3.44.4+-blue.svg)](https://flutter.dev/)
 
-A Flutter-based super app combining AI-powered features and financial management tools.
+Airo is a local-first Flutter app exploring an on-device "LLM OS" direction:
+AI chat, media workflows, finance tooling, routines, and native mobile
+capabilities in one repo.
+
+This repository is meant to be understandable by contributors, not only end
+users downloading a release build.
+
+## Open Source Contributor Start
+
+- Contribution guide: [CONTRIBUTING.md](CONTRIBUTING.md)
+- Community standards: [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)
+- Agent workflow policy: [AGENTS.md](AGENTS.md)
+- User and operator docs: [docs/wiki/README.md](docs/wiki/README.md)
+- Scoped engineering tickets: [.github/issues](.github/issues)
+
+Why developers care:
+
+- The repo mixes Flutter UI, native Android/iOS integration, Riverpod state,
+  and deterministic repo policy around issues, contracts, and tests.
+- Airo is intentionally local-first, so on-device constraints and privacy
+  boundaries matter in real implementation work.
+- Many tasks are already decomposed into scoped tickets that can be landed
+  independently from fresh worktrees.
+
+Quick contributor bootstrap:
+
+```bash
+git fetch origin main
+git worktree add ../airo-my-task -b codex/my-task origin/main
+cd ../airo-my-task
+make setup
+make analyze
+make test
+```
+
+Before writing code, confirm the linked issue has a Critical Agent Gate and any
+required Feature Packet content. If it does not, add that policy context first.
+
+## Contribution Paths
+
+- Docs and onboarding: improve README, wiki pages, setup instructions, or
+  release/developer guidance.
+- Focused product work: pick a scoped issue with ownership and deterministic
+  verification already described.
+- Native/runtime fixes: keep the change narrow, report exact validation, and
+  avoid cross-boundary edits without the required contract.
+
+## Pull Request Expectations
+
+- Link the issue being addressed.
+- Start from the latest `origin/main` in a fresh branch or worktree.
+- Run the narrowest honest verification locally and report what was blocked.
+- Update docs/wiki when user-facing behavior changes.
+- Use the existing PR template and keep the branch scoped to one concern.
 
 ## 📥 Download
 
@@ -50,6 +102,19 @@ make run-chrome     # Chrome browser specifically
 make run-pixel9     # Optimized for Pixel 9
 make run-iphone13   # iPhone 13 Pro Max simulator
 ```
+
+## Contributor Workflow
+
+1. Choose an issue with clear scope.
+2. Create a fresh worktree from `origin/main`.
+3. Run `make setup`, then relevant verification such as `make analyze` and
+   `make test`.
+4. Follow [AGENTS.md](AGENTS.md) for Critical Agent Gate and cross-agent policy
+   requirements.
+5. Open a PR with summary, risks, verification, and docs impact.
+
+For the complete process, including docs-only contributions and maintainer
+expectations, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## 📱 Platform Support
 
