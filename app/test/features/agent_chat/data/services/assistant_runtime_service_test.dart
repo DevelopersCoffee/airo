@@ -266,6 +266,62 @@ void main() {
     });
 
     test(
+      'does not block LiteRT packages when only transient free RAM is low',
+      () async {
+        final package = OfflineModelInfo(
+          id: 'gemma-4-e2b-it-litertlm',
+          name: 'Gemma 4 E2B',
+          family: ModelFamily.gemma,
+          fileSizeBytes: 2 * 1024 * 1024 * 1024,
+          backendPreference: ModelBackendPreference.gpu,
+          provider: AIProvider.gemma,
+          capabilities: const [ModelCapability.chat],
+        );
+        var warmed = false;
+        final service = AssistantRuntimeService(
+          isLiteRtAvailable: () async => true,
+          warmupLiteRtModel: (_) async {
+            warmed = true;
+            return true;
+          },
+          loadDeviceInfo: () async => {
+            'manufacturer': 'Google',
+            'model': 'Pixel 9',
+            'platform': 'android',
+          },
+          checkModelCompatibility: (_) async => const ModelCompatibilityResult(
+            isCompatible: true,
+            memorySeverity: MemorySeverity.critical,
+            reason:
+                'This package fits the device budget, but only 885 MB is currently free. It needs 2.4 GB available to warm up cleanly.',
+            availableMemoryMB: 885,
+            requiredMemoryMB: 2458,
+          ),
+        );
+
+        final result = await service.prepareRuntime(
+          candidate: AssistantModelCandidate(
+            id: litertGemmaAssistantModelId,
+            name: 'Gemma mobile package',
+            runtime: 'LiteRT-LM local model',
+            description: 'Local package',
+            bestFor: const [AssistantTask.chat],
+            tags: const ['Local'],
+            privacyLabel: 'Prompt stays on device',
+            sizeLabel: package.fileSizeDisplay,
+            available: true,
+            actionLabel: 'Start',
+            local: true,
+            package: package,
+          ),
+        );
+
+        expect(result.status, AssistantRuntimePreparationStatus.ready);
+        expect(warmed, isTrue);
+      },
+    );
+
+    test(
       'prepares generic LiteRT runtime from a downloaded package when default runtime is unavailable',
       () async {
         final package = OfflineModelInfo(

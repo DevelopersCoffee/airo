@@ -99,14 +99,17 @@ class MemoryBudgetManager {
     }
 
     final budget = calculateBudget(memoryInfo);
+    final usagePercent = estimatedUsageBytes / budget;
 
-    // Check if model would exceed available memory
-    if (estimatedUsageBytes > memoryInfo.availableBytes) {
+    if (usagePercent > 1.0) {
       return MemorySeverity.blocked;
     }
 
-    // Check against budget thresholds
-    final usagePercent = estimatedUsageBytes / budget;
+    // Low transient free RAM should warn, not hard-block, when the device
+    // budget still fits the model.
+    if (estimatedUsageBytes > memoryInfo.availableBytes) {
+      return MemorySeverity.critical;
+    }
 
     if (usagePercent <= warningThresholdPercent) {
       return MemorySeverity.safe;

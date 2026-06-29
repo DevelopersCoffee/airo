@@ -391,6 +391,55 @@ void main() {
       expect(registry.getModel('test')?.isDownloaded, true);
       expect(registry.getModel('test')?.filePath, '/path/to/model.gguf');
     });
+
+    test(
+      'does not hard block when total budget fits but transient free RAM is low',
+      () async {
+        final registry = ModelRegistry(
+          loadMemoryInfo: () async =>
+              MemoryInfo.fromMegabytes(totalMB: 11848, availableMB: 885),
+        );
+        const model = OfflineModelInfo(
+          id: 'pixel-9-fit',
+          name: 'Gemma 4 E2B',
+          family: ModelFamily.gemma,
+          fileSizeBytes: 2 * 1024 * 1024 * 1024,
+        );
+
+        final result = await registry.checkCompatibility(model);
+
+        expect(result.isCompatible, isTrue);
+        expect(result.memorySeverity, MemorySeverity.critical);
+        expect(result.reason, contains('fits the device budget'));
+        expect(result.reason, contains('2.4 GB'));
+        registry.dispose();
+      },
+    );
+
+    test(
+      'blocks when the device memory budget is genuinely too small',
+      () async {
+        final registry = ModelRegistry(
+          loadMemoryInfo: () async =>
+              MemoryInfo.fromMegabytes(totalMB: 3072, availableMB: 2048),
+        );
+        const model = OfflineModelInfo(
+          id: 'too-large',
+          name: 'Gemma 4 E2B',
+          family: ModelFamily.gemma,
+          fileSizeBytes: 2 * 1024 * 1024 * 1024,
+        );
+
+        final result = await registry.checkCompatibility(model);
+
+        expect(result.isCompatible, isFalse);
+        expect(result.memorySeverity, MemorySeverity.blocked);
+        expect(result.reason, contains('device memory budget'));
+        expect(result.reason, contains('2.4 GB'));
+        expect(result.reason, isNot(contains(model.fileSizeDisplay)));
+        registry.dispose();
+      },
+    );
   });
 
   group('ModelCatalog', () {
