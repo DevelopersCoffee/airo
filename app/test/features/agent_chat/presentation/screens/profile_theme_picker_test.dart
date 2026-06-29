@@ -63,7 +63,9 @@ void main() {
     expect(subtitle.data, 'Cloud preferred');
     expect(find.text('512.0 MB used'), findsOneWidget);
 
-    await tester.ensureVisible(find.byKey(const Key('ai-auto-fallback-switch')));
+    await tester.ensureVisible(
+      find.byKey(const Key('ai-auto-fallback-switch')),
+    );
     await tester.tap(find.byKey(const Key('ai-auto-fallback-switch')));
     await tester.pumpAndSettle();
 

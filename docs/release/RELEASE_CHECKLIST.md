@@ -71,6 +71,15 @@ Pre-release verification checklist for Airo Super App releases.
 - [ ] iOS: Gestures work (swipe back)
 - [ ] Web: Browser navigation works
 
+### Google Cast V1
+
+- [ ] Android sender discovers and casts to Chromecast-enabled TV.
+- [ ] iOS sender shows local network permission and discovers the same receiver class.
+- [ ] Public HLS IPTV channel plays on receiver without TV app installation.
+- [ ] Unsupported header/auth streams fail without proxying.
+- [ ] No full IPTV URLs are present in debug logs, analytics logs, or bug-report logs.
+- [ ] AirPlay, browser receiver, local file casting, and multi-device UI are not visible in V1.
+
 ---
 
 ## 🔵 Rollback Criteria
@@ -133,4 +142,3 @@ Date: ____-__-__
 - [Build & Release Workflow](/.github/workflows/build-and-release.yml)
 - [Rollback Procedure](./ROLLBACK_PROCEDURE.md)
 - [Store Compliance](./STORE_COMPLIANCE.md)
-

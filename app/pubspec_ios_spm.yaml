@@ -88,6 +88,7 @@ dependencies:
   image_picker: 1.2.1
   google_mlkit_text_recognition: 0.15.1
   video_player: ^2.11.1
+  flutter_chrome_cast: ^1.4.6
   wakelock_plus: 1.5.2
   package_info_plus: 9.0.1
   screenshot: 3.0.0
@@ -116,6 +117,8 @@ dev_dependencies:
   riverpod_lint: 2.3.10
 
 dependency_overrides:
+  rxdart: ^0.28.0
+
   audio_service:
     path: ../packages/stubs/audio_service_stub
   just_audio:

@@ -386,6 +386,30 @@ Platform-specific acceptance test cases for the unified Music + TV Streaming sur
 
 ---
 
+## 12. Google Cast V1 Tests
+
+### [CP-CAST-001] Cast Device Discovery
+**Given:** A Chromecast-enabled TV is on the same Wi-Fi  
+**When:** User opens Stream, starts a channel, and taps Cast  
+**Then:** The TV appears in a single-select device picker
+
+### [CP-CAST-002] Single Receiver Playback
+**Given:** A public HLS IPTV channel is selected  
+**When:** User selects one Cast receiver  
+**Then:** The receiver fetches the stream URL directly and starts playback
+
+### [CP-CAST-003] Replace Active Session
+**Given:** User is casting to one receiver  
+**When:** User starts casting to another receiver  
+**Then:** The first session stops or disconnects before the second session starts
+
+### [CP-CAST-004] Unsupported Header Stream
+**Given:** An IPTV channel requires custom headers  
+**When:** User attempts to cast it  
+**Then:** Airo shows an unsupported-stream message and does not start a proxy
+
+---
+
 ## Test Execution Matrix
 
 | Test ID | Web | Android | iOS |
@@ -401,4 +425,3 @@ Platform-specific acceptance test cases for the unified Music + TV Streaming sur
 | WEB-* | ✓ | - | - |
 | AND-* | - | ✓ | - |
 | IOS-* | - | - | ✓ |
-

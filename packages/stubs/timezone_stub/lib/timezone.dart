@@ -25,7 +25,7 @@ class TimeZone {
     required this.abbreviation,
   });
 
-  final int offset;
+  final Duration offset;
   final bool isDst;
   final String abbreviation;
 }

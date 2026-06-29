@@ -11,6 +11,8 @@ import '../../domain/services/channel_data_service.dart';
 import '../../domain/services/iptv_streaming_service.dart';
 import '../../domain/services/video_player_streaming_service.dart';
 
+export 'iptv_cast_providers.dart';
+
 /// Shared preferences provider
 final sharedPreferencesProvider = Provider<SharedPreferences>((ref) {
   throw UnimplementedError(

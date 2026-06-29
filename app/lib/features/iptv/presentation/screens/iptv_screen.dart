@@ -4,7 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../application/providers/iptv_providers.dart';
 import '../../domain/models/iptv_channel.dart';
 import '../../domain/models/streaming_state.dart';
+import '../widgets/cast_device_picker_sheet.dart';
 import '../widgets/channel_list_widget.dart';
+import '../widgets/iptv_cast_mini_controller.dart';
 import '../widgets/iptv_mini_player.dart';
 import '../widgets/video_player_widget.dart';
 
@@ -52,6 +54,21 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen> {
   }
 
   void _playChannel(IPTVChannel channel) {
+    final castState = ref.read(iptvCastProvider);
+    if (castState.activeDevice != null) {
+      ref
+          .read(iptvCastProvider.notifier)
+          .castChannelToActiveDevice(
+            channel: channel,
+            selectedQuality: ref
+                .read(iptvStreamingServiceProvider)
+                .currentState
+                .selectedQuality,
+          );
+      ref.read(addToRecentlyWatchedProvider(channel));
+      return;
+    }
+
     ref.read(iptvStreamingServiceProvider).playChannel(channel);
     // Track recently watched for easy access
     ref.read(addToRecentlyWatchedProvider(channel));
@@ -135,11 +152,27 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen> {
     );
   }
 
-  void _showCastMessage() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Cast controls are being prepared for the Stream tab.'),
-      ),
+  Future<void> _showCastSheet() async {
+    final streamingService = ref.read(iptvStreamingServiceProvider);
+    final channel = streamingService.currentState.currentChannel;
+    if (channel == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Choose a channel before casting.')),
+      );
+      return;
+    }
+
+    await showIptvCastDevicePicker(
+      context: context,
+      onDeviceSelected: (device) {
+        ref
+            .read(iptvCastProvider.notifier)
+            .castChannelToDevice(
+              channel: channel,
+              device: device,
+              selectedQuality: streamingService.currentState.selectedQuality,
+            );
+      },
     );
   }
 
@@ -169,13 +202,20 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen> {
           IconButton(
             icon: const Icon(Icons.cast_connected),
             tooltip: 'Cast',
-            onPressed: _showCastMessage,
+            onPressed: _showCastSheet,
           ),
         ],
       ),
-      body: _StreamTabContent(
-        onChannelTap: _playChannel,
-        onFullscreenToggle: _toggleFullscreen,
+      body: Column(
+        children: [
+          Expanded(
+            child: _StreamTabContent(
+              onChannelTap: _playChannel,
+              onFullscreenToggle: _toggleFullscreen,
+            ),
+          ),
+          const IptvCastMiniController(),
+        ],
       ),
     );
   }
@@ -225,6 +265,20 @@ class _IPTVScreenBodyState extends ConsumerState<IPTVScreenBody> {
   }
 
   void _playChannel(IPTVChannel channel) {
+    final castState = ref.read(iptvCastProvider);
+    if (castState.activeDevice != null) {
+      ref
+          .read(iptvCastProvider.notifier)
+          .castChannelToActiveDevice(
+            channel: channel,
+            selectedQuality: ref
+                .read(iptvStreamingServiceProvider)
+                .currentState
+                .selectedQuality,
+          );
+      return;
+    }
+
     ref.read(iptvStreamingServiceProvider).playChannel(channel);
   }
 
@@ -251,9 +305,16 @@ class _IPTVScreenBodyState extends ConsumerState<IPTVScreenBody> {
             )
           : KeyedSubtree(
               key: const ValueKey('normal'),
-              child: _StreamTabContent(
-                onChannelTap: _playChannel,
-                onFullscreenToggle: _toggleFullscreen,
+              child: Column(
+                children: [
+                  Expanded(
+                    child: _StreamTabContent(
+                      onChannelTap: _playChannel,
+                      onFullscreenToggle: _toggleFullscreen,
+                    ),
+                  ),
+                  const IptvCastMiniController(),
+                ],
               ),
             ),
     );

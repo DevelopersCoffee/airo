@@ -345,88 +345,90 @@ class _ChannelListTile extends ConsumerWidget {
     return Material(
       type: MaterialType.transparency,
       child: ListTile(
-      leading: ClipRRect(
-        borderRadius: BorderRadius.circular(6),
-        child: Container(
-          width: 48,
-          height: 48,
-          color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.42),
-          child: channel.hasLogo
-              ? Image.network(
-                  channel.logoUrl!,
-                  fit: BoxFit.cover,
-                  loadingBuilder: (_, child, loadingProgress) {
-                    if (loadingProgress == null) return child;
-                    return Center(
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        value: loadingProgress.expectedTotalBytes != null
-                            ? loadingProgress.cumulativeBytesLoaded /
-                                  loadingProgress.expectedTotalBytes!
-                            : null,
-                      ),
-                    );
-                  },
-                  errorBuilder: (_, _, _) => _buildDefaultIcon(),
-                )
-              : _buildDefaultIcon(),
+        leading: ClipRRect(
+          borderRadius: BorderRadius.circular(6),
+          child: Container(
+            width: 48,
+            height: 48,
+            color: Theme.of(
+              context,
+            ).colorScheme.surface.withValues(alpha: 0.42),
+            child: channel.hasLogo
+                ? Image.network(
+                    channel.logoUrl!,
+                    fit: BoxFit.cover,
+                    loadingBuilder: (_, child, loadingProgress) {
+                      if (loadingProgress == null) return child;
+                      return Center(
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          value: loadingProgress.expectedTotalBytes != null
+                              ? loadingProgress.cumulativeBytesLoaded /
+                                    loadingProgress.expectedTotalBytes!
+                              : null,
+                        ),
+                      );
+                    },
+                    errorBuilder: (_, _, _) => _buildDefaultIcon(),
+                  )
+                : _buildDefaultIcon(),
+          ),
         ),
-      ),
-      title: Text(
-        channel.name,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: TextStyle(
-          fontWeight: isPlaying ? FontWeight.bold : FontWeight.normal,
-          color: isPlaying ? Theme.of(context).primaryColor : null,
+        title: Text(
+          channel.name,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            fontWeight: isPlaying ? FontWeight.bold : FontWeight.normal,
+            color: isPlaying ? Theme.of(context).primaryColor : null,
+          ),
         ),
-      ),
-      subtitle: Row(
-        children: [
-          // Audio-only label for clarity (UX improvement)
-          if (channel.isAudioOnly)
-            Container(
-              margin: const EdgeInsets.only(right: 6),
-              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-              decoration: BoxDecoration(
-                color: Colors.orange.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: const Text(
-                'Audio',
-                style: TextStyle(
-                  fontSize: 10,
-                  color: Colors.orange,
-                  fontWeight: FontWeight.w500,
+        subtitle: Row(
+          children: [
+            // Audio-only label for clarity (UX improvement)
+            if (channel.isAudioOnly)
+              Container(
+                margin: const EdgeInsets.only(right: 6),
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: const Text(
+                  'Audio',
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: Colors.orange,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ),
+            Expanded(
+              child: Text(
+                channel.group,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+              ),
             ),
-          Expanded(
-            child: Text(
-              channel.group,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-            ),
-          ),
-        ],
+          ],
+        ),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (!channel.isAudioOnly) const _LiveStatusPill(),
+            if (!channel.isAudioOnly) const SizedBox(width: 8),
+            // Playing indicator with animation
+            if (isPlaying)
+              Icon(
+                Icons.equalizer,
+                size: 18,
+                color: Theme.of(context).primaryColor,
+              ),
+          ],
+        ),
+        onTap: onTap,
       ),
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (!channel.isAudioOnly) const _LiveStatusPill(),
-          if (!channel.isAudioOnly) const SizedBox(width: 8),
-          // Playing indicator with animation
-          if (isPlaying)
-            Icon(
-              Icons.equalizer,
-              size: 18,
-              color: Theme.of(context).primaryColor,
-            ),
-        ],
-      ),
-      onTap: onTap,
-    ),
     );
   }
 
