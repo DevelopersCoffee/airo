@@ -15,6 +15,7 @@ final modelFiltersProvider = StateProvider<ModelFilters>((ref) {
 final filteredModelsProvider = FutureProvider<List<OfflineModelInfo>>((
   ref,
 ) async {
+  ref.watch(modelRegistryRevisionProvider);
   final registry = ref.watch(modelRegistryProvider);
   final filters = ref.watch(modelFiltersProvider);
   final matchingModels = registry.queryModels(
@@ -42,6 +43,7 @@ final filteredModelsProvider = FutureProvider<List<OfflineModelInfo>>((
 final downloadedModelsProvider = FutureProvider<List<OfflineModelInfo>>((
   ref,
 ) async {
+  ref.watch(modelRegistryRevisionProvider);
   final registry = ref.watch(modelRegistryProvider);
   final filters = ref.watch(modelFiltersProvider);
   final matchingModels = registry.queryModels(
@@ -352,6 +354,8 @@ class _AIModelsScreenState extends ConsumerState<AIModelsScreen>
           // Update the registry to mark as removed
           final registry = ref.read(modelRegistryProvider);
           registry.markAsRemoved(model.id);
+          ref.invalidate(filteredModelsProvider);
+          ref.invalidate(downloadedModelsProvider);
           await clearOfflineModelSelections(ref, model);
 
           if (mounted) {

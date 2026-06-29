@@ -246,7 +246,36 @@ class ModelRegistry {
   void markAsRemoved(String modelId) {
     final model = _models[modelId];
     if (model != null) {
-      final updated = model.copyWith(filePath: null);
+      final updated = OfflineModelInfo(
+        id: model.id,
+        name: model.name,
+        family: model.family,
+        fileSizeBytes: model.fileSizeBytes,
+        filePath: null,
+        downloadUrl: model.downloadUrl,
+        quantization: model.quantization,
+        parameterCount: model.parameterCount,
+        contextLength: model.contextLength,
+        supportsVision: model.supportsVision,
+        supportsFunctionCalling: model.supportsFunctionCalling,
+        modalities: model.modalities,
+        capabilities: model.capabilities,
+        backendPreference: model.backendPreference,
+        licenseState: model.licenseState,
+        languages: model.languages,
+        credibility: model.credibility,
+        provider: model.provider,
+        description: model.description,
+        version: model.version,
+        author: model.author,
+        license: model.license,
+        learnMoreUrl: model.learnMoreUrl,
+        huggingFaceId: model.huggingFaceId,
+        sha256: model.sha256,
+        tags: model.tags,
+        minMemoryBytes: model.minMemoryBytes,
+        recommendedMemoryBytes: model.recommendedMemoryBytes,
+      );
       _models[modelId] = updated;
       _changeController.add(ModelRegistryEvent.updated(updated));
     }

@@ -391,6 +391,24 @@ void main() {
       expect(registry.getModel('test')?.isDownloaded, true);
       expect(registry.getModel('test')?.filePath, '/path/to/model.gguf');
     });
+
+    test('should clear download state when model is removed', () {
+      const model = OfflineModelInfo(
+        id: 'test',
+        name: 'Test',
+        family: ModelFamily.gemma,
+        fileSizeBytes: 1000000000,
+        filePath: '/path/to/model.gguf',
+      );
+
+      registry.registerModel(model);
+      expect(registry.getModel('test')?.isDownloaded, true);
+
+      registry.markAsRemoved('test');
+
+      expect(registry.getModel('test')?.isDownloaded, false);
+      expect(registry.getModel('test')?.filePath, isNull);
+    });
   });
 
   group('ModelCatalog', () {

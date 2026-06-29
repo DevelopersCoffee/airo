@@ -16,6 +16,27 @@ final modelRegistryProvider = Provider<ModelRegistry>((ref) {
   return registry;
 });
 
+final modelRegistryRevisionProvider = StreamProvider<int>((ref) {
+  final registry = ref.watch(modelRegistryProvider);
+  var revision = 0;
+  final controller = StreamController<int>();
+  controller.add(revision);
+
+  final subscription = registry.changes.listen((_) {
+    revision += 1;
+    if (!controller.isClosed) {
+      controller.add(revision);
+    }
+  });
+
+  ref.onDispose(() async {
+    await subscription.cancel();
+    await controller.close();
+  });
+
+  return controller.stream;
+});
+
 const String _selectedModelKey = 'selected_offline_model_id';
 
 final selectedModelIdProvider =
@@ -146,7 +167,14 @@ Future<void> clearOfflineModelSelections(
     await ref.read(selectedModelIdProvider.notifier).setSelectedModel(null);
   }
   final assistantModelId = assistantModelIdForOfflineModel(model.id);
-  if (ref.read(selectedAssistantModelIdProvider) == assistantModelId) {
+  final selectedAssistantModelId = ref.read(selectedAssistantModelIdProvider);
+  if (selectedAssistantModelId == assistantModelId) {
+    await ref.read(selectedAssistantModelIdProvider.notifier).select(null);
+    return;
+  }
+
+  final prefs = await SharedPreferences.getInstance();
+  if (prefs.getString(selectedAssistantModelKey) == assistantModelId) {
     await ref.read(selectedAssistantModelIdProvider.notifier).select(null);
   }
 }
