@@ -13,6 +13,8 @@ import '../../../../shared/widgets/responsive_center.dart';
 class GamesHubScreen extends ConsumerWidget {
   const GamesHubScreen({super.key});
 
+  static const int _sectionPreviewLimit = 4;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final sections = [
@@ -58,6 +60,9 @@ class GamesHubScreen extends ConsumerWidget {
 
               // Game categories in grid
               ...sections.map((section) {
+                final previewGames = section.games.length > _sectionPreviewLimit
+                    ? section.games.take(_sectionPreviewLimit).toList()
+                    : section.games;
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -71,11 +76,13 @@ class GamesHubScreen extends ConsumerWidget {
                           style: Theme.of(context).textTheme.titleLarge,
                         ),
                         const Spacer(),
-                        if (section.games.length > 4)
+                        if (section.games.length > _sectionPreviewLimit)
                           TextButton(
-                            onPressed: () {
-                              // TODO: View all in category
-                            },
+                            key: ValueKey(
+                              'games_view_all_${_sectionKey(section.title)}',
+                            ),
+                            onPressed: () =>
+                                _showSectionSheet(context, ref, section),
                             child: const Text('View All'),
                           ),
                       ],
@@ -101,12 +108,12 @@ class GamesHubScreen extends ConsumerWidget {
                                 mainAxisSpacing: 12,
                                 childAspectRatio: columns <= 2 ? 0.92 : 1.12,
                               ),
-                          itemCount: section.games.length,
+                          itemCount: previewGames.length,
                           itemBuilder: (context, index) {
                             return _buildGameTile(
                               context,
                               ref,
-                              section.games[index],
+                              previewGames[index],
                             );
                           },
                         );
@@ -370,6 +377,103 @@ class GamesHubScreen extends ConsumerWidget {
       ),
     );
   }
+
+  void _showSectionSheet(
+    BuildContext context,
+    WidgetRef ref,
+    _GameSection section,
+  ) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (sheetContext) {
+        final theme = Theme.of(sheetContext);
+        return FractionallySizedBox(
+          heightFactor: 0.9,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.outlineVariant,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Icon(section.icon, size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        section.title,
+                        style: theme.textTheme.titleLarge,
+                      ),
+                    ),
+                    Text(
+                      '${section.games.length} games',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Choose a game without leaving the Arena hub.',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Expanded(
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final columns = ResponsiveBreakpoints.getGridColumns(
+                        constraints.maxWidth,
+                        mobile: 2,
+                        tablet: 3,
+                        desktop: 4,
+                      );
+                      return GridView.builder(
+                        key: ValueKey(
+                          'games_section_sheet_${_sectionKey(section.title)}',
+                        ),
+                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: columns,
+                          crossAxisSpacing: 12,
+                          mainAxisSpacing: 12,
+                          childAspectRatio: columns <= 2 ? 0.92 : 1.12,
+                        ),
+                        itemCount: section.games.length,
+                        itemBuilder: (context, index) {
+                          return _buildGameTile(
+                            context,
+                            ref,
+                            section.games[index],
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  String _sectionKey(String title) =>
+      title.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '_');
 }
 
 class _GameSection {

@@ -44,14 +44,29 @@ void main() {
   }
 
   group('MoneyOverviewScreen', () {
-    testWidgets('shows Hermes-style Coins hero without command actions', (
+    testWidgets('shows a compact Coins hero without command actions', (
       tester,
     ) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
       await tester.pumpWidget(buildScreen());
       await tester.pump();
 
       expect(find.text('OPEN FINANCE • AIRO COINS'), findsOneWidget);
-      expect(find.text('THE MONEY THAT\nWORKS WITH YOU.'), findsOneWidget);
+      expect(find.textContaining('Money that works with you'), findsOneWidget);
+      expect(
+        find.text('Accounts, ledger, and budgets stay in one place.'),
+        findsOneWidget,
+      );
+      expect(find.text('Available balance'), findsOneWidget);
+      expect(find.text('\$1250.00'), findsOneWidget);
+      expect(find.text('ACCOUNTS'), findsWidgets);
+      expect(find.text('LEDGER'), findsWidgets);
+      expect(find.text('BUDGETS'), findsWidgets);
+      expect(find.text('THE MONEY THAT\nWORKS WITH YOU.'), findsNothing);
       expect(find.text('1.  CREATE'), findsNothing);
       expect(find.text('2.  REVIEW'), findsNothing);
       expect(
