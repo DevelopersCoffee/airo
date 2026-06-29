@@ -476,28 +476,38 @@ class AssistantRuntimeService {
       case litertGemmaAssistantModelId:
         final package = await _resolveDownloadedLiteRtPackage(runtimeId);
         if (package != null) {
+          final packageText = await _generateLiteRtPackageText(
+            package,
+            prompt,
+            systemPrompt: systemPrompt,
+          );
+          if (packageText != null) {
+            return packageText;
+          }
+        }
+        final installedText = await _generateInstalledLiteRtText(
+          prompt,
+          systemPrompt: systemPrompt,
+        );
+        if (installedText != null) {
+          return installedText;
+        }
+        final fallbackPackage = await _resolveFallbackLiteRtPackage(
+          excludingRuntimeId: runtimeId,
+        );
+        if (fallbackPackage != null) {
           return _nonEmptyOrUnavailable(
             runtimeId,
-            await (_generateLiteRtModelTextOverride?.call(
-                  package,
-                  prompt,
-                  systemPrompt: systemPrompt,
-                ) ??
-                _liteRtLm.generateTextForModel(
-                  package,
-                  prompt,
-                  systemPrompt: systemPrompt,
-                )),
+            await _generateLiteRtPackageText(
+              fallbackPackage,
+              prompt,
+              systemPrompt: systemPrompt,
+            ),
             litertGemmaUnavailableMessage,
           );
         }
-        return _nonEmptyOrUnavailable(
+        throw AssistantRuntimeUnavailableException(
           runtimeId,
-          await (_generateLiteRtTextOverride?.call(
-                prompt,
-                systemPrompt: systemPrompt,
-              ) ??
-              _liteRtLm.generateText(prompt, systemPrompt: systemPrompt)),
           litertGemmaUnavailableMessage,
         );
 
@@ -526,19 +536,39 @@ class AssistantRuntimeService {
             unsupportedAssistantRuntimeMessage,
           );
         }
-        final package = await _resolveOfflinePackage(runtimeId);
-        return _nonEmptyOrUnavailable(
+        final selectedPackage = await _resolveOfflinePackageOrNull(runtimeId);
+        if (selectedPackage != null && selectedPackage.isDownloaded) {
+          final packageText = await _generateLiteRtPackageText(
+            selectedPackage,
+            prompt,
+            systemPrompt: systemPrompt,
+          );
+          if (packageText != null) {
+            return packageText;
+          }
+        }
+        final fallbackPackage = await _resolveFallbackLiteRtPackage(
+          excludingRuntimeId: runtimeId,
+        );
+        if (fallbackPackage != null) {
+          return _nonEmptyOrUnavailable(
+            runtimeId,
+            await _generateLiteRtPackageText(
+              fallbackPackage,
+              prompt,
+              systemPrompt: systemPrompt,
+            ),
+            offlinePackageUnavailableMessage,
+          );
+        }
+        if (selectedPackage == null) {
+          throw AssistantRuntimeUnavailableException(
+            runtimeId,
+            offlinePackageCatalogMissingMessage,
+          );
+        }
+        throw AssistantRuntimeUnavailableException(
           runtimeId,
-          await (_generateLiteRtModelTextOverride?.call(
-                package,
-                prompt,
-                systemPrompt: systemPrompt,
-              ) ??
-              _liteRtLm.generateTextForModel(
-                package,
-                prompt,
-                systemPrompt: systemPrompt,
-              )),
           offlinePackageUnavailableMessage,
         );
     }
@@ -630,17 +660,6 @@ class AssistantRuntimeService {
     return trimmed;
   }
 
-  Future<OfflineModelInfo> _resolveOfflinePackage(String runtimeId) async {
-    final package = await _resolveOfflinePackageOrNull(runtimeId);
-    if (package == null) {
-      throw AssistantRuntimeUnavailableException(
-        runtimeId,
-        offlinePackageCatalogMissingMessage,
-      );
-    }
-    return package;
-  }
-
   Future<ModelCompatibilityResult> _checkCompatibility(
     OfflineModelInfo package,
   ) async {
@@ -662,6 +681,73 @@ class AssistantRuntimeService {
       return null;
     }
     return package;
+  }
+
+  Future<String?> _generateLiteRtPackageText(
+    OfflineModelInfo package,
+    String prompt, {
+    String? systemPrompt,
+  }) {
+    return _generateLiteRtModelTextOverride?.call(
+          package,
+          prompt,
+          systemPrompt: systemPrompt,
+        ) ??
+        _liteRtLm.generateTextForModel(
+          package,
+          prompt,
+          systemPrompt: systemPrompt,
+        );
+  }
+
+  Future<String?> _generateInstalledLiteRtText(
+    String prompt, {
+    String? systemPrompt,
+  }) {
+    return _generateLiteRtTextOverride?.call(
+          prompt,
+          systemPrompt: systemPrompt,
+        ) ??
+        _liteRtLm.generateText(prompt, systemPrompt: systemPrompt);
+  }
+
+  Future<OfflineModelInfo?> _resolveFallbackLiteRtPackage({
+    String? excludingRuntimeId,
+  }) async {
+    try {
+      final library =
+          await (_loadAssistantModelLibraryOverride?.call() ??
+              AssistantModelLibraryState.load(task: AssistantTask.chat));
+
+      final fallbackCandidates = <OfflineModelInfo>[];
+
+      void addCandidate(OfflineModelInfo? package, {String? runtimeId}) {
+        if (package == null || !package.isDownloaded) {
+          return;
+        }
+        final candidateRuntimeId = assistantModelIdForOfflineModel(package.id);
+        if (runtimeId == excludingRuntimeId ||
+            candidateRuntimeId == excludingRuntimeId) {
+          return;
+        }
+        if (fallbackCandidates.any((candidate) => candidate.id == package.id)) {
+          return;
+        }
+        fallbackCandidates.add(package);
+      }
+
+      addCandidate(library.candidateById(litertGemmaAssistantModelId)?.package);
+      for (final package in library.defaultPackages.values) {
+        addCandidate(package);
+      }
+      for (final candidate in library.candidates) {
+        addCandidate(candidate.package, runtimeId: candidate.id);
+      }
+
+      return fallbackCandidates.isEmpty ? null : fallbackCandidates.first;
+    } catch (_) {
+      return null;
+    }
   }
 
   Future<OfflineModelInfo?> _resolveOfflinePackageOrNull(
