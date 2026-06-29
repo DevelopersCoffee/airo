@@ -69,6 +69,10 @@ void main() {
             timeToFirstTokenMs: 350,
             recordedAt: DateTime(2026, 6, 28, 10, 0),
             modelId: geminiNanoAssistantModelId,
+            systemPromptPreview:
+                'You are Airo, the assistant inside the Airo app.',
+            promptPreview: 'hello',
+            responsePreview: 'Hello from Airo',
           ),
         ),
       ],
@@ -91,6 +95,13 @@ void main() {
     expect(find.text('Time to first token'), findsOneWidget);
     expect(find.text('Prompt tokens'), findsOneWidget);
     expect(find.text('Completion tokens'), findsOneWidget);
+    expect(find.text('System context'), findsOneWidget);
+    expect(
+      find.text('You are Airo, the assistant inside the Airo app.'),
+      findsOneWidget,
+    );
+    expect(find.text('Prompt preview'), findsOneWidget);
+    expect(find.text('Response preview'), findsOneWidget);
   });
 
   testWidgets('agent skill responses show tool count and action timings', (

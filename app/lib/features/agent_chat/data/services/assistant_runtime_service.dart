@@ -1,6 +1,7 @@
 import '../../../../core/services/gemini_api_service.dart';
 import '../../../../core/services/gemini_nano_service.dart';
 import '../../../../core/services/litert_lm_service.dart';
+import 'package:flutter/foundation.dart';
 import '../../presentation/screens/model_library_screen.dart';
 import '../../domain/models/assistant_runtime_ids.dart';
 import 'package:core_ai/core_ai.dart';
@@ -27,6 +28,29 @@ typedef LiteRtModelWarmup = Future<bool> Function(OfflineModelInfo model);
 typedef DeviceInfoLoader = Future<Map<String, dynamic>> Function();
 typedef ModelCompatibilityCheck =
     Future<ModelCompatibilityResult> Function(OfflineModelInfo model);
+typedef RuntimeDebugTraceEmitter =
+    void Function(AssistantRuntimeDebugTrace trace);
+
+@immutable
+class AssistantRuntimeDebugTrace {
+  const AssistantRuntimeDebugTrace({
+    required this.runtimeId,
+    required this.stage,
+    required this.recordedAt,
+    this.systemPromptPreview,
+    this.promptPreview,
+    this.responsePreview,
+    this.detail,
+  });
+
+  final String runtimeId;
+  final String stage;
+  final DateTime recordedAt;
+  final String? systemPromptPreview;
+  final String? promptPreview;
+  final String? responsePreview;
+  final String? detail;
+}
 
 enum AssistantRuntimePreparationPhase {
   validate,
@@ -179,6 +203,7 @@ class AssistantRuntimeService {
     DeviceInfoLoader? loadDeviceInfo,
     ModelCompatibilityCheck? checkModelCompatibility,
     Future<AssistantModelLibraryState> Function()? loadAssistantModelLibrary,
+    this._debugTraceEmitter,
   }) : _geminiNano = geminiNano ?? GeminiNanoService(),
        _liteRtLm = liteRtLm ?? LiteRtLmService(),
        _geminiCloud = geminiCloud ?? geminiApiService,
@@ -219,6 +244,7 @@ class AssistantRuntimeService {
   final ModelCompatibilityCheck? _checkModelCompatibilityOverride;
   final Future<AssistantModelLibraryState> Function()?
   _loadAssistantModelLibraryOverride;
+  final RuntimeDebugTraceEmitter? _debugTraceEmitter;
 
   Future<AssistantRuntimePreparationResult> prepareRuntime({
     required AssistantModelCandidate candidate,
@@ -485,21 +511,33 @@ class AssistantRuntimeService {
   }) async {
     final runtimeId = _requireSelectedRuntime(selectedModelId);
     final fullPrompt = _withSystemPrompt(prompt, systemPrompt);
+    _emitDebugTrace(
+      AssistantRuntimeDebugTrace(
+        runtimeId: runtimeId,
+        stage: 'request',
+        recordedAt: DateTime.now(),
+        systemPromptPreview: _previewText(systemPrompt),
+        promptPreview: _previewText(prompt),
+        detail: 'generateText',
+      ),
+    );
 
     switch (runtimeId) {
       case geminiNanoAssistantModelId:
         await _ensureGeminiNanoReady();
-        return _nonEmptyOrUnavailable(
+        final response = _nonEmptyOrUnavailable(
           runtimeId,
           await (_generateGeminiNanoTextOverride?.call(fullPrompt) ??
               _geminiNano.generateContentStrict(fullPrompt)),
           geminiNanoInitializationFailedMessage,
         );
+        _emitResponseTrace(runtimeId, response, detail: 'generateText');
+        return response;
 
       case litertGemmaAssistantModelId:
         final package = await _resolveDownloadedLiteRtPackage(runtimeId);
         if (package != null) {
-          return _nonEmptyOrUnavailable(
+          final response = _nonEmptyOrUnavailable(
             runtimeId,
             await (_generateLiteRtModelTextOverride?.call(
                   package,
@@ -513,8 +551,10 @@ class AssistantRuntimeService {
                 )),
             litertGemmaUnavailableMessage,
           );
+          _emitResponseTrace(runtimeId, response, detail: package.id);
+          return response;
         }
-        return _nonEmptyOrUnavailable(
+        final response = _nonEmptyOrUnavailable(
           runtimeId,
           await (_generateLiteRtTextOverride?.call(
                 prompt,
@@ -523,6 +563,8 @@ class AssistantRuntimeService {
               _liteRtLm.generateText(prompt, systemPrompt: systemPrompt)),
           litertGemmaUnavailableMessage,
         );
+        _emitResponseTrace(runtimeId, response, detail: 'default-litert');
+        return response;
 
       case geminiCloudAssistantModelId:
         await (_initializeCloudOverride?.call() ?? _geminiCloud.initialize());
@@ -534,12 +576,14 @@ class AssistantRuntimeService {
             geminiCloudUnavailableMessage,
           );
         }
-        return _nonEmptyOrUnavailable(
+        final response = _nonEmptyOrUnavailable(
           runtimeId,
           await (_generateCloudTextOverride?.call(fullPrompt) ??
               _geminiCloud.generateText(fullPrompt)),
           geminiCloudEmptyResponseMessage,
         );
+        _emitResponseTrace(runtimeId, response, detail: 'generateText');
+        return response;
 
       default:
         final offlineModelId = offlineModelIdFromAssistantModelId(runtimeId);
@@ -550,7 +594,7 @@ class AssistantRuntimeService {
           );
         }
         final package = await _resolveOfflinePackage(runtimeId);
-        return _nonEmptyOrUnavailable(
+        final response = _nonEmptyOrUnavailable(
           runtimeId,
           await (_generateLiteRtModelTextOverride?.call(
                 package,
@@ -564,28 +608,51 @@ class AssistantRuntimeService {
               )),
           offlinePackageUnavailableMessage,
         );
+        _emitResponseTrace(runtimeId, response, detail: package.id);
+        return response;
     }
   }
 
   Stream<String> generateTextStream({
     required String? selectedModelId,
     required String prompt,
+    String? systemPrompt,
   }) async* {
     final runtimeId = _requireSelectedRuntime(selectedModelId);
 
     if (runtimeId != geminiNanoAssistantModelId) {
-      yield await generateText(selectedModelId: runtimeId, prompt: prompt);
+      yield await generateText(
+        selectedModelId: runtimeId,
+        prompt: prompt,
+        systemPrompt: systemPrompt,
+      );
       return;
     }
+
+    _emitDebugTrace(
+      AssistantRuntimeDebugTrace(
+        runtimeId: runtimeId,
+        stage: 'request',
+        recordedAt: DateTime.now(),
+        systemPromptPreview: _previewText(systemPrompt),
+        promptPreview: _previewText(prompt),
+        detail: 'generateTextStream',
+      ),
+    );
 
     await _ensureGeminiNanoReady();
     var yielded = false;
     final stream =
-        _generateGeminiNanoStreamOverride?.call(prompt) ??
-        _geminiNano.generateContentStreamStrict(prompt);
+        _generateGeminiNanoStreamOverride?.call(
+          _withSystemPrompt(prompt, systemPrompt),
+        ) ??
+        _geminiNano.generateContentStreamStrict(
+          _withSystemPrompt(prompt, systemPrompt),
+        );
     await for (final chunk in stream) {
       if (chunk.trim().isEmpty) continue;
       yielded = true;
+      _emitResponseTrace(runtimeId, chunk, detail: 'stream-chunk');
       yield chunk;
     }
     if (!yielded) {
@@ -698,6 +765,44 @@ class AssistantRuntimeService {
     } catch (_) {
       return null;
     }
+  }
+
+  void _emitResponseTrace(String runtimeId, String response, {String? detail}) {
+    _emitDebugTrace(
+      AssistantRuntimeDebugTrace(
+        runtimeId: runtimeId,
+        stage: 'response',
+        recordedAt: DateTime.now(),
+        responsePreview: _previewText(response),
+        detail: detail,
+      ),
+    );
+  }
+
+  void _emitDebugTrace(AssistantRuntimeDebugTrace trace) {
+    _debugTraceEmitter?.call(trace);
+    if (!kDebugMode) {
+      return;
+    }
+    debugPrint(
+      '[AssistantRuntimeTrace] runtime=${trace.runtimeId} '
+      'stage=${trace.stage} detail=${trace.detail ?? '-'} '
+      'system=${trace.systemPromptPreview ?? '-'} '
+      'prompt=${trace.promptPreview ?? '-'} '
+      'response=${trace.responsePreview ?? '-'}',
+    );
+  }
+
+  String? _previewText(String? value) {
+    final trimmed = value?.trim();
+    if (trimmed == null || trimmed.isEmpty) {
+      return null;
+    }
+    final normalized = trimmed.replaceAll(RegExp(r'\s+'), ' ');
+    if (normalized.length <= 220) {
+      return normalized;
+    }
+    return '${normalized.substring(0, 220)}...';
   }
 
   Future<AssistantRuntimeFallbackDecision?> resolveFallback({

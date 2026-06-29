@@ -9,6 +9,7 @@ import '../../../agent_chat/data/connectors/calendar_connector.dart';
 import '../../../agent_chat/data/connectors/date_time_connector.dart';
 import '../../../agent_chat/data/connectors/notification_connector.dart';
 import '../../../agent_chat/data/connectors/route_connector.dart';
+import '../../../agent_chat/data/services/assistant_chat_context_builder.dart';
 import '../../../agent_chat/data/services/assistant_runtime_service.dart';
 import '../../../agent_chat/data/services/selected_runtime_agent_skill_model_client.dart';
 import '../../../agent_chat/application/assistant_model_preferences.dart';
@@ -90,6 +91,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   late final AssistantRuntimeService _assistantRuntime;
   late final LocalRuntimePreloaderService _localRuntimePreloader;
   late AgentSkillOrchestrator _skillOrchestrator;
+  final AssistantChatContextBuilder _chatContextBuilder =
+      const AssistantChatContextBuilder();
   Map<String, dynamic>? _pendingCalendarEvent;
   bool _isDeviceSupported = false;
   bool _isGenerating = false;
@@ -814,10 +817,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     int? timeToFirstTokenMs;
     String latestChunk = '';
     final attempted = {...attemptedRuntimeIds, selectedModelId};
+    final systemPrompt = _buildChatSystemPrompt(message);
     try {
       await for (final chunk in _assistantRuntime.generateTextStream(
         selectedModelId: selectedModelId,
         prompt: message,
+        systemPrompt: systemPrompt,
       )) {
         timeToFirstTokenMs ??= stopwatch.elapsedMilliseconds;
         latestChunk = chunk;
@@ -831,6 +836,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         selectedModelId: selectedModelId,
         prompt: message,
         response: latestChunk,
+        systemPrompt: systemPrompt,
         totalDuration: stopwatch.elapsed,
         timeToFirstTokenMs: timeToFirstTokenMs,
       );
@@ -880,6 +886,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     required String selectedModelId,
     required String prompt,
     required String response,
+    String? systemPrompt,
     required Duration totalDuration,
     required int? timeToFirstTokenMs,
   }) async {
@@ -906,7 +913,37 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       timeToFirstTokenMs: timeToFirstTokenMs,
       prompt: prompt,
       response: response,
+      systemPromptPreview: _previewForMetadata(systemPrompt),
+      promptPreview: _previewForMetadata(prompt),
+      responsePreview: _previewForMetadata(response),
     );
+  }
+
+  String _buildChatSystemPrompt(String currentPrompt) {
+    return _chatContextBuilder.buildSystemPrompt(
+      currentUserPrompt: currentPrompt,
+      history: _messages
+          .where((message) => message.text.trim().isNotEmpty)
+          .map(
+            (message) => AssistantChatContextMessage(
+              text: message.text,
+              isUser: message.isUser,
+            ),
+          )
+          .toList(growable: false),
+    );
+  }
+
+  String _previewForMetadata(String? value) {
+    final trimmed = value?.trim();
+    if (trimmed == null || trimmed.isEmpty) {
+      return '';
+    }
+    final normalized = trimmed.replaceAll(RegExp(r'\s+'), ' ');
+    if (normalized.length <= 240) {
+      return normalized;
+    }
+    return '${normalized.substring(0, 240)}...';
   }
 
   ChatResponseMetadata _buildSkillMetadata({
@@ -972,6 +1009,15 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             ('Tool calls', '${metadata.toolCount}'),
           if (metadata.finishReason != null)
             ('Finish reason', metadata.finishReason!),
+          if (metadata.systemPromptPreview != null &&
+              metadata.systemPromptPreview!.isNotEmpty)
+            ('System context', metadata.systemPromptPreview!),
+          if (metadata.promptPreview != null &&
+              metadata.promptPreview!.isNotEmpty)
+            ('Prompt preview', metadata.promptPreview!),
+          if (metadata.responsePreview != null &&
+              metadata.responsePreview!.isNotEmpty)
+            ('Response preview', metadata.responsePreview!),
         ];
 
         return SafeArea(
