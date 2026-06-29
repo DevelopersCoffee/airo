@@ -341,6 +341,13 @@ test-database-reliability: ## Run deterministic native database reliability vali
 	@echo "$(GREEN)Database-reliability validation complete.$(NC)"
 	@echo "$(YELLOW)See docs/release/DATABASE_RELIABILITY_VALIDATION.md for scope and follow-up.$(NC)"
 
+.PHONY: test-notification-validation
+test-notification-validation: ## Run deterministic notification validation suite
+	@echo "$(BLUE)Running notification validation suite...$(NC)"
+	@cd $(APP_DIR) && flutter test test/features/agent_chat/data/services/agent_notification_scheduler_test.dart
+	@echo "$(GREEN)Notification validation complete.$(NC)"
+	@echo "$(YELLOW)See docs/release/NOTIFICATION_VALIDATION.md for scope and follow-up.$(NC)"
+
 .PHONY: run-android
 run-android: run-pixel9 ## Run app on local Pixel 9 Android emulator
 

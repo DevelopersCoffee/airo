@@ -26,6 +26,7 @@ Pre-release verification checklist for Airo Super App releases.
 - [ ] Database reliability validation suite passing (`make test-database-reliability`)
 - [ ] Background processing validation suite passing (`make test-background-processing`)
 - [ ] Meeting search validation suite passing (`make test-meeting-search`)
+- [ ] Notification validation suite passing (`make test-notification-validation`)
 - [ ] Performance benchmark report created (`artifacts/performance/...`)
 - [ ] Battery impact measurements attached or explicitly waived
 - [ ] Manual QA sign-off (if required)
@@ -124,6 +125,7 @@ Pre-release verification checklist for Airo Super App releases.
 - [ ] [Database reliability validation runbook](./DATABASE_RELIABILITY_VALIDATION.md) followed
 - [ ] [Meeting search validation runbook](./MEETING_SEARCH_VALIDATION.md) followed
 - [ ] [Background processing validation runbook](./BACKGROUND_PROCESSING_VALIDATION.md) followed
+- [ ] [Notification validation runbook](./NOTIFICATION_VALIDATION.md) followed
 - [ ] [UI responsiveness validation runbook](./UI_RESPONSIVENESS_VALIDATION.md) followed
 - [ ] [Performance benchmark runbook](./PERFORMANCE_BENCHMARKS.md) followed
 
@@ -158,5 +160,6 @@ Date: ____-__-__
 - [Database Reliability Validation](./DATABASE_RELIABILITY_VALIDATION.md)
 - [Meeting Search Validation](./MEETING_SEARCH_VALIDATION.md)
 - [Background Processing Validation](./BACKGROUND_PROCESSING_VALIDATION.md)
+- [Notification Validation](./NOTIFICATION_VALIDATION.md)
 - [UI Responsiveness Validation](./UI_RESPONSIVENESS_VALIDATION.md)
 - [Performance Benchmarks](./PERFORMANCE_BENCHMARKS.md)

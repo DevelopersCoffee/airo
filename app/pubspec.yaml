@@ -128,6 +128,7 @@ dev_dependencies:
   mocktail: ^1.0.5
   alchemist: ^0.14.0  # Golden testing (replaces discontinued golden_toolkit)
   patrol: ^4.1.1  # E2E testing for iOS/Android devices (updated for compileSdk 34+ support)
+  shared_preferences_platform_interface: ^2.4.1
 
   # Linting
   flutter_lints: 6.0.0
