@@ -21,8 +21,8 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Expected versions (from the current repository baseline)
-EXPECTED_FLUTTER="3.41.4"
-EXPECTED_DART_MIN="3.11.1"
+EXPECTED_FLUTTER="3.44.4"
+EXPECTED_DART_MIN="3.12.2"
 EXPECTED_DART_MAX="4.0.0"
 
 # Counters

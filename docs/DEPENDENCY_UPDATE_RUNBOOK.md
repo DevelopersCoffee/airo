@@ -72,7 +72,7 @@ grep "flutter:" app/pubspec.yaml
 flutter upgrade
 
 # Or install specific version
-git clone https://github.com/flutter/flutter.git -b 3.35.7
+git clone https://github.com/flutter/flutter.git -b 3.44.4
 
 # Verify version
 flutter --version
@@ -82,16 +82,17 @@ flutter doctor -v
 ### 3. Update Project Configuration
 
 **Files to update:**
-- `Makefile` (line 5)
-- `.github/workflows/ci.yml` (line 21)
-- `.github/workflows/build-and-release.yml` (line 19)
-- `.github/workflows/pr-checks.yml` (line 20)
-- `.github/workflows/smoke-tests.yml` (line 64, 96)
-- `.github/workflows/local-checks.yml` (line 22)
+- `Makefile` (Flutter baseline for local commands)
+- `.github/workflows/ci.yml`
+- `.github/workflows/build-and-release.yml`
+- `.github/workflows/pr-checks.yml`
+- `.github/workflows/smoke-tests.yml`
+- `.github/workflows/local-checks.yml`
+- alternate app pubspec entry points such as `app/pubspec_ios_spm.yaml`
 
 ```bash
 # Use sed to update all at once (Linux/macOS)
-NEW_VERSION="3.35.7"
+NEW_VERSION="3.44.4"
 find .github/workflows -name "*.yml" -exec sed -i "s/FLUTTER_VERSION: '[0-9.]*'/FLUTTER_VERSION: '$NEW_VERSION'/g" {} \;
 sed -i "s/FLUTTER_VERSION := [0-9.]*/FLUTTER_VERSION := $NEW_VERSION/" Makefile
 ```
@@ -119,8 +120,8 @@ make build-web
 
 ```yaml
 environment:
-  sdk: ">=3.9.2 <4.0.0"  # Explicit range
-  flutter: ">=3.35.7"     # Minimum Flutter version
+  sdk: ">=3.12.2 <4.0.0"  # Explicit range
+  flutter: ">=3.44.4"     # Minimum Flutter version
 ```
 
 ---
@@ -422,7 +423,7 @@ grep -r "uses:" .github/workflows/
 # Setup Flutter
 - uses: subosito/flutter-action@v2
   with:
-    flutter-version: '3.35.7'
+    flutter-version: '3.44.4'
     channel: 'stable'
     cache: true
 
@@ -694,5 +695,3 @@ flutter pub deps --style=tree
 For questions or issues, contact:
 - Tech Lead: @ucguy4u
 - DevOps Team: TBD
-
-
