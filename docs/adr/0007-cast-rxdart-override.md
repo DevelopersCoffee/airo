@@ -25,7 +25,9 @@ change because `app/analysis_options.yaml` enables the `custom_lint` plugin.
 ## Decision
 
 Keep the existing lint stack and add a bounded `dependency_overrides` entry for
-`rxdart: ^0.28.0` in the Flutter app while Cast V1 is integrated.
+`rxdart: ^0.28.0` in the Flutter app while Cast V1 is integrated. Keep the same
+override in app variant pubspecs that compile the IPTV feature, because CI swaps
+those files in for mobile streaming, Android TV, and iOS simulator builds.
 
 This keeps the runtime Cast adapter on the planned package version, preserves
 existing project lint tooling, and avoids a broad generator/analyzer migration

@@ -50,6 +50,7 @@ dependencies:
 
   # Audio & Media (TV variant - no background audio service needed)
   video_player: ^2.11.1
+  flutter_chrome_cast: ^1.4.6
   wakelock_plus: 1.5.2
   pdfx: 2.9.2
   flutter_local_notifications: 20.1.0
@@ -130,6 +131,8 @@ dev_dependencies:
 # This allows code that imports these packages to compile while
 # avoiding the heavy native libraries
 dependency_overrides:
+  rxdart: ^0.28.0
+
   # Heavy native library stubs (major size savings)
   stockfish:
     path: ../packages/stubs/stockfish_stub
