@@ -22,6 +22,7 @@ Pre-release verification checklist for Airo Super App releases.
 - [ ] Unit tests passing (>80% coverage target)
 - [ ] Integration tests passing
 - [ ] E2E smoke tests passing
+- [ ] Shared UI responsiveness suite passing (`make test-ui-responsive`)
 - [ ] Manual QA sign-off (if required)
 
 ---
@@ -113,6 +114,7 @@ Pre-release verification checklist for Airo Super App releases.
 - [ ] Release notes written
 - [ ] Known issues documented
 - [ ] Migration guide (if breaking changes)
+- [ ] [UI responsiveness validation runbook](./UI_RESPONSIVENESS_VALIDATION.md) followed
 
 ---
 
@@ -142,3 +144,4 @@ Date: ____-__-__
 - [Build & Release Workflow](/.github/workflows/build-and-release.yml)
 - [Rollback Procedure](./ROLLBACK_PROCEDURE.md)
 - [Store Compliance](./STORE_COMPLIANCE.md)
+- [UI Responsiveness Validation](./UI_RESPONSIVENESS_VALIDATION.md)

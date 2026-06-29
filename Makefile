@@ -575,6 +575,12 @@ test-integration: ## Run integration tests
 	@echo "$(BLUE)Running integration tests...$(NC)"
 	@cd $(APP_DIR) && flutter test integration_test/
 
+.PHONY: test-ui-responsive
+test-ui-responsive: ## Run shared responsive UI validation tests
+	@echo "$(BLUE)Running shared UI responsiveness tests...$(NC)"
+	@cd $(APP_DIR) && rm -rf windows/flutter/ephemeral/.plugin_symlinks ios/Flutter/ephemeral/Packages/.packages macos/Flutter/ephemeral/Packages/.packages
+	@cd $(APP_DIR) && flutter test test/shared/widgets/adaptive_layout_test.dart
+
 # IPTV Data Pipeline Commands
 .PHONY: iptv-install-deps
 iptv-install-deps: ## Install local IPTV pipeline dependencies
