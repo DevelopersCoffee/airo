@@ -99,6 +99,58 @@ void main() {
     expect(find.text('Gemma Downloaded'), findsOneWidget);
     expect(find.text('Active'), findsOneWidget);
   });
+
+  testWidgets('shows stage, speed, eta, and percentage for active downloads', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+
+    final registry =
+        _FakeModelRegistry(
+          compatibilityByModelId: {
+            'gemma-download': ModelCompatibilityResult.compatible(
+              MemorySeverity.safe,
+            ),
+          },
+        )..registerModel(
+          const OfflineModelInfo(
+            id: 'gemma-download',
+            name: 'Gemma Download',
+            family: ModelFamily.gemma,
+            fileSizeBytes: 2048,
+            provider: AIProvider.gemma,
+          ),
+        );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          modelRegistryProvider.overrideWithValue(registry),
+          activeDownloadsProvider.overrideWith(
+            (ref) => ActiveDownloadsNotifier(ref)
+              ..state = {
+                'gemma-download': const ModelDownloadProgress(
+                  modelId: 'gemma-download',
+                  totalBytes: 300,
+                  downloadedBytes: 200,
+                  status: ModelDownloadStatus.verifying,
+                  speedBytesPerSecond: 2.5 * 1024 * 1024,
+                ),
+              },
+          ),
+        ],
+        child: const MaterialApp(home: AIModelsScreen()),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(find.text('Verifying'), findsOneWidget);
+    expect(find.text('67%'), findsOneWidget);
+    expect(find.textContaining('2.5 MB/s'), findsOneWidget);
+    expect(find.textContaining('remaining'), findsOneWidget);
+  });
 }
 
 class _FakeModelRegistry extends ModelRegistry {

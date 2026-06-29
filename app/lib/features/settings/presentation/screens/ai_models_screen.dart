@@ -214,7 +214,7 @@ class _AIModelsScreenState extends ConsumerState<AIModelsScreen>
       itemBuilder: (context, index) {
         final model = models[index];
         final downloadProgress = activeDownloads[model.id];
-        final isDownloading = downloadProgress?.isInProgress ?? false;
+        final isDownloading = downloadProgress?.isActive ?? false;
         final isActive = model.id == selectedModelId;
         final compatibility = ref.watch(modelCompatibilityProvider(model.id));
 
@@ -224,6 +224,9 @@ class _AIModelsScreenState extends ConsumerState<AIModelsScreen>
             isActive: isActive,
             isDownloading: isDownloading,
             downloadProgress: downloadProgress?.progress,
+            downloadStatus: isDownloading
+                ? downloadProgress?.statusDisplay
+                : null,
             downloadSpeed: isDownloading
                 ? downloadProgress?.speedDisplay
                 : null,
@@ -249,6 +252,9 @@ class _AIModelsScreenState extends ConsumerState<AIModelsScreen>
             isActive: isActive,
             isDownloading: isDownloading,
             downloadProgress: downloadProgress?.progress,
+            downloadStatus: isDownloading
+                ? downloadProgress?.statusDisplay
+                : null,
             downloadSpeed: isDownloading
                 ? downloadProgress?.speedDisplay
                 : null,
@@ -273,6 +279,9 @@ class _AIModelsScreenState extends ConsumerState<AIModelsScreen>
             isActive: isActive,
             isDownloading: isDownloading,
             downloadProgress: downloadProgress?.progress,
+            downloadStatus: isDownloading
+                ? downloadProgress?.statusDisplay
+                : null,
             downloadSpeed: isDownloading
                 ? downloadProgress?.speedDisplay
                 : null,

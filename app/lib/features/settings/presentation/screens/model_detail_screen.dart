@@ -227,7 +227,7 @@ class ModelDetailScreen extends ConsumerWidget {
     final theme = Theme.of(context);
     final activeDownloads = ref.watch(activeDownloadsProvider);
     final downloadProgress = activeDownloads[model.id];
-    final isDownloading = downloadProgress?.isInProgress ?? false;
+    final isDownloading = downloadProgress?.isActive ?? false;
 
     if (model.isDownloaded) {
       return Row(
@@ -256,7 +256,7 @@ class ModelDetailScreen extends ConsumerWidget {
       icon: Icon(isDownloading ? Icons.downloading : Icons.download),
       label: Text(
         isDownloading
-            ? 'Downloading ${downloadProgress?.progressPercent ?? 0}%'
+            ? '${downloadProgress?.statusDisplay ?? 'Downloading'} ${downloadProgress?.progressPercent ?? 0}%'
             : 'Download (${model.fileSizeDisplay})',
       ),
     );

@@ -14,6 +14,7 @@ class ModelCard extends StatelessWidget {
     this.isActive = false,
     this.isDownloading = false,
     this.downloadProgress,
+    this.downloadStatus,
     this.downloadSpeed,
     this.downloadEta,
     this.isCompatible = true,
@@ -36,6 +37,9 @@ class ModelCard extends StatelessWidget {
 
   /// Download progress from 0.0 to 1.0.
   final double? downloadProgress;
+
+  /// Current stage display (e.g. "Downloading" or "Verifying").
+  final String? downloadStatus;
 
   /// Download speed display (e.g., "2.5 MB/s").
   final String? downloadSpeed;
@@ -199,10 +203,15 @@ class ModelCard extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               Text(
-                '${(downloadProgress! * 100).round()}%',
+                downloadStatus ?? 'Downloading',
                 style: theme.textTheme.bodySmall?.copyWith(
                   fontWeight: FontWeight.w600,
                 ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                '${(downloadProgress! * 100).round()}%',
+                style: theme.textTheme.bodySmall,
               ),
               if (downloadSpeed != null) ...[
                 const SizedBox(width: 8),
