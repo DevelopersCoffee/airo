@@ -23,6 +23,7 @@ Pre-release verification checklist for Airo Super App releases.
 - [ ] Integration tests passing
 - [ ] E2E smoke tests passing
 - [ ] Shared UI responsiveness suite passing (`make test-ui-responsive`)
+- [ ] Background processing validation suite passing (`make test-background-processing`)
 - [ ] Performance benchmark report created (`artifacts/performance/...`)
 - [ ] Battery impact measurements attached or explicitly waived
 - [ ] Manual QA sign-off (if required)
@@ -118,6 +119,7 @@ Pre-release verification checklist for Airo Super App releases.
 - [ ] Release notes written
 - [ ] Known issues documented
 - [ ] Migration guide (if breaking changes)
+- [ ] [Background processing validation runbook](./BACKGROUND_PROCESSING_VALIDATION.md) followed
 - [ ] [UI responsiveness validation runbook](./UI_RESPONSIVENESS_VALIDATION.md) followed
 - [ ] [Performance benchmark runbook](./PERFORMANCE_BENCHMARKS.md) followed
 
@@ -149,5 +151,6 @@ Date: ____-__-__
 - [Build & Release Workflow](/.github/workflows/build-and-release.yml)
 - [Rollback Procedure](./ROLLBACK_PROCEDURE.md)
 - [Store Compliance](./STORE_COMPLIANCE.md)
+- [Background Processing Validation](./BACKGROUND_PROCESSING_VALIDATION.md)
 - [UI Responsiveness Validation](./UI_RESPONSIVENESS_VALIDATION.md)
 - [Performance Benchmarks](./PERFORMANCE_BENCHMARKS.md)
