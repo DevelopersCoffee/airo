@@ -247,6 +247,62 @@ void main() {
       },
     );
 
+    test(
+      'returns ready after Gemini Nano warmup without touching LiteRT setup',
+      () async {
+        var liteRtAvailabilityChecks = 0;
+        var liteRtWarmups = 0;
+        var compatibilityChecks = 0;
+        final service = AssistantRuntimeService(
+          isGeminiNanoSupported: () async => true,
+          initializeGeminiNano: () async => true,
+          warmupGeminiNano: () async => true,
+          isLiteRtAvailable: () async {
+            liteRtAvailabilityChecks++;
+            return false;
+          },
+          warmupLiteRtInstalledModel: () async {
+            liteRtWarmups++;
+            return false;
+          },
+          warmupLiteRtModel: (_) async {
+            liteRtWarmups++;
+            return false;
+          },
+          checkModelCompatibility: (_) async {
+            compatibilityChecks++;
+            return ModelCompatibilityResult.compatible(MemorySeverity.safe);
+          },
+          loadDeviceInfo: () async => {
+            'manufacturer': 'Google',
+            'model': 'Pixel 9',
+            'platform': 'android',
+          },
+        );
+
+        final result = await service.prepareRuntime(
+          candidate: const AssistantModelCandidate(
+            id: geminiNanoAssistantModelId,
+            name: 'Gemini Nano',
+            runtime: 'AICore on-device',
+            description: 'Local runtime',
+            bestFor: [AssistantTask.chat],
+            tags: ['Local'],
+            privacyLabel: 'Prompt stays on device',
+            sizeLabel: 'System managed',
+            available: true,
+            actionLabel: 'Start',
+            local: true,
+          ),
+        );
+
+        expect(result.status, AssistantRuntimePreparationStatus.ready);
+        expect(liteRtAvailabilityChecks, 0);
+        expect(liteRtWarmups, 0);
+        expect(compatibilityChecks, 0);
+      },
+    );
+
     test('cancels preparation before runtime work starts', () async {
       final service = AssistantRuntimeService(
         loadDeviceInfo: () async => {'manufacturer': 'Web', 'model': 'Browser'},
