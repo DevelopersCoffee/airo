@@ -1,324 +1,180 @@
-# Airo Super App
+# Airo
 
 [![Download APK](https://img.shields.io/github/v/release/DevelopersCoffee/airo?label=Download%20APK&color=success)](https://github.com/DevelopersCoffee/airo/releases/latest/download/app-release.apk)
 [![GitHub Release](https://img.shields.io/github/v/release/DevelopersCoffee/airo)](https://github.com/DevelopersCoffee/airo/releases)
-[![License](https://img.shields.io/github/license/DevelopersCoffee/airo)](LICENSE)
 [![Flutter](https://img.shields.io/badge/Flutter-3.44.4+-blue.svg)](https://flutter.dev/)
+[![License: pending](https://img.shields.io/badge/license-pending-lightgrey)](#license)
 
-A Flutter-based super app combining AI-powered features and financial management tools.
+Airo is a Flutter super app for local-first AI workflows: chat, model management,
+routine packs, media surfaces, and personal finance modules in one modular mobile
+codebase.
 
-## 📥 Download
+The project is being shaped as an open-source playground for developers who care
+about on-device AI, agent skills, privacy-aware product design, and cross-platform
+Flutter architecture.
+
+## Why Star Or Fork This Repo
+
+- **Build local-first AI UX**: help make model routing, offline fallback, and
+  privacy-forward AI interactions usable in a real app.
+- **Work across the stack**: Flutter UI, Android/iOS platform bridges, package
+  boundaries, CI, docs, release automation, and QA flows all live here.
+- **Contribute in small slices**: docs fixes, onboarding polish, tests, issue
+  reproduction, UI states, model metadata, and DevEx improvements are all useful.
+- **Learn agent-driven engineering**: every non-trivial change follows the
+  ownership, contract, and deterministic automation flow in
+  [`docs/agents/AGENT_POLICY.md`](docs/agents/AGENT_POLICY.md).
+
+If this direction is useful to you, star the repo to follow the work. Fork it
+when you want to run experiments or send a PR.
+
+## What You Can Work On
+
+Good open-source entry points:
+
+- Improve first-run setup and troubleshooting docs.
+- Add or harden host-only tests for existing features.
+- Reproduce and minimize open bugs.
+- Improve accessibility, empty states, and responsive layout behavior.
+- Document model support, privacy behavior, and release checks.
+- Turn repeated setup or review steps into scripts.
+
+Start with:
+
+- [Issues labeled `good first issue`](https://github.com/DevelopersCoffee/airo/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22)
+- [Issues labeled `help wanted`](https://github.com/DevelopersCoffee/airo/issues?q=is%3Aissue+is%3Aopen+label%3A%22help+wanted%22)
+- [Contributor guide](CONTRIBUTING.md)
+- [Open-source growth playbook](docs/community/GITHUB_GROWTH_PLAYBOOK.md)
+
+## Download
 
 ### Android
-**[⬇️ Download Latest APK](https://github.com/DevelopersCoffee/airo/releases/latest/download/app-release.apk)** (~50 MB)
+
+[Download latest APK](https://github.com/DevelopersCoffee/airo/releases/latest/download/app-release.apk)
 
 ### iOS
-**[⬇️ Download Latest IPA](https://github.com/DevelopersCoffee/airo/releases/latest/download/app-release.ipa)** (~100 MB)
+
+[Download latest IPA](https://github.com/DevelopersCoffee/airo/releases/latest/download/app-release.ipa)
 
 ### Web
-**[⬇️ Download Web Build](https://github.com/DevelopersCoffee/airo/releases/latest/download/airo-web-release.zip)** (~30 MB)
+
+[Download web build](https://github.com/DevelopersCoffee/airo/releases/latest/download/airo-web-release.zip)
 
 ### All Platforms
-**[📦 View All Releases](https://github.com/DevelopersCoffee/airo/releases)**
 
----
+[View all releases](https://github.com/DevelopersCoffee/airo/releases)
 
-## 🚀 Quick Start
+## Quick Start
 
-### First-time Setup (Newly Cloned Repo)
+### First-Time Setup
 
 ```bash
-# Complete setup for all platforms
+git clone git@github.com:DevelopersCoffee/airo.git
+cd airo
 make setup
-
-# Or setup for specific platform
-make setup-android  # Android development
-make setup-ios      # iOS development (macOS only)
-make setup-web      # Web development
 ```
 
-### Development
+Platform-specific setup:
 
 ```bash
-# Run on different platforms
-make run-android    # Android device/emulator
-make run-ios        # iOS device/simulator
-make run-web        # Web browser
-make run-chrome     # Chrome browser specifically
-
-# Platform-specific optimized runs
-make run-pixel9     # Optimized for Pixel 9
-make run-iphone13   # iPhone 13 Pro Max simulator
+make setup-android
+make setup-ios
+make setup-web
 ```
 
-## 📱 Platform Support
+### Run The App
 
-### ✅ Supported Platforms
-
-- **Android**: API 24+ (Android 7.0+)
-  - ⭐ **Pixel 9**: Fully optimized with Gemini Nano support
-  - Supports all modern Android devices
-- **iOS**: iOS 12.0+
-  - ⭐ **iPhone 13 Pro Max**: Fully optimized for iOS 18
-  - Supports all modern iPhone and iPad devices
-- **Web**: Modern browsers
-  - ⭐ **Chrome**: Fully optimized with PWA support
-  - Firefox, Safari, Edge supported
-
-### 🎯 Target Devices
-
-- **Pixel 9**: Android 15 (API 35) with Gemini Nano AI features
-- **iPhone 13 Pro Max**: iOS 18 with advanced AI capabilities
-- **Chrome Browser**: PWA with offline support
-
-## 🏗️ Architecture
-
-### Super App Structure
+```bash
+make run-android
+make run-ios
+make run-web
+make run-chrome
 ```
-airo_super_app/
-├── app/                    # Main host application
-│   ├── lib/
-│   │   ├── core/          # Core app functionality
-│   │   ├── features/      # App-specific features
-│   │   └── shared/        # Shared widgets and utilities
+
+Device-targeted helpers:
+
+```bash
+make run-pixel9
+make run-iphone13
+```
+
+### Verify Changes
+
+```bash
+make format
+make analyze
+make test
+```
+
+Run `make help` to see the full command list.
+
+## Platform Support
+
+- **Android**: API 24+ with Pixel 9 helper targets.
+- **iOS**: iOS 12.0+ with iPhone 13 Pro Max helper targets.
+- **Web**: modern browsers, with Chrome as the preferred development target.
+
+Android release builds require private signing material. Never commit
+`app/android/key.properties`, keystores, tokens, API keys, or local credentials.
+
+## Repository Map
+
+```text
+.
+├── app/                  # Flutter host application
 ├── packages/
-│   ├── airo/              # AI-powered features package
-│   └── airomoney/         # Financial management package
-└── Makefile               # Build automation
+│   ├── airo/             # AI-oriented package surface
+│   ├── airomoney/        # Personal finance package surface
+│   ├── core_ai/          # AI contracts, registries, skills, model metadata
+│   ├── core_auth/        # Authentication package
+│   ├── core_data/        # Data and networking utilities
+│   ├── core_domain/      # Domain primitives
+│   └── core_ui/          # Shared UI package
+├── docs/                 # Architecture, agent policy, wiki source, runbooks
+├── e2e/                  # End-to-end assets and checks
+├── scripts/              # Local automation
+└── .github/              # CI, issue templates, PR template
 ```
 
-### Features
+## Contributor Workflow
 
-#### 🤖 Airo Package (AI Features)
-- AI Chat Interface
-- Voice Commands
-- Task Management
-- Analytics Dashboard
+1. Read [`CONTRIBUTING.md`](CONTRIBUTING.md).
+2. Pick or create a GitHub issue.
+3. Add the Critical Agent gate and Feature Packet required by
+   [`docs/agents/AGENT_POLICY.md`](docs/agents/AGENT_POLICY.md).
+4. Create a short-lived branch or worktree from the latest `origin/main`.
+5. Keep the PR scoped, run the relevant checks, and document any test gaps.
 
-#### 💰 AiroMoney Package (Financial Management)
-- Wallet Management
-- Transaction Tracking
-- Financial Analytics
-- Budget Planning
-
-## 🛠️ Development Commands
-
-### Setup & Installation
-```bash
-make help           # Show all available commands
-make setup          # Complete first-time setup
-make install-deps   # Install dependencies only
-make check-flutter  # Verify Flutter installation
-```
-
-### Running the App
-```bash
-make run-android    # Run on Android
-make run-ios        # Run on iOS (macOS only)
-make run-web        # Run on web
-make run-chrome     # Run on Chrome specifically
-make run-pixel9     # Run optimized for Pixel 9
-make run-iphone13   # Run on iPhone 13 Pro Max simulator
-```
-
-### Building
-```bash
-make build-android  # Build Android APK
-make build-ios      # Build iOS app (macOS only)
-make build-web      # Build web app
-make build-all      # Build for all platforms
-```
-
-### Testing & Quality
-```bash
-make test           # Run all tests
-make analyze        # Analyze code
-make format         # Format code
-make doctor         # Run Flutter doctor
-```
-
-### Maintenance
-```bash
-make clean          # Clean build artifacts
-make upgrade        # Upgrade Flutter and dependencies
-make devices        # List available devices
-make emulators      # List available emulators
-```
-
-## 📋 Prerequisites
-
-### Required
-- **Flutter SDK**: 3.44.4 or later
-- **Dart SDK**: 3.12.2 or later
-
-### Platform-Specific Requirements
-
-#### Android Development
-- **Android Studio**: Latest version
-- **Android SDK**: API 24-35
-- **Java**: JDK 17 or later
-- **Gradle**: 8.0 or later
-
-#### iOS Development (macOS only)
-- **Xcode**: 15.0 or later
-- **iOS SDK**: 12.0 or later
-- **CocoaPods**: Required for Flutter plugins that still ship via podspec
-- **Swift Package Manager**: Used by the Flutter engine where supported
-
-#### Web Development
-- **Chrome**: Latest version (recommended)
-- **Web Server**: Built-in Flutter web server
-
-## 🔧 Configuration
-
-### Environment Variables
-```bash
-# Android
-export ANDROID_HOME=/path/to/android/sdk
-export ANDROID_SDK_ROOT=$ANDROID_HOME
-
-# iOS (macOS only)
-export PATH=$PATH:/Applications/Xcode.app/Contents/Developer/usr/bin
-```
-
-### Platform-Specific Settings
-
-#### Android (Pixel 9 Optimization)
-- **Target SDK**: 35 (Android 15)
-- **Min SDK**: 24 (Android 7.0)
-- **Compile SDK**: 35
-- **NDK**: Latest version
-- **Multidex**: Enabled
-- **Gemini Nano**: Integrated for AI features
-
-#### Android Release Signing
-Release APKs and AABs must be signed with a private release keystore. Debug keys are never used for release builds.
-
-For local release builds:
+For parallel work, prefer a worktree:
 
 ```bash
-cd app/android
-cp key.properties.example key.properties
-# Put your release keystore at app/android/release.keystore, or update storeFile.
-# Fill in storePassword, keyAlias, and keyPassword in key.properties.
-cd ../..
-flutter build apk --release
+git fetch origin main
+git worktree add -b codex/my-task ../airo-my-task origin/main
+cd ../airo-my-task
 ```
 
-Never commit `app/android/key.properties` or keystore files. They are ignored by `.gitignore`.
+## Documentation
 
-For GitHub Actions releases, configure these repository secrets:
+- [GitHub wiki source](docs/wiki/README.md)
+- [Architecture docs](docs/architecture/README.md)
+- [Feature docs](docs/features/README.md)
+- [Security and code quality docs](docs/security/README.md)
+- [Release docs](docs/release/README.md)
+- [Troubleshooting docs](docs/troubleshooting/README.md)
 
-- `ANDROID_RELEASE_KEYSTORE_BASE64`: base64-encoded release keystore file
-- `KEYSTORE_PASSWORD`: keystore password
-- `KEY_ALIAS`: release key alias
-- `KEY_PASSWORD`: release key password
+## Community Standards
 
-Generate and encode a new keystore with:
+- [Contributing guide](CONTRIBUTING.md)
+- [Code of conduct](CODE_OF_CONDUCT.md)
+- [Security policy](SECURITY.md)
+- [Agent policy](docs/agents/AGENT_POLICY.md)
 
-```bash
-keytool -genkeypair \
-  -v \
-  -keystore release.keystore \
-  -alias airo-release \
-  -keyalg RSA \
-  -keysize 4096 \
-  -validity 10000
-base64 -i release.keystore | tr -d '\n' > release.keystore.base64
-```
+## License
 
-#### iOS (iPhone 13 Pro Max Optimization)
-- **Deployment Target**: 12.0
-- **Target**: iOS 18
-- **Architecture**: arm64
-- **Bitcode**: Disabled (as per Apple requirements)
+The repository currently has public docs that reference MIT licensing, but the
+root `LICENSE` file is not present and package license files still need maintainer
+confirmation. Treat the license as **pending** until maintainers add the confirmed
+root license file.
 
-#### Web (Chrome Optimization)
-- **Renderer**: CanvasKit (for better performance)
-- **PWA**: Enabled
-- **Service Worker**: Enabled for offline support
-
-## 🚀 Getting Started
-
-1. **Clone the repository**
-   ```bash
-   git clone <repository-url>
-   cd airo_super_app
-   ```
-
-2. **Run first-time setup**
-   ```bash
-   make setup
-   ```
-
-3. **Start development**
-   ```bash
-   # For Android (including Pixel 9)
-   make dev-android
-   
-   # For iOS (including iPhone 13 Pro Max)
-   make dev-ios
-   
-   # For Web (including Chrome)
-   make dev-web
-   ```
-
-## 📱 Authentication
-
-The app includes a common authentication system:
-
-- **Admin Login**: 
-  - Username: `admin`
-  - Password: `admin`
-- **User Registration**: Username and password only (minimal design)
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Run tests: `make test`
-5. Format code: `make format`
-6. Analyze code: `make analyze`
-7. Submit a pull request
-
-## 📄 License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## 🆘 Troubleshooting
-
-### Common Issues
-
-1. **Flutter not found**
-   ```bash
-   # Install Flutter from https://flutter.dev/docs/get-started/install
-   make check-flutter
-   ```
-
-2. **Android SDK issues**
-   ```bash
-   # Set ANDROID_HOME environment variable
-   export ANDROID_HOME=/path/to/android/sdk
-   make setup-android
-   ```
-
-3. **iOS build issues (macOS only)**
-   ```bash
-   # Install Xcode and command line tools
-   xcode-select --install
-   make setup-ios
-   ```
-
-4. **Web build issues**
-   ```bash
-   # Enable web support
-   flutter config --enable-web
-   make setup-web
-   ```
-
-### Getting Help
-
-- Run `make help` for available commands
-- Run `make doctor` to check your development environment
-- Check Flutter documentation: https://flutter.dev/docs
+If you plan to reuse code outside this repository, wait for the license cleanup or
+ask in a GitHub issue first.
