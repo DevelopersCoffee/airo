@@ -6,6 +6,10 @@
 // Entities
 export 'src/entities/entity.dart';
 export 'src/entities/user.dart';
+export 'src/entities/life_track.dart';
+export 'src/entities/milestone.dart';
+export 'src/entities/action_item.dart';
+export 'src/entities/input_requirement.dart';
 
 // Result Type - Ok/Err pattern for functional error handling
 export 'src/result/result.dart';
@@ -19,6 +23,7 @@ export 'src/errors/app_error.dart';
 
 // Repository Interfaces
 export 'src/repositories/repository.dart';
+export 'src/repositories/life_track_repository.dart';
 
 // Use Cases
 export 'src/use_cases/use_case.dart';
