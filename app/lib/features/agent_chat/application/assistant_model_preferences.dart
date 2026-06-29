@@ -2,7 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../domain/models/assistant_model_selection.dart';
+import '../domain/models/assistant_runtime_ids.dart';
 
 const String selectedAssistantModelKey = 'selected_assistant_model_id';
 

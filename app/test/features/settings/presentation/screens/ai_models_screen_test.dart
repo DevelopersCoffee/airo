@@ -1,6 +1,6 @@
 import 'package:airo_app/features/settings/application/ai_model_management.dart';
 import 'package:airo_app/features/agent_chat/application/assistant_model_preferences.dart';
-import 'package:airo_app/features/agent_chat/domain/models/assistant_model_selection.dart';
+import 'package:airo_app/features/agent_chat/domain/models/assistant_runtime_ids.dart';
 import 'package:airo_app/features/settings/presentation/screens/ai_models_screen.dart';
 import 'package:core_ai/core_ai.dart';
 import 'package:flutter/material.dart';

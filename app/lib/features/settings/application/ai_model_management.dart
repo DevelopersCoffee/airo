@@ -5,7 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../agent_chat/application/assistant_model_preferences.dart';
-import '../../agent_chat/domain/models/assistant_model_selection.dart';
+import '../../agent_chat/domain/models/assistant_runtime_ids.dart';
 import '../../iptv/application/providers/iptv_providers.dart'
     show sharedPreferencesProvider;
 
