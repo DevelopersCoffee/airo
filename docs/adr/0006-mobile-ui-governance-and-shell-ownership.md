@@ -31,7 +31,12 @@ We establish Mobile UI governance with the following rules:
    shell-owned, route-owned, or intentionally hidden for immersive flows.
 4. Shared token roles, navigation metadata, and shell asset references must be
    centralized before feature-level UI changes are accepted.
-5. Governance docs must exist in the repo so follow-up execution issues can
+5. Global shell header and native/platform header behavior must converge on one
+   visible top-chrome surface rather than stacking duplicate bars.
+6. Narrow-screen primary navigation must use a constrained action budget, with
+   lower-frequency destinations routed through centrally owned overflow or
+   hamburger patterns.
+7. Governance docs must exist in the repo so follow-up execution issues can
    implement shell/header, token/navigation, and asset work against a stable
    contract.
 
@@ -42,6 +47,8 @@ We establish Mobile UI governance with the following rules:
 - reduces duplicate header regressions
 - gives feature teams a clear shell boundary
 - centralizes navigation and shared visual decisions
+- protects vertical space on phones
+- encourages native-first interaction patterns
 - lets implementation work be split into smaller focused issues
 
 ### Negative
@@ -53,6 +60,8 @@ We establish Mobile UI governance with the following rules:
 
 - governance can drift if follow-up UI work does not update the shared docs
 - partial migration may temporarily leave mixed old and new shell behavior
+- aggressive consolidation can hide feature actions if overflow behavior is not
+  tested carefully
 
 ## Alternatives Considered
 
@@ -74,4 +83,5 @@ not just one header bug.
 
 - [Mobile UI Agent Packet](../agents/mobile-ui-agent/README.md)
 - [Mobile UI / UX Standards](../standards/mobile-ui-ux-standards.md)
+- [Mobile UI Agent Phase Plan](../agents/mobile-ui-agent/UIUX_PHASE_PLAN_2026-06.md)
 - [Issue #397](https://github.com/DevelopersCoffee/airo/issues/397)

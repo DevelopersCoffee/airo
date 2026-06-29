@@ -1,8 +1,9 @@
 # Mobile UI Agent
 
-The Mobile UI Agent owns shell chrome, navigation presentation, header
-ownership policy, shared mobile layout standards, and the governance documents
-that keep feature teams from making independent shell decisions.
+The Mobile UI Agent is the canonical UI/UX owner for Airo mobile shell
+surfaces. It owns shell chrome, navigation presentation, header ownership
+policy, shared mobile layout standards, and the governance documents that keep
+feature teams from making independent shell decisions.
 
 ## Scope
 
@@ -13,6 +14,8 @@ The Mobile UI Agent is the primary owner for:
 - mobile header ownership rules
 - shared mobile visual standards and density guardrails
 - shared asset usage rules for shell imagery and iconography
+- native-first interaction standards for Android and iOS shell behavior
+- narrow-screen overflow and hamburger/menu policy
 
 The Mobile UI Agent reviews, but does not solely own:
 
@@ -25,12 +28,28 @@ The Mobile UI Agent reviews, but does not solely own:
 Feature screens own feature content and local task flows. They do not own:
 
 - the global shell header
+- a second native or local header layered beneath the global shell header
 - the primary destination model
 - shell branding asset selection
 - breakpoint-wide navigation behavior
 
 If a feature needs contextual chrome, it must declare that need through the
 shared shell configuration and ADR-backed route ownership rules.
+
+## UX Direction
+
+The shared mobile UX direction is:
+
+- AI-first productivity, not chat-first novelty
+- calm, professional, and dense without clutter
+- progressive disclosure instead of stacked controls
+- one clear header owner per route state
+- centralized navigation and asset decisions
+- native Android and iOS interaction patterns before custom chrome
+
+Google AI Edge Gallery-style usability, accessibility, and platform alignment
+are the preferred foundation. Deliberately harsh or brutalist treatments are
+not the default for product surfaces.
 
 ## Required Inputs Before Implementation
 
@@ -47,9 +66,11 @@ Every Mobile UI issue must include:
 - UI standards: [../../standards/mobile-ui-ux-standards.md](../../standards/mobile-ui-ux-standards.md)
 - ADR: [../../adr/0006-mobile-ui-governance-and-shell-ownership.md](../../adr/0006-mobile-ui-governance-and-shell-ownership.md)
 - Task tracker: [./TASKS.md](./TASKS.md)
+- Phase plan: [./UIUX_PHASE_PLAN_2026-06.md](./UIUX_PHASE_PLAN_2026-06.md)
 
 ## Current Execution Issues
 
-- `#398` UIUX-002: Consolidate shell and page header ownership
-- `#399` UIUX-003: Centralize theme tokens and navigation configuration
-- `#400` UIUX-004: Centralize shell asset management and chrome hygiene
+- `#415` UIUX-005: Native-first mobile shell UX rollout
+- `#417` UIUX-006: Enforce single-header ownership and compact shell chrome
+- `#418` UIUX-007: Centralize navigation overflow and hamburger policy
+- `#416` UIUX-008: Centralize shell assets and route density hygiene
