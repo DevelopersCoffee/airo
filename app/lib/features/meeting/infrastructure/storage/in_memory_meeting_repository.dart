@@ -64,11 +64,9 @@ class InMemoryMeetingRepository implements MeetingRepository {
             ),
           );
         })
-        .whereType<({
-          int score,
-          MeetingRecord? record,
-          MeetingSearchResult result,
-        })>()
+        .whereType<
+          ({int score, MeetingRecord? record, MeetingSearchResult result})
+        >()
         .toList(growable: false);
 
     matches.sort((a, b) {
@@ -83,7 +81,10 @@ class InMemoryMeetingRepository implements MeetingRepository {
       return a.result.meetingId.compareTo(b.result.meetingId);
     });
 
-    return matches.take(50).map((match) => match.result).toList(growable: false);
+    return matches
+        .take(50)
+        .map((match) => match.result)
+        .toList(growable: false);
   }
 
   int _scoreMatch(
@@ -201,10 +202,9 @@ class InMemoryMeetingRepository implements MeetingRepository {
   }
 
   List<String> _tokenize(String value) {
-    return _normalize(value)
-        .split(' ')
-        .where((token) => token.isNotEmpty)
-        .toList(growable: false);
+    return _normalize(
+      value,
+    ).split(' ').where((token) => token.isNotEmpty).toList(growable: false);
   }
 
   String _stripDiacritics(String input) {
