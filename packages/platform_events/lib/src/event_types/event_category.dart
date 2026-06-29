@@ -1,0 +1,15 @@
+enum EventCategory {
+  platform,
+  runtime,
+  storage,
+  download,
+  knowledge,
+  memory,
+  meeting,
+  workflow,
+  plugin,
+  settings,
+  diagnostics,
+  security,
+  lifecycle,
+}
