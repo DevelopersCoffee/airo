@@ -21,6 +21,7 @@ export 'domain/models/streaming_state.dart';
 
 // Services
 export 'domain/services/iptv_streaming_service.dart';
+export 'domain/services/iptv_cast_media_adapter.dart';
 export 'domain/services/video_player_streaming_service.dart';
 export 'domain/services/m3u_parser_service.dart';
 export 'domain/services/live_edge_detector.dart';
