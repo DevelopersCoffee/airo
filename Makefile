@@ -613,6 +613,12 @@ benchmark-android-startup: ## Capture Android startup timing on a connected devi
 	@"$(ADB)" shell am force-stop "$(ANDROID_PACKAGE)"
 	@"$(ADB)" shell am start -W "$(ANDROID_PACKAGE)/.MainActivity"
 
+.PHONY: test-search-edge-cases
+test-search-edge-cases: ## Run Meeting Intelligence search edge-case validation tests
+	@echo "$(BLUE)Running Meeting Intelligence search edge-case tests...$(NC)"
+	@cd $(APP_DIR) && rm -rf windows/flutter/ephemeral ios/Flutter/ephemeral/Packages/.packages macos/Flutter/ephemeral/Packages/.packages
+	@cd $(APP_DIR) && flutter test test/features/meeting/meeting_search_repository_test.dart
+
 # IPTV Data Pipeline Commands
 .PHONY: iptv-install-deps
 iptv-install-deps: ## Install local IPTV pipeline dependencies
