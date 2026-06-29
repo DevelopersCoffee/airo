@@ -24,6 +24,10 @@ class MeetingSummary {
     required this.actionItems,
     required this.keyDecisions,
     required this.risks,
+    required this.openQuestions,
+    required this.followUps,
+    required this.blockers,
+    required this.dependencies,
     required this.nextSteps,
     required this.isCloudSyncEligible,
   });
@@ -34,6 +38,10 @@ class MeetingSummary {
   final List<MeetingActionItem> actionItems;
   final List<String> keyDecisions;
   final List<String> risks;
+  final List<String> openQuestions;
+  final List<String> followUps;
+  final List<String> blockers;
+  final List<String> dependencies;
   final List<String> nextSteps;
   final bool isCloudSyncEligible;
 }
