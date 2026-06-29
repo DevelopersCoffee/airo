@@ -32,7 +32,7 @@ void main() {
 
     expect(stored, isNotNull);
     expect(stored, track);
-    expect(stored!.progress, closeTo(0.75, 0.0001));
+    expect(stored!.progress, closeTo(2 / 3, 0.0001));
   });
 
   test('filters tracks by status', () async {

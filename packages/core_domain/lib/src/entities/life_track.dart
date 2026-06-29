@@ -43,12 +43,21 @@ class LifeTrack extends Entity {
   final String? templateId;
 
   double get progress {
-    if (milestones.isEmpty) return 0;
-    final total = milestones.fold<double>(
-      0,
-      (sum, milestone) => sum + milestone.progress,
-    );
-    return total / milestones.length;
+    var completed = 0;
+    var total = 0;
+
+    for (final milestone in milestones) {
+      for (final item in milestone.actionItems) {
+        if (item.status == ItemStatus.skipped) continue;
+        total++;
+        if (item.status == ItemStatus.done) {
+          completed++;
+        }
+      }
+    }
+
+    if (total == 0) return 0;
+    return completed / total;
   }
 
   factory LifeTrack.fromJson(Map<String, dynamic> json) => LifeTrack(
