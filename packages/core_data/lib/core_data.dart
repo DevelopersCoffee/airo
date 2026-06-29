@@ -12,6 +12,7 @@ export 'src/storage/preferences_store.dart';
 export 'src/storage/secure_store.dart';
 export 'src/storage/flutter_secure_store.dart';
 export 'src/storage/life_track_local_data_source.dart';
+export 'src/storage/templates/template_registry.dart';
 
 // Connectivity
 export 'src/connectivity/connectivity_service.dart';

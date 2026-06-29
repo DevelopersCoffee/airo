@@ -7,6 +7,7 @@
 export 'src/entities/entity.dart';
 export 'src/entities/user.dart';
 export 'src/entities/life_track.dart';
+export 'src/entities/life_track_template.dart';
 export 'src/entities/milestone.dart';
 export 'src/entities/action_item.dart';
 export 'src/entities/input_requirement.dart';

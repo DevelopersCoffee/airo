@@ -1,0 +1,92 @@
+{
+  "template_id": "car_purchase_v1",
+  "title": "Car Purchase Decision Template",
+  "description": "A bundled template for verifying prerequisites, researching vehicles, and planning financing before purchase.",
+  "category": "carPurchase",
+  "version": "1.0",
+  "milestones": [
+    {
+      "name": "Phase 1: Prerequisites & Documentation",
+      "objective": "Confirm license, fitness, and required personal documents",
+      "tasks": [
+        {
+          "summary": "Verify driving license validity",
+          "requirements": [
+            {
+              "label": "Driving License Copy",
+              "type": "document",
+              "is_required": true
+            }
+          ]
+        },
+        {
+          "summary": "Confirm physical fitness and parking readiness",
+          "requirements": [
+            {
+              "label": "Physical Fitness Notes",
+              "type": "text",
+              "is_required": false
+            },
+            {
+              "label": "Parking Plan",
+              "type": "text",
+              "is_required": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Phase 2: Car Research & Selection",
+      "objective": "Compare shortlisted vehicles against budget and needs",
+      "tasks": [
+        {
+          "summary": "Compare shortlisted cars",
+          "requirements": [
+            {
+              "label": "Shortlisted Cars",
+              "type": "text",
+              "is_required": true
+            },
+            {
+              "label": "Test Drive Notes",
+              "type": "text",
+              "is_required": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Phase 3: Financial Planning & Loan Pre-approval",
+      "objective": "Secure budget clarity, insurance estimates, and pre-approved financing",
+      "tasks": [
+        {
+          "summary": "Evaluate total ownership cost",
+          "requirements": [
+            {
+              "label": "Budget Range",
+              "type": "number",
+              "is_required": true
+            },
+            {
+              "label": "Insurance Estimate",
+              "type": "number",
+              "is_required": false
+            }
+          ]
+        },
+        {
+          "summary": "Collect loan pre-approval options",
+          "requirements": [
+            {
+              "label": "Loan Offers",
+              "type": "text",
+              "is_required": true
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
