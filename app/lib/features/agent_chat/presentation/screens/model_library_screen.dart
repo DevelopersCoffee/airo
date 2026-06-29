@@ -161,6 +161,10 @@ class AssistantModelLibraryState {
     final balancedPackage = defaultPackages[AssistantTask.reasoning];
     final hasDownloadedBalancedPackage = balancedPackage?.isDownloaded ?? false;
     final liteRtReady = liteRtAvailable || hasDownloadedBalancedPackage;
+    final compatibilityByModelId = await _loadCompatibilityByModelId(
+      liteRtService,
+      defaultPackages,
+    );
 
     final platformLabel = kIsWeb
         ? 'Web'
@@ -224,6 +228,9 @@ class AssistantModelLibraryState {
         local: true,
         opensModelManager: !liteRtReady,
         package: balancedPackage,
+        compatibility: balancedPackage == null
+            ? null
+            : compatibilityByModelId[balancedPackage.id],
       ),
     );
     addCandidate(
@@ -253,6 +260,7 @@ class AssistantModelLibraryState {
       addCandidate(
         AssistantModelCandidate.fromOfflineModel(
           await liteRtService.hydrateDownloadedModel(model),
+          compatibilityByModelId: compatibilityByModelId,
         ),
       );
     }
@@ -263,7 +271,12 @@ class AssistantModelLibraryState {
     ]) {
       final model = defaultPackages[task];
       if (model != null) {
-        addCandidate(AssistantModelCandidate.fromOfflineModel(model));
+        addCandidate(
+          AssistantModelCandidate.fromOfflineModel(
+            model,
+            compatibilityByModelId: compatibilityByModelId,
+          ),
+        );
       }
     }
     final candidates = candidatesById.values.toList();
@@ -380,6 +393,34 @@ class AssistantModelLibraryState {
       AssistantTask.actions: functionGemma,
     };
   }
+
+  static Future<Map<String, ModelCompatibilityResult>>
+  _loadCompatibilityByModelId(
+    LiteRtLmService liteRtService,
+    Map<AssistantTask, OfflineModelInfo> defaultPackages,
+  ) async {
+    final registry = ModelRegistry();
+    final modelsById = <String, OfflineModelInfo>{};
+
+    void addModel(OfflineModelInfo model) {
+      modelsById[model.id] = model;
+    }
+
+    for (final model in defaultPackages.values) {
+      addModel(model);
+    }
+    for (final model in ModelCatalog.mobileRecommended.take(3)) {
+      addModel(await liteRtService.hydrateDownloadedModel(model));
+    }
+
+    final compatibilityByModelId = <String, ModelCompatibilityResult>{};
+    for (final entry in modelsById.entries) {
+      compatibilityByModelId[entry.key] = await registry.checkCompatibility(
+        entry.value,
+      );
+    }
+    return compatibilityByModelId;
+  }
 }
 
 class AssistantModelCandidate {
@@ -398,9 +439,13 @@ class AssistantModelCandidate {
     this.unavailableReason,
     this.opensModelManager = false,
     this.package,
+    this.compatibility,
   });
 
-  factory AssistantModelCandidate.fromOfflineModel(OfflineModelInfo model) {
+  factory AssistantModelCandidate.fromOfflineModel(
+    OfflineModelInfo model, {
+    Map<String, ModelCompatibilityResult> compatibilityByModelId = const {},
+  }) {
     return AssistantModelCandidate(
       id: assistantModelIdForOfflineModel(model.id),
       name: model.name,
@@ -424,6 +469,7 @@ class AssistantModelCandidate {
       local: true,
       opensModelManager: !model.isDownloaded,
       package: model,
+      compatibility: compatibilityByModelId[model.id],
     );
   }
 
@@ -441,6 +487,7 @@ class AssistantModelCandidate {
   final String? unavailableReason;
   final bool opensModelManager;
   final OfflineModelInfo? package;
+  final ModelCompatibilityResult? compatibility;
 
   int scoreFor(AssistantTask task) {
     var score = 0;
@@ -1047,6 +1094,10 @@ class _ProjectTemplateCard extends StatelessWidget {
                   _StatusPill(label: tag, color: Colors.grey.shade700),
               ],
             ),
+            if (candidate.local && candidate.compatibility != null) ...[
+              const SizedBox(height: 12),
+              _CompatibilityPanel(compatibility: candidate.compatibility!),
+            ],
             if (candidate.unavailableReason != null) ...[
               const SizedBox(height: 10),
               Text(
@@ -1089,6 +1140,81 @@ class _ProjectTemplateCard extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+class _CompatibilityPanel extends StatelessWidget {
+  const _CompatibilityPanel({required this.compatibility});
+
+  final ModelCompatibilityResult compatibility;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final severity = compatibility.memorySeverity;
+    final color = switch (severity) {
+      MemorySeverity.safe => Colors.green.shade700,
+      MemorySeverity.warning => Colors.orange.shade700,
+      MemorySeverity.critical => Colors.deepOrange.shade700,
+      MemorySeverity.blocked => theme.colorScheme.error,
+    };
+    final detail = compatibility.reason ?? severity.description;
+    final memoryLine =
+        compatibility.availableMemoryMB > 0 &&
+            compatibility.requiredMemoryMB > 0
+        ? 'Needs ${compatibility.requiredMemoryMB.toStringAsFixed(0)} MB, '
+              'device has ${compatibility.availableMemoryMB.toStringAsFixed(0)} MB free.'
+        : 'Device memory estimate unavailable. Runtime checks will verify before launch.';
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(10),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(_iconFor(severity), color: color, size: 18),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Device fit: ${severity.title}',
+                    style: theme.textTheme.labelLarge?.copyWith(
+                      color: color,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(detail, style: theme.textTheme.bodySmall),
+                  const SizedBox(height: 4),
+                  Text(
+                    memoryLine,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  IconData _iconFor(MemorySeverity severity) {
+    return switch (severity) {
+      MemorySeverity.safe => Icons.verified_outlined,
+      MemorySeverity.warning => Icons.warning_amber_rounded,
+      MemorySeverity.critical => Icons.report_problem_outlined,
+      MemorySeverity.blocked => Icons.block_outlined,
+    };
   }
 }
 
