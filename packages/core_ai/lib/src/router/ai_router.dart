@@ -1,4 +1,5 @@
 import 'package:core_domain/core_domain.dart';
+
 import '../client/llm_client.dart';
 import '../provider/ai_provider.dart';
 
@@ -18,6 +19,19 @@ enum AIRoutingStrategy {
 
   /// Let user choose.
   userChoice,
+}
+
+/// Explicit local-only policy for privacy-sensitive companion requests.
+class LocalOnlyAiPolicy {
+  const LocalOnlyAiPolicy({this.onDeviceMaxPromptLength = 1024});
+
+  final int onDeviceMaxPromptLength;
+
+  AIRouterConfig toRouterConfig() {
+    return AIRouterConfig.localOnly(
+      onDeviceMaxPromptLength: onDeviceMaxPromptLength,
+    );
+  }
 }
 
 /// Configuration for AI routing.
@@ -41,6 +55,13 @@ class AIRouterConfig {
     this.onDeviceMaxPromptLength = 1024,
     this.autoFallback = true,
   });
+
+  const AIRouterConfig.localOnly({this.onDeviceMaxPromptLength = 1024})
+    : defaultStrategy = AIRoutingStrategy.onDeviceOnly,
+      userPreference = null,
+      autoFallback = false;
+
+  bool get isLocalOnly => defaultStrategy == AIRoutingStrategy.onDeviceOnly;
 }
 
 /// Routes AI requests to appropriate provider based on strategy.
@@ -54,6 +75,15 @@ class AIRouter implements LLMClient {
     this.cloudClient,
     this.config = const AIRouterConfig(),
   });
+
+  AppError _unavailableError() {
+    if (config.isLocalOnly) {
+      return AIError(
+        'Local-only AI is active, but no on-device model is available.',
+      );
+    }
+    return UnknownError('No AI provider available');
+  }
 
   /// Get the appropriate client based on strategy and availability.
   Future<LLMClient?> _selectClient({String? prompt}) async {
@@ -139,13 +169,13 @@ class AIRouter implements LLMClient {
   }) async {
     final client = await _selectClient(prompt: prompt);
     if (client == null) {
-      return Err(UnknownError('No AI provider available'), StackTrace.current);
+      return Err(_unavailableError(), StackTrace.current);
     }
 
     final result = await client.generateText(prompt, config: config);
 
-    // Try fallback on error
-    if (result.isErr && this.config.autoFallback) {
+    // Try fallback on error unless the request is explicitly local-only.
+    if (result.isErr && this.config.autoFallback && !this.config.isLocalOnly) {
       final fallback = client == onDeviceClient ? cloudClient : onDeviceClient;
       if (fallback != null && await fallback.isAvailable()) {
         return fallback.generateText(prompt, config: config);
@@ -162,7 +192,7 @@ class AIRouter implements LLMClient {
   }) async* {
     final client = await _selectClient(prompt: prompt);
     if (client == null) {
-      yield Err(UnknownError('No AI provider available'), StackTrace.current);
+      yield Err(_unavailableError(), StackTrace.current);
       return;
     }
 
@@ -177,7 +207,7 @@ class AIRouter implements LLMClient {
     final prompt = messages.map((m) => m.content).join(' ');
     final client = await _selectClient(prompt: prompt);
     if (client == null) {
-      return Err(UnknownError('No AI provider available'), StackTrace.current);
+      return Err(_unavailableError(), StackTrace.current);
     }
     return client.chat(messages, config: config);
   }
@@ -190,7 +220,7 @@ class AIRouter implements LLMClient {
     final prompt = messages.map((m) => m.content).join(' ');
     final client = await _selectClient(prompt: prompt);
     if (client == null) {
-      yield Err(UnknownError('No AI provider available'), StackTrace.current);
+      yield Err(_unavailableError(), StackTrace.current);
       return;
     }
     yield* client.chatStream(messages, config: config);
@@ -204,7 +234,7 @@ class AIRouter implements LLMClient {
   }) async {
     final client = await _selectClient(prompt: text);
     if (client == null) {
-      return Err(UnknownError('No AI provider available'), StackTrace.current);
+      return Err(_unavailableError(), StackTrace.current);
     }
     return client.classify(text, categories, config: config);
   }
@@ -217,7 +247,7 @@ class AIRouter implements LLMClient {
   }) async {
     final client = await _selectClient(prompt: text);
     if (client == null) {
-      return Err(UnknownError('No AI provider available'), StackTrace.current);
+      return Err(_unavailableError(), StackTrace.current);
     }
     return client.summarize(text, maxLength: maxLength, config: config);
   }
