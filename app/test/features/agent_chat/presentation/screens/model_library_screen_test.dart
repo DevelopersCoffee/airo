@@ -153,6 +153,143 @@ void main() {
     expect(find.text('Download package'), findsWidgets);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('shows safe device-fit details for local packages', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+
+    final package = OfflineModelInfo(
+      id: 'gemma-4-e2b-it-litertlm',
+      name: 'Gemma 4 E2B',
+      family: ModelFamily.gemma,
+      fileSizeBytes: 2 * 1024 * 1024 * 1024,
+      backendPreference: ModelBackendPreference.gpu,
+      provider: AIProvider.gemma,
+      capabilities: const [ModelCapability.chat],
+      filePath: '/models/gemma-4-e2b-it.litertlm',
+    );
+    final candidate = AssistantModelCandidate(
+      id: litertGemmaAssistantModelId,
+      name: 'Gemma mobile package',
+      runtime: 'LiteRT-LM local model',
+      description: 'Local package',
+      bestFor: const [AssistantTask.chat],
+      tags: const ['Local'],
+      privacyLabel: 'Prompt stays on device',
+      sizeLabel: package.fileSizeDisplay,
+      available: true,
+      actionLabel: 'Start',
+      local: true,
+      package: package,
+      compatibility: const ModelCompatibilityResult(
+        isCompatible: true,
+        memorySeverity: MemorySeverity.safe,
+        availableMemoryMB: 6144,
+        requiredMemoryMB: 2048,
+      ),
+    );
+    final state = AssistantModelLibraryState(
+      task: AssistantTask.chat,
+      deviceLabel: 'Pixel 9',
+      platformLabel: 'ANDROID',
+      candidates: [candidate],
+      recommended: candidate,
+      defaultPackages: {AssistantTask.chat: package},
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          assistantModelLibraryProvider.overrideWith((ref) async => state),
+          selectedAssistantModelIdProvider.overrideWith(
+            (ref) => _SelectedAssistantModelNotifier(),
+          ),
+        ],
+        child: MaterialApp(
+          home: ModelLibraryScreen(
+            onModelSelected: (_) {},
+            onOpenModelManager: () {},
+          ),
+        ),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    expect(find.text('Device fit: Safe to load'), findsWidgets);
+    expect(find.text('Plenty of memory available'), findsWidgets);
+    expect(find.text('Needs 2048 MB, device has 6144 MB free.'), findsWidgets);
+  });
+
+  testWidgets('shows blocked device-fit details for incompatible packages', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+
+    final package = OfflineModelInfo(
+      id: 'gemma-4-e2b-it-litertlm',
+      name: 'Gemma 4 E2B',
+      family: ModelFamily.gemma,
+      fileSizeBytes: 2 * 1024 * 1024 * 1024,
+      backendPreference: ModelBackendPreference.gpu,
+      provider: AIProvider.gemma,
+      capabilities: const [ModelCapability.chat],
+    );
+    final candidate = AssistantModelCandidate(
+      id: litertGemmaAssistantModelId,
+      name: 'Gemma mobile package',
+      runtime: 'LiteRT-LM local model',
+      description: 'Local package',
+      bestFor: const [AssistantTask.chat],
+      tags: const ['Local'],
+      privacyLabel: 'Prompt stays on device',
+      sizeLabel: package.fileSizeDisplay,
+      available: false,
+      actionLabel: 'Download package',
+      local: true,
+      opensModelManager: true,
+      package: package,
+      compatibility: const ModelCompatibilityResult(
+        isCompatible: false,
+        memorySeverity: MemorySeverity.blocked,
+        reason: 'Insufficient memory.',
+        availableMemoryMB: 1024,
+        requiredMemoryMB: 4096,
+      ),
+    );
+    final state = AssistantModelLibraryState(
+      task: AssistantTask.chat,
+      deviceLabel: 'Small Phone',
+      platformLabel: 'ANDROID',
+      candidates: [candidate],
+      recommended: candidate,
+      defaultPackages: {AssistantTask.chat: package},
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          assistantModelLibraryProvider.overrideWith((ref) async => state),
+          selectedAssistantModelIdProvider.overrideWith(
+            (ref) => _SelectedAssistantModelNotifier(),
+          ),
+        ],
+        child: MaterialApp(
+          home: ModelLibraryScreen(
+            onModelSelected: (_) {},
+            onOpenModelManager: () {},
+          ),
+        ),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    expect(find.text('Device fit: Cannot load'), findsWidgets);
+    expect(find.text('Insufficient memory.'), findsWidgets);
+    expect(find.text('Needs 4096 MB, device has 1024 MB free.'), findsWidgets);
+  });
 }
 
 class _SelectedAssistantModelNotifier extends SelectedAssistantModelNotifier {
