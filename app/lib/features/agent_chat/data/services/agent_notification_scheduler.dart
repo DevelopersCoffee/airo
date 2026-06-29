@@ -177,9 +177,14 @@ class LocalAgentNotificationScheduler
     implements AgentNotificationSchedulingService {
   LocalAgentNotificationScheduler({
     FlutterLocalNotificationsPlugin? notificationsPlugin,
+    SharedPreferencesAsync? preferences,
+  }) : this._internal(notificationsPlugin, preferences);
+
+  LocalAgentNotificationScheduler._internal(
+    FlutterLocalNotificationsPlugin? notificationsPlugin,
     this._preferences,
-  }) : _notificationsPlugin =
-           notificationsPlugin ?? FlutterLocalNotificationsPlugin();
+  ) : _notificationsPlugin =
+          notificationsPlugin ?? FlutterLocalNotificationsPlugin();
 
   static final LocalAgentNotificationScheduler instance =
       LocalAgentNotificationScheduler();
@@ -203,6 +208,18 @@ class LocalAgentNotificationScheduler
     ScheduleAgentNotificationRequest request,
   ) async {
     _validate(request);
+    final existingNotifications = await getScheduledNotifications();
+    ScheduledAgentNotification? duplicate;
+    for (final notification in existingNotifications) {
+      if (_matchesRequest(notification, request)) {
+        duplicate = notification;
+        break;
+      }
+    }
+    if (duplicate != null) {
+      return duplicate;
+    }
+
     await _ensureInitialized();
     final hasPermission = await _requestNotificationPermission();
     if (!hasPermission) {
@@ -257,11 +274,11 @@ class LocalAgentNotificationScheduler
       matchDateTimeComponents: request.repeatDaily
           ? DateTimeComponents.time
           : null,
+      payload: _payloadFor(notification),
     );
 
-    final notifications = await getScheduledNotifications();
     await _saveScheduledNotifications([
-      ...notifications.where((item) => item.id != notification.id),
+      ...existingNotifications.where((item) => item.id != notification.id),
       notification,
     ]);
 
@@ -437,9 +454,11 @@ class LocalAgentNotificationScheduler
   Future<void> _saveScheduledNotifications(
     List<ScheduledAgentNotification> notifications,
   ) async {
+    final sorted = [...notifications]
+      ..sort((a, b) => a.scheduledAt.compareTo(b.scheduledAt));
     await _asyncPreferences.setString(
       _storageKey,
-      jsonEncode(notifications.map((item) => item.toJson()).toList()),
+      jsonEncode(sorted.map((item) => item.toJson()).toList()),
     );
   }
 
@@ -469,10 +488,63 @@ class LocalAgentNotificationScheduler
       );
     }
   }
+
+  bool _matchesRequest(
+    ScheduledAgentNotification notification,
+    ScheduleAgentNotificationRequest request,
+  ) {
+    return notification.title == request.title &&
+        notification.message == request.message &&
+        notification.hour == request.hour &&
+        notification.minute == request.minute &&
+        notification.repeatDaily == request.repeatDaily &&
+        notification.date == request.date &&
+        notification.category == request.category &&
+        notification.scheduleType == request.scheduleType &&
+        notification.requiresCompletion == request.requiresCompletion &&
+        notification.followUpPolicy == request.followUpPolicy &&
+        _canonicalJson(notification.metadata) ==
+            _canonicalJson(request.metadata);
+  }
+
+  String _payloadFor(ScheduledAgentNotification notification) {
+    final payload = <String, Object?>{
+      'version': 1,
+      'notification_id': notification.id,
+      'category': notification.category,
+      'schedule_type': notification.scheduleType,
+      'requires_completion': notification.requiresCompletion,
+      if (notification.groupId != null) 'group_id': notification.groupId,
+      if (notification.date != null) 'date': notification.date,
+      if (notification.metadata case {
+        'deep_link': final String deepLink,
+      } when deepLink.trim().isNotEmpty)
+        'deep_link': deepLink,
+      if (notification.metadata.isNotEmpty) 'metadata': notification.metadata,
+    };
+    return _canonicalJson(payload);
+  }
 }
 
 String _formatDate(DateTime value) {
   return '${value.year.toString().padLeft(4, '0')}-'
       '${value.month.toString().padLeft(2, '0')}-'
       '${value.day.toString().padLeft(2, '0')}';
+}
+
+String _canonicalJson(Object? value) {
+  return jsonEncode(_canonicalizeJson(value));
+}
+
+Object? _canonicalizeJson(Object? value) {
+  if (value is Map) {
+    final keys = value.keys.map((key) => key.toString()).toList()..sort();
+    return <String, Object?>{
+      for (final key in keys) key: _canonicalizeJson(value[key]),
+    };
+  }
+  if (value is List) {
+    return value.map(_canonicalizeJson).toList();
+  }
+  return value;
 }
