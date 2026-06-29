@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:core_ai/core_ai.dart';
 import 'package:core_ui/core_ui.dart';
 import '../../../../core/auth/auth_service.dart';
 import '../../../../core/auth/google_auth_service.dart';
@@ -13,6 +14,7 @@ import '../../../../core/utils/currency_formatter.dart';
 import '../../../../core/utils/locale_settings.dart';
 import '../../../../shared/widgets/bug_report_dialog.dart';
 import '../../../quotes/presentation/widgets/daily_quote_card.dart';
+import '../../../settings/application/ai_preferences_settings.dart';
 import '../../../settings/application/ai_model_management.dart';
 import '../../../settings/presentation/screens/ai_models_screen.dart';
 import '../../../settings/presentation/screens/audio_settings_screen.dart';
@@ -147,23 +149,8 @@ class ProfileScreen extends ConsumerWidget {
               },
             ),
 
-            // AI Models
-            ListTile(
-              leading: const Icon(Icons.model_training),
-              title: const Text('AI Models'),
-              subtitle: const Text('Browse and manage offline models'),
-              trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-              onTap: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (context) => const AIModelsScreen(),
-                  ),
-                );
-              },
-            ),
-
-            // Active Model Selection Dropdown
-            _ActiveModelSelector(),
+            const SizedBox(height: 24),
+            const _AIPreferencesSection(),
 
             const SizedBox(height: 32),
 
@@ -375,6 +362,235 @@ class ProfileScreen extends ConsumerWidget {
   }
 }
 
+class _AIPreferencesSection extends ConsumerWidget {
+  const _AIPreferencesSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final settings = ref.watch(aiPreferencesSettingsProvider);
+    final selectedModel = ref.watch(selectedModelProvider);
+    final storageUsage = ref.watch(aiModelStorageUsageBytesProvider);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'AI Model Preferences',
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+        const SizedBox(height: 8),
+        Card(
+          child: Column(
+            children: [
+              ListTile(
+                leading: const Icon(Icons.smart_toy_outlined),
+                title: const Text('Active Model'),
+                subtitle: Text(
+                  selectedModel?.name ?? 'Browse or download a local model',
+                ),
+                trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => const AIModelsScreen(),
+                    ),
+                  );
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.alt_route_outlined),
+                title: const Text('Routing Strategy'),
+                subtitle: Text(
+                  _routingStrategyLabel(settings.routingStrategy),
+                  key: const Key('ai-routing-strategy-subtitle'),
+                ),
+                trailing: DropdownButtonHideUnderline(
+                  child: DropdownButton<AIRoutingStrategy>(
+                    key: const Key('ai-routing-strategy-dropdown'),
+                    value: settings.routingStrategy,
+                    items: AIRoutingStrategy.values.map((strategy) {
+                      return DropdownMenuItem(
+                        value: strategy,
+                        child: Text(_routingStrategyLabel(strategy)),
+                      );
+                    }).toList(),
+                    onChanged: (value) {
+                      if (value == null) return;
+                      ref
+                          .read(aiPreferencesSettingsProvider.notifier)
+                          .update(settings.copyWith(routingStrategy: value));
+                    },
+                  ),
+                ),
+              ),
+              SwitchListTile(
+                key: const Key('ai-auto-fallback-switch'),
+                secondary: const Icon(Icons.swap_horiz_outlined),
+                title: const Text('Enable Auto-Fallback'),
+                subtitle: const Text(
+                  'Automatically use the backup runtime when the preferred one is unavailable.',
+                ),
+                value: settings.autoFallback,
+                onChanged: (value) {
+                  ref
+                      .read(aiPreferencesSettingsProvider.notifier)
+                      .update(settings.copyWith(autoFallback: value));
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.low_priority_outlined),
+                title: const Text('Fallback Order'),
+                subtitle: Text(_fallbackOrderLabel(settings.routingStrategy)),
+              ),
+              ExpansionTile(
+                leading: const Icon(Icons.speed_outlined),
+                title: const Text('Performance'),
+                subtitle: Text(
+                  '${settings.accelerationPreference.label} • '
+                  '${settings.threadCount} threads • '
+                  '${settings.contextLength} tokens',
+                ),
+                children: [
+                  _SettingDropdownRow<AIAccelerationPreference>(
+                    label: 'GPU Acceleration',
+                    value: settings.accelerationPreference,
+                    items: AIAccelerationPreference.values,
+                    itemLabel: (value) => value.label,
+                    onChanged: (value) {
+                      ref
+                          .read(aiPreferencesSettingsProvider.notifier)
+                          .update(
+                            settings.copyWith(accelerationPreference: value),
+                          );
+                    },
+                  ),
+                  _SettingDropdownRow<int>(
+                    label: 'Thread Count',
+                    value: settings.threadCount,
+                    items: const [1, 2, 4, 6, 8],
+                    itemLabel: (value) => '$value',
+                    onChanged: (value) {
+                      ref
+                          .read(aiPreferencesSettingsProvider.notifier)
+                          .update(settings.copyWith(threadCount: value));
+                    },
+                  ),
+                  _SettingDropdownRow<int>(
+                    label: 'Context Length',
+                    value: settings.contextLength,
+                    items: const [1024, 2048, 4096, 8192],
+                    itemLabel: (value) => '$value tokens',
+                    onChanged: (value) {
+                      ref
+                          .read(aiPreferencesSettingsProvider.notifier)
+                          .update(settings.copyWith(contextLength: value));
+                    },
+                  ),
+                ],
+              ),
+              ExpansionTile(
+                leading: const Icon(Icons.storage_outlined),
+                title: const Text('Storage'),
+                subtitle: Text(
+                  storageUsage.when(
+                    data: (bytes) => '${_formatBytes(bytes)} used',
+                    loading: () => 'Checking storage usage',
+                    error: (_, _) => 'Storage usage unavailable',
+                  ),
+                ),
+                children: [
+                  _SettingDropdownRow<AIDownloadLocationPreference>(
+                    label: 'Download Location',
+                    value: settings.downloadLocation,
+                    items: AIDownloadLocationPreference.values,
+                    itemLabel: (value) => value.label,
+                    onChanged: (value) {
+                      ref
+                          .read(aiPreferencesSettingsProvider.notifier)
+                          .update(settings.copyWith(downloadLocation: value));
+                    },
+                  ),
+                  ListTile(
+                    title: const Text('Clear Model Cache'),
+                    subtitle: const Text(
+                      'Remove orphaned partial files and refresh storage usage.',
+                    ),
+                    trailing: TextButton(
+                      onPressed: () async {
+                        final removed = await ref
+                            .read(aiPreferencesSettingsProvider.notifier)
+                            .clearModelCache();
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                removed == 0
+                                    ? 'No cached model files needed cleanup.'
+                                    : 'Cleared $removed cached model file(s).',
+                              ),
+                            ),
+                          );
+                        }
+                      },
+                      child: const Text('Clear'),
+                    ),
+                  ),
+                ],
+              ),
+              ExpansionTile(
+                leading: const Icon(Icons.tune_outlined),
+                title: const Text('Advanced'),
+                subtitle: Text(
+                  '${settings.memoryBudgetPercent}% memory budget • '
+                  '${settings.debugLogging ? 'Debug logging on' : 'Debug logging off'}',
+                ),
+                children: [
+                  _SettingDropdownRow<int>(
+                    label: 'Memory Budget',
+                    value: settings.memoryBudgetPercent,
+                    items: const [40, 50, 60, 70, 80],
+                    itemLabel: (value) => '$value%',
+                    onChanged: (value) {
+                      ref
+                          .read(aiPreferencesSettingsProvider.notifier)
+                          .update(
+                            settings.copyWith(memoryBudgetPercent: value),
+                          );
+                    },
+                  ),
+                  SwitchListTile(
+                    key: const Key('ai-debug-logging-switch'),
+                    title: const Text('Debug Logging'),
+                    subtitle: const Text(
+                      'Keep local runtime diagnostics available for troubleshooting.',
+                    ),
+                    value: settings.debugLogging,
+                    onChanged: (value) {
+                      ref
+                          .read(aiPreferencesSettingsProvider.notifier)
+                          .update(settings.copyWith(debugLogging: value));
+                    },
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.only(top: 8, left: 16, right: 16),
+          child: Text(
+            'Use the model manager to browse downloads, set an active local model, and inspect device-specific readiness.',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _CurrencySelector extends ConsumerWidget {
   const _CurrencySelector();
 
@@ -418,66 +634,72 @@ class _CurrencySelector extends ConsumerWidget {
   }
 }
 
-/// Widget for selecting the active offline AI model.
-class _ActiveModelSelector extends ConsumerWidget {
+class _SettingDropdownRow<T> extends StatelessWidget {
+  const _SettingDropdownRow({
+    required this.label,
+    required this.value,
+    required this.items,
+    required this.itemLabel,
+    required this.onChanged,
+  });
+
+  final String label;
+  final T value;
+  final List<T> items;
+  final String Function(T value) itemLabel;
+  final ValueChanged<T> onChanged;
+
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final registry = ref.watch(modelRegistryProvider);
-    final downloadedModels = registry.downloadedModels;
-    final selectedModelId = ref.watch(selectedModelIdProvider);
-    final selectedModel = ref.watch(selectedModelProvider);
-
-    if (downloadedModels.isEmpty) {
-      return ListTile(
-        leading: const Icon(Icons.smart_toy_outlined, color: Colors.grey),
-        title: const Text('Active Model'),
-        subtitle: const Text('No models downloaded'),
-        enabled: false,
-      );
-    }
-
+  Widget build(BuildContext context) {
     return ListTile(
-      leading: const Icon(Icons.smart_toy),
-      title: const Text('Active Model'),
-      subtitle: Text(
-        selectedModel?.name ?? 'Select a model',
-        style: TextStyle(
-          color: selectedModel != null
-              ? Theme.of(context).colorScheme.primary
-              : Theme.of(context).colorScheme.onSurfaceVariant,
-        ),
-      ),
-      trailing: DropdownButton<String>(
-        value: selectedModelId,
-        hint: const Text('Select'),
-        underline: const SizedBox(),
-        items: downloadedModels.map((model) {
-          return DropdownMenuItem<String>(
-            value: model.id,
-            child: SizedBox(
-              width: 120,
-              child: Text(
-                model.name,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
-            ),
-          );
-        }).toList(),
-        onChanged: (String? modelId) {
-          if (modelId != null) {
-            ref
-                .read(selectedModelIdProvider.notifier)
-                .setSelectedModel(modelId);
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Model switched'),
-                duration: const Duration(seconds: 1),
-              ),
+      title: Text(label),
+      trailing: DropdownButtonHideUnderline(
+        child: DropdownButton<T>(
+          value: value,
+          items: items.map((item) {
+            return DropdownMenuItem<T>(
+              value: item,
+              child: Text(itemLabel(item)),
             );
-          }
-        },
+          }).toList(),
+          onChanged: (next) {
+            if (next != null) {
+              onChanged(next);
+            }
+          },
+        ),
       ),
     );
   }
+}
+
+String _routingStrategyLabel(AIRoutingStrategy strategy) {
+  return switch (strategy) {
+    AIRoutingStrategy.onDeviceOnly => 'On-device only',
+    AIRoutingStrategy.cloudOnly => 'Cloud only',
+    AIRoutingStrategy.onDevicePreferred => 'On-device preferred',
+    AIRoutingStrategy.cloudPreferred => 'Cloud preferred',
+    AIRoutingStrategy.userChoice => 'User choice',
+  };
+}
+
+String _fallbackOrderLabel(AIRoutingStrategy strategy) {
+  return switch (strategy) {
+    AIRoutingStrategy.onDeviceOnly => 'On-device only',
+    AIRoutingStrategy.cloudOnly => 'Cloud only',
+    AIRoutingStrategy.onDevicePreferred => 'On-device first, then cloud',
+    AIRoutingStrategy.cloudPreferred => 'Cloud first, then on-device',
+    AIRoutingStrategy.userChoice => 'User-selected runtime, then fallback',
+  };
+}
+
+String _formatBytes(int bytes) {
+  if (bytes < 1024) return '$bytes B';
+  if (bytes < 1024 * 1024) {
+    return '${(bytes / 1024).toStringAsFixed(1)} KB';
+  }
+  if (bytes < 1024 * 1024 * 1024) {
+    return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
+  }
+  return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(1)} GB';
 }
