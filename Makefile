@@ -332,7 +332,6 @@ test-meeting-search: ## Run deterministic Meeting Intelligence search validation
 	@cd $(APP_DIR) && flutter test test/features/meeting/meeting_intelligence_local_slice_test.dart
 	@echo "$(GREEN)Meeting-search validation complete.$(NC)"
 	@echo "$(YELLOW)See docs/release/MEETING_SEARCH_VALIDATION.md for scope and follow-up.$(NC)"
-
 .PHONY: run-android
 run-android: run-pixel9 ## Run app on local Pixel 9 Android emulator
 
@@ -595,6 +594,15 @@ test-ui-responsive: ## Run shared responsive UI validation tests
 	@echo "$(BLUE)Running shared UI responsiveness tests...$(NC)"
 	@cd $(APP_DIR) && rm -rf windows/flutter/ephemeral/.plugin_symlinks ios/Flutter/ephemeral/Packages/.packages macos/Flutter/ephemeral/Packages/.packages
 	@cd $(APP_DIR) && flutter test test/shared/widgets/adaptive_layout_test.dart
+
+.PHONY: test-background-processing
+test-background-processing: ## Run shared background-processing validation suites
+	@echo "$(BLUE)Running background-processing validation suites...$(NC)"
+	@cd $(APP_DIR) && rm -rf windows/flutter/ephemeral ios/Flutter/ephemeral/Packages/.packages macos/Flutter/ephemeral/Packages/.packages
+	@cd $(APP_DIR) && flutter test test/core/sync/background_sync_service_test.dart
+	@cd packages/core_data && flutter test test/sync/sync_service_test.dart
+	@echo "$(GREEN)Background-processing validation complete.$(NC)"
+	@echo "$(YELLOW)For device-only lifecycle checks, follow docs/release/BACKGROUND_PROCESSING_VALIDATION.md$(NC)"
 
 .PHONY: benchmark-report
 benchmark-report: ## Create a release benchmark report template
