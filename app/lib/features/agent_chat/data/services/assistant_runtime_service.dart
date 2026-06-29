@@ -345,6 +345,13 @@ class AssistantRuntimeService {
         final warmCancel = cancelled();
         if (warmCancel != null) return warmCancel;
         await (_warmupGeminiNanoOverride?.call() ?? _geminiNano.warmup());
+        emit(
+          AssistantRuntimePreparationPhase.ready,
+          1,
+          'Runtime ready',
+          '${candidate.name} finished its local preflight and is ready to launch.',
+        );
+        return AssistantRuntimePreparationResult.ready();
 
       case litertGemmaAssistantModelId:
       default:
