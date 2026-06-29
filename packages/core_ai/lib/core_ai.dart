@@ -22,6 +22,7 @@ export 'src/llm/llm_config.dart';
 export 'src/llm/gemini_nano_client.dart';
 export 'src/llm/gemini_api_client.dart';
 export 'src/llm/llm_router_impl.dart';
+export 'src/router/ai_router.dart';
 
 // GGUF Model Support
 export 'src/llm/gguf_model_config.dart';
