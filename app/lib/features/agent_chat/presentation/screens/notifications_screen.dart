@@ -4,20 +4,22 @@ import 'package:go_router/go_router.dart';
 import '../../data/services/agent_notification_scheduler.dart';
 
 class NotificationsScreen extends StatefulWidget {
-  const NotificationsScreen({super.key});
+  const NotificationsScreen({super.key, this._scheduler});
+
+  final AgentNotificationSchedulingService? _scheduler;
 
   @override
   State<NotificationsScreen> createState() => _NotificationsScreenState();
 }
 
 class _NotificationsScreenState extends State<NotificationsScreen> {
-  final LocalAgentNotificationScheduler _scheduler =
-      LocalAgentNotificationScheduler.instance;
+  late final AgentNotificationSchedulingService _scheduler;
   late Future<List<ScheduledAgentNotification>> _notificationsFuture;
 
   @override
   void initState() {
     super.initState();
+    _scheduler = widget._scheduler ?? LocalAgentNotificationScheduler.instance;
     _notificationsFuture = _scheduler.getScheduledNotifications();
   }
 
@@ -79,6 +81,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           notification: notifications[index],
           onDelete: () => _deleteNotification(notifications[index].id),
           onComplete: () => _completeNotification(notifications[index].id),
+          onOpenInChat: () => _openNotificationInChat(notifications[index]),
         );
       },
     );
@@ -99,6 +102,15 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       _notificationsFuture = _scheduler.getScheduledNotifications();
     });
   }
+
+  void _openNotificationInChat(ScheduledAgentNotification notification) {
+    final prompt = buildNotificationChatPrefill(notification);
+    final uri = Uri(
+      path: '/mind/chat',
+      queryParameters: prompt.isEmpty ? null : {'prefill': prompt},
+    );
+    context.push(uri.toString());
+  }
 }
 
 class _NotificationCard extends StatelessWidget {
@@ -106,11 +118,13 @@ class _NotificationCard extends StatelessWidget {
     required this.notification,
     required this.onDelete,
     required this.onComplete,
+    required this.onOpenInChat,
   });
 
   final ScheduledAgentNotification notification;
   final VoidCallback onDelete;
   final VoidCallback onComplete;
+  final VoidCallback onOpenInChat;
 
   @override
   Widget build(BuildContext context) {
@@ -177,6 +191,12 @@ class _NotificationCard extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 OutlinedButton.icon(
+                  onPressed: onOpenInChat,
+                  icon: const Icon(Icons.chat_bubble_outline, size: 18),
+                  label: const Text('Open in chat'),
+                ),
+                const SizedBox(width: 8),
+                OutlinedButton.icon(
                   onPressed: onDelete,
                   icon: const Icon(Icons.delete_outline, size: 18),
                   label: const Text('Delete'),
@@ -221,4 +241,26 @@ bool _completedToday(ScheduledAgentNotification notification) {
       '${now.month.toString().padLeft(2, '0')}-'
       '${now.day.toString().padLeft(2, '0')}';
   return notification.completedDates.contains(today);
+}
+
+String buildNotificationChatPrefill(ScheduledAgentNotification notification) {
+  final parts = <String>[
+    notification.title.trim(),
+    notification.message.trim(),
+  ].where((part) => part.isNotEmpty).toList();
+
+  final context = <String>[
+    if (notification.repeatDaily)
+      'daily at ${_formatTime(notification.hour, notification.minute)}'
+    else if (notification.date != null && notification.date!.isNotEmpty)
+      'on ${notification.date} at ${_formatTime(notification.hour, notification.minute)}'
+    else
+      'at ${_formatTime(notification.hour, notification.minute)}',
+  ];
+
+  if (parts.isEmpty) {
+    return '';
+  }
+
+  return 'Help me with this reminder: ${parts.join(' - ')} (${context.join(', ')}).';
 }
