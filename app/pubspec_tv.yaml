@@ -48,7 +48,9 @@ dependencies:
   firebase_auth: 6.1.4
   google_sign_in: 7.2.0
 
-  # Audio & Media (TV variant - no background audio service needed)
+  # Audio & Media
+  # Keep audio_service real because Android MainActivity extends its activity.
+  audio_service: 0.18.18
   video_player: ^2.11.1
   flutter_chrome_cast: ^1.4.6
   wakelock_plus: 1.5.2
@@ -90,7 +92,6 @@ dependencies:
   chess: 0.8.1
   flame: 1.35.0
   google_mlkit_text_recognition: 0.15.1
-  audio_service: 0.18.18
   just_audio: 0.10.5
   audioplayers: 6.5.1
   flutter_tts: 4.2.5
@@ -108,7 +109,7 @@ dependencies:
   # - chess: 0.8.1 (chess logic - not needed)
   # - stockfish: 1.8.1 (chess AI - 108MB native libs!)
   # - google_mlkit_text_recognition: 0.15.1 (OCR - not needed)
-  # - audio_service: (background audio - TV uses foreground)
+  # - audio_service native Android activity is still required by MainActivity
   # - just_audio: (music player - not needed)
   # - audioplayers: (game audio - not needed)
   # - flutter_tts: (TTS - not needed)
@@ -144,8 +145,6 @@ dependency_overrides:
     path: ../packages/stubs/mlkit_stub
 
   # Audio package stubs (not needed for TV)
-  audio_service:
-    path: ../packages/stubs/audio_service_stub
   just_audio:
     path: ../packages/stubs/just_audio_stub
   audioplayers:
