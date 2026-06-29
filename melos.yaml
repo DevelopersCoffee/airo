@@ -2,8 +2,11 @@ name: airo_workspace
 repository: https://github.com/DevelopersCoffee/airo
 
 packages:
-  - app
+  - apps/**
   - packages/**
+ignore:
+  - "**/.dart_tool/**"
+  - "**/build/**"
 
 ide:
   intellij:
@@ -103,7 +106,7 @@ scripts:
   build:tv:
     description: Build Android TV APK (<120MB target)
     run: |
-      cd app
+      cd apps/mobile
       flutter build apk --release \
         --target=lib/main_tv.dart \
         --dart-define=APP_VARIANT=tv \
@@ -116,7 +119,7 @@ scripts:
   build:streaming:
     description: Build Mobile Streaming APK (<150MB target)
     run: |
-      cd app
+      cd apps/mobile
       flutter build apk --release \
         --target=lib/main_mobile_streaming.dart \
         --dart-define=APP_VARIANT=streaming \
@@ -129,7 +132,7 @@ scripts:
   build:full:
     description: Build Mobile Full APK (all features)
     run: |
-      cd app
+      cd apps/mobile
       flutter build apk --release \
         --target=lib/main.dart \
         --dart-define=APP_VARIANT=full \
@@ -152,5 +155,5 @@ scripts:
     description: Show APK sizes for all built variants
     run: |
       echo "=== APK Sizes ==="
-      ls -lh app/build/app/outputs/flutter-apk/*.apk 2>/dev/null || echo "No APKs found. Run build:all-platforms first."
+      ls -lh apps/mobile/build/app/outputs/flutter-apk/*.apk 2>/dev/null || echo "No APKs found. Run build:all-platforms first."
 

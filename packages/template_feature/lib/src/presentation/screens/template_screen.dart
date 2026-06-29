@@ -1,4 +1,4 @@
-import 'package:core_ui/core_ui.dart';
+import 'package:design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 

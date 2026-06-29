@@ -1,0 +1,52 @@
+# melos_managed_dependency_overrides: airo,airomoney,audio_service,audioplayers,chess,core_ai,core_auth,core_data,core_domain,design_system,file_picker,flame,flutter_contacts,flutter_image_compress,flutter_local_notifications,flutter_tts,google_mlkit_text_recognition,google_sign_in,image_picker,just_audio,pdfx,permission_handler,share_plus,stockfish,timezone
+dependency_overrides:
+  airo:
+    path: ../../packages/airo
+  airomoney:
+    path: ../../packages/airomoney
+  audio_service:
+    path: ../../packages/stubs/audio_service_stub
+  audioplayers:
+    path: ../../packages/stubs/audioplayers_stub
+  chess:
+    path: ../../packages/stubs/chess_stub
+  core_ai:
+    path: ../../packages/core_ai
+  core_auth:
+    path: ../../packages/core_auth
+  core_data:
+    path: ../../packages/core_data
+  core_domain:
+    path: ../../packages/core_domain
+  design_system:
+    path: ../../packages/design_system
+  file_picker:
+    path: ../../packages/stubs/file_picker_stub
+  flame:
+    path: ../../packages/stubs/flame_stub
+  flutter_contacts:
+    path: ../../packages/stubs/flutter_contacts_stub
+  flutter_image_compress:
+    path: ../../packages/stubs/flutter_image_compress_stub
+  flutter_local_notifications:
+    path: ../../packages/stubs/flutter_local_notifications_stub
+  flutter_tts:
+    path: ../../packages/stubs/flutter_tts_stub
+  google_mlkit_text_recognition:
+    path: ../../packages/stubs/mlkit_stub
+  google_sign_in:
+    path: ../../packages/stubs/google_sign_in_stub
+  image_picker:
+    path: ../../packages/stubs/image_picker_stub
+  just_audio:
+    path: ../../packages/stubs/just_audio_stub
+  pdfx:
+    path: ../../packages/stubs/pdfx_stub
+  permission_handler:
+    path: ../../packages/stubs/permission_handler_stub
+  share_plus:
+    path: ../../packages/stubs/share_plus_stub
+  stockfish:
+    path: ../../packages/stubs/stockfish_stub
+  timezone:
+    path: ../../packages/stubs/timezone_stub

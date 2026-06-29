@@ -33,6 +33,6 @@ test/
 
 - `core_domain`: Domain abstractions (Entity, Result, Repository)
 - `core_data`: Data layer utilities
-- `core_ui`: Shared UI components
+- `design_system`: Shared UI components
 - `flutter_riverpod`: State management
 

@@ -1,0 +1,160 @@
+# iOS simulator/local pubspec.
+# Use this only for local simulator smoke tests where heavy native plugins are
+# stubbed out. The active app pubspec remains pubspec.yaml.
+
+name: airo_app
+description: "Airo - AI-powered super app with Gemini Nano integration"
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.11.1 <4.0.0"
+  flutter: ">=3.41.4"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Routing & Navigation
+  go_router: 17.1.0
+
+  # State Management
+  riverpod: 2.6.1
+  flutter_riverpod: 2.6.1
+
+  # Storage & Persistence
+  shared_preferences: ^2.5.5
+  drift: ^2.18.0
+  sqlite3_flutter_libs: ^0.5.41
+  hive: 2.2.3
+  hive_flutter: 1.1.0
+  path: 1.9.1
+  path_provider: ^2.1.6
+
+  # Connectivity
+  connectivity_plus: ^7.1.1
+
+  # Networking
+  dio: ^5.9.2
+
+  # Firebase & Authentication
+  firebase_core: 4.4.0
+  firebase_auth: 6.1.4
+  google_sign_in: 7.2.0
+
+  # Audio & Media
+  audio_service: ^0.18.18
+  just_audio: ^0.10.5
+
+  # Utilities
+  intl: 0.20.2
+  uuid: 4.5.2
+
+  # Local packages - Core
+  core_domain:
+    path: ../packages/core_domain
+  core_data:
+    path: ../packages/core_data
+  design_system:
+    path: ../packages/design_system
+  core_ai:
+    path: ../packages/core_ai
+  core_auth:
+    path: ../packages/core_auth
+
+  # Local packages - Features
+  airo:
+    path: ../packages/airo
+  airomoney:
+    path: ../packages/airomoney
+
+  cupertino_icons: ^1.0.9
+  equatable: 2.0.8
+  flame: 1.35.0
+  flame_audio: 2.11.13
+  share_plus: ^10.0.0
+  url_launcher: 6.3.2
+  file_picker: 10.3.10
+  pdfx: 2.9.2
+  flutter_local_notifications: 20.1.0
+  timezone: 0.10.1
+  audioplayers: 6.5.1
+  cached_network_image: 3.4.1
+  flutter_tts: 4.2.5
+  chess: 0.8.1
+  stockfish: 1.8.1
+  flutter_contacts: 1.1.9+2
+  permission_handler: 12.0.0+1
+  image_picker: 1.2.1
+  google_mlkit_text_recognition: 0.15.1
+  video_player: ^2.11.1
+  wakelock_plus: 1.5.2
+  package_info_plus: 9.0.1
+  screenshot: 3.0.0
+  flutter_image_compress: 2.4.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  integration_test:
+    sdk: flutter
+
+  # Code generation
+  build_runner: 2.4.13
+  drift_dev: ^2.18.0
+  hive_generator: 2.0.1
+  riverpod_generator: 2.4.0
+
+  # Testing
+  mocktail: 1.0.4
+  alchemist: ^0.13.0
+  patrol: ^4.1.1
+
+  # Linting
+  flutter_lints: 6.0.0
+  custom_lint: 0.6.4
+  riverpod_lint: 2.3.10
+
+dependency_overrides:
+  audio_service:
+    path: ../packages/stubs/audio_service_stub
+  just_audio:
+    path: ../packages/stubs/just_audio_stub
+  audioplayers:
+    path: ../packages/stubs/audioplayers_stub
+  share_plus:
+    path: ../packages/stubs/share_plus_stub
+  stockfish:
+    path: ../packages/stubs/stockfish_stub
+  chess:
+    path: ../packages/stubs/chess_stub
+  flame:
+    path: ../packages/stubs/flame_stub
+  google_mlkit_text_recognition:
+    path: ../packages/stubs/mlkit_stub
+  flutter_tts:
+    path: ../packages/stubs/flutter_tts_stub
+  image_picker:
+    path: ../packages/stubs/image_picker_stub
+  file_picker:
+    path: ../packages/stubs/file_picker_stub
+  flutter_image_compress:
+    path: ../packages/stubs/flutter_image_compress_stub
+  flutter_contacts:
+    path: ../packages/stubs/flutter_contacts_stub
+  permission_handler:
+    path: ../packages/stubs/permission_handler_stub
+  flutter_local_notifications:
+    path: ../packages/stubs/flutter_local_notifications_stub
+  timezone:
+    path: ../packages/stubs/timezone_stub
+  pdfx:
+    path: ../packages/stubs/pdfx_stub
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/audio/
+    - assets/airo_icon.png
+    - assets/iptv_channels_fallback.json
+    - assets/iptv_channels.json
