@@ -169,11 +169,14 @@ void main() {
     expect(pending, 1);
   });
 
-  test('background sync config battery saver favors charging and slower cadence', () {
-    expect(BackgroundSyncConfig.batterySaver.intervalMinutes, 60);
-    expect(BackgroundSyncConfig.batterySaver.requiresCharging, isTrue);
-    expect(BackgroundSyncConfig.batterySaver.requiresNetwork, isTrue);
-  });
+  test(
+    'background sync config battery saver favors charging and slower cadence',
+    () {
+      expect(BackgroundSyncConfig.batterySaver.intervalMinutes, 60);
+      expect(BackgroundSyncConfig.batterySaver.requiresCharging, isTrue);
+      expect(BackgroundSyncConfig.batterySaver.requiresNetwork, isTrue);
+    },
+  );
 }
 
 class _FakeConnectivityService extends ConnectivityService {
