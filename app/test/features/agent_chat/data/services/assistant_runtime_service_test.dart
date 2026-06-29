@@ -159,6 +159,58 @@ void main() {
     });
 
     test(
+      'resolves a cloud fallback for an unavailable local runtime',
+      () async {
+        const nano = AssistantModelCandidate(
+          id: geminiNanoAssistantModelId,
+          name: 'Gemini Nano',
+          runtime: 'AICore on-device',
+          description: 'Local runtime',
+          bestFor: [AssistantTask.chat],
+          tags: ['Local'],
+          privacyLabel: 'Prompt stays on device',
+          sizeLabel: 'System managed',
+          available: false,
+          actionLabel: 'Needs setup',
+          local: true,
+        );
+        const cloud = AssistantModelCandidate(
+          id: geminiCloudAssistantModelId,
+          name: 'Gemini Cloud',
+          runtime: 'Cloud',
+          description: 'Cloud runtime',
+          bestFor: [AssistantTask.chat],
+          tags: ['Cloud'],
+          privacyLabel: 'Sends prompt to API',
+          sizeLabel: 'No local download',
+          available: true,
+          actionLabel: 'Start',
+          local: false,
+        );
+        final service = AssistantRuntimeService(
+          loadAssistantModelLibrary: () async =>
+              const AssistantModelLibraryState(
+                task: AssistantTask.chat,
+                deviceLabel: 'Pixel 9',
+                platformLabel: 'ANDROID',
+                candidates: [nano, cloud],
+                recommended: nano,
+                defaultPackages: {},
+              ),
+        );
+
+        final fallback = await service.resolveFallback(
+          failedRuntimeId: geminiNanoAssistantModelId,
+          reason: 'Gemini Nano is not available on this device.',
+        );
+
+        expect(fallback, isNotNull);
+        expect(fallback?.fallbackRuntimeId, geminiCloudAssistantModelId);
+        expect(fallback?.failedRuntimeName, 'Gemini Nano');
+      },
+    );
+
+    test(
       'builds a blocked preparation result for unsupported Gemini Nano',
       () async {
         final service = AssistantRuntimeService(

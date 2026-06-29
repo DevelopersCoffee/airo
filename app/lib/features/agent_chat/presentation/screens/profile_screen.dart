@@ -679,6 +679,8 @@ String _routingStrategyLabel(AIRoutingStrategy strategy) {
     AIRoutingStrategy.cloudOnly => 'Cloud only',
     AIRoutingStrategy.onDevicePreferred => 'On-device preferred',
     AIRoutingStrategy.cloudPreferred => 'Cloud preferred',
+    AIRoutingStrategy.offlinePreferred => 'Offline preferred',
+    AIRoutingStrategy.specificModel => 'Specific model',
     AIRoutingStrategy.userChoice => 'User choice',
   };
 }
@@ -689,6 +691,8 @@ String _fallbackOrderLabel(AIRoutingStrategy strategy) {
     AIRoutingStrategy.cloudOnly => 'Cloud only',
     AIRoutingStrategy.onDevicePreferred => 'On-device first, then cloud',
     AIRoutingStrategy.cloudPreferred => 'Cloud first, then on-device',
+    AIRoutingStrategy.offlinePreferred => 'Offline runtimes first, then cloud',
+    AIRoutingStrategy.specificModel => 'Specific runtime first, then backup',
     AIRoutingStrategy.userChoice => 'User-selected runtime, then fallback',
   };
 }

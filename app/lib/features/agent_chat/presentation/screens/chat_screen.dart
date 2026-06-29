@@ -20,11 +20,13 @@ import '../../../agent_chat/domain/services/agent_skill_orchestrator.dart';
 import '../../../agent_chat/domain/services/agent_skill_registry.dart';
 import '../../../agent_chat/domain/services/intent_parser.dart';
 import '../../../agent_chat/domain/services/tool_registry.dart';
+import '../../../agent_chat/presentation/widgets/fallback_notification.dart';
 import '../../../agent_chat/presentation/widgets/manage_skills_sheet.dart';
 import '../../../agent_chat/presentation/widgets/skill_action_trace_card.dart';
 import '../../../coins/application/providers/dashboard_providers.dart';
 import '../../../coins/application/providers/expense_providers.dart';
 import '../../../coins/application/services/finance_chat_ingestion_service.dart';
+import '../../../settings/application/ai_preferences_settings.dart';
 import '../../../../core/services/gemini_nano_service.dart';
 import '../../../../core/services/litert_lm_service.dart';
 import '../../../../core/services/local_runtime_preloader_service.dart';
@@ -805,11 +807,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   Future<ChatResponseMetadata?> _generateSelectedModelResponse(
     String selectedModelId,
-    String message,
-  ) async {
+    String message, {
+    Set<String> attemptedRuntimeIds = const {},
+  }) async {
     final stopwatch = Stopwatch()..start();
     int? timeToFirstTokenMs;
     String latestChunk = '';
+    final attempted = {...attemptedRuntimeIds, selectedModelId};
     try {
       await for (final chunk in _assistantRuntime.generateTextStream(
         selectedModelId: selectedModelId,
@@ -832,6 +836,27 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       );
     } on AssistantRuntimeUnavailableException catch (e) {
       stopwatch.stop();
+      final autoFallback = ref.read(aiPreferencesSettingsProvider).autoFallback;
+      if (autoFallback) {
+        final fallback = await _assistantRuntime.resolveFallback(
+          failedRuntimeId: e.runtimeId ?? selectedModelId,
+          excludedRuntimeIds: attempted,
+          reason: e.message,
+        );
+        if (fallback != null) {
+          await ref
+              .read(selectedAssistantModelIdProvider.notifier)
+              .select(fallback.fallbackRuntimeId);
+          if (mounted) {
+            showAssistantFallbackNotification(context, fallback);
+          }
+          return _generateSelectedModelResponse(
+            fallback.fallbackRuntimeId,
+            message,
+            attemptedRuntimeIds: attempted,
+          );
+        }
+      }
       _replaceStreamingMessage(e.message);
       return null;
     }

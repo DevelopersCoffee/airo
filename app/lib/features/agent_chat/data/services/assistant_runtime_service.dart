@@ -142,6 +142,22 @@ class AssistantRuntimeUnavailableException implements Exception {
   String toString() => message;
 }
 
+class AssistantRuntimeFallbackDecision {
+  const AssistantRuntimeFallbackDecision({
+    required this.failedRuntimeId,
+    required this.failedRuntimeName,
+    required this.fallbackRuntimeId,
+    required this.fallbackRuntimeName,
+    required this.reason,
+  });
+
+  final String failedRuntimeId;
+  final String failedRuntimeName;
+  final String fallbackRuntimeId;
+  final String fallbackRuntimeName;
+  final String reason;
+}
+
 class AssistantRuntimeService {
   AssistantRuntimeService({
     GeminiNanoService? geminiNano,
@@ -675,5 +691,40 @@ class AssistantRuntimeService {
     } catch (_) {
       return null;
     }
+  }
+
+  Future<AssistantRuntimeFallbackDecision?> resolveFallback({
+    required String failedRuntimeId,
+    AssistantTask task = AssistantTask.chat,
+    Set<String> excludedRuntimeIds = const {},
+    String? reason,
+  }) async {
+    final library =
+        await (_loadAssistantModelLibraryOverride?.call() ??
+            AssistantModelLibraryState.load(task: task));
+
+    final failedCandidate = library.candidateById(failedRuntimeId);
+    final orderedCandidates = <AssistantModelCandidate>[
+      library.recommendedFor(task),
+      ...library.candidates,
+    ];
+    final seen = <String>{...excludedRuntimeIds, failedRuntimeId};
+
+    for (final candidate in orderedCandidates) {
+      if (!seen.add(candidate.id) || !candidate.available) {
+        continue;
+      }
+      return AssistantRuntimeFallbackDecision(
+        failedRuntimeId: failedRuntimeId,
+        failedRuntimeName: failedCandidate?.name ?? failedRuntimeId,
+        fallbackRuntimeId: candidate.id,
+        fallbackRuntimeName: candidate.name,
+        reason:
+            reason ??
+            'the selected runtime is unavailable on this device right now',
+      );
+    }
+
+    return null;
   }
 }
