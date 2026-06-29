@@ -140,20 +140,23 @@ void main() {
       expect(severity, equals(MemorySeverity.blocked));
     });
 
-    test('returns blocked when exceeds available memory', () {
-      const memoryInfo = MemoryInfo(
-        totalBytes: totalBytes,
-        availableBytes: 2147483648, // Only 2GB available
-      );
+    test(
+      'returns critical when budget fits but free memory is transiently low',
+      () {
+        const memoryInfo = MemoryInfo(
+          totalBytes: totalBytes,
+          availableBytes: 2147483648, // Only 2GB available
+        );
 
-      // Try to use 3GB when only 2GB available
-      final severity = manager.checkMemoryForModel(
-        3221225472, // 3GB
-        memoryInfo,
-      );
+        // 3GB fits the 4.8GB device budget but exceeds current free memory.
+        final severity = manager.checkMemoryForModel(
+          3221225472, // 3GB
+          memoryInfo,
+        );
 
-      expect(severity, equals(MemorySeverity.blocked));
-    });
+        expect(severity, equals(MemorySeverity.critical));
+      },
+    );
 
     test('returns warning when memory info unavailable', () {
       final memoryInfo = MemoryInfo.unknown();

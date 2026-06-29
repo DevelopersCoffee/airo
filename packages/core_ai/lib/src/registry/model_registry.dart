@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:developer' as developer;
 
 import '../device/device_capability_service.dart';
+import '../device/memory_budget_manager.dart';
 import '../device/memory_severity.dart';
 import '../models/model_credibility.dart';
 import '../models/offline_model_info.dart';
@@ -55,10 +56,22 @@ class ModelCompatibilityResult {
 /// - Check device compatibility
 /// - Track downloaded vs available models
 class ModelRegistry {
-  ModelRegistry({DeviceCapabilityService? deviceCapabilityService})
-    : _deviceService = deviceCapabilityService ?? DeviceCapabilityService();
+  ModelRegistry({
+    DeviceCapabilityService? deviceCapabilityService,
+    Future<MemoryInfo> Function()? loadMemoryInfo,
+    MemoryBudgetManager? memoryBudgetManager,
+  }) : _deviceService = deviceCapabilityService ?? DeviceCapabilityService(),
+       _loadMemoryInfo = loadMemoryInfo,
+       _memoryBudgetManager =
+           memoryBudgetManager ??
+           MemoryBudgetManager(
+             deviceCapability:
+                 deviceCapabilityService ?? DeviceCapabilityService(),
+           );
 
   final DeviceCapabilityService _deviceService;
+  final Future<MemoryInfo> Function()? _loadMemoryInfo;
+  final MemoryBudgetManager _memoryBudgetManager;
   final Map<String, OfflineModelInfo> _models = {};
   final _changeController = StreamController<ModelRegistryEvent>.broadcast();
 
@@ -174,40 +187,52 @@ class ModelRegistry {
     OfflineModelInfo model,
   ) async {
     try {
-      final memoryInfo = await _deviceService.getMemoryInfo();
+      final memoryInfo =
+          await (_loadMemoryInfo?.call() ?? _deviceService.getMemoryInfo());
+      final requiredBytes = model.estimatedMinMemoryBytes;
 
       if (!memoryInfo.isAvailable) {
-        return ModelCompatibilityResult.compatible(MemorySeverity.warning);
-      }
-
-      final requiredBytes = model.estimatedMinMemoryBytes;
-      final availableBytes = memoryInfo.availableBytes;
-
-      if (availableBytes < requiredBytes) {
         return ModelCompatibilityResult(
-          isCompatible: false,
-          memorySeverity: MemorySeverity.blocked,
-          reason:
-              'Insufficient memory. Need ${model.fileSizeDisplay}, '
-              'but only ${memoryInfo.availableGB.toStringAsFixed(1)} GB available.',
-          availableMemoryMB: memoryInfo.availableMB,
+          isCompatible: true,
+          memorySeverity: MemorySeverity.warning,
           requiredMemoryMB: requiredBytes / (1024 * 1024),
         );
       }
 
-      // Calculate severity based on usage percentage
-      final usageRatio = requiredBytes / availableBytes;
-      final severity = switch (usageRatio) {
-        < 0.5 => MemorySeverity.safe,
-        < 0.8 => MemorySeverity.warning,
-        _ => MemorySeverity.critical,
-      };
+      final severity = _memoryBudgetManager.checkMemoryForModel(
+        requiredBytes,
+        memoryInfo,
+      );
+      final requiredMemoryMB = requiredBytes / (1024 * 1024);
+      final availableMemoryMB = memoryInfo.availableMB;
+
+      if (severity == MemorySeverity.blocked) {
+        final budgetBytes = _memoryBudgetManager.calculateBudget(memoryInfo);
+        return ModelCompatibilityResult(
+          isCompatible: false,
+          memorySeverity: severity,
+          reason:
+              'Insufficient device memory budget. Need '
+              '${_formatMemory(requiredBytes)}, but this device budget is '
+              '${_formatMemory(budgetBytes)}.',
+          availableMemoryMB: availableMemoryMB,
+          requiredMemoryMB: requiredMemoryMB,
+        );
+      }
+
+      final lowTransientMemory = memoryInfo.availableBytes < requiredBytes;
+      final reason = lowTransientMemory
+          ? 'This package fits the device budget, but only '
+                '${_formatMemory(memoryInfo.availableBytes)} is currently free. '
+                'It needs ${_formatMemory(requiredBytes)} available to warm up cleanly.'
+          : null;
 
       return ModelCompatibilityResult(
         isCompatible: true,
         memorySeverity: severity,
-        availableMemoryMB: memoryInfo.availableMB,
-        requiredMemoryMB: requiredBytes / (1024 * 1024),
+        reason: reason,
+        availableMemoryMB: availableMemoryMB,
+        requiredMemoryMB: requiredMemoryMB,
       );
     } catch (e) {
       developer.log(
@@ -218,6 +243,14 @@ class ModelRegistry {
       // Return compatible with warning on error
       return ModelCompatibilityResult.compatible(MemorySeverity.warning);
     }
+  }
+
+  String _formatMemory(int bytes) {
+    final megabytes = bytes / (1024 * 1024);
+    if (megabytes >= 1024) {
+      return '${(megabytes / 1024).toStringAsFixed(1)} GB';
+    }
+    return '${megabytes.toStringAsFixed(0)} MB';
   }
 
   /// Gets compatible models for the current device.
