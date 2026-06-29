@@ -318,6 +318,14 @@ run-android-auto: ## Run app on any connected Android device
 	@echo "$(BLUE)Running on Android (auto-detect)...$(NC)"
 	@cd $(APP_DIR) && flutter run -d android $(DART_DEFINE_ARGS)
 
+.PHONY: test-background-processing
+test-background-processing: ## Run deterministic background-processing validation suites
+	@echo "$(BLUE)Running background-processing validation suites...$(NC)"
+	@cd $(APP_DIR) && flutter test test/core/sync/background_sync_service_test.dart
+	@cd packages/core_data && flutter test test/sync/sync_service_test.dart
+	@echo "$(GREEN)Background-processing validation complete.$(NC)"
+	@echo "$(YELLOW)For device-only lifecycle checks, follow docs/release/BACKGROUND_PROCESSING_VALIDATION.md$(NC)"
+
 .PHONY: run-android
 run-android: run-pixel9 ## Run app on local Pixel 9 Android emulator
 

@@ -1,3 +1,5 @@
+// ignore_for_file: prefer_initializing_formals
+
 import 'dart:async';
 
 import 'package:core_data/core_data.dart';
@@ -10,7 +12,8 @@ import 'package:flutter/services.dart';
 /// - iOS: BGTaskScheduler
 /// - Web: Service Worker (if available)
 class BackgroundSyncService {
-  BackgroundSyncService({required this._syncService});
+  BackgroundSyncService({required SyncService syncService})
+    : _syncService = syncService;
 
   final SyncService _syncService;
 
