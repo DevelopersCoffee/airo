@@ -2,5 +2,5 @@
 # See https://dart.dev/tools/pub/glossary#lockfile
 packages: {}
 sdks:
-  dart: ">=3.9.2 <4.0.0"
-  flutter: ">=3.35.7"
+  dart: ">=3.12.2 <4.0.0"
+  flutter: ">=3.44.4"

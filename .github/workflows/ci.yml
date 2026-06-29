@@ -25,7 +25,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  FLUTTER_VERSION: '3.41.4'
+  FLUTTER_VERSION: '3.44.4'
 
 jobs:
   # ============================================
