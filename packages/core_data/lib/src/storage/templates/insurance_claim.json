@@ -1,0 +1,73 @@
+{
+  "template_id": "insurance_claim_v1",
+  "title": "Insurance Claim Tracking Template",
+  "description": "A bundled skeleton for documenting an incident, filing the claim, following up, and settling.",
+  "category": "insurance",
+  "version": "1.0",
+  "milestones": [
+    {
+      "name": "Phase 1: Incident Documentation",
+      "objective": "Capture evidence and timeline details",
+      "tasks": [
+        {
+          "summary": "Collect incident evidence",
+          "requirements": [
+            {
+              "label": "Evidence Notes",
+              "type": "text",
+              "is_required": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Phase 2: Claim Filing",
+      "objective": "Submit the claim package with required forms",
+      "tasks": [
+        {
+          "summary": "Submit claim form",
+          "requirements": [
+            {
+              "label": "Claim Submission Reference",
+              "type": "text",
+              "is_required": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Phase 3: Follow-up",
+      "objective": "Track adjuster communication and pending documents",
+      "tasks": [
+        {
+          "summary": "Log insurer follow-up requests",
+          "requirements": [
+            {
+              "label": "Follow-up Log",
+              "type": "text",
+              "is_required": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Phase 4: Settlement",
+      "objective": "Confirm payout and close pending actions",
+      "tasks": [
+        {
+          "summary": "Record settlement outcome",
+          "requirements": [
+            {
+              "label": "Settlement Notes",
+              "type": "text",
+              "is_required": true
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
