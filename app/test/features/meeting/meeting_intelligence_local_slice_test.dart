@@ -47,6 +47,49 @@ void main() {
               startMs: 5000,
               endMs: 9000,
             ),
+            TranscriptChunk.finalChunk(
+              id: 'chunk-3',
+              meetingId: 'meeting-1',
+              text: 'Decision: Move the launch review to Tuesday.',
+              startMs: 9000,
+              endMs: 11000,
+            ),
+            TranscriptChunk.finalChunk(
+              id: 'chunk-4',
+              meetingId: 'meeting-1',
+              text:
+                  'Open Question: Should we send the updated card details 4242 4242 4242 4242 to the vendor?',
+              startMs: 11000,
+              endMs: 14000,
+            ),
+            TranscriptChunk.finalChunk(
+              id: 'chunk-5',
+              meetingId: 'meeting-1',
+              text: 'Follow-up: Neha to confirm the rollout checklist.',
+              startMs: 14000,
+              endMs: 16000,
+            ),
+            TranscriptChunk.finalChunk(
+              id: 'chunk-6',
+              meetingId: 'meeting-1',
+              text: 'Blocker: Waiting on legal sign-off for the launch note.',
+              startMs: 16000,
+              endMs: 18000,
+            ),
+            TranscriptChunk.finalChunk(
+              id: 'chunk-7',
+              meetingId: 'meeting-1',
+              text: 'Dependency: Finance must confirm the revised budget.',
+              startMs: 18000,
+              endMs: 20000,
+            ),
+            TranscriptChunk.finalChunk(
+              id: 'chunk-8',
+              meetingId: 'meeting-1',
+              text: 'Next: Prepare the launch checklist in the local tracker.',
+              startMs: 20000,
+              endMs: 22000,
+            ),
           ],
         );
 
@@ -71,6 +114,25 @@ void main() {
         expect(
           summary.actionItems.single.description,
           contains('Priya to share offline launch notes'),
+        );
+        expect(summary.keyDecisions, ['Move the launch review to Tuesday']);
+        expect(summary.risks.single, contains('budget risk'));
+        expect(summary.openQuestions.single, contains('[REDACTED_CARD]'));
+        expect(
+          summary.followUps.single,
+          'Neha to confirm the rollout checklist',
+        );
+        expect(
+          summary.blockers.single,
+          'Waiting on legal sign-off for the launch note',
+        );
+        expect(
+          summary.dependencies.single,
+          'Finance must confirm the revised budget',
+        );
+        expect(
+          summary.nextSteps.single,
+          'Prepare the launch checklist in the local tracker',
         );
         expect(summary.isCloudSyncEligible, isFalse);
 

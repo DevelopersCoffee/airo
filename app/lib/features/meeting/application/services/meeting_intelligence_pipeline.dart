@@ -38,6 +38,22 @@ class MeetingIntelligencePipeline {
         actionItems: _extractActionItems(record.id, searchableText),
         keyDecisions: _extractPrefixedLines(searchableText, 'decision:'),
         risks: _extractRiskLines(searchableText),
+        openQuestions: _extractAnyPrefixedLines(searchableText, const [
+          'open question:',
+          'question:',
+        ]),
+        followUps: _extractAnyPrefixedLines(searchableText, const [
+          'follow-up:',
+          'followup:',
+        ]),
+        blockers: _extractAnyPrefixedLines(searchableText, const [
+          'blocker:',
+          'blocked by:',
+        ]),
+        dependencies: _extractAnyPrefixedLines(searchableText, const [
+          'dependency:',
+          'depends on:',
+        ]),
         nextSteps: _extractPrefixedLines(searchableText, 'next:'),
         isCloudSyncEligible: false,
       ),
@@ -76,11 +92,23 @@ class MeetingIntelligencePipeline {
   }
 
   List<String> _extractPrefixedLines(String text, String prefix) {
+    return _extractAnyPrefixedLines(text, [prefix]);
+  }
+
+  List<String> _extractAnyPrefixedLines(String text, List<String> prefixes) {
     return text
         .split(RegExp(r'[\n.]'))
         .map((line) => line.trim())
-        .where((line) => line.toLowerCase().startsWith(prefix))
-        .map((line) => line.substring(prefix.length).trim())
+        .map((line) {
+          final normalized = line.toLowerCase();
+          for (final prefix in prefixes) {
+            if (normalized.startsWith(prefix)) {
+              return line.substring(prefix.length).trim();
+            }
+          }
+          return null;
+        })
+        .whereType<String>()
         .where((line) => line.isNotEmpty)
         .toList(growable: false);
   }
