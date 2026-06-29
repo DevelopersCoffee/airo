@@ -333,6 +333,14 @@ test-meeting-search: ## Run deterministic Meeting Intelligence search validation
 	@echo "$(GREEN)Meeting-search validation complete.$(NC)"
 	@echo "$(YELLOW)See docs/release/MEETING_SEARCH_VALIDATION.md for scope and follow-up.$(NC)"
 
+.PHONY: test-database-reliability
+test-database-reliability: ## Run deterministic native database reliability validation
+	@echo "$(BLUE)Running database-reliability validation suite...$(NC)"
+	@cd $(APP_DIR) && rm -rf windows/flutter/ephemeral ios/Flutter/ephemeral/Packages/.packages macos/Flutter/ephemeral/Packages/.packages
+	@cd $(APP_DIR) && flutter test test/core/database/app_database_reliability_test.dart
+	@echo "$(GREEN)Database-reliability validation complete.$(NC)"
+	@echo "$(YELLOW)See docs/release/DATABASE_RELIABILITY_VALIDATION.md for scope and follow-up.$(NC)"
+
 .PHONY: run-android
 run-android: run-pixel9 ## Run app on local Pixel 9 Android emulator
 

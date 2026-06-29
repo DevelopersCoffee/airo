@@ -1,10 +1,12 @@
+// ignore_for_file: prefer_initializing_formals
+
 import 'dart:io';
 
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:path/path.dart' as p;
 import 'package:flutter/foundation.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 
 part 'app_database_native.g.dart';
 
@@ -239,10 +241,15 @@ class SyncMetadata extends Table {
   ],
 )
 class AppDatabase extends _$AppDatabase {
-  AppDatabase() : super(_openConnection());
+  AppDatabase({String? databasePath})
+    : _databasePath = databasePath,
+      super(_openConnection(databasePath: databasePath));
 
   /// For testing - allows injecting a custom executor
-  AppDatabase.forTesting(super.e);
+  AppDatabase.forTesting(super.e, {String? databasePath})
+    : _databasePath = databasePath;
+
+  final String? _databasePath;
 
   @override
   int get schemaVersion => 1;
@@ -265,14 +272,43 @@ class AppDatabase extends _$AppDatabase {
 
   /// Export database for backup
   Future<List<int>> exportDatabase() async {
-    final file = File(await getDatabasePath());
+    await customStatement('PRAGMA wal_checkpoint(TRUNCATE)');
+    final file = File(await resolvedDatabasePath());
     return file.readAsBytes();
+  }
+
+  /// Restore database bytes to disk without opening the restored database.
+  static Future<String> restoreBackup(
+    List<int> bytes, {
+    String? databasePath,
+  }) async {
+    final targetPath = await resolveDatabasePath(databasePath: databasePath);
+    final file = File(targetPath);
+    await file.parent.create(recursive: true);
+    await file.writeAsBytes(bytes, flush: true);
+    return targetPath;
+  }
+
+  /// Restore database bytes for this database path.
+  Future<void> restoreDatabase(List<int> bytes) async {
+    await close();
+    await restoreBackup(bytes, databasePath: _databasePath);
   }
 
   /// Get database file path
   static Future<String> getDatabasePath() async {
     final dbFolder = await getApplicationDocumentsDirectory();
     return p.join(dbFolder.path, 'airo_money.db');
+  }
+
+  /// Resolve the active database path.
+  Future<String> resolvedDatabasePath() {
+    return resolveDatabasePath(databasePath: _databasePath);
+  }
+
+  static Future<String> resolveDatabasePath({String? databasePath}) async {
+    if (databasePath != null) return databasePath;
+    return getDatabasePath();
   }
 
   /// Delete all data (for account deletion/reset)
@@ -293,10 +329,12 @@ class AppDatabase extends _$AppDatabase {
   }
 }
 
-LazyDatabase _openConnection() {
+LazyDatabase _openConnection({String? databasePath}) {
   return LazyDatabase(() async {
-    final dbFolder = await getApplicationDocumentsDirectory();
-    final file = File(p.join(dbFolder.path, 'airo_money.db'));
+    final file = File(
+      await AppDatabase.resolveDatabasePath(databasePath: databasePath),
+    );
+    await _repairMalformedDatabaseFile(file);
 
     if (DatabaseConfig.useEncryption && DatabaseConfig.encryptionKey != null) {
       return NativeDatabase.createInBackground(
@@ -309,4 +347,24 @@ LazyDatabase _openConnection() {
 
     return NativeDatabase.createInBackground(file);
   });
+}
+
+const _sqliteHeader = 'SQLite format 3';
+
+Future<void> _repairMalformedDatabaseFile(File file) async {
+  if (!await file.exists()) return;
+
+  final bytes = await file.readAsBytes();
+  if (bytes.isEmpty) return;
+
+  final headerLength = _sqliteHeader.length;
+  if (bytes.length < headerLength) {
+    await file.delete();
+    return;
+  }
+
+  final header = String.fromCharCodes(bytes.take(headerLength));
+  if (header != _sqliteHeader) {
+    await file.delete();
+  }
 }
