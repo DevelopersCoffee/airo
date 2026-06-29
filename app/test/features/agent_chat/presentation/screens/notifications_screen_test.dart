@@ -41,21 +41,19 @@ void main() {
         GoRoute(
           path: '/mind/notifications',
           builder: (context, state) => NotificationsScreen(
-            scheduler: _FakeNotificationScheduler(
-              notifications: [
-                ScheduledAgentNotification(
-                  id: 1,
-                  title: 'Pay rent',
-                  message: 'Check July invoice before paying.',
-                  hour: 9,
-                  minute: 0,
-                  repeatDaily: false,
-                  date: '2026-07-01',
-                  scheduledAt: DateTime(2026, 7, 1, 9),
-                  createdAt: DateTime(2026, 6, 29, 12),
-                ),
-              ],
-            ),
+            scheduler: _FakeNotificationScheduler([
+              ScheduledAgentNotification(
+                id: 1,
+                title: 'Pay rent',
+                message: 'Check July invoice before paying.',
+                hour: 9,
+                minute: 0,
+                repeatDaily: false,
+                date: '2026-07-01',
+                scheduledAt: DateTime(2026, 7, 1, 9),
+                createdAt: DateTime(2026, 6, 29, 12),
+              ),
+            ]),
           ),
         ),
         GoRoute(
@@ -92,6 +90,49 @@ void main() {
       'Help me with this reminder: Pay rent - Check July invoice before paying. (on 2026-07-01 at 9:00 AM).',
     );
   });
+
+  testWidgets('filters notifications by initial category route state', (
+    tester,
+  ) async {
+    final scheduler = _FakeNotificationScheduler([
+      ScheduledAgentNotification(
+        id: 1,
+        title: 'Recording reminder',
+        message: 'Finish the upload.',
+        hour: 9,
+        minute: 0,
+        repeatDaily: true,
+        scheduledAt: DateTime(2026, 6, 30, 9),
+        createdAt: DateTime(2026, 6, 29, 12),
+        category: 'recording',
+      ),
+      ScheduledAgentNotification(
+        id: 2,
+        title: 'Download reminder',
+        message: 'Check model download progress.',
+        hour: 10,
+        minute: 0,
+        repeatDaily: true,
+        scheduledAt: DateTime(2026, 6, 30, 10),
+        createdAt: DateTime(2026, 6, 29, 12),
+        category: 'downloads',
+      ),
+    ]);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: NotificationsScreen(
+          scheduler: scheduler,
+          initialCategory: 'recording',
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Recording Notifications (1)'), findsOneWidget);
+    expect(find.text('Recording reminder'), findsOneWidget);
+    expect(find.text('Download reminder'), findsNothing);
+  });
 }
 
 class _SelectedAssistantModelNotifier extends SelectedAssistantModelNotifier {
@@ -100,24 +141,25 @@ class _SelectedAssistantModelNotifier extends SelectedAssistantModelNotifier {
   }
 }
 
-class _FakeNotificationScheduler implements AgentNotificationSchedulingService {
-  _FakeNotificationScheduler({required this._notifications});
+final class _FakeNotificationScheduler
+    implements AgentNotificationSchedulingService {
+  _FakeNotificationScheduler(this.notifications);
 
-  final List<ScheduledAgentNotification> _notifications;
+  final List<ScheduledAgentNotification> notifications;
 
   @override
   Future<void> cancelNotification(int id) async {
-    _notifications.removeWhere((notification) => notification.id == id);
+    notifications.removeWhere((notification) => notification.id == id);
   }
 
   @override
   Future<List<ScheduledAgentNotification>> getScheduledNotifications() async {
-    return List<ScheduledAgentNotification>.from(_notifications);
+    return List<ScheduledAgentNotification>.from(notifications);
   }
 
   @override
   Future<ScheduledAgentNotification?> markNotificationComplete(int id) async {
-    for (final notification in _notifications) {
+    for (final notification in notifications) {
       if (notification.id == id) {
         return notification;
       }
