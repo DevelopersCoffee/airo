@@ -51,7 +51,9 @@ class LifeTrackLocalDataSource {
 
   Future<LifeTrack> createTrack(LifeTrack track) async {
     final db = await _requireDatabase();
-    await _insertTrackGraph(db, track);
+    await db.transaction((txn) async {
+      await _insertTrackGraph(txn, track);
+    });
     await _notifyChanged();
     return track;
   }

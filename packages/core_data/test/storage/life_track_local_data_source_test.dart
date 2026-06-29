@@ -51,15 +51,13 @@ void main() {
   });
 
   test('watchTracks emits after mutation', () async {
-    final events = <List<LifeTrack>>[];
-    final subscription = dataSource.watchTracks().listen(events.add);
+    final stream = dataSource.watchTracks();
+    final nextNonEmpty = stream.firstWhere((tracks) => tracks.isNotEmpty);
 
     await dataSource.createTrack(_sampleTrack());
-    await Future<void>.delayed(Duration.zero);
+    final emitted = await nextNonEmpty;
 
-    expect(events, isNotEmpty);
-    expect(events.last.single.id, 'track-1');
-    await subscription.cancel();
+    expect(emitted.single.id, 'track-1');
   });
 
   test('cascade delete removes nested rows', () async {
