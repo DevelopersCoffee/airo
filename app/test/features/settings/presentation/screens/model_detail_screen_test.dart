@@ -9,8 +9,10 @@ void main() {
   Widget buildScreen(
     OfflineModelInfo model, {
     Future<bool> Function(Uri uri, {LaunchMode mode})? launchUrlCallback,
+    List<Override> overrides = const [],
   }) {
     return ProviderScope(
+      overrides: overrides,
       child: MaterialApp(
         home: ModelDetailScreen(
           model: model,

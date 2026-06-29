@@ -78,6 +78,33 @@ class ModelDownloadProgress {
   /// Whether the download is in progress.
   bool get isInProgress => status == ModelDownloadStatus.downloading;
 
+  /// Whether the download is still actively occupying the progress UI.
+  bool get isActive =>
+      status == ModelDownloadStatus.pending ||
+      status == ModelDownloadStatus.downloading ||
+      status == ModelDownloadStatus.paused ||
+      status == ModelDownloadStatus.verifying;
+
+  /// Human-readable download stage label.
+  String get statusDisplay {
+    switch (status) {
+      case ModelDownloadStatus.pending:
+        return 'Queued';
+      case ModelDownloadStatus.downloading:
+        return 'Downloading';
+      case ModelDownloadStatus.paused:
+        return 'Paused';
+      case ModelDownloadStatus.completed:
+        return 'Completed';
+      case ModelDownloadStatus.failed:
+        return 'Failed';
+      case ModelDownloadStatus.cancelled:
+        return 'Cancelled';
+      case ModelDownloadStatus.verifying:
+        return 'Verifying';
+    }
+  }
+
   /// Estimated time remaining in seconds.
   int? get estimatedSecondsRemaining {
     if (speedBytesPerSecond <= 0 || isComplete) return null;
