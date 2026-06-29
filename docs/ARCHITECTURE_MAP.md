@@ -6,8 +6,17 @@ This document maps the major subsystems required for AIRO to function as an offl
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | UI Framework | v0.0.2 | Stable | None | Critical | MVP |
 | Navigation | v0.0.2 | Stable | UI Framework | Critical | MVP |
-| Model Manager | v0.0.2 | Experimental | Download Manager, Storage | Critical | MVP |
-| Background Download Manager | v0.0.2 | Stable | Storage Layer | Critical | MVP |
+| ModelManager | v0.0.2 | Experimental | ModelInstallationService, Storage | Critical | MVP |
+| ModelInstallationService | Recent | Stable | Storage Layer | Critical | MVP |
+| PackageManifestParser | Recent | Stable | None | Critical | MVP |
+| DependencyValidator | Recent | Stable | None | Critical | MVP |
+| ImportWizard | Recent | Stable | ModelInstallationService | High | v1 |
+| DownloadWatchdog | Recent | Stable | ModelInstallationService | High | v1 |
+| InstallationRecoveryManager | Recent | Stable | Storage Layer | High | v1 |
+| InstallationDiagnosticsService | Recent | Stable | ModelInstallationService | Medium | v2 |
+| BackgroundInstallationWorker | Recent | Stable | InstallationRecoveryManager | Critical | MVP |
+| ModelCapabilityDatabase | Recent | Stable | ModelRegistry | Critical | MVP |
+| ModelRegistry | Recent | Stable | Storage Layer | Critical | MVP |
 | Document Processing Pipeline | v0.0.2-v0.0.43 | Stable | Storage Layer | Critical | MVP |
 | Offline RAG Pipeline | v0.0.2-v0.0.43 | Experimental | Vector Database, Storage | Critical | MVP |
 | Vector Database Layer | v0.0.2-v0.0.43 | Stable | Storage Layer | Critical | MVP |
@@ -52,3 +61,29 @@ This document maps the major subsystems required for AIRO to function as an offl
 | URLIngestionPipeline | Recent | Experimental | VisionService, Storage | High | v1 |
 | TelemetryManager | Recent | Stable | None | High | v1 |
 | NotificationManager | Recent | Stable | PlatformBehaviorService | High | v1 |
+| CapabilityRegistry | Recent | Stable | AI Runtime | Critical | MVP |
+| WorkspaceManager | Recent | Stable | Storage Layer | Critical | MVP |
+| WorkspaceConfigurationService | Recent | Stable | WorkspaceManager | Critical | MVP |
+| KnowledgeService | Recent | Stable | Storage Layer, WorkspaceManager | High | v1 |
+| SearchEngine | Recent | Stable | Vector Database, Storage Layer | High | v1 |
+| ThinkingProfileManager | Recent | Experimental | CapabilityRegistry | High | v1 |
+| AIProvider | Recent | Stable | AI Runtime | Critical | MVP |
+| AIControlCenter | Recent | Stable | TelemetryManager, RuntimeConfigurationService | High | v1 |
+| StartupOrchestrator | Recent | Stable | None | Critical | MVP |
+| DiscoveryService | Recent | Stable | None | Critical | MVP |
+| ContextManager | Recent | Stable | Storage Layer | Critical | MVP |
+| AttachmentPipeline | Recent | Stable | ContextManager | High | v1 |
+| NetworkIntelligenceService | Recent | Stable | PlatformBehaviorService | Medium | v2 |
+| StreamingEngine | Recent | Stable | None | Medium | v2 |
+| ProviderLifecycleManager | Recent | Stable | AIProvider | High | v1 |
+| NativeRuntimeBridge | Recent | Stable | None | Critical | MVP |
+| HealthMonitor | Recent | Stable | None | High | v1 |
+| ModelSourceRegistry | Recent | Stable | ModelRegistry | Medium | v2 |
+| ModelBrowserService | Recent | Stable | ModelRegistry | Medium | v2 |
+| LazyInitializationManager | Latest | Stable | None | Critical | MVP |
+| RecommendationEngine | Latest | Stable | DeviceCapabilityService | Medium | v2 |
+| BackendSelector | Latest | Stable | None | High | v1 |
+| RepairManager | Latest | Stable | Storage Layer | High | v1 |
+| WorkspaceIsolationService | Latest | Stable | WorkspaceManager | Critical | MVP |
+| DeviceProfileManager | Latest | Stable | DeviceCapabilityService | Medium | v2 |
+| PersistentJobStore | Latest | Stable | Storage Layer | Critical | MVP |

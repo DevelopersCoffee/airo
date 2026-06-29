@@ -6,9 +6,17 @@ This document serves as the master engineering roadmap for AIRO, built by learni
 
 | Capability | First Release Introduced | Maturity | AIRO Priority | Planned AIRO Release | Status |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **Intelligent Model Manager** | v0.0.2-v0.0.43 | Stable | Critical | MVP | Planned |
-| **Background Download Manager** | v0.0.2-v0.0.43 | Stable | Critical | MVP | Planned |
-| **Model Discovery** | v0.0.2-v0.0.43 | Stable | Critical | MVP | Planned |
+| **Lazy Resource Initialization** | Latest | Stable | Critical | MVP | Planned |
+| **AI Runtime Independence (Micro-Runtimes)** | Latest | Stable | Critical | MVP | Planned |
+| **Workspace Isolation** | Latest | Stable | Critical | MVP | Planned |
+| **Model Installation Manager** | Recent | Stable | Critical | MVP | Planned |
+| **Multi-File Model Packaging** | Recent | Stable | Critical | MVP | Planned |
+| **Dependency Validation Engine** | Recent | Stable | Critical | MVP | Planned |
+| **Background Installation Service** | Recent | Stable | Critical | MVP | Planned |
+| **Unified AI Discovery Service** | Recent | Stable | Critical | MVP | Planned |
+| **Non-Blocking Platform Initialization** | Recent | Stable | Critical | MVP | Planned |
+| **AI Context Manager** | Recent | Stable | Critical | MVP | Planned |
+| **Native Runtime Safety Layer** | Recent | Stable | Critical | MVP | Planned |
 | **Model Routing** | v0.0.2-v0.0.43 | Stable | Critical | MVP | Planned |
 | **Semantic Search** | v0.0.2-v0.0.43 | Stable | Critical | MVP | Planned |
 | **Knowledge Base** | v0.0.2-v0.0.43 | Stable | Critical | MVP | Planned |
@@ -33,6 +41,19 @@ This document serves as the master engineering roadmap for AIRO, built by learni
 | **Device Intelligence Service** | Recent | Stable | Critical | MVP | Planned |
 | **Unified Model Runtime** | Recent | Stable | Critical | MVP | Planned |
 | **Guided AI Setup (Onboarding Wizard)** | Recent | Stable | Critical | MVP | Planned |
+| **AI Capability Registry** | Recent | Stable | Critical | MVP | Planned |
+| **Knowledge Workspaces** | Recent | Stable | Critical | MVP | Planned |
+| **Dynamic Feature Discovery** | Recent | Stable | Critical | MVP | Planned |
+| **AI Provider Abstraction** | Recent | Stable | Critical | MVP | Planned |
+| **Backend Abstraction Layer** | Latest | Stable | High | v1 | Planned |
+| **Intelligent Backend Selection** | Latest | Stable | High | v1 | Planned |
+| **AI Repair Framework** | Latest | Stable | High | v1 | Planned |
+| **Attachment Lifecycle Manager** | Recent | Stable | High | v1 | Planned |
+| **AI Health Monitoring** | Recent | Stable | High | v1 | Planned |
+| **AI Provider Lifecycle** | Recent | Stable | High | v1 | Planned |
+| **First-Class Import Experience** | Recent | Stable | High | v1 | Planned |
+| **Installation Recovery** | Recent | Stable | High | v1 | Planned |
+| **Download Watchdog** | Recent | Stable | High | v1 | Planned |
 | Speaker Memory | v0.0.2-v0.0.43 | Experimental | High | v1 | Planned |
 | AI Meeting Timeline | v0.0.2-v0.0.43 | Experimental | High | v1 | Planned |
 | PDF Intelligence | v0.0.2-v0.0.43 | Experimental | High | v1 | Planned |
@@ -54,6 +75,18 @@ This document serves as the master engineering roadmap for AIRO, built by learni
 | **URL Intelligence Pipeline** | Recent | Experimental | High | v1 | Planned |
 | **Secure URL Processing** | Recent | Stable | High | v1 | Planned |
 | **Navigation Simplification** | Recent | Stable | High | v1 | Planned |
+| **Semantic Knowledge Search** | Recent | Stable | High | v1 | Planned |
+| **Thinking Mode** | Recent | Experimental | High | v1 | Planned |
+| **AI Workspace Settings** | Recent | Stable | High | v1 | Planned |
+| **Unified Search Architecture** | Recent | Stable | High | v1 | Planned |
+| **AI Command Center** | Recent | Experimental | High | v1 | Planned |
+| **Recommendation Engine (Hardware Rank)**| Latest | Stable | Medium | v2 | Planned |
+| **Low-End Device Strategy** | Latest | Stable | Medium | v2 | Planned |
+| **Network Intelligence Layer** | Recent | Experimental | Medium | v2 | Planned |
+| **Robust Streaming Framework** | Recent | Stable | Medium | v2 | Planned |
+| **Model Source Abstraction** | Recent | Experimental | Medium | v2 | Planned |
+| **Intelligent Model Browser** | Recent | Stable | Medium | v2 | Planned |
+| **Installation Diagnostics** | Recent | Stable | Medium | v2 | Planned |
 | Bring Your Own Model (BYOM) | v0.0.2-v0.0.43 | Experimental | Medium | v2 | Planned |
 | Curated Model Recommendations | v0.0.2-v0.0.43 | Experimental | Medium | v2 | Planned |
 | Chat Settings | v0.0.2-v0.0.43 | Experimental | Medium | v2 | Planned |
@@ -69,6 +102,7 @@ This document serves as the master engineering roadmap for AIRO, built by learni
 | Plugin Architecture | v0.0.2-v0.0.43 | Experimental | Low | Future | Planned |
 | AI Skills (User-defined workflows) | v0.0.2-v0.0.43 | Experimental | Low | Future | Planned |
 | Multi-Agent Execution | v0.0.2-v0.0.43 | Experimental | Low | Future | Planned |
+| **Extensible Tool Framework** | Recent | Experimental | Low | Future | Planned |
 
 ## Features to Skip (Not Planned)
 - Alternate app distribution (AltStore, sideload-specific workflows)

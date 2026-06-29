@@ -2,7 +2,7 @@
 
 Every bug fix in AIRO becomes a permanent regression test. All features must pass these edge-case verifications before release.
 
-## Download Architecture
+## Model Installation & Download Architecture
 - [ ] Cancel download at 1%
 - [ ] Cancel download at 50%
 - [ ] Cancel download at 99%
@@ -16,6 +16,26 @@ Every bug fix in AIRO becomes a permanent regression test. All features must pas
 - [ ] Verify file hash/integrity after download completes
 - [ ] HTTP redirects
 - [ ] Corrupted file
+- [ ] Missing dependency
+- [ ] Duplicate model
+- [ ] Invalid manifest
+- [ ] Corrupted archive
+- [ ] Cancel during verification
+- [ ] Stalled transfer
+- [ ] Slow network
+- [ ] Partial download
+- [ ] Hash mismatch
+- [ ] Retry exhaustion
+- [ ] App kill recovery
+
+## Local Import
+- [ ] Missing mmproj
+- [ ] Wrong tokenizer
+- [ ] Unsupported format
+- [ ] Duplicate filenames
+- [ ] Nested folders
+- [ ] External storage removal
+- [ ] USB disconnect
 
 ## Whisper & Audio
 - [ ] Process long meetings (2+ hours) without crashing
@@ -32,7 +52,7 @@ Every bug fix in AIRO becomes a permanent regression test. All features must pas
 - [ ] Overlapping speech handling
 - [ ] Speaker persistence across meeting continuation
 
-## LLM Stability & Model Runtime
+## LLM Stability & Runtime Independence
 - [ ] Model loading failure handling
 - [ ] Context overflow protection
 - [ ] Memory exhaustion safety
@@ -43,6 +63,12 @@ Every bug fix in AIRO becomes a permanent regression test. All features must pas
 - [ ] Unsupported runtime
 - [ ] Model initialization failure
 - [ ] Switching between model families
+- [ ] Remove chat model
+- [ ] Image generation only
+- [ ] Speech only
+- [ ] OCR only
+- [ ] Embedding only
+- [ ] Mixed runtime failures
 
 ## Background Processing & Job Scheduler
 - [ ] App killed by OS (termination during execution)
@@ -52,6 +78,10 @@ Every bug fix in AIRO becomes a permanent regression test. All features must pas
 - [ ] Job retry
 - [ ] Job cancellation
 - [ ] Dependency ordering
+- [ ] Crash during installation
+- [ ] Process kill
+- [ ] Foreground service restart
+- [ ] Queue persistence
 
 ## Keyboard Handling
 - [ ] Tap outside to dismiss keyboard
@@ -121,6 +151,9 @@ Every bug fix in AIRO becomes a permanent regression test. All features must pas
 - [ ] Streaming interruption
 - [ ] Large responses
 - [ ] Permission denial
+- [ ] Unsupported tools
+- [ ] Tool cancellation
+- [ ] Tool dependency failures
 
 ## Runtime Configuration & Adaptation
 - [ ] Change KV cache during runtime
@@ -159,3 +192,88 @@ Every bug fix in AIRO becomes a permanent regression test. All features must pas
 - [ ] Rotation during navigation
 - [ ] Multi-window mode
 - [ ] State restoration after process death
+
+## Capability Detection
+- [ ] Missing metadata
+- [ ] Incorrect capability flags
+- [ ] Runtime capability changes
+- [ ] Unsupported feature requests
+- [ ] Model upgrade changing capabilities
+- [ ] New model family
+
+## Knowledge Base & Workspaces (Isolation)
+- [ ] Large document collections
+- [ ] Corrupted embeddings
+- [ ] Duplicate documents
+- [ ] Deleted documents
+- [ ] Re-index after crash
+- [ ] Workspace isolation boundary
+- [ ] Delete workspace
+- [ ] Import/export workspace
+- [ ] Concurrent updates
+- [ ] Large meeting history
+- [ ] Workspace migration
+- [ ] New workspace starts strictly clean
+- [ ] Workspace switching state leak prevention
+- [ ] Conversation reset
+
+## Search Architecture
+- [ ] Empty index
+- [ ] Large vector database
+- [ ] Mixed keyword and semantic queries
+- [ ] Ranking correctness
+- [ ] Permission filtering
+
+## Thinking Mode
+- [ ] Toggle during conversation
+- [ ] Model without reasoning support
+- [ ] Switching profiles
+- [ ] Persistence across sessions
+- [ ] Mixed reasoning workloads
+
+## Startup & Discovery (Lazy Initialization)
+- [ ] Slow initialization
+- [ ] Missing model registry
+- [ ] Corrupted settings
+- [ ] Delayed provider discovery
+- [ ] Interrupted startup
+- [ ] No network
+- [ ] Slow LAN
+- [ ] Multiple providers
+- [ ] Duplicate providers
+- [ ] Network change during discovery
+- [ ] Open app without recording (zero AI startup overhead)
+- [ ] Exit immediately
+- [ ] Create first meeting lazy init
+- [ ] Cancel first meeting
+- [ ] Startup timing
+
+## Context & Streaming
+- [ ] Context truncation
+- [ ] Attachment persistence
+- [ ] Regenerate with attachments
+- [ ] Large knowledge injection
+- [ ] Context overflow
+- [ ] SSE interruption
+- [ ] NDJSON parsing
+- [ ] Partial responses
+- [ ] Tool response streaming
+- [ ] Stream cancellation
+
+## Native Runtime Stability & Backend Selection
+- [ ] Context destroyed during inference
+- [ ] Thread race
+- [ ] GPU initialization failure
+- [ ] Runtime restart
+- [ ] Bridge shutdown during generation
+- [ ] GPU unavailable fallback (Backend Selection)
+- [ ] NPU unavailable fallback (Backend Selection)
+- [ ] Backend failure
+- [ ] Manual override testing
+
+## Recommendations
+- [ ] Low-memory device (Fallback recommend)
+- [ ] Unsupported backend check
+- [ ] Missing metadata handling
+- [ ] Corrupted recommendation cache
+- [ ] Recommendation refresh
