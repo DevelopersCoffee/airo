@@ -76,10 +76,10 @@ void main() {
       () => mockStorageManager.hasEnoughDiskSpace(any()),
     ).thenAnswer((_) async => true);
     when(
-      () => mockStorageManager.getModelPath(modelA.id),
+      () => mockStorageManager.getModelPath(modelA.id, model: modelA),
     ).thenAnswer((_) async => '/mock/path/model_a.gguf');
     when(
-      () => mockStorageManager.getModelPath(modelB.id),
+      () => mockStorageManager.getModelPath(modelB.id, model: modelB),
     ).thenAnswer((_) async => '/mock/path/model_b.gguf');
 
     downloadService = ModelDownloadService(
@@ -190,4 +190,33 @@ void main() {
     expect(progress.error, contains('Insufficient disk space'));
     expect(methodCalls.isEmpty, isTrue);
   });
+
+  test(
+    'downloadModel preserves LiteRT destination extension from model metadata',
+    () async {
+      final litertModel = OfflineModelInfo(
+        id: 'gemma_litert',
+        name: 'Gemma LiteRT',
+        family: ModelFamily.gemma,
+        fileSizeBytes: 1000,
+        downloadUrl: 'https://example.com/gemma.litertlm',
+      );
+
+      when(
+        () => mockStorageManager.verifyModelIntegrity(litertModel),
+      ).thenAnswer((_) async => false);
+      when(
+        () =>
+            mockStorageManager.getModelPath(litertModel.id, model: litertModel),
+      ).thenAnswer((_) async => '/mock/path/gemma_litert.litertlm');
+
+      downloadService.downloadModel(litertModel);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(
+        methodCalls.last.arguments['filePath'],
+        '/mock/path/gemma_litert.litertlm',
+      );
+    },
+  );
 }

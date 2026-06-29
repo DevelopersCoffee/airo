@@ -11,6 +11,14 @@ class ModelStorageManager {
   ModelStorageManager({MethodChannel? channel})
     : _channel = channel ?? const MethodChannel('com.airo.model_download');
 
+  static const supportedArtifactExtensions = <String>[
+    '.litertlm',
+    '.gguf',
+    '.bin',
+    '.task',
+    '.onnx',
+  ];
+
   final MethodChannel _channel;
 
   /// Gets the directory where models are stored.
@@ -24,9 +32,40 @@ class ModelStorageManager {
   }
 
   /// Gets the expected destination path for a given model.
-  Future<String> getModelPath(String modelId) async {
+  Future<String> getModelPath(String modelId, {OfflineModelInfo? model}) async {
     final dir = await getModelsDirectory();
-    return path.join(dir.path, '$modelId.gguf');
+    return path.join(dir.path, '$modelId${_artifactExtensionFor(model)}');
+  }
+
+  /// Returns candidate file paths for the model, preferring the expected extension first.
+  Future<List<String>> getCandidateModelPaths(
+    String modelId, {
+    OfflineModelInfo? model,
+  }) async {
+    final dir = await getModelsDirectory();
+    final expectedExtension = _artifactExtensionFor(model);
+    return [
+      path.join(dir.path, '$modelId$expectedExtension'),
+      for (final extension in supportedArtifactExtensions)
+        if (extension != expectedExtension)
+          path.join(dir.path, '$modelId$extension'),
+    ];
+  }
+
+  /// Finds an existing on-disk model artifact, including legacy incorrectly named files.
+  Future<String?> findExistingModelPath(
+    String modelId, {
+    OfflineModelInfo? model,
+  }) async {
+    for (final candidate in await getCandidateModelPaths(
+      modelId,
+      model: model,
+    )) {
+      if (await File(candidate).exists()) {
+        return candidate;
+      }
+    }
+    return null;
   }
 
   /// Calculates the SHA-256 hash of a file in a streaming fashion.
@@ -41,7 +80,10 @@ class ModelStorageManager {
 
   /// Verifies a model file's integrity using its expected SHA-256 hash.
   Future<bool> verifyModelIntegrity(OfflineModelInfo model) async {
-    final filePath = model.filePath ?? await getModelPath(model.id);
+    final filePath =
+        model.filePath ??
+        await findExistingModelPath(model.id, model: model) ??
+        await getModelPath(model.id, model: model);
     final file = File(filePath);
     if (!await file.exists()) {
       return false;
@@ -80,7 +122,7 @@ class ModelStorageManager {
   }
 
   /// Scans the models directory and deletes any files that are not registered in [catalogModels].
-  /// This detects and cleans up old temporary `.tmp` files and orphaned `.gguf` files.
+  /// This detects and cleans up old temporary files and orphaned model artifacts.
   Future<List<String>> cleanupOrphanedFiles(
     List<OfflineModelInfo> catalogModels,
   ) async {
@@ -94,12 +136,21 @@ class ModelStorageManager {
       if (entity is File) {
         final fileName = path.basename(entity.path);
 
-        // Match both final files (<id>.gguf) and temp files (<id>.gguf.tmp)
+        // Match both final files (<id>.<ext>) and temp files (<id>.<ext>.tmp)
         String? modelId;
-        if (fileName.endsWith('.gguf')) {
-          modelId = fileName.substring(0, fileName.length - 5);
-        } else if (fileName.endsWith('.gguf.tmp')) {
-          modelId = fileName.substring(0, fileName.length - 9);
+        for (final extension in supportedArtifactExtensions) {
+          if (fileName.endsWith(extension)) {
+            modelId = fileName.substring(0, fileName.length - extension.length);
+            break;
+          }
+          final tempSuffix = '$extension.tmp';
+          if (fileName.endsWith(tempSuffix)) {
+            modelId = fileName.substring(
+              0,
+              fileName.length - tempSuffix.length,
+            );
+            break;
+          }
         }
 
         if (modelId != null) {
@@ -111,5 +162,25 @@ class ModelStorageManager {
       }
     }
     return deletedPaths;
+  }
+
+  String _artifactExtensionFor(OfflineModelInfo? model) {
+    final explicitPath = model?.filePath?.trim().toLowerCase();
+    if (explicitPath != null && explicitPath.isNotEmpty) {
+      for (final extension in supportedArtifactExtensions) {
+        if (explicitPath.endsWith(extension)) return extension;
+      }
+    }
+
+    final downloadPath = Uri.tryParse(
+      model?.downloadUrl ?? '',
+    )?.path.toLowerCase();
+    if (downloadPath != null && downloadPath.isNotEmpty) {
+      for (final extension in supportedArtifactExtensions) {
+        if (downloadPath.endsWith(extension)) return extension;
+      }
+    }
+
+    return '.gguf';
   }
 }

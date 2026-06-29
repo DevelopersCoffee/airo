@@ -197,7 +197,10 @@ class ModelDownloadService {
     );
 
     try {
-      final filePath = await _storageManager.getModelPath(model.id);
+      final filePath = await _storageManager.getModelPath(
+        model.id,
+        model: model,
+      );
       await _methodChannel.invokeMethod('startDownload', {
         'modelId': model.id,
         'url': model.downloadUrl,
@@ -259,13 +262,24 @@ class ModelDownloadService {
   }
 
   /// Gets the path where a model would be stored.
-  Future<String> getModelPath(String modelId) async {
-    return _storageManager.getModelPath(modelId);
+  Future<String> getModelPath(String modelId, {OfflineModelInfo? model}) async {
+    return _storageManager.getModelPath(modelId, model: model);
+  }
+
+  Future<String?> resolveExistingModelPath(
+    String modelId, {
+    OfflineModelInfo? model,
+  }) async {
+    return _storageManager.findExistingModelPath(modelId, model: model);
   }
 
   /// Checks if a model is already downloaded.
-  Future<bool> isModelDownloaded(String modelId) async {
-    final path = await getModelPath(modelId);
+  Future<bool> isModelDownloaded(
+    String modelId, {
+    OfflineModelInfo? model,
+  }) async {
+    final path = await resolveExistingModelPath(modelId, model: model);
+    if (path == null) return false;
     final file = File(path);
     if (!await file.exists()) return false;
 
@@ -278,20 +292,21 @@ class ModelDownloadService {
   /// Returns true if deleted successfully, false if file doesn't exist.
   Future<bool> deleteModel(String modelId) async {
     await cancelDownload(modelId);
-    final filePath = await getModelPath(modelId);
-    final file = File(filePath);
-
     var deleted = false;
-    if (await file.exists()) {
-      await file.delete();
-      deleted = true;
-    }
+    for (final filePath in await _storageManager.getCandidateModelPaths(
+      modelId,
+    )) {
+      final file = File(filePath);
+      if (await file.exists()) {
+        await file.delete();
+        deleted = true;
+      }
 
-    // Also delete temp file if exists
-    final tempFile = File('$filePath.tmp');
-    if (await tempFile.exists()) {
-      await tempFile.delete();
-      deleted = true;
+      final tempFile = File('$filePath.tmp');
+      if (await tempFile.exists()) {
+        await tempFile.delete();
+        deleted = true;
+      }
     }
 
     return deleted;
@@ -304,7 +319,10 @@ class ModelDownloadService {
 
     int totalBytes = 0;
     await for (final entity in dir.list()) {
-      if (entity is File && entity.path.endsWith('.gguf')) {
+      if (entity is File &&
+          ModelStorageManager.supportedArtifactExtensions.any(
+            entity.path.endsWith,
+          )) {
         final stat = await entity.stat();
         totalBytes += stat.size;
       }

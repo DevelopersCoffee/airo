@@ -77,6 +77,35 @@ void main() {
       );
       expect(activeModelService.activeRuntime?.runtimeId, 'litert-lm');
     });
+
+    test(
+      'hydrates a legacy gguf download path for LiteRT catalog models',
+      () async {
+        final adapter = LiteRtLmRuntimeAdapter(
+          client: _FakeLiteRtLmClient(hasActiveModel: true),
+          activeModelService: activeModelService,
+          downloadService: _FakeModelDownloadService(
+            downloadedPaths: {
+              'gemma-4-e2b-it-litertlm': '/models/gemma-4-e2b-it-litertlm.gguf',
+            },
+          ),
+        );
+
+        final hydrated = await adapter.hydrateDownloadedModel(
+          const OfflineModelInfo(
+            id: 'gemma-4-e2b-it-litertlm',
+            name: 'Gemma 4 E2B',
+            family: ModelFamily.gemma,
+            fileSizeBytes: 1024,
+            downloadUrl: 'https://example.com/gemma-4-E2B-it.litertlm',
+            provider: AIProvider.gemma,
+            tags: ['litert-lm'],
+          ),
+        );
+
+        expect(hydrated.filePath, '/models/gemma-4-e2b-it-litertlm.gguf');
+      },
+    );
   });
 }
 
@@ -111,5 +140,32 @@ class _FakeLiteRtLmClient implements LiteRtLmClient {
     String? huggingFaceToken,
   }) async {
     hasActiveModel = true;
+  }
+}
+
+class _FakeModelDownloadService extends ModelDownloadService {
+  _FakeModelDownloadService({required this.downloadedPaths});
+
+  final Map<String, String> downloadedPaths;
+
+  @override
+  Future<bool> isModelDownloaded(
+    String modelId, {
+    OfflineModelInfo? model,
+  }) async {
+    return downloadedPaths.containsKey(modelId);
+  }
+
+  @override
+  Future<String?> resolveExistingModelPath(
+    String modelId, {
+    OfflineModelInfo? model,
+  }) async {
+    return downloadedPaths[modelId];
+  }
+
+  @override
+  Future<String> getModelPath(String modelId, {OfflineModelInfo? model}) async {
+    return downloadedPaths[modelId] ?? '/missing/$modelId';
   }
 }
