@@ -472,10 +472,9 @@ class LiteRtLmRuntimeAdapter implements LocalInferenceRuntimeAdapter {
 
 class MethodChannelLiteRtLmClient implements LiteRtLmClient {
   MethodChannelLiteRtLmClient({
-    required LiteRtLmConfig config,
-    MethodChannel channel = const MethodChannel('com.airo.litert_lm'),
-  }) : _config = config,
-       _channel = channel;
+    required this._config,
+    this._channel = const MethodChannel('com.airo.litert_lm'),
+  });
 
   final LiteRtLmConfig _config;
   final MethodChannel _channel;
