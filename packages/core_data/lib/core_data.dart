@@ -11,6 +11,7 @@ export 'src/storage/key_value_store.dart';
 export 'src/storage/preferences_store.dart';
 export 'src/storage/secure_store.dart';
 export 'src/storage/flutter_secure_store.dart';
+export 'src/storage/life_track_local_data_source.dart';
 
 // Connectivity
 export 'src/connectivity/connectivity_service.dart';
@@ -26,6 +27,7 @@ export 'src/sync/outbox_repository.dart';
 
 // Base Repository
 export 'src/repositories/base_repository.dart';
+export 'src/repositories/life_track_repository_impl.dart';
 
 // Plugin Storage and Runtime Controls
 export 'src/plugins/local_plugin_storage.dart';
