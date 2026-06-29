@@ -9,6 +9,35 @@ void main() {
 
   group('AssistantRuntimeService', () {
     test(
+      'emits bounded debug traces for Gemini Nano requests and responses',
+      () async {
+        final traces = <AssistantRuntimeDebugTrace>[];
+        final service = AssistantRuntimeService(
+          isGeminiNanoSupported: () async => true,
+          initializeGeminiNano: () async => true,
+          generateGeminiNanoText: (_) async => 'Airo helps with planning.',
+          debugTraceEmitter: traces.add,
+        );
+
+        final text = await service.generateText(
+          selectedModelId: geminiNanoAssistantModelId,
+          prompt: 'what does airo do?',
+          systemPrompt: 'You are Airo.',
+        );
+
+        expect(text, 'Airo helps with planning.');
+        expect(traces.map((trace) => trace.stage), ['request', 'response']);
+        expect(traces.first.runtimeId, geminiNanoAssistantModelId);
+        expect(traces.first.systemPromptPreview, contains('You are Airo.'));
+        expect(traces.first.promptPreview, contains('what does airo do?'));
+        expect(
+          traces.last.responsePreview,
+          contains('Airo helps with planning.'),
+        );
+      },
+    );
+
+    test(
       'reports Gemini Nano unavailable instead of using canned fallback',
       () async {
         final service = AssistantRuntimeService(
