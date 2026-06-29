@@ -16,6 +16,7 @@ final modelRegistryProvider = Provider<ModelRegistry>((ref) {
   unawaited(
     _hydrateDownloadedModels(registry, ref.read(modelDownloadServiceProvider)),
   );
+  ref.onDispose(registry.dispose);
   return registry;
 });
 
@@ -119,7 +120,7 @@ class ActiveDownloadsNotifier
 
       if (progress.isComplete) {
         final registry = _ref.read(modelRegistryProvider);
-        final modelPath = await service.getModelPath(model.id);
+        final modelPath = await service.getModelPath(model.id, model: model);
         registry.markAsDownloaded(model.id, modelPath);
       }
 
