@@ -83,6 +83,50 @@ void main() {
     expect(isValid, isTrue);
   });
 
+  test(
+    'getModelPath preserves LiteRT artifact extension from download URL',
+    () async {
+      final modelPath = await storageManager.getModelPath(
+        'gemma-4-e2b-it-litertlm',
+        model: const OfflineModelInfo(
+          id: 'gemma-4-e2b-it-litertlm',
+          name: 'Gemma 4 E2B',
+          family: ModelFamily.gemma,
+          fileSizeBytes: 1024,
+          downloadUrl: 'https://example.com/gemma-4-E2B-it.litertlm',
+        ),
+      );
+
+      expect(modelPath, endsWith('gemma-4-e2b-it-litertlm.litertlm'));
+    },
+  );
+
+  test(
+    'findExistingModelPath resolves legacy gguf path for LiteRT models',
+    () async {
+      final modelsDir = Directory(path.join(tempDir.path, 'models'));
+      await modelsDir.create(recursive: true);
+
+      final legacyFile = File(
+        path.join(modelsDir.path, 'gemma-4-e2b-it-litertlm.gguf'),
+      );
+      await legacyFile.writeAsString('legacy content');
+
+      final resolvedPath = await storageManager.findExistingModelPath(
+        'gemma-4-e2b-it-litertlm',
+        model: const OfflineModelInfo(
+          id: 'gemma-4-e2b-it-litertlm',
+          name: 'Gemma 4 E2B',
+          family: ModelFamily.gemma,
+          fileSizeBytes: 14,
+          downloadUrl: 'https://example.com/gemma-4-E2B-it.litertlm',
+        ),
+      );
+
+      expect(resolvedPath, legacyFile.path);
+    },
+  );
+
   test('verifyModelIntegrity fails invalid file', () async {
     final modelsDir = Directory(path.join(tempDir.path, 'models'));
     await modelsDir.create(recursive: true);
@@ -111,36 +155,41 @@ void main() {
     );
   });
 
-  test('cleanupOrphanedFiles deletes unregistered files', () async {
-    final modelsDir = Directory(path.join(tempDir.path, 'models'));
-    await modelsDir.create(recursive: true);
+  test(
+    'cleanupOrphanedFiles deletes unregistered files across extensions',
+    () async {
+      final modelsDir = Directory(path.join(tempDir.path, 'models'));
+      await modelsDir.create(recursive: true);
 
-    final registeredFile = File(path.join(modelsDir.path, 'registered.gguf'));
-    await registeredFile.writeAsString('registered content');
+      final registeredFile = File(path.join(modelsDir.path, 'registered.gguf'));
+      await registeredFile.writeAsString('registered content');
 
-    final orphanedFile = File(path.join(modelsDir.path, 'orphaned.gguf'));
-    await orphanedFile.writeAsString('orphaned content');
+      final orphanedFile = File(path.join(modelsDir.path, 'orphaned.litertlm'));
+      await orphanedFile.writeAsString('orphaned content');
 
-    final orphanedTmpFile = File(path.join(modelsDir.path, 'another.gguf.tmp'));
-    await orphanedTmpFile.writeAsString('temp content');
+      final orphanedTmpFile = File(
+        path.join(modelsDir.path, 'another.task.tmp'),
+      );
+      await orphanedTmpFile.writeAsString('temp content');
 
-    final catalog = [
-      OfflineModelInfo(
-        id: 'registered',
-        name: 'Registered',
-        family: ModelFamily.gemma,
-        fileSizeBytes: 10,
-      ),
-    ];
+      final catalog = [
+        OfflineModelInfo(
+          id: 'registered',
+          name: 'Registered',
+          family: ModelFamily.gemma,
+          fileSizeBytes: 10,
+        ),
+      ];
 
-    final deleted = await storageManager.cleanupOrphanedFiles(catalog);
+      final deleted = await storageManager.cleanupOrphanedFiles(catalog);
 
-    expect(deleted, contains(orphanedFile.path));
-    expect(deleted, contains(orphanedTmpFile.path));
-    expect(deleted, isNot(contains(registeredFile.path)));
+      expect(deleted, contains(orphanedFile.path));
+      expect(deleted, contains(orphanedTmpFile.path));
+      expect(deleted, isNot(contains(registeredFile.path)));
 
-    expect(await registeredFile.exists(), isTrue);
-    expect(await orphanedFile.exists(), isFalse);
-    expect(await orphanedTmpFile.exists(), isFalse);
-  });
+      expect(await registeredFile.exists(), isTrue);
+      expect(await orphanedFile.exists(), isFalse);
+      expect(await orphanedTmpFile.exists(), isFalse);
+    },
+  );
 }

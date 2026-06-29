@@ -186,12 +186,23 @@ class _FakeModelDownloadService extends ModelDownloadService {
   final Map<String, String> downloadedPaths;
 
   @override
-  Future<String> getModelPath(String modelId) async {
+  Future<String> getModelPath(String modelId, {OfflineModelInfo? model}) async {
     return downloadedPaths[modelId] ?? '/missing/$modelId';
   }
 
   @override
-  Future<bool> isModelDownloaded(String modelId) async {
+  Future<bool> isModelDownloaded(
+    String modelId, {
+    OfflineModelInfo? model,
+  }) async {
     return downloadedPaths.containsKey(modelId);
+  }
+
+  @override
+  Future<String?> resolveExistingModelPath(
+    String modelId, {
+    OfflineModelInfo? model,
+  }) async {
+    return downloadedPaths[modelId];
   }
 }

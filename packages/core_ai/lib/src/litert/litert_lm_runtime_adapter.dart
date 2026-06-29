@@ -361,18 +361,28 @@ class LiteRtLmRuntimeAdapter implements LocalInferenceRuntimeAdapter {
       return model;
     }
 
-    final modelPath = await downloadedModelPath(model.id);
+    final modelPath = await downloadedModelPath(model.id, model: model);
     if (modelPath == null) {
       return model;
     }
     return model.copyWith(filePath: modelPath);
   }
 
-  Future<String?> downloadedModelPath(String modelId) async {
+  Future<String?> downloadedModelPath(
+    String modelId, {
+    OfflineModelInfo? model,
+  }) async {
     if (kIsWeb) return null;
-    final isDownloaded = await _downloadService.isModelDownloaded(modelId);
+    final isDownloaded = await _downloadService.isModelDownloaded(
+      modelId,
+      model: model,
+    );
     if (!isDownloaded) return null;
-    return _downloadService.getModelPath(modelId);
+    final existingPath = await _downloadService.resolveExistingModelPath(
+      modelId,
+      model: model,
+    );
+    return existingPath ?? _downloadService.getModelPath(modelId, model: model);
   }
 
   Future<bool> _ensureInitializedForRequest({
