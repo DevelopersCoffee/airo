@@ -50,4 +50,30 @@ void main() {
       expect(warmed, isFalse);
     },
   );
+
+  test(
+    'support check, initialize, and warmup can be exercised in one host run',
+    () async {
+      final calls = <String>[];
+      messenger.setMockMethodCallHandler(channel, (call) async {
+        calls.add(call.method);
+        return switch (call.method) {
+          'isAvailable' => true,
+          'initialize' => true,
+          'warmup' => true,
+          _ => fail('Unexpected method call: ${call.method}'),
+        };
+      });
+
+      final service = GeminiNanoService();
+      final isSupported = await service.isSupported();
+      final initialized = isSupported && await service.initialize();
+      final warmed = initialized && await service.warmup();
+
+      expect(isSupported, isTrue);
+      expect(initialized, isTrue);
+      expect(warmed, isTrue);
+      expect(calls, ['isAvailable', 'isAvailable', 'initialize', 'warmup']);
+    },
+  );
 }

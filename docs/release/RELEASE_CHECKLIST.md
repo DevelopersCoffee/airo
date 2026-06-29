@@ -23,6 +23,8 @@ Pre-release verification checklist for Airo Super App releases.
 - [ ] Integration tests passing
 - [ ] E2E smoke tests passing
 - [ ] Shared UI responsiveness suite passing (`make test-ui-responsive`)
+- [ ] Performance benchmark report created (`artifacts/performance/...`)
+- [ ] Battery impact measurements attached or explicitly waived
 - [ ] Manual QA sign-off (if required)
 
 ---
@@ -35,6 +37,8 @@ Pre-release verification checklist for Airo Super App releases.
 - [ ] AAB (App Bundle) generates correctly
 - [ ] APK size within acceptable limits (<100MB)
 - [ ] ProGuard/R8 rules applied correctly
+- [ ] Cold and warm startup timings recorded
+- [ ] Android memory/storage snapshots attached
 
 ### iOS
 - [ ] Release build compiles
@@ -115,6 +119,7 @@ Pre-release verification checklist for Airo Super App releases.
 - [ ] Known issues documented
 - [ ] Migration guide (if breaking changes)
 - [ ] [UI responsiveness validation runbook](./UI_RESPONSIVENESS_VALIDATION.md) followed
+- [ ] [Performance benchmark runbook](./PERFORMANCE_BENCHMARKS.md) followed
 
 ---
 
@@ -145,3 +150,4 @@ Date: ____-__-__
 - [Rollback Procedure](./ROLLBACK_PROCEDURE.md)
 - [Store Compliance](./STORE_COMPLIANCE.md)
 - [UI Responsiveness Validation](./UI_RESPONSIVENESS_VALIDATION.md)
+- [Performance Benchmarks](./PERFORMANCE_BENCHMARKS.md)
