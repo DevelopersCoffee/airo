@@ -28,6 +28,7 @@ export 'src/repositories/life_track_repository.dart';
 
 // Use Cases
 export 'src/use_cases/use_case.dart';
+export 'src/use_cases/life_track_use_cases.dart';
 
 // State Management
 export 'src/state/async_state.dart';
