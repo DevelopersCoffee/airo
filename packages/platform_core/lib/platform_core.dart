@@ -13,6 +13,7 @@ export 'src/contracts/initializable.dart';
 export 'src/contracts/lifecycle_aware.dart';
 export 'src/contracts/platform_capability.dart';
 export 'src/contracts/platform_service.dart';
+export 'src/contracts/platform_repository.dart';
 
 export 'src/environment/platform_environment.dart';
 export 'src/events/platform_event.dart';
