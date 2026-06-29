@@ -581,6 +581,30 @@ test-ui-responsive: ## Run shared responsive UI validation tests
 	@cd $(APP_DIR) && rm -rf windows/flutter/ephemeral/.plugin_symlinks ios/Flutter/ephemeral/Packages/.packages macos/Flutter/ephemeral/Packages/.packages
 	@cd $(APP_DIR) && flutter test test/shared/widgets/adaptive_layout_test.dart
 
+.PHONY: benchmark-report
+benchmark-report: ## Create a release benchmark report template
+	@./scripts/create-performance-benchmark-report.sh
+
+.PHONY: benchmark-gemini-warmup
+benchmark-gemini-warmup: ## Run the Gemini Nano warmup integration path used in release benchmarks
+	@echo "$(BLUE)Running Gemini Nano warmup benchmark path...$(NC)"
+	@cd $(APP_DIR) && rm -rf ios/Flutter/ephemeral/Packages/.packages macos/Flutter/ephemeral/Packages/.packages
+	@cd $(APP_DIR) && flutter test test/core/services/gemini_nano_service_test.dart
+
+.PHONY: benchmark-android-startup
+benchmark-android-startup: ## Capture Android startup timing on a connected device
+	@if [ ! -x "$(ADB)" ]; then \
+		echo "$(RED)adb not found at $(ADB).$(NC)"; \
+		exit 1; \
+	fi
+	@if ! "$(ADB)" devices | awk 'NR>1 && $$2=="device" { found=1 } END { exit found?0:1 }'; then \
+		echo "$(RED)No connected Android device detected.$(NC)"; \
+		echo "$(YELLOW)Use a physical device or opt in to the emulator path separately.$(NC)"; \
+		exit 1; \
+	fi
+	@"$(ADB)" shell am force-stop "$(ANDROID_PACKAGE)"
+	@"$(ADB)" shell am start -W "$(ANDROID_PACKAGE)/.MainActivity"
+
 # IPTV Data Pipeline Commands
 .PHONY: iptv-install-deps
 iptv-install-deps: ## Install local IPTV pipeline dependencies
