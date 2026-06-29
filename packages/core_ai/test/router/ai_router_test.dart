@@ -1,7 +1,9 @@
-import 'package:core_ai/core_ai.dart';
 import 'package:core_ai/src/client/fake_llm_client.dart';
 import 'package:core_ai/src/client/llm_client.dart';
+import 'package:core_ai/src/provider/ai_provider.dart';
+import 'package:core_ai/src/router/ai_router.dart';
 import 'package:core_domain/core_domain.dart';
+import 'package:core_ai/src/router/model_health_checker.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -107,5 +109,78 @@ void main() {
         expect(cloud.generateTextCalls, isEmpty);
       },
     );
+  });
+
+  group('AIRouter', () {
+    test('offlinePreferred uses on-device when healthy', () async {
+      final local = FakeLLMClient(defaultResponse: 'local');
+      final cloud = FakeLLMClient(defaultResponse: 'cloud');
+      final router = AIRouter(
+        onDeviceClient: local,
+        cloudClient: cloud,
+        config: const AIRouterConfig(
+          defaultStrategy: AIRoutingStrategy.offlinePreferred,
+        ),
+      );
+
+      final result = await router.generateText('hi');
+
+      expect(result.getOrNull()?.content, 'local');
+      expect(local.generateTextCalls, ['hi']);
+      expect(cloud.generateTextCalls, isEmpty);
+    });
+
+    test('specificModel prefers cloud when requested', () async {
+      final local = FakeLLMClient(defaultResponse: 'local');
+      final cloud = FakeLLMClient(defaultResponse: 'cloud');
+      final router = AIRouter(
+        onDeviceClient: local,
+        cloudClient: cloud,
+        config: const AIRouterConfig(
+          defaultStrategy: AIRoutingStrategy.specificModel,
+          specificModel: AIProvider.cloud,
+        ),
+      );
+
+      final result = await router.generateText('hi');
+
+      expect(result.getOrNull()?.content, 'cloud');
+      expect(cloud.generateTextCalls, ['hi']);
+      expect(local.generateTextCalls, isEmpty);
+    });
+
+    test('falls back to cloud when the preferred client errors', () async {
+      final local = FakeLLMClient(
+        defaultResponse: 'local',
+        simulateError: true,
+      );
+      final cloud = FakeLLMClient(defaultResponse: 'cloud');
+      final router = AIRouter(
+        onDeviceClient: local,
+        cloudClient: cloud,
+        config: const AIRouterConfig(
+          defaultStrategy: AIRoutingStrategy.offlinePreferred,
+          autoFallback: true,
+        ),
+      );
+
+      final result = await router.generateText('hello');
+
+      expect(result.getOrNull()?.content, 'cloud');
+      expect(local.generateTextCalls, ['hello']);
+      expect(cloud.generateTextCalls, ['hello']);
+    });
+  });
+
+  group('ModelHealthChecker', () {
+    test('reports unavailable clients as unhealthy', () async {
+      final checker = const ModelHealthChecker();
+      final client = FakeLLMClient(simulateUnavailable: true);
+
+      final health = await checker.check(AIProvider.nano, client);
+
+      expect(health.isHealthy, isFalse);
+      expect(health.reason, 'Client unavailable');
+    });
   });
 }
