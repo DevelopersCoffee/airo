@@ -103,8 +103,8 @@ void main() {
       expect(milestoneTwo.progress, 1.0);
     });
 
-    test('computes track progress as average milestone progress', () {
-      expect(track.progress, 0.75);
+    test('computes track progress as weighted item completion', () {
+      expect(track.progress, closeTo(2 / 3, 0.0001));
     });
 
     test(

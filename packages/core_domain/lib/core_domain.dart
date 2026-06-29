@@ -32,6 +32,7 @@ export 'src/use_cases/use_case.dart';
 // State Management
 export 'src/state/async_state.dart';
 export 'src/state/paginated_state.dart';
+export 'src/state/track_state_machine.dart';
 
 // Plugin System
 export 'src/plugins/plugin_manifest.dart';

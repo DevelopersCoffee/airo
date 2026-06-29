@@ -1,3 +1,5 @@
+import '../entities/life_track.dart';
+
 /// Base application error
 class AppError implements Exception {
   final String code;
@@ -64,6 +66,22 @@ class ValidationError extends AppError {
          'VALIDATION_ERROR',
          message,
          statusCode: statusCode,
+         originalError: originalError,
+         originalStack: originalStack,
+       );
+}
+
+/// Lifecycle transition errors
+class InvalidStatusTransitionError extends AppError {
+  InvalidStatusTransitionError(
+    ItemStatus from,
+    ItemStatus to, {
+    Object? originalError,
+    StackTrace? originalStack,
+  }) : super(
+         'INVALID_STATUS_TRANSITION',
+         'Cannot transition item status from ${from.name} to ${to.name}.',
+         statusCode: 400,
          originalError: originalError,
          originalStack: originalStack,
        );
