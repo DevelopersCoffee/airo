@@ -150,5 +150,174 @@ void main() {
         expect(savedRecord!.state, MeetingState.completed);
       },
     );
+
+    test(
+      'finds misspelled, speaker, title, synonym, and mixed-language queries',
+      () async {
+        final repository = InMemoryMeetingRepository();
+        final pipeline = MeetingIntelligencePipeline();
+
+        await repository.saveIntelligence(
+          pipeline.process(
+            record: MeetingRecord.started(
+              id: 'meeting-roadmap',
+              title: 'Apollo roadmap review',
+              startedAt: DateTime.utc(2026, 6, 22, 9),
+              languageCode: 'en',
+            ).complete(endedAt: DateTime.utc(2026, 6, 22, 9, 45)),
+            audioMetadata: const MeetingAudioMetadata(
+              meetingId: 'meeting-roadmap',
+              filePath: '/private/local/roadmap.m4a',
+              codec: 'm4a',
+              sampleRateHz: 16000,
+              channelCount: 1,
+              sizeBytes: 4096,
+              sha256: 'roadmap',
+            ),
+            finalChunks: const [
+              TranscriptChunk.finalChunk(
+                id: 'chunk-roadmap-1',
+                meetingId: 'meeting-roadmap',
+                text: 'Budget risk remains high for the Apollo launch project.',
+                startMs: 0,
+                endMs: 2000,
+                speakerLabel: 'Priya',
+              ),
+              TranscriptChunk.finalChunk(
+                id: 'chunk-roadmap-2',
+                meetingId: 'meeting-roadmap',
+                text: 'Decision: Ship the offline beta next Friday.',
+                startMs: 2000,
+                endMs: 3500,
+                speakerLabel: 'Arjun',
+              ),
+            ],
+          ),
+        );
+
+        await repository.saveIntelligence(
+          pipeline.process(
+            record: MeetingRecord.started(
+              id: 'meeting-hindi',
+              title: 'हिंदी लॉन्च समन्वय',
+              startedAt: DateTime.utc(2026, 6, 21, 9),
+              languageCode: 'hi',
+            ).complete(endedAt: DateTime.utc(2026, 6, 21, 9, 30)),
+            audioMetadata: const MeetingAudioMetadata(
+              meetingId: 'meeting-hindi',
+              filePath: '/private/local/hindi.m4a',
+              codec: 'm4a',
+              sampleRateHz: 16000,
+              channelCount: 1,
+              sizeBytes: 2048,
+              sha256: 'hindi',
+            ),
+            finalChunks: const [
+              TranscriptChunk.finalChunk(
+                id: 'chunk-hindi-1',
+                meetingId: 'meeting-hindi',
+                text: 'परियोजना लॉन्च अगले सप्ताह है और टीम तैयार है।',
+                startMs: 0,
+                endMs: 1800,
+                speakerLabel: 'नेहा',
+              ),
+            ],
+          ),
+        );
+
+        final typoResults = await repository.searchMeetings('budjet');
+        expect(typoResults.map((result) => result.meetingId), [
+          'meeting-roadmap',
+        ]);
+
+        final speakerResults = await repository.searchMeetings('priya');
+        expect(
+          speakerResults.map((result) => result.meetingId),
+          contains('meeting-roadmap'),
+        );
+
+        final titleResults = await repository.searchMeetings('apollo');
+        expect(titleResults.single.meetingId, 'meeting-roadmap');
+        expect(titleResults.single.title, contains('Apollo roadmap'));
+
+        final synonymResults = await repository.searchMeetings('finance');
+        expect(synonymResults.single.meetingId, 'meeting-roadmap');
+
+        final mixedLanguageResults = await repository.searchMeetings(
+          'परियोजना',
+        );
+        expect(mixedLanguageResults.single.meetingId, 'meeting-hindi');
+      },
+    );
+
+    test('keeps deterministic ordering for larger repositories', () async {
+      final repository = InMemoryMeetingRepository();
+      final pipeline = MeetingIntelligencePipeline();
+
+      for (var index = 0; index < 60; index += 1) {
+        final meetingId = 'meeting-$index';
+        final title = index.isEven
+            ? 'Phoenix project sync $index'
+            : 'General sync $index';
+        final text = index.isEven
+            ? 'Project Phoenix budget issue discussed by speaker Maya.'
+            : 'Unrelated retrospective notes.';
+
+        await repository.saveIntelligence(
+          pipeline.process(
+            record:
+                MeetingRecord.started(
+                  id: meetingId,
+                  title: title,
+                  startedAt: DateTime.utc(
+                    2026,
+                    6,
+                    1,
+                  ).add(Duration(days: index)),
+                  languageCode: 'en',
+                ).complete(
+                  endedAt: DateTime.utc(
+                    2026,
+                    6,
+                    1,
+                  ).add(Duration(days: index, minutes: 30)),
+                ),
+            audioMetadata: MeetingAudioMetadata(
+              meetingId: meetingId,
+              filePath: '/private/local/$meetingId.m4a',
+              codec: 'm4a',
+              sampleRateHz: 16000,
+              channelCount: 1,
+              sizeBytes: 1000 + index,
+              sha256: 'sha-$index',
+            ),
+            finalChunks: [
+              TranscriptChunk.finalChunk(
+                id: 'chunk-$index',
+                meetingId: meetingId,
+                text: text,
+                startMs: 0,
+                endMs: 1000,
+                speakerLabel: index.isEven ? 'Maya' : 'Alex',
+              ),
+            ],
+          ),
+        );
+      }
+
+      final firstRun = await repository.searchMeetings('project maya');
+      final secondRun = await repository.searchMeetings('project maya');
+
+      expect(firstRun, isNotEmpty);
+      expect(
+        firstRun.map((result) => result.meetingId).toList(),
+        secondRun.map((result) => result.meetingId).toList(),
+      );
+      expect(firstRun.first.meetingId, 'meeting-58');
+      expect(
+        firstRun.take(5).every((result) => result.title.contains('Phoenix')),
+        isTrue,
+      );
+    });
   });
 }

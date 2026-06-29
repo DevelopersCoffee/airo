@@ -326,6 +326,13 @@ test-background-processing: ## Run deterministic background-processing validatio
 	@echo "$(GREEN)Background-processing validation complete.$(NC)"
 	@echo "$(YELLOW)For device-only lifecycle checks, follow docs/release/BACKGROUND_PROCESSING_VALIDATION.md$(NC)"
 
+.PHONY: test-meeting-search
+test-meeting-search: ## Run deterministic Meeting Intelligence search validation
+	@echo "$(BLUE)Running meeting-search validation suite...$(NC)"
+	@cd $(APP_DIR) && flutter test test/features/meeting/meeting_intelligence_local_slice_test.dart
+	@echo "$(GREEN)Meeting-search validation complete.$(NC)"
+	@echo "$(YELLOW)See docs/release/MEETING_SEARCH_VALIDATION.md for scope and follow-up.$(NC)"
+
 .PHONY: run-android
 run-android: run-pixel9 ## Run app on local Pixel 9 Android emulator
 
