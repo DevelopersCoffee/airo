@@ -22,3 +22,5 @@ dev_dependencies:
     path: ../platform_backend
   platform_execution:
     path: ../platform_execution
+  litert_backend:
+    path: ../../backends/litert_backend

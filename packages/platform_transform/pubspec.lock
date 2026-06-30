@@ -132,44 +132,16 @@ packages:
     source: hosted
     version: "1.9.1"
   platform_content:
-    dependency: transitive
+    dependency: "direct main"
     description:
       path: "../platform_content"
       relative: true
     source: path
     version: "0.1.0"
-  platform_contracts:
-    dependency: "direct main"
-    description:
-      path: "../platform_contracts"
-      relative: true
-    source: path
-    version: "0.1.0"
-  platform_documents:
-    dependency: "direct main"
-    description:
-      path: "../platform_documents"
-      relative: true
-    source: path
-    version: "0.1.0"
   platform_identity:
-    dependency: "direct main"
+    dependency: transitive
     description:
       path: "../platform_identity"
-      relative: true
-    source: path
-    version: "1.0.0"
-  platform_pipeline:
-    dependency: "direct main"
-    description:
-      path: "../platform_pipeline"
-      relative: true
-    source: path
-    version: "0.1.0"
-  platform_scheduler:
-    dependency: "direct main"
-    description:
-      path: "../platform_scheduler"
       relative: true
     source: path
     version: "1.0.0"

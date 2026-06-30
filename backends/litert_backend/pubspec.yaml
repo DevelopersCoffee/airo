@@ -1,5 +1,5 @@
-name: rust_backend
-description: Component for rust_backend
+name: litert_backend
+description: Component for litert_backend
 version: 0.1.0
 publish_to: none
 

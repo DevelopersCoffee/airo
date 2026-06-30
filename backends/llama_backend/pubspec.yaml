@@ -1,5 +1,5 @@
-name: cpp_backend
-description: Component for cpp_backend
+name: llama_backend
+description: Component for llama_backend
 version: 0.1.0
 publish_to: none
 

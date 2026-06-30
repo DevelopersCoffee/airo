@@ -18,6 +18,8 @@ dependencies:
     path: ../platform_documents
   platform_scheduler:
     path: ../platform_scheduler
+  platform_pipeline:
+    path: ../platform_pipeline
 dev_dependencies:
   flutter_test:
     sdk: flutter

@@ -1,5 +1,5 @@
-name: swift_backend
-description: Component for swift_backend
+name: platform_transform
+description: Component for platform_transform
 version: 0.1.0
 publish_to: none
 
@@ -9,8 +9,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  platform_backend:
-    path: ../../packages/platform_backend
+  platform_content:
+    path: ../platform_content
 
 dev_dependencies:
   flutter_test:
