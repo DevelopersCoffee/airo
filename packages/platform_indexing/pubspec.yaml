@@ -14,8 +14,8 @@ dependencies:
   platform_identity:
     path: ../platform_identity
 
-  platform_documents:
-    path: ../platform_documents
+  platform_parser:
+    path: ../platform_parser
   platform_scheduler:
     path: ../platform_scheduler
   platform_pipeline:

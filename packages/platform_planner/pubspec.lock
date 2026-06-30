@@ -145,6 +145,13 @@ packages:
       relative: true
     source: path
     version: "1.0.0"
+  platform_pipeline:
+    dependency: "direct main"
+    description:
+      path: "../platform_pipeline"
+      relative: true
+    source: path
+    version: "0.1.0"
   sky_engine:
     dependency: transitive
     description: flutter

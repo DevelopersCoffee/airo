@@ -145,10 +145,10 @@ packages:
       relative: true
     source: path
     version: "0.1.0"
-  platform_documents:
-    dependency: "direct main"
+  platform_execution:
+    dependency: transitive
     description:
-      path: "../platform_documents"
+      path: "../platform_execution"
       relative: true
     source: path
     version: "0.1.0"
@@ -159,6 +159,13 @@ packages:
       relative: true
     source: path
     version: "1.0.0"
+  platform_parser:
+    dependency: "direct main"
+    description:
+      path: "../platform_parser"
+      relative: true
+    source: path
+    version: "0.1.0"
   platform_pipeline:
     dependency: "direct main"
     description:

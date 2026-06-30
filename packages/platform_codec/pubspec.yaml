@@ -1,5 +1,5 @@
-name: platform_pipeline
-description: Component for platform_pipeline
+name: platform_codec
+description: Component for platform_codec
 version: 0.1.0
 publish_to: none
 
@@ -9,8 +9,6 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  platform_execution:
-    path: ../platform_execution
 
 dev_dependencies:
   flutter_test:

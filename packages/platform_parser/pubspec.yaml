@@ -1,5 +1,5 @@
-name: platform_documents
-description: Component for platform_documents
+name: platform_parser
+description: Component for platform_parser
 version: 0.1.0
 publish_to: none
 

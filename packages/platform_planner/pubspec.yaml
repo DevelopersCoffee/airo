@@ -1,5 +1,5 @@
-name: platform_pipeline
-description: Component for platform_pipeline
+name: platform_planner
+description: Component for platform_planner
 version: 0.1.0
 publish_to: none
 
@@ -11,6 +11,8 @@ dependencies:
     sdk: flutter
   platform_execution:
     path: ../platform_execution
+  platform_pipeline:
+    path: ../platform_pipeline
 
 dev_dependencies:
   flutter_test:

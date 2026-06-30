@@ -1,8 +1,8 @@
 
-import 'pipeline_dag.dart';
+import 'package:platform_execution/platform_execution.dart';
 
 class PipelineRunner {
-  Future<void> run(PipelineDag pipeline, dynamic initialInput) async {
-    // Execute DAG
+  Future<void> run(ExecutionGraph graph, dynamic initialInput) async {
+    // Execute strictly according to graph
   }
 }

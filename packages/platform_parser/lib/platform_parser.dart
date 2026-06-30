@@ -1,4 +1,4 @@
-library platform_documents;
+library platform_parser;
 
 export 'src/models/document_models.dart';
 export 'src/components/document_components.dart';
