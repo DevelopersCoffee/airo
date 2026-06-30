@@ -1,5 +1,5 @@
-name: platform_manifest
-description: Declarative schema for AIRO extensions and components.
+name: knowledge_feature
+description: Component for knowledge_feature
 version: 0.1.0
 publish_to: none
 
@@ -11,6 +11,8 @@ dependencies:
     sdk: flutter
   platform_contracts:
     path: ../platform_contracts
+  platform_identity:
+    path: ../platform_identity
 
 dev_dependencies:
   flutter_test:

@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:platform_manifest/platform_manifest.dart';
+import 'package:platform_registry/platform_registry.dart';
 import 'package:platform_schemas/platform_schemas.dart';
 import 'package:platform_tools/platform_tools.dart';
 

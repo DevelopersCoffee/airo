@@ -1,4 +1,4 @@
-import 'package:platform_manifest/platform_manifest.dart';
+import 'package:platform_registry/platform_registry.dart';
 import 'package:platform_contracts/platform_contracts.dart';
 
 class CapabilityIndex {

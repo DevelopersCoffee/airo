@@ -1,5 +1,5 @@
-name: platform_build
-description: Centralized build system for generation, templates, migrations, and architecture validation.
+name: platform_chunking
+description: Component for platform_chunking
 version: 0.1.0
 publish_to: none
 
@@ -11,8 +11,8 @@ dependencies:
     sdk: flutter
   platform_contracts:
     path: ../platform_contracts
-  platform_registry:
-    path: ../platform_registry
+  platform_identity:
+    path: ../platform_identity
 
 dev_dependencies:
   flutter_test:

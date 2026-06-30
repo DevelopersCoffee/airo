@@ -11,8 +11,8 @@ dependencies:
     sdk: flutter
   platform_contracts:
     path: ../platform_contracts
-  platform_manifest:
-    path: ../platform_manifest
+  platform_registry:
+    path: ../platform_registry
   platform_registry:
     path: ../platform_registry
   platform_schemas:

@@ -1,4 +1,4 @@
-import 'package:platform_manifest/platform_manifest.dart';
+import 'package:platform_registry/platform_registry.dart';
 
 class ManifestValidator {
   void validate(ExtensionManifest manifest) {
