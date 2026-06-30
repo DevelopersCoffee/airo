@@ -1,11 +1,14 @@
 
 import 'dart:typed_data';
-import 'package:platform_pipeline/platform_pipeline.dart';
 import 'parser.dart';
 
-class PdfParser implements Parser {
+class PdfParserProvider implements ParserProvider {
+  @override bool supportsMime(String mimeType) => mimeType == 'text/pdf';
+  @override bool supportsExtension(String extension) => extension == '.pdf';
+  @override int get priority => 100;
+  
   @override
-  Future<AstArtifact> parse(Uint8List bytes, String mimeType) async {
-    throw UnimplementedError('PDF Parser coming soon');
+  Future<AstNode> parse(Uint8List bytes, String mimeType) async {
+    throw UnimplementedError();
   }
 }

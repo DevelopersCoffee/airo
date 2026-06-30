@@ -2,17 +2,39 @@
 import 'package:platform_execution/platform_execution.dart';
 import 'artifacts.dart';
 
-class Schema {}
+class SchemaDescriptor {
+  final String id;
+  final String version;
+  final String mimeType;
+  final dynamic serializer;
+  final dynamic validator;
+
+  SchemaDescriptor({
+    required this.id,
+    required this.version,
+    required this.mimeType,
+    this.serializer,
+    this.validator,
+  });
+}
 
 class PipelineStageDescriptor {
-  final Schema inputSchema;
-  final Schema outputSchema;
+  final SchemaDescriptor inputSchema;
+  final SchemaDescriptor outputSchema;
   
   final List<String> requiredCapabilities;
   
-  final int estimatedMemoryBytes;
-  final int estimatedCpuCompute;
-  final int estimatedGpuCompute;
+  final int minimumMemoryBytes;
+  final int preferredMemoryBytes;
+  final int maximumMemoryBytes;
+  
+  final int minimumThreads;
+  final int preferredThreads;
+  
+  final List<String> preferredAccelerators;
+  
+  final Duration? expectedLatency;
+  final int? expectedThroughput;
   
   final bool supportsStreaming;
   final bool supportsBatching;
@@ -31,9 +53,14 @@ class PipelineStageDescriptor {
     required this.inputSchema,
     required this.outputSchema,
     this.requiredCapabilities = const [],
-    this.estimatedMemoryBytes = 0,
-    this.estimatedCpuCompute = 0,
-    this.estimatedGpuCompute = 0,
+    this.minimumMemoryBytes = 0,
+    this.preferredMemoryBytes = 0,
+    this.maximumMemoryBytes = 0,
+    this.minimumThreads = 1,
+    this.preferredThreads = 1,
+    this.preferredAccelerators = const [],
+    this.expectedLatency,
+    this.expectedThroughput,
     this.supportsStreaming = false,
     this.supportsBatching = false,
     this.supportsCheckpointing = false,

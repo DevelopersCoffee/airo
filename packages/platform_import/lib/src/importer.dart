@@ -1,17 +1,14 @@
 
 import 'dart:typed_data';
 
-abstract class Importer {
-  Future<Uint8List> importFile(String path);
-  Future<Uint8List> importUrl(String url);
+abstract class ImporterProvider {
+  String get name;
+  bool supports(String uri);
+  Future<Uint8List> importData(String uri);
 }
 
-class LocalFileImporter implements Importer {
-  @override
-  Future<Uint8List> importFile(String path) async {
-    // Read file bytes
-    return Uint8List(0);
-  }
-  @override
-  Future<Uint8List> importUrl(String url) async => throw UnimplementedError();
+class FilesystemImporter implements ImporterProvider {
+  @override String get name => 'filesystem';
+  @override bool supports(String uri) => uri.startsWith('file://') || uri.startsWith('/');
+  @override Future<Uint8List> importData(String uri) async => Uint8List(0);
 }

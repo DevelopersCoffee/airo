@@ -1,17 +1,14 @@
 
 import 'dart:typed_data';
-import 'package:platform_pipeline/platform_pipeline.dart';
 import 'parser.dart';
 
-class TextParser implements Parser {
+class TextParserProvider implements ParserProvider {
+  @override bool supportsMime(String mimeType) => mimeType == 'text/text';
+  @override bool supportsExtension(String extension) => extension == '.text';
+  @override int get priority => 100;
+  
   @override
-  Future<AstArtifact> parse(Uint8List bytes, String mimeType) async {
-    return AstArtifact(
-      id: 'txt-ast-1',
-      version: '1.0',
-      producer: 'TextParser',
-      schema: 'AstSchema',
-      checksum: 'chk',
-    );
+  Future<AstNode> parse(Uint8List bytes, String mimeType) async {
+    throw UnimplementedError();
   }
 }

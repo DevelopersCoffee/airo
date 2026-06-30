@@ -1,11 +1,14 @@
 
 import 'dart:typed_data';
-import 'package:platform_pipeline/platform_pipeline.dart';
 import 'parser.dart';
 
-class DocxParser implements Parser {
+class DocxParserProvider implements ParserProvider {
+  @override bool supportsMime(String mimeType) => mimeType == 'text/docx';
+  @override bool supportsExtension(String extension) => extension == '.docx';
+  @override int get priority => 100;
+  
   @override
-  Future<AstArtifact> parse(Uint8List bytes, String mimeType) async {
-    throw UnimplementedError('DOCX Parser coming soon');
+  Future<AstNode> parse(Uint8List bytes, String mimeType) async {
+    throw UnimplementedError();
   }
 }
