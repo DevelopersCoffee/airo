@@ -11,8 +11,6 @@ dependencies:
     sdk: flutter
   platform_engine_sdk:
     path: ../platform_engine_sdk
-  platform_native:
-    path: ../platform_native
   platform_validation:
     path: ../platform_validation
 

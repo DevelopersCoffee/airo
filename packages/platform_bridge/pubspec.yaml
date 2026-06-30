@@ -1,5 +1,5 @@
-name: platform_native
-description: Core infrastructure for managing native execution, FFI, and dynamic libraries.
+name: platform_bridge
+description: Component for platform_bridge
 version: 0.1.0
 publish_to: none
 
@@ -9,8 +9,9 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  platform_identity:
+    path: ../platform_identity
 
-  mocktail: ^1.0.3
 dev_dependencies:
   flutter_test:
     sdk: flutter

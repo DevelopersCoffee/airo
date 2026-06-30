@@ -1,0 +1,3 @@
+
+class CapabilityRegistry {}
+class ProviderRegistry {}

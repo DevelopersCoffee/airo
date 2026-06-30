@@ -1,5 +1,5 @@
-name: engine_litert
-description: Component for engine_litert
+name: platform_backend
+description: Component for platform_backend
 version: 0.1.0
 publish_to: none
 
@@ -9,8 +9,6 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  platform_embeddings:
-    path: ../platform_embeddings
   platform_identity:
     path: ../platform_identity
 
@@ -18,7 +16,3 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^4.0.0
-  platform_backend:
-    path: ../platform_backend
-  platform_execution:
-    path: ../platform_execution
