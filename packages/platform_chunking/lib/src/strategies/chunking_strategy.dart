@@ -1,6 +1,7 @@
 
-import '../models/chunk_models.dart';
 import 'package:platform_content/platform_content.dart';
+
+import '../models/chunk_models.dart';
 
 abstract class ChunkSelector {
   List<ContentNode> select(ContentDocument document);

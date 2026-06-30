@@ -1,12 +1,18 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:platform_composition/platform_composition.dart';
-import 'package:platform_registry/platform_registry.dart';
+import 'package:platform_contracts/platform_contracts.dart';
 import 'package:platform_registry/platform_registry.dart';
 import 'package:platform_services/platform_services.dart';
-import 'package:platform_contracts/platform_contracts.dart';
 
 class MockMemoryService implements MemoryService {}
 class MockManifest implements ExtensionManifest {
+  
+  const MockManifest({
+    required this.identifier,
+    required this.version,
+    this.minPlatformVersion = '1.0',
+    this.metadata = const {},
+  });
   @override
   final String identifier;
   @override
@@ -30,13 +36,6 @@ class MockManifest implements ExtensionManifest {
   
   @override
   Map<String, dynamic> get settings => {};
-  
-  const MockManifest({
-    required this.identifier,
-    required this.version,
-    this.minPlatformVersion = '1.0',
-    this.metadata = const {},
-  });
 }
 
 class MockRegistry implements ExtensionRegistry {

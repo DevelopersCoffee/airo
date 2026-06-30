@@ -1,5 +1,6 @@
 name: core_data
 description: "Core data layer: database, API clients, and repository implementations"
+publish_to: none
 version: 0.0.1
 publish_to: 'none'
 

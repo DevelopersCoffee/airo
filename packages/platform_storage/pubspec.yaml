@@ -10,6 +10,15 @@ dependencies:
   flutter:
     sdk: flutter
 
+  platform_core:
+    path: ../platform_core
+  flutter_riverpod: any
+  drift: any
+  path_provider: any
+  path: any
+  sqlite3: any
+  sqlite3_flutter_libs: any
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

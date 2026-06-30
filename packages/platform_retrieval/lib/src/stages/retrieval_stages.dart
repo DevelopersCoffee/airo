@@ -1,20 +1,20 @@
 
 class RetrievedChunk {
+  RetrievedChunk({required this.chunkId, required this.content, required this.score});
   final String chunkId;
   final String content;
   final double score;
-  RetrievedChunk({required this.chunkId, required this.content, required this.score});
 }
 
 class RetrievedDocument {
+  RetrievedDocument({required this.documentId, required this.chunks});
   final String documentId;
   final List<RetrievedChunk> chunks;
-  RetrievedDocument({required this.documentId, required this.chunks});
 }
 
 class RetrievalResult {
-  final List<RetrievedDocument> documents;
   RetrievalResult(this.documents);
+  final List<RetrievedDocument> documents;
 }
 
 abstract class CandidateGenerator {

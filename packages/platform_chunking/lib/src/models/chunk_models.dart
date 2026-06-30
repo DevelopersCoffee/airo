@@ -6,20 +6,20 @@ class ChunkId extends PlatformIdentifier {
 }
 
 class ChunkMetadata {
-  final Map<String, dynamic> attributes;
   ChunkMetadata(this.attributes);
+  final Map<String, dynamic> attributes;
 }
 
 class ChunkPolicy {
+  ChunkPolicy({required this.maxTokens, required this.overlapTokens});
   final int maxTokens;
   final int overlapTokens;
-  ChunkPolicy({required this.maxTokens, required this.overlapTokens});
 }
 
 class Chunk {
+  
+  Chunk({required this.id, required this.content, required this.metadata});
   final ChunkId id;
   final String content;
   final ChunkMetadata metadata;
-  
-  Chunk({required this.id, required this.content, required this.metadata});
 }

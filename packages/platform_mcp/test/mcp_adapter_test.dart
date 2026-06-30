@@ -14,9 +14,9 @@ void main() {
       'params': {
         'name': 'read_file',
         'arguments': {
-          'path': '/tmp/test.txt'
-        }
-      }
+          'path': '/tmp/test.txt',
+        },
+      },
     };
 
     // 2. Protocol parsing

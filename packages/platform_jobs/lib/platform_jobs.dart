@@ -1,4 +1,4 @@
-library platform_jobs;
+library;
 
 export 'src/contracts/job.dart';
 export 'src/contracts/job_scheduler.dart';

@@ -1,4 +1,4 @@
-library platform_core;
+library;
 
 export 'src/bootstrap/bootstrap_context.dart';
 export 'src/bootstrap/bootstrap_coordinator.dart';

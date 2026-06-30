@@ -9,12 +9,12 @@ environment:
 dependencies:
   platform_provider:
     path: ../platform_provider
+  platform_identity:
+    path: ../platform_identity
   flutter:
     sdk: flutter
 
 dev_dependencies:
-  platform_provider:
-    path: ../platform_provider
   flutter_test:
     sdk: flutter
   flutter_lints: ^4.0.0

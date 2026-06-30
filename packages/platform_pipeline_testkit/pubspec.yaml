@@ -1,0 +1,13 @@
+name: platform_pipeline_testkit
+description: Component for platform_pipeline_testkit
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: '>=3.4.0 <4.0.0'
+
+dependencies:
+  test: ^1.24.0
+
+dev_dependencies:
+  flutter_lints: ^4.0.0

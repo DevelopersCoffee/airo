@@ -1,5 +1,6 @@
 name: core_ai
 description: "Core AI package: LLM abstractions, prompt management, and AI utilities"
+publish_to: none
 version: 0.0.1
 publish_to: 'none'
 

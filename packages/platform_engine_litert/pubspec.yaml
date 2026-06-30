@@ -7,14 +7,14 @@ environment:
   sdk: '>=3.4.0 <4.0.0'
 
 dependencies:
+  platform_pipeline:
+    path: ../platform_pipeline
   flutter:
     sdk: flutter
   platform_engine_sdk:
     path: ../platform_engine_sdk
   platform_delegates:
     path: ../platform_delegates
-  platform_validation:
-    path: ../platform_validation
 
   mocktail: ^1.0.3
   platform_engine_testkit:
@@ -22,6 +22,8 @@ dependencies:
   platform_downloads:
     path: ../platform_downloads
 dev_dependencies:
+  platform_pipeline:
+    path: ../platform_pipeline
   flutter_test:
     sdk: flutter
   flutter_lints: ^4.0.0

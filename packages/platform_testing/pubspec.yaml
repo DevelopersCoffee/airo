@@ -1,0 +1,22 @@
+name: platform_testing
+description: The central Test SDK for enforcing provider contracts and constraints.
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: '>=3.4.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_test:
+    sdk: flutter
+  platform_provider:
+    path: ../platform_provider
+  platform_pipeline:
+    path: ../platform_pipeline
+  platform_engine_sdk:
+    path: ../platform_engine_sdk
+
+dev_dependencies:
+  flutter_lints: ^4.0.0

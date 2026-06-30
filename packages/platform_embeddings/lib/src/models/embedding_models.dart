@@ -4,21 +4,21 @@ abstract class EmbeddingInput {
 }
 
 class TextEmbeddingInput extends EmbeddingInput {
-  final String text;
   const TextEmbeddingInput(this.text);
+  final String text;
 }
 
 class EmbeddingRequest {
-  final List<EmbeddingInput> inputs;
   const EmbeddingRequest(this.inputs);
+  final List<EmbeddingInput> inputs;
 }
 
 class EmbeddingResult {
-  final List<double> vector;
   const EmbeddingResult(this.vector);
+  final List<double> vector;
 }
 
 class EmbeddingBatch {
-  final List<EmbeddingResult> results;
   const EmbeddingBatch(this.results);
+  final List<EmbeddingResult> results;
 }

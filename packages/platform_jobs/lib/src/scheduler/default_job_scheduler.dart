@@ -6,7 +6,6 @@ import '../contracts/job_scheduler.dart';
 import '../contracts/job_worker.dart';
 import '../contracts/job_monitor.dart';
 import '../contracts/job.dart';
-import '../contracts/job_cancellation_token.dart';
 import '../lifecycle/job_status.dart';
 import '../queues/job_queue_type.dart';
 import '../events/job_events.dart';
@@ -132,7 +131,7 @@ class DefaultJobScheduler implements JobScheduler, JobMonitor {
         _eventPublisher.publish(JobQueuedEvent(eventId: eventId, jobId: jobId, jobName: jobName));
         break;
       case JobStatus.running:
-        if (record.startedAt == null) record.startedAt = DateTime.now();
+        record.startedAt ??= DateTime.now();
         _eventPublisher.publish(JobStartedEvent(eventId: eventId, jobId: jobId, jobName: jobName));
         break;
       case JobStatus.succeeded:

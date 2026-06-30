@@ -7,6 +7,8 @@ environment:
   sdk: '>=3.4.0 <4.0.0'
 
 dependencies:
+  platform_pipeline:
+    path: ../platform_pipeline
   flutter:
     sdk: flutter
   flutter_riverpod: ^2.6.1
@@ -20,14 +22,14 @@ dependencies:
     path: ../platform_settings
   platform_hardware:
     path: ../platform_hardware
-  platform_validation:
-    path: ../platform_validation
   platform_engine_sdk:
     path: ../platform_engine_sdk
 
   uuid: any
   mocktail: ^1.0.3
 dev_dependencies:
+  platform_pipeline:
+    path: ../platform_pipeline
   flutter_test:
     sdk: flutter
   flutter_lints: ^4.0.0

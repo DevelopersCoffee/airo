@@ -1,10 +1,6 @@
 import '../types/delegate_types.dart';
 
 class DelegateSelection {
-  final DelegateType selectedDelegate;
-  final List<DelegateType> fallbackChain;
-  final double confidence;
-  final String explanation;
 
   const DelegateSelection({
     required this.selectedDelegate,
@@ -12,6 +8,10 @@ class DelegateSelection {
     required this.confidence,
     required this.explanation,
   });
+  final DelegateType selectedDelegate;
+  final List<DelegateType> fallbackChain;
+  final double confidence;
+  final String explanation;
 }
 
 abstract interface class DelegateSession {

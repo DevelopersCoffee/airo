@@ -10,12 +10,12 @@ abstract class TransformStage<I, O> {
 }
 
 class TransformPipeline<I, O> {
-  final List<TransformStage> stages;
   TransformPipeline(this.stages);
+  final List<TransformStage> stages;
 
   Future<O> execute(I input) async {
     dynamic current = input;
-    for (var stage in stages) {
+    for (final stage in stages) {
       current = await stage.transform(current);
     }
     return current as O;

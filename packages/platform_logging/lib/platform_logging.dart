@@ -1,4 +1,4 @@
-library platform_logging;
+library;
 
 export 'src/bootstrap/logging_bootstrap_task.dart';
 export 'src/context/log_context.dart';

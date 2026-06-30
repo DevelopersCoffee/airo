@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:platform_registry/platform_registry.dart';
-import 'package:platform_registry/platform_registry.dart';
 
 void main() {
   test('resolves acyclic dependencies correctly', () {
@@ -8,7 +7,7 @@ void main() {
     
     final manifests = [
       const PluginManifest(identifier: 'c', version: '1.0', dependencies: ['b'], minPlatformVersion: '1.0'),
-      const PluginManifest(identifier: 'a', version: '1.0', dependencies: [], minPlatformVersion: '1.0'),
+      const PluginManifest(identifier: 'a', version: '1.0', minPlatformVersion: '1.0'),
       const PluginManifest(identifier: 'b', version: '1.0', dependencies: ['a'], minPlatformVersion: '1.0'),
     ];
 

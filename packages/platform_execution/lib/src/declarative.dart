@@ -26,14 +26,6 @@ enum WorkloadType {
 }
 
 class ResourceRequest {
-  final int? cpuMillis;
-  final int? gpuMillis;
-  final int? npuMillis;
-  final int? ramBytes;
-  final int? storageBytes;
-  final int? networkBytes;
-  final int? batteryPercent;
-  final int? thermalLimit;
 
   ResourceRequest({
     this.cpuMillis,
@@ -45,9 +37,37 @@ class ResourceRequest {
     this.batteryPercent,
     this.thermalLimit,
   });
+  final int? cpuMillis;
+  final int? gpuMillis;
+  final int? npuMillis;
+  final int? ramBytes;
+  final int? storageBytes;
+  final int? networkBytes;
+  final int? batteryPercent;
+  final int? thermalLimit;
 }
 
 class ExecutionRequest {
+
+  ExecutionRequest({
+    required this.workloadType,
+    required this.inputSchema,
+    required this.outputSchema,
+    this.priority = Priority.normal,
+    this.latencyTarget,
+    this.deadline,
+    this.resourceRequest,
+    this.cancellationToken,
+    this.retryPolicy = RetryPolicy.exponential,
+    this.checkpointPolicy = CheckpointPolicy.onStageComplete,
+    this.streamingMode = StreamingMode.none,
+    this.batchingMode = BatchingMode.dynamic,
+    this.isolationPolicy = IsolationPolicy.thread,
+    this.requiredCapabilities = const [],
+    this.preferredBackends = const [],
+    this.preferredAccelerators = const [],
+    this.deviceAffinity,
+  });
   final WorkloadType workloadType;
   final String inputSchema;
   final String outputSchema;
@@ -69,26 +89,6 @@ class ExecutionRequest {
   final List<String> preferredBackends;
   final List<String> preferredAccelerators;
   final String? deviceAffinity;
-
-  ExecutionRequest({
-    required this.workloadType,
-    required this.inputSchema,
-    required this.outputSchema,
-    this.priority = Priority.normal,
-    this.latencyTarget,
-    this.deadline,
-    this.resourceRequest,
-    this.cancellationToken,
-    this.retryPolicy = RetryPolicy.exponential,
-    this.checkpointPolicy = CheckpointPolicy.onStageComplete,
-    this.streamingMode = StreamingMode.none,
-    this.batchingMode = BatchingMode.dynamic,
-    this.isolationPolicy = IsolationPolicy.thread,
-    this.requiredCapabilities = const [],
-    this.preferredBackends = const [],
-    this.preferredAccelerators = const [],
-    this.deviceAffinity,
-  });
 }
 
 class ExecutionConstraints {}
@@ -98,18 +98,18 @@ class ExecutionGraph {
 }
 
 class ExecutionRun {
+  ExecutionRun({required this.runId, required this.graph});
   final String runId;
   final ExecutionGraph graph;
-  ExecutionRun({required this.runId, required this.graph});
 }
 
 class ExecutionResult {
+  ExecutionResult({required this.runId, required this.success});
   final String runId;
   final bool success;
-  ExecutionResult({required this.runId, required this.success});
 }
 
 class Workload {
-  final WorkloadType type;
   Workload({required this.type});
+  final WorkloadType type;
 }

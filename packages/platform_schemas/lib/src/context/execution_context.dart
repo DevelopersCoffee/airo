@@ -1,41 +1,41 @@
 import '../tool/tool_schemas.dart';
 
 class ProtocolDescriptor {
-  final String protocolName;
-  final String protocolVersion;
 
   const ProtocolDescriptor({
     required this.protocolName,
     required this.protocolVersion,
   });
+  final String protocolName;
+  final String protocolVersion;
 }
 
 class WorkspaceContext {
-  final String workspaceId;
-  final String workspacePath;
 
   const WorkspaceContext({
     required this.workspaceId,
     required this.workspacePath,
   });
+  final String workspaceId;
+  final String workspacePath;
 }
 
 class UserContext {
-  final String userId;
-  final String role;
 
   const UserContext({
     required this.userId,
     required this.role,
   });
+  final String userId;
+  final String role;
 }
 
 class PermissionContext {
-  final List<String> grantedPermissions;
 
   const PermissionContext({
     required this.grantedPermissions,
   });
+  final List<String> grantedPermissions;
 }
 
 class CancellationToken {
@@ -58,13 +58,6 @@ class DiagnosticsCollector {
 }
 
 class ExecutionContext {
-  final ToolRequest request;
-  final ProtocolDescriptor protocol;
-  final WorkspaceContext workspace;
-  final UserContext user;
-  final PermissionContext permissions;
-  final CancellationToken cancellation;
-  final DiagnosticsCollector diagnostics;
 
   const ExecutionContext({
     required this.request,
@@ -75,4 +68,11 @@ class ExecutionContext {
     required this.cancellation,
     required this.diagnostics,
   });
+  final ToolRequest request;
+  final ProtocolDescriptor protocol;
+  final WorkspaceContext workspace;
+  final UserContext user;
+  final PermissionContext permissions;
+  final CancellationToken cancellation;
+  final DiagnosticsCollector diagnostics;
 }

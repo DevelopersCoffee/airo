@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:platform_logging/platform_logging.dart';
-import 'package:platform_core/platform_core.dart';
 import 'dart:convert';
 
 void main() {

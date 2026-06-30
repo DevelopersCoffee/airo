@@ -2,21 +2,21 @@ import 'package:platform_protocols/platform_protocols.dart';
 import 'package:platform_schemas/platform_schemas.dart';
 
 class McpProtocolRequest implements ProtocolRequest {
+
+  const McpProtocolRequest(this.id, this.rawPayload);
   @override
   final String id;
   @override
   final Map<String, dynamic> rawPayload;
-
-  const McpProtocolRequest(this.id, this.rawPayload);
 }
 
 class McpProtocolResponse implements ProtocolResponse {
+
+  const McpProtocolResponse(this.id, this.rawPayload);
   @override
   final String id;
   @override
   final Map<String, dynamic> rawPayload;
-
-  const McpProtocolResponse(this.id, this.rawPayload);
 }
 
 class McpSerializer implements ProtocolSerializer {
@@ -73,7 +73,7 @@ class McpAdapter implements ProtocolAdapter {
         'status': result.status,
         'data': result.payload,
         'diagnostics': result.diagnostics,
-      }
+      },
     };
 
     return McpProtocolResponse(request.id, responsePayload);

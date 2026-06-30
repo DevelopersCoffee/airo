@@ -1,3 +1,3 @@
-library platform_errors;
+library;
 
 export 'src/platform_exception.dart';

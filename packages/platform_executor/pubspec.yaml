@@ -1,0 +1,18 @@
+name: platform_executor
+description: Component for platform_executor
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: '>=3.4.0 <4.0.0'
+
+dependencies:
+  platform_pipeline:
+    path: ../platform_pipeline
+  platform_execution:
+    path: ../platform_execution
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0

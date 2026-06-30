@@ -124,7 +124,7 @@ packages:
     source: hosted
     version: "1.18.0"
   mocktail:
-    dependency: "direct dev"
+    dependency: "direct main"
     description:
       name: mocktail
       sha256: "5e1bf53cc7baa8062a33b84424deb61513858ea05c601b8509e683815b5914aa"
@@ -146,13 +146,13 @@ packages:
       relative: true
     source: path
     version: "0.1.0"
-  platform_manifest:
-    dependency: "direct main"
+  platform_identity:
+    dependency: transitive
     description:
-      path: "../platform_manifest"
+      path: "../platform_identity"
       relative: true
     source: path
-    version: "0.1.0"
+    version: "1.0.0"
   sky_engine:
     dependency: transitive
     description: flutter
@@ -223,5 +223,5 @@ packages:
     source: hosted
     version: "15.2.0"
 sdks:
-  dart: ">=3.10.0-0 <4.0.0"
+  dart: ">=3.12.2 <4.0.0"
   flutter: ">=3.18.0-18.0.pre.54"

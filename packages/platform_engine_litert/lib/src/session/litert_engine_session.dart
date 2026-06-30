@@ -1,10 +1,10 @@
-import 'package:platform_engine_sdk/platform_engine_sdk.dart';
 import 'package:platform_delegates/platform_delegates.dart';
+import 'package:platform_engine_sdk/platform_engine_sdk.dart';
 
 class LitertEngineSession implements EngineSession {
-  final DelegateSelection delegateSelection;
 
   const LitertEngineSession({required this.delegateSelection});
+  final DelegateSelection delegateSelection;
 
   @override
   Future<void> initialize() async {

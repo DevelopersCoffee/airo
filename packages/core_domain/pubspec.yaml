@@ -1,5 +1,6 @@
 name: core_domain
 description: "Core domain layer: entities, repository interfaces, and use cases"
+publish_to: none
 version: 0.0.1
 
 environment:

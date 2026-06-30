@@ -1,0 +1,34 @@
+name: platform_mock
+description: Pure, deterministic fake implementations of platform components for CI validation.
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: '>=3.4.0 <4.0.0'
+
+dependencies:
+  platform_pipeline:
+    path: ../platform_pipeline
+  platform_ast:
+    path: ../platform_ast
+  platform_content:
+    path: ../platform_content
+  flutter:
+    sdk: flutter
+  platform_provider:
+    path: ../platform_provider
+  platform_identity:
+    path: ../platform_identity
+  platform_parser:
+    path: ../platform_parser
+
+dev_dependencies:
+  platform_pipeline:
+    path: ../platform_pipeline
+  platform_ast:
+    path: ../platform_ast
+  platform_content:
+    path: ../platform_content
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0

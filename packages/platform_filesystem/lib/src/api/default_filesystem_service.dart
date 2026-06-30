@@ -1,4 +1,3 @@
-import 'package:platform_core/platform_core.dart';
 import '../contracts/filesystem_service.dart';
 import '../directories/default_directory_provider.dart';
 

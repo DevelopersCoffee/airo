@@ -1,5 +1,5 @@
 name: platform_engine_testkit
-description: Executable compliance suite for AIRO inference engines.
+description: Component for platform_engine_testkit
 version: 0.1.0
 publish_to: none
 
@@ -7,15 +7,7 @@ environment:
   sdk: '>=3.4.0 <4.0.0'
 
 dependencies:
-  flutter:
-    sdk: flutter
-  flutter_test:
-    sdk: flutter
-  platform_engine_sdk:
-    path: ../platform_engine_sdk
-  platform_validation:
-    path: ../platform_validation
+  test: ^1.24.0
 
-  mocktail: ^1.0.3
 dev_dependencies:
   flutter_lints: ^4.0.0

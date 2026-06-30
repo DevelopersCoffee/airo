@@ -131,6 +131,20 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.9.1"
+  platform_ast:
+    dependency: "direct main"
+    description:
+      path: "../platform_ast"
+      relative: true
+    source: path
+    version: "0.1.0"
+  platform_content_types:
+    dependency: "direct main"
+    description:
+      path: "../platform_content_types"
+      relative: true
+    source: path
+    version: "0.1.0"
   platform_execution:
     dependency: "direct main"
     description:
@@ -138,10 +152,24 @@ packages:
       relative: true
     source: path
     version: "0.1.0"
+  platform_graph:
+    dependency: "direct main"
+    description:
+      path: "../platform_graph"
+      relative: true
+    source: path
+    version: "0.1.0"
   platform_identity:
-    dependency: transitive
+    dependency: "direct main"
     description:
       path: "../platform_identity"
+      relative: true
+    source: path
+    version: "1.0.0"
+  platform_provider:
+    dependency: "direct main"
+    description:
+      path: "../platform_provider"
       relative: true
     source: path
     version: "1.0.0"

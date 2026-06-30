@@ -1,5 +1,4 @@
 import 'dart:io';
-import '../files/platform_file.dart';
 import '../files/file_types.dart';
 
 abstract interface class ImportExportService {

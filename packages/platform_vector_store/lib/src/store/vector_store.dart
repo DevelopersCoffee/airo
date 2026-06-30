@@ -1,6 +1,7 @@
 
-import '../models/vector_models.dart';
 import 'package:platform_storage/platform_storage.dart';
+
+import '../models/vector_models.dart';
 
 abstract class AiroVectorStore implements VectorStore {
   Future<void> createIndex(VectorIndex index);

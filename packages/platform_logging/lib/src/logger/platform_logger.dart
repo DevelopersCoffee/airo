@@ -13,12 +13,10 @@ class PlatformLogger implements Logger {
   final LogContextProvider? _contextProvider;
   
   PlatformLogger({
-    required List<LogSink> sinks,
-    List<LogFilter> filters = const [],
-    LogContextProvider? contextProvider,
-  }) : _sinks = sinks,
-       _filters = filters,
-       _contextProvider = contextProvider;
+    required this._sinks,
+    this._filters = const [],
+    this._contextProvider,
+  });
 
   void _log(LogLevel level, String message, LogCategory category, Object? error, StackTrace? stackTrace, LogMetadata? metadata) {
     final entry = LogEntry(

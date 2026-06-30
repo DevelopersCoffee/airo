@@ -7,6 +7,8 @@ environment:
   sdk: '>=3.4.0 <4.0.0'
 
 dependencies:
+  platform_content:
+    path: ../platform_content
   flutter:
     sdk: flutter
   platform_contracts:
@@ -21,6 +23,8 @@ dependencies:
   platform_pipeline:
     path: ../platform_pipeline
 dev_dependencies:
+  platform_content:
+    path: ../platform_content
   flutter_test:
     sdk: flutter
   flutter_lints: ^4.0.0

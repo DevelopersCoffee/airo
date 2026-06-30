@@ -1,4 +1,4 @@
-library platform_events;
+library;
 
 export 'src/contracts/platform_event.dart';
 export 'src/contracts/event_bus.dart';

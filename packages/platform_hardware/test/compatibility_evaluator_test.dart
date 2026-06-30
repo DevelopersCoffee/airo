@@ -61,7 +61,7 @@ void main() {
         contextWindow: 1024,
         capabilities: ModelCapabilities(),
         minimumRamMb: 2000,
-        downloadManifest: const DownloadManifest(
+        downloadManifest: DownloadManifest(
           identifier: 'test-model',
           version: '1.0',
           artifacts: [
@@ -93,7 +93,7 @@ void main() {
         contextWindow: 1024,
         capabilities: ModelCapabilities(),
         minimumRamMb: 6000, // Needs 6GB, device has 4GB available
-        downloadManifest: const DownloadManifest(
+        downloadManifest: DownloadManifest(
           identifier: 'test-model',
           version: '1.0',
           artifacts: [

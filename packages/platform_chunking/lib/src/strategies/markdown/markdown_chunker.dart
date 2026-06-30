@@ -1,7 +1,8 @@
 
+import 'package:platform_content/platform_content.dart';
+
 import '../../models/chunk_models.dart';
 import '../chunking_strategy.dart';
-import 'package:platform_content/platform_content.dart';
 
 class MarkdownChunkStrategy implements ChunkStrategy {
   @override
@@ -16,7 +17,7 @@ class MarkdownChunkStrategy implements ChunkStrategy {
       id: const ChunkId('chunk-1'),
       content: 'Stubbed markdown chunk',
       metadata: ChunkMetadata({}),
-    ));
+    ),);
     return chunks;
   }
 }

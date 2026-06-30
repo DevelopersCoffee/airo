@@ -1,13 +1,14 @@
 import 'package:platform_schemas/platform_schemas.dart';
+
 import '../api/tool.dart';
-import '../validation/tool_validator.dart';
 import '../permissions/tool_permission_checker.dart';
+import '../validation/tool_validator.dart';
 
 class ToolExecutor {
-  final ToolValidator _validator;
-  final ToolPermissionChecker _permissionChecker;
 
   ToolExecutor(this._validator, this._permissionChecker);
+  final ToolValidator _validator;
+  final ToolPermissionChecker _permissionChecker;
 
   Future<ToolResult> execute(
     Tool tool,

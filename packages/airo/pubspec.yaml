@@ -1,5 +1,6 @@
 name: airo
 description: "Super-app host that routes to Airo and AiroMoney"
+publish_to: none
 version: 0.0.1
 homepage:
 

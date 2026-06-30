@@ -1,11 +1,4 @@
 class ToolRequest {
-  final String invocationId;
-  final String caller;
-  final String workspaceId;
-  final String sessionId;
-  final DateTime timestamp;
-  final Map<String, dynamic> payload;
-  final Map<String, dynamic> executionContext;
 
   const ToolRequest({
     required this.invocationId,
@@ -16,14 +9,16 @@ class ToolRequest {
     required this.payload,
     this.executionContext = const {},
   });
+  final String invocationId;
+  final String caller;
+  final String workspaceId;
+  final String sessionId;
+  final DateTime timestamp;
+  final Map<String, dynamic> payload;
+  final Map<String, dynamic> executionContext;
 }
 
 class ToolResult {
-  final String status;
-  final Map<String, dynamic> payload;
-  final Map<String, dynamic> diagnostics;
-  final Duration executionTime;
-  final List<String> warnings;
 
   const ToolResult({
     required this.status,
@@ -32,16 +27,21 @@ class ToolResult {
     required this.executionTime,
     this.warnings = const [],
   });
+  final String status;
+  final Map<String, dynamic> payload;
+  final Map<String, dynamic> diagnostics;
+  final Duration executionTime;
+  final List<String> warnings;
 }
 
 class ToolEvent {
-  final String type;
-  final Map<String, dynamic> data;
-  final DateTime timestamp;
 
   const ToolEvent({
     required this.type,
     required this.data,
     required this.timestamp,
   });
+  final String type;
+  final Map<String, dynamic> data;
+  final DateTime timestamp;
 }

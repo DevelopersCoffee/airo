@@ -7,10 +7,10 @@ environment:
   sdk: '>=3.4.0 <4.0.0'
 
 dependencies:
-  flutter:
-    sdk: flutter
-  platform_identity:
-    path: ../platform_identity
+  platform_content_types:
+    path: ../platform_content_types
+  platform_ast:
+    path: ../platform_ast
 
 dev_dependencies:
   flutter_test:

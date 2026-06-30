@@ -1,3 +1,3 @@
-library platform_policy;
+library;
 
 export 'src/policies.dart';

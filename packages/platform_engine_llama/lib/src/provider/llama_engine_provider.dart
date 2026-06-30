@@ -1,6 +1,6 @@
-import 'package:platform_engine_sdk/platform_engine_sdk.dart';
-import 'package:platform_validation/platform_validation.dart';
 import 'package:platform_engine_llama/src/session/llama_engine_session.dart';
+import 'package:platform_engine_sdk/platform_engine_sdk.dart';
+import 'package:platform_pipeline/platform_pipeline.dart';
 
 class LlamaEngineProvider implements EngineProvider {
   @override
@@ -21,7 +21,7 @@ class LlamaEngineProvider implements EngineProvider {
   }
 
   @override
-  Future<EngineSession> createSession(InstalledArtifact artifact) async {
+  Future<EngineSession> createSession(Artifact artifact) async {
     return LlamaEngineSession();
   }
 }

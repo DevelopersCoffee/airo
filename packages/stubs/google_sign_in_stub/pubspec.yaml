@@ -1,5 +1,6 @@
 name: google_sign_in
 description: Local no-op Google Sign-In stub for simulator and CI builds.
+publish_to: none
 version: 7.2.0
 publish_to: 'none'
 

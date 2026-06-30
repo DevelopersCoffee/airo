@@ -1,16 +1,16 @@
 
-import 'package:platform_documents/platform_documents.dart';
+import 'package:platform_content/platform_content.dart';
 
 class IndexingJob {
-  final DocumentSource source;
-  final String format;
   IndexingJob({required this.source, required this.format});
+  final ContentDocument source;
+  final String format;
 }
 
 class IndexingResult {
+  IndexingResult({required this.success, this.error});
   final bool success;
   final String? error;
-  IndexingResult({required this.success, this.error});
 }
 
 abstract class IndexingPipeline {

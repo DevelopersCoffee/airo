@@ -1,4 +1,3 @@
-import '../levels/log_level.dart';
 import '../levels/log_category.dart';
 import '../context/log_metadata.dart';
 

@@ -14,13 +14,10 @@ dependencies:
   platform_identity:
     path: ../platform_identity
 
+  platform_backend: any
+  platform_execution: any
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^4.0.0
-  platform_backend:
-    path: ../platform_backend
-  platform_execution:
-    path: ../platform_execution
-  litert_backend:
+  flutter_lints: ^4.0.0litert_backend:
     path: ../../backends/litert_backend

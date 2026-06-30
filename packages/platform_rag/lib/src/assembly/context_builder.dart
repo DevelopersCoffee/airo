@@ -2,19 +2,19 @@
 import 'package:platform_retrieval/platform_retrieval.dart';
 
 class RetrievedContext {
-  final RetrievalResult result;
   RetrievedContext(this.result);
+  final RetrievalResult result;
 }
 
 class CitationMap {
-  final Map<String, String> citations;
   CitationMap(this.citations);
+  final Map<String, String> citations;
 }
 
 class GroundedPrompt {
+  GroundedPrompt(this.text, this.citations);
   final String text;
   final CitationMap citations;
-  GroundedPrompt(this.text, this.citations);
 }
 
 abstract class PromptBuilder {

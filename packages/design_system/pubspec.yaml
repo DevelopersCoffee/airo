@@ -1,5 +1,6 @@
 name: design_system
 description: "Core UI package: theme, design tokens, and shared widgets"
+publish_to: none
 version: 0.1.0
 
 environment:

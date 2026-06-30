@@ -7,6 +7,12 @@ environment:
   sdk: '>=3.4.0 <4.0.0'
 
 dependencies:
+  platform_graph:
+    path: ../platform_graph
+  platform_ast:
+    path: ../platform_ast
+  platform_content_types:
+    path: ../platform_content_types
   platform_provider:
     path: ../platform_provider
   platform_identity:
@@ -17,6 +23,12 @@ dependencies:
     path: ../platform_execution
 
 dev_dependencies:
+  platform_graph:
+    path: ../platform_graph
+  platform_ast:
+    path: ../platform_ast
+  platform_content_types:
+    path: ../platform_content_types
   platform_provider:
     path: ../platform_provider
   platform_identity:

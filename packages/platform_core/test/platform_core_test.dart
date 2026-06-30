@@ -10,9 +10,7 @@ class MockTask implements BootstrapTask {
   final bool _isFatal;
   bool executed = false;
 
-  MockTask(this._id, this._provides, this._dependsOn, {bool shouldFail = false, bool isFatal = true}) 
-      : _shouldFail = shouldFail,
-        _isFatal = isFatal;
+  MockTask(this._id, this._provides, this._dependsOn, {this._shouldFail = false, this._isFatal = true});
 
   @override
   String id() => _id;

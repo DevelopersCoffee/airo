@@ -17,21 +17,21 @@ class WorkspaceFile extends PlatformFile {
 }
 
 class DocumentFile extends WorkspaceFile {
-  const DocumentFile(String fileName, String workspaceId) : super(fileName, workspaceId);
+  const DocumentFile(super.fileName, super.workspaceId);
   
   @override
   String get relativePath => 'workspaces/$workspaceId/documents/$fileName';
 }
 
 class AudioFile extends WorkspaceFile {
-  const AudioFile(String fileName, String workspaceId) : super(fileName, workspaceId);
+  const AudioFile(super.fileName, super.workspaceId);
   
   @override
   String get relativePath => 'workspaces/$workspaceId/audio/$fileName';
 }
 
 class ImageFile extends WorkspaceFile {
-  const ImageFile(String fileName, String workspaceId) : super(fileName, workspaceId);
+  const ImageFile(super.fileName, super.workspaceId);
   
   @override
   String get relativePath => 'workspaces/$workspaceId/images/$fileName';

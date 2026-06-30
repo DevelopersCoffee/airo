@@ -7,10 +7,8 @@ import 'bootstrap_report.dart';
 import 'bootstrap_registry.dart';
 import 'dependency_resolver.dart';
 import 'bootstrap_validator.dart';
-import '../contracts/bootstrap_task.dart';
 import '../exceptions/platform_exceptions.dart';
 import '../lifecycle/lifecycle_state.dart';
-import '../events/bootstrap_events.dart';
 import '../result/result.dart';
 
 part 'bootstrap_coordinator.g.dart';
@@ -50,7 +48,7 @@ class BootstrapCoordinator extends _$BootstrapCoordinator {
           if (result is! Success) {
             if (result is FatalFailure) {
               metrics.failedTasks.add(task.id());
-              throw InitializationException('Fatal failure in task "${task.id()}": ${(result as FatalFailure).exception}');
+              throw InitializationException('Fatal failure in task "${task.id()}": ${(result).exception}');
             } else if (result is RecoverableFailure) {
               metrics.failedTasks.add(task.id());
             }

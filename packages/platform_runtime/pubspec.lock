@@ -193,6 +193,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.3.6"
+  drift:
+    dependency: transitive
+    description:
+      name: drift
+      sha256: "6cc0b623c0e83f7080524d8396e9301b1d78b9c66a4fdceeb0f798211303254c"
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.34.0"
   equatable:
     dependency: transitive
     description:
@@ -443,6 +451,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.0.5"
+  native_toolchain_c:
+    dependency: transitive
+    description:
+      name: native_toolchain_c
+      sha256: f9c168717100ae6d9fee9ffb0be379bf1f8b26b0f6bcbd4fdddcd931993a6a72
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.19.2"
   objective_c:
     dependency: transitive
     description:
@@ -523,6 +539,20 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.1.6"
+  platform_ast:
+    dependency: transitive
+    description:
+      path: "../platform_ast"
+      relative: true
+    source: path
+    version: "0.1.0"
+  platform_content_types:
+    dependency: transitive
+    description:
+      path: "../platform_content_types"
+      relative: true
+    source: path
+    version: "0.1.0"
   platform_core:
     dependency: "direct main"
     description:
@@ -551,10 +581,24 @@ packages:
       relative: true
     source: path
     version: "0.1.0"
+  platform_execution:
+    dependency: transitive
+    description:
+      path: "../platform_execution"
+      relative: true
+    source: path
+    version: "0.1.0"
   platform_filesystem:
     dependency: transitive
     description:
       path: "../platform_filesystem"
+      relative: true
+    source: path
+    version: "0.1.0"
+  platform_graph:
+    dependency: transitive
+    description:
+      path: "../platform_graph"
       relative: true
     source: path
     version: "0.1.0"
@@ -565,6 +609,13 @@ packages:
       relative: true
     source: path
     version: "0.1.0"
+  platform_identity:
+    dependency: transitive
+    description:
+      path: "../platform_identity"
+      relative: true
+    source: path
+    version: "1.0.0"
   platform_jobs:
     dependency: transitive
     description:
@@ -586,6 +637,20 @@ packages:
       relative: true
     source: path
     version: "0.1.0"
+  platform_pipeline:
+    dependency: "direct main"
+    description:
+      path: "../platform_pipeline"
+      relative: true
+    source: path
+    version: "0.1.0"
+  platform_provider:
+    dependency: transitive
+    description:
+      path: "../platform_provider"
+      relative: true
+    source: path
+    version: "1.0.0"
   platform_settings:
     dependency: "direct main"
     description:
@@ -597,13 +662,6 @@ packages:
     dependency: transitive
     description:
       path: "../platform_storage"
-      relative: true
-    source: path
-    version: "0.1.0"
-  platform_validation:
-    dependency: "direct main"
-    description:
-      path: "../platform_validation"
       relative: true
     source: path
     version: "0.1.0"
@@ -716,6 +774,22 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.10.2"
+  sqlite3:
+    dependency: transitive
+    description:
+      name: sqlite3
+      sha256: "37356bcb56ce0d9404d602c41e4bdb7765e7e9732a3e47adb3d98c556a6abdad"
+      url: "https://pub.dev"
+    source: hosted
+    version: "3.3.3"
+  sqlite3_flutter_libs:
+    dependency: transitive
+    description:
+      name: sqlite3_flutter_libs
+      sha256: "3ed7553eee7bb368f8950f58ba29f634e06e813c029aff6a0d60862b96de8454"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.6.0+eol"
   stack_trace:
     dependency: transitive
     description:

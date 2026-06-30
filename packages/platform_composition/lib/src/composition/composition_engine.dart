@@ -1,21 +1,21 @@
-import 'package:platform_registry/platform_registry.dart';
-import 'package:platform_registry/platform_registry.dart';
-import '../services/service_locator.dart';
-import '../isolation/isolation_policy.dart';
 import 'package:platform_contracts/platform_contracts.dart';
+import 'package:platform_registry/platform_registry.dart';
+
+import '../isolation/isolation_policy.dart';
+import '../services/service_locator.dart';
 
 class CompositionEngine {
-  final ExtensionRegistry registry;
-  final ServiceLocator locator;
-  final IsolationPolicy isolationPolicy;
-  
-  final Map<String, ExtensionLifecycle> _states = {};
 
   CompositionEngine({
     required this.registry,
     required this.locator,
     required this.isolationPolicy,
   });
+  final ExtensionRegistry registry;
+  final ServiceLocator locator;
+  final IsolationPolicy isolationPolicy;
+  
+  final Map<String, ExtensionLifecycle> _states = {};
 
   bool composeFeature(ExtensionManifest feature, List<Type> requiredServices) {
     if (!isolationPolicy.checkCompatibility(requiredServices, locator)) {

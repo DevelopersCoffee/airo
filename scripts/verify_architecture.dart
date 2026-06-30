@@ -39,7 +39,7 @@ void main() async {
     exit(1);
   }
 
-  bool hasViolations = false;
+  var hasViolations = false;
 
   for (final pkg in packagesDir.listSync().whereType<Directory>()) {
     final pkgName = p.basename(pkg.path);

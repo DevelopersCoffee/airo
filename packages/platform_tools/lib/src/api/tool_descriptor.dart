@@ -1,12 +1,4 @@
 class ToolDescription {
-  final String purpose;
-  final Map<String, dynamic> parameters;
-  final List<String> examples;
-  final List<String> sideEffects;
-  final List<String> permissions;
-  final String estimatedCost;
-  final String latencyHints;
-  final List<String> capabilities;
 
   const ToolDescription({
     required this.purpose,
@@ -18,6 +10,14 @@ class ToolDescription {
     this.latencyHints = 'unknown',
     this.capabilities = const [],
   });
+  final String purpose;
+  final Map<String, dynamic> parameters;
+  final List<String> examples;
+  final List<String> sideEffects;
+  final List<String> permissions;
+  final String estimatedCost;
+  final String latencyHints;
+  final List<String> capabilities;
 }
 
 abstract interface class ToolDescriptorProvider {

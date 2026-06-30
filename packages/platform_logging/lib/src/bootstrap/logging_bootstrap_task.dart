@@ -1,7 +1,4 @@
 import 'package:platform_core/platform_core.dart';
-import '../sinks/console_sink.dart';
-import '../filters/level_filter.dart';
-import '../levels/log_level.dart';
 
 class LoggingBootstrapTask implements BootstrapTask {
   @override

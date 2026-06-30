@@ -1,8 +1,7 @@
+import 'package:platform_downloads/platform_downloads.dart';
 import 'package:platform_engine_sdk/platform_engine_sdk.dart';
 import 'package:platform_engine_testkit/platform_engine_testkit.dart';
-import 'package:platform_validation/platform_validation.dart';
-
-import 'package:platform_downloads/platform_downloads.dart';
+import 'package:platform_pipeline/platform_pipeline.dart';
 
 class DummyEngineProvider implements EngineProvider {
   @override
@@ -23,7 +22,7 @@ class DummyEngineProvider implements EngineProvider {
   }
 
   @override
-  Future<EngineSession> createSession(InstalledArtifact artifact) async {
+  Future<EngineSession> createSession(Artifact artifact) async {
     return DummyEngineSession();
   }
 }
@@ -62,22 +61,22 @@ class DummyEngineFixture implements EngineFixture {
   EngineProvider createProvider() => DummyEngineProvider();
 
   @override
-  InstalledArtifact createValidTextArtifact() {
+  Artifact createValidTextArtifact() {
     return _createDummyArtifact('dummy_text');
   }
 
   @override
-  InstalledArtifact? createValidEmbeddingArtifact() {
+  Artifact? createValidEmbeddingArtifact() {
     return _createDummyArtifact('dummy_embed');
   }
 
   @override
-  InstalledArtifact? createValidVisionArtifact() {
+  Artifact? createValidVisionArtifact() {
     return _createDummyArtifact('dummy_vision');
   }
 
-  InstalledArtifact _createDummyArtifact(String id) {
-    return InstalledArtifact(
+  Artifact _createDummyArtifact(String id) {
+    return Artifact(
       installationId: 'inst_$id',
       artifactId: id,
       descriptor: const DownloadArtifactDescriptor(

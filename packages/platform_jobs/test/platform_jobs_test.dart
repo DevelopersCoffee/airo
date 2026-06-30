@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:platform_jobs/platform_jobs.dart';
 import 'package:platform_jobs/src/scheduler/default_job_scheduler.dart';

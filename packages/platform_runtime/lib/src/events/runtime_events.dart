@@ -1,7 +1,7 @@
 import 'package:platform_core/platform_core.dart' hide PlatformEvent;
 import 'package:platform_engine_sdk/platform_engine_sdk.dart';
 import 'package:platform_events/platform_events.dart';
-import 'package:platform_validation/platform_validation.dart';
+import 'package:platform_pipeline/platform_pipeline.dart';
 import 'package:uuid/uuid.dart';
 
 abstract class _BaseRuntimeEvent implements PlatformEvent {
@@ -39,7 +39,7 @@ class RuntimeRegisteredEvent extends _BaseRuntimeEvent {
 class RuntimeSelectedEvent extends _BaseRuntimeEvent {
   RuntimeSelectedEvent({required this.descriptor, required this.artifact, super.correlationId, super.eventId});
   final EngineDescriptor descriptor;
-  final InstalledArtifact artifact;
+  final Artifact artifact;
 }
 
 class RuntimeLoadedEvent extends _BaseRuntimeEvent {

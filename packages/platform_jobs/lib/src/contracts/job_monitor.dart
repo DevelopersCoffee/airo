@@ -1,4 +1,3 @@
-import 'job.dart';
 import '../lifecycle/job_status.dart';
 import '../queues/job_queue_type.dart';
 

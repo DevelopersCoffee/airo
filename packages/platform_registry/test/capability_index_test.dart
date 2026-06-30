@@ -1,7 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:platform_registry/platform_registry.dart';
-import 'package:platform_registry/platform_registry.dart';
 import 'package:platform_contracts/platform_contracts.dart';
+import 'package:platform_registry/platform_registry.dart';
 
 void main() {
   test('indexes and finds by capability', () {
@@ -11,7 +10,7 @@ void main() {
       identifier: 'engine1',
       version: '1.0',
       capabilities: [Capability(domain: CapabilityDomain.engine, name: 'supports_vision')],
-      minPlatformVersion: '1.0'
+      minPlatformVersion: '1.0',
     );
     
     const m2 = ToolManifest(
@@ -19,9 +18,9 @@ void main() {
       version: '1.0',
       capabilities: [
         Capability(domain: CapabilityDomain.engine, name: 'supports_vision'),
-        Capability(domain: CapabilityDomain.engine, name: 'supports_audio')
+        Capability(domain: CapabilityDomain.engine, name: 'supports_audio'),
       ],
-      minPlatformVersion: '1.0'
+      minPlatformVersion: '1.0',
     );
 
     index.indexManifest(m1);

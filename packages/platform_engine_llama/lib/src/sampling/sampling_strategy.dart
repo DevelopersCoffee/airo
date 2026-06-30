@@ -8,9 +8,9 @@ class GreedySampling implements SamplingStrategy {
 }
 
 class TopPSampling implements SamplingStrategy {
-  final double p;
   
   const TopPSampling({required this.p});
+  final double p;
   
   @override
   Map<String, dynamic> toConfiguration() => {'type': 'top_p', 'p': p};

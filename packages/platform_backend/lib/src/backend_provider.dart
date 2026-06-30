@@ -1,5 +1,4 @@
 
-import 'package:platform_identity/platform_identity.dart';
 abstract class BackendProvider {
   String get name;
 }

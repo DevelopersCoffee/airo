@@ -1,4 +1,4 @@
-library platform_filesystem;
+library;
 
 export 'src/contracts/filesystem_service.dart';
 export 'src/contracts/directory_provider.dart';

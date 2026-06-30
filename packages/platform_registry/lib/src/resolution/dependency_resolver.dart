@@ -5,7 +5,7 @@ class DependencyResolver {
     final result = <ExtensionManifest>[];
     final visited = <String>{};
     final visiting = <String>{};
-    final manifestMap = {for (var m in manifests) m.identifier: m};
+    final manifestMap = {for (final m in manifests) m.identifier: m};
 
     void visit(String id) {
       if (visited.contains(id)) return;

@@ -1,4 +1,4 @@
-library platform_settings;
+library;
 
 export 'src/models/settings_namespace.dart';
 export 'src/models/setting_type.dart';

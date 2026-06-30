@@ -4,10 +4,10 @@ import 'package:platform_schemas/platform_schemas.dart';
 import 'package:platform_tools/platform_tools.dart';
 
 class FakeTool implements Tool {
-  final bool shouldSucceed;
-  final ToolManifest _manifest;
 
   FakeTool(this._manifest, {this.shouldSucceed = true});
+  final bool shouldSucceed;
+  final ToolManifest _manifest;
 
   @override
   ToolManifest get manifest => _manifest;
@@ -56,7 +56,7 @@ void main() {
       identifier: 'fake.tool',
       version: '1.0',
       permissions: ['read_files'],
-      minPlatformVersion: '1.0'
+      minPlatformVersion: '1.0',
     );
     
     final tool = FakeTool(manifest);
@@ -89,7 +89,7 @@ void main() {
       identifier: 'fake.tool',
       version: '1.0',
       permissions: ['read_files'],
-      minPlatformVersion: '1.0'
+      minPlatformVersion: '1.0',
     );
     
     final tool = FakeTool(manifest);
@@ -123,8 +123,7 @@ void main() {
     const manifest = ToolManifest(
       identifier: 'fake.tool',
       version: '1.0',
-      permissions: [],
-      minPlatformVersion: '1.0'
+      minPlatformVersion: '1.0',
     );
     
     final tool = FakeTool(manifest);
@@ -158,8 +157,7 @@ void main() {
     const manifest = ToolManifest(
       identifier: 'fake.tool',
       version: '1.0',
-      permissions: [],
-      minPlatformVersion: '1.0'
+      minPlatformVersion: '1.0',
     );
     
     final tool = FakeTool(manifest, shouldSucceed: false);

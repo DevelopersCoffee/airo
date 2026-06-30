@@ -1,3 +1,3 @@
-library platform_resources;
+library;
 
 export 'src/platform_resource.dart';

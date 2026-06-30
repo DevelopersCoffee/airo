@@ -11,8 +11,7 @@ dependencies:
     sdk: flutter
   platform_contracts:
     path: ../platform_contracts
-  platform_registry:
-    path: ../platform_registry
+
 
   mocktail: ^1.0.3
 dev_dependencies:

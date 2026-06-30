@@ -1,0 +1,14 @@
+name: platform_testkit
+description: Component for platform_testkit
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: '>=3.4.0 <4.0.0'
+
+dependencies:
+  platform_certification:
+    path: ../platform_certification
+
+dev_dependencies:
+  flutter_lints: ^4.0.0

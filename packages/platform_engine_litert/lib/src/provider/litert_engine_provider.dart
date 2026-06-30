@@ -1,12 +1,11 @@
-import 'package:platform_engine_sdk/platform_engine_sdk.dart';
-import 'package:platform_validation/platform_validation.dart';
 import 'package:platform_delegates/platform_delegates.dart';
 import 'package:platform_engine_litert/src/session/litert_engine_session.dart';
-
+import 'package:platform_engine_sdk/platform_engine_sdk.dart';
+import 'package:platform_pipeline/platform_pipeline.dart';
 class LitertEngineProvider implements EngineProvider {
-  final DelegateSelection delegateSelection;
 
   const LitertEngineProvider({required this.delegateSelection});
+  final DelegateSelection delegateSelection;
 
   @override
   EngineDescriptor descriptor() {
@@ -26,7 +25,7 @@ class LitertEngineProvider implements EngineProvider {
   }
 
   @override
-  Future<EngineSession> createSession(InstalledArtifact artifact) async {
+  Future<EngineSession> createSession(Artifact artifact) async {
     return LitertEngineSession(delegateSelection: delegateSelection);
   }
 }

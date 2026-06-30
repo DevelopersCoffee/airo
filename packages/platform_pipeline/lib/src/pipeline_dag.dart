@@ -1,14 +1,7 @@
 
-import 'package:platform_execution/platform_execution.dart';
 import 'package:platform_identity/platform_identity.dart';
-import 'artifacts.dart';
 
 class SchemaDescriptor {
-  final String id;
-  final String version;
-  final String mimeType;
-  final dynamic serializer;
-  final dynamic validator;
 
   SchemaDescriptor({
     required this.id,
@@ -17,17 +10,14 @@ class SchemaDescriptor {
     this.serializer,
     this.validator,
   });
+  final String id;
+  final String version;
+  final String mimeType;
+  final dynamic serializer;
+  final dynamic validator;
 }
 
 class StageDescriptor {
-  final StageId id;
-  final String version;
-  final SchemaDescriptor inputSchema;
-  final SchemaDescriptor outputSchema;
-  final List<String> requiredCapabilities;
-  
-  final bool cacheable;
-  final String? cachePolicy;
   
   StageDescriptor({
     required this.id,
@@ -38,20 +28,17 @@ class StageDescriptor {
     this.cacheable = false,
     this.cachePolicy,
   });
+  final StageId id;
+  final String version;
+  final SchemaDescriptor inputSchema;
+  final SchemaDescriptor outputSchema;
+  final List<String> requiredCapabilities;
+  
+  final bool cacheable;
+  final String? cachePolicy;
 }
 
 class ExecutionProfile {
-  final int minimumMemoryBytes;
-  final int preferredMemoryBytes;
-  final int maximumMemoryBytes;
-  
-  final int minimumThreads;
-  final int preferredThreads;
-  
-  final List<String> preferredAccelerators;
-  
-  final Duration? expectedLatency;
-  final int? expectedThroughput;
 
   ExecutionProfile({
     this.minimumMemoryBytes = 0,
@@ -63,13 +50,24 @@ class ExecutionProfile {
     this.expectedLatency,
     this.expectedThroughput,
   });
+  final int minimumMemoryBytes;
+  final int preferredMemoryBytes;
+  final int maximumMemoryBytes;
+  
+  final int minimumThreads;
+  final int preferredThreads;
+  
+  final List<String> preferredAccelerators;
+  
+  final Duration? expectedLatency;
+  final int? expectedThroughput;
 }
 
 class TelemetryEvent {
+  TelemetryEvent(this.type, this.data) : timestamp = DateTime.now();
   final String type;
   final DateTime timestamp;
   final Map<String, dynamic> data;
-  TelemetryEvent(this.type, this.data) : timestamp = DateTime.now();
 }
 
 abstract class PipelineStage<I, O> {
@@ -79,14 +77,14 @@ abstract class PipelineStage<I, O> {
 }
 
 class PipelineDag {
+  PipelineDag({required this.id, required this.stages});
   final PipelineId id;
   final List<PipelineStage> stages;
-  PipelineDag({required this.id, required this.stages});
 }
 
 class PipelineContext {
-  final SessionId sessionId;
   PipelineContext({required this.sessionId});
+  final SessionId sessionId;
   
   void emitTelemetry(TelemetryEvent event) {}
 }
