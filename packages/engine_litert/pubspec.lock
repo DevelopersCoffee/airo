@@ -247,7 +247,7 @@ packages:
     source: hosted
     version: "4.0.0"
   flutter_riverpod:
-    dependency: "direct main"
+    dependency: transitive
     description:
       name: flutter_riverpod
       sha256: "9532ee6db4a943a1ed8383072a2e3eeda041db5657cdf6d2acecf3c21ecbe7e1"
@@ -436,7 +436,7 @@ packages:
     source: hosted
     version: "2.0.0"
   mocktail:
-    dependency: "direct main"
+    dependency: transitive
     description:
       name: mocktail
       sha256: "5e1bf53cc7baa8062a33b84424deb61513858ea05c601b8509e683815b5914aa"
@@ -523,8 +523,15 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.1.6"
+  platform_contracts:
+    dependency: transitive
+    description:
+      path: "../platform_contracts"
+      relative: true
+    source: path
+    version: "0.1.0"
   platform_core:
-    dependency: "direct main"
+    dependency: transitive
     description:
       path: "../platform_core"
       relative: true
@@ -537,15 +544,22 @@ packages:
       relative: true
     source: path
     version: "0.1.0"
-  platform_engine_sdk:
+  platform_embeddings:
     dependency: "direct main"
+    description:
+      path: "../platform_embeddings"
+      relative: true
+    source: path
+    version: "0.1.0"
+  platform_engine_sdk:
+    dependency: transitive
     description:
       path: "../platform_engine_sdk"
       relative: true
     source: path
     version: "0.1.0"
   platform_events:
-    dependency: "direct main"
+    dependency: transitive
     description:
       path: "../platform_events"
       relative: true
@@ -559,12 +573,19 @@ packages:
     source: path
     version: "0.1.0"
   platform_hardware:
-    dependency: "direct main"
+    dependency: transitive
     description:
       path: "../platform_hardware"
       relative: true
     source: path
     version: "0.1.0"
+  platform_identity:
+    dependency: "direct main"
+    description:
+      path: "../platform_identity"
+      relative: true
+    source: path
+    version: "1.0.0"
   platform_jobs:
     dependency: transitive
     description:
@@ -573,7 +594,7 @@ packages:
     source: path
     version: "0.1.0"
   platform_logging:
-    dependency: "direct main"
+    dependency: transitive
     description:
       path: "../platform_logging"
       relative: true
@@ -586,8 +607,15 @@ packages:
       relative: true
     source: path
     version: "0.1.0"
-  platform_settings:
+  platform_runtime:
     dependency: "direct main"
+    description:
+      path: "../platform_runtime"
+      relative: true
+    source: path
+    version: "0.1.0"
+  platform_settings:
+    dependency: transitive
     description:
       path: "../platform_settings"
       relative: true
@@ -601,7 +629,7 @@ packages:
     source: path
     version: "0.1.0"
   platform_validation:
-    dependency: "direct main"
+    dependency: transitive
     description:
       path: "../platform_validation"
       relative: true
@@ -789,7 +817,7 @@ packages:
     source: hosted
     version: "1.4.0"
   uuid:
-    dependency: "direct main"
+    dependency: transitive
     description:
       name: uuid
       sha256: "1fef9e8e11e2991bb773070d4656b7bd5d850967a2456cfc83cf47925ba79489"

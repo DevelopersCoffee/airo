@@ -212,14 +212,14 @@ packages:
     source: hosted
     version: "1.9.1"
   platform_contracts:
-    dependency: "direct main"
+    dependency: transitive
     description:
       path: "../platform_contracts"
       relative: true
     source: path
     version: "0.1.0"
   platform_identity:
-    dependency: "direct main"
+    dependency: transitive
     description:
       path: "../platform_identity"
       relative: true
@@ -229,6 +229,13 @@ packages:
     dependency: "direct main"
     description:
       path: "../platform_storage"
+      relative: true
+    source: path
+    version: "0.1.0"
+  platform_vector_store:
+    dependency: "direct main"
+    description:
+      path: "../platform_vector_store"
       relative: true
     source: path
     version: "0.1.0"
