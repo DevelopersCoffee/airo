@@ -13,6 +13,12 @@ dependencies:
     path: ../platform_contracts
   platform_identity:
     path: ../platform_identity
+  platform_indexing:
+    path: ../platform_indexing
+  platform_retrieval:
+    path: ../platform_retrieval
+  platform_rag:
+    path: ../platform_rag
 
 dev_dependencies:
   flutter_test:

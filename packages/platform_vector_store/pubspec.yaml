@@ -7,12 +7,14 @@ environment:
   sdk: '>=3.4.0 <4.0.0'
 
 dependencies:
+  drift: ^2.34.0
   flutter:
     sdk: flutter
   platform_contracts:
     path: ../platform_contracts
   platform_identity:
     path: ../platform_identity
+  sqlite3_flutter_libs: ^0.6.0+eol
 
 dev_dependencies:
   flutter_test:

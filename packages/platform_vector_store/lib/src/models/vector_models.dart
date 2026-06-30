@@ -1,4 +1,12 @@
 
+class VectorDocument {
+  final String id;
+  final Map<String, dynamic> metadata;
+  // Raw vector is internal to the store implementation, typically not exposed
+  
+  VectorDocument({required this.id, required this.metadata});
+}
+
 class VectorIndex {
   final String name;
   final int dimensions;

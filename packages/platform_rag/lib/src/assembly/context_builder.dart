@@ -1,12 +1,22 @@
 
 import 'package:platform_retrieval/platform_retrieval.dart';
 
-class RagContext {
-  final String augmentedPrompt;
-  final List<String> citations;
-  RagContext(this.augmentedPrompt, this.citations);
+class RetrievedContext {
+  final RetrievalResult result;
+  RetrievedContext(this.result);
 }
 
-abstract class ContextBuilder {
-  Future<RagContext> buildContext(String userPrompt, List<dynamic> retrievedItems);
+class CitationMap {
+  final Map<String, String> citations;
+  CitationMap(this.citations);
+}
+
+class GroundedPrompt {
+  final String text;
+  final CitationMap citations;
+  GroundedPrompt(this.text, this.citations);
+}
+
+abstract class PromptBuilder {
+  Future<GroundedPrompt> buildPrompt(String userPrompt, RetrievedContext context);
 }

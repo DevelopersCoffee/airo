@@ -1,15 +1,24 @@
 
-class EmbeddingRequest {
+abstract class EmbeddingInput {
+  const EmbeddingInput();
+}
+
+class TextEmbeddingInput extends EmbeddingInput {
   final String text;
-  EmbeddingRequest(this.text);
+  const TextEmbeddingInput(this.text);
+}
+
+class EmbeddingRequest {
+  final List<EmbeddingInput> inputs;
+  const EmbeddingRequest(this.inputs);
 }
 
 class EmbeddingResult {
   final List<double> vector;
-  EmbeddingResult(this.vector);
+  const EmbeddingResult(this.vector);
 }
 
 class EmbeddingBatch {
   final List<EmbeddingResult> results;
-  EmbeddingBatch(this.results);
+  const EmbeddingBatch(this.results);
 }

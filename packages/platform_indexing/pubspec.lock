@@ -159,6 +159,13 @@ packages:
       relative: true
     source: path
     version: "1.0.0"
+  platform_scheduler:
+    dependency: "direct main"
+    description:
+      path: "../platform_scheduler"
+      relative: true
+    source: path
+    version: "1.0.0"
   sky_engine:
     dependency: transitive
     description: flutter
