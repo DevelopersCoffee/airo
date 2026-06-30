@@ -5,15 +5,19 @@ import '../levels/log_level.dart';
 
 class LoggingBootstrapTask implements BootstrapTask {
   @override
-  String get name => 'PlatformLogging';
+  String id() => 'logging';
 
   @override
-  BootstrapPhase get phase => BootstrapPhase.logging;
+  Set<String> provides() => {'logging'};
 
   @override
-  Future<BootstrapResult> execute(BootstrapContext context) async {
-    // In a real implementation we would register the logger into Riverpod here
-    // But since Riverpod handles injection we just verify basic setup
-    return const BootstrapResult.success(BootstrapPhase.logging);
+  Set<String> dependsOn() => {'environment'};
+
+  @override
+  bool isLazy() => false;
+
+  @override
+  Future<Result<void>> initialize(BootstrapContext context) async {
+    return const Success(null);
   }
 }

@@ -1,0 +1,21 @@
+name: platform_delegates
+description: Centralized hardware acceleration delegate resolution for inference engines.
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: '>=3.4.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  platform_engine_sdk:
+    path: ../platform_engine_sdk
+  platform_hardware:
+    path: ../platform_hardware
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+  mocktail: ^1.0.3

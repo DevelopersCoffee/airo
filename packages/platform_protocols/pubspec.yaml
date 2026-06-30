@@ -1,0 +1,23 @@
+name: platform_protocols
+description: Universal translation layer between external protocols and the internal AIRO Tool model.
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: '>=3.4.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  platform_contracts:
+    path: ../platform_contracts
+  platform_schemas:
+    path: ../platform_schemas
+  platform_tools:
+    path: ../platform_tools
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+  mocktail: ^1.0.3

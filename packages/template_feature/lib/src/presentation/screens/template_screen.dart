@@ -1,4 +1,4 @@
-import 'package:design_system/design_system.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -34,11 +34,19 @@ class _TemplateScreenState extends ConsumerState<TemplateScreen> {
 
   Widget _buildBody(TemplateState state) => switch (state) {
     TemplateInitial() => const Center(child: Text('Press button to load')),
-    TemplateLoading() => const Center(child: LoadingIndicator()),
+    TemplateLoading() => const Center(child: CircularProgressIndicator()),
     TemplateLoaded(:final items) => _buildList(items),
-    TemplateError(:final message) => ErrorView(
-      message: message,
-      onRetry: () => ref.read(templateProvider.notifier).load(),
+    TemplateError(:final message) => Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text('Error: $message'),
+          ElevatedButton(
+            onPressed: () => ref.read(templateProvider.notifier).load(),
+            child: const Text('Retry'),
+          ),
+        ],
+      ),
     ),
   };
 
@@ -48,27 +56,32 @@ class _TemplateScreenState extends ConsumerState<TemplateScreen> {
     }
 
     return ListView.builder(
-      padding: AppSpacing.screenPadding,
+      padding: const EdgeInsets.all(16),
       itemCount: items.length,
       itemBuilder: (context, index) {
         final item = items[index];
-        return AppCard(
-          margin: const EdgeInsets.only(bottom: AppSpacing.sm),
-          onTap: () {
-            // Handle item tap
-          },
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(item.name, style: Theme.of(context).textTheme.titleMedium),
-              if (item.description != null) ...[
-                const SizedBox(height: AppSpacing.xs),
-                Text(
-                  item.description!,
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-              ],
-            ],
+        return Card(
+          margin: const EdgeInsets.only(bottom: 8),
+          child: InkWell(
+            onTap: () {
+              // Handle item tap
+            },
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(item.name, style: Theme.of(context).textTheme.titleMedium),
+                  if (item.description != null) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      item.description!,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ],
+                ],
+              ),
+            ),
           ),
         );
       },

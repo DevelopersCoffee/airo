@@ -7,18 +7,24 @@ class StorageBootstrapTask implements BootstrapTask {
   StorageBootstrapTask(this._storageService);
 
   @override
-  String get name => 'PlatformStorage';
+  String id() => 'storage';
 
   @override
-  BootstrapPhase get phase => BootstrapPhase.storage;
+  Set<String> provides() => {'storage'};
 
   @override
-  Future<BootstrapResult> execute(BootstrapContext context) async {
+  Set<String> dependsOn() => {'logging', 'settings', 'events'};
+
+  @override
+  bool isLazy() => false;
+
+  @override
+  Future<Result<void>> initialize(BootstrapContext context) async {
     try {
       await _storageService.initialize();
-      return const BootstrapResult.success(BootstrapPhase.storage);
+      return const Success(null);
     } catch (e) {
-      return BootstrapResult.failure(BootstrapPhase.storage, e.toString());
+      return FatalFailure(Exception(e.toString()));
     }
   }
 }

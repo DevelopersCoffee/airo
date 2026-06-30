@@ -1,0 +1,33 @@
+name: platform_runtime
+description: Core orchestration layer for all AI inference within AIRO.
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: '>=3.4.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_riverpod: ^2.6.1
+  platform_core:
+    path: ../platform_core
+  platform_logging:
+    path: ../platform_logging
+  platform_events:
+    path: ../platform_events
+  platform_settings:
+    path: ../platform_settings
+  platform_hardware:
+    path: ../platform_hardware
+  platform_validation:
+    path: ../platform_validation
+  platform_engine_sdk:
+    path: ../platform_engine_sdk
+
+  uuid: any
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+  mocktail: ^1.0.3

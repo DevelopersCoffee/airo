@@ -1,97 +1,155 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:platform_core/platform_core.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:platform_core/platform_core.dart';
 
 class MockTask implements BootstrapTask {
-  @override
-  final String name;
-  @override
-  final BootstrapPhase phase;
-  final bool shouldFail;
+  final String _id;
+  final Set<String> _provides;
+  final Set<String> _dependsOn;
+  final bool _shouldFail;
+  final bool _isFatal;
+  bool executed = false;
 
-  MockTask(this.name, this.phase, {this.shouldFail = false});
+  MockTask(this._id, this._provides, this._dependsOn, {bool shouldFail = false, bool isFatal = true}) 
+      : _shouldFail = shouldFail,
+        _isFatal = isFatal;
 
   @override
-  Future<BootstrapResult> execute(BootstrapContext context) async {
-    if (shouldFail) {
-      return BootstrapResult.failure(phase, 'Simulated failure for $name');
+  String id() => _id;
+
+  @override
+  Set<String> provides() => _provides;
+
+  @override
+  Set<String> dependsOn() => _dependsOn;
+
+  @override
+  bool isLazy() => false;
+
+  @override
+  Future<Result<void>> initialize(BootstrapContext context) async {
+    executed = true;
+    if (_shouldFail) {
+      return _isFatal ? FatalFailure(Exception('Simulated failure for $_id')) : RecoverableFailure(Exception('Recoverable failure for $_id'));
     }
-    return BootstrapResult.success(phase);
+    return const Success(null);
   }
 }
 
 void main() {
-  group('BootstrapCoordinator', () {
-    test('executes tasks in correct order by phase', () async {
-      final container = ProviderContainer();
-      final coordinator = container.read(bootstrapCoordinatorProvider.notifier);
+  group('DependencyResolver', () {
+    late DependencyResolver resolver;
 
-      final task2 = MockTask('Task2', BootstrapPhase.storage);
-      final task1 = MockTask('Task1', BootstrapPhase.logging);
-      final task3 = MockTask('Task3', BootstrapPhase.settings);
-
-      coordinator.registerTask(task3);
-      coordinator.registerTask(task1);
-      coordinator.registerTask(task2);
-
-      final env = PlatformEnvironment(
-        buildMode: 'test',
-        platform: 'unit-test',
-        version: '1.0.0',
-        packageVersion: '1.0.0',
-      );
-      final context = BootstrapContext(environment: env);
-
-      await coordinator.execute(context);
-      expect(container.read(bootstrapCoordinatorProvider), LifecycleState.ready);
+    setUp(() {
+      resolver = DependencyResolver();
     });
 
-    test('fails fast and updates lifecycle state on error', () async {
-      final container = ProviderContainer();
-      final coordinator = container.read(bootstrapCoordinatorProvider.notifier);
+    test('resolves simple linear dependencies', () {
+      final t1 = MockTask('t1', {'a'}, {});
+      final t2 = MockTask('t2', {'b'}, {'a'});
+      final t3 = MockTask('t3', {'c'}, {'b'});
 
-      final task1 = MockTask('Task1', BootstrapPhase.logging);
-      final task2 = MockTask('Task2', BootstrapPhase.storage, shouldFail: true);
-      final task3 = MockTask('Task3', BootstrapPhase.settings);
+      final sorted = resolver.resolve([t3, t1, t2]);
+      
+      expect(sorted.map((t) => t.id()).toList(), ['t1', 't2', 't3']);
+    });
 
-      coordinator.registerTask(task1);
-      coordinator.registerTask(task2);
-      coordinator.registerTask(task3);
+    test('resolves complex DAG dependencies', () {
+      final t1 = MockTask('db', {'database'}, {});
+      final t2 = MockTask('logger', {'logging'}, {});
+      final t3 = MockTask('auth', {'auth'}, {'database', 'logging'});
+      final t4 = MockTask('sync', {'sync'}, {'auth'});
 
-      final env = PlatformEnvironment(
-        buildMode: 'test',
-        platform: 'unit-test',
-        version: '1.0.0',
-        packageVersion: '1.0.0',
+      final sorted = resolver.resolve([t4, t2, t1, t3]);
+      
+      final ids = sorted.map((t) => t.id()).toList();
+      expect(ids.indexOf('auth') > ids.indexOf('db'), isTrue);
+      expect(ids.indexOf('auth') > ids.indexOf('logger'), isTrue);
+      expect(ids.indexOf('sync') > ids.indexOf('auth'), isTrue);
+    });
+
+    test('throws InitializationException on circular dependency', () {
+      final t1 = MockTask('t1', {'a'}, {'b'});
+      final t2 = MockTask('t2', {'b'}, {'a'});
+
+      expect(
+        () => resolver.resolve([t1, t2]),
+        throwsA(isA<InitializationException>().having((e) => e.message, 'message', contains('Circular dependency'))),
       );
-      final context = BootstrapContext(environment: env);
+    });
 
-      await expectLater(
-        coordinator.execute(context),
-        throwsA(isA<InitializationException>()),
+    test('throws InitializationException on missing dependency', () {
+      final t1 = MockTask('t1', {'a'}, {'c'});
+
+      expect(
+        () => resolver.resolve([t1]),
+        throwsA(isA<InitializationException>().having((e) => e.message, 'message', contains('which is not provided'))),
       );
+    });
 
-      // Wait a tick for state change if needed, though here it's sync with execute.
-      expect(container.read(bootstrapCoordinatorProvider), LifecycleState.failed);
+    test('throws InitializationException on duplicate provider', () {
+      final t1 = MockTask('t1', {'a'}, {});
+      final t2 = MockTask('t2', {'a'}, {});
+
+      expect(
+        () => resolver.resolve([t1, t2]),
+        throwsA(isA<InitializationException>().having((e) => e.message, 'message', contains('Duplicate provider'))),
+      );
     });
   });
 
-  group('Result Type', () {
-    test('Success stores data', () {
-      final Result<int> result = const Result.success(42);
-      result.when(
-        success: (data) => expect(data, 42),
-        failure: (e, st) => fail('Should not be failure'),
-      );
+  group('BootstrapCoordinator', () {
+    test('executes tasks in topological order', () async {
+      final container = ProviderContainer();
+      final coordinator = container.read(bootstrapCoordinatorProvider.notifier);
+      
+      final registry = BootstrapRegistry();
+      registry.clear();
+      
+      final t1 = MockTask('t1', {'a'}, {});
+      final t2 = MockTask('t2', {'b'}, {'a'});
+      
+      registry.register(t1);
+      registry.register(t2);
+
+      await coordinator.execute(container);
+
+      expect(t1.executed, isTrue);
+      expect(t2.executed, isTrue);
+      expect(coordinator.state, LifecycleState.ready);
+      
+      final report = container.read(bootstrapReportProvider);
+      expect(report, isNotNull);
+      expect(report!.isSuccess, isTrue);
+      expect(report.metrics.dependencyGraphDepth, 2);
     });
 
-    test('Failure stores exception', () {
-      final ex = Exception('test');
-      final Result<int> result = Result.failure(ex);
-      result.when(
-        success: (data) => fail('Should not be success'),
-        failure: (e, st) => expect(e, ex),
+    test('fails fast on fatal failure', () async {
+      final container = ProviderContainer();
+      final coordinator = container.read(bootstrapCoordinatorProvider.notifier);
+      
+      final registry = BootstrapRegistry();
+      registry.clear();
+      
+      final t1 = MockTask('t1', {'a'}, {}, shouldFail: true);
+      final t2 = MockTask('t2', {'b'}, {'a'});
+      
+      registry.register(t1);
+      registry.register(t2);
+
+      await expectLater(
+        coordinator.execute(container),
+        throwsA(isA<InitializationException>()),
       );
+
+      expect(t1.executed, isTrue);
+      expect(t2.executed, isFalse);
+      expect(coordinator.state, LifecycleState.failed);
+      
+      final report = container.read(bootstrapReportProvider);
+      expect(report, isNotNull);
+      expect(report!.isSuccess, isFalse);
+      expect(report.metrics.failedTasks, contains('t1'));
     });
   });
 }

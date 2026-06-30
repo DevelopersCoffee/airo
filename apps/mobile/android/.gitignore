@@ -12,6 +12,3 @@ GeneratedPluginRegistrant.java
 key.properties
 **/*.keystore
 **/*.jks
-
-# Google Services (Firebase) - use GitHub Secrets for CI/CD
-app/google-services.json

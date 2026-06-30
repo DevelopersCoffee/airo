@@ -1,6 +1,6 @@
 name: design_system
 description: "Core UI package: theme, design tokens, and shared widgets"
-version: 0.0.1
+version: 0.1.0
 
 environment:
   sdk: ">=3.12.2 <4.0.0"

@@ -7,18 +7,24 @@ class JobsBootstrapTask implements BootstrapTask {
   JobsBootstrapTask(this._scheduler);
 
   @override
-  String get name => 'PlatformJobs';
+  String id() => 'jobs';
 
   @override
-  BootstrapPhase get phase => BootstrapPhase.jobs;
+  Set<String> provides() => {'jobs'};
 
   @override
-  Future<BootstrapResult> execute(BootstrapContext context) async {
+  Set<String> dependsOn() => {'storage', 'filesystem', 'events'};
+
+  @override
+  bool isLazy() => false;
+
+  @override
+  Future<Result<void>> initialize(BootstrapContext context) async {
     try {
       // Logic for recovering persisted jobs would go here
-      return const BootstrapResult.success(BootstrapPhase.jobs);
+      return const Success(null);
     } catch (e) {
-      return BootstrapResult.failure(BootstrapPhase.jobs, e.toString());
+      return FatalFailure(Exception(e.toString()));
     }
   }
 }

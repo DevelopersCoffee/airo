@@ -1,7 +1,7 @@
-import '../environment/platform_environment.dart';
-
 class BootstrapContext {
-  final PlatformEnvironment environment;
-
-  const BootstrapContext({required this.environment});
+  // Shared immutable context. Dependencies are fetched via Riverpod providers
+  // during task initialization rather than stored directly in the context,
+  // to adhere to the Riverpod architecture. This class serves as a scope.
+  
+  const BootstrapContext();
 }

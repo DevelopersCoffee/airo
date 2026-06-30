@@ -1,0 +1,25 @@
+name: platform_models
+description: A new Flutter package project.
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: '>=3.4.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_riverpod: ^2.6.1
+  platform_core:
+    path: ../platform_core
+  platform_logging:
+    path: ../platform_logging
+  platform_settings:
+    path: ../platform_settings
+  platform_downloads:
+    path: ../platform_downloads
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0

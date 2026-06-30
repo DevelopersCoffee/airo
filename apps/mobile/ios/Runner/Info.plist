@@ -2,10 +2,12 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>CADisableMinimumFrameDurationOnPhone</key>
+	<true/>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Airo</string>
+	<string>Airo App</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -13,7 +15,7 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>Airo</string>
+	<string>airo_app</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -23,6 +25,29 @@
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
+	<true/>
+	<key>UIApplicationSceneManifest</key>
+	<dict>
+		<key>UIApplicationSupportsMultipleScenes</key>
+		<false/>
+		<key>UISceneConfigurations</key>
+		<dict>
+			<key>UIWindowSceneSessionRoleApplication</key>
+			<array>
+				<dict>
+					<key>UISceneClassName</key>
+					<string>UIWindowScene</string>
+					<key>UISceneConfigurationName</key>
+					<string>flutter</string>
+					<key>UISceneDelegateClassName</key>
+					<string>$(PRODUCT_MODULE_NAME).SceneDelegate</string>
+					<key>UISceneStoryboardFile</key>
+					<string>Main</string>
+				</dict>
+			</array>
+		</dict>
+	</dict>
+	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
@@ -40,32 +65,6 @@
 		<string>UIInterfaceOrientationPortraitUpsideDown</string>
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
-	</array>
-	<key>CADisableMinimumFrameDurationOnPhone</key>
-	<true/>
-	<key>UIApplicationSupportsIndirectInputEvents</key>
-	<true/>
-	<!-- iOS 18 compatibility for iPhone 13 Pro Max -->
-	<key>LSMinimumSystemVersion</key>
-	<string>12.0</string>
-	<!-- Support for iPhone 13 Pro Max screen -->
-	<key>UIRequiresFullScreen</key>
-	<false/>
-	<!-- Privacy permissions -->
-	<key>NSCameraUsageDescription</key>
-	<string>This app needs camera access for AI features</string>
-	<key>NSMicrophoneUsageDescription</key>
-	<string>This app needs microphone access for voice commands</string>
-	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>This app needs location access for location-based features</string>
-	<key>NSCalendarsUsageDescription</key>
-	<string>Airo needs calendar access to check your schedule when you use calendar skills.</string>
-	<key>NSCalendarsFullAccessUsageDescription</key>
-	<string>Airo needs calendar access to read your schedule when you use calendar skills.</string>
-	<!-- Background audio playback -->
-	<key>UIBackgroundModes</key>
-	<array>
-		<string>audio</string>
 	</array>
 </dict>
 </plist>

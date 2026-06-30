@@ -1,0 +1,31 @@
+name: platform_runtime_certification
+description: Cross-engine conformance and certification suite for the AIRO runtime.
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: '>=3.4.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_test:
+    sdk: flutter
+  platform_engine_sdk:
+    path: ../platform_engine_sdk
+  platform_engine_testkit:
+    path: ../platform_engine_testkit
+
+dev_dependencies:
+  flutter_lints: ^4.0.0
+  mocktail: ^1.0.3
+  platform_engine_llama:
+    path: ../platform_engine_llama
+  platform_engine_litert:
+    path: ../platform_engine_litert
+  platform_validation:
+    path: ../platform_validation
+  platform_downloads:
+    path: ../platform_downloads
+  platform_delegates:
+    path: ../platform_delegates

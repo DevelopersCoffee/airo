@@ -43,37 +43,3 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
-
-# Sensitive files - NEVER commit these
-google-services.json
-*.key
-*.pem
-*.p12
-*.jks
-*.keystore
-.env
-.env.local
-.env.*.local
-secrets.json
-credentials.json
-**/local.properties
-
-# Firebase
-firebase-debug.log
-.firebaserc
-
-# API Keys and tokens
-**/api_keys.dart
-**/secrets.dart
-**/config.dart
-
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-
-# OS
-.DS_Store
-Thumbs.db

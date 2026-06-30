@@ -7,18 +7,24 @@ class FilesystemBootstrapTask implements BootstrapTask {
   FilesystemBootstrapTask(this._filesystemService);
 
   @override
-  String get name => 'PlatformFilesystem';
+  String id() => 'filesystem';
 
   @override
-  BootstrapPhase get phase => BootstrapPhase.storage; // Runs in storage phase but logically separate
+  Set<String> provides() => {'filesystem'};
 
   @override
-  Future<BootstrapResult> execute(BootstrapContext context) async {
+  Set<String> dependsOn() => {'storage', 'logging'};
+
+  @override
+  bool isLazy() => false;
+
+  @override
+  Future<Result<void>> initialize(BootstrapContext context) async {
     try {
       await _filesystemService.initialize();
-      return const BootstrapResult.success(BootstrapPhase.storage);
+      return const Success(null);
     } catch (e) {
-      return BootstrapResult.failure(BootstrapPhase.storage, e.toString());
+      return FatalFailure(Exception(e.toString()));
     }
   }
 }
