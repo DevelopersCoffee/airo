@@ -1,8 +1,11 @@
 
-import 'package:platform_pipeline/platform_pipeline.dart';
-
 abstract class TransformStage<I, O> {
   String get name;
+  bool get pure;
+  bool get deterministic;
+  bool get cacheable;
+  bool get parallelizable;
+  
   Future<O> transform(I input);
 }
 

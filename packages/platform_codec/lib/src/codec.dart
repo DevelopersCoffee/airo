@@ -1,16 +1,8 @@
 
 import 'dart:typed_data';
+import 'package:platform_provider/platform_provider.dart';
 
-abstract class CodecProvider<T> {
-  String get name;
-  List<String> get supportedMimeTypes;
+abstract class CodecProvider<T> implements PlatformProvider {
   Uint8List encode(T data);
   T decode(Uint8List bytes);
-}
-
-class JsonCodecProvider implements CodecProvider<Map<String, dynamic>> {
-  @override String get name => 'json';
-  @override List<String> get supportedMimeTypes => ['application/json'];
-  @override Uint8List encode(Map<String, dynamic> data) => Uint8List(0);
-  @override Map<String, dynamic> decode(Uint8List bytes) => {};
 }

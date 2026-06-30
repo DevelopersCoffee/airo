@@ -139,7 +139,7 @@ packages:
     source: path
     version: "0.1.0"
   platform_identity:
-    dependency: transitive
+    dependency: "direct main"
     description:
       path: "../platform_identity"
       relative: true
@@ -152,6 +152,13 @@ packages:
       relative: true
     source: path
     version: "0.1.0"
+  platform_provider:
+    dependency: "direct main"
+    description:
+      path: "../platform_provider"
+      relative: true
+    source: path
+    version: "1.0.0"
   sky_engine:
     dependency: transitive
     description: flutter

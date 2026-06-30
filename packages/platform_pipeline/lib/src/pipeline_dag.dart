@@ -1,5 +1,6 @@
 
 import 'package:platform_execution/platform_execution.dart';
+import 'package:platform_identity/platform_identity.dart';
 import 'artifacts.dart';
 
 class SchemaDescriptor {
@@ -18,12 +19,28 @@ class SchemaDescriptor {
   });
 }
 
-class PipelineStageDescriptor {
+class StageDescriptor {
+  final StageId id;
+  final String version;
   final SchemaDescriptor inputSchema;
   final SchemaDescriptor outputSchema;
-  
   final List<String> requiredCapabilities;
   
+  final bool cacheable;
+  final String? cachePolicy;
+  
+  StageDescriptor({
+    required this.id,
+    required this.version,
+    required this.inputSchema,
+    required this.outputSchema,
+    this.requiredCapabilities = const [],
+    this.cacheable = false,
+    this.cachePolicy,
+  });
+}
+
+class ExecutionProfile {
   final int minimumMemoryBytes;
   final int preferredMemoryBytes;
   final int maximumMemoryBytes;
@@ -35,24 +52,8 @@ class PipelineStageDescriptor {
   
   final Duration? expectedLatency;
   final int? expectedThroughput;
-  
-  final bool supportsStreaming;
-  final bool supportsBatching;
-  final bool supportsCheckpointing;
-  final bool supportsResume;
-  
-  final List<Type> producesArtifacts;
-  final List<Type> consumesArtifacts;
 
-  final bool cacheable;
-  final String? cacheKey;
-  final String? artifactVersion;
-  final bool deterministic;
-
-  PipelineStageDescriptor({
-    required this.inputSchema,
-    required this.outputSchema,
-    this.requiredCapabilities = const [],
+  ExecutionProfile({
     this.minimumMemoryBytes = 0,
     this.preferredMemoryBytes = 0,
     this.maximumMemoryBytes = 0,
@@ -61,32 +62,31 @@ class PipelineStageDescriptor {
     this.preferredAccelerators = const [],
     this.expectedLatency,
     this.expectedThroughput,
-    this.supportsStreaming = false,
-    this.supportsBatching = false,
-    this.supportsCheckpointing = false,
-    this.supportsResume = false,
-    this.producesArtifacts = const [],
-    this.consumesArtifacts = const [],
-    this.cacheable = false,
-    this.cacheKey,
-    this.artifactVersion,
-    this.deterministic = true,
   });
 }
 
+class TelemetryEvent {
+  final String type;
+  final DateTime timestamp;
+  final Map<String, dynamic> data;
+  TelemetryEvent(this.type, this.data) : timestamp = DateTime.now();
+}
+
 abstract class PipelineStage<I, O> {
-  String get name;
-  PipelineStageDescriptor get descriptor;
+  StageDescriptor get descriptor;
+  ExecutionProfile get executionProfile;
   Future<O> execute(I input, PipelineContext context);
 }
 
 class PipelineDag {
-  final String name;
+  final PipelineId id;
   final List<PipelineStage> stages;
-  PipelineDag({required this.name, required this.stages});
+  PipelineDag({required this.id, required this.stages});
 }
 
 class PipelineContext {
-  final String runId;
-  PipelineContext({required this.runId});
+  final SessionId sessionId;
+  PipelineContext({required this.sessionId});
+  
+  void emitTelemetry(TelemetryEvent event) {}
 }

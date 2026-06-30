@@ -1,14 +1,25 @@
 
 import 'dart:typed_data';
+import 'package:platform_provider/platform_provider.dart';
+import 'package:platform_identity/platform_identity.dart';
 import 'parser.dart';
 
 class MarkdownParserProvider implements ParserProvider {
+  @override
+  ProviderDescriptor get descriptor => const ProviderDescriptor(
+    id: ProviderId('markdown_parser'),
+    version: '1.0.0',
+    priority: 100,
+    capabilities: ['parse'],
+    supportedFormats: ['text/markdown'],
+    supportedPlatforms: ['all'],
+  );
+
   @override bool supportsMime(String mimeType) => mimeType == 'text/markdown';
-  @override bool supportsExtension(String extension) => extension == '.md';
-  @override int get priority => 100;
+  @override bool supportsExtension(String extension) => extension == '.markdown';
   
   @override
   Future<AstNode> parse(Uint8List bytes, String mimeType) async {
-    return AstNode(type: 'root');
+    throw UnimplementedError();
   }
 }

@@ -1,10 +1,17 @@
 
 import 'package:platform_execution/platform_execution.dart';
+import 'package:platform_identity/platform_identity.dart';
+import 'package:platform_provider/platform_provider.dart';
 
-class BackendDescriptor {
+enum AcceleratorAffinity {
+  preferred,
+  allowed,
+  forbidden
+}
+
+class BackendDescriptor extends ProviderDescriptor {
   final List<WorkloadType> supportedWorkloads;
-  final List<String> supportedFormats;
-  final List<String> supportedAccelerators;
+  final Map<String, AcceleratorAffinity> acceleratorAffinity;
   
   final Duration coldStartCost;
   final Duration warmStartCost;
@@ -13,33 +20,30 @@ class BackendDescriptor {
   
   final bool threadSafety;
   final bool zeroCopySupport;
-  final int preferredBatchSize;
   final Duration streamingLatency;
   final int expectedThroughput;
   
   final bool streamingSupport;
-  final bool batchingSupport;
   final bool quantizationSupport;
-  final List<String> platformSupport;
-  final Priority priority;
 
-  BackendDescriptor({
+  const BackendDescriptor({
+    required super.id,
+    required super.version,
+    required super.priority,
+    required super.capabilities,
+    required super.supportedFormats,
+    required super.supportedPlatforms,
     required this.supportedWorkloads,
-    required this.supportedFormats,
-    required this.supportedAccelerators,
+    required this.acceleratorAffinity,
     this.coldStartCost = const Duration(milliseconds: 500),
     this.warmStartCost = const Duration(milliseconds: 10),
     this.averageMemoryBytes = 0,
     this.peakMemoryBytes = 0,
     this.threadSafety = false,
     this.zeroCopySupport = false,
-    this.preferredBatchSize = 1,
     this.streamingLatency = const Duration(milliseconds: 50),
     this.expectedThroughput = 0,
     required this.streamingSupport,
-    required this.batchingSupport,
     required this.quantizationSupport,
-    required this.platformSupport,
-    required this.priority,
   });
 }

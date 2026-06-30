@@ -1,5 +1,6 @@
 
 import 'dart:typed_data';
+import 'package:platform_provider/platform_provider.dart';
 
 class AstNode {
   final String type;
@@ -8,9 +9,8 @@ class AstNode {
   AstNode({required this.type, this.attributes = const {}, this.children = const []});
 }
 
-abstract class ParserProvider {
+abstract class ParserProvider implements PlatformProvider {
   bool supportsMime(String mimeType);
   bool supportsExtension(String extension);
-  int get priority;
   Future<AstNode> parse(Uint8List bytes, String mimeType);
 }
