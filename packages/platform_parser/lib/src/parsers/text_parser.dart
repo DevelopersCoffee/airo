@@ -3,14 +3,13 @@ import 'dart:typed_data';
 import 'package:platform_pipeline/platform_pipeline.dart';
 import 'parser.dart';
 
-class MarkdownParser implements Parser {
+class TextParser implements Parser {
   @override
   Future<AstArtifact> parse(Uint8List bytes, String mimeType) async {
-    // Generate AST from Markdown bytes
     return AstArtifact(
-      id: 'md-ast-1',
+      id: 'txt-ast-1',
       version: '1.0',
-      producer: 'MarkdownParser',
+      producer: 'TextParser',
       schema: 'AstSchema',
       checksum: 'chk',
     );

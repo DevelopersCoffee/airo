@@ -1,4 +1,3 @@
 library platform_transform;
 
-export 'src/transformer.dart';
-export 'src/markdown_normalizer.dart';
+export 'src/transform.dart';

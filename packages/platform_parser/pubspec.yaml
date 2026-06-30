@@ -9,13 +9,9 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  platform_contracts:
-    path: ../platform_contracts
-  platform_identity:
-    path: ../platform_identity
+  platform_pipeline:
+    path: ../../packages/platform_pipeline
 
-  platform_content:
-    path: ../platform_content
 dev_dependencies:
   flutter_test:
     sdk: flutter

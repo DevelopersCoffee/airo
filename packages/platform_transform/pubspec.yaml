@@ -9,8 +9,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  platform_content:
-    path: ../platform_content
+  platform_pipeline:
+    path: ../../packages/platform_pipeline
 
 dev_dependencies:
   flutter_test:

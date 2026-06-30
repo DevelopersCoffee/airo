@@ -1,5 +1,8 @@
 library platform_parser;
 
-export 'src/models/document_models.dart';
-export 'src/components/document_components.dart';
+export 'src/parsers/parser.dart';
 export 'src/parsers/markdown_parser.dart';
+export 'src/parsers/text_parser.dart';
+export 'src/parsers/html_parser.dart';
+export 'src/parsers/pdf_parser.dart';
+export 'src/parsers/docx_parser.dart';

@@ -22,6 +22,11 @@ class PipelineStageDescriptor {
   final List<Type> producesArtifacts;
   final List<Type> consumesArtifacts;
 
+  final bool cacheable;
+  final String? cacheKey;
+  final String? artifactVersion;
+  final bool deterministic;
+
   PipelineStageDescriptor({
     required this.inputSchema,
     required this.outputSchema,
@@ -35,6 +40,10 @@ class PipelineStageDescriptor {
     this.supportsResume = false,
     this.producesArtifacts = const [],
     this.consumesArtifacts = const [],
+    this.cacheable = false,
+    this.cacheKey,
+    this.artifactVersion,
+    this.deterministic = true,
   });
 }
 
