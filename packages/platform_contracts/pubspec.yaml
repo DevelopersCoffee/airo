@@ -9,6 +9,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  platform_identity:
+    path: ../platform_identity
 
 dev_dependencies:
   flutter_test:

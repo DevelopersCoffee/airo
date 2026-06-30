@@ -1,0 +1,16 @@
+name: platform_security
+description: A starting point for Dart libraries or applications.
+version: 1.0.0
+# repository: https://github.com/my_org/my_repo
+
+environment:
+  sdk: ^3.12.2
+
+# Add regular dependencies here.
+dependencies:
+  platform_identity:
+    path: ../platform_identity
+
+dev_dependencies:
+  lints: ^6.0.0
+  test: ^1.25.6

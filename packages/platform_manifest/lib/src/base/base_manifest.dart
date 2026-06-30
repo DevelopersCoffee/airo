@@ -7,7 +7,7 @@ abstract interface class ExtensionManifest implements ExtensionComponent {
   String get version;
   List<String> get dependencies;
   @override
-  List<String> get capabilities;
+  List<Capability> get capabilities;
   List<String> get permissions;
   List<String> get bootstrapTasks;
   Map<String, dynamic> get settings;

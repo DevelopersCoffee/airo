@@ -1,10 +1,11 @@
 import '../base/base_manifest.dart';
+import 'package:platform_contracts/platform_contracts.dart';
 
 class PluginManifest implements ExtensionManifest {
   @override final String identifier;
   @override final String version;
   @override final List<String> dependencies;
-  @override final List<String> capabilities;
+  @override final List<Capability> capabilities;
   @override final List<String> permissions;
   @override final List<String> bootstrapTasks;
   @override final Map<String, dynamic> settings;

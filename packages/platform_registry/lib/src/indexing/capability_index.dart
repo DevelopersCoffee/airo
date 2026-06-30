@@ -1,7 +1,8 @@
 import 'package:platform_manifest/platform_manifest.dart';
+import 'package:platform_contracts/platform_contracts.dart';
 
 class CapabilityIndex {
-  final Map<String, List<ExtensionManifest>> _capabilityMap = {};
+  final Map<Capability, List<ExtensionManifest>> _capabilityMap = {};
 
   void indexManifest(ExtensionManifest manifest) {
     for (final cap in manifest.capabilities) {
@@ -9,7 +10,7 @@ class CapabilityIndex {
     }
   }
 
-  List<ExtensionManifest> findByCapability(String capability) {
+  List<ExtensionManifest> findByCapability(Capability capability) {
     return _capabilityMap[capability] ?? const [];
   }
 }

@@ -8,13 +8,17 @@ abstract interface class DiagnosticProvider {
   Map<String, dynamic> getDiagnostics();
 }
 
+import '../capabilities/capability.dart';
+
 abstract interface class CapabilityProvider {
-  List<String> get capabilities;
+  List<Capability> get capabilities;
 }
 
 abstract interface class VersionedComponent {
   String get version;
 }
+
+import 'package:platform_identity/platform_identity.dart';
 
 abstract interface class ExtensionComponent implements CapabilityProvider, VersionedComponent {
   String get identifier;

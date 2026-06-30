@@ -1,0 +1,20 @@
+name: platform_policy
+description: A starting point for Dart libraries or applications.
+version: 1.0.0
+# repository: https://github.com/my_org/my_repo
+
+environment:
+  sdk: ^3.12.2
+
+# Add regular dependencies here.
+dependencies:
+  platform_identity:
+    path: ../platform_identity
+  platform_security:
+    path: ../platform_security
+  platform_resources:
+    path: ../platform_resources
+
+dev_dependencies:
+  lints: ^6.0.0
+  test: ^1.25.6
