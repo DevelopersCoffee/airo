@@ -14,8 +14,8 @@ dependencies:
   platform_hardware:
     path: ../platform_hardware
 
+  mocktail: ^1.0.3
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^4.0.0
-  mocktail: ^1.0.3

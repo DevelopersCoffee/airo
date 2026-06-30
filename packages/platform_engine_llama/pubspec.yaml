@@ -16,10 +16,10 @@ dependencies:
   platform_validation:
     path: ../platform_validation
 
+  mocktail: ^1.0.3
+  platform_engine_testkit:
+    path: ../platform_engine_testkit
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^4.0.0
-  mocktail: ^1.0.3
-  platform_engine_testkit:
-    path: ../platform_engine_testkit

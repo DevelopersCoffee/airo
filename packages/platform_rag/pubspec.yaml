@@ -14,6 +14,8 @@ dependencies:
   platform_identity:
     path: ../platform_identity
 
+  platform_retrieval:
+    path: ../platform_retrieval
 dev_dependencies:
   flutter_test:
     sdk: flutter

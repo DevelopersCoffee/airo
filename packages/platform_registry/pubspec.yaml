@@ -14,8 +14,8 @@ dependencies:
   platform_registry:
     path: ../platform_registry
 
+  mocktail: ^1.0.3
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^4.0.0
-  mocktail: ^1.0.3
