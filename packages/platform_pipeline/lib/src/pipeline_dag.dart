@@ -1,21 +1,46 @@
 
 import 'package:platform_execution/platform_execution.dart';
+import 'artifacts.dart';
 
 class Schema {}
 
+class PipelineStageDescriptor {
+  final Schema inputSchema;
+  final Schema outputSchema;
+  
+  final List<String> requiredCapabilities;
+  
+  final int estimatedMemoryBytes;
+  final int estimatedCpuCompute;
+  final int estimatedGpuCompute;
+  
+  final bool supportsStreaming;
+  final bool supportsBatching;
+  final bool supportsCheckpointing;
+  final bool supportsResume;
+  
+  final List<Type> producesArtifacts;
+  final List<Type> consumesArtifacts;
+
+  PipelineStageDescriptor({
+    required this.inputSchema,
+    required this.outputSchema,
+    this.requiredCapabilities = const [],
+    this.estimatedMemoryBytes = 0,
+    this.estimatedCpuCompute = 0,
+    this.estimatedGpuCompute = 0,
+    this.supportsStreaming = false,
+    this.supportsBatching = false,
+    this.supportsCheckpointing = false,
+    this.supportsResume = false,
+    this.producesArtifacts = const [],
+    this.consumesArtifacts = const [],
+  });
+}
+
 abstract class PipelineStage<I, O> {
   String get name;
-  Schema get inputSchema;
-  Schema get outputSchema;
-  
-  int get estimatedMemoryBytes;
-  int get estimatedComputeComplexity;
-  
-  bool get supportsStreaming;
-  bool get supportsBatching;
-  bool get supportsCancellation;
-  bool get supportsCheckpointing;
-
+  PipelineStageDescriptor get descriptor;
   Future<O> execute(I input, PipelineContext context);
 }
 
