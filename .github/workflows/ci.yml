@@ -180,7 +180,7 @@ jobs:
           flutter test --coverage --reporter=compact
 
       - name: Upload coverage
-        uses: codecov/codecov-action@v6
+        uses: codecov/codecov-action@v7
         with:
           files: ./app/coverage/lcov.info
           flags: flutter
