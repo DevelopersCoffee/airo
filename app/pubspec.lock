@@ -697,10 +697,9 @@ packages:
   flutter_chrome_cast:
     dependency: "direct main"
     description:
-      name: flutter_chrome_cast
-      sha256: "3d412fa1831591466df4ae5d61edd8e4fdd8b2992008eed0d44dde5958e21287"
-      url: "https://pub.dev"
-    source: hosted
+      path: "third_party/flutter_chrome_cast"
+      relative: true
+    source: path
     version: "1.4.6"
   flutter_contacts:
     dependency: "direct main"

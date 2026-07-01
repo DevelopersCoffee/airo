@@ -151,6 +151,14 @@ dependency_overrides:
   # flutter_chrome_cast 1.4.6 requires rxdart ^0.28.0, while the current
   # custom_lint stack requires ^0.27.7. See docs/adr/0007-cast-rxdart-override.md.
   rxdart: ^0.28.0
+  # Vendored fork of flutter_chrome_cast 1.4.6 with an iOS-side fix: its
+  # GCKMediaInformation.fromMap never set builder.contentID (only
+  # contentURL), so loadMedia() reached the receiver with a nil contentID.
+  # The receiver started a media session but had nothing to fetch, so it
+  # stayed stuck in the "loading" state forever (visible on the TV as the
+  # title/artwork with no audio or video). See third_party/flutter_chrome_cast.
+  flutter_chrome_cast:
+    path: third_party/flutter_chrome_cast
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

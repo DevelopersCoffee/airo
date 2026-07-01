@@ -62,11 +62,14 @@
 	<string>Airo needs calendar access to check your schedule when you use calendar skills.</string>
 	<key>NSCalendarsFullAccessUsageDescription</key>
 	<string>Airo needs calendar access to read your schedule when you use calendar skills.</string>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>Airo uses Bluetooth to discover nearby Cast devices.</string>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>Airo uses your local network to find and connect to Chromecast-enabled TVs on your Wi-Fi.</string>
 	<key>NSBonjourServices</key>
 	<array>
 		<string>_googlecast._tcp</string>
+		<string>_CC1AD845._tcp</string>
 	</array>
 	<!-- Background audio playback -->
 	<key>UIBackgroundModes</key>

@@ -180,6 +180,23 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen> {
   Widget build(BuildContext context) {
     final isFullscreen = ref.watch(isFullscreenModeProvider);
 
+    // Hand playback off cleanly between the device and the TV. Without this the
+    // local player keeps running while casting, so the same stream plays on
+    // both the iPad and the TV slightly out of sync -- heard as muddy, unclear
+    // TV audio. Pause local playback while a Cast session is active; resume it
+    // when casting ends.
+    ref.listen<bool>(iptvCastProvider.select((state) => state.isCasting), (
+      wasCasting,
+      isCasting,
+    ) {
+      final streaming = ref.read(iptvStreamingServiceProvider);
+      if (isCasting) {
+        streaming.pause();
+      } else if (wasCasting == true) {
+        streaming.resume();
+      }
+    });
+
     if (isFullscreen) {
       return Scaffold(
         backgroundColor: Colors.black,
