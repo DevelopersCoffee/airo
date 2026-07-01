@@ -16,6 +16,8 @@ jobs:
   smoke-test-web:
     name: Web Smoke Tests
     runs-on: ubuntu-latest
+    outputs:
+      smoke_status: ${{ steps.smoke_tests.outcome }}
     steps:
       - uses: actions/checkout@v6
       
@@ -31,6 +33,7 @@ jobs:
           npx playwright install --with-deps chromium
       
       - name: Run Critical Path Tests
+        id: smoke_tests
         run: |
           cd e2e
           npx playwright test --grep "@smoke" --reporter=html
@@ -47,6 +50,8 @@ jobs:
   smoke-test-android:
     name: Android Smoke Tests
     runs-on: ubuntu-latest
+    outputs:
+      build_status: ${{ steps.build_debug_apk.outcome }}
     steps:
       - uses: actions/checkout@v6
       
@@ -68,6 +73,7 @@ jobs:
           flutter pub get
       
       - name: Build Debug APK
+        id: build_debug_apk
         run: |
           cd app
           flutter build apk --debug
@@ -84,6 +90,10 @@ jobs:
 
   health-check:
     name: Release Health Check
+    needs:
+      - smoke-test-web
+      - smoke-test-android
+    if: always()
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -100,6 +110,7 @@ jobs:
           flutter pub get
 
       - name: Check pubspec.yaml validity
+        id: dependency_check
         run: |
           cd app
           flutter pub deps
@@ -107,14 +118,49 @@ jobs:
         continue-on-error: true
       
       - name: Check for outdated dependencies
+        id: outdated_check
         run: |
           cd app
           flutter pub outdated || true
         continue-on-error: true
       
       - name: Generate Smoke Test Report
+        if: always()
         run: |
           mkdir -p reports
+          web_status="⚠️ Not run"
+          android_status="⚠️ Not run"
+          dependencies_status="⚠️ Not run"
+          outdated_status="⚠️ Review manually"
+
+          case "${{ needs.smoke-test-web.outputs.smoke_status }}" in
+            success) web_status="✅ Passed" ;;
+            failure) web_status="❌ Failed" ;;
+            cancelled) web_status="⚠️ Cancelled" ;;
+            skipped) web_status="⚠️ Skipped" ;;
+          esac
+
+          case "${{ needs.smoke-test-android.outputs.build_status }}" in
+            success) android_status="✅ Passed" ;;
+            failure) android_status="❌ Failed" ;;
+            cancelled) android_status="⚠️ Cancelled" ;;
+            skipped) android_status="⚠️ Skipped" ;;
+          esac
+
+          case "${{ steps.dependency_check.outcome }}" in
+            success) dependencies_status="✅ Resolved" ;;
+            failure) dependencies_status="❌ Failed" ;;
+            cancelled) dependencies_status="⚠️ Cancelled" ;;
+            skipped) dependencies_status="⚠️ Skipped" ;;
+          esac
+
+          case "${{ steps.outdated_check.outcome }}" in
+            success) outdated_status="✅ Report generated" ;;
+            failure) outdated_status="❌ Failed" ;;
+            cancelled) outdated_status="⚠️ Cancelled" ;;
+            skipped) outdated_status="⚠️ Skipped" ;;
+          esac
+
           cat > reports/smoke-test-summary.md <<EOF
           # 🔥 Smoke Test Summary
           
@@ -126,12 +172,14 @@ jobs:
           
           | Test | Status |
           |------|--------|
-          | Dependencies | ✅ Resolved |
-          | Code Analysis | ✅ Passed |
-          | Debug Build | ✅ Success |
+          | Web smoke tests | ${web_status} |
+          | Android debug build | ${android_status} |
+          | Dependencies | ${dependencies_status} |
+          | Outdated dependency report | ${outdated_status} |
           EOF
       
       - name: Upload Summary
+        if: always()
         uses: actions/upload-artifact@v7
         with:
           name: smoke-test-summary
