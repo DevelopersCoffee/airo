@@ -1,5 +1,5 @@
 import 'package:equatable/equatable.dart';
-import 'iptv_channel.dart';
+import 'package:platform_channels/platform_channels.dart';
 
 /// Network quality indicator
 enum NetworkQuality {

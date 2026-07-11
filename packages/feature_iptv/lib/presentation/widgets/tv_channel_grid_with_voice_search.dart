@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../core/tv/tv.dart';
 import "package:platform_channels/platform_channels.dart";
+import '../tv/tv_support.dart';
 import 'tv_channel_grid.dart';
 import 'voice_search_overlay.dart';
 

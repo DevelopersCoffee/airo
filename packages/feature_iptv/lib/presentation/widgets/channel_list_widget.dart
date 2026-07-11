@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../../shared/widgets/app_icon_placeholder.dart';
 import '../../application/providers/iptv_providers.dart';
 import "package:platform_channels/platform_channels.dart";
+import 'app_icon_placeholder.dart';
 
 /// Channel list widget with category tabs and search
 class ChannelListWidget extends ConsumerWidget {

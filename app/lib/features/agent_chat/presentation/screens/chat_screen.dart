@@ -135,7 +135,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     if (widget.enableAiInitialization) {
       _initializeAI();
     }
-    unawaited(_lifeTrackDataSource.initialize());
+    unawaited(_initializeLifeTrackDataSource());
   }
 
   AgentConnectorRegistry _buildConnectorRegistry() {
@@ -148,11 +148,19 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         ScheduleNotificationConnector(),
         LifeTrackStatusConnector(
           repository: _lifeTrackRepository,
-          ensureInitialized: _lifeTrackDataSource.initialize,
+          ensureInitialized: _initializeLifeTrackDataSource,
         ),
         RouteConnector(),
       ],
     );
+  }
+
+  Future<void> _initializeLifeTrackDataSource() async {
+    try {
+      await _lifeTrackDataSource.initialize();
+    } catch (error) {
+      debugPrint('LifeTrack local data source unavailable: $error');
+    }
   }
 
   AgentSkillOrchestrator _buildSkillOrchestrator(AgentSkillRegistry registry) {
@@ -546,22 +554,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   ),
                   if (canCopy) ...[
                     const SizedBox(width: 8),
-                    PopupMenuButton<_MessageAction>(
+                    IconButton(
                       key: ValueKey('agent_chat_message_actions_$index'),
-                      tooltip: 'Message actions',
-                      onSelected: (value) {
-                        switch (value) {
-                          case _MessageAction.copy:
-                            _copyMessageText(message.text);
-                        }
-                      },
-                      itemBuilder: (context) => const [
-                        PopupMenuItem<_MessageAction>(
-                          value: _MessageAction.copy,
-                          child: Text('Copy message'),
-                        ),
-                      ],
-                      icon: const Icon(Icons.more_horiz, size: 18),
+                      tooltip: 'Copy message',
+                      onPressed: () => _copyMessageText(message.text),
+                      icon: const Icon(Icons.copy_all, size: 18),
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints.tightFor(
                         width: 32,
@@ -1341,8 +1338,6 @@ class _MetadataRow extends StatelessWidget {
     );
   }
 }
-
-enum _MessageAction { copy }
 
 String _formatDuration(int durationMs) {
   if (durationMs < 1000) {

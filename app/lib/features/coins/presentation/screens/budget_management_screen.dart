@@ -116,8 +116,10 @@ class _EmptyBudgetsView extends StatelessWidget {
               onPressed: kIsWeb
                   ? null
                   : () => Navigator.of(context).push(
-                        MaterialPageRoute(builder: (_) => const AddBudgetScreen()),
+                      MaterialPageRoute(
+                        builder: (_) => const AddBudgetScreen(),
                       ),
+                    ),
               icon: Icon(kIsWeb ? Icons.lock_clock : Icons.add),
               label: Text(kIsWeb ? 'Storage Backend Pending' : 'Create Budget'),
             ),

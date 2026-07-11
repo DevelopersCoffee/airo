@@ -10,6 +10,9 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  platform_player:
+    path: ../platform_player
+  video_player: ^2.12.0
 
 dev_dependencies:
   flutter_test:

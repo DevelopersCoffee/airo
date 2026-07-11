@@ -79,7 +79,9 @@ class FlutterChromeCastController implements AiroCastController {
     try {
       final castOptions = Platform.isIOS
           ? IOSGoogleCastOptions(
-              GoogleCastDiscoveryCriteriaInitialize.initWithApplicationID(defaultReceiverApplicationId),
+              GoogleCastDiscoveryCriteriaInitialize.initWithApplicationID(
+                defaultReceiverApplicationId,
+              ),
               disableDiscoveryAutostart: true,
               startDiscoveryAfterFirstTapOnCastButton: false,
               stopReceiverApplicationWhenEndingSession: false,
@@ -90,7 +92,9 @@ class FlutterChromeCastController implements AiroCastController {
               stopReceiverApplicationWhenEndingSession: false,
             );
 
-      await GoogleCastContext.instance.setSharedInstanceWithOptions(castOptions);
+      await GoogleCastContext.instance.setSharedInstanceWithOptions(
+        castOptions,
+      );
       _listenToPluginStreams();
       _initialized = true;
     } catch (error) {
@@ -186,11 +190,14 @@ class FlutterChromeCastController implements AiroCastController {
 
       // Wait up to 15 seconds for the session to actually transition to connected
       try {
-        await sessionStateStream.firstWhere((state) => 
-            state.phase == AiroCastSessionPhase.connected ||
-            state.phase == AiroCastSessionPhase.failed ||
-            state.phase == AiroCastSessionPhase.disconnected
-        ).timeout(const Duration(seconds: 15));
+        await sessionStateStream
+            .firstWhere(
+              (state) =>
+                  state.phase == AiroCastSessionPhase.connected ||
+                  state.phase == AiroCastSessionPhase.failed ||
+                  state.phase == AiroCastSessionPhase.disconnected,
+            )
+            .timeout(const Duration(seconds: 15));
       } catch (e) {
         _setSession(
           const AiroCastSessionSnapshot.failed(

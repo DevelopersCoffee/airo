@@ -10,6 +10,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  platform_channels:
+    path: ../platform_channels
   shared_preferences: ^2.5.5
 
 dev_dependencies:

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../../core/tv/tv.dart';
 import "package:platform_player/platform_player.dart";
 import "package:platform_media/platform_media.dart";
+import '../tv/tv_support.dart';
 
 /// TV-specific player controls for Android TV/Fire TV
 ///

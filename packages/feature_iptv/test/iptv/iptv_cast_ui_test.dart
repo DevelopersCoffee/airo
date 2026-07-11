@@ -1,6 +1,6 @@
-import 'package:airo_app/core/cast/cast.dart';
 import "package:feature_iptv/feature_iptv.dart";
 import "package:platform_channels/platform_channels.dart";
+import "package:platform_player/platform_player.dart";
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';

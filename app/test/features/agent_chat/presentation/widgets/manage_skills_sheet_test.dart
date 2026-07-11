@@ -16,7 +16,10 @@ void main() {
     );
 
     expect(find.text('Manage Skills'), findsOneWidget);
-    expect(find.text('4 skills'), findsOneWidget);
+    expect(
+      find.text('${registry.getAllSkills().length} skills'),
+      findsOneWidget,
+    );
     expect(find.text('read-calendar-events'), findsOneWidget);
 
     await tester.enterText(find.byType(TextField), 'Open Airo');

@@ -1554,6 +1554,13 @@ packages:
       relative: true
     source: path
     version: "0.0.1"
+  platform_playlist_import:
+    dependency: transitive
+    description:
+      path: "../packages/platform_playlist_import"
+      relative: true
+    source: path
+    version: "0.0.1"
   platform_streams:
     dependency: "direct main"
     description:

@@ -1,5 +1,5 @@
 import 'package:airo_app/core/app/airo_app.dart';
-import 'package:airo_app/features/iptv/application/providers/iptv_providers.dart';
+import 'package:feature_iptv/feature_iptv.dart' show sharedPreferencesProvider;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -43,7 +43,10 @@ void main() {
     );
 
     // Wait for the main shell navigation to load
-    await $.waitUntilVisible(find.text('Coins'), timeout: const Duration(seconds: 45));
+    await $.waitUntilVisible(
+      find.text('Coins'),
+      timeout: const Duration(seconds: 45),
+    );
 
     // 3. Navigate to Coins Tab
     final coinsTab = find.byKey(const ValueKey('app_nav_coins'));
@@ -66,8 +69,9 @@ void main() {
     await $.pumpAndSettle();
 
     // Enter Description
-    final descField =
-        find.byKey(const ValueKey('add_expense_description_field'));
+    final descField = find.byKey(
+      const ValueKey('add_expense_description_field'),
+    );
     await $(descField).enterText('Monthly Salary');
     await $.pumpAndSettle();
 
@@ -120,14 +124,14 @@ void main() {
 
     // Enter Budget details:
     // Limit
-    final budgetLimitField =
-        find.byKey(const ValueKey('add_budget_limit_field'));
+    final budgetLimitField = find.byKey(
+      const ValueKey('add_budget_limit_field'),
+    );
     await $(budgetLimitField).enterText('10000.00');
     await $.pumpAndSettle();
 
     // Name
-    final budgetNameField =
-        find.byKey(const ValueKey('add_budget_name_field'));
+    final budgetNameField = find.byKey(const ValueKey('add_budget_name_field'));
     await $(budgetNameField).enterText('Food and Drink');
     await $.pumpAndSettle();
 
@@ -136,14 +140,16 @@ void main() {
     await $.pumpAndSettle();
 
     // Category ChoiceChip
-    final foodCategoryChip =
-        find.byKey(const ValueKey('add_budget_category_food'));
+    final foodCategoryChip = find.byKey(
+      const ValueKey('add_budget_category_food'),
+    );
     await $(foodCategoryChip).tap();
     await $.pumpAndSettle();
 
     // Save Budget
-    final saveBudgetButton =
-        find.byKey(const ValueKey('add_budget_save_button'));
+    final saveBudgetButton = find.byKey(
+      const ValueKey('add_budget_save_button'),
+    );
     await $(saveBudgetButton).tap();
     await $.pumpAndSettle();
 
@@ -170,14 +176,16 @@ void main() {
     await $.pumpAndSettle();
 
     // Fill Group Name
-    final groupNameField =
-        find.byKey(const ValueKey('create_group_name_field'));
+    final groupNameField = find.byKey(
+      const ValueKey('create_group_name_field'),
+    );
     await $(groupNameField).enterText('Goa Trip');
     await $.pumpAndSettle();
 
     // Fill Group Description
-    final groupDescField =
-        find.byKey(const ValueKey('create_group_desc_field'));
+    final groupDescField = find.byKey(
+      const ValueKey('create_group_desc_field'),
+    );
     await $(groupDescField).enterText('E2E Test Goa trip sharing');
     await $.pumpAndSettle();
 
@@ -197,8 +205,7 @@ void main() {
     await $(addMemberIcon).tap();
     await $.pumpAndSettle();
 
-    final memberNameField =
-        find.byKey(const ValueKey('add_member_name_field'));
+    final memberNameField = find.byKey(const ValueKey('add_member_name_field'));
     await $(memberNameField).enterText('Rahul');
     await $.pumpAndSettle();
 
@@ -229,14 +236,14 @@ void main() {
     await $.pumpAndSettle();
 
     // Enter manual split amount
-    final splitAmountField =
-        find.byKey(const ValueKey('add_split_amount_field'));
+    final splitAmountField = find.byKey(
+      const ValueKey('add_split_amount_field'),
+    );
     await $(splitAmountField).enterText('1200.00');
     await $.pumpAndSettle();
 
     // Enter split description
-    final splitDescField =
-        find.byKey(const ValueKey('add_split_desc_field'));
+    final splitDescField = find.byKey(const ValueKey('add_split_desc_field'));
     await $(splitDescField).enterText('Dinner at Goa');
     await $.pumpAndSettle();
 
@@ -269,11 +276,16 @@ void main() {
     final dashboardErrorFinder = find.textContaining('Error:');
     if (dashboardErrorFinder.evaluate().isNotEmpty) {
       final Text errorTextWidget = $.tester.widget(dashboardErrorFinder);
-      throw Exception('Dashboard loading failed with error: ${errorTextWidget.data}');
+      throw Exception(
+        'Dashboard loading failed with error: ${errorTextWidget.data}',
+      );
     }
 
     // Wait for dashboard to finish loading
-    await $.waitUntilExists($('Add Expense'), timeout: const Duration(seconds: 20));
+    await $.waitUntilExists(
+      $('Add Expense'),
+      timeout: const Duration(seconds: 20),
+    );
 
     // 8. Add Personal Expense and Verify Budget Reacts
     await $(addTransactionButton).tap();
@@ -312,7 +324,9 @@ void main() {
       of: find.text('Budgets'),
       matching: find.byType(InkWell),
     );
-    final secondBudgetsInkWell = $.tester.widget<InkWell>(secondBudgetsInkWellFinder);
+    final secondBudgetsInkWell = $.tester.widget<InkWell>(
+      secondBudgetsInkWellFinder,
+    );
     secondBudgetsInkWell.onTap!();
     await $.pumpAndSettle();
 

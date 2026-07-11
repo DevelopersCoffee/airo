@@ -1,11 +1,10 @@
 import 'dart:async';
-import 'package:video_player/video_player.dart';
-import '../../../../core/audio/audio_context_manager.dart';
-import '../../../../core/utils/logger.dart';
 import 'package:platform_channels/platform_channels.dart';
-import '../models/streaming_state.dart';
-import 'iptv_streaming_service.dart';
-import 'live_edge_detector.dart';
+import 'package:platform_player/platform_player.dart';
+import 'package:platform_streams/platform_streams.dart';
+import 'package:video_player/video_player.dart';
+
+import 'audio_context.dart';
 
 /// Video Player implementation of IPTV Streaming Service
 ///

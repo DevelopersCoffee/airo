@@ -1,5 +1,6 @@
-import '../../../../core/cast/cast.dart';
 import 'package:platform_channels/platform_channels.dart';
+
+import '../models/cast_models.dart';
 
 class IptvCastMediaAdapter {
   const IptvCastMediaAdapter();

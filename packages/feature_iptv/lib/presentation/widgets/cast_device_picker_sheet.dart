@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../core/cast/cast.dart';
 import '../../application/providers/iptv_cast_providers.dart';
+import "package:platform_player/platform_player.dart";
 
 Future<void> showIptvCastDevicePicker({
   required BuildContext context,

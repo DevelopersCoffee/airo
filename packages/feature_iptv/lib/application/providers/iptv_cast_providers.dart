@@ -3,13 +3,10 @@ import 'dart:async';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../core/cast/cast.dart';
-import '../../../../core/cast/flutter_chrome_cast_controller.dart';
-import "package:platform_channels/platform_channels.dart";
 import "package:platform_player/platform_player.dart";
 
 final airoCastControllerProvider = Provider<AiroCastController>((ref) {
-  final controller = FlutterChromeCastController();
+  final controller = UnavailableAiroCastController();
   ref.onDispose(() {
     unawaited(controller.dispose());
   });

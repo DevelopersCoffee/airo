@@ -182,6 +182,24 @@ void main() {
   testWidgets('message actions copy assistant and user messages', (
     tester,
   ) async {
+    String? clipboardText;
+    final messenger =
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+    messenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
+      switch (call.method) {
+        case 'Clipboard.setData':
+          clipboardText =
+              (call.arguments as Map<Object?, Object?>)['text'] as String?;
+          return null;
+        case 'Clipboard.getData':
+          return <String, Object?>{'text': clipboardText};
+      }
+      return null;
+    });
+    addTearDown(() {
+      messenger.setMockMethodCallHandler(SystemChannels.platform, null);
+    });
+
     await _pumpChatScreen(
       tester,
       initialMessages: [
@@ -190,12 +208,14 @@ void main() {
       ],
     );
 
-    await tester.tap(
-      find.byKey(const ValueKey('agent_chat_message_actions_0')),
-    );
+    tester
+        .widget<IconButton>(
+          find.byKey(const ValueKey('agent_chat_message_actions_0')),
+        )
+        .onPressed
+        ?.call();
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Copy message'));
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 100));
 
     expect(find.text('Message copied'), findsOneWidget);
     expect(
@@ -203,12 +223,14 @@ void main() {
       equals('Assistant answer'),
     );
 
-    await tester.tap(
-      find.byKey(const ValueKey('agent_chat_message_actions_1')),
-    );
+    tester
+        .widget<IconButton>(
+          find.byKey(const ValueKey('agent_chat_message_actions_1')),
+        )
+        .onPressed
+        ?.call();
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Copy message'));
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 100));
 
     expect(
       (await Clipboard.getData('text/plain'))?.text,

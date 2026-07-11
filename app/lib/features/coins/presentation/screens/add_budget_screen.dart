@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../../../core/utils/locale_settings.dart';
 import '../../domain/entities/budget.dart';
 import '../../application/providers/budget_providers.dart';
 
@@ -67,6 +68,7 @@ class _AddBudgetScreenState extends ConsumerState<AddBudgetScreen> {
   @override
   Widget build(BuildContext context) {
     final saveState = ref.watch(setBudgetProvider);
+    final currencyFormatter = ref.watch(currencyFormatterProvider);
 
     ref.listen<AsyncValue<void>>(setBudgetProvider, (_, state) {
       state.whenOrNull(
@@ -125,12 +127,14 @@ class _AddBudgetScreenState extends ConsumerState<AddBudgetScreen> {
             TextFormField(
               key: const ValueKey('add_budget_limit_field'),
               controller: _limitController,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Monthly Limit',
-                prefixText: '₹ ',
-                border: OutlineInputBorder(),
+                prefixText: '${currencyFormatter.currency.symbol} ',
+                border: const OutlineInputBorder(),
               ),
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               inputFormatters: [
                 FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
               ],

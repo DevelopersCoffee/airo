@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../../core/tv/tv.dart';
 import "package:platform_channels/platform_channels.dart";
 import "package:platform_player/platform_player.dart";
 import "package:platform_media/platform_media.dart";
+import '../tv/tv_support.dart';
 import 'channel_list_widget.dart';
 import 'tv_channel_grid.dart';
 import 'tv_player_controls.dart';

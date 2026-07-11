@@ -717,9 +717,9 @@ class _QuickActionsRow extends StatelessWidget {
         _QuickActionButton(
           icon: Icons.pie_chart_outline,
           label: 'Budgets',
-          onTap: () => Navigator.of(
-            context,
-          ).push(MaterialPageRoute(builder: (_) => const BudgetManagementScreen())),
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const BudgetManagementScreen()),
+          ),
         ),
         const _QuickActionButton(icon: Icons.camera_alt, label: 'Scan Receipt'),
       ],

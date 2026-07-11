@@ -3,10 +3,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:platform_streams/platform_streams.dart';
 
 void main() {
-  test('adds one to input values', () {
-    final calculator = Calculator();
-    expect(calculator.addOne(2), 3);
-    expect(calculator.addOne(-7), -6);
-    expect(calculator.addOne(0), 1);
+  test('creates a VOD live edge state', () {
+    final state = LiveEdgeState.vod();
+    expect(state.isLiveStream, false);
   });
 }

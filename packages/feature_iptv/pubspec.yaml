@@ -8,9 +8,15 @@ environment:
   flutter: ">=1.17.0"
 
 dependencies:
+  dio: ^5.10.0
+  equatable: ^2.1.0
   flutter:
     sdk: flutter
   flutter_riverpod: ^2.6.1
+  go_router: ">=17.1.0 <18.0.0"
+  shared_preferences: ^2.5.5
+  video_player: ^2.12.0
+  wakelock_plus: ^1.5.2
   platform_channels:
     path: ../platform_channels
   platform_media:
@@ -19,6 +25,10 @@ dependencies:
     path: ../platform_player
   platform_streams:
     path: ../platform_streams
+  platform_history:
+    path: ../platform_history
+  platform_playlist_import:
+    path: ../platform_playlist_import
 
 dev_dependencies:
   flutter_test:

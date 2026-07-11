@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../../core/providers/navigation_provider.dart';
-import '../../application/providers/iptv_providers.dart'
-    hide currentNavigationTabProvider;
+import '../../application/providers/iptv_providers.dart';
 import "package:platform_player/platform_player.dart";
 
 /// Mini player widget for IPTV background playback

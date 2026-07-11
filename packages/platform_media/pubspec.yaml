@@ -12,6 +12,11 @@ dependencies:
     sdk: flutter
   platform_channels:
     path: ../platform_channels
+  platform_player:
+    path: ../platform_player
+  platform_streams:
+    path: ../platform_streams
+  video_player: ^2.12.0
 
 dev_dependencies:
   flutter_test:

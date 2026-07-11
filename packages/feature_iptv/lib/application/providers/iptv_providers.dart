@@ -1,17 +1,19 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-export '../../../../core/providers/navigation_provider.dart'
-    show currentNavigationTabProvider;
+import "package:platform_channels/platform_channels.dart";
 import "package:platform_history/platform_history.dart";
-import "package:platform_channels/platform_channels.dart";
-import "package:platform_player/platform_player.dart";
-import '../../domain/services/m3u_parser_service.dart';
-import "package:platform_channels/platform_channels.dart";
-import "package:platform_player/platform_player.dart";
 import "package:platform_media/platform_media.dart";
+import "package:platform_playlist_import/platform_playlist_import.dart";
+import "package:platform_player/platform_player.dart";
+import 'package:shared_preferences/shared_preferences.dart';
 
 export 'iptv_cast_providers.dart';
+
+enum AppNavigationTab { coins, mind, beats, stream, arena, quest }
+
+final currentNavigationTabProvider = StateProvider<int>(
+  (ref) => AppNavigationTab.coins.index,
+);
 
 /// Shared preferences provider
 final sharedPreferencesProvider = Provider<SharedPreferences>((ref) {
