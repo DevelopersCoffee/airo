@@ -254,7 +254,8 @@ class LifeTrackLocalDataSource {
   }
 
   Future<void> _insertTrackGraph(DatabaseExecutor db, LifeTrack track) async {
-    await db.insert(lifeTracksTable, {
+    final batch = db.batch();
+    batch.insert(lifeTracksTable, {
       'id': track.id,
       'title': track.title,
       'category': track.category.name,
@@ -263,41 +264,8 @@ class LifeTrackLocalDataSource {
       'created_at': track.createdAt.millisecondsSinceEpoch,
       'updated_at': track.updatedAt.millisecondsSinceEpoch,
     });
-
-    for (final milestone in track.milestones) {
-      await db.insert(milestonesTable, {
-        'id': milestone.id,
-        'track_id': milestone.trackId,
-        'name': milestone.name,
-        'objective': milestone.objective,
-        'sort_order': milestone.sortOrder,
-        'status': milestone.status.name,
-      });
-      for (final item in milestone.actionItems) {
-        await db.insert(actionItemsTable, {
-          'id': item.id,
-          'milestone_id': item.milestoneId,
-          'summary': item.summary,
-          'description': item.description,
-          'status': item.status.name,
-          'due_date': item.dueDate?.millisecondsSinceEpoch,
-          'notes': item.notes,
-          'created_at': item.createdAt.millisecondsSinceEpoch,
-          'updated_at': item.updatedAt.millisecondsSinceEpoch,
-        });
-        for (final requirement in item.requirements) {
-          await db.insert(inputRequirementsTable, {
-            'id': requirement.id,
-            'action_item_id': requirement.actionItemId,
-            'label': requirement.label,
-            'field_type': requirement.fieldType.name,
-            'value': requirement.value,
-            'is_required': requirement.isRequired ? 1 : 0,
-            'hint': requirement.hint,
-          });
-        }
-      }
-    }
+    _queueMilestones(batch, track.milestones);
+    await batch.commit(noResult: true);
   }
 
   Future<void> _replaceMilestones(
@@ -310,40 +278,9 @@ class LifeTrackLocalDataSource {
       where: 'track_id = ?',
       whereArgs: [trackId],
     );
-    for (final milestone in milestones) {
-      await db.insert(milestonesTable, {
-        'id': milestone.id,
-        'track_id': milestone.trackId,
-        'name': milestone.name,
-        'objective': milestone.objective,
-        'sort_order': milestone.sortOrder,
-        'status': milestone.status.name,
-      });
-      for (final item in milestone.actionItems) {
-        await db.insert(actionItemsTable, {
-          'id': item.id,
-          'milestone_id': item.milestoneId,
-          'summary': item.summary,
-          'description': item.description,
-          'status': item.status.name,
-          'due_date': item.dueDate?.millisecondsSinceEpoch,
-          'notes': item.notes,
-          'created_at': item.createdAt.millisecondsSinceEpoch,
-          'updated_at': item.updatedAt.millisecondsSinceEpoch,
-        });
-        for (final requirement in item.requirements) {
-          await db.insert(inputRequirementsTable, {
-            'id': requirement.id,
-            'action_item_id': requirement.actionItemId,
-            'label': requirement.label,
-            'field_type': requirement.fieldType.name,
-            'value': requirement.value,
-            'is_required': requirement.isRequired ? 1 : 0,
-            'hint': requirement.hint,
-          });
-        }
-      }
-    }
+    final batch = db.batch();
+    _queueMilestones(batch, milestones);
+    await batch.commit(noResult: true);
   }
 
   Future<void> _replaceActionItems(
@@ -356,30 +293,9 @@ class LifeTrackLocalDataSource {
       where: 'milestone_id = ?',
       whereArgs: [milestoneId],
     );
-    for (final item in items) {
-      await db.insert(actionItemsTable, {
-        'id': item.id,
-        'milestone_id': item.milestoneId,
-        'summary': item.summary,
-        'description': item.description,
-        'status': item.status.name,
-        'due_date': item.dueDate?.millisecondsSinceEpoch,
-        'notes': item.notes,
-        'created_at': item.createdAt.millisecondsSinceEpoch,
-        'updated_at': item.updatedAt.millisecondsSinceEpoch,
-      });
-      for (final requirement in item.requirements) {
-        await db.insert(inputRequirementsTable, {
-          'id': requirement.id,
-          'action_item_id': requirement.actionItemId,
-          'label': requirement.label,
-          'field_type': requirement.fieldType.name,
-          'value': requirement.value,
-          'is_required': requirement.isRequired ? 1 : 0,
-          'hint': requirement.hint,
-        });
-      }
-    }
+    final batch = db.batch();
+    _queueActionItems(batch, items);
+    await batch.commit(noResult: true);
   }
 
   Future<void> _replaceRequirements(
@@ -392,8 +308,45 @@ class LifeTrackLocalDataSource {
       where: 'action_item_id = ?',
       whereArgs: [actionItemId],
     );
+    final batch = db.batch();
+    _queueRequirements(batch, requirements);
+    await batch.commit(noResult: true);
+  }
+
+  void _queueMilestones(Batch batch, List<Milestone> milestones) {
+    for (final milestone in milestones) {
+      batch.insert(milestonesTable, {
+        'id': milestone.id,
+        'track_id': milestone.trackId,
+        'name': milestone.name,
+        'objective': milestone.objective,
+        'sort_order': milestone.sortOrder,
+        'status': milestone.status.name,
+      });
+      _queueActionItems(batch, milestone.actionItems);
+    }
+  }
+
+  void _queueActionItems(Batch batch, List<ActionItem> items) {
+    for (final item in items) {
+      batch.insert(actionItemsTable, {
+        'id': item.id,
+        'milestone_id': item.milestoneId,
+        'summary': item.summary,
+        'description': item.description,
+        'status': item.status.name,
+        'due_date': item.dueDate?.millisecondsSinceEpoch,
+        'notes': item.notes,
+        'created_at': item.createdAt.millisecondsSinceEpoch,
+        'updated_at': item.updatedAt.millisecondsSinceEpoch,
+      });
+      _queueRequirements(batch, item.requirements);
+    }
+  }
+
+  void _queueRequirements(Batch batch, List<InputRequirement> requirements) {
     for (final requirement in requirements) {
-      await db.insert(inputRequirementsTable, {
+      batch.insert(inputRequirementsTable, {
         'id': requirement.id,
         'action_item_id': requirement.actionItemId,
         'label': requirement.label,
