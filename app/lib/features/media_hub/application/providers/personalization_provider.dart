@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../iptv/application/providers/iptv_providers.dart'
+import "package:feature_iptv/feature_iptv.dart"
     show sharedPreferencesProvider;
 import '../../domain/models/personalization_state.dart';
 import '../../domain/models/unified_media_content.dart';

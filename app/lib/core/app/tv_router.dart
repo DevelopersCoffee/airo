@@ -8,7 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../features/auth/screens/login_screen.dart';
-import '../../features/iptv/presentation/screens/iptv_screen.dart';
+import "package:feature_iptv/feature_iptv.dart";
 import '../auth/auth_service.dart';
 import '../routing/route_names.dart';
 import 'tv_shell.dart';

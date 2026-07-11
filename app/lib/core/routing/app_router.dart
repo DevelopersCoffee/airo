@@ -6,7 +6,7 @@ import '../../features/agent_chat/presentation/screens/chat_screen.dart';
 import '../../features/agent_chat/presentation/screens/model_library_screen.dart';
 import '../../features/agent_chat/presentation/screens/notifications_screen.dart';
 import '../../features/agent_chat/presentation/screens/profile_screen.dart';
-import '../../features/iptv/presentation/screens/iptv_screen.dart';
+import "package:feature_iptv/feature_iptv.dart";
 import '../../features/games/presentation/screens/games_hub_screen.dart';
 import '../../features/mind/presentation/screens/mind_screen.dart';
 import '../../features/money/presentation/screens/money_overview_screen.dart';

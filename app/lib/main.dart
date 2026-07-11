@@ -9,7 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'core/app/airo_app.dart';
 import 'core/auth/auth_service.dart';
 import 'core/error/global_error_handler.dart';
-import 'features/iptv/application/providers/iptv_providers.dart';
+import "package:feature_iptv/feature_iptv.dart";
 import 'features/music/application/providers/beats_audio_provider.dart';
 import 'firebase_options.dart';
 

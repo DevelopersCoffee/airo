@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../music/presentation/screens/music_screen.dart';
-import '../../../iptv/presentation/screens/iptv_screen.dart';
-import '../../../iptv/application/providers/iptv_providers.dart';
+import "package:feature_iptv/feature_iptv.dart";
+import "package:platform_channels/platform_channels.dart";
 
 /// Live mode enum for toggling between Music and TV
 enum LiveMode { music, tv }

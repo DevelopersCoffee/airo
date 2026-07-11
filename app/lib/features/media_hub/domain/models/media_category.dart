@@ -1,4 +1,4 @@
-import '../../../iptv/domain/models/iptv_channel.dart';
+import "package:platform_channels/platform_channels.dart";
 
 enum MediaCategory {
   all,
