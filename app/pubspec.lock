@@ -538,6 +538,13 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.3.3"
+  feature_iptv:
+    dependency: "direct main"
+    description:
+      path: "../packages/feature_iptv"
+      relative: true
+    source: path
+    version: "0.0.1"
   ffi:
     dependency: transitive
     description:
@@ -1520,6 +1527,41 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.1.6"
+  platform_channels:
+    dependency: "direct main"
+    description:
+      path: "../packages/platform_channels"
+      relative: true
+    source: path
+    version: "0.0.1"
+  platform_history:
+    dependency: "direct main"
+    description:
+      path: "../packages/platform_history"
+      relative: true
+    source: path
+    version: "0.0.1"
+  platform_media:
+    dependency: "direct main"
+    description:
+      path: "../packages/platform_media"
+      relative: true
+    source: path
+    version: "0.0.1"
+  platform_player:
+    dependency: "direct main"
+    description:
+      path: "../packages/platform_player"
+      relative: true
+    source: path
+    version: "0.0.1"
+  platform_streams:
+    dependency: "direct main"
+    description:
+      path: "../packages/platform_streams"
+      relative: true
+    source: path
+    version: "0.0.1"
   plugin_platform_interface:
     dependency: transitive
     description:

@@ -2,7 +2,7 @@ import 'package:core_ai/core_ai.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../../iptv/application/providers/iptv_providers.dart'
+import "package:feature_iptv/feature_iptv.dart"
     show sharedPreferencesProvider;
 import 'ai_model_management.dart';
 
