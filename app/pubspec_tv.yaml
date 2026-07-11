@@ -80,7 +80,7 @@ dependencies:
 
   # UI
   cupertino_icons: ^1.0.9
-  equatable: 2.0.8
+  equatable: ^2.1.0
   cached_network_image: 3.4.1
 
   # TV-specific
