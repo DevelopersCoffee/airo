@@ -64,6 +64,11 @@ class RuleBasedAgentSkillModelClient implements AgentSkillModelClient {
     }
 
     final lower = prompt.toLowerCase();
+    if (_wantsLifeTrackStatus(lower) &&
+        enabledSkills.any((skill) => skill.id == 'query-lifetrack-status')) {
+      return 'query-lifetrack-status';
+    }
+
     final wantsCalendar =
         lower.contains('calendar') ||
         lower.contains('meeting') ||
@@ -90,6 +95,13 @@ class RuleBasedAgentSkillModelClient implements AgentSkillModelClient {
   }) async {
     if (skill.id == 'schedule-notification') {
       return _nextScheduleNotificationAction(
+        prompt: prompt,
+        toolResults: toolResults,
+      );
+    }
+
+    if (skill.id == 'query-lifetrack-status') {
+      return _nextLifeTrackStatusAction(
         prompt: prompt,
         toolResults: toolResults,
       );
@@ -241,6 +253,44 @@ class RuleBasedAgentSkillModelClient implements AgentSkillModelClient {
       message: _withCalendarPrompt(message),
       pendingCalendarEvent: pendingCalendarEvent,
     );
+  }
+
+  SkillModelAction _nextLifeTrackStatusAction({
+    required String prompt,
+    required List<Map<String, dynamic>> toolResults,
+  }) {
+    final statusResult = toolResults.cast<Map<String, dynamic>?>().firstWhere(
+      (result) => result?['tool'] == 'query_lifetrack_status',
+      orElse: () => null,
+    );
+    if (statusResult == null) {
+      return SkillModelAction.toolCall(
+        tool: 'query_lifetrack_status',
+        arguments: {'query': prompt},
+      );
+    }
+
+    final result = statusResult['result'] as Map<String, dynamic>? ?? const {};
+    return SkillModelAction.finalAnswer(
+      result['markdown'] as String? ??
+          'I could not read LifeTrack status from local data.',
+    );
+  }
+
+  bool _wantsLifeTrackStatus(String lowerPrompt) {
+    final mentionsLifeTrack =
+        lowerPrompt.contains('lifetrack') ||
+        lowerPrompt.contains('life track') ||
+        lowerPrompt.contains('track') ||
+        lowerPrompt.contains('goal');
+    final asksStatus =
+        lowerPrompt.contains('pending') ||
+        lowerPrompt.contains('status') ||
+        lowerPrompt.contains('progress') ||
+        lowerPrompt.contains('document') ||
+        lowerPrompt.contains('documents') ||
+        lowerPrompt.contains('need');
+    return mentionsLifeTrack && asksStatus;
   }
 }
 

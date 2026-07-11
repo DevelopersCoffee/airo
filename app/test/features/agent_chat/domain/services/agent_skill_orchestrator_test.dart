@@ -1,11 +1,13 @@
 import 'package:airo_app/features/agent_chat/data/connectors/calendar_connector.dart';
 import 'package:airo_app/features/agent_chat/data/connectors/date_time_connector.dart';
+import 'package:airo_app/features/agent_chat/data/connectors/life_track_status_connector.dart';
 import 'package:airo_app/features/agent_chat/data/connectors/notification_connector.dart';
 import 'package:airo_app/features/agent_chat/data/connectors/route_connector.dart';
 import 'package:airo_app/features/agent_chat/domain/models/agent_skill.dart';
 import 'package:airo_app/features/agent_chat/domain/services/agent_connector_registry.dart';
 import 'package:airo_app/features/agent_chat/domain/services/agent_skill_orchestrator.dart';
 import 'package:airo_app/features/agent_chat/domain/services/agent_skill_registry.dart';
+import 'package:core_domain/core_domain.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -81,6 +83,43 @@ void main() {
       expect(result.message, contains('Team standup'));
       expect(result.message, contains('10:00'));
     });
+
+    test(
+      'answers LifeTrack status questions through deterministic local tool',
+      () async {
+        final repository = _FakeLifeTrackRepository([
+          _track(
+            title: 'Flat purchase',
+            milestones: [
+              _milestone(
+                name: 'Documents',
+                items: [
+                  _item(summary: 'Upload sale agreement'),
+                  _item(summary: 'Pay booking amount', status: ItemStatus.done),
+                ],
+              ),
+            ],
+          ),
+        ]);
+        final orchestrator = _buildOrchestrator(
+          lifeTrackRepository: repository,
+        );
+
+        final result = await orchestrator.run(
+          'What is pending on my flat track?',
+        );
+
+        expect(result.handled, true);
+        expect(result.isError, false);
+        expect(result.message, contains('LifeTrack status for Flat purchase'));
+        expect(result.message, contains('Upload sale agreement'));
+        expect(result.message, isNot(contains('Pay booking amount')));
+        expect(
+          result.traces.map((trace) => trace.detail),
+          containsAll(['query-lifetrack-status', 'query_lifetrack_status']),
+        );
+      },
+    );
 
     test('schedules a daily notification reminder', () async {
       final notificationScheduler = InMemoryNotificationScheduler(
@@ -422,6 +461,7 @@ AgentSkillOrchestrator _buildOrchestrator({
   InMemoryNotificationScheduler? notificationScheduler,
   AgentSkillModelClient? modelClient,
   List<AgentSkill>? skills,
+  LifeTrackRepository? lifeTrackRepository,
   bool useFallbackModelClient = true,
   int maxSteps = 4,
 }) {
@@ -435,6 +475,8 @@ AgentSkillOrchestrator _buildOrchestrator({
         ScheduleNotificationConnector(
           scheduler: notificationScheduler ?? InMemoryNotificationScheduler(),
         ),
+        if (lifeTrackRepository != null)
+          LifeTrackStatusConnector(repository: lifeTrackRepository),
         RouteConnector(),
       ],
     ),
@@ -442,6 +484,106 @@ AgentSkillOrchestrator _buildOrchestrator({
     useFallbackModelClient: useFallbackModelClient,
     maxSteps: maxSteps,
   );
+}
+
+LifeTrack _track({
+  required String title,
+  LifeTrackCategory category = LifeTrackCategory.realEstate,
+  TrackStatus status = TrackStatus.active,
+  List<Milestone>? milestones,
+}) {
+  final id =
+      'track-${title.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '-').replaceAll(RegExp(r'^-+|-+$'), '')}';
+  return LifeTrack(
+    id: id,
+    title: title,
+    category: category,
+    status: status,
+    milestones:
+        milestones ??
+        [
+          _milestone(
+            name: 'Next steps',
+            items: [_item(summary: 'Confirm documents')],
+          ),
+        ],
+    createdAt: DateTime.utc(2026, 7, 1),
+    updatedAt: DateTime.utc(2026, 7, 2),
+  );
+}
+
+Milestone _milestone({required String name, required List<ActionItem> items}) {
+  return Milestone(
+    id: 'milestone-${name.toLowerCase().replaceAll(' ', '-')}',
+    trackId: 'track-id',
+    name: name,
+    objective: '',
+    sortOrder: 0,
+    status: ItemStatus.todo,
+    actionItems: items,
+  );
+}
+
+ActionItem _item({
+  required String summary,
+  ItemStatus status = ItemStatus.todo,
+}) {
+  return ActionItem(
+    id: 'item-${summary.toLowerCase().replaceAll(' ', '-')}',
+    milestoneId: 'milestone-id',
+    summary: summary,
+    status: status,
+    requirements: const [],
+    createdAt: DateTime.utc(2026, 7, 1),
+    updatedAt: DateTime.utc(2026, 7, 2),
+  );
+}
+
+class _FakeLifeTrackRepository implements LifeTrackRepository {
+  _FakeLifeTrackRepository(this.tracks);
+
+  final List<LifeTrack> tracks;
+
+  @override
+  Future<Result<List<LifeTrack>>> listTracks({TrackStatus? status}) async => Ok(
+    tracks.where((track) => status == null || track.status == status).toList(),
+  );
+
+  @override
+  Future<Result<LifeTrack>> createTrack(LifeTrack track) async => Ok(track);
+
+  @override
+  Future<Result<void>> deleteTrack(String id) async => const Ok(null);
+
+  @override
+  Future<Result<LifeTrack>> getTrack(String id) async => Ok(tracks.first);
+
+  @override
+  Future<Result<void>> saveInputValue(
+    String requirementId,
+    String value,
+  ) async => const Ok(null);
+
+  @override
+  Future<Result<void>> updateActionItem(ActionItem item) async =>
+      const Ok(null);
+
+  @override
+  Future<Result<void>> updateItemStatus(
+    String itemId,
+    ItemStatus status,
+  ) async => const Ok(null);
+
+  @override
+  Future<Result<void>> updateMilestone(Milestone milestone) async =>
+      const Ok(null);
+
+  @override
+  Future<Result<void>> updateTrack(LifeTrack track) async => const Ok(null);
+
+  @override
+  Stream<List<LifeTrack>> watchTracks({TrackStatus? status}) =>
+      Stream.value(tracks);
 }
 
 class _UnsupportedToolModelClient implements AgentSkillModelClient {

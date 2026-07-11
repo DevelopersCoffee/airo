@@ -4,6 +4,7 @@ enum SkillCapability {
   calendarRead('calendar.read', 'Calendar read'),
   calendarWrite('calendar.write', 'Calendar write'),
   notificationsSchedule('notifications.schedule', 'Notifications'),
+  lifeTrackRead('lifetrack.read', 'LifeTrack read'),
   locationRead('location.read', 'Location read'),
   webFetch('web.fetch', 'Web fetch'),
   routeOpen('route.open', 'Open route');
