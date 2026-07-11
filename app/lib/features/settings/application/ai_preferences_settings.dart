@@ -2,8 +2,8 @@ import 'package:core_ai/core_ai.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import "package:feature_iptv/feature_iptv.dart"
-    show sharedPreferencesProvider;
+import 'package:feature_iptv/feature_iptv.dart' show sharedPreferencesProvider;
+import 'ai_storage_dashboard.dart';
 import 'ai_model_management.dart';
 
 enum AIAccelerationPreference {
@@ -77,11 +77,6 @@ final aiPreferencesSettingsProvider =
       },
     );
 
-final aiModelStorageUsageBytesProvider = FutureProvider<int>((ref) async {
-  final service = ref.watch(modelDownloadServiceProvider);
-  return service.getStorageUsed();
-});
-
 class AIPreferencesSettingsNotifier
     extends StateNotifier<AIPreferencesSettings> {
   AIPreferencesSettingsNotifier(this._ref)
@@ -141,7 +136,7 @@ class AIPreferencesSettingsNotifier
     final deleted = await manager.cleanupOrphanedFiles(
       ModelCatalog.bundledModels,
     );
-    _ref.invalidate(aiModelStorageUsageBytesProvider);
+    _ref.invalidate(aiStorageDashboardProvider);
     return deleted.length;
   }
 

@@ -611,6 +611,11 @@ test-ui-responsive: ## Run shared responsive UI validation tests
 	@cd $(APP_DIR) && rm -rf windows/flutter/ephemeral/.plugin_symlinks ios/Flutter/ephemeral/Packages/.packages macos/Flutter/ephemeral/Packages/.packages
 	@cd $(APP_DIR) && flutter test test/shared/widgets/adaptive_layout_test.dart
 
+.PHONY: test-storage-dashboard
+test-storage-dashboard: ## Run deterministic storage dashboard validation tests
+	@echo "$(BLUE)Running storage dashboard validation tests...$(NC)"
+	@cd $(APP_DIR) && flutter test test/features/settings/application/ai_storage_dashboard_test.dart
+
 .PHONY: benchmark-report
 benchmark-report: ## Create a release benchmark report template
 	@./scripts/create-performance-benchmark-report.sh
