@@ -344,7 +344,10 @@ test-database-reliability: ## Run deterministic native database reliability vali
 .PHONY: test-notification-validation
 test-notification-validation: ## Run deterministic notification validation suite
 	@echo "$(BLUE)Running notification validation suite...$(NC)"
-	@cd $(APP_DIR) && flutter test test/features/agent_chat/data/services/agent_notification_scheduler_test.dart
+	@cd $(APP_DIR) && flutter test \
+		test/features/agent_chat/data/services/agent_notification_scheduler_test.dart \
+		test/features/agent_chat/data/services/notification_navigation_service_test.dart \
+		test/features/agent_chat/presentation/screens/notifications_screen_test.dart
 	@echo "$(GREEN)Notification validation complete.$(NC)"
 	@echo "$(YELLOW)See docs/release/NOTIFICATION_VALIDATION.md for scope and follow-up.$(NC)"
 

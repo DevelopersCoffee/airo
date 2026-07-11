@@ -21,6 +21,12 @@ This command currently covers:
   - stable notification payload generation for deep-link metadata
   - completion bookkeeping for reminders that repeat until done
   - persistence recovery and scheduled ordering
+- `app/test/features/agent_chat/data/services/notification_navigation_service_test.dart`
+  - payload-to-route resolution for explicit deep links
+  - fallback routing for category-only payloads
+  - launch-payload and live-tap navigation handling
+- `app/test/features/agent_chat/presentation/screens/notifications_screen_test.dart`
+  - route-state filtering for category-specific notification views
 
 ## Host-Runnable Acceptance
 
@@ -30,6 +36,8 @@ The automated portion passes when:
 - scheduling the same reminder twice results in one stored reminder and one
   platform scheduling call
 - the emitted notification payload preserves the intended deep-link context
+- notification taps can be resolved into an in-app route deterministically
+- category-specific routes land on the intended notification screen state
 - completion awards points once and cancels the follow-up notification when the
   policy is `daily_until_done`
 - stored reminders reload in chronological order from persistence

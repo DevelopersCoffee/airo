@@ -4,9 +4,10 @@ import 'package:go_router/go_router.dart';
 import '../../data/services/agent_notification_scheduler.dart';
 
 class NotificationsScreen extends StatefulWidget {
-  const NotificationsScreen({super.key, this._scheduler});
+  const NotificationsScreen({super.key, this.scheduler, this.initialCategory});
 
-  final AgentNotificationSchedulingService? _scheduler;
+  final AgentNotificationSchedulingService? scheduler;
+  final String? initialCategory;
 
   @override
   State<NotificationsScreen> createState() => _NotificationsScreenState();
@@ -19,7 +20,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   @override
   void initState() {
     super.initState();
-    _scheduler = widget._scheduler ?? LocalAgentNotificationScheduler.instance;
+    _scheduler = widget.scheduler ?? LocalAgentNotificationScheduler.instance;
     _notificationsFuture = _scheduler.getScheduledNotifications();
   }
 
@@ -28,7 +29,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     return FutureBuilder<List<ScheduledAgentNotification>>(
       future: _notificationsFuture,
       builder: (context, snapshot) {
-        final notifications = snapshot.data ?? const [];
+        final notifications = _filteredNotifications(snapshot.data ?? const []);
         return Scaffold(
           appBar: AppBar(
             leading: IconButton(
@@ -42,7 +43,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               children: [
                 const Icon(Icons.notifications_none, size: 20),
                 const SizedBox(width: 8),
-                Text('Notifications (${notifications.length})'),
+                Text(_titleFor(notifications.length)),
               ],
             ),
           ),
@@ -110,6 +111,26 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       queryParameters: prompt.isEmpty ? null : {'prefill': prompt},
     );
     context.push(uri.toString());
+  }
+
+  List<ScheduledAgentNotification> _filteredNotifications(
+    List<ScheduledAgentNotification> notifications,
+  ) {
+    final category = widget.initialCategory?.trim();
+    if (category == null || category.isEmpty) {
+      return notifications;
+    }
+    return notifications
+        .where((notification) => notification.category == category)
+        .toList();
+  }
+
+  String _titleFor(int count) {
+    final category = widget.initialCategory?.trim();
+    if (category == null || category.isEmpty) {
+      return 'Notifications ($count)';
+    }
+    return '${_categoryLabel(category)} Notifications ($count)';
   }
 }
 
@@ -230,6 +251,8 @@ String _categoryLabel(String category) {
     'billing' => 'Bills',
     'family' => 'Family',
     'habit' => 'Habit',
+    'downloads' => 'Downloads',
+    'recording' => 'Recording',
     _ => 'Reminder',
   };
 }

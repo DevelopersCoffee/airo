@@ -166,7 +166,9 @@ class AppRouter {
                   GoRoute(
                     path: 'notifications',
                     name: 'agent_notifications',
-                    builder: (context, state) => const NotificationsScreen(),
+                    builder: (context, state) => NotificationsScreen(
+                      initialCategory: state.uri.queryParameters['category'],
+                    ),
                   ),
                   GoRoute(
                     path: 'profile',

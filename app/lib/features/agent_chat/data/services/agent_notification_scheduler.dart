@@ -169,12 +169,22 @@ abstract interface class AgentNotificationSchedulingService {
   Future<ScheduledAgentNotification?> markNotificationComplete(int id);
 }
 
+abstract interface class AgentNotificationRuntimeService {
+  Future<void> initialize({
+    void Function(String payload)? onNotificationPayload,
+  });
+
+  Future<String?> getLaunchPayload();
+}
+
 class NotificationPermissionDeniedException implements Exception {
   const NotificationPermissionDeniedException();
 }
 
 class LocalAgentNotificationScheduler
-    implements AgentNotificationSchedulingService {
+    implements
+        AgentNotificationSchedulingService,
+        AgentNotificationRuntimeService {
   LocalAgentNotificationScheduler({
     FlutterLocalNotificationsPlugin? notificationsPlugin,
     SharedPreferencesAsync? preferences,
@@ -198,9 +208,35 @@ class LocalAgentNotificationScheduler
   SharedPreferencesAsync? _preferences;
   bool _initialized = false;
   bool _timeZoneInitialized = false;
+  void Function(String payload)? _onNotificationPayload;
 
   SharedPreferencesAsync get _asyncPreferences {
     return _preferences ??= SharedPreferencesAsync();
+  }
+
+  @override
+  Future<void> initialize({
+    void Function(String payload)? onNotificationPayload,
+  }) async {
+    if (onNotificationPayload != null) {
+      _onNotificationPayload = onNotificationPayload;
+    }
+    await _ensureInitialized();
+  }
+
+  @override
+  Future<String?> getLaunchPayload() async {
+    await _ensureInitialized();
+    final details = await _notificationsPlugin
+        .getNotificationAppLaunchDetails();
+    if (details == null || !details.didNotificationLaunchApp) {
+      return null;
+    }
+    final payload = details.notificationResponse?.payload;
+    if (payload == null || payload.trim().isEmpty) {
+      return null;
+    }
+    return payload;
   }
 
   @override
@@ -363,7 +399,16 @@ class LocalAgentNotificationScheduler
       android: androidSettings,
       iOS: iosSettings,
     );
-    await _notificationsPlugin.initialize(settings: settings);
+    await _notificationsPlugin.initialize(
+      settings: settings,
+      onDidReceiveNotificationResponse: (response) {
+        final payload = response.payload;
+        if (payload == null || payload.trim().isEmpty) {
+          return;
+        }
+        _onNotificationPayload?.call(payload);
+      },
+    );
     _initialized = true;
   }
 
