@@ -8,6 +8,10 @@ import 'memory_severity.dart';
 /// Uses platform channels to retrieve native device information on Android/iOS.
 /// Provides fallback values for web and unsupported platforms.
 class DeviceCapabilityService {
+  static const String _bindingInitializationErrorSnippet =
+      'Binding has not yet been initialized';
+  static const String _binaryMessengerInitializationErrorSnippet =
+      'defaultBinaryMessenger was accessed before the binding was initialized';
   static final DeviceCapabilityService _instance =
       DeviceCapabilityService._internal();
 
@@ -58,7 +62,9 @@ class DeviceCapabilityService {
       _lastMemoryCheck = DateTime.now();
       return _cachedMemoryInfo!;
     } catch (e) {
-      debugPrint('Error getting memory info: $e');
+      if (!shouldSuppressPlatformChannelErrorLog(e)) {
+        debugPrint('Error getting memory info: $e');
+      }
       // Return unknown memory info on error
       return MemoryInfo.unknown();
     }
@@ -85,9 +91,18 @@ class DeviceCapabilityService {
         supportsOnDeviceAI: result['supportsGeminiNano'] as bool? ?? false,
       );
     } catch (e) {
-      debugPrint('Error getting device info: $e');
+      if (!shouldSuppressPlatformChannelErrorLog(e)) {
+        debugPrint('Error getting device info: $e');
+      }
       return DeviceInfo.unknown();
     }
+  }
+
+  @visibleForTesting
+  static bool shouldSuppressPlatformChannelErrorLog(Object error) {
+    final message = '$error';
+    return message.contains(_bindingInitializationErrorSnippet) ||
+        message.contains(_binaryMessengerInitializationErrorSnippet);
   }
 
   /// Clears the cached memory info.
