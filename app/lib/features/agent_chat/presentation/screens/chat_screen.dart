@@ -84,20 +84,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       LifeTrackLocalDataSource();
   late final LifeTrackRepositoryImpl _lifeTrackRepository =
       LifeTrackRepositoryImpl(localDataSource: _lifeTrackDataSource);
-  final AgentConnectorRegistry _connectorRegistry = AgentConnectorRegistry(
-    connectors: [
-      DateTimeConnector(),
-      NativeCalendarPermissionConnector(),
-      NativeCalendarConnector(),
-      NativeCreateCalendarEventConnector(),
-      ScheduleNotificationConnector(),
-      LifeTrackStatusConnector(
-        repository: _lifeTrackRepository,
-        ensureInitialized: _lifeTrackDataSource.initialize,
-      ),
-      RouteConnector(),
-    ],
-  );
+  late final AgentConnectorRegistry _connectorRegistry;
   final GeminiNanoService _geminiNano = GeminiNanoService();
   final LiteRtLmService _liteRtLm = LiteRtLmService();
   late final AssistantRuntimeService _assistantRuntime;
@@ -113,6 +100,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   void initState() {
     super.initState();
     _messageController = TextEditingController(text: widget.initialDraft ?? '');
+    _connectorRegistry = _buildConnectorRegistry();
     _moveComposerCursorToEnd();
     _assistantRuntime =
         widget.assistantRuntimeService ??
@@ -147,6 +135,23 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       _initializeAI();
     }
     unawaited(_lifeTrackDataSource.initialize());
+  }
+
+  AgentConnectorRegistry _buildConnectorRegistry() {
+    return AgentConnectorRegistry(
+      connectors: [
+        DateTimeConnector(),
+        NativeCalendarPermissionConnector(),
+        NativeCalendarConnector(),
+        NativeCreateCalendarEventConnector(),
+        ScheduleNotificationConnector(),
+        LifeTrackStatusConnector(
+          repository: _lifeTrackRepository,
+          ensureInitialized: _lifeTrackDataSource.initialize,
+        ),
+        RouteConnector(),
+      ],
+    );
   }
 
   AgentSkillOrchestrator _buildSkillOrchestrator(AgentSkillRegistry registry) {
