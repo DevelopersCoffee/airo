@@ -3,6 +3,7 @@ import 'package:airo_app/features/agent_chat/domain/models/agent_skill.dart';
 import 'package:airo_app/features/agent_chat/domain/models/assistant_runtime_ids.dart';
 import 'package:airo_app/features/agent_chat/domain/models/chat_response_metadata.dart';
 import 'package:airo_app/features/agent_chat/presentation/screens/chat_screen.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -176,6 +177,55 @@ void main() {
       find.byKey(const Key('agent_chat_input')),
     );
     expect(input.controller?.text, 'Follow up on my reminder');
+  });
+
+  testWidgets('message actions copy assistant and user messages', (
+    tester,
+  ) async {
+    await _pumpChatScreen(
+      tester,
+      initialMessages: [
+        ChatMessage(text: 'Assistant answer', isUser: false),
+        ChatMessage(text: 'User prompt', isUser: true),
+      ],
+    );
+
+    await tester.tap(
+      find.byKey(const ValueKey('agent_chat_message_actions_0')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Copy message'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Message copied'), findsOneWidget);
+    expect(
+      (await Clipboard.getData('text/plain'))?.text,
+      equals('Assistant answer'),
+    );
+
+    await tester.tap(
+      find.byKey(const ValueKey('agent_chat_message_actions_1')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Copy message'));
+    await tester.pumpAndSettle();
+
+    expect(
+      (await Clipboard.getData('text/plain'))?.text,
+      equals('User prompt'),
+    );
+  });
+
+  testWidgets('empty streaming placeholder hides copy action', (tester) async {
+    await _pumpChatScreen(
+      tester,
+      initialMessages: [ChatMessage(text: '', isUser: false)],
+    );
+
+    expect(
+      find.byKey(const ValueKey('agent_chat_message_actions_0')),
+      findsNothing,
+    );
   });
 }
 

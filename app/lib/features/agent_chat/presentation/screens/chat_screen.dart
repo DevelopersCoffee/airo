@@ -286,7 +286,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   }
 
                   final message = _messages[index];
-                  return _buildMessage(message);
+                  return _buildMessage(message, index);
                 },
               ),
             ),
@@ -487,11 +487,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     return true;
   }
 
-  Widget _buildMessage(ChatMessage message) {
+  Widget _buildMessage(ChatMessage message, int index) {
     final colorScheme = Theme.of(context).colorScheme;
     final maxWidth =
         MediaQuery.of(context).size.width *
         (message.traces.isNotEmpty || message.metadata != null ? 0.86 : 0.75);
+    final canCopy = message.text.trim().isNotEmpty;
 
     return Align(
       alignment: message.isUser ? Alignment.centerRight : Alignment.centerLeft,
@@ -514,11 +515,43 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 border: Border.all(color: colorScheme.outlineVariant),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: Text(
-                message.text,
-                style: TextStyle(
-                  color: colorScheme.primary.withValues(alpha: 0.9),
-                ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Text(
+                      message.text,
+                      style: TextStyle(
+                        color: colorScheme.primary.withValues(alpha: 0.9),
+                      ),
+                    ),
+                  ),
+                  if (canCopy) ...[
+                    const SizedBox(width: 8),
+                    PopupMenuButton<_MessageAction>(
+                      key: ValueKey('agent_chat_message_actions_$index'),
+                      tooltip: 'Message actions',
+                      onSelected: (value) {
+                        switch (value) {
+                          case _MessageAction.copy:
+                            _copyMessageText(message.text);
+                        }
+                      },
+                      itemBuilder: (context) => const [
+                        PopupMenuItem<_MessageAction>(
+                          value: _MessageAction.copy,
+                          child: Text('Copy message'),
+                        ),
+                      ],
+                      icon: const Icon(Icons.more_horiz, size: 18),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints.tightFor(
+                        width: 32,
+                        height: 32,
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ),
             if (!message.isUser && message.metadata != null)
@@ -547,6 +580,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _copyMessageText(String text) async {
+    await Clipboard.setData(ClipboardData(text: text));
+    if (!mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Message copied')));
   }
 
   void _sendMessage() async {
@@ -1282,6 +1323,8 @@ class _MetadataRow extends StatelessWidget {
     );
   }
 }
+
+enum _MessageAction { copy }
 
 String _formatDuration(int durationMs) {
   if (durationMs < 1000) {
