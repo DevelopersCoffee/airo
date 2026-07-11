@@ -27,6 +27,18 @@ Technical architecture and design decisions for Airo Super App.
 - CI checks that prevent accidental model bundling
 - APK size investigation workflow
 
+### [MODULAR_SUPER_APP_SPRINT_PLAN.md](./MODULAR_SUPER_APP_SPRINT_PLAN.md)
+**V2 modular architecture plan**:
+- Foundation and business-module separation
+- Platform-specific APK targets
+- Feature registry and package extraction roadmap
+
+### [../release/VERSION_LINES.md](../release/VERSION_LINES.md)
+**V1/V2 release-line classification**:
+- V1 monolithic maintenance line
+- V2 modular foundation line
+- Base branch, tag, and artifact naming policy
+
 ---
 
 ## 🎯 Key Components

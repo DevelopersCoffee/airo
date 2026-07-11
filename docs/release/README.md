@@ -32,6 +32,7 @@ Documentation for Airo releases and version history.
 
 | Document | Description |
 |----------|-------------|
+| [Airo V1 and V2 Version Lines](./VERSION_LINES.md) | Base branch, tag, artifact, and support policy for monolith V1 and modular V2 |
 | [Changelog v1.1.0](./CHANGELOG_v1.1.0.md) | Current version changes |
 | [Release v1.0.0 Summary](./RELEASE_v1.0.0_SUMMARY.md) | Initial release details |
 | [Publishing Guide](./GITHUB_APK_PUBLISHING_GUIDE.md) | How to publish APKs |
@@ -69,4 +70,3 @@ git push origin v1.2.0
 ```
 
 See [Quick Release Guide](./QUICK_RELEASE_GUIDE.md) for detailed instructions.
-
