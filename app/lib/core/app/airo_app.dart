@@ -24,9 +24,11 @@ class _AiroAppState extends ConsumerState<AiroApp> {
       final navigatorKey = AppRouter.router.routerDelegate.navigatorKey;
       GlobalErrorHandler.setNavigatorKey(navigatorKey);
       unawaited(
-        NotificationNavigationService.instance.bind(
-          navigate: AppRouter.router.go,
-        ),
+        NotificationNavigationService.instance
+            .bind(navigate: AppRouter.router.go)
+            .catchError((Object error, StackTrace stackTrace) {
+              debugPrint('Notification navigation unavailable: $error');
+            }),
       );
     });
   }
