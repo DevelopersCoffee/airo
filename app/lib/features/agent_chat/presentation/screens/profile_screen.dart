@@ -14,6 +14,7 @@ import '../../../../core/utils/currency_formatter.dart';
 import '../../../../core/utils/locale_settings.dart';
 import '../../../../shared/widgets/bug_report_dialog.dart';
 import '../../../quotes/presentation/widgets/daily_quote_card.dart';
+import '../../../settings/application/ai_storage_dashboard.dart';
 import '../../../settings/application/ai_preferences_settings.dart';
 import '../../../settings/application/ai_model_management.dart';
 import '../../../settings/presentation/screens/ai_models_screen.dart';
@@ -370,7 +371,7 @@ class _AIPreferencesSection extends ConsumerWidget {
     final theme = Theme.of(context);
     final settings = ref.watch(aiPreferencesSettingsProvider);
     final selectedModel = ref.watch(selectedModelProvider);
-    final storageUsage = ref.watch(aiModelStorageUsageBytesProvider);
+    final storageDashboard = ref.watch(aiStorageDashboardProvider);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -493,13 +494,28 @@ class _AIPreferencesSection extends ConsumerWidget {
                 leading: const Icon(Icons.storage_outlined),
                 title: const Text('Storage'),
                 subtitle: Text(
-                  storageUsage.when(
-                    data: (bytes) => '${_formatBytes(bytes)} used',
+                  storageDashboard.when(
+                    data: (summary) =>
+                        '${_formatBytes(summary.totalUsedBytes)} used',
                     loading: () => 'Checking storage usage',
                     error: (_, _) => 'Storage usage unavailable',
                   ),
                 ),
                 children: [
+                  ...storageDashboard.maybeWhen(
+                    data: (summary) => summary.categories.map(
+                      (category) => ListTile(
+                        dense: true,
+                        title: Text(category.label),
+                        trailing: Text(
+                          category.available
+                              ? _formatBytes(category.bytes)
+                              : 'Unavailable',
+                        ),
+                      ),
+                    ),
+                    orElse: () => const <Widget>[],
+                  ),
                   _SettingDropdownRow<AIDownloadLocationPreference>(
                     label: 'Download Location',
                     value: settings.downloadLocation,
