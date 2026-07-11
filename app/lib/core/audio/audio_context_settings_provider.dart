@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../features/iptv/application/providers/iptv_providers.dart'
+import 'package:feature_iptv/feature_iptv.dart'
     show sharedPreferencesProvider;
 import 'audio_context_manager.dart';
 import 'audio_context_settings.dart';

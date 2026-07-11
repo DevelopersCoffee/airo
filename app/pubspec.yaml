@@ -111,6 +111,18 @@ dependencies:
   screenshot: 3.0.0
   flutter_image_compress: 2.4.0
   pdfx: ^2.9.2
+  feature_iptv:
+    path: ../packages/feature_iptv
+  platform_channels:
+    path: ../packages/platform_channels
+  platform_player:
+    path: ../packages/platform_player
+  platform_media:
+    path: ../packages/platform_media
+  platform_history:
+    path: ../packages/platform_history
+  platform_streams:
+    path: ../packages/platform_streams
 
 dev_dependencies:
   flutter_test:

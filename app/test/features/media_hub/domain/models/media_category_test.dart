@@ -1,4 +1,5 @@
-import 'package:airo_app/features/iptv/domain/models/iptv_channel.dart';
+import "package:feature_iptv/feature_iptv.dart";
+import "package:platform_channels/platform_channels.dart";
 import 'package:airo_app/features/media_hub/domain/models/media_category.dart';
 import 'package:flutter_test/flutter_test.dart';
 

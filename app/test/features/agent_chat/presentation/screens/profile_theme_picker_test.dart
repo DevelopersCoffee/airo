@@ -1,6 +1,7 @@
 import 'package:airo_app/core/providers/app_theme_provider.dart';
 import 'package:airo_app/features/agent_chat/presentation/screens/profile_screen.dart';
-import 'package:airo_app/features/iptv/application/providers/iptv_providers.dart';
+import "package:feature_iptv/feature_iptv.dart";
+import "package:platform_channels/platform_channels.dart";
 import 'package:airo_app/features/settings/application/ai_preferences_settings.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
