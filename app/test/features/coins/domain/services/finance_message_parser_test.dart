@@ -41,5 +41,25 @@ void main() {
 
       expect(parser.parse('Can you summarize this note?'), isNull);
     });
+
+    test(
+      'ignores OTP and authentication messages even when they mention money',
+      () {
+        const parser = FinanceMessageParser();
+
+        expect(
+          parser.parse(
+            'OTP 123456 for INR 1.00 card verification at HDFC Bank. Do not share this code.',
+          ),
+          isNull,
+        );
+        expect(
+          parser.parse(
+            'Use one time password 789012 to authenticate UPI payment of Rs. 2000.00.',
+          ),
+          isNull,
+        );
+      },
+    );
   });
 }

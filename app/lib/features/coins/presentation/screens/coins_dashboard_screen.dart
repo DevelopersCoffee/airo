@@ -86,6 +86,9 @@ class CoinsDashboardScreen extends ConsumerWidget {
                   const _QuickAddExpenseCard(),
                   const SizedBox(height: 16),
 
+                  const _AndroidImportPermissionCard(),
+                  const SizedBox(height: 16),
+
                   _TransactionReviewQueueSection(
                     transactions: data.pendingTransactionReviews,
                   ),
@@ -133,6 +136,58 @@ class CoinsDashboardScreen extends ConsumerWidget {
     Navigator.of(
       context,
     ).push(MaterialPageRoute(builder: (_) => const AddExpenseScreen()));
+  }
+}
+
+class _AndroidImportPermissionCard extends StatelessWidget {
+  const _AndroidImportPermissionCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Card(
+      elevation: 0,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.sms_outlined, color: theme.colorScheme.primary),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Android SMS & notification import',
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+                Chip(
+                  label: const Text('Permission disabled'),
+                  visualDensity: VisualDensity.compact,
+                  backgroundColor: theme.colorScheme.surfaceContainerHighest,
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Import bank, UPI, and card alerts only after you enable access. Airo parses locally, ignores OTP/auth messages, and queues matches for review.',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: null,
+              icon: const Icon(Icons.lock_outline),
+              label: const Text('Enable explicitly later'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 

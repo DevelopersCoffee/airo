@@ -37,6 +37,7 @@ class FinanceMessageParser {
 
   ParsedFinanceMessage? parse(String rawText) {
     final normalized = _normalize(rawText);
+    if (_looksSensitiveAuth(normalized)) return null;
     if (!_looksFinancial(normalized)) return null;
 
     final amountCents = _extractAmountCents(normalized);
@@ -72,6 +73,15 @@ class FinanceMessageParser {
       caseSensitive: false,
     ).hasMatch(text);
     return hasAmount && hasTransactionWord;
+  }
+
+  bool _looksSensitiveAuth(String text) {
+    final lower = text.toLowerCase();
+    final hasAuthWord = RegExp(
+      r'\b(otp|one time password|verification code|authenticate|authentication|do not share|password|login)\b',
+    ).hasMatch(lower);
+    final hasShortNumericCode = RegExp(r'\b\d{4,8}\b').hasMatch(lower);
+    return hasAuthWord && hasShortNumericCode;
   }
 
   int? _extractAmountCents(String text) {
