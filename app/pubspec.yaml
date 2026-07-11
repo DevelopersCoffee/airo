@@ -48,10 +48,10 @@ dependencies:
   path_provider: ^2.1.6
 
   # Connectivity
-  connectivity_plus: ^7.1.1
+  connectivity_plus: ^7.2.0
 
   # Networking
-  dio: ^5.9.2
+  dio: ^5.10.0
 
   # Firebase & Authentication
   firebase_core: ^4.11.0
@@ -59,8 +59,8 @@ dependencies:
   google_sign_in: 7.2.0
 
   # Audio & Media
-  audio_service: ^0.18.18  # Latest version with SDK 36 compatibility
-  just_audio: ^0.10.5
+  audio_service: ^0.18.19  # Latest version with SDK 36 compatibility
+  just_audio: ^0.10.6
   flutter_chrome_cast: ^1.4.6
 
   # Utilities
@@ -88,14 +88,14 @@ dependencies:
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.9
-  equatable: 2.0.8
+  equatable: ^2.1.0
   flame: ^1.37.0
   flame_audio: ^2.12.1
   share_plus: ^13.2.0
   url_launcher: 6.3.2
   file_picker: ^12.0.0-beta.7
   flutter_local_notifications: ^22.0.1
-  timezone: ^0.11.0
+  timezone: ^0.11.1
   audioplayers: ^6.7.1
   cached_network_image: 3.4.1
   flutter_tts: 4.2.5
@@ -103,9 +103,9 @@ dependencies:
   stockfish: 1.8.1
   flutter_contacts: ^2.1.0
   permission_handler: ^12.0.3
-  image_picker: ^1.2.2
+  image_picker: ^1.2.3
   google_mlkit_text_recognition: 0.15.1
-  video_player: ^2.11.1
+  video_player: ^2.12.0
   wakelock_plus: ^1.5.2
   package_info_plus: ^10.2.0
   screenshot: 3.0.0
