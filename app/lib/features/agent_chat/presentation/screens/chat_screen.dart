@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:core_data/core_data.dart';
 import 'package:flutter/material.dart' hide Intent;
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -9,7 +8,7 @@ import '../../../../core/dictionary/dictionary.dart';
 import '../../../../core/utils/locale_settings.dart';
 import '../../../agent_chat/data/connectors/calendar_connector.dart';
 import '../../../agent_chat/data/connectors/date_time_connector.dart';
-import '../../../agent_chat/data/connectors/life_track_status_connector.dart';
+import '../../../agent_chat/data/connectors/life_track_status_connector_factory.dart';
 import '../../../agent_chat/data/connectors/notification_connector.dart';
 import '../../../agent_chat/data/connectors/route_connector.dart';
 import '../../../agent_chat/data/services/assistant_chat_context_builder.dart';
@@ -19,6 +18,7 @@ import '../../../agent_chat/application/assistant_model_preferences.dart';
 import '../../../agent_chat/domain/models/agent_skill.dart';
 import '../../../agent_chat/domain/models/assistant_runtime_ids.dart';
 import '../../../agent_chat/domain/models/chat_response_metadata.dart';
+import '../../../agent_chat/domain/services/agent_connector.dart';
 import '../../../agent_chat/domain/services/agent_connector_registry.dart';
 import '../../../agent_chat/domain/services/agent_skill_orchestrator.dart';
 import '../../../agent_chat/domain/services/agent_skill_registry.dart';
@@ -81,10 +81,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   final List<ChatMessage> _messages = [];
   final ToolRegistry _toolRegistry = ToolRegistry();
   AgentSkillRegistry _skillRegistry = AgentSkillRegistry();
-  final LifeTrackLocalDataSource _lifeTrackDataSource =
-      LifeTrackLocalDataSource();
-  late final LifeTrackRepositoryImpl _lifeTrackRepository =
-      LifeTrackRepositoryImpl(localDataSource: _lifeTrackDataSource);
   late final AgentConnectorRegistry _connectorRegistry;
   final GeminiNanoService _geminiNano = GeminiNanoService();
   final LiteRtLmService _liteRtLm = LiteRtLmService();
@@ -135,32 +131,23 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     if (widget.enableAiInitialization) {
       _initializeAI();
     }
-    unawaited(_initializeLifeTrackDataSource());
+    unawaited(initializeLifeTrackStatusConnector());
   }
 
   AgentConnectorRegistry _buildConnectorRegistry() {
-    return AgentConnectorRegistry(
-      connectors: [
-        DateTimeConnector(),
-        NativeCalendarPermissionConnector(),
-        NativeCalendarConnector(),
-        NativeCreateCalendarEventConnector(),
-        ScheduleNotificationConnector(),
-        LifeTrackStatusConnector(
-          repository: _lifeTrackRepository,
-          ensureInitialized: _initializeLifeTrackDataSource,
-        ),
-        RouteConnector(),
-      ],
-    );
-  }
-
-  Future<void> _initializeLifeTrackDataSource() async {
-    try {
-      await _lifeTrackDataSource.initialize();
-    } catch (error) {
-      debugPrint('LifeTrack local data source unavailable: $error');
+    final connectors = <AgentConnector>[
+      DateTimeConnector(),
+      NativeCalendarPermissionConnector(),
+      NativeCalendarConnector(),
+      NativeCreateCalendarEventConnector(),
+      ScheduleNotificationConnector(),
+      RouteConnector(),
+    ];
+    final lifeTrackStatusConnector = createLifeTrackStatusConnector();
+    if (lifeTrackStatusConnector != null) {
+      connectors.add(lifeTrackStatusConnector);
     }
+    return AgentConnectorRegistry(connectors: connectors);
   }
 
   AgentSkillOrchestrator _buildSkillOrchestrator(AgentSkillRegistry registry) {
@@ -267,7 +254,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   @override
   void dispose() {
     _localRuntimePreloader.abortPreload();
-    unawaited(_lifeTrackDataSource.close());
+    unawaited(closeLifeTrackStatusConnector());
     _messageController.dispose();
     super.dispose();
   }
