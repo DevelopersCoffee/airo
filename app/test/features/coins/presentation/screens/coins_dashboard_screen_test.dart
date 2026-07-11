@@ -215,6 +215,31 @@ void main() {
     expect(find.text('Reviewed'), findsOneWidget);
     expect(find.text('Pending Review'), findsOneWidget);
   });
+
+  testWidgets('shows Android import permission education when not enabled', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          dashboardDataProvider.overrideWith(
+            (ref) async => const DashboardData(),
+          ),
+        ],
+        child: const MaterialApp(home: CoinsDashboardScreen()),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('Android SMS & notification import'), findsOneWidget);
+    expect(
+      find.textContaining(
+        'Import bank, UPI, and card alerts only after you enable access',
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('Permission disabled'), findsOneWidget);
+  });
 }
 
 Transaction _pendingImportedTransaction() {

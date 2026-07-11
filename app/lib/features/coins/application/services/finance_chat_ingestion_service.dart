@@ -45,6 +45,7 @@ class FinanceChatIngestionService {
   Future<FinanceChatIngestionResult> ingest(
     String text, {
     required String accountId,
+    List<String> sourceTags = const [],
   }) async {
     final parsed = _parser.parse(text);
     if (parsed == null) {
@@ -72,7 +73,7 @@ class FinanceChatIngestionService {
         categoryId: parsed.categoryId,
         accountId: accountId,
         transactionDate: parsed.transactionDate,
-        tags: _mergeTags(current.tags, parsed, text),
+        tags: _mergeTags(current.tags, parsed, text, sourceTags),
         updatedAt: DateTime.now(),
       );
       final updateResult = await _repository.update(updated);
@@ -102,7 +103,7 @@ class FinanceChatIngestionService {
       categoryId: parsed.categoryId,
       accountId: accountId,
       transactionDate: parsed.transactionDate,
-      tags: _mergeTags(const [], parsed, text),
+      tags: _mergeTags(const [], parsed, text, sourceTags),
       createdAt: now,
     );
     final createResult = await _repository.create(transaction);
@@ -133,9 +134,11 @@ class FinanceChatIngestionService {
     List<String> currentTags,
     ParsedFinanceMessage parsed,
     String rawText,
+    List<String> sourceTags,
   ) {
     return <String>{
       ...currentTags,
+      ...sourceTags,
       'source:chat',
       'source:finance_sms',
       'source:parser:finance_message_parser',

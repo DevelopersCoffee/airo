@@ -81,6 +81,7 @@ export 'application/use_cases/set_budget_use_case.dart' hide Result;
 export 'application/use_cases/update_expense_use_case.dart' hide Result;
 
 // Application - Services
+export 'application/services/android_finance_import_service.dart';
 export 'application/services/coins_notification_service.dart';
 export 'application/services/coins_platform_support.dart';
 export 'application/services/coins_sync_service.dart';

@@ -12,6 +12,8 @@ The Coins base now has the first local-first money-management pieces in place:
 - Chat-to-ledger ingestion for pasted finance SMS text.
 - Chat/SMS imports now enter a local transaction review queue instead of being silently final.
 - Imported transaction review supports edit, approve, reject, and duplicate marking while keeping source hash/parser/raw text metadata local for audit.
+- Android SMS/notification import now has a local permission-gated service boundary and dashboard education card; imports remain disabled until explicit user action.
+- OTP and authentication-style finance messages are filtered before parser ingestion.
 - Agent skill plumbing so the Brain/agent chat can route tool-like requests.
 - Local LLM service scaffolding for on-device extraction and private finance reasoning.
 - Receipt and invoice parsing pipeline hooks for bill split and imported documents.
@@ -23,8 +25,8 @@ This is enough for a first private financial inbox loop: user pastes or enters f
 
 ### Data Capture
 
-- [ ] Android SMS inbox permission flow is not implemented end-to-end.
-- [ ] Android notification listener for bank, UPI, and card alerts is not implemented.
+- [ ] Android SMS inbox permission flow is not implemented end-to-end; education and disabled-state service guard exist.
+- [ ] Android notification listener for bank, UPI, and card alerts is not implemented; local text import boundary exists for future listeners.
 - [ ] Email statement ingestion is not implemented.
 - [ ] User-forwarded statement mailbox is not implemented.
 - [ ] PhonePe, GPay, Paytm, and bank-export PDF/CSV imports need parser-specific fixtures.
@@ -69,12 +71,12 @@ This is enough for a first private financial inbox loop: user pastes or enters f
 - [ ] Category breakdown needs drill-down to transactions.
 - [x] Review queue is implemented for chat/SMS imported transactions.
 - [x] Edit/reject/duplicate/approve flow is implemented for chat/SMS imported transactions; broader undo across all parser-ingested sources remains pending.
-- [ ] First-run education is needed for privacy, permissions, and supported data sources.
+- [ ] First-run education is needed for broader privacy, permissions, and supported data sources; Coins dashboard now explains disabled Android SMS/notification import.
 - [ ] India-first examples and copy are needed for UPI, cards, wallets, EMI, and bills.
 
 ### Testing And Release
 
-- [ ] Add parser fixture packs for major Indian bank/card/UPI SMS patterns.
+- [ ] Add parser fixture packs for major Indian bank/card/UPI SMS patterns; initial spend/credit/OTP fixtures exist.
 - [ ] Add golden fixtures for PhonePe/GPay/Paytm exports.
 - [ ] Add issuer fixtures for credit card statement summaries.
 - [ ] Add dedupe and reconciliation property tests.
@@ -94,10 +96,10 @@ This is enough for a first private financial inbox loop: user pastes or enters f
 
 ### Milestone 2: Android SMS And Notification Import
 
-- [ ] Add permission education screen.
+- [x] Add permission education screen/card.
 - [ ] Add sender allowlist and financial keyword filters.
-- [ ] Exclude OTP and authentication messages.
-- [ ] Run parser locally and write only normalized finance records into the ledger.
+- [x] Exclude OTP and authentication messages.
+- [x] Add local permission-gated import boundary that writes normalized finance records into the review queue only when enabled.
 - [ ] Add Android integration tests with seeded SMS/notification fixtures.
 
 ### Milestone 3: Credit Card Liability Manager
