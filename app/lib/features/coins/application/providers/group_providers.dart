@@ -80,7 +80,7 @@ final addGroupMemberUseCaseProvider = Provider<AddGroupMemberUseCase>((ref) {
 
 /// Create group state notifier
 final createGroupProvider =
-    StateNotifierProvider.autoDispose<CreateGroupNotifier, AsyncValue<Group?>>(
+    StateNotifierProvider<CreateGroupNotifier, AsyncValue<Group?>>(
       (ref) => CreateGroupNotifier(ref),
     );
 
@@ -151,7 +151,7 @@ class CreateGroupNotifier extends StateNotifier<AsyncValue<Group?>> {
 
 /// Add member state notifier
 final addMemberProvider =
-    StateNotifierProvider.autoDispose<AddMemberNotifier, AsyncValue<void>>(
+    StateNotifierProvider<AddMemberNotifier, AsyncValue<void>>(
       (ref) => AddMemberNotifier(ref),
     );
 

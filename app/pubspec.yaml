@@ -41,7 +41,7 @@ dependencies:
   # Storage & Persistence
   shared_preferences: ^2.5.5
   drift: ^2.18.0
-  sqlite3_flutter_libs: ^0.6.0+eol
+  sqlite3_flutter_libs: 0.5.42
   hive: 2.2.3
   hive_flutter: 1.1.0
   path: 1.9.1

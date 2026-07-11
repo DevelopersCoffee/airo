@@ -80,6 +80,7 @@ class _AddSplitExpenseScreenState extends ConsumerState<AddSplitExpenseScreen> {
             children: [
               // Amount
               TextFormField(
+                key: const ValueKey('add_split_amount_field'),
                 controller: _amountController,
                 keyboardType: TextInputType.number,
                 style: const TextStyle(
@@ -99,6 +100,7 @@ class _AddSplitExpenseScreenState extends ConsumerState<AddSplitExpenseScreen> {
 
               // Description
               TextFormField(
+                key: const ValueKey('add_split_desc_field'),
                 controller: _descriptionController,
                 decoration: const InputDecoration(
                   labelText: 'Description',

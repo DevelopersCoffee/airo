@@ -11,6 +11,7 @@ import '../../domain/services/quick_add_expense_parser.dart';
 import '../widgets/expense_card.dart';
 import 'add_expense_screen.dart';
 import 'groups_list_screen.dart';
+import 'budget_management_screen.dart';
 
 /// Coins Dashboard Screen
 ///
@@ -713,9 +714,12 @@ class _QuickActionsRow extends StatelessWidget {
             context,
           ).push(MaterialPageRoute(builder: (_) => const GroupsListScreen())),
         ),
-        const _QuickActionButton(
+        _QuickActionButton(
           icon: Icons.pie_chart_outline,
           label: 'Budgets',
+          onTap: () => Navigator.of(
+            context,
+          ).push(MaterialPageRoute(builder: (_) => const BudgetManagementScreen())),
         ),
         const _QuickActionButton(icon: Icons.camera_alt, label: 'Scan Receipt'),
       ],

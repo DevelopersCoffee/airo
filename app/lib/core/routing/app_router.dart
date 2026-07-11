@@ -9,7 +9,6 @@ import '../../features/agent_chat/presentation/screens/profile_screen.dart';
 import "package:feature_iptv/feature_iptv.dart";
 import '../../features/games/presentation/screens/games_hub_screen.dart';
 import '../../features/mind/presentation/screens/mind_screen.dart';
-import '../../features/money/presentation/screens/money_overview_screen.dart';
 import '../../features/music/presentation/screens/music_screen.dart';
 import '../../features/quest/presentation/screens/quest_chat_screen.dart';
 import '../../features/quest/presentation/screens/quest_list_screen.dart';
@@ -97,7 +96,7 @@ class AppRouter {
               GoRoute(
                 path: '/money',
                 name: 'Coins',
-                builder: (context, state) => const MoneyOverviewScreen(),
+                builder: (context, state) => const CoinsDashboardScreen(),
                 routes: [
                   GoRoute(
                     path: 'split',

@@ -130,6 +130,7 @@ android {
 
     packaging {
         jniLibs {
+            useLegacyPackaging = true
             if (isLeanVariant) {
                 excludes += setOf(
                     "**/liblitertlm_jni.so",
