@@ -1,3 +1,4 @@
+import '../../domain/entities/meeting_audio_metadata.dart';
 import '../../domain/entities/meeting_intelligence.dart';
 import '../../domain/entities/meeting_record.dart';
 import '../../domain/entities/meeting_summary.dart';
@@ -8,6 +9,7 @@ class InMemoryMeetingRepository implements MeetingRepository {
   final Map<String, MeetingRecord> _records = {};
   final Map<String, List<TranscriptChunk>> _chunksByMeeting = {};
   final Map<String, MeetingSummary> _summaries = {};
+  final Map<String, MeetingAudioMetadata> _audioMetadataByMeeting = {};
   final Map<String, String> _searchTextByMeeting = {};
 
   static const _synonyms = <String, Set<String>>{
@@ -26,6 +28,7 @@ class InMemoryMeetingRepository implements MeetingRepository {
     _records[draft.record.id] = draft.record;
     _chunksByMeeting[draft.record.id] = List.unmodifiable(draft.redactedChunks);
     _summaries[draft.record.id] = draft.summary;
+    _audioMetadataByMeeting[draft.record.id] = draft.audioMetadata;
     _searchTextByMeeting[draft.record.id] = draft.searchableText;
   }
 
@@ -44,6 +47,13 @@ class InMemoryMeetingRepository implements MeetingRepository {
   @override
   Future<MeetingSummary?> summaryForMeeting(String meetingId) async {
     return _summaries[meetingId];
+  }
+
+  @override
+  Future<MeetingAudioMetadata?> audioMetadataForMeeting(
+    String meetingId,
+  ) async {
+    return _audioMetadataByMeeting[meetingId];
   }
 
   @override

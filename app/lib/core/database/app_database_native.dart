@@ -225,6 +225,117 @@ class SyncMetadata extends Table {
   Set<Column> get primaryKey => {key};
 }
 
+/// Persisted meeting sessions for local-first Meeting Intelligence.
+class MeetingRecords extends Table {
+  TextColumn get id => text()();
+  TextColumn get title => text()();
+  DateTimeColumn get startedAt => dateTime()();
+  DateTimeColumn get endedAt => dateTime().nullable()();
+  IntColumn get durationMs => integer().nullable()();
+  TextColumn get state => text()();
+  TextColumn get languageCode => text()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+/// Speaker/time segments derived from final meeting transcript chunks.
+class MeetingSegments extends Table {
+  TextColumn get id => text()();
+  TextColumn get meetingId =>
+      text().references(MeetingRecords, #id, onDelete: KeyAction.cascade)();
+  TextColumn get speakerLabel => text().nullable()();
+  IntColumn get startMs => integer()();
+  IntColumn get endMs => integer()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+/// Final persisted transcript chunks. Partial/live chunks stay in memory only.
+class TranscriptChunks extends Table {
+  TextColumn get id => text()();
+  TextColumn get meetingId =>
+      text().references(MeetingRecords, #id, onDelete: KeyAction.cascade)();
+  TextColumn get segmentId => text().nullable().references(
+    MeetingSegments,
+    #id,
+    onDelete: KeyAction.setNull,
+  )();
+  TextColumn get transcriptText => text().named('text')();
+  IntColumn get startMs => integer()();
+  IntColumn get endMs => integer()();
+  BoolColumn get isFinal => boolean()();
+  TextColumn get speakerLabel => text().nullable()();
+  RealColumn get confidence => real().nullable()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+class MeetingActionItems extends Table {
+  TextColumn get id => text()();
+  TextColumn get meetingId =>
+      text().references(MeetingRecords, #id, onDelete: KeyAction.cascade)();
+  TextColumn get owner => text().nullable()();
+  TextColumn get description => text()();
+  TextColumn get dueDateText => text().nullable()();
+  BoolColumn get isCompleted => boolean().withDefault(const Constant(false))();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+class MeetingSummaries extends Table {
+  TextColumn get meetingId =>
+      text().references(MeetingRecords, #id, onDelete: KeyAction.cascade)();
+  TextColumn get executiveSummary => text()();
+  TextColumn get detailedSummary => text()();
+  TextColumn get keyDecisionsJson => text()();
+  TextColumn get risksJson => text()();
+  TextColumn get openQuestionsJson => text()();
+  TextColumn get followUpsJson => text()();
+  TextColumn get blockersJson => text()();
+  TextColumn get dependenciesJson => text()();
+  TextColumn get nextStepsJson => text()();
+  BoolColumn get isCloudSyncEligible =>
+      boolean().withDefault(const Constant(false))();
+
+  @override
+  Set<Column> get primaryKey => {meetingId};
+}
+
+class MeetingAudioMetadata extends Table {
+  TextColumn get meetingId =>
+      text().references(MeetingRecords, #id, onDelete: KeyAction.cascade)();
+  TextColumn get filePath => text()();
+  TextColumn get codec => text()();
+  IntColumn get sampleRateHz => integer()();
+  IntColumn get channelCount => integer()();
+  IntColumn get sizeBytes => integer()();
+  TextColumn get sha256 => text().nullable()();
+
+  @override
+  Set<Column> get primaryKey => {meetingId};
+}
+
+class MeetingEmbeddings extends Table {
+  TextColumn get id => text()();
+  TextColumn get meetingId =>
+      text().references(MeetingRecords, #id, onDelete: KeyAction.cascade)();
+  TextColumn get chunkId => text().nullable().references(
+    TranscriptChunks,
+    #id,
+    onDelete: KeyAction.setNull,
+  )();
+  IntColumn get dimensions => integer()();
+  TextColumn get vectorJson => text()();
+  TextColumn get searchableText => text()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 @DriftDatabase(
   tables: [
     TransactionEntries,
@@ -238,6 +349,13 @@ class SyncMetadata extends Table {
     SettlementEntries,
     OutboxEntries,
     SyncMetadata,
+    MeetingRecords,
+    MeetingSegments,
+    TranscriptChunks,
+    MeetingActionItems,
+    MeetingSummaries,
+    MeetingAudioMetadata,
+    MeetingEmbeddings,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -252,7 +370,7 @@ class AppDatabase extends _$AppDatabase {
   final String? _databasePath;
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -260,7 +378,15 @@ class AppDatabase extends _$AppDatabase {
       await m.createAll();
     },
     onUpgrade: (Migrator m, int from, int to) async {
-      // Early development - no migrations needed yet
+      if (from < 2) {
+        await m.createTable(meetingRecords);
+        await m.createTable(meetingSegments);
+        await m.createTable(transcriptChunks);
+        await m.createTable(meetingActionItems);
+        await m.createTable(meetingSummaries);
+        await m.createTable(meetingAudioMetadata);
+        await m.createTable(meetingEmbeddings);
+      }
     },
     beforeOpen: (details) async {
       await customStatement('PRAGMA foreign_keys = ON');
@@ -314,6 +440,13 @@ class AppDatabase extends _$AppDatabase {
   /// Delete all data (for account deletion/reset)
   Future<void> deleteAllData() async {
     await transaction(() async {
+      await delete(meetingEmbeddings).go();
+      await delete(meetingAudioMetadata).go();
+      await delete(meetingSummaries).go();
+      await delete(meetingActionItems).go();
+      await delete(transcriptChunks).go();
+      await delete(meetingSegments).go();
+      await delete(meetingRecords).go();
       await delete(splitEntryRecords).go();
       await delete(settlementEntries).go();
       await delete(sharedExpenseEntries).go();
