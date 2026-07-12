@@ -16,6 +16,10 @@ class TemplateRegistry {
 
   final List<LifeTrackTemplate> _templates;
 
+  factory TemplateRegistry.fromTemplates(List<LifeTrackTemplate> templates) {
+    return TemplateRegistry._(List.unmodifiable(templates));
+  }
+
   static Future<TemplateRegistry> loadBundled({AssetBundle? bundle}) async {
     final assetBundle = bundle ?? rootBundle;
     final templates = <LifeTrackTemplate>[];
