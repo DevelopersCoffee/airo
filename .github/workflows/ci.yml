@@ -350,7 +350,7 @@ jobs:
             full) package_name="io.airo.app" ;;
             iptv) package_name="io.airo.iptv" ;;
             streaming) package_name="io.airo.streaming" ;;
-            tv) package_name="io.airo.tv" ;;
+            tv) package_name="io.airo.app.tv" ;;
             *)
               echo "::error::Unknown Android variant: ${{ matrix.platform.variant }}"
               exit 1

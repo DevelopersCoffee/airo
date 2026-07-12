@@ -29,7 +29,7 @@ enum AppPlatform {
   mobileStreaming,
 
   /// Android TV / Fire TV - IPTV only
-  /// Package: io.airo.tv
+  /// Package: io.airo.app.tv
   androidTv,
 
   /// iPad - streaming with tablet-optimized UI

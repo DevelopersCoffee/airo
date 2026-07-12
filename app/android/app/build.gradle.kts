@@ -22,7 +22,7 @@ val isTvVariant = appVariant == "tv"
 val variantApplicationId = when (appVariant) {
     "iptv" -> "io.airo.iptv"
     "streaming" -> "io.airo.streaming"
-    "tv" -> "io.airo.tv"
+    "tv" -> "io.airo.app.tv"
     else -> "io.airo.app"
 }
 val variantAppLabel = when (appVariant) {

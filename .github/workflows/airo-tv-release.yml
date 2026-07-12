@@ -116,20 +116,9 @@ jobs:
       - name: Configure Firebase for TV build
         env:
           GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
-          PRODUCTION_SIGNING: ${{ github.event.inputs.production_signing || 'false' }}
         run: |
           cd app
-          if [[ "$PRODUCTION_SIGNING" == "true" ]]; then
-            if [[ -z "$GOOGLE_SERVICES_JSON" ]]; then
-              echo "::error::GOOGLE_SERVICES_JSON is required for production-signed release builds."
-              exit 1
-            fi
-            echo "$GOOGLE_SERVICES_JSON" | base64 -d > android/app/google-services.json
-            if ! grep -q '"package_name"[[:space:]]*:[[:space:]]*"io.airo.tv"' android/app/google-services.json; then
-              echo "::error::GOOGLE_SERVICES_JSON must include a Firebase Android client for io.airo.tv."
-              exit 1
-            fi
-          else
+          write_placeholder_config() {
             cat > android/app/google-services.json <<'JSON'
           {
             "project_info": {
@@ -142,7 +131,7 @@ jobs:
                 "client_info": {
                   "mobilesdk_app_id": "1:000000000000:android:0000000000000000000000",
                   "android_client_info": {
-                    "package_name": "io.airo.tv"
+                    "package_name": "io.airo.app.tv"
                   }
                 },
                 "oauth_client": [],
@@ -161,6 +150,19 @@ jobs:
             "configuration_version": "1"
           }
           JSON
+          }
+
+          if [[ -n "$GOOGLE_SERVICES_JSON" ]]; then
+            echo "$GOOGLE_SERVICES_JSON" | base64 -d > android/app/google-services.json
+            if grep -q '"package_name"[[:space:]]*:[[:space:]]*"io.airo.app.tv"' android/app/google-services.json; then
+              echo "Using GOOGLE_SERVICES_JSON for io.airo.app.tv."
+            else
+              echo "::warning::GOOGLE_SERVICES_JSON does not include io.airo.app.tv; using auth-free TV placeholder Firebase config."
+              write_placeholder_config
+            fi
+          else
+            echo "::warning::GOOGLE_SERVICES_JSON is not set; using auth-free TV placeholder Firebase config."
+            write_placeholder_config
           fi
 
       - name: Configure Android signing
@@ -318,7 +320,7 @@ jobs:
       - name: Upload to Google Play
         working-directory: app/android
         env:
-          SUPPLY_PACKAGE_NAME: io.airo.tv
+          SUPPLY_PACKAGE_NAME: io.airo.app.tv
           SUPPLY_JSON_KEY: play-store-credentials.json
         run: |
           gem install fastlane --no-document

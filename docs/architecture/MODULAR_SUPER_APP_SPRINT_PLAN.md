@@ -83,7 +83,7 @@ Rationale:
 ```
 io.airo.app          # Mobile full app
 io.airo.streaming    # Mobile streaming-only
-io.airo.tv           # Android TV / Fire TV
+io.airo.app.tv           # Android TV / Fire TV
 ```
 
 **Firebase Configuration Strategy:**
@@ -268,7 +268,7 @@ just_audio: ^0.10.5      # Not for TV
 |-------------|--------------|-----------------|
 | `io.airo.app` | Airo Mobile | ✅ (existing) |
 | `io.airo.streaming` | Airo Streaming | ✅ (for Google Sign-In) |
-| `io.airo.tv` | Airo TV | ✅ (for Google Sign-In) |
+| `io.airo.app.tv` | Airo TV | ✅ (for Google Sign-In) |
 
 **SHA-1 fingerprints** (same keystore for all variants):
 ```bash

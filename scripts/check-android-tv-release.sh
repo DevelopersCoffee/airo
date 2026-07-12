@@ -5,6 +5,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 GRADLE_FILE="$ROOT_DIR/app/android/app/build.gradle.kts"
 TV_MANIFEST="$ROOT_DIR/app/android/app/src/tv/AndroidManifest.xml"
 MIN_TARGET_SDK="${AIRO_TV_MIN_TARGET_SDK:-34}"
+TV_PACKAGE_NAME="${AIRO_TV_PACKAGE_NAME:-io.airo.app.tv}"
 
 fail() {
   local message="$1"
@@ -30,6 +31,7 @@ grep -q 'android.software.leanback' "$TV_MANIFEST" || fail "TV manifest missing 
 grep -q 'android.hardware.touchscreen" android:required="false"' "$TV_MANIFEST" || fail "TV manifest must mark touchscreen optional"
 grep -q 'android.intent.category.LEANBACK_LAUNCHER' "$TV_MANIFEST" || fail "TV manifest missing LEANBACK_LAUNCHER"
 grep -q 'android:banner="@drawable/tv_banner"' "$TV_MANIFEST" || fail "TV manifest missing TV banner"
+grep -q "\"tv\" -> \"$TV_PACKAGE_NAME\"" "$GRADLE_FILE" || fail "TV applicationId must be $TV_PACKAGE_NAME"
 
 if [[ -n "${AIRO_TV_RELEASE_APK:-}" ]]; then
   [[ -s "$AIRO_TV_RELEASE_APK" ]] || fail "Release APK not found or empty: $AIRO_TV_RELEASE_APK"
