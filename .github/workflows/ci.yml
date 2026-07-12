@@ -1,16 +1,15 @@
 # =============================================================================
 # Continuous Integration Workflow - Optimized
 # =============================================================================
-# On PR: Runs checks plus multi-platform APK size guardrails
-# On Push to main: Runs comprehensive checks including app tests with coverage
+# On release cut: Runs checks plus multi-platform APK size guardrails
+# Manual dispatch remains available for explicit release validation reruns.
 # =============================================================================
 name: Continuous Integration
 
 on:
   push:
-    branches: [ main, master, develop ]
-  pull_request:
-    branches: [ main, master, develop ]
+    tags:
+      - 'v*'
   workflow_dispatch:
     inputs:
       build_full_android:
@@ -19,7 +18,7 @@ on:
         default: true
         type: boolean
 
-# Cancel any in-progress runs for the same branch/PR
+# Cancel any in-progress runs for the same ref
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
@@ -130,13 +129,13 @@ jobs:
           echo "All core package tests completed!"
 
   # ============================================
-  # App Tests with Coverage (runs on push to main only)
-  # This is the expensive job - skip on PRs
+  # App Tests with Coverage (release tag/manual only)
+  # This is the expensive job - skip outside release validation
   # ============================================
   test-app:
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    if: github.event_name == 'push'
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     needs: [analyze, test-core]
     steps:
       - uses: actions/checkout@v7
@@ -196,7 +195,7 @@ jobs:
   # ============================================
   build-android:
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' || github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     strategy:
       fail-fast: false
       matrix:
@@ -233,20 +232,10 @@ jobs:
       - name: Resolve Android build scope
         id: android_scope
         env:
-          PR_LABELS: ${{ github.event_name == 'pull_request' && join(github.event.pull_request.labels.*.name, ' ') || '' }}
           BUILD_FULL_ANDROID: ${{ github.event.inputs.build_full_android }}
         run: |
           should_build=true
           reason="required for this event"
-
-          if [ "${{ github.event_name }}" = "pull_request" ] && [ "${{ matrix.platform.name }}" = "mobile-full" ]; then
-            if [[ " $PR_LABELS " == *" full-android-build "* ]]; then
-              reason="PR has full-android-build label"
-            else
-              should_build=false
-              reason="mobile-full is skipped on PRs; add full-android-build label to run it"
-            fi
-          fi
 
           if [ "${{ github.event_name }}" = "workflow_dispatch" ] && \
              [ "${{ matrix.platform.name }}" = "mobile-full" ] && \
@@ -428,39 +417,6 @@ jobs:
         run: |
           scripts/check-apk-size.sh
 
-      - name: Upload APK size report
-        if: github.event_name == 'pull_request' && steps.android_scope.outputs.should_build == 'true' && always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: apk-size-report-${{ matrix.platform.name }}
-          path: apk-size-${{ matrix.platform.name }}.md
-          if-no-files-found: ignore
-          retention-days: 7
-
-      - name: Generate APK baseline update
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.android_scope.outputs.should_build == 'true'
-        env:
-          APK_SIZE_COMPONENT: ${{ matrix.platform.name }}
-          APK_SIZE_BUDGET_MB: ${{ matrix.platform.size_target_mb }}
-        run: |
-          mkdir -p apk-size-baselines
-          output="apk-size-baselines/${APK_SIZE_COMPONENT}.tsv"
-          : > "$output"
-          for apk in app/build/app/outputs/flutter-apk/app-*-release.apk; do
-            [ -f "$apk" ] || continue
-            bytes=$(stat -c%s "$apk")
-            artifact=$(basename "$apk")
-            printf '%s\t%s\t%s\t%s\n' "$APK_SIZE_COMPONENT" "$artifact" "$bytes" "$APK_SIZE_BUDGET_MB" >> "$output"
-          done
-
-      - name: Upload APK baseline update
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.android_scope.outputs.should_build == 'true'
-        uses: actions/upload-artifact@v7
-        with:
-          name: apk-size-baseline-${{ matrix.platform.name }}
-          path: apk-size-baselines/${{ matrix.platform.name }}.tsv
-          retention-days: 7
-
       # ===========================================
       # Restore Original Pubspec (if using stubs)
       # ===========================================
@@ -490,133 +446,12 @@ jobs:
           retention-days: 90
 
   # ============================================
-  # PR APK Size Report Comment
-  # ============================================
-  comment-apk-size-report:
-    runs-on: ubuntu-latest
-    needs: [build-android]
-    if: github.event_name == 'pull_request' && always()
-    permissions:
-      actions: read
-      issues: write
-      pull-requests: read
-    steps:
-      - name: Download APK size reports
-        uses: actions/download-artifact@v6
-        with:
-          pattern: apk-size-report-*
-          path: apk-size-reports
-          merge-multiple: true
-
-      - name: Combine APK size reports
-        run: |
-          {
-            echo "# APK Size Guardrail Report"
-            echo ""
-            for report in apk-size-reports/*.md; do
-              [ -f "$report" ] || continue
-              cat "$report"
-              echo ""
-            done
-          } > apk-size-report.md
-
-      - name: Comment PR with APK size report
-        continue-on-error: true
-        uses: actions/github-script@v8
-        with:
-          script: |
-            const fs = require('fs');
-            const marker = '<!-- apk-size-guardrail -->';
-            const body = `${marker}\n${fs.readFileSync('apk-size-report.md', 'utf8')}\n\n[View run details](https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})`;
-            let existing;
-
-            try {
-              const comments = await github.rest.issues.listComments({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: context.issue.number,
-                per_page: 100,
-              });
-              existing = comments.data.find((comment) =>
-                comment.user.type === 'Bot' && comment.body.includes(marker)
-              );
-
-              if (existing) {
-                await github.rest.issues.updateComment({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  comment_id: existing.id,
-                  body,
-                });
-              } else {
-                await github.rest.issues.createComment({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  issue_number: context.issue.number,
-                  body,
-                });
-              }
-            } catch (error) {
-              if (error.status === 403) {
-                core.warning('Skipping APK size PR comment because this workflow token cannot write comments.');
-                return;
-              }
-              throw error;
-            }
-
-  # ============================================
-  # Update APK Size Baselines (main only)
-  # ============================================
-  update-apk-size-baselines:
-    runs-on: ubuntu-latest
-    needs: [build-android]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v7
-
-      - name: Download APK baseline updates
-        uses: actions/download-artifact@v6
-        with:
-          pattern: apk-size-baseline-*
-          path: apk-size-baseline-updates
-          merge-multiple: true
-
-      - name: Commit updated APK size baselines
-        run: |
-          {
-            echo "# APK size guardrail baselines."
-            echo "#"
-            echo "# Columns:"
-            echo "# component: CI build component that produced the APK."
-            echo "# artifact: APK file name produced by Flutter."
-            echo "# baseline_bytes: approved baseline size in bytes."
-            echo "# budget_mb: absolute artifact budget in MiB."
-            echo "#"
-            echo "# This file is updated automatically after successful main builds."
-            echo -e "component\tartifact\tbaseline_bytes\tbudget_mb"
-            sort apk-size-baseline-updates/*.tsv
-          } > .github/apk-size-baselines.tsv
-
-          if git diff --quiet -- .github/apk-size-baselines.tsv; then
-            echo "APK size baselines are unchanged."
-            exit 0
-          fi
-
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add .github/apk-size-baselines.tsv
-          git commit -m "ci: update APK size baselines"
-          git push
-
-  # ============================================
   # Build Summary Job
   # ============================================
   build-summary:
     runs-on: ubuntu-latest
     needs: [build-android]
-    if: github.event_name == 'push'
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     steps:
       - name: Generate Build Summary
         run: |
@@ -640,7 +475,7 @@ jobs:
   build-web:
     runs-on: ubuntu-latest
     needs: [analyze, test-app]
-    if: github.event_name == 'push'
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     steps:
       - uses: actions/checkout@v7
 
@@ -725,7 +560,7 @@ jobs:
   sonarqube:
     runs-on: ubuntu-latest
     needs: test-app
-    if: github.event_name == 'push'
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     steps:
       - uses: actions/checkout@v7
         with:
