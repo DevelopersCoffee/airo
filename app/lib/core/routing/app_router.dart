@@ -2,7 +2,7 @@ import 'package:go_router/go_router.dart';
 import '../../features/auth/screens/login_screen.dart';
 import '../../features/auth/screens/register_screen.dart';
 import '../../features/bill_split/presentation/screens/bill_split_screen.dart';
-import '../../features/brewstack/presentation/screens/brewstack_explorer_screen.dart';
+import '../../features/airo_explore/presentation/screens/airo_explore_screen.dart';
 import '../../features/agent_chat/presentation/screens/chat_screen.dart';
 import '../../features/agent_chat/presentation/screens/model_library_screen.dart';
 import '../../features/agent_chat/presentation/screens/notifications_screen.dart';
@@ -74,9 +74,9 @@ class AppRouter {
       GoRoute(path: '/live/music', redirect: (context, state) => '/music'),
       GoRoute(path: '/live/tv', redirect: (context, state) => '/iptv'),
       GoRoute(
-        path: '/brewstack-v2',
-        name: 'brewstack_v2',
-        builder: (context, state) => const BrewStackExplorerScreen(),
+        path: '/airo-explore',
+        name: 'airo_explore',
+        builder: (context, state) => const AiroExploreScreen(),
       ),
       GoRoute(
         path: RouteNames.login,

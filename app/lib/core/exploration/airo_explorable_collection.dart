@@ -2,12 +2,12 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 
-enum ExplorableCollectionViewMode { list, spatial }
+enum AiroExplorableCollectionViewMode { list, spatial }
 
-enum ExplorableCollectionSortMode { original, title, category, group }
+enum AiroExplorableCollectionSortMode { original, title, category, group }
 
-class ExplorableCollectionItem<T> {
-  const ExplorableCollectionItem({
+class AiroExplorableCollectionItem<T> {
+  const AiroExplorableCollectionItem({
     required this.id,
     required this.title,
     required this.subtitle,
@@ -36,8 +36,8 @@ class ExplorableCollectionItem<T> {
   final T? payload;
 }
 
-class ExplorableCollection<T> extends StatefulWidget {
-  const ExplorableCollection({
+class AiroExplorableCollection<T> extends StatefulWidget {
+  const AiroExplorableCollection({
     super.key,
     required this.title,
     required this.items,
@@ -53,14 +53,14 @@ class ExplorableCollection<T> extends StatefulWidget {
     this.emptyTitle = 'No matching items',
     this.emptyMessage = 'Change the search or filters to widen the view.',
     this.isLoading = false,
-    this.initialViewMode = ExplorableCollectionViewMode.list,
+    this.initialViewMode = AiroExplorableCollectionViewMode.list,
     this.randomSeed,
     this.onItemSelected,
   });
 
   final String title;
   final String? subtitle;
-  final List<ExplorableCollectionItem<T>> items;
+  final List<AiroExplorableCollectionItem<T>> items;
   final String listLabel;
   final String spatialLabel;
   final String searchHint;
@@ -72,22 +72,23 @@ class ExplorableCollection<T> extends StatefulWidget {
   final String emptyTitle;
   final String emptyMessage;
   final bool isLoading;
-  final ExplorableCollectionViewMode initialViewMode;
+  final AiroExplorableCollectionViewMode initialViewMode;
   final int? randomSeed;
-  final ValueChanged<ExplorableCollectionItem<T>>? onItemSelected;
+  final ValueChanged<AiroExplorableCollectionItem<T>>? onItemSelected;
 
   @override
-  State<ExplorableCollection<T>> createState() =>
-      _ExplorableCollectionState<T>();
+  State<AiroExplorableCollection<T>> createState() =>
+      _AiroExplorableCollectionState<T>();
 }
 
-class _ExplorableCollectionState<T> extends State<ExplorableCollection<T>> {
-  late ExplorableCollectionViewMode _viewMode;
+class _AiroExplorableCollectionState<T>
+    extends State<AiroExplorableCollection<T>> {
+  late AiroExplorableCollectionViewMode _viewMode;
   late final Random _random;
   final TextEditingController _searchController = TextEditingController();
   String _category = '';
-  ExplorableCollectionSortMode _sortMode =
-      ExplorableCollectionSortMode.original;
+  AiroExplorableCollectionSortMode _sortMode =
+      AiroExplorableCollectionSortMode.original;
 
   @override
   void initState() {
@@ -154,7 +155,7 @@ class _ExplorableCollectionState<T> extends State<ExplorableCollection<T>> {
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
           child: Text(
-            _viewMode == ExplorableCollectionViewMode.list
+            _viewMode == AiroExplorableCollectionViewMode.list
                 ? widget.listHelpText
                 : widget.spatialHelpText,
             style: theme.textTheme.bodySmall?.copyWith(
@@ -173,7 +174,7 @@ class _ExplorableCollectionState<T> extends State<ExplorableCollection<T>> {
                     title: widget.emptyTitle,
                     message: widget.emptyMessage,
                   )
-                : _viewMode == ExplorableCollectionViewMode.list
+                : _viewMode == AiroExplorableCollectionViewMode.list
                 ? _CollectionList<T>(
                     key: const ValueKey('explorable_collection_list'),
                     items: filteredItems,
@@ -196,9 +197,9 @@ class _ExplorableCollectionState<T> extends State<ExplorableCollection<T>> {
     return [widget.allCategoriesLabel, ...values];
   }
 
-  List<ExplorableCollectionItem<T>> get _filteredItems {
+  List<AiroExplorableCollectionItem<T>> get _filteredItems {
     final query = _searchController.text.trim().toLowerCase();
-    final filtered = <ExplorableCollectionItem<T>>[];
+    final filtered = <AiroExplorableCollectionItem<T>>[];
 
     for (final item in widget.items) {
       if (_category != widget.allCategoriesLabel &&
@@ -212,18 +213,18 @@ class _ExplorableCollectionState<T> extends State<ExplorableCollection<T>> {
     }
 
     switch (_sortMode) {
-      case ExplorableCollectionSortMode.original:
+      case AiroExplorableCollectionSortMode.original:
         return filtered;
-      case ExplorableCollectionSortMode.title:
+      case AiroExplorableCollectionSortMode.title:
         return [...filtered]..sort((a, b) => a.title.compareTo(b.title));
-      case ExplorableCollectionSortMode.category:
+      case AiroExplorableCollectionSortMode.category:
         return [...filtered]..sort(
           (a, b) => _compareByMany(a, b, [
             (item) => item.category,
             (item) => item.title,
           ]),
         );
-      case ExplorableCollectionSortMode.group:
+      case AiroExplorableCollectionSortMode.group:
         return [...filtered]..sort(
           (a, b) => _compareByMany(a, b, [
             (item) => item.group,
@@ -233,7 +234,7 @@ class _ExplorableCollectionState<T> extends State<ExplorableCollection<T>> {
     }
   }
 
-  bool _matchesQuery(ExplorableCollectionItem<T> item, String query) {
+  bool _matchesQuery(AiroExplorableCollectionItem<T> item, String query) {
     final searchable = [
       item.title,
       item.subtitle,
@@ -247,9 +248,9 @@ class _ExplorableCollectionState<T> extends State<ExplorableCollection<T>> {
   }
 
   int _compareByMany(
-    ExplorableCollectionItem<T> a,
-    ExplorableCollectionItem<T> b,
-    List<String Function(ExplorableCollectionItem<T>)> selectors,
+    AiroExplorableCollectionItem<T> a,
+    AiroExplorableCollectionItem<T> b,
+    List<String Function(AiroExplorableCollectionItem<T>)> selectors,
   ) {
     for (final selector in selectors) {
       final result = selector(a).compareTo(selector(b));
@@ -258,12 +259,12 @@ class _ExplorableCollectionState<T> extends State<ExplorableCollection<T>> {
     return 0;
   }
 
-  void _selectRandom(List<ExplorableCollectionItem<T>> items) {
+  void _selectRandom(List<AiroExplorableCollectionItem<T>> items) {
     if (items.isEmpty) return;
     _selectItem(items[_random.nextInt(items.length)]);
   }
 
-  void _selectItem(ExplorableCollectionItem<T> item) {
+  void _selectItem(AiroExplorableCollectionItem<T> item) {
     widget.onItemSelected?.call(item);
     showModalBottomSheet<void>(
       context: context,
@@ -351,16 +352,16 @@ class _CollectionControls extends StatelessWidget {
   final String searchHint;
   final List<String> categories;
   final String selectedCategory;
-  final ExplorableCollectionSortMode sortMode;
-  final ExplorableCollectionViewMode viewMode;
+  final AiroExplorableCollectionSortMode sortMode;
+  final AiroExplorableCollectionViewMode viewMode;
   final String listLabel;
   final String spatialLabel;
   final String randomLabel;
   final bool randomEnabled;
   final ValueChanged<String> onQueryChanged;
   final ValueChanged<String?> onCategoryChanged;
-  final ValueChanged<ExplorableCollectionSortMode> onSortChanged;
-  final ValueChanged<ExplorableCollectionViewMode> onViewChanged;
+  final ValueChanged<AiroExplorableCollectionSortMode> onSortChanged;
+  final ValueChanged<AiroExplorableCollectionViewMode> onViewChanged;
   final VoidCallback onRandom;
 
   @override
@@ -414,7 +415,7 @@ class _CollectionControls extends StatelessWidget {
             onChanged: onCategoryChanged,
           ),
         ),
-        PopupMenuButton<ExplorableCollectionSortMode>(
+        PopupMenuButton<AiroExplorableCollectionSortMode>(
           key: const ValueKey('explorable_collection_sort'),
           tooltip: 'Sort',
           icon: const Icon(Icons.sort),
@@ -422,19 +423,19 @@ class _CollectionControls extends StatelessWidget {
           onSelected: onSortChanged,
           itemBuilder: (context) => const [
             PopupMenuItem(
-              value: ExplorableCollectionSortMode.original,
+              value: AiroExplorableCollectionSortMode.original,
               child: Text('Original order'),
             ),
             PopupMenuItem(
-              value: ExplorableCollectionSortMode.title,
+              value: AiroExplorableCollectionSortMode.title,
               child: Text('Title'),
             ),
             PopupMenuItem(
-              value: ExplorableCollectionSortMode.category,
+              value: AiroExplorableCollectionSortMode.category,
               child: Text('Category'),
             ),
             PopupMenuItem(
-              value: ExplorableCollectionSortMode.group,
+              value: AiroExplorableCollectionSortMode.group,
               child: Text('Group'),
             ),
           ],
@@ -445,16 +446,16 @@ class _CollectionControls extends StatelessWidget {
           icon: const Icon(Icons.shuffle),
           label: Text(randomLabel),
         ),
-        SegmentedButton<ExplorableCollectionViewMode>(
+        SegmentedButton<AiroExplorableCollectionViewMode>(
           key: const ValueKey('explorable_collection_view_switcher'),
           segments: [
             ButtonSegment(
-              value: ExplorableCollectionViewMode.list,
+              value: AiroExplorableCollectionViewMode.list,
               label: Text(listLabel),
               icon: const Icon(Icons.view_list_outlined),
             ),
             ButtonSegment(
-              value: ExplorableCollectionViewMode.spatial,
+              value: AiroExplorableCollectionViewMode.spatial,
               label: Text(spatialLabel),
               icon: const Icon(Icons.map_outlined),
             ),
@@ -490,8 +491,8 @@ class _CollectionList<T> extends StatelessWidget {
     required this.onItemSelected,
   });
 
-  final List<ExplorableCollectionItem<T>> items;
-  final ValueChanged<ExplorableCollectionItem<T>> onItemSelected;
+  final List<AiroExplorableCollectionItem<T>> items;
+  final ValueChanged<AiroExplorableCollectionItem<T>> onItemSelected;
 
   @override
   Widget build(BuildContext context) {
@@ -540,12 +541,12 @@ class _SpatialCollection<T> extends StatelessWidget {
     required this.onItemSelected,
   });
 
-  final List<ExplorableCollectionItem<T>> items;
-  final ValueChanged<ExplorableCollectionItem<T>> onItemSelected;
+  final List<AiroExplorableCollectionItem<T>> items;
+  final ValueChanged<AiroExplorableCollectionItem<T>> onItemSelected;
 
   @override
   Widget build(BuildContext context) {
-    final grouped = <String, List<ExplorableCollectionItem<T>>>{};
+    final grouped = <String, List<AiroExplorableCollectionItem<T>>>{};
     for (final item in items) {
       grouped.putIfAbsent(item.group, () => []).add(item);
     }
@@ -574,8 +575,8 @@ class _SpatialCollection<T> extends StatelessWidget {
 class _SpatialLane<T> extends StatelessWidget {
   const _SpatialLane({required this.items, required this.onItemSelected});
 
-  final List<ExplorableCollectionItem<T>> items;
-  final ValueChanged<ExplorableCollectionItem<T>> onItemSelected;
+  final List<AiroExplorableCollectionItem<T>> items;
+  final ValueChanged<AiroExplorableCollectionItem<T>> onItemSelected;
 
   @override
   Widget build(BuildContext context) {
@@ -651,7 +652,7 @@ class _SpatialLane<T> extends StatelessWidget {
 class _ItemDetailSheet<T> extends StatelessWidget {
   const _ItemDetailSheet({required this.item});
 
-  final ExplorableCollectionItem<T> item;
+  final AiroExplorableCollectionItem<T> item;
 
   @override
   Widget build(BuildContext context) {

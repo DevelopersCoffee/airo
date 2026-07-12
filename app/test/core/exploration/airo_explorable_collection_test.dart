@@ -1,4 +1,4 @@
-import 'package:airo_app/core/exploration/explorable_collection.dart';
+import 'package:airo_app/core/exploration/airo_explorable_collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -8,12 +8,12 @@ void main() {
 
     await tester.enterText(
       find.byKey(const ValueKey('explorable_collection_search')),
-      'flight',
+      'skill',
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Flight Board'), findsOneWidget);
-    expect(find.text('Breakfast Porter'), findsNothing);
+    expect(find.text('Skill Console'), findsOneWidget);
+    expect(find.text('Memory Vault'), findsNothing);
 
     await tester.tap(find.text('Place View'));
     await tester.pumpAndSettle();
@@ -23,16 +23,16 @@ void main() {
       findsOneWidget,
     );
     expect(
-      find.byKey(const ValueKey('explorable_spatial_item_flight-board')),
+      find.byKey(const ValueKey('explorable_spatial_item_skill-console')),
       findsOneWidget,
     );
-    expect(find.text('Breakfast Porter'), findsNothing);
+    expect(find.text('Memory Vault'), findsNothing);
   });
 
   testWidgets('random selection respects the active category filter', (
     tester,
   ) async {
-    ExplorableCollectionItem<String>? selected;
+    AiroExplorableCollectionItem<String>? selected;
 
     await tester.pumpWidget(
       _TestHost(
@@ -45,7 +45,7 @@ void main() {
       find.byKey(const ValueKey('explorable_collection_category')),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Events').last);
+    await tester.tap(find.text('Automations').last);
     await tester.pumpAndSettle();
 
     await tester.tap(
@@ -54,7 +54,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(selected, isNotNull);
-    expect(selected!.category, 'Events');
+    expect(selected!.category, 'Automations');
     expect(find.byType(BottomSheet), findsOneWidget);
   });
 
@@ -64,28 +64,28 @@ void main() {
     await tester.tap(find.text('Place View'));
     await tester.pumpAndSettle();
     await tester.tap(
-      find.byKey(const ValueKey('explorable_spatial_item_breakfast-porter')),
+      find.byKey(const ValueKey('explorable_spatial_item_memory-vault')),
     );
     await tester.pumpAndSettle();
 
     expect(find.byType(BottomSheet), findsOneWidget);
-    expect(find.text('Breakfast Porter'), findsWidgets);
-    expect(find.text('ABV: 5.3%'), findsOneWidget);
+    expect(find.text('Memory Vault'), findsWidgets);
+    expect(find.text('Storage: Local'), findsOneWidget);
   });
 }
 
 class _TestHost extends StatelessWidget {
   const _TestHost({required this.items, this.onItemSelected});
 
-  final List<ExplorableCollectionItem<String>> items;
-  final ValueChanged<ExplorableCollectionItem<String>>? onItemSelected;
+  final List<AiroExplorableCollectionItem<String>> items;
+  final ValueChanged<AiroExplorableCollectionItem<String>>? onItemSelected;
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       theme: ThemeData(useMaterial3: true),
       home: Scaffold(
-        body: ExplorableCollection<String>(
+        body: AiroExplorableCollection<String>(
           title: 'Test Collection',
           subtitle: 'Shared data across views',
           items: items,
@@ -98,42 +98,42 @@ class _TestHost extends StatelessWidget {
 }
 
 const _fixtureItems = [
-  ExplorableCollectionItem<String>(
-    id: 'flight-board',
-    title: 'Flight Board',
-    subtitle: 'Sampler for discovery',
-    category: 'Menu',
-    group: 'Bar',
-    details: 'Helps undecided guests compare pours.',
-    tags: ['flight', 'sampler'],
-    metrics: {'Pours': '4'},
-    payload: 'menu',
+  AiroExplorableCollectionItem<String>(
+    id: 'skill-console',
+    title: 'Skill Console',
+    subtitle: 'Airo skill discovery surface',
+    category: 'Skills',
+    group: 'Airo Home',
+    details: 'Helps users compare local skills and trusted connectors.',
+    tags: ['skill', 'connector'],
+    metrics: {'Trust': 'Visible'},
+    payload: 'skill',
   ),
-  ExplorableCollectionItem<String>(
-    id: 'breakfast-porter',
-    title: 'Breakfast Porter',
-    subtitle: 'Coffee-forward draft',
-    category: 'Menu',
-    group: 'Draft Wall',
-    details: 'Dark beer with breakfast pairing notes.',
-    metrics: {'ABV': '5.3%'},
-    payload: 'menu',
+  AiroExplorableCollectionItem<String>(
+    id: 'memory-vault',
+    title: 'Memory Vault',
+    subtitle: 'Local context and recall',
+    category: 'AI',
+    group: 'Context Layer',
+    details: 'Airo memory with retention and privacy expectations.',
+    metrics: {'Storage': 'Local'},
+    payload: 'memory',
   ),
-  ExplorableCollectionItem<String>(
-    id: 'open-mic',
-    title: 'Open Mic',
-    subtitle: 'Tuesday community event',
-    category: 'Events',
-    group: 'Stage',
-    tags: ['music'],
-    payload: 'event',
+  AiroExplorableCollectionItem<String>(
+    id: 'routine-packs',
+    title: 'Routine Packs',
+    subtitle: 'Repeatable Airo workflows',
+    category: 'Automations',
+    group: 'Automation Layer',
+    tags: ['routine'],
+    payload: 'automation',
   ),
-  ExplorableCollectionItem<String>(
-    id: 'tour',
-    title: 'Brewery Tour',
-    subtitle: 'Saturday walkthrough',
-    category: 'Events',
-    group: 'Back House',
-    payload: 'event',
+  AiroExplorableCollectionItem<String>(
+    id: 'scheduled-actions',
+    title: 'Scheduled Actions',
+    subtitle: 'Time-based Airo automation',
+    category: 'Automations',
+    group: 'Automation Layer',
+    payload: 'automation',
   ),
 ];
