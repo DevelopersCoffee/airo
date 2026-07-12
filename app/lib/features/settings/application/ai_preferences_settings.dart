@@ -4,7 +4,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:feature_iptv/feature_iptv.dart' show sharedPreferencesProvider;
 import 'ai_storage_dashboard.dart';
-import 'ai_model_management.dart';
 
 enum AIAccelerationPreference {
   auto('Auto'),

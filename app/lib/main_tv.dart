@@ -24,8 +24,8 @@ import 'core/auth/auth_service.dart';
 import 'core/config/platform_features.dart';
 import 'core/error/global_error_handler.dart';
 import 'core/features/feature_registry.dart';
-import "package:feature_iptv/feature_iptv.dart";
-import "features/iptv/iptv_feature_module.dart";
+import 'package:feature_iptv/feature_iptv.dart';
+import 'features/iptv/iptv_feature_module.dart';
 import 'firebase_options.dart';
 
 /// Global flag to track if Firebase is available
