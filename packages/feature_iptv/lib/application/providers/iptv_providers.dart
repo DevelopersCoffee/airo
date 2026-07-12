@@ -43,6 +43,11 @@ final m3uParserProvider = Provider<M3UParserService>((ref) {
   );
 });
 
+/// User-supplied playlist URL.
+final userPlaylistUrlProvider = FutureProvider<String?>((ref) async {
+  return ref.watch(m3uParserProvider).getPlaylistUrl();
+});
+
 /// Channel data service provider (new - fetches preprocessed JSON)
 final channelDataServiceProvider = Provider<ChannelDataService>((ref) {
   return ChannelDataService(
@@ -157,19 +162,14 @@ final channelSearchQueryProvider = StateProvider<String>((ref) => '');
 
 /// User preference keywords for channel sorting
 final preferenceKeywordsProvider = StateProvider<List<String>>((ref) {
-  return [
-    'hindi',
-    'india',
-    'bollywood',
-    'star',
-    'zee',
-    'sony',
-    'colors',
-    'sab',
-    'aaj tak',
-    'dd ',
-    'news 18',
-    'ndtv',
+  return const [
+    'news',
+    'music',
+    'sports',
+    'radio',
+    'local',
+    'public',
+    'education',
   ];
 });
 

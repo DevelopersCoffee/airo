@@ -2,8 +2,9 @@ import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:platform_channels/platform_channels.dart';
 
-/// M3U Playlist Parser with caching and fallback support
+/// M3U playlist parser for user-supplied sources.
 class M3UParserService {
+  static const String _playlistUrlKey = 'iptv_user_playlist_url';
   static const String _cacheKey = 'iptv_playlist_cache';
   static const String _cacheTimestampKey = 'iptv_playlist_timestamp';
   static const Duration _cacheValidity = Duration(hours: 24);
@@ -11,16 +12,15 @@ class M3UParserService {
   final Dio _dio;
   final SharedPreferences _prefs;
 
-  /// Primary and fallback playlist URLs
-  static const List<String> _playlistUrls = [
-    'https://raw.githubusercontent.com/FunctionError/PiratesTv/main/combined_playlist.m3u',
-    // Add fallback URLs here
-  ];
-
   M3UParserService({required this._dio, required this._prefs});
 
-  /// Fetch and parse playlist with caching and fallback
+  /// Fetch and parse the user-supplied playlist with caching.
   Future<List<IPTVChannel>> fetchPlaylist({bool forceRefresh = false}) async {
+    final playlistUrl = getPlaylistUrl();
+    if (playlistUrl == null) {
+      return const [];
+    }
+
     // Try cache first if not forcing refresh
     if (!forceRefresh) {
       final cached = await _loadFromCache();
@@ -29,27 +29,54 @@ class M3UParserService {
       }
     }
 
-    // Try each playlist URL until one works
-    for (final url in _playlistUrls) {
-      try {
-        final channels = await _fetchAndParse(url);
-        if (channels.isNotEmpty) {
-          await _saveToCache(channels);
-          return channels;
-        }
-      } catch (e) {
-        print('[M3U] Failed to fetch from $url: $e');
-        continue;
+    try {
+      final channels = await _fetchAndParse(playlistUrl);
+      if (channels.isNotEmpty) {
+        await _saveToCache(channels);
+        return channels;
       }
+    } catch (e) {
+      print('[M3U] Failed to fetch user playlist: $e');
     }
 
-    // All URLs failed, try cache as last resort
+    // Network failed; use only a cache derived from the user's own playlist.
     final cached = await _loadFromCache();
     if (cached != null && cached.isNotEmpty) {
       return cached;
     }
 
-    throw Exception('Failed to load playlist from all sources');
+    return const [];
+  }
+
+  /// Return the configured user playlist URL, if any.
+  String? getPlaylistUrl() {
+    final value = _prefs.getString(_playlistUrlKey)?.trim();
+    return value == null || value.isEmpty ? null : value;
+  }
+
+  /// Persist a user-supplied playlist URL.
+  Future<void> setPlaylistUrl(String url) async {
+    final normalized = url.trim();
+    final uri = Uri.tryParse(normalized);
+    if (uri == null ||
+        uri.host.isEmpty ||
+        (uri.scheme != 'https' && uri.scheme != 'http')) {
+      throw ArgumentError.value(
+        url,
+        'url',
+        'Enter a valid HTTP(S) playlist URL.',
+      );
+    }
+
+    await _prefs.setString(_playlistUrlKey, normalized);
+    await _prefs.remove(_cacheKey);
+    await _prefs.remove(_cacheTimestampKey);
+  }
+
+  /// Remove the configured playlist and its user-derived cache.
+  Future<void> clearPlaylist() async {
+    await _prefs.remove(_playlistUrlKey);
+    await clearCache();
   }
 
   /// Fetch and parse M3U from URL
@@ -151,53 +178,7 @@ class M3UParserService {
     // Remove extra whitespace
     name = name.trim().replaceAll(RegExp(r'\s+'), ' ');
 
-    // Known channel name mappings for consistency
-    const nameCorrections = {
-      'b4u music': 'B4U Music',
-      'b4u beats': 'B4U Beats',
-      '9xm': '9XM',
-      '9x jalwa': '9X Jalwa',
-      'mtv': 'MTV',
-      'vh1': 'VH1',
-      'ndtv': 'NDTV',
-      'ndtv india': 'NDTV India',
-      'aaj tak': 'Aaj Tak',
-      'zee news': 'Zee News',
-      'republic tv': 'Republic TV',
-      'times now': 'Times Now',
-      'india today': 'India Today',
-      'cnn': 'CNN',
-      'bbc': 'BBC',
-      'star plus': 'Star Plus',
-      'star gold': 'Star Gold',
-      'sony tv': 'Sony TV',
-      'colors': 'Colors',
-      'zee tv': 'Zee TV',
-      'discovery': 'Discovery',
-      'nat geo': 'Nat Geo',
-      'national geographic': 'National Geographic',
-      'cartoon network': 'Cartoon Network',
-      'pogo': 'Pogo',
-      'nick': 'Nick',
-      'disney': 'Disney',
-    };
-
-    final lowerName = name.toLowerCase();
-
-    // Check for known corrections
-    for (final entry in nameCorrections.entries) {
-      if (lowerName == entry.key || lowerName.contains(entry.key)) {
-        // If exact match, return the correction
-        if (lowerName == entry.key) return entry.value;
-        // If partial match, replace the part
-        return name.replaceAll(
-          RegExp(entry.key, caseSensitive: false),
-          entry.value,
-        );
-      }
-    }
-
-    // Default: Title Case
+    // Title case without correcting to specific channel brands.
     return name
         .split(' ')
         .map((word) {

@@ -1,4 +1,4 @@
-import 'package:test/test.dart';
+import 'package:flutter_test/flutter_test.dart';
 import 'package:platform_playlist_import/platform_playlist_import.dart';
 
 class MockStringInputStage extends PipelineStage<String, String> {

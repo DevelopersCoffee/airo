@@ -176,6 +176,10 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen> {
     );
   }
 
+  Future<void> _showPlaylistSheet() async {
+    await showPlaylistSourceSheet(context, ref);
+  }
+
   @override
   Widget build(BuildContext context) {
     final isFullscreen = ref.watch(isFullscreenModeProvider);
@@ -217,6 +221,11 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen> {
             onPressed: _showSearchSheet,
           ),
           IconButton(
+            icon: const Icon(Icons.link),
+            tooltip: 'Playlist source',
+            onPressed: _showPlaylistSheet,
+          ),
+          IconButton(
             icon: const Icon(Icons.cast_connected),
             tooltip: 'Cast',
             onPressed: _showCastSheet,
@@ -229,6 +238,7 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen> {
             child: _StreamTabContent(
               onChannelTap: _playChannel,
               onFullscreenToggle: _toggleFullscreen,
+              onPlaylistSourceTap: _showPlaylistSheet,
             ),
           ),
           const IptvCastMiniController(),
@@ -299,6 +309,10 @@ class _IPTVScreenBodyState extends ConsumerState<IPTVScreenBody> {
     ref.read(iptvStreamingServiceProvider).playChannel(channel);
   }
 
+  Future<void> _showPlaylistSheet() async {
+    await showPlaylistSourceSheet(context, ref);
+  }
+
   @override
   Widget build(BuildContext context) {
     final isFullscreen = ref.watch(isFullscreenModeProvider);
@@ -328,6 +342,7 @@ class _IPTVScreenBodyState extends ConsumerState<IPTVScreenBody> {
                     child: _StreamTabContent(
                       onChannelTap: _playChannel,
                       onFullscreenToggle: _toggleFullscreen,
+                      onPlaylistSourceTap: _showPlaylistSheet,
                     ),
                   ),
                   const IptvCastMiniController(),
@@ -342,10 +357,12 @@ class _StreamTabContent extends ConsumerWidget {
   const _StreamTabContent({
     required this.onChannelTap,
     required this.onFullscreenToggle,
+    required this.onPlaylistSourceTap,
   });
 
   final ValueChanged<IPTVChannel> onChannelTap;
   final VoidCallback onFullscreenToggle;
+  final VoidCallback onPlaylistSourceTap;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -367,6 +384,12 @@ class _StreamTabContent extends ConsumerWidget {
   ) {
     final screenWidth = MediaQuery.of(context).size.width;
     final isWideScreen = screenWidth > 800;
+
+    if (channels.isEmpty) {
+      return _BringYourOwnPlaylistView(
+        onPlaylistSourceTap: onPlaylistSourceTap,
+      );
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -512,6 +535,163 @@ class _StreamTabContent extends ConsumerWidget {
   }
 }
 
+Future<void> showPlaylistSourceSheet(
+  BuildContext context,
+  WidgetRef ref,
+) async {
+  final parser = ref.read(m3uParserProvider);
+  final controller = TextEditingController(text: parser.getPlaylistUrl() ?? '');
+  String? errorText;
+
+  await showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    showDragHandle: true,
+    builder: (context) {
+      return StatefulBuilder(
+        builder: (context, setState) {
+          Future<void> save() async {
+            try {
+              await parser.setPlaylistUrl(controller.text);
+              ref.invalidate(userPlaylistUrlProvider);
+              ref.invalidate(iptvChannelsProvider);
+              if (context.mounted) {
+                Navigator.of(context).pop();
+              }
+            } on ArgumentError catch (error) {
+              setState(() => errorText = error.message.toString());
+            }
+          }
+
+          return SafeArea(
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(
+                24,
+                12,
+                24,
+                24 + MediaQuery.of(context).viewInsets.bottom,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Playlist source',
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Add an M3U playlist URL for content you are authorized to use.',
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: controller,
+                    autofocus: true,
+                    keyboardType: TextInputType.url,
+                    textInputAction: TextInputAction.done,
+                    decoration: InputDecoration(
+                      labelText: 'M3U playlist URL',
+                      hintText: 'https://example.com/playlist.m3u',
+                      prefixIcon: const Icon(Icons.link),
+                      errorText: errorText,
+                    ),
+                    onSubmitted: (_) => save(),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      TextButton(
+                        onPressed: () async {
+                          await parser.clearPlaylist();
+                          ref.invalidate(userPlaylistUrlProvider);
+                          ref.invalidate(iptvChannelsProvider);
+                          if (context.mounted) {
+                            Navigator.of(context).pop();
+                          }
+                        },
+                        child: const Text('Remove'),
+                      ),
+                      const Spacer(),
+                      TextButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        child: const Text('Cancel'),
+                      ),
+                      const SizedBox(width: 8),
+                      FilledButton.icon(
+                        onPressed: save,
+                        icon: const Icon(Icons.check),
+                        label: const Text('Save'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      );
+    },
+  );
+
+  controller.dispose();
+}
+
+class _BringYourOwnPlaylistView extends StatelessWidget {
+  const _BringYourOwnPlaylistView({required this.onPlaylistSourceTap});
+
+  final VoidCallback onPlaylistSourceTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final placeholderHeight = constraints.maxHeight < 560 ? 180.0 : 240.0;
+
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              SizedBox(
+                height: placeholderHeight,
+                width: double.infinity,
+                child: const _PlayerPlaceholder(
+                  message: 'Add a playlist to start watching',
+                ),
+              ),
+              const SizedBox(height: 20),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'Add your playlist',
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Airo is a media player. It does not provide channels, playlists, or program guide data. Add an M3U URL for media you own or are authorized to watch.',
+                style: theme.textTheme.bodyMedium,
+              ),
+              const SizedBox(height: 16),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: FilledButton.icon(
+                  onPressed: onPlaylistSourceTap,
+                  icon: const Icon(Icons.link),
+                  label: const Text('Add playlist URL'),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
 class _PrimaryCategoryBar extends ConsumerWidget {
   const _PrimaryCategoryBar();
 
@@ -577,7 +757,7 @@ class _FeaturedPlayerPanel extends StatelessWidget {
           Text('Featured Player', style: theme.textTheme.titleLarge),
           const SizedBox(height: 4),
           Text(
-            'Jump straight into live news, sports, entertainment, and music.',
+            'Play media from your saved playlist.',
             style: theme.textTheme.bodyMedium,
           ),
           const SizedBox(height: 16),
@@ -598,7 +778,9 @@ class _FeaturedPlayerPanel extends StatelessWidget {
           streamingState.when(
             data: (state) {
               if (state.currentChannel == null) {
-                return const Text('Choose a live channel to begin streaming.');
+                return const Text(
+                  'Choose a channel from your playlist to begin streaming.',
+                );
               }
 
               return Column(
@@ -662,7 +844,7 @@ class _ChannelPanel extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Live Channels',
+                  'Playlist Channels',
                   style: Theme.of(context).textTheme.titleLarge,
                 ),
                 const SizedBox(height: 4),
@@ -688,7 +870,11 @@ class _ChannelPanel extends ConsumerWidget {
 }
 
 class _PlayerPlaceholder extends StatelessWidget {
-  const _PlayerPlaceholder();
+  const _PlayerPlaceholder({
+    this.message = 'Select a channel to start watching',
+  });
+
+  final String message;
 
   @override
   Widget build(BuildContext context) {
@@ -709,7 +895,7 @@ class _PlayerPlaceholder extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             Text(
-              'Select a channel to start watching',
+              message,
               style: TextStyle(
                 color: colorScheme.primary.withValues(alpha: 0.7),
               ),

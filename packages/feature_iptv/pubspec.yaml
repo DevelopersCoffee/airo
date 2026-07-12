@@ -19,16 +19,16 @@ dependencies:
   wakelock_plus: ^1.5.2
   platform_channels:
     path: ../platform_channels
+  platform_history:
+    path: ../platform_history
   platform_media:
     path: ../platform_media
   platform_player:
     path: ../platform_player
-  platform_streams:
-    path: ../platform_streams
-  platform_history:
-    path: ../platform_history
   platform_playlist_import:
     path: ../platform_playlist_import
+  platform_streams:
+    path: ../platform_streams
 
 dev_dependencies:
   flutter_test:
