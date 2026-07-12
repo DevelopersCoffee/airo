@@ -64,6 +64,40 @@ void main() {
     );
   }
 
+  Widget createEmptyWidget() {
+    SharedPreferences.setMockInitialValues({});
+    return FutureBuilder<SharedPreferences>(
+      future: SharedPreferences.getInstance(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return const MaterialApp(
+            home: Scaffold(body: CircularProgressIndicator()),
+          );
+        }
+
+        return ProviderScope(
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(snapshot.data!),
+            iptvChannelsProvider.overrideWith((ref) async => const []),
+            recentlyWatchedChannelsProvider.overrideWith(
+              (ref) async => const [],
+            ),
+            streamingStateProvider.overrideWith(
+              (ref) => Stream.value(
+                const StreamingState(
+                  playbackState: PlaybackState.idle,
+                  isLiveStream: true,
+                  liveDelay: Duration(seconds: 1),
+                ),
+              ),
+            ),
+          ],
+          child: const MaterialApp(home: IPTVScreen()),
+        );
+      },
+    );
+  }
+
   testWidgets('renders Stream app bar, category filters, and live list', (
     tester,
   ) async {
@@ -84,7 +118,7 @@ void main() {
     await tester.drag(find.byType(CustomScrollView), const Offset(0, -320));
     await tester.pumpAndSettle();
 
-    expect(find.text('Live Channels'), findsOneWidget);
+    expect(find.text('Playlist Channels'), findsOneWidget);
     expect(find.text('City News Live'), findsOneWidget);
     expect(find.text('LIVE'), findsWidgets);
   });
@@ -99,5 +133,24 @@ void main() {
     expect(find.text('Search channels'), findsOneWidget);
     expect(find.text('Find live channels by name or group.'), findsOneWidget);
     expect(find.text('Done'), findsOneWidget);
+  });
+
+  testWidgets('fresh install shows bring-your-own playlist state', (
+    tester,
+  ) async {
+    await tester.pumpWidget(createEmptyWidget());
+    await tester.pumpAndSettle();
+
+    expect(find.text('Stream'), findsOneWidget);
+    expect(find.byTooltip('Playlist source'), findsOneWidget);
+    expect(find.text('Add your playlist'), findsOneWidget);
+    expect(
+      find.textContaining(
+        'does not provide channels, playlists, or program guide data',
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('Add playlist URL'), findsOneWidget);
+    expect(find.text('Live Channels'), findsNothing);
   });
 }

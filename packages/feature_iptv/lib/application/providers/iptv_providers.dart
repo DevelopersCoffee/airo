@@ -6,10 +6,8 @@ export '../../../../core/providers/navigation_provider.dart'
 import "package:platform_history/platform_history.dart";
 import "package:platform_channels/platform_channels.dart";
 import "package:platform_player/platform_player.dart";
-import '../../domain/services/m3u_parser_service.dart';
-import "package:platform_channels/platform_channels.dart";
-import "package:platform_player/platform_player.dart";
 import "package:platform_media/platform_media.dart";
+import "package:platform_playlist_import/platform_playlist_import.dart";
 
 export 'iptv_cast_providers.dart';
 
@@ -39,6 +37,11 @@ final m3uParserProvider = Provider<M3UParserService>((ref) {
     dio: ref.watch(dioProvider),
     prefs: ref.watch(sharedPreferencesProvider),
   );
+});
+
+/// User-supplied playlist URL.
+final userPlaylistUrlProvider = FutureProvider<String?>((ref) async {
+  return ref.watch(m3uParserProvider).getPlaylistUrl();
 });
 
 /// Channel data service provider (new - fetches preprocessed JSON)
@@ -155,19 +158,14 @@ final channelSearchQueryProvider = StateProvider<String>((ref) => '');
 
 /// User preference keywords for channel sorting
 final preferenceKeywordsProvider = StateProvider<List<String>>((ref) {
-  return [
-    'hindi',
-    'india',
-    'bollywood',
-    'star',
-    'zee',
-    'sony',
-    'colors',
-    'sab',
-    'aaj tak',
-    'dd ',
-    'news 18',
-    'ndtv',
+  return const [
+    'news',
+    'music',
+    'sports',
+    'radio',
+    'local',
+    'public',
+    'education',
   ];
 });
 
