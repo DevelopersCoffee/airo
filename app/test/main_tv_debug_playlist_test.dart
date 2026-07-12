@@ -1,6 +1,8 @@
 import 'package:airo_app/main_tv.dart';
+import 'package:airo_app/core/platform/device_form_factor.dart';
 import 'package:dio/dio.dart';
 import 'package:feature_iptv/feature_iptv.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -30,5 +32,47 @@ void main() {
     );
 
     expect(parser.getPlaylistUrl(), 'https://example.com/user.m3u');
+  });
+
+  test('does not lock orientation on mobile devices', () async {
+    List<DeviceOrientation>? orientations;
+    SystemUiMode? systemUiMode;
+
+    await configureTvSystemChrome(
+      detectFormFactor: () async => DeviceFormFactor.mobile,
+      setPreferredOrientations: (value) async {
+        orientations = value;
+      },
+      setEnabledSystemUIMode: (mode, {overlays}) async {
+        systemUiMode = mode;
+      },
+    );
+
+    expect(orientations, isEmpty);
+    expect(systemUiMode, SystemUiMode.edgeToEdge);
+  });
+
+  test('locks landscape only on TV devices', () async {
+    List<DeviceOrientation>? orientations;
+    SystemUiMode? systemUiMode;
+    List<SystemUiOverlay>? systemUiOverlays;
+
+    await configureTvSystemChrome(
+      detectFormFactor: () async => DeviceFormFactor.tv,
+      setPreferredOrientations: (value) async {
+        orientations = value;
+      },
+      setEnabledSystemUIMode: (mode, {overlays}) async {
+        systemUiMode = mode;
+        systemUiOverlays = overlays;
+      },
+    );
+
+    expect(orientations, [
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
+    expect(systemUiMode, SystemUiMode.immersiveSticky);
+    expect(systemUiOverlays, isEmpty);
   });
 }

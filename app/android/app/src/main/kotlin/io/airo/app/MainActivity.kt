@@ -1,9 +1,12 @@
 package io.airo.app
 
 import android.Manifest
+import android.app.UiModeManager
 import android.content.ContentUris
+import android.content.Context
 import android.content.ContentValues
 import android.content.Intent
+import android.content.res.Configuration
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.provider.CalendarContract
@@ -22,6 +25,7 @@ class MainActivity : AudioServiceActivity() {
     private val GEMINI_NANO_EVENT_CHANNEL = "com.airo.gemini_nano/stream"
     private val LITERT_LM_CHANNEL = "com.airo.litert_lm"
     private val AGENT_CONNECTORS_CHANNEL = "com.airo.agent_connectors"
+    private val DEVICE_INFO_CHANNEL = "com.airo/device_info"
     private val CALENDAR_READ_PERMISSION_REQUEST = 9001
     private val CALENDAR_WRITE_PERMISSION_REQUEST = 9002
 
@@ -57,6 +61,15 @@ class MainActivity : AudioServiceActivity() {
         EventChannel(flutterEngine.dartExecutor.binaryMessenger, "com.airo.model_download/progress")
             .setStreamHandler(downloadPlugin.progressStreamHandler)
 
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, DEVICE_INFO_CHANNEL)
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "isTV" -> result.success(isTvDevice())
+                    "getTvPlatform" -> result.success(getTvPlatform())
+                    else -> result.notImplemented()
+                }
+            }
+
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, AGENT_CONNECTORS_CHANNEL)
             .setMethodCallHandler { call, result ->
                 when (call.method) {
@@ -88,6 +101,24 @@ class MainActivity : AudioServiceActivity() {
                     else -> result.notImplemented()
                 }
             }
+    }
+
+    private fun isTvDevice(): Boolean {
+        val uiModeManager = getSystemService(Context.UI_MODE_SERVICE) as? UiModeManager
+        return packageManager.hasSystemFeature(PackageManager.FEATURE_LEANBACK) ||
+            packageManager.hasSystemFeature(PackageManager.FEATURE_LEANBACK_ONLY) ||
+            packageManager.hasSystemFeature("amazon.hardware.fire_tv") ||
+            uiModeManager?.currentModeType == Configuration.UI_MODE_TYPE_TELEVISION
+    }
+
+    private fun getTvPlatform(): String {
+        if (packageManager.hasSystemFeature("amazon.hardware.fire_tv")) {
+            return "fire_tv"
+        }
+        if (isTvDevice()) {
+            return "android_tv"
+        }
+        return "none"
     }
 
     override fun onRequestPermissionsResult(

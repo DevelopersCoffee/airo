@@ -24,6 +24,7 @@ import 'core/app/airo_tv_app.dart';
 import 'core/config/platform_features.dart';
 import 'core/error/global_error_handler.dart';
 import 'core/features/feature_registry.dart';
+import 'core/platform/device_form_factor.dart';
 import 'package:feature_iptv/feature_iptv.dart';
 import 'features/iptv/iptv_cast_provider_override.dart';
 import 'features/iptv/iptv_feature_module.dart';
@@ -42,17 +43,7 @@ void main() async {
   // Initialize global error handler for unhandled exceptions
   GlobalErrorHandler.initialize();
 
-  // TV-specific setup: Force landscape orientation
-  await SystemChrome.setPreferredOrientations([
-    DeviceOrientation.landscapeLeft,
-    DeviceOrientation.landscapeRight,
-  ]);
-
-  // TV-specific setup: Hide system UI for immersive experience
-  await SystemChrome.setEnabledSystemUIMode(
-    SystemUiMode.immersiveSticky,
-    overlays: [],
-  );
+  await configureTvSystemChrome();
 
   debugPrint('🖥️ Starting Airo TV (${PlatformFeatures.platformName})');
   debugPrint(
@@ -100,6 +91,37 @@ void main() async {
       child: const AiroTvApp(),
     ),
   );
+}
+
+@visibleForTesting
+Future<void> configureTvSystemChrome({
+  Future<DeviceFormFactor> Function()? detectFormFactor,
+  Future<void> Function(List<DeviceOrientation> orientations)?
+  setPreferredOrientations,
+  Future<void> Function(SystemUiMode mode, {List<SystemUiOverlay>? overlays})?
+  setEnabledSystemUIMode,
+}) async {
+  final formFactor =
+      await (detectFormFactor ??
+          () {
+            return DeviceFormFactorDetector.detect(null);
+          })();
+  final applyOrientations =
+      setPreferredOrientations ?? SystemChrome.setPreferredOrientations;
+  final applySystemUiMode =
+      setEnabledSystemUIMode ?? SystemChrome.setEnabledSystemUIMode;
+
+  if (formFactor == DeviceFormFactor.tv) {
+    await applyOrientations([
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
+    await applySystemUiMode(SystemUiMode.immersiveSticky, overlays: []);
+    return;
+  }
+
+  await applyOrientations([]);
+  await applySystemUiMode(SystemUiMode.edgeToEdge);
 }
 
 @visibleForTesting
