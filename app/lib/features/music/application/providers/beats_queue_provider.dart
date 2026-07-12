@@ -3,8 +3,7 @@ import '../../domain/models/beats_models.dart';
 import '../../domain/models/beats_queue_state.dart';
 import '../../data/services/beats_queue_storage.dart';
 import '../notifiers/beats_queue_notifier.dart';
-import "package:feature_iptv/feature_iptv.dart"
-    show sharedPreferencesProvider;
+import "package:feature_iptv/feature_iptv.dart" show sharedPreferencesProvider;
 
 /// Provider for BeatsQueueStorage
 final beatsQueueStorageProvider = Provider<BeatsQueueStorage>((ref) {
