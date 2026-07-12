@@ -20,6 +20,7 @@ import '../../features/coins/presentation/screens/budget_management_screen.dart'
 import '../../features/coins/presentation/screens/groups_list_screen.dart';
 import '../../features/coins/presentation/screens/group_detail_screen.dart';
 import '../../features/coins/presentation/screens/add_split_expense_screen.dart';
+import '../../features/life_track/presentation/screens/track_list_screen.dart';
 import '../../core/auth/auth_service.dart';
 import '../../core/app/app_shell.dart';
 import '../http/http_dog.dart';
@@ -73,6 +74,11 @@ class AppRouter {
       GoRoute(path: '/live', redirect: (context, state) => '/music'),
       GoRoute(path: '/live/music', redirect: (context, state) => '/music'),
       GoRoute(path: '/live/tv', redirect: (context, state) => '/iptv'),
+      GoRoute(
+        path: '/life-track',
+        name: 'life_track',
+        builder: (context, state) => const TrackListScreen(),
+      ),
       GoRoute(
         path: '/airo-explore',
         name: 'airo_explore',
