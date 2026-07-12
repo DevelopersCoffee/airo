@@ -36,6 +36,18 @@
 
   <title>Airo</title>
   <link rel="manifest" href="manifest.json">
+
+  <!-- Required by pdfx web plugin registration, even when a route does not
+       render PDFs. Keep this in the web shell so browser debug builds start. -->
+  <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@4.6.82/build/pdf.min.mjs" type="module"></script>
+  <script type="module">
+    var { pdfjsLib } = globalThis;
+    pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.6.82/build/pdf.worker.mjs";
+    var pdfRenderOptions = {
+      cMapUrl: "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.6.82/cmaps/",
+      cMapPacked: true,
+    };
+  </script>
 </head>
 <body>
   <!-- Firebase SDK for Web - Must load before Flutter -->
