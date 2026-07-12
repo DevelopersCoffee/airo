@@ -9,7 +9,7 @@ name: PR Checks
 
 on:
   pull_request:
-    branches: [ main, master, develop ]
+    branches: [ main, v2, master, develop ]
 
 # Cancel any in-progress runs for the same PR
 concurrency:
@@ -62,6 +62,11 @@ jobs:
         run: |
           chmod +x scripts/check-bundled-model-artifacts.sh
           scripts/check-bundled-model-artifacts.sh
+
+      - name: Validate platform build profiles
+        run: |
+          chmod +x scripts/check-build-profiles.py
+          scripts/check-build-profiles.py
 
   # ============================================
   # Code Quality (analyze, format) - ~2 minutes

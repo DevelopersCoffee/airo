@@ -2,7 +2,7 @@ name: Plugin Size Gate
 
 on:
   pull_request:
-    branches: [ main, master, develop ]
+    branches: [ main, v2, master, develop ]
     paths:
       - 'app/**'
       - 'packages/**'

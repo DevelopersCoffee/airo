@@ -9,5 +9,6 @@
 # This file is updated automatically after successful main builds.
 component	artifact	baseline_bytes	budget_mb
 mobile-full	app-arm64-v8a-release.apk	453201577	35
+iptv-standalone	app-arm64-v8a-release.apk	125829120	120
 mobile-streaming	app-arm64-v8a-release.apk	34381602	35
 tv	app-arm64-v8a-release.apk	31071323	35

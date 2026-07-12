@@ -1,0 +1,224 @@
+{
+  "schemaVersion": 1,
+  "profiles": [
+    {
+      "id": "mobile-full",
+      "releaseLine": "v1",
+      "description": "Full monolith app line. Size is reported but not enforced as an edge profile.",
+      "entrypoint": "app/lib/main.dart",
+      "pubspec": "app/pubspec.yaml",
+      "appId": "io.airo.app",
+      "appVariant": "full",
+      "appPlatform": "mobileFull",
+      "ciBuild": true,
+      "edgeProfile": false,
+      "requiredPackages": ["airo", "airomoney"],
+      "featureModules": ["airo", "airomoney"],
+      "allowedNativePlugins": ["*"],
+      "heavyPackages": [],
+      "requiredDependencyOverrides": {
+        "flutter_chrome_cast": "../packages/platform_player/third_party/flutter_chrome_cast"
+      },
+      "assetAllowlist": [],
+      "android": {
+        "apkArtifact": "app-arm64-v8a-release.apk",
+        "abiStrategy": "single-arm64-apk",
+        "releaseBudgetMb": 450,
+        "debugBudgetMb": 650,
+        "enforceReleaseBudget": false
+      }
+    },
+    {
+      "id": "iptv-standalone",
+      "releaseLine": "v2",
+      "description": "Standalone mobile IPTV APK with no full-app business modules.",
+      "entrypoint": "app/lib/main_airo_iptv.dart",
+      "pubspec": "app/pubspec_iptv.yaml",
+      "appId": "io.airo.iptv",
+      "appVariant": "iptv",
+      "appPlatform": "mobileIptv",
+      "ciBuild": true,
+      "edgeProfile": true,
+      "requiredPackages": ["feature_iptv", "audio_service"],
+      "featureModules": ["feature_iptv"],
+      "allowedNativePlugins": [
+        "audio_service",
+        "flutter_chrome_cast",
+        "shared_preferences",
+        "video_player",
+        "wakelock_plus"
+      ],
+      "heavyPackages": [
+        "stockfish",
+        "chess",
+        "flame",
+        "flame_audio",
+        "google_mlkit_text_recognition",
+        "airomoney"
+      ],
+      "requiredDependencyOverrides": {
+        "flutter_chrome_cast": "../packages/platform_player/third_party/flutter_chrome_cast"
+      },
+      "assetAllowlist": ["assets/airo_icon.png"],
+      "android": {
+        "apkArtifact": "app-arm64-v8a-release.apk",
+        "abiStrategy": "single-arm64-apk",
+        "releaseBudgetMb": 120,
+        "debugBudgetMb": 650,
+        "enforceReleaseBudget": true
+      }
+    },
+    {
+      "id": "mobile-streaming",
+      "releaseLine": "v2",
+      "description": "Mobile streaming app with IPTV and music only.",
+      "entrypoint": "app/lib/main_mobile_streaming.dart",
+      "pubspec": "app/pubspec_streaming.yaml",
+      "appId": "io.airo.streaming",
+      "appVariant": "streaming",
+      "appPlatform": "mobileStreaming",
+      "ciBuild": true,
+      "edgeProfile": true,
+      "requiredPackages": ["airo", "audio_service"],
+      "featureModules": ["feature_iptv", "music"],
+      "allowedNativePlugins": [
+        "audio_service",
+        "audioplayers",
+        "flutter_chrome_cast",
+        "just_audio",
+        "shared_preferences",
+        "video_player",
+        "wakelock_plus"
+      ],
+      "heavyPackages": [
+        "stockfish",
+        "chess",
+        "flame",
+        "google_mlkit_text_recognition",
+        "image_picker",
+        "file_picker",
+        "share_plus",
+        "flutter_image_compress",
+        "flutter_contacts",
+        "permission_handler",
+        "flutter_local_notifications",
+        "timezone",
+        "pdfx"
+      ],
+      "requiredDependencyOverrides": {
+        "stockfish": "../packages/stubs/stockfish_stub",
+        "chess": "../packages/stubs/chess_stub",
+        "flame": "../packages/stubs/flame_stub",
+        "google_mlkit_text_recognition": "../packages/stubs/mlkit_stub",
+        "image_picker": "../packages/stubs/image_picker_stub",
+        "file_picker": "../packages/stubs/file_picker_stub",
+        "share_plus": "../packages/stubs/share_plus_stub",
+        "flutter_image_compress": "../packages/stubs/flutter_image_compress_stub",
+        "flutter_contacts": "../packages/stubs/flutter_contacts_stub",
+        "permission_handler": "../packages/stubs/permission_handler_stub",
+        "flutter_local_notifications": "../packages/stubs/flutter_local_notifications_stub",
+        "timezone": "../packages/stubs/timezone_stub",
+        "pdfx": "../packages/stubs/pdfx_stub",
+        "flutter_chrome_cast": "../packages/platform_player/third_party/flutter_chrome_cast"
+      },
+      "assetAllowlist": ["assets/audio/", "assets/airo_icon.png"],
+      "android": {
+        "apkArtifact": "app-arm64-v8a-release.apk",
+        "abiStrategy": "single-arm64-apk",
+        "releaseBudgetMb": 35,
+        "debugBudgetMb": 650,
+        "enforceReleaseBudget": true
+      }
+    },
+    {
+      "id": "tv",
+      "releaseLine": "v2",
+      "description": "Android TV and Fire TV IPTV profile.",
+      "entrypoint": "app/lib/main_tv.dart",
+      "pubspec": "app/pubspec_tv.yaml",
+      "appId": "io.airo.tv",
+      "appVariant": "tv",
+      "appPlatform": "androidTv",
+      "ciBuild": true,
+      "edgeProfile": true,
+      "requiredPackages": ["airo", "audio_service"],
+      "featureModules": ["feature_iptv"],
+      "allowedNativePlugins": [
+        "audio_service",
+        "flutter_chrome_cast",
+        "shared_preferences",
+        "video_player",
+        "wakelock_plus"
+      ],
+      "heavyPackages": [
+        "stockfish",
+        "chess",
+        "flame",
+        "google_mlkit_text_recognition",
+        "just_audio",
+        "audioplayers",
+        "flutter_tts",
+        "image_picker",
+        "file_picker",
+        "share_plus",
+        "flutter_image_compress",
+        "flutter_contacts",
+        "permission_handler",
+        "flutter_local_notifications",
+        "timezone",
+        "pdfx"
+      ],
+      "requiredDependencyOverrides": {
+        "stockfish": "../packages/stubs/stockfish_stub",
+        "chess": "../packages/stubs/chess_stub",
+        "flame": "../packages/stubs/flame_stub",
+        "google_mlkit_text_recognition": "../packages/stubs/mlkit_stub",
+        "just_audio": "../packages/stubs/just_audio_stub",
+        "audioplayers": "../packages/stubs/audioplayers_stub",
+        "flutter_tts": "../packages/stubs/flutter_tts_stub",
+        "image_picker": "../packages/stubs/image_picker_stub",
+        "file_picker": "../packages/stubs/file_picker_stub",
+        "share_plus": "../packages/stubs/share_plus_stub",
+        "flutter_image_compress": "../packages/stubs/flutter_image_compress_stub",
+        "flutter_contacts": "../packages/stubs/flutter_contacts_stub",
+        "permission_handler": "../packages/stubs/permission_handler_stub",
+        "flutter_local_notifications": "../packages/stubs/flutter_local_notifications_stub",
+        "timezone": "../packages/stubs/timezone_stub",
+        "pdfx": "../packages/stubs/pdfx_stub",
+        "flutter_chrome_cast": "../packages/platform_player/third_party/flutter_chrome_cast"
+      },
+      "assetAllowlist": ["assets/airo_icon.png"],
+      "android": {
+        "apkArtifact": "app-arm64-v8a-release.apk",
+        "abiStrategy": "single-arm64-apk",
+        "releaseBudgetMb": 35,
+        "debugBudgetMb": 650,
+        "enforceReleaseBudget": true
+      }
+    },
+    {
+      "id": "web-validation",
+      "releaseLine": "v2",
+      "description": "Local browser validation profile for IPTV UI/data debugging.",
+      "entrypoint": "app/lib/main_airo_iptv.dart",
+      "pubspec": "app/pubspec.yaml",
+      "appId": "web",
+      "appVariant": "iptv",
+      "appPlatform": "webIptv",
+      "ciBuild": false,
+      "edgeProfile": false,
+      "requiredPackages": ["feature_iptv"],
+      "featureModules": ["feature_iptv"],
+      "allowedNativePlugins": [],
+      "heavyPackages": [],
+      "requiredDependencyOverrides": {
+        "flutter_chrome_cast": "../packages/platform_player/third_party/flutter_chrome_cast"
+      },
+      "assetAllowlist": [],
+      "web": {
+        "requiresCorsPlaylistServer": true,
+        "buildMode": "profile"
+      }
+    }
+  ]
+}

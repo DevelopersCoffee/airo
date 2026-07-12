@@ -8,9 +8,9 @@ name: Continuous Integration
 
 on:
   push:
-    branches: [ main, master, develop ]
+    branches: [ main, v2, master, develop ]
   pull_request:
-    branches: [ main, master, develop ]
+    branches: [ main, v2, master, develop ]
   workflow_dispatch:
     inputs:
       build_full_android:
@@ -84,6 +84,11 @@ jobs:
         run: |
           chmod +x scripts/check-bundled-model-artifacts.sh
           scripts/check-bundled-model-artifacts.sh
+
+      - name: Validate platform build profiles
+        run: |
+          chmod +x scripts/check-build-profiles.py
+          scripts/check-build-profiles.py
 
   # ============================================
   # Core Package Tests (runs on all events - fast)
@@ -218,6 +223,15 @@ jobs:
             pubspec: pubspec_streaming.yaml
             size_target_mb: 35
             description: "Streaming app (IPTV + Music)"
+          - name: iptv-standalone
+            target: lib/main_airo_iptv.dart
+            variant: iptv
+            app_platform: mobileIptv
+            use_stubs: true
+            enforce_size: true
+            pubspec: pubspec_iptv.yaml
+            size_target_mb: 120
+            description: "Standalone IPTV app"
           - name: tv
             target: lib/main_tv.dart
             variant: tv
