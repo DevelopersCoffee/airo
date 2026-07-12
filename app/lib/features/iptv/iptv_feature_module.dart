@@ -32,10 +32,8 @@ class IptvFeatureModule extends AppFeatureModule {
   ];
 
   @override
-  Future<void> initialize() async {
-  }
+  Future<void> initialize() async {}
 
   @override
-  Future<void> dispose() async {
-  }
+  Future<void> dispose() async {}
 }

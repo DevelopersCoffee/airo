@@ -153,7 +153,7 @@ class ChannelListWidget extends ConsumerWidget {
 }
 
 /// Channel list with recently watched section at top
-class _ChannelListWithRecent extends ConsumerWidget {
+class _ChannelListWithRecent extends ConsumerStatefulWidget {
   final List<IPTVChannel> channels;
   final Function(IPTVChannel) onChannelTap;
   final bool showRecentlyWatched;
@@ -165,40 +165,63 @@ class _ChannelListWithRecent extends ConsumerWidget {
   });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_ChannelListWithRecent> createState() =>
+      _ChannelListWithRecentState();
+}
+
+class _ChannelListWithRecentState
+    extends ConsumerState<_ChannelListWithRecent> {
+  final _scrollController = ScrollController();
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final recentAsync = ref.watch(recentlyWatchedChannelsProvider);
 
-    return ListView.builder(
-      itemCount: channels.length + (showRecentlyWatched ? 1 : 0),
-      itemBuilder: (context, index) {
-        // Recently watched section at top
-        if (showRecentlyWatched && index == 0) {
-          return recentAsync.when(
-            data: (recentChannels) {
-              if (recentChannels.isEmpty) {
-                return const SizedBox.shrink();
-              }
-              return _RecentlyWatchedSection(
-                channels: recentChannels,
-                onChannelTap: onChannelTap,
-                onClearRecent: () {
-                  ref.read(clearRecentlyWatchedProvider(null));
-                },
-              );
-            },
-            loading: () => const SizedBox.shrink(),
-            error: (_, _) => const SizedBox.shrink(),
-          );
-        }
+    return Scrollbar(
+      controller: _scrollController,
+      thumbVisibility: true,
+      child: ListView.builder(
+        controller: _scrollController,
+        padding: const EdgeInsets.only(bottom: 24),
+        itemCount:
+            widget.channels.length + (widget.showRecentlyWatched ? 1 : 0),
+        itemBuilder: (context, index) {
+          // Recently watched section at top
+          if (widget.showRecentlyWatched && index == 0) {
+            return recentAsync.when(
+              data: (recentChannels) {
+                if (recentChannels.isEmpty) {
+                  return const SizedBox.shrink();
+                }
+                return _RecentlyWatchedSection(
+                  channels: recentChannels,
+                  onChannelTap: widget.onChannelTap,
+                  onClearRecent: () {
+                    ref.read(clearRecentlyWatchedProvider(null));
+                  },
+                );
+              },
+              loading: () => const SizedBox.shrink(),
+              error: (_, _) => const SizedBox.shrink(),
+            );
+          }
 
-        // Regular channel list
-        final channelIndex = showRecentlyWatched ? index - 1 : index;
-        final channel = channels[channelIndex];
-        return _ChannelListTile(
-          channel: channel,
-          onTap: () => onChannelTap(channel),
-        );
-      },
+          // Regular channel list
+          final channelIndex = widget.showRecentlyWatched ? index - 1 : index;
+          final channel = widget.channels[channelIndex];
+          return _ChannelListTile(
+            key: ValueKey('channel-${channel.id}'),
+            channel: channel,
+            onTap: () => widget.onChannelTap(channel),
+          );
+        },
+      ),
     );
   }
 }
@@ -335,99 +358,144 @@ class _ChannelListTile extends ConsumerWidget {
   final IPTVChannel channel;
   final VoidCallback onTap;
 
-  const _ChannelListTile({required this.channel, required this.onTap});
+  const _ChannelListTile({
+    super.key,
+    required this.channel,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final currentChannel = ref.watch(currentChannelProvider);
     final isPlaying = currentChannel?.id == channel.id;
+    final colorScheme = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final groupLabel = channel.group.isNotEmpty
+        ? channel.group
+        : channel.category.label;
 
-    return Material(
-      type: MaterialType.transparency,
-      child: ListTile(
-        leading: ClipRRect(
-          borderRadius: BorderRadius.circular(6),
-          child: Container(
-            width: 48,
-            height: 48,
-            color: Theme.of(
-              context,
-            ).colorScheme.surface.withValues(alpha: 0.42),
-            child: channel.hasLogo
-                ? Image.network(
-                    channel.logoUrl!,
-                    fit: BoxFit.cover,
-                    loadingBuilder: (_, child, loadingProgress) {
-                      if (loadingProgress == null) return child;
-                      return Center(
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          value: loadingProgress.expectedTotalBytes != null
-                              ? loadingProgress.cumulativeBytesLoaded /
-                                    loadingProgress.expectedTotalBytes!
-                              : null,
-                        ),
-                      );
-                    },
-                    errorBuilder: (_, _, _) => _buildDefaultIcon(),
-                  )
-                : _buildDefaultIcon(),
-          ),
-        ),
-        title: Text(
-          channel.name,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            fontWeight: isPlaying ? FontWeight.bold : FontWeight.normal,
-            color: isPlaying ? Theme.of(context).primaryColor : null,
-          ),
-        ),
-        subtitle: Row(
-          children: [
-            // Audio-only label for clarity (UX improvement)
-            if (channel.isAudioOnly)
-              Container(
-                margin: const EdgeInsets.only(right: 6),
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                decoration: BoxDecoration(
-                  color: Colors.orange.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: const Text(
-                  'Audio',
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: Colors.orange,
-                    fontWeight: FontWeight.w500,
-                  ),
+    return Semantics(
+      button: true,
+      selected: isPlaying,
+      label: channel.name,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        child: Material(
+          type: MaterialType.transparency,
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(10),
+            child: Container(
+              constraints: const BoxConstraints(minHeight: 64),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              decoration: BoxDecoration(
+                color: isPlaying
+                    ? colorScheme.primaryContainer.withValues(alpha: 0.35)
+                    : Colors.transparent,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: isPlaying ? colorScheme.primary : Colors.transparent,
                 ),
               ),
-            Expanded(
-              child: Text(
-                channel.group,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+              child: Row(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(6),
+                    child: Container(
+                      width: 48,
+                      height: 48,
+                      color: colorScheme.surface.withValues(alpha: 0.42),
+                      child: channel.hasLogo
+                          ? Image.network(
+                              channel.logoUrl!,
+                              fit: BoxFit.cover,
+                              loadingBuilder: (_, child, loadingProgress) {
+                                if (loadingProgress == null) return child;
+                                return Center(
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    value:
+                                        loadingProgress.expectedTotalBytes !=
+                                            null
+                                        ? loadingProgress
+                                                  .cumulativeBytesLoaded /
+                                              loadingProgress
+                                                  .expectedTotalBytes!
+                                        : null,
+                                  ),
+                                );
+                              },
+                              errorBuilder: (_, _, _) => _buildDefaultIcon(),
+                            )
+                          : _buildDefaultIcon(),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          channel.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.titleSmall?.copyWith(
+                            fontWeight: isPlaying
+                                ? FontWeight.w700
+                                : FontWeight.w500,
+                            color: isPlaying ? colorScheme.primary : null,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            if (channel.isAudioOnly)
+                              Container(
+                                margin: const EdgeInsets.only(right: 6),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 4,
+                                  vertical: 1,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.orange.withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: const Text(
+                                  'Audio',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: Colors.orange,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                            Expanded(
+                              child: Text(
+                                groupLabel,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  if (!channel.isAudioOnly) const _LiveStatusPill(),
+                  if (isPlaying) ...[
+                    const SizedBox(width: 8),
+                    Icon(Icons.equalizer, size: 18, color: colorScheme.primary),
+                  ],
+                ],
               ),
             ),
-          ],
+          ),
         ),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (!channel.isAudioOnly) const _LiveStatusPill(),
-            if (!channel.isAudioOnly) const SizedBox(width: 8),
-            // Playing indicator with animation
-            if (isPlaying)
-              Icon(
-                Icons.equalizer,
-                size: 18,
-                color: Theme.of(context).primaryColor,
-              ),
-          ],
-        ),
-        onTap: onTap,
       ),
     );
   }

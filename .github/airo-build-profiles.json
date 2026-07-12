@@ -144,7 +144,7 @@
       "description": "Android TV and Fire TV IPTV profile.",
       "entrypoint": "app/lib/main_tv.dart",
       "pubspec": "app/pubspec_tv.yaml",
-      "appId": "io.airo.tv",
+      "appId": "io.airo.app.tv",
       "appVariant": "tv",
       "appPlatform": "androidTv",
       "ciBuild": true,

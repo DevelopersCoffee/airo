@@ -405,16 +405,10 @@ class _GoogleSignInButton extends StatelessWidget {
             : Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Google logo
-                  Image.network(
-                    'https://www.google.com/favicon.ico',
-                    height: 20,
-                    width: 20,
-                    errorBuilder: (context, error, stackTrace) => Icon(
-                      Icons.g_mobiledata,
-                      size: 24,
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
+                  Icon(
+                    Icons.g_mobiledata,
+                    size: 26,
+                    color: Theme.of(context).colorScheme.primary,
                   ),
                   const SizedBox(width: 12),
                   Flexible(

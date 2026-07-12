@@ -81,6 +81,8 @@ dependencies:
   # Local packages - Features (streaming only)
   airo:
     path: ../packages/airo
+  feature_iptv:
+    path: ../packages/feature_iptv
 
   # UI essentials
   cupertino_icons: ^1.0.9

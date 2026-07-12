@@ -346,6 +346,16 @@ jobs:
         if: steps.android_scope.outputs.should_build == 'true'
         run: |
           cd app
+          case "${{ matrix.platform.variant }}" in
+            full) package_name="io.airo.app" ;;
+            iptv) package_name="io.airo.iptv" ;;
+            streaming) package_name="io.airo.streaming" ;;
+            tv) package_name="io.airo.app.tv" ;;
+            *)
+              echo "::error::Unknown Android variant: ${{ matrix.platform.variant }}"
+              exit 1
+              ;;
+          esac
           echo "::warning::Using CI placeholder Firebase config for validation build."
           cat > android/app/google-services.json <<'JSON'
           {
@@ -359,7 +369,7 @@ jobs:
                 "client_info": {
                   "mobilesdk_app_id": "1:000000000000:android:0000000000000000000000",
                   "android_client_info": {
-                    "package_name": "io.airo.app"
+                    "package_name": "__PACKAGE_NAME__"
                   }
                 },
                 "oauth_client": [],
@@ -378,11 +388,12 @@ jobs:
             "configuration_version": "1"
           }
           JSON
-          if [ ! -f android/app/google-services.json ] || [ ! -s android/app/google-services.json ]; then
+          sed -i "s/__PACKAGE_NAME__/$package_name/g" android/app/google-services.json
+          if [[ ! -f android/app/google-services.json || ! -s android/app/google-services.json ]]; then
             echo "::error::Failed to create google-services.json."
             exit 1
           fi
-          echo "✅ Firebase configuration created successfully"
+          echo "✅ Firebase configuration created successfully for $package_name"
 
       - name: Create CI validation signing config
         if: steps.android_scope.outputs.should_build == 'true'
