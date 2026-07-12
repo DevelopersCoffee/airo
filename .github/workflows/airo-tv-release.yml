@@ -66,6 +66,11 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      - name: Normalize release artifact label
+        run: |
+          release_version="$(printf '%s' "$RELEASE_VERSION" | sed 's/[^A-Za-z0-9._-]/-/g')"
+          echo "RELEASE_VERSION=$release_version" >> "$GITHUB_ENV"
+
       - name: Setup Java
         uses: actions/setup-java@v5
         with:
@@ -273,6 +278,11 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v7
+
+      - name: Normalize release artifact label
+        run: |
+          release_version="$(printf '%s' "$RELEASE_VERSION" | sed 's/[^A-Za-z0-9._-]/-/g')"
+          echo "RELEASE_VERSION=$release_version" >> "$GITHUB_ENV"
 
       - name: Download release artifacts
         uses: actions/download-artifact@v8
