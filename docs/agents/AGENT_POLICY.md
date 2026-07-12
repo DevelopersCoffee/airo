@@ -178,16 +178,24 @@ The issue must state:
 - links to parent roadmap issues
 
 Before any branch, worktree, or implementation starts, the task owner must
-sync against the latest `origin/main`. No agent may start from an older local
-branch tip, a stale worktree, or an unverified checkout.
+sync against the latest release-line base. No agent may start from an older
+local branch tip, a stale worktree, or an unverified checkout.
+
+Release-line bases:
+
+- v1 monolith / full APK / 1.x work starts from `origin/main`.
+- v2 modular APK / 2.x work starts from `origin/v2`.
+- If the issue does not explicitly say v2, use `origin/main`.
 
 Required bootstrap sequence:
-- `git fetch origin main`
-- create the task branch or worktree from `origin/main`
-- verify the task branch/worktree base matches the fetched `origin/main`
+- `git fetch origin main v2`
+- choose `origin/main` for v1 work or `origin/v2` for v2 work
+- create the task branch or worktree from that chosen remote base
+- verify the task branch/worktree base matches the fetched remote base
 
 If new commits land on `main` before implementation starts, the agent must
-repeat this sync step and restack or recreate the worktree as needed.
+or `v2` before implementation starts, the agent must repeat this sync step and
+restack or recreate the worktree as needed.
 
 ### 2. Critical Agent Clarity Gate
 
@@ -202,7 +210,7 @@ Before coding, add a comment or issue section:
 **Owning agent:** ...
 **Reviewing agents:** ...
 **Impacted modules/files:** ...
-**Base branch/worktree:** <confirmed from latest origin/main: yes/no>
+**Base branch/worktree:** <confirmed from latest origin/main or origin/v2: yes/no>
 **Open questions:** ...
 **Decision:** Ready / Blocked
 ```

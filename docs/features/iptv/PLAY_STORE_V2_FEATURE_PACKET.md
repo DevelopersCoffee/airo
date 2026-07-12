@@ -40,7 +40,7 @@ legacy-empty for Play Store V2 and should only clear old first-party caches.
 **Privacy/redaction:** Playlist URL is user data; no bundled source, no first-party remote source, no reviewer-specific branching.
 **Persistence:** User URL, playlist cache, cache timestamp, and recently watched history are local app data.
 **Versioning/migration:** Legacy bundled/remote channel caches are ignored by the v2 data path.
-**Tests required:** Parser URL validation/persistence, no-content default, feature UI empty state, Android config/package asset scan, standalone `feature_iptv` package tests.
+**Tests required:** Parser URL validation/persistence, no-content default, feature UI empty state, Android config/package asset scan. Standalone `feature_iptv` package tests remain a v2 modularization follow-up because the package still imports app-only `core/` and `shared/` paths.
 
 ## Deterministic Use Cases
 
@@ -93,19 +93,19 @@ legacy-empty for Play Store V2 and should only clear old first-party caches.
 **Assertions:** No `assets/iptv_channels*.json` entries and no first-party IPTV source URLs in runtime Dart/Android config.
 **Cleanup:** None.
 
-### AUTO-004: Package boundary check
-**Given:** `feature_iptv` and its platform package dependencies.
-**When:** `flutter test` runs inside `packages/feature_iptv`.
-**Then:** The package compiles and tests without importing app-only `core/` or `shared/` paths.
+### AUTO-004: Platform package boundary check
+**Given:** `platform_channels` and `platform_playlist_import`.
+**When:** `flutter test` runs inside each package.
+**Then:** The platform packages compile and validate BYOC behavior without depending on bundled channels.
 **Fixtures:** Package tests and local framework abstractions.
-**Mocks/stubs:** Unavailable/default Cast controller and mock voice-search service.
-**Assertions:** Standalone package tests pass.
+**Mocks/stubs:** Mock shared preferences.
+**Assertions:** Platform package tests pass.
 **Cleanup:** None.
 
 ## Implementation Boundaries
 
 - Framework files: `packages/platform_channels`, `packages/platform_playlist_import`, `packages/platform_player`, `packages/platform_media`, `packages/platform_streams`, `packages/platform_history`.
 - Application files: `packages/feature_iptv`, app pubspec variants.
-- Tests: package-level Flutter tests and host-only static scans.
+- Tests: platform package Flutter tests and host-only static scans. Standalone `feature_iptv` package tests are blocked until the existing app-only import boundary is removed.
 - Docs: this feature packet plus release note updates if needed.
 - Verification environment: host-only Flutter/package tests. Android device build remains release validation.

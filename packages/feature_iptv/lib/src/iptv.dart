@@ -19,29 +19,15 @@ export 'package:platform_player/platform_player.dart';
 export 'package:platform_playlist_import/platform_playlist_import.dart';
 export 'package:platform_streams/platform_streams.dart';
 
-// Feature Module
-export 'iptv_feature_module.dart';
-
-// Models
-export 'domain/models/iptv_channel.dart';
-export 'domain/models/streaming_state.dart';
-
-// Services
-export 'domain/services/iptv_streaming_service.dart';
-export 'domain/services/iptv_cast_media_adapter.dart';
-export 'domain/services/video_player_streaming_service.dart';
-export 'domain/services/m3u_parser_service.dart';
-export 'domain/services/live_edge_detector.dart';
-
 // Providers
-export 'application/providers/iptv_providers.dart';
+export '../application/providers/iptv_providers.dart';
 
 // Screens
-export 'presentation/screens/iptv_screen.dart';
+export '../presentation/screens/iptv_screen.dart';
 
 // Widgets
-export 'presentation/widgets/video_player_widget.dart';
-export 'presentation/widgets/channel_list_widget.dart';
-export 'presentation/widgets/iptv_mini_player.dart';
-export 'presentation/widgets/go_live_button.dart';
-export 'presentation/widgets/live_indicators.dart';
+export '../presentation/widgets/channel_list_widget.dart';
+export '../presentation/widgets/go_live_button.dart';
+export '../presentation/widgets/iptv_mini_player.dart';
+export '../presentation/widgets/live_indicators.dart';
+export '../presentation/widgets/video_player_widget.dart';

@@ -8,9 +8,11 @@ environment:
   flutter: ">=1.17.0"
 
 dependencies:
+  dio: ^5.10.0
   equatable: ^2.0.8
   flutter:
     sdk: flutter
+  shared_preferences: ^2.5.5
 
 dev_dependencies:
   flutter_test:
