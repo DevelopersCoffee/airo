@@ -1,5 +1,7 @@
 import 'package:airo_app/core/utils/currency_formatter.dart';
 import 'package:airo_app/core/utils/locale_settings.dart';
+import 'package:airo_app/features/coins/application/providers/android_import_permission_provider.dart';
+import 'package:airo_app/features/coins/application/services/android_finance_import_service.dart';
 import 'package:airo_app/features/coins/application/providers/dashboard_providers.dart';
 import 'package:airo_app/features/coins/application/providers/expense_providers.dart';
 import 'package:airo_app/features/coins/domain/entities/transaction.dart';
@@ -10,8 +12,13 @@ import 'package:airo_app/features/coins/presentation/screens/coins_dashboard_scr
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+  });
+
   testWidgets('shows real safe-to-spend data in the user currency', (
     tester,
   ) async {
@@ -239,6 +246,40 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('Permission disabled'), findsOneWidget);
+  });
+
+  testWidgets('persists the Android import toggle from the dashboard', (
+    tester,
+  ) async {
+    final container = ProviderContainer(
+      overrides: [
+        dashboardDataProvider.overrideWith(
+          (ref) async => const DashboardData(),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: const MaterialApp(home: CoinsDashboardScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Permission disabled'), findsOneWidget);
+
+    final switchFinder = find.byType(Switch);
+    await tester.ensureVisible(switchFinder);
+    await tester.tap(switchFinder);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Permission enabled'), findsOneWidget);
+    expect(
+      container.read(androidFinanceImportPermissionControllerProvider).value,
+      AndroidFinanceImportPermission.enabled,
+    );
   });
 }
 

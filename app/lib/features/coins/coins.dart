@@ -61,6 +61,7 @@ export 'domain/errors/coins_errors.dart';
 
 // Application - Providers
 export 'application/providers/budget_providers.dart';
+export 'application/providers/android_import_permission_provider.dart';
 export 'application/providers/dashboard_providers.dart';
 export 'application/providers/expense_providers.dart';
 export 'application/providers/group_providers.dart';
@@ -82,6 +83,7 @@ export 'application/use_cases/update_expense_use_case.dart' hide Result;
 
 // Application - Services
 export 'application/services/android_finance_import_service.dart';
+export 'application/services/android_finance_import_preferences.dart';
 export 'application/services/coins_notification_service.dart';
 export 'application/services/coins_platform_support.dart';
 export 'application/services/coins_sync_service.dart';

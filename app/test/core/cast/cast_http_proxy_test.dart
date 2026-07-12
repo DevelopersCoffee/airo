@@ -42,37 +42,49 @@ void main() {
     await origin.close(force: true);
   });
 
-  test('rewrites playlist segment and key URIs to route through the proxy', () async {
-    final originUrl = Uri.parse(
-      'http://${origin.address.address}:${origin.port}/playlist.m3u8',
-    );
-    final proxiedUrl = proxy.proxiedUrl(originUrl);
+  test(
+    'rewrites playlist segment and key URIs to route through the proxy',
+    () async {
+      final originUrl = Uri.parse(
+        'http://${origin.address.address}:${origin.port}/playlist.m3u8',
+      );
+      final proxiedUrl = proxy.proxiedUrl(originUrl);
 
-    final client = HttpClient();
-    final response = await (await client.getUrl(proxiedUrl)).close();
-    final body = await response.transform(utf8.decoder).join();
+      final client = HttpClient();
+      final response = await (await client.getUrl(proxiedUrl)).close();
+      final body = await response.transform(utf8.decoder).join();
 
-    expect(response.headers.value('access-control-allow-origin'), '*');
-    expect(body, contains('URI="${proxy.proxiedUrl(originUrl.resolve('key.bin'))}"'));
-    expect(body, contains(proxy.proxiedUrl(originUrl.resolve('segment1.ts')).toString()));
-    client.close(force: true);
-  });
+      expect(response.headers.value('access-control-allow-origin'), '*');
+      expect(
+        body,
+        contains('URI="${proxy.proxiedUrl(originUrl.resolve('key.bin'))}"'),
+      );
+      expect(
+        body,
+        contains(proxy.proxiedUrl(originUrl.resolve('segment1.ts')).toString()),
+      );
+      client.close(force: true);
+    },
+  );
 
-  test('proxies segment bytes and attaches CORS headers the origin omits', () async {
-    final originUrl = Uri.parse(
-      'http://${origin.address.address}:${origin.port}/segment1.ts',
-    );
-    final proxiedUrl = proxy.proxiedUrl(originUrl);
+  test(
+    'proxies segment bytes and attaches CORS headers the origin omits',
+    () async {
+      final originUrl = Uri.parse(
+        'http://${origin.address.address}:${origin.port}/segment1.ts',
+      );
+      final proxiedUrl = proxy.proxiedUrl(originUrl);
 
-    final client = HttpClient();
-    final response = await (await client.getUrl(proxiedUrl)).close();
-    final bytes = await response.fold<List<int>>(
-      [],
-      (acc, chunk) => acc..addAll(chunk),
-    );
+      final client = HttpClient();
+      final response = await (await client.getUrl(proxiedUrl)).close();
+      final bytes = await response.fold<List<int>>(
+        [],
+        (acc, chunk) => acc..addAll(chunk),
+      );
 
-    expect(response.headers.value('access-control-allow-origin'), '*');
-    expect(bytes, [1, 2, 3, 4]);
-    client.close(force: true);
-  });
+      expect(response.headers.value('access-control-allow-origin'), '*');
+      expect(bytes, [1, 2, 3, 4]);
+      client.close(force: true);
+    },
+  );
 }
