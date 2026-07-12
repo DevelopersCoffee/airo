@@ -118,6 +118,8 @@ dev_dependencies:
 
 dependency_overrides:
   rxdart: ^0.28.0
+  flutter_chrome_cast:
+    path: ../packages/platform_player/third_party/flutter_chrome_cast
 
   audio_service:
     path: ../packages/stubs/audio_service_stub

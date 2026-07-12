@@ -133,6 +133,8 @@ dev_dependencies:
 # avoiding the heavy native libraries
 dependency_overrides:
   rxdart: ^0.28.0
+  flutter_chrome_cast:
+    path: ../packages/platform_player/third_party/flutter_chrome_cast
 
   # Heavy native library stubs (major size savings)
   stockfish:

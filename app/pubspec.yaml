@@ -151,6 +151,9 @@ dependency_overrides:
   # flutter_chrome_cast 1.4.6 requires rxdart ^0.28.0, while the current
   # custom_lint stack requires ^0.27.7. See docs/adr/0007-cast-rxdart-override.md.
   rxdart: ^0.28.0
+  # Platform-owned fork with the iOS contentID fix required for receiver playback.
+  flutter_chrome_cast:
+    path: ../packages/platform_player/third_party/flutter_chrome_cast
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
