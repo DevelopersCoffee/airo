@@ -18,14 +18,35 @@ fun dartDefine(name: String): String? {
 
 val appVariant = dartDefine("APP_VARIANT") ?: "full"
 val isLeanVariant = appVariant != "full"
+val variantApplicationId = when (appVariant) {
+    "iptv" -> "io.airo.iptv"
+    "streaming" -> "io.airo.streaming"
+    "tv" -> "io.airo.tv"
+    else -> "io.airo.app"
+}
+val variantAppLabel = when (appVariant) {
+    "iptv" -> "Airo IPTV"
+    "streaming" -> "Airo Streaming"
+    "tv" -> "Airo TV"
+    else -> "Airo"
+}
 
 plugins {
     id("com.android.application")
     id("kotlin-android")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
-    // Google Services for Firebase
-    id("com.google.gms.google-services")
+}
+
+val hasGoogleServicesConfig = listOf(
+    file("google-services.json"),
+    file("src/main/google-services.json"),
+    file("src/debug/google-services.json"),
+    file("src/release/google-services.json"),
+).any { it.exists() }
+
+if (hasGoogleServicesConfig) {
+    apply(plugin = "com.google.gms.google-services")
 }
 
 android {
@@ -47,11 +68,12 @@ android {
     }
 
     defaultConfig {
-        applicationId = "io.airo.app"
+        applicationId = variantApplicationId
         minSdk = 26 // Android 8.0 - broader device compatibility
         targetSdk = 36 // Target latest Android for Pixel 9
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        manifestPlaceholders["appLabel"] = variantAppLabel
 
         // Enable multidex for larger apps
         multiDexEnabled = true
