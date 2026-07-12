@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:core_data/core_data.dart';
 import 'package:core_domain/core_domain.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 enum TrackListViewMode { board, list }
 
@@ -155,11 +156,13 @@ class _TrackListScreenState extends State<TrackListScreen> {
                                     key: const ValueKey('life_track_board'),
                                     tracks: filteredTracks,
                                     onChangeStatus: _changeTrackStatus,
+                                    onOpenTrack: _openTrack,
                                   )
                                 : _TrackListView(
                                     key: const ValueKey('life_track_list'),
                                     tracks: filteredTracks,
                                     onChangeStatus: _changeTrackStatus,
+                                    onOpenTrack: _openTrack,
                                   ),
                           ),
                   ),
@@ -189,6 +192,10 @@ class _TrackListScreenState extends State<TrackListScreen> {
         _actionError = error;
       });
     }
+  }
+
+  void _openTrack(LifeTrack track) {
+    context.push('/life-track/${track.id}');
   }
 }
 
@@ -240,10 +247,12 @@ class _TrackBoard extends StatelessWidget {
     super.key,
     required this.tracks,
     required this.onChangeStatus,
+    this.onOpenTrack,
   });
 
   final List<LifeTrack> tracks;
   final Future<void> Function(LifeTrack, TrackStatus) onChangeStatus;
+  final ValueChanged<LifeTrack>? onOpenTrack;
 
   @override
   Widget build(BuildContext context) {
@@ -311,6 +320,7 @@ class _TrackBoard extends StatelessWidget {
                                                   compact: true,
                                                   onChangeStatus:
                                                       onChangeStatus,
+                                                  onOpenTrack: onOpenTrack,
                                                 ),
                                               ),
                                             )
@@ -337,10 +347,12 @@ class _TrackListView extends StatelessWidget {
     super.key,
     required this.tracks,
     required this.onChangeStatus,
+    this.onOpenTrack,
   });
 
   final List<LifeTrack> tracks;
   final Future<void> Function(LifeTrack, TrackStatus) onChangeStatus;
+  final ValueChanged<LifeTrack>? onOpenTrack;
 
   @override
   Widget build(BuildContext context) {
@@ -353,6 +365,7 @@ class _TrackListView extends StatelessWidget {
           track: tracks[index],
           compact: false,
           onChangeStatus: onChangeStatus,
+          onOpenTrack: onOpenTrack,
         );
       },
     );
@@ -364,11 +377,13 @@ class _TrackCard extends StatelessWidget {
     required this.track,
     required this.compact,
     required this.onChangeStatus,
+    this.onOpenTrack,
   });
 
   final LifeTrack track;
   final bool compact;
   final Future<void> Function(LifeTrack, TrackStatus) onChangeStatus;
+  final ValueChanged<LifeTrack>? onOpenTrack;
 
   @override
   Widget build(BuildContext context) {
@@ -391,113 +406,120 @@ class _TrackCard extends StatelessWidget {
 
     return Opacity(
       opacity: paused ? 0.58 : 1,
-      child: Container(
-        key: ValueKey('life_track_card_${track.id}'),
-        decoration: BoxDecoration(
-          color: paused
-              ? theme.colorScheme.surfaceContainerHighest
-              : theme.colorScheme.surface,
+      child: Material(
+        color: paused
+            ? theme.colorScheme.surfaceContainerHighest
+            : theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        child: InkWell(
+          key: ValueKey('life_track_card_${track.id}'),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: paused
-                ? theme.colorScheme.outlineVariant
-                : theme.colorScheme.outline.withValues(alpha: 0.2),
-          ),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
+          onTap: onOpenTrack == null ? null : () => onOpenTrack!(track),
+          child: Ink(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: paused
+                    ? theme.colorScheme.outlineVariant
+                    : theme.colorScheme.outline.withValues(alpha: 0.2),
+              ),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  CircleAvatar(
-                    radius: 20,
-                    backgroundColor: _categoryColor(track.category),
-                    child: Icon(
-                      _categoryIcon(track.category),
-                      color: Colors.white,
-                    ),
+                  Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 20,
+                        backgroundColor: _categoryColor(track.category),
+                        child: Icon(
+                          _categoryIcon(track.category),
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              track.title,
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              _categoryLabel(track.category),
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      SizedBox(
+                        width: 44,
+                        height: 44,
+                        child: Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            CircularProgressIndicator(
+                              value: track.progress,
+                              strokeWidth: 5,
+                            ),
+                            Center(
+                              child: Text(
+                                '${(track.progress * 100).round()}%',
+                                style: theme.textTheme.labelSmall,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          track.title,
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          _categoryLabel(track.category),
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ],
-                    ),
+                  const SizedBox(height: 12),
+                  Text(
+                    compact
+                        ? 'Active milestone: ${unresolvedMilestone.name}'
+                        : 'Current focus: ${unresolvedMilestone.name}',
+                    style: theme.textTheme.bodyMedium,
                   ),
-                  SizedBox(
-                    width: 44,
-                    height: 44,
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        CircularProgressIndicator(
-                          value: track.progress,
-                          strokeWidth: 5,
-                        ),
-                        Center(
-                          child: Text(
-                            '${(track.progress * 100).round()}%',
-                            style: theme.textTheme.labelSmall,
-                          ),
-                        ),
-                      ],
+                  if (unresolvedMilestone.objective.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      unresolvedMilestone.objective,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
                     ),
+                  ],
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      _StatusPill(status: track.status),
+                      const Spacer(),
+                      PopupMenuButton<TrackStatus>(
+                        key: ValueKey('life_track_actions_${track.id}'),
+                        tooltip: 'Track actions',
+                        onSelected: (status) => onChangeStatus(track, status),
+                        itemBuilder: (context) => _actionStatuses(track.status)
+                            .map(
+                              (status) => PopupMenuItem<TrackStatus>(
+                                value: status,
+                                child: Text(_actionLabel(status)),
+                              ),
+                            )
+                            .toList(growable: false),
+                      ),
+                    ],
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
-              Text(
-                compact
-                    ? 'Active milestone: ${unresolvedMilestone.name}'
-                    : 'Current focus: ${unresolvedMilestone.name}',
-                style: theme.textTheme.bodyMedium,
-              ),
-              if (unresolvedMilestone.objective.isNotEmpty) ...[
-                const SizedBox(height: 4),
-                Text(
-                  unresolvedMilestone.objective,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  _StatusPill(status: track.status),
-                  const Spacer(),
-                  PopupMenuButton<TrackStatus>(
-                    key: ValueKey('life_track_actions_${track.id}'),
-                    tooltip: 'Track actions',
-                    onSelected: (status) => onChangeStatus(track, status),
-                    itemBuilder: (context) => _actionStatuses(track.status)
-                        .map(
-                          (status) => PopupMenuItem<TrackStatus>(
-                            value: status,
-                            child: Text(_actionLabel(status)),
-                          ),
-                        )
-                        .toList(growable: false),
-                  ),
-                ],
-              ),
-            ],
+            ),
           ),
         ),
       ),
