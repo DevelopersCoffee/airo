@@ -1,5 +1,13 @@
 {
   "schemaVersion": 1,
+  "sharedDependencyConstraints": {
+    "dio": "^5.10.0",
+    "equatable": "^2.1.0",
+    "flutter_chrome_cast": "^1.4.6",
+    "flutter_riverpod": "2.6.1",
+    "riverpod": "2.6.1",
+    "shared_preferences": "^2.5.5"
+  },
   "profiles": [
     {
       "id": "mobile-full",
@@ -195,6 +203,26 @@
         "debugBudgetMb": 650,
         "enforceReleaseBudget": true
       }
+    },
+    {
+      "id": "ios-spm",
+      "releaseLine": "v2",
+      "description": "iOS Swift Package Manager dependency profile.",
+      "entrypoint": "app/lib/main.dart",
+      "pubspec": "app/pubspec_ios_spm.yaml",
+      "appId": "com.developerscoffee.airo",
+      "appVariant": "full",
+      "appPlatform": "ios",
+      "ciBuild": false,
+      "edgeProfile": false,
+      "requiredPackages": ["airo", "airomoney"],
+      "featureModules": ["airo", "airomoney"],
+      "allowedNativePlugins": ["*"],
+      "heavyPackages": [],
+      "requiredDependencyOverrides": {
+        "flutter_chrome_cast": "../packages/platform_player/third_party/flutter_chrome_cast"
+      },
+      "assetAllowlist": []
     },
     {
       "id": "web-validation",

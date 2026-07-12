@@ -113,6 +113,7 @@ def main():
     report_file = Path(os.environ.get("AIRO_BUILD_PROFILE_REPORT_FILE", DEFAULT_REPORT_FILE))
 
     profile_data = load_json(profile_file)
+    shared_constraints = profile_data.get("sharedDependencyConstraints", {})
     baselines = load_baselines(baseline_file)
     ci_text = CI_WORKFLOW.read_text(encoding="utf-8") if CI_WORKFLOW.exists() else ""
 
@@ -168,6 +169,15 @@ def main():
         for package in profile.get("requiredPackages", []):
             if package not in deps:
                 error(f"{profile_id}: required package {package} missing from {pubspec}", pubspec)
+                failures += 1
+                status = "FAIL"
+
+        for package, expected_constraint in shared_constraints.items():
+            if package in deps and deps[package] != expected_constraint:
+                error(
+                    f"{profile_id}: {package} must use shared constraint {expected_constraint}, got {deps[package]}",
+                    pubspec,
+                )
                 failures += 1
                 status = "FAIL"
 

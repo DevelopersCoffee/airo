@@ -35,7 +35,7 @@ dependencies:
   connectivity_plus: ^7.1.1
 
   # Networking
-  dio: ^5.9.2
+  dio: ^5.10.0
 
   # Firebase & Authentication
   firebase_core: 4.4.0
@@ -69,7 +69,7 @@ dependencies:
     path: ../packages/airomoney
 
   cupertino_icons: ^1.0.9
-  equatable: 2.0.8
+  equatable: ^2.1.0
   flame: 1.35.0
   flame_audio: 2.11.13
   share_plus: ^10.0.0

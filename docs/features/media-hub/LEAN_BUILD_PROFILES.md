@@ -9,6 +9,7 @@ Agents and release scripts must use that contract as the source of truth for:
 - app variant and platform dart-defines
 - app id
 - profile pubspec
+- shared dependency constraints
 - feature modules
 - allowed native plugins
 - heavy dependency stubs and overrides
@@ -20,6 +21,7 @@ Validate the contract before changing a variant pubspec or Android build matrix:
 ```bash
 scripts/check-build-profiles.py
 scripts/test-check-build-profiles.sh
+scripts/check-variant-pubspecs.sh
 ```
 
 The CI Android matrix builds the profile ids declared for CI, publishes an APK

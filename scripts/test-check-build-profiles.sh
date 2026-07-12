@@ -8,6 +8,7 @@ AIRO_BUILD_PROFILE_REPORT_FILE=/tmp/airo-build-profile-report.md \
 
 grep -q "Airo Build Profile Contract" /tmp/airo-build-profile-test.out
 grep -q "\`iptv-standalone\`" /tmp/airo-build-profile-test.out
+grep -q "\`ios-spm\`" /tmp/airo-build-profile-test.out
 grep -q "\`tv\`" /tmp/airo-build-profile-test.out
 
 echo "check-build-profiles tests passed"

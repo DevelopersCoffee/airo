@@ -135,6 +135,35 @@ jobs:
           echo "All core package tests completed!"
 
   # ============================================
+  # Variant Dependency Profiles
+  # ============================================
+  variant-dependencies:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: 'stable'
+          cache: true
+
+      - name: Cache pub dependencies
+        uses: actions/cache@v6
+        with:
+          path: ~/.pub-cache
+          key: pub-${{ runner.os }}-variant-profiles-${{ hashFiles('**/pubspec*.yaml', '.github/airo-build-profiles.json') }}
+          restore-keys: pub-${{ runner.os }}-
+
+      - name: Validate dependency profile constraints
+        run: |
+          chmod +x scripts/check-build-profiles.py scripts/check-variant-pubspecs.sh
+          scripts/check-build-profiles.py
+          scripts/check-variant-pubspecs.sh
+
+  # ============================================
   # App Tests with Coverage (runs on push to main only)
   # This is the expensive job - skip on PRs
   # ============================================
