@@ -16,6 +16,7 @@ final filteredModelsProvider = FutureProvider<List<OfflineModelInfo>>((
   ref,
 ) async {
   final registry = ref.watch(modelRegistryProvider);
+  ref.watch(modelRegistryEventsProvider);
   final filters = ref.watch(modelFiltersProvider);
   final matchingModels = registry.queryModels(
     family: filters.family,
@@ -43,6 +44,7 @@ final downloadedModelsProvider = FutureProvider<List<OfflineModelInfo>>((
   ref,
 ) async {
   final registry = ref.watch(modelRegistryProvider);
+  ref.watch(modelRegistryEventsProvider);
   final filters = ref.watch(modelFiltersProvider);
   final matchingModels = registry.queryModels(
     family: filters.family,

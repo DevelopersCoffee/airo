@@ -100,6 +100,49 @@ void main() {
     expect(find.text('Active'), findsOneWidget);
   });
 
+  testWidgets('downloaded tab refreshes after registry hydration updates', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+
+    final registry =
+        _FakeModelRegistry(
+          compatibilityByModelId: {
+            'gemma-downloaded': ModelCompatibilityResult.compatible(
+              MemorySeverity.safe,
+            ),
+          },
+        )..registerModel(
+          const OfflineModelInfo(
+            id: 'gemma-downloaded',
+            name: 'Gemma Downloaded',
+            family: ModelFamily.gemma,
+            fileSizeBytes: 1024,
+            provider: AIProvider.gemma,
+          ),
+        );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [modelRegistryProvider.overrideWithValue(registry)],
+        child: const MaterialApp(home: AIModelsScreen()),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Downloaded'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Gemma Downloaded'), findsNothing);
+    expect(find.textContaining('No downloaded models yet'), findsOneWidget);
+
+    registry.markAsDownloaded('gemma-downloaded', '/models/gemma.gguf');
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    expect(find.text('Gemma Downloaded'), findsOneWidget);
+  });
+
   testWidgets('shows stage, speed, eta, and percentage for active downloads', (
     tester,
   ) async {

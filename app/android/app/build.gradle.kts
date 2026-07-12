@@ -18,6 +18,13 @@ fun dartDefine(name: String): String? {
 
 val appVariant = dartDefine("APP_VARIANT") ?: "full"
 val isLeanVariant = appVariant != "full"
+val localLiteRtAar = file(
+    "${System.getProperty("user.home")}/.gradle/caches/modules-2/files-2.1/" +
+        "com.google.ai.edge.litertlm/litertlm-android/0.14.0/" +
+        "b835d722943ddbe5e48923ca9ee805b977f32419/litertlm-android-0.14.0.aar"
+)
+val useLocalLiteRtAar =
+    System.getenv("GITHUB_TOKEN").isNullOrBlank() && localLiteRtAar.exists()
 
 plugins {
     id("com.android.application")
@@ -152,8 +159,15 @@ dependencies {
     // ML Kit GenAI Prompt API for on-device Gemini Nano.
     implementation("com.google.mlkit:genai-prompt:1.0.0-beta2")
 
-    // LiteRT-LM for local on-device LLM inference.
-    implementation("com.google.ai.edge.litertlm:litertlm-android:latest.release")
+    // Use the cached local LiteRT artifact when GitHub Packages credentials are
+    // unavailable; otherwise resolve the canonical Maven dependency.
+    if (useLocalLiteRtAar) {
+        implementation(files(localLiteRtAar))
+        implementation("com.google.code.gson:gson:2.13.2")
+        implementation("org.jetbrains.kotlin:kotlin-reflect:2.2.21")
+    } else {
+        implementation("com.google.ai.edge.litertlm:litertlm-android:0.14.0")
+    }
 
     // Coroutines and lifecycle dependencies for async operations
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.11.0")
