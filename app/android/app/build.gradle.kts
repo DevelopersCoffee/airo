@@ -18,6 +18,7 @@ fun dartDefine(name: String): String? {
 
 val appVariant = dartDefine("APP_VARIANT") ?: "full"
 val isLeanVariant = appVariant != "full"
+val isTvVariant = appVariant == "tv"
 val variantApplicationId = when (appVariant) {
     "iptv" -> "io.airo.iptv"
     "streaming" -> "io.airo.streaming"
@@ -146,6 +147,10 @@ android {
 
     sourceSets {
         getByName("main") {
+            if (isTvVariant) {
+                manifest.srcFile("src/tv/AndroidManifest.xml")
+                res.srcDir("src/tv/res")
+            }
             kotlin.srcDir("src/main/kotlin")
         }
     }

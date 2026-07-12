@@ -1,0 +1,303 @@
+name: Airo TV Release
+
+on:
+  pull_request:
+    branches: [ v2 ]
+    paths:
+      - 'app/**'
+      - 'packages/**'
+      - 'scripts/**'
+      - '.github/workflows/airo-tv-release.yml'
+  push:
+    branches: [ v2 ]
+    paths:
+      - 'app/**'
+      - 'packages/**'
+      - 'scripts/**'
+      - '.github/workflows/airo-tv-release.yml'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Artifact version label, for example v2.0.0-tv.1'
+        required: true
+      production_signing:
+        description: 'Require production Android signing and Firebase secrets'
+        required: true
+        default: false
+        type: boolean
+      play_track:
+        description: 'Optional Play upload track'
+        required: true
+        default: none
+        type: choice
+        options:
+          - none
+          - internal
+          - alpha
+          - beta
+
+concurrency:
+  group: airo-tv-release-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  FLUTTER_VERSION: '3.44.4'
+  RELEASE_VERSION: ${{ github.event.inputs.version || github.ref_name }}
+
+jobs:
+  release-checks:
+    name: TV release checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Validate Android TV release metadata
+        run: scripts/check-android-tv-release.sh
+
+  build-tv:
+    name: Build Airo TV APK and AAB
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    needs: release-checks
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: 'stable'
+          cache: true
+
+      - name: Cache pub dependencies
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.pub-cache
+            app/.dart_tool
+            packages/*/.dart_tool
+          key: tv-pub-${{ runner.os }}-${{ hashFiles('**/pubspec.lock', 'app/pubspec_tv.yaml') }}
+          restore-keys: tv-pub-${{ runner.os }}-
+
+      - name: Cache Gradle
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: tv-gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: tv-gradle-${{ runner.os }}-
+
+      - name: Configure Firebase for TV build
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+          PRODUCTION_SIGNING: ${{ github.event.inputs.production_signing || 'false' }}
+        run: |
+          cd app
+          if [ -n "$GOOGLE_SERVICES_JSON" ]; then
+            echo "$GOOGLE_SERVICES_JSON" | base64 -d > android/app/google-services.json
+          elif [ "$PRODUCTION_SIGNING" = "true" ]; then
+            echo "::error::GOOGLE_SERVICES_JSON is required for production-signed release builds."
+            exit 1
+          else
+            cat > android/app/google-services.json <<'JSON'
+          {
+            "project_info": {
+              "project_number": "000000000000",
+              "project_id": "airo-tv-ci-placeholder",
+              "storage_bucket": "airo-tv-ci-placeholder.appspot.com"
+            },
+            "client": [
+              {
+                "client_info": {
+                  "mobilesdk_app_id": "1:000000000000:android:0000000000000000000000",
+                  "android_client_info": {
+                    "package_name": "io.airo.tv"
+                  }
+                },
+                "oauth_client": [],
+                "api_key": [
+                  {
+                    "current_key": "ci-placeholder"
+                  }
+                ],
+                "services": {
+                  "appinvite_service": {
+                    "other_platform_oauth_client": []
+                  }
+                }
+              }
+            ],
+            "configuration_version": "1"
+          }
+          JSON
+          fi
+
+      - name: Configure Android signing
+        env:
+          ANDROID_RELEASE_KEYSTORE_BASE64: ${{ secrets.ANDROID_RELEASE_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          PRODUCTION_SIGNING: ${{ github.event.inputs.production_signing || 'false' }}
+        run: |
+          cd app/android
+          if [ "$PRODUCTION_SIGNING" = "true" ]; then
+            missing=0
+            for name in ANDROID_RELEASE_KEYSTORE_BASE64 KEYSTORE_PASSWORD KEY_ALIAS KEY_PASSWORD; do
+              if [ -z "${!name}" ]; then
+                echo "::error::Missing required Android release signing secret: $name"
+                missing=1
+              fi
+            done
+            [ "$missing" -eq 0 ] || exit 1
+            echo "$ANDROID_RELEASE_KEYSTORE_BASE64" | base64 -d > release.keystore
+            {
+              echo "storeFile=release.keystore"
+              echo "storePassword=$KEYSTORE_PASSWORD"
+              echo "keyAlias=$KEY_ALIAS"
+              echo "keyPassword=$KEY_PASSWORD"
+            } > key.properties
+          else
+            keytool -genkeypair \
+              -v \
+              -keystore ci-validation.keystore \
+              -storepass ci-validation-password \
+              -keypass ci-validation-password \
+              -alias ci-validation \
+              -keyalg RSA \
+              -keysize 2048 \
+              -validity 10000 \
+              -dname "CN=Airo TV CI Validation,O=DevelopersCoffee,C=US"
+            {
+              echo "storeFile=ci-validation.keystore"
+              echo "storePassword=ci-validation-password"
+              echo "keyAlias=ci-validation"
+              echo "keyPassword=ci-validation-password"
+            } > key.properties
+          fi
+          chmod 600 *.keystore key.properties
+
+      - name: Apply TV pubspec
+        run: |
+          cp app/pubspec.yaml app/pubspec.yaml.backup
+          cp app/pubspec_tv.yaml app/pubspec.yaml
+
+      - name: Get dependencies
+        run: |
+          (cd packages/core_domain && flutter pub get) &
+          (cd packages/core_ui && flutter pub get) &
+          (cd packages/core_data && flutter pub get) &
+          (cd packages/core_ai && flutter pub get) &
+          (cd packages/core_auth && flutter pub get) &
+          wait
+          cd app && flutter pub get
+
+      - name: Patch Android plugin Gradle files
+        run: scripts/patch-android-plugin-gradle.sh
+
+      - name: Build Android TV APK
+        run: |
+          cd app
+          export GRADLE_OPTS="-Dorg.gradle.watch.fs=false -Xmx4g -Dorg.gradle.parallel=true"
+          flutter build apk --release \
+            --target=lib/main_tv.dart \
+            --dart-define=APP_VARIANT=tv \
+            --dart-define=APP_PLATFORM=androidTv \
+            --target-platform=android-arm64 \
+            --tree-shake-icons \
+            --split-debug-info=build/debug-info-tv \
+            --obfuscate
+
+      - name: Build Android TV AAB
+        run: |
+          cd app
+          export GRADLE_OPTS="-Dorg.gradle.watch.fs=false -Xmx4g -Dorg.gradle.parallel=true"
+          flutter build appbundle --release \
+            --target=lib/main_tv.dart \
+            --dart-define=APP_VARIANT=tv \
+            --dart-define=APP_PLATFORM=androidTv \
+            --tree-shake-icons \
+            --split-debug-info=build/debug-info-tv \
+            --obfuscate
+
+      - name: Verify release artifacts
+        env:
+          AIRO_TV_RELEASE_APK: app/build/app/outputs/flutter-apk/app-release.apk
+          AIRO_TV_RELEASE_AAB: app/build/app/outputs/bundle/release/app-release.aab
+        run: scripts/check-android-tv-release.sh
+
+      - name: Stage named release artifacts
+        run: |
+          mkdir -p release-artifacts
+          cp app/build/app/outputs/flutter-apk/app-release.apk "release-artifacts/airo-tv-${RELEASE_VERSION}.apk"
+          cp app/build/app/outputs/bundle/release/app-release.aab "release-artifacts/airo-tv-${RELEASE_VERSION}.aab"
+          ls -lh release-artifacts
+
+      - name: Upload Airo TV release artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: airo-tv-release-${{ env.RELEASE_VERSION }}
+          path: release-artifacts/
+          retention-days: 30
+
+      - name: Upload obfuscation symbols
+        uses: actions/upload-artifact@v7
+        with:
+          name: airo-tv-debug-info-${{ env.RELEASE_VERSION }}
+          path: app/build/debug-info-tv/
+          retention-days: 90
+
+  play-upload:
+    name: Upload Airo TV to Play testing track
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: build-tv
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.play_track != 'none'
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Download release artifacts
+        uses: actions/download-artifact@v8
+        with:
+          name: airo-tv-release-${{ env.RELEASE_VERSION }}
+          path: release-artifacts
+
+      - name: Configure Play service account
+        env:
+          GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+        run: |
+          if [ -z "$GOOGLE_PLAY_SERVICE_ACCOUNT_JSON" ]; then
+            echo "::error::GOOGLE_PLAY_SERVICE_ACCOUNT_JSON is required to upload to Google Play."
+            exit 1
+          fi
+          echo "$GOOGLE_PLAY_SERVICE_ACCOUNT_JSON" > app/android/play-store-credentials.json
+          chmod 600 app/android/play-store-credentials.json
+
+      - name: Upload to Google Play
+        working-directory: app/android
+        env:
+          SUPPLY_PACKAGE_NAME: io.airo.tv
+          SUPPLY_JSON_KEY: play-store-credentials.json
+        run: |
+          gem install fastlane --no-document
+          fastlane supply \
+            --aab "../../release-artifacts/airo-tv-${RELEASE_VERSION}.aab" \
+            --track "${{ github.event.inputs.play_track }}" \
+            --package_name "$SUPPLY_PACKAGE_NAME" \
+            --json_key "$SUPPLY_JSON_KEY" \
+            --skip_upload_metadata true \
+            --skip_upload_images true \
+            --skip_upload_screenshots true
