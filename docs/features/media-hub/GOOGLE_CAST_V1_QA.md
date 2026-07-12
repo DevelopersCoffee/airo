@@ -12,6 +12,9 @@ receivers, custom receivers, proxies, or multi-device casting.
 - Chromecast-enabled TV, preferably Sony Bravia / Android TV / Google TV.
 - Shared Wi-Fi network for phone and TV.
 
+See [Cast receiver compatibility](CAST_RECEIVER_COMPATIBILITY.md) for the
+MacBook distinction and the full supported receiver matrix.
+
 ## Test Matrix
 
 | Case | Steps | Expected Result |
@@ -21,6 +24,7 @@ receivers, custom receivers, proxies, or multi-device casting.
 | HLS cast | Select TV for a `.m3u8` channel | TV starts playback without Airo installed on TV |
 | Stop cast | Tap Stop in mini controller | Receiver stops and Airo returns to local playback-ready state |
 | Replace session | Cast to TV A, then cast to TV B | TV A session ends before TV B starts |
+| MacBook receiver check | Tap Cast while only a MacBook is available | MacBook is not treated as a Google Cast receiver |
 | No devices | Turn TV off and tap Cast | App shows no-device guidance and Refresh |
 | Receiver disconnect | Start cast, disconnect TV network | App clears active session and shows recoverable state |
 | Mobile leaves Wi-Fi | Start cast, move phone off Wi-Fi | App does not crash and can reconnect after returning to Wi-Fi |
