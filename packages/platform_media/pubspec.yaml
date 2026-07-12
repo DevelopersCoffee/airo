@@ -2,6 +2,7 @@ name: platform_media
 description: "A new Flutter package project."
 version: 0.0.1
 homepage:
+publish_to: none
 
 environment:
   sdk: ^3.12.2
@@ -12,6 +13,11 @@ dependencies:
     sdk: flutter
   platform_channels:
     path: ../platform_channels
+  platform_player:
+    path: ../platform_player
+  platform_streams:
+    path: ../platform_streams
+  video_player: ^2.10.1
 
 dev_dependencies:
   flutter_test:

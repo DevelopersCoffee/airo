@@ -1,8 +1,7 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-export '../../../../core/providers/navigation_provider.dart'
-    show currentNavigationTabProvider;
 import "package:platform_history/platform_history.dart";
 import "package:platform_channels/platform_channels.dart";
 import "package:platform_player/platform_player.dart";
@@ -10,6 +9,8 @@ import "package:platform_media/platform_media.dart";
 import "package:platform_playlist_import/platform_playlist_import.dart";
 
 export 'iptv_cast_providers.dart';
+export 'iptv_navigation_provider.dart';
+export 'voice_search_provider.dart';
 
 /// Shared preferences provider
 final sharedPreferencesProvider = Provider<SharedPreferences>((ref) {
@@ -111,7 +112,7 @@ final iptvChannelsProvider = FutureProvider<List<IPTVChannel>>((ref) async {
       return channels;
     }
   } catch (e) {
-    print('[Provider] ChannelDataService failed, falling back to M3U: $e');
+    debugPrint('[Provider] ChannelDataService failed, falling back to M3U: $e');
   }
 
   // Fallback to legacy M3U parser
@@ -133,7 +134,7 @@ final refreshChannelsProvider = FutureProvider.family<List<IPTVChannel>, bool>((
       return channels;
     }
   } catch (e) {
-    print(
+    debugPrint(
       '[Provider] ChannelDataService refresh failed, falling back to M3U: $e',
     );
   }

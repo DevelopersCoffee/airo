@@ -2,12 +2,15 @@ name: feature_iptv
 description: "A new Flutter package project."
 version: 0.0.1
 homepage:
+publish_to: none
 
 environment:
   sdk: ^3.12.2
   flutter: ">=1.17.0"
 
 dependencies:
+  dio: ^5.10.0
+  equatable: ^2.0.8
   flutter:
     sdk: flutter
   flutter_riverpod: ^2.6.1
@@ -23,6 +26,9 @@ dependencies:
     path: ../platform_playlist_import
   platform_streams:
     path: ../platform_streams
+  shared_preferences: ^2.5.5
+  video_player: ^2.10.1
+  wakelock_plus: ^1.4.0
 
 dev_dependencies:
   flutter_test:

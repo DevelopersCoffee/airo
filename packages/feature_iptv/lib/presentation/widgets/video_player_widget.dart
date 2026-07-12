@@ -4,12 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:video_player/video_player.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
-import '../../../../shared/widgets/app_icon_placeholder.dart';
 import '../../application/providers/iptv_providers.dart';
 import "package:platform_channels/platform_channels.dart";
 import "package:platform_player/platform_player.dart";
 import "package:platform_media/platform_media.dart";
 import '../utils/web_fullscreen.dart' as web_fullscreen;
+import 'iptv_icon_placeholder.dart';
 import 'live_indicators.dart';
 
 /// Video player widget with YouTube-like controls
@@ -466,8 +466,7 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
   }
 
   Widget _buildDefaultPlaceholder() {
-    // Use shared AppIconPlaceholder for brand consistency and optimized caching
-    return AppIconPlaceholder.videoPlayer();
+    return IptvIconPlaceholder.videoPlayer();
   }
 
   Widget _buildControlsOverlay(

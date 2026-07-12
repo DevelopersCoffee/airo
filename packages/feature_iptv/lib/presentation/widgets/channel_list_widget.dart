@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../../shared/widgets/app_icon_placeholder.dart';
 import '../../application/providers/iptv_providers.dart';
 import "package:platform_channels/platform_channels.dart";
+import 'iptv_icon_placeholder.dart';
 
 /// Channel list widget with category tabs and search
 class ChannelListWidget extends ConsumerWidget {
@@ -433,8 +433,7 @@ class _ChannelListTile extends ConsumerWidget {
   }
 
   Widget _buildDefaultIcon() {
-    // Use shared AppIconPlaceholder for brand consistency and optimized caching
-    return AppIconPlaceholder.channel(isAudioOnly: channel.isAudioOnly);
+    return IptvIconPlaceholder.channel(isAudioOnly: channel.isAudioOnly);
   }
 }
 

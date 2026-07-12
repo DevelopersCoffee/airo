@@ -40,7 +40,7 @@ legacy-empty for Play Store V2 and should only clear old first-party caches.
 **Privacy/redaction:** Playlist URL is user data; no bundled source, no first-party remote source, no reviewer-specific branching.
 **Persistence:** User URL, playlist cache, cache timestamp, and recently watched history are local app data.
 **Versioning/migration:** Legacy bundled/remote channel caches are ignored by the v2 data path.
-**Tests required:** Parser URL validation/persistence, no-content default, feature UI empty state, Android config/package asset scan. Standalone `feature_iptv` package tests remain a v2 modularization follow-up because the package still imports app-only `core/` and `shared/` paths.
+**Tests required:** Parser URL validation/persistence, no-content default, feature UI empty state, Android config/package asset scan, and standalone package boundary tests for `feature_iptv` plus IPTV platform packages.
 
 ## Deterministic Use Cases
 
@@ -94,18 +94,27 @@ legacy-empty for Play Store V2 and should only clear old first-party caches.
 **Cleanup:** None.
 
 ### AUTO-004: Platform package boundary check
-**Given:** `platform_channels` and `platform_playlist_import`.
+**Given:** `platform_channels`, `platform_playlist_import`, `platform_player`, `platform_media`, `platform_streams`, `platform_history`, and `feature_iptv`.
 **When:** `flutter test` runs inside each package.
-**Then:** The platform packages compile and validate BYOC behavior without depending on bundled channels.
+**Then:** The packages compile and validate BYOC behavior without depending on bundled channels or app-only `core/` / `shared/` imports.
 **Fixtures:** Package tests and local framework abstractions.
-**Mocks/stubs:** Mock shared preferences.
-**Assertions:** Platform package tests pass.
+**Mocks/stubs:** Mock shared preferences and package-local adapter defaults.
+**Assertions:** Platform package tests and standalone `feature_iptv` tests pass.
+**Cleanup:** None.
+
+### AUTO-005: Runtime adapter override
+**Given:** `feature_iptv` defaults to package-local adapters for navigation, Cast, TV input, voice search, and placeholder UI.
+**When:** A consuming app needs platform-specific behavior.
+**Then:** The app overrides Riverpod providers such as `airoCastControllerProvider`, `iptvNavigationTabProvider`, `voiceSearchServiceProvider`, and TV mode providers at runtime without changing framework package code.
+**Fixtures:** Fake Cast controller tests.
+**Mocks/stubs:** `FakeAiroCastController` and `UnavailableAiroCastController`.
+**Assertions:** Consumers can switch implementations by provider override while the package remains standalone.
 **Cleanup:** None.
 
 ## Implementation Boundaries
 
 - Framework files: `packages/platform_channels`, `packages/platform_playlist_import`, `packages/platform_player`, `packages/platform_media`, `packages/platform_streams`, `packages/platform_history`.
 - Application files: `packages/feature_iptv`, app pubspec variants.
-- Tests: platform package Flutter tests and host-only static scans. Standalone `feature_iptv` package tests are blocked until the existing app-only import boundary is removed.
+- Tests: platform package Flutter tests, standalone `feature_iptv` Flutter tests, package analysis, and host-only static scans.
 - Docs: this feature packet plus release note updates if needed.
 - Verification environment: host-only Flutter/package tests. Android device build remains release validation.

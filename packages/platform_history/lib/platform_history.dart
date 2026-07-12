@@ -1,3 +1,3 @@
-library platform_history;
+library;
 
 export "src/recently_watched_storage.dart";

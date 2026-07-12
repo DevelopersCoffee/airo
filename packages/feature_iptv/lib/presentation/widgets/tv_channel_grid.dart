@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../../core/tv/tv.dart';
-import '../../../../shared/widgets/app_icon_placeholder.dart';
 import '../../application/providers/iptv_providers.dart';
 import "package:platform_channels/platform_channels.dart";
+import '../tv/iptv_tv.dart';
+import 'iptv_icon_placeholder.dart';
 
 /// Configuration for lazy loading behavior
 class TvChannelGridConfig {
@@ -340,6 +340,6 @@ class _TvChannelCard extends StatelessWidget {
   }
 
   Widget _buildDefaultIcon() {
-    return AppIconPlaceholder.channel(isAudioOnly: channel.isAudioOnly);
+    return IptvIconPlaceholder.channel(isAudioOnly: channel.isAudioOnly);
   }
 }

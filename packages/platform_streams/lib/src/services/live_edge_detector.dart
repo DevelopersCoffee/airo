@@ -1,6 +1,6 @@
 import 'dart:async';
+import 'package:platform_player/platform_player.dart';
 import 'package:video_player/video_player.dart';
-import '../models/streaming_state.dart';
 
 /// Live Edge Detection Service (P0-1, P0-2, P0-3)
 ///

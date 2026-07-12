@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
-import '../../../../core/providers/navigation_provider.dart';
-import '../../application/providers/iptv_providers.dart'
-    hide currentNavigationTabProvider;
+import '../../application/providers/iptv_providers.dart';
 import "package:platform_player/platform_player.dart";
 
 /// Mini player widget for IPTV background playback
@@ -18,9 +15,9 @@ class IPTVMiniPlayer extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final streamingState = ref.watch(streamingStateProvider);
-    final currentTab = ref.watch(currentNavigationTabProvider);
+    final currentTab = ref.watch(iptvNavigationTabProvider);
 
-    final isOnStreamTab = currentTab == AppNavigationTab.stream.index;
+    final isOnStreamTab = currentTab == IptvNavigationTab.stream.index;
 
     return streamingState.when(
       data: (state) {
@@ -37,9 +34,8 @@ class IPTVMiniPlayer extends ConsumerWidget {
 
         return GestureDetector(
           onTap: () {
-            ref.read(currentNavigationTabProvider.notifier).state =
-                AppNavigationTab.stream.index;
-            context.go('/iptv');
+            ref.read(iptvNavigationTabProvider.notifier).state =
+                IptvNavigationTab.stream.index;
           },
           child: Container(
             height: 64,

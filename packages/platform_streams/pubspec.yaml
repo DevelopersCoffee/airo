@@ -2,6 +2,7 @@ name: platform_streams
 description: "A new Flutter package project."
 version: 0.0.1
 homepage:
+publish_to: none
 
 environment:
   sdk: ^3.12.2
@@ -10,6 +11,9 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  platform_player:
+    path: ../platform_player
+  video_player: ^2.10.1
 
 dev_dependencies:
   flutter_test:

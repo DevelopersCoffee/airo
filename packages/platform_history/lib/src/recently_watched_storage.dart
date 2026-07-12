@@ -1,6 +1,7 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../../domain/models/iptv_channel.dart';
+import 'package:platform_channels/platform_channels.dart';
 
 /// Storage service for persisting recently watched IPTV channels
 ///
@@ -36,7 +37,7 @@ class RecentlyWatchedStorage {
       // Save
       await _saveRecent(recent);
     } catch (e) {
-      print('[RecentlyWatchedStorage] Error adding to recent: $e');
+      debugPrint('[RecentlyWatchedStorage] Error adding to recent: $e');
     }
   }
 
@@ -58,7 +59,7 @@ class RecentlyWatchedStorage {
       }
       return channels;
     } catch (e) {
-      print('[RecentlyWatchedStorage] Error loading recent: $e');
+      debugPrint('[RecentlyWatchedStorage] Error loading recent: $e');
       return [];
     }
   }
@@ -77,7 +78,7 @@ class RecentlyWatchedStorage {
       recent.removeWhere((c) => c.id == channelId);
       await _saveRecent(recent);
     } catch (e) {
-      print('[RecentlyWatchedStorage] Error removing from recent: $e');
+      debugPrint('[RecentlyWatchedStorage] Error removing from recent: $e');
     }
   }
 

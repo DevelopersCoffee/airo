@@ -1,12 +1,13 @@
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:platform_media/platform_media.dart';
+import 'package:platform_player/platform_player.dart';
 
 void main() {
-  test('adds one to input values', () {
-    final calculator = Calculator();
-    expect(calculator.addOne(2), 3);
-    expect(calculator.addOne(-7), -6);
-    expect(calculator.addOne(0), 1);
+  test('video player streaming service starts idle', () async {
+    final service = VideoPlayerStreamingService();
+
+    expect(service.currentState.playbackState, PlaybackState.idle);
+    await service.dispose();
   });
 }

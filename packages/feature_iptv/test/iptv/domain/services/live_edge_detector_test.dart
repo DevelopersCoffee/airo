@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
 import "package:feature_iptv/feature_iptv.dart";
-import "package:platform_channels/platform_channels.dart";
 
 void main() {
   group('LiveEdgeConfig', () {

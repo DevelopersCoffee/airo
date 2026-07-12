@@ -3,10 +3,17 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:platform_player/platform_player.dart';
 
 void main() {
-  test('adds one to input values', () {
-    final calculator = Calculator();
-    expect(calculator.addOne(2), 3);
-    expect(calculator.addOne(-7), -6);
-    expect(calculator.addOne(0), 1);
+  test('fake cast controller exposes discovered devices', () async {
+    const tv = AiroCastDevice(id: 'tv-1', name: 'Living Room');
+    final controller = FakeAiroCastController(devices: const [tv]);
+
+    await controller.startDiscovery();
+
+    expect(
+      controller.currentDiscoveryState.phase,
+      AiroCastDiscoveryPhase.found,
+    );
+    expect(controller.currentDiscoveryState.devices, const [tv]);
+    await controller.dispose();
   });
 }

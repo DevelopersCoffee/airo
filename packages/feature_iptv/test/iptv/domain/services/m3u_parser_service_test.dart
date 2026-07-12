@@ -2,7 +2,6 @@ import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import "package:feature_iptv/feature_iptv.dart";
-import "package:platform_channels/platform_channels.dart";
 
 void main() {
   group('M3UParserService', () {
