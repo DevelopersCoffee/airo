@@ -180,8 +180,21 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen> {
     await showPlaylistSourceSheet(context, ref);
   }
 
+  void _syncLocalPlaybackWithCast(bool? wasCasting, bool isCasting) {
+    final streaming = ref.read(iptvStreamingServiceProvider);
+    if (isCasting) {
+      streaming.pause();
+    } else if (wasCasting == true) {
+      streaming.resume();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    ref.listen<bool>(
+      iptvCastProvider.select((state) => state.isCasting),
+      _syncLocalPlaybackWithCast,
+    );
     final isFullscreen = ref.watch(isFullscreenModeProvider);
 
     if (isFullscreen) {
@@ -296,8 +309,21 @@ class _IPTVScreenBodyState extends ConsumerState<IPTVScreenBody> {
     await showPlaylistSourceSheet(context, ref);
   }
 
+  void _syncLocalPlaybackWithCast(bool? wasCasting, bool isCasting) {
+    final streaming = ref.read(iptvStreamingServiceProvider);
+    if (isCasting) {
+      streaming.pause();
+    } else if (wasCasting == true) {
+      streaming.resume();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    ref.listen<bool>(
+      iptvCastProvider.select((state) => state.isCasting),
+      _syncLocalPlaybackWithCast,
+    );
     final isFullscreen = ref.watch(isFullscreenModeProvider);
 
     // Use AnimatedSwitcher with fade to black for seamless fullscreen transition

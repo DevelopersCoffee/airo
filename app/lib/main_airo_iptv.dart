@@ -17,6 +17,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'features/iptv/iptv_cast_provider_override.dart';
+
 const _debugDefaultPlaylistUrl = String.fromEnvironment(
   'DEBUG_IPTV_PLAYLIST_URL',
 );
@@ -29,7 +31,10 @@ void main() async {
 
   runApp(
     ProviderScope(
-      overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+      overrides: [
+        sharedPreferencesProvider.overrideWithValue(prefs),
+        realIptvCastControllerOverride(),
+      ],
       child: const AiroIptvApp(),
     ),
   );
