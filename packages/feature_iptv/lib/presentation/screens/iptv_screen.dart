@@ -752,78 +752,86 @@ class _FeaturedPlayerPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface.withValues(alpha: 0.6),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: theme.colorScheme.outlineVariant),
+    final player = AspectRatio(
+      aspectRatio: 16 / 9,
+      child: streamingState.when(
+        data: (state) => state.currentChannel != null
+            ? VideoPlayerWidget(
+                showControls: true,
+                onFullscreenToggle: onFullscreenToggle,
+              )
+            : const _PlayerPlaceholder(),
+        loading: () => const _PlayerPlaceholder(),
+        error: (_, _) => const _PlayerPlaceholder(),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('Featured Player', style: theme.textTheme.titleLarge),
-          const SizedBox(height: 4),
-          Text(
-            'Play media from your saved playlist.',
-            style: theme.textTheme.bodyMedium,
-          ),
-          const SizedBox(height: 16),
-          AspectRatio(
-            aspectRatio: 16 / 9,
-            child: streamingState.when(
-              data: (state) => state.currentChannel != null
-                  ? VideoPlayerWidget(
-                      showControls: true,
-                      onFullscreenToggle: onFullscreenToggle,
-                    )
-                  : const _PlayerPlaceholder(),
-              loading: () => const _PlayerPlaceholder(),
-              error: (_, _) => const _PlayerPlaceholder(),
-            ),
-          ),
-          const SizedBox(height: 12),
-          streamingState.when(
-            data: (state) {
-              if (state.currentChannel == null) {
-                return const Text(
-                  'Choose a channel from your playlist to begin streaming.',
-                );
-              }
+    );
 
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final boundedHeight = constraints.hasBoundedHeight;
+
+        return Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surface.withValues(alpha: 0.6),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: theme.colorScheme.outlineVariant),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Featured Player', style: theme.textTheme.titleLarge),
+              const SizedBox(height: 4),
+              Text(
+                'Play media from your saved playlist.',
+                style: theme.textTheme.bodyMedium,
+              ),
+              const SizedBox(height: 16),
+              if (boundedHeight) Flexible(fit: FlexFit.loose, child: player),
+              if (!boundedHeight) player,
+              const SizedBox(height: 12),
+              streamingState.when(
+                data: (state) {
+                  if (state.currentChannel == null) {
+                    return const Text(
+                      'Choose a channel from your playlist to begin streaming.',
+                    );
+                  }
+
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Expanded(
-                        child: Text(
-                          state.currentChannel!.name,
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w700,
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              state.currentChannel!.name,
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.w700,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
+                          buildQualityDropdown(state),
+                        ],
                       ),
-                      buildQualityDropdown(state),
+                      const SizedBox(height: 6),
+                      Text(
+                        state.currentChannel!.group,
+                        style: theme.textTheme.bodyMedium,
+                      ),
+                      const SizedBox(height: 12),
+                      const IPTVMiniPlayer(forceVisible: true),
                     ],
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    state.currentChannel!.group,
-                    style: theme.textTheme.bodyMedium,
-                  ),
-                  const SizedBox(height: 12),
-                  const IPTVMiniPlayer(forceVisible: true),
-                ],
-              );
-            },
-            loading: () => const SizedBox.shrink(),
-            error: (_, _) => const SizedBox.shrink(),
+                  );
+                },
+                loading: () => const SizedBox.shrink(),
+                error: (_, _) => const SizedBox.shrink(),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 }

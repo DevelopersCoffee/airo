@@ -13,6 +13,7 @@
 /// ```
 library;
 
+import 'package:dio/dio.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -20,7 +21,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'core/app/airo_tv_app.dart';
-import 'core/auth/auth_service.dart';
 import 'core/config/platform_features.dart';
 import 'core/error/global_error_handler.dart';
 import 'core/features/feature_registry.dart';
@@ -31,6 +31,10 @@ import 'firebase_options.dart';
 
 /// Global flag to track if Firebase is available
 bool isFirebaseInitialized = false;
+
+const _debugDefaultPlaylistUrl = String.fromEnvironment(
+  'DEBUG_IPTV_PLAYLIST_URL',
+);
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -74,11 +78,9 @@ void main() async {
     debugPrint('⚠️ Firebase initialization failed: $e');
   }
 
-  // Initialize AuthService
-  await AuthService.instance.initialize();
-
   // Initialize SharedPreferences for IPTV caching
   final prefs = await SharedPreferences.getInstance();
+  await seedTvDebugDefaultPlaylist(prefs);
 
   // Initialize feature registry with TV-specific features
   FeatureRegistry.register(IptvFeatureModule());
@@ -98,4 +100,18 @@ void main() async {
       child: const AiroTvApp(),
     ),
   );
+}
+
+@visibleForTesting
+Future<void> seedTvDebugDefaultPlaylist(
+  SharedPreferences prefs, {
+  String playlistUrl = _debugDefaultPlaylistUrl,
+  M3UParserService? parser,
+}) async {
+  if (playlistUrl.isEmpty) return;
+
+  final parserService = parser ?? M3UParserService(dio: Dio(), prefs: prefs);
+  if (parserService.getPlaylistUrl() != null) return;
+
+  await parserService.setPlaylistUrl(playlistUrl);
 }

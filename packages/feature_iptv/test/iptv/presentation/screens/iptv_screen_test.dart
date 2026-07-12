@@ -29,7 +29,7 @@ void main() {
     ),
   ];
 
-  Widget createWidget() {
+  Widget createWidget({StreamingState? streamingState}) {
     SharedPreferences.setMockInitialValues({});
     return FutureBuilder<SharedPreferences>(
       future: SharedPreferences.getInstance(),
@@ -49,11 +49,12 @@ void main() {
             ),
             streamingStateProvider.overrideWith(
               (ref) => Stream.value(
-                const StreamingState(
-                  playbackState: PlaybackState.idle,
-                  isLiveStream: true,
-                  liveDelay: Duration(seconds: 1),
-                ),
+                streamingState ??
+                    const StreamingState(
+                      playbackState: PlaybackState.idle,
+                      isLiveStream: true,
+                      liveDelay: Duration(seconds: 1),
+                    ),
               ),
             ),
           ],
@@ -151,5 +152,33 @@ void main() {
     );
     expect(find.text('Add playlist URL'), findsOneWidget);
     expect(find.text('Live Channels'), findsNothing);
+  });
+
+  testWidgets('keeps selected TV channel row metadata readable', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1280, 720);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      createWidget(
+        streamingState: StreamingState(
+          currentChannel: channels.first,
+          playbackState: PlaybackState.playing,
+          isLiveStream: true,
+          liveDelay: const Duration(seconds: 1),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 250));
+
+    expect(find.text('Playlist Channels'), findsOneWidget);
+    expect(find.text('City News Live'), findsWidgets);
+    expect(find.text('News'), findsWidgets);
+    expect(find.text('LIVE'), findsWidgets);
+    expect(find.byIcon(Icons.equalizer), findsOneWidget);
   });
 }
