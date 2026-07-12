@@ -129,9 +129,9 @@ failure_handling:
   hard_fail:
     - output_channel_count_zero
     - all_streams_invalid
-    - primary_source_fetch_failed
     - threshold_not_met
   soft_fail:
+    - primary_source_fetch_failed
     - secondary_source_unavailable
     - custom_sources_failed
     - some_streams_invalid
@@ -147,4 +147,3 @@ logging:
   level: INFO
   format: json
   include_timestamps: true
-
