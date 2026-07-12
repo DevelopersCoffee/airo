@@ -8,6 +8,6 @@
 #
 # This file is updated automatically after successful main builds.
 component	artifact	baseline_bytes	budget_mb
-mobile-full	app-arm64-v8a-release.apk	287593362	35
-mobile-streaming	app-arm64-v8a-release.apk	20226802	35
-tv	app-arm64-v8a-release.apk	18825099	35
+mobile-full	app-arm64-v8a-release.apk	287505491	35
+mobile-streaming	app-arm64-v8a-release.apk	20135871	35
+tv	app-arm64-v8a-release.apk	18727016	35
