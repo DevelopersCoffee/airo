@@ -104,11 +104,16 @@ jobs:
           PRODUCTION_SIGNING: ${{ github.event.inputs.production_signing || 'false' }}
         run: |
           cd app
-          if [ -n "$GOOGLE_SERVICES_JSON" ]; then
+          if [[ "$PRODUCTION_SIGNING" == "true" ]]; then
+            if [[ -z "$GOOGLE_SERVICES_JSON" ]]; then
+              echo "::error::GOOGLE_SERVICES_JSON is required for production-signed release builds."
+              exit 1
+            fi
             echo "$GOOGLE_SERVICES_JSON" | base64 -d > android/app/google-services.json
-          elif [ "$PRODUCTION_SIGNING" = "true" ]; then
-            echo "::error::GOOGLE_SERVICES_JSON is required for production-signed release builds."
-            exit 1
+            if ! grep -q '"package_name"[[:space:]]*:[[:space:]]*"io.airo.tv"' android/app/google-services.json; then
+              echo "::error::GOOGLE_SERVICES_JSON must include a Firebase Android client for io.airo.tv."
+              exit 1
+            fi
           else
             cat > android/app/google-services.json <<'JSON'
           {
@@ -152,15 +157,15 @@ jobs:
           PRODUCTION_SIGNING: ${{ github.event.inputs.production_signing || 'false' }}
         run: |
           cd app/android
-          if [ "$PRODUCTION_SIGNING" = "true" ]; then
+          if [[ "$PRODUCTION_SIGNING" == "true" ]]; then
             missing=0
             for name in ANDROID_RELEASE_KEYSTORE_BASE64 KEYSTORE_PASSWORD KEY_ALIAS KEY_PASSWORD; do
-              if [ -z "${!name}" ]; then
+              if [[ -z "${!name}" ]]; then
                 echo "::error::Missing required Android release signing secret: $name"
                 missing=1
               fi
             done
-            [ "$missing" -eq 0 ] || exit 1
+            [[ "$missing" -eq 0 ]] || exit 1
             echo "$ANDROID_RELEASE_KEYSTORE_BASE64" | base64 -d > release.keystore
             {
               echo "storeFile=release.keystore"
@@ -279,7 +284,7 @@ jobs:
         env:
           GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
         run: |
-          if [ -z "$GOOGLE_PLAY_SERVICE_ACCOUNT_JSON" ]; then
+          if [[ -z "$GOOGLE_PLAY_SERVICE_ACCOUNT_JSON" ]]; then
             echo "::error::GOOGLE_PLAY_SERVICE_ACCOUNT_JSON is required to upload to Google Play."
             exit 1
           fi
