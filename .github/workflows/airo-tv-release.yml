@@ -20,6 +20,14 @@ on:
       version:
         description: 'Artifact version label, for example v2.0.0-tv.1'
         required: true
+      build_name:
+        description: 'Android versionName, for example 2.0.0'
+        required: true
+        default: '1.0.0'
+      build_number:
+        description: 'Android versionCode, must increase for every Play upload'
+        required: true
+        default: '1'
       production_signing:
         description: 'Require production Android signing and Firebase secrets'
         required: true
@@ -46,6 +54,8 @@ permissions:
 env:
   FLUTTER_VERSION: '3.44.4'
   RELEASE_VERSION: ${{ github.event.inputs.version || github.ref_name }}
+  BUILD_NAME: ${{ github.event.inputs.build_name || '1.0.0' }}
+  BUILD_NUMBER: ${{ github.event.inputs.build_number || '1' }}
 
 jobs:
   release-checks:
@@ -224,6 +234,8 @@ jobs:
             --target=lib/main_tv.dart \
             --dart-define=APP_VARIANT=tv \
             --dart-define=APP_PLATFORM=androidTv \
+            --build-name="$BUILD_NAME" \
+            --build-number="$BUILD_NUMBER" \
             --target-platform=android-arm64 \
             --tree-shake-icons \
             --split-debug-info=build/debug-info-tv \
@@ -237,6 +249,8 @@ jobs:
             --target=lib/main_tv.dart \
             --dart-define=APP_VARIANT=tv \
             --dart-define=APP_PLATFORM=androidTv \
+            --build-name="$BUILD_NAME" \
+            --build-number="$BUILD_NUMBER" \
             --tree-shake-icons \
             --split-debug-info=build/debug-info-tv \
             --obfuscate
