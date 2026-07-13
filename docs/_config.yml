@@ -29,6 +29,10 @@ nav:
     url: /architecture/
   - title: Features
     url: /features/
+  - title: Privacy Policy
+    url: /legal/privacy-policy/
+  - title: Terms & Conditions
+    url: /legal/terms-conditions/
   - title: GitHub
     url: https://github.com/DevelopersCoffee/airo
 
@@ -55,6 +59,9 @@ collections:
   guides:
     output: true
     permalink: /guides/:path/
+  legal:
+    output: true
+    permalink: /legal/:path/
 
 # Defaults
 defaults:
