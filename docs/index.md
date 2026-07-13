@@ -150,6 +150,13 @@ See [Contributing Guide](./getting-started/START_HERE.md) for details.
 
 ---
 
+## 📄 Legal
+
+- [Privacy Policy](./legal/privacy-policy/) — How we handle your data
+- [Terms & Conditions](./legal/terms-conditions/) — Rules for using Airo TV
+
+---
+
 ## 📄 License
 
 This project is licensed under the MIT License.
@@ -164,6 +171,6 @@ This project is licensed under the MIT License.
 
 ---
 
-**Last Updated**: November 29, 2025
-**Version**: 1.1.0
+**Last Updated**: July 13, 2026
+**Version**: 2.0.0
 **Status**: ✅ Production Ready
