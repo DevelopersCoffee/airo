@@ -627,12 +627,13 @@ class FlutterChromeCastController implements AiroCastController {
       case CastMediaPlayerState.idle:
         if (status.idleReason == GoogleCastMediaIdleReason.error) {
           _setSession(
-            const AiroCastSessionSnapshot.failed(
+            AiroCastSessionSnapshot.failed(
               AiroCastError(
                 code: AiroCastErrorCode.mediaLoadFailed,
                 message:
-                    'The receiver could not play this stream. It may use a '
-                    'video codec your Cast device does not support.',
+                    'The receiver could not play this stream from '
+                    '${media.url.host}. The stream may require unsupported '
+                    'codecs, headers, or receiver-side CORS handling.',
               ),
             ),
           );

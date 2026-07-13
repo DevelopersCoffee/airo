@@ -6,7 +6,7 @@ void main() {
   test('maps live HLS request to Google Cast media information', () {
     final request = AiroCastMediaRequest(
       url: Uri.parse('https://example.com/channel.m3u8'),
-      contentType: 'application/x-mpegURL',
+      contentType: 'application/vnd.apple.mpegurl',
       title: 'P4U Music',
       subtitle: 'Music',
       imageUrl: Uri.parse('https://example.com/logo.png'),
@@ -21,7 +21,7 @@ void main() {
     expect(mediaInfo, isA<GoogleCastMediaInformation>());
     expect(mediaInfo.contentId, 'https://example.com/channel.m3u8');
     expect(mediaInfo.contentUrl, Uri.parse('https://example.com/channel.m3u8'));
-    expect(mediaInfo.contentType, 'application/x-mpegURL');
+    expect(mediaInfo.contentType, 'application/vnd.apple.mpegurl');
     expect(mediaInfo.streamType, CastMediaStreamType.live);
     expect(mediaInfo.hlsVideoSegmentFormat, HlsVideoSegmentFormat.fmp4);
   });

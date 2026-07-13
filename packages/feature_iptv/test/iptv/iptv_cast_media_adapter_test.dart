@@ -29,7 +29,7 @@ void main() {
 
     expect(result.isCastable, true);
     expect(result.request!.url, Uri.parse('https://example.com/live.m3u8'));
-    expect(result.request!.contentType, 'application/x-mpegURL');
+    expect(result.request!.contentType, 'application/vnd.apple.mpegurl');
     expect(result.request!.title, 'P4U Music');
     expect(result.request!.subtitle, 'Music');
     expect(result.request!.imageUrl, Uri.parse('https://example.com/logo.png'));
