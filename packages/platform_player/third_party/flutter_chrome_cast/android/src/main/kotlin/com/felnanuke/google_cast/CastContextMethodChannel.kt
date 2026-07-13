@@ -21,6 +21,7 @@ import java.util.concurrent.Executors
  * Tag for logging Cast context operations
  */
 private const val TAG = "CastContext"
+private const val DEFAULT_MEDIA_RECEIVER_APP_ID = "CC1AD845"
 
 /**
  * Flutter method channel for Google Cast context management
@@ -168,11 +169,18 @@ class CastContextMethodChannel : FlutterPlugin, MethodChannel.MethodCallHandler 
         try {
             val map = arguments as HashMap<*, *>
             val optionsBuilder = CastOptions.Builder()
-            optionsBuilder.setReceiverApplicationId(map["appId"] as String)
+            val receiverApplicationId = map["appId"] as? String
+            optionsBuilder.setReceiverApplicationId(
+                receiverApplicationId?.takeIf { it.isNotBlank() }
+                    ?: DEFAULT_MEDIA_RECEIVER_APP_ID
+            )
             val launcherOptions = LaunchOptions.Builder().setAndroidReceiverCompatible(true).build()
             optionsBuilder.setLaunchOptions(launcherOptions)
             optionsBuilder.setResumeSavedSession(true)
             optionsBuilder.setEnableReconnectionService(true)
+            optionsBuilder.setStopReceiverApplicationWhenEndingSession(
+                map["stopReceiverApplicationWhenEndingSession"] as? Boolean ?: false
+            )
             GoogleCastOptionsProvider.options = optionsBuilder.build()
             
             // Store the stopCastingOnAppTerminated option

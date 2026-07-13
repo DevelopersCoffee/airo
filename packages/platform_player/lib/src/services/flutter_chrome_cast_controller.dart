@@ -8,6 +8,7 @@ import 'package:flutter_chrome_cast/discovery.dart';
 import 'package:flutter_chrome_cast/entities.dart';
 import 'package:flutter_chrome_cast/enums.dart';
 import 'package:flutter_chrome_cast/media.dart';
+import 'package:flutter_chrome_cast/models/android/android_cast_options.dart';
 import 'package:flutter_chrome_cast/models/ios/ios_cast_options.dart';
 import 'package:flutter_chrome_cast/session.dart';
 
@@ -78,6 +79,13 @@ class FlutterChromeCastController implements AiroCastController {
               GoogleCastDiscoveryCriteriaInitialize.initWithApplicationID(
                 defaultReceiverApplicationId,
               ),
+              disableDiscoveryAutostart: true,
+              startDiscoveryAfterFirstTapOnCastButton: false,
+              stopReceiverApplicationWhenEndingSession: false,
+            )
+          : Platform.isAndroid
+          ? GoogleCastOptionsAndroid(
+              appId: defaultReceiverApplicationId,
               disableDiscoveryAutostart: true,
               startDiscoveryAfterFirstTapOnCastButton: false,
               stopReceiverApplicationWhenEndingSession: false,

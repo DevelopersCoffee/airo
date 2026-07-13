@@ -13,6 +13,12 @@ class GoogleCastOptionsAndroid extends GoogleCastOptions {
   /// casting and end the session when the app is killed/terminated. Defaults to false.
   GoogleCastOptionsAndroid({
     required this.appId,
+    super.physicalVolumeButtonsWillControlDeviceVolume,
+    super.suspendSessionsWhenBackgrounded,
+    super.disableDiscoveryAutostart,
+    super.disableAnalyticsLogging,
+    super.stopReceiverApplicationWhenEndingSession,
+    super.startDiscoveryAfterFirstTapOnCastButton,
     super.stopCastingOnAppTerminated,
   });
 

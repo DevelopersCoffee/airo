@@ -2,7 +2,6 @@ package com.felnanuke.google_cast
 
 import android.content.Context
 import android.util.Log
-import androidx.mediarouter.media.MediaControlIntent
 import androidx.mediarouter.media.MediaRouteSelector
 import androidx.mediarouter.media.MediaRouter
 import com.felnanuke.google_cast.extensions.toMap
@@ -17,6 +16,7 @@ import com.google.gson.Gson
  * Tag for logging discovery manager operations
  */
 private const val TAG = "DiscoveryManager"
+private const val DEFAULT_MEDIA_RECEIVER_APP_ID = "CC1AD845"
 
 /**
  * Flutter method channel for Google Cast device discovery operations
@@ -162,10 +162,13 @@ class DiscoveryManagerMethodChannel : FlutterPlugin, MethodChannel.MethodCallHan
     private fun startDiscovery() {
         router.removeCallback(routerCallBack)
         val selector = MediaRouteSelector.Builder()
-            .addControlCategories(listOf(CastMediaControlIntent.categoryForRemotePlayback()))
+            .addControlCategory(CastMediaControlIntent.categoryForCast(DEFAULT_MEDIA_RECEIVER_APP_ID))
             .build()
         router.addCallback(
-            selector, routerCallBack, MediaRouter.CALLBACK_FLAG_REQUEST_DISCOVERY
+            selector,
+            routerCallBack,
+            MediaRouter.CALLBACK_FLAG_REQUEST_DISCOVERY or
+                MediaRouter.CALLBACK_FLAG_PERFORM_ACTIVE_SCAN
         )
 
         routerCallBack.getCastDevicesMap()
