@@ -177,5 +177,5 @@ If you have any questions or suggestions about our Privacy Policy, do
 not hesitate to contact us:
 
 - **Developer**: DevelopersCoffee
-- **Email**: [team@airo.dev](mailto:team@airo.dev)
+- **Email**: [coffee.devloper@gmail.com](mailto:coffee.devloper@gmail.com)
 - **GitHub**: [github.com/DevelopersCoffee/airo](https://github.com/DevelopersCoffee/airo)
