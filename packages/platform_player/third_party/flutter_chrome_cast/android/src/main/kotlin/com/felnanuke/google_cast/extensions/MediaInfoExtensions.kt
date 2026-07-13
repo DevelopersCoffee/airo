@@ -2,6 +2,8 @@ package com.felnanuke.google_cast.extensions
 
 import com.google.android.gms.cast.MediaInfo
 import com.google.android.gms.cast.MediaMetadata
+import com.google.android.gms.cast.HlsSegmentFormat
+import com.google.android.gms.cast.HlsVideoSegmentFormat
 import com.google.gson.JsonElement
 import com.google.gson.JsonObject
 import org.json.JSONObject
@@ -28,6 +30,8 @@ class GoogleCastMediaInfo {
             val contentUrl = map["contentURL"] as String?
             val contentType = map["contentType"] as String?
             val streamType = map["streamType"] as String?
+            val hlsSegmentFormat = map["hlsSegmentFormat"] as String?
+            val hlsVideoSegmentFormat = map["hlsVideoSegmentFormat"] as String?
             val tracks = GoogleCastMediaTrackBuilder.listFromMap(
                 map["tracks"] as List<Map<String, Any?>>? ?: listOf()
             )
@@ -45,6 +49,12 @@ class GoogleCastMediaInfo {
                 })
             if (contentType != null)
                 builder.setContentType(contentType)
+            hlsSegmentFormat?.toCastHlsSegmentFormat()?.let {
+                builder.setHlsSegmentFormat(it)
+            }
+            hlsVideoSegmentFormat?.toCastHlsVideoSegmentFormat()?.let {
+                builder.setHlsVideoSegmentFormat(it)
+            }
             if (tracks.isNotEmpty())
                 builder.setMediaTracks(tracks)
 
@@ -57,6 +67,27 @@ class GoogleCastMediaInfo {
             }
 
             return builder.build()
+        }
+
+        private fun String.toCastHlsSegmentFormat(): String? {
+            return when (this) {
+                "aac" -> HlsSegmentFormat.AAC
+                "ac3" -> HlsSegmentFormat.AC3
+                "mp3" -> HlsSegmentFormat.MP3
+                "ts" -> HlsSegmentFormat.TS
+                "tsAac" -> HlsSegmentFormat.TS_AAC
+                "eAc3" -> HlsSegmentFormat.E_AC3
+                "fmp4" -> HlsSegmentFormat.FMP4
+                else -> null
+            }
+        }
+
+        private fun String.toCastHlsVideoSegmentFormat(): String? {
+            return when (this) {
+                "mpeg2Ts" -> HlsVideoSegmentFormat.MPEG2_TS
+                "fmp4" -> HlsVideoSegmentFormat.FMP4
+                else -> null
+            }
         }
     }
 }

@@ -8,7 +8,7 @@ Override realIptvCastControllerOverride() {
   return airoCastControllerProvider.overrideWith((ref) {
     final controller = kIsWeb
         ? UnavailableAiroCastController()
-        : FlutterChromeCastController();
+        : FlutterChromeCastController(useProxy: true);
     ref.onDispose(() => unawaited(controller.dispose()));
     return controller;
   });

@@ -19,6 +19,9 @@ void main() {
         request.response.write(
           '#EXTM3U\n'
           '#EXT-X-KEY:METHOD=AES-128,URI="key.bin"\n'
+          '#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="audio",URI="audio.m3u8"\n'
+          '#EXT-X-MEDIA:TYPE=SUBTITLES,GROUP-ID="subs",URI="subs.m3u8"\n'
+          '#EXT-X-MEDIA:TYPE=CLOSED-CAPTIONS,GROUP-ID="cc",INSTREAM-ID="CC1"\n'
           'segment1.ts\n',
         );
         await request.response.close();
@@ -58,6 +61,12 @@ void main() {
       body,
       contains('URI="${proxy.proxiedUrl(originUrl.resolve('key.bin'))}"'),
     );
+    expect(
+      body,
+      contains('URI="${proxy.proxiedUrl(originUrl.resolve('audio.m3u8'))}"'),
+    );
+    expect(body, isNot(contains('TYPE=SUBTITLES')));
+    expect(body, isNot(contains('TYPE=CLOSED-CAPTIONS')));
     expect(
       body,
       contains(proxy.proxiedUrl(originUrl.resolve('segment1.ts')).toString()),

@@ -7,10 +7,10 @@ import 'package:flutter/foundation.dart';
 /// Local HTTP server that re-serves media to a Cast receiver with permissive
 /// CORS headers.
 ///
-/// This is intentionally not the default path for normal IPTV casting. The
-/// receiver should load public origin URLs directly when possible. The proxy is
-/// retained for compatibility cases where the receiver needs a local rewritten
-/// playlist, such as synthesized HEVC master playlists.
+/// This is intentionally opt-in. The receiver should load public origin URLs
+/// directly when possible. The proxy is used for compatibility cases where the
+/// receiver needs a local rewritten playlist, such as synthesized HEVC master
+/// playlists or live IPTV manifests with relative child playlists.
 class CastHttpProxy {
   HttpServer? _server;
   Uri? _baseUri;
@@ -153,7 +153,6 @@ class CastHttpProxy {
     response.headers.contentType = ContentType(
       'application',
       'vnd.apple.mpegurl',
-      charset: 'utf-8',
     );
     final streamInf = StringBuffer('#EXT-X-STREAM-INF:BANDWIDTH=4000000')
       ..write(',CODECS="$codecs"');
@@ -189,7 +188,6 @@ class CastHttpProxy {
       response.headers.contentType = ContentType(
         'application',
         'vnd.apple.mpegurl',
-        charset: 'utf-8',
       );
       response.write(_rewritePlaylist(body, targetUrl));
       await response.close();
@@ -225,6 +223,7 @@ class CastHttpProxy {
     for (final line in lines) {
       final trimmed = line.trim();
       if (trimmed.isEmpty) continue;
+      if (_shouldDropTag(trimmed)) continue;
       if (trimmed.startsWith('#')) {
         buffer.writeln(_rewriteTagUris(trimmed, playlistUrl));
       } else {
@@ -240,5 +239,11 @@ class CastHttpProxy {
       final resolved = playlistUrl.resolve(match.group(1)!);
       return 'URI="${proxiedUrl(resolved)}"';
     });
+  }
+
+  bool _shouldDropTag(String line) {
+    if (!line.startsWith('#EXT-X-MEDIA')) return false;
+    return line.contains('TYPE=SUBTITLES') ||
+        line.contains('TYPE=CLOSED-CAPTIONS');
   }
 }
