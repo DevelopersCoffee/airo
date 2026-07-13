@@ -1,0 +1,1119 @@
+---
+layout: null
+---
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <!-- SEO Meta Tags -->
+  <title>Airo TV — The AI-First IPTV Experience</title>
+  <meta name="description" content="On-device AI-powered IPTV smart player for Android TV, Fire TV, mobile, and web. Zero logins, zero tracking, local playlist categorization, and offline EPG.">
+  <meta name="keywords" content="IPTV, Android TV, Smart IPTV, AI IPTV, M3U Player, On-device AI, Privacy IPTV, Cayman, TV Player">
+  
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://developerscoffee.github.io/airo/">
+  <meta property="og:title" content="Airo TV — The AI-First IPTV Experience">
+  <meta property="og:description" content="On-device AI-powered IPTV smart player for Android TV, Fire TV, mobile, and web. Zero logins, zero tracking, local playlist categorization, and offline EPG.">
+  <meta property="og:image" content="./assets/images/airotv_mockup.jpg">
+
+  <!-- Twitter -->
+  <meta property="twitter:card" content="summary_large_image">
+  <meta property="twitter:url" content="https://developerscoffee.github.io/airo/">
+  <meta property="twitter:title" content="Airo TV — The AI-First IPTV Experience">
+  <meta property="twitter:description" content="On-device AI-powered IPTV smart player for Android TV, Fire TV, mobile, and web. Zero logins, zero tracking, local playlist categorization, and offline EPG.">
+  <meta property="twitter:image" content="./assets/images/airotv_mockup.jpg">
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+  
+  <!-- Lucide Icons via CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <style>
+    :root {
+      --bg-dark: #08090C;
+      --bg-card: rgba(20, 22, 28, 0.6);
+      --bg-card-hover: rgba(28, 31, 39, 0.85);
+      --border-color: rgba(255, 255, 255, 0.08);
+      --border-color-hover: rgba(0, 229, 255, 0.3);
+      --text-main: #FFFFFF;
+      --text-sub: #8F9CAE;
+      --accent-cyan: #00E5FF;
+      --accent-purple: #BD00FF;
+      --gradient-primary: linear-gradient(135deg, #00E5FF 0%, #BD00FF 100%);
+      --gradient-card: linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0) 100%);
+      --glow-shadow: 0 0 40px rgba(0, 229, 255, 0.15);
+      --font-outfit: 'Outfit', sans-serif;
+      --font-inter: 'Inter', sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      font-family: var(--font-inter);
+      overflow-x: hidden;
+      scroll-behavior: smooth;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Ambient Background Glows */
+    .ambient-glow {
+      position: absolute;
+      width: 600px;
+      height: 600px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(189, 0, 255, 0.08) 0%, rgba(0, 229, 255, 0.05) 50%, rgba(8, 9, 12, 0) 100%);
+      filter: blur(80px);
+      z-index: -1;
+      pointer-events: none;
+    }
+    
+    .glow-1 { top: -100px; right: -100px; }
+    .glow-2 { top: 600px; left: -200px; }
+    .glow-3 { bottom: 200px; right: -200px; }
+
+    /* Layout & Container */
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    /* Navbar */
+    header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border-color);
+      z-index: 100;
+      transition: all 0.3s ease;
+    }
+    
+    header.scrolled {
+      background-color: rgba(8, 9, 12, 0.85);
+      padding: 12px 0;
+    }
+
+    header .nav-container {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 18px 24px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .logo-container {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+      color: var(--text-main);
+    }
+
+    .logo-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      background: var(--gradient-primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-family: var(--font-outfit);
+      box-shadow: 0 0 15px rgba(0, 229, 255, 0.4);
+    }
+
+    .logo-text {
+      font-family: var(--font-outfit);
+      font-weight: 800;
+      font-size: 22px;
+      letter-spacing: 0.5px;
+      background: var(--gradient-primary);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    nav {
+      display: flex;
+      align-items: center;
+      gap: 32px;
+    }
+
+    nav a {
+      color: var(--text-sub);
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 500;
+      transition: color 0.2s ease;
+    }
+
+    nav a:hover {
+      color: var(--text-main);
+    }
+
+    .cta-btn {
+      background: var(--gradient-primary);
+      color: #000;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .cta-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 15px rgba(0, 229, 255, 0.4);
+    }
+
+    /* Hero Section */
+    .hero {
+      padding-top: 160px;
+      padding-bottom: 80px;
+      text-align: center;
+      position: relative;
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(0, 229, 255, 0.1);
+      border: 1px solid rgba(0, 229, 255, 0.2);
+      color: var(--accent-cyan);
+      padding: 6px 14px;
+      border-radius: 100px;
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 24px;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(0, 229, 255, 0.4); }
+      70% { box-shadow: 0 0 0 10px rgba(0, 229, 255, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(0, 229, 255, 0); }
+    }
+
+    .hero h1 {
+      font-family: var(--font-outfit);
+      font-size: 64px;
+      font-weight: 800;
+      line-height: 1.1;
+      letter-spacing: -1.5px;
+      margin-bottom: 20px;
+    }
+
+    .gradient-text {
+      background: linear-gradient(90deg, #FFFFFF 0%, #C5D1EC 50%, #00E5FF 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hero p {
+      font-size: 18px;
+      color: var(--text-sub);
+      max-width: 720px;
+      margin: 0 auto 40px auto;
+      line-height: 1.6;
+    }
+
+    .hero-buttons {
+      display: flex;
+      justify-content: center;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-bottom: 60px;
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 15px;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: background 0.2s, border-color 0.2s;
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    /* Mockup Showcase */
+    .mockup-wrapper {
+      max-width: 1000px;
+      margin: 0 auto;
+      position: relative;
+      border-radius: 16px;
+      padding: 8px;
+      background: linear-gradient(135deg, rgba(0, 229, 255, 0.2) 0%, rgba(189, 0, 255, 0.2) 100%);
+      box-shadow: var(--glow-shadow);
+      animation: float 6s ease-in-out infinite;
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
+
+    .mockup-container {
+      background: var(--bg-dark);
+      border-radius: 12px;
+      overflow: hidden;
+      display: block;
+      line-height: 0;
+    }
+
+    .mockup-container img {
+      width: 100%;
+      height: auto;
+      display: block;
+      border-radius: 10px;
+    }
+
+    /* Features Grid Section */
+    .features-section {
+      padding: 100px 0;
+      position: relative;
+    }
+
+    .section-header {
+      text-align: center;
+      margin-bottom: 60px;
+    }
+
+    .section-header h2 {
+      font-family: var(--font-outfit);
+      font-size: 40px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      margin-bottom: 16px;
+    }
+
+    .section-header p {
+      color: var(--text-sub);
+      font-size: 16px;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 24px;
+    }
+
+    .feature-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 32px;
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .feature-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: var(--gradient-card);
+      z-index: 1;
+      pointer-events: none;
+    }
+
+    .feature-card:hover {
+      background: var(--bg-card-hover);
+      border-color: var(--border-color-hover);
+      transform: translateY(-5px);
+      box-shadow: 0 10px 30px rgba(0, 229, 255, 0.05);
+    }
+
+    .feature-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      background: rgba(0, 229, 255, 0.1);
+      color: var(--accent-cyan);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 24px;
+      transition: all 0.3s ease;
+    }
+
+    .feature-card:hover .feature-icon {
+      background: var(--gradient-primary);
+      color: #000;
+      transform: scale(1.05);
+    }
+
+    .feature-card h3 {
+      font-family: var(--font-outfit);
+      font-size: 20px;
+      font-weight: 600;
+      margin-bottom: 12px;
+    }
+
+    .feature-card p {
+      color: var(--text-sub);
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    /* Live Parser Interactive Widget */
+    .interactive-demo {
+      padding: 80px 0;
+      position: relative;
+    }
+
+    .demo-wrapper {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 20px;
+      padding: 40px;
+      display: grid;
+      grid-template-columns: 1fr 1.2fr;
+      gap: 40px;
+      align-items: center;
+    }
+
+    @media (max-width: 768px) {
+      .demo-wrapper {
+        grid-template-columns: 1fr;
+        padding: 24px;
+      }
+    }
+
+    .demo-info h3 {
+      font-family: var(--font-outfit);
+      font-size: 32px;
+      font-weight: 800;
+      margin-bottom: 16px;
+    }
+
+    .demo-info p {
+      color: var(--text-sub);
+      font-size: 15px;
+      line-height: 1.6;
+      margin-bottom: 24px;
+    }
+
+    .demo-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .playlist-input-container {
+      display: flex;
+      gap: 8px;
+    }
+
+    .playlist-input {
+      flex: 1;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      color: var(--text-main);
+      padding: 12px 16px;
+      font-family: var(--font-inter);
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .playlist-input:focus {
+      border-color: var(--accent-cyan);
+    }
+
+    .parse-btn {
+      background: var(--gradient-primary);
+      color: #000;
+      border: none;
+      border-radius: 8px;
+      padding: 12px 20px;
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .preset-btns {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .preset-btn {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      color: var(--text-sub);
+      padding: 6px 12px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .preset-btn:hover {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text-main);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    /* Terminal Console Display */
+    .demo-terminal {
+      background: #040508;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 12px;
+      padding: 20px;
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 13px;
+      line-height: 1.5;
+      color: #00FF66;
+      height: 320px;
+      overflow-y: auto;
+      box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.8);
+      position: relative;
+    }
+
+    .terminal-header {
+      display: flex;
+      justify-content: space-between;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      padding-bottom: 8px;
+      margin-bottom: 12px;
+      color: var(--text-sub);
+      font-size: 11px;
+    }
+
+    .terminal-dots {
+      display: flex;
+      gap: 6px;
+    }
+
+    .terminal-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+    .dot-red { background-color: #FF5F56; }
+    .dot-yellow { background-color: #FFBD2E; }
+    .dot-green { background-color: #27C93F; }
+
+    .terminal-title {
+      font-family: var(--font-inter);
+    }
+
+    .terminal-line {
+      margin-bottom: 6px;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
+    .terminal-line.info { color: #8F9CAE; }
+    .terminal-line.cyan { color: #00E5FF; }
+    .terminal-line.purple { color: #BD00FF; }
+    .terminal-line.error { color: #FF4A4A; }
+
+    /* Download Section */
+    .downloads-section {
+      padding: 100px 0;
+      position: relative;
+    }
+
+    .download-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 24px;
+    }
+
+    .download-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 30px;
+      text-align: center;
+      transition: all 0.3s;
+    }
+
+    .download-card:hover {
+      background: var(--bg-card-hover);
+      border-color: var(--border-color-hover);
+      transform: translateY(-5px);
+    }
+
+    .download-card-icon {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      background: rgba(189, 0, 255, 0.1);
+      color: var(--accent-purple);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 20px auto;
+      transition: all 0.3s;
+    }
+
+    .download-card:hover .download-card-icon {
+      background: var(--gradient-primary);
+      color: #000;
+    }
+
+    .download-card h3 {
+      font-family: var(--font-outfit);
+      font-size: 20px;
+      margin-bottom: 8px;
+    }
+
+    .download-card p {
+      color: var(--text-sub);
+      font-size: 13px;
+      margin-bottom: 24px;
+    }
+
+    .download-btn {
+      display: block;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 10px;
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 13px;
+      transition: all 0.2s;
+    }
+
+    .download-btn:hover {
+      background: var(--gradient-primary);
+      color: #000;
+      border-color: transparent;
+    }
+
+    /* Technical Callout */
+    .tech-callout {
+      margin-top: 80px;
+      background: radial-gradient(circle at top left, rgba(0, 229, 255, 0.05), rgba(8, 9, 12, 0) 50%), var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 40px;
+      text-align: center;
+    }
+
+    .tech-callout h3 {
+      font-family: var(--font-outfit);
+      font-size: 24px;
+      margin-bottom: 12px;
+    }
+
+    .tech-callout p {
+      color: var(--text-sub);
+      font-size: 14px;
+      max-width: 680px;
+      margin: 0 auto 24px auto;
+      line-height: 1.6;
+    }
+
+    /* Scroll Reveal Animations */
+    .reveal {
+      opacity: 0;
+      transform: translateY(30px);
+      transition: opacity 0.8s ease, transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .reveal.active {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* Footer */
+    footer {
+      border-top: 1px solid var(--border-color);
+      padding: 60px 0;
+      background: rgba(4, 5, 8, 0.6);
+    }
+
+    .footer-grid {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr 1.2fr;
+      gap: 40px;
+      margin-bottom: 40px;
+    }
+
+    @media (max-width: 768px) {
+      .footer-grid {
+        grid-template-columns: 1fr;
+        gap: 30px;
+      }
+    }
+
+    .footer-brand p {
+      color: var(--text-sub);
+      font-size: 13px;
+      line-height: 1.6;
+      margin-top: 12px;
+      max-width: 260px;
+    }
+
+    .footer-col h4 {
+      font-family: var(--font-outfit);
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .footer-col ul {
+      list-style: none;
+    }
+
+    .footer-col ul li {
+      margin-bottom: 10px;
+    }
+
+    .footer-col ul li a {
+      color: var(--text-sub);
+      text-decoration: none;
+      font-size: 13px;
+      transition: color 0.2s;
+    }
+
+    .footer-col ul li a:hover {
+      color: var(--text-main);
+    }
+
+    .footer-bottom {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: var(--text-sub);
+      font-size: 13px;
+    }
+
+    @media (max-width: 576px) {
+      .footer-bottom {
+        flex-direction: column;
+        gap: 16px;
+        text-align: center;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Ambient Glow Elements -->
+  <div class="ambient-glow glow-1"></div>
+  <div class="ambient-glow glow-2"></div>
+  <div class="ambient-glow glow-3"></div>
+
+  <!-- Header -->
+  <header id="header">
+    <div class="nav-container">
+      <a href="#" class="logo-container">
+        <div class="logo-icon">A</div>
+        <span class="logo-text">Airo TV</span>
+      </a>
+      <nav>
+        <a href="#features">Features</a>
+        <a href="#demo">AI Parser</a>
+        <a href="#downloads">Downloads</a>
+        <a href="./technical-docs/">Docs</a>
+      </nav>
+      <a href="#downloads" class="cta-btn">
+        <i data-lucide="download" style="width:16px; height:16px;"></i> Download APK
+      </a>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <section class="hero container">
+    <div class="hero-badge">
+      <i data-lucide="sparkles" style="width:14px; height:14px;"></i>
+      On-Device AI Engine Enabled
+    </div>
+    <h1>
+      <span class="gradient-text">The AI-First IPTV</span><br>
+      <span>Smart Player Platform</span>
+    </h1>
+    <p>
+      Zero cloud dependency. Zero data tracking. Running fully on-device AI algorithms with <strong>LiteRT</strong> and <strong>Gemma 1B</strong> to parse, categorize, and search 10k+ streams instantly.
+    </p>
+    <div class="hero-buttons">
+      <a href="#downloads" class="cta-btn" style="padding: 14px 28px; font-size: 15px;">
+        <i data-lucide="tv" style="width:18px; height:18px;"></i> Get Airo TV
+      </a>
+      <a href="./technical-docs/" class="btn-secondary" style="padding: 14px 28px; font-size: 15px;">
+        <i data-lucide="code" style="width:18px; height:18px;"></i> View Tech Docs
+      </a>
+    </div>
+    
+    <!-- Mockup Player Showcase -->
+    <div class="mockup-wrapper">
+      <div class="mockup-container">
+        <img src="./assets/images/airotv_mockup.jpg" alt="Airo TV Mockup Dashboard">
+      </div>
+    </div>
+  </section>
+
+  <!-- Features Section -->
+  <section id="features" class="features-section container reveal">
+    <div class="section-header">
+      <h2>AI-First Built Integration</h2>
+      <p>How Airo TV leverages modern edge computing and on-device machine learning to change streaming</p>
+    </div>
+    
+    <div class="features-grid">
+      <!-- Feature 1 -->
+      <div class="feature-card">
+        <div class="feature-icon">
+          <i data-lucide="mic"></i>
+        </div>
+        <h3>Natural Voice Search</h3>
+        <p>Talk to your TV in natural language. Powered by local speech-to-text, Airo TV maps "find a funny 90s action film with space travel" to channels or movies without sending your voice bytes to a cloud server.</p>
+      </div>
+
+      <!-- Feature 2 -->
+      <div class="feature-card">
+        <div class="feature-icon">
+          <i data-lucide="layers"></i>
+        </div>
+        <h3>Smart Sorting Engine</h3>
+        <p>Say goodbye to long, unsorted list scrolls. The local AI classifier parses metadata strings, channel labels, and logo configurations to automatically group streams into clean categories.</p>
+      </div>
+
+      <!-- Feature 3 -->
+      <div class="feature-card">
+        <div class="feature-icon">
+          <i data-lucide="shield-check"></i>
+        </div>
+        <h3>Privacy-First Architecture</h3>
+        <p>Your playlists, history, and voice inputs never leave your TV. Airo TV runs completely offline-first with no remote tracker APIs, keeping your data confidential.</p>
+      </div>
+
+      <!-- Feature 4 -->
+      <div class="feature-card">
+        <div class="feature-icon">
+          <i data-lucide="database"></i>
+        </div>
+        <h3>Offline EPG Hydration</h3>
+        <p>Our intelligent cached program guide system automatically links your channels to schedule XML TV feeds, matching entries based on semantic name mapping.</p>
+      </div>
+
+      <!-- Feature 5 -->
+      <div class="feature-card">
+        <div class="feature-icon">
+          <i data-lucide="cpu"></i>
+        </div>
+        <h3>LiteRT Edge Performance</h3>
+        <p>Highly optimized, memory-conscious engine engineered specifically for Android TV, Fire TV sticks, and low-spec platforms. Keeps RAM consumption below 1.2GB.</p>
+      </div>
+
+      <!-- Feature 6 -->
+      <div class="feature-card">
+        <div class="feature-icon">
+          <i data-lucide="file-video"></i>
+        </div>
+        <h3>Unified Codec Pipeline</h3>
+        <p>Supports all major streaming formats (M3U8, HLS, MPEG-TS, RTMP) and playback extensions with auto-recovery and cast support.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Interactive Demo Widget -->
+  <section id="demo" class="interactive-demo container reveal">
+    <div class="demo-wrapper">
+      <div class="demo-info">
+        <h3>Live AI Classifier</h3>
+        <p>
+          Experience how Airo TV processes playlists locally. Input custom M3U text or select a preset playlist and witness the on-device mock parser classify channels by category, quality, and semantic tags.
+        </p>
+        <div class="demo-actions">
+          <div class="playlist-input-container">
+            <input type="text" id="m3u-input" class="playlist-input" placeholder="Paste M3U playlist line...">
+            <button class="parse-btn" onclick="parseM3U()">
+              <i data-lucide="zap" style="width:16px; height:16px;"></i> Classify
+            </button>
+          </div>
+          <div class="preset-btns">
+            <span style="font-size:12px; color:var(--text-sub); display:flex; align-items:center;">Presets:</span>
+            <button class="preset-btn" onclick="loadPreset(1)">Sci-Fi Movie Feed</button>
+            <button class="preset-btn" onclick="loadPreset(2)">Sports Live HD</button>
+            <button class="preset-btn" onclick="loadPreset(3)">Mixed Global Stream</button>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Terminal Console -->
+      <div class="demo-terminal" id="terminal">
+        <div class="terminal-header">
+          <div class="terminal-dots">
+            <div class="terminal-dot dot-red"></div>
+            <div class="terminal-dot dot-yellow"></div>
+            <div class="terminal-dot dot-green"></div>
+          </div>
+          <span class="terminal-title">AiroTV-Local-Classifier-v2.0.0</span>
+        </div>
+        <div class="terminal-line info">System initialized. Awaiting playlist entry...</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Downloads Section -->
+  <section id="downloads" class="downloads-section container reveal">
+    <div class="section-header">
+      <h2>Get Started with Airo TV</h2>
+      <p>Download the latest release for your devices and platforms</p>
+    </div>
+
+    <div class="download-grid">
+      <!-- Android TV -->
+      <div class="download-card">
+        <div class="download-card-icon">
+          <i data-lucide="tv"></i>
+        </div>
+        <h3>Android TV / Fire TV</h3>
+        <p>Tailored 10-foot UI designed for d-pad remote control.</p>
+        <a href="https://github.com/DevelopersCoffee/airo/releases" class="download-btn">Download TV APK</a>
+      </div>
+
+      <!-- Android Mobile -->
+      <div class="download-card">
+        <div class="download-card-icon">
+          <i data-lucide="smartphone"></i>
+        </div>
+        <h3>Android Mobile</h3>
+        <p>Optimized for mobile touchscreens and portrait navigation.</p>
+        <a href="https://github.com/DevelopersCoffee/airo/releases" class="download-btn">Download Mobile APK</a>
+      </div>
+
+      <!-- Web Player -->
+      <div class="download-card">
+        <div class="download-card-icon">
+          <i data-lucide="globe"></i>
+        </div>
+        <h3>Web Player</h3>
+        <p>Watch straight from Chrome or Safari browser.</p>
+        <a href="https://github.com/DevelopersCoffee/airo/releases" class="download-btn">Launch Web Player</a>
+      </div>
+
+      <!-- Desktop App -->
+      <div class="download-card">
+        <div class="download-card-icon">
+          <i data-lucide="monitor"></i>
+        </div>
+        <h3>Desktop App</h3>
+        <p>High-performance Windows and Linux builds.</p>
+        <a href="https://github.com/DevelopersCoffee/airo/releases" class="download-btn">Download Desktop</a>
+      </div>
+    </div>
+
+    <!-- Tech Docs Redirect Callout -->
+    <div class="tech-callout">
+      <i data-lucide="terminal" style="width:36px; height:36px; color:var(--accent-cyan); margin-bottom:16px;"></i>
+      <h3>Developers & Contributors</h3>
+      <p>
+        Airo TV is fully open-source. Inspect the modular architecture, LiteRT runtime fitness gates, clean CI/CD publishing scripts, and automated unit test coverage.
+      </p>
+      <a href="./technical-docs/" class="btn-secondary">
+        <i data-lucide="book-open" style="width:16px; height:16px;"></i> Read Technical Documentation
+      </a>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer>
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <a href="#" class="logo-container">
+            <div class="logo-icon">A</div>
+            <span class="logo-text">Airo TV</span>
+          </a>
+          <p>Privacy-focused, AI-powered smart IPTV media player platform for modern screen experiences.</p>
+        </div>
+        <div class="footer-col">
+          <h4>Platform</h4>
+          <ul>
+            <li><a href="#features">Features</a></li>
+            <li><a href="#demo">AI Classifier</a></li>
+            <li><a href="#downloads">Downloads</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <h4>Developers</h4>
+          <ul>
+            <li><a href="https://github.com/DevelopersCoffee/airo">GitHub Repo</a></li>
+            <li><a href="./technical-docs/">Documentation</a></li>
+            <li><a href="https://github.com/DevelopersCoffee/airo/releases">Releases</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <h4>Legal & Support</h4>
+          <ul>
+            <li><a href="./legal/privacy-policy/">Privacy Policy</a></li>
+            <li><a href="./legal/terms-conditions/">Terms & Conditions</a></li>
+            <li><a href="mailto:coffee.devloper@gmail.com">Contact Support</a></li>
+          </ul>
+        </div>
+      </div>
+      
+      <div class="footer-bottom">
+        <p>&copy; 2026 Airo TV / DevelopersCoffee. All rights reserved.</p>
+        <p>Built with ❤️ by <a href="https://github.com/DevelopersCoffee" style="color:var(--text-main); text-decoration:none; font-weight:600;">DevelopersCoffee</a></p>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // Initialize Lucide Icons
+    lucide.createIcons();
+
+    // Scroll header styling
+    window.addEventListener('scroll', () => {
+      const header = document.getElementById('header');
+      if (window.scrollY > 50) {
+        header.classList.add('scrolled');
+      } else {
+        header.classList.remove('scrolled');
+      }
+    });
+
+    // Reveal animations
+    const reveals = document.querySelectorAll('.reveal');
+    const revealObserver = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('active');
+        }
+      });
+    }, { threshold: 0.15 });
+
+    reveals.forEach(reveal => {
+      revealObserver.observe(reveal);
+    });
+
+    // Interactive Demo Parser Logic
+    const presets = {
+      1: '#EXTINF:-1 tvg-id="orion-sci" tvg-name="The Orion Protocol HD" tvg-logo="https://airo.dev/logo-orion.png",The Orion Protocol (2026)\nhttp://streams.airo.dev/movies/orion_protocol.m3u8',
+      2: '#EXTINF:-1 tvg-id="sports-epl" tvg-name="Sky Sports Premier League HD" group-title="Live Sports",EPL Live Direct\nhttp://sports.direct.stream/sky_epl.ts',
+      3: '#EXTINF:-1 tvg-id="cnn-global" tvg-name="CNN International" tvg-country="US" group-title="News",CNN Global Stream\nhttp://news.global.cnn/live/stream.m3u8'
+    };
+
+    function loadPreset(id) {
+      document.getElementById('m3u-input').value = presets[id];
+      logToTerminal(`Preset ${id} loaded. Click "Classify" to parse.`);
+    }
+
+    function logToTerminal(text, type = 'info') {
+      const terminal = document.getElementById('terminal');
+      const line = document.createElement('div');
+      line.className = `terminal-line ${type}`;
+      
+      const timestamp = new Date().toLocaleTimeString();
+      line.textContent = `[${timestamp}] ${text}`;
+      
+      terminal.appendChild(line);
+      terminal.scrollTop = terminal.scrollHeight;
+    }
+
+    function parseM3U() {
+      const input = document.getElementById('m3u-input').value.trim();
+      if (!input) {
+        logToTerminal("Error: Input is empty. Please enter an M3U playlist line.", "error");
+        return;
+      }
+
+      logToTerminal("Starting on-device layout parse stream...", "cyan");
+      
+      setTimeout(() => {
+        // Simple regex to parse M3U details
+        const extinfMatch = input.match(/#EXTINF:\s*(-?\d+)/);
+        const nameMatch = input.match(/,\s*(.+)$/m);
+        const tvgIdMatch = input.match(/tvg-id="([^"]+)"/);
+        const groupMatch = input.match(/group-title="([^"]+)"/);
+        const urlMatch = input.match(/(https?:\/\/[^\s]+)/);
+
+        if (!extinfMatch && !urlMatch) {
+          logToTerminal("Error: String does not match standard M3U #EXTINF format. Defaulting to general streaming profile.", "error");
+          return;
+        }
+
+        const name = nameMatch ? nameMatch[1] : "Unknown Channel";
+        const tvgId = tvgIdMatch ? tvgIdMatch[1] : "not-assigned";
+        const group = groupMatch ? groupMatch[1] : "General";
+        const url = urlMatch ? urlMatch[0] : "";
+
+        logToTerminal(`Parsing metadata for: "${name}"`, "info");
+        logToTerminal(`Extracted tvg-id: "${tvgId}"`, "info");
+        logToTerminal(`Extracted original group: "${group}"`, "info");
+
+        // Mock AI Classification logic based on names/groups
+        let aiCategory = "Movies";
+        let aiConfidence = "94%";
+        let aiTags = ["1080p", "HLS"];
+
+        const lowerName = name.toLowerCase();
+        if (lowerName.includes("protocol") || lowerName.includes("orion") || lowerName.includes("sci-fi")) {
+          aiCategory = "Sci-Fi / Space Cinema";
+          aiConfidence = "98%";
+          aiTags.push("AI Smart Recommendation");
+        } else if (lowerName.includes("sports") || lowerName.includes("epl") || group.toLowerCase().includes("sports")) {
+          aiCategory = "Live Sports Direct";
+          aiConfidence = "91%";
+          aiTags.push("Sports", "Low Latency TS");
+        } else if (lowerName.includes("news") || lowerName.includes("cnn") || group.toLowerCase().includes("news")) {
+          aiCategory = "Global News Feed";
+          aiConfidence = "95%";
+          aiTags.push("Live TV", "News");
+        }
+
+        logToTerminal(`>> Running LiteRT categorization model...`, "purple");
+        
+        setTimeout(() => {
+          logToTerminal(`[AI CATEGORY]: ${aiCategory.toUpperCase()} (Confidence: ${aiConfidence})`, "cyan");
+          logToTerminal(`[AI TARGET TAGS]: ${aiTags.join(' | ')}`, "cyan");
+          logToTerminal(`[TARGET RESOLVED STREAM]: ${url}`, "info");
+          logToTerminal(`Success. Feed added to on-device database schema successfully.`, "cyan");
+        }, 600);
+
+      }, 400);
+    }
+  </script>
+</body>
+</html>
