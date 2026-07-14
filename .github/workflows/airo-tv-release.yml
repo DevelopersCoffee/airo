@@ -287,8 +287,9 @@ jobs:
         run: |
           ruby -e 'require "yaml"; YAML.load_file(".github/workflows/airo-tv-release.yml"); puts "workflow-yaml-ok"'
           bash -n scripts/build-tv.sh scripts/check-android-tv-release.sh scripts/patch-android-plugin-gradle.sh
-          python3 -m py_compile scripts/generate-release-manifest.py
+          python3 -m py_compile scripts/generate-release-manifest.py scripts/generate-release-qualification-report.py
           scripts/test-generate-release-manifest.sh
+          scripts/test-generate-release-qualification-report.sh
           scripts/check-android-tv-release.sh
           cd app
           flutter analyze lib/core/app/tv_router.dart lib/main_tv.dart test/core/app/tv_router_test.dart test/main_tv_debug_playlist_test.dart --no-fatal-infos --no-fatal-warnings
