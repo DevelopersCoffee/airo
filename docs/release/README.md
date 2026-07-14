@@ -30,6 +30,8 @@ Documentation for Airo releases and version history.
 - [Airo TV Media Assets](./AIRO_TV_MEDIA_ASSETS.md)
 - [GitHub Releases](https://github.com/DevelopersCoffee/airo/releases)
 - [Download Airo TV APK](https://github.com/DevelopersCoffee/airo/releases/download/airo-tv-v0.0.2/Airo-TV-v0.0.2.apk)
+- [Verify direct APK downloads](../../VERIFY_DOWNLOAD.md)
+- [Trust and transparency](../../TRUST.md)
 
 ---
 
@@ -43,6 +45,10 @@ Documentation for Airo releases and version history.
 | [Airo TV Feature Matrix](./AIRO_TV_FEATURE_MATRIX.md) | Supported, planned, and unsupported features |
 | [Airo TV Media Assets](./AIRO_TV_MEDIA_ASSETS.md) | Screenshot and demo-video release checklist |
 | [Airo V1 and V2 Version Lines](./VERSION_LINES.md) | Base branch, tag, artifact, and support policy for monolith V1 and modular V2 |
+| [V2 Distribution Matrix](./V2_DISTRIBUTION_MATRIX.md) | Supported v2 profiles, artifact naming, channels, and support policy |
+| [V2 Publishing Human Setup](./V2_PUBLISHING_HUMAN_SETUP.md) | Account, credential, signing, store, and governance decisions maintainers must complete |
+| [Download Verification](../../VERIFY_DOWNLOAD.md) | SHA256 verification and safe direct APK install guidance |
+| [Trust and Transparency](../../TRUST.md) | Public trust boundaries for content, telemetry, accounts, and release artifacts |
 | [Changelog v1.1.0](./CHANGELOG_v1.1.0.md) | Current version changes |
 | [Release v1.0.0 Summary](./RELEASE_v1.0.0_SUMMARY.md) | Initial release details |
 | [Publishing Guide](./GITHUB_APK_PUBLISHING_GUIDE.md) | How to publish APKs |
