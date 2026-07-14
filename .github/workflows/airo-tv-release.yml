@@ -2,6 +2,13 @@ name: Airo TV Release
 
 on:
   workflow_call:
+    outputs:
+      firebase_distribution_status:
+        description: 'Firebase App Distribution result status'
+        value: ${{ jobs.firebase-distribution.outputs.status }}
+      firebase_distribution_url:
+        description: 'Firebase App Distribution console URL when available'
+        value: ${{ jobs.firebase-distribution.outputs.url }}
     inputs:
       version:
         description: 'Airo TV artifact and release version label'
@@ -34,6 +41,18 @@ on:
       play_track:
         description: 'Optional Play upload track'
         required: true
+        type: string
+      firebase_distribution:
+        description: 'Firebase App Distribution mode'
+        required: true
+        type: string
+      firebase_app_id:
+        description: 'Firebase App Distribution app ID for TV'
+        required: false
+        type: string
+      firebase_tester_groups:
+        description: 'Comma-separated Firebase tester groups'
+        required: false
         type: string
   pull_request:
     branches: [ v2 ]
@@ -92,6 +111,22 @@ on:
           - alpha
           - beta
           - production
+      firebase_distribution:
+        description: 'Firebase App Distribution mode'
+        required: true
+        default: none
+        type: choice
+        options:
+          - none
+          - upload
+      firebase_app_id:
+        description: 'Firebase App Distribution app ID for TV'
+        required: false
+        default: ''
+      firebase_tester_groups:
+        description: 'Comma-separated Firebase tester groups'
+        required: false
+        default: ''
 
 concurrency:
   group: airo-tv-release-${{ github.ref }}
@@ -139,6 +174,32 @@ jobs:
           git checkout -B "$RELEASE_BRANCH" "$base_ref"
           git push origin "$RELEASE_BRANCH" --force-with-lease
           echo "ref=$RELEASE_BRANCH" >> "$GITHUB_OUTPUT"
+
+      - name: Validate Firebase distribution inputs
+        env:
+          FIREBASE_DISTRIBUTION: ${{ inputs.firebase_distribution || github.event.inputs.firebase_distribution || 'none' }}
+          FIREBASE_APP_ID: ${{ inputs.firebase_app_id || github.event.inputs.firebase_app_id }}
+          FIREBASE_TESTER_GROUPS: ${{ inputs.firebase_tester_groups || github.event.inputs.firebase_tester_groups }}
+          FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
+        run: |
+          case "$FIREBASE_DISTRIBUTION" in
+            none|upload) ;;
+            *)
+              echo "::error::Unsupported Firebase distribution mode: $FIREBASE_DISTRIBUTION"
+              exit 1
+              ;;
+          esac
+
+          if [[ "$FIREBASE_DISTRIBUTION" == "upload" ]]; then
+            missing=0
+            for name in FIREBASE_APP_ID FIREBASE_TESTER_GROUPS FIREBASE_SERVICE_ACCOUNT_JSON; do
+              if [[ -z "${!name}" ]]; then
+                echo "::error::$name is required when Firebase distribution mode is upload."
+                missing=1
+              fi
+            done
+            [[ "$missing" -eq 0 ]] || exit 1
+          fi
 
   release-checks:
     name: TV release checks
@@ -499,6 +560,131 @@ jobs:
             echo "| Track | $PLAY_TRACK |"
             echo "| AAB | Airo-TV-${BUILD_NAME}-Play-Store.aab |"
             echo "| Play Console | https://play.google.com/console/u/0/developers/app/$SUPPLY_PACKAGE_NAME/tracks/$PLAY_TRACK |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  firebase-distribution:
+    name: Upload Airo TV to Firebase App Distribution
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: [prepare-release-branch, build-tv]
+    if: (github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call') && (inputs.firebase_distribution || github.event.inputs.firebase_distribution) == 'upload'
+    permissions:
+      contents: read
+    outputs:
+      status: ${{ steps.firebase_result.outputs.status }}
+      url: ${{ steps.firebase_result.outputs.url }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.prepare-release-branch.outputs.release_ref || github.ref }}
+
+      - name: Normalize release artifact label
+        run: |
+          release_version="$(printf '%s' "$RELEASE_VERSION" | sed 's/[^A-Za-z0-9._-]/-/g')"
+          echo "RELEASE_VERSION=$release_version" >> "$GITHUB_ENV"
+
+      - name: Download release artifacts
+        uses: actions/download-artifact@v8
+        with:
+          name: airo-tv-release-${{ env.RELEASE_VERSION }}
+          path: release-artifacts
+
+      - name: Configure Firebase service account
+        env:
+          FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
+        run: |
+          if [[ -z "$FIREBASE_SERVICE_ACCOUNT_JSON" ]]; then
+            echo "::error::FIREBASE_SERVICE_ACCOUNT_JSON is required for Firebase App Distribution upload."
+            exit 1
+          fi
+          echo "$FIREBASE_SERVICE_ACCOUNT_JSON" > firebase-service-account.json
+          chmod 600 firebase-service-account.json
+
+      - name: Upload to Firebase App Distribution
+        id: firebase_result
+        env:
+          FIREBASE_APP_ID: ${{ inputs.firebase_app_id || github.event.inputs.firebase_app_id }}
+          FIREBASE_TESTER_GROUPS: ${{ inputs.firebase_tester_groups || github.event.inputs.firebase_tester_groups }}
+          GOOGLE_APPLICATION_CREDENTIALS: firebase-service-account.json
+        run: |
+          apk_name="Airo-TV-${BUILD_NAME}.apk"
+          apk_path="release-artifacts/$apk_name"
+          manifest_path="release-artifacts/Airo-TV-${BUILD_NAME}-Release-Manifest.json"
+
+          if [[ -z "$FIREBASE_APP_ID" ]]; then
+            echo "::error::firebase_app_id is required when Firebase distribution mode is upload."
+            exit 1
+          fi
+          if [[ -z "$FIREBASE_TESTER_GROUPS" ]]; then
+            echo "::error::firebase_tester_groups is required when Firebase distribution mode is upload."
+            exit 1
+          fi
+          if [[ ! -f "$apk_path" ]]; then
+            echo "::error::Expected TV APK not found: $apk_path"
+            exit 1
+          fi
+          if [[ ! -f "$manifest_path" ]]; then
+            echo "::error::Expected TV release manifest not found: $manifest_path"
+            exit 1
+          fi
+
+          python3 - "$apk_name" "$manifest_path" > firebase-release-notes.md <<'PY'
+          import json
+          import sys
+
+          apk_name, manifest_path = sys.argv[1:]
+          manifest = json.load(open(manifest_path, encoding="utf-8"))
+          artifact = next(item for item in manifest["artifacts"] if item["filename"] == apk_name)
+          print(f"Airo TV {artifact['version']} ({artifact['buildNumber']})")
+          print("")
+          print(f"Package: {artifact['packageId']}")
+          print(f"Artifact: {artifact['filename']}")
+          print(f"SHA256: {artifact['sha256']}")
+          print(f"Source: {manifest['source']['ref']} @ {manifest['source']['sha']}")
+          PY
+
+          npm install -g firebase-tools
+          firebase appdistribution:distribute "$apk_path" \
+            --app "$FIREBASE_APP_ID" \
+            --groups "$FIREBASE_TESTER_GROUPS" \
+            --release-notes-file firebase-release-notes.md \
+            --json | tee firebase-result.json
+
+          url="$(python3 - firebase-result.json <<'PY'
+          import json
+          import sys
+
+          try:
+              data = json.load(open(sys.argv[1], encoding="utf-8"))
+          except Exception:
+              print("")
+              raise SystemExit
+          result = data.get("result") if isinstance(data, dict) else None
+          if not isinstance(result, dict):
+              result = data if isinstance(data, dict) else {}
+          print(result.get("firebase_console_uri") or result.get("testing_uri") or result.get("binary_download_uri") or "")
+          PY
+          )"
+
+          {
+            echo "status=uploaded"
+            echo "url=$url"
+          } >> "$GITHUB_OUTPUT"
+
+          {
+            echo "# TV Firebase App Distribution"
+            echo ""
+            echo "| Field | Value |"
+            echo "| --- | --- |"
+            echo "| Package | io.airo.app.tv |"
+            echo "| Firebase app | $FIREBASE_APP_ID |"
+            echo "| Tester groups | $FIREBASE_TESTER_GROUPS |"
+            echo "| APK | $apk_name |"
+            if [[ -n "$url" ]]; then
+              echo "| Result | $url |"
+            else
+              echo "| Result | Uploaded; Firebase CLI did not return a URL |"
+            fi
           } >> "$GITHUB_STEP_SUMMARY"
 
   github-release:

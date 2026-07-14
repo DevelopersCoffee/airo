@@ -71,6 +71,30 @@ on:
           - alpha
           - beta
           - production
+      firebase_distribution:
+        description: 'Optional Firebase App Distribution upload mode when dry_run is false'
+        required: true
+        default: none
+        type: choice
+        options:
+          - none
+          - upload
+      mobile_firebase_app_id:
+        description: 'Firebase App Distribution app ID for the selected mobile/tablet profile'
+        required: false
+        default: ''
+      mobile_firebase_tester_groups:
+        description: 'Comma-separated Firebase tester groups for mobile/tablet QA'
+        required: false
+        default: ''
+      tv_firebase_app_id:
+        description: 'Firebase App Distribution app ID for TV'
+        required: false
+        default: ''
+      tv_firebase_tester_groups:
+        description: 'Comma-separated Firebase tester groups for TV QA'
+        required: false
+        default: ''
       mobile_profile:
         description: 'Optional mobile/tablet profile to build'
         required: true
@@ -117,6 +141,11 @@ jobs:
       production_signing: ${{ steps.release.outputs.production_signing }}
       tv_play_track: ${{ steps.release.outputs.tv_play_track }}
       mobile_play_track: ${{ steps.release.outputs.mobile_play_track }}
+      firebase_distribution: ${{ steps.release.outputs.firebase_distribution }}
+      mobile_firebase_app_id: ${{ steps.release.outputs.mobile_firebase_app_id }}
+      mobile_firebase_tester_groups: ${{ steps.release.outputs.mobile_firebase_tester_groups }}
+      tv_firebase_app_id: ${{ steps.release.outputs.tv_firebase_app_id }}
+      tv_firebase_tester_groups: ${{ steps.release.outputs.tv_firebase_tester_groups }}
       mobile_profile: ${{ steps.release.outputs.mobile_profile }}
       qualification_mode: ${{ steps.release.outputs.qualification_mode }}
     steps:
@@ -139,6 +168,11 @@ jobs:
           INPUT_PRODUCTION_SIGNING: ${{ inputs.production_signing }}
           INPUT_TV_PLAY_TRACK: ${{ inputs.tv_play_track }}
           INPUT_MOBILE_PLAY_TRACK: ${{ inputs.mobile_play_track }}
+          INPUT_FIREBASE_DISTRIBUTION: ${{ inputs.firebase_distribution }}
+          INPUT_MOBILE_FIREBASE_APP_ID: ${{ inputs.mobile_firebase_app_id }}
+          INPUT_MOBILE_FIREBASE_TESTER_GROUPS: ${{ inputs.mobile_firebase_tester_groups }}
+          INPUT_TV_FIREBASE_APP_ID: ${{ inputs.tv_firebase_app_id }}
+          INPUT_TV_FIREBASE_TESTER_GROUPS: ${{ inputs.tv_firebase_tester_groups }}
           INPUT_MOBILE_PROFILE: ${{ inputs.mobile_profile }}
           INPUT_QUALIFICATION_MODE: ${{ inputs.qualification_mode }}
         run: |
@@ -155,6 +189,11 @@ jobs:
           production_signing="${INPUT_PRODUCTION_SIGNING:-false}"
           tv_play_track="${INPUT_TV_PLAY_TRACK:-none}"
           mobile_play_track="${INPUT_MOBILE_PLAY_TRACK:-none}"
+          firebase_distribution="${INPUT_FIREBASE_DISTRIBUTION:-none}"
+          mobile_firebase_app_id="${INPUT_MOBILE_FIREBASE_APP_ID:-}"
+          mobile_firebase_tester_groups="${INPUT_MOBILE_FIREBASE_TESTER_GROUPS:-}"
+          tv_firebase_app_id="${INPUT_TV_FIREBASE_APP_ID:-}"
+          tv_firebase_tester_groups="${INPUT_TV_FIREBASE_TESTER_GROUPS:-}"
           mobile_profile="${INPUT_MOBILE_PROFILE:-none}"
           qualification_mode="${INPUT_QUALIFICATION_MODE:-internal}"
 
@@ -162,6 +201,7 @@ jobs:
             publish_github_release="false"
             tv_play_track="none"
             mobile_play_track="none"
+            firebase_distribution="none"
           fi
 
           case "$tv_play_track" in
@@ -183,6 +223,25 @@ jobs:
           if [ "$mobile_profile" = "none" ] && [ "$mobile_play_track" != "none" ]; then
             echo "::error::mobile_play_track requires mobile_profile to be iptv-standalone or mobile-streaming."
             exit 1
+          fi
+
+          case "$firebase_distribution" in
+            none|upload) ;;
+            *)
+              echo "::error::Unsupported Firebase distribution mode: $firebase_distribution"
+              exit 1
+              ;;
+          esac
+
+          if [ "$firebase_distribution" = "upload" ]; then
+            if [ -z "$tv_firebase_app_id" ] || [ -z "$tv_firebase_tester_groups" ]; then
+              echo "::error::Firebase upload requires tv_firebase_app_id and tv_firebase_tester_groups."
+              exit 1
+            fi
+            if [ "$mobile_profile" != "none" ] && { [ -z "$mobile_firebase_app_id" ] || [ -z "$mobile_firebase_tester_groups" ]; }; then
+              echo "::error::Firebase upload with a mobile/tablet profile requires mobile_firebase_app_id and mobile_firebase_tester_groups."
+              exit 1
+            fi
           fi
 
           case "$github_release_mode" in
@@ -220,6 +279,11 @@ jobs:
             echo "production_signing=$production_signing"
             echo "tv_play_track=$tv_play_track"
             echo "mobile_play_track=$mobile_play_track"
+            echo "firebase_distribution=$firebase_distribution"
+            echo "mobile_firebase_app_id=$mobile_firebase_app_id"
+            echo "mobile_firebase_tester_groups=$mobile_firebase_tester_groups"
+            echo "tv_firebase_app_id=$tv_firebase_app_id"
+            echo "tv_firebase_tester_groups=$tv_firebase_tester_groups"
             echo "mobile_profile=$mobile_profile"
             echo "qualification_mode=$qualification_mode"
           } >> "$GITHUB_OUTPUT"
@@ -240,6 +304,7 @@ jobs:
             echo "| GitHub Release mode | $github_release_mode |"
             echo "| TV Play track | $tv_play_track |"
             echo "| Mobile/tablet Play track | $mobile_play_track |"
+            echo "| Firebase distribution | $firebase_distribution |"
             echo "| Mobile/tablet profile | $mobile_profile |"
             echo "| Qualification mode | $qualification_mode |"
           } >> "$GITHUB_STEP_SUMMARY"
@@ -284,6 +349,9 @@ jobs:
       release_ref: ${{ needs.prepare.outputs.release_ref }}
       production_signing: ${{ needs.prepare.outputs.production_signing == 'true' }}
       play_track: ${{ needs.prepare.outputs.mobile_play_track }}
+      firebase_distribution: ${{ needs.prepare.outputs.firebase_distribution }}
+      firebase_app_id: ${{ needs.prepare.outputs.mobile_firebase_app_id }}
+      firebase_tester_groups: ${{ needs.prepare.outputs.mobile_firebase_tester_groups }}
     secrets: inherit
 
   tv-release:
@@ -302,6 +370,9 @@ jobs:
       publish_github_release: false
       production_signing: ${{ needs.prepare.outputs.production_signing == 'true' }}
       play_track: ${{ needs.prepare.outputs.tv_play_track }}
+      firebase_distribution: ${{ needs.prepare.outputs.firebase_distribution }}
+      firebase_app_id: ${{ needs.prepare.outputs.tv_firebase_app_id }}
+      firebase_tester_groups: ${{ needs.prepare.outputs.tv_firebase_tester_groups }}
     secrets: inherit
 
   release-summary:
@@ -506,6 +577,11 @@ jobs:
           MOBILE_PROFILE: ${{ needs.prepare.outputs.mobile_profile }}
           TV_PLAY_TRACK: ${{ needs.prepare.outputs.tv_play_track }}
           MOBILE_PLAY_TRACK: ${{ needs.prepare.outputs.mobile_play_track }}
+          FIREBASE_DISTRIBUTION: ${{ needs.prepare.outputs.firebase_distribution }}
+          TV_FIREBASE_STATUS: ${{ needs.tv-release.outputs.firebase_distribution_status }}
+          TV_FIREBASE_URL: ${{ needs.tv-release.outputs.firebase_distribution_url }}
+          MOBILE_FIREBASE_STATUS: ${{ needs.mobile-tablet-release.outputs.firebase_distribution_status }}
+          MOBILE_FIREBASE_URL: ${{ needs.mobile-tablet-release.outputs.firebase_distribution_url }}
           CONTRACT_RESULT: ${{ needs.release-contracts.result }}
         run: |
           {
@@ -526,6 +602,9 @@ jobs:
             echo "| Mobile/tablet profile | $MOBILE_PROFILE |"
             echo "| Mobile/tablet leg | $MOBILE_RESULT |"
             echo "| Mobile/tablet Play track | $MOBILE_PLAY_TRACK |"
+            echo "| Firebase distribution | $FIREBASE_DISTRIBUTION |"
+            echo "| TV Firebase status | ${TV_FIREBASE_STATUS:-none} |"
+            echo "| Mobile/tablet Firebase status | ${MOBILE_FIREBASE_STATUS:-none} |"
             echo "| Release contracts | $CONTRACT_RESULT |"
             echo ""
             echo "## Artifact evidence"
@@ -539,6 +618,9 @@ jobs:
               find release-artifacts/tv -maxdepth 1 -type f -printf '- %f\n' | sort
               echo ""
               echo "TV artifacts include APK/AAB files, SHA256SUMS, release manifest, and an internal qualification report when generated by this orchestrator."
+              if [ -n "$TV_FIREBASE_URL" ]; then
+                echo "Firebase App Distribution result: $TV_FIREBASE_URL"
+              fi
             } >> "$GITHUB_STEP_SUMMARY"
           else
             echo "TV artifacts were not available because the TV leg result was $TV_RESULT." >> "$GITHUB_STEP_SUMMARY"
@@ -552,6 +634,9 @@ jobs:
               find release-artifacts/mobile-tablet -maxdepth 1 -type f -printf '- %f\n' | sort
               echo ""
               echo "Mobile/tablet artifacts include APK/AAB files, SHA256SUMS, release manifest, and an internal qualification report when generated by this orchestrator."
+              if [ -n "$MOBILE_FIREBASE_URL" ]; then
+                echo "Firebase App Distribution result: $MOBILE_FIREBASE_URL"
+              fi
             } >> "$GITHUB_STEP_SUMMARY"
           elif [ "$MOBILE_PROFILE" = "none" ]; then
             echo "Mobile/tablet artifacts were not requested for this orchestrator run." >> "$GITHUB_STEP_SUMMARY"

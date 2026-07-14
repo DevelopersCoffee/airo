@@ -37,6 +37,12 @@ selected Play track, and contribute mobile/tablet qualification evidence. Real
 store or Firebase publication still depends on the credential and destination
 setup tracked in #681 and #682.
 
+When `firebase_distribution` is `upload`, the reusable TV and mobile/tablet
+release workflows upload the final named APK artifacts to Firebase App
+Distribution after release artifacts are staged. Firebase release notes include
+the artifact name, package ID, version/build number, checksum, and source ref
+from the generated release manifest.
+
 ## Release Evidence
 
 Successful orchestrator runs upload:
@@ -74,10 +80,13 @@ Public/store publishing requires:
 - `tv_play_track` set to a Play testing or production track for TV Play
   uploads;
 - `mobile_play_track` set to a Play testing or production track for the
-  selected mobile/tablet profile.
+  selected mobile/tablet profile;
+- `firebase_distribution` set to `upload` for Firebase App Distribution,
+  alongside the required Firebase app IDs and tester groups.
 
 When `dry_run` is `true`, the orchestrator forces GitHub Release publication
-off and sets the TV and mobile/tablet Play tracks to `none`.
+off and sets the TV and mobile/tablet Play tracks plus Firebase distribution to
+`none`.
 
 ## Human Decisions Still Needed
 
@@ -87,5 +96,6 @@ off and sets the TV and mobile/tablet Play tracks to `none`.
 - Whether optional channels should block the whole release or report warnings.
 - Play Console apps/tracks, release signing secrets, and
   `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON` for #681.
-- Mobile/tablet Firebase apps and Firebase upload credentials for #682.
-  Package IDs are registered under `io.airo.app.*`.
+- Mobile/tablet and TV Firebase apps, tester groups, and
+  `FIREBASE_SERVICE_ACCOUNT_JSON` for #682. Package IDs are registered under
+  `io.airo.app.*`.
