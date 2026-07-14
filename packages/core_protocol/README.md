@@ -13,7 +13,9 @@ without leaking private media or account data.
 - Node lifecycle states.
 - Privacy-safe capability advertisements.
 - Compatibility policies and deterministic blocker codes.
+- Edge Media Node placeholder profiles, service descriptors, policy blockers,
+  and fake/no-op registries for future home-node work.
 
 This package does not discover devices, open sockets, store trust records,
-render pairing UI, send commands, maintain presence leases, or coordinate cloud
-state.
+render pairing UI, send commands, maintain presence leases, index media, relay
+traffic, record media, transcode, run AI workers, or coordinate cloud state.
