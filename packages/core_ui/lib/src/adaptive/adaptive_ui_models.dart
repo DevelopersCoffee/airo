@@ -150,6 +150,34 @@ enum AiroNavigationStyle {
   final String stableId;
 }
 
+enum AiroLegacyUiBudgetId {
+  companionDefault('companion_default'),
+  standardTv('standard_tv'),
+  liteReceiver('lite_receiver'),
+  accessibilityConstrained('accessibility_constrained');
+
+  const AiroLegacyUiBudgetId(this.stableId);
+
+  final String stableId;
+}
+
+enum AiroLegacyUiPerformanceRule {
+  dpadFocusRestoration('dpad_focus_restoration'),
+  boundedFocusAnimation('bounded_focus_animation'),
+  rapidDpadInput('rapid_dpad_input'),
+  artworkLoadingIsolation('artwork_loading_isolation'),
+  selectorScopedRebuilds('selector_scoped_rebuilds'),
+  longListVirtualization('long_list_virtualization'),
+  autoplayPreviewDisabled('autoplay_preview_disabled'),
+  blurEffectsDisabled('blur_effects_disabled'),
+  parallaxDisabled('parallax_disabled'),
+  shaderEffectsDisabled('shader_effects_disabled');
+
+  const AiroLegacyUiPerformanceRule(this.stableId);
+
+  final String stableId;
+}
+
 class AiroAccessibilityPreferences {
   const AiroAccessibilityPreferences({
     this.requiresLargeTargets = false,
@@ -214,6 +242,75 @@ class AiroAdaptiveUiMode {
   final bool requiresFocusPersistence;
 }
 
+class AiroLegacyUiPerformanceBudget {
+  AiroLegacyUiPerformanceBudget({
+    required this.budgetId,
+    required this.mode,
+    required this.maxFocusResponseMs,
+    required this.maxFocusAnimationMs,
+    required this.minRapidDpadIntervalMs,
+    required this.maxVisiblePosterCount,
+    required this.maxArtworkCacheMb,
+    required this.maxPreloadAheadItems,
+    required this.requiresFocusRestore,
+    required this.requiresStableKeys,
+    required this.requiresSelectorScopedRebuilds,
+    required this.requiresLongListVirtualization,
+    required this.allowsAutoplayPreviews,
+    required this.allowsBlurEffects,
+    required this.allowsParallax,
+    required this.allowsShaderEffects,
+    required Set<AiroLegacyUiPerformanceRule> requiredRules,
+  }) : requiredRules = Set.unmodifiable(requiredRules);
+
+  final AiroLegacyUiBudgetId budgetId;
+  final AiroAdaptiveUiMode mode;
+  final int maxFocusResponseMs;
+  final int maxFocusAnimationMs;
+  final int minRapidDpadIntervalMs;
+  final int maxVisiblePosterCount;
+  final int maxArtworkCacheMb;
+  final int maxPreloadAheadItems;
+  final bool requiresFocusRestore;
+  final bool requiresStableKeys;
+  final bool requiresSelectorScopedRebuilds;
+  final bool requiresLongListVirtualization;
+  final bool allowsAutoplayPreviews;
+  final bool allowsBlurEffects;
+  final bool allowsParallax;
+  final bool allowsShaderEffects;
+  final Set<AiroLegacyUiPerformanceRule> requiredRules;
+
+  bool get satisfiesLegacyFocusTarget => maxFocusResponseMs <= 100;
+
+  Map<String, Object?> toPublicMap() {
+    return {
+      'budgetId': budgetId.stableId,
+      'interactionMode': mode.interactionMode.stableId,
+      'focusBehavior': mode.focusBehavior.stableId,
+      'artworkPolicy': mode.artworkPolicy.stableId,
+      'motionPolicy': mode.motionPolicy.stableId,
+      'maxFocusResponseMs': maxFocusResponseMs,
+      'maxFocusAnimationMs': maxFocusAnimationMs,
+      'minRapidDpadIntervalMs': minRapidDpadIntervalMs,
+      'maxVisiblePosterCount': maxVisiblePosterCount,
+      'maxArtworkCacheMb': maxArtworkCacheMb,
+      'maxPreloadAheadItems': maxPreloadAheadItems,
+      'requiresFocusRestore': requiresFocusRestore,
+      'requiresStableKeys': requiresStableKeys,
+      'requiresSelectorScopedRebuilds': requiresSelectorScopedRebuilds,
+      'requiresLongListVirtualization': requiresLongListVirtualization,
+      'allowsAutoplayPreviews': allowsAutoplayPreviews,
+      'allowsBlurEffects': allowsBlurEffects,
+      'allowsParallax': allowsParallax,
+      'allowsShaderEffects': allowsShaderEffects,
+      'requiredRules': requiredRules
+          .map((rule) => rule.stableId)
+          .toList(growable: false),
+    };
+  }
+}
+
 class AiroAdaptiveUiPolicy {
   const AiroAdaptiveUiPolicy();
 
@@ -240,6 +337,31 @@ class AiroAdaptiveUiPolicy {
           focusBehavior == AiroFocusBehavior.dpadRequired ||
           focusBehavior == AiroFocusBehavior.hybridSafe,
     );
+  }
+
+  AiroLegacyUiPerformanceBudget resolveLegacyPerformanceBudget(
+    AiroAdaptiveUiInput input,
+  ) {
+    final mode = resolve(input);
+    final constrained = input.profileHint.isConstrainedReceiver;
+    final remoteDriven =
+        mode.interactionMode == AiroInteractionMode.remote ||
+        mode.interactionMode == AiroInteractionMode.hybrid;
+    final accessibilityConstrained =
+        input.accessibility.reduceMotion ||
+        input.accessibility.needsExpandedUi ||
+        input.accessibility.screenReaderEnabled;
+
+    if (!remoteDriven && input.formFactor != AiroFormFactor.tv) {
+      return _companionBudget(mode);
+    }
+    if (constrained || accessibilityConstrained) {
+      return _constrainedReceiverBudget(
+        mode,
+        accessibilityConstrained: accessibilityConstrained,
+      );
+    }
+    return _standardTvBudget(mode);
   }
 
   AiroInteractionMode _resolveInteractionMode(AiroAdaptiveUiInput input) {
@@ -360,5 +482,97 @@ class AiroAdaptiveUiPolicy {
     if (mode == AiroInteractionMode.hybrid) return 56;
     if (mode == AiroInteractionMode.pointer) return 40;
     return 48;
+  }
+
+  AiroLegacyUiPerformanceBudget _companionBudget(AiroAdaptiveUiMode mode) {
+    return AiroLegacyUiPerformanceBudget(
+      budgetId: AiroLegacyUiBudgetId.companionDefault,
+      mode: mode,
+      maxFocusResponseMs: 150,
+      maxFocusAnimationMs: 150,
+      minRapidDpadIntervalMs: 0,
+      maxVisiblePosterCount: 30,
+      maxArtworkCacheMb: 64,
+      maxPreloadAheadItems: 6,
+      requiresFocusRestore: false,
+      requiresStableKeys: true,
+      requiresSelectorScopedRebuilds: true,
+      requiresLongListVirtualization: false,
+      allowsAutoplayPreviews: false,
+      allowsBlurEffects: true,
+      allowsParallax: false,
+      allowsShaderEffects: false,
+      requiredRules: const {AiroLegacyUiPerformanceRule.selectorScopedRebuilds},
+    );
+  }
+
+  AiroLegacyUiPerformanceBudget _standardTvBudget(AiroAdaptiveUiMode mode) {
+    return AiroLegacyUiPerformanceBudget(
+      budgetId: AiroLegacyUiBudgetId.standardTv,
+      mode: mode,
+      maxFocusResponseMs: 100,
+      maxFocusAnimationMs: 100,
+      minRapidDpadIntervalMs: 80,
+      maxVisiblePosterCount: 24,
+      maxArtworkCacheMb: 48,
+      maxPreloadAheadItems: 4,
+      requiresFocusRestore: true,
+      requiresStableKeys: true,
+      requiresSelectorScopedRebuilds: true,
+      requiresLongListVirtualization: true,
+      allowsAutoplayPreviews: false,
+      allowsBlurEffects: false,
+      allowsParallax: false,
+      allowsShaderEffects: false,
+      requiredRules: const {
+        AiroLegacyUiPerformanceRule.dpadFocusRestoration,
+        AiroLegacyUiPerformanceRule.boundedFocusAnimation,
+        AiroLegacyUiPerformanceRule.rapidDpadInput,
+        AiroLegacyUiPerformanceRule.artworkLoadingIsolation,
+        AiroLegacyUiPerformanceRule.selectorScopedRebuilds,
+        AiroLegacyUiPerformanceRule.longListVirtualization,
+        AiroLegacyUiPerformanceRule.autoplayPreviewDisabled,
+        AiroLegacyUiPerformanceRule.blurEffectsDisabled,
+        AiroLegacyUiPerformanceRule.parallaxDisabled,
+      },
+    );
+  }
+
+  AiroLegacyUiPerformanceBudget _constrainedReceiverBudget(
+    AiroAdaptiveUiMode mode, {
+    required bool accessibilityConstrained,
+  }) {
+    return AiroLegacyUiPerformanceBudget(
+      budgetId: accessibilityConstrained
+          ? AiroLegacyUiBudgetId.accessibilityConstrained
+          : AiroLegacyUiBudgetId.liteReceiver,
+      mode: mode,
+      maxFocusResponseMs: 80,
+      maxFocusAnimationMs: accessibilityConstrained ? 0 : 80,
+      minRapidDpadIntervalMs: 100,
+      maxVisiblePosterCount: 12,
+      maxArtworkCacheMb: 16,
+      maxPreloadAheadItems: 2,
+      requiresFocusRestore: true,
+      requiresStableKeys: true,
+      requiresSelectorScopedRebuilds: true,
+      requiresLongListVirtualization: true,
+      allowsAutoplayPreviews: false,
+      allowsBlurEffects: false,
+      allowsParallax: false,
+      allowsShaderEffects: false,
+      requiredRules: const {
+        AiroLegacyUiPerformanceRule.dpadFocusRestoration,
+        AiroLegacyUiPerformanceRule.boundedFocusAnimation,
+        AiroLegacyUiPerformanceRule.rapidDpadInput,
+        AiroLegacyUiPerformanceRule.artworkLoadingIsolation,
+        AiroLegacyUiPerformanceRule.selectorScopedRebuilds,
+        AiroLegacyUiPerformanceRule.longListVirtualization,
+        AiroLegacyUiPerformanceRule.autoplayPreviewDisabled,
+        AiroLegacyUiPerformanceRule.blurEffectsDisabled,
+        AiroLegacyUiPerformanceRule.parallaxDisabled,
+        AiroLegacyUiPerformanceRule.shaderEffectsDisabled,
+      },
+    );
   }
 }
