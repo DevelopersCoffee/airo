@@ -139,6 +139,59 @@ enum AiroPlaybackOwnershipTransferCode {
   final String stableId;
 }
 
+enum AiroUniversalSessionMemberRole {
+  receiver('receiver'),
+  activeController('active_controller'),
+  controller('controller'),
+  observer('observer'),
+  orchestrationService('orchestration_service');
+
+  const AiroUniversalSessionMemberRole(this.stableId);
+
+  final String stableId;
+}
+
+enum AiroUniversalSessionPermission {
+  reportActualState('report_actual_state'),
+  requestDesiredState('request_desired_state'),
+  recoverSnapshot('recover_snapshot'),
+  manageMembership('manage_membership'),
+  transferSession('transfer_session');
+
+  const AiroUniversalSessionPermission(this.stableId);
+
+  final String stableId;
+}
+
+enum AiroUniversalSessionDecisionAction {
+  accept('accept'),
+  deny('deny'),
+  recover('recover'),
+  noOp('no_op');
+
+  const AiroUniversalSessionDecisionAction(this.stableId);
+
+  final String stableId;
+}
+
+enum AiroUniversalSessionCode {
+  accepted('accepted'),
+  expiredSnapshot('expired_snapshot'),
+  unsafePayload('unsafe_payload'),
+  staleRevision('stale_revision'),
+  revisionConflict('revision_conflict'),
+  receiverMismatch('receiver_mismatch'),
+  missingMember('missing_member'),
+  memberExpired('member_expired'),
+  memberRevoked('member_revoked'),
+  permissionMissing('permission_missing'),
+  repositoryUnavailable('repository_unavailable');
+
+  const AiroUniversalSessionCode(this.stableId);
+
+  final String stableId;
+}
+
 class AiroPlaybackOwnershipSnapshot extends Equatable {
   AiroPlaybackOwnershipSnapshot({
     required this.sessionId,
@@ -519,6 +572,12 @@ class AiroDesiredPlaybackState extends Equatable {
     required this.updatedByControllerNodeId,
     required this.updatedAt,
     this.commandReference,
+    this.duration,
+    this.liveOffset,
+    this.playbackSpeed = 1,
+    this.volume,
+    this.audioTrackId,
+    this.subtitleTrackId,
   });
 
   final AiroPlaybackSessionPhase phase;
@@ -526,6 +585,12 @@ class AiroDesiredPlaybackState extends Equatable {
   final String updatedByControllerNodeId;
   final DateTime updatedAt;
   final AiroSessionCommandReference? commandReference;
+  final Duration? duration;
+  final Duration? liveOffset;
+  final double playbackSpeed;
+  final double? volume;
+  final String? audioTrackId;
+  final String? subtitleTrackId;
 
   @override
   List<Object?> get props => [
@@ -534,6 +599,12 @@ class AiroDesiredPlaybackState extends Equatable {
     updatedByControllerNodeId,
     updatedAt,
     commandReference,
+    duration,
+    liveOffset,
+    playbackSpeed,
+    volume,
+    audioTrackId,
+    subtitleTrackId,
   ];
 }
 
@@ -544,7 +615,12 @@ class AiroActualPlaybackState extends Equatable {
     required this.reportedByReceiverNodeId,
     required this.reportedAt,
     this.bufferedPosition,
+    this.duration,
+    this.liveOffset,
     this.playbackSpeed = 1,
+    this.volume,
+    this.audioTrackId,
+    this.subtitleTrackId,
   });
 
   final AiroPlaybackSessionPhase phase;
@@ -552,7 +628,12 @@ class AiroActualPlaybackState extends Equatable {
   final String reportedByReceiverNodeId;
   final DateTime reportedAt;
   final Duration? bufferedPosition;
+  final Duration? duration;
+  final Duration? liveOffset;
   final double playbackSpeed;
+  final double? volume;
+  final String? audioTrackId;
+  final String? subtitleTrackId;
 
   @override
   List<Object?> get props => [
@@ -561,8 +642,395 @@ class AiroActualPlaybackState extends Equatable {
     reportedByReceiverNodeId,
     reportedAt,
     bufferedPosition,
+    duration,
+    liveOffset,
     playbackSpeed,
+    volume,
+    audioTrackId,
+    subtitleTrackId,
   ];
+}
+
+class AiroUniversalSessionMember extends Equatable {
+  AiroUniversalSessionMember({
+    required this.memberId,
+    required this.nodeId,
+    required this.deviceId,
+    required this.role,
+    required Set<AiroUniversalSessionPermission> permissions,
+    required this.joinedAt,
+    this.expiresAt,
+    this.revokedAt,
+    this.schemaVersion = kAiroSessionSchemaVersion,
+  }) : permissions = Set.unmodifiable(permissions);
+
+  final String schemaVersion;
+  final String memberId;
+  final String nodeId;
+  final String deviceId;
+  final AiroUniversalSessionMemberRole role;
+  final Set<AiroUniversalSessionPermission> permissions;
+  final DateTime joinedAt;
+  final DateTime? expiresAt;
+  final DateTime? revokedAt;
+
+  bool isExpired(DateTime now) =>
+      expiresAt != null && !now.isBefore(expiresAt!);
+
+  bool isRevoked(DateTime now) =>
+      revokedAt != null && !now.isBefore(revokedAt!);
+
+  bool allows({
+    required AiroUniversalSessionPermission permission,
+    required DateTime now,
+  }) {
+    return !isExpired(now) &&
+        !isRevoked(now) &&
+        permissions.contains(permission);
+  }
+
+  @override
+  List<Object?> get props => [
+    schemaVersion,
+    memberId,
+    nodeId,
+    deviceId,
+    role,
+    permissions,
+    joinedAt,
+    expiresAt,
+    revokedAt,
+  ];
+}
+
+class AiroUniversalPlaybackSessionSnapshot extends Equatable {
+  AiroUniversalPlaybackSessionSnapshot({
+    required this.sessionId,
+    required this.activeReceiverNodeId,
+    required this.revision,
+    required this.actual,
+    required Set<AiroUniversalSessionMember> members,
+    required this.capturedAt,
+    this.activeControllerNodeId,
+    this.desired,
+    this.mediaHandle,
+    this.routeId,
+    this.routeKind = AiroMediaRouteKind.cloudCommandOnly,
+    this.expiresAt,
+    this.schemaVersion = kAiroSessionSchemaVersion,
+  }) : members = Set.unmodifiable(members);
+
+  final String schemaVersion;
+  final String sessionId;
+  final String activeReceiverNodeId;
+  final String? activeControllerNodeId;
+  final AiroSessionRevision revision;
+  final AiroActualPlaybackState actual;
+  final AiroDesiredPlaybackState? desired;
+  final AiroSessionPayloadHandle? mediaHandle;
+  final String? routeId;
+  final AiroMediaRouteKind routeKind;
+  final Set<AiroUniversalSessionMember> members;
+  final DateTime capturedAt;
+  final DateTime? expiresAt;
+
+  bool isExpired(DateTime now) =>
+      expiresAt != null && !now.isBefore(expiresAt!);
+
+  bool get isReceiverAuthoritative =>
+      actual.reportedByReceiverNodeId == activeReceiverNodeId &&
+      revision.reporterNodeId == activeReceiverNodeId;
+
+  AiroUniversalSessionMember? memberFor(String nodeId) {
+    for (final member in members) {
+      if (member.nodeId == nodeId) return member;
+    }
+    return null;
+  }
+
+  bool canMemberPerform({
+    required String nodeId,
+    required AiroUniversalSessionPermission permission,
+    required DateTime now,
+  }) {
+    final member = memberFor(nodeId);
+    return member != null && member.allows(permission: permission, now: now);
+  }
+
+  bool get hasStaleDesiredState {
+    final desiredState = desired;
+    return desiredState != null &&
+        !desiredState.updatedAt.isAfter(actual.reportedAt);
+  }
+
+  AiroUniversalPlaybackSessionSnapshot reconciled() {
+    if (!hasStaleDesiredState) return this;
+    return copyWith(clearDesired: true);
+  }
+
+  AiroUniversalPlaybackSessionSnapshot copyWith({
+    String? activeReceiverNodeId,
+    String? activeControllerNodeId,
+    AiroSessionRevision? revision,
+    AiroActualPlaybackState? actual,
+    AiroDesiredPlaybackState? desired,
+    bool clearDesired = false,
+    AiroSessionPayloadHandle? mediaHandle,
+    String? routeId,
+    AiroMediaRouteKind? routeKind,
+    Set<AiroUniversalSessionMember>? members,
+    DateTime? capturedAt,
+    DateTime? expiresAt,
+  }) {
+    return AiroUniversalPlaybackSessionSnapshot(
+      sessionId: sessionId,
+      activeReceiverNodeId: activeReceiverNodeId ?? this.activeReceiverNodeId,
+      activeControllerNodeId:
+          activeControllerNodeId ?? this.activeControllerNodeId,
+      revision: revision ?? this.revision,
+      actual: actual ?? this.actual,
+      desired: clearDesired ? null : desired ?? this.desired,
+      mediaHandle: mediaHandle ?? this.mediaHandle,
+      routeId: routeId ?? this.routeId,
+      routeKind: routeKind ?? this.routeKind,
+      members: members ?? this.members,
+      capturedAt: capturedAt ?? this.capturedAt,
+      expiresAt: expiresAt ?? this.expiresAt,
+      schemaVersion: schemaVersion,
+    );
+  }
+
+  Map<String, Object?> toPublicMap() {
+    return {
+      'schemaVersion': schemaVersion,
+      'sessionId': sessionId,
+      'activeReceiverNodeId': activeReceiverNodeId,
+      'activeControllerNodeId': activeControllerNodeId,
+      'revision': revision.value,
+      'revisionReporterNodeId': revision.reporterNodeId,
+      'actualPhase': actual.phase.stableId,
+      'actualPositionMs': actual.position.inMilliseconds,
+      'actualLiveOffsetMs': actual.liveOffset?.inMilliseconds,
+      'actualRate': actual.playbackSpeed,
+      'actualVolume': actual.volume,
+      'desiredPhase': desired?.phase.stableId,
+      'desiredPositionMs': desired?.position.inMilliseconds,
+      'routeKind': routeKind.stableId,
+      'routeId': routeId,
+      'hasMediaHandle': mediaHandle != null,
+      'members': members
+          .map(
+            (member) => {
+              'memberId': member.memberId,
+              'nodeId': member.nodeId,
+              'deviceId': member.deviceId,
+              'role': member.role.stableId,
+              'permissions': member.permissions
+                  .map((permission) => permission.stableId)
+                  .toList(growable: false),
+            },
+          )
+          .toList(growable: false),
+      'capturedAt': capturedAt.toIso8601String(),
+      'expiresAt': expiresAt?.toIso8601String(),
+    };
+  }
+
+  @override
+  String toString() {
+    return 'AiroUniversalPlaybackSessionSnapshot('
+        'sessionId: $sessionId, '
+        'activeReceiverNodeId: $activeReceiverNodeId, '
+        'activeControllerNodeId: $activeControllerNodeId, '
+        'revision: ${revision.value}, '
+        'actualPhase: ${actual.phase.stableId}, '
+        'desiredPhase: ${desired?.phase.stableId}, '
+        'routeKind: ${routeKind.stableId}, '
+        'mediaHandle: ${mediaHandle == null ? null : 'redacted'}, '
+        'capturedAt: $capturedAt, '
+        'expiresAt: $expiresAt'
+        ')';
+  }
+
+  @override
+  List<Object?> get props => [
+    schemaVersion,
+    sessionId,
+    activeReceiverNodeId,
+    activeControllerNodeId,
+    revision,
+    actual,
+    desired,
+    mediaHandle,
+    routeId,
+    routeKind,
+    members,
+    capturedAt,
+    expiresAt,
+  ];
+}
+
+class AiroUniversalSessionDecision extends Equatable {
+  AiroUniversalSessionDecision({
+    required this.action,
+    required Iterable<AiroUniversalSessionCode> codes,
+    required this.snapshot,
+  }) : codes = List.unmodifiable(codes);
+
+  final AiroUniversalSessionDecisionAction action;
+  final List<AiroUniversalSessionCode> codes;
+  final AiroUniversalPlaybackSessionSnapshot snapshot;
+
+  bool get accepted =>
+      action == AiroUniversalSessionDecisionAction.accept &&
+      codes.length == 1 &&
+      codes.single == AiroUniversalSessionCode.accepted;
+
+  Map<String, Object?> toDiagnosticMap() {
+    return {
+      'sessionId': snapshot.sessionId,
+      'action': action.stableId,
+      'codes': codes.map((code) => code.stableId).toList(growable: false),
+      'revision': snapshot.revision.value,
+      'reporterNodeId': snapshot.revision.reporterNodeId,
+    };
+  }
+
+  @override
+  List<Object?> get props => [action, codes, snapshot];
+}
+
+class AiroUniversalPlaybackSessionPolicy extends Equatable {
+  const AiroUniversalPlaybackSessionPolicy();
+
+  AiroUniversalSessionDecision evaluateIncoming({
+    required AiroUniversalPlaybackSessionSnapshot incoming,
+    required DateTime now,
+    AiroUniversalPlaybackSessionSnapshot? current,
+    AiroUniversalSessionPermission requiredReporterPermission =
+        AiroUniversalSessionPermission.reportActualState,
+  }) {
+    final codes = <AiroUniversalSessionCode>[];
+    if (incoming.isExpired(now)) {
+      codes.add(AiroUniversalSessionCode.expiredSnapshot);
+    }
+    if (incoming.mediaHandle != null &&
+        AiroSessionPayloadHandle.validate(incoming.mediaHandle!.value) !=
+            null) {
+      codes.add(AiroUniversalSessionCode.unsafePayload);
+    }
+    if (!incoming.isReceiverAuthoritative) {
+      codes.add(AiroUniversalSessionCode.receiverMismatch);
+    }
+
+    final reporter = incoming.memberFor(incoming.revision.reporterNodeId);
+    if (reporter == null) {
+      codes.add(AiroUniversalSessionCode.missingMember);
+    } else {
+      if (reporter.isExpired(now)) {
+        codes.add(AiroUniversalSessionCode.memberExpired);
+      }
+      if (reporter.isRevoked(now)) {
+        codes.add(AiroUniversalSessionCode.memberRevoked);
+      }
+      if (!reporter.permissions.contains(requiredReporterPermission)) {
+        codes.add(AiroUniversalSessionCode.permissionMissing);
+      }
+    }
+
+    if (current != null) {
+      if (incoming.revision.conflictsWith(current.revision)) {
+        codes.add(AiroUniversalSessionCode.revisionConflict);
+      } else if (current.revision.isNewerThan(incoming.revision)) {
+        codes.add(AiroUniversalSessionCode.staleRevision);
+      }
+    }
+
+    final acceptedSnapshot = incoming.reconciled();
+    return AiroUniversalSessionDecision(
+      action: codes.isEmpty
+          ? AiroUniversalSessionDecisionAction.accept
+          : AiroUniversalSessionDecisionAction.deny,
+      codes: codes.isEmpty ? const [AiroUniversalSessionCode.accepted] : codes,
+      snapshot: codes.isEmpty ? acceptedSnapshot : current ?? incoming,
+    );
+  }
+
+  @override
+  List<Object?> get props => const [];
+}
+
+abstract interface class AiroUniversalPlaybackSessionRepository {
+  Future<AiroUniversalSessionDecision> upsert(
+    AiroUniversalPlaybackSessionSnapshot snapshot, {
+    required DateTime now,
+  });
+
+  Future<AiroUniversalPlaybackSessionSnapshot?> recoverLatest({
+    required String sessionId,
+    required DateTime now,
+  });
+}
+
+class AiroNoOpUniversalPlaybackSessionRepository
+    implements AiroUniversalPlaybackSessionRepository {
+  const AiroNoOpUniversalPlaybackSessionRepository();
+
+  @override
+  Future<AiroUniversalPlaybackSessionSnapshot?> recoverLatest({
+    required String sessionId,
+    required DateTime now,
+  }) async {
+    return null;
+  }
+
+  @override
+  Future<AiroUniversalSessionDecision> upsert(
+    AiroUniversalPlaybackSessionSnapshot snapshot, {
+    required DateTime now,
+  }) async {
+    return AiroUniversalSessionDecision(
+      action: AiroUniversalSessionDecisionAction.noOp,
+      codes: const [AiroUniversalSessionCode.repositoryUnavailable],
+      snapshot: snapshot,
+    );
+  }
+}
+
+class AiroFakeUniversalPlaybackSessionRepository
+    implements AiroUniversalPlaybackSessionRepository {
+  AiroFakeUniversalPlaybackSessionRepository({
+    this.policy = const AiroUniversalPlaybackSessionPolicy(),
+  });
+
+  final AiroUniversalPlaybackSessionPolicy policy;
+  final Map<String, AiroUniversalPlaybackSessionSnapshot> _snapshots = {};
+
+  @override
+  Future<AiroUniversalPlaybackSessionSnapshot?> recoverLatest({
+    required String sessionId,
+    required DateTime now,
+  }) async {
+    final snapshot = _snapshots[sessionId];
+    if (snapshot == null || snapshot.isExpired(now)) return null;
+    return snapshot.isReceiverAuthoritative ? snapshot : null;
+  }
+
+  @override
+  Future<AiroUniversalSessionDecision> upsert(
+    AiroUniversalPlaybackSessionSnapshot snapshot, {
+    required DateTime now,
+  }) async {
+    final decision = policy.evaluateIncoming(
+      incoming: snapshot,
+      now: now,
+      current: _snapshots[snapshot.sessionId],
+    );
+    if (decision.accepted) {
+      _snapshots[snapshot.sessionId] = decision.snapshot;
+    }
+    return decision;
+  }
 }
 
 class AiroPlaybackSessionSnapshot extends Equatable {
