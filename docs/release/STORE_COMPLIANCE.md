@@ -49,10 +49,10 @@ The Android Gradle config currently uses:
 | Privacy Policy URL | `https://developerscoffee.github.io/airo/legal/privacy-policy/` | Ready |
 | Terms URL | `https://developerscoffee.github.io/airo/legal/terms-conditions/` | Ready |
 | Content disclaimer | User-provided IPTV content only; no bundled streams or playlists | Ready |
-| App icon | Android launcher icon present | Needs Play 512x512 asset export in #582 |
+| App icon | Android launcher icon present | Needs Play 512x512 asset export before console submission |
 | TV banner | `app/android/app/src/tv/res/drawable-xhdpi/tv_banner.png` | Present |
-| Screenshots | TV screenshots required, 1920x1080 landscape | Pending media capture in #582 |
-| Feature graphic | 1024x500 PNG/JPG required for Play | Pending media asset in #582 |
+| Screenshots | TV screenshots required, 1920x1080 landscape | Ready in `docs/store-assets/airo-tv/` |
+| Feature graphic | 1024x500 PNG/JPG required for Play | Ready in `docs/store-assets/airo-tv/` |
 
 ### Airo TV Permissions
 
@@ -80,7 +80,7 @@ and AI Core bind-service permissions inherited from broader dependencies.
 | Play Console app/package created for TV | Pending | #681, #585 |
 | Play Console app/package created for mobile/tablet | Registered package IDs confirmed; Play listing strategy still pending | #675, #677, #681 |
 | First Play tracks selected | Pending | #681 |
-| Play service account JSON stored as GitHub secret | Pending | #585, #681 |
+| Play service account JSON stored as GitHub secret | Pending human setup; Fastlane config reads env-provided credential path | #585, #681, [Fastlane Credential Setup](./FASTLANE_CREDENTIALS.md) |
 | Production Android signing secrets stored in GitHub | Pending | #585, #677 |
 | AAB build for TV | Ready in CI | `.github/workflows/airo-tv-release.yml` |
 | AAB build for mobile/tablet | Ready in CI for selected v2 profile | `.github/workflows/airo-mobile-tablet-release.yml` |
@@ -91,7 +91,7 @@ and AI Core bind-service permissions inherited from broader dependencies.
 | IARC content rating completed | Pending store-console action; worksheet ready | #584, `docs/release/AIRO_TV_CONTENT_RATING.md` |
 | Data Safety form completed | Pending store-console action | #583 |
 | Store metadata finalized | Ready pending stakeholder approval | #581, `docs/release/AIRO_TV_STORE_LISTING.md` |
-| TV screenshots and feature graphic uploaded | Pending media assets | #582 |
+| TV screenshots and feature graphic uploaded | Assets ready in repo; pending Play Console upload | `docs/store-assets/airo-tv/` |
 | Data Safety and App Privacy declarations | Ready for console entry | #583, `docs/release/AIRO_TV_DATA_SAFETY.md` |
 | Release qualification evidence attached | Pending actual release evidence | #683 |
 
@@ -104,7 +104,7 @@ iOS to the release scope.
 | Item | Status | Owner / link |
 | --- | --- | --- |
 | Apple Developer Program membership | Human setup required | #585 |
-| App Store Connect API key and signing setup | Human setup required | #585 |
+| App Store Connect API key and signing setup | Human setup required; Appfile reads env-provided identifiers | #585, [Fastlane Credential Setup](./FASTLANE_CREDENTIALS.md) |
 | iOS deployment target | Pending final iOS release scope | #585/#675 |
 | App privacy nutrition labels | Pending App Store Connect action | #584/#585 |
 | TestFlight upload automation | Deferred | #585 |
@@ -145,7 +145,7 @@ Before submitting a public v2 Android release:
 
 - #575, #577, #578, #579: legal/docs foundation.
 - #581: final Play/App Store listing metadata.
-- #582: final Play screenshot, feature graphic, and app icon assets.
+- #582: final Play screenshot and feature graphic assets.
 - #583: final Play Data Safety and App Store App Privacy console forms.
 - #584: IARC/content rating and App Store age-rating questionnaires.
 - #585: Fastlane/store credentials and signing setup.

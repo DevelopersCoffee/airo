@@ -1,7 +1,16 @@
 # Appfile for Airo Android
-# 
-# Uncomment and configure with your Play Store credentials
+#
+# CI writes the Google Play service account JSON to
+# app/android/play-store-credentials.json before invoking Fastlane. Local
+# maintainers can override both values without editing this tracked file:
+#
+#   SUPPLY_JSON_KEY=/path/to/play-store-credentials.json
+#   SUPPLY_PACKAGE_NAME=io.airo.app.tv
 
-# json_key_file("play-store-credentials.json") # Path to the json secret file
-# package_name("com.developerscoffee.airo") # Your package name
+play_json_key = ENV.fetch(
+  "SUPPLY_JSON_KEY_FILE",
+  ENV.fetch("SUPPLY_JSON_KEY", "play-store-credentials.json"),
+)
 
+json_key_file(play_json_key)
+package_name(ENV.fetch("SUPPLY_PACKAGE_NAME", "io.airo.app.tv"))
