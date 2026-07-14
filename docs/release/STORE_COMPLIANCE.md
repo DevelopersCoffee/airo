@@ -84,6 +84,8 @@ and AI Core bind-service permissions inherited from broader dependencies.
 | Production Android signing secrets stored in GitHub | Pending | #585, #677 |
 | AAB build for TV | Ready in CI | `.github/workflows/airo-tv-release.yml` |
 | AAB build for mobile/tablet | Ready in CI for selected v2 profile | `.github/workflows/airo-mobile-tablet-release.yml` |
+| Play upload automation for TV | Ready after credentials and track selection | `tv_play_track` in `.github/workflows/v2-release-orchestrator.yml` |
+| Play upload automation for mobile/tablet | Ready after credentials, selected profile, and track selection | `mobile_play_track` in `.github/workflows/v2-release-orchestrator.yml` |
 | GitHub Release asset publication | Ready in orchestrator for selected v2 profiles | `.github/workflows/v2-release-orchestrator.yml` |
 | IARC content rating completed | Pending store-console action | #584 |
 | Data Safety form completed | Pending store-console action | #584/#581 |

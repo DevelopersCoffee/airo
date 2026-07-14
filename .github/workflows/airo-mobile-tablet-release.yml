@@ -27,6 +27,10 @@ on:
         description: 'Require production Android signing and Firebase secrets'
         required: true
         type: boolean
+      play_track:
+        description: 'Optional Play upload track'
+        required: true
+        type: string
   workflow_dispatch:
     inputs:
       profile:
@@ -58,6 +62,17 @@ on:
         required: true
         default: false
         type: boolean
+      play_track:
+        description: 'Optional Play upload track'
+        required: true
+        default: none
+        type: choice
+        options:
+          - none
+          - internal
+          - alpha
+          - beta
+          - production
 
 concurrency:
   group: airo-mobile-tablet-release-${{ github.ref }}-${{ inputs.profile || github.event.inputs.profile || 'manual' }}
@@ -429,3 +444,95 @@ jobs:
           name: airo-mobile-tablet-debug-info-${{ env.PROFILE }}-${{ env.RELEASE_VERSION }}
           path: app/build/debug-info-${{ env.PROFILE }}/
           retention-days: 90
+
+  play-upload:
+    name: Upload mobile/tablet to Play testing track
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: [prepare-release-ref, build-mobile-tablet]
+    if: (github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call') && (inputs.play_track || github.event.inputs.play_track) != 'none'
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.prepare-release-ref.outputs.release_sha }}
+
+      - name: Resolve mobile/tablet profile metadata
+        run: |
+          release_version="$(printf '%s' "$RELEASE_VERSION" | sed 's/[^A-Za-z0-9._-]/-/g')"
+          echo "RELEASE_VERSION=$release_version" >> "$GITHUB_ENV"
+
+          case "$PROFILE" in
+            iptv-standalone)
+              echo "PACKAGE_ID=io.airo.app.iptv" >> "$GITHUB_ENV"
+              echo "ARTIFACT_PREFIX=Airo-IPTV" >> "$GITHUB_ENV"
+              ;;
+            mobile-streaming)
+              echo "PACKAGE_ID=io.airo.app.streaming" >> "$GITHUB_ENV"
+              echo "ARTIFACT_PREFIX=Airo-Streaming" >> "$GITHUB_ENV"
+              ;;
+            *)
+              echo "::error::Unsupported mobile/tablet profile for Play upload: $PROFILE"
+              exit 1
+              ;;
+          esac
+
+      - name: Download release artifacts
+        uses: actions/download-artifact@v8
+        with:
+          name: airo-mobile-tablet-${{ env.PROFILE }}-${{ env.RELEASE_VERSION }}
+          path: release-artifacts
+
+      - name: Configure Play service account
+        env:
+          GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+        run: |
+          if [[ -z "$GOOGLE_PLAY_SERVICE_ACCOUNT_JSON" ]]; then
+            echo "::error::GOOGLE_PLAY_SERVICE_ACCOUNT_JSON is required to upload to Google Play."
+            exit 1
+          fi
+          echo "$GOOGLE_PLAY_SERVICE_ACCOUNT_JSON" > app/android/play-store-credentials.json
+          chmod 600 app/android/play-store-credentials.json
+
+      - name: Upload to Google Play
+        working-directory: app/android
+        env:
+          PLAY_TRACK: ${{ inputs.play_track || github.event.inputs.play_track }}
+          SUPPLY_JSON_KEY: play-store-credentials.json
+        run: |
+          aab_path="../../release-artifacts/${ARTIFACT_PREFIX}-${BUILD_NAME}-${BUILD_NUMBER}-Play-Store.aab"
+          if [[ -z "$PACKAGE_ID" ]]; then
+            echo "::error::PACKAGE_ID was not resolved for $PROFILE."
+            exit 1
+          fi
+          if [[ -z "$PLAY_TRACK" || "$PLAY_TRACK" == "none" ]]; then
+            echo "::error::A real Play track is required for mobile/tablet upload."
+            exit 1
+          fi
+          if [[ ! -f "$aab_path" ]]; then
+            echo "::error::Expected mobile/tablet AAB not found: $aab_path"
+            exit 1
+          fi
+
+          gem install fastlane --no-document
+          fastlane supply \
+            --aab "$aab_path" \
+            --track "$PLAY_TRACK" \
+            --package_name "$PACKAGE_ID" \
+            --json_key "$SUPPLY_JSON_KEY" \
+            --skip_upload_metadata true \
+            --skip_upload_images true \
+            --skip_upload_screenshots true
+
+          {
+            echo "# Mobile/tablet Play upload"
+            echo ""
+            echo "| Field | Value |"
+            echo "| --- | --- |"
+            echo "| Profile | $PROFILE |"
+            echo "| Package | $PACKAGE_ID |"
+            echo "| Track | $PLAY_TRACK |"
+            echo "| AAB | ${ARTIFACT_PREFIX}-${BUILD_NAME}-${BUILD_NUMBER}-Play-Store.aab |"
+            echo "| Play Console | https://play.google.com/console/u/0/developers/app/$PACKAGE_ID/tracks/$PLAY_TRACK |"
+          } >> "$GITHUB_STEP_SUMMARY"

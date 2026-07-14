@@ -25,6 +25,10 @@ Related issues: #681, #585, #657.
       production, or no-upload.
 - [ ] Confirm whether TV uses the same Play app with device targeting or a
       separate Android TV listing.
+- [x] Keep release workflows in no-upload mode by default and require an
+      explicit Play track before uploading AABs.
+- [x] Wire mobile/tablet and TV workflows to fail fast when Play upload is
+      requested without `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON`.
 
 ## Firebase App Distribution
 
@@ -92,3 +96,5 @@ Related issues: #687, #689.
   network addresses, or private user data.
 - Store uploads should support dry-run/no-upload mode until credentials and
   tracks are confirmed.
+- Play upload automation supports `internal`, `alpha`, `beta`, `production`,
+  and `none` tracks for selected v2 Android profiles.
