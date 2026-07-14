@@ -18,29 +18,36 @@ artifacts without creating public GitHub Releases or uploading to Google Play.
 ## Current Scope
 
 The orchestrator currently validates the release contract, calls the existing
-Airo TV release workflow through `workflow_call`, downloads the TV artifacts,
-generates the top-level evidence bundle, and writes the release summary.
+Airo TV release workflow through `workflow_call`, optionally calls the
+mobile/tablet release workflow when a mobile profile is selected, downloads the
+selected profile artifacts, generates the top-level evidence bundle, and writes
+the release summary.
 
 The TV leg reuses `.github/workflows/airo-tv-release.yml` so package checks,
 Leanback validation, release artifact naming, checksums, manifest generation,
 debug-symbol retention, optional GitHub Release publication, and optional Play
 track upload remain owned by the TV workflow.
 
-Mobile/tablet publishing is intentionally not enabled yet. Selecting
-`iptv-standalone` or `mobile-streaming` in the orchestrator fails with a pointer
-to #677 until signed APK/AAB jobs and store/Firebase destinations are ready.
+When `mobile_profile` is `iptv-standalone` or `mobile-streaming`, the
+orchestrator calls `.github/workflows/airo-mobile-tablet-release.yml` to build
+the selected profile's APK and Play Store AAB, generate `SHA256SUMS`, write a
+release manifest, retain obfuscation symbols, and contribute mobile/tablet
+qualification evidence. Real store or Firebase publication still depends on
+the credential and destination setup tracked in #681 and #682.
 
 ## Release Evidence
 
-Successful TV orchestrator runs upload:
+Successful orchestrator runs upload:
 
 - `airo-tv-release-<version>` from the TV workflow;
+- `airo-mobile-tablet-<profile>-<version>` from the mobile/tablet workflow when
+  `mobile_profile` is not `none`;
 - `v2-release-evidence-<version>` from the orchestrator.
 
-The top-level evidence bundle includes TV artifacts, `SHA256SUMS`, the release
-manifest, and a qualification report generated from the manifest. Public
-qualification mode fails when required device evidence or an approved waiver is
-missing.
+The top-level evidence bundle includes selected profile artifacts,
+`SHA256SUMS`, release manifests, and qualification reports generated from the
+manifests. Public qualification mode fails when required device evidence or an
+approved waiver is missing.
 
 ## Public Publishing Controls
 
@@ -60,5 +67,6 @@ off and sets the TV Play track to `none`.
 - Whether public releases should publish immediately or always start as draft
   GitHub Releases.
 - Whether optional channels should block the whole release or report warnings.
-- Mobile/tablet package IDs, Firebase apps, Play tracks, and release signing
-  secrets for #677, #681, and #682.
+- Mobile/tablet Firebase apps, Play tracks, release signing secrets, and upload
+  credentials for #681 and #682. Package IDs are registered under
+  `io.airo.app.*`.

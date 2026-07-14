@@ -1,0 +1,431 @@
+name: Airo Mobile and Tablet Release
+
+on:
+  workflow_call:
+    inputs:
+      profile:
+        description: 'Mobile/tablet v2 profile to build'
+        required: true
+        type: string
+      version:
+        description: 'Artifact and release version label'
+        required: true
+        type: string
+      build_name:
+        description: 'Android versionName, for example 2.0.0'
+        required: true
+        type: string
+      build_number:
+        description: 'Android versionCode, must increase for every Play upload'
+        required: true
+        type: string
+      release_ref:
+        description: 'Git ref to release; must contain latest origin/v2'
+        required: true
+        type: string
+      production_signing:
+        description: 'Require production Android signing and Firebase secrets'
+        required: true
+        type: boolean
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: 'Mobile/tablet v2 profile to build'
+        required: true
+        default: iptv-standalone
+        type: choice
+        options:
+          - iptv-standalone
+          - mobile-streaming
+      version:
+        description: 'Artifact and release version label'
+        required: true
+        default: v2.0.0
+      build_name:
+        description: 'Android versionName, for example 2.0.0'
+        required: true
+        default: 2.0.0
+      build_number:
+        description: 'Android versionCode, must increase for every Play upload'
+        required: true
+        default: '200'
+      release_ref:
+        description: 'Git ref to release; must contain latest origin/v2'
+        required: true
+        default: v2
+      production_signing:
+        description: 'Require production Android signing and Firebase secrets'
+        required: true
+        default: false
+        type: boolean
+
+concurrency:
+  group: airo-mobile-tablet-release-${{ github.ref }}-${{ inputs.profile || github.event.inputs.profile || 'manual' }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  FLUTTER_VERSION: '3.44.4'
+  RELEASE_VERSION: ${{ inputs.version || github.event.inputs.version || github.ref_name }}
+  BUILD_NAME: ${{ inputs.build_name || github.event.inputs.build_name || '2.0.0' }}
+  BUILD_NUMBER: ${{ inputs.build_number || github.event.inputs.build_number || '200' }}
+  PROFILE: ${{ inputs.profile || github.event.inputs.profile || 'iptv-standalone' }}
+
+jobs:
+  prepare-release-ref:
+    name: Validate mobile/tablet release ref
+    runs-on: ubuntu-latest
+    outputs:
+      release_ref: ${{ steps.release_ref.outputs.ref }}
+      release_sha: ${{ steps.release_ref.outputs.sha }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.release_ref || github.event.inputs.release_ref || github.ref }}
+
+      - name: Resolve and validate v2 ref
+        id: release_ref
+        env:
+          RELEASE_REF: ${{ inputs.release_ref || github.event.inputs.release_ref || github.ref }}
+        run: |
+          git fetch origin main v2 --tags
+
+          if git rev-parse --verify "origin/$RELEASE_REF^{commit}" >/dev/null 2>&1; then
+            release_commit="$(git rev-parse "origin/$RELEASE_REF^{commit}")"
+          elif git rev-parse --verify "$RELEASE_REF^{commit}" >/dev/null 2>&1; then
+            release_commit="$(git rev-parse "$RELEASE_REF^{commit}")"
+          else
+            echo "::error::Cannot resolve release_ref: $RELEASE_REF"
+            exit 1
+          fi
+
+          if ! git merge-base --is-ancestor origin/v2 "$release_commit"; then
+            echo "::error::Release ref $RELEASE_REF does not contain latest origin/v2."
+            exit 1
+          fi
+
+          echo "ref=$RELEASE_REF" >> "$GITHUB_OUTPUT"
+          echo "sha=$release_commit" >> "$GITHUB_OUTPUT"
+
+  build-mobile-tablet:
+    name: Build ${{ inputs.profile || github.event.inputs.profile || 'mobile/tablet' }} APK and AAB
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    needs: [prepare-release-ref]
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.prepare-release-ref.outputs.release_sha }}
+
+      - name: Resolve mobile/tablet profile metadata
+        run: |
+          release_version="$(printf '%s' "$RELEASE_VERSION" | sed 's/[^A-Za-z0-9._-]/-/g')"
+          echo "RELEASE_VERSION=$release_version" >> "$GITHUB_ENV"
+
+          case "$PROFILE" in
+            iptv-standalone)
+              echo "TARGET_ENTRYPOINT=lib/main_airo_iptv.dart" >> "$GITHUB_ENV"
+              echo "PROFILE_PUBSPEC=pubspec_iptv.yaml" >> "$GITHUB_ENV"
+              echo "APP_VARIANT=iptv" >> "$GITHUB_ENV"
+              echo "APP_PLATFORM=mobileIptv" >> "$GITHUB_ENV"
+              echo "PACKAGE_ID=io.airo.app.iptv" >> "$GITHUB_ENV"
+              echo "ARTIFACT_PREFIX=Airo-IPTV" >> "$GITHUB_ENV"
+              ;;
+            mobile-streaming)
+              echo "TARGET_ENTRYPOINT=lib/main_mobile_streaming.dart" >> "$GITHUB_ENV"
+              echo "PROFILE_PUBSPEC=pubspec_streaming.yaml" >> "$GITHUB_ENV"
+              echo "APP_VARIANT=streaming" >> "$GITHUB_ENV"
+              echo "APP_PLATFORM=mobileStreaming" >> "$GITHUB_ENV"
+              echo "PACKAGE_ID=io.airo.app.streaming" >> "$GITHUB_ENV"
+              echo "ARTIFACT_PREFIX=Airo-Streaming" >> "$GITHUB_ENV"
+              ;;
+            *)
+              echo "::error::Unsupported mobile/tablet profile: $PROFILE"
+              exit 1
+              ;;
+          esac
+
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: 'stable'
+          cache: true
+
+      - name: Cache pub dependencies
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.pub-cache
+            app/.dart_tool
+            packages/*/.dart_tool
+          key: mobile-tablet-pub-${{ runner.os }}-${{ env.PROFILE }}-${{ hashFiles('**/pubspec.lock', 'app/pubspec_iptv.yaml', 'app/pubspec_streaming.yaml') }}
+          restore-keys: mobile-tablet-pub-${{ runner.os }}-${{ env.PROFILE }}-
+
+      - name: Cache Gradle
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: mobile-tablet-gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: mobile-tablet-gradle-${{ runner.os }}-
+
+      - name: Configure Firebase for mobile/tablet build
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+          PRODUCTION_SIGNING: ${{ inputs.production_signing || github.event.inputs.production_signing || 'false' }}
+        run: |
+          cd app
+          write_placeholder_config() {
+            cat > android/app/google-services.json <<JSON
+          {
+            "project_info": {
+              "project_number": "000000000000",
+              "project_id": "airo-mobile-ci-placeholder",
+              "storage_bucket": "airo-mobile-ci-placeholder.appspot.com"
+            },
+            "client": [
+              {
+                "client_info": {
+                  "mobilesdk_app_id": "1:000000000000:android:0000000000000000000000",
+                  "android_client_info": {
+                    "package_name": "$PACKAGE_ID"
+                  }
+                },
+                "oauth_client": [],
+                "api_key": [
+                  {
+                    "current_key": "ci-placeholder"
+                  }
+                ],
+                "services": {
+                  "appinvite_service": {
+                    "other_platform_oauth_client": []
+                  }
+                }
+              }
+            ],
+            "configuration_version": "1"
+          }
+          JSON
+          }
+
+          if [[ -n "$GOOGLE_SERVICES_JSON" ]]; then
+            echo "$GOOGLE_SERVICES_JSON" | base64 -d > android/app/google-services.json
+            if grep -q "\"package_name\"[[:space:]]*:[[:space:]]*\"$PACKAGE_ID\"" android/app/google-services.json; then
+              echo "Using GOOGLE_SERVICES_JSON for $PACKAGE_ID."
+            elif [[ "$PRODUCTION_SIGNING" == "true" ]]; then
+              echo "::error::GOOGLE_SERVICES_JSON must include a Firebase Android client for $PACKAGE_ID."
+              exit 1
+            else
+              echo "::warning::GOOGLE_SERVICES_JSON does not include $PACKAGE_ID; using placeholder Firebase config."
+              write_placeholder_config
+            fi
+          elif [[ "$PRODUCTION_SIGNING" == "true" ]]; then
+            echo "::error::GOOGLE_SERVICES_JSON is required for production-signed release builds."
+            exit 1
+          else
+            echo "::warning::GOOGLE_SERVICES_JSON is not set; using placeholder Firebase config."
+            write_placeholder_config
+          fi
+
+          if [[ "$PRODUCTION_SIGNING" == "true" && "$PROFILE" == "mobile-streaming" ]] && \
+             grep -q "TODO_REGISTER_IO_AIRO_APP_STREAMING" lib/firebase_options.dart; then
+            echo "::error::Production mobile-streaming releases require the real Firebase appId in app/lib/firebase_options.dart."
+            exit 1
+          fi
+
+      - name: Configure Android signing
+        env:
+          ANDROID_RELEASE_KEYSTORE_BASE64: ${{ secrets.ANDROID_RELEASE_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          PRODUCTION_SIGNING: ${{ inputs.production_signing || github.event.inputs.production_signing || 'false' }}
+        run: |
+          cd app/android
+          if [[ "$PRODUCTION_SIGNING" == "true" ]]; then
+            missing=0
+            for name in ANDROID_RELEASE_KEYSTORE_BASE64 KEYSTORE_PASSWORD KEY_ALIAS KEY_PASSWORD; do
+              if [[ -z "${!name}" ]]; then
+                echo "::error::Missing required Android release signing secret: $name"
+                missing=1
+              fi
+            done
+            [[ "$missing" -eq 0 ]] || exit 1
+            echo "$ANDROID_RELEASE_KEYSTORE_BASE64" | base64 -d > release.keystore
+            {
+              echo "storeFile=release.keystore"
+              echo "storePassword=$KEYSTORE_PASSWORD"
+              echo "keyAlias=$KEY_ALIAS"
+              echo "keyPassword=$KEY_PASSWORD"
+            } > key.properties
+          else
+            keytool -genkeypair \
+              -v \
+              -keystore ci-validation.keystore \
+              -storepass ci-validation-password \
+              -keypass ci-validation-password \
+              -alias ci-validation \
+              -keyalg RSA \
+              -keysize 2048 \
+              -validity 10000 \
+              -dname "CN=Airo Mobile CI Validation,O=DevelopersCoffee,C=US"
+            {
+              echo "storeFile=ci-validation.keystore"
+              echo "storePassword=ci-validation-password"
+              echo "keyAlias=ci-validation"
+              echo "keyPassword=ci-validation-password"
+            } > key.properties
+          fi
+          chmod 600 *.keystore key.properties
+
+      - name: Apply mobile/tablet pubspec
+        run: |
+          cp app/pubspec.yaml app/pubspec.yaml.backup
+          cp "app/$PROFILE_PUBSPEC" app/pubspec.yaml
+
+      - name: Get dependencies
+        run: |
+          (cd packages/core_domain && flutter pub get) &
+          (cd packages/core_ui && flutter pub get) &
+          (cd packages/core_data && flutter pub get) &
+          (cd packages/core_ai && flutter pub get) &
+          (cd packages/core_auth && flutter pub get) &
+          wait
+          cd app && flutter pub get
+
+      - name: Patch Android plugin Gradle files
+        run: scripts/patch-android-plugin-gradle.sh
+
+      - name: Run mobile/tablet release quality gates
+        run: |
+          ruby -e 'require "yaml"; ARGV.each { |f| YAML.load_file(f); puts "workflow-yaml-ok #{f}" }' \
+            .github/workflows/v2-release-orchestrator.yml \
+            .github/workflows/airo-tv-release.yml \
+            .github/workflows/airo-mobile-tablet-release.yml
+          bash -n scripts/patch-android-plugin-gradle.sh scripts/check-apk-size.sh
+          python3 -m py_compile scripts/generate-release-manifest.py scripts/generate-release-qualification-report.py
+          scripts/check-build-profiles.py
+          scripts/test-generate-release-manifest.sh
+          scripts/test-generate-release-qualification-report.sh
+          cd app
+          flutter analyze "$TARGET_ENTRYPOINT" --no-fatal-infos --no-fatal-warnings
+          cd ..
+          git diff --check
+
+      - name: Build mobile/tablet APK
+        run: |
+          cd app
+          export GRADLE_OPTS="-Dorg.gradle.watch.fs=false -Xmx4g -Dorg.gradle.parallel=true"
+          flutter build apk --release \
+            --target="$TARGET_ENTRYPOINT" \
+            --dart-define=APP_VARIANT="$APP_VARIANT" \
+            --dart-define=APP_PLATFORM="$APP_PLATFORM" \
+            --build-name="$BUILD_NAME" \
+            --build-number="$BUILD_NUMBER" \
+            --target-platform=android-arm64 \
+            --tree-shake-icons \
+            --split-debug-info="build/debug-info-$PROFILE" \
+            --obfuscate
+          mv build/app/outputs/flutter-apk/app-release.apk \
+            build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
+
+      - name: Build mobile/tablet AAB
+        run: |
+          cd app
+          export GRADLE_OPTS="-Dorg.gradle.watch.fs=false -Xmx4g -Dorg.gradle.parallel=true"
+          flutter build appbundle --release \
+            --target="$TARGET_ENTRYPOINT" \
+            --dart-define=APP_VARIANT="$APP_VARIANT" \
+            --dart-define=APP_PLATFORM="$APP_PLATFORM" \
+            --build-name="$BUILD_NAME" \
+            --build-number="$BUILD_NUMBER" \
+            --tree-shake-icons \
+            --split-debug-info="build/debug-info-$PROFILE" \
+            --obfuscate
+
+      - name: Check mobile/tablet APK size
+        env:
+          APK_SIZE_COMPONENT: ${{ env.PROFILE }}
+          APK_SIZE_APK_GLOB: app/build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
+          APK_SIZE_REPORT_FILE: apk-size-${{ env.PROFILE }}.md
+        run: scripts/check-apk-size.sh
+
+      - name: Stage named release artifacts
+        run: |
+          mkdir -p release-artifacts
+          apk_name="${ARTIFACT_PREFIX}-${BUILD_NAME}-${BUILD_NUMBER}-arm64.apk"
+          aab_name="${ARTIFACT_PREFIX}-${BUILD_NAME}-${BUILD_NUMBER}-Play-Store.aab"
+          cp app/build/app/outputs/flutter-apk/app-arm64-v8a-release.apk "release-artifacts/$apk_name"
+          cp app/build/app/outputs/bundle/release/app-release.aab "release-artifacts/$aab_name"
+          scripts/generate-release-manifest.py \
+            --artifacts-dir release-artifacts \
+            --profile-id "$PROFILE" \
+            --version "$BUILD_NAME" \
+            --build-number "$BUILD_NUMBER" \
+            --source-ref "${{ needs.prepare-release-ref.outputs.release_ref }}" \
+            --source-sha "${{ needs.prepare-release-ref.outputs.release_sha }}" \
+            --workflow-name "$GITHUB_WORKFLOW" \
+            --workflow-run "$GITHUB_RUN_ID" \
+            --workflow-run-attempt "$GITHUB_RUN_ATTEMPT" \
+            --repository "$GITHUB_REPOSITORY"
+          mv release-artifacts/Release-Manifest.json "release-artifacts/${ARTIFACT_PREFIX}-${BUILD_NAME}-${BUILD_NUMBER}-Release-Manifest.json"
+
+          python3 - "$PROFILE" "$PACKAGE_ID" "$BUILD_NAME" "$BUILD_NUMBER" "$apk_name" "$aab_name" "release-artifacts/${ARTIFACT_PREFIX}-${BUILD_NAME}-${BUILD_NUMBER}-Release-Manifest.json" <<'PY'
+          import json
+          import sys
+
+          profile, package, version, build_number, apk_name, aab_name, manifest_path = sys.argv[1:]
+          manifest = json.load(open(manifest_path, encoding="utf-8"))
+          artifacts = {artifact["filename"]: artifact for artifact in manifest["artifacts"]}
+          for filename in (apk_name, aab_name):
+              artifact = artifacts[filename]
+              assert artifact["profileId"] == profile
+              assert artifact["packageId"] == package
+              assert artifact["version"] == version
+              assert artifact["buildNumber"] == build_number
+              assert len(artifact["sha256"]) == 64
+          assert artifacts[apk_name]["artifactType"] == "apk"
+          assert artifacts[aab_name]["artifactType"] == "aab"
+          PY
+
+          grep -q "$apk_name" release-artifacts/SHA256SUMS
+          grep -q "$aab_name" release-artifacts/SHA256SUMS
+          ls -lh release-artifacts
+          cat release-artifacts/SHA256SUMS
+          {
+            echo "# Airo mobile/tablet release artifacts"
+            echo ""
+            echo "| Asset | Visibility | Purpose |"
+            echo "| --- | --- | --- |"
+            echo "| $apk_name | Public/direct install | Mobile/tablet Android arm64 APK |"
+            echo "| $aab_name | Store upload / draft release evidence | Google Play upload input |"
+            echo "| SHA256SUMS | Public/internal verification | Checksum evidence after final renaming |"
+            echo "| ${ARTIFACT_PREFIX}-${BUILD_NAME}-${BUILD_NUMBER}-Release-Manifest.json | Public/internal verification | Profile, package, source ref, workflow run, and checksum mapping |"
+            echo "| airo-mobile-tablet-debug-info-${PROFILE}-${RELEASE_VERSION} | Restricted internal artifact | Obfuscation symbol lookup |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload mobile/tablet release artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: airo-mobile-tablet-${{ env.PROFILE }}-${{ env.RELEASE_VERSION }}
+          path: release-artifacts/
+          retention-days: 30
+
+      - name: Upload obfuscation symbols
+        uses: actions/upload-artifact@v7
+        with:
+          name: airo-mobile-tablet-debug-info-${{ env.PROFILE }}-${{ env.RELEASE_VERSION }}
+          path: app/build/debug-info-${{ env.PROFILE }}/
+          retention-days: 90

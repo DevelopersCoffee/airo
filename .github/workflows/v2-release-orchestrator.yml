@@ -52,7 +52,7 @@ on:
           - alpha
           - beta
       mobile_profile:
-        description: 'Optional mobile/tablet profile; build automation is tracked in #677'
+        description: 'Optional mobile/tablet profile to build'
         required: true
         default: none
         type: choice
@@ -195,7 +195,8 @@ jobs:
         run: |
           ruby -e 'require "yaml"; ARGV.each { |f| YAML.load_file(f); puts "ok #{f}" }' \
             .github/workflows/v2-release-orchestrator.yml \
-            .github/workflows/airo-tv-release.yml
+            .github/workflows/airo-tv-release.yml \
+            .github/workflows/airo-mobile-tablet-release.yml
           python3 -m py_compile \
             scripts/check-build-profiles.py \
             scripts/generate-release-manifest.py \
@@ -204,23 +205,21 @@ jobs:
           scripts/test-generate-release-manifest.sh
           scripts/test-generate-release-qualification-report.sh
 
-  mobile-tablet-status:
+  mobile-tablet-release:
     name: Mobile and tablet release leg
-    runs-on: ubuntu-latest
-    needs: [prepare]
-    steps:
-      - name: Report mobile/tablet release status
-        env:
-          MOBILE_PROFILE: ${{ needs.prepare.outputs.mobile_profile }}
-        run: |
-          if [ "$MOBILE_PROFILE" = "none" ]; then
-            echo "Mobile/tablet release build is not selected for this orchestrator run." >> "$GITHUB_STEP_SUMMARY"
-            echo "Mobile/tablet publish automation remains tracked by #677." >> "$GITHUB_STEP_SUMMARY"
-            exit 0
-          fi
-
-          echo "::error::Mobile/tablet profile '$MOBILE_PROFILE' was selected, but publishable APK/AAB automation is tracked by #677 and is not enabled yet."
-          exit 1
+    if: needs.prepare.outputs.mobile_profile != 'none'
+    needs: [prepare, release-contracts]
+    permissions:
+      contents: read
+    uses: ./.github/workflows/airo-mobile-tablet-release.yml
+    with:
+      profile: ${{ needs.prepare.outputs.mobile_profile }}
+      version: ${{ needs.prepare.outputs.version }}
+      build_name: ${{ needs.prepare.outputs.build_name }}
+      build_number: ${{ needs.prepare.outputs.build_number }}
+      release_ref: ${{ needs.prepare.outputs.release_ref }}
+      production_signing: ${{ needs.prepare.outputs.production_signing == 'true' }}
+    secrets: inherit
 
   tv-release:
     name: TV release leg
@@ -243,14 +242,13 @@ jobs:
   release-summary:
     name: V2 release summary
     runs-on: ubuntu-latest
-    needs: [prepare, release-contracts, mobile-tablet-status, tv-release]
+    needs: [prepare, release-contracts, mobile-tablet-release, tv-release]
     if: always()
     permissions:
       actions: read
       contents: read
     steps:
       - uses: actions/checkout@v7
-        if: needs.tv-release.result == 'success'
         with:
           ref: ${{ needs.prepare.outputs.release_ref }}
 
@@ -261,6 +259,13 @@ jobs:
           name: airo-tv-release-${{ needs.prepare.outputs.version }}
           path: release-artifacts/tv
 
+      - name: Download mobile/tablet release artifacts
+        if: needs.mobile-tablet-release.result == 'success'
+        uses: actions/download-artifact@v8
+        with:
+          name: airo-mobile-tablet-${{ needs.prepare.outputs.mobile_profile }}-${{ needs.prepare.outputs.version }}
+          path: release-artifacts/mobile-tablet
+
       - name: Generate TV qualification report
         if: needs.tv-release.result == 'success'
         env:
@@ -269,6 +274,20 @@ jobs:
           manifest="$(find release-artifacts/tv -maxdepth 1 -name '*Release-Manifest.json' | head -n 1)"
           if [ -z "$manifest" ]; then
             echo "::error::TV release manifest was not found in downloaded artifacts."
+            exit 1
+          fi
+          scripts/generate-release-qualification-report.py \
+            --manifest "$manifest" \
+            --mode "$QUALIFICATION_MODE"
+
+      - name: Generate mobile/tablet qualification report
+        if: needs.mobile-tablet-release.result == 'success'
+        env:
+          QUALIFICATION_MODE: ${{ needs.prepare.outputs.qualification_mode }}
+        run: |
+          manifest="$(find release-artifacts/mobile-tablet -maxdepth 1 -name '*Release-Manifest.json' | head -n 1)"
+          if [ -z "$manifest" ]; then
+            echo "::error::Mobile/tablet release manifest was not found in downloaded artifacts."
             exit 1
           fi
           scripts/generate-release-qualification-report.py \
@@ -291,7 +310,8 @@ jobs:
           RELEASE_REF: ${{ needs.prepare.outputs.release_ref }}
           DRY_RUN: ${{ needs.prepare.outputs.dry_run }}
           TV_RESULT: ${{ needs.tv-release.result }}
-          MOBILE_RESULT: ${{ needs.mobile-tablet-status.result }}
+          MOBILE_RESULT: ${{ needs.mobile-tablet-release.result }}
+          MOBILE_PROFILE: ${{ needs.prepare.outputs.mobile_profile }}
           CONTRACT_RESULT: ${{ needs.release-contracts.result }}
         run: |
           {
@@ -305,6 +325,7 @@ jobs:
             echo "| Release ref | $RELEASE_REF |"
             echo "| Dry run | $DRY_RUN |"
             echo "| TV leg | $TV_RESULT |"
+            echo "| Mobile/tablet profile | $MOBILE_PROFILE |"
             echo "| Mobile/tablet leg | $MOBILE_RESULT |"
             echo "| Release contracts | $CONTRACT_RESULT |"
             echo ""
@@ -324,10 +345,26 @@ jobs:
             echo "TV artifacts were not available because the TV leg result was $TV_RESULT." >> "$GITHUB_STEP_SUMMARY"
           fi
 
+          if [ -d release-artifacts/mobile-tablet ]; then
+            {
+              echo ""
+              echo "### Mobile/tablet"
+              echo ""
+              find release-artifacts/mobile-tablet -maxdepth 1 -type f -printf '- %f\n' | sort
+              echo ""
+              echo "Mobile/tablet artifacts include APK/AAB files, SHA256SUMS, release manifest, and an internal qualification report when generated by this orchestrator."
+            } >> "$GITHUB_STEP_SUMMARY"
+          elif [ "$MOBILE_PROFILE" = "none" ]; then
+            echo "Mobile/tablet artifacts were not requested for this orchestrator run." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Mobile/tablet artifacts were not available because the mobile/tablet leg result was $MOBILE_RESULT." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
       - name: Enforce orchestrator result
         env:
           TV_RESULT: ${{ needs.tv-release.result }}
-          MOBILE_RESULT: ${{ needs.mobile-tablet-status.result }}
+          MOBILE_RESULT: ${{ needs.mobile-tablet-release.result }}
+          MOBILE_PROFILE: ${{ needs.prepare.outputs.mobile_profile }}
           CONTRACT_RESULT: ${{ needs.release-contracts.result }}
         run: |
           if [ "$CONTRACT_RESULT" != "success" ]; then
@@ -338,7 +375,7 @@ jobs:
             echo "::error::TV release leg did not pass: $TV_RESULT"
             exit 1
           fi
-          if [ "$MOBILE_RESULT" != "success" ]; then
+          if [ "$MOBILE_PROFILE" != "none" ] && [ "$MOBILE_RESULT" != "success" ]; then
             echo "::error::Mobile/tablet release leg did not pass: $MOBILE_RESULT"
             exit 1
           fi
