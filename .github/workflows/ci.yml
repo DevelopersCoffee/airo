@@ -686,9 +686,12 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Platform | Description | Target Size |" >> $GITHUB_STEP_SUMMARY
           echo "|----------|-------------|-------------|" >> $GITHUB_STEP_SUMMARY
-          echo "| mobile-full | All features | <35MB |" >> $GITHUB_STEP_SUMMARY
+          echo "| mobile-full | All features | report only |" >> $GITHUB_STEP_SUMMARY
           echo "| mobile-streaming | IPTV + Music | <35MB |" >> $GITHUB_STEP_SUMMARY
+          echo "| iptv-standalone | IPTV-only mobile/tablet | <120MB |" >> $GITHUB_STEP_SUMMARY
           echo "| tv | IPTV only | <35MB |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Release asset naming, visibility, and support policy: docs/release/V2_DISTRIBUTION_MATRIX.md" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "Download artifacts from the Actions tab." >> $GITHUB_STEP_SUMMARY
 
