@@ -356,8 +356,8 @@ jobs:
           cd app
           case "${{ matrix.platform.variant }}" in
             full) package_name="io.airo.app" ;;
-            iptv) package_name="io.airo.iptv" ;;
-            streaming) package_name="io.airo.streaming" ;;
+            iptv) package_name="io.airo.app.iptv" ;;
+            streaming) package_name="io.airo.app.streaming" ;;
             tv) package_name="io.airo.app.tv" ;;
             *)
               echo "::error::Unknown Android variant: ${{ matrix.platform.variant }}"

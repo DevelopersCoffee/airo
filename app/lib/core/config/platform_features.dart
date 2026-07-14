@@ -25,7 +25,7 @@ enum AppPlatform {
   mobileFull,
 
   /// Mobile streaming app - music + IPTV only
-  /// Package: io.airo.streaming
+  /// Package: io.airo.app.streaming
   mobileStreaming,
 
   /// Android TV / Fire TV - IPTV only

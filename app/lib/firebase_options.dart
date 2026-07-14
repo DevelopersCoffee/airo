@@ -1,5 +1,5 @@
 // Firebase configuration with multi-platform variant support
-// Supports: Mobile Full (io.airo.app), Mobile Streaming (io.airo.streaming), Android TV (io.airo.app.tv)
+// Supports: Mobile Full (io.airo.app), Mobile Streaming (io.airo.app.streaming), Android TV (io.airo.app.tv)
 //
 // To configure:
 // 1. Register all package IDs in Firebase Console under the same project
@@ -19,7 +19,7 @@ import 'package:flutter/foundation.dart'
 // Set via --dart-define=APP_VARIANT=<value>
 enum AppVariant {
   full, // io.airo.app - All features
-  streaming, // io.airo.streaming - Music + IPTV
+  streaming, // io.airo.app.streaming - Music + IPTV
   tv, // io.airo.app.tv - IPTV only
 }
 
@@ -159,10 +159,13 @@ class DefaultFirebaseOptions {
     storageBucket: 'devscoffee-airo.firebasestorage.app',
   );
 
-  /// Android Streaming - io.airo.streaming
+  /// Android Streaming - io.airo.app.streaming
+  ///
+  /// Update this after downloading the Firebase client config for the
+  /// registered io.airo.app.streaming Android app.
   static const FirebaseOptions androidStreaming = FirebaseOptions(
     apiKey: 'AIzaSyCBhj62CjX9G7-QNbF3e-53BiM3FYcWNxw',
-    appId: '1:906799550225:android:ef8d5550c68807722206b0',
+    appId: 'TODO_REGISTER_IO_AIRO_APP_STREAMING',
     messagingSenderId: '906799550225',
     projectId: 'devscoffee-airo',
     storageBucket: 'devscoffee-airo.firebasestorage.app',
