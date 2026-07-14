@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:core_commands/core_commands.dart';
+import 'package:core_media_routing/core_media_routing.dart';
 import 'package:core_pairing/core_pairing.dart';
 import 'package:core_protocol/core_protocol.dart';
 import 'package:equatable/equatable.dart';
@@ -106,6 +107,288 @@ enum AiroSessionPayloadRejectionCode {
   const AiroSessionPayloadRejectionCode(this.stableId);
 
   final String stableId;
+}
+
+enum AiroPlaybackOwnershipOperation {
+  pause('pause'),
+  resume('resume'),
+  seek('seek'),
+  stop('stop'),
+  volume('volume'),
+  audioTrack('audio_track'),
+  subtitleTrack('subtitle_track'),
+  recovery('recovery'),
+  healthReport('health_report'),
+  analyticsReport('analytics_report');
+
+  const AiroPlaybackOwnershipOperation(this.stableId);
+
+  final String stableId;
+}
+
+enum AiroPlaybackOwnershipTransferCode {
+  accepted('accepted'),
+  requestExpired('request_expired'),
+  ownershipExpired('ownership_expired'),
+  currentOwnerMismatch('current_owner_mismatch'),
+  staleRevision('stale_revision'),
+  requesterUnauthorized('requester_unauthorized');
+
+  const AiroPlaybackOwnershipTransferCode(this.stableId);
+
+  final String stableId;
+}
+
+class AiroPlaybackOwnershipSnapshot extends Equatable {
+  AiroPlaybackOwnershipSnapshot({
+    required this.sessionId,
+    required this.ownerNodeId,
+    required this.playbackNodeId,
+    required this.sourceNodeId,
+    required this.routeId,
+    required this.routeKind,
+    required this.analyticsOwnerNodeId,
+    required this.healthReporterNodeId,
+    required this.revision,
+    required this.capturedAt,
+    this.activeControllerNodeId,
+    Set<AiroPlaybackOwnershipOperation> controllerGrant = const {},
+    this.leaseExpiresAt,
+    this.schemaVersion = kAiroSessionSchemaVersion,
+  }) : controllerGrant = Set.unmodifiable(controllerGrant);
+
+  final String schemaVersion;
+  final String sessionId;
+  final String ownerNodeId;
+  final String playbackNodeId;
+  final String sourceNodeId;
+  final String routeId;
+  final AiroMediaRouteKind routeKind;
+  final String analyticsOwnerNodeId;
+  final String healthReporterNodeId;
+  final String? activeControllerNodeId;
+  final Set<AiroPlaybackOwnershipOperation> controllerGrant;
+  final AiroSessionRevision revision;
+  final DateTime capturedAt;
+  final DateTime? leaseExpiresAt;
+
+  bool isExpired(DateTime now) =>
+      leaseExpiresAt != null && !now.isBefore(leaseExpiresAt!);
+
+  bool canPerform({
+    required String nodeId,
+    required AiroPlaybackOwnershipOperation operation,
+    required DateTime now,
+  }) {
+    if (isExpired(now)) return false;
+    if (nodeId == ownerNodeId) return true;
+    if (operation == AiroPlaybackOwnershipOperation.analyticsReport &&
+        nodeId == analyticsOwnerNodeId) {
+      return true;
+    }
+    if (operation == AiroPlaybackOwnershipOperation.healthReport &&
+        nodeId == healthReporterNodeId) {
+      return true;
+    }
+    return nodeId == activeControllerNodeId &&
+        controllerGrant.contains(operation);
+  }
+
+  AiroPlaybackOwnershipSnapshot copyWith({
+    String? ownerNodeId,
+    String? playbackNodeId,
+    String? sourceNodeId,
+    String? routeId,
+    AiroMediaRouteKind? routeKind,
+    String? analyticsOwnerNodeId,
+    String? healthReporterNodeId,
+    String? activeControllerNodeId,
+    Set<AiroPlaybackOwnershipOperation>? controllerGrant,
+    AiroSessionRevision? revision,
+    DateTime? capturedAt,
+    DateTime? leaseExpiresAt,
+  }) {
+    return AiroPlaybackOwnershipSnapshot(
+      sessionId: sessionId,
+      ownerNodeId: ownerNodeId ?? this.ownerNodeId,
+      playbackNodeId: playbackNodeId ?? this.playbackNodeId,
+      sourceNodeId: sourceNodeId ?? this.sourceNodeId,
+      routeId: routeId ?? this.routeId,
+      routeKind: routeKind ?? this.routeKind,
+      analyticsOwnerNodeId: analyticsOwnerNodeId ?? this.analyticsOwnerNodeId,
+      healthReporterNodeId: healthReporterNodeId ?? this.healthReporterNodeId,
+      activeControllerNodeId:
+          activeControllerNodeId ?? this.activeControllerNodeId,
+      controllerGrant: controllerGrant ?? this.controllerGrant,
+      revision: revision ?? this.revision,
+      capturedAt: capturedAt ?? this.capturedAt,
+      leaseExpiresAt: leaseExpiresAt ?? this.leaseExpiresAt,
+      schemaVersion: schemaVersion,
+    );
+  }
+
+  @override
+  String toString() {
+    return 'AiroPlaybackOwnershipSnapshot('
+        'sessionId: $sessionId, '
+        'ownerNodeId: $ownerNodeId, '
+        'playbackNodeId: $playbackNodeId, '
+        'sourceNodeId: $sourceNodeId, '
+        'routeId: $routeId, '
+        'routeKind: ${routeKind.stableId}, '
+        'analyticsOwnerNodeId: $analyticsOwnerNodeId, '
+        'healthReporterNodeId: $healthReporterNodeId, '
+        'activeControllerNodeId: $activeControllerNodeId, '
+        'controllerGrant: ${controllerGrant.map((operation) => operation.stableId).toList()}, '
+        'revision: ${revision.value}, '
+        'leaseExpiresAt: $leaseExpiresAt'
+        ')';
+  }
+
+  @override
+  List<Object?> get props => [
+    schemaVersion,
+    sessionId,
+    ownerNodeId,
+    playbackNodeId,
+    sourceNodeId,
+    routeId,
+    routeKind,
+    analyticsOwnerNodeId,
+    healthReporterNodeId,
+    activeControllerNodeId,
+    controllerGrant,
+    revision,
+    capturedAt,
+    leaseExpiresAt,
+  ];
+}
+
+class AiroPlaybackOwnershipTransferRequest extends Equatable {
+  AiroPlaybackOwnershipTransferRequest({
+    required this.transferId,
+    required this.sessionId,
+    required this.currentOwnerNodeId,
+    required this.newOwnerNodeId,
+    required this.requestedByNodeId,
+    required this.baseRevision,
+    required this.issuedAt,
+    required this.expiresAt,
+    this.analyticsOwnerNodeId,
+    this.healthReporterNodeId,
+    this.activeControllerNodeId,
+    Set<AiroPlaybackOwnershipOperation> controllerGrant = const {},
+    this.schemaVersion = kAiroSessionSchemaVersion,
+  }) : controllerGrant = Set.unmodifiable(controllerGrant);
+
+  final String schemaVersion;
+  final String transferId;
+  final String sessionId;
+  final String currentOwnerNodeId;
+  final String newOwnerNodeId;
+  final String requestedByNodeId;
+  final int baseRevision;
+  final DateTime issuedAt;
+  final DateTime expiresAt;
+  final String? analyticsOwnerNodeId;
+  final String? healthReporterNodeId;
+  final String? activeControllerNodeId;
+  final Set<AiroPlaybackOwnershipOperation> controllerGrant;
+
+  bool isExpired(DateTime now) => !now.isBefore(expiresAt);
+
+  @override
+  List<Object?> get props => [
+    schemaVersion,
+    transferId,
+    sessionId,
+    currentOwnerNodeId,
+    newOwnerNodeId,
+    requestedByNodeId,
+    baseRevision,
+    issuedAt,
+    expiresAt,
+    analyticsOwnerNodeId,
+    healthReporterNodeId,
+    activeControllerNodeId,
+    controllerGrant,
+  ];
+}
+
+class AiroPlaybackOwnershipTransferResult extends Equatable {
+  const AiroPlaybackOwnershipTransferResult({
+    required this.code,
+    required this.snapshot,
+  });
+
+  final AiroPlaybackOwnershipTransferCode code;
+  final AiroPlaybackOwnershipSnapshot snapshot;
+
+  bool get accepted => code == AiroPlaybackOwnershipTransferCode.accepted;
+
+  @override
+  List<Object?> get props => [code, snapshot];
+}
+
+class AiroPlaybackOwnershipPolicy {
+  const AiroPlaybackOwnershipPolicy();
+
+  AiroPlaybackOwnershipTransferResult transfer({
+    required AiroPlaybackOwnershipSnapshot current,
+    required AiroPlaybackOwnershipTransferRequest request,
+    required DateTime now,
+  }) {
+    if (request.isExpired(now)) {
+      return AiroPlaybackOwnershipTransferResult(
+        code: AiroPlaybackOwnershipTransferCode.requestExpired,
+        snapshot: current,
+      );
+    }
+    if (current.isExpired(now)) {
+      return AiroPlaybackOwnershipTransferResult(
+        code: AiroPlaybackOwnershipTransferCode.ownershipExpired,
+        snapshot: current,
+      );
+    }
+    if (request.currentOwnerNodeId != current.ownerNodeId) {
+      return AiroPlaybackOwnershipTransferResult(
+        code: AiroPlaybackOwnershipTransferCode.currentOwnerMismatch,
+        snapshot: current,
+      );
+    }
+    if (request.baseRevision != current.revision.value) {
+      return AiroPlaybackOwnershipTransferResult(
+        code: AiroPlaybackOwnershipTransferCode.staleRevision,
+        snapshot: current,
+      );
+    }
+    if (request.requestedByNodeId != current.ownerNodeId &&
+        request.requestedByNodeId != current.activeControllerNodeId) {
+      return AiroPlaybackOwnershipTransferResult(
+        code: AiroPlaybackOwnershipTransferCode.requesterUnauthorized,
+        snapshot: current,
+      );
+    }
+
+    return AiroPlaybackOwnershipTransferResult(
+      code: AiroPlaybackOwnershipTransferCode.accepted,
+      snapshot: current.copyWith(
+        ownerNodeId: request.newOwnerNodeId,
+        analyticsOwnerNodeId:
+            request.analyticsOwnerNodeId ?? request.newOwnerNodeId,
+        healthReporterNodeId:
+            request.healthReporterNodeId ?? request.newOwnerNodeId,
+        activeControllerNodeId: request.activeControllerNodeId,
+        controllerGrant: request.controllerGrant,
+        revision: AiroSessionRevision(
+          value: current.revision.value + 1,
+          updatedAt: now,
+          reporterNodeId: request.requestedByNodeId,
+        ),
+        capturedAt: now,
+      ),
+    );
+  }
 }
 
 class AiroSessionRevision extends Equatable
