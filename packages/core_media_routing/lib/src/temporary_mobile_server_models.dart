@@ -30,6 +30,25 @@ enum AiroTemporaryMobileThermalState {
   final String stableId;
 }
 
+enum AiroTemporaryMobileServerRequestMethod {
+  get('GET'),
+  head('HEAD');
+
+  const AiroTemporaryMobileServerRequestMethod(this.stableId);
+
+  final String stableId;
+}
+
+enum AiroTemporaryMobileServerServingStatus {
+  ok('200'),
+  partialContent('206'),
+  reject('reject');
+
+  const AiroTemporaryMobileServerServingStatus(this.stableId);
+
+  final String stableId;
+}
+
 enum AiroTemporaryMobileServerValidationCode {
   accepted('accepted'),
   serverUnavailable('server_unavailable'),
@@ -51,6 +70,22 @@ enum AiroTemporaryMobileServerValidationCode {
   concurrentReceiverLimitExceeded('concurrent_receiver_limit_exceeded');
 
   const AiroTemporaryMobileServerValidationCode(this.stableId);
+
+  final String stableId;
+}
+
+enum AiroTemporaryMobileServerServingCode {
+  accepted('accepted'),
+  unsupportedMethod('unsupported_method'),
+  rangeHeaderRequired('range_header_required'),
+  rangeHeaderMalformed('range_header_malformed'),
+  multiRangeUnsupported('multi_range_unsupported'),
+  rangeNotSatisfiable('range_not_satisfiable'),
+  unknownMediaLength('unknown_media_length'),
+  entityValidatorMissing('entity_validator_missing'),
+  cancelled('cancelled');
+
+  const AiroTemporaryMobileServerServingCode(this.stableId);
 
   final String stableId;
 }
@@ -147,6 +182,145 @@ class AiroTemporaryMobileServerSnapshot extends Equatable {
   ];
 }
 
+class AiroTemporaryMobileServerServingRequest extends Equatable {
+  const AiroTemporaryMobileServerServingRequest({
+    required this.requestId,
+    required this.method,
+    required this.receiverNodeId,
+    required this.now,
+    required this.mediaLengthBytes,
+    required this.entityValidator,
+    this.rangeHeader,
+    this.hasLocalNetworkScope = false,
+    this.hasTrustedReceiverScope = false,
+    this.cancelled = false,
+    this.requiresRangeRequest = true,
+  }) : assert(mediaLengthBytes >= 0);
+
+  final String requestId;
+  final AiroTemporaryMobileServerRequestMethod method;
+  final String receiverNodeId;
+  final DateTime now;
+  final int mediaLengthBytes;
+  final String entityValidator;
+  final String? rangeHeader;
+  final bool hasLocalNetworkScope;
+  final bool hasTrustedReceiverScope;
+  final bool cancelled;
+  final bool requiresRangeRequest;
+
+  AiroTemporaryMobileServerValidationContext get validationContext {
+    return AiroTemporaryMobileServerValidationContext(
+      now: now,
+      receiverNodeId: receiverNodeId,
+      hasLocalNetworkScope: hasLocalNetworkScope,
+      hasTrustedReceiverScope: hasTrustedReceiverScope,
+    );
+  }
+
+  @override
+  List<Object?> get props => [
+    requestId,
+    method,
+    receiverNodeId,
+    now,
+    mediaLengthBytes,
+    entityValidator,
+    rangeHeader,
+    hasLocalNetworkScope,
+    hasTrustedReceiverScope,
+    cancelled,
+    requiresRangeRequest,
+  ];
+}
+
+class AiroTemporaryMobileServerByteRange extends Equatable {
+  const AiroTemporaryMobileServerByteRange({
+    required this.start,
+    required this.end,
+    required this.totalLength,
+  }) : assert(start >= 0),
+       assert(end >= start),
+       assert(totalLength > 0);
+
+  final int start;
+  final int end;
+  final int totalLength;
+
+  int get contentLength => end - start + 1;
+
+  String get contentRangeHeader => 'bytes $start-$end/$totalLength';
+
+  Map<String, Object?> toPublicMap() {
+    return {
+      'start': start,
+      'end': end,
+      'totalLength': totalLength,
+      'contentLength': contentLength,
+    };
+  }
+
+  @override
+  List<Object?> get props => [start, end, totalLength];
+}
+
+class AiroTemporaryMobileServerServingDecision extends Equatable {
+  AiroTemporaryMobileServerServingDecision({
+    required this.serverId,
+    required this.requestId,
+    required this.status,
+    required List<AiroTemporaryMobileServerValidationCode> validationCodes,
+    required List<AiroTemporaryMobileServerServingCode> servingCodes,
+    required Map<String, String> responseHeaders,
+    this.range,
+  }) : validationCodes = List.unmodifiable(validationCodes),
+       servingCodes = List.unmodifiable(servingCodes),
+       responseHeaders = Map.unmodifiable(responseHeaders);
+
+  final String serverId;
+  final String requestId;
+  final AiroTemporaryMobileServerServingStatus status;
+  final List<AiroTemporaryMobileServerValidationCode> validationCodes;
+  final List<AiroTemporaryMobileServerServingCode> servingCodes;
+  final Map<String, String> responseHeaders;
+  final AiroTemporaryMobileServerByteRange? range;
+
+  bool get accepted =>
+      status != AiroTemporaryMobileServerServingStatus.reject &&
+      validationCodes.length == 1 &&
+      validationCodes.single ==
+          AiroTemporaryMobileServerValidationCode.accepted &&
+      servingCodes.length == 1 &&
+      servingCodes.single == AiroTemporaryMobileServerServingCode.accepted;
+
+  bool get emitsBody =>
+      accepted &&
+      status == AiroTemporaryMobileServerServingStatus.partialContent;
+
+  Map<String, Object?> toPublicMap() {
+    return {
+      'serverId': serverId,
+      'requestId': requestId,
+      'status': status.stableId,
+      'validationCodes': _validationCodeStableIds(validationCodes),
+      'servingCodes': _servingCodeStableIds(servingCodes),
+      'responseHeaders': responseHeaders,
+      'range': range?.toPublicMap(),
+    };
+  }
+
+  @override
+  List<Object?> get props => [
+    serverId,
+    requestId,
+    status,
+    validationCodes,
+    servingCodes,
+    responseHeaders,
+    range,
+  ];
+}
+
 class AiroTemporaryMobileServerValidationContext extends Equatable {
   const AiroTemporaryMobileServerValidationContext({
     required this.now,
@@ -184,6 +358,166 @@ class AiroTemporaryMobileServerValidationResult extends Equatable {
 
   @override
   List<Object?> get props => [serverId, codes];
+}
+
+class AiroTemporaryMobileServerServingPolicy {
+  const AiroTemporaryMobileServerServingPolicy({
+    this.validationPolicy = const AiroTemporaryMobileServerPolicy(),
+  });
+
+  final AiroTemporaryMobileServerPolicy validationPolicy;
+
+  AiroTemporaryMobileServerServingDecision evaluate({
+    required AiroTemporaryMobileServerSnapshot snapshot,
+    required AiroTemporaryMobileServerServingRequest request,
+  }) {
+    final validation = validationPolicy.validate(
+      snapshot: snapshot,
+      context: request.validationContext,
+    );
+    if (!validation.accepted) {
+      return AiroTemporaryMobileServerServingDecision(
+        serverId: snapshot.serverId,
+        requestId: request.requestId,
+        status: AiroTemporaryMobileServerServingStatus.reject,
+        validationCodes: validation.codes,
+        servingCodes: const [],
+        responseHeaders: const {},
+      );
+    }
+
+    final servingCodes = _servingCodesFor(request);
+    if (servingCodes.isNotEmpty) {
+      return AiroTemporaryMobileServerServingDecision(
+        serverId: snapshot.serverId,
+        requestId: request.requestId,
+        status: AiroTemporaryMobileServerServingStatus.reject,
+        validationCodes: validation.codes,
+        servingCodes: servingCodes,
+        responseHeaders: const {},
+      );
+    }
+
+    final range = _rangeFor(request);
+    if (range == null &&
+        request.method == AiroTemporaryMobileServerRequestMethod.get) {
+      return AiroTemporaryMobileServerServingDecision(
+        serverId: snapshot.serverId,
+        requestId: request.requestId,
+        status: AiroTemporaryMobileServerServingStatus.reject,
+        validationCodes: validation.codes,
+        servingCodes: const [
+          AiroTemporaryMobileServerServingCode.rangeHeaderMalformed,
+        ],
+        responseHeaders: const {},
+      );
+    }
+
+    final responseHeaders = _headersFor(request, range);
+    return AiroTemporaryMobileServerServingDecision(
+      serverId: snapshot.serverId,
+      requestId: request.requestId,
+      status: range == null
+          ? AiroTemporaryMobileServerServingStatus.ok
+          : AiroTemporaryMobileServerServingStatus.partialContent,
+      validationCodes: validation.codes,
+      servingCodes: const [AiroTemporaryMobileServerServingCode.accepted],
+      responseHeaders: responseHeaders,
+      range: range,
+    );
+  }
+
+  List<AiroTemporaryMobileServerServingCode> _servingCodesFor(
+    AiroTemporaryMobileServerServingRequest request,
+  ) {
+    final codes = <AiroTemporaryMobileServerServingCode>[];
+    if (request.cancelled) {
+      codes.add(AiroTemporaryMobileServerServingCode.cancelled);
+    }
+    if (request.mediaLengthBytes <= 0) {
+      codes.add(AiroTemporaryMobileServerServingCode.unknownMediaLength);
+    }
+    if (request.entityValidator.trim().isEmpty) {
+      codes.add(AiroTemporaryMobileServerServingCode.entityValidatorMissing);
+    }
+    if (request.method == AiroTemporaryMobileServerRequestMethod.get &&
+        request.requiresRangeRequest &&
+        (request.rangeHeader == null || request.rangeHeader!.trim().isEmpty)) {
+      codes.add(AiroTemporaryMobileServerServingCode.rangeHeaderRequired);
+    }
+    final rangeHeader = request.rangeHeader?.trim();
+    if (rangeHeader != null && rangeHeader.isNotEmpty) {
+      if (rangeHeader.contains(',')) {
+        codes.add(AiroTemporaryMobileServerServingCode.multiRangeUnsupported);
+      } else if (!rangeHeader.startsWith('bytes=')) {
+        codes.add(AiroTemporaryMobileServerServingCode.rangeHeaderMalformed);
+      } else if (_rangeFor(request) == null) {
+        codes.add(AiroTemporaryMobileServerServingCode.rangeNotSatisfiable);
+      }
+    }
+    return List.unmodifiable(codes);
+  }
+
+  AiroTemporaryMobileServerByteRange? _rangeFor(
+    AiroTemporaryMobileServerServingRequest request,
+  ) {
+    final header = request.rangeHeader?.trim();
+    if (header == null || header.isEmpty) return null;
+    if (!header.startsWith('bytes=') || header.contains(',')) return null;
+    if (request.mediaLengthBytes <= 0) return null;
+
+    final spec = header.substring('bytes='.length);
+    final separatorIndex = spec.indexOf('-');
+    if (separatorIndex < 0) return null;
+
+    final startText = spec.substring(0, separatorIndex);
+    final endText = spec.substring(separatorIndex + 1);
+    if (startText.isEmpty && endText.isEmpty) return null;
+
+    int start;
+    int end;
+    if (startText.isEmpty) {
+      final suffixLength = int.tryParse(endText);
+      if (suffixLength == null || suffixLength <= 0) return null;
+      start = request.mediaLengthBytes - suffixLength;
+      if (start < 0) start = 0;
+      end = request.mediaLengthBytes - 1;
+    } else {
+      final parsedStart = int.tryParse(startText);
+      final parsedEnd = endText.isEmpty ? null : int.tryParse(endText);
+      if (parsedStart == null || parsedStart < 0) return null;
+      if (endText.isNotEmpty && parsedEnd == null) return null;
+      start = parsedStart;
+      end = parsedEnd ?? request.mediaLengthBytes - 1;
+      if (end >= request.mediaLengthBytes) {
+        end = request.mediaLengthBytes - 1;
+      }
+    }
+
+    if (start >= request.mediaLengthBytes || end < start) return null;
+    return AiroTemporaryMobileServerByteRange(
+      start: start,
+      end: end,
+      totalLength: request.mediaLengthBytes,
+    );
+  }
+
+  Map<String, String> _headersFor(
+    AiroTemporaryMobileServerServingRequest request,
+    AiroTemporaryMobileServerByteRange? range,
+  ) {
+    final headers = <String, String>{
+      'Accept-Ranges': 'bytes',
+      'ETag': request.entityValidator,
+    };
+    if (range == null) {
+      headers['Content-Length'] = request.mediaLengthBytes.toString();
+    } else {
+      headers['Content-Length'] = range.contentLength.toString();
+      headers['Content-Range'] = range.contentRangeHeader;
+    }
+    return Map.unmodifiable(headers);
+  }
 }
 
 class AiroTemporaryMobileServerPolicy {
@@ -316,6 +650,10 @@ abstract interface class AiroTemporaryMobileServerController {
     AiroTemporaryMobileServerValidationContext context,
   );
 
+  FutureOr<AiroTemporaryMobileServerServingDecision> evaluateServing(
+    AiroTemporaryMobileServerServingRequest request,
+  );
+
   FutureOr<void> shutdown(String serverId);
 }
 
@@ -337,6 +675,22 @@ class AiroNoOpTemporaryMobileServerController
   }
 
   @override
+  FutureOr<AiroTemporaryMobileServerServingDecision> evaluateServing(
+    AiroTemporaryMobileServerServingRequest request,
+  ) {
+    return AiroTemporaryMobileServerServingDecision(
+      serverId: 'none',
+      requestId: request.requestId,
+      status: AiroTemporaryMobileServerServingStatus.reject,
+      validationCodes: const [
+        AiroTemporaryMobileServerValidationCode.serverUnavailable,
+      ],
+      servingCodes: const [],
+      responseHeaders: const {},
+    );
+  }
+
+  @override
   FutureOr<void> shutdown(String serverId) {}
 }
 
@@ -345,10 +699,12 @@ class AiroFakeTemporaryMobileServerController
   AiroFakeTemporaryMobileServerController({
     this.snapshot,
     this.policy = const AiroTemporaryMobileServerPolicy(),
+    this.servingPolicy = const AiroTemporaryMobileServerServingPolicy(),
   });
 
   AiroTemporaryMobileServerSnapshot? snapshot;
   final AiroTemporaryMobileServerPolicy policy;
+  final AiroTemporaryMobileServerServingPolicy servingPolicy;
   int shutdownCallCount = 0;
 
   @override
@@ -371,10 +727,42 @@ class AiroFakeTemporaryMobileServerController
   }
 
   @override
+  FutureOr<AiroTemporaryMobileServerServingDecision> evaluateServing(
+    AiroTemporaryMobileServerServingRequest request,
+  ) {
+    final current = snapshot;
+    if (current == null) {
+      return AiroTemporaryMobileServerServingDecision(
+        serverId: 'none',
+        requestId: request.requestId,
+        status: AiroTemporaryMobileServerServingStatus.reject,
+        validationCodes: const [
+          AiroTemporaryMobileServerValidationCode.serverUnavailable,
+        ],
+        servingCodes: const [],
+        responseHeaders: const {},
+      );
+    }
+    return servingPolicy.evaluate(snapshot: current, request: request);
+  }
+
+  @override
   FutureOr<void> shutdown(String serverId) {
     shutdownCallCount += 1;
     if (snapshot?.serverId == serverId) {
       snapshot = null;
     }
   }
+}
+
+List<String> _validationCodeStableIds(
+  Iterable<AiroTemporaryMobileServerValidationCode> values,
+) {
+  return values.map((value) => value.stableId).toList(growable: false)..sort();
+}
+
+List<String> _servingCodeStableIds(
+  Iterable<AiroTemporaryMobileServerServingCode> values,
+) {
+  return values.map((value) => value.stableId).toList(growable: false)..sort();
 }
