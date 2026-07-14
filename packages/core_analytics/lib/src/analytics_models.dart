@@ -435,6 +435,64 @@ class AiroAnalyticsSchemaValidationResult extends Equatable {
   List<Object?> get props => [codes, privacyViolations];
 }
 
+class AiroAnalyticsSchemaFixtureCase extends Equatable {
+  AiroAnalyticsSchemaFixtureCase({
+    required this.caseId,
+    required this.event,
+    required Iterable<AiroAnalyticsSchemaValidationCode> expectedCodes,
+  }) : expectedCodes = List.unmodifiable(expectedCodes);
+
+  final String caseId;
+  final AiroAnalyticsEvent event;
+  final List<AiroAnalyticsSchemaValidationCode> expectedCodes;
+
+  bool get shouldPass =>
+      expectedCodes.length == 1 &&
+      expectedCodes.single == AiroAnalyticsSchemaValidationCode.accepted;
+
+  Map<String, Object?> toPublicMap() {
+    return {
+      'caseId': caseId,
+      'eventName': event.name,
+      'owner': event.owner,
+      'purpose': event.purpose.stableId,
+      'fieldNames': event.params.keys.toList(growable: false)..sort(),
+      'expectedCodes': expectedCodes
+          .map((code) => code.stableId)
+          .toList(growable: false),
+      'shouldPass': shouldPass,
+    };
+  }
+
+  @override
+  List<Object?> get props => [caseId, event, expectedCodes];
+}
+
+class AiroAnalyticsSchemaFixtureSuite extends Equatable {
+  AiroAnalyticsSchemaFixtureSuite({
+    required this.suiteId,
+    required Iterable<AiroAnalyticsSchemaFixtureCase> cases,
+    this.schemaVersion = kAiroAnalyticsSchemaVersion,
+  }) : cases = List.unmodifiable(cases);
+
+  final String schemaVersion;
+  final String suiteId;
+  final List<AiroAnalyticsSchemaFixtureCase> cases;
+
+  Map<String, Object?> toPublicMap() {
+    return {
+      'schemaVersion': schemaVersion,
+      'suiteId': suiteId,
+      'cases': cases
+          .map((testCase) => testCase.toPublicMap())
+          .toList(growable: false),
+    };
+  }
+
+  @override
+  List<Object?> get props => [schemaVersion, suiteId, cases];
+}
+
 class AiroAnalyticsFieldSchema extends Equatable {
   const AiroAnalyticsFieldSchema({
     required this.name,
@@ -1713,6 +1771,10 @@ class AiroTvAnalyticsSchemas {
     return AiroAnalyticsSchemaRegistry(
       schemas: [
         playbackStartupCompleted(),
+        playbackBufferingSummary(),
+        playbackFailoverCompleted(),
+        playbackQualitySample(),
+        playbackCompletionSummary(),
         pairingCompleted(),
         handoffCompleted(),
         legacyDecoderFallback(),
@@ -1721,6 +1783,26 @@ class AiroTvAnalyticsSchemas {
     );
   }
 
+  static const Set<String> _playbackProhibitedFields = {
+    'channel',
+    'channelName',
+    'mediaTitle',
+    'movieTitle',
+    'programTitle',
+    'playlistName',
+    'playlistUrl',
+    'streamUrl',
+    'signedUrl',
+    'url',
+    'localPath',
+    'path',
+    'localIp',
+    'ipAddress',
+    'query',
+    'searchQuery',
+    'voiceTranscript',
+  };
+
   static AiroAnalyticsEventSchema playbackStartupCompleted() {
     return AiroAnalyticsEventSchema(
       name: 'playback_startup_completed',
@@ -1728,13 +1810,7 @@ class AiroTvAnalyticsSchemas {
       purpose: AiroAnalyticsPurpose.playbackQuality,
       retentionClass: AiroAnalyticsRetentionClass.product90Days,
       dashboardRequirement: AiroAnalyticsDashboardRequirement.required,
-      prohibitedFields: const {
-        'channel',
-        'mediaTitle',
-        'streamUrl',
-        'playlistUrl',
-        'query',
-      },
+      prohibitedFields: _playbackProhibitedFields,
       allowedFields: const [
         AiroAnalyticsFieldSchema(
           name: 'source_type',
@@ -1749,6 +1825,134 @@ class AiroTvAnalyticsSchemas {
         AiroAnalyticsFieldSchema(
           name: 'decoder_type',
           kind: AiroAnalyticsFieldKind.category,
+        ),
+        AiroAnalyticsFieldSchema(
+          name: 'resolution_bucket',
+          kind: AiroAnalyticsFieldKind.bucket,
+        ),
+      ],
+    );
+  }
+
+  static AiroAnalyticsEventSchema playbackBufferingSummary() {
+    return AiroAnalyticsEventSchema(
+      name: 'playback_buffering_summary',
+      owner: 'media',
+      purpose: AiroAnalyticsPurpose.playbackQuality,
+      retentionClass: AiroAnalyticsRetentionClass.product90Days,
+      dashboardRequirement: AiroAnalyticsDashboardRequirement.required,
+      prohibitedFields: _playbackProhibitedFields,
+      allowedFields: const [
+        AiroAnalyticsFieldSchema(
+          name: 'source_type',
+          kind: AiroAnalyticsFieldKind.category,
+          required: true,
+        ),
+        AiroAnalyticsFieldSchema(
+          name: 'stall_count_bucket',
+          kind: AiroAnalyticsFieldKind.bucket,
+          required: true,
+        ),
+        AiroAnalyticsFieldSchema(
+          name: 'stall_duration_bucket',
+          kind: AiroAnalyticsFieldKind.bucket,
+          required: true,
+        ),
+        AiroAnalyticsFieldSchema(
+          name: 'resolution_bucket',
+          kind: AiroAnalyticsFieldKind.bucket,
+        ),
+      ],
+    );
+  }
+
+  static AiroAnalyticsEventSchema playbackFailoverCompleted() {
+    return AiroAnalyticsEventSchema(
+      name: 'playback_failover_completed',
+      owner: 'media',
+      purpose: AiroAnalyticsPurpose.playbackQuality,
+      retentionClass: AiroAnalyticsRetentionClass.product90Days,
+      dashboardRequirement: AiroAnalyticsDashboardRequirement.required,
+      prohibitedFields: _playbackProhibitedFields,
+      allowedFields: const [
+        AiroAnalyticsFieldSchema(
+          name: 'source_type',
+          kind: AiroAnalyticsFieldKind.category,
+          required: true,
+        ),
+        AiroAnalyticsFieldSchema(
+          name: 'failover_reason',
+          kind: AiroAnalyticsFieldKind.category,
+          required: true,
+        ),
+        AiroAnalyticsFieldSchema(
+          name: 'route_type',
+          kind: AiroAnalyticsFieldKind.category,
+          required: true,
+        ),
+        AiroAnalyticsFieldSchema(
+          name: 'decoder_type',
+          kind: AiroAnalyticsFieldKind.category,
+        ),
+      ],
+    );
+  }
+
+  static AiroAnalyticsEventSchema playbackQualitySample() {
+    return AiroAnalyticsEventSchema(
+      name: 'playback_quality_sample',
+      owner: 'media',
+      purpose: AiroAnalyticsPurpose.playbackQuality,
+      retentionClass: AiroAnalyticsRetentionClass.product90Days,
+      dashboardRequirement: AiroAnalyticsDashboardRequirement.required,
+      prohibitedFields: _playbackProhibitedFields,
+      allowedFields: const [
+        AiroAnalyticsFieldSchema(
+          name: 'source_type',
+          kind: AiroAnalyticsFieldKind.category,
+          required: true,
+        ),
+        AiroAnalyticsFieldSchema(
+          name: 'bitrate_bucket',
+          kind: AiroAnalyticsFieldKind.bucket,
+          required: true,
+        ),
+        AiroAnalyticsFieldSchema(
+          name: 'resolution_bucket',
+          kind: AiroAnalyticsFieldKind.bucket,
+          required: true,
+        ),
+        AiroAnalyticsFieldSchema(
+          name: 'decoder_type',
+          kind: AiroAnalyticsFieldKind.category,
+        ),
+      ],
+    );
+  }
+
+  static AiroAnalyticsEventSchema playbackCompletionSummary() {
+    return AiroAnalyticsEventSchema(
+      name: 'playback_completion_summary',
+      owner: 'media',
+      purpose: AiroAnalyticsPurpose.playbackQuality,
+      retentionClass: AiroAnalyticsRetentionClass.product90Days,
+      dashboardRequirement: AiroAnalyticsDashboardRequirement.required,
+      prohibitedFields: _playbackProhibitedFields,
+      allowedFields: const [
+        AiroAnalyticsFieldSchema(
+          name: 'source_type',
+          kind: AiroAnalyticsFieldKind.category,
+          required: true,
+        ),
+        AiroAnalyticsFieldSchema(
+          name: 'completion_bucket',
+          kind: AiroAnalyticsFieldKind.bucket,
+          required: true,
+        ),
+        AiroAnalyticsFieldSchema(
+          name: 'exit_reason',
+          kind: AiroAnalyticsFieldKind.category,
+          required: true,
         ),
         AiroAnalyticsFieldSchema(
           name: 'resolution_bucket',
@@ -1859,6 +2063,137 @@ class AiroTvAnalyticsSchemas {
           name: 'success',
           kind: AiroAnalyticsFieldKind.boolean,
           required: true,
+        ),
+      ],
+    );
+  }
+}
+
+class AiroTvPlaybackQualityTelemetrySuites {
+  const AiroTvPlaybackQualityTelemetrySuites._();
+
+  static AiroAnalyticsSchemaFixtureSuite standard() {
+    return AiroAnalyticsSchemaFixtureSuite(
+      suiteId: 'airo-tv-playback-quality-telemetry',
+      cases: [
+        AiroAnalyticsSchemaFixtureCase(
+          caseId: 'startup-bucketed',
+          event: AiroAnalyticsEvent(
+            name: 'playback_startup_completed',
+            owner: 'media',
+            purpose: AiroAnalyticsPurpose.playbackQuality,
+            params: const {
+              'source_type': 'iptv',
+              'startup_bucket': '1_3s',
+              'decoder_type': 'hardware',
+              'resolution_bucket': '1080p',
+            },
+          ),
+          expectedCodes: const [AiroAnalyticsSchemaValidationCode.accepted],
+        ),
+        AiroAnalyticsSchemaFixtureCase(
+          caseId: 'buffering-bucketed',
+          event: AiroAnalyticsEvent(
+            name: 'playback_buffering_summary',
+            owner: 'media',
+            purpose: AiroAnalyticsPurpose.playbackQuality,
+            params: const {
+              'source_type': 'iptv',
+              'stall_count_bucket': '1_2',
+              'stall_duration_bucket': '3_10s',
+              'resolution_bucket': '1080p',
+            },
+          ),
+          expectedCodes: const [AiroAnalyticsSchemaValidationCode.accepted],
+        ),
+        AiroAnalyticsSchemaFixtureCase(
+          caseId: 'failover-categorized',
+          event: AiroAnalyticsEvent(
+            name: 'playback_failover_completed',
+            owner: 'media',
+            purpose: AiroAnalyticsPurpose.playbackQuality,
+            params: const {
+              'source_type': 'iptv',
+              'failover_reason': 'decoder_error',
+              'route_type': 'phone_local',
+              'decoder_type': 'software',
+            },
+          ),
+          expectedCodes: const [AiroAnalyticsSchemaValidationCode.accepted],
+        ),
+        AiroAnalyticsSchemaFixtureCase(
+          caseId: 'bitrate-resolution-bucketed',
+          event: AiroAnalyticsEvent(
+            name: 'playback_quality_sample',
+            owner: 'media',
+            purpose: AiroAnalyticsPurpose.playbackQuality,
+            params: const {
+              'source_type': 'iptv',
+              'bitrate_bucket': '3_6_mbps',
+              'resolution_bucket': '1080p',
+              'decoder_type': 'hardware',
+            },
+          ),
+          expectedCodes: const [AiroAnalyticsSchemaValidationCode.accepted],
+        ),
+        AiroAnalyticsSchemaFixtureCase(
+          caseId: 'completion-bucketed',
+          event: AiroAnalyticsEvent(
+            name: 'playback_completion_summary',
+            owner: 'media',
+            purpose: AiroAnalyticsPurpose.playbackQuality,
+            params: const {
+              'source_type': 'iptv',
+              'completion_bucket': '90_100pct',
+              'exit_reason': 'user_exit',
+              'resolution_bucket': '1080p',
+            },
+          ),
+          expectedCodes: const [AiroAnalyticsSchemaValidationCode.accepted],
+        ),
+        AiroAnalyticsSchemaFixtureCase(
+          caseId: 'raw-bitrate-rejected',
+          event: AiroAnalyticsEvent(
+            name: 'playback_quality_sample',
+            owner: 'media',
+            purpose: AiroAnalyticsPurpose.playbackQuality,
+            params: const {
+              'source_type': 'iptv',
+              'bitrate_bucket': 4500000,
+              'resolution_bucket': '1080p',
+            },
+          ),
+          expectedCodes: const [
+            AiroAnalyticsSchemaValidationCode.fieldKindMismatch,
+          ],
+        ),
+        AiroAnalyticsSchemaFixtureCase(
+          caseId: 'source-url-rejected',
+          event: AiroAnalyticsEvent(
+            name: 'playback_startup_completed',
+            owner: 'media',
+            purpose: AiroAnalyticsPurpose.playbackQuality,
+            params: const {
+              'source_type': 'https://example.com/live.m3u8',
+              'startup_bucket': '1_3s',
+            },
+          ),
+          expectedCodes: const [
+            AiroAnalyticsSchemaValidationCode.fieldKindMismatch,
+            AiroAnalyticsSchemaValidationCode.privacyViolation,
+          ],
+        ),
+        AiroAnalyticsSchemaFixtureCase(
+          caseId: 'completion-required-field-rejected',
+          event: AiroAnalyticsEvent(
+            name: 'playback_completion_summary',
+            owner: 'media',
+            purpose: AiroAnalyticsPurpose.playbackQuality,
+            params: const {'source_type': 'iptv', 'exit_reason': 'user_exit'},
+          ),
+          expectedCodes: const [
+            AiroAnalyticsSchemaValidationCode.requiredFieldMissing,
+          ],
         ),
       ],
     );

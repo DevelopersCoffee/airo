@@ -69,15 +69,25 @@ Category, bucket, and stable-ID values must use stable snake_case strings.
 `AiroTvAnalyticsSchemas.registry()` includes initial v2.0.0.1 schemas for:
 
 - `playback_startup_completed`
+- `playback_buffering_summary`
+- `playback_failover_completed`
+- `playback_quality_sample`
+- `playback_completion_summary`
 - `pairing_completed`
 - `handoff_completed`
 - `legacy_decoder_fallback`
 - `subscription_conversion`
 
 These schemas use approved category and bucket fields such as `source_type`,
-`startup_bucket`, `decoder_type`, `source_profile`, `target_profile`,
-`result_category`, `device_tier`, `fallback_count`, `entry_surface`,
-`plan_bucket`, and `success`.
+`startup_bucket`, `stall_count_bucket`, `stall_duration_bucket`,
+`failover_reason`, `route_type`, `bitrate_bucket`, `resolution_bucket`,
+`completion_bucket`, `exit_reason`, `decoder_type`, `source_profile`,
+`target_profile`, `result_category`, `device_tier`, `fallback_count`,
+`entry_surface`, `plan_bucket`, and `success`.
+
+`AiroTvPlaybackQualityTelemetrySuites.standard()` provides deterministic
+accepted and rejected fixture cases for playback-quality telemetry without
+exposing raw field values in public maps.
 
 ## Airo TV Consumption Rule
 

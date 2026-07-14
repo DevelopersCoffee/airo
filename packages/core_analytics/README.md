@@ -30,8 +30,11 @@ analytics SDKs directly.
 - Provider-backed adapter boundary that catches provider failures and falls
   back to deterministic no-op behavior.
 - Timed event helper that emits bucketed durations instead of raw timings.
-- Default Airo TV v2.0.0.1 event schemas for playback startup, pairing,
-  handoff, legacy decoder fallback, and subscription conversion.
+- Default Airo TV v2.0.0.1 event schemas for playback startup, buffering,
+  failover, quality samples, completion, pairing, handoff, legacy decoder
+  fallback, and subscription conversion.
+- Playback quality telemetry fixtures that validate bucketed startup,
+  buffering, failover, bitrate, resolution, and completion fields.
 - Performance instrumentation schema for UI, playback, import, search,
   protocol, command, memory, storage, network, and pairing samples.
 - No-op and fake performance instrumentation sinks for deterministic tests.

@@ -526,6 +526,42 @@ void main() {
       );
     });
 
+    test('playback quality telemetry fixture suite validates outcomes', () {
+      final registry = AiroTvAnalyticsSchemas.registry();
+      final suite = AiroTvPlaybackQualityTelemetrySuites.standard();
+
+      for (final testCase in suite.cases) {
+        final result = registry.validateEvent(testCase.event);
+        if (testCase.shouldPass) {
+          expect(result.accepted, isTrue, reason: testCase.caseId);
+        } else {
+          expect(result.accepted, isFalse, reason: testCase.caseId);
+          expect(
+            result.codes,
+            containsAll(testCase.expectedCodes),
+            reason: testCase.caseId,
+          );
+        }
+      }
+    });
+
+    test('playback quality schemas require bucketed safe fields', () {
+      final registry = AiroTvAnalyticsSchemas.registry();
+
+      expect(registry.schemaFor('playback_buffering_summary'), isNotNull);
+      expect(registry.schemaFor('playback_failover_completed'), isNotNull);
+      expect(registry.schemaFor('playback_quality_sample'), isNotNull);
+      expect(registry.schemaFor('playback_completion_summary'), isNotNull);
+      expect(
+        registry.schemaFor('playback_quality_sample')!.allowedFieldNames,
+        containsAll({'bitrate_bucket', 'resolution_bucket'}),
+      );
+      expect(
+        registry.schemaFor('playback_completion_summary')!.allowedFieldNames,
+        isNot(contains('mediaTitle')),
+      );
+    });
+
     test('schema registry rejects unknown and mismatched events', () {
       final registry = AiroTvAnalyticsSchemas.registry();
 
@@ -640,6 +676,9 @@ void main() {
       final flattened = publicMap.toString();
 
       expect(flattened, contains('playback_startup_completed'));
+      expect(flattened, contains('playback_buffering_summary'));
+      expect(flattened, contains('playback_quality_sample'));
+      expect(flattened, contains('playback_completion_summary'));
       expect(flattened, contains(AiroAnalyticsFieldKind.bucket.stableId));
       expect(
         flattened,
@@ -651,6 +690,22 @@ void main() {
       expect(flattened, isNot(contains('rawCredential')));
       expect(flattened, isNot(contains('http://')));
       expect(flattened, isNot(contains('192.168.')));
+    });
+
+    test('playback telemetry fixture public map excludes raw values', () {
+      final publicMap = AiroTvPlaybackQualityTelemetrySuites.standard()
+          .toPublicMap();
+      final flattened = publicMap.toString();
+
+      expect(flattened, contains('playback_quality_sample'));
+      expect(flattened, contains('bitrate_bucket'));
+      expect(flattened, contains('field_kind_mismatch'));
+      expect(flattened, isNot(contains('4500000')));
+      expect(flattened, isNot(contains('https://')));
+      expect(flattened, isNot(contains('live.m3u8')));
+      expect(flattened, isNot(contains('/Users/')));
+      expect(flattened, isNot(contains('providerPayload')));
+      expect(flattened, isNot(contains('storeConsoleAccount')));
     });
   });
 }
