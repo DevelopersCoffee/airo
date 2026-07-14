@@ -67,6 +67,13 @@ The configuration validator rejects local-only external uploads, unisolated
 vendor adapters, blocking analytics, invalid queue budgets, and non-resettable
 installation IDs.
 
+Product-edition analytics profiles are also platform-owned. Airo TV selects an
+`AiroAnalyticsProductEditionProfile` for Full TV, Standard TV, Lite Receiver,
+Embedded Receiver, mobile companion, desktop companion, or local-only mode, then
+derives service configuration from that profile. The profile contract defines
+allowed purposes, event families, event names, queue/crash budgets, retention,
+provider posture, and local-only upload blocking.
+
 ## Queue And Provider Behavior
 
 Local diagnostics uses a bounded platform queue. If the queue is full, a higher

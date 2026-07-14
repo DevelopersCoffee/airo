@@ -93,6 +93,135 @@ void main() {
       );
     });
 
+    test('full tv analytics profile allows complete event set', () {
+      final profile = AiroTvAnalyticsProductEditionProfiles.fullTv();
+      final playbackEvent = event(
+        name: 'playback_startup_completed',
+        purpose: AiroAnalyticsPurpose.playbackQuality,
+      );
+      final productEvent = event(
+        name: 'subscription_conversion',
+        owner: 'growth',
+        purpose: AiroAnalyticsPurpose.product,
+      );
+
+      expect(profile.validate().accepted, isTrue);
+      expect(
+        profile.allowedPurposes,
+        containsAll(const {
+          AiroAnalyticsPurpose.operational,
+          AiroAnalyticsPurpose.product,
+          AiroAnalyticsPurpose.playbackQuality,
+          AiroAnalyticsPurpose.diagnostics,
+          AiroAnalyticsPurpose.crash,
+          AiroAnalyticsPurpose.personalized,
+        }),
+      );
+      expect(profile.allowsEvent(playbackEvent), isTrue);
+      expect(profile.allowsEvent(productEvent), isTrue);
+      expect(profile.externalUploadAllowed, isTrue);
+    });
+
+    test('lite receiver excludes personalized and uses reduced budgets', () {
+      final full = AiroTvAnalyticsProductEditionProfiles.fullTv();
+      final lite = AiroTvAnalyticsProductEditionProfiles.liteReceiver();
+
+      expect(lite.validate().accepted, isTrue);
+      expect(
+        lite.allowedPurposes,
+        isNot(contains(AiroAnalyticsPurpose.personalized)),
+      );
+      expect(lite.maxQueueEvents, lessThan(full.maxQueueEvents));
+      expect(lite.maxCrashReports, lessThan(full.maxCrashReports));
+      expect(lite.allowsEventName('playback_quality_sample'), isTrue);
+      expect(lite.allowsEventName('subscription_conversion'), isFalse);
+    });
+
+    test('embedded receiver profile forces local-only configuration', () {
+      final embedded = AiroTvAnalyticsProductEditionProfiles.embeddedReceiver();
+      final configuration = embedded.toServiceConfiguration(
+        consent: const AiroAnalyticsConsentState.allEnabled(),
+        collectionEnabled: true,
+      );
+
+      expect(embedded.validate().accepted, isTrue);
+      expect(embedded.localOnly, isTrue);
+      expect(configuration.consent.localOnly, isTrue);
+      expect(configuration.consent.product, isFalse);
+      expect(configuration.consent.playbackQuality, isFalse);
+      expect(configuration.externalUploadAllowed, isFalse);
+      expect(configuration.validate().accepted, isTrue);
+    });
+
+    test('companion profiles omit tv playback quality event families', () {
+      final mobile = AiroTvAnalyticsProductEditionProfiles.mobileCompanion();
+      final desktop = AiroTvAnalyticsProductEditionProfiles.desktopCompanion();
+
+      expect(mobile.validate().accepted, isTrue);
+      expect(desktop.validate().accepted, isTrue);
+      expect(mobile.allowsEventName('command_route_latency'), isTrue);
+      expect(desktop.allowsEventName('pairing_completed'), isTrue);
+      expect(mobile.allowsEventName('playback_startup_completed'), isFalse);
+      expect(
+        desktop.eventFamilies,
+        isNot(contains(AiroAnalyticsEventFamily.playbackQuality)),
+      );
+    });
+
+    test('profile validation rejects unsafe local-only definitions', () {
+      final invalid = AiroAnalyticsProductEditionProfile(
+        productProfile: AiroAnalyticsProductProfile.embeddedReceiver,
+        displayName: 'Invalid Embedded',
+        allowedPurposes: const {
+          AiroAnalyticsPurpose.operational,
+          AiroAnalyticsPurpose.product,
+        },
+        eventFamilies: const {
+          AiroAnalyticsEventFamily.operationalCore,
+          AiroAnalyticsEventFamily.playbackQuality,
+        },
+        eventNames: const {'subscription_conversion'},
+        providerKind: AiroAnalyticsProviderKind.noOp,
+        maxQueueEvents: -1,
+        maxCrashReports: -1,
+        localRetentionDays: -1,
+        externalUploadAllowed: true,
+        localOnly: true,
+      );
+
+      expect(
+        invalid.validate().codes,
+        containsAll(const {
+          AiroAnalyticsProfileValidationCode.unsupportedPurposeAllowed,
+          AiroAnalyticsProfileValidationCode.eventFamilyPurposeNotAllowed,
+          AiroAnalyticsProfileValidationCode.externalUploadInLocalOnly,
+          AiroAnalyticsProfileValidationCode.providerUploadWithoutProvider,
+          AiroAnalyticsProfileValidationCode.queueBudgetInvalid,
+          AiroAnalyticsProfileValidationCode.crashBudgetInvalid,
+          AiroAnalyticsProfileValidationCode.localRetentionInvalid,
+        }),
+      );
+    });
+
+    test(
+      'analytics profile public maps expose only stable contract fields',
+      () {
+        final publicMap = AiroTvAnalyticsProductEditionProfiles.fullTv()
+            .toPublicMap();
+        final flattened = publicMap.toString();
+
+        expect(flattened, contains('full_tv'));
+        expect(flattened, contains('playback_quality'));
+        expect(flattened, contains('maxQueueEvents'));
+        expect(flattened, isNot(contains('https://')));
+        expect(flattened, isNot(contains('/Users/')));
+        expect(flattened, isNot(contains('192.168.')));
+        expect(flattened, isNot(contains('Bearer')));
+        expect(flattened, isNot(contains('City News Live')));
+        expect(flattened, isNot(contains('providerPayload')));
+      },
+    );
+
     test(
       'initialize returns disabled and invalid configuration states',
       () async {

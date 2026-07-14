@@ -52,6 +52,38 @@ enum AiroAnalyticsProductProfile {
   final String stableId;
 }
 
+enum AiroAnalyticsEventFamily {
+  operationalCore('operational_core', AiroAnalyticsPurpose.operational),
+  deviceEcosystem('device_ecosystem', AiroAnalyticsPurpose.operational),
+  delegation('delegation', AiroAnalyticsPurpose.operational),
+  playbackQuality('playback_quality', AiroAnalyticsPurpose.playbackQuality),
+  diagnostics('diagnostics', AiroAnalyticsPurpose.diagnostics),
+  crashReporting('crash_reporting', AiroAnalyticsPurpose.crash),
+  productGrowth('product_growth', AiroAnalyticsPurpose.product),
+  personalization('personalization', AiroAnalyticsPurpose.personalized);
+
+  const AiroAnalyticsEventFamily(this.stableId, this.purpose);
+
+  final String stableId;
+  final AiroAnalyticsPurpose purpose;
+}
+
+enum AiroAnalyticsProfileValidationCode {
+  accepted('accepted'),
+  allowedPurposeMissing('allowed_purpose_missing'),
+  unsupportedPurposeAllowed('unsupported_purpose_allowed'),
+  eventFamilyPurposeNotAllowed('event_family_purpose_not_allowed'),
+  queueBudgetInvalid('queue_budget_invalid'),
+  crashBudgetInvalid('crash_budget_invalid'),
+  localRetentionInvalid('local_retention_invalid'),
+  externalUploadInLocalOnly('external_upload_in_local_only'),
+  providerUploadWithoutProvider('provider_upload_without_provider');
+
+  const AiroAnalyticsProfileValidationCode(this.stableId);
+
+  final String stableId;
+}
+
 enum AiroAnalyticsTrackStatus {
   accepted('accepted'),
   droppedByConsent('dropped_by_consent'),
@@ -761,6 +793,237 @@ class AiroAnalyticsConfigurationResult extends Equatable {
 
   @override
   List<Object?> get props => [codes];
+}
+
+class AiroAnalyticsProfileValidationResult extends Equatable {
+  AiroAnalyticsProfileValidationResult({
+    required List<AiroAnalyticsProfileValidationCode> codes,
+  }) : codes = List.unmodifiable(codes);
+
+  final List<AiroAnalyticsProfileValidationCode> codes;
+
+  bool get accepted =>
+      codes.length == 1 &&
+      codes.single == AiroAnalyticsProfileValidationCode.accepted;
+
+  Map<String, Object?> toPublicMap() {
+    return {
+      'accepted': accepted,
+      'codes': codes.map((code) => code.stableId).toList(growable: false),
+    };
+  }
+
+  @override
+  List<Object?> get props => [codes];
+}
+
+class AiroAnalyticsProductEditionProfile extends Equatable {
+  AiroAnalyticsProductEditionProfile({
+    required this.productProfile,
+    required this.displayName,
+    required Iterable<AiroAnalyticsPurpose> allowedPurposes,
+    required Iterable<AiroAnalyticsEventFamily> eventFamilies,
+    required Iterable<String> eventNames,
+    required this.providerKind,
+    required this.maxQueueEvents,
+    required this.maxCrashReports,
+    required this.localRetentionDays,
+    this.externalUploadAllowed = false,
+    this.localOnly = false,
+    this.schemaVersion = kAiroAnalyticsSchemaVersion,
+  }) : allowedPurposes = Set.unmodifiable(allowedPurposes),
+       eventFamilies = Set.unmodifiable(eventFamilies),
+       eventNames = Set.unmodifiable(eventNames);
+
+  final String schemaVersion;
+  final AiroAnalyticsProductProfile productProfile;
+  final String displayName;
+  final Set<AiroAnalyticsPurpose> allowedPurposes;
+  final Set<AiroAnalyticsEventFamily> eventFamilies;
+  final Set<String> eventNames;
+  final AiroAnalyticsProviderKind providerKind;
+  final int maxQueueEvents;
+  final int maxCrashReports;
+  final int localRetentionDays;
+  final bool externalUploadAllowed;
+  final bool localOnly;
+
+  bool allowsPurpose(AiroAnalyticsPurpose purpose) {
+    return allowedPurposes.contains(purpose);
+  }
+
+  bool allowsEventName(String eventName) {
+    return eventNames.contains(eventName);
+  }
+
+  bool allowsEvent(AiroAnalyticsEvent event) {
+    return allowsPurpose(event.purpose) && allowsEventName(event.name);
+  }
+
+  AiroAnalyticsConsentState effectiveConsent(
+    AiroAnalyticsConsentState requestedConsent,
+  ) {
+    if (localOnly) {
+      return const AiroAnalyticsConsentState.localOnly();
+    }
+    return AiroAnalyticsConsentState(
+      operational:
+          requestedConsent.operational &&
+          allowedPurposes.contains(AiroAnalyticsPurpose.operational),
+      product:
+          requestedConsent.product &&
+          allowedPurposes.contains(AiroAnalyticsPurpose.product),
+      playbackQuality:
+          requestedConsent.playbackQuality &&
+          allowedPurposes.contains(AiroAnalyticsPurpose.playbackQuality),
+      diagnostics:
+          requestedConsent.diagnostics &&
+          allowedPurposes.contains(AiroAnalyticsPurpose.diagnostics),
+      crash:
+          requestedConsent.crash &&
+          allowedPurposes.contains(AiroAnalyticsPurpose.crash),
+      personalized:
+          requestedConsent.personalized &&
+          allowedPurposes.contains(AiroAnalyticsPurpose.personalized),
+      localOnly: requestedConsent.localOnly,
+    );
+  }
+
+  AiroAnalyticsProductEditionProfile asLocalOnly({
+    AiroAnalyticsProviderKind providerKind =
+        AiroAnalyticsProviderKind.localDiagnostics,
+  }) {
+    return AiroAnalyticsProductEditionProfile(
+      productProfile: productProfile,
+      displayName: '$displayName Local Only',
+      allowedPurposes: const {
+        AiroAnalyticsPurpose.operational,
+        AiroAnalyticsPurpose.diagnostics,
+      }.intersection(allowedPurposes),
+      eventFamilies: eventFamilies
+          .where(
+            (family) =>
+                family.purpose == AiroAnalyticsPurpose.operational ||
+                family.purpose == AiroAnalyticsPurpose.diagnostics,
+          )
+          .toSet(),
+      eventNames: eventNames,
+      providerKind: providerKind,
+      maxQueueEvents: maxQueueEvents,
+      maxCrashReports: maxCrashReports,
+      localRetentionDays: localRetentionDays,
+      externalUploadAllowed: false,
+      localOnly: true,
+      schemaVersion: schemaVersion,
+    );
+  }
+
+  AiroAnalyticsServiceConfiguration toServiceConfiguration({
+    AiroAnalyticsConsentState consent =
+        const AiroAnalyticsConsentState.disabled(),
+    bool collectionEnabled = false,
+    bool providerSdkIsolated = true,
+    bool nonBlocking = true,
+    bool resettableInstallationId = true,
+  }) {
+    return AiroAnalyticsServiceConfiguration(
+      providerKind: providerKind,
+      productProfile: productProfile,
+      consent: effectiveConsent(consent),
+      collectionEnabled: collectionEnabled,
+      maxQueueEvents: maxQueueEvents,
+      externalUploadAllowed: externalUploadAllowed && !localOnly,
+      providerSdkIsolated: providerSdkIsolated,
+      nonBlocking: nonBlocking,
+      resettableInstallationId: resettableInstallationId,
+      schemaVersion: schemaVersion,
+    );
+  }
+
+  AiroAnalyticsProfileValidationResult validate() {
+    final codes = <AiroAnalyticsProfileValidationCode>[];
+    if (!allowedPurposes.contains(AiroAnalyticsPurpose.operational)) {
+      codes.add(AiroAnalyticsProfileValidationCode.allowedPurposeMissing);
+    }
+    for (final family in eventFamilies) {
+      if (!allowedPurposes.contains(family.purpose)) {
+        codes.add(
+          AiroAnalyticsProfileValidationCode.eventFamilyPurposeNotAllowed,
+        );
+      }
+    }
+    if (localOnly) {
+      final unsupported = allowedPurposes.difference(const {
+        AiroAnalyticsPurpose.operational,
+        AiroAnalyticsPurpose.diagnostics,
+      });
+      if (unsupported.isNotEmpty) {
+        codes.add(AiroAnalyticsProfileValidationCode.unsupportedPurposeAllowed);
+      }
+      if (externalUploadAllowed) {
+        codes.add(AiroAnalyticsProfileValidationCode.externalUploadInLocalOnly);
+      }
+    }
+    if (externalUploadAllowed &&
+        providerKind == AiroAnalyticsProviderKind.noOp) {
+      codes.add(
+        AiroAnalyticsProfileValidationCode.providerUploadWithoutProvider,
+      );
+    }
+    if (maxQueueEvents < 0) {
+      codes.add(AiroAnalyticsProfileValidationCode.queueBudgetInvalid);
+    }
+    if (maxCrashReports < 0) {
+      codes.add(AiroAnalyticsProfileValidationCode.crashBudgetInvalid);
+    }
+    if (localRetentionDays < 0) {
+      codes.add(AiroAnalyticsProfileValidationCode.localRetentionInvalid);
+    }
+    return AiroAnalyticsProfileValidationResult(
+      codes: codes.isEmpty
+          ? const [AiroAnalyticsProfileValidationCode.accepted]
+          : codes.toSet().toList(growable: false),
+    );
+  }
+
+  Map<String, Object?> toPublicMap() {
+    return {
+      'schemaVersion': schemaVersion,
+      'productProfile': productProfile.stableId,
+      'displayName': displayName,
+      'allowedPurposes':
+          allowedPurposes
+              .map((purpose) => purpose.stableId)
+              .toList(growable: false)
+            ..sort(),
+      'eventFamilies':
+          eventFamilies.map((family) => family.stableId).toList(growable: false)
+            ..sort(),
+      'eventNames': eventNames.toList(growable: false)..sort(),
+      'providerKind': providerKind.stableId,
+      'maxQueueEvents': maxQueueEvents,
+      'maxCrashReports': maxCrashReports,
+      'localRetentionDays': localRetentionDays,
+      'externalUploadAllowed': externalUploadAllowed,
+      'localOnly': localOnly,
+    };
+  }
+
+  @override
+  List<Object?> get props => [
+    schemaVersion,
+    productProfile,
+    displayName,
+    allowedPurposes,
+    eventFamilies,
+    eventNames,
+    providerKind,
+    maxQueueEvents,
+    maxCrashReports,
+    localRetentionDays,
+    externalUploadAllowed,
+    localOnly,
+  ];
 }
 
 class AiroAnalyticsServiceConfiguration extends Equatable {
@@ -2200,6 +2463,220 @@ class AiroAnalyticsConsentTransitionPolicy {
           : codes,
       removedEventCount: removedEventCount,
       resetGeneration: resetGeneration,
+    );
+  }
+}
+
+class AiroTvAnalyticsProductEditionProfiles {
+  const AiroTvAnalyticsProductEditionProfiles._();
+
+  static const Set<String> _playbackEventNames = {
+    'playback_startup_completed',
+    'playback_buffering_summary',
+    'playback_failover_completed',
+    'playback_quality_sample',
+    'playback_completion_summary',
+  };
+
+  static const Set<String> _deviceEcosystemEventNames = {
+    'pairing_completed',
+    'handoff_completed',
+    'device_discovery_summary',
+    'command_route_latency',
+    'delegation_task_completed',
+    'companion_availability_summary',
+  };
+
+  static const Set<String> _diagnosticEventNames = {'legacy_decoder_fallback'};
+
+  static const Set<String> _productEventNames = {'subscription_conversion'};
+
+  static AiroAnalyticsProductEditionProfile fullTv() {
+    return AiroAnalyticsProductEditionProfile(
+      productProfile: AiroAnalyticsProductProfile.fullTv,
+      displayName: 'Full TV',
+      allowedPurposes: const {
+        AiroAnalyticsPurpose.operational,
+        AiroAnalyticsPurpose.product,
+        AiroAnalyticsPurpose.playbackQuality,
+        AiroAnalyticsPurpose.diagnostics,
+        AiroAnalyticsPurpose.crash,
+        AiroAnalyticsPurpose.personalized,
+      },
+      eventFamilies: const {
+        AiroAnalyticsEventFamily.operationalCore,
+        AiroAnalyticsEventFamily.deviceEcosystem,
+        AiroAnalyticsEventFamily.delegation,
+        AiroAnalyticsEventFamily.playbackQuality,
+        AiroAnalyticsEventFamily.diagnostics,
+        AiroAnalyticsEventFamily.crashReporting,
+        AiroAnalyticsEventFamily.productGrowth,
+        AiroAnalyticsEventFamily.personalization,
+      },
+      eventNames: const {
+        ..._playbackEventNames,
+        ..._deviceEcosystemEventNames,
+        ..._diagnosticEventNames,
+        ..._productEventNames,
+      },
+      providerKind: AiroAnalyticsProviderKind.vendorAdapter,
+      maxQueueEvents: 500,
+      maxCrashReports: 50,
+      localRetentionDays: 30,
+      externalUploadAllowed: true,
+    );
+  }
+
+  static AiroAnalyticsProductEditionProfile standardTv() {
+    return AiroAnalyticsProductEditionProfile(
+      productProfile: AiroAnalyticsProductProfile.standardTv,
+      displayName: 'Standard TV',
+      allowedPurposes: const {
+        AiroAnalyticsPurpose.operational,
+        AiroAnalyticsPurpose.product,
+        AiroAnalyticsPurpose.playbackQuality,
+        AiroAnalyticsPurpose.diagnostics,
+        AiroAnalyticsPurpose.crash,
+      },
+      eventFamilies: const {
+        AiroAnalyticsEventFamily.operationalCore,
+        AiroAnalyticsEventFamily.deviceEcosystem,
+        AiroAnalyticsEventFamily.delegation,
+        AiroAnalyticsEventFamily.playbackQuality,
+        AiroAnalyticsEventFamily.diagnostics,
+        AiroAnalyticsEventFamily.crashReporting,
+        AiroAnalyticsEventFamily.productGrowth,
+      },
+      eventNames: const {
+        ..._playbackEventNames,
+        ..._deviceEcosystemEventNames,
+        ..._diagnosticEventNames,
+        ..._productEventNames,
+      },
+      providerKind: AiroAnalyticsProviderKind.vendorAdapter,
+      maxQueueEvents: 350,
+      maxCrashReports: 40,
+      localRetentionDays: 30,
+      externalUploadAllowed: true,
+    );
+  }
+
+  static AiroAnalyticsProductEditionProfile liteReceiver() {
+    return AiroAnalyticsProductEditionProfile(
+      productProfile: AiroAnalyticsProductProfile.liteReceiver,
+      displayName: 'Lite Receiver',
+      allowedPurposes: const {
+        AiroAnalyticsPurpose.operational,
+        AiroAnalyticsPurpose.playbackQuality,
+        AiroAnalyticsPurpose.diagnostics,
+        AiroAnalyticsPurpose.crash,
+      },
+      eventFamilies: const {
+        AiroAnalyticsEventFamily.operationalCore,
+        AiroAnalyticsEventFamily.deviceEcosystem,
+        AiroAnalyticsEventFamily.delegation,
+        AiroAnalyticsEventFamily.playbackQuality,
+        AiroAnalyticsEventFamily.diagnostics,
+        AiroAnalyticsEventFamily.crashReporting,
+      },
+      eventNames: const {
+        ..._playbackEventNames,
+        ..._deviceEcosystemEventNames,
+        ..._diagnosticEventNames,
+      },
+      providerKind: AiroAnalyticsProviderKind.vendorAdapter,
+      maxQueueEvents: 150,
+      maxCrashReports: 20,
+      localRetentionDays: 14,
+      externalUploadAllowed: true,
+    );
+  }
+
+  static AiroAnalyticsProductEditionProfile embeddedReceiver() {
+    return AiroAnalyticsProductEditionProfile(
+      productProfile: AiroAnalyticsProductProfile.embeddedReceiver,
+      displayName: 'Embedded Receiver',
+      allowedPurposes: const {
+        AiroAnalyticsPurpose.operational,
+        AiroAnalyticsPurpose.diagnostics,
+      },
+      eventFamilies: const {
+        AiroAnalyticsEventFamily.operationalCore,
+        AiroAnalyticsEventFamily.deviceEcosystem,
+        AiroAnalyticsEventFamily.delegation,
+        AiroAnalyticsEventFamily.diagnostics,
+      },
+      eventNames: const {
+        ..._deviceEcosystemEventNames,
+        ..._diagnosticEventNames,
+      },
+      providerKind: AiroAnalyticsProviderKind.localDiagnostics,
+      maxQueueEvents: 50,
+      maxCrashReports: 10,
+      localRetentionDays: 7,
+      localOnly: true,
+    );
+  }
+
+  static AiroAnalyticsProductEditionProfile mobileCompanion() {
+    return AiroAnalyticsProductEditionProfile(
+      productProfile: AiroAnalyticsProductProfile.mobileCompanion,
+      displayName: 'Mobile Companion',
+      allowedPurposes: const {
+        AiroAnalyticsPurpose.operational,
+        AiroAnalyticsPurpose.product,
+        AiroAnalyticsPurpose.diagnostics,
+        AiroAnalyticsPurpose.crash,
+      },
+      eventFamilies: const {
+        AiroAnalyticsEventFamily.operationalCore,
+        AiroAnalyticsEventFamily.deviceEcosystem,
+        AiroAnalyticsEventFamily.delegation,
+        AiroAnalyticsEventFamily.diagnostics,
+        AiroAnalyticsEventFamily.crashReporting,
+        AiroAnalyticsEventFamily.productGrowth,
+      },
+      eventNames: const {
+        ..._deviceEcosystemEventNames,
+        ..._diagnosticEventNames,
+        ..._productEventNames,
+      },
+      providerKind: AiroAnalyticsProviderKind.vendorAdapter,
+      maxQueueEvents: 250,
+      maxCrashReports: 30,
+      localRetentionDays: 30,
+      externalUploadAllowed: true,
+    );
+  }
+
+  static AiroAnalyticsProductEditionProfile desktopCompanion() {
+    return AiroAnalyticsProductEditionProfile(
+      productProfile: AiroAnalyticsProductProfile.desktopCompanion,
+      displayName: 'Desktop Companion',
+      allowedPurposes: const {
+        AiroAnalyticsPurpose.operational,
+        AiroAnalyticsPurpose.product,
+        AiroAnalyticsPurpose.diagnostics,
+        AiroAnalyticsPurpose.crash,
+      },
+      eventFamilies: const {
+        AiroAnalyticsEventFamily.operationalCore,
+        AiroAnalyticsEventFamily.deviceEcosystem,
+        AiroAnalyticsEventFamily.delegation,
+        AiroAnalyticsEventFamily.diagnostics,
+        AiroAnalyticsEventFamily.crashReporting,
+        AiroAnalyticsEventFamily.productGrowth,
+      },
+      eventNames: const {
+        ..._deviceEcosystemEventNames,
+        ..._diagnosticEventNames,
+        ..._productEventNames,
+      },
+      providerKind: AiroAnalyticsProviderKind.vendorAdapter,
+      maxQueueEvents: 250,
+      maxCrashReports: 30,
+      localRetentionDays: 30,
+      externalUploadAllowed: true,
     );
   }
 }

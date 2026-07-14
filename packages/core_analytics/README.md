@@ -16,6 +16,9 @@ analytics SDKs directly.
 - Service configuration for provider kind, product profile, collection
   enablement, queue budgets, provider isolation, non-blocking behavior, and
   resettable installation IDs.
+- Product-edition analytics profiles for Full TV, Standard TV, Lite Receiver,
+  Embedded Receiver, mobile companion, desktop companion, and local-only
+  configuration derivation.
 - Consent and local-only collection gates.
 - Consent transition results for queue cleanup, local-only external upload
   blocking, collection disablement, and reset generation state.
