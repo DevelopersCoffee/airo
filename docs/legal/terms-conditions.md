@@ -63,29 +63,28 @@ to accept updates if you want to keep using the app.
 
 ---
 
-## Supported Formats
+## Current Release Capabilities
 
-Airo TV supports the following media formats and protocols:
+Airo TV v0.0.2 supports the current release capabilities documented in the
+[Airo TV Feature Matrix](/airo/release/AIRO_TV_FEATURE_MATRIX/).
 
 ### Playlist Formats
 - M3U / M3U8
 
-### Video Formats
-- MP4, MKV, AVI, MOV, FLV, WMV, WEBM
+### Playback
 
-### Streaming Protocols
-- HLS (HTTP Live Streaming)
-- MPEG-TS (Transport Stream)
-- RTMP (Real-Time Messaging Protocol)
-- RTSP (Real-Time Streaming Protocol)
-
-### Audio Formats
-- MP3, AAC, WAV, FLAC, OGG
+Playback depends on the stream URL, protocol, codec support, and capabilities
+of your Android TV, Google TV, or compatible device. Airo TV does not guarantee
+that every third-party playlist or stream URL will play.
 
 ### Additional Features
-- EPG (Electronic Program Guide) via XMLTV
 - Chromecast casting support
-- Subtitle support (SRT, VTT)
+- Channel search by name
+- TV-focused remote navigation
+
+Planned features such as EPG, favorites, recording, cloud playlists, and AI
+Search are not included in the current release unless the feature matrix marks
+them supported.
 
 ---
 
