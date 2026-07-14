@@ -67,13 +67,23 @@ void main() {
     await pumpScreen(tester);
 
     expect(find.text('Live channels'), findsOneWidget);
+    expect(find.text('Airo TV Lite Receiver'), findsOneWidget);
+    expect(find.text('Compatible profile'), findsOneWidget);
+    expect(find.text('Home'), findsOneWidget);
+    expect(find.text('Live'), findsOneWidget);
+    expect(find.text('Favorites'), findsOneWidget);
+    expect(find.text('Recent'), findsWidgets);
+    expect(find.text('Settings'), findsOneWidget);
+    expect(find.text('Diagnostics'), findsOneWidget);
+    expect(find.text('Guide'), findsNothing);
+    expect(find.textContaining('Profile-limited:'), findsOneWidget);
     expect(find.text('3 of 3 live channels'), findsOneWidget);
     expect(find.text('Browse'), findsOneWidget);
     expect(find.text('All'), findsWidgets);
     expect(find.text('News'), findsWidgets);
     expect(find.text('Sports'), findsWidgets);
     expect(find.text('Music'), findsWidgets);
-    expect(find.text('Search'), findsOneWidget);
+    expect(find.text('Search'), findsWidgets);
     expect(find.text('Playlist'), findsOneWidget);
     expect(find.text('Help'), findsOneWidget);
     expect(find.text('Refresh'), findsOneWidget);
@@ -84,6 +94,9 @@ void main() {
   testWidgets('shows TV empty playlist state', (tester) async {
     await pumpScreen(tester, visibleChannels: const []);
 
+    expect(find.text('Airo TV Lite Receiver'), findsOneWidget);
+    expect(find.text('Home'), findsOneWidget);
+    expect(find.text('Guide'), findsNothing);
     expect(find.text('Add your playlist'), findsOneWidget);
     expect(find.text('Import playlist URL'), findsOneWidget);
     expect(find.text('How to add'), findsOneWidget);
