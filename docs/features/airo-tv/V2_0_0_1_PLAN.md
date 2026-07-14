@@ -243,7 +243,8 @@ Deliver:
 - Save raw PRD source.
 - Approve this v2.0.0.1 scope.
 - Open or update the GitHub issue with the feature packet.
-- Confirm release tag naming: `v2.0.0.1` milestone vs `v2.0.1` semver tag.
+- Use `v2.0.0.1` as the planning milestone label only; public Git release tags
+  remain semantic v2 tags such as `v2.0.0`, `v2.0.1`, and `v2.1.0`.
 
 Exit criteria:
 - Owning agents and review agents are listed.
@@ -651,7 +652,8 @@ Exit criteria:
 
 ## Open Questions
 
-- Is `v2.0.0.1` an internal milestone or an externally tagged release?
+- What exact semantic v2 tag will carry the first public artifact after this
+  planning milestone: `v2.0.0`, `v2.0.1`, or a later semver tag?
 - Which platforms are in the first implementation target: Android TV only, or Android TV plus mobile companion?
 - Does v2.0.0.1 include a code MVP, or only specs and issue packets?
 - What is the first physical Android 8/9 test device inventory?

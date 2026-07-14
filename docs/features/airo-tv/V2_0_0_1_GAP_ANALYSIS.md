@@ -331,7 +331,8 @@ cleanup.
 
 - Decide whether v2.0.0.1 is docs-only, contract-only, or includes a Lite
   Receiver code MVP.
-- Resolve version naming: `v2.0.0.1` milestone vs semver `v2.0.1` tag.
+- Use the recorded version naming policy: `v2.0.0.1` is a planning milestone
+  label, and public Git release tags remain semantic v2 tags.
 - Move source secrets out of SharedPreferences before adding Xtream or provider
   credentials.
 - Define prohibited analytics/log/crash fields now.
@@ -396,4 +397,3 @@ multi-view, Stalker Portal, and broad provider integrations.
 The highest-leverage next move is not adding another visible feature. It is
 closing the P0 platform gaps so the product can safely expand without weakening
 privacy, compliance, or legacy-device reliability.
-
