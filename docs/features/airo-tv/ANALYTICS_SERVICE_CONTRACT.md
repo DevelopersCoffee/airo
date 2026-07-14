@@ -84,6 +84,11 @@ Dashboard and alert catalogs remain platform-owned.
 specs, alert thresholds, severity, evaluation windows, and runbook ids without
 embedding provider-specific dashboard objects in Airo TV app code.
 
+Self-hosted event gateway policy is also a platform boundary.
+`AiroAnalyticsSelfHostedGatewayPolicy` evaluates schema safety, local-only
+blocking, allowed regions, rate limits, retention support, deletion support, and
+provider kind before any self-hosted backend adapter receives an event.
+
 ## Queue And Provider Behavior
 
 Local diagnostics uses a bounded platform queue. If the queue is full, a higher

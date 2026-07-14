@@ -533,6 +533,187 @@ void main() {
       expect(flattened, isNot(contains('diagnosticDump')));
     });
 
+    test('self hosted gateway accepts registered safe event', () {
+      final gateway = AiroTvAnalyticsSelfHostedGateways.standard();
+      final decision = gateway.evaluate(
+        event: AiroAnalyticsEvent(
+          name: 'playback_startup_completed',
+          owner: 'media',
+          purpose: AiroAnalyticsPurpose.playbackQuality,
+          params: const {'source_type': 'iptv', 'startup_bucket': '1_3s'},
+        ),
+        consent: const AiroAnalyticsConsentState.allEnabled(),
+        collectionEnabled: true,
+        region: AiroAnalyticsGatewayRegion.us,
+        rateLimitState: AiroAnalyticsGatewayRateLimitState(
+          windowStartedAt: DateTime.utc(2026, 7, 15, 10),
+          eventCount: 1,
+        ),
+      );
+
+      expect(decision.accepted, isTrue);
+      expect(
+        decision.retentionClass,
+        AiroAnalyticsRetentionClass.product90Days,
+      );
+      expect(decision.schemaCodes, const [
+        AiroAnalyticsSchemaValidationCode.accepted,
+      ]);
+    });
+
+    test('self hosted gateway rejects unknown schema and unsafe payload', () {
+      final gateway = AiroTvAnalyticsSelfHostedGateways.standard();
+      final unknown = gateway.evaluate(
+        event: event(name: 'unknown_event'),
+        consent: const AiroAnalyticsConsentState.allEnabled(),
+        collectionEnabled: true,
+        region: AiroAnalyticsGatewayRegion.us,
+        rateLimitState: AiroAnalyticsGatewayRateLimitState(
+          windowStartedAt: DateTime.utc(2026, 7, 15, 10),
+          eventCount: 1,
+        ),
+      );
+      final unsafe = gateway.evaluate(
+        event: AiroAnalyticsEvent(
+          name: 'playback_startup_completed',
+          owner: 'media',
+          purpose: AiroAnalyticsPurpose.playbackQuality,
+          params: const {
+            'source_type': 'https://example.com/live.m3u8',
+            'startup_bucket': '1_3s',
+          },
+        ),
+        consent: const AiroAnalyticsConsentState.allEnabled(),
+        collectionEnabled: true,
+        region: AiroAnalyticsGatewayRegion.us,
+        rateLimitState: AiroAnalyticsGatewayRateLimitState(
+          windowStartedAt: DateTime.utc(2026, 7, 15, 10),
+          eventCount: 1,
+        ),
+      );
+
+      expect(
+        unknown.codes,
+        contains(AiroAnalyticsGatewayDecisionCode.schemaRejected),
+      );
+      expect(
+        unsafe.codes,
+        containsAll(const {
+          AiroAnalyticsGatewayDecisionCode.schemaRejected,
+          AiroAnalyticsGatewayDecisionCode.privacyRejected,
+        }),
+      );
+    });
+
+    test('self hosted gateway enforces local-only region and rate limits', () {
+      final gateway = AiroTvAnalyticsSelfHostedGateways.standard();
+      final decision = gateway.evaluate(
+        event: AiroAnalyticsEvent(
+          name: 'device_discovery_summary',
+          owner: 'device_ecosystem',
+          purpose: AiroAnalyticsPurpose.operational,
+          params: const {
+            'source_profile': 'full_tv',
+            'discovery_method': 'mdns',
+            'availability_category': 'companion_available',
+            'device_count_bucket': '1_3',
+          },
+        ),
+        consent: const AiroAnalyticsConsentState.localOnly(),
+        collectionEnabled: false,
+        region: AiroAnalyticsGatewayRegion.localOnly,
+        rateLimitState: AiroAnalyticsGatewayRateLimitState(
+          windowStartedAt: DateTime.utc(2026, 7, 15, 10),
+          eventCount: 120,
+        ),
+      );
+
+      expect(
+        decision.codes,
+        containsAll(const {
+          AiroAnalyticsGatewayDecisionCode.collectionDisabled,
+          AiroAnalyticsGatewayDecisionCode.localOnlyUploadBlocked,
+          AiroAnalyticsGatewayDecisionCode.regionNotAllowed,
+          AiroAnalyticsGatewayDecisionCode.rateLimited,
+        }),
+      );
+    });
+
+    test('self hosted gateway requires retention and deletion support', () {
+      final gateway = AiroAnalyticsSelfHostedGatewayPolicy(
+        gatewayId: 'bad_gateway',
+        schemaRegistry: AiroTvAnalyticsSchemas.registry(),
+        retentionPolicy: AiroTvAnalyticsRetentionPolicies.standard(),
+        providerKind: AiroAnalyticsProviderKind.vendorAdapter,
+        supportsRetentionPolicy: false,
+        supportsDeletionRequests: false,
+      );
+      final decision = gateway.evaluate(
+        event: AiroAnalyticsEvent(
+          name: 'subscription_conversion',
+          owner: 'growth',
+          purpose: AiroAnalyticsPurpose.product,
+          params: const {
+            'entry_surface': 'settings',
+            'plan_bucket': 'annual',
+            'success': true,
+          },
+        ),
+        consent: const AiroAnalyticsConsentState.allEnabled(),
+        collectionEnabled: true,
+        region: AiroAnalyticsGatewayRegion.eu,
+        rateLimitState: AiroAnalyticsGatewayRateLimitState(
+          windowStartedAt: DateTime.utc(2026, 7, 15, 10),
+          eventCount: 1,
+        ),
+      );
+
+      expect(
+        decision.codes,
+        containsAll(const {
+          AiroAnalyticsGatewayDecisionCode.providerKindInvalid,
+          AiroAnalyticsGatewayDecisionCode.retentionUnsupported,
+          AiroAnalyticsGatewayDecisionCode.deletionUnsupported,
+        }),
+      );
+    });
+
+    test('self hosted gateway public maps omit endpoints and credentials', () {
+      final gateway = AiroTvAnalyticsSelfHostedGateways.standard();
+      final decision = gateway.evaluate(
+        event: AiroAnalyticsEvent(
+          name: 'pairing_completed',
+          owner: 'device_ecosystem',
+          purpose: AiroAnalyticsPurpose.operational,
+          params: const {
+            'source_profile': 'mobile_companion',
+            'target_profile': 'lite_receiver',
+            'result_category': 'success',
+          },
+        ),
+        consent: const AiroAnalyticsConsentState.allEnabled(),
+        collectionEnabled: true,
+        region: AiroAnalyticsGatewayRegion.india,
+        rateLimitState: AiroAnalyticsGatewayRateLimitState(
+          windowStartedAt: DateTime.utc(2026, 7, 15, 10),
+          eventCount: 2,
+        ),
+      );
+      final flattened = '${gateway.toPublicMap()} ${decision.toPublicMap()}';
+
+      expect(flattened, contains('airo_tv_self_hosted_gateway'));
+      expect(flattened, contains('india'));
+      expect(flattened, contains('registeredSchemaCount'));
+      expect(flattened, isNot(contains('https://')));
+      expect(flattened, isNot(contains('/Users/')));
+      expect(flattened, isNot(contains('192.168.')));
+      expect(flattened, isNot(contains('Bearer')));
+      expect(flattened, isNot(contains('apiKey')));
+      expect(flattened, isNot(contains('City News Live')));
+      expect(flattened, isNot(contains('providerPayload')));
+      expect(flattened, isNot(contains('diagnosticDump')));
+    });
+
     test(
       'initialize returns disabled and invalid configuration states',
       () async {

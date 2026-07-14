@@ -39,6 +39,34 @@ enum AiroAnalyticsProviderKind {
   final String stableId;
 }
 
+enum AiroAnalyticsGatewayRegion {
+  us('us'),
+  eu('eu'),
+  india('india'),
+  localOnly('local_only');
+
+  const AiroAnalyticsGatewayRegion(this.stableId);
+
+  final String stableId;
+}
+
+enum AiroAnalyticsGatewayDecisionCode {
+  accepted('accepted'),
+  collectionDisabled('collection_disabled'),
+  localOnlyUploadBlocked('local_only_upload_blocked'),
+  schemaRejected('schema_rejected'),
+  privacyRejected('privacy_rejected'),
+  regionNotAllowed('region_not_allowed'),
+  rateLimited('rate_limited'),
+  retentionUnsupported('retention_unsupported'),
+  deletionUnsupported('deletion_unsupported'),
+  providerKindInvalid('provider_kind_invalid');
+
+  const AiroAnalyticsGatewayDecisionCode(this.stableId);
+
+  final String stableId;
+}
+
 enum AiroAnalyticsProductProfile {
   fullTv('full_tv'),
   standardTv('standard_tv'),
@@ -1442,6 +1470,200 @@ class AiroAnalyticsDashboardCatalog extends Equatable {
 
   @override
   List<Object?> get props => [schemaVersion, metrics, alerts];
+}
+
+class AiroAnalyticsGatewayRateLimitState extends Equatable {
+  const AiroAnalyticsGatewayRateLimitState({
+    required this.windowStartedAt,
+    required this.eventCount,
+  });
+
+  final DateTime windowStartedAt;
+  final int eventCount;
+
+  Map<String, Object?> toPublicMap() {
+    return {
+      'windowStartedAt': windowStartedAt.toIso8601String(),
+      'eventCount': eventCount,
+    };
+  }
+
+  @override
+  List<Object?> get props => [windowStartedAt, eventCount];
+}
+
+class AiroAnalyticsGatewayDecision extends Equatable {
+  AiroAnalyticsGatewayDecision({
+    required List<AiroAnalyticsGatewayDecisionCode> codes,
+    required this.gatewayId,
+    required this.region,
+    required this.eventName,
+    required this.owner,
+    required this.purpose,
+    required this.retentionClass,
+    required this.rateLimitState,
+    List<AiroAnalyticsSchemaValidationCode> schemaCodes = const [],
+  }) : codes = List.unmodifiable(codes),
+       schemaCodes = List.unmodifiable(schemaCodes);
+
+  final List<AiroAnalyticsGatewayDecisionCode> codes;
+  final String gatewayId;
+  final AiroAnalyticsGatewayRegion region;
+  final String eventName;
+  final String owner;
+  final AiroAnalyticsPurpose purpose;
+  final AiroAnalyticsRetentionClass? retentionClass;
+  final AiroAnalyticsGatewayRateLimitState rateLimitState;
+  final List<AiroAnalyticsSchemaValidationCode> schemaCodes;
+
+  bool get accepted =>
+      codes.length == 1 &&
+      codes.single == AiroAnalyticsGatewayDecisionCode.accepted;
+
+  Map<String, Object?> toPublicMap() {
+    return {
+      'accepted': accepted,
+      'gatewayId': gatewayId,
+      'region': region.stableId,
+      'eventName': eventName,
+      'owner': owner,
+      'purpose': purpose.stableId,
+      'retentionClass': retentionClass?.stableId,
+      'rateLimitState': rateLimitState.toPublicMap(),
+      'codes': codes.map((code) => code.stableId).toList(growable: false),
+      'schemaCodes': schemaCodes
+          .map((code) => code.stableId)
+          .toList(growable: false),
+    };
+  }
+
+  @override
+  List<Object?> get props => [
+    codes,
+    gatewayId,
+    region,
+    eventName,
+    owner,
+    purpose,
+    retentionClass,
+    rateLimitState,
+    schemaCodes,
+  ];
+}
+
+class AiroAnalyticsSelfHostedGatewayPolicy extends Equatable {
+  AiroAnalyticsSelfHostedGatewayPolicy({
+    required this.gatewayId,
+    required this.schemaRegistry,
+    required this.retentionPolicy,
+    Set<AiroAnalyticsGatewayRegion> allowedRegions = const {
+      AiroAnalyticsGatewayRegion.us,
+      AiroAnalyticsGatewayRegion.eu,
+      AiroAnalyticsGatewayRegion.india,
+    },
+    this.providerKind = AiroAnalyticsProviderKind.selfHosted,
+    this.maxEventsPerMinute = 120,
+    this.supportsRetentionPolicy = true,
+    this.supportsDeletionRequests = true,
+    this.schemaVersion = kAiroAnalyticsSchemaVersion,
+  }) : allowedRegions = Set.unmodifiable(allowedRegions);
+
+  final String schemaVersion;
+  final String gatewayId;
+  final AiroAnalyticsProviderKind providerKind;
+  final AiroAnalyticsSchemaRegistry schemaRegistry;
+  final AiroAnalyticsRetentionPolicy retentionPolicy;
+  final Set<AiroAnalyticsGatewayRegion> allowedRegions;
+  final int maxEventsPerMinute;
+  final bool supportsRetentionPolicy;
+  final bool supportsDeletionRequests;
+
+  AiroAnalyticsGatewayDecision evaluate({
+    required AiroAnalyticsEvent event,
+    required AiroAnalyticsConsentState consent,
+    required bool collectionEnabled,
+    required AiroAnalyticsGatewayRegion region,
+    required AiroAnalyticsGatewayRateLimitState rateLimitState,
+  }) {
+    final codes = <AiroAnalyticsGatewayDecisionCode>[];
+    final schemaResult = schemaRegistry.validateEvent(event);
+    final schema = schemaRegistry.schemaFor(event.name);
+
+    if (providerKind != AiroAnalyticsProviderKind.selfHosted) {
+      codes.add(AiroAnalyticsGatewayDecisionCode.providerKindInvalid);
+    }
+    if (!collectionEnabled) {
+      codes.add(AiroAnalyticsGatewayDecisionCode.collectionDisabled);
+    }
+    if (consent.localOnly) {
+      codes.add(AiroAnalyticsGatewayDecisionCode.localOnlyUploadBlocked);
+    }
+    if (!allowedRegions.contains(region)) {
+      codes.add(AiroAnalyticsGatewayDecisionCode.regionNotAllowed);
+    }
+    if (maxEventsPerMinute <= 0 ||
+        rateLimitState.eventCount >= maxEventsPerMinute) {
+      codes.add(AiroAnalyticsGatewayDecisionCode.rateLimited);
+    }
+    if (!schemaResult.accepted) {
+      codes.add(AiroAnalyticsGatewayDecisionCode.schemaRejected);
+      if (schemaResult.privacyViolations.isNotEmpty) {
+        codes.add(AiroAnalyticsGatewayDecisionCode.privacyRejected);
+      }
+    }
+    if (!supportsRetentionPolicy ||
+        schema == null ||
+        retentionPolicy.ruleFor(schema.retentionClass) == null) {
+      codes.add(AiroAnalyticsGatewayDecisionCode.retentionUnsupported);
+    }
+    if (!supportsDeletionRequests) {
+      codes.add(AiroAnalyticsGatewayDecisionCode.deletionUnsupported);
+    }
+
+    return AiroAnalyticsGatewayDecision(
+      gatewayId: gatewayId,
+      region: region,
+      eventName: event.name,
+      owner: event.owner,
+      purpose: event.purpose,
+      retentionClass: schema?.retentionClass,
+      rateLimitState: rateLimitState,
+      codes: codes.isEmpty
+          ? const [AiroAnalyticsGatewayDecisionCode.accepted]
+          : codes.toSet().toList(growable: false),
+      schemaCodes: schemaResult.codes,
+    );
+  }
+
+  Map<String, Object?> toPublicMap() {
+    return {
+      'schemaVersion': schemaVersion,
+      'gatewayId': gatewayId,
+      'providerKind': providerKind.stableId,
+      'allowedRegions':
+          allowedRegions
+              .map((region) => region.stableId)
+              .toList(growable: false)
+            ..sort(),
+      'maxEventsPerMinute': maxEventsPerMinute,
+      'supportsRetentionPolicy': supportsRetentionPolicy,
+      'supportsDeletionRequests': supportsDeletionRequests,
+      'registeredSchemaCount': schemaRegistry.schemas.length,
+    };
+  }
+
+  @override
+  List<Object?> get props => [
+    schemaVersion,
+    gatewayId,
+    providerKind,
+    schemaRegistry,
+    retentionPolicy,
+    allowedRegions,
+    maxEventsPerMinute,
+    supportsRetentionPolicy,
+    supportsDeletionRequests,
+  ];
 }
 
 class AiroAnalyticsProductEditionProfile extends Equatable {
@@ -3319,6 +3541,24 @@ class AiroTvAnalyticsDashboardCatalogs {
           runbookId: 'runbook_privacy_deletion_latency',
         ),
       ],
+    );
+  }
+}
+
+class AiroTvAnalyticsSelfHostedGateways {
+  const AiroTvAnalyticsSelfHostedGateways._();
+
+  static AiroAnalyticsSelfHostedGatewayPolicy standard() {
+    return AiroAnalyticsSelfHostedGatewayPolicy(
+      gatewayId: 'airo_tv_self_hosted_gateway',
+      schemaRegistry: AiroTvAnalyticsSchemas.registry(),
+      retentionPolicy: AiroTvAnalyticsRetentionPolicies.standard(),
+      allowedRegions: const {
+        AiroAnalyticsGatewayRegion.us,
+        AiroAnalyticsGatewayRegion.eu,
+        AiroAnalyticsGatewayRegion.india,
+      },
+      maxEventsPerMinute: 120,
     );
   }
 }

@@ -23,6 +23,8 @@ analytics SDKs directly.
   least-privilege access decisions, and public audit-safe serialization.
 - Dashboard metric and operational alert catalogs for executive, playback,
   legacy-device, ecosystem, subscription, and regression reporting surfaces.
+- Self-hosted event gateway policy for schema validation, rate limits,
+  retention/deletion capability, regional controls, and public diagnostics.
 - Consent and local-only collection gates.
 - Consent transition results for queue cleanup, local-only external upload
   blocking, collection disablement, and reset generation state.
@@ -52,6 +54,7 @@ analytics SDKs directly.
   protocol, command, memory, storage, network, and pairing samples.
 - No-op and fake performance instrumentation sinks for deterministic tests.
 
-This package does not include Firebase, Crashlytics, or another provider SDK.
-It also does not define dashboards, upload schedules, device profilers, frame
-observers, or app-specific performance UI.
+This package does not include Firebase, Crashlytics, a self-hosted HTTP server,
+or another provider SDK. It also does not define dashboard provisioning, upload
+schedules, device profilers, frame observers, backend storage, credential material, or
+app-specific performance UI.
