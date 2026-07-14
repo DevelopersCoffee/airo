@@ -25,6 +25,19 @@ enum ProductSupportLevel {
   final String stableId;
 }
 
+enum ProductReleaseChannel {
+  fullTvStable('full_tv_stable'),
+  liteReceiverStable('lite_receiver_stable'),
+  receiverStable('receiver_stable'),
+  legacyExperimental('legacy_experimental'),
+  vendorSpecific('vendor_specific'),
+  internalCertification('internal_certification');
+
+  const ProductReleaseChannel(this.stableId);
+
+  final String stableId;
+}
+
 enum ProductModule {
   playback('playback'),
   playlistImport('playlist_import'),
@@ -47,6 +60,22 @@ enum ProductModule {
   final String stableId;
 }
 
+enum ProductProfileGuarantee {
+  byocOnly('byoc_only'),
+  directPlayback('direct_playback'),
+  dpadNavigation('dpad_navigation'),
+  companionRemote('companion_remote'),
+  compactData('compact_data'),
+  noBundledContent('no_bundled_content'),
+  permissionMinimized('permission_minimized'),
+  restrictedTrustCompatible('restricted_trust_compatible'),
+  profileScopedNavigation('profile_scoped_navigation');
+
+  const ProductProfileGuarantee(this.stableId);
+
+  final String stableId;
+}
+
 enum ProductNavigationEntry {
   home('home'),
   live('live'),
@@ -59,6 +88,21 @@ enum ProductNavigationEntry {
   profiles('profiles');
 
   const ProductNavigationEntry(this.stableId);
+
+  final String stableId;
+}
+
+enum ProductManifestValidationCode {
+  accepted('accepted'),
+  moduleOverlap('module_overlap'),
+  navigationUnsupported('navigation_unsupported'),
+  capabilityUnsupported('capability_unsupported'),
+  permissionUnsupported('permission_unsupported'),
+  budgetInvalid('budget_invalid'),
+  releaseChannelMismatch('release_channel_mismatch'),
+  supportLevelMismatch('support_level_mismatch');
+
+  const ProductManifestValidationCode(this.stableId);
 
   final String stableId;
 }
@@ -131,6 +175,28 @@ class ProductResourceBudget extends Equatable {
     maxArtworkCacheMb,
     maxBackgroundJobs,
   ];
+}
+
+class ProductManifestValidationResult extends Equatable {
+  ProductManifestValidationResult({
+    required List<ProductManifestValidationCode> codes,
+  }) : codes = List.unmodifiable(codes);
+
+  final List<ProductManifestValidationCode> codes;
+
+  bool get accepted =>
+      codes.length == 1 &&
+      codes.single == ProductManifestValidationCode.accepted;
+
+  Map<String, Object?> toPublicMap() {
+    return {
+      'accepted': accepted,
+      'codes': _manifestValidationCodeStableIds(codes),
+    };
+  }
+
+  @override
+  List<Object?> get props => [codes];
 }
 
 class DeviceCapabilitySnapshot extends Equatable {
@@ -252,6 +318,7 @@ class ProductProfileManifest extends Equatable {
     required this.profileId,
     required this.displayName,
     required this.supportLevel,
+    this.releaseChannel = ProductReleaseChannel.internalCertification,
     required this.resourceBudget,
     required this.deviceRequirement,
     required Set<ProductModule> includedModules,
@@ -259,22 +326,26 @@ class ProductProfileManifest extends Equatable {
     required Set<ProductCapability> capabilities,
     required List<ProductNavigationEntry> navigation,
     required Set<String> androidPermissions,
+    Set<ProductProfileGuarantee> guarantees = const {},
     this.schemaVersion = kProductCapabilitiesSchemaVersion,
   }) : includedModules = Set.unmodifiable(includedModules),
        excludedModules = Set.unmodifiable(excludedModules),
        capabilities = Set.unmodifiable(capabilities),
        navigation = List.unmodifiable(navigation),
-       androidPermissions = Set.unmodifiable(androidPermissions);
+       androidPermissions = Set.unmodifiable(androidPermissions),
+       guarantees = Set.unmodifiable(guarantees);
 
   final String schemaVersion;
   final ProductProfileId profileId;
   final String displayName;
   final ProductSupportLevel supportLevel;
+  final ProductReleaseChannel releaseChannel;
   final Set<ProductModule> includedModules;
   final Set<ProductModule> excludedModules;
   final Set<ProductCapability> capabilities;
   final List<ProductNavigationEntry> navigation;
   final Set<String> androidPermissions;
+  final Set<ProductProfileGuarantee> guarantees;
   final ProductResourceBudget resourceBudget;
   final DeviceCapabilityRequirement deviceRequirement;
 
@@ -288,20 +359,220 @@ class ProductProfileManifest extends Equatable {
     DeviceCapabilitySnapshot snapshot,
   ) => deviceRequirement.evaluate(snapshot);
 
+  ProductManifestValidationResult validate() {
+    return ProductProfileManifestPolicy().evaluate(this);
+  }
+
+  Map<String, Object?> toPublicMap() {
+    return {
+      'schemaVersion': schemaVersion,
+      'profileId': profileId.stableId,
+      'displayName': displayName,
+      'supportLevel': supportLevel.stableId,
+      'releaseChannel': releaseChannel.stableId,
+      'includedModules': _productModuleStableIds(includedModules),
+      'excludedModules': _productModuleStableIds(excludedModules),
+      'capabilities': _productCapabilityStableIds(capabilities),
+      'navigation': navigation
+          .map((entry) => entry.stableId)
+          .toList(growable: false),
+      'androidPermissions': androidPermissions.toList(growable: false)..sort(),
+      'guarantees': _productGuaranteeStableIds(guarantees),
+      'resourceBudget': {
+        'maxMemoryMb': resourceBudget.maxMemoryMb,
+        'maxStorageMb': resourceBudget.maxStorageMb,
+        'maxArtworkCacheMb': resourceBudget.maxArtworkCacheMb,
+        'maxBackgroundJobs': resourceBudget.maxBackgroundJobs,
+      },
+      'deviceRequirement': {
+        'minApiLevel': deviceRequirement.minApiLevel,
+        'minMemoryMb': deviceRequirement.minMemoryMb,
+        'minFreeStorageMb': deviceRequirement.minFreeStorageMb,
+        'minDecoderCount': deviceRequirement.minDecoderCount,
+        'requiredCodecs': _mediaCodecStableIds(
+          deviceRequirement.requiredCodecs,
+        ),
+        'requiresDpad': deviceRequirement.requiresDpad,
+        'requiresSecureStorage': deviceRequirement.requiresSecureStorage,
+        'allowsRestrictedTrust': deviceRequirement.allowsRestrictedTrust,
+      },
+    };
+  }
+
   @override
   List<Object?> get props => [
     schemaVersion,
     profileId,
     displayName,
     supportLevel,
+    releaseChannel,
     includedModules,
     excludedModules,
     capabilities,
     navigation,
     androidPermissions,
+    guarantees,
     resourceBudget,
     deviceRequirement,
   ];
+}
+
+class ProductProfileManifestPolicy extends Equatable {
+  ProductProfileManifestPolicy({
+    Set<String> allowedAndroidPermissions = const {
+      'android.permission.INTERNET',
+      'android.permission.ACCESS_NETWORK_STATE',
+      'android.permission.RECORD_AUDIO',
+      'android.permission.POST_NOTIFICATIONS',
+    },
+  }) : allowedAndroidPermissions = Set.unmodifiable(allowedAndroidPermissions);
+
+  final Set<String> allowedAndroidPermissions;
+
+  ProductManifestValidationResult evaluate(ProductProfileManifest manifest) {
+    final codes = <ProductManifestValidationCode>[];
+    if (manifest.includedModules
+        .intersection(manifest.excludedModules)
+        .isNotEmpty) {
+      codes.add(ProductManifestValidationCode.moduleOverlap);
+    }
+    if (manifest.resourceBudget.maxMemoryMb <= 0 ||
+        manifest.resourceBudget.maxStorageMb <= 0 ||
+        manifest.resourceBudget.maxArtworkCacheMb < 0 ||
+        manifest.resourceBudget.maxBackgroundJobs < 0) {
+      codes.add(ProductManifestValidationCode.budgetInvalid);
+    }
+    if (!allowedAndroidPermissions.containsAll(manifest.androidPermissions)) {
+      codes.add(ProductManifestValidationCode.permissionUnsupported);
+    }
+    if (manifest.navigation.any(
+      (entry) => !_navigationSupportedByManifest(entry, manifest),
+    )) {
+      codes.add(ProductManifestValidationCode.navigationUnsupported);
+    }
+    if (manifest.capabilities.any(
+      (capability) => !_capabilitySupportedByManifest(capability, manifest),
+    )) {
+      codes.add(ProductManifestValidationCode.capabilityUnsupported);
+    }
+    if (!_releaseChannelMatchesProfile(manifest)) {
+      codes.add(ProductManifestValidationCode.releaseChannelMismatch);
+    }
+    if (!_supportLevelMatchesChannel(manifest)) {
+      codes.add(ProductManifestValidationCode.supportLevelMismatch);
+    }
+
+    return ProductManifestValidationResult(
+      codes: codes.isEmpty
+          ? const [ProductManifestValidationCode.accepted]
+          : codes,
+    );
+  }
+
+  bool _navigationSupportedByManifest(
+    ProductNavigationEntry entry,
+    ProductProfileManifest manifest,
+  ) {
+    return switch (entry) {
+      ProductNavigationEntry.home || ProductNavigationEntry.settings => true,
+      ProductNavigationEntry.live => manifest.includesModule(
+        ProductModule.playback,
+      ),
+      ProductNavigationEntry.guide =>
+        manifest.includesModule(ProductModule.compactEpg) ||
+            manifest.includesModule(ProductModule.fullEpg),
+      ProductNavigationEntry.favorites => manifest.includesModule(
+        ProductModule.favorites,
+      ),
+      ProductNavigationEntry.recent => manifest.includesModule(
+        ProductModule.recent,
+      ),
+      ProductNavigationEntry.search => manifest.includesModule(
+        ProductModule.basicSearch,
+      ),
+      ProductNavigationEntry.diagnostics => manifest.includesModule(
+        ProductModule.diagnostics,
+      ),
+      ProductNavigationEntry.profiles =>
+        manifest.profileId == ProductProfileId.fullTv,
+    };
+  }
+
+  bool _capabilitySupportedByManifest(
+    ProductCapability capability,
+    ProductProfileManifest manifest,
+  ) {
+    return switch (capability) {
+      ProductCapability.directPlayback => manifest.includesModule(
+        ProductModule.playback,
+      ),
+      ProductCapability.dpadNavigation => true,
+      ProductCapability.companionRemote => manifest.includesModule(
+        ProductModule.remoteControl,
+      ),
+      ProductCapability.compactEpg => manifest.includesModule(
+        ProductModule.compactEpg,
+      ),
+      ProductCapability.fullEpg => manifest.includesModule(
+        ProductModule.fullEpg,
+      ),
+      ProductCapability.basicSearch => manifest.includesModule(
+        ProductModule.basicSearch,
+      ),
+      ProductCapability.diagnostics => manifest.includesModule(
+        ProductModule.diagnostics,
+      ),
+      ProductCapability.analytics => manifest.includesModule(
+        ProductModule.analytics,
+      ),
+      ProductCapability.localAi => manifest.includesModule(
+        ProductModule.localAi,
+      ),
+      ProductCapability.recording => manifest.includesModule(
+        ProductModule.recording,
+      ),
+      ProductCapability.downloads => manifest.includesModule(
+        ProductModule.downloads,
+      ),
+      ProductCapability.multiview => manifest.includesModule(
+        ProductModule.multiview,
+      ),
+    };
+  }
+
+  bool _releaseChannelMatchesProfile(ProductProfileManifest manifest) {
+    return switch (manifest.releaseChannel) {
+      ProductReleaseChannel.fullTvStable =>
+        manifest.profileId == ProductProfileId.fullTv ||
+            manifest.profileId == ProductProfileId.standardTv,
+      ProductReleaseChannel.liteReceiverStable ||
+      ProductReleaseChannel.receiverStable =>
+        manifest.profileId == ProductProfileId.liteReceiver ||
+            manifest.profileId == ProductProfileId.embeddedReceiver,
+      ProductReleaseChannel.legacyExperimental =>
+        manifest.profileId == ProductProfileId.experimentalLegacy,
+      ProductReleaseChannel.vendorSpecific ||
+      ProductReleaseChannel.internalCertification => true,
+    };
+  }
+
+  bool _supportLevelMatchesChannel(ProductProfileManifest manifest) {
+    return switch (manifest.releaseChannel) {
+      ProductReleaseChannel.legacyExperimental =>
+        manifest.supportLevel == ProductSupportLevel.experimental,
+      ProductReleaseChannel.fullTvStable ||
+      ProductReleaseChannel.liteReceiverStable ||
+      ProductReleaseChannel.receiverStable =>
+        manifest.supportLevel == ProductSupportLevel.certified ||
+            manifest.supportLevel == ProductSupportLevel.compatible,
+      ProductReleaseChannel.vendorSpecific ||
+      ProductReleaseChannel.internalCertification =>
+        manifest.supportLevel != ProductSupportLevel.unsupported,
+    };
+  }
+
+  @override
+  List<Object?> get props => [allowedAndroidPermissions];
 }
 
 class AiroTvProductProfiles {
@@ -312,6 +583,7 @@ class AiroTvProductProfiles {
       profileId: ProductProfileId.fullTv,
       displayName: 'Airo TV',
       supportLevel: ProductSupportLevel.certified,
+      releaseChannel: ProductReleaseChannel.fullTvStable,
       includedModules: const {
         ProductModule.playback,
         ProductModule.playlistImport,
@@ -354,6 +626,15 @@ class AiroTvProductProfiles {
         'android.permission.INTERNET',
         'android.permission.ACCESS_NETWORK_STATE',
       },
+      guarantees: const {
+        ProductProfileGuarantee.byocOnly,
+        ProductProfileGuarantee.directPlayback,
+        ProductProfileGuarantee.dpadNavigation,
+        ProductProfileGuarantee.companionRemote,
+        ProductProfileGuarantee.noBundledContent,
+        ProductProfileGuarantee.permissionMinimized,
+        ProductProfileGuarantee.profileScopedNavigation,
+      },
       resourceBudget: const ProductResourceBudget(
         maxMemoryMb: 1024,
         maxStorageMb: 512,
@@ -379,6 +660,7 @@ class AiroTvProductProfiles {
       profileId: ProductProfileId.liteReceiver,
       displayName: 'Airo TV Lite Receiver',
       supportLevel: ProductSupportLevel.compatible,
+      releaseChannel: ProductReleaseChannel.liteReceiverStable,
       includedModules: const {
         ProductModule.playback,
         ProductModule.favorites,
@@ -417,6 +699,17 @@ class AiroTvProductProfiles {
         'android.permission.INTERNET',
         'android.permission.ACCESS_NETWORK_STATE',
       },
+      guarantees: const {
+        ProductProfileGuarantee.byocOnly,
+        ProductProfileGuarantee.directPlayback,
+        ProductProfileGuarantee.dpadNavigation,
+        ProductProfileGuarantee.companionRemote,
+        ProductProfileGuarantee.compactData,
+        ProductProfileGuarantee.noBundledContent,
+        ProductProfileGuarantee.permissionMinimized,
+        ProductProfileGuarantee.restrictedTrustCompatible,
+        ProductProfileGuarantee.profileScopedNavigation,
+      },
       resourceBudget: const ProductResourceBudget(
         maxMemoryMb: 384,
         maxStorageMb: 128,
@@ -436,4 +729,28 @@ class AiroTvProductProfiles {
       ),
     );
   }
+}
+
+List<String> _productModuleStableIds(Iterable<ProductModule> values) {
+  return values.map((value) => value.stableId).toList(growable: false)..sort();
+}
+
+List<String> _productCapabilityStableIds(Iterable<ProductCapability> values) {
+  return values.map((value) => value.stableId).toList(growable: false)..sort();
+}
+
+List<String> _productGuaranteeStableIds(
+  Iterable<ProductProfileGuarantee> values,
+) {
+  return values.map((value) => value.stableId).toList(growable: false)..sort();
+}
+
+List<String> _mediaCodecStableIds(Iterable<MediaCodecCapability> values) {
+  return values.map((value) => value.stableId).toList(growable: false)..sort();
+}
+
+List<String> _manifestValidationCodeStableIds(
+  Iterable<ProductManifestValidationCode> values,
+) {
+  return values.map((value) => value.stableId).toList(growable: false)..sort();
 }
