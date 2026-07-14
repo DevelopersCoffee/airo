@@ -47,7 +47,7 @@
       "appPlatform": "mobileIptv",
       "ciBuild": true,
       "edgeProfile": true,
-      "requiredPackages": ["feature_iptv", "audio_service"],
+      "requiredPackages": ["feature_iptv", "core_ui", "audio_service"],
       "featureModules": ["feature_iptv"],
       "allowedNativePlugins": [
         "audio_service",

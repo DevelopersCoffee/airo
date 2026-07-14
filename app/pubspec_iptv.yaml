@@ -31,6 +31,8 @@ dependencies:
   # IPTV feature surface and platform contracts.
   feature_iptv:
     path: ../packages/feature_iptv
+  core_ui:
+    path: ../packages/core_ui
 
   # UI essentials
   cupertino_icons: ^1.0.9
