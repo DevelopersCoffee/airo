@@ -10,11 +10,16 @@ unsupported.
 ## Scope
 
 - Versioned certification matrix manifests.
+- Cross-platform validation matrix manifests.
 - Device target classes for Airo TV legacy/Lite Receiver support.
 - Certification gates with required evidence kinds.
+- Validation gates across TV, companion, desktop, web receiver, and cloud
+  surfaces.
 - Evidence records and deterministic evaluation results.
 - Default Airo TV legacy certification matrix for API 26/28 and Fire TV legacy
   device classes.
+- Default Airo cross-platform validation matrix for Airo TV v2 platform
+  hardening.
 
 This package does not collect device evidence, run benchmarks, upload logs,
 render UI, or submit store releases.

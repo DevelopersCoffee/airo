@@ -2,6 +2,146 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:platform_certification/platform_certification.dart';
 
 void main() {
+  group('Airo cross-platform validation matrix', () {
+    test('exposes stable platform targets and gates', () {
+      final matrix = AiroCrossPlatformValidation.matrix();
+
+      expect(matrix.schemaVersion, kAiroValidationSchemaVersion);
+      expect(matrix.targetById('android-tv-lite-receiver'), isNotNull);
+      expect(matrix.targetById('android-mobile-companion'), isNotNull);
+      expect(matrix.targetById('desktop-pointer-companion'), isNotNull);
+      expect(matrix.targetById('apple-tv-tvos'), isNotNull);
+      expect(matrix.targetById('backend-cloud-control-plane'), isNotNull);
+      expect(
+        matrix.missingGateIdsForTarget('android-tv-lite-receiver'),
+        isEmpty,
+      );
+    });
+
+    test('Android TV receiver requires remote and device evidence gates', () {
+      final matrix = AiroCrossPlatformValidation.matrix();
+      final target = matrix.targetById('android-tv-lite-receiver')!;
+
+      expect(target.platform, AiroValidationPlatform.androidTv);
+      expect(target.productProfile, AiroValidationProductProfile.liteReceiver);
+      expect(target.requiresDeviceCertification, isTrue);
+      expect(
+        target.requiredGates,
+        containsAll({
+          AiroValidationGateId.remoteFocus,
+          AiroValidationGateId.playbackEngine,
+          AiroValidationGateId.pairingController,
+          AiroValidationGateId.sessionSync,
+          AiroValidationGateId.analyticsRedaction,
+          AiroValidationGateId.dependencyGovernance,
+          AiroValidationGateId.physicalDeviceEvidence,
+        }),
+      );
+      expect(matrix.requiresPhysicalEvidence(target.targetId), isTrue);
+      expect(
+        matrix.canAdvertiseDeviceSupportWithHostOnlyEvidence(target.targetId),
+        isFalse,
+      );
+    });
+
+    test('mobile companion avoids TV-only remote receiver gates', () {
+      final matrix = AiroCrossPlatformValidation.matrix();
+      final target = matrix.targetById('android-mobile-companion')!;
+
+      expect(target.platform, AiroValidationPlatform.androidMobile);
+      expect(target.requiresDeviceCertification, isFalse);
+      expect(target.requiredGates, contains(AiroValidationGateId.touchInput));
+      expect(
+        target.requiredGates,
+        contains(AiroValidationGateId.localNetworkPrivacy),
+      );
+      expect(
+        target.requiredGates,
+        isNot(contains(AiroValidationGateId.remoteFocus)),
+      );
+      expect(
+        target.requiredGates,
+        isNot(contains(AiroValidationGateId.physicalDeviceEvidence)),
+      );
+    });
+
+    test('desktop companion uses pointer and data governance gates', () {
+      final matrix = AiroCrossPlatformValidation.matrix();
+      final target = matrix.targetById('desktop-pointer-companion')!;
+
+      expect(target.platform, AiroValidationPlatform.desktop);
+      expect(target.requiredGates, contains(AiroValidationGateId.pointerInput));
+      expect(
+        target.requiredGates,
+        contains(AiroValidationGateId.importExportDataGovernance),
+      );
+      expect(matrix.requiresPhysicalEvidence(target.targetId), isFalse);
+    });
+
+    test('tvOS receiver is blocked until native target evidence exists', () {
+      final matrix = AiroCrossPlatformValidation.matrix();
+      final target = matrix.targetById('apple-tv-tvos')!;
+
+      expect(target.status, AiroValidationStatus.blocked);
+      expect(target.requiredGates, contains(AiroValidationGateId.nativeTarget));
+      expect(target.requiredGates, contains(AiroValidationGateId.storePolicy));
+      expect(
+        matrix.canAdvertiseDeviceSupportWithHostOnlyEvidence(target.targetId),
+        isFalse,
+      );
+    });
+
+    test('backend validation cannot claim playback-device certification', () {
+      final matrix = AiroCrossPlatformValidation.matrix();
+      final target = matrix.targetById('backend-cloud-control-plane')!;
+
+      expect(target.platform, AiroValidationPlatform.backendCloud);
+      expect(target.requiresDeviceCertification, isFalse);
+      expect(
+        target.requiredGates,
+        contains(AiroValidationGateId.orchestrationStorage),
+      );
+      expect(target.requiredGates, contains(AiroValidationGateId.cloudPrivacy));
+      expect(
+        target.requiredGates,
+        isNot(contains(AiroValidationGateId.playbackEngine)),
+      );
+      expect(
+        matrix.canAdvertiseDeviceSupportWithHostOnlyEvidence(target.targetId),
+        isFalse,
+      );
+    });
+
+    test('host-only evidence tier is limited to deterministic gates', () {
+      final matrix = AiroCrossPlatformValidation.matrix();
+
+      expect(
+        matrix
+            .gateById(AiroValidationGateId.productCapabilities)!
+            .canBeSatisfiedByHostAutomation,
+        isTrue,
+      );
+      expect(
+        matrix
+            .gateById(AiroValidationGateId.packageContentScan)!
+            .canBeSatisfiedByHostAutomation,
+        isTrue,
+      );
+      expect(
+        matrix
+            .gateById(AiroValidationGateId.physicalDeviceEvidence)!
+            .canBeSatisfiedByHostAutomation,
+        isFalse,
+      );
+      expect(
+        matrix
+            .gateById(AiroValidationGateId.remoteFocus)!
+            .requiresPhysicalDevice,
+        isTrue,
+      );
+    });
+  });
+
   group('Airo TV legacy certification matrix', () {
     final now = DateTime.utc(2026, 7, 14, 12);
 
