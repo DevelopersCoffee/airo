@@ -200,7 +200,8 @@ v2.0.0.1 should be considered ready when the team has:
 - opened implementation issues with deterministic use cases and automation
   flows;
 - confirmed the release-line base is latest `origin/v2`;
-- made a tag naming decision for `v2.0.0.1` vs semver `v2.0.1`.
+- documented that `v2.0.0.1` is a planning milestone and public tags remain
+  semantic v2 tags such as `v2.0.0`, `v2.0.1`, and `v2.1.0`.
 
 ## Requirement Conflicts and Corrections
 

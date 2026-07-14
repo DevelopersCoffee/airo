@@ -28,7 +28,9 @@ devices to improve discovery and playback without providing content.
 
 ## Release-Line Note
 
-The repository release policy uses semantic v2 versions such as `v2.0.0` and
-`v2.0.1`. These docs keep the requested label `v2.0.0.1` as a planning
-milestone name. Before tagging a build, Release and DevEx should decide whether
-this maps to `v2.0.1` or whether four-part product versioning is being adopted.
+The repository release policy uses semantic v2 tags such as `v2.0.0`,
+`v2.0.1`, and `v2.1.0`. These docs keep the requested label `v2.0.0.1` as an
+internal planning milestone name, not as a public Git tag. The active next
+development stream uses branch `codex/next-v2.0.0.0` from latest `origin/v2`;
+release candidates and public tags are cut from `v2` after the issue-scoped
+work merges back.

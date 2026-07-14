@@ -40,17 +40,16 @@ future `core_protocol`, future `product_capabilities`, future
 `docs/features/airo-tv`.
 
 **Base branch/worktree:** confirmed from latest `origin/v2`: yes. `git fetch
-origin main v2` completed on 2026-07-13. Current branch
-`codex/v2-cast-switch-stability` is based on `origin/v2` at `b46daa3e`.
+origin main v2` completed on 2026-07-14. Current branch
+`codex/next-v2.0.0.0` is based on `origin/v2` at `5fef3498`.
 
-**Open questions:** GitHub issue number, version tag format, app listing
-strategy, first physical legacy test devices, billing provider, and compliance
-review for Stalker Portal, recording, timeshift, and provider-specific
-integrations.
+**Open questions:** App listing strategy, first physical legacy test devices,
+billing provider, and compliance review for Stalker Portal, recording,
+timeshift, and provider-specific integrations.
 
-**Decision:** Ready for planning documentation. Implementation remains blocked
-until this packet or a derivative is added to the linked GitHub issue and the
-open questions above are resolved or explicitly deferred.
+**Decision:** Ready for issue-scoped implementation after the derivative issue
+packet is present. `v2.0.0.1` remains a planning milestone label; public release
+tags remain semantic v2 tags from the release-line policy.
 
 ## Cross-Agent Contract
 
@@ -411,4 +410,3 @@ Experimental, or Unsupported.
 - Verification environment: host-only tests for contracts and privacy; physical
   Android TV/Fire TV devices for legacy certification. Android Emulator is not
   required and should not be used for certification unless explicitly approved.
-

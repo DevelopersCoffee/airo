@@ -8,6 +8,21 @@
 **GitHub milestone:** `v2.0.0.1 - Airo TV Platform Hardening`  
 **Planning decision:** Scope v2.0.0.1 as a foundation and validation milestone, not a full AI TV launch.
 
+## Version and Branch Policy
+
+- `v2.0.0.1` is an internal planning milestone label for Airo TV platform
+  hardening.
+- Public release tags remain semantic v2 tags from the release-line policy:
+  `v2.0.0`, `v2.0.1`, `v2.1.0`, and later `v2.x.y` tags.
+- The active next development branch is `codex/next-v2.0.0.0`, created from
+  latest `origin/v2` on 2026-07-14.
+- Issue-scoped implementation branches may be stacked from this next branch or
+  created directly from latest `origin/v2`; release candidates must still be cut
+  from `v2` after reviewed work merges back.
+- Four-part labels such as `v2.0.0.0` and `v2.0.0.1` must not be published as
+  immutable Git release tags unless the repository release policy is changed by
+  Release and DevEx.
+
 ## Executive Decision
 
 The pasted PRD defines a multi-release product, not a single patch release. It
