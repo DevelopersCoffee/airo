@@ -292,5 +292,141 @@ void main() {
         AiroCertificationBlockerCode.unsupportedTarget,
       );
     });
+
+    test('program report advertises only fully evidenced support claims', () {
+      final matrix = AiroTvLegacyCertification.matrix();
+      final program = AiroCertificationProgram(
+        programId: 'legacy-device-v2',
+        releaseLine: 'v2.0.0.1',
+        targetIds: const [
+          'android-tv-api-26-lite',
+          'android-tv-api-28-lite',
+          'fire-tv-legacy-lite',
+        ],
+        createdAt: now,
+      );
+
+      final report = program.evaluate(
+        evidence: [
+          ...passingEvidenceFor(
+            matrix: matrix,
+            targetId: 'android-tv-api-26-lite',
+          ),
+          ...passingEvidenceFor(
+            matrix: matrix,
+            targetId: 'android-tv-api-28-lite',
+          ),
+          ...passingEvidenceFor(
+            matrix: matrix,
+            targetId: 'fire-tv-legacy-lite',
+          ),
+        ],
+        now: now,
+      );
+
+      expect(report.passed, isTrue);
+      expect(report.blockedTargets, isEmpty);
+      expect(
+        report.advertisedSupportClaims.map((claim) => claim.targetId),
+        const [
+          'android-tv-api-26-lite',
+          'android-tv-api-28-lite',
+          'fire-tv-legacy-lite',
+        ],
+      );
+      expect(
+        report.advertisedSupportClaims.first.level,
+        AiroCertificationLevel.certified,
+      );
+    });
+
+    test('program report blocks only targets without matching evidence', () {
+      final matrix = AiroTvLegacyCertification.matrix();
+      final program = AiroCertificationProgram(
+        programId: 'legacy-device-v2',
+        releaseLine: 'v2.0.0.1',
+        targetIds: const ['android-tv-api-26-lite', 'android-tv-api-28-lite'],
+        createdAt: now,
+      );
+
+      final report = program.evaluate(
+        evidence: passingEvidenceFor(
+          matrix: matrix,
+          targetId: 'android-tv-api-26-lite',
+        ),
+        now: now,
+      );
+
+      expect(report.passed, isFalse);
+      expect(report.blockedTargets, const ['android-tv-api-28-lite']);
+      expect(
+        report.blockerCodes,
+        contains(AiroCertificationBlockerCode.evidenceWrongTarget),
+      );
+      expect(
+        report.advertisedSupportClaims.map((claim) => claim.targetId),
+        const ['android-tv-api-26-lite'],
+      );
+    });
+
+    test('program report keeps unsupported targets out of support claims', () {
+      final program = AiroCertificationProgram(
+        programId: 'legacy-device-v2',
+        releaseLine: 'v2.0.0.1',
+        targetIds: const ['lower-api-experimental'],
+        createdAt: now,
+      );
+
+      final report = program.evaluate(evidence: const [], now: now);
+
+      expect(report.passed, isFalse);
+      expect(report.blockedTargets, const ['lower-api-experimental']);
+      expect(report.advertisedSupportClaims, isEmpty);
+      expect(
+        report.blockerCodes,
+        contains(AiroCertificationBlockerCode.unsupportedTarget),
+      );
+    });
+
+    test('program report public map excludes raw evidence details', () {
+      final matrix = AiroTvLegacyCertification.matrix();
+      final program = AiroCertificationProgram(
+        programId: 'legacy-device-v2',
+        releaseLine: 'v2.0.0.1',
+        targetIds: const ['android-tv-api-26-lite'],
+        createdAt: now,
+      );
+
+      final report = program.evaluate(
+        evidence: passingEvidenceFor(
+          matrix: matrix,
+          targetId: 'android-tv-api-26-lite',
+        ),
+        now: now,
+      );
+      final publicMap = report.toPublicMap();
+
+      expect(publicMap, containsPair('programId', 'legacy-device-v2'));
+      expect(publicMap, containsPair('releaseLine', 'v2.0.0.1'));
+      expect(publicMap, isNot(contains('evidence')));
+      expect(publicMap, isNot(contains('workspacePath')));
+      expect(publicMap, isNot(contains('diagnosticsDump')));
+    });
+
+    test('empty program target list is deterministic', () {
+      final program = AiroCertificationProgram(
+        programId: 'empty-program',
+        releaseLine: 'v2.0.0.1',
+        targetIds: const [],
+        createdAt: now,
+      );
+
+      final report = program.evaluate(evidence: const [], now: now);
+
+      expect(report.passed, isTrue);
+      expect(report.results, isEmpty);
+      expect(report.blockedTargets, isEmpty);
+      expect(report.advertisedSupportClaims, isEmpty);
+    });
   });
 }

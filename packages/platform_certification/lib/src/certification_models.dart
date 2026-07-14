@@ -482,6 +482,172 @@ class AiroCertificationMatrix extends Equatable {
   List<Object?> get props => [schemaVersion, targets, gates];
 }
 
+class AiroCertificationProgram extends Equatable {
+  AiroCertificationProgram({
+    required this.programId,
+    required this.releaseLine,
+    required Iterable<String> targetIds,
+    required this.createdAt,
+    this.matrixProvider = AiroTvLegacyCertification.matrix,
+    this.schemaVersion = kAiroCertificationSchemaVersion,
+  }) : targetIds = List.unmodifiable(targetIds);
+
+  final String schemaVersion;
+  final String programId;
+  final String releaseLine;
+  final List<String> targetIds;
+  final DateTime createdAt;
+  final AiroCertificationMatrix Function() matrixProvider;
+
+  AiroCertificationProgramReport evaluate({
+    required Iterable<AiroCertificationEvidence> evidence,
+    required DateTime now,
+  }) {
+    final matrix = matrixProvider();
+    final results = [
+      for (final targetId in targetIds)
+        matrix.evaluate(targetId: targetId, evidence: evidence, now: now),
+    ];
+
+    return AiroCertificationProgramReport(
+      programId: programId,
+      releaseLine: releaseLine,
+      matrixSchemaVersion: matrix.schemaVersion,
+      results: results,
+      createdAt: createdAt,
+      generatedAt: now,
+      schemaVersion: schemaVersion,
+    );
+  }
+
+  @override
+  List<Object?> get props => [
+    schemaVersion,
+    programId,
+    releaseLine,
+    targetIds,
+    createdAt,
+    matrixProvider,
+  ];
+}
+
+class AiroCertificationSupportClaim extends Equatable {
+  const AiroCertificationSupportClaim({
+    required this.targetId,
+    required this.level,
+  });
+
+  final String targetId;
+  final AiroCertificationLevel level;
+
+  Map<String, Object?> toPublicMap() {
+    return {'targetId': targetId, 'level': level.stableId};
+  }
+
+  @override
+  List<Object?> get props => [targetId, level];
+}
+
+class AiroCertificationProgramReport extends Equatable {
+  AiroCertificationProgramReport({
+    required this.programId,
+    required this.releaseLine,
+    required this.matrixSchemaVersion,
+    required Iterable<AiroCertificationResult> results,
+    required this.createdAt,
+    required this.generatedAt,
+    this.schemaVersion = kAiroCertificationSchemaVersion,
+  }) : results = List.unmodifiable(results);
+
+  final String schemaVersion;
+  final String programId;
+  final String releaseLine;
+  final String matrixSchemaVersion;
+  final List<AiroCertificationResult> results;
+  final DateTime createdAt;
+  final DateTime generatedAt;
+
+  bool get passed => results.every((result) => result.passed);
+
+  List<String> get blockedTargets {
+    return List.unmodifiable(
+      results
+          .where((result) => !result.passed)
+          .map((result) => result.targetId),
+    );
+  }
+
+  Set<AiroCertificationBlockerCode> get blockerCodes {
+    return Set.unmodifiable(
+      results.expand(
+        (result) => result.blockers.map((blocker) => blocker.code),
+      ),
+    );
+  }
+
+  List<AiroCertificationSupportClaim> get advertisedSupportClaims {
+    return List.unmodifiable(
+      results
+          .where((result) => result.canAdvertiseSupport)
+          .map(
+            (result) => AiroCertificationSupportClaim(
+              targetId: result.targetId,
+              level: result.claimedLevel,
+            ),
+          ),
+    );
+  }
+
+  Map<String, Object?> toPublicMap() {
+    return {
+      'schemaVersion': schemaVersion,
+      'programId': programId,
+      'releaseLine': releaseLine,
+      'matrixSchemaVersion': matrixSchemaVersion,
+      'passed': passed,
+      'blockedTargets': blockedTargets,
+      'blockerCodes': blockerCodes
+          .map((code) => code.stableId)
+          .toList(growable: false),
+      'advertisedSupportClaims': advertisedSupportClaims
+          .map((claim) => claim.toPublicMap())
+          .toList(growable: false),
+      'results': results.map(_resultToPublicMap).toList(growable: false),
+      'createdAt': createdAt.toIso8601String(),
+      'generatedAt': generatedAt.toIso8601String(),
+    };
+  }
+
+  Map<String, Object?> _resultToPublicMap(AiroCertificationResult result) {
+    return {
+      'targetId': result.targetId,
+      'claimedLevel': result.claimedLevel.stableId,
+      'passed': result.passed,
+      'canAdvertiseSupport': result.canAdvertiseSupport,
+      'blockers': result.blockers
+          .map(
+            (blocker) => {
+              'code': blocker.code.stableId,
+              'targetId': blocker.targetId,
+              'gateId': blocker.gateId?.stableId,
+            },
+          )
+          .toList(growable: false),
+    };
+  }
+
+  @override
+  List<Object?> get props => [
+    schemaVersion,
+    programId,
+    releaseLine,
+    matrixSchemaVersion,
+    results,
+    createdAt,
+    generatedAt,
+  ];
+}
+
 class AiroValidationGate extends Equatable {
   AiroValidationGate({
     required this.gateId,
