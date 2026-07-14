@@ -1592,6 +1592,13 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "5.0.5"
+  product_capabilities:
+    dependency: transitive
+    description:
+      path: "../packages/product_capabilities"
+      relative: true
+    source: path
+    version: "0.0.1"
   pub_semver:
     dependency: transitive
     description:

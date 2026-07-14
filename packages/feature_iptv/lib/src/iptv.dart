@@ -18,6 +18,7 @@ export 'package:platform_media/platform_media.dart';
 export 'package:platform_player/platform_player.dart';
 export 'package:platform_playlist_import/platform_playlist_import.dart';
 export 'package:platform_streams/platform_streams.dart';
+export 'package:product_capabilities/product_capabilities.dart';
 
 // Providers
 export '../application/providers/iptv_providers.dart';
