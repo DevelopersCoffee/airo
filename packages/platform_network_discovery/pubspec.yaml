@@ -1,0 +1,23 @@
+name: platform_network_discovery
+description: Local network discovery abstractions for Airo connected nodes.
+version: 0.0.1
+homepage:
+publish_to: none
+
+environment:
+  sdk: ^3.12.2
+  flutter: ">=1.17.0"
+
+dependencies:
+  core_protocol:
+    path: ../core_protocol
+  equatable: ^2.0.8
+  flutter:
+    sdk: flutter
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
