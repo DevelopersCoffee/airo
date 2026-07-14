@@ -117,11 +117,12 @@ duration values.
 
 ## Airo TV Consumption Rule
 
-Airo TV, feature modules, playback, pairing, handoff, diagnostics, and
-experimentation code should depend on `core_analytics` or a platform adapter
-built on it. Product code may decide which typed event to submit, but consent,
-privacy validation, collection enablement, provider failure handling, and
-vendor SDK isolation stay in the platform layer.
+Airo TV, feature modules, playback, pairing, handoff, and diagnostics code
+should depend on `core_analytics` or a platform adapter built on it.
+Experimentation and remote-config code should consume `core_experimentation`.
+Product code may decide which typed event to submit, but consent, privacy
+validation, collection enablement, provider failure handling, and vendor SDK
+isolation stay in the platform layer.
 
 ## Public Serialization
 
