@@ -39,10 +39,16 @@ Related issues: #682, #574.
 - [ ] Add or confirm Firebase Android client configs for the registered
       `io.airo.app.*` packages that should use Firebase services.
 - [ ] Create a Firebase service account or distribution token for CI.
-- [ ] Store the Firebase credential as a GitHub Actions secret.
+- [ ] Store the Firebase service account JSON as the GitHub Actions secret
+      `FIREBASE_SERVICE_ACCOUNT_JSON`.
 - [ ] Create tester groups for mobile/tablet QA and TV QA.
 - [ ] Confirm whether TV APK distribution through Firebase is part of this
       release wave.
+- [x] Keep Firebase App Distribution in no-upload mode by default and require
+      explicit app IDs, tester groups, and credentials before uploading APKs.
+- [x] Wire mobile/tablet and TV workflows to fail fast when Firebase upload is
+      requested without app IDs, tester groups, or
+      `FIREBASE_SERVICE_ACCOUNT_JSON`.
 
 ## Android Signing
 
@@ -98,3 +104,5 @@ Related issues: #687, #689.
   tracks are confirmed.
 - Play upload automation supports `internal`, `alpha`, `beta`, `production`,
   and `none` tracks for selected v2 Android profiles.
+- Firebase App Distribution automation supports `upload` and `none` modes for
+  selected v2 Android profiles.
