@@ -82,7 +82,7 @@ Rationale:
 **Proposed Package IDs:**
 ```
 io.airo.app          # Mobile full app
-io.airo.streaming    # Mobile streaming-only
+io.airo.app.streaming # Mobile streaming-only
 io.airo.app.tv           # Android TV / Fire TV
 ```
 
@@ -267,7 +267,7 @@ just_audio: ^0.10.5      # Not for TV
 | Package Name | App Nickname | SHA-1 Required? |
 |-------------|--------------|-----------------|
 | `io.airo.app` | Airo Mobile | ✅ (existing) |
-| `io.airo.streaming` | Airo Streaming | ✅ (for Google Sign-In) |
+| `io.airo.app.streaming` | Airo Streaming | ✅ (for Google Sign-In) |
 | `io.airo.app.tv` | Airo TV | ✅ (for Google Sign-In) |
 
 **SHA-1 fingerprints** (same keystore for all variants):
@@ -1030,4 +1030,3 @@ All new packages will:
 **Created:** 2026-02-17
 **Author:** Augment Agent
 **Status:** Ready for Review
-

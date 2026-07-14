@@ -1,138 +1,147 @@
-# 🏪 Store Compliance Guide
+# Store Compliance Guide
 
-App Store and Play Store compliance requirements for Airo Super App.
+Store-submission checklist for Airo release profiles. Use this as the
+pre-submission working document; account setup, credentials, and final store
+metadata decisions remain tracked in the linked GitHub issues.
 
----
+## Live Legal URLs
 
-## 📱 Google Play Store Requirements
+These URLs were verified with HTTP 200 responses on July 14, 2026.
 
-### Metadata Requirements
-| Field | Requirement | Airo Status |
-|-------|-------------|-------------|
-| App Name | ≤30 characters | ✅ "Airo" (4 chars) |
-| Short Description | ≤80 characters | 📝 Pending |
-| Full Description | ≤4000 characters | 📝 Pending |
-| Screenshots | Min 2, Max 8 per device | 📝 Pending |
-| Feature Graphic | 1024x500 PNG/JPG | 📝 Pending |
-| App Icon | 512x512 PNG | 📝 Pending |
+| Page | URL | Status |
+| --- | --- | --- |
+| Privacy Policy | `https://developerscoffee.github.io/airo/legal/privacy-policy/` | Live |
+| Terms & Conditions | `https://developerscoffee.github.io/airo/legal/terms-conditions/` | Live |
 
-### Content Rating
-- [ ] Complete IARC questionnaire
-- [ ] Declare in-app purchases (if any)
-- [ ] Declare ads (if any)
-- [ ] Target audience declaration
+The Terms page opens with the IPTV content disclaimer: Airo TV is a media
+player only and does not provide channels, playlists, or streams.
 
-### Privacy & Data Safety
-- [ ] Privacy policy URL required
-- [ ] Data safety form completed
-- [ ] Data collection declaration
-- [ ] Data sharing declaration
-- [ ] Data security practices
+## Android Release Profiles
 
-### Technical Requirements
-- [ ] Target API Level: Android 14 (API 34) minimum
-- [ ] 64-bit support required
-- [ ] App Bundle (AAB) format preferred
-- [ ] Deobfuscation file uploaded (if ProGuard used)
+The current v2 profile matrix is maintained in
+[V2 Distribution Matrix](./V2_DISTRIBUTION_MATRIX.md).
 
-### Permissions Declaration
-| Permission | Justification |
-|------------|---------------|
-| CAMERA | Receipt/document scanning |
-| INTERNET | AI queries, content sync |
-| STORAGE | Save exports, cached content |
+| Profile | Package ID | Device class | Entrypoint | Store status |
+| --- | --- | --- | --- | --- |
+| `tv` | `io.airo.app.tv` | Android TV, Google TV, Fire TV-compatible APK testing | `app/lib/main_tv.dart` | TV release workflow builds APK and Play AAB; real Play upload needs #585/#681 setup |
+| `iptv-standalone` | `io.airo.app.iptv` | Android phone and tablet IPTV-only builds | `app/lib/main_airo_iptv.dart` | Build/publish automation tracked in #677 |
+| `mobile-streaming` | `io.airo.app.streaming` | Android phone and tablet streaming builds | `app/lib/main_mobile_streaming.dart` | Build/publish automation tracked in #677 |
+| `ios-spm` | `com.developerscoffee.airo` | iOS/iPadOS validation profile | `app/lib/main.dart` | Deferred from the first v2 Android publishing wave |
 
----
+The Android Gradle config currently uses:
 
-## 🍎 App Store (iOS) Requirements
+- `compileSdk = 36`
+- `targetSdk = 36`
+- `minSdk = 26`
+- R8 minification and resource shrinking enabled for release builds
+- release signing from `app/android/key.properties` locally or CI signing
+  secrets in release workflows
 
-### App Store Guidelines Summary
-| Category | Requirement | Airo Status |
-|----------|-------------|-------------|
-| 1. Safety | No objectionable content | ✅ Clean |
-| 2. Performance | No crashes, complete features | ✅ Stable |
-| 3. Business | Clear monetization | ✅ Free |
-| 4. Design | Follow HIG | 📝 Review |
-| 5. Legal | Privacy compliance | 📝 Pending |
+## Airo TV Metadata
 
-### Required Assets
-- [ ] App icon (1024x1024)
-- [ ] Screenshots (6.7", 6.5", 5.5" iPhones)
-- [ ] iPad screenshots (if universal)
-- [ ] App Preview video (optional)
+| Field | Current value | Status |
+| --- | --- | --- |
+| App name | `Airo TV` | Ready |
+| Package ID | `io.airo.app.tv` | Ready pending Play Console confirmation |
+| Category | Entertainment / Video Players & Editors | Pending final store entry in #581 |
+| Short description | Draft in #581 | Pending stakeholder approval |
+| Full description | Draft in #581 | Pending stakeholder approval |
+| Privacy Policy URL | `https://developerscoffee.github.io/airo/legal/privacy-policy/` | Ready |
+| Terms URL | `https://developerscoffee.github.io/airo/legal/terms-conditions/` | Ready |
+| Content disclaimer | User-provided IPTV content only; no bundled streams or playlists | Ready |
+| App icon | Android launcher icon present | Needs Play 512x512 asset confirmation in #581 |
+| TV banner | `app/android/app/src/tv/res/drawable-xhdpi/tv_banner.png` | Present |
+| Screenshots | TV screenshots required, 1920x1080 landscape | Pending #581 |
+| Feature graphic | 1024x500 PNG/JPG required for Play | Pending #581 |
 
-### Privacy Requirements
-- [ ] Privacy policy URL
-- [ ] App Privacy details (nutrition labels)
-- [ ] Tracking transparency (ATT if tracking)
-- [ ] Sign in with Apple (if other social login)
+### Airo TV Permissions
 
-### Technical Requirements
-- [ ] Built with latest Xcode
-- [ ] iOS 15+ minimum deployment
-- [ ] IPv6 network support
-- [ ] No private API usage
+The TV manifest is `app/android/app/src/tv/AndroidManifest.xml`.
 
----
+| Permission / feature | Reason | Status |
+| --- | --- | --- |
+| `android.software.leanback` | Android TV launcher eligibility | Required |
+| `android.hardware.touchscreen` (`required=false`) | Allow TV/non-touch devices | Required |
+| `INTERNET` | Stream playback, playlist fetches, EPG fetches, Cast/network media behavior | Required |
+| `ACCESS_NETWORK_STATE` | Network-aware playback and error handling | Required |
+| `CHANGE_WIFI_MULTICAST_STATE` | Local Cast/device discovery support | Required |
+| `RECEIVE_BOOT_COMPLETED` | WorkManager/plugin compatibility for scheduled/background work | Review before public TV submission |
+| `FOREGROUND_SERVICE` | Foreground playback/service support | Required |
+| `FOREGROUND_SERVICE_MEDIA_PLAYBACK` | Android media playback foreground service declaration | Required |
+| `WAKE_LOCK` | Keep playback/session work stable during media use | Required |
 
-## 📄 Privacy Policy Requirements
+The TV manifest explicitly removes biometric/fingerprint, Google Services read,
+and AI Core bind-service permissions inherited from broader dependencies.
 
-### Must Include
-1. **Data Collection** - What data is collected
-2. **Data Usage** - How data is used
-3. **Data Sharing** - Third parties involved
-4. **Data Security** - Protection measures
-5. **User Rights** - Access, deletion, portability
-6. **Contact Info** - Developer contact
-7. **Updates** - Policy change notification
+## Google Play Checklist
 
-### Airo-Specific Declarations
-```markdown
-## Data We Collect
-- User preferences (local storage)
-- AI conversation history (on-device)
-- Receipt images (processed locally)
+| Item | Status | Owner / link |
+| --- | --- | --- |
+| Play Console app/package created for TV | Pending | #681, #585 |
+| Play Console app/package created for mobile/tablet | Registered package IDs confirmed; Play listing strategy still pending | #675, #677, #681 |
+| First Play tracks selected | Pending | #681 |
+| Play service account JSON stored as GitHub secret | Pending | #585, #681 |
+| Production Android signing secrets stored in GitHub | Pending | #585, #677 |
+| AAB build for TV | Ready in CI | `.github/workflows/airo-tv-release.yml` |
+| AAB build for mobile/tablet | Pending | #677 |
+| IARC content rating completed | Pending store-console action | #584 |
+| Data Safety form completed | Pending store-console action | #584/#581 |
+| Store metadata finalized | Pending | #581 |
+| TV screenshots and feature graphic uploaded | Pending | #581 |
+| Release qualification evidence attached | Pending actual release evidence | #683 |
 
-## Data We DON'T Collect
-- Personal identification
-- Location data
-- Contact information
-- Financial account details
+## App Store / iOS Checklist
 
-## On-Device Processing
-Airo uses on-device AI (Gemini Nano) for:
-- Document analysis
-- Expense extraction
-- Natural language queries
-No data is sent to external servers for AI processing.
-```
+iOS/iPadOS publication is deferred from the first v2 Android publishing wave.
+Keep this section as a readiness tracker only until maintainers explicitly add
+iOS to the release scope.
 
----
+| Item | Status | Owner / link |
+| --- | --- | --- |
+| Apple Developer Program membership | Human setup required | #585 |
+| App Store Connect API key and signing setup | Human setup required | #585 |
+| iOS deployment target | Pending final iOS release scope | #585/#675 |
+| App privacy nutrition labels | Pending App Store Connect action | #584/#585 |
+| TestFlight upload automation | Deferred | #585 |
 
-## ✅ Pre-Submission Checklist
+## IPTV Content Disclaimer
 
-### Play Store
-- [ ] App signed with release key
-- [ ] Version code incremented
-- [ ] AAB uploaded (not APK for new apps)
-- [ ] All metadata filled
-- [ ] Content rating completed
-- [ ] Data safety form done
-- [ ] Privacy policy live
+Airo TV is a media player for user-provided playlists and streams. It does not
+provide, host, endorse, verify, or distribute channels, playlists, or streams.
+Users are responsible for ensuring that every content source they load is legal
+in their jurisdiction and that they have the required rights to access it.
 
-### App Store
-- [ ] Archive uploaded to App Store Connect
-- [ ] Screenshots for all required devices
-- [ ] App Privacy completed
-- [ ] Review notes provided (if needed)
-- [ ] Export compliance answered
+Use this disclaimer in the Play full description, release notes, support docs,
+and any direct APK download page.
 
----
+## Pre-Submission Sign-Off
 
-## 🔗 Resources
+Before submitting a public v2 Android release:
 
-- [Play Console](https://play.google.com/console)
-- [App Store Connect](https://appstoreconnect.apple.com)
-- [Play Store Policy](https://play.google.com/about/developer-content-policy/)
-- [App Store Guidelines](https://developer.apple.com/app-store/review/guidelines/)
+- [ ] Review [V2 Distribution Matrix](./V2_DISTRIBUTION_MATRIX.md) and confirm
+      the selected public profiles.
+- [ ] Confirm mobile/tablet listing strategy for the registered
+      `io.airo.app.*` package IDs in #675/#677.
+- [ ] Complete account, credential, signing, and repository-governance items in
+      [V2 Publishing Human Setup](./V2_PUBLISHING_HUMAN_SETUP.md).
+- [ ] Finalize Airo TV store metadata in #581.
+- [ ] Complete content rating and data-safety store-console forms in #584.
+- [ ] Attach release qualification evidence or an explicit waiver per
+      [V2 Release Qualification](./V2_RELEASE_QUALIFICATION.md).
+- [ ] Confirm every public APK/AAB has `SHA256SUMS` and a release manifest.
+- [ ] Confirm no public release asset uses debug-looking names such as
+      `app-release.apk`.
 
+## Related Issues
+
+- #575, #577, #578, #579: legal/docs foundation.
+- #581: final Play/App Store listing metadata and screenshots.
+- #584: IARC/content rating and App Store age-rating questionnaires.
+- #585: Fastlane/store credentials and signing setup.
+- #675: supported v2 device/profile artifact matrix.
+- #677: mobile/tablet APK and AAB build/publish workflow.
+- #681: Google Play upload automation.
+- #682: Firebase App Distribution upload automation.
+- #683: release qualification matrix and evidence.
+- #687: license and third-party license review.
+- #689: repository health gates for public release readiness.
