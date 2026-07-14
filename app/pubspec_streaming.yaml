@@ -44,8 +44,8 @@ dependencies:
   dio: ^5.10.0
 
   # Firebase & Authentication
-  firebase_core: 4.4.0
-  firebase_auth: 6.1.4
+  firebase_core: 4.12.0
+  firebase_auth: 6.5.5
   google_sign_in: 7.2.0
 
   # Audio & Media - KEPT for streaming app!
@@ -55,7 +55,7 @@ dependencies:
   flutter_tts: 4.2.5
 
   # Video - KEPT for IPTV!
-  video_player: ^2.11.1
+  video_player: ^2.13.0
   flutter_chrome_cast: ^1.4.6
   wakelock_plus: 1.5.2
   pdfx: 2.9.2

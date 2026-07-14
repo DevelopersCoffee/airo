@@ -17,7 +17,7 @@ dependencies:
     path: ../platform_player
   platform_streams:
     path: ../platform_streams
-  video_player: ^2.10.1
+  video_player: ^2.13.0
 
 dev_dependencies:
   flutter_test:
