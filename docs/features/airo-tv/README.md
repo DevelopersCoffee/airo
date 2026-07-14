@@ -28,9 +28,12 @@ devices to improve discovery and playback without providing content.
 
 ## Release-Line Note
 
-The repository release policy uses semantic v2 tags such as `v2.0.0`,
-`v2.0.1`, and `v2.1.0`. These docs keep the requested label `v2.0.0.1` as an
-internal planning milestone name, not as a public Git tag. The active next
-development stream uses branch `codex/next-v2.0.0.0` from latest `origin/v2`;
-release candidates and public tags are cut from `v2` after the issue-scoped
-work merges back.
+The repository release policy uses immutable semantic v2 tags such as
+`v2.0.0`, `v2.0.1`, and `v2.1.0`. These docs keep the requested label
+`v2.0.0.1` only as the Airo TV platform-hardening planning milestone name.
+Do not publish four-part Git release tags such as `v2.0.0.1` for this
+workstream unless `docs/release/VERSION_LINES.md` is deliberately changed by
+Release and DevEx. Release candidates and public releases are tagged from `v2`
+with the next normal semantic v2 version. The active next development stream
+uses branch `codex/next-v2.0.0.0` from latest `origin/v2`; release candidates
+and public tags are cut from `v2` after the issue-scoped work merges back.
