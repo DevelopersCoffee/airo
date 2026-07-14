@@ -88,7 +88,7 @@ and AI Core bind-service permissions inherited from broader dependencies.
 | Play upload automation for mobile/tablet | Ready after credentials, selected profile, and track selection | `mobile_play_track` in `.github/workflows/v2-release-orchestrator.yml` |
 | Firebase App Distribution upload automation | Ready after Firebase app IDs, tester groups, and credential secret are configured | `firebase_distribution` in `.github/workflows/v2-release-orchestrator.yml` |
 | GitHub Release asset publication | Ready in orchestrator for selected v2 profiles | `.github/workflows/v2-release-orchestrator.yml` |
-| IARC content rating completed | Pending store-console action | #584 |
+| IARC content rating completed | Pending store-console action; worksheet ready | #584, `docs/release/AIRO_TV_CONTENT_RATING.md` |
 | Data Safety form completed | Pending store-console action | #583 |
 | Store metadata finalized | Ready pending stakeholder approval | #581, `docs/release/AIRO_TV_STORE_LISTING.md` |
 | TV screenshots and feature graphic uploaded | Pending media assets | #582 |
@@ -133,7 +133,8 @@ Before submitting a public v2 Android release:
       [Airo TV Store Listing Metadata](./AIRO_TV_STORE_LISTING.md).
 - [ ] Complete Data Safety/App Privacy console forms from
       [Airo TV Data Safety](./AIRO_TV_DATA_SAFETY.md).
-- [ ] Complete content rating store-console forms in #584.
+- [ ] Complete content rating store-console forms from
+      [Airo TV Content Rating](./AIRO_TV_CONTENT_RATING.md).
 - [ ] Attach release qualification evidence or an explicit waiver per
       [V2 Release Qualification](./V2_RELEASE_QUALIFICATION.md).
 - [x] Confirm every public APK/AAB has `SHA256SUMS` and a release manifest.
