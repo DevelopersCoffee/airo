@@ -75,6 +75,10 @@ Category, bucket, and stable-ID values must use stable snake_case strings.
 - `playback_completion_summary`
 - `pairing_completed`
 - `handoff_completed`
+- `device_discovery_summary`
+- `command_route_latency`
+- `delegation_task_completed`
+- `companion_availability_summary`
 - `legacy_decoder_fallback`
 - `subscription_conversion`
 
@@ -82,12 +86,20 @@ These schemas use approved category and bucket fields such as `source_type`,
 `startup_bucket`, `stall_count_bucket`, `stall_duration_bucket`,
 `failover_reason`, `route_type`, `bitrate_bucket`, `resolution_bucket`,
 `completion_bucket`, `exit_reason`, `decoder_type`, `source_profile`,
-`target_profile`, `result_category`, `device_tier`, `fallback_count`,
+`target_profile`, `result_category`, `discovery_method`,
+`availability_category`, `device_count_bucket`, `command_category`,
+`latency_bucket`, `task_category`, `companion_profile`,
+`route_health_bucket`, `queue_depth_bucket`, `device_tier`, `fallback_count`,
 `entry_surface`, `plan_bucket`, and `success`.
 
 `AiroTvPlaybackQualityTelemetrySuites.standard()` provides deterministic
 accepted and rejected fixture cases for playback-quality telemetry without
 exposing raw field values in public maps.
+
+`AiroTvDeviceEcosystemTelemetrySuites.standard()` provides deterministic
+accepted and rejected fixture cases for pairing, handoff, discovery, command
+latency, delegation, and companion availability telemetry without exposing raw
+field values in public maps.
 
 ## Airo TV Consumption Rule
 

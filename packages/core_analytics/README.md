@@ -32,9 +32,12 @@ analytics SDKs directly.
 - Timed event helper that emits bucketed durations instead of raw timings.
 - Default Airo TV v2.0.0.1 event schemas for playback startup, buffering,
   failover, quality samples, completion, pairing, handoff, legacy decoder
-  fallback, and subscription conversion.
+  fallback, device discovery, command route latency, delegation, companion
+  availability, and subscription conversion.
 - Playback quality telemetry fixtures that validate bucketed startup,
   buffering, failover, bitrate, resolution, and completion fields.
+- Device ecosystem telemetry fixtures that validate pairing, handoff,
+  discovery, command latency, delegation, and companion availability fields.
 - Performance instrumentation schema for UI, playback, import, search,
   protocol, command, memory, storage, network, and pairing samples.
 - No-op and fake performance instrumentation sinks for deterministic tests.

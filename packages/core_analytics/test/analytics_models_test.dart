@@ -562,6 +562,42 @@ void main() {
       );
     });
 
+    test('device ecosystem telemetry fixture suite validates outcomes', () {
+      final registry = AiroTvAnalyticsSchemas.registry();
+      final suite = AiroTvDeviceEcosystemTelemetrySuites.standard();
+
+      for (final testCase in suite.cases) {
+        final result = registry.validateEvent(testCase.event);
+        if (testCase.shouldPass) {
+          expect(result.accepted, isTrue, reason: testCase.caseId);
+        } else {
+          expect(result.accepted, isFalse, reason: testCase.caseId);
+          expect(
+            result.codes,
+            containsAll(testCase.expectedCodes),
+            reason: testCase.caseId,
+          );
+        }
+      }
+    });
+
+    test('device ecosystem schemas use safe categories and buckets', () {
+      final registry = AiroTvAnalyticsSchemas.registry();
+
+      expect(registry.schemaFor('device_discovery_summary'), isNotNull);
+      expect(registry.schemaFor('command_route_latency'), isNotNull);
+      expect(registry.schemaFor('delegation_task_completed'), isNotNull);
+      expect(registry.schemaFor('companion_availability_summary'), isNotNull);
+      expect(
+        registry.schemaFor('command_route_latency')!.allowedFieldNames,
+        containsAll({'command_category', 'latency_bucket'}),
+      );
+      expect(
+        registry.schemaFor('device_discovery_summary')!.allowedFieldNames,
+        isNot(contains('localIp')),
+      );
+    });
+
     test('schema registry rejects unknown and mismatched events', () {
       final registry = AiroTvAnalyticsSchemas.registry();
 
@@ -679,6 +715,10 @@ void main() {
       expect(flattened, contains('playback_buffering_summary'));
       expect(flattened, contains('playback_quality_sample'));
       expect(flattened, contains('playback_completion_summary'));
+      expect(flattened, contains('device_discovery_summary'));
+      expect(flattened, contains('command_route_latency'));
+      expect(flattened, contains('delegation_task_completed'));
+      expect(flattened, contains('companion_availability_summary'));
       expect(flattened, contains(AiroAnalyticsFieldKind.bucket.stableId));
       expect(
         flattened,
@@ -706,6 +746,22 @@ void main() {
       expect(flattened, isNot(contains('/Users/')));
       expect(flattened, isNot(contains('providerPayload')));
       expect(flattened, isNot(contains('storeConsoleAccount')));
+    });
+
+    test('device ecosystem fixture public map excludes raw values', () {
+      final publicMap = AiroTvDeviceEcosystemTelemetrySuites.standard()
+          .toPublicMap();
+      final flattened = publicMap.toString();
+
+      expect(flattened, contains('device_discovery_summary'));
+      expect(flattened, contains('command_route_latency'));
+      expect(flattened, contains('field_kind_mismatch'));
+      expect(flattened, contains('privacy_violation'));
+      expect(flattened, isNot(contains('192.168.')));
+      expect(flattened, isNot(contains('find private playlist')));
+      expect(flattened, isNot(contains('providerPayload')));
+      expect(flattened, isNot(contains('storeConsoleAccount')));
+      expect(flattened, isNot(contains('mobile_companion')));
     });
   });
 }

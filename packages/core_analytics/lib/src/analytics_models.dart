@@ -1235,6 +1235,8 @@ class AiroAnalyticsPrivacyFilter {
     'ipAddress',
     'query',
     'searchQuery',
+    'prompt',
+    'transcript',
     'voiceTranscript',
   };
 
@@ -1777,6 +1779,10 @@ class AiroTvAnalyticsSchemas {
         playbackCompletionSummary(),
         pairingCompleted(),
         handoffCompleted(),
+        deviceDiscoverySummary(),
+        commandRouteLatency(),
+        delegationTaskCompleted(),
+        companionAvailabilitySummary(),
         legacyDecoderFallback(),
         subscriptionConversion(),
       ],
@@ -1962,6 +1968,26 @@ class AiroTvAnalyticsSchemas {
     );
   }
 
+  static const Set<String> _deviceEcosystemProhibitedFields = {
+    'deviceId',
+    'deviceName',
+    'hostname',
+    'ssid',
+    'bssid',
+    'macAddress',
+    'localIp',
+    'ipAddress',
+    'channel',
+    'mediaTitle',
+    'streamUrl',
+    'playlistUrl',
+    'prompt',
+    'transcript',
+    'providerPayload',
+    'contact',
+    'email',
+  };
+
   static AiroAnalyticsEventSchema pairingCompleted() {
     return AiroAnalyticsEventSchema(
       name: 'pairing_completed',
@@ -1969,6 +1995,7 @@ class AiroTvAnalyticsSchemas {
       purpose: AiroAnalyticsPurpose.operational,
       retentionClass: AiroAnalyticsRetentionClass.operational30Days,
       dashboardRequirement: AiroAnalyticsDashboardRequirement.optional,
+      prohibitedFields: _deviceEcosystemProhibitedFields,
       allowedFields: const [
         AiroAnalyticsFieldSchema(
           name: 'source_profile',
@@ -1984,6 +2011,11 @@ class AiroTvAnalyticsSchemas {
           name: 'route_type',
           kind: AiroAnalyticsFieldKind.category,
         ),
+        AiroAnalyticsFieldSchema(
+          name: 'result_category',
+          kind: AiroAnalyticsFieldKind.category,
+          required: true,
+        ),
       ],
     );
   }
@@ -1995,6 +2027,7 @@ class AiroTvAnalyticsSchemas {
       purpose: AiroAnalyticsPurpose.operational,
       retentionClass: AiroAnalyticsRetentionClass.operational30Days,
       dashboardRequirement: AiroAnalyticsDashboardRequirement.required,
+      prohibitedFields: _deviceEcosystemProhibitedFields,
       allowedFields: const [
         AiroAnalyticsFieldSchema(
           name: 'source_profile',
@@ -2010,6 +2043,154 @@ class AiroTvAnalyticsSchemas {
           name: 'result_category',
           kind: AiroAnalyticsFieldKind.category,
           required: true,
+        ),
+        AiroAnalyticsFieldSchema(
+          name: 'route_type',
+          kind: AiroAnalyticsFieldKind.category,
+        ),
+        AiroAnalyticsFieldSchema(
+          name: 'command_latency_bucket',
+          kind: AiroAnalyticsFieldKind.bucket,
+        ),
+      ],
+    );
+  }
+
+  static AiroAnalyticsEventSchema deviceDiscoverySummary() {
+    return AiroAnalyticsEventSchema(
+      name: 'device_discovery_summary',
+      owner: 'device_ecosystem',
+      purpose: AiroAnalyticsPurpose.operational,
+      retentionClass: AiroAnalyticsRetentionClass.operational30Days,
+      dashboardRequirement: AiroAnalyticsDashboardRequirement.required,
+      prohibitedFields: _deviceEcosystemProhibitedFields,
+      allowedFields: const [
+        AiroAnalyticsFieldSchema(
+          name: 'source_profile',
+          kind: AiroAnalyticsFieldKind.category,
+          required: true,
+        ),
+        AiroAnalyticsFieldSchema(
+          name: 'discovery_method',
+          kind: AiroAnalyticsFieldKind.category,
+          required: true,
+        ),
+        AiroAnalyticsFieldSchema(
+          name: 'availability_category',
+          kind: AiroAnalyticsFieldKind.category,
+          required: true,
+        ),
+        AiroAnalyticsFieldSchema(
+          name: 'device_count_bucket',
+          kind: AiroAnalyticsFieldKind.bucket,
+          required: true,
+        ),
+      ],
+    );
+  }
+
+  static AiroAnalyticsEventSchema commandRouteLatency() {
+    return AiroAnalyticsEventSchema(
+      name: 'command_route_latency',
+      owner: 'device_ecosystem',
+      purpose: AiroAnalyticsPurpose.operational,
+      retentionClass: AiroAnalyticsRetentionClass.operational30Days,
+      dashboardRequirement: AiroAnalyticsDashboardRequirement.required,
+      prohibitedFields: _deviceEcosystemProhibitedFields,
+      allowedFields: const [
+        AiroAnalyticsFieldSchema(
+          name: 'source_profile',
+          kind: AiroAnalyticsFieldKind.category,
+          required: true,
+        ),
+        AiroAnalyticsFieldSchema(
+          name: 'target_profile',
+          kind: AiroAnalyticsFieldKind.category,
+          required: true,
+        ),
+        AiroAnalyticsFieldSchema(
+          name: 'route_type',
+          kind: AiroAnalyticsFieldKind.category,
+          required: true,
+        ),
+        AiroAnalyticsFieldSchema(
+          name: 'command_category',
+          kind: AiroAnalyticsFieldKind.category,
+          required: true,
+        ),
+        AiroAnalyticsFieldSchema(
+          name: 'latency_bucket',
+          kind: AiroAnalyticsFieldKind.bucket,
+          required: true,
+        ),
+      ],
+    );
+  }
+
+  static AiroAnalyticsEventSchema delegationTaskCompleted() {
+    return AiroAnalyticsEventSchema(
+      name: 'delegation_task_completed',
+      owner: 'delegation',
+      purpose: AiroAnalyticsPurpose.operational,
+      retentionClass: AiroAnalyticsRetentionClass.operational30Days,
+      dashboardRequirement: AiroAnalyticsDashboardRequirement.required,
+      prohibitedFields: _deviceEcosystemProhibitedFields,
+      allowedFields: const [
+        AiroAnalyticsFieldSchema(
+          name: 'source_profile',
+          kind: AiroAnalyticsFieldKind.category,
+          required: true,
+        ),
+        AiroAnalyticsFieldSchema(
+          name: 'target_profile',
+          kind: AiroAnalyticsFieldKind.category,
+          required: true,
+        ),
+        AiroAnalyticsFieldSchema(
+          name: 'task_category',
+          kind: AiroAnalyticsFieldKind.category,
+          required: true,
+        ),
+        AiroAnalyticsFieldSchema(
+          name: 'result_category',
+          kind: AiroAnalyticsFieldKind.category,
+          required: true,
+        ),
+        AiroAnalyticsFieldSchema(
+          name: 'latency_bucket',
+          kind: AiroAnalyticsFieldKind.bucket,
+        ),
+      ],
+    );
+  }
+
+  static AiroAnalyticsEventSchema companionAvailabilitySummary() {
+    return AiroAnalyticsEventSchema(
+      name: 'companion_availability_summary',
+      owner: 'device_ecosystem',
+      purpose: AiroAnalyticsPurpose.operational,
+      retentionClass: AiroAnalyticsRetentionClass.operational30Days,
+      dashboardRequirement: AiroAnalyticsDashboardRequirement.required,
+      prohibitedFields: _deviceEcosystemProhibitedFields,
+      allowedFields: const [
+        AiroAnalyticsFieldSchema(
+          name: 'companion_profile',
+          kind: AiroAnalyticsFieldKind.category,
+          required: true,
+        ),
+        AiroAnalyticsFieldSchema(
+          name: 'availability_category',
+          kind: AiroAnalyticsFieldKind.category,
+          required: true,
+        ),
+        AiroAnalyticsFieldSchema(
+          name: 'route_health_bucket',
+          kind: AiroAnalyticsFieldKind.bucket,
+          required: true,
+        ),
+        AiroAnalyticsFieldSchema(
+          name: 'queue_depth_bucket',
+          kind: AiroAnalyticsFieldKind.bucket,
         ),
       ],
     );
@@ -2193,6 +2374,167 @@ class AiroTvPlaybackQualityTelemetrySuites {
           ),
           expectedCodes: const [
             AiroAnalyticsSchemaValidationCode.requiredFieldMissing,
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class AiroTvDeviceEcosystemTelemetrySuites {
+  const AiroTvDeviceEcosystemTelemetrySuites._();
+
+  static AiroAnalyticsSchemaFixtureSuite standard() {
+    return AiroAnalyticsSchemaFixtureSuite(
+      suiteId: 'airo-tv-device-ecosystem-telemetry',
+      cases: [
+        AiroAnalyticsSchemaFixtureCase(
+          caseId: 'pairing-completed-safe',
+          event: AiroAnalyticsEvent(
+            name: 'pairing_completed',
+            owner: 'device_ecosystem',
+            purpose: AiroAnalyticsPurpose.operational,
+            params: const {
+              'source_profile': 'mobile_companion',
+              'target_profile': 'lite_receiver',
+              'route_type': 'lan',
+              'result_category': 'success',
+            },
+          ),
+          expectedCodes: const [AiroAnalyticsSchemaValidationCode.accepted],
+        ),
+        AiroAnalyticsSchemaFixtureCase(
+          caseId: 'handoff-bucketed-safe',
+          event: AiroAnalyticsEvent(
+            name: 'handoff_completed',
+            owner: 'media',
+            purpose: AiroAnalyticsPurpose.operational,
+            params: const {
+              'source_profile': 'mobile_companion',
+              'target_profile': 'lite_receiver',
+              'route_type': 'phone_local',
+              'command_latency_bucket': '100_300ms',
+              'result_category': 'success',
+            },
+          ),
+          expectedCodes: const [AiroAnalyticsSchemaValidationCode.accepted],
+        ),
+        AiroAnalyticsSchemaFixtureCase(
+          caseId: 'discovery-summary-safe',
+          event: AiroAnalyticsEvent(
+            name: 'device_discovery_summary',
+            owner: 'device_ecosystem',
+            purpose: AiroAnalyticsPurpose.operational,
+            params: const {
+              'source_profile': 'full_tv',
+              'discovery_method': 'mdns',
+              'availability_category': 'companion_available',
+              'device_count_bucket': '1_3',
+            },
+          ),
+          expectedCodes: const [AiroAnalyticsSchemaValidationCode.accepted],
+        ),
+        AiroAnalyticsSchemaFixtureCase(
+          caseId: 'command-route-latency-safe',
+          event: AiroAnalyticsEvent(
+            name: 'command_route_latency',
+            owner: 'device_ecosystem',
+            purpose: AiroAnalyticsPurpose.operational,
+            params: const {
+              'source_profile': 'mobile_companion',
+              'target_profile': 'full_tv',
+              'route_type': 'lan',
+              'command_category': 'playback',
+              'latency_bucket': '0_150ms',
+            },
+          ),
+          expectedCodes: const [AiroAnalyticsSchemaValidationCode.accepted],
+        ),
+        AiroAnalyticsSchemaFixtureCase(
+          caseId: 'delegation-completed-safe',
+          event: AiroAnalyticsEvent(
+            name: 'delegation_task_completed',
+            owner: 'delegation',
+            purpose: AiroAnalyticsPurpose.operational,
+            params: const {
+              'source_profile': 'lite_receiver',
+              'target_profile': 'mobile_companion',
+              'task_category': 'semantic_search',
+              'result_category': 'success',
+              'latency_bucket': '1_3s',
+            },
+          ),
+          expectedCodes: const [AiroAnalyticsSchemaValidationCode.accepted],
+        ),
+        AiroAnalyticsSchemaFixtureCase(
+          caseId: 'companion-availability-safe',
+          event: AiroAnalyticsEvent(
+            name: 'companion_availability_summary',
+            owner: 'device_ecosystem',
+            purpose: AiroAnalyticsPurpose.operational,
+            params: const {
+              'companion_profile': 'mobile_companion',
+              'availability_category': 'online',
+              'route_health_bucket': 'healthy',
+              'queue_depth_bucket': '0',
+            },
+          ),
+          expectedCodes: const [AiroAnalyticsSchemaValidationCode.accepted],
+        ),
+        AiroAnalyticsSchemaFixtureCase(
+          caseId: 'discovery-local-address-rejected',
+          event: AiroAnalyticsEvent(
+            name: 'device_discovery_summary',
+            owner: 'device_ecosystem',
+            purpose: AiroAnalyticsPurpose.operational,
+            params: const {
+              'source_profile': 'full_tv',
+              'discovery_method': 'mdns',
+              'availability_category': 'companion_available',
+              'device_count_bucket': '1_3',
+              'localIp': '192.168.1.10',
+            },
+          ),
+          expectedCodes: const [
+            AiroAnalyticsSchemaValidationCode.fieldNotAllowed,
+            AiroAnalyticsSchemaValidationCode.privacyViolation,
+          ],
+        ),
+        AiroAnalyticsSchemaFixtureCase(
+          caseId: 'command-raw-latency-rejected',
+          event: AiroAnalyticsEvent(
+            name: 'command_route_latency',
+            owner: 'device_ecosystem',
+            purpose: AiroAnalyticsPurpose.operational,
+            params: const {
+              'source_profile': 'mobile_companion',
+              'target_profile': 'full_tv',
+              'route_type': 'lan',
+              'command_category': 'playback',
+              'latency_bucket': 87,
+            },
+          ),
+          expectedCodes: const [
+            AiroAnalyticsSchemaValidationCode.fieldKindMismatch,
+          ],
+        ),
+        AiroAnalyticsSchemaFixtureCase(
+          caseId: 'delegation-prompt-rejected',
+          event: AiroAnalyticsEvent(
+            name: 'delegation_task_completed',
+            owner: 'delegation',
+            purpose: AiroAnalyticsPurpose.operational,
+            params: const {
+              'source_profile': 'lite_receiver',
+              'target_profile': 'mobile_companion',
+              'task_category': 'semantic_search',
+              'result_category': 'success',
+              'prompt': 'find private playlist',
+            },
+          ),
+          expectedCodes: const [
+            AiroAnalyticsSchemaValidationCode.fieldNotAllowed,
+            AiroAnalyticsSchemaValidationCode.privacyViolation,
           ],
         ),
       ],
