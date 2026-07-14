@@ -11,11 +11,14 @@ handoff state.
 
 - Receiver-authoritative playback session snapshots.
 - Playback ownership, operation authority, and ownership transfer policy.
+- Route health event schema for event-driven playback state, buffer, volume,
+  track, speed, health, and typed failure updates.
 - Monotonic revisions and deterministic conflict policy.
 - Privacy-safe local sync deltas with redacted payload handles.
 - Two-phase handoff preflight and phase records.
-- No-op and fake session repositories for host-only tests.
+- No-op and fake session repositories and route health sinks for host-only
+  tests.
 
 This package does not implement cloud orchestration, WebSocket transport,
-encrypted persistence, playback execution, device picker UI, or Airo TV
-screens.
+encrypted persistence, playback execution, route health collection, device
+picker UI, or Airo TV screens.
