@@ -49,6 +49,7 @@ Documentation for Airo releases and version history.
 | [V2 Publishing Human Setup](./V2_PUBLISHING_HUMAN_SETUP.md) | Account, credential, signing, store, and governance decisions maintainers must complete |
 | [V2 License Review](./V2_LICENSE_REVIEW.md) | License-readiness baseline and maintainer decisions before public distribution |
 | [V2 Release Qualification](./V2_RELEASE_QUALIFICATION.md) | Required release evidence, device matrix, waiver behavior, and qualification report format |
+| [V2 Release Orchestrator](./V2_RELEASE_ORCHESTRATOR.md) | Top-level v2 release workflow, dry-run behavior, TV workflow reuse, and remaining publishing blockers |
 | [Download Verification](../../VERIFY_DOWNLOAD.md) | SHA256 verification and safe direct APK install guidance |
 | [Trust and Transparency](../../TRUST.md) | Public trust boundaries for content, telemetry, accounts, and release artifacts |
 | [Changelog v1.1.0](./CHANGELOG_v1.1.0.md) | Current version changes |
