@@ -41,18 +41,18 @@ The Android Gradle config currently uses:
 
 | Field | Current value | Status |
 | --- | --- | --- |
-| App name | `Airo TV` | Ready |
-| Package ID | `io.airo.app.tv` | Ready pending Play Console confirmation |
-| Category | Entertainment / Video Players & Editors | Pending final store entry in #581 |
-| Short description | Draft in #581 | Pending stakeholder approval |
-| Full description | Draft in #581 | Pending stakeholder approval |
+| App name | `Airo TV - IPTV Player` | Ready in [Airo TV Store Listing Metadata](./AIRO_TV_STORE_LISTING.md) |
+| Package ID | `io.airo.app.tv` | Registered |
+| Category | Entertainment / Video Players & Editors | Ready in [Airo TV Store Listing Metadata](./AIRO_TV_STORE_LISTING.md) |
+| Short description | `Play your own IPTV playlists on Android TV with Cast support.` | Ready in [Airo TV Store Listing Metadata](./AIRO_TV_STORE_LISTING.md) |
+| Full description | Final copy in [Airo TV Store Listing Metadata](./AIRO_TV_STORE_LISTING.md) | Ready pending stakeholder approval |
 | Privacy Policy URL | `https://developerscoffee.github.io/airo/legal/privacy-policy/` | Ready |
 | Terms URL | `https://developerscoffee.github.io/airo/legal/terms-conditions/` | Ready |
 | Content disclaimer | User-provided IPTV content only; no bundled streams or playlists | Ready |
-| App icon | Android launcher icon present | Needs Play 512x512 asset confirmation in #581 |
+| App icon | Android launcher icon present | Needs Play 512x512 asset export in #582 |
 | TV banner | `app/android/app/src/tv/res/drawable-xhdpi/tv_banner.png` | Present |
-| Screenshots | TV screenshots required, 1920x1080 landscape | Pending #581 |
-| Feature graphic | 1024x500 PNG/JPG required for Play | Pending #581 |
+| Screenshots | TV screenshots required, 1920x1080 landscape | Pending media capture in #582 |
+| Feature graphic | 1024x500 PNG/JPG required for Play | Pending media asset in #582 |
 
 ### Airo TV Permissions
 
@@ -90,8 +90,8 @@ and AI Core bind-service permissions inherited from broader dependencies.
 | GitHub Release asset publication | Ready in orchestrator for selected v2 profiles | `.github/workflows/v2-release-orchestrator.yml` |
 | IARC content rating completed | Pending store-console action | #584 |
 | Data Safety form completed | Pending store-console action | #584/#581 |
-| Store metadata finalized | Pending | #581 |
-| TV screenshots and feature graphic uploaded | Pending | #581 |
+| Store metadata finalized | Ready pending stakeholder approval | #581, `docs/release/AIRO_TV_STORE_LISTING.md` |
+| TV screenshots and feature graphic uploaded | Pending media assets | #582 |
 | Release qualification evidence attached | Pending actual release evidence | #683 |
 
 ## App Store / iOS Checklist
@@ -128,7 +128,8 @@ Before submitting a public v2 Android release:
       `io.airo.app.*` package IDs in #675/#677.
 - [ ] Complete account, credential, signing, and repository-governance items in
       [V2 Publishing Human Setup](./V2_PUBLISHING_HUMAN_SETUP.md).
-- [ ] Finalize Airo TV store metadata in #581.
+- [ ] Confirm stakeholder approval for
+      [Airo TV Store Listing Metadata](./AIRO_TV_STORE_LISTING.md).
 - [ ] Complete content rating and data-safety store-console forms in #584.
 - [ ] Attach release qualification evidence or an explicit waiver per
       [V2 Release Qualification](./V2_RELEASE_QUALIFICATION.md).
@@ -139,7 +140,8 @@ Before submitting a public v2 Android release:
 ## Related Issues
 
 - #575, #577, #578, #579: legal/docs foundation.
-- #581: final Play/App Store listing metadata and screenshots.
+- #581: final Play/App Store listing metadata.
+- #582: final Play screenshot, feature graphic, and app icon assets.
 - #584: IARC/content rating and App Store age-rating questionnaires.
 - #585: Fastlane/store credentials and signing setup.
 - #675: supported v2 device/profile artifact matrix.
