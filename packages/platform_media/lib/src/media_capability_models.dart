@@ -100,6 +100,30 @@ enum AiroMediaCapabilityBlockerCode {
   final String stableId;
 }
 
+enum AiroMediaProbeId {
+  baselineHlsH264Aac('baseline_hls_h264_aac'),
+  baselineMp4H264Aac('baseline_mp4_h264_aac'),
+  baselineMpegTsH264Aac('baseline_mpeg_ts_h264_aac'),
+  baselineWebVttSubtitles('baseline_web_vtt_subtitles'),
+  hevc1080pSdr('hevc_1080p_sdr'),
+  av11080pSdr('av1_1080p_sdr'),
+  hdr10Hevc1080p('hdr10_hevc_1080p'),
+  h2644kSdr('h264_4k_sdr');
+
+  const AiroMediaProbeId(this.stableId);
+
+  final String stableId;
+}
+
+enum AiroMediaProbeImportance {
+  required('required'),
+  optional('optional');
+
+  const AiroMediaProbeImportance(this.stableId);
+
+  final String stableId;
+}
+
 class AiroMediaRequirement {
   AiroMediaRequirement({
     required this.mediaId,
@@ -416,6 +440,313 @@ class AiroMediaCapabilityPolicy {
         blockers.add(AiroMediaCapabilityBlockerCode.audioChannelCountTooHigh);
       }
     }
+  }
+}
+
+class AiroMediaProbeDefinition {
+  AiroMediaProbeDefinition({
+    required this.probeId,
+    required this.displayName,
+    required this.importance,
+    required this.requirement,
+    this.schemaVersion = kAiroMediaCapabilitySchemaVersion,
+  });
+
+  final String schemaVersion;
+  final AiroMediaProbeId probeId;
+  final String displayName;
+  final AiroMediaProbeImportance importance;
+  final AiroMediaRequirement requirement;
+
+  bool get isRequired => importance == AiroMediaProbeImportance.required;
+}
+
+class AiroMediaProbeResult {
+  const AiroMediaProbeResult({
+    required this.probeId,
+    required this.importance,
+    required this.preflight,
+  });
+
+  final AiroMediaProbeId probeId;
+  final AiroMediaProbeImportance importance;
+  final AiroMediaCapabilityPreflightResult preflight;
+
+  bool get passed => preflight.accepted;
+
+  Map<String, Object?> toPublicMap() {
+    return {
+      'probeId': probeId.stableId,
+      'importance': importance.stableId,
+      'passed': passed,
+      'blockers': preflight.blockers
+          .map((blocker) => blocker.stableId)
+          .toList(growable: false),
+      'selectedDecoderKind': preflight.selectedDecoderKind?.stableId,
+    };
+  }
+}
+
+class AiroMediaProbeMatrixReport {
+  AiroMediaProbeMatrixReport({
+    required this.profileId,
+    required Iterable<AiroMediaProbeResult> results,
+    required this.generatedAt,
+    this.schemaVersion = kAiroMediaCapabilitySchemaVersion,
+  }) : results = List.unmodifiable(results);
+
+  final String schemaVersion;
+  final String profileId;
+  final List<AiroMediaProbeResult> results;
+  final DateTime generatedAt;
+
+  bool get requiredProbesPassed => results
+      .where((result) => result.importance == AiroMediaProbeImportance.required)
+      .every((result) => result.passed);
+
+  List<AiroMediaProbeId> get blockedProbeIds {
+    return List.unmodifiable(
+      results.where((result) => !result.passed).map((result) => result.probeId),
+    );
+  }
+
+  List<AiroMediaProbeId> get blockedRequiredProbeIds {
+    return List.unmodifiable(
+      results
+          .where(
+            (result) =>
+                result.importance == AiroMediaProbeImportance.required &&
+                !result.passed,
+          )
+          .map((result) => result.probeId),
+    );
+  }
+
+  List<AiroMediaProbeId> get provenOptionalProbeIds {
+    return List.unmodifiable(
+      results
+          .where(
+            (result) =>
+                result.importance == AiroMediaProbeImportance.optional &&
+                result.passed,
+          )
+          .map((result) => result.probeId),
+    );
+  }
+
+  Set<AiroMediaCapabilityBlockerCode> get blockerCodes {
+    return Set.unmodifiable(
+      results
+          .where((result) => !result.passed)
+          .expand((result) => result.preflight.blockers)
+          .where(
+            (blocker) => blocker != AiroMediaCapabilityBlockerCode.accepted,
+          ),
+    );
+  }
+
+  Map<String, Object?> toPublicMap() {
+    return {
+      'schemaVersion': schemaVersion,
+      'profileId': profileId,
+      'requiredProbesPassed': requiredProbesPassed,
+      'blockedProbeIds': blockedProbeIds
+          .map((probeId) => probeId.stableId)
+          .toList(growable: false),
+      'blockedRequiredProbeIds': blockedRequiredProbeIds
+          .map((probeId) => probeId.stableId)
+          .toList(growable: false),
+      'provenOptionalProbeIds': provenOptionalProbeIds
+          .map((probeId) => probeId.stableId)
+          .toList(growable: false),
+      'blockerCodes': blockerCodes
+          .map((blocker) => blocker.stableId)
+          .toList(growable: false),
+      'results': results
+          .map((result) => result.toPublicMap())
+          .toList(growable: false),
+      'generatedAt': generatedAt.toIso8601String(),
+    };
+  }
+}
+
+class AiroMediaDecoderProbeMatrix {
+  AiroMediaDecoderProbeMatrix({
+    required Iterable<AiroMediaProbeDefinition> probes,
+    this.policy = const AiroMediaCapabilityPolicy(),
+    this.schemaVersion = kAiroMediaCapabilitySchemaVersion,
+  }) : probes = List.unmodifiable(probes);
+
+  final String schemaVersion;
+  final List<AiroMediaProbeDefinition> probes;
+  final AiroMediaCapabilityPolicy policy;
+
+  AiroMediaProbeMatrixReport evaluate({
+    required AiroMediaDeviceCapabilityProfile profile,
+    required DateTime now,
+  }) {
+    final results = [
+      for (final probe in probes)
+        AiroMediaProbeResult(
+          probeId: probe.probeId,
+          importance: probe.importance,
+          preflight: policy.validate(
+            profile: profile,
+            requirement: probe.requirement,
+          ),
+        ),
+    ];
+
+    return AiroMediaProbeMatrixReport(
+      profileId: profile.profileId,
+      results: results,
+      generatedAt: now,
+      schemaVersion: schemaVersion,
+    );
+  }
+}
+
+class AiroMediaDecoderProbeMatrices {
+  const AiroMediaDecoderProbeMatrices._();
+
+  static AiroMediaDecoderProbeMatrix legacyReceiverBaseline() {
+    return AiroMediaDecoderProbeMatrix(
+      probes: [
+        AiroMediaProbeDefinition(
+          probeId: AiroMediaProbeId.baselineHlsH264Aac,
+          displayName: 'HLS H.264 AAC baseline',
+          importance: AiroMediaProbeImportance.required,
+          requirement: AiroMediaRequirement(
+            mediaId: AiroMediaProbeId.baselineHlsH264Aac.stableId,
+            container: AiroMediaContainer.hls,
+            videoCodec: AiroVideoCodec.h264,
+            audioCodecs: const {AiroAudioCodec.aac},
+            subtitleFormats: const {},
+            width: 1280,
+            height: 720,
+            bitrateKbps: 4500,
+            requiresAdaptiveStreaming: true,
+            requiresHardwareDecoder: true,
+          ),
+        ),
+        AiroMediaProbeDefinition(
+          probeId: AiroMediaProbeId.baselineMp4H264Aac,
+          displayName: 'MP4 H.264 AAC baseline',
+          importance: AiroMediaProbeImportance.required,
+          requirement: AiroMediaRequirement(
+            mediaId: AiroMediaProbeId.baselineMp4H264Aac.stableId,
+            container: AiroMediaContainer.mp4,
+            videoCodec: AiroVideoCodec.h264,
+            audioCodecs: const {AiroAudioCodec.aac},
+            subtitleFormats: const {},
+            width: 1280,
+            height: 720,
+            bitrateKbps: 4500,
+            requiresHardwareDecoder: true,
+          ),
+        ),
+        AiroMediaProbeDefinition(
+          probeId: AiroMediaProbeId.baselineMpegTsH264Aac,
+          displayName: 'MPEG-TS H.264 AAC baseline',
+          importance: AiroMediaProbeImportance.required,
+          requirement: AiroMediaRequirement(
+            mediaId: AiroMediaProbeId.baselineMpegTsH264Aac.stableId,
+            container: AiroMediaContainer.mpegTs,
+            videoCodec: AiroVideoCodec.h264,
+            audioCodecs: const {AiroAudioCodec.aac},
+            subtitleFormats: const {AiroSubtitleFormat.cea608},
+            width: 1280,
+            height: 720,
+            bitrateKbps: 4500,
+            requiresHardwareDecoder: true,
+          ),
+        ),
+        AiroMediaProbeDefinition(
+          probeId: AiroMediaProbeId.baselineWebVttSubtitles,
+          displayName: 'WebVTT subtitle baseline',
+          importance: AiroMediaProbeImportance.required,
+          requirement: AiroMediaRequirement(
+            mediaId: AiroMediaProbeId.baselineWebVttSubtitles.stableId,
+            container: AiroMediaContainer.hls,
+            videoCodec: AiroVideoCodec.h264,
+            audioCodecs: const {AiroAudioCodec.aac},
+            subtitleFormats: const {AiroSubtitleFormat.webVtt},
+            width: 1280,
+            height: 720,
+            bitrateKbps: 4500,
+            requiresAdaptiveStreaming: true,
+            requiresHardwareDecoder: true,
+          ),
+        ),
+        AiroMediaProbeDefinition(
+          probeId: AiroMediaProbeId.hevc1080pSdr,
+          displayName: 'HEVC 1080p SDR',
+          importance: AiroMediaProbeImportance.optional,
+          requirement: AiroMediaRequirement(
+            mediaId: AiroMediaProbeId.hevc1080pSdr.stableId,
+            container: AiroMediaContainer.hls,
+            videoCodec: AiroVideoCodec.h265,
+            audioCodecs: const {AiroAudioCodec.aac},
+            subtitleFormats: const {},
+            width: 1920,
+            height: 1080,
+            bitrateKbps: 8000,
+            requiresAdaptiveStreaming: true,
+            requiresHardwareDecoder: true,
+          ),
+        ),
+        AiroMediaProbeDefinition(
+          probeId: AiroMediaProbeId.av11080pSdr,
+          displayName: 'AV1 1080p SDR',
+          importance: AiroMediaProbeImportance.optional,
+          requirement: AiroMediaRequirement(
+            mediaId: AiroMediaProbeId.av11080pSdr.stableId,
+            container: AiroMediaContainer.mp4,
+            videoCodec: AiroVideoCodec.av1,
+            audioCodecs: const {AiroAudioCodec.aac},
+            subtitleFormats: const {},
+            width: 1920,
+            height: 1080,
+            bitrateKbps: 8000,
+            requiresHardwareDecoder: true,
+          ),
+        ),
+        AiroMediaProbeDefinition(
+          probeId: AiroMediaProbeId.hdr10Hevc1080p,
+          displayName: 'HDR10 HEVC 1080p',
+          importance: AiroMediaProbeImportance.optional,
+          requirement: AiroMediaRequirement(
+            mediaId: AiroMediaProbeId.hdr10Hevc1080p.stableId,
+            container: AiroMediaContainer.hls,
+            videoCodec: AiroVideoCodec.h265,
+            audioCodecs: const {AiroAudioCodec.aac},
+            subtitleFormats: const {},
+            width: 1920,
+            height: 1080,
+            bitrateKbps: 10000,
+            hdrFormat: AiroHdrFormat.hdr10,
+            requiresAdaptiveStreaming: true,
+            requiresHardwareDecoder: true,
+          ),
+        ),
+        AiroMediaProbeDefinition(
+          probeId: AiroMediaProbeId.h2644kSdr,
+          displayName: 'H.264 4K SDR',
+          importance: AiroMediaProbeImportance.optional,
+          requirement: AiroMediaRequirement(
+            mediaId: AiroMediaProbeId.h2644kSdr.stableId,
+            container: AiroMediaContainer.mp4,
+            videoCodec: AiroVideoCodec.h264,
+            audioCodecs: const {AiroAudioCodec.aac},
+            subtitleFormats: const {},
+            width: 3840,
+            height: 2160,
+            bitrateKbps: 18000,
+            requiresHardwareDecoder: true,
+          ),
+        ),
+      ],
+    );
   }
 }
 
