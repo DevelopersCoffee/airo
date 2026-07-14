@@ -107,6 +107,27 @@ enum ProductManifestValidationCode {
   final String stableId;
 }
 
+enum ProductModuleLifecycleValidationCode {
+  accepted('accepted'),
+  unsupportedProfile('unsupported_profile'),
+  moduleUnavailable('module_unavailable'),
+  dependencyMissing('dependency_missing'),
+  capabilityUnsupported('capability_unsupported'),
+  permissionUnsupported('permission_unsupported'),
+  budgetInvalid('budget_invalid'),
+  initializationCostExceeded('initialization_cost_exceeded'),
+  memoryBudgetExceeded('memory_budget_exceeded'),
+  storageBudgetExceeded('storage_budget_exceeded'),
+  backgroundJobBudgetExceeded('background_job_budget_exceeded'),
+  shutdownRequired('shutdown_required'),
+  fallbackInvalid('fallback_invalid'),
+  featureFlagMissing('feature_flag_missing');
+
+  const ProductModuleLifecycleValidationCode(this.stableId);
+
+  final String stableId;
+}
+
 enum ProductCapability {
   directPlayback('direct_playback'),
   dpadNavigation('dpad_navigation'),
@@ -122,6 +143,34 @@ enum ProductCapability {
   multiview('multiview');
 
   const ProductCapability(this.stableId);
+
+  final String stableId;
+}
+
+enum ProductModuleBackgroundTask {
+  epgRefresh('epg_refresh'),
+  searchIndexing('search_indexing'),
+  recordingScheduler('recording_scheduler'),
+  downloadWorker('download_worker'),
+  diagnosticsUpload('diagnostics_upload'),
+  analyticsFlush('analytics_flush'),
+  modelWarmup('model_warmup');
+
+  const ProductModuleBackgroundTask(this.stableId);
+
+  final String stableId;
+}
+
+enum ProductModuleFeatureFlag {
+  fullEpg('full_epg'),
+  localAi('local_ai'),
+  recording('recording'),
+  downloads('downloads'),
+  multiview('multiview'),
+  diagnostics('diagnostics'),
+  analytics('analytics');
+
+  const ProductModuleFeatureFlag(this.stableId);
 
   final String stableId;
 }
@@ -177,6 +226,28 @@ class ProductResourceBudget extends Equatable {
   ];
 }
 
+class ProductModuleLifecycleBudget extends Equatable {
+  const ProductModuleLifecycleBudget({
+    required this.initializationCostMs,
+    required this.maxMemoryMb,
+    required this.maxStorageMb,
+    required this.maxBackgroundJobs,
+  });
+
+  final int initializationCostMs;
+  final int maxMemoryMb;
+  final int maxStorageMb;
+  final int maxBackgroundJobs;
+
+  @override
+  List<Object?> get props => [
+    initializationCostMs,
+    maxMemoryMb,
+    maxStorageMb,
+    maxBackgroundJobs,
+  ];
+}
+
 class ProductManifestValidationResult extends Equatable {
   ProductManifestValidationResult({
     required List<ProductManifestValidationCode> codes,
@@ -192,6 +263,28 @@ class ProductManifestValidationResult extends Equatable {
     return {
       'accepted': accepted,
       'codes': _manifestValidationCodeStableIds(codes),
+    };
+  }
+
+  @override
+  List<Object?> get props => [codes];
+}
+
+class ProductModuleLifecycleValidationResult extends Equatable {
+  ProductModuleLifecycleValidationResult({
+    required List<ProductModuleLifecycleValidationCode> codes,
+  }) : codes = List.unmodifiable(codes);
+
+  final List<ProductModuleLifecycleValidationCode> codes;
+
+  bool get accepted =>
+      codes.length == 1 &&
+      codes.single == ProductModuleLifecycleValidationCode.accepted;
+
+  Map<String, Object?> toPublicMap() {
+    return {
+      'accepted': accepted,
+      'codes': _moduleLifecycleValidationCodeStableIds(codes),
     };
   }
 
@@ -575,6 +668,205 @@ class ProductProfileManifestPolicy extends Equatable {
   List<Object?> get props => [allowedAndroidPermissions];
 }
 
+class ProductModuleLifecycleManifest extends Equatable {
+  ProductModuleLifecycleManifest({
+    required this.module,
+    required this.displayName,
+    required Set<ProductProfileId> supportedProfiles,
+    required Set<ProductModule> dependencies,
+    required Set<ProductCapability> requiredCapabilities,
+    required Set<String> androidPermissions,
+    required this.budget,
+    Set<ProductModuleBackgroundTask> backgroundTasks = const {},
+    Set<ProductModuleFeatureFlag> featureFlags = const {},
+    this.fallbackModule,
+    this.allowsBackgroundExecution = false,
+    this.supportsGracefulShutdown = true,
+    this.schemaVersion = kProductCapabilitiesSchemaVersion,
+  }) : supportedProfiles = Set.unmodifiable(supportedProfiles),
+       dependencies = Set.unmodifiable(dependencies),
+       requiredCapabilities = Set.unmodifiable(requiredCapabilities),
+       androidPermissions = Set.unmodifiable(androidPermissions),
+       backgroundTasks = Set.unmodifiable(backgroundTasks),
+       featureFlags = Set.unmodifiable(featureFlags);
+
+  final String schemaVersion;
+  final ProductModule module;
+  final String displayName;
+  final Set<ProductProfileId> supportedProfiles;
+  final Set<ProductModule> dependencies;
+  final Set<ProductCapability> requiredCapabilities;
+  final Set<String> androidPermissions;
+  final ProductModuleLifecycleBudget budget;
+  final Set<ProductModuleBackgroundTask> backgroundTasks;
+  final Set<ProductModuleFeatureFlag> featureFlags;
+  final ProductModule? fallbackModule;
+  final bool allowsBackgroundExecution;
+  final bool supportsGracefulShutdown;
+
+  bool supportsProfile(ProductProfileId profileId) {
+    return supportedProfiles.contains(profileId);
+  }
+
+  ProductModuleLifecycleValidationResult validateFor(
+    ProductProfileManifest profile,
+  ) {
+    return ProductModuleLifecyclePolicy().evaluate(this, profile);
+  }
+
+  Map<String, Object?> toPublicMap() {
+    return {
+      'schemaVersion': schemaVersion,
+      'module': module.stableId,
+      'displayName': displayName,
+      'supportedProfiles': _productProfileStableIds(supportedProfiles),
+      'dependencies': _productModuleStableIds(dependencies),
+      'requiredCapabilities': _productCapabilityStableIds(requiredCapabilities),
+      'androidPermissions': androidPermissions.toList(growable: false)..sort(),
+      'budget': {
+        'initializationCostMs': budget.initializationCostMs,
+        'maxMemoryMb': budget.maxMemoryMb,
+        'maxStorageMb': budget.maxStorageMb,
+        'maxBackgroundJobs': budget.maxBackgroundJobs,
+      },
+      'backgroundTasks': _moduleBackgroundTaskStableIds(backgroundTasks),
+      'featureFlags': _moduleFeatureFlagStableIds(featureFlags),
+      'fallbackModule': fallbackModule?.stableId,
+      'allowsBackgroundExecution': allowsBackgroundExecution,
+      'supportsGracefulShutdown': supportsGracefulShutdown,
+    };
+  }
+
+  @override
+  List<Object?> get props => [
+    schemaVersion,
+    module,
+    displayName,
+    supportedProfiles,
+    dependencies,
+    requiredCapabilities,
+    androidPermissions,
+    budget,
+    backgroundTasks,
+    featureFlags,
+    fallbackModule,
+    allowsBackgroundExecution,
+    supportsGracefulShutdown,
+  ];
+}
+
+class ProductModuleLifecyclePolicy extends Equatable {
+  ProductModuleLifecyclePolicy({
+    Map<ProductProfileId, int> maxInitializationCostMsByProfile = const {
+      ProductProfileId.fullTv: 3000,
+      ProductProfileId.standardTv: 2000,
+      ProductProfileId.liteReceiver: 900,
+      ProductProfileId.embeddedReceiver: 900,
+      ProductProfileId.experimentalLegacy: 1500,
+    },
+  }) : maxInitializationCostMsByProfile = Map.unmodifiable(
+         maxInitializationCostMsByProfile,
+       );
+
+  final Map<ProductProfileId, int> maxInitializationCostMsByProfile;
+
+  ProductModuleLifecycleValidationResult evaluate(
+    ProductModuleLifecycleManifest manifest,
+    ProductProfileManifest profile,
+  ) {
+    final codes = <ProductModuleLifecycleValidationCode>[];
+    final requiredFlag = _requiredFeatureFlag(manifest.module);
+
+    if (!manifest.supportsProfile(profile.profileId)) {
+      codes.add(ProductModuleLifecycleValidationCode.unsupportedProfile);
+    }
+    if (!profile.includesModule(manifest.module)) {
+      codes.add(ProductModuleLifecycleValidationCode.moduleUnavailable);
+    }
+    if (manifest.dependencies.any(
+      (module) => !profile.includesModule(module),
+    )) {
+      codes.add(ProductModuleLifecycleValidationCode.dependencyMissing);
+    }
+    if (manifest.requiredCapabilities.any(
+      (capability) => !profile.supportsCapability(capability),
+    )) {
+      codes.add(ProductModuleLifecycleValidationCode.capabilityUnsupported);
+    }
+    if (!profile.androidPermissions.containsAll(manifest.androidPermissions)) {
+      codes.add(ProductModuleLifecycleValidationCode.permissionUnsupported);
+    }
+    if (manifest.budget.initializationCostMs <= 0 ||
+        manifest.budget.maxMemoryMb <= 0 ||
+        manifest.budget.maxStorageMb < 0 ||
+        manifest.budget.maxBackgroundJobs < 0) {
+      codes.add(ProductModuleLifecycleValidationCode.budgetInvalid);
+    }
+    if (manifest.budget.initializationCostMs >
+        (maxInitializationCostMsByProfile[profile.profileId] ?? 0)) {
+      codes.add(
+        ProductModuleLifecycleValidationCode.initializationCostExceeded,
+      );
+    }
+    if (manifest.budget.maxMemoryMb > profile.resourceBudget.maxMemoryMb) {
+      codes.add(ProductModuleLifecycleValidationCode.memoryBudgetExceeded);
+    }
+    if (manifest.budget.maxStorageMb > profile.resourceBudget.maxStorageMb) {
+      codes.add(ProductModuleLifecycleValidationCode.storageBudgetExceeded);
+    }
+    if (manifest.budget.maxBackgroundJobs >
+            profile.resourceBudget.maxBackgroundJobs ||
+        manifest.backgroundTasks.length >
+            profile.resourceBudget.maxBackgroundJobs) {
+      codes.add(
+        ProductModuleLifecycleValidationCode.backgroundJobBudgetExceeded,
+      );
+    }
+    if (manifest.backgroundTasks.isNotEmpty &&
+        (!manifest.allowsBackgroundExecution ||
+            !manifest.supportsGracefulShutdown)) {
+      codes.add(ProductModuleLifecycleValidationCode.shutdownRequired);
+    }
+    if (manifest.fallbackModule == manifest.module ||
+        (manifest.fallbackModule != null &&
+            !profile.includesModule(manifest.fallbackModule!))) {
+      codes.add(ProductModuleLifecycleValidationCode.fallbackInvalid);
+    }
+    if (requiredFlag != null && !manifest.featureFlags.contains(requiredFlag)) {
+      codes.add(ProductModuleLifecycleValidationCode.featureFlagMissing);
+    }
+
+    return ProductModuleLifecycleValidationResult(
+      codes: codes.isEmpty
+          ? const [ProductModuleLifecycleValidationCode.accepted]
+          : codes,
+    );
+  }
+
+  ProductModuleFeatureFlag? _requiredFeatureFlag(ProductModule module) {
+    return switch (module) {
+      ProductModule.fullEpg => ProductModuleFeatureFlag.fullEpg,
+      ProductModule.localAi => ProductModuleFeatureFlag.localAi,
+      ProductModule.recording => ProductModuleFeatureFlag.recording,
+      ProductModule.downloads => ProductModuleFeatureFlag.downloads,
+      ProductModule.multiview => ProductModuleFeatureFlag.multiview,
+      ProductModule.diagnostics => ProductModuleFeatureFlag.diagnostics,
+      ProductModule.analytics => ProductModuleFeatureFlag.analytics,
+      ProductModule.playback ||
+      ProductModule.playlistImport ||
+      ProductModule.favorites ||
+      ProductModule.recent ||
+      ProductModule.basicSearch ||
+      ProductModule.compactEpg ||
+      ProductModule.pairing ||
+      ProductModule.remoteControl => null,
+    };
+  }
+
+  @override
+  List<Object?> get props => [maxInitializationCostMsByProfile];
+}
+
 class AiroTvProductProfiles {
   const AiroTvProductProfiles._();
 
@@ -731,6 +1023,114 @@ class AiroTvProductProfiles {
   }
 }
 
+class AiroTvModuleLifecycleManifests {
+  const AiroTvModuleLifecycleManifests._();
+
+  static ProductModuleLifecycleManifest playback() {
+    return ProductModuleLifecycleManifest(
+      module: ProductModule.playback,
+      displayName: 'Playback',
+      supportedProfiles: const {
+        ProductProfileId.fullTv,
+        ProductProfileId.standardTv,
+        ProductProfileId.liteReceiver,
+        ProductProfileId.embeddedReceiver,
+      },
+      dependencies: const {},
+      requiredCapabilities: const {ProductCapability.directPlayback},
+      androidPermissions: const {
+        'android.permission.INTERNET',
+        'android.permission.ACCESS_NETWORK_STATE',
+      },
+      budget: const ProductModuleLifecycleBudget(
+        initializationCostMs: 500,
+        maxMemoryMb: 96,
+        maxStorageMb: 0,
+        maxBackgroundJobs: 0,
+      ),
+    );
+  }
+
+  static ProductModuleLifecycleManifest compactEpg() {
+    return ProductModuleLifecycleManifest(
+      module: ProductModule.compactEpg,
+      displayName: 'Compact EPG',
+      supportedProfiles: const {
+        ProductProfileId.fullTv,
+        ProductProfileId.standardTv,
+        ProductProfileId.liteReceiver,
+        ProductProfileId.embeddedReceiver,
+      },
+      dependencies: const {ProductModule.playback},
+      requiredCapabilities: const {ProductCapability.compactEpg},
+      androidPermissions: const {'android.permission.INTERNET'},
+      budget: const ProductModuleLifecycleBudget(
+        initializationCostMs: 700,
+        maxMemoryMb: 64,
+        maxStorageMb: 24,
+        maxBackgroundJobs: 1,
+      ),
+      backgroundTasks: const {ProductModuleBackgroundTask.epgRefresh},
+      allowsBackgroundExecution: true,
+      supportsGracefulShutdown: true,
+    );
+  }
+
+  static ProductModuleLifecycleManifest fullEpg() {
+    return ProductModuleLifecycleManifest(
+      module: ProductModule.fullEpg,
+      displayName: 'Full EPG',
+      supportedProfiles: const {
+        ProductProfileId.fullTv,
+        ProductProfileId.standardTv,
+      },
+      dependencies: const {ProductModule.playback, ProductModule.compactEpg},
+      requiredCapabilities: const {
+        ProductCapability.compactEpg,
+        ProductCapability.fullEpg,
+      },
+      androidPermissions: const {'android.permission.INTERNET'},
+      budget: const ProductModuleLifecycleBudget(
+        initializationCostMs: 1200,
+        maxMemoryMb: 192,
+        maxStorageMb: 128,
+        maxBackgroundJobs: 1,
+      ),
+      backgroundTasks: const {ProductModuleBackgroundTask.epgRefresh},
+      featureFlags: const {ProductModuleFeatureFlag.fullEpg},
+      fallbackModule: ProductModule.compactEpg,
+      allowsBackgroundExecution: true,
+      supportsGracefulShutdown: true,
+    );
+  }
+
+  static ProductModuleLifecycleManifest localAi() {
+    return ProductModuleLifecycleManifest(
+      module: ProductModule.localAi,
+      displayName: 'Local AI',
+      supportedProfiles: const {ProductProfileId.fullTv},
+      dependencies: const {ProductModule.basicSearch},
+      requiredCapabilities: const {ProductCapability.localAi},
+      androidPermissions: const {},
+      budget: const ProductModuleLifecycleBudget(
+        initializationCostMs: 2500,
+        maxMemoryMb: 512,
+        maxStorageMb: 128,
+        maxBackgroundJobs: 2,
+      ),
+      backgroundTasks: const {ProductModuleBackgroundTask.modelWarmup},
+      featureFlags: const {ProductModuleFeatureFlag.localAi},
+      fallbackModule: ProductModule.basicSearch,
+      allowsBackgroundExecution: true,
+      supportsGracefulShutdown: true,
+    );
+  }
+}
+
+List<String> _productProfileStableIds(Iterable<ProductProfileId> values) {
+  return values.map((value) => value.stableId).toList(growable: false)..sort();
+}
+
 List<String> _productModuleStableIds(Iterable<ProductModule> values) {
   return values.map((value) => value.stableId).toList(growable: false)..sort();
 }
@@ -751,6 +1151,24 @@ List<String> _mediaCodecStableIds(Iterable<MediaCodecCapability> values) {
 
 List<String> _manifestValidationCodeStableIds(
   Iterable<ProductManifestValidationCode> values,
+) {
+  return values.map((value) => value.stableId).toList(growable: false)..sort();
+}
+
+List<String> _moduleLifecycleValidationCodeStableIds(
+  Iterable<ProductModuleLifecycleValidationCode> values,
+) {
+  return values.map((value) => value.stableId).toList(growable: false)..sort();
+}
+
+List<String> _moduleBackgroundTaskStableIds(
+  Iterable<ProductModuleBackgroundTask> values,
+) {
+  return values.map((value) => value.stableId).toList(growable: false)..sort();
+}
+
+List<String> _moduleFeatureFlagStableIds(
+  Iterable<ProductModuleFeatureFlag> values,
 ) {
   return values.map((value) => value.stableId).toList(growable: false)..sort();
 }

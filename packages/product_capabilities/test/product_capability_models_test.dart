@@ -244,4 +244,150 @@ void main() {
       },
     );
   });
+
+  group('Airo TV module lifecycle contracts', () {
+    test('playback lifecycle validates for full TV and lite receiver', () {
+      final playback = AiroTvModuleLifecycleManifests.playback();
+
+      expect(
+        playback.validateFor(AiroTvProductProfiles.fullTv()).accepted,
+        isTrue,
+      );
+      expect(
+        playback.validateFor(AiroTvProductProfiles.liteReceiver()).accepted,
+        isTrue,
+      );
+      expect(playback.supportsProfile(ProductProfileId.liteReceiver), isTrue);
+    });
+
+    test('full EPG validates for full TV and rejects lite receiver', () {
+      final fullEpg = AiroTvModuleLifecycleManifests.fullEpg();
+
+      expect(
+        fullEpg.validateFor(AiroTvProductProfiles.fullTv()).accepted,
+        isTrue,
+      );
+
+      final liteResult = fullEpg.validateFor(
+        AiroTvProductProfiles.liteReceiver(),
+      );
+
+      expect(liteResult.accepted, isFalse);
+      expect(
+        liteResult.codes,
+        contains(ProductModuleLifecycleValidationCode.unsupportedProfile),
+      );
+      expect(
+        liteResult.codes,
+        contains(ProductModuleLifecycleValidationCode.moduleUnavailable),
+      );
+      expect(
+        liteResult.codes,
+        contains(ProductModuleLifecycleValidationCode.capabilityUnsupported),
+      );
+    });
+
+    test('heavy modules remain outside lite receiver lifecycle budgets', () {
+      final localAi = AiroTvModuleLifecycleManifests.localAi();
+      final result = localAi.validateFor(AiroTvProductProfiles.liteReceiver());
+
+      expect(result.accepted, isFalse);
+      expect(
+        result.codes,
+        containsAll(const {
+          ProductModuleLifecycleValidationCode.unsupportedProfile,
+          ProductModuleLifecycleValidationCode.moduleUnavailable,
+          ProductModuleLifecycleValidationCode.capabilityUnsupported,
+          ProductModuleLifecycleValidationCode.initializationCostExceeded,
+          ProductModuleLifecycleValidationCode.memoryBudgetExceeded,
+          ProductModuleLifecycleValidationCode.backgroundJobBudgetExceeded,
+        }),
+      );
+    });
+
+    test('lifecycle validator rejects unsafe background work', () {
+      final manifest = ProductModuleLifecycleManifest(
+        module: ProductModule.compactEpg,
+        displayName: 'Unsafe Compact EPG',
+        supportedProfiles: const {ProductProfileId.liteReceiver},
+        dependencies: const {ProductModule.playback},
+        requiredCapabilities: const {ProductCapability.compactEpg},
+        androidPermissions: const {'android.permission.INTERNET'},
+        budget: const ProductModuleLifecycleBudget(
+          initializationCostMs: 500,
+          maxMemoryMb: 64,
+          maxStorageMb: 16,
+          maxBackgroundJobs: 1,
+        ),
+        backgroundTasks: const {ProductModuleBackgroundTask.epgRefresh},
+        allowsBackgroundExecution: false,
+        supportsGracefulShutdown: false,
+      );
+
+      final result = manifest.validateFor(AiroTvProductProfiles.liteReceiver());
+
+      expect(result.accepted, isFalse);
+      expect(
+        result.codes,
+        contains(ProductModuleLifecycleValidationCode.shutdownRequired),
+      );
+    });
+
+    test('lifecycle validator rejects invalid fallbacks and missing flags', () {
+      final manifest = ProductModuleLifecycleManifest(
+        module: ProductModule.fullEpg,
+        displayName: 'Broken Full EPG',
+        supportedProfiles: const {ProductProfileId.fullTv},
+        dependencies: const {ProductModule.playback, ProductModule.compactEpg},
+        requiredCapabilities: const {
+          ProductCapability.compactEpg,
+          ProductCapability.fullEpg,
+        },
+        androidPermissions: const {'android.permission.INTERNET'},
+        budget: const ProductModuleLifecycleBudget(
+          initializationCostMs: 1200,
+          maxMemoryMb: 192,
+          maxStorageMb: 128,
+          maxBackgroundJobs: 1,
+        ),
+        fallbackModule: ProductModule.fullEpg,
+      );
+
+      final result = manifest.validateFor(AiroTvProductProfiles.fullTv());
+
+      expect(result.accepted, isFalse);
+      expect(
+        result.codes,
+        contains(ProductModuleLifecycleValidationCode.fallbackInvalid),
+      );
+      expect(
+        result.codes,
+        contains(ProductModuleLifecycleValidationCode.featureFlagMissing),
+      );
+    });
+
+    test('lifecycle public map exposes stable ids and numeric budgets', () {
+      final publicMap = AiroTvModuleLifecycleManifests.compactEpg()
+          .toPublicMap();
+      final flattened = publicMap.toString();
+
+      expect(publicMap['module'], ProductModule.compactEpg.stableId);
+      expect(
+        publicMap['supportedProfiles'],
+        contains(ProductProfileId.liteReceiver.stableId),
+      );
+      expect(
+        publicMap['dependencies'],
+        contains(ProductModule.playback.stableId),
+      );
+      expect(
+        publicMap['backgroundTasks'],
+        contains(ProductModuleBackgroundTask.epgRefresh.stableId),
+      );
+      expect(flattened, isNot(contains('/Users/')));
+      expect(flattened, isNot(contains('providerPayload')));
+      expect(flattened, isNot(contains('storeConsoleAccount')));
+      expect(flattened, isNot(contains('rawCredential')));
+    });
+  });
 }
