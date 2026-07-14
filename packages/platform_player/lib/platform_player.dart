@@ -1,6 +1,7 @@
 library;
 
 export "src/models/cast_models.dart";
+export "src/models/native_media_engine_spike_models.dart";
 export "src/models/playback_engine_models.dart";
 export "src/models/streaming_state.dart";
 export "src/services/airo_cast_controller.dart";
