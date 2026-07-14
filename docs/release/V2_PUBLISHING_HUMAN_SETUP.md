@@ -71,6 +71,8 @@ Related issues: #687, #689.
 - [ ] Add the root `LICENSE` after the license is chosen.
 - [ ] Confirm whether any private or commercial dependencies are bundled in v2
       release profiles.
+- [ ] Resolve the open items in
+      [V2 License Review](./V2_LICENSE_REVIEW.md).
 - [ ] Decide whether GitHub Discussions should be enabled for public support.
 - [ ] Confirm CODEOWNERS entries for release, security, docs, v2 platform, and
       app/profile ownership.
