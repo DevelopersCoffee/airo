@@ -4,6 +4,28 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:platform_player/platform_player.dart';
 
 void main() {
+  group('Cast options', () {
+    test('disable analytics logging for Android Cast initialization', () {
+      final options = FlutterChromeCastController.buildCastOptions(
+        isAndroid: true,
+        isIOS: false,
+      );
+
+      expect(options.toMap()['disableAnalyticsLogging'], isTrue);
+      expect(options.toMap()['disableDiscoveryAutostart'], isTrue);
+    });
+
+    test('disable analytics logging for iOS Cast initialization', () {
+      final options = FlutterChromeCastController.buildCastOptions(
+        isAndroid: false,
+        isIOS: true,
+      );
+
+      expect(options.toMap()['disableAnalyticsLogging'], isTrue);
+      expect(options.toMap()['disableDiscoveryAutostart'], isTrue);
+    });
+  });
+
   test('maps live HLS request to Google Cast media information', () {
     final request = AiroCastMediaRequest(
       url: Uri.parse('https://example.com/channel.m3u8'),

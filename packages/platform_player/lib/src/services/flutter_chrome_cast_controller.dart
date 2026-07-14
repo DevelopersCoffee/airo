@@ -77,27 +77,10 @@ class FlutterChromeCastController implements AiroCastController {
     if (_initialized) return;
 
     try {
-      final castOptions = Platform.isIOS
-          ? IOSGoogleCastOptions(
-              GoogleCastDiscoveryCriteriaInitialize.initWithApplicationID(
-                defaultReceiverApplicationId,
-              ),
-              disableDiscoveryAutostart: true,
-              startDiscoveryAfterFirstTapOnCastButton: false,
-              stopReceiverApplicationWhenEndingSession: false,
-            )
-          : Platform.isAndroid
-          ? GoogleCastOptionsAndroid(
-              appId: defaultReceiverApplicationId,
-              disableDiscoveryAutostart: true,
-              startDiscoveryAfterFirstTapOnCastButton: false,
-              stopReceiverApplicationWhenEndingSession: false,
-            )
-          : GoogleCastOptions(
-              disableDiscoveryAutostart: true,
-              startDiscoveryAfterFirstTapOnCastButton: false,
-              stopReceiverApplicationWhenEndingSession: false,
-            );
+      final castOptions = buildCastOptions(
+        isAndroid: Platform.isAndroid,
+        isIOS: Platform.isIOS,
+      );
 
       await GoogleCastContext.instance.setSharedInstanceWithOptions(
         castOptions,
@@ -116,6 +99,41 @@ class FlutterChromeCastController implements AiroCastController {
         ),
       );
     }
+  }
+
+  @visibleForTesting
+  static GoogleCastOptions buildCastOptions({
+    required bool isAndroid,
+    required bool isIOS,
+  }) {
+    if (isIOS) {
+      return IOSGoogleCastOptions(
+        GoogleCastDiscoveryCriteriaInitialize.initWithApplicationID(
+          defaultReceiverApplicationId,
+        ),
+        disableAnalyticsLogging: true,
+        disableDiscoveryAutostart: true,
+        startDiscoveryAfterFirstTapOnCastButton: false,
+        stopReceiverApplicationWhenEndingSession: false,
+      );
+    }
+
+    if (isAndroid) {
+      return GoogleCastOptionsAndroid(
+        appId: defaultReceiverApplicationId,
+        disableAnalyticsLogging: true,
+        disableDiscoveryAutostart: true,
+        startDiscoveryAfterFirstTapOnCastButton: false,
+        stopReceiverApplicationWhenEndingSession: false,
+      );
+    }
+
+    return GoogleCastOptions(
+      disableAnalyticsLogging: true,
+      disableDiscoveryAutostart: true,
+      startDiscoveryAfterFirstTapOnCastButton: false,
+      stopReceiverApplicationWhenEndingSession: false,
+    );
   }
 
   @override

@@ -4,6 +4,13 @@ import 'package:flutter_chrome_cast/entities.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('disables Cast analytics logging during initialization', () {
+    final options = FlutterChromeCastController.buildCastOptions();
+
+    expect(options.toMap()['disableAnalyticsLogging'], isTrue);
+    expect(options.toMap()['disableDiscoveryAutostart'], isTrue);
+  });
+
   test('maps Airo live HLS request to GoogleCastMediaInformation', () {
     final request = AiroCastMediaRequest(
       url: Uri.parse('https://example.com/channel.m3u8'),
