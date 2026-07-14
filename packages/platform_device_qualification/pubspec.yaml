@@ -1,0 +1,25 @@
+name: platform_device_qualification
+description: "Reusable platform device qualification framework for UI, responsive layout, D-pad navigation, network simulation and performance profiling."
+version: 0.0.1
+homepage:
+publish_to: none
+
+environment:
+  sdk: ^3.12.2
+  flutter: ">=3.44.4"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_riverpod: ^2.6.1
+  shared_preferences: ^2.5.5
+  platform_channels:
+    path: ../platform_channels
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true

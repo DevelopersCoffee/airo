@@ -51,6 +51,12 @@ class DeviceFormFactorDetector {
   static TvPlatform? _cachedTvPlatform;
   static const _tvChannel = MethodChannel('com.airo/device_info');
 
+  /// Debug override for form factor (used for testing on iPad/tablet)
+  static DeviceFormFactor? debugFormFactorOverride;
+
+  /// Debug override for TV platform
+  static TvPlatform? debugTvPlatformOverride;
+
   /// Detect device form factor
   ///
   /// Uses heuristics for form factor detection:
@@ -58,6 +64,9 @@ class DeviceFormFactorDetector {
   /// 2. Screen size thresholds
   /// 3. Input type detection
   static Future<DeviceFormFactor> detect(BuildContext? context) async {
+    // Return override if available
+    if (debugFormFactorOverride != null) return debugFormFactorOverride!;
+
     // Return cached value if available
     if (_cachedFormFactor != null) return _cachedFormFactor!;
 
@@ -96,6 +105,9 @@ class DeviceFormFactorDetector {
 
   /// Synchronous detection (no TV check, uses cached or screen-based)
   static DeviceFormFactor detectSync(BuildContext context) {
+    // Return override if available
+    if (debugFormFactorOverride != null) return debugFormFactorOverride!;
+
     // Return cached if available
     if (_cachedFormFactor != null) return _cachedFormFactor!;
 
@@ -192,6 +204,7 @@ class DeviceFormFactorDetector {
   ///
   /// Returns [TvPlatform.none] if not running on a TV.
   static Future<TvPlatform> getTvPlatform() async {
+    if (debugTvPlatformOverride != null) return debugTvPlatformOverride!;
     if (!Platform.isAndroid) return TvPlatform.none;
     if (_cachedTvPlatform != null) return _cachedTvPlatform!;
 
@@ -239,5 +252,7 @@ class DeviceFormFactorDetector {
   static void clearCache() {
     _cachedFormFactor = null;
     _cachedTvPlatform = null;
+    debugFormFactorOverride = null;
+    debugTvPlatformOverride = null;
   }
 }
