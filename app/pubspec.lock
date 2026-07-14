@@ -366,6 +366,13 @@ packages:
       relative: true
     source: path
     version: "0.0.1"
+  core_analytics:
+    dependency: transitive
+    description:
+      path: "../packages/core_analytics"
+      relative: true
+    source: path
+    version: "0.0.1"
   core_auth:
     dependency: "direct main"
     description:
