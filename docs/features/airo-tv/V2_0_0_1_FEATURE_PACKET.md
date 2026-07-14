@@ -118,8 +118,9 @@ and delegated operation contract.
 **Versioning/migration:**
 - protocol fields must be forward compatible with unknown fields ignored;
 - profile capabilities must include schema version;
-- release tag naming must align with repository V2 semver policy before a build
-  is tagged.
+- `v2.0.0.1` is a planning milestone label, not a public Git release tag;
+- public builds must be tagged from `v2` with repository V2 semver tags such as
+  `v2.0.0`, `v2.0.1`, and `v2.1.0`.
 
 **Tests required:**
 - profile composition tests;
@@ -411,4 +412,3 @@ Experimental, or Unsupported.
 - Verification environment: host-only tests for contracts and privacy; physical
   Android TV/Fire TV devices for legacy certification. Android Emulator is not
   required and should not be used for certification unless explicitly approved.
-
