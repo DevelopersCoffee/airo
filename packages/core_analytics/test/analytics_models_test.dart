@@ -8,12 +8,14 @@ void main() {
       String owner = 'media',
       AiroAnalyticsPurpose purpose = AiroAnalyticsPurpose.product,
       Map<String, Object?> params = const {'source_type': 'iptv'},
+      AiroAnalyticsPriority priority = AiroAnalyticsPriority.normal,
     }) {
       return AiroAnalyticsEvent(
         name: name,
         owner: owner,
         purpose: purpose,
         params: params,
+        priority: priority,
       );
     }
 
@@ -217,10 +219,60 @@ void main() {
 
       expect(first.status, AiroAnalyticsTrackStatus.accepted);
       expect(second.status, AiroAnalyticsTrackStatus.droppedQueueFull);
+      expect(first.queueResult?.code, AiroAnalyticsQueueOfferCode.accepted);
+      expect(second.queueResult?.code, AiroAnalyticsQueueOfferCode.queueFull);
       expect(service.events.map((event) => event.name), ['first_event']);
 
       await service.reset();
       expect(service.events, isEmpty);
+    });
+
+    test(
+      'bounded queue evicts lower priority events deterministically',
+      () async {
+        final service = AiroLocalDiagnosticsAnalyticsService(
+          consent: const AiroAnalyticsConsentState.allEnabled(),
+          maxEvents: 1,
+        );
+
+        await service.track(
+          event(name: 'low_event', priority: AiroAnalyticsPriority.low),
+        );
+        final result = await service.track(
+          event(
+            name: 'critical_event',
+            priority: AiroAnalyticsPriority.critical,
+          ),
+        );
+
+        expect(result.status, AiroAnalyticsTrackStatus.accepted);
+        expect(
+          result.queueResult?.code,
+          AiroAnalyticsQueueOfferCode.evictedLowerPriority,
+        );
+        expect(result.queueResult?.evictedEvent?.name, 'low_event');
+        expect(service.events.map((event) => event.name), ['critical_event']);
+      },
+    );
+
+    test('queue snapshot public map excludes event params', () async {
+      final service = AiroLocalDiagnosticsAnalyticsService(
+        consent: const AiroAnalyticsConsentState.allEnabled(),
+      );
+
+      await service.track(
+        event(
+          name: 'product_event',
+          params: const {'source_type': 'subscription_screen'},
+        ),
+      );
+      final flattened = service.queueSnapshot.toPublicMap().toString();
+
+      expect(flattened, contains('product_event'));
+      expect(flattened, contains('priorityCounts'));
+      expect(flattened, isNot(contains('source_type')));
+      expect(flattened, isNot(contains('subscription_screen')));
+      expect(flattened, isNot(contains('providerPayload')));
     });
 
     test('consent withdrawal deletes optional queued events', () async {
@@ -353,15 +405,80 @@ void main() {
     });
 
     test('provider backed service catches provider failures', () async {
+      final startedAt = DateTime.utc(2026, 7, 15, 10);
+      var attempts = 0;
       final service = AiroProviderBackedAnalyticsService(
-        sender: (_) async => throw StateError('offline'),
+        sender: (_) async {
+          attempts += 1;
+          throw StateError('offline');
+        },
         consent: const AiroAnalyticsConsentState.allEnabled(),
         collectionEnabled: true,
+        clock: () => startedAt,
       );
 
       final result = await service.track(event());
+      final blocked = await service.track(event(name: 'second_event'));
 
       expect(result.status, AiroAnalyticsTrackStatus.providerUnavailable);
+      expect(service.providerBackoffState.failureCount, 1);
+      expect(
+        result.uploadDecision?.code,
+        AiroAnalyticsUploadDecisionCode.providerBackoffActive,
+      );
+      expect(blocked.status, AiroAnalyticsTrackStatus.providerBackoffActive);
+      expect(attempts, 1);
+    });
+
+    test(
+      'provider upload gate defers non-critical events during playback',
+      () async {
+        final sentEvents = <AiroAnalyticsEvent>[];
+        final service = AiroProviderBackedAnalyticsService(
+          sender: (event) async => sentEvents.add(event),
+          consent: const AiroAnalyticsConsentState.allEnabled(),
+          collectionEnabled: true,
+          playbackActive: true,
+          clock: () => DateTime.utc(2026, 7, 15, 10),
+        );
+
+        final normal = await service.track(event(name: 'normal_event'));
+        final critical = await service.track(
+          event(
+            name: 'critical_event',
+            priority: AiroAnalyticsPriority.critical,
+          ),
+        );
+
+        expect(normal.status, AiroAnalyticsTrackStatus.deferredByPlayback);
+        expect(
+          normal.uploadDecision?.code,
+          AiroAnalyticsUploadDecisionCode.deferredDuringPlayback,
+        );
+        expect(critical.status, AiroAnalyticsTrackStatus.accepted);
+        expect(sentEvents.map((event) => event.name), ['critical_event']);
+      },
+    );
+
+    test('provider upload decision public map exposes stable state only', () {
+      final now = DateTime.utc(2026, 7, 15, 10);
+      final decision = AiroAnalyticsUploadGate.evaluate(
+        event: event(
+          name: 'product_event',
+          params: const {'source_type': 'subscription_screen'},
+        ),
+        playbackActive: true,
+        providerBackoffState:
+            const AiroAnalyticsProviderBackoffState.inactive(),
+        now: now,
+      );
+      final flattened = decision.toPublicMap().toString();
+
+      expect(flattened, contains('deferred_during_playback'));
+      expect(flattened, contains('playbackActive: true'));
+      expect(flattened, isNot(contains('product_event')));
+      expect(flattened, isNot(contains('subscription_screen')));
+      expect(flattened, isNot(contains('providerPayload')));
     });
 
     test('timed events emit duration buckets without raw values', () async {

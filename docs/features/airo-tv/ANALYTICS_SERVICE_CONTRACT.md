@@ -40,6 +40,10 @@ by an isolated adapter. If that sender fails, the service returns
 `provider_unavailable` instead of throwing through playback, UI, or feature
 code.
 
+Provider-backed uploads also pass through the platform upload gate. Non-critical
+events are deferred while playback is active, critical events remain eligible,
+and provider outages record backoff state before future uploads are skipped.
+
 ## Configuration
 
 `AiroAnalyticsServiceConfiguration` declares:
@@ -57,6 +61,19 @@ code.
 The configuration validator rejects local-only external uploads, unisolated
 vendor adapters, blocking analytics, invalid queue budgets, and non-resettable
 installation IDs.
+
+## Queue And Provider Behavior
+
+Local diagnostics uses a bounded platform queue. If the queue is full, a higher
+priority event can evict a lower priority event; otherwise the track result
+returns `dropped_queue_full`. Queue result maps expose counts, priority counts,
+and event metadata only.
+
+Provider outage handling is deterministic. Failed sender calls return
+`provider_unavailable`, update backoff state, and future events return
+`provider_backoff_active` while the backoff window is active. Playback-aware
+upload gating returns `deferred_by_playback` for non-critical events during
+active playback.
 
 ## Consent And Local-Only Behavior
 

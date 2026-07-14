@@ -19,6 +19,8 @@ analytics SDKs directly.
 - Consent and local-only collection gates.
 - Consent transition results for queue cleanup, local-only external upload
   blocking, collection disablement, and reset generation state.
+- Bounded queue policy with priority eviction, redacted queue snapshots,
+  playback-aware upload gating, and provider backoff state.
 - Prohibited field and value validation.
 - Reusable privacy filter fixture suites for URL-like values, credential-like
   values, auth header fields, local paths, local IPs, raw queries, raw titles,

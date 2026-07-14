@@ -58,8 +58,10 @@ enum AiroAnalyticsTrackStatus {
   droppedByLocalOnly('dropped_by_local_only'),
   droppedByCollectionDisabled('dropped_by_collection_disabled'),
   droppedQueueFull('dropped_queue_full'),
+  deferredByPlayback('deferred_by_playback'),
   rejectedPrivacy('rejected_privacy'),
   rejectedSchema('rejected_schema'),
+  providerBackoffActive('provider_backoff_active'),
   providerUnavailable('provider_unavailable'),
   timedEventMissing('timed_event_missing');
 
@@ -76,6 +78,26 @@ enum AiroAnalyticsConsentTransitionCode {
   analyticsIdentityReset('analytics_identity_reset');
 
   const AiroAnalyticsConsentTransitionCode(this.stableId);
+
+  final String stableId;
+}
+
+enum AiroAnalyticsQueueOfferCode {
+  accepted('accepted'),
+  evictedLowerPriority('evicted_lower_priority'),
+  queueFull('queue_full');
+
+  const AiroAnalyticsQueueOfferCode(this.stableId);
+
+  final String stableId;
+}
+
+enum AiroAnalyticsUploadDecisionCode {
+  eligible('eligible'),
+  deferredDuringPlayback('deferred_during_playback'),
+  providerBackoffActive('provider_backoff_active');
+
+  const AiroAnalyticsUploadDecisionCode(this.stableId);
 
   final String stableId;
 }
@@ -776,14 +798,290 @@ class AiroAnalyticsConsentTransitionResult extends Equatable {
   ];
 }
 
+class AiroAnalyticsQueuedEventSummary extends Equatable {
+  const AiroAnalyticsQueuedEventSummary({
+    required this.name,
+    required this.owner,
+    required this.purpose,
+    required this.priority,
+    required this.schemaVersion,
+  });
+
+  factory AiroAnalyticsQueuedEventSummary.fromEvent(AiroAnalyticsEvent event) {
+    return AiroAnalyticsQueuedEventSummary(
+      name: event.name,
+      owner: event.owner,
+      purpose: event.purpose,
+      priority: event.priority,
+      schemaVersion: event.schemaVersion,
+    );
+  }
+
+  final String name;
+  final String owner;
+  final AiroAnalyticsPurpose purpose;
+  final AiroAnalyticsPriority priority;
+  final String schemaVersion;
+
+  Map<String, Object?> toPublicMap() {
+    return {
+      'name': name,
+      'owner': owner,
+      'purpose': purpose.stableId,
+      'priority': priority.stableId,
+      'schemaVersion': schemaVersion,
+    };
+  }
+
+  @override
+  List<Object?> get props => [name, owner, purpose, priority, schemaVersion];
+}
+
+class AiroAnalyticsQueueSnapshot extends Equatable {
+  AiroAnalyticsQueueSnapshot({
+    required this.maxEvents,
+    required Iterable<AiroAnalyticsEvent> events,
+  }) : events = List.unmodifiable(
+         events.map(AiroAnalyticsQueuedEventSummary.fromEvent),
+       );
+
+  final int maxEvents;
+  final List<AiroAnalyticsQueuedEventSummary> events;
+
+  int get eventCount => events.length;
+
+  Map<String, int> get priorityCounts {
+    final counts = <String, int>{};
+    for (final priority in AiroAnalyticsPriority.values) {
+      counts[priority.stableId] = 0;
+    }
+    for (final event in events) {
+      counts[event.priority.stableId] =
+          (counts[event.priority.stableId] ?? 0) + 1;
+    }
+    return Map.unmodifiable(counts);
+  }
+
+  Map<String, Object?> toPublicMap() {
+    return {
+      'maxEvents': maxEvents,
+      'eventCount': eventCount,
+      'priorityCounts': priorityCounts,
+      'events': events
+          .map((event) => event.toPublicMap())
+          .toList(growable: false),
+    };
+  }
+
+  @override
+  List<Object?> get props => [maxEvents, events];
+}
+
+class AiroAnalyticsQueueOfferResult extends Equatable {
+  const AiroAnalyticsQueueOfferResult({
+    required this.code,
+    required this.snapshot,
+    this.evictedEvent,
+  });
+
+  final AiroAnalyticsQueueOfferCode code;
+  final AiroAnalyticsQueueSnapshot snapshot;
+  final AiroAnalyticsQueuedEventSummary? evictedEvent;
+
+  bool get accepted => code != AiroAnalyticsQueueOfferCode.queueFull;
+
+  Map<String, Object?> toPublicMap() {
+    return {
+      'accepted': accepted,
+      'code': code.stableId,
+      'snapshot': snapshot.toPublicMap(),
+      'evictedEvent': evictedEvent?.toPublicMap(),
+    };
+  }
+
+  @override
+  List<Object?> get props => [code, snapshot, evictedEvent];
+}
+
+class AiroAnalyticsBoundedEventQueue {
+  AiroAnalyticsBoundedEventQueue({required this.maxEvents});
+
+  final int maxEvents;
+  final List<AiroAnalyticsEvent> _events = [];
+
+  List<AiroAnalyticsEvent> get events => List.unmodifiable(_events);
+
+  AiroAnalyticsQueueSnapshot snapshot() {
+    return AiroAnalyticsQueueSnapshot(maxEvents: maxEvents, events: _events);
+  }
+
+  AiroAnalyticsQueueOfferResult offer(AiroAnalyticsEvent event) {
+    if (maxEvents <= 0) {
+      return AiroAnalyticsQueueOfferResult(
+        code: AiroAnalyticsQueueOfferCode.queueFull,
+        snapshot: snapshot(),
+      );
+    }
+    if (_events.length < maxEvents) {
+      _events.add(event);
+      return AiroAnalyticsQueueOfferResult(
+        code: AiroAnalyticsQueueOfferCode.accepted,
+        snapshot: snapshot(),
+      );
+    }
+
+    final lowerPriorityIndex = _lowestPriorityIndexBelow(event.priority);
+    if (lowerPriorityIndex == null) {
+      return AiroAnalyticsQueueOfferResult(
+        code: AiroAnalyticsQueueOfferCode.queueFull,
+        snapshot: snapshot(),
+      );
+    }
+
+    final evictedEvent = _events[lowerPriorityIndex];
+    _events[lowerPriorityIndex] = event;
+    return AiroAnalyticsQueueOfferResult(
+      code: AiroAnalyticsQueueOfferCode.evictedLowerPriority,
+      snapshot: snapshot(),
+      evictedEvent: AiroAnalyticsQueuedEventSummary.fromEvent(evictedEvent),
+    );
+  }
+
+  void removeWhere(bool Function(AiroAnalyticsEvent event) test) {
+    _events.removeWhere(test);
+  }
+
+  void clear() {
+    _events.clear();
+  }
+
+  int? _lowestPriorityIndexBelow(AiroAnalyticsPriority priority) {
+    int? index;
+    var lowestRank = _priorityRank(priority);
+    for (var i = 0; i < _events.length; i += 1) {
+      final rank = _priorityRank(_events[i].priority);
+      if (rank < _priorityRank(priority) && rank < lowestRank) {
+        lowestRank = rank;
+        index = i;
+      }
+    }
+    return index;
+  }
+}
+
+class AiroAnalyticsProviderBackoffState extends Equatable {
+  const AiroAnalyticsProviderBackoffState({
+    required this.failureCount,
+    this.nextRetryAt,
+  });
+
+  const AiroAnalyticsProviderBackoffState.inactive()
+    : failureCount = 0,
+      nextRetryAt = null;
+
+  final int failureCount;
+  final DateTime? nextRetryAt;
+
+  bool isActiveAt(DateTime now) {
+    final retryAt = nextRetryAt;
+    return retryAt != null && now.isBefore(retryAt);
+  }
+
+  AiroAnalyticsProviderBackoffState recordFailure(
+    DateTime now, {
+    Duration baseDelay = const Duration(seconds: 30),
+    Duration maxDelay = const Duration(minutes: 5),
+  }) {
+    final nextFailureCount = failureCount + 1;
+    final exponent = (nextFailureCount - 1).clamp(0, 4).toInt();
+    final multiplier = 1 << exponent;
+    final delay = baseDelay * multiplier;
+    return AiroAnalyticsProviderBackoffState(
+      failureCount: nextFailureCount,
+      nextRetryAt: now.add(delay.compareTo(maxDelay) > 0 ? maxDelay : delay),
+    );
+  }
+
+  Map<String, Object?> toPublicMap() {
+    return {
+      'failureCount': failureCount,
+      'nextRetryAt': nextRetryAt?.toIso8601String(),
+    };
+  }
+
+  @override
+  List<Object?> get props => [failureCount, nextRetryAt];
+}
+
+class AiroAnalyticsUploadDecision extends Equatable {
+  const AiroAnalyticsUploadDecision({
+    required this.code,
+    required this.playbackActive,
+    required this.providerBackoffState,
+  });
+
+  final AiroAnalyticsUploadDecisionCode code;
+  final bool playbackActive;
+  final AiroAnalyticsProviderBackoffState providerBackoffState;
+
+  bool get eligible => code == AiroAnalyticsUploadDecisionCode.eligible;
+
+  Map<String, Object?> toPublicMap() {
+    return {
+      'eligible': eligible,
+      'code': code.stableId,
+      'playbackActive': playbackActive,
+      'providerBackoffState': providerBackoffState.toPublicMap(),
+    };
+  }
+
+  @override
+  List<Object?> get props => [code, playbackActive, providerBackoffState];
+}
+
+class AiroAnalyticsUploadGate {
+  const AiroAnalyticsUploadGate._();
+
+  static AiroAnalyticsUploadDecision evaluate({
+    required AiroAnalyticsEvent event,
+    required bool playbackActive,
+    required AiroAnalyticsProviderBackoffState providerBackoffState,
+    required DateTime now,
+  }) {
+    if (providerBackoffState.isActiveAt(now)) {
+      return AiroAnalyticsUploadDecision(
+        code: AiroAnalyticsUploadDecisionCode.providerBackoffActive,
+        playbackActive: playbackActive,
+        providerBackoffState: providerBackoffState,
+      );
+    }
+    if (playbackActive && event.priority != AiroAnalyticsPriority.critical) {
+      return AiroAnalyticsUploadDecision(
+        code: AiroAnalyticsUploadDecisionCode.deferredDuringPlayback,
+        playbackActive: playbackActive,
+        providerBackoffState: providerBackoffState,
+      );
+    }
+    return AiroAnalyticsUploadDecision(
+      code: AiroAnalyticsUploadDecisionCode.eligible,
+      playbackActive: playbackActive,
+      providerBackoffState: providerBackoffState,
+    );
+  }
+}
+
 class AiroAnalyticsTrackResult extends Equatable {
   AiroAnalyticsTrackResult({
     required this.status,
     List<AiroAnalyticsPrivacyViolation> violations = const [],
+    this.queueResult,
+    this.uploadDecision,
   }) : violations = List.unmodifiable(violations);
 
   final AiroAnalyticsTrackStatus status;
   final List<AiroAnalyticsPrivacyViolation> violations;
+  final AiroAnalyticsQueueOfferResult? queueResult;
+  final AiroAnalyticsUploadDecision? uploadDecision;
 
   bool get accepted => status == AiroAnalyticsTrackStatus.accepted;
 
@@ -799,11 +1097,13 @@ class AiroAnalyticsTrackResult extends Equatable {
             },
           )
           .toList(growable: false),
+      'queueResult': queueResult?.toPublicMap(),
+      'uploadDecision': uploadDecision?.toPublicMap(),
     };
   }
 
   @override
-  List<Object?> get props => [status, violations];
+  List<Object?> get props => [status, violations, queueResult, uploadDecision];
 }
 
 class AiroAnalyticsTimedEventHandle extends Equatable {
@@ -1098,16 +1398,18 @@ class AiroLocalDiagnosticsAnalyticsService implements AiroAnalyticsService {
     this.maxEvents = 100,
     bool collectionEnabled = true,
   }) : _consent = consent,
-       _collectionEnabled = collectionEnabled;
+       _collectionEnabled = collectionEnabled,
+       _queue = AiroAnalyticsBoundedEventQueue(maxEvents: maxEvents);
 
   final AiroAnalyticsPrivacyFilter? privacyFilter;
   final int maxEvents;
-  final List<AiroAnalyticsEvent> _events = [];
+  final AiroAnalyticsBoundedEventQueue _queue;
   AiroAnalyticsConsentState _consent;
   bool _collectionEnabled;
   int _resetGeneration = 0;
 
-  List<AiroAnalyticsEvent> get events => List.unmodifiable(_events);
+  List<AiroAnalyticsEvent> get events => _queue.events;
+  AiroAnalyticsQueueSnapshot get queueSnapshot => _queue.snapshot();
   AiroAnalyticsConsentState get consent => _consent;
   bool get collectionEnabled => _collectionEnabled;
   int get resetGeneration => _resetGeneration;
@@ -1128,14 +1430,19 @@ class AiroLocalDiagnosticsAnalyticsService implements AiroAnalyticsService {
       collectionEnabled: _collectionEnabled,
     );
     if (!result.accepted) return result;
-    if (_events.length >= maxEvents) {
+    final offer = _queue.offer(event);
+    if (!offer.accepted) {
       return AiroAnalyticsTrackResult(
         status: AiroAnalyticsTrackStatus.droppedQueueFull,
+        queueResult: offer,
       );
     }
 
-    _events.add(event);
-    return result;
+    return AiroAnalyticsTrackResult(
+      status: result.status,
+      violations: result.violations,
+      queueResult: offer,
+    );
   }
 
   @override
@@ -1171,8 +1478,8 @@ class AiroLocalDiagnosticsAnalyticsService implements AiroAnalyticsService {
   ) async {
     final previousConsent = _consent;
     _consent = consent;
-    final previousCount = _events.length;
-    _events.removeWhere((event) {
+    final previousCount = _queue.events.length;
+    _queue.removeWhere((event) {
       return validateEvent(
             event,
             consent: _consent,
@@ -1184,7 +1491,7 @@ class AiroLocalDiagnosticsAnalyticsService implements AiroAnalyticsService {
     return AiroAnalyticsConsentTransitionPolicy.evaluate(
       previousConsent: previousConsent,
       nextConsent: _consent,
-      removedEventCount: previousCount - _events.length,
+      removedEventCount: previousCount - _queue.events.length,
       collectionEnabled: _collectionEnabled,
       resetGeneration: _resetGeneration,
     );
@@ -1194,7 +1501,7 @@ class AiroLocalDiagnosticsAnalyticsService implements AiroAnalyticsService {
   Future<void> setCollectionEnabled(bool enabled) async {
     _collectionEnabled = enabled;
     if (!enabled) {
-      _events.clear();
+      _queue.clear();
     }
   }
 
@@ -1203,7 +1510,7 @@ class AiroLocalDiagnosticsAnalyticsService implements AiroAnalyticsService {
 
   @override
   Future<void> reset() async {
-    _events.clear();
+    _queue.clear();
     _resetGeneration += 1;
   }
 }
@@ -1215,18 +1522,31 @@ class AiroProviderBackedAnalyticsService implements AiroAnalyticsService {
         const AiroAnalyticsConsentState.disabled(),
     this.privacyFilter,
     bool collectionEnabled = false,
+    bool playbackActive = false,
+    AiroAnalyticsProviderBackoffState providerBackoffState =
+        const AiroAnalyticsProviderBackoffState.inactive(),
+    DateTime Function()? clock,
   }) : _sender = sender,
        _consent = consent,
-       _collectionEnabled = collectionEnabled;
+       _collectionEnabled = collectionEnabled,
+       _playbackActive = playbackActive,
+       _providerBackoffState = providerBackoffState,
+       _clock = clock ?? _utcNow;
 
   final AiroAnalyticsProviderSender _sender;
   final AiroAnalyticsPrivacyFilter? privacyFilter;
+  final DateTime Function() _clock;
   AiroAnalyticsConsentState _consent;
   bool _collectionEnabled;
+  bool _playbackActive;
+  AiroAnalyticsProviderBackoffState _providerBackoffState;
   int _resetGeneration = 0;
 
   AiroAnalyticsConsentState get consent => _consent;
   bool get collectionEnabled => _collectionEnabled;
+  bool get playbackActive => _playbackActive;
+  AiroAnalyticsProviderBackoffState get providerBackoffState =>
+      _providerBackoffState;
   int get resetGeneration => _resetGeneration;
 
   @override
@@ -1251,12 +1571,40 @@ class AiroProviderBackedAnalyticsService implements AiroAnalyticsService {
     );
     if (!result.accepted) return result;
 
+    final decision = AiroAnalyticsUploadGate.evaluate(
+      event: event,
+      playbackActive: _playbackActive,
+      providerBackoffState: _providerBackoffState,
+      now: _clock(),
+    );
+    if (!decision.eligible) {
+      final status =
+          decision.code ==
+              AiroAnalyticsUploadDecisionCode.deferredDuringPlayback
+          ? AiroAnalyticsTrackStatus.deferredByPlayback
+          : AiroAnalyticsTrackStatus.providerBackoffActive;
+      return AiroAnalyticsTrackResult(status: status, uploadDecision: decision);
+    }
+
     try {
       await _sender(event);
-      return result;
+      _providerBackoffState =
+          const AiroAnalyticsProviderBackoffState.inactive();
+      return AiroAnalyticsTrackResult(
+        status: result.status,
+        violations: result.violations,
+        uploadDecision: decision,
+      );
     } catch (_) {
+      _providerBackoffState = _providerBackoffState.recordFailure(_clock());
       return AiroAnalyticsTrackResult(
         status: AiroAnalyticsTrackStatus.providerUnavailable,
+        uploadDecision: AiroAnalyticsUploadGate.evaluate(
+          event: event,
+          playbackActive: _playbackActive,
+          providerBackoffState: _providerBackoffState,
+          now: _clock(),
+        ),
       );
     }
   }
@@ -1305,6 +1653,10 @@ class AiroProviderBackedAnalyticsService implements AiroAnalyticsService {
   @override
   Future<void> setCollectionEnabled(bool enabled) async {
     _collectionEnabled = enabled;
+  }
+
+  void setPlaybackActive(bool active) {
+    _playbackActive = active;
   }
 
   @override
@@ -1701,6 +2053,17 @@ bool _isSnakeCase(String value) {
 bool _isBucketValue(String value) {
   return RegExp(r'^[a-z0-9]+(?:_[a-z0-9]+)*$').hasMatch(value);
 }
+
+int _priorityRank(AiroAnalyticsPriority priority) {
+  return switch (priority) {
+    AiroAnalyticsPriority.low => 0,
+    AiroAnalyticsPriority.normal => 1,
+    AiroAnalyticsPriority.high => 2,
+    AiroAnalyticsPriority.critical => 3,
+  };
+}
+
+DateTime _utcNow() => DateTime.now().toUtc();
 
 Map<String, Object?> _consentToPublicMap(AiroAnalyticsConsentState consent) {
   return {
