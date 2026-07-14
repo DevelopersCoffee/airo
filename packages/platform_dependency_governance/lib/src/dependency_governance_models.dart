@@ -40,6 +40,11 @@ enum AiroDependencyBlockerCode {
   final String stableId;
 }
 
+List<String> _stableArchitectureIds(Set<AiroNativeArchitecture> architectures) {
+  return architectures.map((architecture) => architecture.stableId).toList()
+    ..sort();
+}
+
 class AiroDependencyAuditRecord extends Equatable {
   AiroDependencyAuditRecord({
     required this.packageName,
@@ -83,6 +88,28 @@ class AiroDependencyAuditRecord extends Equatable {
       importance == AiroDependencyImportance.optional ||
       importance == AiroDependencyImportance.developmentOnly;
 
+  Map<String, Object?> toJson() {
+    return {
+      'schemaVersion': schemaVersion,
+      'packageName': packageName,
+      'version': version,
+      'usedByModule': usedByModule,
+      'importance': importance.stableId,
+      'minimumAndroidApi': minimumAndroidApi,
+      'hasNativeCode': hasNativeCode,
+      'nativeArchitectures': _stableArchitectureIds(nativeArchitectures),
+      'estimatedBinarySizeKb': estimatedBinarySizeKb,
+      'estimatedRuntimeMemoryMb': estimatedRuntimeMemoryMb,
+      'hasBackgroundBehavior': hasBackgroundBehavior,
+      'backgroundBehavior': backgroundBehavior,
+      'requiresShrinkerRules': requiresShrinkerRules,
+      'shrinkerRulesValidated': shrinkerRulesValidated,
+      'tvIssuesReviewed': tvIssuesReviewed,
+      'hasFallbackOrStub': hasFallbackOrStub,
+      'maintenanceOwner': maintenanceOwner,
+    };
+  }
+
   @override
   List<Object?> get props => [
     schemaVersion,
@@ -117,6 +144,15 @@ class AiroDependencyGovernanceChecklist extends Equatable {
   final int androidApiBaseline;
   final int maxBinarySizeKb;
   final int maxRuntimeMemoryMb;
+
+  Map<String, Object?> toJson() {
+    return {
+      'schemaVersion': schemaVersion,
+      'androidApiBaseline': androidApiBaseline,
+      'maxBinarySizeKb': maxBinarySizeKb,
+      'maxRuntimeMemoryMb': maxRuntimeMemoryMb,
+    };
+  }
 
   AiroDependencyGovernanceResult evaluate(AiroDependencyAuditRecord record) {
     final blockers = <AiroDependencyBlocker>[];
@@ -250,6 +286,20 @@ class AiroDependencyGovernanceResult extends Equatable {
 
   bool get passed => blockers.isEmpty;
 
+  List<AiroDependencyBlockerCode> get blockerCodes {
+    final codes = blockers.map((blocker) => blocker.code).toList()
+      ..sort((left, right) => left.stableId.compareTo(right.stableId));
+    return List.unmodifiable(codes);
+  }
+
+  Map<String, Object?> toJson() {
+    return {
+      'packageName': packageName,
+      'passed': passed,
+      'blockers': blockerCodes.map((code) => code.stableId).toList(),
+    };
+  }
+
   @override
   List<Object?> get props => [packageName, blockers];
 }
@@ -276,16 +326,14 @@ class AiroDependencyGovernanceAudit extends Equatable {
         const AiroDependencyGovernanceChecklist(),
     required DateTime generatedAt,
   }) {
-    final results = records.map(checklist.evaluate).toList(growable: false);
-
-    return AiroDependencyGovernanceAuditReport(
-      auditId: auditId,
+    return AiroDependencyGovernanceAuditReport.evaluate(
+      profileName: targetProfile,
       releaseLine: releaseLine,
-      targetProfile: targetProfile,
+      auditId: auditId,
+      createdAtUtc: createdAt,
+      generatedAtUtc: generatedAt,
+      records: records,
       checklist: checklist,
-      results: results,
-      createdAt: createdAt,
-      generatedAt: generatedAt,
       schemaVersion: schemaVersion,
     );
   }
@@ -301,81 +349,163 @@ class AiroDependencyGovernanceAudit extends Equatable {
   ];
 }
 
+class AiroDependencyGovernanceAuditEntry extends Equatable {
+  const AiroDependencyGovernanceAuditEntry({
+    required this.record,
+    required this.result,
+  });
+
+  final AiroDependencyAuditRecord record;
+  final AiroDependencyGovernanceResult result;
+
+  bool get passed => result.passed;
+
+  Map<String, Object?> toJson() {
+    return {'record': record.toJson(), 'result': result.toJson()};
+  }
+
+  @override
+  List<Object?> get props => [record, result];
+}
+
 class AiroDependencyGovernanceAuditReport extends Equatable {
   AiroDependencyGovernanceAuditReport({
-    required this.auditId,
-    required this.releaseLine,
-    required this.targetProfile,
+    this.auditId,
+    this.releaseLine,
+    this.createdAtUtc,
+    required this.profileName,
+    required this.generatedAtUtc,
     required this.checklist,
-    required List<AiroDependencyGovernanceResult> results,
-    required this.createdAt,
-    required this.generatedAt,
+    required List<AiroDependencyGovernanceAuditEntry> entries,
     this.schemaVersion = kAiroDependencyGovernanceSchemaVersion,
-  }) : results = List.unmodifiable(results);
+  }) : entries = List.unmodifiable(
+         entries.toList()..sort((left, right) {
+           final moduleOrder = left.record.usedByModule.compareTo(
+             right.record.usedByModule,
+           );
+           if (moduleOrder != 0) {
+             return moduleOrder;
+           }
 
-  final String schemaVersion;
-  final String auditId;
-  final String releaseLine;
-  final String targetProfile;
-  final AiroDependencyGovernanceChecklist checklist;
-  final List<AiroDependencyGovernanceResult> results;
-  final DateTime createdAt;
-  final DateTime generatedAt;
+           final packageOrder = left.record.packageName.compareTo(
+             right.record.packageName,
+           );
+           if (packageOrder != 0) {
+             return packageOrder;
+           }
 
-  bool get passed => results.every((result) => result.passed);
+           return left.record.version.compareTo(right.record.version);
+         }),
+       );
 
-  List<String> get blockedPackages {
-    return List.unmodifiable(
-      results
-          .where((result) => !result.passed)
-          .map((result) => result.packageName),
+  factory AiroDependencyGovernanceAuditReport.evaluate({
+    String? auditId,
+    String? releaseLine,
+    DateTime? createdAtUtc,
+    required String profileName,
+    required DateTime generatedAtUtc,
+    required Iterable<AiroDependencyAuditRecord> records,
+    AiroDependencyGovernanceChecklist checklist =
+        const AiroDependencyGovernanceChecklist(),
+    String schemaVersion = kAiroDependencyGovernanceSchemaVersion,
+  }) {
+    return AiroDependencyGovernanceAuditReport(
+      auditId: auditId,
+      releaseLine: releaseLine,
+      createdAtUtc: createdAtUtc?.toUtc(),
+      profileName: profileName,
+      generatedAtUtc: generatedAtUtc.toUtc(),
+      checklist: checklist,
+      schemaVersion: schemaVersion,
+      entries: records
+          .map(
+            (record) => AiroDependencyGovernanceAuditEntry(
+              record: record,
+              result: checklist.evaluate(record),
+            ),
+          )
+          .toList(),
     );
   }
 
-  Set<AiroDependencyBlockerCode> get blockerCodes {
-    return Set.unmodifiable(
-      results.expand(
-        (result) => result.blockers.map((blocker) => blocker.code),
-      ),
+  final String? auditId;
+  final String? releaseLine;
+  final DateTime? createdAtUtc;
+  final String schemaVersion;
+  final String profileName;
+  final DateTime generatedAtUtc;
+  final AiroDependencyGovernanceChecklist checklist;
+  final List<AiroDependencyGovernanceAuditEntry> entries;
+
+  String get targetProfile => profileName;
+  DateTime get generatedAt => generatedAtUtc;
+  DateTime? get createdAt => createdAtUtc;
+  List<AiroDependencyGovernanceResult> get results {
+    return List.unmodifiable(entries.map((entry) => entry.result));
+  }
+
+  bool get passed => entries.every((entry) => entry.passed);
+
+  List<AiroDependencyGovernanceAuditEntry> get failingEntries {
+    return List.unmodifiable(entries.where((entry) => !entry.passed));
+  }
+
+  List<String> get blockedPackages {
+    return List.unmodifiable(
+      failingEntries.map((entry) => entry.record.packageName),
     );
+  }
+
+  List<AiroDependencyBlockerCode> get blockerCodes {
+    final codes = <AiroDependencyBlockerCode>{};
+    for (final entry in entries) {
+      codes.addAll(entry.result.blockerCodes);
+    }
+
+    return List.unmodifiable(
+      codes.toList()
+        ..sort((left, right) => left.stableId.compareTo(right.stableId)),
+    );
+  }
+
+  Map<String, Object?> toJson() {
+    return {
+      'schemaVersion': schemaVersion,
+      'profileName': profileName,
+      'generatedAtUtc': generatedAtUtc.toUtc().toIso8601String(),
+      'passed': passed,
+      'checklist': checklist.toJson(),
+      'blockerCodes': blockerCodes.map((code) => code.stableId).toList(),
+      'dependencies': entries.map((entry) => entry.toJson()).toList(),
+    };
   }
 
   Map<String, Object?> toPublicMap() {
     return {
       'schemaVersion': schemaVersion,
-      'auditId': auditId,
-      'releaseLine': releaseLine,
-      'targetProfile': targetProfile,
+      if (auditId != null) 'auditId': auditId,
+      if (releaseLine != null) 'releaseLine': releaseLine,
+      'targetProfile': profileName,
       'passed': passed,
       'blockedPackages': blockedPackages,
       'blockerCodes': blockerCodes
           .map((code) => code.stableId)
           .toList(growable: false),
-      'checklist': {
-        'androidApiBaseline': checklist.androidApiBaseline,
-        'maxBinarySizeKb': checklist.maxBinarySizeKb,
-        'maxRuntimeMemoryMb': checklist.maxRuntimeMemoryMb,
-      },
-      'results': results.map(_resultToPublicMap).toList(growable: false),
-      'createdAt': createdAt.toIso8601String(),
-      'generatedAt': generatedAt.toIso8601String(),
-    };
-  }
-
-  Map<String, Object?> _resultToPublicMap(
-    AiroDependencyGovernanceResult result,
-  ) {
-    return {
-      'packageName': result.packageName,
-      'passed': result.passed,
-      'blockers': result.blockers
+      'checklist': checklist.toJson(),
+      'results': entries
           .map(
-            (blocker) => {
-              'packageName': blocker.packageName,
-              'code': blocker.code.stableId,
+            (entry) => {
+              'packageName': entry.record.packageName,
+              'passed': entry.passed,
+              'blockers': entry.result.blockerCodes
+                  .map((code) => code.stableId)
+                  .toList(growable: false),
             },
           )
           .toList(growable: false),
+      if (createdAtUtc != null)
+        'createdAt': createdAtUtc!.toUtc().toIso8601String(),
+      'generatedAt': generatedAtUtc.toUtc().toIso8601String(),
     };
   }
 
@@ -384,10 +514,10 @@ class AiroDependencyGovernanceAuditReport extends Equatable {
     schemaVersion,
     auditId,
     releaseLine,
-    targetProfile,
+    createdAtUtc,
+    profileName,
+    generatedAtUtc,
     checklist,
-    results,
-    createdAt,
-    generatedAt,
+    entries,
   ];
 }
