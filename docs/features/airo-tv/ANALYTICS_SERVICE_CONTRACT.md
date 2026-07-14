@@ -40,6 +40,11 @@ by an isolated adapter. If that sender fails, the service returns
 `provider_unavailable` instead of throwing through playback, UI, or feature
 code.
 
+Crash reporting follows the same platform boundary. Airo TV submits
+`AiroCrashReport` to `core_analytics`; redaction, consent/local-only upload
+blocking, local diagnostic storage, no-op behavior, and provider failure
+handling remain platform responsibilities.
+
 Provider-backed uploads also pass through the platform upload gate. Non-critical
 events are deferred while playback is active, critical events remain eligible,
 and provider outages record backoff state before future uploads are skipped.

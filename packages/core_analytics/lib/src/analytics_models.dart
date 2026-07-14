@@ -102,6 +102,56 @@ enum AiroAnalyticsUploadDecisionCode {
   final String stableId;
 }
 
+enum AiroCrashSeverity {
+  nonFatal('non_fatal'),
+  fatal('fatal'),
+  nativeFatal('native_fatal');
+
+  const AiroCrashSeverity(this.stableId);
+
+  final String stableId;
+}
+
+enum AiroCrashKind {
+  appException('app_exception'),
+  nativeSignal('native_signal'),
+  outOfMemory('out_of_memory'),
+  playbackEngine('playback_engine'),
+  platformChannel('platform_channel');
+
+  const AiroCrashKind(this.stableId);
+
+  final String stableId;
+}
+
+enum AiroCrashRedactionCode {
+  none('none'),
+  urlValue('url_value'),
+  localPathValue('local_path_value'),
+  localIpValue('local_ip_value'),
+  credentialLikeValue('credential_like_value'),
+  prohibitedFieldName('prohibited_field_name'),
+  stackFrameRedacted('stack_frame_redacted'),
+  nativeSymbolRedacted('native_symbol_redacted');
+
+  const AiroCrashRedactionCode(this.stableId);
+
+  final String stableId;
+}
+
+enum AiroCrashReportStatus {
+  accepted('accepted'),
+  storedLocalOnly('stored_local_only'),
+  uploadBlockedLocalOnly('upload_blocked_local_only'),
+  droppedByConsent('dropped_by_consent'),
+  droppedByCollectionDisabled('dropped_by_collection_disabled'),
+  providerUnavailable('provider_unavailable');
+
+  const AiroCrashReportStatus(this.stableId);
+
+  final String stableId;
+}
+
 enum AiroAnalyticsPrivacyCode {
   prohibitedFieldName('prohibited_field_name'),
   urlValue('url_value'),
@@ -1164,6 +1214,149 @@ class AiroAnalyticsTrackResult extends Equatable {
   List<Object?> get props => [status, violations, queueResult, uploadDecision];
 }
 
+class AiroCrashReport extends Equatable {
+  AiroCrashReport({
+    required this.reportId,
+    required this.occurredAt,
+    required this.severity,
+    required this.kind,
+    required this.appVersion,
+    required this.platform,
+    required this.productProfile,
+    required this.deviceTier,
+    required this.activeModule,
+    required this.memoryPressureBucket,
+    this.decoderFamily,
+    Map<String, Object?> context = const {},
+    List<String> stackFrames = const [],
+    List<String> nativeSymbols = const [],
+    this.schemaVersion = kAiroAnalyticsSchemaVersion,
+  }) : context = Map.unmodifiable(context),
+       stackFrames = List.unmodifiable(stackFrames),
+       nativeSymbols = List.unmodifiable(nativeSymbols);
+
+  final String schemaVersion;
+  final String reportId;
+  final DateTime occurredAt;
+  final AiroCrashSeverity severity;
+  final AiroCrashKind kind;
+  final String appVersion;
+  final String platform;
+  final AiroAnalyticsProductProfile productProfile;
+  final String deviceTier;
+  final String activeModule;
+  final String memoryPressureBucket;
+  final String? decoderFamily;
+  final Map<String, Object?> context;
+  final List<String> stackFrames;
+  final List<String> nativeSymbols;
+
+  Map<String, Object?> toPublicMap() {
+    return {
+      'schemaVersion': schemaVersion,
+      'reportId': reportId,
+      'occurredAt': occurredAt.toIso8601String(),
+      'severity': severity.stableId,
+      'kind': kind.stableId,
+      'appVersion': appVersion,
+      'platform': platform,
+      'productProfile': productProfile.stableId,
+      'deviceTier': deviceTier,
+      'activeModule': activeModule,
+      'memoryPressureBucket': memoryPressureBucket,
+      'decoderFamily': decoderFamily,
+      'contextFieldNames': context.keys.toList(growable: false)..sort(),
+      'stackFrameCount': stackFrames.length,
+      'nativeSymbolCount': nativeSymbols.length,
+    };
+  }
+
+  @override
+  List<Object?> get props => [
+    schemaVersion,
+    reportId,
+    occurredAt,
+    severity,
+    kind,
+    appVersion,
+    platform,
+    productProfile,
+    deviceTier,
+    activeModule,
+    memoryPressureBucket,
+    decoderFamily,
+    context,
+    stackFrames,
+    nativeSymbols,
+  ];
+}
+
+class AiroCrashRedactionResult extends Equatable {
+  AiroCrashRedactionResult({
+    required this.report,
+    required Iterable<AiroCrashRedactionCode> codes,
+    required Iterable<String> redactedContextFields,
+    required this.redactedStackFrameCount,
+    required this.redactedNativeSymbolCount,
+  }) : codes = List.unmodifiable(codes),
+       redactedContextFields = List.unmodifiable(redactedContextFields);
+
+  final AiroCrashReport report;
+  final List<AiroCrashRedactionCode> codes;
+  final List<String> redactedContextFields;
+  final int redactedStackFrameCount;
+  final int redactedNativeSymbolCount;
+
+  bool get accepted =>
+      codes.isEmpty ||
+      (codes.length == 1 && codes.single == AiroCrashRedactionCode.none);
+
+  Map<String, Object?> toPublicMap() {
+    return {
+      'accepted': accepted,
+      'report': report.toPublicMap(),
+      'codes': codes.map((code) => code.stableId).toList(growable: false),
+      'redactedContextFields': redactedContextFields,
+      'redactedStackFrameCount': redactedStackFrameCount,
+      'redactedNativeSymbolCount': redactedNativeSymbolCount,
+    };
+  }
+
+  @override
+  List<Object?> get props => [
+    report,
+    codes,
+    redactedContextFields,
+    redactedStackFrameCount,
+    redactedNativeSymbolCount,
+  ];
+}
+
+class AiroCrashReportResult extends Equatable {
+  const AiroCrashReportResult({
+    required this.status,
+    required this.redactionResult,
+  });
+
+  final AiroCrashReportStatus status;
+  final AiroCrashRedactionResult redactionResult;
+
+  bool get accepted =>
+      status == AiroCrashReportStatus.accepted ||
+      status == AiroCrashReportStatus.storedLocalOnly;
+
+  Map<String, Object?> toPublicMap() {
+    return {
+      'accepted': accepted,
+      'status': status.stableId,
+      'redactionResult': redactionResult.toPublicMap(),
+    };
+  }
+
+  @override
+  List<Object?> get props => [status, redactionResult];
+}
+
 class AiroAnalyticsTimedEventHandle extends Equatable {
   AiroAnalyticsTimedEventHandle({
     required this.eventName,
@@ -1305,6 +1498,110 @@ class AiroAnalyticsPrivacyFilter {
   }
 }
 
+class AiroCrashRedactionPolicy {
+  const AiroCrashRedactionPolicy({
+    this.prohibitedFields = _defaultCrashProhibitedFields,
+  });
+
+  static const AiroCrashRedactionPolicy standard = AiroCrashRedactionPolicy();
+
+  static const Set<String> _defaultCrashProhibitedFields = {
+    'url',
+    'streamUrl',
+    'playlistUrl',
+    'signedUrl',
+    'authorization',
+    'authHeader',
+    'cookie',
+    'header',
+    'localPath',
+    'path',
+    'localIp',
+    'ipAddress',
+    'providerDomain',
+    'mediaTitle',
+    'programTitle',
+    'channelName',
+    'query',
+    'searchQuery',
+    'prompt',
+    'transcript',
+    'providerPayload',
+  };
+
+  final Set<String> prohibitedFields;
+
+  AiroCrashRedactionResult redact(AiroCrashReport report) {
+    final codes = <AiroCrashRedactionCode>{};
+    final redactedContextFields = <String>{};
+    final sanitizedContext = <String, Object?>{};
+
+    for (final entry in report.context.entries) {
+      final field = entry.key;
+      final normalized = AiroAnalyticsPrivacyFilter.normalizeFieldName(field);
+      final value = entry.value;
+      final fieldIsProhibited = prohibitedFields
+          .map(AiroAnalyticsPrivacyFilter.normalizeFieldName)
+          .contains(normalized);
+      final valueCode = value is String
+          ? AiroAnalyticsPrivacyFilter._classifyStringValue(value)
+          : null;
+
+      if (fieldIsProhibited) {
+        codes.add(AiroCrashRedactionCode.prohibitedFieldName);
+      }
+      if (valueCode != null) {
+        codes.add(_crashCodeForPrivacyCode(valueCode));
+      }
+
+      if (fieldIsProhibited || valueCode != null) {
+        redactedContextFields.add(field);
+        sanitizedContext[field] = 'redacted';
+      } else {
+        sanitizedContext[field] = value;
+      }
+    }
+
+    final sanitizedStackFrames = [
+      for (final _ in report.stackFrames) 'redacted_stack_frame',
+    ];
+    final sanitizedNativeSymbols = [
+      for (final _ in report.nativeSymbols) 'redacted_native_symbol',
+    ];
+    if (sanitizedStackFrames.isNotEmpty) {
+      codes.add(AiroCrashRedactionCode.stackFrameRedacted);
+    }
+    if (sanitizedNativeSymbols.isNotEmpty) {
+      codes.add(AiroCrashRedactionCode.nativeSymbolRedacted);
+    }
+
+    return AiroCrashRedactionResult(
+      report: AiroCrashReport(
+        reportId: report.reportId,
+        occurredAt: report.occurredAt,
+        severity: report.severity,
+        kind: report.kind,
+        appVersion: report.appVersion,
+        platform: report.platform,
+        productProfile: report.productProfile,
+        deviceTier: report.deviceTier,
+        activeModule: report.activeModule,
+        memoryPressureBucket: report.memoryPressureBucket,
+        decoderFamily: report.decoderFamily,
+        context: sanitizedContext,
+        stackFrames: sanitizedStackFrames,
+        nativeSymbols: sanitizedNativeSymbols,
+        schemaVersion: report.schemaVersion,
+      ),
+      codes: codes.isEmpty ? const [AiroCrashRedactionCode.none] : codes,
+      redactedContextFields: redactedContextFields.toList(growable: false)
+        ..sort(),
+      redactedStackFrameCount: sanitizedStackFrames.length,
+      redactedNativeSymbolCount: sanitizedNativeSymbols.length,
+    );
+  }
+}
+
 abstract class AiroAnalyticsService {
   Future<AiroAnalyticsLifecycleResult> initialize(
     AiroAnalyticsServiceConfiguration configuration,
@@ -1373,6 +1670,147 @@ abstract class AiroAnalyticsService {
 
 typedef AiroAnalyticsProviderSender =
     Future<void> Function(AiroAnalyticsEvent event);
+
+typedef AiroCrashProviderSender =
+    Future<void> Function(AiroCrashRedactionResult result);
+
+abstract class AiroCrashReportingService {
+  Future<AiroCrashReportResult> report(AiroCrashReport report);
+}
+
+class AiroNoOpCrashReportingService implements AiroCrashReportingService {
+  const AiroNoOpCrashReportingService({
+    this.consent = const AiroAnalyticsConsentState.disabled(),
+    this.redactionPolicy = AiroCrashRedactionPolicy.standard,
+    this.collectionEnabled = true,
+  });
+
+  final AiroAnalyticsConsentState consent;
+  final AiroCrashRedactionPolicy redactionPolicy;
+  final bool collectionEnabled;
+
+  @override
+  Future<AiroCrashReportResult> report(AiroCrashReport report) async {
+    final redaction = redactionPolicy.redact(report);
+    return AiroCrashReportResult(
+      status: _crashStatusForConsent(
+        consent: consent,
+        collectionEnabled: collectionEnabled,
+        storesLocalDiagnostics: false,
+      ),
+      redactionResult: redaction,
+    );
+  }
+}
+
+class AiroLocalDiagnosticsCrashReportingService
+    implements AiroCrashReportingService {
+  AiroLocalDiagnosticsCrashReportingService({
+    AiroAnalyticsConsentState consent =
+        const AiroAnalyticsConsentState.localOnly(),
+    this.redactionPolicy = AiroCrashRedactionPolicy.standard,
+    bool collectionEnabled = true,
+    this.maxReports = 50,
+  }) : _consent = consent,
+       _collectionEnabled = collectionEnabled;
+
+  final AiroCrashRedactionPolicy redactionPolicy;
+  final int maxReports;
+  final List<AiroCrashRedactionResult> _reports = [];
+  AiroAnalyticsConsentState _consent;
+  bool _collectionEnabled;
+
+  List<AiroCrashRedactionResult> get reports => List.unmodifiable(_reports);
+  AiroAnalyticsConsentState get consent => _consent;
+  bool get collectionEnabled => _collectionEnabled;
+
+  @override
+  Future<AiroCrashReportResult> report(AiroCrashReport report) async {
+    final redaction = redactionPolicy.redact(report);
+    final status = _crashStatusForConsent(
+      consent: _consent,
+      collectionEnabled: _collectionEnabled,
+      storesLocalDiagnostics: true,
+    );
+    if (status == AiroCrashReportStatus.storedLocalOnly ||
+        status == AiroCrashReportStatus.accepted) {
+      if (_reports.length >= maxReports) {
+        _reports.removeAt(0);
+      }
+      _reports.add(redaction);
+    }
+    return AiroCrashReportResult(status: status, redactionResult: redaction);
+  }
+
+  Future<void> updateConsent(AiroAnalyticsConsentState consent) async {
+    _consent = consent;
+    if (!consent.crash && !consent.diagnostics) {
+      _reports.clear();
+    }
+  }
+
+  Future<void> setCollectionEnabled(bool enabled) async {
+    _collectionEnabled = enabled;
+    if (!enabled) {
+      _reports.clear();
+    }
+  }
+}
+
+class AiroProviderBackedCrashReportingService
+    implements AiroCrashReportingService {
+  AiroProviderBackedCrashReportingService({
+    required AiroCrashProviderSender sender,
+    AiroAnalyticsConsentState consent =
+        const AiroAnalyticsConsentState.disabled(),
+    this.redactionPolicy = AiroCrashRedactionPolicy.standard,
+    bool collectionEnabled = false,
+  }) : _sender = sender,
+       _consent = consent,
+       _collectionEnabled = collectionEnabled;
+
+  final AiroCrashProviderSender _sender;
+  final AiroCrashRedactionPolicy redactionPolicy;
+  AiroAnalyticsConsentState _consent;
+  bool _collectionEnabled;
+
+  AiroAnalyticsConsentState get consent => _consent;
+  bool get collectionEnabled => _collectionEnabled;
+
+  @override
+  Future<AiroCrashReportResult> report(AiroCrashReport report) async {
+    final redaction = redactionPolicy.redact(report);
+    final status = _crashStatusForConsent(
+      consent: _consent,
+      collectionEnabled: _collectionEnabled,
+      storesLocalDiagnostics: false,
+    );
+    if (status != AiroCrashReportStatus.accepted) {
+      return AiroCrashReportResult(status: status, redactionResult: redaction);
+    }
+
+    try {
+      await _sender(redaction);
+      return AiroCrashReportResult(
+        status: AiroCrashReportStatus.accepted,
+        redactionResult: redaction,
+      );
+    } catch (_) {
+      return AiroCrashReportResult(
+        status: AiroCrashReportStatus.providerUnavailable,
+        redactionResult: redaction,
+      );
+    }
+  }
+
+  Future<void> updateConsent(AiroAnalyticsConsentState consent) async {
+    _consent = consent;
+  }
+
+  Future<void> setCollectionEnabled(bool enabled) async {
+    _collectionEnabled = enabled;
+  }
+}
 
 class AiroNoOpAnalyticsService implements AiroAnalyticsService {
   const AiroNoOpAnalyticsService({
@@ -2729,6 +3167,42 @@ bool _isSnakeCase(String value) {
 
 bool _isBucketValue(String value) {
   return RegExp(r'^[a-z0-9]+(?:_[a-z0-9]+)*$').hasMatch(value);
+}
+
+AiroCrashReportStatus _crashStatusForConsent({
+  required AiroAnalyticsConsentState consent,
+  required bool collectionEnabled,
+  required bool storesLocalDiagnostics,
+}) {
+  if (!collectionEnabled) {
+    return AiroCrashReportStatus.droppedByCollectionDisabled;
+  }
+  if (consent.localOnly) {
+    return storesLocalDiagnostics
+        ? AiroCrashReportStatus.storedLocalOnly
+        : AiroCrashReportStatus.uploadBlockedLocalOnly;
+  }
+  if (consent.crash) {
+    return AiroCrashReportStatus.accepted;
+  }
+  if (storesLocalDiagnostics && consent.diagnostics) {
+    return AiroCrashReportStatus.storedLocalOnly;
+  }
+  return AiroCrashReportStatus.droppedByConsent;
+}
+
+AiroCrashRedactionCode _crashCodeForPrivacyCode(AiroAnalyticsPrivacyCode code) {
+  return switch (code) {
+    AiroAnalyticsPrivacyCode.prohibitedFieldName =>
+      AiroCrashRedactionCode.prohibitedFieldName,
+    AiroAnalyticsPrivacyCode.urlValue => AiroCrashRedactionCode.urlValue,
+    AiroAnalyticsPrivacyCode.localPathValue =>
+      AiroCrashRedactionCode.localPathValue,
+    AiroAnalyticsPrivacyCode.localIpValue =>
+      AiroCrashRedactionCode.localIpValue,
+    AiroAnalyticsPrivacyCode.credentialLikeValue =>
+      AiroCrashRedactionCode.credentialLikeValue,
+  };
 }
 
 int _priorityRank(AiroAnalyticsPriority priority) {

@@ -38,6 +38,9 @@ analytics SDKs directly.
   buffering, failover, bitrate, resolution, and completion fields.
 - Device ecosystem telemetry fixtures that validate pairing, handoff,
   discovery, command latency, delegation, and companion availability fields.
+- Crash reporting contracts with redaction policy, no-op/local/provider-backed
+  adapters, and public maps that omit raw stack, native, media, network, and
+  credential material.
 - Performance instrumentation schema for UI, playback, import, search,
   protocol, command, memory, storage, network, and pairing samples.
 - No-op and fake performance instrumentation sinks for deterministic tests.

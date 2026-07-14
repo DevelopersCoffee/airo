@@ -19,6 +19,39 @@ void main() {
       );
     }
 
+    AiroCrashReport crashReport({
+      Map<String, Object?> context = const {
+        'active_screen': 'player',
+        'source_url': 'https://example.com/live.m3u8',
+        'local_path': '/Users/example/video.ts',
+        'local_ip': '192.168.1.10',
+        'auth_header': 'Bearer abc.def',
+        'media_title': 'Private Match',
+        'search_query': 'private channel',
+      },
+      List<String> stackFrames = const [
+        'Player.open(https://example.com/live.m3u8)',
+      ],
+      List<String> nativeSymbols = const ['libplayer.so!decode_frame'],
+    }) {
+      return AiroCrashReport(
+        reportId: 'crash-1',
+        occurredAt: DateTime.utc(2026, 7, 15, 10),
+        severity: AiroCrashSeverity.nativeFatal,
+        kind: AiroCrashKind.playbackEngine,
+        appVersion: '2.0.0.1',
+        platform: 'android_tv',
+        productProfile: AiroAnalyticsProductProfile.liteReceiver,
+        deviceTier: 'constrained_tv',
+        activeModule: 'playback',
+        memoryPressureBucket: 'high',
+        decoderFamily: 'hardware',
+        context: context,
+        stackFrames: stackFrames,
+        nativeSymbols: nativeSymbols,
+      );
+    }
+
     test('accepts bucketed product events when consent allows collection', () {
       final result = validateEvent(
         event(params: const {'source_type': 'iptv', 'delay_bucket': '0_3s'}),
@@ -459,6 +492,93 @@ void main() {
         expect(sentEvents.map((event) => event.name), ['critical_event']);
       },
     );
+
+    test('crash redaction removes unsafe context and stack details', () {
+      final result = AiroCrashRedactionPolicy.standard.redact(crashReport());
+      final flattened = result.toPublicMap().toString();
+
+      expect(
+        result.codes,
+        containsAll(const {
+          AiroCrashRedactionCode.urlValue,
+          AiroCrashRedactionCode.localPathValue,
+          AiroCrashRedactionCode.localIpValue,
+          AiroCrashRedactionCode.credentialLikeValue,
+          AiroCrashRedactionCode.prohibitedFieldName,
+          AiroCrashRedactionCode.stackFrameRedacted,
+          AiroCrashRedactionCode.nativeSymbolRedacted,
+        }),
+      );
+      expect(result.redactedStackFrameCount, 1);
+      expect(result.redactedNativeSymbolCount, 1);
+      expect(flattened, contains('crash-1'));
+      expect(flattened, contains('native_fatal'));
+      expect(flattened, isNot(contains('https://')));
+      expect(flattened, isNot(contains('/Users/')));
+      expect(flattened, isNot(contains('192.168.')));
+      expect(flattened, isNot(contains('Bearer')));
+      expect(flattened, isNot(contains('Private Match')));
+      expect(flattened, isNot(contains('private channel')));
+      expect(flattened, isNot(contains('libplayer.so')));
+    });
+
+    test('local crash reporter stores only redacted diagnostics', () async {
+      final service = AiroLocalDiagnosticsCrashReportingService(
+        consent: const AiroAnalyticsConsentState.localOnly(),
+      );
+
+      final result = await service.report(crashReport());
+      final flattened = service.reports.single.toPublicMap().toString();
+
+      expect(result.status, AiroCrashReportStatus.storedLocalOnly);
+      expect(service.reports, hasLength(1));
+      expect(flattened, isNot(contains('stored_local_only')));
+      expect(flattened, isNot(contains('https://')));
+      expect(flattened, isNot(contains('/Users/')));
+      expect(flattened, isNot(contains('Private Match')));
+    });
+
+    test(
+      'provider crash reporter respects consent and catches failures',
+      () async {
+        var attempts = 0;
+        final localOnly = AiroProviderBackedCrashReportingService(
+          sender: (_) async => attempts += 1,
+          consent: const AiroAnalyticsConsentState.localOnly(),
+          collectionEnabled: true,
+        );
+        final failing = AiroProviderBackedCrashReportingService(
+          sender: (_) async {
+            attempts += 1;
+            throw StateError('offline');
+          },
+          consent: const AiroAnalyticsConsentState.allEnabled(),
+          collectionEnabled: true,
+        );
+
+        final blocked = await localOnly.report(crashReport());
+        final failed = await failing.report(crashReport());
+
+        expect(blocked.status, AiroCrashReportStatus.uploadBlockedLocalOnly);
+        expect(failed.status, AiroCrashReportStatus.providerUnavailable);
+        expect(attempts, 1);
+        expect(failed.toPublicMap().toString(), isNot(contains('https://')));
+      },
+    );
+
+    test('disabled crash collection drops before provider upload', () async {
+      var attempts = 0;
+      final service = AiroProviderBackedCrashReportingService(
+        sender: (_) async => attempts += 1,
+        consent: const AiroAnalyticsConsentState.allEnabled(),
+        collectionEnabled: false,
+      );
+
+      final result = await service.report(crashReport());
+
+      expect(result.status, AiroCrashReportStatus.droppedByCollectionDisabled);
+      expect(attempts, 0);
+    });
 
     test('provider upload decision public map exposes stable state only', () {
       final now = DateTime.utc(2026, 7, 15, 10);
