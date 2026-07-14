@@ -1,0 +1,76 @@
+syntax = "proto3";
+
+package airo.v2.protocol;
+
+option java_package = "app.airo.protocol.v2";
+option java_multiple_files = true;
+
+enum AiroMessageFamily {
+  AIRO_MESSAGE_FAMILY_UNSPECIFIED = 0;
+  AIRO_MESSAGE_FAMILY_ENVELOPE = 1;
+  AIRO_MESSAGE_FAMILY_COMMAND = 2;
+  AIRO_MESSAGE_FAMILY_PLAYBACK_STATE = 3;
+  AIRO_MESSAGE_FAMILY_ROUTE_HEALTH = 4;
+  AIRO_MESSAGE_FAMILY_EPG_SYNC = 5;
+  AIRO_MESSAGE_FAMILY_ACKNOWLEDGEMENT = 6;
+}
+
+message AiroProtocolEnvelope {
+  string schema_version = 1;
+  int32 protocol_version = 2;
+  AiroMessageFamily message_family = 3;
+  int64 sequence = 4;
+  string message_id = 5;
+  int64 issued_unix_millis = 6;
+  bytes payload = 7;
+  reserved 100 to 102;
+}
+
+message AiroPlaybackCommand {
+  string command_id = 1;
+  string session_id = 2;
+  string sender_node_id = 3;
+  string target_node_id = 4;
+  string command_kind = 5;
+  string command_action = 6;
+  string idempotency_key = 7;
+  string payload_ref = 8;
+}
+
+message AiroPlaybackStateSnapshot {
+  string session_id = 1;
+  int64 revision = 2;
+  string phase = 3;
+  int64 position_millis = 4;
+  int64 duration_millis = 5;
+  string owner_node_id = 6;
+  string playback_node_id = 7;
+  string route_id = 8;
+}
+
+message AiroRouteHealthUpdate {
+  string event_id = 1;
+  string session_id = 2;
+  string route_id = 3;
+  int64 sequence = 4;
+  string health_level = 5;
+  string failure_code = 6;
+  string diagnostic_ref = 7;
+}
+
+message AiroCompactEpgSync {
+  string sync_id = 1;
+  string source_node_id = 2;
+  string target_node_id = 3;
+  int64 window_start_unix_millis = 4;
+  int64 window_end_unix_millis = 5;
+  int32 entry_count = 6;
+  string payload_ref = 7;
+}
+
+message AiroProtocolAcknowledgement {
+  string message_id = 1;
+  int64 sequence = 2;
+  string status = 3;
+  string stable_code = 4;
+}
