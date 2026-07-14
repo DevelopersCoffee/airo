@@ -670,6 +670,183 @@ void main() {
     });
   });
 
+  group('Airo TV release listing strategies', () {
+    test(
+      'single adaptive app strategy validates shared listing constraints',
+      () {
+        final strategy =
+            AiroTvReleaseListingStrategies.singleAdaptiveApplication();
+
+        expect(strategy.validate().accepted, isTrue);
+        expect(
+          strategy.strategy,
+          ProductStoreListingStrategy.singleAdaptiveApplication,
+        );
+        expect(strategy.listingIds, {'airo-tv'});
+        expect(strategy.usesDeviceTargeting, isTrue);
+        expect(strategy.usesFeatureDelivery, isTrue);
+        expect(strategy.isolatesDependencies, isTrue);
+        expect(
+          strategy.profileChannels[ProductProfileId.liteReceiver],
+          ProductReleaseChannel.liteReceiverStable,
+        );
+        expect(
+          strategy.providedEvidence,
+          contains(ProductStoreListingEvidence.legalReview),
+        );
+      },
+    );
+
+    test('split full lite app strategy validates separate listings', () {
+      final strategy =
+          AiroTvReleaseListingStrategies.splitFullLiteApplications();
+
+      expect(strategy.validate().accepted, isTrue);
+      expect(
+        strategy.strategy,
+        ProductStoreListingStrategy.splitFullLiteApplications,
+      );
+      expect(strategy.listingIds, containsAll({'airo-tv', 'airo-tv-lite'}));
+      expect(strategy.usesDeviceTargeting, isTrue);
+      expect(strategy.isolatesDependencies, isTrue);
+      expect(strategy.sharesAccountEntitlements, isTrue);
+    });
+
+    test(
+      'targeted delivery requires feature delivery and catalog evidence',
+      () {
+        final strategy = AiroTvReleaseListingStrategies.targetedDelivery();
+
+        expect(strategy.validate().accepted, isTrue);
+        expect(strategy.listingIds, {'airo-tv'});
+        expect(strategy.usesFeatureDelivery, isTrue);
+        expect(
+          strategy.providedEvidence,
+          containsAll(const {
+            ProductStoreListingEvidence.deviceCatalogReview,
+            ProductStoreListingEvidence.featureDeliveryReview,
+          }),
+        );
+      },
+    );
+
+    test(
+      'vendor and internal channels stay outside general store publishing',
+      () {
+        final vendor = AiroTvReleaseListingStrategies.vendorSpecificReceiver();
+        final internal = AiroTvReleaseListingStrategies.internalCertification();
+
+        expect(vendor.validate().accepted, isTrue);
+        expect(vendor.generalStorePublishable, isFalse);
+        expect(
+          vendor.providedEvidence,
+          contains(ProductStoreListingEvidence.vendorApproval),
+        );
+        expect(internal.validate().accepted, isTrue);
+        expect(internal.rolloutPercentage, 0);
+        expect(internal.generalStorePublishable, isFalse);
+      },
+    );
+
+    test(
+      'listing policy rejects channel mismatch and missing legal review',
+      () {
+        final strategy = ProductStoreListingStrategyManifest(
+          strategyId: 'broken-release-listing',
+          displayName: 'Broken release listing',
+          strategy: ProductStoreListingStrategy.targetedDelivery,
+          profileChannels: const {
+            ProductProfileId.liteReceiver: ProductReleaseChannel.fullTvStable,
+          },
+          listingIds: const {'airo-tv'},
+          requiredEvidence: const {
+            ProductStoreListingEvidence.legalReview,
+            ProductStoreListingEvidence.deviceCatalogReview,
+            ProductStoreListingEvidence.featureDeliveryReview,
+          },
+          providedEvidence: const {
+            ProductStoreListingEvidence.deviceCatalogReview,
+          },
+          rolloutPercentage: 0,
+          crashFreeSessionsThresholdBasisPoints: 8500,
+          usesDeviceTargeting: true,
+          usesFeatureDelivery: false,
+          isolatesDependencies: false,
+          sharesAccountEntitlements: false,
+          preservesProtocolCompatibility: false,
+          generalStorePublishable: true,
+        );
+
+        final result = strategy.validate();
+
+        expect(
+          result.codes,
+          contains(ProductStoreListingValidationCode.channelMismatch),
+        );
+        expect(
+          result.codes,
+          contains(ProductStoreListingValidationCode.evidenceMissing),
+        );
+        expect(
+          result.codes,
+          contains(ProductStoreListingValidationCode.rolloutInvalid),
+        );
+        expect(
+          result.codes,
+          contains(ProductStoreListingValidationCode.crashThresholdInvalid),
+        );
+        expect(
+          result.codes,
+          contains(ProductStoreListingValidationCode.sharedAccountMissing),
+        );
+        expect(
+          result.codes,
+          contains(
+            ProductStoreListingValidationCode.protocolCompatibilityMissing,
+          ),
+        );
+        expect(
+          result.codes,
+          contains(
+            ProductStoreListingValidationCode.dependencyIsolationMissing,
+          ),
+        );
+        expect(
+          result.codes,
+          contains(
+            ProductStoreListingValidationCode.targetedDeliveryEvidenceMissing,
+          ),
+        );
+        expect(
+          result.codes,
+          contains(ProductStoreListingValidationCode.legalReviewMissing),
+        );
+      },
+    );
+
+    test('listing public map exposes stable ids only', () {
+      final publicMap = AiroTvReleaseListingStrategies.targetedDelivery()
+          .toPublicMap();
+      final flattened = publicMap.toString();
+
+      expect(publicMap['strategyId'], 'airo-tv-targeted-delivery');
+      expect(
+        publicMap['strategy'],
+        ProductStoreListingStrategy.targetedDelivery.stableId,
+      );
+      expect(publicMap['listingIds'], contains('airo-tv'));
+      expect(
+        flattened,
+        contains(ProductStoreListingEvidence.storePolicyReview.stableId),
+      );
+      expect(flattened, isNot(contains('/Users/')));
+      expect(flattened, isNot(contains('providerPayload')));
+      expect(flattened, isNot(contains('storeConsoleAccount')));
+      expect(flattened, isNot(contains('rawCredential')));
+      expect(flattened, isNot(contains('http://')));
+    });
+  });
+
   group('Airo TV profile-aware capability advertisements', () {
     test('full TV advertises runtime-safe profile capabilities', () {
       final advertisement = AiroTvCapabilityAdvertisements.fullTv(

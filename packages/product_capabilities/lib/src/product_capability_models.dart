@@ -38,6 +38,36 @@ enum ProductReleaseChannel {
   final String stableId;
 }
 
+enum ProductStoreListingStrategy {
+  singleAdaptiveApplication('single_adaptive_application'),
+  splitFullLiteApplications('split_full_lite_applications'),
+  targetedDelivery('targeted_delivery'),
+  vendorSpecific('vendor_specific'),
+  internalCertification('internal_certification');
+
+  const ProductStoreListingStrategy(this.stableId);
+
+  final String stableId;
+}
+
+enum ProductStoreListingEvidence {
+  storePolicyReview('store_policy_review'),
+  dataSafety('data_safety'),
+  contentRating('content_rating'),
+  legalReview('legal_review'),
+  dependencyIsolation('dependency_isolation'),
+  deviceCatalogReview('device_catalog_review'),
+  featureDeliveryReview('feature_delivery_review'),
+  rolloutPlan('rollout_plan'),
+  crashThreshold('crash_threshold'),
+  sharedAccountEntitlements('shared_account_entitlements'),
+  vendorApproval('vendor_approval');
+
+  const ProductStoreListingEvidence(this.stableId);
+
+  final String stableId;
+}
+
 enum ProductModule {
   playback('playback'),
   playlistImport('playlist_import'),
@@ -169,6 +199,26 @@ enum ProductCompositionValidationCode {
   runtimeFlagWithoutModule('runtime_flag_without_module');
 
   const ProductCompositionValidationCode(this.stableId);
+
+  final String stableId;
+}
+
+enum ProductStoreListingValidationCode {
+  accepted('accepted'),
+  profileMissing('profile_missing'),
+  channelMismatch('channel_mismatch'),
+  strategyMismatch('strategy_mismatch'),
+  evidenceMissing('evidence_missing'),
+  rolloutInvalid('rollout_invalid'),
+  crashThresholdInvalid('crash_threshold_invalid'),
+  sharedAccountMissing('shared_account_missing'),
+  protocolCompatibilityMissing('protocol_compatibility_missing'),
+  dependencyIsolationMissing('dependency_isolation_missing'),
+  targetedDeliveryEvidenceMissing('targeted_delivery_evidence_missing'),
+  legalReviewMissing('legal_review_missing'),
+  unsupportedGeneralListing('unsupported_general_listing');
+
+  const ProductStoreListingValidationCode(this.stableId);
 
   final String stableId;
 }
@@ -380,6 +430,256 @@ class ProductCompositionValidationResult extends Equatable {
 
   @override
   List<Object?> get props => [codes, profileValidation, lifecycleValidations];
+}
+
+class ProductStoreListingValidationResult extends Equatable {
+  ProductStoreListingValidationResult({
+    required List<ProductStoreListingValidationCode> codes,
+  }) : codes = List.unmodifiable(codes);
+
+  final List<ProductStoreListingValidationCode> codes;
+
+  bool get accepted =>
+      codes.length == 1 &&
+      codes.single == ProductStoreListingValidationCode.accepted;
+
+  Map<String, Object?> toPublicMap() {
+    return {
+      'accepted': accepted,
+      'codes': _storeListingValidationCodeStableIds(codes),
+    };
+  }
+
+  @override
+  List<Object?> get props => [codes];
+}
+
+class ProductStoreListingStrategyManifest extends Equatable {
+  ProductStoreListingStrategyManifest({
+    required this.strategyId,
+    required this.displayName,
+    required this.strategy,
+    required Map<ProductProfileId, ProductReleaseChannel> profileChannels,
+    required Set<String> listingIds,
+    required Set<ProductStoreListingEvidence> requiredEvidence,
+    required Set<ProductStoreListingEvidence> providedEvidence,
+    required this.rolloutPercentage,
+    required this.crashFreeSessionsThresholdBasisPoints,
+    this.usesDeviceTargeting = false,
+    this.usesFeatureDelivery = false,
+    this.isolatesDependencies = false,
+    this.sharesAccountEntitlements = true,
+    this.preservesProtocolCompatibility = true,
+    this.generalStorePublishable = true,
+    this.schemaVersion = kProductCapabilitiesSchemaVersion,
+  }) : profileChannels = Map.unmodifiable(profileChannels),
+       listingIds = Set.unmodifiable(listingIds),
+       requiredEvidence = Set.unmodifiable(requiredEvidence),
+       providedEvidence = Set.unmodifiable(providedEvidence);
+
+  final String schemaVersion;
+  final String strategyId;
+  final String displayName;
+  final ProductStoreListingStrategy strategy;
+  final Map<ProductProfileId, ProductReleaseChannel> profileChannels;
+  final Set<String> listingIds;
+  final Set<ProductStoreListingEvidence> requiredEvidence;
+  final Set<ProductStoreListingEvidence> providedEvidence;
+  final int rolloutPercentage;
+  final int crashFreeSessionsThresholdBasisPoints;
+  final bool usesDeviceTargeting;
+  final bool usesFeatureDelivery;
+  final bool isolatesDependencies;
+  final bool sharesAccountEntitlements;
+  final bool preservesProtocolCompatibility;
+  final bool generalStorePublishable;
+
+  ProductStoreListingValidationResult validate() {
+    return const ProductStoreListingStrategyPolicy().evaluate(this);
+  }
+
+  Map<String, Object?> toPublicMap() {
+    final stableProfileChannels = profileChannels.map(
+      (profile, channel) => MapEntry(profile.stableId, channel.stableId),
+    );
+    return {
+      'schemaVersion': schemaVersion,
+      'strategyId': strategyId,
+      'displayName': displayName,
+      'strategy': strategy.stableId,
+      'profileChannels': stableProfileChannels,
+      'listingIds': listingIds.toList(growable: false)..sort(),
+      'requiredEvidence': _storeListingEvidenceStableIds(requiredEvidence),
+      'providedEvidence': _storeListingEvidenceStableIds(providedEvidence),
+      'rolloutPercentage': rolloutPercentage,
+      'crashFreeSessionsThresholdBasisPoints':
+          crashFreeSessionsThresholdBasisPoints,
+      'usesDeviceTargeting': usesDeviceTargeting,
+      'usesFeatureDelivery': usesFeatureDelivery,
+      'isolatesDependencies': isolatesDependencies,
+      'sharesAccountEntitlements': sharesAccountEntitlements,
+      'preservesProtocolCompatibility': preservesProtocolCompatibility,
+      'generalStorePublishable': generalStorePublishable,
+    };
+  }
+
+  @override
+  List<Object?> get props => [
+    schemaVersion,
+    strategyId,
+    displayName,
+    strategy,
+    profileChannels,
+    listingIds,
+    requiredEvidence,
+    providedEvidence,
+    rolloutPercentage,
+    crashFreeSessionsThresholdBasisPoints,
+    usesDeviceTargeting,
+    usesFeatureDelivery,
+    isolatesDependencies,
+    sharesAccountEntitlements,
+    preservesProtocolCompatibility,
+    generalStorePublishable,
+  ];
+}
+
+class ProductStoreListingStrategyPolicy extends Equatable {
+  const ProductStoreListingStrategyPolicy();
+
+  ProductStoreListingValidationResult evaluate(
+    ProductStoreListingStrategyManifest manifest,
+  ) {
+    final codes = <ProductStoreListingValidationCode>[];
+
+    if (manifest.profileChannels.isEmpty || manifest.listingIds.isEmpty) {
+      codes.add(ProductStoreListingValidationCode.profileMissing);
+    }
+    if (manifest.profileChannels.entries.any(
+      (entry) => !_channelAllowsProfile(entry.value, entry.key),
+    )) {
+      codes.add(ProductStoreListingValidationCode.channelMismatch);
+    }
+    if (!manifest.providedEvidence.containsAll(manifest.requiredEvidence)) {
+      codes.add(ProductStoreListingValidationCode.evidenceMissing);
+    }
+    if (manifest.rolloutPercentage < 0 ||
+        manifest.rolloutPercentage > 100 ||
+        (manifest.generalStorePublishable && manifest.rolloutPercentage == 0)) {
+      codes.add(ProductStoreListingValidationCode.rolloutInvalid);
+    }
+    if (manifest.crashFreeSessionsThresholdBasisPoints < 9000 ||
+        manifest.crashFreeSessionsThresholdBasisPoints > 10000) {
+      codes.add(ProductStoreListingValidationCode.crashThresholdInvalid);
+    }
+    if (!manifest.sharesAccountEntitlements) {
+      codes.add(ProductStoreListingValidationCode.sharedAccountMissing);
+    }
+    if (!manifest.preservesProtocolCompatibility) {
+      codes.add(ProductStoreListingValidationCode.protocolCompatibilityMissing);
+    }
+    if (_requiresDependencyIsolation(manifest) &&
+        !manifest.isolatesDependencies) {
+      codes.add(ProductStoreListingValidationCode.dependencyIsolationMissing);
+    }
+    if (_requiresTargetedDeliveryEvidence(manifest) &&
+        (!manifest.usesDeviceTargeting ||
+            !manifest.usesFeatureDelivery ||
+            !manifest.providedEvidence.contains(
+              ProductStoreListingEvidence.deviceCatalogReview,
+            ) ||
+            !manifest.providedEvidence.contains(
+              ProductStoreListingEvidence.featureDeliveryReview,
+            ))) {
+      codes.add(
+        ProductStoreListingValidationCode.targetedDeliveryEvidenceMissing,
+      );
+    }
+    if (manifest.generalStorePublishable &&
+        !manifest.providedEvidence.contains(
+          ProductStoreListingEvidence.legalReview,
+        )) {
+      codes.add(ProductStoreListingValidationCode.legalReviewMissing);
+    }
+    if (_mustRemainNonGeneralStore(manifest) &&
+        manifest.generalStorePublishable) {
+      codes.add(ProductStoreListingValidationCode.unsupportedGeneralListing);
+    }
+    if (!_strategyShapeMatches(manifest)) {
+      codes.add(ProductStoreListingValidationCode.strategyMismatch);
+    }
+
+    return ProductStoreListingValidationResult(
+      codes: codes.isEmpty
+          ? const [ProductStoreListingValidationCode.accepted]
+          : codes.toSet().toList(growable: false),
+    );
+  }
+
+  bool _requiresDependencyIsolation(
+    ProductStoreListingStrategyManifest manifest,
+  ) {
+    return manifest.strategy == ProductStoreListingStrategy.targetedDelivery ||
+        manifest.strategy ==
+            ProductStoreListingStrategy.splitFullLiteApplications ||
+        manifest.profileChannels.containsKey(ProductProfileId.liteReceiver) ||
+        manifest.profileChannels.containsKey(ProductProfileId.embeddedReceiver);
+  }
+
+  bool _requiresTargetedDeliveryEvidence(
+    ProductStoreListingStrategyManifest manifest,
+  ) {
+    return manifest.strategy == ProductStoreListingStrategy.targetedDelivery;
+  }
+
+  bool _mustRemainNonGeneralStore(
+    ProductStoreListingStrategyManifest manifest,
+  ) {
+    return manifest.strategy == ProductStoreListingStrategy.vendorSpecific ||
+        manifest.strategy == ProductStoreListingStrategy.internalCertification;
+  }
+
+  bool _strategyShapeMatches(ProductStoreListingStrategyManifest manifest) {
+    return switch (manifest.strategy) {
+      ProductStoreListingStrategy.singleAdaptiveApplication =>
+        manifest.listingIds.length == 1,
+      ProductStoreListingStrategy.splitFullLiteApplications =>
+        manifest.listingIds.length >= 2 && manifest.usesDeviceTargeting,
+      ProductStoreListingStrategy.targetedDelivery =>
+        manifest.listingIds.length == 1 &&
+            manifest.usesDeviceTargeting &&
+            manifest.usesFeatureDelivery,
+      ProductStoreListingStrategy.vendorSpecific =>
+        manifest.providedEvidence.contains(
+          ProductStoreListingEvidence.vendorApproval,
+        ),
+      ProductStoreListingStrategy.internalCertification =>
+        !manifest.generalStorePublishable,
+    };
+  }
+
+  bool _channelAllowsProfile(
+    ProductReleaseChannel channel,
+    ProductProfileId profile,
+  ) {
+    return switch (channel) {
+      ProductReleaseChannel.fullTvStable =>
+        profile == ProductProfileId.fullTv ||
+            profile == ProductProfileId.standardTv,
+      ProductReleaseChannel.liteReceiverStable =>
+        profile == ProductProfileId.liteReceiver,
+      ProductReleaseChannel.receiverStable =>
+        profile == ProductProfileId.embeddedReceiver ||
+            profile == ProductProfileId.liteReceiver,
+      ProductReleaseChannel.legacyExperimental =>
+        profile == ProductProfileId.experimentalLegacy,
+      ProductReleaseChannel.vendorSpecific ||
+      ProductReleaseChannel.internalCertification => true,
+    };
+  }
+
+  @override
+  List<Object?> get props => const [];
 }
 
 class ProductCapabilityUnsupportedReason extends Equatable {
@@ -2085,6 +2385,184 @@ class AiroTvCapabilityAdvertisements {
   }
 }
 
+class AiroTvReleaseListingStrategies {
+  const AiroTvReleaseListingStrategies._();
+
+  static ProductStoreListingStrategyManifest singleAdaptiveApplication() {
+    return ProductStoreListingStrategyManifest(
+      strategyId: 'airo-tv-single-adaptive',
+      displayName: 'Airo TV single adaptive application',
+      strategy: ProductStoreListingStrategy.singleAdaptiveApplication,
+      profileChannels: const {
+        ProductProfileId.fullTv: ProductReleaseChannel.fullTvStable,
+        ProductProfileId.standardTv: ProductReleaseChannel.fullTvStable,
+        ProductProfileId.liteReceiver: ProductReleaseChannel.liteReceiverStable,
+        ProductProfileId.embeddedReceiver: ProductReleaseChannel.receiverStable,
+      },
+      listingIds: const {'airo-tv'},
+      requiredEvidence: _generalStoreEvidence,
+      providedEvidence: _generalStoreEvidence,
+      rolloutPercentage: 5,
+      crashFreeSessionsThresholdBasisPoints: 9950,
+      usesDeviceTargeting: true,
+      usesFeatureDelivery: true,
+      isolatesDependencies: true,
+      sharesAccountEntitlements: true,
+      preservesProtocolCompatibility: true,
+      generalStorePublishable: true,
+    );
+  }
+
+  static ProductStoreListingStrategyManifest splitFullLiteApplications() {
+    return ProductStoreListingStrategyManifest(
+      strategyId: 'airo-tv-full-lite-split',
+      displayName: 'Airo TV Full and Lite applications',
+      strategy: ProductStoreListingStrategy.splitFullLiteApplications,
+      profileChannels: const {
+        ProductProfileId.fullTv: ProductReleaseChannel.fullTvStable,
+        ProductProfileId.standardTv: ProductReleaseChannel.fullTvStable,
+        ProductProfileId.liteReceiver: ProductReleaseChannel.liteReceiverStable,
+        ProductProfileId.embeddedReceiver: ProductReleaseChannel.receiverStable,
+      },
+      listingIds: const {'airo-tv', 'airo-tv-lite'},
+      requiredEvidence: _splitListingEvidence,
+      providedEvidence: _splitListingEvidence,
+      rolloutPercentage: 10,
+      crashFreeSessionsThresholdBasisPoints: 9950,
+      usesDeviceTargeting: true,
+      isolatesDependencies: true,
+      sharesAccountEntitlements: true,
+      preservesProtocolCompatibility: true,
+      generalStorePublishable: true,
+    );
+  }
+
+  static ProductStoreListingStrategyManifest targetedDelivery() {
+    return ProductStoreListingStrategyManifest(
+      strategyId: 'airo-tv-targeted-delivery',
+      displayName: 'Airo TV targeted delivery listing',
+      strategy: ProductStoreListingStrategy.targetedDelivery,
+      profileChannels: const {
+        ProductProfileId.fullTv: ProductReleaseChannel.fullTvStable,
+        ProductProfileId.standardTv: ProductReleaseChannel.fullTvStable,
+        ProductProfileId.liteReceiver: ProductReleaseChannel.liteReceiverStable,
+        ProductProfileId.embeddedReceiver: ProductReleaseChannel.receiverStable,
+      },
+      listingIds: const {'airo-tv'},
+      requiredEvidence: _targetedDeliveryEvidence,
+      providedEvidence: _targetedDeliveryEvidence,
+      rolloutPercentage: 5,
+      crashFreeSessionsThresholdBasisPoints: 9950,
+      usesDeviceTargeting: true,
+      usesFeatureDelivery: true,
+      isolatesDependencies: true,
+      sharesAccountEntitlements: true,
+      preservesProtocolCompatibility: true,
+      generalStorePublishable: true,
+    );
+  }
+
+  static ProductStoreListingStrategyManifest vendorSpecificReceiver() {
+    return ProductStoreListingStrategyManifest(
+      strategyId: 'airo-receiver-vendor-specific',
+      displayName: 'Airo Receiver vendor-specific distribution',
+      strategy: ProductStoreListingStrategy.vendorSpecific,
+      profileChannels: const {
+        ProductProfileId.embeddedReceiver: ProductReleaseChannel.vendorSpecific,
+      },
+      listingIds: const {'airo-receiver-vendor'},
+      requiredEvidence: _vendorSpecificEvidence,
+      providedEvidence: _vendorSpecificEvidence,
+      rolloutPercentage: 1,
+      crashFreeSessionsThresholdBasisPoints: 9900,
+      usesDeviceTargeting: true,
+      isolatesDependencies: true,
+      sharesAccountEntitlements: true,
+      preservesProtocolCompatibility: true,
+      generalStorePublishable: false,
+    );
+  }
+
+  static ProductStoreListingStrategyManifest internalCertification() {
+    return ProductStoreListingStrategyManifest(
+      strategyId: 'airo-tv-internal-certification',
+      displayName: 'Airo TV internal certification channel',
+      strategy: ProductStoreListingStrategy.internalCertification,
+      profileChannels: const {
+        ProductProfileId.fullTv: ProductReleaseChannel.internalCertification,
+        ProductProfileId.liteReceiver:
+            ProductReleaseChannel.internalCertification,
+        ProductProfileId.embeddedReceiver:
+            ProductReleaseChannel.internalCertification,
+      },
+      listingIds: const {'airo-tv-internal-certification'},
+      requiredEvidence: const {
+        ProductStoreListingEvidence.rolloutPlan,
+        ProductStoreListingEvidence.crashThreshold,
+      },
+      providedEvidence: const {
+        ProductStoreListingEvidence.rolloutPlan,
+        ProductStoreListingEvidence.crashThreshold,
+      },
+      rolloutPercentage: 0,
+      crashFreeSessionsThresholdBasisPoints: 9800,
+      usesDeviceTargeting: true,
+      isolatesDependencies: true,
+      sharesAccountEntitlements: true,
+      preservesProtocolCompatibility: true,
+      generalStorePublishable: false,
+    );
+  }
+
+  static const Set<ProductStoreListingEvidence> _generalStoreEvidence = {
+    ProductStoreListingEvidence.storePolicyReview,
+    ProductStoreListingEvidence.dataSafety,
+    ProductStoreListingEvidence.contentRating,
+    ProductStoreListingEvidence.legalReview,
+    ProductStoreListingEvidence.dependencyIsolation,
+    ProductStoreListingEvidence.deviceCatalogReview,
+    ProductStoreListingEvidence.featureDeliveryReview,
+    ProductStoreListingEvidence.rolloutPlan,
+    ProductStoreListingEvidence.crashThreshold,
+    ProductStoreListingEvidence.sharedAccountEntitlements,
+  };
+
+  static const Set<ProductStoreListingEvidence> _splitListingEvidence = {
+    ProductStoreListingEvidence.storePolicyReview,
+    ProductStoreListingEvidence.dataSafety,
+    ProductStoreListingEvidence.contentRating,
+    ProductStoreListingEvidence.legalReview,
+    ProductStoreListingEvidence.dependencyIsolation,
+    ProductStoreListingEvidence.deviceCatalogReview,
+    ProductStoreListingEvidence.rolloutPlan,
+    ProductStoreListingEvidence.crashThreshold,
+    ProductStoreListingEvidence.sharedAccountEntitlements,
+  };
+
+  static const Set<ProductStoreListingEvidence> _targetedDeliveryEvidence = {
+    ProductStoreListingEvidence.storePolicyReview,
+    ProductStoreListingEvidence.dataSafety,
+    ProductStoreListingEvidence.contentRating,
+    ProductStoreListingEvidence.legalReview,
+    ProductStoreListingEvidence.dependencyIsolation,
+    ProductStoreListingEvidence.deviceCatalogReview,
+    ProductStoreListingEvidence.featureDeliveryReview,
+    ProductStoreListingEvidence.rolloutPlan,
+    ProductStoreListingEvidence.crashThreshold,
+    ProductStoreListingEvidence.sharedAccountEntitlements,
+  };
+
+  static const Set<ProductStoreListingEvidence> _vendorSpecificEvidence = {
+    ProductStoreListingEvidence.storePolicyReview,
+    ProductStoreListingEvidence.legalReview,
+    ProductStoreListingEvidence.vendorApproval,
+    ProductStoreListingEvidence.dependencyIsolation,
+    ProductStoreListingEvidence.rolloutPlan,
+    ProductStoreListingEvidence.crashThreshold,
+    ProductStoreListingEvidence.sharedAccountEntitlements,
+  };
+}
+
 ProductModule? _moduleForCapability(ProductCapability capability) {
   return switch (capability) {
     ProductCapability.directPlayback => ProductModule.playback,
@@ -2120,6 +2598,12 @@ List<String> _productGuaranteeStableIds(
   return values.map((value) => value.stableId).toList(growable: false)..sort();
 }
 
+List<String> _storeListingEvidenceStableIds(
+  Iterable<ProductStoreListingEvidence> values,
+) {
+  return values.map((value) => value.stableId).toList(growable: false)..sort();
+}
+
 List<String> _mediaCodecStableIds(Iterable<MediaCodecCapability> values) {
   return values.map((value) => value.stableId).toList(growable: false)..sort();
 }
@@ -2150,6 +2634,12 @@ List<String> _moduleFeatureFlagStableIds(
 
 List<String> _compositionValidationCodeStableIds(
   Iterable<ProductCompositionValidationCode> values,
+) {
+  return values.map((value) => value.stableId).toList(growable: false)..sort();
+}
+
+List<String> _storeListingValidationCodeStableIds(
+  Iterable<ProductStoreListingValidationCode> values,
 ) {
   return values.map((value) => value.stableId).toList(growable: false)..sort();
 }
