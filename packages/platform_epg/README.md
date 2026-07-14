@@ -1,39 +1,20 @@
-<!--
-This README describes the package. If you publish this package to pub.dev,
-this README's contents appear on the landing page for your package.
+# Platform EPG
 
-For information about how to write a good package README, see the guide for
-[writing package pages](https://dart.dev/tools/pub/writing-package-pages).
+Shared EPG contracts for Airo V2 products.
 
-For general information about developing packages, see the Dart guide for
-[creating packages](https://dart.dev/guides/libraries/create-packages)
-and the Flutter guide for
-[developing packages and plugins](https://flutter.dev/to/develop-packages).
--->
+This package is platform/framework code. Airo TV, Lite Receiver, future
+companion nodes, and distributed EPG workers consume these contracts to exchange
+compact current/next guide slices without forcing constrained receivers to load
+or parse full XMLTV datasets.
 
-TODO: Put a short description of the package here that helps potential users
-know whether this package might be useful for them.
+## Scope
 
-## Features
+- Compact EPG programs and channel entries.
+- Current/next selection from a small program window.
+- Compact EPG slices with availability and expiry.
+- Repository boundary with no-op and in-memory fake implementations.
+- Redacted EPG source references that reject raw URLs, local paths, local IP
+  values, and credential-like values.
 
-TODO: List what your package can do. Maybe include images, gifs, or videos.
-
-## Getting started
-
-TODO: List prerequisites and provide or point to information on how to
-start using the package.
-
-## Usage
-
-TODO: Include short and useful examples for package users. Add longer examples
-to `/example` folder.
-
-```dart
-const like = 'sample';
-```
-
-## Additional information
-
-TODO: Tell users more about the package: where to find more information, how to
-contribute to the package, how to file issues, what response they can expect
-from the package authors, and more.
+This package does not parse XMLTV, render guide UI, persist guide data, import
+vendor SDKs, or start playback.
