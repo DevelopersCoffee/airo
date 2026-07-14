@@ -19,6 +19,9 @@ without leaking private media or account data.
   route health, compact EPG sync, and acknowledgements.
 - Compatibility policy for schema/protocol version, replay sequence, payload
   size, required fields, reserved fields, and stable ids.
+- Secure transport descriptors for WSS/HTTP3-compatible command and state sync.
+- Handshake/frame policies for proof presence, trusted peers, replay, frame
+  size, stale frames, and redacted diagnostics.
 
 This package does not discover devices, open sockets, store trust records,
 render pairing UI, send commands, maintain presence leases, index media, relay
