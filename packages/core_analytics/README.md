@@ -14,5 +14,10 @@ analytics SDKs directly.
 - Prohibited field and value validation.
 - No-op provider for builds without external analytics.
 - Bounded local diagnostics provider for host tests and development builds.
+- Performance instrumentation schema for UI, playback, import, search,
+  protocol, command, memory, storage, network, and pairing samples.
+- No-op and fake performance instrumentation sinks for deterministic tests.
 
 This package does not include Firebase, Crashlytics, or another provider SDK.
+It also does not define dashboards, upload schedules, device profilers, frame
+observers, or app-specific performance UI.
