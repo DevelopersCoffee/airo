@@ -13,17 +13,15 @@ Airo TV v0.0.1 is the initial Android TV release from the Airo v2 release line.
 
 ## Highlights
 
-- IPTV M3U playlist URL import
-- Channel search and play flow, including Music India search/play validation scope
-- Android TV and Fire TV Leanback launcher support
-- Pixel/mobile portrait and landscape fallback layout
-- Cast UI states for discovery, pause/play, stop, reload, new session, and volume controls
-- User-actionable Cast discovery failure messaging
-- Accessibility labels and tooltips for key controls
+- Add your own legal M3U playlist and start watching.
+- Search channels without wrestling the remote like it owes you money.
+- Android TV support for the couch, plus phone fallback for the “just testing it quickly” crowd.
+- Cast controls for play, pause, stop, reload, new sessions, and volume.
+- Friendlier messages when Cast devices hide behind the Wi-Fi sofa.
 
 ## Play Store Readiness Notes
 
-Airo TV is a player app. It does not provide IPTV channels, playlists, or copyrighted media. Users must supply authorized M3U playlist URLs and are responsible for the legality of their content sources.
+Airo TV is a player app. It does not provide IPTV channels, playlists, or copyrighted media. Bring a playlist you are allowed to watch; the app brings the popcorn energy.
 
 Google Cast support depends on the receiver advertising `_googlecast._tcp` and allowing local network reachability on port `8009`. If discovery fails, users should verify the TV/Chromecast is powered on, on the same network, and not blocked by router/client isolation.
 
@@ -46,5 +44,5 @@ Default workflow inputs for this release:
 - IPTV screen and UI tests
 - IPTV cast notifier/UI tests
 - `platform_player` Cast controller tests
-- Debug APK build with `lib/main_tv.dart`, `APP_VARIANT=tv`, `APP_PLATFORM=androidTv`
+- Release APK build with `lib/main_tv.dart`, `APP_VARIANT=tv`, `APP_PLATFORM=androidTv`
 - Release AAB build with the same TV defines

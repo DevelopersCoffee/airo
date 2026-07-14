@@ -321,8 +321,8 @@ jobs:
       - name: Stage named release artifacts
         run: |
           mkdir -p release-artifacts
-          cp app/build/app/outputs/flutter-apk/app-release.apk "release-artifacts/airo-tv-${RELEASE_VERSION}.apk"
-          cp app/build/app/outputs/bundle/release/app-release.aab "release-artifacts/airo-tv-${RELEASE_VERSION}.aab"
+          cp app/build/app/outputs/flutter-apk/app-release.apk "release-artifacts/Airo-TV-${BUILD_NAME}.apk"
+          cp app/build/app/outputs/bundle/release/app-release.aab "release-artifacts/Airo-TV-${BUILD_NAME}-Play-Store.aab"
           ls -lh release-artifacts
 
       - name: Upload Airo TV release artifacts
@@ -382,7 +382,7 @@ jobs:
         run: |
           gem install fastlane --no-document
           fastlane supply \
-            --aab "../../release-artifacts/airo-tv-${RELEASE_VERSION}.aab" \
+            --aab "../../release-artifacts/Airo-TV-${BUILD_NAME}-Play-Store.aab" \
             --track "${{ github.event.inputs.play_track }}" \
             --package_name "$SUPPLY_PACKAGE_NAME" \
             --json_key "$SUPPLY_JSON_KEY" \
@@ -418,19 +418,19 @@ jobs:
         run: |
           notes=$(mktemp)
           cat > "$notes" <<'NOTES'
-          Airo TV initial release from the v2 release line.
+          Airo TV v0.0.1 is here. Tiny version number, big couch energy.
 
-          Highlights:
-          - Package: io.airo.app.tv
-          - IPTV M3U playlist import and channel search/play
-          - Pixel/mobile fallback layout plus Android TV/Leanback launch support
-          - Cast controls, diagnostics, and user-actionable discovery guidance
-          - Accessibility labels/tooltips and overflow fixes
+          What's new:
+          - Add your own legal M3U playlist and start watching.
+          - Search channels without wrestling the remote like it owes you money.
+          - Works on Android TV, and behaves itself on phones too.
+          - Cast controls are ready: play, pause, stop, volume, reload, the usual living-room wizardry.
+          - Friendlier messages when Cast devices are hiding behind the Wi-Fi sofa.
 
-          Play Store readiness:
-          - Category: Entertainment / Video Players & Editors
-          - Content model: Airo TV does not provide IPTV content; users supply authorized M3U URLs.
-          - Known Cast requirement: Google Cast depends on TV advertising _googlecast._tcp and port 8009 reachability.
+          Good to know:
+          - Airo TV is a player. It does not ship TV channels or mystery pirate treasure.
+          - Use playlists you are allowed to watch.
+          - Cast needs your TV/Chromecast awake and on the same network. If it is not found, blame Wi-Fi first. It usually deserves it.
           NOTES
           gh release create "$RELEASE_VERSION" release-artifacts/* \
             --title "Airo TV v0.0.1" \
