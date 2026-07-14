@@ -11,6 +11,8 @@ environment:
 dependencies:
   core_commands:
     path: ../core_commands
+  core_media_routing:
+    path: ../core_media_routing
   core_pairing:
     path: ../core_pairing
   core_protocol:
