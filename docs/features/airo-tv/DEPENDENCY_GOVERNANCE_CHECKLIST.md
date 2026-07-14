@@ -9,6 +9,7 @@ Implementation contract:
 - Package: `packages/platform_dependency_governance`
 - Schema: `kAiroDependencyGovernanceSchemaVersion`
 - Default checklist: `AiroDependencyGovernanceChecklist()`
+- Audit report: `AiroDependencyGovernanceAuditReport.evaluate(...)`
 - Android API baseline: `26`
 
 ## Required Dependency Fields
@@ -53,3 +54,32 @@ it, but it cannot be accepted for baseline profiles unless a profile-specific
 fallback or stub keeps API 26 builds functional. CI wiring, pubspec parsing,
 Gradle inspection, APK-size measurement, and dependency upgrades are follow-up
 implementation tasks.
+
+## Audit Report Contract
+
+Release tooling should group dependency records by release profile and create an
+audit report with `AiroDependencyGovernanceAuditReport.evaluate(...)`.
+
+The report captures:
+
+- schema version;
+- release profile name;
+- UTC generation timestamp;
+- checklist thresholds used for the audit;
+- stable dependency result ordering by module, package, and version;
+- stable aggregate blocker codes;
+- each dependency record and its evaluated result.
+
+The report passes only when every dependency result passes. Public release
+automation may fail a Lite Receiver or legacy profile when the report fails,
+unless a separate release waiver explicitly records why the blocker is accepted.
+
+Audit reports must not contain credentials, device identifiers, analytics
+payloads, personal data, or store-console account details. Those remain in
+credential stores and release evidence systems, not in dependency governance
+records.
+
+Follow-up automation can parse pubspec, Gradle, APK size, or dependency scanner
+output into `AiroDependencyAuditRecord` values. That extraction work must keep
+using the platform contract instead of adding profile-specific checks directly
+inside Airo TV app code.

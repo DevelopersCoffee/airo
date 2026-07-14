@@ -7,6 +7,7 @@ void main() {
 
     AiroDependencyAuditRecord record({
       String packageName = 'video_player',
+      String usedByModule = 'feature_iptv',
       AiroDependencyImportance importance = AiroDependencyImportance.required,
       int? minimumAndroidApi = 26,
       bool hasNativeCode = false,
@@ -24,7 +25,7 @@ void main() {
       return AiroDependencyAuditRecord(
         packageName: packageName,
         version: '1.0.0',
-        usedByModule: 'feature_iptv',
+        usedByModule: usedByModule,
         importance: importance,
         minimumAndroidApi: minimumAndroidApi,
         hasNativeCode: hasNativeCode,
@@ -139,5 +140,102 @@ void main() {
         );
       },
     );
+
+    test('creates a passing empty audit report', () {
+      final report = AiroDependencyGovernanceAuditReport.evaluate(
+        profileName: 'tv',
+        generatedAtUtc: DateTime.utc(2026, 7, 14, 12),
+        records: const [],
+      );
+
+      expect(report.passed, isTrue);
+      expect(report.entries, isEmpty);
+      expect(report.failingEntries, isEmpty);
+      expect(report.blockerCodes, isEmpty);
+      expect(
+        report.toJson(),
+        containsPair('generatedAtUtc', '2026-07-14T12:00:00.000Z'),
+      );
+    });
+
+    test('creates a passing audit report for reviewed dependencies', () {
+      final report = AiroDependencyGovernanceAuditReport.evaluate(
+        profileName: 'tv',
+        generatedAtUtc: DateTime.utc(2026, 7, 14, 12),
+        records: [
+          record(packageName: 'platform_player'),
+          record(packageName: 'feature_iptv', usedByModule: 'feature_iptv'),
+        ],
+      );
+
+      expect(report.passed, isTrue);
+      expect(report.entries, hasLength(2));
+      expect(report.failingEntries, isEmpty);
+      expect(report.toJson(), containsPair('passed', true));
+    });
+
+    test('aggregates stable blocker codes for failing dependencies', () {
+      final report = AiroDependencyGovernanceAuditReport.evaluate(
+        profileName: 'tv',
+        generatedAtUtc: DateTime.utc(2026, 7, 14, 12),
+        records: [
+          record(packageName: 'large_native', hasNativeCode: true),
+          record(
+            packageName: 'api_raiser',
+            minimumAndroidApi: 28,
+            estimatedRuntimeMemoryMb: 64,
+          ),
+        ],
+      );
+
+      expect(report.passed, isFalse);
+      expect(report.failingEntries, hasLength(2));
+      expect(
+        report.blockerCodes.map((code) => code.stableId),
+        orderedEquals([
+          'memory_budget_exceeded',
+          'missing_fallback_for_raised_api',
+          'missing_native_architectures',
+          'raises_android_api_floor',
+        ]),
+      );
+    });
+
+    test('sorts audit entries for deterministic release output', () {
+      final report = AiroDependencyGovernanceAuditReport.evaluate(
+        profileName: 'tv',
+        generatedAtUtc: DateTime.utc(2026, 7, 14, 12),
+        records: [
+          record(packageName: 'zeta', usedByModule: 'platform_player'),
+          record(packageName: 'alpha', usedByModule: 'feature_iptv'),
+          record(packageName: 'beta', usedByModule: 'feature_iptv'),
+        ],
+      );
+
+      expect(
+        report.entries.map((entry) => entry.record.packageName),
+        orderedEquals(['alpha', 'beta', 'zeta']),
+      );
+    });
+
+    test('captures checklist thresholds in audit output', () {
+      const strictChecklist = AiroDependencyGovernanceChecklist(
+        androidApiBaseline: 24,
+        maxBinarySizeKb: 2048,
+        maxRuntimeMemoryMb: 16,
+      );
+      final report = AiroDependencyGovernanceAuditReport.evaluate(
+        profileName: 'legacy-tv',
+        generatedAtUtc: DateTime.utc(2026, 7, 14, 12),
+        checklist: strictChecklist,
+        records: [record()],
+      );
+      final json = report.toJson();
+
+      expect(json['profileName'], 'legacy-tv');
+      expect(json['checklist'], containsPair('androidApiBaseline', 24));
+      expect(json['checklist'], containsPair('maxBinarySizeKb', 2048));
+      expect(json['checklist'], containsPair('maxRuntimeMemoryMb', 16));
+    });
   });
 }
