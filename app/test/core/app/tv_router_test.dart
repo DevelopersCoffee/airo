@@ -9,7 +9,12 @@ void main() {
   Future<void> pumpTvRouter(
     WidgetTester tester, {
     required String initialLocation,
+    Size? surfaceSize,
   }) async {
+    if (surfaceSize != null) {
+      await tester.binding.setSurfaceSize(surfaceSize);
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+    }
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
     final router = TvRouter.createRouter(initialLocation: initialLocation);
@@ -36,16 +41,54 @@ void main() {
   }
 
   testWidgets('starts on live TV without requiring login', (tester) async {
-    await pumpTvRouter(tester, initialLocation: TvRouteNames.live);
+    await pumpTvRouter(
+      tester,
+      initialLocation: TvRouteNames.live,
+      surfaceSize: const Size(1280, 720),
+    );
 
-    expect(find.text('Stream'), findsOneWidget);
+    expect(find.text('Add your playlist'), findsOneWidget);
     expect(find.text('Welcome to Airo'), findsNothing);
   });
 
-  testWidgets('redirects legacy login route to live TV', (tester) async {
-    await pumpTvRouter(tester, initialLocation: TvRouteNames.legacyLogin);
+  testWidgets('uses compact IPTV layout on phone portrait viewports', (
+    tester,
+  ) async {
+    await pumpTvRouter(
+      tester,
+      initialLocation: TvRouteNames.live,
+      surfaceSize: const Size(390, 844),
+    );
 
-    expect(find.text('Stream'), findsOneWidget);
+    expect(find.text('Add your playlist'), findsOneWidget);
+    expect(find.text('Airo TV'), findsNothing);
+    expect(find.text('Live TV'), findsNothing);
+    expect(find.text('Settings'), findsNothing);
+  });
+
+  testWidgets('uses compact IPTV layout on short phone landscape viewports', (
+    tester,
+  ) async {
+    await pumpTvRouter(
+      tester,
+      initialLocation: TvRouteNames.live,
+      surfaceSize: const Size(1090, 485),
+    );
+
+    expect(find.text('Add your playlist'), findsOneWidget);
+    expect(find.text('Airo TV'), findsNothing);
+    expect(find.text('Live TV'), findsNothing);
+    expect(find.text('Settings'), findsNothing);
+  });
+
+  testWidgets('redirects legacy login route to live TV', (tester) async {
+    await pumpTvRouter(
+      tester,
+      initialLocation: TvRouteNames.legacyLogin,
+      surfaceSize: const Size(1280, 720),
+    );
+
+    expect(find.text('Add your playlist'), findsOneWidget);
     expect(find.text('Welcome to Airo'), findsNothing);
   });
 }

@@ -1773,6 +1773,15 @@ packages:
     description: flutter
     source: sdk
     version: "0.0.0"
+  slm_edge_intelligence:
+    dependency: transitive
+    description:
+      path: "bindings/flutter"
+      ref: "slm_edge_intelligence-v0.2.2"
+      resolved-ref: "83cd1b5f0b6d02fe2a940710f5cca11557fd0f11"
+      url: "https://github.com/DevelopersCoffee/barista-tuning.git"
+    source: git
+    version: "0.2.2"
   source_gen:
     dependency: transitive
     description:
@@ -1880,10 +1889,9 @@ packages:
   stockfish:
     dependency: "direct main"
     description:
-      name: stockfish
-      sha256: b27956fa6c21f8637db62411c564d1ba1d0b0e9e27ee928f42a85367da891fa0
-      url: "https://pub.dev"
-    source: hosted
+      path: "../packages/stubs/stockfish_stub"
+      relative: true
+    source: path
     version: "1.8.1"
   stream_channel:
     dependency: transitive

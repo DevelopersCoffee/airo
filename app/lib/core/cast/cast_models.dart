@@ -171,10 +171,12 @@ class AiroCastSessionSnapshot extends Equatable {
   const AiroCastSessionSnapshot.loadingMedia({
     required AiroCastDevice device,
     required AiroCastMediaRequest media,
+    double volume = 1.0,
   }) : this._(
          phase: AiroCastSessionPhase.loadingMedia,
          device: device,
          media: media,
+         volume: volume,
        );
 
   const AiroCastSessionSnapshot.playing({
@@ -199,21 +201,40 @@ class AiroCastSessionSnapshot extends Equatable {
          volume: volume,
        );
 
-  const AiroCastSessionSnapshot.stopped()
-    : this._(phase: AiroCastSessionPhase.stopped);
+  const AiroCastSessionSnapshot.stopped({
+    AiroCastDevice? device,
+    AiroCastMediaRequest? media,
+    double volume = 1.0,
+  }) : this._(
+         phase: AiroCastSessionPhase.stopped,
+         device: device,
+         media: media,
+         volume: volume,
+       );
 
   const AiroCastSessionSnapshot.disconnected(AiroCastDevice device)
     : this._(phase: AiroCastSessionPhase.disconnected, device: device);
 
-  const AiroCastSessionSnapshot.failed(AiroCastError error)
-    : this._(phase: AiroCastSessionPhase.failed, error: error);
+  const AiroCastSessionSnapshot.failed(
+    AiroCastError error, {
+    AiroCastDevice? device,
+    AiroCastMediaRequest? media,
+    double volume = 1.0,
+  }) : this._(
+         phase: AiroCastSessionPhase.failed,
+         device: device,
+         media: media,
+         error: error,
+         volume: volume,
+       );
 
   bool get hasActiveDevice => device != null;
   bool get isConnected =>
       phase == AiroCastSessionPhase.connected ||
       phase == AiroCastSessionPhase.loadingMedia ||
       phase == AiroCastSessionPhase.playing ||
-      phase == AiroCastSessionPhase.paused;
+      phase == AiroCastSessionPhase.paused ||
+      (phase == AiroCastSessionPhase.stopped && device != null);
 
   @override
   List<Object?> get props => [phase, device, media, error, volume];

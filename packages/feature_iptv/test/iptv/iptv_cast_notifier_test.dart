@@ -85,12 +85,93 @@ void main() {
     expect(fake.recordedActions, [
       'connect:tv-1',
       'load:https://example.com/live.m3u8',
-      'connect:tv-1',
       'load:https://example.com/next.m3u8',
     ]);
     expect(
       container.read(iptvCastProvider).session.media?.url,
       Uri.parse('https://example.com/next.m3u8'),
+    );
+  });
+
+  test('volume changes preserve loading channel switch state', () async {
+    final fake = FakeAiroCastController(
+      devices: const [tv],
+      completeLoads: false,
+    );
+    final container = containerWith(fake);
+    final notifier = container.read(iptvCastProvider.notifier);
+
+    await notifier.castChannelToDevice(channel: channel(), device: tv);
+    await notifier.setVolume(0.4);
+
+    expect(
+      container.read(iptvCastProvider).session.phase,
+      AiroCastSessionPhase.loadingMedia,
+    );
+    expect(container.read(iptvCastProvider).session.volume, 0.4);
+    expect(
+      container.read(iptvCastProvider).session.media?.url,
+      Uri.parse('https://example.com/live.m3u8'),
+    );
+  });
+
+  test(
+    'stop keeps the active receiver available for restart controls',
+    () async {
+      final fake = FakeAiroCastController(devices: const [tv]);
+      final container = containerWith(fake);
+      final notifier = container.read(iptvCastProvider.notifier);
+
+      await notifier.castChannelToDevice(channel: channel(), device: tv);
+      await notifier.stop();
+
+      final session = container.read(iptvCastProvider).session;
+      expect(session.phase, AiroCastSessionPhase.stopped);
+      expect(session.device, tv);
+      expect(session.media?.url, Uri.parse('https://example.com/live.m3u8'));
+      expect(container.read(iptvCastProvider).activeDevice, tv);
+    },
+  );
+
+  test('reloads stopped media on the active receiver', () async {
+    final fake = FakeAiroCastController(devices: const [tv]);
+    final container = containerWith(fake);
+    final notifier = container.read(iptvCastProvider.notifier);
+
+    await notifier.castChannelToDevice(channel: channel(), device: tv);
+    await notifier.stop();
+    await notifier.reloadActiveMedia();
+
+    expect(fake.recordedActions, [
+      'connect:tv-1',
+      'load:https://example.com/live.m3u8',
+      'stop',
+      'load:https://example.com/live.m3u8',
+    ]);
+    expect(
+      container.read(iptvCastProvider).session.phase,
+      AiroCastSessionPhase.playing,
+    );
+  });
+
+  test('restarts cast session and reloads current media', () async {
+    final fake = FakeAiroCastController(devices: const [tv]);
+    final container = containerWith(fake);
+    final notifier = container.read(iptvCastProvider.notifier);
+
+    await notifier.castChannelToDevice(channel: channel(), device: tv);
+    await notifier.restartActiveSession();
+
+    expect(fake.recordedActions, [
+      'connect:tv-1',
+      'load:https://example.com/live.m3u8',
+      'disconnect:tv-1',
+      'connect:tv-1',
+      'load:https://example.com/live.m3u8',
+    ]);
+    expect(
+      container.read(iptvCastProvider).session.phase,
+      AiroCastSessionPhase.playing,
     );
   });
 

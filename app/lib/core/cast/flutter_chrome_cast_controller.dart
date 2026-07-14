@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_chrome_cast/cast_context.dart';
 import 'package:flutter_chrome_cast/common.dart';
 import 'package:flutter_chrome_cast/discovery.dart';
@@ -32,6 +33,8 @@ class FlutterChromeCastController implements AiroCastController {
   AiroCastSessionSnapshot _sessionState = const AiroCastSessionSnapshot.idle();
   AiroCastDevice? _connectedDevice;
   AiroCastMediaRequest? _currentMediaRequest;
+  String? _currentPlaybackContentId;
+  int _loadGeneration = 0;
   bool _initialized = false;
 
   @override
@@ -133,10 +136,17 @@ class FlutterChromeCastController implements AiroCastController {
 
     try {
       final previousDevice = _connectedDevice;
+      if (previousDevice != null &&
+          previousDevice.id == device.id &&
+          _sessionState.isConnected) {
+        return;
+      }
       if (previousDevice != null && previousDevice.id != device.id) {
         await GoogleCastSessionManager.instance.endSessionAndStopCasting();
         _connectedDevice = null;
         _currentMediaRequest = null;
+        _currentPlaybackContentId = null;
+        _loadGeneration++;
       }
 
       _setSession(AiroCastSessionSnapshot.connecting(device));
@@ -172,6 +182,7 @@ class FlutterChromeCastController implements AiroCastController {
   Future<void> load(AiroCastMediaRequest request) async {
     if (!await _ensureInitialized()) return;
 
+    final generation = ++_loadGeneration;
     final device = _connectedDevice ?? _sessionState.device;
     if (device == null) {
       _setSession(
@@ -187,12 +198,18 @@ class FlutterChromeCastController implements AiroCastController {
 
     try {
       _currentMediaRequest = request;
+      _currentPlaybackContentId = request.url.toString();
       _setSession(
-        AiroCastSessionSnapshot.loadingMedia(device: device, media: request),
+        AiroCastSessionSnapshot.loadingMedia(
+          device: device,
+          media: request,
+          volume: _sessionState.volume,
+        ),
       );
       await GoogleCastRemoteMediaClient.instance.loadMedia(
         toGoogleMediaInfo(request),
       );
+      if (!_isCurrentLoad(generation, request)) return;
       _setSession(
         AiroCastSessionSnapshot.playing(
           device: device,
@@ -201,12 +218,16 @@ class FlutterChromeCastController implements AiroCastController {
         ),
       );
     } catch (error) {
+      if (!_isCurrentLoad(generation, request)) return;
       _setSession(
         AiroCastSessionSnapshot.failed(
           AiroCastError(
             code: AiroCastErrorCode.mediaLoadFailed,
             message: 'The receiver could not load this media: $error',
           ),
+          device: device,
+          media: request,
+          volume: _sessionState.volume,
         ),
       );
     }
@@ -253,8 +274,18 @@ class FlutterChromeCastController implements AiroCastController {
     if (!await _ensureInitialized()) return;
 
     await GoogleCastRemoteMediaClient.instance.stop();
-    _currentMediaRequest = null;
-    _setSession(const AiroCastSessionSnapshot.stopped());
+    final snapshot = _sessionState;
+    final device = _connectedDevice ?? snapshot.device;
+    final media = snapshot.media ?? _currentMediaRequest;
+    _loadGeneration++;
+    _currentPlaybackContentId = null;
+    _setSession(
+      AiroCastSessionSnapshot.stopped(
+        device: device,
+        media: media,
+        volume: snapshot.volume,
+      ),
+    );
   }
 
   @override
@@ -272,8 +303,10 @@ class FlutterChromeCastController implements AiroCastController {
 
     final device = _connectedDevice ?? _sessionState.device;
     await GoogleCastSessionManager.instance.endSessionAndStopCasting();
+    _loadGeneration++;
     _connectedDevice = null;
     _currentMediaRequest = null;
+    _currentPlaybackContentId = null;
     if (device != null) {
       _setSession(AiroCastSessionSnapshot.disconnected(device));
     } else {
@@ -401,6 +434,8 @@ class FlutterChromeCastController implements AiroCastController {
       final device = _connectedDevice;
       _connectedDevice = null;
       _currentMediaRequest = null;
+      _currentPlaybackContentId = null;
+      _loadGeneration++;
       if (device != null) {
         _setSession(AiroCastSessionSnapshot.disconnected(device));
       }
@@ -417,18 +452,24 @@ class FlutterChromeCastController implements AiroCastController {
       case GoogleCastConnectState.connecting:
         _setSession(AiroCastSessionSnapshot.connecting(device));
       case GoogleCastConnectState.connected:
-        _setSession(AiroCastSessionSnapshot.connected(device));
-        _updateVolume(session.currentDeviceVolume);
+        if (_sessionState.media != null) {
+          _updateVolume(session.currentDeviceVolume);
+        } else {
+          _setSession(AiroCastSessionSnapshot.connected(device));
+        }
       case GoogleCastConnectState.disconnecting:
       case GoogleCastConnectState.disconnected:
         _connectedDevice = null;
         _currentMediaRequest = null;
+        _currentPlaybackContentId = null;
+        _loadGeneration++;
         _setSession(AiroCastSessionSnapshot.disconnected(device));
     }
   }
 
   void _updateMediaStatus(GoggleCastMediaStatus? status) {
     if (status == null) return;
+    if (!_isStatusForCurrentMedia(status)) return;
 
     final device = _connectedDevice ?? _sessionState.device;
     final media = _currentMediaRequest ?? _sessionState.media;
@@ -455,11 +496,21 @@ class FlutterChromeCastController implements AiroCastController {
       case CastMediaPlayerState.loading:
       case CastMediaPlayerState.buffering:
         _setSession(
-          AiroCastSessionSnapshot.loadingMedia(device: device, media: media),
+          AiroCastSessionSnapshot.loadingMedia(
+            device: device,
+            media: media,
+            volume: volume,
+          ),
         );
       case CastMediaPlayerState.idle:
       case CastMediaPlayerState.unknown:
-        _setSession(const AiroCastSessionSnapshot.stopped());
+        _setSession(
+          AiroCastSessionSnapshot.stopped(
+            device: device,
+            media: media,
+            volume: volume,
+          ),
+        );
     }
   }
 
@@ -480,23 +531,74 @@ class FlutterChromeCastController implements AiroCastController {
     final clampedVolume = volume.clamp(0.0, 1.0).toDouble();
     if (device == null || media == null) return;
 
-    if (snapshot.phase == AiroCastSessionPhase.paused) {
-      _setSession(
-        AiroCastSessionSnapshot.paused(
-          device: device,
-          media: media,
-          volume: clampedVolume,
-        ),
-      );
-    } else {
-      _setSession(
-        AiroCastSessionSnapshot.playing(
-          device: device,
-          media: media,
-          volume: clampedVolume,
-        ),
-      );
+    _setSession(switch (snapshot.phase) {
+      AiroCastSessionPhase.loadingMedia => AiroCastSessionSnapshot.loadingMedia(
+        device: device,
+        media: media,
+        volume: clampedVolume,
+      ),
+      AiroCastSessionPhase.paused => AiroCastSessionSnapshot.paused(
+        device: device,
+        media: media,
+        volume: clampedVolume,
+      ),
+      _ => AiroCastSessionSnapshot.playing(
+        device: device,
+        media: media,
+        volume: clampedVolume,
+      ),
+    });
+  }
+
+  bool _isCurrentLoad(int generation, AiroCastMediaRequest request) {
+    return generation == _loadGeneration && request == _currentMediaRequest;
+  }
+
+  bool _isStatusForCurrentMedia(GoggleCastMediaStatus status) {
+    final statusContentId = status.mediaInformation?.contentId;
+    if (statusContentId != null && statusContentId.isNotEmpty) {
+      return statusContentId == _currentPlaybackContentId ||
+          statusContentId == _currentMediaRequest?.url.toString();
     }
+
+    if (_sessionState.phase == AiroCastSessionPhase.loadingMedia) {
+      if (status.playerState == CastMediaPlayerState.idle &&
+          status.idleReason == GoogleCastMediaIdleReason.error) {
+        return true;
+      }
+      return status.playerState == CastMediaPlayerState.loading ||
+          status.playerState == CastMediaPlayerState.buffering;
+    }
+
+    return true;
+  }
+
+  @visibleForTesting
+  void debugSetConnectedSession({
+    required AiroCastDevice device,
+    required AiroCastMediaRequest media,
+    Uri? playbackUrl,
+    AiroCastSessionPhase phase = AiroCastSessionPhase.playing,
+  }) {
+    _connectedDevice = device;
+    _currentMediaRequest = media;
+    _currentPlaybackContentId = (playbackUrl ?? media.url).toString();
+    _setSession(switch (phase) {
+      AiroCastSessionPhase.loadingMedia => AiroCastSessionSnapshot.loadingMedia(
+        device: device,
+        media: media,
+      ),
+      AiroCastSessionPhase.paused => AiroCastSessionSnapshot.paused(
+        device: device,
+        media: media,
+      ),
+      _ => AiroCastSessionSnapshot.playing(device: device, media: media),
+    });
+  }
+
+  @visibleForTesting
+  void debugApplyMediaStatus(GoggleCastMediaStatus? status) {
+    _updateMediaStatus(status);
   }
 
   void _setDiscovery(AiroCastDiscoveryState state) {

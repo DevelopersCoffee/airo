@@ -6,10 +6,37 @@ import 'package:core_ui/core_ui.dart';
 void main() {
   group('AppTheme', () {
     test('defaults to Airo Cyber', () {
+      final defaultTheme = AppTheme.defaultTheme;
+
       expect(AppTheme.defaultThemeId, AppThemeId.cyber);
-      expect(AppTheme.defaultTheme.id, AppThemeId.cyber);
-      expect(AppTheme.defaultTheme.name, 'Airo Cyber');
-      expect(AppTheme.defaultTheme.themeMode, ThemeMode.dark);
+      expect(defaultTheme.id, AppThemeId.cyber);
+      expect(defaultTheme.name, 'Airo Cyber');
+      expect(defaultTheme.themeMode, ThemeMode.dark);
+      expect(
+        AppTheme.defaultLight.brightness,
+        defaultTheme.lightTheme.brightness,
+      );
+      expect(
+        AppTheme.defaultDark.brightness,
+        defaultTheme.darkTheme.brightness,
+      );
+      expect(
+        AppTheme.defaultLight.scaffoldBackgroundColor,
+        defaultTheme.lightTheme.scaffoldBackgroundColor,
+      );
+      expect(
+        AppTheme.defaultDark.scaffoldBackgroundColor,
+        defaultTheme.darkTheme.scaffoldBackgroundColor,
+      );
+      expect(
+        AppTheme.defaultLight.colorScheme.primary,
+        defaultTheme.lightTheme.colorScheme.primary,
+      );
+      expect(
+        AppTheme.defaultDark.colorScheme.primary,
+        defaultTheme.darkTheme.colorScheme.primary,
+      );
+      expect(AppTheme.defaultThemeMode, defaultTheme.themeMode);
     });
 
     test('registry exposes all supported themes', () {

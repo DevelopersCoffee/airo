@@ -52,6 +52,41 @@ void main() {
 
     expect(find.text('Casting to Sony Bravia'), findsOneWidget);
     expect(find.text('P4U Music'), findsOneWidget);
+    expect(find.text('Reload'), findsOneWidget);
+    expect(find.text('New session'), findsOneWidget);
+    expect(find.text('Stop'), findsOneWidget);
+    expect(find.text('Disconnect'), findsOneWidget);
+  });
+
+  testWidgets('mini controller keeps controls for recovered session', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          iptvCastProvider.overrideWith(
+            (ref) => _StaticCastNotifier(
+              IptvCastState(
+                session: const AiroCastSessionSnapshot.connected(tv),
+              ),
+            ),
+          ),
+        ],
+        child: const MaterialApp(
+          home: Scaffold(body: IptvCastMiniController()),
+        ),
+      ),
+    );
+
+    expect(find.text('Connected to Sony Bravia'), findsOneWidget);
+    expect(
+      find.text('Choose a channel to cast, or disconnect the TV.'),
+      findsOneWidget,
+    );
+    expect(find.text('Stop'), findsOneWidget);
+    expect(find.text('Disconnect'), findsOneWidget);
+    expect(find.text('Reload'), findsNothing);
+    expect(find.text('New session'), findsNothing);
   });
 }
 

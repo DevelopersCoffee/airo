@@ -44,9 +44,9 @@ class _AiroTvAppState extends ConsumerState<AiroTvApp> {
 
     return MaterialApp.router(
       title: 'Airo TV',
-      theme: _buildTvTheme(AppTheme.light),
-      darkTheme: _buildTvTheme(AppTheme.dark),
-      themeMode: ThemeMode.dark, // TV apps typically use dark theme
+      theme: _buildTvTheme(AppTheme.defaultLight),
+      darkTheme: _buildTvTheme(AppTheme.defaultDark),
+      themeMode: AppTheme.defaultThemeMode,
       routerConfig: TvRouter.router,
       debugShowCheckedModeBanner: false,
       // TV-specific scroll behavior

@@ -25,6 +25,7 @@ class CastHttpProxy {
     _server = server;
     final base = Uri(scheme: 'http', host: address.address, port: server.port);
     _baseUri = base;
+    debugPrint('[CastProxy] listening on ${_uriSummary(base)}');
     server.listen(_handleRequest, onError: (_) {}, cancelOnError: false);
     return base;
   }
@@ -100,7 +101,8 @@ class CastHttpProxy {
     final response = request.response;
     debugPrint(
       '[CastProxy] ${request.method} ${request.uri.path} '
-      'from ${request.connectionInfo?.remoteAddress.address}',
+      'from ${request.connectionInfo?.remoteAddress.address} '
+      'target=${_uriSummary(Uri.tryParse(request.uri.queryParameters['url'] ?? ''))}',
     );
     response.headers
       ..add('Access-Control-Allow-Origin', '*')
@@ -176,6 +178,11 @@ class CastHttpProxy {
     }
     final upstreamResponse = await upstreamRequest.close();
     final response = request.response;
+    debugPrint(
+      '[CastProxy] upstream ${upstreamResponse.statusCode} '
+      '${_uriSummary(targetUrl)} '
+      'type=${upstreamResponse.headers.contentType?.mimeType ?? 'unknown'}',
+    );
 
     final contentType = upstreamResponse.headers.contentType?.mimeType ?? '';
     final isPlaylist =
@@ -245,5 +252,11 @@ class CastHttpProxy {
     if (!line.startsWith('#EXT-X-MEDIA')) return false;
     return line.contains('TYPE=SUBTITLES') ||
         line.contains('TYPE=CLOSED-CAPTIONS');
+  }
+
+  String _uriSummary(Uri? uri) {
+    if (uri == null) return 'none';
+    final port = uri.hasPort ? ':${uri.port}' : '';
+    return '${uri.scheme}://${uri.host}$port${uri.path}';
   }
 }

@@ -54,26 +54,21 @@ class TvRouter {
         // Main TV shell with sidebar navigation
         ShellRoute(
           builder: (context, state, child) {
-            return TvShell(child: child);
+            return _AdaptiveTvShell(child: child);
           },
           routes: [
             // Live TV / IPTV (main screen)
             GoRoute(
               path: TvRouteNames.live,
               name: 'tv_live',
-              builder: (context, state) => const IPTVScreen(),
+              builder: (context, state) => const _AdaptiveLiveTvScreen(),
             ),
             // Player route for fullscreen playback
             GoRoute(
               path: TvRouteNames.player,
               name: 'tv_player',
               builder: (context, state) {
-                // Get channel from query params
-                final channelId = state.uri.queryParameters['channelId'];
-                return IPTVScreen(
-                  // Pass channel ID if provided
-                  key: channelId != null ? ValueKey<String>(channelId) : null,
-                );
+                return const _AdaptiveLiveTvScreen();
               },
             ),
             // Settings route
@@ -87,6 +82,39 @@ class TvRouter {
       ],
     );
   }
+}
+
+class _AdaptiveTvShell extends StatelessWidget {
+  const _AdaptiveTvShell({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    if (_usesCompactPhoneLayout(context)) {
+      return child;
+    }
+
+    return TvShell(child: child);
+  }
+}
+
+class _AdaptiveLiveTvScreen extends StatelessWidget {
+  const _AdaptiveLiveTvScreen();
+
+  @override
+  Widget build(BuildContext context) {
+    if (_usesCompactPhoneLayout(context)) {
+      return const IPTVScreen();
+    }
+
+    return const IptvTvScreen();
+  }
+}
+
+bool _usesCompactPhoneLayout(BuildContext context) {
+  final size = MediaQuery.sizeOf(context);
+  return size.width < 900 || size.height < 600;
 }
 
 /// Placeholder for TV settings screen

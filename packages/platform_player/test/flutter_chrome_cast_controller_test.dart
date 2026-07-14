@@ -1,4 +1,5 @@
 import 'package:flutter_chrome_cast/entities.dart';
+import 'package:flutter_chrome_cast/enums.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:platform_player/platform_player.dart';
 
@@ -38,4 +39,103 @@ void main() {
 
     expect(mediaInfo.streamType, CastMediaStreamType.buffered);
   });
+
+  test('ignores stale receiver status for previous media content id', () {
+    const tv = AiroCastDevice(id: 'tv-1', name: 'Sony Bravia');
+    final current = AiroCastMediaRequest(
+      url: Uri.parse('https://example.com/current.m3u8'),
+      contentType: 'application/vnd.apple.mpegurl',
+      title: 'Current',
+      streamKind: AiroCastMediaStreamKind.live,
+    );
+    final controller = FlutterChromeCastController();
+
+    controller.debugSetConnectedSession(
+      device: tv,
+      media: current,
+      playbackUrl: Uri.parse('http://192.168.1.20:43123/proxy?url=current'),
+      phase: AiroCastSessionPhase.loadingMedia,
+    );
+
+    controller.debugApplyMediaStatus(
+      _status(
+        CastMediaPlayerState.idle,
+        contentId: 'http://192.168.1.20:43123/proxy?url=previous',
+        idleReason: GoogleCastMediaIdleReason.error,
+      ),
+    );
+
+    expect(
+      controller.currentSessionState.phase,
+      AiroCastSessionPhase.loadingMedia,
+    );
+    expect(controller.currentSessionState.media, current);
+
+    controller.debugApplyMediaStatus(
+      _status(
+        CastMediaPlayerState.playing,
+        contentId: 'http://192.168.1.20:43123/proxy?url=current',
+        volume: 0.7,
+      ),
+    );
+
+    expect(controller.currentSessionState.phase, AiroCastSessionPhase.playing);
+    expect(controller.currentSessionState.media, current);
+    expect(controller.currentSessionState.volume, 0.7);
+  });
+
+  test('surfaces receiver idle error while a new media load is active', () {
+    const tv = AiroCastDevice(id: 'tv-1', name: 'Sony Bravia');
+    final current = AiroCastMediaRequest(
+      url: Uri.parse('https://example.com/current.m3u8'),
+      contentType: 'application/vnd.apple.mpegurl',
+      title: 'Current',
+      streamKind: AiroCastMediaStreamKind.live,
+    );
+    final controller = FlutterChromeCastController();
+
+    controller.debugSetConnectedSession(
+      device: tv,
+      media: current,
+      phase: AiroCastSessionPhase.loadingMedia,
+    );
+
+    controller.debugApplyMediaStatus(
+      _status(
+        CastMediaPlayerState.idle,
+        idleReason: GoogleCastMediaIdleReason.error,
+      ),
+    );
+
+    expect(controller.currentSessionState.phase, AiroCastSessionPhase.failed);
+    expect(controller.currentSessionState.media, current);
+    expect(
+      controller.currentSessionState.error?.code,
+      AiroCastErrorCode.mediaLoadFailed,
+    );
+  });
+}
+
+GoggleCastMediaStatus _status(
+  CastMediaPlayerState playerState, {
+  String? contentId,
+  GoogleCastMediaIdleReason? idleReason,
+  double volume = 1,
+}) {
+  return GoggleCastMediaStatus(
+    mediaSessionID: 1,
+    playerState: playerState,
+    idleReason: idleReason,
+    playbackRate: 1,
+    mediaInformation: contentId == null
+        ? null
+        : GoogleCastMediaInformation(
+            contentId: contentId,
+            streamType: CastMediaStreamType.live,
+            contentType: 'application/vnd.apple.mpegurl',
+          ),
+    volume: volume,
+    isMuted: false,
+    repeatMode: GoogleCastMediaRepeatMode.off,
+  );
 }

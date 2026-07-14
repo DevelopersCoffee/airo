@@ -151,6 +151,7 @@ class _PlayPauseButton extends ConsumerWidget {
 
     return IconButton(
       icon: Icon(state.isPlaying ? Icons.pause : Icons.play_arrow, size: 28),
+      tooltip: state.isPlaying ? 'Pause playback' : 'Resume playback',
       onPressed: () {
         if (state.isPlaying) {
           service.pause();

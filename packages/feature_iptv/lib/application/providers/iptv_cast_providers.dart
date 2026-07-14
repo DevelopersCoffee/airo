@@ -76,6 +76,7 @@ class IptvCastNotifier extends StateNotifier<IptvCastState> {
   final IptvCastMediaAdapter adapter;
   StreamSubscription<AiroCastDiscoveryState>? _discoverySubscription;
   StreamSubscription<AiroCastSessionSnapshot>? _sessionSubscription;
+  int _castRequestGeneration = 0;
 
   Future<void> initialize() => controller.initialize();
 
@@ -96,6 +97,7 @@ class IptvCastNotifier extends StateNotifier<IptvCastState> {
     required AiroCastDevice device,
     VideoQuality selectedQuality = VideoQuality.auto,
   }) async {
+    final generation = ++_castRequestGeneration;
     state = state.copyWith(clearError: true);
     final result = adapter.toCastRequest(
       channel,
@@ -107,6 +109,7 @@ class IptvCastNotifier extends StateNotifier<IptvCastState> {
     }
 
     await controller.connect(device);
+    if (!_isCurrentCastRequest(generation)) return;
     if (controller.currentSessionState.phase == AiroCastSessionPhase.failed) {
       state = state.copyWith(
         session: controller.currentSessionState,
@@ -116,6 +119,7 @@ class IptvCastNotifier extends StateNotifier<IptvCastState> {
     }
 
     await controller.load(result.request!);
+    if (!_isCurrentCastRequest(generation)) return;
     state = state.copyWith(session: controller.currentSessionState);
     final error = controller.currentSessionState.error;
     if (error != null) {
@@ -127,6 +131,8 @@ class IptvCastNotifier extends StateNotifier<IptvCastState> {
     required IPTVChannel channel,
     VideoQuality selectedQuality = VideoQuality.auto,
   }) async {
+    final generation = ++_castRequestGeneration;
+    state = state.copyWith(clearError: true);
     final device = state.activeDevice;
     if (device == null) {
       state = state.copyWith(
@@ -138,22 +144,110 @@ class IptvCastNotifier extends StateNotifier<IptvCastState> {
       return;
     }
 
-    await castChannelToDevice(
-      channel: channel,
-      device: device,
+    final result = adapter.toCastRequest(
+      channel,
       selectedQuality: selectedQuality,
     );
+    if (!result.isCastable) {
+      state = state.copyWith(lastError: result.error);
+      return;
+    }
+
+    await controller.load(result.request!);
+    if (!_isCurrentCastRequest(generation)) return;
+    state = state.copyWith(session: controller.currentSessionState);
+    final error = controller.currentSessionState.error;
+    if (error != null) {
+      state = state.copyWith(lastError: error);
+    }
   }
 
-  Future<void> play() => controller.play();
+  Future<void> play() async {
+    await controller.play();
+    _syncSessionFromController();
+  }
 
-  Future<void> pause() => controller.pause();
+  Future<void> pause() async {
+    await controller.pause();
+    _syncSessionFromController();
+  }
 
-  Future<void> stop() => controller.stop();
+  Future<void> stop() async {
+    _castRequestGeneration++;
+    await controller.stop();
+    _syncSessionFromController();
+  }
 
-  Future<void> disconnect() => controller.disconnect();
+  Future<void> reloadActiveMedia() async {
+    final generation = ++_castRequestGeneration;
+    state = state.copyWith(clearError: true);
+    final media = state.session.media;
+    if (state.activeDevice == null || media == null) {
+      state = state.copyWith(
+        lastError: const AiroCastError(
+          code: AiroCastErrorCode.receiverUnavailable,
+          message: 'Choose a Cast device before restarting playback.',
+        ),
+      );
+      return;
+    }
 
-  Future<void> setVolume(double volume) => controller.setVolume(volume);
+    await controller.load(media);
+    if (!_isCurrentCastRequest(generation)) return;
+    _syncSessionFromController();
+  }
+
+  Future<void> restartActiveSession() async {
+    final generation = ++_castRequestGeneration;
+    state = state.copyWith(clearError: true);
+    final device = state.activeDevice;
+    final media = state.session.media;
+    if (device == null || media == null) {
+      state = state.copyWith(
+        lastError: const AiroCastError(
+          code: AiroCastErrorCode.receiverUnavailable,
+          message: 'Choose a Cast device before starting a new session.',
+        ),
+      );
+      return;
+    }
+
+    await controller.disconnect();
+    if (!_isCurrentCastRequest(generation)) return;
+    await controller.connect(device);
+    if (!_isCurrentCastRequest(generation)) return;
+    if (controller.currentSessionState.phase == AiroCastSessionPhase.failed) {
+      _syncSessionFromController();
+      return;
+    }
+
+    await controller.load(media);
+    if (!_isCurrentCastRequest(generation)) return;
+    _syncSessionFromController();
+  }
+
+  Future<void> disconnect() async {
+    _castRequestGeneration++;
+    await controller.disconnect();
+    _syncSessionFromController();
+  }
+
+  Future<void> setVolume(double volume) async {
+    await controller.setVolume(volume);
+    _syncSessionFromController();
+  }
+
+  bool _isCurrentCastRequest(int generation) {
+    return generation == _castRequestGeneration;
+  }
+
+  void _syncSessionFromController() {
+    state = state.copyWith(session: controller.currentSessionState);
+    final error = controller.currentSessionState.error;
+    if (error != null) {
+      state = state.copyWith(lastError: error);
+    }
+  }
 
   @override
   void dispose() {

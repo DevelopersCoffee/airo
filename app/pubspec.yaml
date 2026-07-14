@@ -148,6 +148,11 @@ dev_dependencies:
   riverpod_lint: 2.3.10
 
 dependency_overrides:
+  # IPTV/TV builds do not ship games, and stockfish 1.8.1's Android plugin is
+  # incompatible with the current AGP toolchain. Use the existing no-native stub
+  # so lean streaming variants can build without bundling the chess engine.
+  stockfish:
+    path: ../packages/stubs/stockfish_stub
   # flutter_chrome_cast 1.4.6 requires rxdart ^0.28.0, while the current
   # custom_lint stack requires ^0.27.7. See docs/adr/0007-cast-rxdart-override.md.
   rxdart: ^0.28.0
@@ -169,6 +174,7 @@ flutter:
   # To add assets to your application, add an assets section, like this:
   assets:
     - assets/audio/
+    - assets/packs/
     - assets/airo_icon.png
     - assets/hermes/images/filler-bg0.jpg
 

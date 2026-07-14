@@ -10,6 +10,7 @@
 /// ```
 library;
 
+import 'package:core_ui/core_ui.dart';
 import 'package:feature_iptv/feature_iptv.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
@@ -46,18 +47,9 @@ class AiroIptvApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Airo IPTV',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
-        useMaterial3: true,
-      ),
-      darkTheme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.blue,
-          brightness: Brightness.dark,
-        ),
-        useMaterial3: true,
-      ),
-      themeMode: ThemeMode.system,
+      theme: AppTheme.defaultLight,
+      darkTheme: AppTheme.defaultDark,
+      themeMode: AppTheme.defaultThemeMode,
       debugShowCheckedModeBanner: false,
       home: const IPTVScreen(),
     );

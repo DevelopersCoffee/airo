@@ -20,8 +20,8 @@ val appVariant = dartDefine("APP_VARIANT") ?: "full"
 val isLeanVariant = appVariant != "full"
 val isTvVariant = appVariant == "tv"
 val variantApplicationId = when (appVariant) {
-    "iptv" -> "io.airo.iptv"
-    "streaming" -> "io.airo.streaming"
+    "iptv" -> "io.airo.app"
+    "streaming" -> "io.airo.app"
     "tv" -> "io.airo.app.tv"
     else -> "io.airo.app"
 }
@@ -44,7 +44,9 @@ val hasGoogleServicesConfig = listOf(
     file("src/main/google-services.json"),
     file("src/debug/google-services.json"),
     file("src/release/google-services.json"),
-).any { it.exists() }
+).any { config ->
+    config.exists() && config.readText().contains("\"package_name\": \"$variantApplicationId\"")
+}
 
 if (hasGoogleServicesConfig) {
     apply(plugin = "com.google.gms.google-services")

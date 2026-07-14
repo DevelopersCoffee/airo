@@ -131,7 +131,11 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Search channels'), findsOneWidget);
-    expect(find.text('Find live channels by name or group.'), findsOneWidget);
+    expect(
+      find.text('Find live channels by name, group, or request.'),
+      findsOneWidget,
+    );
+    expect(find.text('Play'), findsOneWidget);
     expect(find.text('Done'), findsOneWidget);
   });
 

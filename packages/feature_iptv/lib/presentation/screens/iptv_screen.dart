@@ -1,9 +1,11 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../application/providers/iptv_providers.dart';
 import "package:platform_channels/platform_channels.dart";
 import "package:platform_player/platform_player.dart";
+import '../widgets/adaptive_iptv_sheet.dart';
 import '../widgets/cast_device_picker_sheet.dart';
 import '../widgets/channel_list_widget.dart';
 import '../widgets/iptv_cast_mini_controller.dart';
@@ -74,23 +76,75 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen> {
     ref.read(addToRecentlyWatchedProvider(channel));
   }
 
+  Future<bool> _playNaturalLanguageQuery(String query) async {
+    final trimmed = query.trim();
+    if (trimmed.isEmpty) {
+      return false;
+    }
+
+    try {
+      final resolution = await ref
+          .read(edgeIptvAssistantProvider)
+          .resolveNaturalLanguage(trimmed);
+      final channel = resolution.channel;
+      if (channel == null) {
+        if (mounted && resolution.message != null) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(resolution.message!)));
+        }
+        return false;
+      }
+
+      _playChannel(channel);
+      return true;
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Could not play: $error')));
+      }
+      return false;
+    }
+  }
+
+  Future<bool> _playSearchAction(String query) async {
+    final trimmed = query.trim();
+    if (trimmed.isEmpty) {
+      return false;
+    }
+
+    ref.read(channelSearchQueryProvider.notifier).state = trimmed;
+    final filteredChannels = ref.read(filteredChannelsProvider);
+    if (filteredChannels.length == 1) {
+      _playChannel(filteredChannels.single);
+      return true;
+    }
+
+    return _playNaturalLanguageQuery(trimmed);
+  }
+
   Future<void> _showSearchSheet() async {
     final controller = TextEditingController(
       text: ref.read(channelSearchQueryProvider),
     );
 
-    await showModalBottomSheet<void>(
+    await showAdaptiveIptvSheet<void>(
       context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
+      maxWidth: 600,
       builder: (context) {
+        final viewInsets = MediaQuery.of(context).viewInsets;
+        final size = MediaQuery.sizeOf(context);
+        final isDialogSheet = size.width >= 720;
+        final keyboardVisible = viewInsets.bottom > 0;
+        final keyboardInset = isDialogSheet ? 0.0 : viewInsets.bottom;
         return SafeArea(
-          child: Padding(
+          child: SingleChildScrollView(
             padding: EdgeInsets.fromLTRB(
-              24,
-              12,
-              24,
-              24 + MediaQuery.of(context).viewInsets.bottom,
+              20,
+              keyboardVisible ? 6 : 12,
+              20,
+              (keyboardVisible ? 12 : 24) + keyboardInset,
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -100,33 +154,50 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen> {
                   'Search channels',
                   style: Theme.of(context).textTheme.titleLarge,
                 ),
-                const SizedBox(height: 8),
-                const Text('Find live channels by name or group.'),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: controller,
-                  autofocus: true,
-                  decoration: InputDecoration(
-                    hintText: 'News, sports, music...',
-                    prefixIcon: const Icon(Icons.search),
-                    suffixIcon: controller.text.isNotEmpty
-                        ? IconButton(
-                            icon: const Icon(Icons.clear),
-                            onPressed: () {
-                              controller.clear();
-                              ref
-                                      .read(channelSearchQueryProvider.notifier)
-                                      .state =
-                                  '';
-                            },
-                          )
-                        : null,
+                if (!keyboardVisible) ...[
+                  const SizedBox(height: 8),
+                  const Text('Find live channels by name, group, or request.'),
+                ],
+                const SizedBox(height: 12),
+                Semantics(
+                  label: 'Search channels',
+                  textField: true,
+                  child: TextField(
+                    controller: controller,
+                    autofocus: true,
+                    decoration: InputDecoration(
+                      labelText: 'Channel or request',
+                      hintText: 'Music India or Aaj Tak',
+                      prefixIcon: const Icon(Icons.search),
+                      suffixIcon: controller.text.isNotEmpty
+                          ? IconButton(
+                              tooltip: 'Clear search',
+                              icon: const Icon(Icons.clear),
+                              onPressed: () {
+                                controller.clear();
+                                ref
+                                        .read(
+                                          channelSearchQueryProvider.notifier,
+                                        )
+                                        .state =
+                                    '';
+                              },
+                            )
+                          : null,
+                    ),
+                    onChanged: (value) =>
+                        ref.read(channelSearchQueryProvider.notifier).state =
+                            value,
+                    onSubmitted: (value) async {
+                      final played = await _playSearchAction(value);
+                      if (!context.mounted) return;
+                      if (played) {
+                        Navigator.of(context).pop();
+                      }
+                    },
                   ),
-                  onChanged: (value) =>
-                      ref.read(channelSearchQueryProvider.notifier).state =
-                          value,
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
                 Row(
                   children: [
                     TextButton(
@@ -138,6 +209,18 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen> {
                       child: const Text('Clear'),
                     ),
                     const Spacer(),
+                    FilledButton.icon(
+                      onPressed: () async {
+                        final played = await _playSearchAction(controller.text);
+                        if (!context.mounted) return;
+                        if (played) {
+                          Navigator.of(context).pop();
+                        }
+                      },
+                      icon: const Icon(Icons.play_arrow),
+                      label: const Text('Play'),
+                    ),
+                    const SizedBox(width: 8),
                     FilledButton(
                       onPressed: () => Navigator.of(context).pop(),
                       child: const Text('Done'),
@@ -153,6 +236,13 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen> {
   }
 
   Future<void> _showCastSheet() async {
+    if (kIsWeb) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Cast is available in the mobile app.')),
+      );
+      return;
+    }
+
     final streamingService = ref.read(iptvStreamingServiceProvider);
     final channel = streamingService.currentState.currentChannel;
     if (channel == null) {
@@ -221,11 +311,12 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen> {
             tooltip: 'Playlist source',
             onPressed: _showPlaylistSheet,
           ),
-          IconButton(
-            icon: const Icon(Icons.cast_connected),
-            tooltip: 'Cast',
-            onPressed: _showCastSheet,
-          ),
+          if (!kIsWeb)
+            IconButton(
+              icon: const Icon(Icons.cast_connected),
+              tooltip: 'Cast',
+              onPressed: _showCastSheet,
+            ),
         ],
       ),
       body: Column(
@@ -482,6 +573,7 @@ class _StreamTabContent extends ConsumerWidget {
     StreamingState state,
   ) {
     return PopupMenuButton<VideoQuality>(
+      tooltip: 'Playback quality',
       initialValue: state.selectedQuality,
       onSelected: (quality) {
         ref.read(iptvStreamingServiceProvider).setQuality(quality);
@@ -503,22 +595,26 @@ class _StreamTabContent extends ConsumerWidget {
             ),
           )
           .toList(),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-        decoration: BoxDecoration(
-          color: Colors.grey[300],
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              state.currentQuality.label,
-              style: const TextStyle(fontSize: 12),
-            ),
-            const SizedBox(width: 4),
-            const Icon(Icons.arrow_drop_down, size: 16),
-          ],
+      child: Semantics(
+        button: true,
+        label: 'Playback quality ${state.currentQuality.label}',
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          decoration: BoxDecoration(
+            color: Colors.grey[300],
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                state.currentQuality.label,
+                style: const TextStyle(fontSize: 12),
+              ),
+              const SizedBox(width: 4),
+              const Icon(Icons.arrow_drop_down, size: 16),
+            ],
+          ),
         ),
       ),
     );
@@ -548,101 +644,132 @@ Future<void> showPlaylistSourceSheet(
   BuildContext context,
   WidgetRef ref,
 ) async {
-  final parser = ref.read(m3uParserProvider);
-  final controller = TextEditingController(text: parser.getPlaylistUrl() ?? '');
-  String? errorText;
-
-  await showModalBottomSheet<void>(
+  await showAdaptiveIptvSheet<void>(
     context: context,
-    isScrollControlled: true,
-    showDragHandle: true,
-    builder: (context) {
-      return StatefulBuilder(
-        builder: (context, setState) {
-          Future<void> save() async {
-            try {
-              await parser.setPlaylistUrl(controller.text);
-              ref.invalidate(userPlaylistUrlProvider);
-              ref.invalidate(iptvChannelsProvider);
-              if (context.mounted) {
-                Navigator.of(context).pop();
-              }
-            } on ArgumentError catch (error) {
-              setState(() => errorText = error.message.toString());
-            }
-          }
+    maxWidth: 640,
+    builder: (_) => const _PlaylistSourceSheet(),
+  );
+}
 
-          return SafeArea(
-            child: Padding(
-              padding: EdgeInsets.fromLTRB(
-                24,
-                12,
-                24,
-                24 + MediaQuery.of(context).viewInsets.bottom,
+class _PlaylistSourceSheet extends ConsumerStatefulWidget {
+  const _PlaylistSourceSheet();
+
+  @override
+  ConsumerState<_PlaylistSourceSheet> createState() =>
+      _PlaylistSourceSheetState();
+}
+
+class _PlaylistSourceSheetState extends ConsumerState<_PlaylistSourceSheet> {
+  late final TextEditingController _controller;
+  String? _errorText;
+
+  @override
+  void initState() {
+    super.initState();
+    final parser = ref.read(m3uParserProvider);
+    _controller = TextEditingController(text: parser.getPlaylistUrl() ?? '');
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    final parser = ref.read(m3uParserProvider);
+    try {
+      await parser.setPlaylistUrl(_controller.text);
+      ref.invalidate(userPlaylistUrlProvider);
+      ref.invalidate(iptvChannelsProvider);
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+    } on ArgumentError catch (error) {
+      setState(() => _errorText = error.message.toString());
+    }
+  }
+
+  Future<void> _remove() async {
+    final parser = ref.read(m3uParserProvider);
+    await parser.clearPlaylist();
+    ref.invalidate(userPlaylistUrlProvider);
+    ref.invalidate(iptvChannelsProvider);
+    if (mounted) {
+      Navigator.of(context).pop();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final viewInsets = MediaQuery.of(context).viewInsets;
+    final size = MediaQuery.sizeOf(context);
+    final isDialogSheet = size.width >= 720;
+    final keyboardVisible = viewInsets.bottom > 0;
+    final keyboardInset = isDialogSheet ? 0.0 : viewInsets.bottom;
+
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: EdgeInsets.fromLTRB(
+          20,
+          keyboardVisible ? 6 : 12,
+          20,
+          (keyboardVisible ? 12 : 24) + keyboardInset,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Playlist source',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+            if (!keyboardVisible) ...[
+              const SizedBox(height: 8),
+              const Text(
+                'Add an M3U playlist URL for content you are authorized to use.',
               ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Playlist source',
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Add an M3U playlist URL for content you are authorized to use.',
-                  ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: controller,
-                    autofocus: true,
-                    keyboardType: TextInputType.url,
-                    textInputAction: TextInputAction.done,
-                    decoration: InputDecoration(
-                      labelText: 'M3U playlist URL',
-                      hintText: 'https://example.com/playlist.m3u',
-                      prefixIcon: const Icon(Icons.link),
-                      errorText: errorText,
-                    ),
-                    onSubmitted: (_) => save(),
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      TextButton(
-                        onPressed: () async {
-                          await parser.clearPlaylist();
-                          ref.invalidate(userPlaylistUrlProvider);
-                          ref.invalidate(iptvChannelsProvider);
-                          if (context.mounted) {
-                            Navigator.of(context).pop();
-                          }
-                        },
-                        child: const Text('Remove'),
-                      ),
-                      const Spacer(),
-                      TextButton(
-                        onPressed: () => Navigator.of(context).pop(),
-                        child: const Text('Cancel'),
-                      ),
-                      const SizedBox(width: 8),
-                      FilledButton.icon(
-                        onPressed: save,
-                        icon: const Icon(Icons.check),
-                        label: const Text('Save'),
-                      ),
-                    ],
-                  ),
-                ],
+            ],
+            const SizedBox(height: 12),
+            Semantics(
+              label: 'M3U playlist URL',
+              textField: true,
+              child: TextField(
+                controller: _controller,
+                autofocus: true,
+                keyboardType: TextInputType.url,
+                textInputAction: TextInputAction.done,
+                decoration: InputDecoration(
+                  labelText: 'M3U playlist URL',
+                  hintText: 'https://example.com/playlist.m3u',
+                  prefixIcon: const Icon(Icons.link),
+                  errorText: _errorText,
+                ),
+                onSubmitted: (_) => _save(),
               ),
             ),
-          );
-        },
-      );
-    },
-  );
-
-  controller.dispose();
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                TextButton(onPressed: _remove, child: const Text('Remove')),
+                const Spacer(),
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Cancel'),
+                ),
+                const SizedBox(width: 8),
+                FilledButton.icon(
+                  onPressed: _save,
+                  icon: const Icon(Icons.check),
+                  label: const Text('Save'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _BringYourOwnPlaylistView extends StatelessWidget {

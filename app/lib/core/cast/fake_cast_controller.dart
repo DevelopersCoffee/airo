@@ -10,6 +10,7 @@ class FakeAiroCastController implements AiroCastController {
     this.denyPermission = false,
     this.failConnection = false,
     this.failMediaLoad = false,
+    this.completeLoads = true,
   });
 
   final List<AiroCastDevice> devices;
@@ -17,6 +18,7 @@ class FakeAiroCastController implements AiroCastController {
   bool denyPermission;
   bool failConnection;
   bool failMediaLoad;
+  bool completeLoads;
 
   final List<String> recordedActions = [];
 
@@ -76,6 +78,9 @@ class FakeAiroCastController implements AiroCastController {
   @override
   Future<void> connect(AiroCastDevice device) async {
     final previousDevice = _connectedDevice;
+    if (previousDevice == device && _sessionState.isConnected) {
+      return;
+    }
     if (previousDevice != null) {
       if (previousDevice != device) {
         recordedActions.add('disconnect:${previousDevice.id}');
@@ -117,13 +122,18 @@ class FakeAiroCastController implements AiroCastController {
     _setSession(
       AiroCastSessionSnapshot.loadingMedia(device: device, media: request),
     );
+    if (!completeLoads) {
+      return;
+    }
     if (failMediaLoad) {
       _setSession(
-        const AiroCastSessionSnapshot.failed(
-          AiroCastError(
+        AiroCastSessionSnapshot.failed(
+          const AiroCastError(
             code: AiroCastErrorCode.mediaLoadFailed,
             message: 'The receiver could not load this channel.',
           ),
+          device: device,
+          media: request,
         ),
       );
       return;
@@ -170,8 +180,14 @@ class FakeAiroCastController implements AiroCastController {
   @override
   Future<void> stop() async {
     recordedActions.add('stop');
-    _connectedDevice = null;
-    _setSession(const AiroCastSessionSnapshot.stopped());
+    final snapshot = _sessionState;
+    _setSession(
+      AiroCastSessionSnapshot.stopped(
+        device: _connectedDevice ?? snapshot.device,
+        media: snapshot.media,
+        volume: snapshot.volume,
+      ),
+    );
   }
 
   @override
@@ -182,23 +198,24 @@ class FakeAiroCastController implements AiroCastController {
     final media = snapshot.media;
     final clampedVolume = volume.clamp(0.0, 1.0).toDouble();
     if (device != null && media != null) {
-      if (snapshot.phase == AiroCastSessionPhase.paused) {
-        _setSession(
-          AiroCastSessionSnapshot.paused(
+      _setSession(switch (snapshot.phase) {
+        AiroCastSessionPhase.loadingMedia =>
+          AiroCastSessionSnapshot.loadingMedia(
             device: device,
             media: media,
             volume: clampedVolume,
           ),
-        );
-      } else {
-        _setSession(
-          AiroCastSessionSnapshot.playing(
-            device: device,
-            media: media,
-            volume: clampedVolume,
-          ),
-        );
-      }
+        AiroCastSessionPhase.paused => AiroCastSessionSnapshot.paused(
+          device: device,
+          media: media,
+          volume: clampedVolume,
+        ),
+        _ => AiroCastSessionSnapshot.playing(
+          device: device,
+          media: media,
+          volume: clampedVolume,
+        ),
+      });
     }
   }
 

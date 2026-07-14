@@ -9,6 +9,7 @@ import "package:platform_media/platform_media.dart";
 import "package:platform_playlist_import/platform_playlist_import.dart";
 
 export 'iptv_cast_providers.dart';
+export 'edge_intelligence_providers.dart';
 export 'iptv_navigation_provider.dart';
 export 'voice_search_provider.dart';
 
@@ -182,7 +183,7 @@ final filteredChannelsProvider = Provider<List<IPTVChannel>>((ref) {
     data: (channels) {
       // Filter by category
       var filtered = category == ChannelCategory.all
-          ? channels
+          ? channels.toList()
           : channels.where((c) => c.category == category).toList();
 
       // Filter by flavor (taste-based filtering)

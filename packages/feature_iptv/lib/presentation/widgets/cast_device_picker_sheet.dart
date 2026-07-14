@@ -3,14 +3,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:platform_player/platform_player.dart';
 
 import '../../application/providers/iptv_cast_providers.dart';
+import 'adaptive_iptv_sheet.dart';
 
 Future<void> showIptvCastDevicePicker({
   required BuildContext context,
   required ValueChanged<AiroCastDevice> onDeviceSelected,
 }) {
-  return showModalBottomSheet<void>(
+  return showAdaptiveIptvSheet<void>(
     context: context,
-    showDragHandle: true,
     builder: (_) => CastDevicePickerSheet(onDeviceSelected: onDeviceSelected),
   );
 }
@@ -54,6 +54,7 @@ class _CastDevicePickerSheetState extends ConsumerState<CastDevicePickerSheet> {
             const SizedBox(height: 4),
             const Text(
               'Choose one Chromecast-enabled TV on this Wi-Fi network.',
+              maxLines: 2,
             ),
             const SizedBox(height: 16),
             _DiscoveryBody(
@@ -106,9 +107,12 @@ class _DiscoveryBody extends StatelessWidget {
         leading: const Icon(Icons.cast),
         title: const Text('No Cast devices found'),
         subtitle: const Text(
-          'Make sure your phone and TV are on the same Wi-Fi.',
+          'Make sure the TV is awake, Cast is enabled, both devices are on the same Wi-Fi, and router client isolation is off.',
         ),
-        trailing: TextButton(onPressed: onRetry, child: const Text('Refresh')),
+        trailing: TextButton(
+          onPressed: onRetry,
+          child: const Text('Scan again'),
+        ),
       ),
       AiroCastDiscoveryPhase.failed => ListTile(
         leading: const Icon(Icons.error_outline),

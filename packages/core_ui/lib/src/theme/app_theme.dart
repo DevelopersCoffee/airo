@@ -13,6 +13,12 @@ abstract final class AppTheme {
 
   static AppThemeDefinition get defaultTheme => byId(defaultThemeId);
 
+  static ThemeData get defaultLight => defaultTheme.lightTheme;
+
+  static ThemeData get defaultDark => defaultTheme.darkTheme;
+
+  static ThemeMode get defaultThemeMode => defaultTheme.themeMode;
+
   static List<AppThemeDefinition> get themes => [
     _cyberDefinition,
     _classicDefinition,

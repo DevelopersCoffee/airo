@@ -98,6 +98,48 @@ make run-pixel9
 make run-iphone13
 ```
 
+### Airo TV Edge Intelligence
+
+The IPTV feature consumes `slm_edge_intelligence` from the public
+`DevelopersCoffee/barista-tuning` Git package. By default it uses the public
+rule backend:
+
+```bash
+flutter run -t lib/main_airo_iptv.dart
+```
+
+To use the Rust FFI pack-backed runtime, bundle the native `edge-ffi` artifact
+with the app and pass the media pack path by configuration:
+
+```bash
+flutter run -t lib/main_airo_iptv.dart \
+  --dart-define=AIRO_EDGE_INTELLIGENCE_BACKEND=native \
+  --dart-define=AIRO_MEDIA_PACK=/absolute/path/to/media.pack
+```
+
+For device builds where the pack is bundled as a Flutter asset, place it under
+`app/assets/packs/` and pass the asset key instead:
+
+```bash
+flutter run -t lib/main_airo_iptv.dart \
+  --dart-define=AIRO_EDGE_INTELLIGENCE_BACKEND=native \
+  --dart-define=AIRO_MEDIA_PACK_ASSET=assets/packs/media.pack
+```
+
+The Flutter screen still only submits natural-language media requests and plays
+the returned stream URI; pack installation and backend selection stay behind the
+feature package provider layer.
+
+Android TV builds must include `libedge_ffi.so` under
+`app/android/app/src/main/jniLibs/<abi>/`. From the Edge Intelligence repo:
+
+```bash
+slm package-edge-ffi-android \
+  --airo-app /absolute/path/to/airo/app \
+  --build \
+  --abi arm64-v8a
+```
+
 ### Verify Changes
 
 ```bash

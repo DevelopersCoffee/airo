@@ -155,7 +155,8 @@ void main() {
         controller.currentSessionState.error?.code,
         AiroCastErrorCode.mediaLoadFailed,
       );
-      expect(controller.currentSessionState.media, isNull);
+      expect(controller.currentSessionState.device, tv);
+      expect(controller.currentSessionState.media, media);
     });
 
     test(
@@ -203,6 +204,24 @@ void main() {
       expect(controller.currentSessionState.volume, 0.0);
     });
 
+    test('volume changes preserve loading phase', () async {
+      final controller = FakeAiroCastController(
+        devices: const [tv],
+        completeLoads: false,
+      );
+
+      await controller.connect(tv);
+      await controller.load(media);
+      await controller.setVolume(0.25);
+
+      expect(
+        controller.currentSessionState.phase,
+        AiroCastSessionPhase.loadingMedia,
+      );
+      expect(controller.currentSessionState.media, media);
+      expect(controller.currentSessionState.volume, 0.25);
+    });
+
     test('pause play and stop update active session state', () async {
       final controller = FakeAiroCastController(devices: const [tv]);
 
@@ -229,15 +248,14 @@ void main() {
         controller.currentSessionState.phase,
         AiroCastSessionPhase.stopped,
       );
-      expect(controller.currentSessionState.device, isNull);
-      expect(controller.currentSessionState.media, isNull);
+      expect(controller.currentSessionState.device, tv);
+      expect(controller.currentSessionState.media, media);
 
       await controller.load(media);
 
-      expect(controller.currentSessionState.phase, AiroCastSessionPhase.failed);
       expect(
-        controller.currentSessionState.error?.code,
-        AiroCastErrorCode.receiverUnavailable,
+        controller.currentSessionState.phase,
+        AiroCastSessionPhase.playing,
       );
     });
 
