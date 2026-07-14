@@ -235,9 +235,121 @@ void main() {
           purpose: AiroAnalyticsPurpose.diagnostics,
         ),
       );
-      await service.updateConsent(const AiroAnalyticsConsentState.localOnly());
+      final transition = await service.updateConsent(
+        const AiroAnalyticsConsentState.localOnly(),
+      );
 
       expect(service.events.map((event) => event.name), ['diagnostic_event']);
+      expect(
+        transition.codes,
+        containsAll(const {
+          AiroAnalyticsConsentTransitionCode.optionalQueueCleared,
+          AiroAnalyticsConsentTransitionCode.localOnlyExternalUploadBlocked,
+        }),
+      );
+      expect(transition.removedEventCount, 1);
+      expect(transition.previousConsent.product, isTrue);
+      expect(transition.nextConsent.localOnly, isTrue);
+    });
+
+    test('consent transition public map excludes event payloads', () async {
+      final service = AiroLocalDiagnosticsAnalyticsService(
+        consent: const AiroAnalyticsConsentState.allEnabled(),
+      );
+
+      await service.track(
+        event(
+          name: 'product_event',
+          params: const {'source_type': 'subscription_screen'},
+        ),
+      );
+      final transition = await service.updateConsent(
+        const AiroAnalyticsConsentState.localOnly(),
+      );
+      final flattened = transition.toPublicMap().toString();
+
+      expect(flattened, contains('optional_queue_cleared'));
+      expect(flattened, contains('removedEventCount: 1'));
+      expect(flattened, contains('localOnly: true'));
+      expect(flattened, isNot(contains('product_event')));
+      expect(flattened, isNot(contains('subscription_screen')));
+      expect(flattened, isNot(contains('storeConsoleAccount')));
+    });
+
+    test(
+      'collection disabled clears local diagnostics and drops future events',
+      () async {
+        final service = AiroLocalDiagnosticsAnalyticsService(
+          consent: const AiroAnalyticsConsentState.allEnabled(),
+        );
+
+        await service.track(event(name: 'product_event'));
+        await service.setCollectionEnabled(false);
+        final result = await service.track(event(name: 'second_event'));
+        final transition = await service.updateConsent(
+          const AiroAnalyticsConsentState.disabled(),
+        );
+
+        expect(service.events, isEmpty);
+        expect(
+          result.status,
+          AiroAnalyticsTrackStatus.droppedByCollectionDisabled,
+        );
+        expect(
+          transition.codes,
+          contains(AiroAnalyticsConsentTransitionCode.collectionDisabled),
+        );
+      },
+    );
+
+    test('analytics reset clears queue and advances generation', () async {
+      final service = AiroLocalDiagnosticsAnalyticsService(
+        consent: const AiroAnalyticsConsentState.allEnabled(),
+      );
+
+      await service.track(event(name: 'product_event'));
+      await service.reset();
+      final transition = await service.updateConsent(
+        const AiroAnalyticsConsentState.localOnly(),
+      );
+
+      expect(service.events, isEmpty);
+      expect(service.resetGeneration, 1);
+      expect(
+        transition.codes,
+        contains(AiroAnalyticsConsentTransitionCode.analyticsIdentityReset),
+      );
+      expect(transition.resetGeneration, 1);
+    });
+
+    test('provider backed service applies local-only before upload', () async {
+      final sentEvents = <AiroAnalyticsEvent>[];
+      final service = AiroProviderBackedAnalyticsService(
+        sender: (event) async => sentEvents.add(event),
+        consent: const AiroAnalyticsConsentState.allEnabled(),
+        collectionEnabled: true,
+      );
+
+      final transition = await service.updateConsent(
+        const AiroAnalyticsConsentState.localOnly(),
+      );
+      final productResult = await service.track(event());
+      final diagnosticResult = await service.track(
+        event(
+          name: 'diagnostic_event',
+          purpose: AiroAnalyticsPurpose.diagnostics,
+        ),
+      );
+
+      expect(
+        transition.codes,
+        contains(
+          AiroAnalyticsConsentTransitionCode.localOnlyExternalUploadBlocked,
+        ),
+      );
+      expect(productResult.status, AiroAnalyticsTrackStatus.droppedByLocalOnly);
+      expect(diagnosticResult.status, AiroAnalyticsTrackStatus.accepted);
+      expect(sentEvents.map((event) => event.name), ['diagnostic_event']);
     });
 
     test('provider backed service catches provider failures', () async {

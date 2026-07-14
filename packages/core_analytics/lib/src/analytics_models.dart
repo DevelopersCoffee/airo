@@ -68,6 +68,18 @@ enum AiroAnalyticsTrackStatus {
   final String stableId;
 }
 
+enum AiroAnalyticsConsentTransitionCode {
+  accepted('accepted'),
+  optionalQueueCleared('optional_queue_cleared'),
+  localOnlyExternalUploadBlocked('local_only_external_upload_blocked'),
+  collectionDisabled('collection_disabled'),
+  analyticsIdentityReset('analytics_identity_reset');
+
+  const AiroAnalyticsConsentTransitionCode(this.stableId);
+
+  final String stableId;
+}
+
 enum AiroAnalyticsPrivacyCode {
   prohibitedFieldName('prohibited_field_name'),
   urlValue('url_value'),
@@ -682,15 +694,7 @@ class AiroAnalyticsServiceConfiguration extends Equatable {
       'providerSdkIsolated': providerSdkIsolated,
       'nonBlocking': nonBlocking,
       'resettableInstallationId': resettableInstallationId,
-      'consent': {
-        'operational': consent.operational,
-        'product': consent.product,
-        'playbackQuality': consent.playbackQuality,
-        'diagnostics': consent.diagnostics,
-        'crash': consent.crash,
-        'personalized': consent.personalized,
-        'localOnly': consent.localOnly,
-      },
+      'consent': _consentToPublicMap(consent),
     };
   }
 
@@ -730,6 +734,46 @@ class AiroAnalyticsLifecycleResult extends Equatable {
 
   @override
   List<Object?> get props => [code, configurationResult];
+}
+
+class AiroAnalyticsConsentTransitionResult extends Equatable {
+  AiroAnalyticsConsentTransitionResult({
+    required this.previousConsent,
+    required this.nextConsent,
+    required List<AiroAnalyticsConsentTransitionCode> codes,
+    this.removedEventCount = 0,
+    this.resetGeneration = 0,
+  }) : codes = List.unmodifiable(codes);
+
+  final AiroAnalyticsConsentState previousConsent;
+  final AiroAnalyticsConsentState nextConsent;
+  final List<AiroAnalyticsConsentTransitionCode> codes;
+  final int removedEventCount;
+  final int resetGeneration;
+
+  bool get accepted =>
+      codes.length == 1 &&
+      codes.single == AiroAnalyticsConsentTransitionCode.accepted;
+
+  Map<String, Object?> toPublicMap() {
+    return {
+      'accepted': accepted,
+      'codes': codes.map((code) => code.stableId).toList(growable: false),
+      'removedEventCount': removedEventCount,
+      'resetGeneration': resetGeneration,
+      'previousConsent': _consentToPublicMap(previousConsent),
+      'nextConsent': _consentToPublicMap(nextConsent),
+    };
+  }
+
+  @override
+  List<Object?> get props => [
+    previousConsent,
+    nextConsent,
+    codes,
+    removedEventCount,
+    resetGeneration,
+  ];
 }
 
 class AiroAnalyticsTrackResult extends Equatable {
@@ -951,7 +995,14 @@ abstract class AiroAnalyticsService {
     return track(handle.complete(endedAt: endedAt));
   }
 
-  Future<void> updateConsent(AiroAnalyticsConsentState consent) async {}
+  Future<AiroAnalyticsConsentTransitionResult> updateConsent(
+    AiroAnalyticsConsentState consent,
+  ) async {
+    return AiroAnalyticsConsentTransitionPolicy.evaluate(
+      previousConsent: const AiroAnalyticsConsentState.disabled(),
+      nextConsent: consent,
+    );
+  }
 
   Future<void> setCollectionEnabled(bool enabled) async {}
 
@@ -1019,7 +1070,15 @@ class AiroNoOpAnalyticsService implements AiroAnalyticsService {
   }
 
   @override
-  Future<void> updateConsent(AiroAnalyticsConsentState consent) async {}
+  Future<AiroAnalyticsConsentTransitionResult> updateConsent(
+    AiroAnalyticsConsentState consent,
+  ) async {
+    return AiroAnalyticsConsentTransitionPolicy.evaluate(
+      previousConsent: this.consent,
+      nextConsent: consent,
+      collectionEnabled: collectionEnabled,
+    );
+  }
 
   @override
   Future<void> setCollectionEnabled(bool enabled) async {}
@@ -1046,10 +1105,12 @@ class AiroLocalDiagnosticsAnalyticsService implements AiroAnalyticsService {
   final List<AiroAnalyticsEvent> _events = [];
   AiroAnalyticsConsentState _consent;
   bool _collectionEnabled;
+  int _resetGeneration = 0;
 
   List<AiroAnalyticsEvent> get events => List.unmodifiable(_events);
   AiroAnalyticsConsentState get consent => _consent;
   bool get collectionEnabled => _collectionEnabled;
+  int get resetGeneration => _resetGeneration;
 
   @override
   Future<AiroAnalyticsLifecycleResult> initialize(
@@ -1105,8 +1166,12 @@ class AiroLocalDiagnosticsAnalyticsService implements AiroAnalyticsService {
   }
 
   @override
-  Future<void> updateConsent(AiroAnalyticsConsentState consent) async {
+  Future<AiroAnalyticsConsentTransitionResult> updateConsent(
+    AiroAnalyticsConsentState consent,
+  ) async {
+    final previousConsent = _consent;
     _consent = consent;
+    final previousCount = _events.length;
     _events.removeWhere((event) {
       return validateEvent(
             event,
@@ -1116,6 +1181,13 @@ class AiroLocalDiagnosticsAnalyticsService implements AiroAnalyticsService {
           ).status !=
           AiroAnalyticsTrackStatus.accepted;
     });
+    return AiroAnalyticsConsentTransitionPolicy.evaluate(
+      previousConsent: previousConsent,
+      nextConsent: _consent,
+      removedEventCount: previousCount - _events.length,
+      collectionEnabled: _collectionEnabled,
+      resetGeneration: _resetGeneration,
+    );
   }
 
   @override
@@ -1132,6 +1204,7 @@ class AiroLocalDiagnosticsAnalyticsService implements AiroAnalyticsService {
   @override
   Future<void> reset() async {
     _events.clear();
+    _resetGeneration += 1;
   }
 }
 
@@ -1150,9 +1223,11 @@ class AiroProviderBackedAnalyticsService implements AiroAnalyticsService {
   final AiroAnalyticsPrivacyFilter? privacyFilter;
   AiroAnalyticsConsentState _consent;
   bool _collectionEnabled;
+  int _resetGeneration = 0;
 
   AiroAnalyticsConsentState get consent => _consent;
   bool get collectionEnabled => _collectionEnabled;
+  int get resetGeneration => _resetGeneration;
 
   @override
   Future<AiroAnalyticsLifecycleResult> initialize(
@@ -1214,8 +1289,17 @@ class AiroProviderBackedAnalyticsService implements AiroAnalyticsService {
   }
 
   @override
-  Future<void> updateConsent(AiroAnalyticsConsentState consent) async {
+  Future<AiroAnalyticsConsentTransitionResult> updateConsent(
+    AiroAnalyticsConsentState consent,
+  ) async {
+    final previousConsent = _consent;
     _consent = consent;
+    return AiroAnalyticsConsentTransitionPolicy.evaluate(
+      previousConsent: previousConsent,
+      nextConsent: _consent,
+      collectionEnabled: _collectionEnabled,
+      resetGeneration: _resetGeneration,
+    );
   }
 
   @override
@@ -1227,7 +1311,47 @@ class AiroProviderBackedAnalyticsService implements AiroAnalyticsService {
   Future<void> flush() async {}
 
   @override
-  Future<void> reset() async {}
+  Future<void> reset() async {
+    _resetGeneration += 1;
+  }
+}
+
+class AiroAnalyticsConsentTransitionPolicy {
+  const AiroAnalyticsConsentTransitionPolicy._();
+
+  static AiroAnalyticsConsentTransitionResult evaluate({
+    required AiroAnalyticsConsentState previousConsent,
+    required AiroAnalyticsConsentState nextConsent,
+    int removedEventCount = 0,
+    bool collectionEnabled = true,
+    int resetGeneration = 0,
+  }) {
+    final codes = <AiroAnalyticsConsentTransitionCode>[];
+    if (removedEventCount > 0) {
+      codes.add(AiroAnalyticsConsentTransitionCode.optionalQueueCleared);
+    }
+    if (nextConsent.localOnly) {
+      codes.add(
+        AiroAnalyticsConsentTransitionCode.localOnlyExternalUploadBlocked,
+      );
+    }
+    if (!collectionEnabled) {
+      codes.add(AiroAnalyticsConsentTransitionCode.collectionDisabled);
+    }
+    if (resetGeneration > 0) {
+      codes.add(AiroAnalyticsConsentTransitionCode.analyticsIdentityReset);
+    }
+
+    return AiroAnalyticsConsentTransitionResult(
+      previousConsent: previousConsent,
+      nextConsent: nextConsent,
+      codes: codes.isEmpty
+          ? const [AiroAnalyticsConsentTransitionCode.accepted]
+          : codes,
+      removedEventCount: removedEventCount,
+      resetGeneration: resetGeneration,
+    );
+  }
 }
 
 class AiroTvAnalyticsSchemas {
@@ -1576,4 +1700,16 @@ bool _isSnakeCase(String value) {
 
 bool _isBucketValue(String value) {
   return RegExp(r'^[a-z0-9]+(?:_[a-z0-9]+)*$').hasMatch(value);
+}
+
+Map<String, Object?> _consentToPublicMap(AiroAnalyticsConsentState consent) {
+  return {
+    'operational': consent.operational,
+    'product': consent.product,
+    'playbackQuality': consent.playbackQuality,
+    'diagnostics': consent.diagnostics,
+    'crash': consent.crash,
+    'personalized': consent.personalized,
+    'localOnly': consent.localOnly,
+  };
 }

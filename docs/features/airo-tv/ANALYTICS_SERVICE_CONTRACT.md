@@ -23,7 +23,8 @@ call Firebase, Google Analytics, Crashlytics, or another vendor SDK directly.
 - `track(event)`
 - `startTimedEvent(...)`
 - `endTimedEvent(...)`
-- `updateConsent(consent)`
+- `updateConsent(consent)`, which returns
+  `AiroAnalyticsConsentTransitionResult`
 - `setCollectionEnabled(enabled)`
 - `flush()`
 - `reset()`
@@ -64,6 +65,11 @@ diagnostic, crash, and personalized analytics are controlled separately.
 Local-only mode allows operational and diagnostics events locally, while
 preventing external analytics upload. When consent is withdrawn, optional queued
 events are removed immediately from the local diagnostics service.
+
+Consent transitions report stable codes for accepted changes, optional queue
+cleanup, local-only external upload blocking, collection disablement, and reset
+generation state. Airo TV settings UI can render those results, but the
+underlying cleanup and blocking rules remain in `core_analytics`.
 
 ## Privacy Rules
 
