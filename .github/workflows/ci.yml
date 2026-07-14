@@ -87,8 +87,10 @@ jobs:
 
       - name: Validate platform build profiles
         run: |
-          chmod +x scripts/check-build-profiles.py
+          chmod +x scripts/check-build-profiles.py scripts/generate-release-manifest.py scripts/test-generate-release-manifest.sh
+          python3 -m py_compile scripts/check-build-profiles.py scripts/generate-release-manifest.py
           scripts/check-build-profiles.py
+          scripts/test-generate-release-manifest.sh
 
   # ============================================
   # Core Package Tests (runs on all events - fast)
@@ -159,9 +161,11 @@ jobs:
 
       - name: Validate dependency profile constraints
         run: |
-          chmod +x scripts/check-build-profiles.py scripts/check-variant-pubspecs.sh
+          chmod +x scripts/check-build-profiles.py scripts/check-variant-pubspecs.sh scripts/generate-release-manifest.py scripts/test-generate-release-manifest.sh
+          python3 -m py_compile scripts/check-build-profiles.py scripts/generate-release-manifest.py
           scripts/check-build-profiles.py
           scripts/check-variant-pubspecs.sh
+          scripts/test-generate-release-manifest.sh
 
   # ============================================
   # App Tests with Coverage (runs on push to main only)

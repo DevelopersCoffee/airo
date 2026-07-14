@@ -287,6 +287,8 @@ jobs:
         run: |
           ruby -e 'require "yaml"; YAML.load_file(".github/workflows/airo-tv-release.yml"); puts "workflow-yaml-ok"'
           bash -n scripts/build-tv.sh scripts/check-android-tv-release.sh scripts/patch-android-plugin-gradle.sh
+          python3 -m py_compile scripts/generate-release-manifest.py
+          scripts/test-generate-release-manifest.sh
           scripts/check-android-tv-release.sh
           cd app
           flutter analyze lib/core/app/tv_router.dart lib/main_tv.dart test/core/app/tv_router_test.dart test/main_tv_debug_playlist_test.dart --no-fatal-infos --no-fatal-warnings
@@ -342,12 +344,21 @@ jobs:
           cp app/build/app/outputs/bundle/release/app-release.aab "release-artifacts/Airo-TV-${BUILD_NAME}-Play-Store.aab"
           cp docs/release/AIRO_TV_RELEASE_TEMPLATE.md "release-artifacts/Airo-TV-${BUILD_NAME}-Release-Template.md"
           cp docs/release/AIRO_TV_MEDIA_ASSETS.md "release-artifacts/Airo-TV-${BUILD_NAME}-Media-Checklist.md"
-          (
-            cd release-artifacts
-            shasum -a 256 "Airo-TV-${BUILD_NAME}.apk" "Airo-TV-${BUILD_NAME}-Play-Store.aab" > SHA256SUMS
-          )
+          scripts/generate-release-manifest.py \
+            --artifacts-dir release-artifacts \
+            --profile-id tv \
+            --version "$BUILD_NAME" \
+            --build-number "$BUILD_NUMBER" \
+            --source-ref "${{ needs.prepare-release-branch.outputs.release_ref || github.ref_name }}" \
+            --source-sha "$GITHUB_SHA" \
+            --workflow-name "$GITHUB_WORKFLOW" \
+            --workflow-run "$GITHUB_RUN_ID" \
+            --workflow-run-attempt "$GITHUB_RUN_ATTEMPT" \
+            --repository "$GITHUB_REPOSITORY"
+          mv release-artifacts/Release-Manifest.json "release-artifacts/Airo-TV-${BUILD_NAME}-Release-Manifest.json"
           ls -lh release-artifacts
           cat release-artifacts/SHA256SUMS
+          cat "release-artifacts/Airo-TV-${BUILD_NAME}-Release-Manifest.json"
 
       - name: Upload Airo TV release artifacts
         uses: actions/upload-artifact@v7

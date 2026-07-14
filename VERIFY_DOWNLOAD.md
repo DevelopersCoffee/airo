@@ -67,6 +67,8 @@ Before installing, confirm:
 
 - the file is attached to a release in `DevelopersCoffee/airo`;
 - the release notes match the version in the APK filename;
+- the release manifest lists the same filename, package ID, profile, and
+  SHA256 checksum when a manifest is published;
 - the release is not marked as withdrawn or known-bad;
 - the artifact profile matches your device.
 
