@@ -72,6 +72,8 @@ Related issues: #687, #689.
 
 - [x] Choose the root project license.
 - [x] Add the root `LICENSE` after the license is chosen.
+- [x] Replace Airo-owned package placeholder license files.
+- [x] Document v2 third-party notices for the current release profiles.
 - [ ] Confirm whether any private or commercial dependencies are bundled in v2
       release profiles.
 - [ ] Resolve the open items in
