@@ -2,6 +2,7 @@ import 'package:equatable/equatable.dart';
 
 const String kAiroCertificationSchemaVersion = '1.0.0';
 const String kAiroValidationSchemaVersion = '1.0.0';
+const String kAiroDistributionSchemaVersion = '1.0.0';
 
 enum AiroCertificationLevel {
   certified('certified'),
@@ -164,6 +165,407 @@ enum AiroValidationEvidenceTier {
   const AiroValidationEvidenceTier(this.stableId);
 
   final String stableId;
+}
+
+enum AiroDistributionChannel {
+  googlePlayTv('google_play_tv'),
+  amazonAppstore('amazon_appstore'),
+  directApk('direct_apk'),
+  operatorBox('operator_box');
+
+  const AiroDistributionChannel(this.stableId);
+
+  final String stableId;
+}
+
+enum AiroDistributionTargetStatus {
+  publishable('publishable'),
+  internalOnly('internal_only'),
+  blocked('blocked'),
+  deferred('deferred');
+
+  const AiroDistributionTargetStatus(this.stableId);
+
+  final String stableId;
+}
+
+enum AiroDistributionEvidenceKind {
+  apkArtifact('apk_artifact'),
+  playAabArtifact('play_aab_artifact'),
+  sha256Sums('sha256_sums'),
+  releaseManifest('release_manifest'),
+  packageContentScan('package_content_scan'),
+  storeListing('store_listing'),
+  storePolicyReview('store_policy_review'),
+  contentRating('content_rating'),
+  dataSafety('data_safety'),
+  legalReview('legal_review'),
+  physicalDeviceEvidence('physical_device_evidence'),
+  remoteNavigationEvidence('remote_navigation_evidence'),
+  operatorApproval('operator_approval');
+
+  const AiroDistributionEvidenceKind(this.stableId);
+
+  final String stableId;
+}
+
+enum AiroDistributionBlockerCode {
+  targetMissing('target_missing'),
+  targetBlocked('target_blocked'),
+  targetDeferred('target_deferred'),
+  evidenceMissing('evidence_missing'),
+  evidenceWrongTarget('evidence_wrong_target'),
+  evidenceWrongKind('evidence_wrong_kind'),
+  evidenceStale('evidence_stale');
+
+  const AiroDistributionBlockerCode(this.stableId);
+
+  final String stableId;
+}
+
+class AiroDistributionTarget extends Equatable {
+  AiroDistributionTarget({
+    required this.targetId,
+    required this.displayName,
+    required this.channel,
+    required this.platform,
+    required this.productProfile,
+    required this.status,
+    required Set<AiroDistributionEvidenceKind> requiredEvidenceKinds,
+    this.maxEvidenceAge = const Duration(days: 30),
+    List<String> notes = const [],
+    this.schemaVersion = kAiroDistributionSchemaVersion,
+  }) : requiredEvidenceKinds = Set.unmodifiable(requiredEvidenceKinds),
+       notes = List.unmodifiable(notes);
+
+  final String schemaVersion;
+  final String targetId;
+  final String displayName;
+  final AiroDistributionChannel channel;
+  final AiroValidationPlatform platform;
+  final AiroValidationProductProfile productProfile;
+  final AiroDistributionTargetStatus status;
+  final Set<AiroDistributionEvidenceKind> requiredEvidenceKinds;
+  final Duration maxEvidenceAge;
+  final List<String> notes;
+
+  bool get canAdvertiseWhenEvidenced =>
+      status == AiroDistributionTargetStatus.publishable;
+
+  Map<String, Object?> toPublicMap() {
+    return {
+      'targetId': targetId,
+      'displayName': displayName,
+      'channel': channel.stableId,
+      'platform': platform.stableId,
+      'productProfile': productProfile.stableId,
+      'status': status.stableId,
+      'requiredEvidenceKinds': _distributionEvidenceKindStableIds(
+        requiredEvidenceKinds,
+      ),
+    };
+  }
+
+  @override
+  List<Object?> get props => [
+    schemaVersion,
+    targetId,
+    displayName,
+    channel,
+    platform,
+    productProfile,
+    status,
+    requiredEvidenceKinds,
+    maxEvidenceAge,
+    notes,
+  ];
+}
+
+class AiroDistributionEvidence extends Equatable {
+  const AiroDistributionEvidence({
+    required this.evidenceId,
+    required this.targetId,
+    required this.kind,
+    required this.capturedAt,
+    required this.passed,
+    this.summary,
+    this.schemaVersion = kAiroDistributionSchemaVersion,
+  });
+
+  final String schemaVersion;
+  final String evidenceId;
+  final String targetId;
+  final AiroDistributionEvidenceKind kind;
+  final DateTime capturedAt;
+  final bool passed;
+  final String? summary;
+
+  @override
+  List<Object?> get props => [
+    schemaVersion,
+    evidenceId,
+    targetId,
+    kind,
+    capturedAt,
+    passed,
+    summary,
+  ];
+}
+
+class AiroDistributionBlocker extends Equatable {
+  const AiroDistributionBlocker({
+    required this.code,
+    required this.targetId,
+    this.evidenceKind,
+  });
+
+  final AiroDistributionBlockerCode code;
+  final String targetId;
+  final AiroDistributionEvidenceKind? evidenceKind;
+
+  @override
+  List<Object?> get props => [code, targetId, evidenceKind];
+}
+
+class AiroDistributionResult extends Equatable {
+  AiroDistributionResult({
+    required this.target,
+    required List<AiroDistributionBlocker> blockers,
+  }) : blockers = List.unmodifiable(blockers);
+
+  final AiroDistributionTarget target;
+  final List<AiroDistributionBlocker> blockers;
+
+  bool get passed => blockers.isEmpty;
+
+  bool get canAdvertiseChannelSupport =>
+      passed && target.canAdvertiseWhenEvidenced;
+
+  Map<String, Object?> toPublicMap() {
+    return {
+      'targetId': target.targetId,
+      'channel': target.channel.stableId,
+      'platform': target.platform.stableId,
+      'productProfile': target.productProfile.stableId,
+      'status': target.status.stableId,
+      'passed': passed,
+      'canAdvertiseChannelSupport': canAdvertiseChannelSupport,
+      'blockers': [
+        for (final blocker in blockers)
+          {
+            'code': blocker.code.stableId,
+            'evidenceKind': blocker.evidenceKind?.stableId,
+          },
+      ],
+    };
+  }
+
+  @override
+  List<Object?> get props => [target, blockers];
+}
+
+class AiroDistributionMatrix extends Equatable {
+  AiroDistributionMatrix({
+    required Iterable<AiroDistributionTarget> targets,
+    this.schemaVersion = kAiroDistributionSchemaVersion,
+  }) : targets = List.unmodifiable(targets);
+
+  final String schemaVersion;
+  final List<AiroDistributionTarget> targets;
+
+  AiroDistributionTarget? targetById(String targetId) {
+    for (final target in targets) {
+      if (target.targetId == targetId) return target;
+    }
+    return null;
+  }
+
+  AiroDistributionResult evaluate({
+    required String targetId,
+    required Iterable<AiroDistributionEvidence> evidence,
+    required DateTime now,
+  }) {
+    final target = targetById(targetId);
+    if (target == null) {
+      return AiroDistributionResult(
+        target: AiroDistributionTarget(
+          targetId: targetId,
+          displayName: targetId,
+          channel: AiroDistributionChannel.directApk,
+          platform: AiroValidationPlatform.androidTv,
+          productProfile: AiroValidationProductProfile.liteReceiver,
+          status: AiroDistributionTargetStatus.blocked,
+          requiredEvidenceKinds: const {},
+        ),
+        blockers: [
+          AiroDistributionBlocker(
+            code: AiroDistributionBlockerCode.targetMissing,
+            targetId: targetId,
+          ),
+        ],
+      );
+    }
+
+    final blockers = <AiroDistributionBlocker>[];
+    if (target.status == AiroDistributionTargetStatus.blocked) {
+      blockers.add(
+        AiroDistributionBlocker(
+          code: AiroDistributionBlockerCode.targetBlocked,
+          targetId: targetId,
+        ),
+      );
+    }
+    if (target.status == AiroDistributionTargetStatus.deferred) {
+      blockers.add(
+        AiroDistributionBlocker(
+          code: AiroDistributionBlockerCode.targetDeferred,
+          targetId: targetId,
+        ),
+      );
+    }
+
+    final passedEvidence = evidence.where((record) => record.passed).toList();
+    for (final requiredKind in target.requiredEvidenceKinds) {
+      final records = passedEvidence
+          .where((record) => record.kind == requiredKind)
+          .toList();
+      if (records.isEmpty) {
+        blockers.add(
+          AiroDistributionBlocker(
+            code: AiroDistributionBlockerCode.evidenceMissing,
+            targetId: targetId,
+            evidenceKind: requiredKind,
+          ),
+        );
+        continue;
+      }
+      final targetRecords = records
+          .where((record) => record.targetId == targetId)
+          .toList();
+      if (targetRecords.isEmpty) {
+        blockers.add(
+          AiroDistributionBlocker(
+            code: AiroDistributionBlockerCode.evidenceWrongTarget,
+            targetId: targetId,
+            evidenceKind: requiredKind,
+          ),
+        );
+        continue;
+      }
+      final freshRecords = targetRecords.where(
+        (record) => !record.capturedAt.add(target.maxEvidenceAge).isBefore(now),
+      );
+      if (freshRecords.isEmpty) {
+        blockers.add(
+          AiroDistributionBlocker(
+            code: AiroDistributionBlockerCode.evidenceStale,
+            targetId: targetId,
+            evidenceKind: requiredKind,
+          ),
+        );
+      }
+    }
+
+    return AiroDistributionResult(target: target, blockers: blockers);
+  }
+
+  List<AiroDistributionTarget> targetsForChannel(
+    AiroDistributionChannel channel,
+  ) {
+    return targets.where((target) => target.channel == channel).toList();
+  }
+
+  @override
+  List<Object?> get props => [schemaVersion, targets];
+}
+
+class AiroTvLegacyDistribution {
+  const AiroTvLegacyDistribution._();
+
+  static AiroDistributionMatrix matrix() {
+    return AiroDistributionMatrix(targets: _targets());
+  }
+
+  static List<AiroDistributionTarget> _targets() {
+    return [
+      AiroDistributionTarget(
+        targetId: 'google-play-tv-android-tv',
+        displayName: 'Google Play TV Android TV release',
+        channel: AiroDistributionChannel.googlePlayTv,
+        platform: AiroValidationPlatform.androidTv,
+        productProfile: AiroValidationProductProfile.fullTv,
+        status: AiroDistributionTargetStatus.publishable,
+        requiredEvidenceKinds: const {
+          AiroDistributionEvidenceKind.playAabArtifact,
+          AiroDistributionEvidenceKind.storeListing,
+          AiroDistributionEvidenceKind.contentRating,
+          AiroDistributionEvidenceKind.dataSafety,
+          AiroDistributionEvidenceKind.storePolicyReview,
+          AiroDistributionEvidenceKind.physicalDeviceEvidence,
+        },
+        notes: const [
+          'Google Play TV publication requires TV listing and release evidence.',
+        ],
+      ),
+      AiroDistributionTarget(
+        targetId: 'amazon-appstore-fire-tv',
+        displayName: 'Amazon Appstore Fire TV release',
+        channel: AiroDistributionChannel.amazonAppstore,
+        platform: AiroValidationPlatform.fireTv,
+        productProfile: AiroValidationProductProfile.liteReceiver,
+        status: AiroDistributionTargetStatus.publishable,
+        requiredEvidenceKinds: const {
+          AiroDistributionEvidenceKind.apkArtifact,
+          AiroDistributionEvidenceKind.storeListing,
+          AiroDistributionEvidenceKind.storePolicyReview,
+          AiroDistributionEvidenceKind.legalReview,
+          AiroDistributionEvidenceKind.remoteNavigationEvidence,
+          AiroDistributionEvidenceKind.physicalDeviceEvidence,
+        },
+        notes: const [
+          'Fire TV support claims require remote-navigation and store-channel evidence.',
+        ],
+      ),
+      AiroDistributionTarget(
+        targetId: 'direct-apk-legacy-android-tv',
+        displayName: 'Direct APK legacy Android TV release',
+        channel: AiroDistributionChannel.directApk,
+        platform: AiroValidationPlatform.androidTv,
+        productProfile: AiroValidationProductProfile.liteReceiver,
+        status: AiroDistributionTargetStatus.publishable,
+        requiredEvidenceKinds: const {
+          AiroDistributionEvidenceKind.apkArtifact,
+          AiroDistributionEvidenceKind.sha256Sums,
+          AiroDistributionEvidenceKind.releaseManifest,
+          AiroDistributionEvidenceKind.packageContentScan,
+          AiroDistributionEvidenceKind.legalReview,
+          AiroDistributionEvidenceKind.physicalDeviceEvidence,
+        },
+        notes: const [
+          'Direct APKs require checksum, manifest, package scan, and install evidence.',
+        ],
+      ),
+      AiroDistributionTarget(
+        targetId: 'operator-box-legacy-receiver',
+        displayName: 'Operator box legacy receiver release',
+        channel: AiroDistributionChannel.operatorBox,
+        platform: AiroValidationPlatform.androidTv,
+        productProfile: AiroValidationProductProfile.liteReceiver,
+        status: AiroDistributionTargetStatus.publishable,
+        requiredEvidenceKinds: const {
+          AiroDistributionEvidenceKind.operatorApproval,
+          AiroDistributionEvidenceKind.apkArtifact,
+          AiroDistributionEvidenceKind.releaseManifest,
+          AiroDistributionEvidenceKind.storePolicyReview,
+          AiroDistributionEvidenceKind.legalReview,
+          AiroDistributionEvidenceKind.physicalDeviceEvidence,
+        },
+        notes: const [
+          'Operator boxes remain blocked until operator approval and channel evidence exist.',
+        ],
+      ),
+    ];
+  }
 }
 
 class AiroCertificationGate extends Equatable {
@@ -1390,4 +1792,10 @@ class AiroTvLegacyCertification {
       ),
     ];
   }
+}
+
+List<String> _distributionEvidenceKindStableIds(
+  Iterable<AiroDistributionEvidenceKind> values,
+) {
+  return values.map((value) => value.stableId).toList(growable: false)..sort();
 }

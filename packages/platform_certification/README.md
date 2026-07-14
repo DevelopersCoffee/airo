@@ -18,6 +18,8 @@ unsupported.
 - Evidence records and deterministic evaluation results.
 - Default Airo TV legacy certification matrix for API 26/28 and Fire TV legacy
   device classes.
+- Default Airo TV legacy distribution matrix for Google Play TV, Amazon
+  Appstore, direct APK, and operator-box channels.
 - Default Airo cross-platform validation matrix for Airo TV v2 platform
   hardening.
 - Benchmark device-class gates for constrained TV, standard TV, mobile
@@ -26,4 +28,4 @@ unsupported.
   automation.
 
 This package does not collect device evidence, run benchmarks, upload logs,
-render UI, or submit store releases.
+render UI, upload store listings, or submit store releases.
