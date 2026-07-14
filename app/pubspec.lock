@@ -1533,6 +1533,13 @@ packages:
       relative: true
     source: path
     version: "0.0.1"
+  platform_device_qualification:
+    dependency: "direct main"
+    description:
+      path: "../packages/platform_device_qualification"
+      relative: true
+    source: path
+    version: "0.0.1"
   platform_history:
     dependency: "direct main"
     description:
