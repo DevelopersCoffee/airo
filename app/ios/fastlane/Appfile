@@ -1,9 +1,10 @@
 # Appfile for Airo iOS
 #
-# Uncomment and configure with your App Store credentials
+# iOS/iPadOS publication is deferred from the first v2 Android release wave.
+# When maintainers enable it, configure account-specific values through the
+# environment instead of committing Apple account identifiers.
 
-# app_identifier("com.developerscoffee.airo") # Your bundle identifier
-# apple_id("your@email.com") # Your Apple ID
-# team_id("XXXXXXXXXX") # Your Team ID
-# itc_team_id("XXXXXXXXXX") # App Store Connect Team ID (if different)
-
+app_identifier(ENV.fetch("APP_IDENTIFIER", "com.developerscoffee.airo"))
+apple_id(ENV["APPLE_ID"]) if ENV["APPLE_ID"]
+team_id(ENV["TEAM_ID"]) if ENV["TEAM_ID"]
+itc_team_id(ENV["ITC_TEAM_ID"]) if ENV["ITC_TEAM_ID"]
