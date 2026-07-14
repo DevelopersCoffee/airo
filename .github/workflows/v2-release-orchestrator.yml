@@ -36,6 +36,14 @@ on:
         required: true
         default: false
         type: boolean
+      github_release_mode:
+        description: 'Create GitHub Release as draft or published when publishing is enabled'
+        required: true
+        default: draft
+        type: choice
+        options:
+          - draft
+          - published
       production_signing:
         description: 'Require production Android signing and Firebase secrets'
         required: true
@@ -90,8 +98,10 @@ jobs:
       build_number: ${{ steps.release.outputs.build_number }}
       release_ref: ${{ steps.release.outputs.release_ref }}
       release_branch: ${{ steps.release.outputs.release_branch }}
+      release_sha: ${{ steps.release.outputs.release_sha }}
       dry_run: ${{ steps.release.outputs.dry_run }}
       publish_github_release: ${{ steps.release.outputs.publish_github_release }}
+      github_release_mode: ${{ steps.release.outputs.github_release_mode }}
       production_signing: ${{ steps.release.outputs.production_signing }}
       tv_play_track: ${{ steps.release.outputs.tv_play_track }}
       mobile_profile: ${{ steps.release.outputs.mobile_profile }}
@@ -112,6 +122,7 @@ jobs:
           INPUT_RELEASE_BRANCH: ${{ inputs.release_branch }}
           INPUT_DRY_RUN: ${{ inputs.dry_run }}
           INPUT_PUBLISH_GITHUB_RELEASE: ${{ inputs.publish_github_release }}
+          INPUT_GITHUB_RELEASE_MODE: ${{ inputs.github_release_mode }}
           INPUT_PRODUCTION_SIGNING: ${{ inputs.production_signing }}
           INPUT_TV_PLAY_TRACK: ${{ inputs.tv_play_track }}
           INPUT_MOBILE_PROFILE: ${{ inputs.mobile_profile }}
@@ -126,6 +137,7 @@ jobs:
           release_branch="${INPUT_RELEASE_BRANCH:-release/$version}"
           dry_run="${INPUT_DRY_RUN:-true}"
           publish_github_release="${INPUT_PUBLISH_GITHUB_RELEASE:-false}"
+          github_release_mode="${INPUT_GITHUB_RELEASE_MODE:-draft}"
           production_signing="${INPUT_PRODUCTION_SIGNING:-false}"
           tv_play_track="${INPUT_TV_PLAY_TRACK:-none}"
           mobile_profile="${INPUT_MOBILE_PROFILE:-none}"
@@ -135,6 +147,14 @@ jobs:
             publish_github_release="false"
             tv_play_track="none"
           fi
+
+          case "$github_release_mode" in
+            draft|published) ;;
+            *)
+              echo "::error::Unsupported github_release_mode: $github_release_mode"
+              exit 1
+              ;;
+          esac
 
           if git rev-parse --verify "origin/$release_ref^{commit}" >/dev/null 2>&1; then
             release_commit="$(git rev-parse "origin/$release_ref^{commit}")"
@@ -156,8 +176,10 @@ jobs:
             echo "build_number=$build_number"
             echo "release_ref=$release_ref"
             echo "release_branch=$release_branch"
+            echo "release_sha=$release_commit"
             echo "dry_run=$dry_run"
             echo "publish_github_release=$publish_github_release"
+            echo "github_release_mode=$github_release_mode"
             echo "production_signing=$production_signing"
             echo "tv_play_track=$tv_play_track"
             echo "mobile_profile=$mobile_profile"
@@ -174,7 +196,10 @@ jobs:
             echo "| Build number | $build_number |"
             echo "| Release ref | $release_ref |"
             echo "| Release branch | $release_branch |"
+            echo "| Release SHA | $release_commit |"
             echo "| Dry run | $dry_run |"
+            echo "| GitHub Release publish | $publish_github_release |"
+            echo "| GitHub Release mode | $github_release_mode |"
             echo "| TV Play track | $tv_play_track |"
             echo "| Mobile/tablet profile | $mobile_profile |"
             echo "| Qualification mode | $qualification_mode |"
@@ -234,7 +259,7 @@ jobs:
       build_number: ${{ needs.prepare.outputs.build_number }}
       release_ref: ${{ needs.prepare.outputs.release_ref }}
       release_branch: ${{ needs.prepare.outputs.release_branch }}
-      publish_github_release: ${{ needs.prepare.outputs.publish_github_release == 'true' }}
+      publish_github_release: false
       production_signing: ${{ needs.prepare.outputs.production_signing == 'true' }}
       play_track: ${{ needs.prepare.outputs.tv_play_track }}
     secrets: inherit
@@ -246,7 +271,7 @@ jobs:
     if: always()
     permissions:
       actions: read
-      contents: read
+      contents: write
     steps:
       - uses: actions/checkout@v7
         with:
@@ -302,13 +327,140 @@ jobs:
           path: release-artifacts/
           retention-days: 30
 
+      - name: Prepare GitHub Release assets
+        if: needs.tv-release.result == 'success' && needs.prepare.outputs.publish_github_release == 'true'
+        env:
+          VERSION: ${{ needs.prepare.outputs.version }}
+          BUILD_NAME: ${{ needs.prepare.outputs.build_name }}
+          BUILD_NUMBER: ${{ needs.prepare.outputs.build_number }}
+          RELEASE_REF: ${{ needs.prepare.outputs.release_ref }}
+          RELEASE_SHA: ${{ needs.prepare.outputs.release_sha }}
+          MOBILE_PROFILE: ${{ needs.prepare.outputs.mobile_profile }}
+        run: |
+          rm -rf github-release-assets
+          mkdir -p github-release-assets
+
+          require_asset() {
+            if [ ! -f "$1" ]; then
+              echo "::error::Required release asset is missing: $1"
+              return 1
+            fi
+            cp "$1" github-release-assets/
+          }
+
+          require_asset "release-artifacts/tv/Airo-TV-${BUILD_NAME}.apk"
+          require_asset "release-artifacts/tv/Airo-TV-${BUILD_NAME}-Play-Store.aab"
+
+          case "$MOBILE_PROFILE" in
+            none)
+              ;;
+            iptv-standalone)
+              require_asset "release-artifacts/mobile-tablet/Airo-IPTV-${BUILD_NAME}-${BUILD_NUMBER}-arm64.apk"
+              require_asset "release-artifacts/mobile-tablet/Airo-IPTV-${BUILD_NAME}-${BUILD_NUMBER}-Play-Store.aab"
+              ;;
+            mobile-streaming)
+              require_asset "release-artifacts/mobile-tablet/Airo-Streaming-${BUILD_NAME}-${BUILD_NUMBER}-arm64.apk"
+              require_asset "release-artifacts/mobile-tablet/Airo-Streaming-${BUILD_NAME}-${BUILD_NUMBER}-Play-Store.aab"
+              ;;
+            *)
+              echo "::error::Unsupported mobile/tablet profile for release assets: $MOBILE_PROFILE"
+              exit 1
+              ;;
+          esac
+
+          scripts/generate-release-manifest.py \
+            --artifacts-dir github-release-assets \
+            --version "$BUILD_NAME" \
+            --build-number "$BUILD_NUMBER" \
+            --source-ref "$RELEASE_REF" \
+            --source-sha "$RELEASE_SHA" \
+            --workflow-name "$GITHUB_WORKFLOW" \
+            --workflow-run "$GITHUB_RUN_ID" \
+            --workflow-run-attempt "$GITHUB_RUN_ATTEMPT" \
+            --repository "$GITHUB_REPOSITORY"
+          mv github-release-assets/Release-Manifest.json "github-release-assets/Airo-${BUILD_NAME}-Release-Manifest.json"
+
+          notes="github-release-assets/Airo-${BUILD_NAME}-Release-Notes.md"
+          {
+            echo "# Airo ${BUILD_NAME}"
+            echo ""
+            echo "This v2 release publishes the selected Android profile artifacts produced by the release orchestrator."
+            echo ""
+            echo "## Included Artifacts"
+            echo ""
+            find github-release-assets -maxdepth 1 -type f \
+              \( -name '*.apk' -o -name '*.aab' -o -name '*Release-Manifest.json' -o -name 'SHA256SUMS' \) \
+              -printf '- %f\n' | sort
+            echo ""
+            echo "## Verification"
+            echo ""
+            echo "SHA256 checksums are published in the SHA256SUMS asset and mapped to profile metadata in Airo-${BUILD_NAME}-Release-Manifest.json."
+            echo ""
+            echo '```text'
+            cat github-release-assets/SHA256SUMS
+            echo '```'
+            echo ""
+            echo "## Distribution Notes"
+            echo ""
+            echo "- APK assets are for direct install and internal verification."
+            echo "- AAB assets are Google Play upload inputs."
+            echo "- Store and Firebase uploads remain controlled by the credential-specific workflows."
+          } > "$notes"
+
+          ls -lh github-release-assets
+
+      - name: Publish GitHub Release
+        if: needs.tv-release.result == 'success' && needs.prepare.outputs.publish_github_release == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.prepare.outputs.version }}
+          BUILD_NAME: ${{ needs.prepare.outputs.build_name }}
+          RELEASE_SHA: ${{ needs.prepare.outputs.release_sha }}
+          GITHUB_RELEASE_MODE: ${{ needs.prepare.outputs.github_release_mode }}
+        run: |
+          notes="github-release-assets/Airo-${BUILD_NAME}-Release-Notes.md"
+          if [ ! -f "$notes" ]; then
+            echo "::error::Release notes were not generated: $notes"
+            exit 1
+          fi
+          draft_arg="--draft=false"
+          if [ "$GITHUB_RELEASE_MODE" = "draft" ]; then
+            draft_arg="--draft=true"
+          fi
+
+          if gh release view "$VERSION" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$VERSION" github-release-assets/* \
+              --clobber \
+              --repo "$GITHUB_REPOSITORY"
+            gh release edit "$VERSION" \
+              --title "Airo ${BUILD_NAME}" \
+              --notes-file "$notes" \
+              "$draft_arg" \
+              --repo "$GITHUB_REPOSITORY"
+          else
+            args=(
+              release create "$VERSION" github-release-assets/*
+              --title "Airo ${BUILD_NAME}"
+              --target "$RELEASE_SHA"
+              --notes-file "$notes"
+              --repo "$GITHUB_REPOSITORY"
+            )
+            if [ "$GITHUB_RELEASE_MODE" = "draft" ]; then
+              args+=(--draft)
+            fi
+            gh "${args[@]}"
+          fi
+
       - name: Write release summary
         env:
           VERSION: ${{ needs.prepare.outputs.version }}
           BUILD_NAME: ${{ needs.prepare.outputs.build_name }}
           BUILD_NUMBER: ${{ needs.prepare.outputs.build_number }}
           RELEASE_REF: ${{ needs.prepare.outputs.release_ref }}
+          RELEASE_SHA: ${{ needs.prepare.outputs.release_sha }}
           DRY_RUN: ${{ needs.prepare.outputs.dry_run }}
+          PUBLISH_GITHUB_RELEASE: ${{ needs.prepare.outputs.publish_github_release }}
+          GITHUB_RELEASE_MODE: ${{ needs.prepare.outputs.github_release_mode }}
           TV_RESULT: ${{ needs.tv-release.result }}
           MOBILE_RESULT: ${{ needs.mobile-tablet-release.result }}
           MOBILE_PROFILE: ${{ needs.prepare.outputs.mobile_profile }}
@@ -323,7 +475,10 @@ jobs:
             echo "| Build name | $BUILD_NAME |"
             echo "| Build number | $BUILD_NUMBER |"
             echo "| Release ref | $RELEASE_REF |"
+            echo "| Release SHA | $RELEASE_SHA |"
             echo "| Dry run | $DRY_RUN |"
+            echo "| GitHub Release publish | $PUBLISH_GITHUB_RELEASE |"
+            echo "| GitHub Release mode | $GITHUB_RELEASE_MODE |"
             echo "| TV leg | $TV_RESULT |"
             echo "| Mobile/tablet profile | $MOBILE_PROFILE |"
             echo "| Mobile/tablet leg | $MOBILE_RESULT |"
@@ -358,6 +513,17 @@ jobs:
             echo "Mobile/tablet artifacts were not requested for this orchestrator run." >> "$GITHUB_STEP_SUMMARY"
           else
             echo "Mobile/tablet artifacts were not available because the mobile/tablet leg result was $MOBILE_RESULT." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+          if [ -d github-release-assets ]; then
+            {
+              echo ""
+              echo "### GitHub Release assets"
+              echo ""
+              find github-release-assets -maxdepth 1 -type f -printf '- %f\n' | sort
+            } >> "$GITHUB_STEP_SUMMARY"
+          elif [ "$PUBLISH_GITHUB_RELEASE" = "true" ]; then
+            echo "GitHub Release assets were requested but were not prepared." >> "$GITHUB_STEP_SUMMARY"
           fi
 
       - name: Enforce orchestrator result
