@@ -1,0 +1,154 @@
+import 'package:flutter_test/flutter_test.dart';
+import 'package:platform_player/platform_player.dart';
+
+void main() {
+  group('Airo playback engine contract', () {
+    AiroMediaOpenRequest request({
+      String handle = 'source-handle-1',
+      String? preferredQualityId,
+    }) {
+      return AiroMediaOpenRequest(
+        requestId: 'open-1',
+        sourceHandle: AiroPlaybackSourceHandle.redacted(handle),
+        mediaKind: AiroPlaybackMediaKind.hls,
+        preferredQualityId: preferredQualityId,
+      );
+    }
+
+    test('source handles reject unsafe raw media references', () {
+      expect(
+        AiroPlaybackSourceHandle.validate(''),
+        AiroPlaybackSourceHandleRejectionCode.empty,
+      );
+      expect(
+        AiroPlaybackSourceHandle.validate('https://example.com/live.m3u8'),
+        AiroPlaybackSourceHandleRejectionCode.urlValue,
+      );
+      expect(
+        AiroPlaybackSourceHandle.validate('/Users/example/live.m3u8'),
+        AiroPlaybackSourceHandleRejectionCode.localPathValue,
+      );
+      expect(
+        AiroPlaybackSourceHandle.validate('source at 192.168.1.10'),
+        AiroPlaybackSourceHandleRejectionCode.localIpValue,
+      );
+      expect(
+        AiroPlaybackSourceHandle.validate('Bearer abc.def'),
+        AiroPlaybackSourceHandleRejectionCode.credentialLikeValue,
+      );
+    });
+
+    test(
+      'fake engine emits open, play, pause, seek, and stop states',
+      () async {
+        final engine = FakeAiroPlaybackEngine();
+        final events = <AiroPlaybackEnginePhase>[];
+        final subscription = engine.states.listen(
+          (state) => events.add(state.phase),
+        );
+
+        await engine.open(request());
+        await engine.play();
+        await engine.pause();
+        await engine.seek(const Duration(seconds: 12));
+        await engine.stop();
+
+        await Future<void>.delayed(Duration.zero);
+        await subscription.cancel();
+        await engine.dispose();
+
+        expect(events, [
+          AiroPlaybackEnginePhase.opening,
+          AiroPlaybackEnginePhase.open,
+          AiroPlaybackEnginePhase.playing,
+          AiroPlaybackEnginePhase.paused,
+          AiroPlaybackEnginePhase.seeking,
+          AiroPlaybackEnginePhase.paused,
+          AiroPlaybackEnginePhase.stopped,
+        ]);
+        expect(engine.currentState.position, Duration.zero);
+      },
+    );
+
+    test('fake engine selects quality and tracks deterministically', () async {
+      final engine = FakeAiroPlaybackEngine(
+        tracks: const [
+          AiroPlaybackTrackOption(
+            id: 'audio-en',
+            kind: AiroPlaybackTrackKind.audio,
+            label: 'English',
+            languageCode: 'en',
+          ),
+          AiroPlaybackTrackOption(
+            id: 'subs-en',
+            kind: AiroPlaybackTrackKind.subtitle,
+            label: 'English CC',
+            languageCode: 'en',
+          ),
+        ],
+      );
+
+      await engine.open(request(preferredQualityId: '720p'));
+      await engine.setVolume(1.5);
+      await engine.setPlaybackSpeed(1.25);
+      await engine.selectQuality('auto');
+      await engine.selectTrack(
+        kind: AiroPlaybackTrackKind.subtitle,
+        trackId: 'subs-en',
+      );
+
+      expect(engine.currentState.volume, 1);
+      expect(engine.currentState.playbackSpeed, 1.25);
+      expect(engine.currentState.selectedQualityId, 'auto');
+      expect(
+        engine.currentState.selectedTrackIds[AiroPlaybackTrackKind.subtitle],
+        'subs-en',
+      );
+      await engine.dispose();
+    });
+
+    test('fake engine returns typed failure for unavailable options', () async {
+      final engine = FakeAiroPlaybackEngine();
+
+      await engine.open(request());
+      final qualityState = await engine.selectQuality('4k');
+      final trackState = await engine.selectTrack(
+        kind: AiroPlaybackTrackKind.subtitle,
+        trackId: 'missing',
+      );
+
+      expect(
+        qualityState.error?.code,
+        AiroPlaybackErrorCode.qualityUnavailable,
+      );
+      expect(trackState.error?.code, AiroPlaybackErrorCode.trackUnavailable);
+      await engine.dispose();
+    });
+
+    test('unavailable engine returns typed unsupported state', () async {
+      final engine = UnavailableAiroPlaybackEngine();
+
+      final state = await engine.open(request());
+      final diagnostics = await engine.diagnostics();
+
+      expect(state.phase, AiroPlaybackEnginePhase.unavailable);
+      expect(state.error?.code, AiroPlaybackErrorCode.backendUnavailable);
+      expect(state.error?.operation, 'open');
+      expect(diagnostics.backendId, 'unavailable');
+      await engine.dispose();
+    });
+
+    test('string output redacts source handles', () {
+      final mediaRequest = request(handle: 'opaque-source-ref');
+      final state = AiroPlaybackState(
+        backendKind: AiroPlaybackBackendKind.fake,
+        phase: AiroPlaybackEnginePhase.open,
+        request: mediaRequest,
+      );
+
+      expect(mediaRequest.toString(), isNot(contains('opaque-source-ref')));
+      expect(state.toString(), isNot(contains('opaque-source-ref')));
+      expect(mediaRequest.toString(), contains('sourceHandle: redacted'));
+    });
+  });
+}
