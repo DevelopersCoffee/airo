@@ -516,4 +516,177 @@ void main() {
       expect(flattened, isNot(contains('rawCredential')));
     });
   });
+
+  group('Airo TV profile-aware capability advertisements', () {
+    test('full TV advertises runtime-safe profile capabilities', () {
+      final advertisement = AiroTvCapabilityAdvertisements.fullTv(
+        _fullTvDeviceSnapshot(),
+      );
+
+      expect(advertisement.compositionAccepted, isTrue);
+      expect(advertisement.deviceSupported, isTrue);
+      expect(advertisement.profileId, ProductProfileId.fullTv);
+      expect(advertisement.advertises(ProductCapability.fullEpg), isTrue);
+      expect(advertisement.advertises(ProductCapability.analytics), isTrue);
+      expect(advertisement.compiledModules, contains(ProductModule.fullEpg));
+      expect(
+        advertisement.enabledFeatureFlags,
+        contains(ProductModuleFeatureFlag.fullEpg),
+      );
+      expect(
+        advertisement.unsupportedReasons.where(
+          (reason) =>
+              reason.code ==
+              ProductCapabilityUnsupportedReasonCode.deviceRequirementBlocked,
+        ),
+        isEmpty,
+      );
+    });
+
+    test('lite receiver does not advertise heavy capabilities', () {
+      final advertisement = AiroTvCapabilityAdvertisements.liteReceiver(
+        _liteReceiverDeviceSnapshot(),
+      );
+
+      expect(advertisement.compositionAccepted, isTrue);
+      expect(advertisement.deviceSupported, isTrue);
+      expect(advertisement.profileId, ProductProfileId.liteReceiver);
+      expect(advertisement.advertises(ProductCapability.compactEpg), isTrue);
+      expect(advertisement.advertises(ProductCapability.fullEpg), isFalse);
+      expect(advertisement.advertises(ProductCapability.localAi), isFalse);
+      expect(advertisement.advertises(ProductCapability.recording), isFalse);
+      expect(
+        advertisement.compiledModules,
+        isNot(contains(ProductModule.fullEpg)),
+      );
+      expect(
+        advertisement.unsupportedReasons.map((reason) => reason.capability),
+        containsAll(const {
+          ProductCapability.fullEpg,
+          ProductCapability.localAi,
+          ProductCapability.recording,
+          ProductCapability.downloads,
+          ProductCapability.multiview,
+        }),
+      );
+    });
+
+    test('device blockers prevent runtime-safe capability publication', () {
+      final advertisement = AiroTvCapabilityAdvertisements.liteReceiver(
+        DeviceCapabilitySnapshot(
+          apiLevel: 25,
+          memoryMb: 512,
+          freeStorageMb: 64,
+          decoderCount: 0,
+          supportedCodecs: const {MediaCodecCapability.h264},
+          hasDpad: false,
+          hasSecureStorage: false,
+        ),
+      );
+
+      expect(advertisement.deviceSupported, isFalse);
+      expect(advertisement.runtimeSafeCapabilities, isEmpty);
+      expect(
+        advertisement.unsupportedReasons.map((reason) => reason.deviceBlocker),
+        containsAll(const {
+          DeviceCapabilityBlocker.apiLevelTooLow,
+          DeviceCapabilityBlocker.memoryTooLow,
+          DeviceCapabilityBlocker.storageTooLow,
+          DeviceCapabilityBlocker.decoderCountTooLow,
+          DeviceCapabilityBlocker.requiredCodecMissing,
+          DeviceCapabilityBlocker.dpadRequired,
+          DeviceCapabilityBlocker.secureStorageRequired,
+        }),
+      );
+    });
+
+    test('composition rejection is exposed as unsupported reasons', () {
+      final profile = AiroTvProductProfiles.liteReceiver();
+      final composition = ProductCompositionManifest(
+        profileManifest: profile,
+        compiledModules: profile.includedModules,
+        lifecycleManifests: [
+          ...AiroTvModuleLifecycleManifests.liteReceiver(),
+          AiroTvModuleLifecycleManifests.fullEpg(),
+        ],
+        enabledFeatureFlags: const {ProductModuleFeatureFlag.fullEpg},
+      );
+
+      final advertisement = const ProductCapabilityAdvertisementPolicy()
+          .publish(
+            composition: composition,
+            deviceSnapshot: _liteReceiverDeviceSnapshot(),
+          );
+
+      expect(advertisement.compositionAccepted, isFalse);
+      expect(advertisement.advertises(ProductCapability.fullEpg), isFalse);
+      expect(
+        advertisement.unsupportedReasons.map(
+          (reason) => reason.compositionCode,
+        ),
+        contains(ProductCompositionValidationCode.runtimeFlagWithoutModule),
+      );
+      expect(
+        advertisement.unsupportedReasons.map((reason) => reason.code),
+        contains(ProductCapabilityUnsupportedReasonCode.compositionInvalid),
+      );
+    });
+
+    test('advertisement public map exposes stable ids only', () {
+      final publicMap = AiroTvCapabilityAdvertisements.liteReceiver(
+        _liteReceiverDeviceSnapshot(),
+      ).toPublicMap();
+      final flattened = publicMap.toString();
+
+      expect(publicMap['profileId'], ProductProfileId.liteReceiver.stableId);
+      expect(
+        publicMap['runtimeSafeCapabilities'],
+        contains(ProductCapability.compactEpg.stableId),
+      );
+      expect(
+        publicMap['compiledModules'],
+        contains(ProductModule.playback.stableId),
+      );
+      expect(publicMap['compositionAccepted'], isTrue);
+      expect(publicMap['deviceSupported'], isTrue);
+      expect(flattened, contains('profile_capability_absent'));
+      expect(flattened, isNot(contains('/Users/')));
+      expect(flattened, isNot(contains('providerPayload')));
+      expect(flattened, isNot(contains('storeConsoleAccount')));
+      expect(flattened, isNot(contains('rawCredential')));
+    });
+  });
+}
+
+DeviceCapabilitySnapshot _fullTvDeviceSnapshot() {
+  return DeviceCapabilitySnapshot(
+    apiLevel: 29,
+    memoryMb: 4096,
+    freeStorageMb: 2048,
+    decoderCount: 2,
+    supportedCodecs: const {
+      MediaCodecCapability.h264,
+      MediaCodecCapability.aac,
+      MediaCodecCapability.hls,
+      MediaCodecCapability.hevc,
+    },
+    hasDpad: true,
+    hasSecureStorage: true,
+  );
+}
+
+DeviceCapabilitySnapshot _liteReceiverDeviceSnapshot() {
+  return DeviceCapabilitySnapshot(
+    apiLevel: 26,
+    memoryMb: 1024,
+    freeStorageMb: 256,
+    decoderCount: 1,
+    supportedCodecs: const {
+      MediaCodecCapability.h264,
+      MediaCodecCapability.aac,
+      MediaCodecCapability.hls,
+    },
+    hasDpad: true,
+    hasSecureStorage: true,
+  );
 }

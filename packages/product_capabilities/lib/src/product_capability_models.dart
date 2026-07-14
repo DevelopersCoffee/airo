@@ -146,6 +146,18 @@ enum ProductCompositionValidationCode {
   final String stableId;
 }
 
+enum ProductCapabilityUnsupportedReasonCode {
+  profileCapabilityAbsent('profile_capability_absent'),
+  compositionInvalid('composition_invalid'),
+  deviceRequirementBlocked('device_requirement_blocked'),
+  moduleUnavailable('module_unavailable'),
+  lifecycleInvalid('lifecycle_invalid');
+
+  const ProductCapabilityUnsupportedReasonCode(this.stableId);
+
+  final String stableId;
+}
+
 enum ProductCapability {
   directPlayback('direct_playback'),
   dpadNavigation('dpad_navigation'),
@@ -341,6 +353,116 @@ class ProductCompositionValidationResult extends Equatable {
 
   @override
   List<Object?> get props => [codes, profileValidation, lifecycleValidations];
+}
+
+class ProductCapabilityUnsupportedReason extends Equatable {
+  ProductCapabilityUnsupportedReason({
+    required this.code,
+    this.capability,
+    this.module,
+    this.deviceBlocker,
+    this.compositionCode,
+    List<ProductModuleLifecycleValidationCode> lifecycleCodes = const [],
+  }) : lifecycleCodes = List.unmodifiable(lifecycleCodes);
+
+  final ProductCapabilityUnsupportedReasonCode code;
+  final ProductCapability? capability;
+  final ProductModule? module;
+  final DeviceCapabilityBlocker? deviceBlocker;
+  final ProductCompositionValidationCode? compositionCode;
+  final List<ProductModuleLifecycleValidationCode> lifecycleCodes;
+
+  Map<String, Object?> toPublicMap() {
+    return {
+      'code': code.stableId,
+      'capability': capability?.stableId,
+      'module': module?.stableId,
+      'deviceBlocker': deviceBlocker?.stableId,
+      'compositionCode': compositionCode?.stableId,
+      'lifecycleCodes': _moduleLifecycleValidationCodeStableIds(lifecycleCodes),
+    };
+  }
+
+  @override
+  List<Object?> get props => [
+    code,
+    capability,
+    module,
+    deviceBlocker,
+    compositionCode,
+    lifecycleCodes,
+  ];
+}
+
+class ProductCapabilityAdvertisement extends Equatable {
+  ProductCapabilityAdvertisement({
+    required this.profileId,
+    required this.supportLevel,
+    required this.releaseChannel,
+    required Set<ProductModule> compiledModules,
+    required Set<ProductCapability> runtimeSafeCapabilities,
+    required Set<ProductProfileGuarantee> guarantees,
+    required Set<ProductModuleFeatureFlag> enabledFeatureFlags,
+    required List<ProductCapabilityUnsupportedReason> unsupportedReasons,
+    required this.compositionAccepted,
+    required this.deviceSupported,
+    this.schemaVersion = kProductCapabilitiesSchemaVersion,
+  }) : compiledModules = Set.unmodifiable(compiledModules),
+       runtimeSafeCapabilities = Set.unmodifiable(runtimeSafeCapabilities),
+       guarantees = Set.unmodifiable(guarantees),
+       enabledFeatureFlags = Set.unmodifiable(enabledFeatureFlags),
+       unsupportedReasons = List.unmodifiable(unsupportedReasons);
+
+  final String schemaVersion;
+  final ProductProfileId profileId;
+  final ProductSupportLevel supportLevel;
+  final ProductReleaseChannel releaseChannel;
+  final Set<ProductModule> compiledModules;
+  final Set<ProductCapability> runtimeSafeCapabilities;
+  final Set<ProductProfileGuarantee> guarantees;
+  final Set<ProductModuleFeatureFlag> enabledFeatureFlags;
+  final List<ProductCapabilityUnsupportedReason> unsupportedReasons;
+  final bool compositionAccepted;
+  final bool deviceSupported;
+
+  bool advertises(ProductCapability capability) {
+    return runtimeSafeCapabilities.contains(capability);
+  }
+
+  Map<String, Object?> toPublicMap() {
+    return {
+      'schemaVersion': schemaVersion,
+      'profileId': profileId.stableId,
+      'supportLevel': supportLevel.stableId,
+      'releaseChannel': releaseChannel.stableId,
+      'compiledModules': _productModuleStableIds(compiledModules),
+      'runtimeSafeCapabilities': _productCapabilityStableIds(
+        runtimeSafeCapabilities,
+      ),
+      'guarantees': _productGuaranteeStableIds(guarantees),
+      'enabledFeatureFlags': _moduleFeatureFlagStableIds(enabledFeatureFlags),
+      'compositionAccepted': compositionAccepted,
+      'deviceSupported': deviceSupported,
+      'unsupportedReasons': unsupportedReasons
+          .map((reason) => reason.toPublicMap())
+          .toList(growable: false),
+    };
+  }
+
+  @override
+  List<Object?> get props => [
+    schemaVersion,
+    profileId,
+    supportLevel,
+    releaseChannel,
+    compiledModules,
+    runtimeSafeCapabilities,
+    guarantees,
+    enabledFeatureFlags,
+    unsupportedReasons,
+    compositionAccepted,
+    deviceSupported,
+  ];
 }
 
 class DeviceCapabilitySnapshot extends Equatable {
@@ -1058,6 +1180,112 @@ class ProductCompositionPolicy extends Equatable {
   List<Object?> get props => const [];
 }
 
+class ProductCapabilityAdvertisementPolicy extends Equatable {
+  const ProductCapabilityAdvertisementPolicy();
+
+  ProductCapabilityAdvertisement publish({
+    required ProductCompositionManifest composition,
+    required DeviceCapabilitySnapshot deviceSnapshot,
+  }) {
+    final profile = composition.profileManifest;
+    final compositionResult = composition.validate();
+    final deviceEvaluation = profile.evaluateDevice(deviceSnapshot);
+    final runtimeSafeCapabilities = <ProductCapability>{};
+    final unsupportedReasons = <ProductCapabilityUnsupportedReason>[];
+
+    if (!compositionResult.accepted) {
+      for (final code in compositionResult.codes) {
+        unsupportedReasons.add(
+          ProductCapabilityUnsupportedReason(
+            code: ProductCapabilityUnsupportedReasonCode.compositionInvalid,
+            compositionCode: code,
+          ),
+        );
+      }
+    }
+
+    if (!deviceEvaluation.isSupported) {
+      for (final blocker in deviceEvaluation.blockers) {
+        unsupportedReasons.add(
+          ProductCapabilityUnsupportedReason(
+            code:
+                ProductCapabilityUnsupportedReasonCode.deviceRequirementBlocked,
+            deviceBlocker: blocker,
+          ),
+        );
+      }
+    }
+
+    for (final capability in ProductCapability.values) {
+      if (!profile.supportsCapability(capability)) {
+        unsupportedReasons.add(
+          ProductCapabilityUnsupportedReason(
+            code:
+                ProductCapabilityUnsupportedReasonCode.profileCapabilityAbsent,
+            capability: capability,
+            module: _moduleForCapability(capability),
+          ),
+        );
+        continue;
+      }
+
+      if (!deviceEvaluation.isSupported ||
+          !compositionResult.profileValidation.accepted) {
+        continue;
+      }
+
+      final module = _moduleForCapability(capability);
+      if (module == null) {
+        runtimeSafeCapabilities.add(capability);
+        continue;
+      }
+
+      if (!profile.includesModule(module) ||
+          !composition.compiledModules.contains(module)) {
+        unsupportedReasons.add(
+          ProductCapabilityUnsupportedReason(
+            code: ProductCapabilityUnsupportedReasonCode.moduleUnavailable,
+            capability: capability,
+            module: module,
+          ),
+        );
+        continue;
+      }
+
+      final lifecycleResult = compositionResult.lifecycleValidations[module];
+      if (lifecycleResult == null || !lifecycleResult.accepted) {
+        unsupportedReasons.add(
+          ProductCapabilityUnsupportedReason(
+            code: ProductCapabilityUnsupportedReasonCode.lifecycleInvalid,
+            capability: capability,
+            module: module,
+            lifecycleCodes: lifecycleResult?.codes ?? const [],
+          ),
+        );
+        continue;
+      }
+
+      runtimeSafeCapabilities.add(capability);
+    }
+
+    return ProductCapabilityAdvertisement(
+      profileId: profile.profileId,
+      supportLevel: profile.supportLevel,
+      releaseChannel: profile.releaseChannel,
+      compiledModules: composition.compiledModules,
+      runtimeSafeCapabilities: runtimeSafeCapabilities,
+      guarantees: profile.guarantees,
+      enabledFeatureFlags: composition.enabledFeatureFlags,
+      unsupportedReasons: unsupportedReasons,
+      compositionAccepted: compositionResult.accepted,
+      deviceSupported: deviceEvaluation.isSupported,
+    );
+  }
+
+  @override
+  List<Object?> get props => const [];
+}
+
 class AiroTvProductProfiles {
   const AiroTvProductProfiles._();
 
@@ -1496,6 +1724,45 @@ class AiroTvProductCompositions {
       enabledFeatureFlags: const {ProductModuleFeatureFlag.diagnostics},
     );
   }
+}
+
+class AiroTvCapabilityAdvertisements {
+  const AiroTvCapabilityAdvertisements._();
+
+  static ProductCapabilityAdvertisement fullTv(
+    DeviceCapabilitySnapshot deviceSnapshot,
+  ) {
+    return const ProductCapabilityAdvertisementPolicy().publish(
+      composition: AiroTvProductCompositions.fullTv(),
+      deviceSnapshot: deviceSnapshot,
+    );
+  }
+
+  static ProductCapabilityAdvertisement liteReceiver(
+    DeviceCapabilitySnapshot deviceSnapshot,
+  ) {
+    return const ProductCapabilityAdvertisementPolicy().publish(
+      composition: AiroTvProductCompositions.liteReceiver(),
+      deviceSnapshot: deviceSnapshot,
+    );
+  }
+}
+
+ProductModule? _moduleForCapability(ProductCapability capability) {
+  return switch (capability) {
+    ProductCapability.directPlayback => ProductModule.playback,
+    ProductCapability.dpadNavigation => null,
+    ProductCapability.companionRemote => ProductModule.remoteControl,
+    ProductCapability.compactEpg => ProductModule.compactEpg,
+    ProductCapability.fullEpg => ProductModule.fullEpg,
+    ProductCapability.basicSearch => ProductModule.basicSearch,
+    ProductCapability.diagnostics => ProductModule.diagnostics,
+    ProductCapability.analytics => ProductModule.analytics,
+    ProductCapability.localAi => ProductModule.localAi,
+    ProductCapability.recording => ProductModule.recording,
+    ProductCapability.downloads => ProductModule.downloads,
+    ProductCapability.multiview => ProductModule.multiview,
+  };
 }
 
 List<String> _productProfileStableIds(Iterable<ProductProfileId> values) {
