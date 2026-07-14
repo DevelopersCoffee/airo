@@ -1,39 +1,20 @@
-<!--
-This README describes the package. If you publish this package to pub.dev,
-this README's contents appear on the landing page for your package.
+# Platform Player
 
-For information about how to write a good package README, see the guide for
-[writing package pages](https://dart.dev/tools/pub/writing-package-pages).
+Reusable playback and receiver-control contracts for Airo.
 
-For general information about developing packages, see the Dart guide for
-[creating packages](https://dart.dev/guides/libraries/create-packages)
-and the Flutter guide for
-[developing packages and plugins](https://flutter.dev/to/develop-packages).
--->
+This package is platform/framework code. Airo TV, IPTV features, Cast adapters,
+future native media engines, command routing, diagnostics, and certification
+flows consume these contracts instead of defining app-specific playback models.
 
-TODO: Put a short description of the package here that helps potential users
-know whether this package might be useful for them.
+## Scope
 
-## Features
+- Backend-agnostic `AiroPlaybackEngine` contract.
+- Redacted media open requests with opaque source handles.
+- Typed playback states, quality options, tracks, diagnostics, and errors.
+- No-op/unavailable and fake playback engines for deterministic tests.
+- Cast discovery/session abstractions used by existing IPTV flows.
 
-TODO: List what your package can do. Maybe include images, gifs, or videos.
-
-## Getting started
-
-TODO: List prerequisites and provide or point to information on how to
-start using the package.
-
-## Usage
-
-TODO: Include short and useful examples for package users. Add longer examples
-to `/example` folder.
-
-```dart
-const like = 'sample';
-```
-
-## Additional information
-
-TODO: Tell users more about the package: where to find more information, how to
-contribute to the package, how to file issues, what response they can expect
-from the package authors, and more.
+This package does not choose a native media backend, probe decoders, persist
+sessions, render playback widgets, route commands, or expose raw media source
+URLs, local paths, local IP addresses, provider credentials, viewing history,
+analytics payloads, or diagnostic dumps.
