@@ -847,6 +847,187 @@ void main() {
     });
   });
 
+  group('Airo TV cross-profile compatibility suite', () {
+    test('v2 suite validates required cross-profile scenarios', () {
+      final suite = AiroTvCrossProfileCompatibilitySuites.releaseV2_0_0_1();
+
+      expect(suite.validate().accepted, isTrue);
+      expect(suite.scenarios, hasLength(8));
+      expect(
+        suite.scenarioById('mobile-to-lite-handoff')?.requiredAssertions,
+        containsAll(const {
+          ProductCompatibilityAssertion.capabilityAdvertisement,
+          ProductCompatibilityAssertion.handoffPreflight,
+          ProductCompatibilityAssertion.sourcePlaybackPreserved,
+          ProductCompatibilityAssertion.trustedRelationship,
+          ProductCompatibilityAssertion.privacyRedaction,
+        }),
+      );
+      expect(
+        suite.scenarioById('mobile-to-receiver-only-playback')?.targetProfile,
+        ProductCompatibilityParticipantProfile.embeddedReceiver,
+      );
+    });
+
+    test('protocol mismatch scenarios pin expected old and new outcomes', () {
+      final suite = AiroTvCrossProfileCompatibilitySuites.releaseV2_0_0_1();
+      final oldReceiver = suite.scenarioById(
+        'old-receiver-new-controller-protocol',
+      )!;
+      final oldController = suite.scenarioById(
+        'old-controller-new-receiver-protocol',
+      )!;
+
+      expect(
+        oldReceiver.expectedOutcome,
+        ProductCompatibilityExpectedOutcome.protocolTooOld,
+      );
+      expect(oldReceiver.controllerProtocolVersion, 2);
+      expect(oldReceiver.receiverProtocolVersion, 1);
+      expect(
+        oldController.expectedOutcome,
+        ProductCompatibilityExpectedOutcome.protocolTooNew,
+      );
+      expect(oldController.controllerProtocolVersion, 1);
+      expect(oldController.receiverProtocolVersion, 2);
+      expect(
+        oldController.requiredAssertions,
+        contains(ProductCompatibilityAssertion.protocolCompatibility),
+      );
+    });
+
+    test('companion unavailable keeps lite receiver usable', () {
+      final scenario = AiroTvCrossProfileCompatibilitySuites.releaseV2_0_0_1()
+          .scenarioById('lite-companion-unavailable')!;
+
+      expect(scenario.companionAvailable, isFalse);
+      expect(
+        scenario.expectedOutcome,
+        ProductCompatibilityExpectedOutcome.companionUnavailableFallback,
+      );
+      expect(
+        scenario.requiredAssertions,
+        containsAll(const {
+          ProductCompatibilityAssertion.companionFallback,
+          ProductCompatibilityAssertion.delegationUnsupportedReason,
+          ProductCompatibilityAssertion.sessionIdentityPreserved,
+        }),
+      );
+    });
+
+    test('suite policy rejects unsafe or incomplete failure scenarios', () {
+      final suite = ProductCrossProfileCompatibilitySuite(
+        suiteId: 'broken-cross-profile-suite',
+        displayName: 'Broken cross-profile suite',
+        scenarios: [
+          ProductCrossProfileCompatibilityScenario(
+            scenarioId: 'duplicate',
+            displayName: 'Duplicate one',
+            kind: ProductCompatibilityScenarioKind.handoff,
+            sourceProfile: ProductCompatibilityParticipantProfile.fullTv,
+            targetProfile: ProductCompatibilityParticipantProfile.fullTv,
+            requiredAssertions: const {
+              ProductCompatibilityAssertion.handoffPreflight,
+            },
+            automationTags: const {},
+            expectedOutcome:
+                ProductCompatibilityExpectedOutcome.blockedBeforeHandoff,
+            controllerProtocolVersion: 0,
+            sourcePlaybackMustRemainActiveOnFailure: false,
+            preservesSharedAccount: false,
+            preservesSessionIdentity: false,
+          ),
+          ProductCrossProfileCompatibilityScenario(
+            scenarioId: 'duplicate',
+            displayName: 'Duplicate two',
+            kind: ProductCompatibilityScenarioKind.companionUnavailable,
+            sourceProfile: ProductCompatibilityParticipantProfile.liteReceiver,
+            targetProfile: ProductCompatibilityParticipantProfile.homeNode,
+            requiredAssertions: {},
+            automationTags: {ProductCompatibilityAutomationTag.hostUnit},
+            expectedOutcome: ProductCompatibilityExpectedOutcome
+                .companionUnavailableFallback,
+            companionAvailable: true,
+          ),
+        ],
+      );
+
+      final result = suite.validate();
+
+      expect(
+        result.codes,
+        contains(ProductCompatibilitySuiteValidationCode.duplicateScenarioId),
+      );
+      expect(
+        result.codes,
+        contains(ProductCompatibilitySuiteValidationCode.profileMissing),
+      );
+      expect(
+        result.codes,
+        contains(ProductCompatibilitySuiteValidationCode.assertionMissing),
+      );
+      expect(
+        result.codes,
+        contains(ProductCompatibilitySuiteValidationCode.automationTagMissing),
+      );
+      expect(
+        result.codes,
+        contains(
+          ProductCompatibilitySuiteValidationCode.protocolVersionInvalid,
+        ),
+      );
+      expect(
+        result.codes,
+        contains(ProductCompatibilitySuiteValidationCode.unsafeFailureBehavior),
+      );
+      expect(
+        result.codes,
+        contains(ProductCompatibilitySuiteValidationCode.sharedAccountMissing),
+      );
+      expect(
+        result.codes,
+        contains(
+          ProductCompatibilitySuiteValidationCode.sessionIdentityMissing,
+        ),
+      );
+      expect(
+        result.codes,
+        contains(
+          ProductCompatibilitySuiteValidationCode.companionFallbackMissing,
+        ),
+      );
+      expect(
+        result.codes,
+        contains(
+          ProductCompatibilitySuiteValidationCode.privacyAssertionMissing,
+        ),
+      );
+    });
+
+    test('suite public map exposes stable ids only', () {
+      final publicMap = AiroTvCrossProfileCompatibilitySuites.releaseV2_0_0_1()
+          .toPublicMap();
+      final flattened = publicMap.toString();
+
+      expect(publicMap['suiteId'], 'airo-tv-v2-0-0-1-cross-profile');
+      expect(flattened, contains('mobile-to-lite-handoff'));
+      expect(
+        flattened,
+        contains(ProductCompatibilityAssertion.handoffPreflight.stableId),
+      );
+      expect(
+        flattened,
+        contains(ProductCompatibilityAutomationTag.releaseGate.stableId),
+      );
+      expect(flattened, isNot(contains('/Users/')));
+      expect(flattened, isNot(contains('providerPayload')));
+      expect(flattened, isNot(contains('storeConsoleAccount')));
+      expect(flattened, isNot(contains('rawCredential')));
+      expect(flattened, isNot(contains('http://')));
+      expect(flattened, isNot(contains('192.168.')));
+    });
+  });
+
   group('Airo TV profile-aware capability advertisements', () {
     test('full TV advertises runtime-safe profile capabilities', () {
       final advertisement = AiroTvCapabilityAdvertisements.fullTv(

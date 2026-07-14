@@ -19,6 +19,9 @@ and capabilities are available for a product profile.
 - Release-channel and store-listing strategy manifests for single adaptive
   app, full/lite split, targeted delivery, vendor-specific, and internal
   certification paths.
+- Cross-profile compatibility suite manifests for handoff, receiver-only
+  playback, protocol version pairs, companion-unavailable fallback, unsupported
+  transfers, delegation failures, and sync continuity.
 - Profile-aware capability advertisements that publish runtime-safe
   capabilities, compiled modules, profile guarantees, and unsupported reasons.
 - Profile navigation manifests that bind routes, display keys, render tiers,
@@ -38,6 +41,10 @@ and capabilities are available for a product profile.
   required evidence, rollout posture, crash thresholds, shared account
   entitlements, protocol compatibility, dependency isolation, targeted delivery
   evidence, legal review, and non-general-store channels.
+- Deterministic cross-profile suite validation for scenario identity, source
+  and target profiles, required assertions, automation tags, protocol versions,
+  safe failure behavior, shared account continuity, session identity,
+  companion fallback, and privacy assertions.
 - Deterministic capability advertisement policy that prevents controllers,
   routers, and handoff flows from seeing capabilities blocked by profile,
   composition, lifecycle, or runtime device requirements.

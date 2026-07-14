@@ -68,6 +68,97 @@ enum ProductStoreListingEvidence {
   final String stableId;
 }
 
+enum ProductCompatibilityParticipantProfile {
+  fullTv('full_tv'),
+  standardTv('standard_tv'),
+  liteReceiver('lite_receiver'),
+  embeddedReceiver('embedded_receiver'),
+  experimentalLegacy('experimental_legacy'),
+  mobileCompanion('mobile_companion'),
+  desktopCompanion('desktop_companion'),
+  homeNode('home_node'),
+  cloudRelay('cloud_relay');
+
+  const ProductCompatibilityParticipantProfile(this.stableId);
+
+  final String stableId;
+}
+
+enum ProductCompatibilityScenarioKind {
+  handoff('handoff'),
+  receiverOnlyPlayback('receiver_only_playback'),
+  protocolCompatibility('protocol_compatibility'),
+  companionUnavailable('companion_unavailable'),
+  unsupportedTransfer('unsupported_transfer'),
+  delegationFailure('delegation_failure'),
+  syncContinuity('sync_continuity');
+
+  const ProductCompatibilityScenarioKind(this.stableId);
+
+  final String stableId;
+}
+
+enum ProductCompatibilityAssertion {
+  capabilityAdvertisement('capability_advertisement'),
+  compositionAccepted('composition_accepted'),
+  navigationUnavailableFeaturesAbsent('navigation_unavailable_features_absent'),
+  handoffPreflight('handoff_preflight'),
+  sourcePlaybackPreserved('source_playback_preserved'),
+  sessionIdentityPreserved('session_identity_preserved'),
+  progressAndFavoritesPreserved('progress_and_favorites_preserved'),
+  protocolCompatibility('protocol_compatibility'),
+  trustedRelationship('trusted_relationship'),
+  authorizedPlaybackHandle('authorized_playback_handle'),
+  companionFallback('companion_fallback'),
+  delegationUnsupportedReason('delegation_unsupported_reason'),
+  privacyRedaction('privacy_redaction'),
+  noRawMediaExposure('no_raw_media_exposure'),
+  noCredentialExposure('no_credential_exposure');
+
+  const ProductCompatibilityAssertion(this.stableId);
+
+  final String stableId;
+}
+
+enum ProductCompatibilityAutomationTag {
+  hostUnit('host_unit'),
+  integration('integration'),
+  protocolFixture('protocol_fixture'),
+  handoffFixture('handoff_fixture'),
+  deviceLab('device_lab'),
+  privacyScan('privacy_scan'),
+  failureInjection('failure_injection'),
+  releaseGate('release_gate');
+
+  const ProductCompatibilityAutomationTag(this.stableId);
+
+  final String stableId;
+}
+
+enum ProductCompatibilityExpectedOutcome {
+  pass('pass'),
+  blockedBeforeHandoff('blocked_before_handoff'),
+  protocolTooOld('protocol_too_old'),
+  protocolTooNew('protocol_too_new'),
+  companionUnavailableFallback('companion_unavailable_fallback'),
+  delegationUnavailable('delegation_unavailable');
+
+  const ProductCompatibilityExpectedOutcome(this.stableId);
+
+  final String stableId;
+}
+
+enum ProductCompatibilitySeverity {
+  releaseBlocking('release_blocking'),
+  high('high'),
+  medium('medium'),
+  informational('informational');
+
+  const ProductCompatibilitySeverity(this.stableId);
+
+  final String stableId;
+}
+
 enum ProductModule {
   playback('playback'),
   playlistImport('playlist_import'),
@@ -219,6 +310,25 @@ enum ProductStoreListingValidationCode {
   unsupportedGeneralListing('unsupported_general_listing');
 
   const ProductStoreListingValidationCode(this.stableId);
+
+  final String stableId;
+}
+
+enum ProductCompatibilitySuiteValidationCode {
+  accepted('accepted'),
+  scenarioMissing('scenario_missing'),
+  duplicateScenarioId('duplicate_scenario_id'),
+  profileMissing('profile_missing'),
+  assertionMissing('assertion_missing'),
+  automationTagMissing('automation_tag_missing'),
+  protocolVersionInvalid('protocol_version_invalid'),
+  unsafeFailureBehavior('unsafe_failure_behavior'),
+  sharedAccountMissing('shared_account_missing'),
+  sessionIdentityMissing('session_identity_missing'),
+  companionFallbackMissing('companion_fallback_missing'),
+  privacyAssertionMissing('privacy_assertion_missing');
+
+  const ProductCompatibilitySuiteValidationCode(this.stableId);
 
   final String stableId;
 }
@@ -676,6 +786,296 @@ class ProductStoreListingStrategyPolicy extends Equatable {
       ProductReleaseChannel.vendorSpecific ||
       ProductReleaseChannel.internalCertification => true,
     };
+  }
+
+  @override
+  List<Object?> get props => const [];
+}
+
+class ProductCompatibilitySuiteValidationResult extends Equatable {
+  ProductCompatibilitySuiteValidationResult({
+    required List<ProductCompatibilitySuiteValidationCode> codes,
+  }) : codes = List.unmodifiable(codes);
+
+  final List<ProductCompatibilitySuiteValidationCode> codes;
+
+  bool get accepted =>
+      codes.length == 1 &&
+      codes.single == ProductCompatibilitySuiteValidationCode.accepted;
+
+  Map<String, Object?> toPublicMap() {
+    return {
+      'accepted': accepted,
+      'codes': _compatibilitySuiteValidationCodeStableIds(codes),
+    };
+  }
+
+  @override
+  List<Object?> get props => [codes];
+}
+
+class ProductCrossProfileCompatibilityScenario extends Equatable {
+  ProductCrossProfileCompatibilityScenario({
+    required this.scenarioId,
+    required this.displayName,
+    required this.kind,
+    required this.sourceProfile,
+    required this.targetProfile,
+    required Set<ProductCompatibilityAssertion> requiredAssertions,
+    required Set<ProductCompatibilityAutomationTag> automationTags,
+    required this.expectedOutcome,
+    this.severity = ProductCompatibilitySeverity.releaseBlocking,
+    this.controllerProtocolVersion = 1,
+    this.receiverProtocolVersion = 1,
+    this.companionAvailable = true,
+    this.cloudAvailable = true,
+    this.sourcePlaybackMustRemainActiveOnFailure = true,
+    this.preservesSharedAccount = true,
+    this.preservesSessionIdentity = true,
+    this.preservesProgressAndFavorites = true,
+    this.schemaVersion = kProductCapabilitiesSchemaVersion,
+  }) : requiredAssertions = Set.unmodifiable(requiredAssertions),
+       automationTags = Set.unmodifiable(automationTags);
+
+  final String schemaVersion;
+  final String scenarioId;
+  final String displayName;
+  final ProductCompatibilityScenarioKind kind;
+  final ProductCompatibilityParticipantProfile sourceProfile;
+  final ProductCompatibilityParticipantProfile targetProfile;
+  final Set<ProductCompatibilityAssertion> requiredAssertions;
+  final Set<ProductCompatibilityAutomationTag> automationTags;
+  final ProductCompatibilityExpectedOutcome expectedOutcome;
+  final ProductCompatibilitySeverity severity;
+  final int controllerProtocolVersion;
+  final int receiverProtocolVersion;
+  final bool companionAvailable;
+  final bool cloudAvailable;
+  final bool sourcePlaybackMustRemainActiveOnFailure;
+  final bool preservesSharedAccount;
+  final bool preservesSessionIdentity;
+  final bool preservesProgressAndFavorites;
+
+  Map<String, Object?> toPublicMap() {
+    return {
+      'schemaVersion': schemaVersion,
+      'scenarioId': scenarioId,
+      'displayName': displayName,
+      'kind': kind.stableId,
+      'sourceProfile': sourceProfile.stableId,
+      'targetProfile': targetProfile.stableId,
+      'requiredAssertions': _compatibilityAssertionStableIds(
+        requiredAssertions,
+      ),
+      'automationTags': _compatibilityAutomationTagStableIds(automationTags),
+      'expectedOutcome': expectedOutcome.stableId,
+      'severity': severity.stableId,
+      'controllerProtocolVersion': controllerProtocolVersion,
+      'receiverProtocolVersion': receiverProtocolVersion,
+      'companionAvailable': companionAvailable,
+      'cloudAvailable': cloudAvailable,
+      'sourcePlaybackMustRemainActiveOnFailure':
+          sourcePlaybackMustRemainActiveOnFailure,
+      'preservesSharedAccount': preservesSharedAccount,
+      'preservesSessionIdentity': preservesSessionIdentity,
+      'preservesProgressAndFavorites': preservesProgressAndFavorites,
+    };
+  }
+
+  @override
+  List<Object?> get props => [
+    schemaVersion,
+    scenarioId,
+    displayName,
+    kind,
+    sourceProfile,
+    targetProfile,
+    requiredAssertions,
+    automationTags,
+    expectedOutcome,
+    severity,
+    controllerProtocolVersion,
+    receiverProtocolVersion,
+    companionAvailable,
+    cloudAvailable,
+    sourcePlaybackMustRemainActiveOnFailure,
+    preservesSharedAccount,
+    preservesSessionIdentity,
+    preservesProgressAndFavorites,
+  ];
+}
+
+class ProductCrossProfileCompatibilitySuite extends Equatable {
+  ProductCrossProfileCompatibilitySuite({
+    required this.suiteId,
+    required this.displayName,
+    required List<ProductCrossProfileCompatibilityScenario> scenarios,
+    this.schemaVersion = kProductCapabilitiesSchemaVersion,
+  }) : scenarios = List.unmodifiable(scenarios);
+
+  final String schemaVersion;
+  final String suiteId;
+  final String displayName;
+  final List<ProductCrossProfileCompatibilityScenario> scenarios;
+
+  ProductCompatibilitySuiteValidationResult validate() {
+    return const ProductCrossProfileCompatibilityPolicy().evaluate(this);
+  }
+
+  ProductCrossProfileCompatibilityScenario? scenarioById(String scenarioId) {
+    for (final scenario in scenarios) {
+      if (scenario.scenarioId == scenarioId) return scenario;
+    }
+    return null;
+  }
+
+  Map<String, Object?> toPublicMap() {
+    return {
+      'schemaVersion': schemaVersion,
+      'suiteId': suiteId,
+      'displayName': displayName,
+      'scenarios': scenarios
+          .map((scenario) => scenario.toPublicMap())
+          .toList(growable: false),
+    };
+  }
+
+  @override
+  List<Object?> get props => [schemaVersion, suiteId, displayName, scenarios];
+}
+
+class ProductCrossProfileCompatibilityPolicy extends Equatable {
+  const ProductCrossProfileCompatibilityPolicy();
+
+  ProductCompatibilitySuiteValidationResult evaluate(
+    ProductCrossProfileCompatibilitySuite suite,
+  ) {
+    final codes = <ProductCompatibilitySuiteValidationCode>[];
+    final seenScenarioIds = <String>{};
+
+    if (suite.scenarios.isEmpty) {
+      codes.add(ProductCompatibilitySuiteValidationCode.scenarioMissing);
+    }
+
+    for (final scenario in suite.scenarios) {
+      if (scenario.scenarioId.trim().isEmpty ||
+          scenario.displayName.trim().isEmpty) {
+        codes.add(ProductCompatibilitySuiteValidationCode.scenarioMissing);
+      }
+      if (!seenScenarioIds.add(scenario.scenarioId)) {
+        codes.add(ProductCompatibilitySuiteValidationCode.duplicateScenarioId);
+      }
+      if (scenario.sourceProfile == scenario.targetProfile) {
+        codes.add(ProductCompatibilitySuiteValidationCode.profileMissing);
+      }
+      if (scenario.requiredAssertions.isEmpty) {
+        codes.add(ProductCompatibilitySuiteValidationCode.assertionMissing);
+      }
+      if (scenario.automationTags.isEmpty) {
+        codes.add(ProductCompatibilitySuiteValidationCode.automationTagMissing);
+      }
+      if (scenario.controllerProtocolVersion <= 0 ||
+          scenario.receiverProtocolVersion <= 0) {
+        codes.add(
+          ProductCompatibilitySuiteValidationCode.protocolVersionInvalid,
+        );
+      }
+      if (_requiresHandoffAssertions(scenario) &&
+          (!_has(scenario, ProductCompatibilityAssertion.handoffPreflight) ||
+              !_has(
+                scenario,
+                ProductCompatibilityAssertion.capabilityAdvertisement,
+              ) ||
+              !_has(
+                scenario,
+                ProductCompatibilityAssertion.sourcePlaybackPreserved,
+              ))) {
+        codes.add(ProductCompatibilitySuiteValidationCode.assertionMissing);
+      }
+      if (_requiresProtocolAssertion(scenario) &&
+          !_has(
+            scenario,
+            ProductCompatibilityAssertion.protocolCompatibility,
+          )) {
+        codes.add(ProductCompatibilitySuiteValidationCode.assertionMissing);
+      }
+      if (_isFailureOutcome(scenario.expectedOutcome) &&
+          !scenario.sourcePlaybackMustRemainActiveOnFailure) {
+        codes.add(
+          ProductCompatibilitySuiteValidationCode.unsafeFailureBehavior,
+        );
+      }
+      if (!scenario.preservesSharedAccount) {
+        codes.add(ProductCompatibilitySuiteValidationCode.sharedAccountMissing);
+      }
+      if (_requiresSessionIdentity(scenario) &&
+          !scenario.preservesSessionIdentity) {
+        codes.add(
+          ProductCompatibilitySuiteValidationCode.sessionIdentityMissing,
+        );
+      }
+      if (scenario.expectedOutcome ==
+              ProductCompatibilityExpectedOutcome
+                  .companionUnavailableFallback &&
+          (scenario.companionAvailable ||
+              !_has(
+                scenario,
+                ProductCompatibilityAssertion.companionFallback,
+              ))) {
+        codes.add(
+          ProductCompatibilitySuiteValidationCode.companionFallbackMissing,
+        );
+      }
+      if (!_has(scenario, ProductCompatibilityAssertion.privacyRedaction) ||
+          !_has(scenario, ProductCompatibilityAssertion.noRawMediaExposure) ||
+          !_has(scenario, ProductCompatibilityAssertion.noCredentialExposure)) {
+        codes.add(
+          ProductCompatibilitySuiteValidationCode.privacyAssertionMissing,
+        );
+      }
+    }
+
+    return ProductCompatibilitySuiteValidationResult(
+      codes: codes.isEmpty
+          ? const [ProductCompatibilitySuiteValidationCode.accepted]
+          : codes.toSet().toList(growable: false),
+    );
+  }
+
+  bool _has(
+    ProductCrossProfileCompatibilityScenario scenario,
+    ProductCompatibilityAssertion assertion,
+  ) {
+    return scenario.requiredAssertions.contains(assertion);
+  }
+
+  bool _requiresHandoffAssertions(
+    ProductCrossProfileCompatibilityScenario scenario,
+  ) {
+    return scenario.kind == ProductCompatibilityScenarioKind.handoff ||
+        scenario.kind == ProductCompatibilityScenarioKind.unsupportedTransfer;
+  }
+
+  bool _requiresProtocolAssertion(
+    ProductCrossProfileCompatibilityScenario scenario,
+  ) {
+    return scenario.kind ==
+            ProductCompatibilityScenarioKind.protocolCompatibility ||
+        scenario.controllerProtocolVersion != scenario.receiverProtocolVersion;
+  }
+
+  bool _requiresSessionIdentity(
+    ProductCrossProfileCompatibilityScenario scenario,
+  ) {
+    return scenario.kind == ProductCompatibilityScenarioKind.handoff ||
+        scenario.kind == ProductCompatibilityScenarioKind.syncContinuity ||
+        scenario.kind == ProductCompatibilityScenarioKind.companionUnavailable;
+  }
+
+  bool _isFailureOutcome(ProductCompatibilityExpectedOutcome outcome) {
+    return outcome != ProductCompatibilityExpectedOutcome.pass &&
+        outcome !=
+            ProductCompatibilityExpectedOutcome.companionUnavailableFallback;
   }
 
   @override
@@ -2563,6 +2963,213 @@ class AiroTvReleaseListingStrategies {
   };
 }
 
+class AiroTvCrossProfileCompatibilitySuites {
+  const AiroTvCrossProfileCompatibilitySuites._();
+
+  static ProductCrossProfileCompatibilitySuite releaseV2_0_0_1() {
+    return ProductCrossProfileCompatibilitySuite(
+      suiteId: 'airo-tv-v2-0-0-1-cross-profile',
+      displayName: 'Airo TV v2.0.0.1 cross-profile compatibility',
+      scenarios: [
+        ProductCrossProfileCompatibilityScenario(
+          scenarioId: 'mobile-to-lite-handoff',
+          displayName: 'Mobile controller to Lite Receiver handoff',
+          kind: ProductCompatibilityScenarioKind.handoff,
+          sourceProfile: ProductCompatibilityParticipantProfile.mobileCompanion,
+          targetProfile: ProductCompatibilityParticipantProfile.liteReceiver,
+          requiredAssertions: _handoffAssertions,
+          automationTags: {
+            ProductCompatibilityAutomationTag.integration,
+            ProductCompatibilityAutomationTag.protocolFixture,
+            ProductCompatibilityAutomationTag.handoffFixture,
+            ProductCompatibilityAutomationTag.privacyScan,
+            ProductCompatibilityAutomationTag.releaseGate,
+          },
+          expectedOutcome: ProductCompatibilityExpectedOutcome.pass,
+        ),
+        ProductCrossProfileCompatibilityScenario(
+          scenarioId: 'mobile-to-receiver-only-playback',
+          displayName: 'Mobile controller to receiver-only playback',
+          kind: ProductCompatibilityScenarioKind.receiverOnlyPlayback,
+          sourceProfile: ProductCompatibilityParticipantProfile.mobileCompanion,
+          targetProfile:
+              ProductCompatibilityParticipantProfile.embeddedReceiver,
+          requiredAssertions: _receiverOnlyAssertions,
+          automationTags: {
+            ProductCompatibilityAutomationTag.integration,
+            ProductCompatibilityAutomationTag.handoffFixture,
+            ProductCompatibilityAutomationTag.privacyScan,
+            ProductCompatibilityAutomationTag.releaseGate,
+          },
+          expectedOutcome: ProductCompatibilityExpectedOutcome.pass,
+        ),
+        ProductCrossProfileCompatibilityScenario(
+          scenarioId: 'full-tv-to-lite-handoff',
+          displayName: 'Full TV to Lite Receiver handoff',
+          kind: ProductCompatibilityScenarioKind.handoff,
+          sourceProfile: ProductCompatibilityParticipantProfile.fullTv,
+          targetProfile: ProductCompatibilityParticipantProfile.liteReceiver,
+          requiredAssertions: {
+            ..._handoffAssertions,
+            ProductCompatibilityAssertion.progressAndFavoritesPreserved,
+          },
+          automationTags: {
+            ProductCompatibilityAutomationTag.integration,
+            ProductCompatibilityAutomationTag.handoffFixture,
+            ProductCompatibilityAutomationTag.privacyScan,
+            ProductCompatibilityAutomationTag.releaseGate,
+          },
+          expectedOutcome: ProductCompatibilityExpectedOutcome.pass,
+        ),
+        ProductCrossProfileCompatibilityScenario(
+          scenarioId: 'old-receiver-new-controller-protocol',
+          displayName: 'Old receiver with new controller protocol',
+          kind: ProductCompatibilityScenarioKind.protocolCompatibility,
+          sourceProfile: ProductCompatibilityParticipantProfile.mobileCompanion,
+          targetProfile: ProductCompatibilityParticipantProfile.liteReceiver,
+          requiredAssertions: _protocolAssertions,
+          automationTags: {
+            ProductCompatibilityAutomationTag.hostUnit,
+            ProductCompatibilityAutomationTag.protocolFixture,
+            ProductCompatibilityAutomationTag.privacyScan,
+            ProductCompatibilityAutomationTag.releaseGate,
+          },
+          expectedOutcome: ProductCompatibilityExpectedOutcome.protocolTooOld,
+          controllerProtocolVersion: 2,
+          receiverProtocolVersion: 1,
+        ),
+        ProductCrossProfileCompatibilityScenario(
+          scenarioId: 'old-controller-new-receiver-protocol',
+          displayName: 'Old controller with new receiver protocol',
+          kind: ProductCompatibilityScenarioKind.protocolCompatibility,
+          sourceProfile: ProductCompatibilityParticipantProfile.mobileCompanion,
+          targetProfile: ProductCompatibilityParticipantProfile.liteReceiver,
+          requiredAssertions: _protocolAssertions,
+          automationTags: {
+            ProductCompatibilityAutomationTag.hostUnit,
+            ProductCompatibilityAutomationTag.protocolFixture,
+            ProductCompatibilityAutomationTag.privacyScan,
+            ProductCompatibilityAutomationTag.releaseGate,
+          },
+          expectedOutcome: ProductCompatibilityExpectedOutcome.protocolTooNew,
+          controllerProtocolVersion: 1,
+          receiverProtocolVersion: 2,
+        ),
+        ProductCrossProfileCompatibilityScenario(
+          scenarioId: 'lite-companion-unavailable',
+          displayName: 'Lite Receiver with companion unavailable',
+          kind: ProductCompatibilityScenarioKind.companionUnavailable,
+          sourceProfile: ProductCompatibilityParticipantProfile.liteReceiver,
+          targetProfile: ProductCompatibilityParticipantProfile.homeNode,
+          requiredAssertions: _companionUnavailableAssertions,
+          automationTags: {
+            ProductCompatibilityAutomationTag.integration,
+            ProductCompatibilityAutomationTag.failureInjection,
+            ProductCompatibilityAutomationTag.privacyScan,
+            ProductCompatibilityAutomationTag.releaseGate,
+          },
+          expectedOutcome:
+              ProductCompatibilityExpectedOutcome.companionUnavailableFallback,
+          companionAvailable: false,
+        ),
+        ProductCrossProfileCompatibilityScenario(
+          scenarioId: 'unsupported-full-feature-transfer',
+          displayName: 'Unsupported Full TV feature transfer to Lite Receiver',
+          kind: ProductCompatibilityScenarioKind.unsupportedTransfer,
+          sourceProfile: ProductCompatibilityParticipantProfile.fullTv,
+          targetProfile: ProductCompatibilityParticipantProfile.liteReceiver,
+          requiredAssertions: _unsupportedTransferAssertions,
+          automationTags: {
+            ProductCompatibilityAutomationTag.integration,
+            ProductCompatibilityAutomationTag.handoffFixture,
+            ProductCompatibilityAutomationTag.failureInjection,
+            ProductCompatibilityAutomationTag.privacyScan,
+            ProductCompatibilityAutomationTag.releaseGate,
+          },
+          expectedOutcome:
+              ProductCompatibilityExpectedOutcome.blockedBeforeHandoff,
+        ),
+        ProductCrossProfileCompatibilityScenario(
+          scenarioId: 'trusted-delegation-failure',
+          displayName: 'Trusted delegation failure reports unsupported reason',
+          kind: ProductCompatibilityScenarioKind.delegationFailure,
+          sourceProfile: ProductCompatibilityParticipantProfile.liteReceiver,
+          targetProfile: ProductCompatibilityParticipantProfile.homeNode,
+          requiredAssertions: _delegationFailureAssertions,
+          automationTags: {
+            ProductCompatibilityAutomationTag.integration,
+            ProductCompatibilityAutomationTag.failureInjection,
+            ProductCompatibilityAutomationTag.privacyScan,
+            ProductCompatibilityAutomationTag.releaseGate,
+          },
+          expectedOutcome:
+              ProductCompatibilityExpectedOutcome.delegationUnavailable,
+        ),
+      ],
+    );
+  }
+
+  static const Set<ProductCompatibilityAssertion> _privacyAssertions = {
+    ProductCompatibilityAssertion.privacyRedaction,
+    ProductCompatibilityAssertion.noRawMediaExposure,
+    ProductCompatibilityAssertion.noCredentialExposure,
+  };
+
+  static const Set<ProductCompatibilityAssertion> _handoffAssertions = {
+    ProductCompatibilityAssertion.capabilityAdvertisement,
+    ProductCompatibilityAssertion.compositionAccepted,
+    ProductCompatibilityAssertion.handoffPreflight,
+    ProductCompatibilityAssertion.sourcePlaybackPreserved,
+    ProductCompatibilityAssertion.sessionIdentityPreserved,
+    ProductCompatibilityAssertion.trustedRelationship,
+    ProductCompatibilityAssertion.authorizedPlaybackHandle,
+    ..._privacyAssertions,
+  };
+
+  static const Set<ProductCompatibilityAssertion> _receiverOnlyAssertions = {
+    ProductCompatibilityAssertion.capabilityAdvertisement,
+    ProductCompatibilityAssertion.compositionAccepted,
+    ProductCompatibilityAssertion.navigationUnavailableFeaturesAbsent,
+    ProductCompatibilityAssertion.authorizedPlaybackHandle,
+    ProductCompatibilityAssertion.trustedRelationship,
+    ..._privacyAssertions,
+  };
+
+  static const Set<ProductCompatibilityAssertion> _protocolAssertions = {
+    ProductCompatibilityAssertion.capabilityAdvertisement,
+    ProductCompatibilityAssertion.protocolCompatibility,
+    ProductCompatibilityAssertion.sourcePlaybackPreserved,
+    ..._privacyAssertions,
+  };
+
+  static const Set<ProductCompatibilityAssertion>
+  _companionUnavailableAssertions = {
+    ProductCompatibilityAssertion.capabilityAdvertisement,
+    ProductCompatibilityAssertion.compositionAccepted,
+    ProductCompatibilityAssertion.companionFallback,
+    ProductCompatibilityAssertion.delegationUnsupportedReason,
+    ProductCompatibilityAssertion.sessionIdentityPreserved,
+    ..._privacyAssertions,
+  };
+
+  static const Set<ProductCompatibilityAssertion>
+  _unsupportedTransferAssertions = {
+    ProductCompatibilityAssertion.capabilityAdvertisement,
+    ProductCompatibilityAssertion.handoffPreflight,
+    ProductCompatibilityAssertion.sourcePlaybackPreserved,
+    ProductCompatibilityAssertion.delegationUnsupportedReason,
+    ..._privacyAssertions,
+  };
+
+  static const Set<ProductCompatibilityAssertion> _delegationFailureAssertions =
+      {
+        ProductCompatibilityAssertion.capabilityAdvertisement,
+        ProductCompatibilityAssertion.delegationUnsupportedReason,
+        ProductCompatibilityAssertion.sourcePlaybackPreserved,
+        ..._privacyAssertions,
+      };
+}
+
 ProductModule? _moduleForCapability(ProductCapability capability) {
   return switch (capability) {
     ProductCapability.directPlayback => ProductModule.playback,
@@ -2604,6 +3211,18 @@ List<String> _storeListingEvidenceStableIds(
   return values.map((value) => value.stableId).toList(growable: false)..sort();
 }
 
+List<String> _compatibilityAssertionStableIds(
+  Iterable<ProductCompatibilityAssertion> values,
+) {
+  return values.map((value) => value.stableId).toList(growable: false)..sort();
+}
+
+List<String> _compatibilityAutomationTagStableIds(
+  Iterable<ProductCompatibilityAutomationTag> values,
+) {
+  return values.map((value) => value.stableId).toList(growable: false)..sort();
+}
+
 List<String> _mediaCodecStableIds(Iterable<MediaCodecCapability> values) {
   return values.map((value) => value.stableId).toList(growable: false)..sort();
 }
@@ -2640,6 +3259,12 @@ List<String> _compositionValidationCodeStableIds(
 
 List<String> _storeListingValidationCodeStableIds(
   Iterable<ProductStoreListingValidationCode> values,
+) {
+  return values.map((value) => value.stableId).toList(growable: false)..sort();
+}
+
+List<String> _compatibilitySuiteValidationCodeStableIds(
+  Iterable<ProductCompatibilitySuiteValidationCode> values,
 ) {
   return values.map((value) => value.stableId).toList(growable: false)..sort();
 }
