@@ -1,6 +1,7 @@
 import 'package:equatable/equatable.dart';
 
 const String kAiroCertificationSchemaVersion = '1.0.0';
+const String kAiroValidationSchemaVersion = '1.0.0';
 
 enum AiroCertificationLevel {
   certified('certified'),
@@ -68,6 +69,99 @@ enum AiroCertificationBlockerCode {
   evidenceStale('evidence_stale');
 
   const AiroCertificationBlockerCode(this.stableId);
+
+  final String stableId;
+}
+
+enum AiroValidationPlatform {
+  androidMobile('android_mobile'),
+  androidTv('android_tv'),
+  fireTv('fire_tv'),
+  ios('ios'),
+  ipados('ipados'),
+  desktop('desktop'),
+  tvos('tvos'),
+  webEmbeddedReceiver('web_embedded_receiver'),
+  backendCloud('backend_cloud');
+
+  const AiroValidationPlatform(this.stableId);
+
+  final String stableId;
+}
+
+enum AiroValidationProductProfile {
+  fullTv('full_tv'),
+  liteReceiver('lite_receiver'),
+  companion('companion'),
+  desktopCompanion('desktop_companion'),
+  embeddedReceiver('embedded_receiver'),
+  backendControlPlane('backend_control_plane');
+
+  const AiroValidationProductProfile(this.stableId);
+
+  final String stableId;
+}
+
+enum AiroValidationReleasePhase {
+  platformFoundation('platform_foundation'),
+  connectedDevice('connected_device'),
+  mediaRouting('media_routing'),
+  legacyDevice('legacy_device'),
+  cloudBoundary('cloud_boundary'),
+  storeReadiness('store_readiness');
+
+  const AiroValidationReleasePhase(this.stableId);
+
+  final String stableId;
+}
+
+enum AiroValidationStatus {
+  required('required'),
+  optional('optional'),
+  blocked('blocked');
+
+  const AiroValidationStatus(this.stableId);
+
+  final String stableId;
+}
+
+enum AiroValidationGateId {
+  productCapabilities('product_capabilities'),
+  adaptiveUi('adaptive_ui'),
+  remoteFocus('remote_focus'),
+  touchInput('touch_input'),
+  pointerInput('pointer_input'),
+  playbackEngine('playback_engine'),
+  mediaRouting('media_routing'),
+  pairingController('pairing_controller'),
+  sessionSync('session_sync'),
+  analyticsRedaction('analytics_redaction'),
+  dependencyGovernance('dependency_governance'),
+  packageContentScan('package_content_scan'),
+  localNetworkPrivacy('local_network_privacy'),
+  importExportDataGovernance('import_export_data_governance'),
+  accessibility('accessibility'),
+  nativeTarget('native_target'),
+  storePolicy('store_policy'),
+  orchestrationStorage('orchestration_storage'),
+  cloudPrivacy('cloud_privacy'),
+  physicalDeviceEvidence('physical_device_evidence');
+
+  const AiroValidationGateId(this.stableId);
+
+  final String stableId;
+}
+
+enum AiroValidationEvidenceTier {
+  hostAutomation('host_automation'),
+  physicalDevice('physical_device'),
+  manualReview('manual_review'),
+  storeReview('store_review'),
+  securityPrivacyReview('security_privacy_review'),
+  releaseConfigReview('release_config_review'),
+  cloudContract('cloud_contract');
+
+  const AiroValidationEvidenceTier(this.stableId);
 
   final String stableId;
 }
@@ -386,6 +480,533 @@ class AiroCertificationMatrix extends Equatable {
 
   @override
   List<Object?> get props => [schemaVersion, targets, gates];
+}
+
+class AiroValidationGate extends Equatable {
+  AiroValidationGate({
+    required this.gateId,
+    required this.displayName,
+    required this.description,
+    required Set<AiroValidationEvidenceTier> acceptedEvidenceTiers,
+    this.requiresPhysicalDevice = false,
+    this.blocksAdvertising = true,
+    this.schemaVersion = kAiroValidationSchemaVersion,
+  }) : acceptedEvidenceTiers = Set.unmodifiable(acceptedEvidenceTiers);
+
+  final String schemaVersion;
+  final AiroValidationGateId gateId;
+  final String displayName;
+  final String description;
+  final Set<AiroValidationEvidenceTier> acceptedEvidenceTiers;
+  final bool requiresPhysicalDevice;
+  final bool blocksAdvertising;
+
+  bool accepts(AiroValidationEvidenceTier tier) =>
+      acceptedEvidenceTiers.contains(tier);
+
+  bool get canBeSatisfiedByHostAutomation =>
+      acceptedEvidenceTiers.contains(AiroValidationEvidenceTier.hostAutomation);
+
+  @override
+  List<Object?> get props => [
+    schemaVersion,
+    gateId,
+    displayName,
+    description,
+    acceptedEvidenceTiers,
+    requiresPhysicalDevice,
+    blocksAdvertising,
+  ];
+}
+
+class AiroValidationTarget extends Equatable {
+  AiroValidationTarget({
+    required this.targetId,
+    required this.displayName,
+    required this.platform,
+    required this.productProfile,
+    required this.releasePhase,
+    required this.status,
+    required Set<AiroValidationGateId> requiredGates,
+    this.requiresDeviceCertification = false,
+    List<String> notes = const [],
+    this.schemaVersion = kAiroValidationSchemaVersion,
+  }) : requiredGates = Set.unmodifiable(requiredGates),
+       notes = List.unmodifiable(notes);
+
+  final String schemaVersion;
+  final String targetId;
+  final String displayName;
+  final AiroValidationPlatform platform;
+  final AiroValidationProductProfile productProfile;
+  final AiroValidationReleasePhase releasePhase;
+  final AiroValidationStatus status;
+  final Set<AiroValidationGateId> requiredGates;
+  final bool requiresDeviceCertification;
+  final List<String> notes;
+
+  bool get isBlocked => status == AiroValidationStatus.blocked;
+
+  @override
+  List<Object?> get props => [
+    schemaVersion,
+    targetId,
+    displayName,
+    platform,
+    productProfile,
+    releasePhase,
+    status,
+    requiredGates,
+    requiresDeviceCertification,
+    notes,
+  ];
+}
+
+class AiroCrossPlatformValidationMatrix extends Equatable {
+  AiroCrossPlatformValidationMatrix({
+    required Iterable<AiroValidationTarget> targets,
+    required Iterable<AiroValidationGate> gates,
+    this.schemaVersion = kAiroValidationSchemaVersion,
+  }) : targets = List.unmodifiable(targets),
+       gates = List.unmodifiable(gates);
+
+  final String schemaVersion;
+  final List<AiroValidationTarget> targets;
+  final List<AiroValidationGate> gates;
+
+  AiroValidationTarget? targetById(String targetId) {
+    for (final target in targets) {
+      if (target.targetId == targetId) return target;
+    }
+    return null;
+  }
+
+  AiroValidationGate? gateById(AiroValidationGateId gateId) {
+    for (final gate in gates) {
+      if (gate.gateId == gateId) return gate;
+    }
+    return null;
+  }
+
+  Iterable<AiroValidationGate> gatesForTarget(String targetId) {
+    final target = targetById(targetId);
+    if (target == null) return const [];
+    return target.requiredGates.map(gateById).whereType<AiroValidationGate>();
+  }
+
+  Set<AiroValidationGateId> missingGateIdsForTarget(String targetId) {
+    final target = targetById(targetId);
+    if (target == null) return const {};
+    return {
+      for (final gateId in target.requiredGates)
+        if (gateById(gateId) == null) gateId,
+    };
+  }
+
+  bool requiresPhysicalEvidence(String targetId) {
+    return gatesForTarget(targetId).any((gate) => gate.requiresPhysicalDevice);
+  }
+
+  bool canAdvertiseDeviceSupportWithHostOnlyEvidence(String targetId) {
+    final target = targetById(targetId);
+    if (target == null || target.isBlocked) return false;
+    if (!target.requiresDeviceCertification) return false;
+    return !gatesForTarget(targetId).any(
+      (gate) =>
+          gate.blocksAdvertising &&
+          !gate.accepts(AiroValidationEvidenceTier.hostAutomation),
+    );
+  }
+
+  @override
+  List<Object?> get props => [schemaVersion, targets, gates];
+}
+
+class AiroCrossPlatformValidation {
+  const AiroCrossPlatformValidation._();
+
+  static AiroCrossPlatformValidationMatrix matrix() {
+    return AiroCrossPlatformValidationMatrix(
+      targets: _targets(),
+      gates: _gates(),
+    );
+  }
+
+  static List<AiroValidationTarget> _targets() {
+    return [
+      AiroValidationTarget(
+        targetId: 'android-tv-lite-receiver',
+        displayName: 'Android TV Lite Receiver',
+        platform: AiroValidationPlatform.androidTv,
+        productProfile: AiroValidationProductProfile.liteReceiver,
+        releasePhase: AiroValidationReleasePhase.connectedDevice,
+        status: AiroValidationStatus.required,
+        requiresDeviceCertification: true,
+        requiredGates: const {
+          AiroValidationGateId.productCapabilities,
+          AiroValidationGateId.adaptiveUi,
+          AiroValidationGateId.remoteFocus,
+          AiroValidationGateId.playbackEngine,
+          AiroValidationGateId.mediaRouting,
+          AiroValidationGateId.pairingController,
+          AiroValidationGateId.sessionSync,
+          AiroValidationGateId.analyticsRedaction,
+          AiroValidationGateId.dependencyGovernance,
+          AiroValidationGateId.packageContentScan,
+          AiroValidationGateId.accessibility,
+          AiroValidationGateId.physicalDeviceEvidence,
+        },
+        notes: const [
+          'Remote-first receiver validation must include physical D-pad evidence.',
+          'Validation consumes product capability, adaptive UI, playback, pairing, command, and session contracts.',
+        ],
+      ),
+      AiroValidationTarget(
+        targetId: 'fire-tv-lite-receiver',
+        displayName: 'Fire TV Lite Receiver',
+        platform: AiroValidationPlatform.fireTv,
+        productProfile: AiroValidationProductProfile.liteReceiver,
+        releasePhase: AiroValidationReleasePhase.legacyDevice,
+        status: AiroValidationStatus.required,
+        requiresDeviceCertification: true,
+        requiredGates: const {
+          AiroValidationGateId.productCapabilities,
+          AiroValidationGateId.adaptiveUi,
+          AiroValidationGateId.remoteFocus,
+          AiroValidationGateId.playbackEngine,
+          AiroValidationGateId.mediaRouting,
+          AiroValidationGateId.pairingController,
+          AiroValidationGateId.sessionSync,
+          AiroValidationGateId.analyticsRedaction,
+          AiroValidationGateId.dependencyGovernance,
+          AiroValidationGateId.packageContentScan,
+          AiroValidationGateId.accessibility,
+          AiroValidationGateId.physicalDeviceEvidence,
+          AiroValidationGateId.storePolicy,
+        },
+        notes: const [
+          'Fire TV requires store-channel and physical remote evidence before support claims.',
+        ],
+      ),
+      AiroValidationTarget(
+        targetId: 'android-mobile-companion',
+        displayName: 'Android Mobile Companion',
+        platform: AiroValidationPlatform.androidMobile,
+        productProfile: AiroValidationProductProfile.companion,
+        releasePhase: AiroValidationReleasePhase.connectedDevice,
+        status: AiroValidationStatus.required,
+        requiredGates: const {
+          AiroValidationGateId.productCapabilities,
+          AiroValidationGateId.adaptiveUi,
+          AiroValidationGateId.touchInput,
+          AiroValidationGateId.pairingController,
+          AiroValidationGateId.sessionSync,
+          AiroValidationGateId.localNetworkPrivacy,
+          AiroValidationGateId.analyticsRedaction,
+          AiroValidationGateId.accessibility,
+        },
+        notes: const [
+          'Companion validation covers controller and privacy behavior, not receiver certification.',
+        ],
+      ),
+      AiroValidationTarget(
+        targetId: 'ios-ipados-companion',
+        displayName: 'iOS and iPadOS Companion',
+        platform: AiroValidationPlatform.ipados,
+        productProfile: AiroValidationProductProfile.companion,
+        releasePhase: AiroValidationReleasePhase.connectedDevice,
+        status: AiroValidationStatus.required,
+        requiredGates: const {
+          AiroValidationGateId.productCapabilities,
+          AiroValidationGateId.adaptiveUi,
+          AiroValidationGateId.touchInput,
+          AiroValidationGateId.pairingController,
+          AiroValidationGateId.sessionSync,
+          AiroValidationGateId.localNetworkPrivacy,
+          AiroValidationGateId.analyticsRedaction,
+          AiroValidationGateId.accessibility,
+          AiroValidationGateId.storePolicy,
+        },
+      ),
+      AiroValidationTarget(
+        targetId: 'desktop-pointer-companion',
+        displayName: 'Desktop Pointer Companion',
+        platform: AiroValidationPlatform.desktop,
+        productProfile: AiroValidationProductProfile.desktopCompanion,
+        releasePhase: AiroValidationReleasePhase.platformFoundation,
+        status: AiroValidationStatus.required,
+        requiredGates: const {
+          AiroValidationGateId.productCapabilities,
+          AiroValidationGateId.adaptiveUi,
+          AiroValidationGateId.pointerInput,
+          AiroValidationGateId.importExportDataGovernance,
+          AiroValidationGateId.analyticsRedaction,
+          AiroValidationGateId.accessibility,
+        },
+        notes: const [
+          'Desktop validation must not require physical TV remote evidence.',
+        ],
+      ),
+      AiroValidationTarget(
+        targetId: 'apple-tv-tvos',
+        displayName: 'Apple TV tvOS Receiver',
+        platform: AiroValidationPlatform.tvos,
+        productProfile: AiroValidationProductProfile.fullTv,
+        releasePhase: AiroValidationReleasePhase.storeReadiness,
+        status: AiroValidationStatus.blocked,
+        requiresDeviceCertification: true,
+        requiredGates: const {
+          AiroValidationGateId.nativeTarget,
+          AiroValidationGateId.remoteFocus,
+          AiroValidationGateId.playbackEngine,
+          AiroValidationGateId.storePolicy,
+          AiroValidationGateId.physicalDeviceEvidence,
+        },
+        notes: const [
+          'Blocked until a native tvOS target, store path, and evidence pipeline exist.',
+        ],
+      ),
+      AiroValidationTarget(
+        targetId: 'web-embedded-receiver',
+        displayName: 'Web Embedded Receiver',
+        platform: AiroValidationPlatform.webEmbeddedReceiver,
+        productProfile: AiroValidationProductProfile.embeddedReceiver,
+        releasePhase: AiroValidationReleasePhase.mediaRouting,
+        status: AiroValidationStatus.optional,
+        requiresDeviceCertification: true,
+        requiredGates: const {
+          AiroValidationGateId.productCapabilities,
+          AiroValidationGateId.adaptiveUi,
+          AiroValidationGateId.playbackEngine,
+          AiroValidationGateId.mediaRouting,
+          AiroValidationGateId.analyticsRedaction,
+          AiroValidationGateId.physicalDeviceEvidence,
+        },
+      ),
+      AiroValidationTarget(
+        targetId: 'backend-cloud-control-plane',
+        displayName: 'Backend Cloud Control Plane',
+        platform: AiroValidationPlatform.backendCloud,
+        productProfile: AiroValidationProductProfile.backendControlPlane,
+        releasePhase: AiroValidationReleasePhase.cloudBoundary,
+        status: AiroValidationStatus.required,
+        requiredGates: const {
+          AiroValidationGateId.orchestrationStorage,
+          AiroValidationGateId.cloudPrivacy,
+          AiroValidationGateId.analyticsRedaction,
+          AiroValidationGateId.dependencyGovernance,
+        },
+        notes: const [
+          'Cloud validation cannot advertise playback-device certification.',
+        ],
+      ),
+    ];
+  }
+
+  static List<AiroValidationGate> _gates() {
+    return [
+      AiroValidationGate(
+        gateId: AiroValidationGateId.productCapabilities,
+        displayName: 'Product capabilities',
+        description:
+            'Selected product profile exposes only declared modules and permissions.',
+        acceptedEvidenceTiers: const {
+          AiroValidationEvidenceTier.hostAutomation,
+        },
+      ),
+      AiroValidationGate(
+        gateId: AiroValidationGateId.adaptiveUi,
+        displayName: 'Adaptive UI',
+        description:
+            'Adaptive mode contract resolves interaction, density, focus, and accessibility behavior for the target.',
+        acceptedEvidenceTiers: const {
+          AiroValidationEvidenceTier.hostAutomation,
+        },
+      ),
+      AiroValidationGate(
+        gateId: AiroValidationGateId.remoteFocus,
+        displayName: 'Remote focus',
+        description:
+            'Remote or D-pad navigation remains deterministic during content and artwork loading.',
+        acceptedEvidenceTiers: const {
+          AiroValidationEvidenceTier.physicalDevice,
+          AiroValidationEvidenceTier.manualReview,
+        },
+        requiresPhysicalDevice: true,
+      ),
+      AiroValidationGate(
+        gateId: AiroValidationGateId.touchInput,
+        displayName: 'Touch input',
+        description:
+            'Touch companion controls satisfy target size, accessibility, and pairing workflows.',
+        acceptedEvidenceTiers: const {
+          AiroValidationEvidenceTier.hostAutomation,
+          AiroValidationEvidenceTier.physicalDevice,
+        },
+      ),
+      AiroValidationGate(
+        gateId: AiroValidationGateId.pointerInput,
+        displayName: 'Pointer input',
+        description:
+            'Pointer and keyboard surfaces use pointer-safe focus and navigation.',
+        acceptedEvidenceTiers: const {
+          AiroValidationEvidenceTier.hostAutomation,
+          AiroValidationEvidenceTier.manualReview,
+        },
+      ),
+      AiroValidationGate(
+        gateId: AiroValidationGateId.playbackEngine,
+        displayName: 'Playback engine',
+        description:
+            'Playback engine contract supports the target profile without direct app-layer player shortcuts.',
+        acceptedEvidenceTiers: const {
+          AiroValidationEvidenceTier.hostAutomation,
+          AiroValidationEvidenceTier.physicalDevice,
+        },
+        requiresPhysicalDevice: true,
+      ),
+      AiroValidationGate(
+        gateId: AiroValidationGateId.mediaRouting,
+        displayName: 'Media routing',
+        description:
+            'Media routing decisions use route handles and decision logs instead of raw provider auth material.',
+        acceptedEvidenceTiers: const {
+          AiroValidationEvidenceTier.hostAutomation,
+          AiroValidationEvidenceTier.securityPrivacyReview,
+        },
+      ),
+      AiroValidationGate(
+        gateId: AiroValidationGateId.pairingController,
+        displayName: 'Pairing controller',
+        description:
+            'Pairing and controller permissions use trusted-device contracts and scoped commands.',
+        acceptedEvidenceTiers: const {
+          AiroValidationEvidenceTier.hostAutomation,
+          AiroValidationEvidenceTier.physicalDevice,
+          AiroValidationEvidenceTier.securityPrivacyReview,
+        },
+      ),
+      AiroValidationGate(
+        gateId: AiroValidationGateId.sessionSync,
+        displayName: 'Session sync',
+        description:
+            'Session and handoff state uses receiver-authoritative revisions and conflict policy.',
+        acceptedEvidenceTiers: const {
+          AiroValidationEvidenceTier.hostAutomation,
+        },
+      ),
+      AiroValidationGate(
+        gateId: AiroValidationGateId.analyticsRedaction,
+        displayName: 'Analytics redaction',
+        description:
+            'Validation rejects prohibited analytics fields and verifies consent/local-only behavior.',
+        acceptedEvidenceTiers: const {
+          AiroValidationEvidenceTier.hostAutomation,
+          AiroValidationEvidenceTier.securityPrivacyReview,
+        },
+      ),
+      AiroValidationGate(
+        gateId: AiroValidationGateId.dependencyGovernance,
+        displayName: 'Dependency governance',
+        description:
+            'Target dependency set satisfies profile and release-line governance rules.',
+        acceptedEvidenceTiers: const {
+          AiroValidationEvidenceTier.hostAutomation,
+          AiroValidationEvidenceTier.releaseConfigReview,
+        },
+      ),
+      AiroValidationGate(
+        gateId: AiroValidationGateId.packageContentScan,
+        displayName: 'Package content scan',
+        description:
+            'Release artifact contains no bundled playlists, provider media, raw URLs, or credentials.',
+        acceptedEvidenceTiers: const {
+          AiroValidationEvidenceTier.hostAutomation,
+        },
+      ),
+      AiroValidationGate(
+        gateId: AiroValidationGateId.localNetworkPrivacy,
+        displayName: 'Local network privacy',
+        description:
+            'Local-network discovery and pairing permissions are disclosed and scoped.',
+        acceptedEvidenceTiers: const {
+          AiroValidationEvidenceTier.securityPrivacyReview,
+          AiroValidationEvidenceTier.manualReview,
+        },
+      ),
+      AiroValidationGate(
+        gateId: AiroValidationGateId.importExportDataGovernance,
+        displayName: 'Import/export data governance',
+        description:
+            'Playlist import/export and local data paths follow platform data contracts.',
+        acceptedEvidenceTiers: const {
+          AiroValidationEvidenceTier.hostAutomation,
+          AiroValidationEvidenceTier.securityPrivacyReview,
+        },
+      ),
+      AiroValidationGate(
+        gateId: AiroValidationGateId.accessibility,
+        displayName: 'Accessibility',
+        description:
+            'Target validates text scale, target size, focus, contrast, and reduced-motion behavior.',
+        acceptedEvidenceTiers: const {
+          AiroValidationEvidenceTier.hostAutomation,
+          AiroValidationEvidenceTier.manualReview,
+          AiroValidationEvidenceTier.physicalDevice,
+        },
+      ),
+      AiroValidationGate(
+        gateId: AiroValidationGateId.nativeTarget,
+        displayName: 'Native target',
+        description:
+            'Native platform target, signing, entitlement, and build path exist.',
+        acceptedEvidenceTiers: const {
+          AiroValidationEvidenceTier.hostAutomation,
+          AiroValidationEvidenceTier.releaseConfigReview,
+        },
+      ),
+      AiroValidationGate(
+        gateId: AiroValidationGateId.storePolicy,
+        displayName: 'Store policy',
+        description:
+            'Store-channel metadata, permissions, device support, and policy checks pass.',
+        acceptedEvidenceTiers: const {
+          AiroValidationEvidenceTier.storeReview,
+          AiroValidationEvidenceTier.manualReview,
+        },
+      ),
+      AiroValidationGate(
+        gateId: AiroValidationGateId.orchestrationStorage,
+        displayName: 'Orchestration storage',
+        description:
+            'Cloud orchestration storage contracts are versioned, scoped, and rollback-safe.',
+        acceptedEvidenceTiers: const {
+          AiroValidationEvidenceTier.cloudContract,
+          AiroValidationEvidenceTier.hostAutomation,
+        },
+      ),
+      AiroValidationGate(
+        gateId: AiroValidationGateId.cloudPrivacy,
+        displayName: 'Cloud privacy',
+        description:
+            'Cloud control-plane validation covers retention, redaction, identity, and access boundaries.',
+        acceptedEvidenceTiers: const {
+          AiroValidationEvidenceTier.securityPrivacyReview,
+          AiroValidationEvidenceTier.cloudContract,
+        },
+      ),
+      AiroValidationGate(
+        gateId: AiroValidationGateId.physicalDeviceEvidence,
+        displayName: 'Physical device evidence',
+        description:
+            'Target has recent physical-device evidence for certification claims.',
+        acceptedEvidenceTiers: const {
+          AiroValidationEvidenceTier.physicalDevice,
+        },
+        requiresPhysicalDevice: true,
+      ),
+    ];
+  }
 }
 
 class AiroTvLegacyCertification {
