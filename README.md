@@ -3,7 +3,7 @@
 [![Download Airo TV](https://img.shields.io/badge/Download-Airo%20TV-success)](https://github.com/DevelopersCoffee/airo/releases/download/airo-tv-v0.0.2/Airo-TV-v0.0.2.apk)
 [![GitHub Release](https://img.shields.io/github/v/release/DevelopersCoffee/airo)](https://github.com/DevelopersCoffee/airo/releases)
 [![Flutter](https://img.shields.io/badge/Flutter-3.44.4+-blue.svg)](https://flutter.dev/)
-[![License: pending](https://img.shields.io/badge/license-pending-lightgrey)](#license)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Security Policy](https://img.shields.io/badge/security-policy-brightgreen)](SECURITY.md)
 [![Trust](https://img.shields.io/badge/trust-transparent-brightgreen)](TRUST.md)
 [![Versioning](https://img.shields.io/badge/versioning-semver-blue)](CHANGELOG.md)
@@ -253,10 +253,9 @@ cd ../airo-my-v2-task
 
 ## License
 
-The repository currently has public docs that reference MIT licensing, but the
-root `LICENSE` file is not present and package license files still need maintainer
-confirmation. Treat the license as **pending** until maintainers add the confirmed
-root license file.
+Airo is licensed under the [MIT License](LICENSE).
 
-If you plan to reuse code outside this repository, wait for the license cleanup or
-ask in a GitHub issue first.
+V2 release profiles also include third-party dependencies with their own
+licenses. See [V2 Third-Party Notices](docs/release/V2_THIRD_PARTY_NOTICES.md)
+and [V2 License Review](docs/release/V2_LICENSE_REVIEW.md) before public
+redistribution.

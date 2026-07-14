@@ -1,7 +1,7 @@
 # V2 License Review
 
 This document records the current license-readiness baseline for the v2 Android
-publishing wave. It does not choose the project license.
+publishing wave.
 
 Implementation work for this release line must start from latest `origin/v2`.
 
@@ -9,10 +9,10 @@ Implementation work for this release line must start from latest `origin/v2`.
 
 | Area | Status | Notes |
 | --- | --- | --- |
-| Root `LICENSE` | Blocked | No root license file is present. Maintainers must choose the project license before public reuse or broad distribution guidance is final. |
-| README license badge | Pending | README intentionally marks the repository license as pending. |
-| Internal package license files | Blocked | Package `LICENSE` files currently contain `TODO: Add your license here.` and must be replaced after the root license is chosen. |
-| Vendored Cast library | Identified | `packages/platform_player/third_party/flutter_chrome_cast` declares BSD-3-Clause. Preserve its copyright and license notice in source and binary notices. |
+| Root `LICENSE` | Ready | Root project license is MIT. |
+| README license badge | Ready | README links to the root MIT license. |
+| Internal package license files | Ready | Airo-owned package `LICENSE` files use the root MIT license text. |
+| Vendored Cast library | Documented | `packages/platform_player/third_party/flutter_chrome_cast` declares BSD-3-Clause. Its notice is recorded in `docs/release/V2_THIRD_PARTY_NOTICES.md`. |
 | Private/commercial dependencies | Unknown | Maintainers must confirm whether any private or commercial dependency is bundled in release builds. |
 
 ## V2 Release Profiles Reviewed
@@ -105,13 +105,10 @@ distribution:
 
 ## Required Before Public Distribution
 
-- Choose and add the root project `LICENSE`.
-- Replace package-level `TODO` license files with the approved license text or
-  remove them in favor of the root license policy if maintainers choose that
-  structure.
-- Generate third-party notices for the exact APK/AAB dependency graph produced
-  by each public profile.
-- Include the vendored Cast library BSD-3-Clause notice in third-party notices.
+- Keep the root MIT `LICENSE` and package license files aligned.
+- Keep `docs/release/V2_THIRD_PARTY_NOTICES.md` with the release asset set.
+- Regenerate or re-check third-party notices when v2 release profile
+  dependencies change.
 - Confirm whether any private, commercial, gated, or restricted-license
   dependency is bundled in each release artifact.
 - Confirm that Play Store, direct APK, and any other listing text matches the
@@ -119,9 +116,6 @@ distribution:
 
 ## Human Decisions Still Needed
 
-- Root project license.
-- Whether package-level license files should duplicate the root license or be
-  replaced by a single root `LICENSE` plus notices.
 - Whether SHA256-only release provenance is sufficient for the first v2 wave or
   whether signed/SLSA provenance is required.
 - Whether any private/commercial dependency is present in v2 release artifacts.
