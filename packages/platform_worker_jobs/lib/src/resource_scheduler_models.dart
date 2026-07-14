@@ -150,6 +150,50 @@ enum AiroWorkerSchedulerCode {
   final String stableId;
 }
 
+enum AiroConstrainedResourceMode {
+  normal('normal'),
+  playbackPriority('playback_priority'),
+  memoryConservation('memory_conservation'),
+  lowStorage('low_storage'),
+  criticalProtection('critical_protection');
+
+  const AiroConstrainedResourceMode(this.stableId);
+
+  final String stableId;
+}
+
+enum AiroConstrainedResourceReason {
+  activePlayback('active_playback'),
+  fragilePlayback('fragile_playback'),
+  focusNavigation('focus_navigation'),
+  memoryPressure('memory_pressure'),
+  storagePressure('storage_pressure'),
+  thermalPressure('thermal_pressure'),
+  lowBattery('low_battery'),
+  networkConstrained('network_constrained');
+
+  const AiroConstrainedResourceReason(this.stableId);
+
+  final String stableId;
+}
+
+enum AiroConstrainedResourceAction {
+  preservePlayback('preserve_playback'),
+  preserveUserState('preserve_user_state'),
+  deferBackgroundWork('defer_background_work'),
+  clearOffscreenArtwork('clear_offscreen_artwork'),
+  trimArtworkCache('trim_artwork_cache'),
+  expireEpgCache('expire_epg_cache'),
+  compactDatabase('compact_database'),
+  stopEnrichment('stop_enrichment'),
+  stopOptionalProbing('stop_optional_probing'),
+  blockDownloadsRecordingAndModels('block_downloads_recording_and_models');
+
+  const AiroConstrainedResourceAction(this.stableId);
+
+  final String stableId;
+}
+
 enum AiroWorkerStableValueRejectionCode {
   empty('empty'),
   urlValue('url_value'),
@@ -391,6 +435,378 @@ class AiroWorkerResourceSnapshot extends Equatable {
     isCharging,
     networkState,
     runningJobs,
+  ];
+}
+
+class AiroConstrainedResourceBudget extends Equatable {
+  const AiroConstrainedResourceBudget({
+    required this.maxFlutterHeapMb,
+    required this.maxNativeHeapMb,
+    required this.maxArtworkCacheMb,
+    required this.maxEpgCacheMb,
+    required this.maxDatabaseCacheMb,
+    required this.maxNetworkBufferMb,
+    required this.maxConcurrentJobs,
+    required this.maxPlayerCount,
+  });
+
+  final int maxFlutterHeapMb;
+  final int maxNativeHeapMb;
+  final int maxArtworkCacheMb;
+  final int maxEpgCacheMb;
+  final int maxDatabaseCacheMb;
+  final int maxNetworkBufferMb;
+  final int maxConcurrentJobs;
+  final int maxPlayerCount;
+
+  Map<String, Object?> toPublicMap() {
+    return {
+      'maxFlutterHeapMb': maxFlutterHeapMb,
+      'maxNativeHeapMb': maxNativeHeapMb,
+      'maxArtworkCacheMb': maxArtworkCacheMb,
+      'maxEpgCacheMb': maxEpgCacheMb,
+      'maxDatabaseCacheMb': maxDatabaseCacheMb,
+      'maxNetworkBufferMb': maxNetworkBufferMb,
+      'maxConcurrentJobs': maxConcurrentJobs,
+      'maxPlayerCount': maxPlayerCount,
+    };
+  }
+
+  @override
+  List<Object?> get props => [
+    maxFlutterHeapMb,
+    maxNativeHeapMb,
+    maxArtworkCacheMb,
+    maxEpgCacheMb,
+    maxDatabaseCacheMb,
+    maxNetworkBufferMb,
+    maxConcurrentJobs,
+    maxPlayerCount,
+  ];
+}
+
+class AiroConstrainedResourcePlan extends Equatable {
+  AiroConstrainedResourcePlan({
+    required this.mode,
+    required this.budget,
+    required Set<AiroWorkerJobKind> allowedJobKinds,
+    required Set<AiroWorkerJobKind> deferredJobKinds,
+    required Set<AiroWorkerJobKind> blockedJobKinds,
+    required Set<AiroConstrainedResourceAction> actions,
+    required Set<AiroConstrainedResourceReason> reasons,
+    required this.generatedAt,
+    this.schemaVersion = kAiroWorkerSchedulerSchemaVersion,
+  }) : allowedJobKinds = Set.unmodifiable(allowedJobKinds),
+       deferredJobKinds = Set.unmodifiable(deferredJobKinds),
+       blockedJobKinds = Set.unmodifiable(blockedJobKinds),
+       actions = Set.unmodifiable(actions),
+       reasons = Set.unmodifiable(reasons);
+
+  final String schemaVersion;
+  final AiroConstrainedResourceMode mode;
+  final AiroConstrainedResourceBudget budget;
+  final Set<AiroWorkerJobKind> allowedJobKinds;
+  final Set<AiroWorkerJobKind> deferredJobKinds;
+  final Set<AiroWorkerJobKind> blockedJobKinds;
+  final Set<AiroConstrainedResourceAction> actions;
+  final Set<AiroConstrainedResourceReason> reasons;
+  final DateTime generatedAt;
+
+  bool get lowStorageMode =>
+      mode == AiroConstrainedResourceMode.lowStorage ||
+      reasons.contains(AiroConstrainedResourceReason.storagePressure);
+
+  bool allowsJobKind(AiroWorkerJobKind kind) => allowedJobKinds.contains(kind);
+
+  Map<String, Object?> toPublicMap() {
+    return {
+      'schemaVersion': schemaVersion,
+      'mode': mode.stableId,
+      'budget': budget.toPublicMap(),
+      'allowedJobKinds': _workerJobKindStableIds(allowedJobKinds),
+      'deferredJobKinds': _workerJobKindStableIds(deferredJobKinds),
+      'blockedJobKinds': _workerJobKindStableIds(blockedJobKinds),
+      'actions': _constrainedResourceActionStableIds(actions),
+      'reasons': _constrainedResourceReasonStableIds(reasons),
+      'generatedAt': generatedAt.toIso8601String(),
+    };
+  }
+
+  @override
+  List<Object?> get props => [
+    schemaVersion,
+    mode,
+    budget,
+    allowedJobKinds,
+    deferredJobKinds,
+    blockedJobKinds,
+    actions,
+    reasons,
+    generatedAt,
+  ];
+}
+
+List<String> _workerJobKindStableIds(Iterable<AiroWorkerJobKind> values) {
+  return values.map((value) => value.stableId).toList(growable: false)..sort();
+}
+
+List<String> _constrainedResourceActionStableIds(
+  Iterable<AiroConstrainedResourceAction> values,
+) {
+  return values.map((value) => value.stableId).toList(growable: false)..sort();
+}
+
+List<String> _constrainedResourceReasonStableIds(
+  Iterable<AiroConstrainedResourceReason> values,
+) {
+  return values.map((value) => value.stableId).toList(growable: false)..sort();
+}
+
+class AiroConstrainedResourcePolicy extends Equatable {
+  const AiroConstrainedResourcePolicy({
+    this.minBatteryPercent = 20,
+    this.normalBudget = const AiroConstrainedResourceBudget(
+      maxFlutterHeapMb: 256,
+      maxNativeHeapMb: 192,
+      maxArtworkCacheMb: 48,
+      maxEpgCacheMb: 32,
+      maxDatabaseCacheMb: 48,
+      maxNetworkBufferMb: 24,
+      maxConcurrentJobs: 2,
+      maxPlayerCount: 1,
+    ),
+    this.playbackBudget = const AiroConstrainedResourceBudget(
+      maxFlutterHeapMb: 192,
+      maxNativeHeapMb: 160,
+      maxArtworkCacheMb: 24,
+      maxEpgCacheMb: 16,
+      maxDatabaseCacheMb: 32,
+      maxNetworkBufferMb: 16,
+      maxConcurrentJobs: 1,
+      maxPlayerCount: 1,
+    ),
+    this.constrainedBudget = const AiroConstrainedResourceBudget(
+      maxFlutterHeapMb: 160,
+      maxNativeHeapMb: 128,
+      maxArtworkCacheMb: 16,
+      maxEpgCacheMb: 8,
+      maxDatabaseCacheMb: 24,
+      maxNetworkBufferMb: 12,
+      maxConcurrentJobs: 1,
+      maxPlayerCount: 1,
+    ),
+    this.criticalBudget = const AiroConstrainedResourceBudget(
+      maxFlutterHeapMb: 128,
+      maxNativeHeapMb: 96,
+      maxArtworkCacheMb: 8,
+      maxEpgCacheMb: 4,
+      maxDatabaseCacheMb: 12,
+      maxNetworkBufferMb: 8,
+      maxConcurrentJobs: 1,
+      maxPlayerCount: 1,
+    ),
+  });
+
+  final int minBatteryPercent;
+  final AiroConstrainedResourceBudget normalBudget;
+  final AiroConstrainedResourceBudget playbackBudget;
+  final AiroConstrainedResourceBudget constrainedBudget;
+  final AiroConstrainedResourceBudget criticalBudget;
+
+  AiroConstrainedResourcePlan evaluate({
+    required AiroWorkerResourceSnapshot snapshot,
+    required DateTime now,
+  }) {
+    final reasons = _reasonsFor(snapshot);
+    final mode = _modeFor(snapshot, reasons);
+    final budget = _budgetFor(mode);
+    final actions = _actionsFor(mode);
+    final blocked = _blockedJobsFor(mode);
+    final deferred = _deferredJobsFor(mode).difference(blocked);
+    final allowed = _allowedJobsFor(mode).difference(blocked);
+
+    return AiroConstrainedResourcePlan(
+      mode: mode,
+      budget: budget,
+      allowedJobKinds: allowed,
+      deferredJobKinds: deferred,
+      blockedJobKinds: blocked,
+      actions: actions,
+      reasons: reasons,
+      generatedAt: now,
+    );
+  }
+
+  Set<AiroConstrainedResourceReason> _reasonsFor(
+    AiroWorkerResourceSnapshot snapshot,
+  ) {
+    final reasons = <AiroConstrainedResourceReason>{};
+    if (snapshot.hasActivePlayback) {
+      reasons.add(AiroConstrainedResourceReason.activePlayback);
+    }
+    if (snapshot.playbackState.isFragile) {
+      reasons.add(AiroConstrainedResourceReason.fragilePlayback);
+    }
+    if (snapshot.focusNavigationActive) {
+      reasons.add(AiroConstrainedResourceReason.focusNavigation);
+    }
+    if (snapshot.memoryPressure.blocksBackground) {
+      reasons.add(AiroConstrainedResourceReason.memoryPressure);
+    }
+    if (snapshot.storagePressure.blocksBackground) {
+      reasons.add(AiroConstrainedResourceReason.storagePressure);
+    }
+    if (snapshot.thermalPressure.blocksBackground) {
+      reasons.add(AiroConstrainedResourceReason.thermalPressure);
+    }
+    if (!snapshot.isCharging && snapshot.batteryPercent < minBatteryPercent) {
+      reasons.add(AiroConstrainedResourceReason.lowBattery);
+    }
+    if (snapshot.networkState == AiroWorkerNetworkState.unavailable ||
+        snapshot.networkState == AiroWorkerNetworkState.constrained ||
+        snapshot.networkState == AiroWorkerNetworkState.metered) {
+      reasons.add(AiroConstrainedResourceReason.networkConstrained);
+    }
+    return Set.unmodifiable(reasons);
+  }
+
+  AiroConstrainedResourceMode _modeFor(
+    AiroWorkerResourceSnapshot snapshot,
+    Set<AiroConstrainedResourceReason> reasons,
+  ) {
+    if (snapshot.memoryPressure.blocksAllNonCritical ||
+        snapshot.storagePressure.blocksAllNonCritical ||
+        snapshot.thermalPressure.blocksAllNonCritical) {
+      return AiroConstrainedResourceMode.criticalProtection;
+    }
+    if (reasons.contains(AiroConstrainedResourceReason.storagePressure)) {
+      return AiroConstrainedResourceMode.lowStorage;
+    }
+    if (reasons.contains(AiroConstrainedResourceReason.memoryPressure) ||
+        reasons.contains(AiroConstrainedResourceReason.thermalPressure)) {
+      return AiroConstrainedResourceMode.memoryConservation;
+    }
+    if (snapshot.hasActivePlayback) {
+      return AiroConstrainedResourceMode.playbackPriority;
+    }
+    return AiroConstrainedResourceMode.normal;
+  }
+
+  AiroConstrainedResourceBudget _budgetFor(AiroConstrainedResourceMode mode) {
+    return switch (mode) {
+      AiroConstrainedResourceMode.normal => normalBudget,
+      AiroConstrainedResourceMode.playbackPriority => playbackBudget,
+      AiroConstrainedResourceMode.memoryConservation => constrainedBudget,
+      AiroConstrainedResourceMode.lowStorage => constrainedBudget,
+      AiroConstrainedResourceMode.criticalProtection => criticalBudget,
+    };
+  }
+
+  Set<AiroConstrainedResourceAction> _actionsFor(
+    AiroConstrainedResourceMode mode,
+  ) {
+    final actions = <AiroConstrainedResourceAction>{
+      AiroConstrainedResourceAction.preservePlayback,
+      AiroConstrainedResourceAction.preserveUserState,
+    };
+    if (mode != AiroConstrainedResourceMode.normal) {
+      actions.add(AiroConstrainedResourceAction.deferBackgroundWork);
+      actions.add(AiroConstrainedResourceAction.trimArtworkCache);
+    }
+    if (mode == AiroConstrainedResourceMode.memoryConservation ||
+        mode == AiroConstrainedResourceMode.criticalProtection) {
+      actions.add(AiroConstrainedResourceAction.clearOffscreenArtwork);
+      actions.add(AiroConstrainedResourceAction.stopEnrichment);
+      actions.add(AiroConstrainedResourceAction.stopOptionalProbing);
+    }
+    if (mode == AiroConstrainedResourceMode.lowStorage ||
+        mode == AiroConstrainedResourceMode.criticalProtection) {
+      actions.add(AiroConstrainedResourceAction.expireEpgCache);
+      actions.add(AiroConstrainedResourceAction.compactDatabase);
+      actions.add(
+        AiroConstrainedResourceAction.blockDownloadsRecordingAndModels,
+      );
+    }
+    return Set.unmodifiable(actions);
+  }
+
+  Set<AiroWorkerJobKind> _allowedJobsFor(AiroConstrainedResourceMode mode) {
+    final common = <AiroWorkerJobKind>{
+      AiroWorkerJobKind.playbackRecovery,
+      AiroWorkerJobKind.pairingSecurity,
+      AiroWorkerJobKind.protocolHeartbeat,
+      AiroWorkerJobKind.streamHealthProbe,
+      AiroWorkerJobKind.cacheCleanup,
+      AiroWorkerJobKind.deviceSync,
+    };
+    if (mode == AiroConstrainedResourceMode.normal) {
+      return {
+        ...common,
+        AiroWorkerJobKind.playlistImport,
+        AiroWorkerJobKind.epgRefresh,
+        AiroWorkerJobKind.searchIndexing,
+        AiroWorkerJobKind.databaseCompaction,
+        AiroWorkerJobKind.artworkCacheWarmup,
+      };
+    }
+    if (mode == AiroConstrainedResourceMode.lowStorage) {
+      return {
+        AiroWorkerJobKind.playbackRecovery,
+        AiroWorkerJobKind.protocolHeartbeat,
+        AiroWorkerJobKind.cacheCleanup,
+        AiroWorkerJobKind.databaseCompaction,
+      };
+    }
+    if (mode == AiroConstrainedResourceMode.criticalProtection) {
+      return {
+        AiroWorkerJobKind.playbackRecovery,
+        AiroWorkerJobKind.protocolHeartbeat,
+        AiroWorkerJobKind.cacheCleanup,
+      };
+    }
+    return common;
+  }
+
+  Set<AiroWorkerJobKind> _deferredJobsFor(AiroConstrainedResourceMode mode) {
+    if (mode == AiroConstrainedResourceMode.normal) return const {};
+    return {
+      AiroWorkerJobKind.playlistImport,
+      AiroWorkerJobKind.epgRefresh,
+      AiroWorkerJobKind.searchIndexing,
+      AiroWorkerJobKind.databaseCompaction,
+      AiroWorkerJobKind.artworkCacheWarmup,
+      AiroWorkerJobKind.deviceSync,
+    };
+  }
+
+  Set<AiroWorkerJobKind> _blockedJobsFor(AiroConstrainedResourceMode mode) {
+    final blocked = <AiroWorkerJobKind>{};
+    if (mode == AiroConstrainedResourceMode.lowStorage ||
+        mode == AiroConstrainedResourceMode.criticalProtection) {
+      blocked.addAll({
+        AiroWorkerJobKind.modelDownload,
+        AiroWorkerJobKind.recordingPrep,
+        AiroWorkerJobKind.artworkCacheWarmup,
+      });
+    }
+    if (mode == AiroConstrainedResourceMode.memoryConservation ||
+        mode == AiroConstrainedResourceMode.criticalProtection) {
+      blocked.addAll({
+        AiroWorkerJobKind.modelDownload,
+        AiroWorkerJobKind.recordingPrep,
+        AiroWorkerJobKind.searchIndexing,
+      });
+    }
+    return Set.unmodifiable(blocked);
+  }
+
+  @override
+  List<Object?> get props => [
+    minBatteryPercent,
+    normalBudget,
+    playbackBudget,
+    constrainedBudget,
+    criticalBudget,
   ];
 }
 

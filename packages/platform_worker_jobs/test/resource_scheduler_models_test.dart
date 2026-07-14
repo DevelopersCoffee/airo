@@ -277,6 +277,168 @@ void main() {
       expect(cancelDecision.action, AiroWorkerSchedulerAction.cancel);
       expect(scheduler.cancelledJobIds, contains(job.jobId));
     });
+
+    test('normal constrained plan permits regular bounded work', () {
+      final plan = const AiroConstrainedResourcePolicy().evaluate(
+        snapshot: _snapshot(now: now),
+        now: now,
+      );
+
+      expect(plan.mode, AiroConstrainedResourceMode.normal);
+      expect(plan.lowStorageMode, isFalse);
+      expect(plan.allowsJobKind(AiroWorkerJobKind.playlistImport), isTrue);
+      expect(plan.allowsJobKind(AiroWorkerJobKind.epgRefresh), isTrue);
+      expect(plan.allowsJobKind(AiroWorkerJobKind.artworkCacheWarmup), isTrue);
+      expect(plan.deferredJobKinds, isEmpty);
+      expect(plan.blockedJobKinds, isEmpty);
+      expect(plan.budget.maxConcurrentJobs, 2);
+    });
+
+    test('playback priority plan defers heavy background work', () {
+      final plan = const AiroConstrainedResourcePolicy().evaluate(
+        snapshot: _snapshot(
+          now: now,
+          playbackState: AiroWorkerPlaybackState.playing,
+        ),
+        now: now,
+      );
+
+      expect(plan.mode, AiroConstrainedResourceMode.playbackPriority);
+      expect(plan.lowStorageMode, isFalse);
+      expect(plan.allowsJobKind(AiroWorkerJobKind.playbackRecovery), isTrue);
+      expect(plan.allowsJobKind(AiroWorkerJobKind.protocolHeartbeat), isTrue);
+      expect(plan.deferredJobKinds, contains(AiroWorkerJobKind.playlistImport));
+      expect(plan.deferredJobKinds, contains(AiroWorkerJobKind.searchIndexing));
+      expect(
+        plan.deferredJobKinds,
+        contains(AiroWorkerJobKind.artworkCacheWarmup),
+      );
+      expect(
+        plan.actions,
+        contains(AiroConstrainedResourceAction.preservePlayback),
+      );
+      expect(
+        plan.actions,
+        contains(AiroConstrainedResourceAction.deferBackgroundWork),
+      );
+      expect(plan.budget.maxConcurrentJobs, 1);
+    });
+
+    test('memory pressure plan clears optional caches and model work', () {
+      final plan = const AiroConstrainedResourcePolicy().evaluate(
+        snapshot: _snapshot(
+          now: now,
+          memoryPressure: AiroWorkerPressureLevel.high,
+        ),
+        now: now,
+      );
+
+      expect(plan.mode, AiroConstrainedResourceMode.memoryConservation);
+      expect(
+        plan.actions,
+        contains(AiroConstrainedResourceAction.clearOffscreenArtwork),
+      );
+      expect(
+        plan.actions,
+        contains(AiroConstrainedResourceAction.stopEnrichment),
+      );
+      expect(
+        plan.actions,
+        contains(AiroConstrainedResourceAction.stopOptionalProbing),
+      );
+      expect(plan.blockedJobKinds, contains(AiroWorkerJobKind.modelDownload));
+      expect(plan.blockedJobKinds, contains(AiroWorkerJobKind.searchIndexing));
+      expect(plan.blockedJobKinds, contains(AiroWorkerJobKind.recordingPrep));
+      expect(plan.budget.maxArtworkCacheMb, 16);
+    });
+
+    test('low storage plan allows cleanup and blocks storage growth', () {
+      final plan = const AiroConstrainedResourcePolicy().evaluate(
+        snapshot: _snapshot(
+          now: now,
+          storagePressure: AiroWorkerPressureLevel.high,
+        ),
+        now: now,
+      );
+
+      expect(plan.mode, AiroConstrainedResourceMode.lowStorage);
+      expect(plan.lowStorageMode, isTrue);
+      expect(plan.allowsJobKind(AiroWorkerJobKind.cacheCleanup), isTrue);
+      expect(plan.allowsJobKind(AiroWorkerJobKind.databaseCompaction), isTrue);
+      expect(plan.blockedJobKinds, contains(AiroWorkerJobKind.modelDownload));
+      expect(plan.blockedJobKinds, contains(AiroWorkerJobKind.recordingPrep));
+      expect(
+        plan.blockedJobKinds,
+        contains(AiroWorkerJobKind.artworkCacheWarmup),
+      );
+      expect(
+        plan.actions,
+        contains(AiroConstrainedResourceAction.expireEpgCache),
+      );
+      expect(
+        plan.actions,
+        contains(
+          AiroConstrainedResourceAction.blockDownloadsRecordingAndModels,
+        ),
+      );
+      expect(
+        plan.actions,
+        contains(AiroConstrainedResourceAction.preserveUserState),
+      );
+    });
+
+    test('critical pressure keeps only critical cleanup and playback work', () {
+      final plan = const AiroConstrainedResourcePolicy().evaluate(
+        snapshot: _snapshot(
+          now: now,
+          thermalPressure: AiroWorkerPressureLevel.critical,
+        ),
+        now: now,
+      );
+
+      expect(plan.mode, AiroConstrainedResourceMode.criticalProtection);
+      expect(plan.allowedJobKinds, {
+        AiroWorkerJobKind.playbackRecovery,
+        AiroWorkerJobKind.protocolHeartbeat,
+        AiroWorkerJobKind.cacheCleanup,
+      });
+      expect(plan.blockedJobKinds, contains(AiroWorkerJobKind.modelDownload));
+      expect(plan.blockedJobKinds, contains(AiroWorkerJobKind.recordingPrep));
+      expect(plan.blockedJobKinds, contains(AiroWorkerJobKind.searchIndexing));
+      expect(
+        plan.blockedJobKinds,
+        contains(AiroWorkerJobKind.artworkCacheWarmup),
+      );
+      expect(plan.budget.maxFlutterHeapMb, 128);
+      expect(plan.budget.maxArtworkCacheMb, 8);
+    });
+
+    test('constrained resource public map exposes stable scheduler state', () {
+      final plan = const AiroConstrainedResourcePolicy().evaluate(
+        snapshot: _snapshot(
+          now: now,
+          storagePressure: AiroWorkerPressureLevel.high,
+        ),
+        now: now,
+      );
+
+      final publicMap = plan.toPublicMap();
+      final flattened = publicMap.toString();
+
+      expect(
+        publicMap['mode'],
+        AiroConstrainedResourceMode.lowStorage.stableId,
+      );
+      expect(publicMap['generatedAt'], now.toIso8601String());
+      expect(
+        publicMap['blockedJobKinds'],
+        contains(AiroWorkerJobKind.modelDownload.stableId),
+      );
+      expect(flattened, isNot(contains('mediaUrl')));
+      expect(flattened, isNot(contains('filePath')));
+      expect(flattened, isNot(contains('providerPayload')));
+      expect(flattened, isNot(contains('diagnosticDump')));
+    });
   });
 }
 
