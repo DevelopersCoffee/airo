@@ -38,6 +38,11 @@ Every public v2 Android release must publish:
 Internal-only QA releases may omit public GitHub Release publication, but must
 still produce APKs, checksums, and a workflow summary.
 
+The canonical checksum and manifest generator is
+`scripts/generate-release-manifest.py`. Release workflows should run it after
+final artifact renaming so `SHA256SUMS` and the JSON manifest cover the exact
+APK/AAB filenames attached to GitHub Releases or passed to store upload jobs.
+
 ## Artifact Naming
 
 Use stable, user-facing names:
@@ -57,6 +62,7 @@ Airo-IPTV-v2.0.0.apk
 Airo-Streaming-v2.0.0.apk
 Airo-TV-v2.0.0.apk
 Airo-TV-v2.0.0-Play-Store.aab
+Airo-TV-v2.0.0-Release-Manifest.json
 ```
 
 Do not publish debug-looking names such as `app-release.apk` or
