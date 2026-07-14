@@ -608,4 +608,143 @@ void main() {
       expect(flattened, isNot(contains('providerPayload')));
     });
   });
+
+  group('Airo lower API evaluation process', () {
+    final now = DateTime.utc(2026, 7, 14, 12);
+    final policy = AiroLowerApiEvaluationPolicy();
+
+    AiroLowerApiCandidate candidate({
+      String candidateId = 'api-23-25-experimental',
+      int minAndroidApi = 23,
+      int maxAndroidApi = 25,
+      bool requestsPublicSupportClaim = false,
+    }) {
+      return AiroLowerApiCandidate(
+        candidateId: candidateId,
+        minAndroidApi: minAndroidApi,
+        maxAndroidApi: maxAndroidApi,
+        productProfile: AiroValidationProductProfile.liteReceiver,
+        releaseChannel: AiroDistributionChannel.directApk,
+        requestsPublicSupportClaim: requestsPublicSupportClaim,
+      );
+    }
+
+    List<AiroLowerApiEvidence> passingEvidenceFor({
+      String candidateId = 'api-23-25-experimental',
+      DateTime? capturedAt,
+    }) {
+      return [
+        for (final kind in policy.requiredEvidenceKinds)
+          AiroLowerApiEvidence(
+            evidenceId: '${candidateId}_${kind.stableId}',
+            candidateId: candidateId,
+            kind: kind,
+            capturedAt: capturedAt ?? now,
+            passed: true,
+          ),
+      ];
+    }
+
+    test(
+      'complete API 23-25 evidence enters internal experimental evaluation',
+      () {
+        final result = policy.evaluate(
+          candidate: candidate(),
+          evidence: passingEvidenceFor(),
+          now: now,
+        );
+
+        expect(result.accepted, isTrue);
+        expect(
+          result.status,
+          AiroLowerApiEvaluationStatus.experimentalEligible,
+        );
+        expect(result.canEnterExperimentalCertification, isTrue);
+        expect(result.canAdvertisePublicSupport, isFalse);
+      },
+    );
+
+    test('public support claims remain blocked below API 26', () {
+      final result = policy.evaluate(
+        candidate: candidate(requestsPublicSupportClaim: true),
+        evidence: passingEvidenceFor(),
+        now: now,
+      );
+
+      expect(result.accepted, isFalse);
+      expect(
+        result.blockers.map((blocker) => blocker.code),
+        contains(AiroLowerApiEvaluationCode.publicSupportBlocked),
+      );
+      expect(result.canAdvertisePublicSupport, isFalse);
+    });
+
+    test('out-of-range API candidates are rejected deterministically', () {
+      final result = policy.evaluate(
+        candidate: candidate(minAndroidApi: 22, maxAndroidApi: 25),
+        evidence: passingEvidenceFor(),
+        now: now,
+      );
+
+      expect(
+        result.blockers.map((blocker) => blocker.code),
+        contains(AiroLowerApiEvaluationCode.apiRangeUnsupported),
+      );
+    });
+
+    test('missing lower API evidence blocks experimental evaluation', () {
+      final result = policy.evaluate(
+        candidate: candidate(),
+        evidence: passingEvidenceFor().where(
+          (record) => record.kind != AiroLowerApiEvidenceKind.restrictedTrust,
+        ),
+        now: now,
+      );
+
+      expect(result.accepted, isFalse);
+      expect(
+        result.blockers.map((blocker) => blocker.evidenceKind),
+        contains(AiroLowerApiEvidenceKind.restrictedTrust),
+      );
+    });
+
+    test('wrong-candidate and stale lower API evidence are typed', () {
+      final wrongCandidate = policy.evaluate(
+        candidate: candidate(),
+        evidence: passingEvidenceFor(candidateId: 'other-candidate'),
+        now: now,
+      );
+      final stale = policy.evaluate(
+        candidate: candidate(),
+        evidence: passingEvidenceFor(
+          capturedAt: now.subtract(const Duration(days: 45)),
+        ),
+        now: now,
+      );
+
+      expect(
+        wrongCandidate.blockers.map((blocker) => blocker.code),
+        contains(AiroLowerApiEvaluationCode.evidenceWrongCandidate),
+      );
+      expect(
+        stale.blockers.map((blocker) => blocker.code),
+        contains(AiroLowerApiEvaluationCode.evidenceStale),
+      );
+    });
+
+    test('lower API public map excludes raw evidence details', () {
+      final result = policy.evaluate(
+        candidate: candidate(),
+        evidence: passingEvidenceFor(),
+        now: now,
+      );
+      final flattened = result.toPublicMap().toString();
+
+      expect(flattened, contains('api-23-25-experimental'));
+      expect(flattened, isNot(contains('/Users/')));
+      expect(flattened, isNot(contains('deviceLog')));
+      expect(flattened, isNot(contains('providerPayload')));
+      expect(flattened, isNot(contains('privateReleaseMaterial')));
+    });
+  });
 }

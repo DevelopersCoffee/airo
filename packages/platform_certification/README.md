@@ -20,6 +20,8 @@ unsupported.
   device classes.
 - Default Airo TV legacy distribution matrix for Google Play TV, Amazon
   Appstore, direct APK, and operator-box channels.
+- Extended lower-API evaluation policy for internal API 23-25 experimental
+  certification without public support claims.
 - Default Airo cross-platform validation matrix for Airo TV v2 platform
   hardening.
 - Benchmark device-class gates for constrained TV, standard TV, mobile

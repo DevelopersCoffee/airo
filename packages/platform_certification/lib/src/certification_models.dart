@@ -3,6 +3,7 @@ import 'package:equatable/equatable.dart';
 const String kAiroCertificationSchemaVersion = '1.0.0';
 const String kAiroValidationSchemaVersion = '1.0.0';
 const String kAiroDistributionSchemaVersion = '1.0.0';
+const String kAiroLowerApiEvaluationSchemaVersion = '1.0.0';
 
 enum AiroCertificationLevel {
   certified('certified'),
@@ -221,6 +222,283 @@ enum AiroDistributionBlockerCode {
   const AiroDistributionBlockerCode(this.stableId);
 
   final String stableId;
+}
+
+enum AiroLowerApiEvidenceKind {
+  dependencyBaseline('dependency_baseline'),
+  flutterEmbedding('flutter_embedding'),
+  packageContentScan('package_content_scan'),
+  installLaunch('install_launch'),
+  remoteFocus('remote_focus'),
+  playbackBaseline('playback_baseline'),
+  memoryPressure('memory_pressure'),
+  lowStorage('low_storage'),
+  sleepWake('sleep_wake'),
+  restrictedTrust('restricted_trust'),
+  securityPatchReview('security_patch_review');
+
+  const AiroLowerApiEvidenceKind(this.stableId);
+
+  final String stableId;
+}
+
+enum AiroLowerApiEvaluationStatus {
+  blocked('blocked'),
+  experimentalEligible('experimental_eligible');
+
+  const AiroLowerApiEvaluationStatus(this.stableId);
+
+  final String stableId;
+}
+
+enum AiroLowerApiEvaluationCode {
+  accepted('accepted'),
+  apiRangeUnsupported('api_range_unsupported'),
+  publicSupportBlocked('public_support_blocked'),
+  evidenceMissing('evidence_missing'),
+  evidenceWrongCandidate('evidence_wrong_candidate'),
+  evidenceStale('evidence_stale');
+
+  const AiroLowerApiEvaluationCode(this.stableId);
+
+  final String stableId;
+}
+
+class AiroLowerApiCandidate extends Equatable {
+  const AiroLowerApiCandidate({
+    required this.candidateId,
+    required this.minAndroidApi,
+    required this.maxAndroidApi,
+    required this.productProfile,
+    required this.releaseChannel,
+    this.requestsPublicSupportClaim = false,
+    this.schemaVersion = kAiroLowerApiEvaluationSchemaVersion,
+  }) : assert(minAndroidApi > 0),
+       assert(maxAndroidApi > 0);
+
+  final String schemaVersion;
+  final String candidateId;
+  final int minAndroidApi;
+  final int maxAndroidApi;
+  final AiroValidationProductProfile productProfile;
+  final AiroDistributionChannel releaseChannel;
+  final bool requestsPublicSupportClaim;
+
+  bool get isLowerThanApi26 => maxAndroidApi < 26;
+
+  Map<String, Object?> toPublicMap() {
+    return {
+      'candidateId': candidateId,
+      'minAndroidApi': minAndroidApi,
+      'maxAndroidApi': maxAndroidApi,
+      'productProfile': productProfile.stableId,
+      'releaseChannel': releaseChannel.stableId,
+      'requestsPublicSupportClaim': requestsPublicSupportClaim,
+    };
+  }
+
+  @override
+  List<Object?> get props => [
+    schemaVersion,
+    candidateId,
+    minAndroidApi,
+    maxAndroidApi,
+    productProfile,
+    releaseChannel,
+    requestsPublicSupportClaim,
+  ];
+}
+
+class AiroLowerApiEvidence extends Equatable {
+  const AiroLowerApiEvidence({
+    required this.evidenceId,
+    required this.candidateId,
+    required this.kind,
+    required this.capturedAt,
+    required this.passed,
+    this.schemaVersion = kAiroLowerApiEvaluationSchemaVersion,
+  });
+
+  final String schemaVersion;
+  final String evidenceId;
+  final String candidateId;
+  final AiroLowerApiEvidenceKind kind;
+  final DateTime capturedAt;
+  final bool passed;
+
+  @override
+  List<Object?> get props => [
+    schemaVersion,
+    evidenceId,
+    candidateId,
+    kind,
+    capturedAt,
+    passed,
+  ];
+}
+
+class AiroLowerApiEvaluationBlocker extends Equatable {
+  const AiroLowerApiEvaluationBlocker({
+    required this.code,
+    required this.candidateId,
+    this.evidenceKind,
+  });
+
+  final AiroLowerApiEvaluationCode code;
+  final String candidateId;
+  final AiroLowerApiEvidenceKind? evidenceKind;
+
+  @override
+  List<Object?> get props => [code, candidateId, evidenceKind];
+}
+
+class AiroLowerApiEvaluationResult extends Equatable {
+  AiroLowerApiEvaluationResult({
+    required this.candidate,
+    required this.status,
+    required List<AiroLowerApiEvaluationBlocker> blockers,
+  }) : blockers = List.unmodifiable(blockers);
+
+  final AiroLowerApiCandidate candidate;
+  final AiroLowerApiEvaluationStatus status;
+  final List<AiroLowerApiEvaluationBlocker> blockers;
+
+  bool get accepted => blockers.isEmpty;
+
+  bool get canEnterExperimentalCertification =>
+      accepted && status == AiroLowerApiEvaluationStatus.experimentalEligible;
+
+  bool get canAdvertisePublicSupport => false;
+
+  Map<String, Object?> toPublicMap() {
+    return {
+      'candidate': candidate.toPublicMap(),
+      'status': status.stableId,
+      'accepted': accepted,
+      'canEnterExperimentalCertification': canEnterExperimentalCertification,
+      'canAdvertisePublicSupport': canAdvertisePublicSupport,
+      'blockers': [
+        for (final blocker in blockers)
+          {
+            'code': blocker.code.stableId,
+            'evidenceKind': blocker.evidenceKind?.stableId,
+          },
+      ],
+    };
+  }
+
+  @override
+  List<Object?> get props => [candidate, status, blockers];
+}
+
+class AiroLowerApiEvaluationPolicy extends Equatable {
+  AiroLowerApiEvaluationPolicy({
+    this.minExperimentalApi = 23,
+    this.maxExperimentalApi = 25,
+    this.maxEvidenceAge = const Duration(days: 30),
+    Set<AiroLowerApiEvidenceKind> requiredEvidenceKinds = const {
+      AiroLowerApiEvidenceKind.dependencyBaseline,
+      AiroLowerApiEvidenceKind.flutterEmbedding,
+      AiroLowerApiEvidenceKind.packageContentScan,
+      AiroLowerApiEvidenceKind.installLaunch,
+      AiroLowerApiEvidenceKind.remoteFocus,
+      AiroLowerApiEvidenceKind.playbackBaseline,
+      AiroLowerApiEvidenceKind.memoryPressure,
+      AiroLowerApiEvidenceKind.lowStorage,
+      AiroLowerApiEvidenceKind.sleepWake,
+      AiroLowerApiEvidenceKind.restrictedTrust,
+      AiroLowerApiEvidenceKind.securityPatchReview,
+    },
+  }) : requiredEvidenceKinds = Set.unmodifiable(requiredEvidenceKinds);
+
+  final int minExperimentalApi;
+  final int maxExperimentalApi;
+  final Duration maxEvidenceAge;
+  final Set<AiroLowerApiEvidenceKind> requiredEvidenceKinds;
+
+  AiroLowerApiEvaluationResult evaluate({
+    required AiroLowerApiCandidate candidate,
+    required Iterable<AiroLowerApiEvidence> evidence,
+    required DateTime now,
+  }) {
+    final blockers = <AiroLowerApiEvaluationBlocker>[];
+    if (candidate.minAndroidApi < minExperimentalApi ||
+        candidate.maxAndroidApi > maxExperimentalApi ||
+        candidate.minAndroidApi > candidate.maxAndroidApi) {
+      blockers.add(
+        AiroLowerApiEvaluationBlocker(
+          code: AiroLowerApiEvaluationCode.apiRangeUnsupported,
+          candidateId: candidate.candidateId,
+        ),
+      );
+    }
+    if (candidate.requestsPublicSupportClaim) {
+      blockers.add(
+        AiroLowerApiEvaluationBlocker(
+          code: AiroLowerApiEvaluationCode.publicSupportBlocked,
+          candidateId: candidate.candidateId,
+        ),
+      );
+    }
+
+    final passedEvidence = evidence.where((record) => record.passed).toList();
+    for (final requiredKind in requiredEvidenceKinds) {
+      final kindRecords = passedEvidence
+          .where((record) => record.kind == requiredKind)
+          .toList();
+      if (kindRecords.isEmpty) {
+        blockers.add(
+          AiroLowerApiEvaluationBlocker(
+            code: AiroLowerApiEvaluationCode.evidenceMissing,
+            candidateId: candidate.candidateId,
+            evidenceKind: requiredKind,
+          ),
+        );
+        continue;
+      }
+      final candidateRecords = kindRecords
+          .where((record) => record.candidateId == candidate.candidateId)
+          .toList();
+      if (candidateRecords.isEmpty) {
+        blockers.add(
+          AiroLowerApiEvaluationBlocker(
+            code: AiroLowerApiEvaluationCode.evidenceWrongCandidate,
+            candidateId: candidate.candidateId,
+            evidenceKind: requiredKind,
+          ),
+        );
+        continue;
+      }
+      final freshRecords = candidateRecords.where(
+        (record) => !record.capturedAt.add(maxEvidenceAge).isBefore(now),
+      );
+      if (freshRecords.isEmpty) {
+        blockers.add(
+          AiroLowerApiEvaluationBlocker(
+            code: AiroLowerApiEvaluationCode.evidenceStale,
+            candidateId: candidate.candidateId,
+            evidenceKind: requiredKind,
+          ),
+        );
+      }
+    }
+
+    return AiroLowerApiEvaluationResult(
+      candidate: candidate,
+      status: blockers.isEmpty
+          ? AiroLowerApiEvaluationStatus.experimentalEligible
+          : AiroLowerApiEvaluationStatus.blocked,
+      blockers: blockers,
+    );
+  }
+
+  @override
+  List<Object?> get props => [
+    minExperimentalApi,
+    maxExperimentalApi,
+    maxEvidenceAge,
+    requiredEvidenceKinds,
+  ];
 }
 
 class AiroDistributionTarget extends Equatable {
