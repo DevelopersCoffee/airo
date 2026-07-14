@@ -9,6 +9,8 @@ environment:
   flutter: ">=1.17.0"
 
 dependencies:
+  core_analytics:
+    path: ../core_analytics
   flutter:
     sdk: flutter
   platform_channels:
