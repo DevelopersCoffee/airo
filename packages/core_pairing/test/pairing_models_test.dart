@@ -5,6 +5,7 @@ void main() {
   group('Airo pairing contracts', () {
     final issuedAt = DateTime.utc(2026, 7, 14, 10);
     final expiresAt = issuedAt.add(const Duration(minutes: 5));
+    final trustedUntil = issuedAt.add(const Duration(days: 90));
 
     test('pairing challenge exposes stable schema and expiry', () {
       final challenge = AiroPairingChallenge(
@@ -84,6 +85,165 @@ void main() {
             )
             .code,
         AiroTrustedDeviceAccessCode.revoked,
+      );
+    });
+
+    test('trusted device security policy accepts active trusted key', () {
+      final relationship = trustedDeviceRecord(
+        issuedAt: issuedAt,
+        expiresAt: trustedUntil,
+      );
+      final policy = AiroTrustedDeviceSecurityPolicy(
+        requiredScope: AiroPairingScope.playbackControl,
+        minimumTrustLevel: AiroTrustedDeviceTrustLevel.trusted,
+        keyRotationInterval: const Duration(days: 30),
+      );
+
+      final result = policy.evaluate(
+        record: relationship,
+        now: issuedAt.add(const Duration(days: 1)),
+      );
+
+      expect(result.accepted, isTrue);
+    });
+
+    test('trusted device security rejects insufficient trust level', () {
+      final relationship = trustedDeviceRecord(
+        issuedAt: issuedAt,
+        expiresAt: trustedUntil,
+        trustLevel: AiroTrustedDeviceTrustLevel.restricted,
+      );
+      final policy = AiroTrustedDeviceSecurityPolicy(
+        requiredScope: AiroPairingScope.playbackControl,
+        minimumTrustLevel: AiroTrustedDeviceTrustLevel.trusted,
+      );
+
+      final result = policy.evaluate(
+        record: relationship,
+        now: issuedAt.add(const Duration(days: 1)),
+      );
+
+      expect(
+        result.has(AiroTrustedDeviceSecurityCode.trustLevelInsufficient),
+        isTrue,
+      );
+    });
+
+    test('trusted device security rejects missing key descriptor', () {
+      final relationship = trustedDeviceRecord(
+        issuedAt: issuedAt,
+        expiresAt: trustedUntil,
+        includeKeyDescriptor: false,
+      );
+      final policy = AiroTrustedDeviceSecurityPolicy(
+        requiredScope: AiroPairingScope.playbackControl,
+      );
+
+      final result = policy.evaluate(
+        record: relationship,
+        now: issuedAt.add(const Duration(days: 1)),
+      );
+
+      expect(result.has(AiroTrustedDeviceSecurityCode.keyMissing), isTrue);
+    });
+
+    test('trusted device security rejects key lifecycle failures', () {
+      final policy = AiroTrustedDeviceSecurityPolicy(
+        requiredScope: AiroPairingScope.playbackControl,
+        keyRotationInterval: const Duration(days: 30),
+      );
+
+      AiroTrustedDeviceSecurityResult evaluate(
+        AiroTrustedDeviceKeyDescriptor keyDescriptor,
+      ) {
+        return policy.evaluate(
+          record: trustedDeviceRecord(
+            issuedAt: issuedAt,
+            expiresAt: trustedUntil,
+            keyDescriptor: keyDescriptor,
+          ),
+          now: issuedAt.add(const Duration(days: 31)),
+        );
+      }
+
+      expect(
+        evaluate(
+          trustedKeyDescriptor(
+            issuedAt: issuedAt.add(const Duration(days: 32)),
+            expiresAt: trustedUntil,
+          ),
+        ).has(AiroTrustedDeviceSecurityCode.keyNotYetValid),
+        isTrue,
+      );
+      expect(
+        evaluate(
+          trustedKeyDescriptor(
+            issuedAt: issuedAt,
+            expiresAt: issuedAt.add(const Duration(days: 20)),
+          ),
+        ).has(AiroTrustedDeviceSecurityCode.keyExpired),
+        isTrue,
+      );
+      expect(
+        evaluate(
+          trustedKeyDescriptor(
+            issuedAt: issuedAt,
+            expiresAt: trustedUntil,
+            revokedAt: issuedAt.add(const Duration(days: 10)),
+          ),
+        ).has(AiroTrustedDeviceSecurityCode.keyRevoked),
+        isTrue,
+      );
+      expect(
+        evaluate(
+          trustedKeyDescriptor(issuedAt: issuedAt, expiresAt: trustedUntil),
+        ).has(AiroTrustedDeviceSecurityCode.keyRotationRequired),
+        isTrue,
+      );
+    });
+
+    test('trusted device security rejects unsupported key algorithm', () {
+      final relationship = trustedDeviceRecord(
+        issuedAt: issuedAt,
+        expiresAt: trustedUntil,
+      );
+      final policy = AiroTrustedDeviceSecurityPolicy(
+        requiredScope: AiroPairingScope.playbackControl,
+        allowedKeyAlgorithms: const {AiroTrustedDeviceKeyAlgorithm.p256},
+      );
+
+      final result = policy.evaluate(
+        record: relationship,
+        now: issuedAt.add(const Duration(days: 1)),
+      );
+
+      expect(result.has(AiroTrustedDeviceSecurityCode.keyUnsupported), isTrue);
+    });
+
+    test('trusted device security preserves revocation as access denial', () {
+      final relationship = trustedDeviceRecord(
+        issuedAt: issuedAt,
+        expiresAt: trustedUntil,
+        revokedAt: issuedAt.add(const Duration(minutes: 1)),
+      );
+      final policy = AiroTrustedDeviceSecurityPolicy(
+        requiredScope: AiroPairingScope.playbackControl,
+      );
+
+      final result = policy.evaluate(
+        record: relationship,
+        now: issuedAt.add(const Duration(minutes: 1)),
+      );
+
+      expect(result.has(AiroTrustedDeviceSecurityCode.accessDenied), isTrue);
+      expect(
+        result.blockers
+            .where(
+              (blocker) =>
+                  blocker.accessCode == AiroTrustedDeviceAccessCode.revoked,
+            )
+            .length,
+        1,
       );
     });
   });
@@ -246,4 +406,51 @@ void main() {
       );
     });
   });
+}
+
+AiroTrustedDeviceKeyDescriptor trustedKeyDescriptor({
+  required DateTime issuedAt,
+  required DateTime expiresAt,
+  AiroTrustedDeviceKeyAlgorithm algorithm =
+      AiroTrustedDeviceKeyAlgorithm.ed25519,
+  DateTime? revokedAt,
+}) {
+  return AiroTrustedDeviceKeyDescriptor(
+    keyId: 'key-1',
+    algorithm: algorithm,
+    publicKeyFingerprint: 'pub-fingerprint-1',
+    createdAt: issuedAt,
+    notBefore: issuedAt,
+    expiresAt: expiresAt,
+    revokedAt: revokedAt,
+  );
+}
+
+AiroTrustedDeviceRecord trustedDeviceRecord({
+  required DateTime issuedAt,
+  required DateTime expiresAt,
+  AiroTrustedDeviceTrustLevel trustLevel = AiroTrustedDeviceTrustLevel.trusted,
+  AiroTrustedDeviceKeyDescriptor? keyDescriptor,
+  bool includeKeyDescriptor = true,
+  DateTime? revokedAt,
+}) {
+  return AiroTrustedDeviceRecord(
+    relationshipId: 'trusted-device-1',
+    controllerDeviceId: 'phone-1',
+    receiverDeviceId: 'receiver-tv-1',
+    controllerRole: AiroDeviceRole.mobileController,
+    receiverRole: AiroDeviceRole.tvReceiver,
+    scopes: const {
+      AiroPairingScope.playbackControl,
+      AiroPairingScope.companionSearch,
+    },
+    createdAt: issuedAt,
+    expiresAt: expiresAt,
+    revokedAt: revokedAt,
+    trustLevel: trustLevel,
+    keyDescriptor: includeKeyDescriptor
+        ? keyDescriptor ??
+              trustedKeyDescriptor(issuedAt: issuedAt, expiresAt: expiresAt)
+        : null,
+  );
 }
