@@ -10,6 +10,9 @@ analytics SDKs directly.
 ## Scope
 
 - Typed analytics event envelope.
+- Analytics schema registry with stable event names, owners, purposes, allowed
+  fields, prohibited fields, retention classes, dashboard requirements, and
+  validation codes.
 - Service configuration for provider kind, product profile, collection
   enablement, queue budgets, provider isolation, non-blocking behavior, and
   resettable installation IDs.
@@ -20,6 +23,8 @@ analytics SDKs directly.
 - Provider-backed adapter boundary that catches provider failures and falls
   back to deterministic no-op behavior.
 - Timed event helper that emits bucketed durations instead of raw timings.
+- Default Airo TV v2.0.0.1 event schemas for playback startup, pairing,
+  handoff, legacy decoder fallback, and subscription conversion.
 - Performance instrumentation schema for UI, playback, import, search,
   protocol, command, memory, storage, network, and pairing samples.
 - No-op and fake performance instrumentation sinks for deterministic tests.

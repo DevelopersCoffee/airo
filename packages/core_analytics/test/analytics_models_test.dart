@@ -5,12 +5,13 @@ void main() {
   group('Airo analytics contracts', () {
     AiroAnalyticsEvent event({
       String name = 'playback_started',
+      String owner = 'media',
       AiroAnalyticsPurpose purpose = AiroAnalyticsPurpose.product,
       Map<String, Object?> params = const {'source_type': 'iptv'},
     }) {
       return AiroAnalyticsEvent(
         name: name,
-        owner: 'media',
+        owner: owner,
         purpose: purpose,
         params: params,
       );
@@ -237,6 +238,155 @@ void main() {
       expect(result.status, AiroAnalyticsTrackStatus.accepted);
       expect(service.events.single.params['duration_bucket'], '1_3s');
       expect(service.events.single.params.toString(), isNot(contains('2500')));
+    });
+
+    test('schema registry accepts registered event envelope', () {
+      final registry = AiroTvAnalyticsSchemas.registry();
+      final result = registry.validateEvent(
+        event(
+          name: 'playback_startup_completed',
+          purpose: AiroAnalyticsPurpose.playbackQuality,
+          params: const {
+            'source_type': 'iptv',
+            'startup_bucket': '1_3s',
+            'decoder_type': 'hardware',
+          },
+        ),
+      );
+
+      expect(registry.validateRegistry().accepted, isTrue);
+      expect(result.accepted, isTrue);
+      expect(
+        registry.schemaFor('playback_startup_completed')?.retentionClass,
+        AiroAnalyticsRetentionClass.product90Days,
+      );
+    });
+
+    test('schema registry rejects unknown and mismatched events', () {
+      final registry = AiroTvAnalyticsSchemas.registry();
+
+      expect(
+        registry.validateEvent(event(name: 'unknown_event')).codes,
+        contains(AiroAnalyticsSchemaValidationCode.schemaMissing),
+      );
+      expect(
+        registry
+            .validateEvent(
+              event(
+                name: 'pairing_completed',
+                purpose: AiroAnalyticsPurpose.product,
+                params: const {
+                  'source_profile': 'mobile_companion',
+                  'target_profile': 'lite_receiver',
+                },
+              ),
+            )
+            .codes,
+        contains(AiroAnalyticsSchemaValidationCode.purposeMismatch),
+      );
+    });
+
+    test('schema registry enforces required and allowed fields', () {
+      final registry = AiroTvAnalyticsSchemas.registry();
+      final result = registry.validateEvent(
+        event(
+          name: 'subscription_conversion',
+          owner: 'growth',
+          params: const {
+            'entry_surface': 'settings',
+            'plan_bucket': 'annual',
+            'success': 'true',
+            'unexpected_field': 'value',
+          },
+        ),
+      );
+
+      expect(
+        result.codes,
+        contains(AiroAnalyticsSchemaValidationCode.fieldKindMismatch),
+      );
+      expect(
+        result.codes,
+        contains(AiroAnalyticsSchemaValidationCode.fieldNotAllowed),
+      );
+    });
+
+    test('schema registry preserves privacy filter violations', () {
+      final registry = AiroTvAnalyticsSchemas.registry();
+      final result = registry.validateEvent(
+        event(
+          name: 'playback_startup_completed',
+          purpose: AiroAnalyticsPurpose.playbackQuality,
+          params: const {
+            'source_type': 'https://example.com/live.m3u8',
+            'startup_bucket': '1_3s',
+          },
+        ),
+      );
+
+      expect(
+        result.codes,
+        contains(AiroAnalyticsSchemaValidationCode.privacyViolation),
+      );
+      expect(
+        result.privacyViolations.map((violation) => violation.code),
+        contains(AiroAnalyticsPrivacyCode.urlValue),
+      );
+    });
+
+    test('schema registry rejects duplicate and unsafe schemas', () {
+      final registry = AiroAnalyticsSchemaRegistry(
+        schemas: [
+          AiroTvAnalyticsSchemas.playbackStartupCompleted(),
+          AiroAnalyticsEventSchema(
+            name: 'playback_startup_completed',
+            owner: 'media',
+            purpose: AiroAnalyticsPurpose.playbackQuality,
+            retentionClass: AiroAnalyticsRetentionClass.product90Days,
+            dashboardRequirement: AiroAnalyticsDashboardRequirement.required,
+            testsRequired: false,
+            allowedFields: const [
+              AiroAnalyticsFieldSchema(
+                name: 'channel',
+                kind: AiroAnalyticsFieldKind.category,
+              ),
+            ],
+          ),
+        ],
+      );
+
+      final result = registry.validateRegistry();
+
+      expect(
+        result.codes,
+        contains(AiroAnalyticsSchemaValidationCode.duplicateSchema),
+      );
+      expect(
+        result.codes,
+        contains(AiroAnalyticsSchemaValidationCode.prohibitedFieldAllowed),
+      );
+      expect(
+        result.codes,
+        contains(AiroAnalyticsSchemaValidationCode.testCoverageMissing),
+      );
+    });
+
+    test('schema registry public map exposes stable metadata only', () {
+      final publicMap = AiroTvAnalyticsSchemas.registry().toPublicMap();
+      final flattened = publicMap.toString();
+
+      expect(flattened, contains('playback_startup_completed'));
+      expect(flattened, contains(AiroAnalyticsFieldKind.bucket.stableId));
+      expect(
+        flattened,
+        contains(AiroAnalyticsDashboardRequirement.required.stableId),
+      );
+      expect(flattened, isNot(contains('/Users/')));
+      expect(flattened, isNot(contains('providerPayload')));
+      expect(flattened, isNot(contains('storeConsoleAccount')));
+      expect(flattened, isNot(contains('rawCredential')));
+      expect(flattened, isNot(contains('http://')));
+      expect(flattened, isNot(contains('192.168.')));
     });
   });
 }

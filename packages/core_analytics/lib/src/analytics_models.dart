@@ -103,6 +103,62 @@ enum AiroAnalyticsLifecycleCode {
   final String stableId;
 }
 
+enum AiroAnalyticsFieldKind {
+  stableIdentifier('stable_id'),
+  category('category'),
+  bucket('bucket'),
+  count('count'),
+  decimal('decimal'),
+  boolean('boolean');
+
+  const AiroAnalyticsFieldKind(this.stableId);
+
+  final String stableId;
+}
+
+enum AiroAnalyticsRetentionClass {
+  operational30Days('operational_30_days', 30),
+  product90Days('product_90_days', 90),
+  diagnostics30Days('diagnostics_30_days', 30),
+  crash90Days('crash_90_days', 90),
+  aggregateOnly('aggregate_only', 0);
+
+  const AiroAnalyticsRetentionClass(this.stableId, this.days);
+
+  final String stableId;
+  final int days;
+}
+
+enum AiroAnalyticsDashboardRequirement {
+  none('none'),
+  optional('optional'),
+  required('required');
+
+  const AiroAnalyticsDashboardRequirement(this.stableId);
+
+  final String stableId;
+}
+
+enum AiroAnalyticsSchemaValidationCode {
+  accepted('accepted'),
+  schemaMissing('schema_missing'),
+  duplicateSchema('duplicate_schema'),
+  ownerMismatch('owner_mismatch'),
+  purposeMismatch('purpose_mismatch'),
+  schemaVersionMismatch('schema_version_mismatch'),
+  requiredFieldMissing('required_field_missing'),
+  fieldNotAllowed('field_not_allowed'),
+  fieldKindMismatch('field_kind_mismatch'),
+  prohibitedFieldAllowed('prohibited_field_allowed'),
+  privacyViolation('privacy_violation'),
+  retentionInvalid('retention_invalid'),
+  testCoverageMissing('test_coverage_missing');
+
+  const AiroAnalyticsSchemaValidationCode(this.stableId);
+
+  final String stableId;
+}
+
 class AiroAnalyticsEvent extends Equatable {
   AiroAnalyticsEvent({
     required this.name,
@@ -228,6 +284,237 @@ class AiroAnalyticsPrivacyResult extends Equatable {
 
   @override
   List<Object?> get props => [violations];
+}
+
+class AiroAnalyticsSchemaValidationResult extends Equatable {
+  AiroAnalyticsSchemaValidationResult({
+    required List<AiroAnalyticsSchemaValidationCode> codes,
+    List<AiroAnalyticsPrivacyViolation> privacyViolations = const [],
+  }) : codes = List.unmodifiable(codes),
+       privacyViolations = List.unmodifiable(privacyViolations);
+
+  final List<AiroAnalyticsSchemaValidationCode> codes;
+  final List<AiroAnalyticsPrivacyViolation> privacyViolations;
+
+  bool get accepted =>
+      codes.length == 1 &&
+      codes.single == AiroAnalyticsSchemaValidationCode.accepted;
+
+  Map<String, Object?> toPublicMap() {
+    return {
+      'accepted': accepted,
+      'codes': codes.map((code) => code.stableId).toList(growable: false),
+      'privacyViolations': privacyViolations
+          .map(
+            (violation) => {
+              'code': violation.code.stableId,
+              'field': violation.field,
+            },
+          )
+          .toList(growable: false),
+    };
+  }
+
+  @override
+  List<Object?> get props => [codes, privacyViolations];
+}
+
+class AiroAnalyticsFieldSchema extends Equatable {
+  const AiroAnalyticsFieldSchema({
+    required this.name,
+    required this.kind,
+    this.required = false,
+  });
+
+  final String name;
+  final AiroAnalyticsFieldKind kind;
+  final bool required;
+
+  Map<String, Object?> toPublicMap() {
+    return {'name': name, 'kind': kind.stableId, 'required': required};
+  }
+
+  @override
+  List<Object?> get props => [name, kind, required];
+}
+
+class AiroAnalyticsEventSchema extends Equatable {
+  AiroAnalyticsEventSchema({
+    required this.name,
+    required this.owner,
+    required this.purpose,
+    required List<AiroAnalyticsFieldSchema> allowedFields,
+    Set<String> prohibitedFields = const {},
+    required this.retentionClass,
+    required this.dashboardRequirement,
+    this.testsRequired = true,
+    this.schemaVersion = kAiroAnalyticsSchemaVersion,
+  }) : allowedFields = List.unmodifiable(allowedFields),
+       prohibitedFields = Set.unmodifiable(
+         prohibitedFields.map(AiroAnalyticsPrivacyFilter.normalizeFieldName),
+       );
+
+  final String schemaVersion;
+  final String name;
+  final String owner;
+  final AiroAnalyticsPurpose purpose;
+  final List<AiroAnalyticsFieldSchema> allowedFields;
+  final Set<String> prohibitedFields;
+  final AiroAnalyticsRetentionClass retentionClass;
+  final AiroAnalyticsDashboardRequirement dashboardRequirement;
+  final bool testsRequired;
+
+  Set<String> get allowedFieldNames =>
+      allowedFields.map((field) => field.name).toSet();
+
+  Map<String, Object?> toPublicMap() {
+    return {
+      'schemaVersion': schemaVersion,
+      'name': name,
+      'owner': owner,
+      'purpose': purpose.stableId,
+      'allowedFields': allowedFields
+          .map((field) => field.toPublicMap())
+          .toList(growable: false),
+      'prohibitedFields': prohibitedFields.toList(growable: false)..sort(),
+      'retentionClass': retentionClass.stableId,
+      'retentionDays': retentionClass.days,
+      'dashboardRequirement': dashboardRequirement.stableId,
+      'testsRequired': testsRequired,
+    };
+  }
+
+  @override
+  List<Object?> get props => [
+    schemaVersion,
+    name,
+    owner,
+    purpose,
+    allowedFields,
+    prohibitedFields,
+    retentionClass,
+    dashboardRequirement,
+    testsRequired,
+  ];
+}
+
+class AiroAnalyticsSchemaRegistry extends Equatable {
+  AiroAnalyticsSchemaRegistry({
+    required Iterable<AiroAnalyticsEventSchema> schemas,
+    this.privacyFilter,
+    this.schemaVersion = kAiroAnalyticsSchemaVersion,
+  }) : schemas = List.unmodifiable(schemas);
+
+  final String schemaVersion;
+  final List<AiroAnalyticsEventSchema> schemas;
+  final AiroAnalyticsPrivacyFilter? privacyFilter;
+
+  AiroAnalyticsEventSchema? schemaFor(String eventName) {
+    for (final schema in schemas) {
+      if (schema.name == eventName) return schema;
+    }
+    return null;
+  }
+
+  AiroAnalyticsSchemaValidationResult validateRegistry() {
+    final codes = <AiroAnalyticsSchemaValidationCode>[];
+    final seenNames = <String>{};
+    for (final schema in schemas) {
+      if (!seenNames.add(schema.name)) {
+        codes.add(AiroAnalyticsSchemaValidationCode.duplicateSchema);
+      }
+      if (schema.retentionClass != AiroAnalyticsRetentionClass.aggregateOnly &&
+          schema.retentionClass.days <= 0) {
+        codes.add(AiroAnalyticsSchemaValidationCode.retentionInvalid);
+      }
+      if (schema.testsRequired == false) {
+        codes.add(AiroAnalyticsSchemaValidationCode.testCoverageMissing);
+      }
+      final allowedNormalized = schema.allowedFields
+          .map(
+            (field) =>
+                AiroAnalyticsPrivacyFilter.normalizeFieldName(field.name),
+          )
+          .toSet();
+      final prohibited = {
+        ...schema.prohibitedFields,
+        ...AiroAnalyticsPrivacyFilter.standard.prohibitedFields,
+      };
+      if (allowedNormalized.any(prohibited.contains)) {
+        codes.add(AiroAnalyticsSchemaValidationCode.prohibitedFieldAllowed);
+      }
+    }
+    return AiroAnalyticsSchemaValidationResult(
+      codes: codes.isEmpty
+          ? const [AiroAnalyticsSchemaValidationCode.accepted]
+          : codes.toSet().toList(growable: false),
+    );
+  }
+
+  AiroAnalyticsSchemaValidationResult validateEvent(AiroAnalyticsEvent event) {
+    final schema = schemaFor(event.name);
+    if (schema == null) {
+      return AiroAnalyticsSchemaValidationResult(
+        codes: const [AiroAnalyticsSchemaValidationCode.schemaMissing],
+      );
+    }
+
+    final codes = <AiroAnalyticsSchemaValidationCode>[];
+    if (event.owner != schema.owner) {
+      codes.add(AiroAnalyticsSchemaValidationCode.ownerMismatch);
+    }
+    if (event.purpose != schema.purpose) {
+      codes.add(AiroAnalyticsSchemaValidationCode.purposeMismatch);
+    }
+    if (event.schemaVersion != schema.schemaVersion) {
+      codes.add(AiroAnalyticsSchemaValidationCode.schemaVersionMismatch);
+    }
+
+    final fieldsByName = {
+      for (final field in schema.allowedFields) field.name: field,
+    };
+    for (final field in schema.allowedFields.where((field) => field.required)) {
+      if (!event.params.containsKey(field.name)) {
+        codes.add(AiroAnalyticsSchemaValidationCode.requiredFieldMissing);
+        break;
+      }
+    }
+    for (final entry in event.params.entries) {
+      final field = fieldsByName[entry.key];
+      if (field == null) {
+        codes.add(AiroAnalyticsSchemaValidationCode.fieldNotAllowed);
+        continue;
+      }
+      if (!_matchesFieldKind(field.kind, entry.value)) {
+        codes.add(AiroAnalyticsSchemaValidationCode.fieldKindMismatch);
+      }
+    }
+
+    final privacy = (privacyFilter ?? AiroAnalyticsPrivacyFilter.standard)
+        .validate(event);
+    if (!privacy.isAccepted) {
+      codes.add(AiroAnalyticsSchemaValidationCode.privacyViolation);
+    }
+
+    return AiroAnalyticsSchemaValidationResult(
+      codes: codes.isEmpty
+          ? const [AiroAnalyticsSchemaValidationCode.accepted]
+          : codes.toSet().toList(growable: false),
+      privacyViolations: privacy.violations,
+    );
+  }
+
+  Map<String, Object?> toPublicMap() {
+    return {
+      'schemaVersion': schemaVersion,
+      'schemas': schemas
+          .map((schema) => schema.toPublicMap())
+          .toList(growable: false),
+    };
+  }
+
+  @override
+  List<Object?> get props => [schemaVersion, schemas, privacyFilter];
 }
 
 class AiroAnalyticsConfigurationResult extends Equatable {
@@ -436,7 +723,7 @@ class AiroAnalyticsPrivacyFilter {
   AiroAnalyticsPrivacyFilter({
     Set<String> prohibitedFields = _defaultProhibitedFields,
   }) : prohibitedFields = Set.unmodifiable(
-         prohibitedFields.map(_normalizeFieldName),
+         prohibitedFields.map(normalizeFieldName),
        );
 
   static final AiroAnalyticsPrivacyFilter standard =
@@ -474,7 +761,7 @@ class AiroAnalyticsPrivacyFilter {
 
     for (final entry in event.params.entries) {
       final field = entry.key;
-      final normalized = _normalizeFieldName(field);
+      final normalized = normalizeFieldName(field);
       if (prohibitedFields.contains(normalized)) {
         violations.add(
           AiroAnalyticsPrivacyViolation(
@@ -498,7 +785,7 @@ class AiroAnalyticsPrivacyFilter {
     return AiroAnalyticsPrivacyResult(violations: violations);
   }
 
-  static String _normalizeFieldName(String field) {
+  static String normalizeFieldName(String field) {
     return field.replaceAll(RegExp('[^A-Za-z0-9]'), '').toLowerCase();
   }
 
@@ -860,6 +1147,165 @@ class AiroProviderBackedAnalyticsService implements AiroAnalyticsService {
   Future<void> reset() async {}
 }
 
+class AiroTvAnalyticsSchemas {
+  const AiroTvAnalyticsSchemas._();
+
+  static AiroAnalyticsSchemaRegistry registry() {
+    return AiroAnalyticsSchemaRegistry(
+      schemas: [
+        playbackStartupCompleted(),
+        pairingCompleted(),
+        handoffCompleted(),
+        legacyDecoderFallback(),
+        subscriptionConversion(),
+      ],
+    );
+  }
+
+  static AiroAnalyticsEventSchema playbackStartupCompleted() {
+    return AiroAnalyticsEventSchema(
+      name: 'playback_startup_completed',
+      owner: 'media',
+      purpose: AiroAnalyticsPurpose.playbackQuality,
+      retentionClass: AiroAnalyticsRetentionClass.product90Days,
+      dashboardRequirement: AiroAnalyticsDashboardRequirement.required,
+      prohibitedFields: const {
+        'channel',
+        'mediaTitle',
+        'streamUrl',
+        'playlistUrl',
+        'query',
+      },
+      allowedFields: const [
+        AiroAnalyticsFieldSchema(
+          name: 'source_type',
+          kind: AiroAnalyticsFieldKind.category,
+          required: true,
+        ),
+        AiroAnalyticsFieldSchema(
+          name: 'startup_bucket',
+          kind: AiroAnalyticsFieldKind.bucket,
+          required: true,
+        ),
+        AiroAnalyticsFieldSchema(
+          name: 'decoder_type',
+          kind: AiroAnalyticsFieldKind.category,
+        ),
+        AiroAnalyticsFieldSchema(
+          name: 'resolution_bucket',
+          kind: AiroAnalyticsFieldKind.bucket,
+        ),
+      ],
+    );
+  }
+
+  static AiroAnalyticsEventSchema pairingCompleted() {
+    return AiroAnalyticsEventSchema(
+      name: 'pairing_completed',
+      owner: 'device_ecosystem',
+      purpose: AiroAnalyticsPurpose.operational,
+      retentionClass: AiroAnalyticsRetentionClass.operational30Days,
+      dashboardRequirement: AiroAnalyticsDashboardRequirement.optional,
+      allowedFields: const [
+        AiroAnalyticsFieldSchema(
+          name: 'source_profile',
+          kind: AiroAnalyticsFieldKind.category,
+          required: true,
+        ),
+        AiroAnalyticsFieldSchema(
+          name: 'target_profile',
+          kind: AiroAnalyticsFieldKind.category,
+          required: true,
+        ),
+        AiroAnalyticsFieldSchema(
+          name: 'route_type',
+          kind: AiroAnalyticsFieldKind.category,
+        ),
+      ],
+    );
+  }
+
+  static AiroAnalyticsEventSchema handoffCompleted() {
+    return AiroAnalyticsEventSchema(
+      name: 'handoff_completed',
+      owner: 'media',
+      purpose: AiroAnalyticsPurpose.operational,
+      retentionClass: AiroAnalyticsRetentionClass.operational30Days,
+      dashboardRequirement: AiroAnalyticsDashboardRequirement.required,
+      allowedFields: const [
+        AiroAnalyticsFieldSchema(
+          name: 'source_profile',
+          kind: AiroAnalyticsFieldKind.category,
+          required: true,
+        ),
+        AiroAnalyticsFieldSchema(
+          name: 'target_profile',
+          kind: AiroAnalyticsFieldKind.category,
+          required: true,
+        ),
+        AiroAnalyticsFieldSchema(
+          name: 'result_category',
+          kind: AiroAnalyticsFieldKind.category,
+          required: true,
+        ),
+      ],
+    );
+  }
+
+  static AiroAnalyticsEventSchema legacyDecoderFallback() {
+    return AiroAnalyticsEventSchema(
+      name: 'legacy_decoder_fallback',
+      owner: 'platform_media',
+      purpose: AiroAnalyticsPurpose.diagnostics,
+      retentionClass: AiroAnalyticsRetentionClass.diagnostics30Days,
+      dashboardRequirement: AiroAnalyticsDashboardRequirement.required,
+      allowedFields: const [
+        AiroAnalyticsFieldSchema(
+          name: 'device_tier',
+          kind: AiroAnalyticsFieldKind.category,
+          required: true,
+        ),
+        AiroAnalyticsFieldSchema(
+          name: 'decoder_type',
+          kind: AiroAnalyticsFieldKind.category,
+          required: true,
+        ),
+        AiroAnalyticsFieldSchema(
+          name: 'fallback_count',
+          kind: AiroAnalyticsFieldKind.count,
+        ),
+      ],
+    );
+  }
+
+  static AiroAnalyticsEventSchema subscriptionConversion() {
+    return AiroAnalyticsEventSchema(
+      name: 'subscription_conversion',
+      owner: 'growth',
+      purpose: AiroAnalyticsPurpose.product,
+      retentionClass: AiroAnalyticsRetentionClass.product90Days,
+      dashboardRequirement: AiroAnalyticsDashboardRequirement.required,
+      allowedFields: const [
+        AiroAnalyticsFieldSchema(
+          name: 'entry_surface',
+          kind: AiroAnalyticsFieldKind.category,
+          required: true,
+        ),
+        AiroAnalyticsFieldSchema(
+          name: 'plan_bucket',
+          kind: AiroAnalyticsFieldKind.bucket,
+          required: true,
+        ),
+        AiroAnalyticsFieldSchema(
+          name: 'success',
+          kind: AiroAnalyticsFieldKind.boolean,
+          required: true,
+        ),
+      ],
+    );
+  }
+}
+
 AiroAnalyticsTrackResult validateEvent(
   AiroAnalyticsEvent event, {
   required AiroAnalyticsConsentState consent,
@@ -935,6 +1381,22 @@ String _durationBucket(int durationMs) {
   return '30s_plus';
 }
 
+bool _matchesFieldKind(AiroAnalyticsFieldKind kind, Object? value) {
+  return switch (kind) {
+    AiroAnalyticsFieldKind.stableIdentifier =>
+      value is String && _isSnakeCase(value),
+    AiroAnalyticsFieldKind.category => value is String && _isSnakeCase(value),
+    AiroAnalyticsFieldKind.bucket => value is String && _isBucketValue(value),
+    AiroAnalyticsFieldKind.count => value is int && value >= 0,
+    AiroAnalyticsFieldKind.decimal => value is num && value.isFinite,
+    AiroAnalyticsFieldKind.boolean => value is bool,
+  };
+}
+
 bool _isSnakeCase(String value) {
   return RegExp(r'^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$').hasMatch(value);
+}
+
+bool _isBucketValue(String value) {
+  return RegExp(r'^[a-z0-9]+(?:_[a-z0-9]+)*$').hasMatch(value);
 }
