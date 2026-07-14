@@ -20,13 +20,14 @@ artifacts without creating public GitHub Releases or uploading to Google Play.
 The orchestrator currently validates the release contract, calls the existing
 Airo TV release workflow through `workflow_call`, optionally calls the
 mobile/tablet release workflow when a mobile profile is selected, downloads the
-selected profile artifacts, generates the top-level evidence bundle, and writes
-the release summary.
+selected profile artifacts, generates the top-level evidence bundle, optionally
+publishes a single aggregate GitHub Release, and writes the release summary.
 
 The TV leg reuses `.github/workflows/airo-tv-release.yml` so package checks,
 Leanback validation, release artifact naming, checksums, manifest generation,
-debug-symbol retention, optional GitHub Release publication, and optional Play
-track upload remain owned by the TV workflow.
+debug-symbol retention, and optional Play track upload remain owned by the TV
+workflow. The orchestrator disables the TV-only GitHub Release publisher and
+owns the aggregate multi-profile GitHub Release asset set.
 
 When `mobile_profile` is `iptv-standalone` or `mobile-streaming`, the
 orchestrator calls `.github/workflows/airo-mobile-tablet-release.yml` to build
@@ -49,12 +50,25 @@ The top-level evidence bundle includes selected profile artifacts,
 manifests. Public qualification mode fails when required device evidence or an
 approved waiver is missing.
 
+When `publish_github_release` is enabled and `dry_run` is false, the
+orchestrator prepares a flat GitHub Release asset directory that contains:
+
+- every required APK and Play Store AAB for TV and the selected mobile/tablet
+  profile;
+- a combined `SHA256SUMS` generated after final asset naming;
+- a combined `Airo-<version>-Release-Manifest.json`;
+- generated release notes derived from the selected artifact set.
+
+`github_release_mode` controls whether a newly created GitHub Release starts as
+`draft` or `published`. The default is `draft`.
+
 ## Public Publishing Controls
 
 Public/store publishing requires:
 
 - `dry_run` set to `false`;
 - `publish_github_release` set to `true` for GitHub Release publication;
+- `github_release_mode` set to `draft` or `published`;
 - `production_signing` set to `true` for production-signed Android artifacts;
 - `tv_play_track` set to a Play testing track for TV Play uploads.
 
@@ -65,7 +79,7 @@ off and sets the TV Play track to `none`.
 
 - Final v2 tag naming policy beyond the current `v2*` automation trigger.
 - Whether public releases should publish immediately or always start as draft
-  GitHub Releases.
+  GitHub Releases. The workflow supports both and defaults to draft.
 - Whether optional channels should block the whole release or report warnings.
 - Mobile/tablet Firebase apps, Play tracks, release signing secrets, and upload
   credentials for #681 and #682. Package IDs are registered under

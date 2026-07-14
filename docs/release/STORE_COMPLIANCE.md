@@ -84,6 +84,7 @@ and AI Core bind-service permissions inherited from broader dependencies.
 | Production Android signing secrets stored in GitHub | Pending | #585, #677 |
 | AAB build for TV | Ready in CI | `.github/workflows/airo-tv-release.yml` |
 | AAB build for mobile/tablet | Ready in CI for selected v2 profile | `.github/workflows/airo-mobile-tablet-release.yml` |
+| GitHub Release asset publication | Ready in orchestrator for selected v2 profiles | `.github/workflows/v2-release-orchestrator.yml` |
 | IARC content rating completed | Pending store-console action | #584 |
 | Data Safety form completed | Pending store-console action | #584/#581 |
 | Store metadata finalized | Pending | #581 |
@@ -128,7 +129,7 @@ Before submitting a public v2 Android release:
 - [ ] Complete content rating and data-safety store-console forms in #584.
 - [ ] Attach release qualification evidence or an explicit waiver per
       [V2 Release Qualification](./V2_RELEASE_QUALIFICATION.md).
-- [ ] Confirm every public APK/AAB has `SHA256SUMS` and a release manifest.
+- [x] Confirm every public APK/AAB has `SHA256SUMS` and a release manifest.
 - [ ] Confirm no public release asset uses debug-looking names such as
       `app-release.apk`.
 

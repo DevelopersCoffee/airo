@@ -84,7 +84,8 @@ Related issues: #687, #689.
 ## Current Non-Secret Defaults
 
 - v2 implementation starts from latest `origin/v2`.
-- GitHub Release direct-download APKs must publish `SHA256SUMS`.
+- GitHub Release direct-download APKs publish `SHA256SUMS` and a combined
+  release manifest through the v2 orchestrator.
 - Public release docs must avoid exposing playlist URLs, credentials, local
   network addresses, or private user data.
 - Store uploads should support dry-run/no-upload mode until credentials and
