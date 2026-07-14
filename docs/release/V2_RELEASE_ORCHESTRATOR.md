@@ -32,9 +32,10 @@ owns the aggregate multi-profile GitHub Release asset set.
 When `mobile_profile` is `iptv-standalone` or `mobile-streaming`, the
 orchestrator calls `.github/workflows/airo-mobile-tablet-release.yml` to build
 the selected profile's APK and Play Store AAB, generate `SHA256SUMS`, write a
-release manifest, retain obfuscation symbols, and contribute mobile/tablet
-qualification evidence. Real store or Firebase publication still depends on
-the credential and destination setup tracked in #681 and #682.
+release manifest, retain obfuscation symbols, optionally upload the AAB to a
+selected Play track, and contribute mobile/tablet qualification evidence. Real
+store or Firebase publication still depends on the credential and destination
+setup tracked in #681 and #682.
 
 ## Release Evidence
 
@@ -70,10 +71,13 @@ Public/store publishing requires:
 - `publish_github_release` set to `true` for GitHub Release publication;
 - `github_release_mode` set to `draft` or `published`;
 - `production_signing` set to `true` for production-signed Android artifacts;
-- `tv_play_track` set to a Play testing track for TV Play uploads.
+- `tv_play_track` set to a Play testing or production track for TV Play
+  uploads;
+- `mobile_play_track` set to a Play testing or production track for the
+  selected mobile/tablet profile.
 
 When `dry_run` is `true`, the orchestrator forces GitHub Release publication
-off and sets the TV Play track to `none`.
+off and sets the TV and mobile/tablet Play tracks to `none`.
 
 ## Human Decisions Still Needed
 
@@ -81,6 +85,7 @@ off and sets the TV Play track to `none`.
 - Whether public releases should publish immediately or always start as draft
   GitHub Releases. The workflow supports both and defaults to draft.
 - Whether optional channels should block the whole release or report warnings.
-- Mobile/tablet Firebase apps, Play tracks, release signing secrets, and upload
-  credentials for #681 and #682. Package IDs are registered under
-  `io.airo.app.*`.
+- Play Console apps/tracks, release signing secrets, and
+  `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON` for #681.
+- Mobile/tablet Firebase apps and Firebase upload credentials for #682.
+  Package IDs are registered under `io.airo.app.*`.

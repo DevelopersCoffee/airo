@@ -91,6 +91,7 @@ on:
           - internal
           - alpha
           - beta
+          - production
 
 concurrency:
   group: airo-tv-release-${{ github.ref }}
@@ -467,18 +468,38 @@ jobs:
       - name: Upload to Google Play
         working-directory: app/android
         env:
+          PLAY_TRACK: ${{ inputs.play_track || github.event.inputs.play_track }}
           SUPPLY_PACKAGE_NAME: io.airo.app.tv
           SUPPLY_JSON_KEY: play-store-credentials.json
         run: |
+          if [[ -z "$SUPPLY_PACKAGE_NAME" ]]; then
+            echo "::error::SUPPLY_PACKAGE_NAME is required for TV Play upload."
+            exit 1
+          fi
+          if [[ -z "$PLAY_TRACK" || "$PLAY_TRACK" == "none" ]]; then
+            echo "::error::A real Play track is required for TV upload."
+            exit 1
+          fi
           gem install fastlane --no-document
           fastlane supply \
             --aab "../../release-artifacts/Airo-TV-${BUILD_NAME}-Play-Store.aab" \
-            --track "${{ inputs.play_track || github.event.inputs.play_track }}" \
+            --track "$PLAY_TRACK" \
             --package_name "$SUPPLY_PACKAGE_NAME" \
             --json_key "$SUPPLY_JSON_KEY" \
             --skip_upload_metadata true \
             --skip_upload_images true \
             --skip_upload_screenshots true
+
+          {
+            echo "# TV Play upload"
+            echo ""
+            echo "| Field | Value |"
+            echo "| --- | --- |"
+            echo "| Package | $SUPPLY_PACKAGE_NAME |"
+            echo "| Track | $PLAY_TRACK |"
+            echo "| AAB | Airo-TV-${BUILD_NAME}-Play-Store.aab |"
+            echo "| Play Console | https://play.google.com/console/u/0/developers/app/$SUPPLY_PACKAGE_NAME/tracks/$PLAY_TRACK |"
+          } >> "$GITHUB_STEP_SUMMARY"
 
   github-release:
     name: Publish GitHub release
