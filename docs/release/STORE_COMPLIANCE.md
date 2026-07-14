@@ -24,8 +24,8 @@ The current v2 profile matrix is maintained in
 | Profile | Package ID | Device class | Entrypoint | Store status |
 | --- | --- | --- | --- | --- |
 | `tv` | `io.airo.app.tv` | Android TV, Google TV, Fire TV-compatible APK testing | `app/lib/main_tv.dart` | TV release workflow builds APK and Play AAB; real Play upload needs #585/#681 setup |
-| `iptv-standalone` | `io.airo.app.iptv` | Android phone and tablet IPTV-only builds | `app/lib/main_airo_iptv.dart` | Build/publish automation tracked in #677 |
-| `mobile-streaming` | `io.airo.app.streaming` | Android phone and tablet streaming builds | `app/lib/main_mobile_streaming.dart` | Build/publish automation tracked in #677 |
+| `iptv-standalone` | `io.airo.app.iptv` | Android phone and tablet IPTV-only builds | `app/lib/main_airo_iptv.dart` | Mobile/tablet release workflow builds APK and Play AAB; real publish setup needs #585/#681/#682 |
+| `mobile-streaming` | `io.airo.app.streaming` | Android phone and tablet streaming builds | `app/lib/main_mobile_streaming.dart` | Mobile/tablet release workflow builds APK and Play AAB; real publish setup needs #585/#681/#682 |
 | `ios-spm` | `com.developerscoffee.airo` | iOS/iPadOS validation profile | `app/lib/main.dart` | Deferred from the first v2 Android publishing wave |
 
 The Android Gradle config currently uses:
@@ -83,7 +83,7 @@ and AI Core bind-service permissions inherited from broader dependencies.
 | Play service account JSON stored as GitHub secret | Pending | #585, #681 |
 | Production Android signing secrets stored in GitHub | Pending | #585, #677 |
 | AAB build for TV | Ready in CI | `.github/workflows/airo-tv-release.yml` |
-| AAB build for mobile/tablet | Pending | #677 |
+| AAB build for mobile/tablet | Ready in CI for selected v2 profile | `.github/workflows/airo-mobile-tablet-release.yml` |
 | IARC content rating completed | Pending store-console action | #584 |
 | Data Safety form completed | Pending store-console action | #584/#581 |
 | Store metadata finalized | Pending | #581 |
@@ -139,7 +139,7 @@ Before submitting a public v2 Android release:
 - #584: IARC/content rating and App Store age-rating questionnaires.
 - #585: Fastlane/store credentials and signing setup.
 - #675: supported v2 device/profile artifact matrix.
-- #677: mobile/tablet APK and AAB build/publish workflow.
+- #677: mobile/tablet APK and AAB build workflow.
 - #681: Google Play upload automation.
 - #682: Firebase App Distribution upload automation.
 - #683: release qualification matrix and evidence.

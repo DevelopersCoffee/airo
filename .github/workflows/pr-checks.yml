@@ -66,7 +66,10 @@ jobs:
       - name: Validate platform build profiles
         run: |
           chmod +x scripts/check-build-profiles.py scripts/generate-release-manifest.py scripts/test-generate-release-manifest.sh scripts/generate-release-qualification-report.py scripts/test-generate-release-qualification-report.sh
-          ruby -e 'require "yaml"; ARGV.each { |f| YAML.load_file(f); puts "ok #{f}" }' .github/workflows/v2-release-orchestrator.yml .github/workflows/airo-tv-release.yml
+          ruby -e 'require "yaml"; ARGV.each { |f| YAML.load_file(f); puts "ok #{f}" }' \
+            .github/workflows/v2-release-orchestrator.yml \
+            .github/workflows/airo-tv-release.yml \
+            .github/workflows/airo-mobile-tablet-release.yml
           python3 -m py_compile scripts/check-build-profiles.py scripts/generate-release-manifest.py scripts/generate-release-qualification-report.py
           scripts/check-build-profiles.py
           scripts/test-generate-release-manifest.sh

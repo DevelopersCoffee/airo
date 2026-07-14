@@ -13,7 +13,9 @@ production publishing cannot be verified without them.
 Related issues: #681, #585, #657.
 
 - [ ] Create or confirm the Play Console app for each public v2 package ID.
-- [ ] Confirm package IDs for mobile/tablet and TV.
+- [x] Confirm package IDs for mobile/tablet and TV:
+      `io.airo.app`, `io.airo.app.iptv`, `io.airo.app.streaming`, and
+      `io.airo.app.tv`.
 - [ ] Decide whether mobile and tablet share one adaptive listing or use
       separate listings.
 - [ ] Create a Play service account for release automation.
@@ -30,7 +32,8 @@ Related issues: #682, #574.
 
 - [ ] Create or confirm Firebase apps for each package ID that should receive
       internal APKs.
-- [ ] Add or confirm the Firebase Android client config for the TV package.
+- [ ] Add or confirm Firebase Android client configs for the registered
+      `io.airo.app.*` packages that should use Firebase services.
 - [ ] Create a Firebase service account or distribution token for CI.
 - [ ] Store the Firebase credential as a GitHub Actions secret.
 - [ ] Create tester groups for mobile/tablet QA and TV QA.
@@ -67,8 +70,8 @@ Related issues: #675, #685, #647, #657.
 
 Related issues: #687, #689.
 
-- [ ] Choose the root project license.
-- [ ] Add the root `LICENSE` after the license is chosen.
+- [x] Choose the root project license.
+- [x] Add the root `LICENSE` after the license is chosen.
 - [ ] Confirm whether any private or commercial dependencies are bundled in v2
       release profiles.
 - [ ] Resolve the open items in
