@@ -1,6 +1,6 @@
 # Airo
 
-[![Download Airo TV](https://img.shields.io/badge/Download-Airo%20TV-success)](https://github.com/DevelopersCoffee/airo/releases/download/airo-tv-v0.0.1/Airo-TV-v0.0.1.apk)
+[![Download Airo TV](https://img.shields.io/badge/Download-Airo%20TV-success)](https://github.com/DevelopersCoffee/airo/releases/download/airo-tv-v0.0.2/Airo-TV-v0.0.2.apk)
 [![GitHub Release](https://img.shields.io/github/v/release/DevelopersCoffee/airo)](https://github.com/DevelopersCoffee/airo/releases)
 [![Flutter](https://img.shields.io/badge/Flutter-3.44.4+-blue.svg)](https://flutter.dev/)
 [![License: pending](https://img.shields.io/badge/license-pending-lightgrey)](#license)
@@ -54,7 +54,7 @@ Start with:
 
 ### Airo TV
 
-[Download Airo TV APK](https://github.com/DevelopersCoffee/airo/releases/download/airo-tv-v0.0.1/Airo-TV-v0.0.1.apk)
+[Download Airo TV APK](https://github.com/DevelopersCoffee/airo/releases/download/airo-tv-v0.0.2/Airo-TV-v0.0.2.apk)
 
 ### iOS
 
