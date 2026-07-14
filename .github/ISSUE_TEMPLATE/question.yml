@@ -1,0 +1,69 @@
+name: Question
+description: Ask about setup, releases, installation, supported devices, or project direction.
+title: "[Question] "
+labels:
+  - question
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this form for public questions. Do not post private playlist URLs, credentials, tokens, local network addresses, or personal data.
+  - type: textarea
+    id: question
+    attributes:
+      label: Question
+      description: What do you need help understanding?
+      placeholder: Ask one clear question.
+    validations:
+      required: true
+  - type: dropdown
+    id: topic
+    attributes:
+      label: Topic
+      options:
+        - Installation / APK verification
+        - Airo TV / Android TV
+        - Mobile or tablet
+        - Google Cast
+        - Playlist import
+        - Build from source
+        - Release process
+        - Privacy or security
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version Or Release
+      description: If relevant, provide the app version, release tag, or branch.
+      placeholder: "Example: airo-tv-v0.0.2, v2, main"
+  - type: input
+    id: device
+    attributes:
+      label: Device
+      description: If relevant, provide device model and OS version.
+      placeholder: "Example: Chromecast with Google TV, Android 12"
+  - type: dropdown
+    id: install_source
+    attributes:
+      label: Install Source
+      options:
+        - GitHub Release APK
+        - Google Play
+        - Firebase App Distribution
+        - Built from source
+        - Not installed
+        - Not sure
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: Add non-sensitive details that help answer the question.
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Privacy Check
+      options:
+        - label: I did not include private playlist URLs, credentials, tokens, local network addresses, or personal data.
+          required: true

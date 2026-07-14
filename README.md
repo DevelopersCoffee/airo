@@ -5,6 +5,7 @@
 [![Flutter](https://img.shields.io/badge/Flutter-3.44.4+-blue.svg)](https://flutter.dev/)
 [![License: pending](https://img.shields.io/badge/license-pending-lightgrey)](#license)
 [![Security Policy](https://img.shields.io/badge/security-policy-brightgreen)](SECURITY.md)
+[![Trust](https://img.shields.io/badge/trust-transparent-brightgreen)](TRUST.md)
 [![Versioning](https://img.shields.io/badge/versioning-semver-blue)](CHANGELOG.md)
 [![Android TV](https://img.shields.io/badge/Android%20TV-compatible-green)](docs/release/AIRO_TV_v0.0.2.md)
 
@@ -90,6 +91,9 @@ Airo TV is the Android TV variant of Airo, built from the v2 release line with p
 ### All Platforms
 
 [View all releases](https://github.com/DevelopersCoffee/airo/releases)
+
+Before installing a direct-download APK, verify it with
+[`SHA256SUMS`](VERIFY_DOWNLOAD.md).
 
 ## Quick Start
 
@@ -211,15 +215,17 @@ Android release builds require private signing material. Never commit
 2. Pick or create a GitHub issue.
 3. Add the Critical Agent gate and Feature Packet required by
    [`docs/agents/AGENT_POLICY.md`](docs/agents/AGENT_POLICY.md).
-4. Create a short-lived branch or worktree from the latest `origin/main`.
+4. Create a short-lived branch or worktree from the correct release-line base.
+   Use `origin/v2` for v2 modular/release-profile work; otherwise follow the
+   base branch declared in the linked issue.
 5. Keep the PR scoped, run the relevant checks, and document any test gaps.
 
 For parallel work, prefer a worktree:
 
 ```bash
-git fetch origin main
-git worktree add -b codex/my-task ../airo-my-task origin/main
-cd ../airo-my-task
+git fetch origin main v2
+git worktree add -b codex/my-v2-task ../airo-my-v2-task origin/v2
+cd ../airo-my-v2-task
 ```
 
 ## Documentation
@@ -236,6 +242,8 @@ cd ../airo-my-task
 - [Contributing guide](CONTRIBUTING.md)
 - [Code of conduct](CODE_OF_CONDUCT.md)
 - [Security policy](SECURITY.md)
+- [Trust and transparency](TRUST.md)
+- [Download verification](VERIFY_DOWNLOAD.md)
 - [Privacy policy](PRIVACY.md)
 - [Roadmap](ROADMAP.md)
 - [Changelog](CHANGELOG.md)
