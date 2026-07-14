@@ -52,17 +52,22 @@ class AiroIptvQualificationApp extends StatelessWidget {
         autoCycle: true,
         onFormFactorOverride: (formFactor, tvPlatform) {
           if (formFactor == 'tv') {
-            DeviceFormFactorDetector.debugFormFactorOverride = DeviceFormFactor.tv;
+            DeviceFormFactorDetector.debugFormFactorOverride =
+                DeviceFormFactor.tv;
           } else if (formFactor == 'tablet') {
-            DeviceFormFactorDetector.debugFormFactorOverride = DeviceFormFactor.tablet;
+            DeviceFormFactorDetector.debugFormFactorOverride =
+                DeviceFormFactor.tablet;
           } else {
-            DeviceFormFactorDetector.debugFormFactorOverride = DeviceFormFactor.mobile;
+            DeviceFormFactorDetector.debugFormFactorOverride =
+                DeviceFormFactor.mobile;
           }
 
           if (tvPlatform == 'fire_tv') {
-            DeviceFormFactorDetector.debugTvPlatformOverride = TvPlatform.fireTv;
+            DeviceFormFactorDetector.debugTvPlatformOverride =
+                TvPlatform.fireTv;
           } else if (tvPlatform == 'android_tv') {
-            DeviceFormFactorDetector.debugTvPlatformOverride = TvPlatform.androidTv;
+            DeviceFormFactorDetector.debugTvPlatformOverride =
+                TvPlatform.androidTv;
           } else {
             DeviceFormFactorDetector.debugTvPlatformOverride = null;
           }
