@@ -89,9 +89,10 @@ and AI Core bind-service permissions inherited from broader dependencies.
 | Firebase App Distribution upload automation | Ready after Firebase app IDs, tester groups, and credential secret are configured | `firebase_distribution` in `.github/workflows/v2-release-orchestrator.yml` |
 | GitHub Release asset publication | Ready in orchestrator for selected v2 profiles | `.github/workflows/v2-release-orchestrator.yml` |
 | IARC content rating completed | Pending store-console action | #584 |
-| Data Safety form completed | Pending store-console action | #584/#581 |
+| Data Safety form completed | Pending store-console action | #583 |
 | Store metadata finalized | Ready pending stakeholder approval | #581, `docs/release/AIRO_TV_STORE_LISTING.md` |
 | TV screenshots and feature graphic uploaded | Pending media assets | #582 |
+| Data Safety and App Privacy declarations | Ready for console entry | #583, `docs/release/AIRO_TV_DATA_SAFETY.md` |
 | Release qualification evidence attached | Pending actual release evidence | #683 |
 
 ## App Store / iOS Checklist
@@ -130,7 +131,9 @@ Before submitting a public v2 Android release:
       [V2 Publishing Human Setup](./V2_PUBLISHING_HUMAN_SETUP.md).
 - [ ] Confirm stakeholder approval for
       [Airo TV Store Listing Metadata](./AIRO_TV_STORE_LISTING.md).
-- [ ] Complete content rating and data-safety store-console forms in #584.
+- [ ] Complete Data Safety/App Privacy console forms from
+      [Airo TV Data Safety](./AIRO_TV_DATA_SAFETY.md).
+- [ ] Complete content rating store-console forms in #584.
 - [ ] Attach release qualification evidence or an explicit waiver per
       [V2 Release Qualification](./V2_RELEASE_QUALIFICATION.md).
 - [x] Confirm every public APK/AAB has `SHA256SUMS` and a release manifest.
@@ -142,6 +145,7 @@ Before submitting a public v2 Android release:
 - #575, #577, #578, #579: legal/docs foundation.
 - #581: final Play/App Store listing metadata.
 - #582: final Play screenshot, feature graphic, and app icon assets.
+- #583: final Play Data Safety and App Store App Privacy console forms.
 - #584: IARC/content rating and App Store age-rating questionnaires.
 - #585: Fastlane/store credentials and signing setup.
 - #675: supported v2 device/profile artifact matrix.

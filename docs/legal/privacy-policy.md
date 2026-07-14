@@ -42,8 +42,13 @@ us** in any way.
 
 - **User preferences** — stored locally on your device
 - **IPTV playlist URLs** — user-provided, stored locally on your device
-- **Favorites and watch history** — stored locally on your device
-- **EPG (Electronic Program Guide) data** — cached locally for performance
+- **Playback and playlist cache data** — stored locally when needed for app
+  functionality
+
+Planned features such as favorites, watch history, and Electronic Program
+Guide (EPG) data are not part of the current Airo TV v0.0.2 release. If those
+features are added later, the store declarations and this policy must be
+reviewed before public distribution.
 
 ### Data We Do NOT Collect
 
@@ -61,12 +66,12 @@ us** in any way.
 Airo TV processes all data locally on your device. Specifically:
 
 - **IPTV playlist parsing** is performed entirely on-device.
-- **EPG data** is fetched from URLs you provide and cached locally.
+- **Cast analytics logging is disabled** when initializing Google Cast support.
 - **No user data is transmitted** to DevelopersCoffee servers or any
   third-party analytics services.
 
-Your streaming content, playlist URLs, favorites, and viewing history
-**never leave your device**.
+Your streaming content and playlist URLs **never leave your device** except
+when your TV/device requests the stream or playlist URL that you chose to load.
 
 ---
 
