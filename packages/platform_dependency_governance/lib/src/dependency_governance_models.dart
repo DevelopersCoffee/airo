@@ -40,6 +40,11 @@ enum AiroDependencyBlockerCode {
   final String stableId;
 }
 
+List<String> _stableArchitectureIds(Set<AiroNativeArchitecture> architectures) {
+  return architectures.map((architecture) => architecture.stableId).toList()
+    ..sort();
+}
+
 class AiroDependencyAuditRecord extends Equatable {
   AiroDependencyAuditRecord({
     required this.packageName,
@@ -83,6 +88,28 @@ class AiroDependencyAuditRecord extends Equatable {
       importance == AiroDependencyImportance.optional ||
       importance == AiroDependencyImportance.developmentOnly;
 
+  Map<String, Object?> toJson() {
+    return {
+      'schemaVersion': schemaVersion,
+      'packageName': packageName,
+      'version': version,
+      'usedByModule': usedByModule,
+      'importance': importance.stableId,
+      'minimumAndroidApi': minimumAndroidApi,
+      'hasNativeCode': hasNativeCode,
+      'nativeArchitectures': _stableArchitectureIds(nativeArchitectures),
+      'estimatedBinarySizeKb': estimatedBinarySizeKb,
+      'estimatedRuntimeMemoryMb': estimatedRuntimeMemoryMb,
+      'hasBackgroundBehavior': hasBackgroundBehavior,
+      'backgroundBehavior': backgroundBehavior,
+      'requiresShrinkerRules': requiresShrinkerRules,
+      'shrinkerRulesValidated': shrinkerRulesValidated,
+      'tvIssuesReviewed': tvIssuesReviewed,
+      'hasFallbackOrStub': hasFallbackOrStub,
+      'maintenanceOwner': maintenanceOwner,
+    };
+  }
+
   @override
   List<Object?> get props => [
     schemaVersion,
@@ -117,6 +144,15 @@ class AiroDependencyGovernanceChecklist extends Equatable {
   final int androidApiBaseline;
   final int maxBinarySizeKb;
   final int maxRuntimeMemoryMb;
+
+  Map<String, Object?> toJson() {
+    return {
+      'schemaVersion': schemaVersion,
+      'androidApiBaseline': androidApiBaseline,
+      'maxBinarySizeKb': maxBinarySizeKb,
+      'maxRuntimeMemoryMb': maxRuntimeMemoryMb,
+    };
+  }
 
   AiroDependencyGovernanceResult evaluate(AiroDependencyAuditRecord record) {
     final blockers = <AiroDependencyBlocker>[];
@@ -250,6 +286,136 @@ class AiroDependencyGovernanceResult extends Equatable {
 
   bool get passed => blockers.isEmpty;
 
+  List<AiroDependencyBlockerCode> get blockerCodes {
+    final codes = blockers.map((blocker) => blocker.code).toList()
+      ..sort((left, right) => left.stableId.compareTo(right.stableId));
+    return List.unmodifiable(codes);
+  }
+
+  Map<String, Object?> toJson() {
+    return {
+      'packageName': packageName,
+      'passed': passed,
+      'blockers': blockerCodes.map((code) => code.stableId).toList(),
+    };
+  }
+
   @override
   List<Object?> get props => [packageName, blockers];
+}
+
+class AiroDependencyGovernanceAuditEntry extends Equatable {
+  const AiroDependencyGovernanceAuditEntry({
+    required this.record,
+    required this.result,
+  });
+
+  final AiroDependencyAuditRecord record;
+  final AiroDependencyGovernanceResult result;
+
+  bool get passed => result.passed;
+
+  Map<String, Object?> toJson() {
+    return {'record': record.toJson(), 'result': result.toJson()};
+  }
+
+  @override
+  List<Object?> get props => [record, result];
+}
+
+class AiroDependencyGovernanceAuditReport extends Equatable {
+  AiroDependencyGovernanceAuditReport({
+    required this.profileName,
+    required this.generatedAtUtc,
+    required this.checklist,
+    required List<AiroDependencyGovernanceAuditEntry> entries,
+    this.schemaVersion = kAiroDependencyGovernanceSchemaVersion,
+  }) : entries = List.unmodifiable(
+         entries.toList()..sort((left, right) {
+           final moduleOrder = left.record.usedByModule.compareTo(
+             right.record.usedByModule,
+           );
+           if (moduleOrder != 0) {
+             return moduleOrder;
+           }
+
+           final packageOrder = left.record.packageName.compareTo(
+             right.record.packageName,
+           );
+           if (packageOrder != 0) {
+             return packageOrder;
+           }
+
+           return left.record.version.compareTo(right.record.version);
+         }),
+       );
+
+  factory AiroDependencyGovernanceAuditReport.evaluate({
+    required String profileName,
+    required DateTime generatedAtUtc,
+    required Iterable<AiroDependencyAuditRecord> records,
+    AiroDependencyGovernanceChecklist checklist =
+        const AiroDependencyGovernanceChecklist(),
+    String schemaVersion = kAiroDependencyGovernanceSchemaVersion,
+  }) {
+    return AiroDependencyGovernanceAuditReport(
+      profileName: profileName,
+      generatedAtUtc: generatedAtUtc.toUtc(),
+      checklist: checklist,
+      schemaVersion: schemaVersion,
+      entries: records
+          .map(
+            (record) => AiroDependencyGovernanceAuditEntry(
+              record: record,
+              result: checklist.evaluate(record),
+            ),
+          )
+          .toList(),
+    );
+  }
+
+  final String schemaVersion;
+  final String profileName;
+  final DateTime generatedAtUtc;
+  final AiroDependencyGovernanceChecklist checklist;
+  final List<AiroDependencyGovernanceAuditEntry> entries;
+
+  bool get passed => entries.every((entry) => entry.passed);
+
+  List<AiroDependencyGovernanceAuditEntry> get failingEntries {
+    return List.unmodifiable(entries.where((entry) => !entry.passed));
+  }
+
+  List<AiroDependencyBlockerCode> get blockerCodes {
+    final codes = <AiroDependencyBlockerCode>{};
+    for (final entry in entries) {
+      codes.addAll(entry.result.blockerCodes);
+    }
+
+    return List.unmodifiable(
+      codes.toList()
+        ..sort((left, right) => left.stableId.compareTo(right.stableId)),
+    );
+  }
+
+  Map<String, Object?> toJson() {
+    return {
+      'schemaVersion': schemaVersion,
+      'profileName': profileName,
+      'generatedAtUtc': generatedAtUtc.toUtc().toIso8601String(),
+      'passed': passed,
+      'checklist': checklist.toJson(),
+      'blockerCodes': blockerCodes.map((code) => code.stableId).toList(),
+      'dependencies': entries.map((entry) => entry.toJson()).toList(),
+    };
+  }
+
+  @override
+  List<Object?> get props => [
+    schemaVersion,
+    profileName,
+    generatedAtUtc,
+    checklist,
+    entries,
+  ];
 }
