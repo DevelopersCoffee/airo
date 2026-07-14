@@ -20,15 +20,15 @@ on:
       version:
         description: 'Airo TV artifact and release version label'
         required: true
-        default: 'airo-tv-v0.0.1'
+        default: 'airo-tv-v0.0.2'
       build_name:
-        description: 'Android versionName, for example 0.0.1'
+        description: 'Android versionName, for example 0.0.2'
         required: true
-        default: '0.0.1'
+        default: '0.0.2'
       build_number:
         description: 'Android versionCode, must increase for every Play upload'
         required: true
-        default: '1'
+        default: '2'
       release_ref:
         description: 'Git ref to cut the release from; use v2 for Airo TV release line'
         required: true
@@ -36,7 +36,7 @@ on:
       release_branch:
         description: 'Release branch to create/update from release_ref before building'
         required: true
-        default: 'release/airo-tv-v0.0.1'
+        default: 'release/airo-tv-v0.0.2'
       publish_github_release:
         description: 'Create/update the GitHub release and attach artifacts'
         required: true
@@ -68,8 +68,8 @@ permissions:
 env:
   FLUTTER_VERSION: '3.44.4'
   RELEASE_VERSION: ${{ github.event.inputs.version || github.ref_name }}
-  BUILD_NAME: ${{ github.event.inputs.build_name || '0.0.1' }}
-  BUILD_NUMBER: ${{ github.event.inputs.build_number || '1' }}
+  BUILD_NAME: ${{ github.event.inputs.build_name || '0.0.2' }}
+  BUILD_NUMBER: ${{ github.event.inputs.build_number || '2' }}
 
 jobs:
   prepare-release-branch:
@@ -92,7 +92,7 @@ jobs:
         id: release_ref
         if: github.event_name == 'workflow_dispatch'
         env:
-          RELEASE_BRANCH: ${{ github.event.inputs.release_branch || 'release/airo-tv-v0.0.1' }}
+          RELEASE_BRANCH: ${{ github.event.inputs.release_branch || 'release/airo-tv-v0.0.2' }}
           RELEASE_REF: ${{ github.event.inputs.release_ref || 'v2' }}
         run: |
           git fetch origin main v2
@@ -283,6 +283,23 @@ jobs:
       - name: Patch Android plugin Gradle files
         run: scripts/patch-android-plugin-gradle.sh
 
+      - name: Run release quality gates
+        run: |
+          ruby -e 'require "yaml"; YAML.load_file(".github/workflows/airo-tv-release.yml"); puts "workflow-yaml-ok"'
+          bash -n scripts/build-tv.sh scripts/check-android-tv-release.sh scripts/patch-android-plugin-gradle.sh
+          scripts/check-android-tv-release.sh
+          cd app
+          flutter analyze lib/core/app/tv_router.dart lib/main_tv.dart test/core/app/tv_router_test.dart test/main_tv_debug_playlist_test.dart --no-fatal-infos --no-fatal-warnings
+          flutter test test/core/app/tv_router_test.dart test/main_tv_debug_playlist_test.dart --reporter=compact
+          cd ../packages/feature_iptv
+          flutter analyze lib test --no-fatal-infos --no-fatal-warnings
+          flutter test test/iptv/presentation/screens/iptv_screen_test.dart test/iptv/presentation/tv/iptv_tv_screen_test.dart test/iptv/iptv_cast_ui_test.dart test/iptv/iptv_cast_notifier_test.dart --reporter=compact
+          cd ../platform_player
+          flutter analyze lib/src/services/flutter_chrome_cast_controller.dart test/flutter_chrome_cast_controller_test.dart --no-fatal-infos --no-fatal-warnings
+          flutter test test/flutter_chrome_cast_controller_test.dart --reporter=compact
+          cd ../..
+          git diff --check
+
       - name: Build Android TV APK
         run: |
           cd app
@@ -323,7 +340,14 @@ jobs:
           mkdir -p release-artifacts
           cp app/build/app/outputs/flutter-apk/app-release.apk "release-artifacts/Airo-TV-${BUILD_NAME}.apk"
           cp app/build/app/outputs/bundle/release/app-release.aab "release-artifacts/Airo-TV-${BUILD_NAME}-Play-Store.aab"
+          cp docs/release/AIRO_TV_RELEASE_TEMPLATE.md "release-artifacts/Airo-TV-${BUILD_NAME}-Release-Template.md"
+          cp docs/release/AIRO_TV_MEDIA_ASSETS.md "release-artifacts/Airo-TV-${BUILD_NAME}-Media-Checklist.md"
+          (
+            cd release-artifacts
+            shasum -a 256 "Airo-TV-${BUILD_NAME}.apk" "Airo-TV-${BUILD_NAME}-Play-Store.aab" > SHA256SUMS
+          )
           ls -lh release-artifacts
+          cat release-artifacts/SHA256SUMS
 
       - name: Upload Airo TV release artifacts
         uses: actions/upload-artifact@v7
@@ -414,26 +438,127 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_VERSION: ${{ env.RELEASE_VERSION }}
-          RELEASE_BRANCH: ${{ needs.prepare-release-branch.outputs.release_ref || github.event.inputs.release_branch || 'release/airo-tv-v0.0.1' }}
+          RELEASE_BRANCH: ${{ needs.prepare-release-branch.outputs.release_ref || github.event.inputs.release_branch || 'release/airo-tv-v0.0.2' }}
         run: |
           notes=$(mktemp)
-          cat > "$notes" <<'NOTES'
-          Airo TV v0.0.1 is here. Tiny version number, big couch energy.
+          cat > "$notes" <<NOTES
+          # Airo TV ${BUILD_NAME}
 
-          What's new:
-          - Add your own legal M3U playlist and start watching.
-          - Search channels without wrestling the remote like it owes you money.
-          - Works on Android TV, and behaves itself on phones too.
-          - Cast controls are ready: play, pause, stop, volume, reload, the usual living-room wizardry.
-          - Friendlier messages when Cast devices are hiding behind the Wi-Fi sofa.
+          Airo TV ${BUILD_NAME} is a release-management and trust-readiness update for the Android TV variant of Airo.
 
-          Good to know:
-          - Airo TV is a player. It does not ship TV channels or mystery pirate treasure.
-          - Use playlists you are allowed to watch.
-          - Cast needs your TV/Chromecast awake and on the same network. If it is not found, blame Wi-Fi first. It usually deserves it.
+          ## Highlights
+
+          - Published clean release asset names for APK and Play Store AAB downloads.
+          - Added SHA256 checksum publishing for release artifacts.
+          - Added structured release notes for Airo TV releases.
+          - Documented privacy, security, threat model, roadmap, architecture, and feature matrix.
+          - Updated public download links and release documentation.
+
+          ## New Features
+
+          ### IPTV
+
+          - Supports user-supplied M3U playlist URLs.
+          - Keeps IPTV content responsibility with the user; Airo TV does not bundle channels or playlists.
+
+          ### Search
+
+          - Supports channel search by channel name.
+          - Includes validation coverage for Music India search/play.
+
+          ### Android TV
+
+          - Supports package io.airo.app.tv.
+          - Supports standard launcher and Leanback launcher entry points.
+          - Maintains Pixel/mobile fallback layout coverage.
+
+          ### Chromecast
+
+          - Supports Cast discovery state messaging.
+          - Supports play, pause, stop, reload, new session, and volume controls.
+
+          ### Playback
+
+          - Supports IPTV channel playback from authorized playlist URLs.
+
+          ### User Interface
+
+          - Documents required screenshots for Android TV Home, Player, Search, Playlist Import, Settings, Chromecast, and error states.
+          - Maintains accessibility label and tooltip verification for key controls.
+
+          ## Improvements
+
+          - Release artifacts use clean user-facing names.
+          - Release assets include SHA256SUMS for download verification.
+          - Release notes follow a stable template for future Airo TV versions.
+
+          ## Bug Fixes
+
+          - Fixed broken and misleading Airo TV download references that pointed to generic or missing release assets.
+          - Removed debug-looking public APK names from the Airo TV release flow.
+
+          ## Performance
+
+          - The Android TV build continues to use the lightweight TV pubspec to avoid bundling unrelated heavy dependencies.
+          - Release builds continue to use icon tree-shaking and obfuscation with split debug information.
+
+          ## Developer Changes
+
+          - Updated the Airo TV release workflow defaults for ${BUILD_NAME}.
+          - Added checksum generation to the release pipeline.
+          - Added reusable release documentation for trust and release readiness.
+
+          ## Breaking Changes
+
+          No breaking changes.
+
+          ## Known Limitations
+
+          - No EPG support.
+          - No recording.
+          - No favorites sync.
+          - No cloud playlists.
+          - No multiple playlist merge.
+          - No bundled IPTV channels or media content.
+          - Cast discovery depends on _googlecast._tcp advertising and port 8009 reachability on the local network.
+          - Screenshot and demo-video assets must be captured from final release devices before store submission.
+
+          ## Installation
+
+          ### APK
+
+          Download Airo-TV-${BUILD_NAME}.apk from Assets.
+
+          ### Play Store
+
+          Upload Airo-TV-${BUILD_NAME}-Play-Store.aab to Play Console.
+
+          ## Legal Notice
+
+          This application is an IPTV player.
+
+          It does not provide television channels, media content, or playlists.
+
+          Users are responsible for supplying legally authorized IPTV playlists.
+
+          ## Checksums
+
+          SHA256 checksums are published in the SHA256SUMS asset.
+
+          \`\`\`text
+          $(cat release-artifacts/SHA256SUMS)
+          \`\`\`
+
+          ## Contributors
+
+          Generated by GitHub from commits included in the release.
+
+          ## Full Changelog
+
+          https://github.com/DevelopersCoffee/airo/compare/airo-tv-v0.0.1...${RELEASE_VERSION}
           NOTES
           gh release create "$RELEASE_VERSION" release-artifacts/* \
-            --title "Airo TV v0.0.1" \
+            --title "Airo TV ${BUILD_NAME}" \
             --target "$RELEASE_BRANCH" \
             --notes-file "$notes" \
             --repo DevelopersCoffee/airo

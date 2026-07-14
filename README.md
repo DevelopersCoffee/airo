@@ -1,9 +1,12 @@
 # Airo
 
-[![Download APK](https://img.shields.io/github/v/release/DevelopersCoffee/airo?label=Download%20APK&color=success)](https://github.com/DevelopersCoffee/airo/releases/latest/download/app-release.apk)
+[![Download Airo TV](https://img.shields.io/badge/Download-Airo%20TV-success)](https://github.com/DevelopersCoffee/airo/releases/download/airo-tv-v0.0.2/Airo-TV-v0.0.2.apk)
 [![GitHub Release](https://img.shields.io/github/v/release/DevelopersCoffee/airo)](https://github.com/DevelopersCoffee/airo/releases)
 [![Flutter](https://img.shields.io/badge/Flutter-3.44.4+-blue.svg)](https://flutter.dev/)
 [![License: pending](https://img.shields.io/badge/license-pending-lightgrey)](#license)
+[![Security Policy](https://img.shields.io/badge/security-policy-brightgreen)](SECURITY.md)
+[![Versioning](https://img.shields.io/badge/versioning-semver-blue)](CHANGELOG.md)
+[![Android TV](https://img.shields.io/badge/Android%20TV-compatible-green)](docs/release/AIRO_TV_v0.0.2.md)
 
 Airo is a Flutter super app for local-first AI workflows: chat, model management,
 routine packs, media surfaces, and personal finance modules in one modular mobile
@@ -47,20 +50,34 @@ Start with:
 - [Open-source growth playbook](docs/community/GITHUB_GROWTH_PLAYBOOK.md)
 
 
-## Airo TV v0.0.1
+## Airo TV v0.0.2
 
-Airo TV is the Android TV variant of Airo, built from the v2 release line with package name `io.airo.app.tv`. The v0.0.1 release is prepared for Google Play Store readiness as an Entertainment / video player app.
+Airo TV is the Android TV variant of Airo, built from the v2 release line with package name `io.airo.app.tv`. The v0.0.2 release focuses on release trust, documentation, checksums, clean artifact names, and Play Store readiness.
 
 - Bring your own authorized M3U playlist URL; Airo TV does not provide IPTV content.
-- Tested release scope covers Android TV/Leanback launch, Pixel 9 portrait/landscape fallback layout, IPTV playlist import/search/play, Music India search/play, Cast status and controls, and accessibility labels/tooltips.
+- Release assets include APK, Play Store AAB, and SHA256 checksums.
+- Documentation covers privacy, security, threat model, roadmap, architecture, feature matrix, and reproducible builds.
 - Google Cast requires receiver discovery over `_googlecast._tcp` and port `8009` reachability on the local network.
-- Release artifacts are published at https://github.com/DevelopersCoffee/airo/releases/tag/airo-tv-v0.0.1.
+- Release artifacts are published at https://github.com/DevelopersCoffee/airo/releases/tag/airo-tv-v0.0.2.
+
+## Why Trust Airo?
+
+- Open source codebase with public issue tracking.
+- No bundled IPTV channels or copyrighted content.
+- User playlists remain on the device unless users load a remote playlist URL directly.
+- Release APK and AAB assets publish SHA256 checksums.
+- Transparent roadmap, changelog, security policy, privacy policy, and threat model.
+- No hidden subscriptions or mandatory accounts for the Airo TV player flow.
 
 ## Download
 
 ### Android
 
-[Download latest APK](https://github.com/DevelopersCoffee/airo/releases/latest/download/app-release.apk)
+[View Android releases](https://github.com/DevelopersCoffee/airo/releases)
+
+### Airo TV
+
+[Download Airo TV APK](https://github.com/DevelopersCoffee/airo/releases/download/airo-tv-v0.0.2/Airo-TV-v0.0.2.apk)
 
 ### iOS
 
@@ -219,6 +236,11 @@ cd ../airo-my-task
 - [Contributing guide](CONTRIBUTING.md)
 - [Code of conduct](CODE_OF_CONDUCT.md)
 - [Security policy](SECURITY.md)
+- [Privacy policy](PRIVACY.md)
+- [Roadmap](ROADMAP.md)
+- [Changelog](CHANGELOG.md)
+- [Airo TV threat model](docs/security/AIRO_TV_THREAT_MODEL.md)
+- [Airo TV architecture](docs/architecture/AIRO_TV_ARCHITECTURE.md)
 - [Agent policy](docs/agents/AGENT_POLICY.md)
 
 ## License

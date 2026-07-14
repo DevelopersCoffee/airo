@@ -8,24 +8,28 @@ Documentation for Airo releases and version history.
 
 | Version | Date | Highlights |
 |---------|------|------------|
+| [Airo TV v0.0.2](./AIRO_TV_v0.0.2.md) | 2026-07-14 | Release trust update, checksums, clean assets, documentation |
 | [Airo TV v0.0.1](./AIRO_TV_v0.0.1.md) | 2026-07-14 | Android TV IPTV release, Play Store readiness, Cast diagnostics |
 | [v1.1.0](./CHANGELOG_v1.1.0.md) | 2025-11-29 | Bill Split, E2E Testing, OCR Integration |
 | [v1.0.0](./RELEASE_v1.0.0_SUMMARY.md) | 2025-11-11 | Initial public release |
 
 ---
 
-## 🚀 Latest Release: Airo TV v0.0.1
+## Latest Release: Airo TV v0.0.2
 
 ### New Features
-- **Airo TV** - Android TV package `io.airo.app.tv` from the v2 release line
-- **IPTV playlists** - Bring-your-own authorized M3U import, channel search, and playback
-- **Cast controls** - Pause/play/stop/reload/new session/volume states plus network diagnostics
-- **Play Store readiness** - Leanback launcher, Pixel/mobile fallback layout, accessibility labels, and legal content notes
+- **Release assets** - Clean APK/AAB filenames and SHA256 checksums
+- **Release notes** - Mature open-source release format for Airo TV releases
+- **Trust documentation** - Privacy, security, threat model, roadmap, feature matrix, and architecture docs
+- **Play Store readiness** - Release process documents screenshots, demo video, legal notice, and known limitations
 
 ### Quick Links
-- [Airo TV v0.0.1 Notes](./AIRO_TV_v0.0.1.md)
+- [Airo TV v0.0.2 Notes](./AIRO_TV_v0.0.2.md)
+- [Airo TV Release Template](./AIRO_TV_RELEASE_TEMPLATE.md)
+- [Airo TV Feature Matrix](./AIRO_TV_FEATURE_MATRIX.md)
+- [Airo TV Media Assets](./AIRO_TV_MEDIA_ASSETS.md)
 - [GitHub Releases](https://github.com/DevelopersCoffee/airo/releases)
-- [Download Latest APK](https://github.com/DevelopersCoffee/airo/releases/latest/download/app-release.apk)
+- [Download Airo TV APK](https://github.com/DevelopersCoffee/airo/releases/download/airo-tv-v0.0.2/Airo-TV-v0.0.2.apk)
 
 ---
 
@@ -33,7 +37,11 @@ Documentation for Airo releases and version history.
 
 | Document | Description |
 |----------|-------------|
+| [Airo TV v0.0.2](./AIRO_TV_v0.0.2.md) | Professional release notes, checksums, limitations, installation |
 | [Airo TV v0.0.1](./AIRO_TV_v0.0.1.md) | Release notes, Play Store readiness, artifact checklist |
+| [Airo TV Release Template](./AIRO_TV_RELEASE_TEMPLATE.md) | Stable release format for future Airo TV versions |
+| [Airo TV Feature Matrix](./AIRO_TV_FEATURE_MATRIX.md) | Supported, planned, and unsupported features |
+| [Airo TV Media Assets](./AIRO_TV_MEDIA_ASSETS.md) | Screenshot and demo-video release checklist |
 | [Airo V1 and V2 Version Lines](./VERSION_LINES.md) | Base branch, tag, artifact, and support policy for monolith V1 and modular V2 |
 | [Changelog v1.1.0](./CHANGELOG_v1.1.0.md) | Current version changes |
 | [Release v1.0.0 Summary](./RELEASE_v1.0.0_SUMMARY.md) | Initial release details |
@@ -56,7 +64,7 @@ Documentation for Airo releases and version history.
 
 - **GitHub Releases**: https://github.com/DevelopersCoffee/airo/releases
 - **GitHub Actions**: https://github.com/DevelopersCoffee/airo/actions
-- **Latest APK**: https://github.com/DevelopersCoffee/airo/releases/latest/download/app-release.apk
+- **Airo TV APK**: https://github.com/DevelopersCoffee/airo/releases/download/airo-tv-v0.0.2/Airo-TV-v0.0.2.apk
 
 ---
 

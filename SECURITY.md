@@ -38,9 +38,11 @@ Maintainers should:
 
 ## Supported Versions
 
-This project is still evolving quickly. Security fixes target the latest `main`
-branch and the latest published release unless maintainers document a longer
-support window for a release line.
+| Release line | Status | Notes |
+| --- | --- | --- |
+| Airo TV v0.0.x | Supported | Security fixes target the latest Airo TV release from `v2`. |
+| `main` | Supported | Security fixes also target the latest development branch. |
+| Older releases | Best effort | Upgrade to the latest release before reporting issues that are already fixed. |
 
 ## Contributor Hygiene
 
