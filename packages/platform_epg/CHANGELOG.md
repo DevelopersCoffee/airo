@@ -1,3 +1,3 @@
 ## 0.0.1
 
-* TODO: Describe initial release.
+- Add compact EPG current/next contracts and fake repositories.
