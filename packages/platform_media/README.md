@@ -1,39 +1,65 @@
-<!--
-This README describes the package. If you publish this package to pub.dev,
-this README's contents appear on the landing page for your package.
+# Platform Media
 
-For information about how to write a good package README, see the guide for
-[writing package pages](https://dart.dev/tools/pub/writing-package-pages).
+Reusable media platform contracts and adapters for Airo products.
 
-For general information about developing packages, see the Dart guide for
-[creating packages](https://dart.dev/guides/libraries/create-packages)
-and the Flutter guide for
-[developing packages and plugins](https://flutter.dev/to/develop-packages).
--->
+This package owns playback-adjacent platform behavior that should not be
+hard-coded inside product screens. Airo TV, route selection, QA automation, and
+future native media adapters consume these contracts through stable interfaces.
 
-TODO: Put a short description of the package here that helps potential users
-know whether this package might be useful for them.
+## Scope
 
-## Features
+- Video-player based IPTV streaming service.
+- Privacy-filtered platform media analytics logging.
+- Versioned media capability requirement and device profile models.
+- Deterministic media capability preflight blocker codes for codec, container,
+  HDR, bitrate, resolution, subtitles, audio, adaptive streaming, and decoder
+  kind.
+- Fake and no-op media capability detectors for automation and integration
+  boundaries.
 
-TODO: List what your package can do. Maybe include images, gifs, or videos.
-
-## Getting started
-
-TODO: List prerequisites and provide or point to information on how to
-start using the package.
+This package does not perform native decoder probing yet, inspect raw media
+files, own route selection, or decide Airo TV product UX. Native adapters should
+plug in behind `AiroMediaCapabilityDetector`.
 
 ## Usage
 
-TODO: Include short and useful examples for package users. Add longer examples
-to `/example` folder.
-
 ```dart
-const like = 'sample';
+final profile = AiroMediaDeviceCapabilityProfile(
+  profileId: 'receiver-lite',
+  observedAt: DateTime.utc(2026, 7, 14),
+  supportedContainers: const {AiroMediaContainer.hls},
+  supportsAdaptiveStreaming: true,
+  videoDecoders: [
+    AiroVideoDecoderCapability(
+      codec: AiroVideoCodec.h264,
+      kind: AiroMediaDecoderKind.hardware,
+      maxWidth: 1920,
+      maxHeight: 1080,
+      maxBitrateKbps: 8000,
+      hdrFormats: const {AiroHdrFormat.sdr},
+    ),
+  ],
+  audioDecoders: const [
+    AiroAudioDecoderCapability(codec: AiroAudioCodec.aac, maxChannelCount: 2),
+  ],
+  subtitleFormats: const {AiroSubtitleFormat.webVtt},
+);
+
+final result = const AiroMediaCapabilityPolicy().validate(
+  profile: profile,
+  requirement: AiroMediaRequirement(
+    mediaId: 'episode-1',
+    container: AiroMediaContainer.hls,
+    videoCodec: AiroVideoCodec.h264,
+    audioCodecs: const {AiroAudioCodec.aac},
+    subtitleFormats: const {AiroSubtitleFormat.webVtt},
+    width: 1280,
+    height: 720,
+    bitrateKbps: 4500,
+    requiresAdaptiveStreaming: true,
+  ),
+);
 ```
 
-## Additional information
-
-TODO: Tell users more about the package: where to find more information, how to
-contribute to the package, how to file issues, what response they can expect
-from the package authors, and more.
+Diagnostics expose normalized ids and blocker codes, not source handles, local
+paths, addresses, or unique hardware identifiers.
