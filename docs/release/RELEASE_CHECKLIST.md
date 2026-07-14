@@ -110,7 +110,21 @@ Pre-release verification checklist for Airo Super App releases.
 
 ## 📦 Release Artifacts
 
-### Required Artifacts
+### V2 Android Profiles
+- [ ] [V2 Distribution Matrix](./V2_DISTRIBUTION_MATRIX.md) reviewed for supported profiles, artifact names, visibility, and support policy
+- [ ] Final public profiles selected (`iptv-standalone`, `mobile-streaming`, `tv`, or approved subset)
+- [ ] Final APK/AAB filenames do not use debug-looking names such as `app-release.apk`
+- [ ] `SHA256SUMS` generated after final artifact renaming
+- [ ] Release manifest JSON generated for every public/internal APK and AAB
+- [ ] Store-only AABs and private debug symbols are not published as public direct-download assets unless explicitly approved
+- [ ] Fire TV and legacy Android TV support labels match qualification evidence
+
+### Legacy / General Required Artifacts
+
+Use this legacy list for non-v2 releases. V2 Android releases use the profile
+asset names and visibility rules in
+[V2 Distribution Matrix](./V2_DISTRIBUTION_MATRIX.md).
+
 - [ ] `app-release.apk` - Android direct install
 - [ ] `app-release.aab` - Play Store upload
 - [ ] `app-release.ipa` - iOS (if applicable)
@@ -155,6 +169,7 @@ Date: ____-__-__
 
 - [Smoke Tests Workflow](/.github/workflows/smoke-tests.yml)
 - [Build & Release Workflow](/.github/workflows/build-and-release.yml)
+- [V2 Distribution Matrix](./V2_DISTRIBUTION_MATRIX.md)
 - [Rollback Procedure](./ROLLBACK_PROCEDURE.md)
 - [Store Compliance](./STORE_COMPLIANCE.md)
 - [Database Reliability Validation](./DATABASE_RELIABILITY_VALIDATION.md)

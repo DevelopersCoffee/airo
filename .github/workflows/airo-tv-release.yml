@@ -359,6 +359,19 @@ jobs:
           ls -lh release-artifacts
           cat release-artifacts/SHA256SUMS
           cat "release-artifacts/Airo-TV-${BUILD_NAME}-Release-Manifest.json"
+          {
+            echo "# Airo TV release artifacts"
+            echo ""
+            echo "| Asset | Visibility | Purpose |"
+            echo "| --- | --- | --- |"
+            echo "| Airo-TV-${BUILD_NAME}.apk | Public/direct install | Android TV and compatible Fire TV testing |"
+            echo "| Airo-TV-${BUILD_NAME}-Play-Store.aab | Store upload / draft release evidence | Google Play TV upload input |"
+            echo "| SHA256SUMS | Public/internal verification | Checksum evidence after final renaming |"
+            echo "| Airo-TV-${BUILD_NAME}-Release-Manifest.json | Public/internal verification | Profile, package, source ref, workflow run, and checksum mapping |"
+            echo "| airo-tv-debug-info-${RELEASE_VERSION} | Restricted internal artifact | Obfuscation symbol lookup |"
+            echo ""
+            echo "Policy: docs/release/V2_DISTRIBUTION_MATRIX.md"
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload Airo TV release artifacts
         uses: actions/upload-artifact@v7
