@@ -424,6 +424,115 @@ void main() {
       expect(flattened, isNot(contains('diagnosticDump')));
     });
 
+    test('standard dashboard catalog covers required surfaces', () {
+      final catalog = AiroTvAnalyticsDashboardCatalogs.standard();
+      final surfaces = catalog.metrics.map((metric) => metric.surface).toSet();
+
+      expect(catalog.validate().accepted, isTrue);
+      expect(surfaces, containsAll(AiroAnalyticsDashboardSurface.values));
+      expect(
+        catalog.metrics.map((metric) => metric.metricId),
+        containsAll(const {
+          'weekly_active_receivers',
+          'playback_startup_p95_bucket',
+          'legacy_decoder_fallback_rate',
+          'pairing_success_rate',
+          'subscription_conversion_rate',
+          'crash_rate_by_profile',
+        }),
+      );
+    });
+
+    test('standard operational alerts reference known metrics', () {
+      final catalog = AiroTvAnalyticsDashboardCatalogs.standard();
+      final metricIds = catalog.metrics
+          .map((metric) => metric.metricId)
+          .toSet();
+
+      for (final alert in catalog.alerts) {
+        expect(metricIds, contains(alert.metricId), reason: alert.alertId);
+        expect(alert.threshold.isFinite, isTrue, reason: alert.alertId);
+        expect(alert.evaluationWindowMinutes, greaterThan(0));
+        expect(alert.runbookId, startsWith('runbook_'));
+      }
+      expect(
+        catalog.alerts.map((alert) => alert.alertId),
+        containsAll(const {
+          'playback_startup_regression',
+          'crash_spike_by_profile',
+          'legacy_decoder_fallback_spike',
+          'pairing_success_regression',
+          'provider_outage_regression',
+          'privacy_deletion_latency_breach',
+        }),
+      );
+    });
+
+    test('invalid dashboard catalog returns deterministic codes', () {
+      final invalid = AiroAnalyticsDashboardCatalog(
+        metrics: const [
+          AiroAnalyticsDashboardMetricSpec(
+            metricId: 'bad metric',
+            owner: '',
+            purpose: AiroAnalyticsPurpose.product,
+            retentionClass: AiroAnalyticsRetentionClass.product90Days,
+            surface: AiroAnalyticsDashboardSurface.executive,
+            dashboardRequirement: AiroAnalyticsDashboardRequirement.required,
+          ),
+          AiroAnalyticsDashboardMetricSpec(
+            metricId: 'bad metric',
+            owner: 'product',
+            purpose: AiroAnalyticsPurpose.product,
+            retentionClass: AiroAnalyticsRetentionClass.product90Days,
+            surface: AiroAnalyticsDashboardSurface.executive,
+            dashboardRequirement: AiroAnalyticsDashboardRequirement.required,
+          ),
+        ],
+        alerts: const [
+          AiroAnalyticsOperationalAlertRule(
+            alertId: 'broken_alert',
+            metricId: 'missing_metric',
+            severity: AiroAnalyticsAlertSeverity.critical,
+            comparison: AiroAnalyticsAlertComparison.greaterThan,
+            threshold: -1,
+            evaluationWindowMinutes: 0,
+            runbookId: '',
+          ),
+        ],
+      );
+
+      expect(
+        invalid.validate().codes,
+        containsAll(const {
+          AiroAnalyticsDashboardCatalogCode.duplicateMetric,
+          AiroAnalyticsDashboardCatalogCode.metricIdInvalid,
+          AiroAnalyticsDashboardCatalogCode.metricOwnerMissing,
+          AiroAnalyticsDashboardCatalogCode.requiredSurfaceMissing,
+          AiroAnalyticsDashboardCatalogCode.alertMetricMissing,
+          AiroAnalyticsDashboardCatalogCode.alertThresholdInvalid,
+          AiroAnalyticsDashboardCatalogCode.alertWindowInvalid,
+          AiroAnalyticsDashboardCatalogCode.alertRunbookMissing,
+        }),
+      );
+    });
+
+    test('dashboard catalog public maps expose stable metadata only', () {
+      final flattened = AiroTvAnalyticsDashboardCatalogs.standard()
+          .toPublicMap()
+          .toString();
+
+      expect(flattened, contains('playback_startup_regression'));
+      expect(flattened, contains('crash_spike_by_profile'));
+      expect(flattened, contains('runbook_privacy_deletion_latency'));
+      expect(flattened, isNot(contains('https://')));
+      expect(flattened, isNot(contains('/Users/')));
+      expect(flattened, isNot(contains('192.168.')));
+      expect(flattened, isNot(contains('Bearer')));
+      expect(flattened, isNot(contains('City News Live')));
+      expect(flattened, isNot(contains('providerPayload')));
+      expect(flattened, isNot(contains('diagnosticDump')));
+    });
+
     test(
       'initialize returns disabled and invalid configuration states',
       () async {

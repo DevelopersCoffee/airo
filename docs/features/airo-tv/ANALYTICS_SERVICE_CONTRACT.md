@@ -79,6 +79,11 @@ Retention and data-access policy is platform-owned as well.
 deletion plans, least-privilege access roles, production-data approval gates,
 and public audit-safe maps before app or provider code consumes analytics data.
 
+Dashboard and alert catalogs remain platform-owned.
+`AiroAnalyticsDashboardCatalog` defines dashboard surfaces, aggregate metric
+specs, alert thresholds, severity, evaluation windows, and runbook ids without
+embedding provider-specific dashboard objects in Airo TV app code.
+
 ## Queue And Provider Behavior
 
 Local diagnostics uses a bounded platform queue. If the queue is full, a higher

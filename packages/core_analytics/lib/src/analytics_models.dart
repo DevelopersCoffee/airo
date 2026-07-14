@@ -346,6 +346,54 @@ enum AiroAnalyticsDashboardRequirement {
   final String stableId;
 }
 
+enum AiroAnalyticsDashboardSurface {
+  executive('executive'),
+  playbackQuality('playback_quality'),
+  legacyDevice('legacy_device'),
+  deviceEcosystem('device_ecosystem'),
+  subscription('subscription'),
+  regression('regression');
+
+  const AiroAnalyticsDashboardSurface(this.stableId);
+
+  final String stableId;
+}
+
+enum AiroAnalyticsAlertSeverity {
+  info('info'),
+  warning('warning'),
+  critical('critical');
+
+  const AiroAnalyticsAlertSeverity(this.stableId);
+
+  final String stableId;
+}
+
+enum AiroAnalyticsAlertComparison {
+  greaterThan('greater_than'),
+  lessThan('less_than');
+
+  const AiroAnalyticsAlertComparison(this.stableId);
+
+  final String stableId;
+}
+
+enum AiroAnalyticsDashboardCatalogCode {
+  accepted('accepted'),
+  duplicateMetric('duplicate_metric'),
+  metricIdInvalid('metric_id_invalid'),
+  metricOwnerMissing('metric_owner_missing'),
+  requiredSurfaceMissing('required_surface_missing'),
+  alertMetricMissing('alert_metric_missing'),
+  alertThresholdInvalid('alert_threshold_invalid'),
+  alertWindowInvalid('alert_window_invalid'),
+  alertRunbookMissing('alert_runbook_missing');
+
+  const AiroAnalyticsDashboardCatalogCode(this.stableId);
+
+  final String stableId;
+}
+
 enum AiroAnalyticsSchemaValidationCode {
   accepted('accepted'),
   schemaMissing('schema_missing'),
@@ -1209,6 +1257,191 @@ class AiroAnalyticsRetentionPolicy extends Equatable {
 
   @override
   List<Object?> get props => [schemaVersion, rules];
+}
+
+class AiroAnalyticsDashboardCatalogResult extends Equatable {
+  AiroAnalyticsDashboardCatalogResult({
+    required List<AiroAnalyticsDashboardCatalogCode> codes,
+  }) : codes = List.unmodifiable(codes);
+
+  final List<AiroAnalyticsDashboardCatalogCode> codes;
+
+  bool get accepted =>
+      codes.length == 1 &&
+      codes.single == AiroAnalyticsDashboardCatalogCode.accepted;
+
+  Map<String, Object?> toPublicMap() {
+    return {
+      'accepted': accepted,
+      'codes': codes.map((code) => code.stableId).toList(growable: false),
+    };
+  }
+
+  @override
+  List<Object?> get props => [codes];
+}
+
+class AiroAnalyticsDashboardMetricSpec extends Equatable {
+  const AiroAnalyticsDashboardMetricSpec({
+    required this.metricId,
+    required this.owner,
+    required this.purpose,
+    required this.retentionClass,
+    required this.surface,
+    required this.dashboardRequirement,
+    this.aggregateOnly = true,
+    this.alertable = false,
+  });
+
+  final String metricId;
+  final String owner;
+  final AiroAnalyticsPurpose purpose;
+  final AiroAnalyticsRetentionClass retentionClass;
+  final AiroAnalyticsDashboardSurface surface;
+  final AiroAnalyticsDashboardRequirement dashboardRequirement;
+  final bool aggregateOnly;
+  final bool alertable;
+
+  Map<String, Object?> toPublicMap() {
+    return {
+      'metricId': metricId,
+      'owner': owner,
+      'purpose': purpose.stableId,
+      'retentionClass': retentionClass.stableId,
+      'surface': surface.stableId,
+      'dashboardRequirement': dashboardRequirement.stableId,
+      'aggregateOnly': aggregateOnly,
+      'alertable': alertable,
+    };
+  }
+
+  @override
+  List<Object?> get props => [
+    metricId,
+    owner,
+    purpose,
+    retentionClass,
+    surface,
+    dashboardRequirement,
+    aggregateOnly,
+    alertable,
+  ];
+}
+
+class AiroAnalyticsOperationalAlertRule extends Equatable {
+  const AiroAnalyticsOperationalAlertRule({
+    required this.alertId,
+    required this.metricId,
+    required this.severity,
+    required this.comparison,
+    required this.threshold,
+    required this.evaluationWindowMinutes,
+    required this.runbookId,
+  });
+
+  final String alertId;
+  final String metricId;
+  final AiroAnalyticsAlertSeverity severity;
+  final AiroAnalyticsAlertComparison comparison;
+  final double threshold;
+  final int evaluationWindowMinutes;
+  final String runbookId;
+
+  Map<String, Object?> toPublicMap() {
+    return {
+      'alertId': alertId,
+      'metricId': metricId,
+      'severity': severity.stableId,
+      'comparison': comparison.stableId,
+      'threshold': threshold,
+      'evaluationWindowMinutes': evaluationWindowMinutes,
+      'runbookId': runbookId,
+    };
+  }
+
+  @override
+  List<Object?> get props => [
+    alertId,
+    metricId,
+    severity,
+    comparison,
+    threshold,
+    evaluationWindowMinutes,
+    runbookId,
+  ];
+}
+
+class AiroAnalyticsDashboardCatalog extends Equatable {
+  AiroAnalyticsDashboardCatalog({
+    required Iterable<AiroAnalyticsDashboardMetricSpec> metrics,
+    required Iterable<AiroAnalyticsOperationalAlertRule> alerts,
+    this.schemaVersion = kAiroAnalyticsSchemaVersion,
+  }) : metrics = List.unmodifiable(metrics),
+       alerts = List.unmodifiable(alerts);
+
+  final String schemaVersion;
+  final List<AiroAnalyticsDashboardMetricSpec> metrics;
+  final List<AiroAnalyticsOperationalAlertRule> alerts;
+
+  AiroAnalyticsDashboardCatalogResult validate() {
+    final codes = <AiroAnalyticsDashboardCatalogCode>[];
+    final metricIds = <String>{};
+    final surfaces = <AiroAnalyticsDashboardSurface>{};
+    for (final metric in metrics) {
+      if (!metricIds.add(metric.metricId)) {
+        codes.add(AiroAnalyticsDashboardCatalogCode.duplicateMetric);
+      }
+      if (!_isSnakeCase(metric.metricId)) {
+        codes.add(AiroAnalyticsDashboardCatalogCode.metricIdInvalid);
+      }
+      if (metric.owner.trim().isEmpty) {
+        codes.add(AiroAnalyticsDashboardCatalogCode.metricOwnerMissing);
+      }
+      if (metric.dashboardRequirement ==
+          AiroAnalyticsDashboardRequirement.required) {
+        surfaces.add(metric.surface);
+      }
+    }
+    for (final surface in AiroAnalyticsDashboardSurface.values) {
+      if (!surfaces.contains(surface)) {
+        codes.add(AiroAnalyticsDashboardCatalogCode.requiredSurfaceMissing);
+      }
+    }
+    for (final alert in alerts) {
+      if (!metricIds.contains(alert.metricId)) {
+        codes.add(AiroAnalyticsDashboardCatalogCode.alertMetricMissing);
+      }
+      if (!alert.threshold.isFinite || alert.threshold < 0) {
+        codes.add(AiroAnalyticsDashboardCatalogCode.alertThresholdInvalid);
+      }
+      if (alert.evaluationWindowMinutes <= 0) {
+        codes.add(AiroAnalyticsDashboardCatalogCode.alertWindowInvalid);
+      }
+      if (alert.runbookId.trim().isEmpty) {
+        codes.add(AiroAnalyticsDashboardCatalogCode.alertRunbookMissing);
+      }
+    }
+    return AiroAnalyticsDashboardCatalogResult(
+      codes: codes.isEmpty
+          ? const [AiroAnalyticsDashboardCatalogCode.accepted]
+          : codes.toSet().toList(growable: false),
+    );
+  }
+
+  Map<String, Object?> toPublicMap() {
+    return {
+      'schemaVersion': schemaVersion,
+      'metrics': metrics
+          .map((metric) => metric.toPublicMap())
+          .toList(growable: false),
+      'alerts': alerts
+          .map((alert) => alert.toPublicMap())
+          .toList(growable: false),
+    };
+  }
+
+  @override
+  List<Object?> get props => [schemaVersion, metrics, alerts];
 }
 
 class AiroAnalyticsProductEditionProfile extends Equatable {
@@ -2946,6 +3179,144 @@ class AiroTvAnalyticsRetentionPolicies {
             AiroAnalyticsAccessPurpose.securityInvestigation,
             AiroAnalyticsAccessPurpose.releaseQuality,
           },
+        ),
+      ],
+    );
+  }
+}
+
+class AiroTvAnalyticsDashboardCatalogs {
+  const AiroTvAnalyticsDashboardCatalogs._();
+
+  static AiroAnalyticsDashboardCatalog standard() {
+    return AiroAnalyticsDashboardCatalog(
+      metrics: const [
+        AiroAnalyticsDashboardMetricSpec(
+          metricId: 'weekly_active_receivers',
+          owner: 'product',
+          purpose: AiroAnalyticsPurpose.product,
+          retentionClass: AiroAnalyticsRetentionClass.aggregateOnly,
+          surface: AiroAnalyticsDashboardSurface.executive,
+          dashboardRequirement: AiroAnalyticsDashboardRequirement.required,
+        ),
+        AiroAnalyticsDashboardMetricSpec(
+          metricId: 'playback_startup_p95_bucket',
+          owner: 'media',
+          purpose: AiroAnalyticsPurpose.playbackQuality,
+          retentionClass: AiroAnalyticsRetentionClass.product90Days,
+          surface: AiroAnalyticsDashboardSurface.playbackQuality,
+          dashboardRequirement: AiroAnalyticsDashboardRequirement.required,
+          alertable: true,
+        ),
+        AiroAnalyticsDashboardMetricSpec(
+          metricId: 'legacy_decoder_fallback_rate',
+          owner: 'platform_media',
+          purpose: AiroAnalyticsPurpose.diagnostics,
+          retentionClass: AiroAnalyticsRetentionClass.diagnostics30Days,
+          surface: AiroAnalyticsDashboardSurface.legacyDevice,
+          dashboardRequirement: AiroAnalyticsDashboardRequirement.required,
+          alertable: true,
+        ),
+        AiroAnalyticsDashboardMetricSpec(
+          metricId: 'pairing_success_rate',
+          owner: 'device_ecosystem',
+          purpose: AiroAnalyticsPurpose.operational,
+          retentionClass: AiroAnalyticsRetentionClass.operational30Days,
+          surface: AiroAnalyticsDashboardSurface.deviceEcosystem,
+          dashboardRequirement: AiroAnalyticsDashboardRequirement.required,
+          alertable: true,
+        ),
+        AiroAnalyticsDashboardMetricSpec(
+          metricId: 'subscription_conversion_rate',
+          owner: 'growth',
+          purpose: AiroAnalyticsPurpose.product,
+          retentionClass: AiroAnalyticsRetentionClass.product90Days,
+          surface: AiroAnalyticsDashboardSurface.subscription,
+          dashboardRequirement: AiroAnalyticsDashboardRequirement.required,
+          alertable: true,
+        ),
+        AiroAnalyticsDashboardMetricSpec(
+          metricId: 'crash_rate_by_profile',
+          owner: 'sre',
+          purpose: AiroAnalyticsPurpose.crash,
+          retentionClass: AiroAnalyticsRetentionClass.crash90Days,
+          surface: AiroAnalyticsDashboardSurface.regression,
+          dashboardRequirement: AiroAnalyticsDashboardRequirement.required,
+          alertable: true,
+        ),
+        AiroAnalyticsDashboardMetricSpec(
+          metricId: 'provider_outage_rate',
+          owner: 'sre',
+          purpose: AiroAnalyticsPurpose.operational,
+          retentionClass: AiroAnalyticsRetentionClass.operational30Days,
+          surface: AiroAnalyticsDashboardSurface.regression,
+          dashboardRequirement: AiroAnalyticsDashboardRequirement.required,
+          alertable: true,
+        ),
+        AiroAnalyticsDashboardMetricSpec(
+          metricId: 'privacy_deletion_latency_bucket',
+          owner: 'privacy',
+          purpose: AiroAnalyticsPurpose.operational,
+          retentionClass: AiroAnalyticsRetentionClass.operational30Days,
+          surface: AiroAnalyticsDashboardSurface.regression,
+          dashboardRequirement: AiroAnalyticsDashboardRequirement.required,
+          alertable: true,
+        ),
+      ],
+      alerts: const [
+        AiroAnalyticsOperationalAlertRule(
+          alertId: 'playback_startup_regression',
+          metricId: 'playback_startup_p95_bucket',
+          severity: AiroAnalyticsAlertSeverity.warning,
+          comparison: AiroAnalyticsAlertComparison.greaterThan,
+          threshold: 3,
+          evaluationWindowMinutes: 30,
+          runbookId: 'runbook_playback_startup_regression',
+        ),
+        AiroAnalyticsOperationalAlertRule(
+          alertId: 'crash_spike_by_profile',
+          metricId: 'crash_rate_by_profile',
+          severity: AiroAnalyticsAlertSeverity.critical,
+          comparison: AiroAnalyticsAlertComparison.greaterThan,
+          threshold: 0.02,
+          evaluationWindowMinutes: 15,
+          runbookId: 'runbook_crash_spike',
+        ),
+        AiroAnalyticsOperationalAlertRule(
+          alertId: 'legacy_decoder_fallback_spike',
+          metricId: 'legacy_decoder_fallback_rate',
+          severity: AiroAnalyticsAlertSeverity.warning,
+          comparison: AiroAnalyticsAlertComparison.greaterThan,
+          threshold: 0.15,
+          evaluationWindowMinutes: 60,
+          runbookId: 'runbook_legacy_decoder_fallback',
+        ),
+        AiroAnalyticsOperationalAlertRule(
+          alertId: 'pairing_success_regression',
+          metricId: 'pairing_success_rate',
+          severity: AiroAnalyticsAlertSeverity.warning,
+          comparison: AiroAnalyticsAlertComparison.lessThan,
+          threshold: 0.92,
+          evaluationWindowMinutes: 30,
+          runbookId: 'runbook_pairing_success',
+        ),
+        AiroAnalyticsOperationalAlertRule(
+          alertId: 'provider_outage_regression',
+          metricId: 'provider_outage_rate',
+          severity: AiroAnalyticsAlertSeverity.critical,
+          comparison: AiroAnalyticsAlertComparison.greaterThan,
+          threshold: 0.05,
+          evaluationWindowMinutes: 15,
+          runbookId: 'runbook_provider_outage',
+        ),
+        AiroAnalyticsOperationalAlertRule(
+          alertId: 'privacy_deletion_latency_breach',
+          metricId: 'privacy_deletion_latency_bucket',
+          severity: AiroAnalyticsAlertSeverity.critical,
+          comparison: AiroAnalyticsAlertComparison.greaterThan,
+          threshold: 24,
+          evaluationWindowMinutes: 60,
+          runbookId: 'runbook_privacy_deletion_latency',
         ),
       ],
     );

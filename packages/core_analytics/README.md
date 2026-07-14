@@ -21,6 +21,8 @@ analytics SDKs directly.
   configuration derivation.
 - Retention and data-access policy for raw retention windows, deletion plans,
   least-privilege access decisions, and public audit-safe serialization.
+- Dashboard metric and operational alert catalogs for executive, playback,
+  legacy-device, ecosystem, subscription, and regression reporting surfaces.
 - Consent and local-only collection gates.
 - Consent transition results for queue cleanup, local-only external upload
   blocking, collection disablement, and reset generation state.
