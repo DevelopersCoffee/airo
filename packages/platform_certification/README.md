@@ -20,6 +20,10 @@ unsupported.
   device classes.
 - Default Airo cross-platform validation matrix for Airo TV v2 platform
   hardening.
+- Benchmark device-class gates for constrained TV, standard TV, mobile
+  companion, and desktop companion performance/support claims.
+- Fake and no-op benchmark evidence providers for deterministic release
+  automation.
 
 This package does not collect device evidence, run benchmarks, upload logs,
 render UI, or submit store releases.
