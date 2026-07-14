@@ -21,6 +21,9 @@ Related issues: #681, #585, #657.
 - [ ] Create a Play service account for release automation.
 - [ ] Grant the service account release permissions for the target apps.
 - [ ] Store the service account JSON as a GitHub Actions secret.
+- [x] Configure Fastlane to read Play credential path and package ID from
+      environment variables. See
+      [Fastlane Credential Setup](./FASTLANE_CREDENTIALS.md).
 - [ ] Confirm the first upload track for each app: internal, alpha, beta,
       production, or no-upload.
 - [ ] Confirm whether TV uses the same Play app with device targeting or a
@@ -61,6 +64,21 @@ Related issues: #677, #678, #681.
 - [ ] Confirm whether internal QA uses production signing or a release-candidate
       signing key.
 - [ ] Confirm key backup and rotation ownership outside the repository.
+
+## App Store Connect / Fastlane
+
+Related issue: #585.
+
+- [x] Configure iOS Fastlane Appfile values from environment variables instead
+      of committed account identifiers.
+- [ ] Confirm Apple Developer Program membership before adding iOS/iPadOS to a
+      release wave.
+- [ ] Create App Store Connect API credentials if iOS/iPadOS enters scope.
+- [ ] Configure signing certificates and provisioning profiles if iOS/iPadOS
+      enters scope.
+- [ ] Store `MATCH_PASSWORD`, `ASC_KEY_ID`, `ASC_ISSUER_ID`, and
+      `ASC_KEY_CONTENT` as GitHub Actions secrets before TestFlight/App Store
+      upload.
 
 ## Distribution Channels
 
