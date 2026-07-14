@@ -49,6 +49,7 @@ class AiroIptvQualificationApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       home: DeviceQualificationOverlay(
         defaultPlaylistUrl: _defaultPlaylistUrl,
+        autoCycle: true,
         onFormFactorOverride: (formFactor, tvPlatform) {
           if (formFactor == 'tv') {
             DeviceFormFactorDetector.debugFormFactorOverride = DeviceFormFactor.tv;

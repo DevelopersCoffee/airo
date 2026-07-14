@@ -14,12 +14,14 @@ class DeviceQualificationOverlay extends StatefulWidget {
   final Widget child;
   final String defaultPlaylistUrl;
   final FormFactorOverrideCallback? onFormFactorOverride;
+  final bool autoCycle;
 
   const DeviceQualificationOverlay({
     super.key,
     required this.child,
     this.defaultPlaylistUrl = 'https://iptv-org.github.io/iptv/index.m3u',
     this.onFormFactorOverride,
+    this.autoCycle = false,
   });
 
   @override
@@ -50,6 +52,29 @@ class _DeviceQualificationOverlayState extends State<DeviceQualificationOverlay>
     super.initState();
     _startFpsTicker();
     _seedPlaylist();
+    if (widget.autoCycle) {
+      _startAutoCycle();
+    }
+  }
+
+  void _startAutoCycle() {
+    int index = 0;
+    Future.doWhile(() async {
+      await Future.delayed(const Duration(seconds: 8));
+      if (!mounted) return false;
+      index = (index + 1) % SimulatedDevice.values.length;
+      final nextDevice = SimulatedDevice.values[index];
+      setState(() {
+        _simulatedDevice = nextDevice;
+        if (nextDevice.isTv) {
+          _showRemote = true; // show remote overlay for visual testing
+        } else {
+          _showRemote = false;
+        }
+      });
+      _updateFormFactorOverride(nextDevice);
+      return true;
+    });
   }
 
   void _seedPlaylist() async {

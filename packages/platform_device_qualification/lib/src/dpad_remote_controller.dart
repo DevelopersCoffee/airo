@@ -162,7 +162,7 @@ class DpadRemoteController extends StatelessWidget {
                           color: Colors.grey[900],
                           shape: BoxShape.circle,
                           border: Border.all(
-                            color: Colors.grey[750]!,
+                            color: Colors.grey[700]!,
                             width: 2,
                           ),
                           boxShadow: const [
