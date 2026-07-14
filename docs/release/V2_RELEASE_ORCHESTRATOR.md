@@ -81,6 +81,8 @@ Public/store publishing requires:
   uploads;
 - `mobile_play_track` set to a Play testing or production track for the
   selected mobile/tablet profile;
+- `packages/core_release` used to preflight the selected profile, expected AAB,
+  package ID, track mode, and Play Console URL before upload tools run;
 - `firebase_distribution` set to `upload` for Firebase App Distribution,
   alongside the required Firebase app IDs and tester groups.
 
@@ -96,6 +98,9 @@ off and sets the TV and mobile/tablet Play tracks plus Firebase distribution to
 - Whether optional channels should block the whole release or report warnings.
 - Play Console apps/tracks, release signing secrets, and
   `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON` for #681.
+- Play upload jobs should pass only credential availability into
+  `AiroPlayUploadPlanner`; service-account JSON stays inside the workflow step
+  that invokes the upload tool.
 - Mobile/tablet and TV Firebase apps, tester groups, and
   `FIREBASE_SERVICE_ACCOUNT_JSON` for #682. Package IDs are registered under
   `io.airo.app.*`.

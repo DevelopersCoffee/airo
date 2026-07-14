@@ -19,6 +19,8 @@ instead of duplicating profile rules in CI scripts.
 - Distribution-channel behavior for GitHub Releases, Firebase App
   Distribution, Google Play, Amazon Appstore, F-Droid, direct APK, and local
   validation.
+- Google Play upload planning for no-upload, internal, alpha, beta, and
+  production modes before workflows write credentials or run upload tools.
 - Validation findings for duplicate profile/package IDs and incomplete Android
   release candidates.
 
