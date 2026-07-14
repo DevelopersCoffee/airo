@@ -1,0 +1,96 @@
+# Airo TV Analytics Service Contract
+
+ATV-069 defines the platform analytics service contract for Airo TV v2.0.0.1.
+Feature modules submit typed events to `packages/core_analytics`; they must not
+call Firebase, Google Analytics, Crashlytics, or another vendor SDK directly.
+
+## Ownership
+
+- Framework owns the service interface, lifecycle result codes, provider
+  boundary, typed events, timed events, and deterministic adapters.
+- Security and Privacy owns consent gates, local-only behavior, reset/delete
+  semantics, prohibited payload validation, and redaction requirements.
+- QA owns no-op, local diagnostics, provider failure, consent withdrawal,
+  privacy pattern, and timed-event tests.
+- Airo TV app code owns settings UI, user copy, and product workflow decisions
+  that consume this platform contract.
+
+## Service Boundary
+
+`AiroAnalyticsService` exposes:
+
+- `initialize(configuration)`
+- `track(event)`
+- `startTimedEvent(...)`
+- `endTimedEvent(...)`
+- `updateConsent(consent)`
+- `setCollectionEnabled(enabled)`
+- `flush()`
+- `reset()`
+
+The built-in service implementations are:
+
+- `AiroNoOpAnalyticsService`
+- `AiroLocalDiagnosticsAnalyticsService`
+- `AiroProviderBackedAnalyticsService`
+
+The provider-backed service accepts a sender function that must be implemented
+by an isolated adapter. If that sender fails, the service returns
+`provider_unavailable` instead of throwing through playback, UI, or feature
+code.
+
+## Configuration
+
+`AiroAnalyticsServiceConfiguration` declares:
+
+- provider kind
+- product profile
+- consent state
+- collection enabled/disabled
+- max queue size
+- whether external upload is allowed
+- whether the provider SDK is isolated behind the adapter
+- whether analytics is non-blocking
+- whether the installation ID is resettable
+
+The configuration validator rejects local-only external uploads, unisolated
+vendor adapters, blocking analytics, invalid queue budgets, and non-resettable
+installation IDs.
+
+## Consent And Local-Only Behavior
+
+Analytics starts disabled/no-op by default. Product, playback-quality,
+diagnostic, crash, and personalized analytics are controlled separately.
+Local-only mode allows operational and diagnostics events locally, while
+preventing external analytics upload. When consent is withdrawn, optional queued
+events are removed immediately from the local diagnostics service.
+
+## Privacy Rules
+
+Every event is validated before provider upload or local retention. The standard
+privacy filter rejects:
+
+- raw media/channel/program/playlist names
+- stream, signed, playlist, and other URLs
+- local file paths
+- local IP addresses
+- auth headers, cookies, and credential-like values
+- raw search text and voice transcripts
+
+Timed events record duration buckets such as `1_3s`; they do not persist raw
+duration values.
+
+## Airo TV Consumption Rule
+
+Airo TV, feature modules, playback, pairing, handoff, diagnostics, and
+experimentation code should depend on `core_analytics` or a platform adapter
+built on it. Product code may decide which typed event to submit, but consent,
+privacy validation, collection enablement, provider failure handling, and
+vendor SDK isolation stay in the platform layer.
+
+## Public Serialization
+
+Public maps expose stable provider/profile/result IDs, booleans, queue budgets,
+and violation codes only. They do not expose raw media URLs, provider payloads,
+credentials, local paths, local IP addresses, viewing history, diagnostics
+dumps, or store-console account data.

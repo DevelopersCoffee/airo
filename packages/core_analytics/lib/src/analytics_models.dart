@@ -1,3 +1,5 @@
+// ignore_for_file: prefer_initializing_formals
+
 import 'package:equatable/equatable.dart';
 
 const String kAiroAnalyticsSchemaVersion = '1.0.0';
@@ -26,13 +28,44 @@ enum AiroAnalyticsPriority {
   final String stableId;
 }
 
+enum AiroAnalyticsProviderKind {
+  noOp('no_op'),
+  localDiagnostics('local_diagnostics'),
+  vendorAdapter('vendor_adapter'),
+  selfHosted('self_hosted');
+
+  const AiroAnalyticsProviderKind(this.stableId);
+
+  final String stableId;
+}
+
+enum AiroAnalyticsProductProfile {
+  fullTv('full_tv'),
+  standardTv('standard_tv'),
+  liteReceiver('lite_receiver'),
+  embeddedReceiver('embedded_receiver'),
+  mobileCompanion('mobile_companion'),
+  desktopCompanion('desktop_companion');
+
+  const AiroAnalyticsProductProfile(this.stableId);
+
+  final String stableId;
+}
+
 enum AiroAnalyticsTrackStatus {
-  accepted,
-  droppedByConsent,
-  droppedByLocalOnly,
-  droppedQueueFull,
-  rejectedPrivacy,
-  rejectedSchema,
+  accepted('accepted'),
+  droppedByConsent('dropped_by_consent'),
+  droppedByLocalOnly('dropped_by_local_only'),
+  droppedByCollectionDisabled('dropped_by_collection_disabled'),
+  droppedQueueFull('dropped_queue_full'),
+  rejectedPrivacy('rejected_privacy'),
+  rejectedSchema('rejected_schema'),
+  providerUnavailable('provider_unavailable'),
+  timedEventMissing('timed_event_missing');
+
+  const AiroAnalyticsTrackStatus(this.stableId);
+
+  final String stableId;
 }
 
 enum AiroAnalyticsPrivacyCode {
@@ -43,6 +76,29 @@ enum AiroAnalyticsPrivacyCode {
   credentialLikeValue('credential_like_value');
 
   const AiroAnalyticsPrivacyCode(this.stableId);
+
+  final String stableId;
+}
+
+enum AiroAnalyticsConfigurationCode {
+  accepted('accepted'),
+  queueBudgetInvalid('queue_budget_invalid'),
+  externalUploadInLocalOnly('external_upload_in_local_only'),
+  vendorSdkNotIsolated('vendor_sdk_not_isolated'),
+  playbackMayBlock('playback_may_block'),
+  resettableInstallIdMissing('resettable_install_id_missing');
+
+  const AiroAnalyticsConfigurationCode(this.stableId);
+
+  final String stableId;
+}
+
+enum AiroAnalyticsLifecycleCode {
+  initialized('initialized'),
+  disabled('disabled'),
+  invalidConfiguration('invalid_configuration');
+
+  const AiroAnalyticsLifecycleCode(this.stableId);
 
   final String stableId;
 }
@@ -174,6 +230,139 @@ class AiroAnalyticsPrivacyResult extends Equatable {
   List<Object?> get props => [violations];
 }
 
+class AiroAnalyticsConfigurationResult extends Equatable {
+  AiroAnalyticsConfigurationResult({
+    required List<AiroAnalyticsConfigurationCode> codes,
+  }) : codes = List.unmodifiable(codes);
+
+  final List<AiroAnalyticsConfigurationCode> codes;
+
+  bool get accepted =>
+      codes.length == 1 &&
+      codes.single == AiroAnalyticsConfigurationCode.accepted;
+
+  Map<String, Object?> toPublicMap() {
+    return {
+      'accepted': accepted,
+      'codes': codes.map((code) => code.stableId).toList(growable: false),
+    };
+  }
+
+  @override
+  List<Object?> get props => [codes];
+}
+
+class AiroAnalyticsServiceConfiguration extends Equatable {
+  const AiroAnalyticsServiceConfiguration({
+    required this.providerKind,
+    required this.productProfile,
+    this.consent = const AiroAnalyticsConsentState.disabled(),
+    this.collectionEnabled = false,
+    this.maxQueueEvents = 0,
+    this.externalUploadAllowed = false,
+    this.providerSdkIsolated = true,
+    this.nonBlocking = true,
+    this.resettableInstallationId = true,
+    this.schemaVersion = kAiroAnalyticsSchemaVersion,
+  });
+
+  final String schemaVersion;
+  final AiroAnalyticsProviderKind providerKind;
+  final AiroAnalyticsProductProfile productProfile;
+  final AiroAnalyticsConsentState consent;
+  final bool collectionEnabled;
+  final int maxQueueEvents;
+  final bool externalUploadAllowed;
+  final bool providerSdkIsolated;
+  final bool nonBlocking;
+  final bool resettableInstallationId;
+
+  AiroAnalyticsConfigurationResult validate() {
+    final codes = <AiroAnalyticsConfigurationCode>[];
+    if (maxQueueEvents < 0) {
+      codes.add(AiroAnalyticsConfigurationCode.queueBudgetInvalid);
+    }
+    if (consent.localOnly && externalUploadAllowed) {
+      codes.add(AiroAnalyticsConfigurationCode.externalUploadInLocalOnly);
+    }
+    if (providerKind == AiroAnalyticsProviderKind.vendorAdapter &&
+        !providerSdkIsolated) {
+      codes.add(AiroAnalyticsConfigurationCode.vendorSdkNotIsolated);
+    }
+    if (!nonBlocking) {
+      codes.add(AiroAnalyticsConfigurationCode.playbackMayBlock);
+    }
+    if (!resettableInstallationId) {
+      codes.add(AiroAnalyticsConfigurationCode.resettableInstallIdMissing);
+    }
+    return AiroAnalyticsConfigurationResult(
+      codes: codes.isEmpty
+          ? const [AiroAnalyticsConfigurationCode.accepted]
+          : codes,
+    );
+  }
+
+  Map<String, Object?> toPublicMap() {
+    return {
+      'schemaVersion': schemaVersion,
+      'providerKind': providerKind.stableId,
+      'productProfile': productProfile.stableId,
+      'collectionEnabled': collectionEnabled,
+      'maxQueueEvents': maxQueueEvents,
+      'externalUploadAllowed': externalUploadAllowed,
+      'providerSdkIsolated': providerSdkIsolated,
+      'nonBlocking': nonBlocking,
+      'resettableInstallationId': resettableInstallationId,
+      'consent': {
+        'operational': consent.operational,
+        'product': consent.product,
+        'playbackQuality': consent.playbackQuality,
+        'diagnostics': consent.diagnostics,
+        'crash': consent.crash,
+        'personalized': consent.personalized,
+        'localOnly': consent.localOnly,
+      },
+    };
+  }
+
+  @override
+  List<Object?> get props => [
+    schemaVersion,
+    providerKind,
+    productProfile,
+    consent,
+    collectionEnabled,
+    maxQueueEvents,
+    externalUploadAllowed,
+    providerSdkIsolated,
+    nonBlocking,
+    resettableInstallationId,
+  ];
+}
+
+class AiroAnalyticsLifecycleResult extends Equatable {
+  const AiroAnalyticsLifecycleResult({
+    required this.code,
+    this.configurationResult,
+  });
+
+  final AiroAnalyticsLifecycleCode code;
+  final AiroAnalyticsConfigurationResult? configurationResult;
+
+  bool get accepted => code == AiroAnalyticsLifecycleCode.initialized;
+
+  Map<String, Object?> toPublicMap() {
+    return {
+      'accepted': accepted,
+      'code': code.stableId,
+      'configurationResult': configurationResult?.toPublicMap(),
+    };
+  }
+
+  @override
+  List<Object?> get props => [code, configurationResult];
+}
+
 class AiroAnalyticsTrackResult extends Equatable {
   AiroAnalyticsTrackResult({
     required this.status,
@@ -185,8 +374,62 @@ class AiroAnalyticsTrackResult extends Equatable {
 
   bool get accepted => status == AiroAnalyticsTrackStatus.accepted;
 
+  Map<String, Object?> toPublicMap() {
+    return {
+      'accepted': accepted,
+      'status': status.stableId,
+      'violations': violations
+          .map(
+            (violation) => {
+              'code': violation.code.stableId,
+              'field': violation.field,
+            },
+          )
+          .toList(growable: false),
+    };
+  }
+
   @override
   List<Object?> get props => [status, violations];
+}
+
+class AiroAnalyticsTimedEventHandle extends Equatable {
+  AiroAnalyticsTimedEventHandle({
+    required this.eventName,
+    required this.owner,
+    required this.purpose,
+    required this.startedAt,
+    Map<String, Object?> params = const {},
+    this.priority = AiroAnalyticsPriority.normal,
+  }) : params = Map.unmodifiable(params);
+
+  final String eventName;
+  final String owner;
+  final AiroAnalyticsPurpose purpose;
+  final DateTime startedAt;
+  final Map<String, Object?> params;
+  final AiroAnalyticsPriority priority;
+
+  AiroAnalyticsEvent complete({required DateTime endedAt}) {
+    final durationMs = endedAt.difference(startedAt).inMilliseconds;
+    return AiroAnalyticsEvent(
+      name: eventName,
+      owner: owner,
+      purpose: purpose,
+      priority: priority,
+      params: {...params, 'duration_bucket': _durationBucket(durationMs)},
+    );
+  }
+
+  @override
+  List<Object?> get props => [
+    eventName,
+    owner,
+    purpose,
+    startedAt,
+    params,
+    priority,
+  ];
 }
 
 class AiroAnalyticsPrivacyFilter {
@@ -289,21 +532,84 @@ class AiroAnalyticsPrivacyFilter {
 }
 
 abstract class AiroAnalyticsService {
+  Future<AiroAnalyticsLifecycleResult> initialize(
+    AiroAnalyticsServiceConfiguration configuration,
+  ) async {
+    final result = configuration.validate();
+    if (!result.accepted) {
+      return AiroAnalyticsLifecycleResult(
+        code: AiroAnalyticsLifecycleCode.invalidConfiguration,
+        configurationResult: result,
+      );
+    }
+    if (!configuration.collectionEnabled) {
+      return AiroAnalyticsLifecycleResult(
+        code: AiroAnalyticsLifecycleCode.disabled,
+        configurationResult: result,
+      );
+    }
+    return AiroAnalyticsLifecycleResult(
+      code: AiroAnalyticsLifecycleCode.initialized,
+      configurationResult: result,
+    );
+  }
+
   Future<AiroAnalyticsTrackResult> track(AiroAnalyticsEvent event);
+
+  AiroAnalyticsTimedEventHandle startTimedEvent({
+    required String eventName,
+    required String owner,
+    required AiroAnalyticsPurpose purpose,
+    required DateTime startedAt,
+    Map<String, Object?> params = const {},
+    AiroAnalyticsPriority priority = AiroAnalyticsPriority.normal,
+  }) {
+    return AiroAnalyticsTimedEventHandle(
+      eventName: eventName,
+      owner: owner,
+      purpose: purpose,
+      startedAt: startedAt,
+      params: params,
+      priority: priority,
+    );
+  }
+
+  Future<AiroAnalyticsTrackResult> endTimedEvent({
+    required AiroAnalyticsTimedEventHandle handle,
+    required DateTime endedAt,
+  }) {
+    return track(handle.complete(endedAt: endedAt));
+  }
+
+  Future<void> updateConsent(AiroAnalyticsConsentState consent) async {}
+
+  Future<void> setCollectionEnabled(bool enabled) async {}
 
   Future<void> flush();
 
   Future<void> reset();
 }
 
+typedef AiroAnalyticsProviderSender =
+    Future<void> Function(AiroAnalyticsEvent event);
+
 class AiroNoOpAnalyticsService implements AiroAnalyticsService {
   const AiroNoOpAnalyticsService({
     this.consent = const AiroAnalyticsConsentState.disabled(),
     this.privacyFilter,
+    this.collectionEnabled = true,
   });
 
   final AiroAnalyticsConsentState consent;
   final AiroAnalyticsPrivacyFilter? privacyFilter;
+  final bool collectionEnabled;
+
+  @override
+  Future<AiroAnalyticsLifecycleResult> initialize(
+    AiroAnalyticsServiceConfiguration configuration,
+  ) {
+    return _initializeAnalyticsService(configuration);
+  }
 
   @override
   Future<AiroAnalyticsTrackResult> track(AiroAnalyticsEvent event) async {
@@ -311,8 +617,42 @@ class AiroNoOpAnalyticsService implements AiroAnalyticsService {
       event,
       consent: consent,
       privacyFilter: privacyFilter ?? AiroAnalyticsPrivacyFilter.standard,
+      collectionEnabled: collectionEnabled,
     );
   }
+
+  @override
+  AiroAnalyticsTimedEventHandle startTimedEvent({
+    required String eventName,
+    required String owner,
+    required AiroAnalyticsPurpose purpose,
+    required DateTime startedAt,
+    Map<String, Object?> params = const {},
+    AiroAnalyticsPriority priority = AiroAnalyticsPriority.normal,
+  }) {
+    return AiroAnalyticsTimedEventHandle(
+      eventName: eventName,
+      owner: owner,
+      purpose: purpose,
+      startedAt: startedAt,
+      params: params,
+      priority: priority,
+    );
+  }
+
+  @override
+  Future<AiroAnalyticsTrackResult> endTimedEvent({
+    required AiroAnalyticsTimedEventHandle handle,
+    required DateTime endedAt,
+  }) {
+    return track(handle.complete(endedAt: endedAt));
+  }
+
+  @override
+  Future<void> updateConsent(AiroAnalyticsConsentState consent) async {}
+
+  @override
+  Future<void> setCollectionEnabled(bool enabled) async {}
 
   @override
   Future<void> flush() async {}
@@ -323,24 +663,38 @@ class AiroNoOpAnalyticsService implements AiroAnalyticsService {
 
 class AiroLocalDiagnosticsAnalyticsService implements AiroAnalyticsService {
   AiroLocalDiagnosticsAnalyticsService({
-    this.consent = const AiroAnalyticsConsentState.localOnly(),
+    AiroAnalyticsConsentState consent =
+        const AiroAnalyticsConsentState.localOnly(),
     this.privacyFilter,
     this.maxEvents = 100,
-  });
+    bool collectionEnabled = true,
+  }) : _consent = consent,
+       _collectionEnabled = collectionEnabled;
 
-  final AiroAnalyticsConsentState consent;
   final AiroAnalyticsPrivacyFilter? privacyFilter;
   final int maxEvents;
   final List<AiroAnalyticsEvent> _events = [];
+  AiroAnalyticsConsentState _consent;
+  bool _collectionEnabled;
 
   List<AiroAnalyticsEvent> get events => List.unmodifiable(_events);
+  AiroAnalyticsConsentState get consent => _consent;
+  bool get collectionEnabled => _collectionEnabled;
+
+  @override
+  Future<AiroAnalyticsLifecycleResult> initialize(
+    AiroAnalyticsServiceConfiguration configuration,
+  ) {
+    return _initializeAnalyticsService(configuration);
+  }
 
   @override
   Future<AiroAnalyticsTrackResult> track(AiroAnalyticsEvent event) async {
     final result = validateEvent(
       event,
-      consent: consent,
+      consent: _consent,
       privacyFilter: privacyFilter ?? AiroAnalyticsPrivacyFilter.standard,
+      collectionEnabled: _collectionEnabled,
     );
     if (!result.accepted) return result;
     if (_events.length >= maxEvents) {
@@ -354,6 +708,55 @@ class AiroLocalDiagnosticsAnalyticsService implements AiroAnalyticsService {
   }
 
   @override
+  AiroAnalyticsTimedEventHandle startTimedEvent({
+    required String eventName,
+    required String owner,
+    required AiroAnalyticsPurpose purpose,
+    required DateTime startedAt,
+    Map<String, Object?> params = const {},
+    AiroAnalyticsPriority priority = AiroAnalyticsPriority.normal,
+  }) {
+    return AiroAnalyticsTimedEventHandle(
+      eventName: eventName,
+      owner: owner,
+      purpose: purpose,
+      startedAt: startedAt,
+      params: params,
+      priority: priority,
+    );
+  }
+
+  @override
+  Future<AiroAnalyticsTrackResult> endTimedEvent({
+    required AiroAnalyticsTimedEventHandle handle,
+    required DateTime endedAt,
+  }) {
+    return track(handle.complete(endedAt: endedAt));
+  }
+
+  @override
+  Future<void> updateConsent(AiroAnalyticsConsentState consent) async {
+    _consent = consent;
+    _events.removeWhere((event) {
+      return validateEvent(
+            event,
+            consent: _consent,
+            privacyFilter: privacyFilter ?? AiroAnalyticsPrivacyFilter.standard,
+            collectionEnabled: _collectionEnabled,
+          ).status !=
+          AiroAnalyticsTrackStatus.accepted;
+    });
+  }
+
+  @override
+  Future<void> setCollectionEnabled(bool enabled) async {
+    _collectionEnabled = enabled;
+    if (!enabled) {
+      _events.clear();
+    }
+  }
+
+  @override
   Future<void> flush() async {}
 
   @override
@@ -362,11 +765,113 @@ class AiroLocalDiagnosticsAnalyticsService implements AiroAnalyticsService {
   }
 }
 
+class AiroProviderBackedAnalyticsService implements AiroAnalyticsService {
+  AiroProviderBackedAnalyticsService({
+    required AiroAnalyticsProviderSender sender,
+    AiroAnalyticsConsentState consent =
+        const AiroAnalyticsConsentState.disabled(),
+    this.privacyFilter,
+    bool collectionEnabled = false,
+  }) : _sender = sender,
+       _consent = consent,
+       _collectionEnabled = collectionEnabled;
+
+  final AiroAnalyticsProviderSender _sender;
+  final AiroAnalyticsPrivacyFilter? privacyFilter;
+  AiroAnalyticsConsentState _consent;
+  bool _collectionEnabled;
+
+  AiroAnalyticsConsentState get consent => _consent;
+  bool get collectionEnabled => _collectionEnabled;
+
+  @override
+  Future<AiroAnalyticsLifecycleResult> initialize(
+    AiroAnalyticsServiceConfiguration configuration,
+  ) async {
+    final result = await _initializeAnalyticsService(configuration);
+    if (result.accepted) {
+      _consent = configuration.consent;
+      _collectionEnabled = configuration.collectionEnabled;
+    }
+    return result;
+  }
+
+  @override
+  Future<AiroAnalyticsTrackResult> track(AiroAnalyticsEvent event) async {
+    final result = validateEvent(
+      event,
+      consent: _consent,
+      privacyFilter: privacyFilter ?? AiroAnalyticsPrivacyFilter.standard,
+      collectionEnabled: _collectionEnabled,
+    );
+    if (!result.accepted) return result;
+
+    try {
+      await _sender(event);
+      return result;
+    } catch (_) {
+      return AiroAnalyticsTrackResult(
+        status: AiroAnalyticsTrackStatus.providerUnavailable,
+      );
+    }
+  }
+
+  @override
+  AiroAnalyticsTimedEventHandle startTimedEvent({
+    required String eventName,
+    required String owner,
+    required AiroAnalyticsPurpose purpose,
+    required DateTime startedAt,
+    Map<String, Object?> params = const {},
+    AiroAnalyticsPriority priority = AiroAnalyticsPriority.normal,
+  }) {
+    return AiroAnalyticsTimedEventHandle(
+      eventName: eventName,
+      owner: owner,
+      purpose: purpose,
+      startedAt: startedAt,
+      params: params,
+      priority: priority,
+    );
+  }
+
+  @override
+  Future<AiroAnalyticsTrackResult> endTimedEvent({
+    required AiroAnalyticsTimedEventHandle handle,
+    required DateTime endedAt,
+  }) {
+    return track(handle.complete(endedAt: endedAt));
+  }
+
+  @override
+  Future<void> updateConsent(AiroAnalyticsConsentState consent) async {
+    _consent = consent;
+  }
+
+  @override
+  Future<void> setCollectionEnabled(bool enabled) async {
+    _collectionEnabled = enabled;
+  }
+
+  @override
+  Future<void> flush() async {}
+
+  @override
+  Future<void> reset() async {}
+}
+
 AiroAnalyticsTrackResult validateEvent(
   AiroAnalyticsEvent event, {
   required AiroAnalyticsConsentState consent,
   AiroAnalyticsPrivacyFilter? privacyFilter,
+  bool collectionEnabled = true,
 }) {
+  if (!collectionEnabled) {
+    return AiroAnalyticsTrackResult(
+      status: AiroAnalyticsTrackStatus.droppedByCollectionDisabled,
+    );
+  }
+
   if (!_isSnakeCase(event.name)) {
     return AiroAnalyticsTrackResult(
       status: AiroAnalyticsTrackStatus.rejectedSchema,
@@ -397,6 +902,37 @@ AiroAnalyticsTrackResult validateEvent(
   }
 
   return AiroAnalyticsTrackResult(status: AiroAnalyticsTrackStatus.accepted);
+}
+
+Future<AiroAnalyticsLifecycleResult> _initializeAnalyticsService(
+  AiroAnalyticsServiceConfiguration configuration,
+) async {
+  final result = configuration.validate();
+  if (!result.accepted) {
+    return AiroAnalyticsLifecycleResult(
+      code: AiroAnalyticsLifecycleCode.invalidConfiguration,
+      configurationResult: result,
+    );
+  }
+  if (!configuration.collectionEnabled) {
+    return AiroAnalyticsLifecycleResult(
+      code: AiroAnalyticsLifecycleCode.disabled,
+      configurationResult: result,
+    );
+  }
+  return AiroAnalyticsLifecycleResult(
+    code: AiroAnalyticsLifecycleCode.initialized,
+    configurationResult: result,
+  );
+}
+
+String _durationBucket(int durationMs) {
+  if (durationMs < 0) return 'invalid';
+  if (durationMs < 1000) return '0_1s';
+  if (durationMs < 3000) return '1_3s';
+  if (durationMs < 10000) return '3_10s';
+  if (durationMs < 30000) return '10_30s';
+  return '30s_plus';
 }
 
 bool _isSnakeCase(String value) {

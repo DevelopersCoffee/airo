@@ -25,6 +25,82 @@ void main() {
       expect(result.status, AiroAnalyticsTrackStatus.accepted);
     });
 
+    test('validates service configuration for provider isolation', () {
+      final configuration = AiroAnalyticsServiceConfiguration(
+        providerKind: AiroAnalyticsProviderKind.vendorAdapter,
+        productProfile: AiroAnalyticsProductProfile.fullTv,
+        consent: const AiroAnalyticsConsentState.localOnly(),
+        collectionEnabled: true,
+        maxQueueEvents: -1,
+        externalUploadAllowed: true,
+        providerSdkIsolated: false,
+        nonBlocking: false,
+        resettableInstallationId: false,
+      );
+
+      final result = configuration.validate();
+
+      expect(
+        result.codes,
+        containsAll(const {
+          AiroAnalyticsConfigurationCode.queueBudgetInvalid,
+          AiroAnalyticsConfigurationCode.externalUploadInLocalOnly,
+          AiroAnalyticsConfigurationCode.vendorSdkNotIsolated,
+          AiroAnalyticsConfigurationCode.playbackMayBlock,
+          AiroAnalyticsConfigurationCode.resettableInstallIdMissing,
+        }),
+      );
+      expect(configuration.toPublicMap()['providerKind'], 'vendor_adapter');
+      expect(
+        configuration.toPublicMap().toString(),
+        isNot(contains('storeConsoleAccount')),
+      );
+    });
+
+    test(
+      'initialize returns disabled and invalid configuration states',
+      () async {
+        const service = AiroNoOpAnalyticsService();
+
+        final disabled = await service.initialize(
+          const AiroAnalyticsServiceConfiguration(
+            providerKind: AiroAnalyticsProviderKind.noOp,
+            productProfile: AiroAnalyticsProductProfile.liteReceiver,
+          ),
+        );
+        final invalid = await service.initialize(
+          const AiroAnalyticsServiceConfiguration(
+            providerKind: AiroAnalyticsProviderKind.vendorAdapter,
+            productProfile: AiroAnalyticsProductProfile.fullTv,
+            collectionEnabled: true,
+            providerSdkIsolated: false,
+          ),
+        );
+
+        expect(disabled.code, AiroAnalyticsLifecycleCode.disabled);
+        expect(invalid.code, AiroAnalyticsLifecycleCode.invalidConfiguration);
+        expect(
+          invalid.toPublicMap().toString(),
+          contains(
+            AiroAnalyticsConfigurationCode.vendorSdkNotIsolated.stableId,
+          ),
+        );
+      },
+    );
+
+    test('drops events when collection is disabled', () {
+      final result = validateEvent(
+        event(),
+        consent: const AiroAnalyticsConsentState.allEnabled(),
+        collectionEnabled: false,
+      );
+
+      expect(
+        result.status,
+        AiroAnalyticsTrackStatus.droppedByCollectionDisabled,
+      );
+    });
+
     test('drops product events in local-only mode', () {
       final result = validateEvent(
         event(),
@@ -109,6 +185,58 @@ void main() {
 
       await service.reset();
       expect(service.events, isEmpty);
+    });
+
+    test('consent withdrawal deletes optional queued events', () async {
+      final service = AiroLocalDiagnosticsAnalyticsService(
+        consent: const AiroAnalyticsConsentState.allEnabled(),
+      );
+
+      await service.track(event(name: 'product_event'));
+      await service.track(
+        event(
+          name: 'diagnostic_event',
+          purpose: AiroAnalyticsPurpose.diagnostics,
+        ),
+      );
+      await service.updateConsent(const AiroAnalyticsConsentState.localOnly());
+
+      expect(service.events.map((event) => event.name), ['diagnostic_event']);
+    });
+
+    test('provider backed service catches provider failures', () async {
+      final service = AiroProviderBackedAnalyticsService(
+        sender: (_) async => throw StateError('offline'),
+        consent: const AiroAnalyticsConsentState.allEnabled(),
+        collectionEnabled: true,
+      );
+
+      final result = await service.track(event());
+
+      expect(result.status, AiroAnalyticsTrackStatus.providerUnavailable);
+    });
+
+    test('timed events emit duration buckets without raw values', () async {
+      final service = AiroLocalDiagnosticsAnalyticsService(
+        consent: const AiroAnalyticsConsentState.allEnabled(),
+      );
+      final startedAt = DateTime.utc(2026, 7, 15, 10);
+      final handle = service.startTimedEvent(
+        eventName: 'playback_startup_completed',
+        owner: 'media',
+        purpose: AiroAnalyticsPurpose.playbackQuality,
+        startedAt: startedAt,
+        params: const {'source_type': 'iptv'},
+      );
+
+      final result = await service.endTimedEvent(
+        handle: handle,
+        endedAt: startedAt.add(const Duration(milliseconds: 2500)),
+      );
+
+      expect(result.status, AiroAnalyticsTrackStatus.accepted);
+      expect(service.events.single.params['duration_bucket'], '1_3s');
+      expect(service.events.single.params.toString(), isNot(contains('2500')));
     });
   });
 }

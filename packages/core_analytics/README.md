@@ -10,10 +10,16 @@ analytics SDKs directly.
 ## Scope
 
 - Typed analytics event envelope.
+- Service configuration for provider kind, product profile, collection
+  enablement, queue budgets, provider isolation, non-blocking behavior, and
+  resettable installation IDs.
 - Consent and local-only collection gates.
 - Prohibited field and value validation.
 - No-op provider for builds without external analytics.
 - Bounded local diagnostics provider for host tests and development builds.
+- Provider-backed adapter boundary that catches provider failures and falls
+  back to deterministic no-op behavior.
+- Timed event helper that emits bucketed durations instead of raw timings.
 - Performance instrumentation schema for UI, playback, import, search,
   protocol, command, memory, storage, network, and pairing samples.
 - No-op and fake performance instrumentation sinks for deterministic tests.
