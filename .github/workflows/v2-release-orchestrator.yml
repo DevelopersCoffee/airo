@@ -59,6 +59,18 @@ on:
           - internal
           - alpha
           - beta
+          - production
+      mobile_play_track:
+        description: 'Optional mobile/tablet Play upload track when dry_run is false'
+        required: true
+        default: none
+        type: choice
+        options:
+          - none
+          - internal
+          - alpha
+          - beta
+          - production
       mobile_profile:
         description: 'Optional mobile/tablet profile to build'
         required: true
@@ -104,6 +116,7 @@ jobs:
       github_release_mode: ${{ steps.release.outputs.github_release_mode }}
       production_signing: ${{ steps.release.outputs.production_signing }}
       tv_play_track: ${{ steps.release.outputs.tv_play_track }}
+      mobile_play_track: ${{ steps.release.outputs.mobile_play_track }}
       mobile_profile: ${{ steps.release.outputs.mobile_profile }}
       qualification_mode: ${{ steps.release.outputs.qualification_mode }}
     steps:
@@ -125,6 +138,7 @@ jobs:
           INPUT_GITHUB_RELEASE_MODE: ${{ inputs.github_release_mode }}
           INPUT_PRODUCTION_SIGNING: ${{ inputs.production_signing }}
           INPUT_TV_PLAY_TRACK: ${{ inputs.tv_play_track }}
+          INPUT_MOBILE_PLAY_TRACK: ${{ inputs.mobile_play_track }}
           INPUT_MOBILE_PROFILE: ${{ inputs.mobile_profile }}
           INPUT_QUALIFICATION_MODE: ${{ inputs.qualification_mode }}
         run: |
@@ -140,12 +154,35 @@ jobs:
           github_release_mode="${INPUT_GITHUB_RELEASE_MODE:-draft}"
           production_signing="${INPUT_PRODUCTION_SIGNING:-false}"
           tv_play_track="${INPUT_TV_PLAY_TRACK:-none}"
+          mobile_play_track="${INPUT_MOBILE_PLAY_TRACK:-none}"
           mobile_profile="${INPUT_MOBILE_PROFILE:-none}"
           qualification_mode="${INPUT_QUALIFICATION_MODE:-internal}"
 
           if [ "$dry_run" = "true" ]; then
             publish_github_release="false"
             tv_play_track="none"
+            mobile_play_track="none"
+          fi
+
+          case "$tv_play_track" in
+            none|internal|alpha|beta|production) ;;
+            *)
+              echo "::error::Unsupported TV Play track: $tv_play_track"
+              exit 1
+              ;;
+          esac
+
+          case "$mobile_play_track" in
+            none|internal|alpha|beta|production) ;;
+            *)
+              echo "::error::Unsupported mobile/tablet Play track: $mobile_play_track"
+              exit 1
+              ;;
+          esac
+
+          if [ "$mobile_profile" = "none" ] && [ "$mobile_play_track" != "none" ]; then
+            echo "::error::mobile_play_track requires mobile_profile to be iptv-standalone or mobile-streaming."
+            exit 1
           fi
 
           case "$github_release_mode" in
@@ -182,6 +219,7 @@ jobs:
             echo "github_release_mode=$github_release_mode"
             echo "production_signing=$production_signing"
             echo "tv_play_track=$tv_play_track"
+            echo "mobile_play_track=$mobile_play_track"
             echo "mobile_profile=$mobile_profile"
             echo "qualification_mode=$qualification_mode"
           } >> "$GITHUB_OUTPUT"
@@ -201,6 +239,7 @@ jobs:
             echo "| GitHub Release publish | $publish_github_release |"
             echo "| GitHub Release mode | $github_release_mode |"
             echo "| TV Play track | $tv_play_track |"
+            echo "| Mobile/tablet Play track | $mobile_play_track |"
             echo "| Mobile/tablet profile | $mobile_profile |"
             echo "| Qualification mode | $qualification_mode |"
           } >> "$GITHUB_STEP_SUMMARY"
@@ -244,6 +283,7 @@ jobs:
       build_number: ${{ needs.prepare.outputs.build_number }}
       release_ref: ${{ needs.prepare.outputs.release_ref }}
       production_signing: ${{ needs.prepare.outputs.production_signing == 'true' }}
+      play_track: ${{ needs.prepare.outputs.mobile_play_track }}
     secrets: inherit
 
   tv-release:
@@ -464,6 +504,8 @@ jobs:
           TV_RESULT: ${{ needs.tv-release.result }}
           MOBILE_RESULT: ${{ needs.mobile-tablet-release.result }}
           MOBILE_PROFILE: ${{ needs.prepare.outputs.mobile_profile }}
+          TV_PLAY_TRACK: ${{ needs.prepare.outputs.tv_play_track }}
+          MOBILE_PLAY_TRACK: ${{ needs.prepare.outputs.mobile_play_track }}
           CONTRACT_RESULT: ${{ needs.release-contracts.result }}
         run: |
           {
@@ -480,8 +522,10 @@ jobs:
             echo "| GitHub Release publish | $PUBLISH_GITHUB_RELEASE |"
             echo "| GitHub Release mode | $GITHUB_RELEASE_MODE |"
             echo "| TV leg | $TV_RESULT |"
+            echo "| TV Play track | $TV_PLAY_TRACK |"
             echo "| Mobile/tablet profile | $MOBILE_PROFILE |"
             echo "| Mobile/tablet leg | $MOBILE_RESULT |"
+            echo "| Mobile/tablet Play track | $MOBILE_PLAY_TRACK |"
             echo "| Release contracts | $CONTRACT_RESULT |"
             echo ""
             echo "## Artifact evidence"
