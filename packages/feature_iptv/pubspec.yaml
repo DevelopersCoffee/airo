@@ -26,6 +26,8 @@ dependencies:
     path: ../platform_playlist_import
   platform_streams:
     path: ../platform_streams
+  product_capabilities:
+    path: ../product_capabilities
   path_provider: ^2.1.6
   shared_preferences: ^2.5.5
   slm_edge_intelligence:

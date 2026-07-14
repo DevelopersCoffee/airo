@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:platform_channels/platform_channels.dart';
 import 'package:platform_player/platform_player.dart';
+import 'package:product_capabilities/product_capabilities.dart';
 
 import '../../application/providers/iptv_providers.dart';
 import '../screens/iptv_screen.dart';
@@ -106,6 +107,7 @@ class _IptvTvScreenState extends ConsumerState<IptvTvScreen> {
     final streamingState = ref.watch(streamingStateProvider);
     final recentAsync = ref.watch(recentlyWatchedChannelsProvider);
     final hasActiveFilter = ref.watch(hasActiveFilterProvider);
+    final productProfile = ref.watch(airoTvProductProfileProvider);
 
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
@@ -122,13 +124,17 @@ class _IptvTvScreenState extends ConsumerState<IptvTvScreen> {
                 : filteredChannels;
 
             if (allChannels.isEmpty) {
-              return _TvEmptyPlaylistState(
-                onPlaylistSourceTap: _showPlaylistSheet,
-                onPlaylistHelpTap: _showPlaylistGuideDialog,
+              return _TvEmptyPlaylistLayout(
+                productProfile: productProfile,
+                child: _TvEmptyPlaylistState(
+                  onPlaylistSourceTap: _showPlaylistSheet,
+                  onPlaylistHelpTap: _showPlaylistGuideDialog,
+                ),
               );
             }
 
             return _TvBrowseLayout(
+              productProfile: productProfile,
               allChannels: allChannels,
               visibleChannels: visibleChannels,
               streamingState: streamingState,
@@ -161,6 +167,7 @@ class _IptvTvScreenState extends ConsumerState<IptvTvScreen> {
 
 class _TvBrowseLayout extends ConsumerWidget {
   const _TvBrowseLayout({
+    required this.productProfile,
     required this.allChannels,
     required this.visibleChannels,
     required this.streamingState,
@@ -178,6 +185,7 @@ class _TvBrowseLayout extends ConsumerWidget {
     required this.onViewModeChanged,
   });
 
+  final ProductProfileManifest productProfile;
   final List<IPTVChannel> allChannels;
   final List<IPTVChannel> visibleChannels;
   final AsyncValue<StreamingState> streamingState;
@@ -205,6 +213,8 @@ class _TvBrowseLayout extends ConsumerWidget {
       padding: const EdgeInsets.fromLTRB(32, 24, 32, 24),
       child: Column(
         children: [
+          _TvLiteReceiverShellHeader(productProfile: productProfile),
+          const SizedBox(height: 18),
           _TvHeader(
             channelCount: allChannels.length,
             visibleCount: visibleChannels.length,
@@ -286,6 +296,127 @@ class _TvBrowseLayout extends ConsumerWidget {
           const SizedBox(height: 12),
           const IPTVMiniPlayer(forceVisible: true),
         ],
+      ),
+    );
+  }
+}
+
+class _TvLiteReceiverShellHeader extends StatelessWidget {
+  const _TvLiteReceiverShellHeader({required this.productProfile});
+
+  final ProductProfileManifest productProfile;
+
+  static const _heavyCapabilities = {
+    ProductCapability.localAi,
+    ProductCapability.recording,
+    ProductCapability.downloads,
+    ProductCapability.multiview,
+    ProductCapability.fullEpg,
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final unavailable = _heavyCapabilities
+        .where((capability) => !productProfile.supportsCapability(capability))
+        .map((capability) => capability.tvLabel)
+        .toList(growable: false);
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.28),
+        border: Border.all(color: colorScheme.outlineVariant),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(18, 14, 18, 14),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Icon(Icons.tv, color: colorScheme.primary, size: 32),
+            const SizedBox(width: 14),
+            SizedBox(
+              width: 260,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    productProfile.displayName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '${productProfile.supportLevel.tvLabel} profile',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 18),
+            Expanded(
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: productProfile.navigation
+                    .map((entry) => _ProfileSectionChip(entry: entry))
+                    .toList(growable: false),
+              ),
+            ),
+            const SizedBox(width: 18),
+            SizedBox(
+              width: 300,
+              child: Text(
+                unavailable.isEmpty
+                    ? 'All profile capabilities available'
+                    : 'Profile-limited: ${unavailable.join(', ')}',
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.end,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ProfileSectionChip extends StatelessWidget {
+  const _ProfileSectionChip({required this.entry});
+
+  final ProductNavigationEntry entry;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Semantics(
+      label: '${entry.tvLabel} section',
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: colorScheme.surface.withValues(alpha: 0.7),
+          border: Border.all(color: colorScheme.outlineVariant),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          child: Text(
+            entry.tvLabel,
+            style: Theme.of(context).textTheme.labelLarge,
+          ),
+        ),
       ),
     );
   }
@@ -1118,6 +1249,76 @@ class _TvNoChannelsState extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+class _TvEmptyPlaylistLayout extends StatelessWidget {
+  const _TvEmptyPlaylistLayout({
+    required this.productProfile,
+    required this.child,
+  });
+
+  final ProductProfileManifest productProfile;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(32, 24, 32, 24),
+      child: Column(
+        children: [
+          _TvLiteReceiverShellHeader(productProfile: productProfile),
+          const SizedBox(height: 18),
+          Expanded(child: child),
+        ],
+      ),
+    );
+  }
+}
+
+extension on ProductSupportLevel {
+  String get tvLabel {
+    return switch (this) {
+      ProductSupportLevel.certified => 'Certified',
+      ProductSupportLevel.compatible => 'Compatible',
+      ProductSupportLevel.experimental => 'Experimental',
+      ProductSupportLevel.unsupported => 'Unsupported',
+    };
+  }
+}
+
+extension on ProductNavigationEntry {
+  String get tvLabel {
+    return switch (this) {
+      ProductNavigationEntry.home => 'Home',
+      ProductNavigationEntry.live => 'Live',
+      ProductNavigationEntry.guide => 'Guide',
+      ProductNavigationEntry.favorites => 'Favorites',
+      ProductNavigationEntry.recent => 'Recent',
+      ProductNavigationEntry.search => 'Search',
+      ProductNavigationEntry.settings => 'Settings',
+      ProductNavigationEntry.diagnostics => 'Diagnostics',
+      ProductNavigationEntry.profiles => 'Profiles',
+    };
+  }
+}
+
+extension on ProductCapability {
+  String get tvLabel {
+    return switch (this) {
+      ProductCapability.directPlayback => 'direct playback',
+      ProductCapability.dpadNavigation => 'D-pad navigation',
+      ProductCapability.companionRemote => 'companion remote',
+      ProductCapability.compactEpg => 'compact guide',
+      ProductCapability.fullEpg => 'full guide',
+      ProductCapability.basicSearch => 'basic search',
+      ProductCapability.diagnostics => 'diagnostics',
+      ProductCapability.analytics => 'analytics',
+      ProductCapability.localAi => 'local AI',
+      ProductCapability.recording => 'recording',
+      ProductCapability.downloads => 'downloads',
+      ProductCapability.multiview => 'multiview',
+    };
   }
 }
 
