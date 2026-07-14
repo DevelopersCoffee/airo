@@ -1,0 +1,344 @@
+name: V2 Release Orchestrator
+
+on:
+  push:
+    tags:
+      - 'v2*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version label, for example v2.0.0'
+        required: true
+        default: 'v2.0.0'
+      build_name:
+        description: 'Android versionName, for example 2.0.0'
+        required: true
+        default: '2.0.0'
+      build_number:
+        description: 'Android versionCode shared by v2 Android artifacts'
+        required: true
+        default: '200'
+      release_ref:
+        description: 'Git ref to release; must be based on origin/v2'
+        required: true
+        default: 'v2'
+      release_branch:
+        description: 'Release branch to create/update from release_ref'
+        required: true
+        default: 'release/v2.0.0'
+      dry_run:
+        description: 'Build and upload workflow artifacts without public/store publishing'
+        required: true
+        default: true
+        type: boolean
+      publish_github_release:
+        description: 'Publish GitHub Release assets when dry_run is false'
+        required: true
+        default: false
+        type: boolean
+      production_signing:
+        description: 'Require production Android signing and Firebase secrets'
+        required: true
+        default: false
+        type: boolean
+      tv_play_track:
+        description: 'Optional TV Play upload track when dry_run is false'
+        required: true
+        default: none
+        type: choice
+        options:
+          - none
+          - internal
+          - alpha
+          - beta
+      mobile_profile:
+        description: 'Optional mobile/tablet profile; build automation is tracked in #677'
+        required: true
+        default: none
+        type: choice
+        options:
+          - none
+          - iptv-standalone
+          - mobile-streaming
+      qualification_mode:
+        description: 'Qualification report mode for top-level summary'
+        required: true
+        default: internal
+        type: choice
+        options:
+          - internal
+          - public
+
+concurrency:
+  group: v2-release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  DEFAULT_VERSION: v2.0.0
+  DEFAULT_BUILD_NAME: 2.0.0
+  DEFAULT_BUILD_NUMBER: '200'
+
+jobs:
+  prepare:
+    name: Prepare v2 release context
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      version: ${{ steps.release.outputs.version }}
+      build_name: ${{ steps.release.outputs.build_name }}
+      build_number: ${{ steps.release.outputs.build_number }}
+      release_ref: ${{ steps.release.outputs.release_ref }}
+      release_branch: ${{ steps.release.outputs.release_branch }}
+      dry_run: ${{ steps.release.outputs.dry_run }}
+      publish_github_release: ${{ steps.release.outputs.publish_github_release }}
+      production_signing: ${{ steps.release.outputs.production_signing }}
+      tv_play_track: ${{ steps.release.outputs.tv_play_track }}
+      mobile_profile: ${{ steps.release.outputs.mobile_profile }}
+      qualification_mode: ${{ steps.release.outputs.qualification_mode }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.release_ref || github.ref }}
+
+      - name: Resolve and validate release ref
+        id: release
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+          INPUT_BUILD_NAME: ${{ inputs.build_name }}
+          INPUT_BUILD_NUMBER: ${{ inputs.build_number }}
+          INPUT_RELEASE_REF: ${{ inputs.release_ref }}
+          INPUT_RELEASE_BRANCH: ${{ inputs.release_branch }}
+          INPUT_DRY_RUN: ${{ inputs.dry_run }}
+          INPUT_PUBLISH_GITHUB_RELEASE: ${{ inputs.publish_github_release }}
+          INPUT_PRODUCTION_SIGNING: ${{ inputs.production_signing }}
+          INPUT_TV_PLAY_TRACK: ${{ inputs.tv_play_track }}
+          INPUT_MOBILE_PROFILE: ${{ inputs.mobile_profile }}
+          INPUT_QUALIFICATION_MODE: ${{ inputs.qualification_mode }}
+        run: |
+          git fetch origin main v2 --tags
+
+          version="${INPUT_VERSION:-${GITHUB_REF_NAME:-$DEFAULT_VERSION}}"
+          build_name="${INPUT_BUILD_NAME:-${version#v}}"
+          build_number="${INPUT_BUILD_NUMBER:-${GITHUB_RUN_NUMBER:-$DEFAULT_BUILD_NUMBER}}"
+          release_ref="${INPUT_RELEASE_REF:-$GITHUB_SHA}"
+          release_branch="${INPUT_RELEASE_BRANCH:-release/$version}"
+          dry_run="${INPUT_DRY_RUN:-true}"
+          publish_github_release="${INPUT_PUBLISH_GITHUB_RELEASE:-false}"
+          production_signing="${INPUT_PRODUCTION_SIGNING:-false}"
+          tv_play_track="${INPUT_TV_PLAY_TRACK:-none}"
+          mobile_profile="${INPUT_MOBILE_PROFILE:-none}"
+          qualification_mode="${INPUT_QUALIFICATION_MODE:-internal}"
+
+          if [ "$dry_run" = "true" ]; then
+            publish_github_release="false"
+            tv_play_track="none"
+          fi
+
+          if git rev-parse --verify "origin/$release_ref^{commit}" >/dev/null 2>&1; then
+            release_commit="$(git rev-parse "origin/$release_ref^{commit}")"
+          elif git rev-parse --verify "$release_ref^{commit}" >/dev/null 2>&1; then
+            release_commit="$(git rev-parse "$release_ref^{commit}")"
+          else
+            echo "::error::Cannot resolve release_ref: $release_ref"
+            exit 1
+          fi
+
+          if ! git merge-base --is-ancestor origin/v2 "$release_commit"; then
+            echo "::error::Release ref $release_ref does not contain latest origin/v2."
+            exit 1
+          fi
+
+          {
+            echo "version=$version"
+            echo "build_name=$build_name"
+            echo "build_number=$build_number"
+            echo "release_ref=$release_ref"
+            echo "release_branch=$release_branch"
+            echo "dry_run=$dry_run"
+            echo "publish_github_release=$publish_github_release"
+            echo "production_signing=$production_signing"
+            echo "tv_play_track=$tv_play_track"
+            echo "mobile_profile=$mobile_profile"
+            echo "qualification_mode=$qualification_mode"
+          } >> "$GITHUB_OUTPUT"
+
+          {
+            echo "# V2 release context"
+            echo ""
+            echo "| Field | Value |"
+            echo "| --- | --- |"
+            echo "| Version | $version |"
+            echo "| Build name | $build_name |"
+            echo "| Build number | $build_number |"
+            echo "| Release ref | $release_ref |"
+            echo "| Release branch | $release_branch |"
+            echo "| Dry run | $dry_run |"
+            echo "| TV Play track | $tv_play_track |"
+            echo "| Mobile/tablet profile | $mobile_profile |"
+            echo "| Qualification mode | $qualification_mode |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  release-contracts:
+    name: Validate release contracts
+    runs-on: ubuntu-latest
+    needs: [prepare]
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.prepare.outputs.release_ref }}
+
+      - name: Validate release scripts and workflow syntax
+        run: |
+          ruby -e 'require "yaml"; ARGV.each { |f| YAML.load_file(f); puts "ok #{f}" }' \
+            .github/workflows/v2-release-orchestrator.yml \
+            .github/workflows/airo-tv-release.yml
+          python3 -m py_compile \
+            scripts/check-build-profiles.py \
+            scripts/generate-release-manifest.py \
+            scripts/generate-release-qualification-report.py
+          scripts/check-build-profiles.py
+          scripts/test-generate-release-manifest.sh
+          scripts/test-generate-release-qualification-report.sh
+
+  mobile-tablet-status:
+    name: Mobile and tablet release leg
+    runs-on: ubuntu-latest
+    needs: [prepare]
+    steps:
+      - name: Report mobile/tablet release status
+        env:
+          MOBILE_PROFILE: ${{ needs.prepare.outputs.mobile_profile }}
+        run: |
+          if [ "$MOBILE_PROFILE" = "none" ]; then
+            echo "Mobile/tablet release build is not selected for this orchestrator run." >> "$GITHUB_STEP_SUMMARY"
+            echo "Mobile/tablet publish automation remains tracked by #677." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          echo "::error::Mobile/tablet profile '$MOBILE_PROFILE' was selected, but publishable APK/AAB automation is tracked by #677 and is not enabled yet."
+          exit 1
+
+  tv-release:
+    name: TV release leg
+    needs: [prepare, release-contracts]
+    permissions:
+      actions: read
+      contents: write
+    uses: ./.github/workflows/airo-tv-release.yml
+    with:
+      version: ${{ needs.prepare.outputs.version }}
+      build_name: ${{ needs.prepare.outputs.build_name }}
+      build_number: ${{ needs.prepare.outputs.build_number }}
+      release_ref: ${{ needs.prepare.outputs.release_ref }}
+      release_branch: ${{ needs.prepare.outputs.release_branch }}
+      publish_github_release: ${{ needs.prepare.outputs.publish_github_release == 'true' }}
+      production_signing: ${{ needs.prepare.outputs.production_signing == 'true' }}
+      play_track: ${{ needs.prepare.outputs.tv_play_track }}
+    secrets: inherit
+
+  release-summary:
+    name: V2 release summary
+    runs-on: ubuntu-latest
+    needs: [prepare, release-contracts, mobile-tablet-status, tv-release]
+    if: always()
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+        if: needs.tv-release.result == 'success'
+        with:
+          ref: ${{ needs.prepare.outputs.release_ref }}
+
+      - name: Download TV release artifacts
+        if: needs.tv-release.result == 'success'
+        uses: actions/download-artifact@v8
+        with:
+          name: airo-tv-release-${{ needs.prepare.outputs.version }}
+          path: release-artifacts/tv
+
+      - name: Generate TV qualification report
+        if: needs.tv-release.result == 'success'
+        env:
+          QUALIFICATION_MODE: ${{ needs.prepare.outputs.qualification_mode }}
+        run: |
+          manifest="$(find release-artifacts/tv -maxdepth 1 -name '*Release-Manifest.json' | head -n 1)"
+          if [ -z "$manifest" ]; then
+            echo "::error::TV release manifest was not found in downloaded artifacts."
+            exit 1
+          fi
+          scripts/generate-release-qualification-report.py \
+            --manifest "$manifest" \
+            --mode "$QUALIFICATION_MODE"
+
+      - name: Upload top-level release evidence
+        if: needs.tv-release.result == 'success'
+        uses: actions/upload-artifact@v7
+        with:
+          name: v2-release-evidence-${{ needs.prepare.outputs.version }}
+          path: release-artifacts/
+          retention-days: 30
+
+      - name: Write release summary
+        env:
+          VERSION: ${{ needs.prepare.outputs.version }}
+          BUILD_NAME: ${{ needs.prepare.outputs.build_name }}
+          BUILD_NUMBER: ${{ needs.prepare.outputs.build_number }}
+          RELEASE_REF: ${{ needs.prepare.outputs.release_ref }}
+          DRY_RUN: ${{ needs.prepare.outputs.dry_run }}
+          TV_RESULT: ${{ needs.tv-release.result }}
+          MOBILE_RESULT: ${{ needs.mobile-tablet-status.result }}
+          CONTRACT_RESULT: ${{ needs.release-contracts.result }}
+        run: |
+          {
+            echo "# V2 release summary"
+            echo ""
+            echo "| Field | Value |"
+            echo "| --- | --- |"
+            echo "| Version | $VERSION |"
+            echo "| Build name | $BUILD_NAME |"
+            echo "| Build number | $BUILD_NUMBER |"
+            echo "| Release ref | $RELEASE_REF |"
+            echo "| Dry run | $DRY_RUN |"
+            echo "| TV leg | $TV_RESULT |"
+            echo "| Mobile/tablet leg | $MOBILE_RESULT |"
+            echo "| Release contracts | $CONTRACT_RESULT |"
+            echo ""
+            echo "## Artifact evidence"
+            echo ""
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [ -d release-artifacts/tv ]; then
+            {
+              echo "### TV"
+              echo ""
+              find release-artifacts/tv -maxdepth 1 -type f -printf '- %f\n' | sort
+              echo ""
+              echo "TV artifacts include APK/AAB files, SHA256SUMS, release manifest, and an internal qualification report when generated by this orchestrator."
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "TV artifacts were not available because the TV leg result was $TV_RESULT." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Enforce orchestrator result
+        env:
+          TV_RESULT: ${{ needs.tv-release.result }}
+          MOBILE_RESULT: ${{ needs.mobile-tablet-status.result }}
+          CONTRACT_RESULT: ${{ needs.release-contracts.result }}
+        run: |
+          if [ "$CONTRACT_RESULT" != "success" ]; then
+            echo "::error::Release contract validation did not pass: $CONTRACT_RESULT"
+            exit 1
+          fi
+          if [ "$TV_RESULT" != "success" ]; then
+            echo "::error::TV release leg did not pass: $TV_RESULT"
+            exit 1
+          fi
+          if [ "$MOBILE_RESULT" != "success" ]; then
+            echo "::error::Mobile/tablet release leg did not pass: $MOBILE_RESULT"
+            exit 1
+          fi
