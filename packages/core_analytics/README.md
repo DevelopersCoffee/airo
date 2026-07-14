@@ -1,0 +1,18 @@
+# Core Analytics
+
+Vendor-neutral analytics contracts and privacy filters for Airo.
+
+This package owns shared analytics event types, consent gates, no-op/local
+diagnostics providers, and prohibited-field validation. Feature modules should
+depend on this package or an adapter built on it rather than importing vendor
+analytics SDKs directly.
+
+## Scope
+
+- Typed analytics event envelope.
+- Consent and local-only collection gates.
+- Prohibited field and value validation.
+- No-op provider for builds without external analytics.
+- Bounded local diagnostics provider for host tests and development builds.
+
+This package does not include Firebase, Crashlytics, or another provider SDK.
