@@ -16,10 +16,14 @@ future native media adapters consume these contracts through stable interfaces.
   kind.
 - Fake and no-op media capability detectors for automation and integration
   boundaries.
+- Shared media error taxonomy for category, severity, retryability, stable user
+  message keys, safe context refs, and redacted diagnostic handles.
 
 This package does not perform native decoder probing yet, inspect raw media
-files, own route selection, or decide Airo TV product UX. Native adapters should
-plug in behind `AiroMediaCapabilityDetector`.
+files, own route selection, localize user-facing copy, upload analytics, export
+support bundles, or decide Airo TV product UX. Native adapters should plug in
+behind `AiroMediaCapabilityDetector`, and backend-specific failures should map
+into `AiroMediaErrorClassifier`.
 
 ## Usage
 
