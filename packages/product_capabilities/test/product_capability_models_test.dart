@@ -390,4 +390,130 @@ void main() {
       expect(flattened, isNot(contains('rawCredential')));
     });
   });
+
+  group('Airo TV product composition contracts', () {
+    test('full TV composition validates with compiled lifecycle manifests', () {
+      final composition = AiroTvProductCompositions.fullTv();
+      final result = composition.validate();
+
+      expect(result.accepted, isTrue);
+      expect(
+        composition.compiledModules,
+        containsAll(AiroTvProductProfiles.fullTv().includedModules),
+      );
+      expect(
+        composition.enabledFeatureFlags,
+        contains(ProductModuleFeatureFlag.fullEpg),
+      );
+    });
+
+    test('lite receiver composition excludes heavy modules', () {
+      final composition = AiroTvProductCompositions.liteReceiver();
+      final result = composition.validate();
+
+      expect(result.accepted, isTrue);
+      expect(
+        composition.compiledModules,
+        isNot(contains(ProductModule.fullEpg)),
+      );
+      expect(
+        composition.compiledModules,
+        isNot(contains(ProductModule.localAi)),
+      );
+      expect(
+        composition.enabledFeatureFlags,
+        isNot(contains(ProductModuleFeatureFlag.fullEpg)),
+      );
+    });
+
+    test('composition rejects runtime flag for absent module', () {
+      final profile = AiroTvProductProfiles.liteReceiver();
+      final composition = ProductCompositionManifest(
+        profileManifest: profile,
+        compiledModules: profile.includedModules,
+        lifecycleManifests: [
+          ...AiroTvModuleLifecycleManifests.liteReceiver(),
+          AiroTvModuleLifecycleManifests.fullEpg(),
+        ],
+        enabledFeatureFlags: const {ProductModuleFeatureFlag.fullEpg},
+      );
+
+      final result = composition.validate();
+
+      expect(result.accepted, isFalse);
+      expect(
+        result.codes,
+        contains(ProductCompositionValidationCode.lifecycleManifestInvalid),
+      );
+      expect(
+        result.codes,
+        contains(ProductCompositionValidationCode.lifecycleModuleNotCompiled),
+      );
+      expect(
+        result.codes,
+        contains(ProductCompositionValidationCode.runtimeFlagWithoutModule),
+      );
+    });
+
+    test('composition rejects excluded compiled modules', () {
+      final profile = AiroTvProductProfiles.liteReceiver();
+      final composition = ProductCompositionManifest(
+        profileManifest: profile,
+        compiledModules: {...profile.includedModules, ProductModule.localAi},
+        lifecycleManifests: AiroTvModuleLifecycleManifests.liteReceiver(),
+      );
+
+      final result = composition.validate();
+
+      expect(result.accepted, isFalse);
+      expect(
+        result.codes,
+        contains(ProductCompositionValidationCode.excludedModuleCompiled),
+      );
+    });
+
+    test('composition rejects included module without lifecycle manifest', () {
+      final profile = AiroTvProductProfiles.fullTv();
+      final lifecycles = AiroTvModuleLifecycleManifests.fullTv()
+          .where((manifest) => manifest.module != ProductModule.analytics)
+          .toList(growable: false);
+      final composition = ProductCompositionManifest(
+        profileManifest: profile,
+        compiledModules: profile.includedModules,
+        lifecycleManifests: lifecycles,
+      );
+
+      final result = composition.validate();
+
+      expect(result.accepted, isFalse);
+      expect(
+        result.codes,
+        contains(
+          ProductCompositionValidationCode.includedModuleMissingLifecycle,
+        ),
+      );
+    });
+
+    test('composition public map exposes stable ids only', () {
+      final publicMap = AiroTvProductCompositions.liteReceiver().toPublicMap();
+      final flattened = publicMap.toString();
+
+      expect(
+        publicMap['compiledModules'],
+        contains(ProductModule.playback.stableId),
+      );
+      expect(
+        publicMap['enabledFeatureFlags'],
+        contains(ProductModuleFeatureFlag.diagnostics.stableId),
+      );
+      expect(
+        publicMap['lifecycleModules'],
+        contains(ProductModule.compactEpg.stableId),
+      );
+      expect(flattened, isNot(contains('/Users/')));
+      expect(flattened, isNot(contains('providerPayload')));
+      expect(flattened, isNot(contains('storeConsoleAccount')));
+      expect(flattened, isNot(contains('rawCredential')));
+    });
+  });
 }

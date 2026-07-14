@@ -128,6 +128,24 @@ enum ProductModuleLifecycleValidationCode {
   final String stableId;
 }
 
+enum ProductCompositionValidationCode {
+  accepted('accepted'),
+  profileManifestInvalid('profile_manifest_invalid'),
+  duplicateLifecycleManifest('duplicate_lifecycle_manifest'),
+  includedModuleNotCompiled('included_module_not_compiled'),
+  excludedModuleCompiled('excluded_module_compiled'),
+  includedModuleMissingLifecycle('included_module_missing_lifecycle'),
+  lifecycleManifestInvalid('lifecycle_manifest_invalid'),
+  lifecycleModuleNotCompiled('lifecycle_module_not_compiled'),
+  fallbackModuleNotCompiled('fallback_module_not_compiled'),
+  runtimeFlagUnsupported('runtime_flag_unsupported'),
+  runtimeFlagWithoutModule('runtime_flag_without_module');
+
+  const ProductCompositionValidationCode(this.stableId);
+
+  final String stableId;
+}
+
 enum ProductCapability {
   directPlayback('direct_playback'),
   dpadNavigation('dpad_navigation'),
@@ -290,6 +308,39 @@ class ProductModuleLifecycleValidationResult extends Equatable {
 
   @override
   List<Object?> get props => [codes];
+}
+
+class ProductCompositionValidationResult extends Equatable {
+  ProductCompositionValidationResult({
+    required List<ProductCompositionValidationCode> codes,
+    required this.profileValidation,
+    required Map<ProductModule, ProductModuleLifecycleValidationResult>
+    lifecycleValidations,
+  }) : codes = List.unmodifiable(codes),
+       lifecycleValidations = Map.unmodifiable(lifecycleValidations);
+
+  final List<ProductCompositionValidationCode> codes;
+  final ProductManifestValidationResult profileValidation;
+  final Map<ProductModule, ProductModuleLifecycleValidationResult>
+  lifecycleValidations;
+
+  bool get accepted =>
+      codes.length == 1 &&
+      codes.single == ProductCompositionValidationCode.accepted;
+
+  Map<String, Object?> toPublicMap() {
+    return {
+      'accepted': accepted,
+      'codes': _compositionValidationCodeStableIds(codes),
+      'profileValidation': profileValidation.toPublicMap(),
+      'lifecycleValidations': lifecycleValidations.map(
+        (module, result) => MapEntry(module.stableId, result.toPublicMap()),
+      ),
+    };
+  }
+
+  @override
+  List<Object?> get props => [codes, profileValidation, lifecycleValidations];
 }
 
 class DeviceCapabilitySnapshot extends Equatable {
@@ -867,6 +918,146 @@ class ProductModuleLifecyclePolicy extends Equatable {
   List<Object?> get props => [maxInitializationCostMsByProfile];
 }
 
+class ProductCompositionManifest extends Equatable {
+  ProductCompositionManifest({
+    required this.profileManifest,
+    required Set<ProductModule> compiledModules,
+    required List<ProductModuleLifecycleManifest> lifecycleManifests,
+    Set<ProductModuleFeatureFlag> enabledFeatureFlags = const {},
+    this.schemaVersion = kProductCapabilitiesSchemaVersion,
+  }) : compiledModules = Set.unmodifiable(compiledModules),
+       lifecycleManifests = List.unmodifiable(lifecycleManifests),
+       enabledFeatureFlags = Set.unmodifiable(enabledFeatureFlags);
+
+  final String schemaVersion;
+  final ProductProfileManifest profileManifest;
+  final Set<ProductModule> compiledModules;
+  final List<ProductModuleLifecycleManifest> lifecycleManifests;
+  final Set<ProductModuleFeatureFlag> enabledFeatureFlags;
+
+  ProductCompositionValidationResult validate() {
+    return ProductCompositionPolicy().evaluate(this);
+  }
+
+  Map<String, Object?> toPublicMap() {
+    return {
+      'schemaVersion': schemaVersion,
+      'profile': profileManifest.toPublicMap(),
+      'compiledModules': _productModuleStableIds(compiledModules),
+      'enabledFeatureFlags': _moduleFeatureFlagStableIds(enabledFeatureFlags),
+      'lifecycleModules': _productModuleStableIds(
+        lifecycleManifests.map((manifest) => manifest.module),
+      ),
+    };
+  }
+
+  @override
+  List<Object?> get props => [
+    schemaVersion,
+    profileManifest,
+    compiledModules,
+    lifecycleManifests,
+    enabledFeatureFlags,
+  ];
+}
+
+class ProductCompositionPolicy extends Equatable {
+  const ProductCompositionPolicy();
+
+  ProductCompositionValidationResult evaluate(
+    ProductCompositionManifest composition,
+  ) {
+    final codes = <ProductCompositionValidationCode>[];
+    final profile = composition.profileManifest;
+    final profileValidation = profile.validate();
+    final lifecycleValidations =
+        <ProductModule, ProductModuleLifecycleValidationResult>{};
+    final lifecycleByModule = <ProductModule, ProductModuleLifecycleManifest>{};
+    final duplicateLifecycleModules = <ProductModule>{};
+
+    if (!profileValidation.accepted) {
+      codes.add(ProductCompositionValidationCode.profileManifestInvalid);
+    }
+
+    for (final lifecycle in composition.lifecycleManifests) {
+      if (lifecycleByModule.containsKey(lifecycle.module)) {
+        duplicateLifecycleModules.add(lifecycle.module);
+      }
+      lifecycleByModule[lifecycle.module] = lifecycle;
+    }
+    if (duplicateLifecycleModules.isNotEmpty) {
+      codes.add(ProductCompositionValidationCode.duplicateLifecycleManifest);
+    }
+
+    for (final module in profile.includedModules) {
+      if (!composition.compiledModules.contains(module)) {
+        codes.add(ProductCompositionValidationCode.includedModuleNotCompiled);
+        break;
+      }
+    }
+
+    for (final module in profile.excludedModules) {
+      if (composition.compiledModules.contains(module)) {
+        codes.add(ProductCompositionValidationCode.excludedModuleCompiled);
+        break;
+      }
+    }
+
+    for (final module in profile.includedModules) {
+      if (!lifecycleByModule.containsKey(module)) {
+        codes.add(
+          ProductCompositionValidationCode.includedModuleMissingLifecycle,
+        );
+        break;
+      }
+    }
+
+    for (final lifecycle in composition.lifecycleManifests) {
+      final result = lifecycle.validateFor(profile);
+      lifecycleValidations[lifecycle.module] = result;
+      if (!result.accepted) {
+        codes.add(ProductCompositionValidationCode.lifecycleManifestInvalid);
+      }
+      if (!composition.compiledModules.contains(lifecycle.module)) {
+        codes.add(ProductCompositionValidationCode.lifecycleModuleNotCompiled);
+      }
+      final fallbackModule = lifecycle.fallbackModule;
+      if (fallbackModule != null &&
+          !composition.compiledModules.contains(fallbackModule)) {
+        codes.add(ProductCompositionValidationCode.fallbackModuleNotCompiled);
+      }
+    }
+
+    for (final featureFlag in composition.enabledFeatureFlags) {
+      final matchingLifecycle = composition.lifecycleManifests
+          .where((manifest) => manifest.featureFlags.contains(featureFlag))
+          .toList(growable: false);
+      if (matchingLifecycle.isEmpty) {
+        codes.add(ProductCompositionValidationCode.runtimeFlagUnsupported);
+        continue;
+      }
+      if (matchingLifecycle.any(
+        (manifest) =>
+            !composition.compiledModules.contains(manifest.module) ||
+            !profile.includesModule(manifest.module),
+      )) {
+        codes.add(ProductCompositionValidationCode.runtimeFlagWithoutModule);
+      }
+    }
+
+    return ProductCompositionValidationResult(
+      codes: codes.isEmpty
+          ? const [ProductCompositionValidationCode.accepted]
+          : codes.toSet().toList(growable: false),
+      profileValidation: profileValidation,
+      lifecycleValidations: lifecycleValidations,
+    );
+  }
+
+  @override
+  List<Object?> get props => const [];
+}
+
 class AiroTvProductProfiles {
   const AiroTvProductProfiles._();
 
@@ -1026,6 +1217,35 @@ class AiroTvProductProfiles {
 class AiroTvModuleLifecycleManifests {
   const AiroTvModuleLifecycleManifests._();
 
+  static List<ProductModuleLifecycleManifest> fullTv() {
+    return [
+      playback(),
+      playlistImport(),
+      favorites(),
+      recent(),
+      basicSearch(),
+      compactEpg(),
+      fullEpg(),
+      pairing(),
+      remoteControl(),
+      diagnostics(),
+      analytics(),
+    ];
+  }
+
+  static List<ProductModuleLifecycleManifest> liteReceiver() {
+    return [
+      playback(),
+      favorites(),
+      recent(),
+      basicSearch(),
+      compactEpg(),
+      pairing(),
+      remoteControl(),
+      diagnostics(),
+    ];
+  }
+
   static ProductModuleLifecycleManifest playback() {
     return ProductModuleLifecycleManifest(
       module: ProductModule.playback,
@@ -1048,6 +1268,44 @@ class AiroTvModuleLifecycleManifests {
         maxStorageMb: 0,
         maxBackgroundJobs: 0,
       ),
+    );
+  }
+
+  static ProductModuleLifecycleManifest playlistImport() {
+    return _lightweightModule(
+      module: ProductModule.playlistImport,
+      displayName: 'Playlist Import',
+      supportedProfiles: const {
+        ProductProfileId.fullTv,
+        ProductProfileId.standardTv,
+      },
+      maxStorageMb: 8,
+    );
+  }
+
+  static ProductModuleLifecycleManifest favorites() {
+    return _lightweightModule(
+      module: ProductModule.favorites,
+      displayName: 'Favorites',
+      maxStorageMb: 4,
+    );
+  }
+
+  static ProductModuleLifecycleManifest recent() {
+    return _lightweightModule(
+      module: ProductModule.recent,
+      displayName: 'Recent',
+      maxStorageMb: 4,
+    );
+  }
+
+  static ProductModuleLifecycleManifest basicSearch() {
+    return _lightweightModule(
+      module: ProductModule.basicSearch,
+      displayName: 'Basic Search',
+      requiredCapabilities: const {ProductCapability.basicSearch},
+      maxMemoryMb: 48,
+      maxStorageMb: 12,
     );
   }
 
@@ -1104,6 +1362,60 @@ class AiroTvModuleLifecycleManifests {
     );
   }
 
+  static ProductModuleLifecycleManifest pairing() {
+    return _lightweightModule(
+      module: ProductModule.pairing,
+      displayName: 'Pairing',
+      maxMemoryMb: 32,
+      maxStorageMb: 4,
+    );
+  }
+
+  static ProductModuleLifecycleManifest remoteControl() {
+    return _lightweightModule(
+      module: ProductModule.remoteControl,
+      displayName: 'Remote Control',
+      requiredCapabilities: const {ProductCapability.companionRemote},
+      maxMemoryMb: 32,
+      maxStorageMb: 4,
+    );
+  }
+
+  static ProductModuleLifecycleManifest diagnostics() {
+    return _lightweightModule(
+      module: ProductModule.diagnostics,
+      displayName: 'Diagnostics',
+      requiredCapabilities: const {ProductCapability.diagnostics},
+      featureFlags: const {ProductModuleFeatureFlag.diagnostics},
+      maxMemoryMb: 32,
+      maxStorageMb: 8,
+    );
+  }
+
+  static ProductModuleLifecycleManifest analytics() {
+    return ProductModuleLifecycleManifest(
+      module: ProductModule.analytics,
+      displayName: 'Analytics',
+      supportedProfiles: const {
+        ProductProfileId.fullTv,
+        ProductProfileId.standardTv,
+      },
+      dependencies: const {},
+      requiredCapabilities: const {ProductCapability.analytics},
+      androidPermissions: const {'android.permission.ACCESS_NETWORK_STATE'},
+      budget: const ProductModuleLifecycleBudget(
+        initializationCostMs: 400,
+        maxMemoryMb: 32,
+        maxStorageMb: 8,
+        maxBackgroundJobs: 1,
+      ),
+      backgroundTasks: const {ProductModuleBackgroundTask.analyticsFlush},
+      featureFlags: const {ProductModuleFeatureFlag.analytics},
+      allowsBackgroundExecution: true,
+      supportsGracefulShutdown: true,
+    );
+  }
+
   static ProductModuleLifecycleManifest localAi() {
     return ProductModuleLifecycleManifest(
       module: ProductModule.localAi,
@@ -1123,6 +1435,65 @@ class AiroTvModuleLifecycleManifests {
       fallbackModule: ProductModule.basicSearch,
       allowsBackgroundExecution: true,
       supportsGracefulShutdown: true,
+    );
+  }
+
+  static ProductModuleLifecycleManifest _lightweightModule({
+    required ProductModule module,
+    required String displayName,
+    Set<ProductProfileId> supportedProfiles = const {
+      ProductProfileId.fullTv,
+      ProductProfileId.standardTv,
+      ProductProfileId.liteReceiver,
+      ProductProfileId.embeddedReceiver,
+    },
+    Set<ProductCapability> requiredCapabilities = const {},
+    Set<ProductModuleFeatureFlag> featureFlags = const {},
+    int maxMemoryMb = 24,
+    int maxStorageMb = 0,
+  }) {
+    return ProductModuleLifecycleManifest(
+      module: module,
+      displayName: displayName,
+      supportedProfiles: supportedProfiles,
+      dependencies: const {},
+      requiredCapabilities: requiredCapabilities,
+      androidPermissions: const {},
+      budget: ProductModuleLifecycleBudget(
+        initializationCostMs: 250,
+        maxMemoryMb: maxMemoryMb,
+        maxStorageMb: maxStorageMb,
+        maxBackgroundJobs: 0,
+      ),
+      featureFlags: featureFlags,
+    );
+  }
+}
+
+class AiroTvProductCompositions {
+  const AiroTvProductCompositions._();
+
+  static ProductCompositionManifest fullTv() {
+    final profile = AiroTvProductProfiles.fullTv();
+    return ProductCompositionManifest(
+      profileManifest: profile,
+      compiledModules: profile.includedModules,
+      lifecycleManifests: AiroTvModuleLifecycleManifests.fullTv(),
+      enabledFeatureFlags: const {
+        ProductModuleFeatureFlag.fullEpg,
+        ProductModuleFeatureFlag.diagnostics,
+        ProductModuleFeatureFlag.analytics,
+      },
+    );
+  }
+
+  static ProductCompositionManifest liteReceiver() {
+    final profile = AiroTvProductProfiles.liteReceiver();
+    return ProductCompositionManifest(
+      profileManifest: profile,
+      compiledModules: profile.includedModules,
+      lifecycleManifests: AiroTvModuleLifecycleManifests.liteReceiver(),
+      enabledFeatureFlags: const {ProductModuleFeatureFlag.diagnostics},
     );
   }
 }
@@ -1169,6 +1540,12 @@ List<String> _moduleBackgroundTaskStableIds(
 
 List<String> _moduleFeatureFlagStableIds(
   Iterable<ProductModuleFeatureFlag> values,
+) {
+  return values.map((value) => value.stableId).toList(growable: false)..sort();
+}
+
+List<String> _compositionValidationCodeStableIds(
+  Iterable<ProductCompositionValidationCode> values,
 ) {
   return values.map((value) => value.stableId).toList(growable: false)..sort();
 }
