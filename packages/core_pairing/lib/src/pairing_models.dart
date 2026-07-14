@@ -51,6 +51,57 @@ enum AiroTrustedDeviceAccessCode {
   final String stableId;
 }
 
+enum AiroTrustedDeviceTrustLevel {
+  restricted('restricted', 0),
+  paired('paired', 1),
+  trusted('trusted', 2),
+  owner('owner', 3);
+
+  const AiroTrustedDeviceTrustLevel(this.stableId, this.rank);
+
+  final String stableId;
+  final int rank;
+
+  bool satisfies(AiroTrustedDeviceTrustLevel minimum) => rank >= minimum.rank;
+}
+
+enum AiroTrustedDeviceKeyAlgorithm {
+  ed25519('ed25519'),
+  p256('p256');
+
+  const AiroTrustedDeviceKeyAlgorithm(this.stableId);
+
+  final String stableId;
+}
+
+enum AiroTrustedDeviceKeyState {
+  active('active'),
+  rotationDue('rotation_due'),
+  notYetValid('not_yet_valid'),
+  expired('expired'),
+  revoked('revoked');
+
+  const AiroTrustedDeviceKeyState(this.stableId);
+
+  final String stableId;
+}
+
+enum AiroTrustedDeviceSecurityCode {
+  accepted('accepted'),
+  accessDenied('access_denied'),
+  trustLevelInsufficient('trust_level_insufficient'),
+  keyMissing('key_missing'),
+  keyUnsupported('key_unsupported'),
+  keyNotYetValid('key_not_yet_valid'),
+  keyExpired('key_expired'),
+  keyRevoked('key_revoked'),
+  keyRotationRequired('key_rotation_required');
+
+  const AiroTrustedDeviceSecurityCode(this.stableId);
+
+  final String stableId;
+}
+
 enum AiroPlaybackTicketValidationCode {
   accepted('accepted'),
   receiverMismatch('receiver_mismatch'),
@@ -137,6 +188,10 @@ class AiroTrustedDeviceRecord extends Equatable {
     this.expiresAt,
     this.revokedAt,
     this.pairingChallengeId,
+    this.trustLevel = AiroTrustedDeviceTrustLevel.paired,
+    this.keyDescriptor,
+    this.revokedByDeviceId,
+    this.revocationReason,
     this.schemaVersion = kAiroPairingSchemaVersion,
   }) : scopes = Set.unmodifiable(scopes);
 
@@ -152,6 +207,10 @@ class AiroTrustedDeviceRecord extends Equatable {
   final DateTime? expiresAt;
   final DateTime? revokedAt;
   final String? pairingChallengeId;
+  final AiroTrustedDeviceTrustLevel trustLevel;
+  final AiroTrustedDeviceKeyDescriptor? keyDescriptor;
+  final String? revokedByDeviceId;
+  final String? revocationReason;
 
   AiroTrustedDeviceAccessResult evaluateAccess({
     required AiroPairingScope requiredScope,
@@ -204,6 +263,10 @@ class AiroTrustedDeviceRecord extends Equatable {
     expiresAt,
     revokedAt,
     pairingChallengeId,
+    trustLevel,
+    keyDescriptor,
+    revokedByDeviceId,
+    revocationReason,
   ];
 }
 
@@ -216,6 +279,217 @@ class AiroTrustedDeviceAccessResult extends Equatable {
 
   @override
   List<Object?> get props => [code];
+}
+
+class AiroTrustedDeviceKeyDescriptor extends Equatable {
+  const AiroTrustedDeviceKeyDescriptor({
+    required this.keyId,
+    required this.algorithm,
+    required this.publicKeyFingerprint,
+    required this.createdAt,
+    required this.notBefore,
+    required this.expiresAt,
+    this.revokedAt,
+    this.schemaVersion = kAiroPairingSchemaVersion,
+  });
+
+  final String schemaVersion;
+  final String keyId;
+  final AiroTrustedDeviceKeyAlgorithm algorithm;
+  final String publicKeyFingerprint;
+  final DateTime createdAt;
+  final DateTime notBefore;
+  final DateTime expiresAt;
+  final DateTime? revokedAt;
+
+  AiroTrustedDeviceKeyState stateAt({
+    required DateTime now,
+    Duration? rotationInterval,
+  }) {
+    if (revokedAt != null && !now.isBefore(revokedAt!)) {
+      return AiroTrustedDeviceKeyState.revoked;
+    }
+    if (now.isBefore(notBefore)) {
+      return AiroTrustedDeviceKeyState.notYetValid;
+    }
+    if (!now.isBefore(expiresAt)) {
+      return AiroTrustedDeviceKeyState.expired;
+    }
+    if (rotationInterval != null &&
+        !now.isBefore(createdAt.add(rotationInterval))) {
+      return AiroTrustedDeviceKeyState.rotationDue;
+    }
+    return AiroTrustedDeviceKeyState.active;
+  }
+
+  @override
+  String toString() {
+    return 'AiroTrustedDeviceKeyDescriptor('
+        'keyId: $keyId, '
+        'algorithm: ${algorithm.stableId}, '
+        'createdAt: $createdAt, '
+        'notBefore: $notBefore, '
+        'expiresAt: $expiresAt, '
+        'revokedAt: $revokedAt'
+        ')';
+  }
+
+  @override
+  List<Object?> get props => [
+    schemaVersion,
+    keyId,
+    algorithm,
+    publicKeyFingerprint,
+    createdAt,
+    notBefore,
+    expiresAt,
+    revokedAt,
+  ];
+}
+
+class AiroTrustedDeviceSecurityPolicy extends Equatable {
+  AiroTrustedDeviceSecurityPolicy({
+    required this.requiredScope,
+    this.minimumTrustLevel = AiroTrustedDeviceTrustLevel.paired,
+    Set<AiroTrustedDeviceKeyAlgorithm> allowedKeyAlgorithms = const {
+      AiroTrustedDeviceKeyAlgorithm.ed25519,
+      AiroTrustedDeviceKeyAlgorithm.p256,
+    },
+    this.keyRotationInterval,
+    this.requiresKeyDescriptor = true,
+  }) : allowedKeyAlgorithms = Set.unmodifiable(allowedKeyAlgorithms);
+
+  final AiroPairingScope requiredScope;
+  final AiroTrustedDeviceTrustLevel minimumTrustLevel;
+  final Set<AiroTrustedDeviceKeyAlgorithm> allowedKeyAlgorithms;
+  final Duration? keyRotationInterval;
+  final bool requiresKeyDescriptor;
+
+  AiroTrustedDeviceSecurityResult evaluate({
+    required AiroTrustedDeviceRecord record,
+    required DateTime now,
+  }) {
+    final blockers = <AiroTrustedDeviceSecurityBlocker>[];
+    final access = record.evaluateAccess(
+      requiredScope: requiredScope,
+      now: now,
+    );
+    if (!access.accepted) {
+      blockers.add(
+        AiroTrustedDeviceSecurityBlocker(
+          code: AiroTrustedDeviceSecurityCode.accessDenied,
+          accessCode: access.code,
+        ),
+      );
+    }
+    if (!record.trustLevel.satisfies(minimumTrustLevel)) {
+      blockers.add(
+        AiroTrustedDeviceSecurityBlocker(
+          code: AiroTrustedDeviceSecurityCode.trustLevelInsufficient,
+          field: 'trustLevel',
+        ),
+      );
+    }
+
+    final keyDescriptor = record.keyDescriptor;
+    if (keyDescriptor == null) {
+      if (requiresKeyDescriptor) {
+        blockers.add(
+          const AiroTrustedDeviceSecurityBlocker(
+            code: AiroTrustedDeviceSecurityCode.keyMissing,
+            field: 'keyDescriptor',
+          ),
+        );
+      }
+    } else {
+      if (!allowedKeyAlgorithms.contains(keyDescriptor.algorithm)) {
+        blockers.add(
+          AiroTrustedDeviceSecurityBlocker(
+            code: AiroTrustedDeviceSecurityCode.keyUnsupported,
+            field: keyDescriptor.algorithm.stableId,
+          ),
+        );
+      }
+      switch (keyDescriptor.stateAt(
+        now: now,
+        rotationInterval: keyRotationInterval,
+      )) {
+        case AiroTrustedDeviceKeyState.active:
+          break;
+        case AiroTrustedDeviceKeyState.rotationDue:
+          blockers.add(
+            const AiroTrustedDeviceSecurityBlocker(
+              code: AiroTrustedDeviceSecurityCode.keyRotationRequired,
+              field: 'keyDescriptor',
+            ),
+          );
+        case AiroTrustedDeviceKeyState.notYetValid:
+          blockers.add(
+            const AiroTrustedDeviceSecurityBlocker(
+              code: AiroTrustedDeviceSecurityCode.keyNotYetValid,
+              field: 'keyDescriptor',
+            ),
+          );
+        case AiroTrustedDeviceKeyState.expired:
+          blockers.add(
+            const AiroTrustedDeviceSecurityBlocker(
+              code: AiroTrustedDeviceSecurityCode.keyExpired,
+              field: 'keyDescriptor',
+            ),
+          );
+        case AiroTrustedDeviceKeyState.revoked:
+          blockers.add(
+            const AiroTrustedDeviceSecurityBlocker(
+              code: AiroTrustedDeviceSecurityCode.keyRevoked,
+              field: 'keyDescriptor',
+            ),
+          );
+      }
+    }
+
+    return AiroTrustedDeviceSecurityResult(blockers: blockers);
+  }
+
+  @override
+  List<Object?> get props => [
+    requiredScope,
+    minimumTrustLevel,
+    allowedKeyAlgorithms,
+    keyRotationInterval,
+    requiresKeyDescriptor,
+  ];
+}
+
+class AiroTrustedDeviceSecurityBlocker extends Equatable {
+  const AiroTrustedDeviceSecurityBlocker({
+    required this.code,
+    this.accessCode,
+    this.field,
+  });
+
+  final AiroTrustedDeviceSecurityCode code;
+  final AiroTrustedDeviceAccessCode? accessCode;
+  final String? field;
+
+  @override
+  List<Object?> get props => [code, accessCode, field];
+}
+
+class AiroTrustedDeviceSecurityResult extends Equatable {
+  AiroTrustedDeviceSecurityResult({
+    required List<AiroTrustedDeviceSecurityBlocker> blockers,
+  }) : blockers = List.unmodifiable(blockers);
+
+  final List<AiroTrustedDeviceSecurityBlocker> blockers;
+
+  bool get accepted => blockers.isEmpty;
+
+  bool has(AiroTrustedDeviceSecurityCode code) {
+    return blockers.any((blocker) => blocker.code == code);
+  }
+
+  @override
+  List<Object?> get props => [blockers];
 }
 
 class AiroPlaybackSourceHandle extends Equatable {
