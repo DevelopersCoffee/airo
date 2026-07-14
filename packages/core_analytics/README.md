@@ -18,6 +18,9 @@ analytics SDKs directly.
   resettable installation IDs.
 - Consent and local-only collection gates.
 - Prohibited field and value validation.
+- Reusable privacy filter fixture suites for URL-like values, credential-like
+  values, auth header fields, local paths, local IPs, raw queries, raw titles,
+  and approved bucket/category values.
 - No-op provider for builds without external analytics.
 - Bounded local diagnostics provider for host tests and development builds.
 - Provider-backed adapter boundary that catches provider failures and falls

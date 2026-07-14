@@ -159,6 +159,41 @@ void main() {
       );
     });
 
+    test('standard privacy fixture suite matches expected outcomes', () {
+      final suite = AiroTvAnalyticsPrivacyFilterSuites.standard();
+      final filter = AiroAnalyticsPrivacyFilter.standard;
+
+      for (final testCase in suite.cases) {
+        final result = filter.validate(testCase.toEvent());
+        if (testCase.shouldReject) {
+          expect(
+            result.violations.map((violation) => violation.code),
+            contains(testCase.expectedCode),
+            reason: testCase.caseId,
+          );
+        } else {
+          expect(result.isAccepted, isTrue, reason: testCase.caseId);
+        }
+      }
+    });
+
+    test('privacy fixture suite public map excludes risky sample values', () {
+      final publicMap = AiroTvAnalyticsPrivacyFilterSuites.standard()
+          .toPublicMap();
+      final flattened = publicMap.toString();
+
+      expect(flattened, contains('stream-url-value'));
+      expect(flattened, contains(AiroAnalyticsPrivacyCode.urlValue.stableId));
+      expect(flattened, isNot(contains('/Users/')));
+      expect(flattened, isNot(contains('https://')));
+      expect(flattened, isNot(contains('rtsp://')));
+      expect(flattened, isNot(contains('192.168.')));
+      expect(flattened, isNot(contains('Bearer')));
+      expect(flattened, isNot(contains('City News Live')));
+      expect(flattened, isNot(contains('latest live match')));
+      expect(flattened, isNot(contains('storeConsoleAccount')));
+    });
+
     test('no-op provider validates without retaining events', () async {
       const service = AiroNoOpAnalyticsService(
         consent: AiroAnalyticsConsentState.allEnabled(),

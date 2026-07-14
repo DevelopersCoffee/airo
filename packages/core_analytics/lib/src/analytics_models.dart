@@ -80,6 +80,23 @@ enum AiroAnalyticsPrivacyCode {
   final String stableId;
 }
 
+enum AiroAnalyticsPrivacySampleClass {
+  approvedBucket('approved_bucket'),
+  approvedCategory('approved_category'),
+  urlLike('url_like'),
+  localPathLike('local_path_like'),
+  localIpLike('local_ip_like'),
+  credentialLike('credential_like'),
+  rawQueryField('raw_query_field'),
+  rawTitleField('raw_title_field'),
+  rawSourceField('raw_source_field'),
+  authHeaderField('auth_header_field');
+
+  const AiroAnalyticsPrivacySampleClass(this.stableId);
+
+  final String stableId;
+}
+
 enum AiroAnalyticsConfigurationCode {
   accepted('accepted'),
   queueBudgetInvalid('queue_budget_invalid'),
@@ -284,6 +301,71 @@ class AiroAnalyticsPrivacyResult extends Equatable {
 
   @override
   List<Object?> get props => [violations];
+}
+
+class AiroAnalyticsPrivacyFilterTestCase extends Equatable {
+  const AiroAnalyticsPrivacyFilterTestCase({
+    required this.caseId,
+    required this.field,
+    required this.value,
+    required this.sampleClass,
+    this.expectedCode,
+  });
+
+  final String caseId;
+  final String field;
+  final Object? value;
+  final AiroAnalyticsPrivacySampleClass sampleClass;
+  final AiroAnalyticsPrivacyCode? expectedCode;
+
+  bool get shouldReject => expectedCode != null;
+
+  AiroAnalyticsEvent toEvent() {
+    return AiroAnalyticsEvent(
+      name: 'privacy_filter_probe',
+      owner: 'security',
+      purpose: AiroAnalyticsPurpose.diagnostics,
+      params: {field: value},
+    );
+  }
+
+  Map<String, Object?> toPublicMap() {
+    return {
+      'caseId': caseId,
+      'field': field,
+      'sampleClass': sampleClass.stableId,
+      'expectedCode': expectedCode?.stableId,
+      'shouldReject': shouldReject,
+    };
+  }
+
+  @override
+  List<Object?> get props => [caseId, field, value, sampleClass, expectedCode];
+}
+
+class AiroAnalyticsPrivacyFilterTestSuite extends Equatable {
+  AiroAnalyticsPrivacyFilterTestSuite({
+    required this.suiteId,
+    required Iterable<AiroAnalyticsPrivacyFilterTestCase> cases,
+    this.schemaVersion = kAiroAnalyticsSchemaVersion,
+  }) : cases = List.unmodifiable(cases);
+
+  final String schemaVersion;
+  final String suiteId;
+  final List<AiroAnalyticsPrivacyFilterTestCase> cases;
+
+  Map<String, Object?> toPublicMap() {
+    return {
+      'schemaVersion': schemaVersion,
+      'suiteId': suiteId,
+      'cases': cases
+          .map((testCase) => testCase.toPublicMap())
+          .toList(growable: false),
+    };
+  }
+
+  @override
+  List<Object?> get props => [schemaVersion, suiteId, cases];
 }
 
 class AiroAnalyticsSchemaValidationResult extends Equatable {
@@ -794,7 +876,8 @@ class AiroAnalyticsPrivacyFilter {
     if (trimmed.isEmpty) return null;
 
     final uri = Uri.tryParse(trimmed);
-    if (uri != null && (uri.scheme == 'http' || uri.scheme == 'https')) {
+    if (uri != null &&
+        const {'http', 'https', 'rtsp', 'rtmp'}.contains(uri.scheme)) {
       return AiroAnalyticsPrivacyCode.urlValue;
     }
     if (trimmed.startsWith('file://') ||
@@ -1300,6 +1383,100 @@ class AiroTvAnalyticsSchemas {
           name: 'success',
           kind: AiroAnalyticsFieldKind.boolean,
           required: true,
+        ),
+      ],
+    );
+  }
+}
+
+class AiroTvAnalyticsPrivacyFilterSuites {
+  const AiroTvAnalyticsPrivacyFilterSuites._();
+
+  static AiroAnalyticsPrivacyFilterTestSuite standard() {
+    return AiroAnalyticsPrivacyFilterTestSuite(
+      suiteId: 'airo-tv-analytics-privacy-filter',
+      cases: const [
+        AiroAnalyticsPrivacyFilterTestCase(
+          caseId: 'approved-source-type',
+          field: 'source_type',
+          value: 'iptv',
+          sampleClass: AiroAnalyticsPrivacySampleClass.approvedCategory,
+        ),
+        AiroAnalyticsPrivacyFilterTestCase(
+          caseId: 'approved-startup-bucket',
+          field: 'startup_bucket',
+          value: '1_3s',
+          sampleClass: AiroAnalyticsPrivacySampleClass.approvedBucket,
+        ),
+        AiroAnalyticsPrivacyFilterTestCase(
+          caseId: 'stream-url-value',
+          field: 'source_type',
+          value: 'https://example.com/live.m3u8',
+          sampleClass: AiroAnalyticsPrivacySampleClass.urlLike,
+          expectedCode: AiroAnalyticsPrivacyCode.urlValue,
+        ),
+        AiroAnalyticsPrivacyFilterTestCase(
+          caseId: 'rtsp-url-value',
+          field: 'source_type',
+          value: 'rtsp://camera.example/live',
+          sampleClass: AiroAnalyticsPrivacySampleClass.urlLike,
+          expectedCode: AiroAnalyticsPrivacyCode.urlValue,
+        ),
+        AiroAnalyticsPrivacyFilterTestCase(
+          caseId: 'local-path-value',
+          field: 'storage_bucket',
+          value: '/Users/example/video.ts',
+          sampleClass: AiroAnalyticsPrivacySampleClass.localPathLike,
+          expectedCode: AiroAnalyticsPrivacyCode.localPathValue,
+        ),
+        AiroAnalyticsPrivacyFilterTestCase(
+          caseId: 'local-ip-value',
+          field: 'network_bucket',
+          value: 'route 192.168.1.10',
+          sampleClass: AiroAnalyticsPrivacySampleClass.localIpLike,
+          expectedCode: AiroAnalyticsPrivacyCode.localIpValue,
+        ),
+        AiroAnalyticsPrivacyFilterTestCase(
+          caseId: 'credential-like-value',
+          field: 'auth_bucket',
+          value: 'Bearer abc.def',
+          sampleClass: AiroAnalyticsPrivacySampleClass.credentialLike,
+          expectedCode: AiroAnalyticsPrivacyCode.credentialLikeValue,
+        ),
+        AiroAnalyticsPrivacyFilterTestCase(
+          caseId: 'auth-header-field',
+          field: 'authorization',
+          value: 'present',
+          sampleClass: AiroAnalyticsPrivacySampleClass.authHeaderField,
+          expectedCode: AiroAnalyticsPrivacyCode.prohibitedFieldName,
+        ),
+        AiroAnalyticsPrivacyFilterTestCase(
+          caseId: 'raw-search-field',
+          field: 'searchQuery',
+          value: 'latest live match',
+          sampleClass: AiroAnalyticsPrivacySampleClass.rawQueryField,
+          expectedCode: AiroAnalyticsPrivacyCode.prohibitedFieldName,
+        ),
+        AiroAnalyticsPrivacyFilterTestCase(
+          caseId: 'raw-title-field',
+          field: 'programTitle',
+          value: 'Evening News',
+          sampleClass: AiroAnalyticsPrivacySampleClass.rawTitleField,
+          expectedCode: AiroAnalyticsPrivacyCode.prohibitedFieldName,
+        ),
+        AiroAnalyticsPrivacyFilterTestCase(
+          caseId: 'raw-channel-field',
+          field: 'channelName',
+          value: 'City News Live',
+          sampleClass: AiroAnalyticsPrivacySampleClass.rawTitleField,
+          expectedCode: AiroAnalyticsPrivacyCode.prohibitedFieldName,
+        ),
+        AiroAnalyticsPrivacyFilterTestCase(
+          caseId: 'raw-source-field',
+          field: 'playlistUrl',
+          value: 'redacted',
+          sampleClass: AiroAnalyticsPrivacySampleClass.rawSourceField,
+          expectedCode: AiroAnalyticsPrivacyCode.prohibitedFieldName,
         ),
       ],
     );
