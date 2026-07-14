@@ -20,8 +20,8 @@ val appVariant = dartDefine("APP_VARIANT") ?: "full"
 val isLeanVariant = appVariant != "full"
 val isTvVariant = appVariant == "tv"
 val variantApplicationId = when (appVariant) {
-    "iptv" -> "io.airo.app"
-    "streaming" -> "io.airo.app"
+    "iptv" -> "io.airo.app.iptv"
+    "streaming" -> "io.airo.app.streaming"
     "tv" -> "io.airo.app.tv"
     else -> "io.airo.app"
 }
@@ -54,7 +54,7 @@ if (hasGoogleServicesConfig) {
 
 android {
     namespace = "io.airo.app"
-    compileSdk = 36 // Android 15 (API level 35) for Pixel 9 compatibility
+    compileSdk = 36 // Android 16 (API level 36) for current Play target compatibility
     ndkVersion = flutter.ndkVersion
 
     compileOptions {

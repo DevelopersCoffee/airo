@@ -10,8 +10,8 @@ Implementation work for these profiles must start from latest `origin/v2`.
 
 | Profile | Package ID | Entrypoint | Pubspec | Device class | Release artifacts | Distribution |
 | --- | --- | --- | --- | --- | --- | --- |
-| `iptv-standalone` | `io.airo.iptv` | `app/lib/main_airo_iptv.dart` | `app/pubspec_iptv.yaml` | Android phone and tablet IPTV-only builds | APK, AAB once store publishing is enabled | GitHub Release, Firebase App Distribution, Play track after credentials |
-| `mobile-streaming` | `io.airo.streaming` | `app/lib/main_mobile_streaming.dart` | `app/pubspec_streaming.yaml` | Android phone and tablet streaming builds | APK, AAB once store publishing is enabled | GitHub Release, Firebase App Distribution, Play track after credentials |
+| `iptv-standalone` | `io.airo.app.iptv` | `app/lib/main_airo_iptv.dart` | `app/pubspec_iptv.yaml` | Android phone and tablet IPTV-only builds | APK, AAB once store publishing is enabled | GitHub Release, Firebase App Distribution, Play track after credentials |
+| `mobile-streaming` | `io.airo.app.streaming` | `app/lib/main_mobile_streaming.dart` | `app/pubspec_streaming.yaml` | Android phone and tablet streaming builds | APK, AAB once store publishing is enabled | GitHub Release, Firebase App Distribution, Play track after credentials |
 | `tv` | `io.airo.app.tv` | `app/lib/main_tv.dart` | `app/pubspec_tv.yaml` | Android TV, Google TV, Fire TV-compatible APK testing | APK, Play Store AAB | GitHub Release, Firebase App Distribution where supported, Play TV track after credentials |
 | `ios-spm` | `com.developerscoffee.airo` | `app/lib/main.dart` | `app/pubspec_ios_spm.yaml` | iOS/iPadOS validation profile | Deferred | Not part of the first v2 Android publishing wave |
 | `web-validation` | `web` | `app/lib/main_airo_iptv.dart` | `app/pubspec.yaml` | Browser validation only | Deferred | Local validation only |
@@ -95,7 +95,8 @@ Do not publish debug-looking names such as `app-release.apk` or
 
 ## Human Decisions Still Needed
 
-- Final mobile/tablet package ID and listing strategy.
+- Final mobile/tablet listing strategy for the registered `io.airo.app.*`
+  package IDs.
 - Whether `iptv-standalone` or `mobile-streaming` is the first public mobile
   profile.
 - Whether Amazon Appstore and F-Droid are in the first v2 release wave.

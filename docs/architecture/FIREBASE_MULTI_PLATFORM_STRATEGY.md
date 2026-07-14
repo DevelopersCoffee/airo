@@ -28,7 +28,7 @@ This document provides a phased plan for configuring Firebase across multiple ap
 | Variant | Package Name | App Nickname |
 |---------|-------------|--------------|
 | Mobile Full | `io.airo.app` | Airo Mobile (existing) |
-| Mobile Streaming | `io.airo.streaming` | Airo Streaming |
+| Mobile Streaming | `io.airo.app.streaming` | Airo Streaming |
 | Android TV | `io.airo.app.tv` | Airo TV |
 
 5. **DO NOT** download individual files - proceed to next step
@@ -52,7 +52,7 @@ After registering all apps:
     },
     {
       "client_info": {
-        "android_client_info": { "package_name": "io.airo.streaming" }
+        "android_client_info": { "package_name": "io.airo.app.streaming" }
       }
     },
     {
@@ -162,7 +162,7 @@ flutter build apk --release --dart-define=APP_VARIANT=streaming --dart-define=AP
 
 ### Phase 0.5 Checklist
 
-- [ ] Register `io.airo.streaming` in Firebase Console
+- [ ] Register `io.airo.app.streaming` in Firebase Console
 - [ ] Register `io.airo.app.tv` in Firebase Console
 - [ ] Download combined `google-services.json`
 - [ ] Update `firebase_options.dart` with new app IDs
@@ -219,4 +219,3 @@ android {
 1. **Phase 1:** Create platform entrypoints (main_tv.dart, etc.)
 2. **Phase 2:** Add product flavors to build.gradle.kts
 3. **Phase 2:** Create TV-specific AndroidManifest.xml
-
