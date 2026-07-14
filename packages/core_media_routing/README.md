@@ -11,11 +11,14 @@ product screens.
 
 - Versioned media routing request, candidate, policy, blocker, and decision
   models.
+- Versioned media location and route access-grant models.
 - Deterministic route preflight and selection.
 - Direct receiver playback preference before relay or phone-proxy fallback.
+- Redacted source and access handles for cloud, LAN, server, local file,
+  phone-local, TV removable, desktop, and temporary access paths.
 - Privacy-safe diagnostics that expose ids and blocker codes, not raw source
   values.
 
 This package does not start a media server, open playback, inspect codecs from a
-platform SDK, define full media-location schemas, collect route health events,
-or own playback-session state.
+platform SDK, collect route health events, issue playback access grants, or own
+playback-session state.
