@@ -18,16 +18,30 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Artifact version label, for example v2.0.0-tv.1'
+        description: 'Airo TV artifact and release version label'
         required: true
+        default: 'airo-tv-v0.0.1'
       build_name:
-        description: 'Android versionName, for example 2.0.0'
+        description: 'Android versionName, for example 0.0.1'
         required: true
-        default: '1.0.0'
+        default: '0.0.1'
       build_number:
         description: 'Android versionCode, must increase for every Play upload'
         required: true
         default: '1'
+      release_ref:
+        description: 'Git ref to cut the release from; use v2 for Airo TV release line'
+        required: true
+        default: 'v2'
+      release_branch:
+        description: 'Release branch to create/update from release_ref before building'
+        required: true
+        default: 'release/airo-tv-v0.0.1'
+      publish_github_release:
+        description: 'Create/update the GitHub release and attach artifacts'
+        required: true
+        default: true
+        type: boolean
       production_signing:
         description: 'Require production Android signing and Firebase secrets'
         required: true
@@ -49,21 +63,53 @@ concurrency:
   cancel-in-progress: true
 
 permissions:
-  contents: read
+  contents: write
 
 env:
   FLUTTER_VERSION: '3.44.4'
   RELEASE_VERSION: ${{ github.event.inputs.version || github.ref_name }}
-  BUILD_NAME: ${{ github.event.inputs.build_name || '1.0.0' }}
+  BUILD_NAME: ${{ github.event.inputs.build_name || '0.0.1' }}
   BUILD_NUMBER: ${{ github.event.inputs.build_number || '1' }}
 
 jobs:
+  prepare-release-branch:
+    name: Cut release branch from v2
+    runs-on: ubuntu-latest
+    outputs:
+      release_ref: ${{ steps.release_ref.outputs.ref || steps.current_ref.outputs.ref }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.inputs.release_ref || github.ref }}
+
+      - name: Use current ref for PR/push validation
+        id: current_ref
+        if: github.event_name != 'workflow_dispatch'
+        run: echo "ref=${GITHUB_REF}" >> "$GITHUB_OUTPUT"
+
+      - name: Create release branch from v2 base
+        id: release_ref
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          RELEASE_BRANCH: ${{ github.event.inputs.release_branch || 'release/airo-tv-v0.0.1' }}
+          RELEASE_REF: ${{ github.event.inputs.release_ref || 'v2' }}
+        run: |
+          git fetch origin main v2
+          git checkout -B "$RELEASE_BRANCH" "origin/$RELEASE_REF"
+          git push origin "$RELEASE_BRANCH" --force-with-lease
+          echo "ref=$RELEASE_BRANCH" >> "$GITHUB_OUTPUT"
+
   release-checks:
     name: TV release checks
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    needs: [prepare-release-branch]
+    if: always() && !failure() && !cancelled()
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.prepare-release-branch.outputs.release_ref || github.ref }}
 
       - name: Validate Android TV release metadata
         run: scripts/check-android-tv-release.sh
@@ -72,9 +118,11 @@ jobs:
     name: Build Airo TV APK and AAB
     runs-on: ubuntu-latest
     timeout-minutes: 45
-    needs: release-checks
+    needs: [prepare-release-branch, release-checks]
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.prepare-release-branch.outputs.release_ref || github.ref }}
 
       - name: Normalize release artifact label
         run: |
@@ -116,6 +164,7 @@ jobs:
       - name: Configure Firebase for TV build
         env:
           GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+          PRODUCTION_SIGNING: ${{ github.event.inputs.production_signing || 'false' }}
         run: |
           cd app
           write_placeholder_config() {
@@ -156,10 +205,16 @@ jobs:
             echo "$GOOGLE_SERVICES_JSON" | base64 -d > android/app/google-services.json
             if grep -q '"package_name"[[:space:]]*:[[:space:]]*"io.airo.app.tv"' android/app/google-services.json; then
               echo "Using GOOGLE_SERVICES_JSON for io.airo.app.tv."
+            elif [[ "$PRODUCTION_SIGNING" == "true" ]]; then
+              echo "::error::GOOGLE_SERVICES_JSON must include a Firebase Android client for io.airo.app.tv."
+              exit 1
             else
               echo "::warning::GOOGLE_SERVICES_JSON does not include io.airo.app.tv; using auth-free TV placeholder Firebase config."
               write_placeholder_config
             fi
+          elif [[ "$PRODUCTION_SIGNING" == "true" ]]; then
+            echo "::error::GOOGLE_SERVICES_JSON is required for production-signed release builds."
+            exit 1
           else
             echo "::warning::GOOGLE_SERVICES_JSON is not set; using auth-free TV placeholder Firebase config."
             write_placeholder_config
@@ -288,12 +343,14 @@ jobs:
     name: Upload Airo TV to Play testing track
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    needs: build-tv
+    needs: [prepare-release-branch, build-tv]
     if: github.event_name == 'workflow_dispatch' && github.event.inputs.play_track != 'none'
     permissions:
       contents: read
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.prepare-release-branch.outputs.release_ref || github.ref }}
 
       - name: Normalize release artifact label
         run: |
@@ -332,3 +389,51 @@ jobs:
             --skip_upload_metadata true \
             --skip_upload_images true \
             --skip_upload_screenshots true
+
+  github-release:
+    name: Publish GitHub release
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [prepare-release-branch, build-tv]
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.publish_github_release == 'true'
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          ref: ${{ needs.prepare-release-branch.outputs.release_ref || github.event.inputs.release_ref || 'v2' }}
+
+      - name: Download release artifacts
+        uses: actions/download-artifact@v8
+        with:
+          name: airo-tv-release-${{ env.RELEASE_VERSION }}
+          path: release-artifacts
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_VERSION: ${{ env.RELEASE_VERSION }}
+          RELEASE_BRANCH: ${{ needs.prepare-release-branch.outputs.release_ref || github.event.inputs.release_branch || 'release/airo-tv-v0.0.1' }}
+        run: |
+          notes=$(mktemp)
+          cat > "$notes" <<'NOTES'
+          Airo TV initial release from the v2 release line.
+
+          Highlights:
+          - Package: io.airo.app.tv
+          - IPTV M3U playlist import and channel search/play
+          - Pixel/mobile fallback layout plus Android TV/Leanback launch support
+          - Cast controls, diagnostics, and user-actionable discovery guidance
+          - Accessibility labels/tooltips and overflow fixes
+
+          Play Store readiness:
+          - Category: Entertainment / Video Players & Editors
+          - Content model: Airo TV does not provide IPTV content; users supply authorized M3U URLs.
+          - Known Cast requirement: Google Cast depends on TV advertising _googlecast._tcp and port 8009 reachability.
+          NOTES
+          gh release create "$RELEASE_VERSION" release-artifacts/* \
+            --title "Airo TV v0.0.1" \
+            --target "$RELEASE_BRANCH" \
+            --notes-file "$notes" \
+            --repo DevelopersCoffee/airo

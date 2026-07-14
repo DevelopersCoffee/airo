@@ -8,21 +8,22 @@ Documentation for Airo releases and version history.
 
 | Version | Date | Highlights |
 |---------|------|------------|
+| [Airo TV v0.0.1](./AIRO_TV_v0.0.1.md) | 2026-07-14 | Android TV IPTV release, Play Store readiness, Cast diagnostics |
 | [v1.1.0](./CHANGELOG_v1.1.0.md) | 2025-11-29 | Bill Split, E2E Testing, OCR Integration |
 | [v1.0.0](./RELEASE_v1.0.0_SUMMARY.md) | 2025-11-11 | Initial public release |
 
 ---
 
-## 🚀 Latest Release: v1.1.0
+## 🚀 Latest Release: Airo TV v0.0.1
 
 ### New Features
-- **Bill Split** - Splitwise-style expense splitting with OCR
-- **E2E Testing** - Playwright + Patrol test infrastructure
-- **Receipt Scanning** - ML Kit + Gemini Nano hybrid OCR
-- **WhatsApp Sharing** - Formatted itemized summaries
+- **Airo TV** - Android TV package `io.airo.app.tv` from the v2 release line
+- **IPTV playlists** - Bring-your-own authorized M3U import, channel search, and playback
+- **Cast controls** - Pause/play/stop/reload/new session/volume states plus network diagnostics
+- **Play Store readiness** - Leanback launcher, Pixel/mobile fallback layout, accessibility labels, and legal content notes
 
 ### Quick Links
-- [Full Changelog v1.1.0](./CHANGELOG_v1.1.0.md)
+- [Airo TV v0.0.1 Notes](./AIRO_TV_v0.0.1.md)
 - [GitHub Releases](https://github.com/DevelopersCoffee/airo/releases)
 - [Download Latest APK](https://github.com/DevelopersCoffee/airo/releases/latest/download/app-release.apk)
 
@@ -32,6 +33,7 @@ Documentation for Airo releases and version history.
 
 | Document | Description |
 |----------|-------------|
+| [Airo TV v0.0.1](./AIRO_TV_v0.0.1.md) | Release notes, Play Store readiness, artifact checklist |
 | [Airo V1 and V2 Version Lines](./VERSION_LINES.md) | Base branch, tag, artifact, and support policy for monolith V1 and modular V2 |
 | [Changelog v1.1.0](./CHANGELOG_v1.1.0.md) | Current version changes |
 | [Release v1.0.0 Summary](./RELEASE_v1.0.0_SUMMARY.md) | Initial release details |

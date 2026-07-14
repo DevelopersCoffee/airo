@@ -1,5 +1,5 @@
-import 'package:airo_app/main_tv.dart';
 import 'package:airo_app/core/platform/device_form_factor.dart';
+import 'package:airo_app/main_tv.dart';
 import 'package:dio/dio.dart';
 import 'package:feature_iptv/feature_iptv.dart';
 import 'package:flutter/services.dart';

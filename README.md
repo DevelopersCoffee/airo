@@ -46,6 +46,16 @@ Start with:
 - [Contributor guide](CONTRIBUTING.md)
 - [Open-source growth playbook](docs/community/GITHUB_GROWTH_PLAYBOOK.md)
 
+
+## Airo TV v0.0.1
+
+Airo TV is the Android TV variant of Airo, built from the v2 release line with package name `io.airo.app.tv`. The v0.0.1 release is prepared for Google Play Store readiness as an Entertainment / video player app.
+
+- Bring your own authorized M3U playlist URL; Airo TV does not provide IPTV content.
+- Tested release scope covers Android TV/Leanback launch, Pixel 9 portrait/landscape fallback layout, IPTV playlist import/search/play, Music India search/play, Cast status and controls, and accessibility labels/tooltips.
+- Google Cast requires receiver discovery over `_googlecast._tcp` and port `8009` reachability on the local network.
+- Release artifacts are published at https://github.com/DevelopersCoffee/airo/releases/tag/airo-tv-v0.0.1.
+
 ## Download
 
 ### Android

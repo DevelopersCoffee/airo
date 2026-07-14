@@ -15,6 +15,7 @@ void main() {
       await tester.binding.setSurfaceSize(surfaceSize);
       addTearDown(() => tester.binding.setSurfaceSize(null));
     }
+
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
     final router = TvRouter.createRouter(initialLocation: initialLocation);

@@ -53,9 +53,7 @@ class TvRouter {
         ),
         // Main TV shell with sidebar navigation
         ShellRoute(
-          builder: (context, state, child) {
-            return _AdaptiveTvShell(child: child);
-          },
+          builder: (context, state, child) => _AdaptiveTvShell(child: child),
           routes: [
             // Live TV / IPTV (main screen)
             GoRoute(
@@ -67,9 +65,7 @@ class TvRouter {
             GoRoute(
               path: TvRouteNames.player,
               name: 'tv_player',
-              builder: (context, state) {
-                return const _AdaptiveLiveTvScreen();
-              },
+              builder: (context, state) => const _AdaptiveLiveTvScreen(),
             ),
             // Settings route
             GoRoute(
