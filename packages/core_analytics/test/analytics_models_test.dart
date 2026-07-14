@@ -222,6 +222,208 @@ void main() {
       },
     );
 
+    test('standard retention policy validates approved retention windows', () {
+      final policy = AiroTvAnalyticsRetentionPolicies.standard();
+
+      expect(policy.validate().accepted, isTrue);
+      expect(
+        policy
+            .ruleFor(AiroAnalyticsRetentionClass.operational30Days)
+            ?.rawRetentionDays,
+        30,
+      );
+      expect(
+        policy.ruleFor(AiroAnalyticsRetentionClass.product90Days),
+        isA<AiroAnalyticsRetentionRule>()
+            .having((rule) => rule.rawRetentionDays, 'rawRetentionDays', 90)
+            .having(
+              (rule) => rule.deleteOnConsentWithdrawal,
+              'deleteOnConsentWithdrawal',
+              isTrue,
+            ),
+      );
+      expect(
+        policy
+            .ruleFor(AiroAnalyticsRetentionClass.aggregateOnly)
+            ?.rawRetentionDays,
+        0,
+      );
+    });
+
+    test('consent withdrawal deletion plan clears optional analytics', () {
+      final policy = AiroTvAnalyticsRetentionPolicies.standard();
+      final plan = policy.deletionPlan(
+        AiroAnalyticsDeletionReason.consentWithdrawal,
+      );
+
+      expect(
+        plan.retentionClasses,
+        containsAll(const {
+          AiroAnalyticsRetentionClass.product90Days,
+          AiroAnalyticsRetentionClass.diagnostics30Days,
+          AiroAnalyticsRetentionClass.crash90Days,
+        }),
+      );
+      expect(
+        plan.retentionClasses,
+        isNot(contains(AiroAnalyticsRetentionClass.operational30Days)),
+      );
+      expect(
+        plan.steps,
+        containsAll(const {
+          AiroAnalyticsDeletionStep.clearLocalQueue,
+          AiroAnalyticsDeletionStep.clearLocalCrashDiagnostics,
+          AiroAnalyticsDeletionStep.resetAnalyticsIdentity,
+          AiroAnalyticsDeletionStep.requestProviderDelete,
+          AiroAnalyticsDeletionStep.writeAuditRecord,
+        }),
+      );
+      expect(
+        plan.affectedPurposes,
+        containsAll(const {
+          AiroAnalyticsPurpose.product,
+          AiroAnalyticsPurpose.playbackQuality,
+          AiroAnalyticsPurpose.diagnostics,
+          AiroAnalyticsPurpose.crash,
+          AiroAnalyticsPurpose.personalized,
+        }),
+      );
+    });
+
+    test(
+      'privacy deletion plan includes export delete tombstone and audit',
+      () {
+        final policy = AiroTvAnalyticsRetentionPolicies.standard();
+        final plan = policy.deletionPlan(
+          AiroAnalyticsDeletionReason.accountDeletion,
+        );
+
+        expect(
+          plan.retentionClasses,
+          containsAll(AiroAnalyticsRetentionClass.values),
+        );
+        expect(
+          plan.steps,
+          containsAll(const {
+            AiroAnalyticsDeletionStep.requestProviderExport,
+            AiroAnalyticsDeletionStep.requestProviderDelete,
+            AiroAnalyticsDeletionStep.writeAggregateTombstone,
+            AiroAnalyticsDeletionStep.writeAuditRecord,
+          }),
+        );
+      },
+    );
+
+    test('data access policy enforces least privilege and approval', () {
+      final policy = AiroTvAnalyticsRetentionPolicies.standard();
+
+      final productAccess = policy.evaluateAccess(
+        const AiroAnalyticsAccessRequest(
+          role: AiroAnalyticsAccessRole.productAnalyst,
+          purpose: AiroAnalyticsAccessPurpose.productMeasurement,
+          retentionClass: AiroAnalyticsRetentionClass.product90Days,
+          productionData: true,
+          approved: true,
+        ),
+      );
+      final supportCrashAccess = policy.evaluateAccess(
+        const AiroAnalyticsAccessRequest(
+          role: AiroAnalyticsAccessRole.support,
+          purpose: AiroAnalyticsAccessPurpose.supportTroubleshooting,
+          retentionClass: AiroAnalyticsRetentionClass.crash90Days,
+          productionData: true,
+        ),
+      );
+      final productCrashAccess = policy.evaluateAccess(
+        const AiroAnalyticsAccessRequest(
+          role: AiroAnalyticsAccessRole.productAnalyst,
+          purpose: AiroAnalyticsAccessPurpose.productMeasurement,
+          retentionClass: AiroAnalyticsRetentionClass.crash90Days,
+        ),
+      );
+
+      expect(productAccess.accepted, isTrue);
+      expect(
+        supportCrashAccess.codes,
+        containsAll(const {
+          AiroAnalyticsAccessDecisionCode.roleNotAllowed,
+          AiroAnalyticsAccessDecisionCode.purposeNotAllowed,
+          AiroAnalyticsAccessDecisionCode.approvalRequired,
+          AiroAnalyticsAccessDecisionCode.productionAccessBlocked,
+        }),
+      );
+      expect(
+        productCrashAccess.codes,
+        containsAll(const {
+          AiroAnalyticsAccessDecisionCode.roleNotAllowed,
+          AiroAnalyticsAccessDecisionCode.purposeNotAllowed,
+        }),
+      );
+    });
+
+    test('invalid retention policy returns deterministic codes', () {
+      final invalid = AiroAnalyticsRetentionPolicy(
+        rules: [
+          AiroAnalyticsRetentionRule(
+            retentionClass: AiroAnalyticsRetentionClass.operational30Days,
+            rawRetentionDays: 7,
+            deleteOnConsentWithdrawal: false,
+            exportable: true,
+            allowedRoles: const {},
+            allowedPurposes: const {},
+          ),
+          AiroAnalyticsRetentionRule(
+            retentionClass: AiroAnalyticsRetentionClass.aggregateOnly,
+            rawRetentionDays: 30,
+            deleteOnConsentWithdrawal: false,
+            exportable: false,
+            allowedRoles: const {AiroAnalyticsAccessRole.privacyOfficer},
+            allowedPurposes: const {AiroAnalyticsAccessPurpose.privacyRequest},
+          ),
+        ],
+      );
+
+      expect(
+        invalid.validate().codes,
+        containsAll(const {
+          AiroAnalyticsRetentionPolicyCode.retentionDaysMismatch,
+          AiroAnalyticsRetentionPolicyCode.aggregateHasRawRetention,
+          AiroAnalyticsRetentionPolicyCode.retentionClassMissing,
+          AiroAnalyticsRetentionPolicyCode.accessRoleMissing,
+          AiroAnalyticsRetentionPolicyCode.accessPurposeMissing,
+        }),
+      );
+    });
+
+    test('retention and access public maps exclude raw analytics data', () {
+      final policy = AiroTvAnalyticsRetentionPolicies.standard();
+      final access = policy.evaluateAccess(
+        const AiroAnalyticsAccessRequest(
+          role: AiroAnalyticsAccessRole.privacyOfficer,
+          purpose: AiroAnalyticsAccessPurpose.privacyRequest,
+          retentionClass: AiroAnalyticsRetentionClass.diagnostics30Days,
+          productionData: true,
+          approved: true,
+        ),
+      );
+      final plan = policy.deletionPlan(
+        AiroAnalyticsDeletionReason.privacyRequest,
+      );
+      final flattened =
+          '${policy.toPublicMap()} ${access.toPublicMap()} ${plan.toPublicMap()}';
+
+      expect(flattened, contains('diagnostics_30_days'));
+      expect(flattened, contains('privacy_officer'));
+      expect(flattened, contains('request_provider_delete'));
+      expect(flattened, isNot(contains('https://')));
+      expect(flattened, isNot(contains('/Users/')));
+      expect(flattened, isNot(contains('192.168.')));
+      expect(flattened, isNot(contains('Bearer')));
+      expect(flattened, isNot(contains('City News Live')));
+      expect(flattened, isNot(contains('providerPayload')));
+      expect(flattened, isNot(contains('diagnosticDump')));
+    });
+
     test(
       'initialize returns disabled and invalid configuration states',
       () async {

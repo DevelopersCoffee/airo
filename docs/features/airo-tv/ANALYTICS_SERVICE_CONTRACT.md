@@ -74,6 +74,11 @@ derives service configuration from that profile. The profile contract defines
 allowed purposes, event families, event names, queue/crash budgets, retention,
 provider posture, and local-only upload blocking.
 
+Retention and data-access policy is platform-owned as well.
+`AiroAnalyticsRetentionPolicy` defines raw retention windows, consent/privacy
+deletion plans, least-privilege access roles, production-data approval gates,
+and public audit-safe maps before app or provider code consumes analytics data.
+
 ## Queue And Provider Behavior
 
 Local diagnostics uses a bounded platform queue. If the queue is full, a higher

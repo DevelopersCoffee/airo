@@ -19,6 +19,8 @@ analytics SDKs directly.
 - Product-edition analytics profiles for Full TV, Standard TV, Lite Receiver,
   Embedded Receiver, mobile companion, desktop companion, and local-only
   configuration derivation.
+- Retention and data-access policy for raw retention windows, deletion plans,
+  least-privilege access decisions, and public audit-safe serialization.
 - Consent and local-only collection gates.
 - Consent transition results for queue cleanup, local-only external upload
   blocking, collection disablement, and reset generation state.

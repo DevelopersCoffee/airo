@@ -262,6 +262,80 @@ enum AiroAnalyticsRetentionClass {
   final int days;
 }
 
+enum AiroAnalyticsRetentionPolicyCode {
+  accepted('accepted'),
+  retentionDaysMismatch('retention_days_mismatch'),
+  aggregateHasRawRetention('aggregate_has_raw_retention'),
+  retentionClassMissing('retention_class_missing'),
+  accessRoleMissing('access_role_missing'),
+  accessPurposeMissing('access_purpose_missing');
+
+  const AiroAnalyticsRetentionPolicyCode(this.stableId);
+
+  final String stableId;
+}
+
+enum AiroAnalyticsDeletionReason {
+  consentWithdrawal('consent_withdrawal'),
+  privacyRequest('privacy_request'),
+  accountDeletion('account_deletion'),
+  retentionExpiry('retention_expiry');
+
+  const AiroAnalyticsDeletionReason(this.stableId);
+
+  final String stableId;
+}
+
+enum AiroAnalyticsDeletionStep {
+  clearLocalQueue('clear_local_queue'),
+  clearLocalCrashDiagnostics('clear_local_crash_diagnostics'),
+  resetAnalyticsIdentity('reset_analytics_identity'),
+  requestProviderExport('request_provider_export'),
+  requestProviderDelete('request_provider_delete'),
+  writeAggregateTombstone('write_aggregate_tombstone'),
+  writeAuditRecord('write_audit_record');
+
+  const AiroAnalyticsDeletionStep(this.stableId);
+
+  final String stableId;
+}
+
+enum AiroAnalyticsAccessRole {
+  support('support'),
+  productAnalyst('product_analyst'),
+  privacyOfficer('privacy_officer'),
+  securityAuditor('security_auditor'),
+  releaseEngineer('release_engineer');
+
+  const AiroAnalyticsAccessRole(this.stableId);
+
+  final String stableId;
+}
+
+enum AiroAnalyticsAccessPurpose {
+  supportTroubleshooting('support_troubleshooting'),
+  productMeasurement('product_measurement'),
+  privacyRequest('privacy_request'),
+  securityInvestigation('security_investigation'),
+  releaseQuality('release_quality');
+
+  const AiroAnalyticsAccessPurpose(this.stableId);
+
+  final String stableId;
+}
+
+enum AiroAnalyticsAccessDecisionCode {
+  accepted('accepted'),
+  roleNotAllowed('role_not_allowed'),
+  purposeNotAllowed('purpose_not_allowed'),
+  approvalRequired('approval_required'),
+  productionAccessBlocked('production_access_blocked');
+
+  const AiroAnalyticsAccessDecisionCode(this.stableId);
+
+  final String stableId;
+}
+
 enum AiroAnalyticsDashboardRequirement {
   none('none'),
   optional('optional'),
@@ -815,6 +889,326 @@ class AiroAnalyticsProfileValidationResult extends Equatable {
 
   @override
   List<Object?> get props => [codes];
+}
+
+class AiroAnalyticsRetentionPolicyResult extends Equatable {
+  AiroAnalyticsRetentionPolicyResult({
+    required List<AiroAnalyticsRetentionPolicyCode> codes,
+  }) : codes = List.unmodifiable(codes);
+
+  final List<AiroAnalyticsRetentionPolicyCode> codes;
+
+  bool get accepted =>
+      codes.length == 1 &&
+      codes.single == AiroAnalyticsRetentionPolicyCode.accepted;
+
+  Map<String, Object?> toPublicMap() {
+    return {
+      'accepted': accepted,
+      'codes': codes.map((code) => code.stableId).toList(growable: false),
+    };
+  }
+
+  @override
+  List<Object?> get props => [codes];
+}
+
+class AiroAnalyticsRetentionRule extends Equatable {
+  AiroAnalyticsRetentionRule({
+    required this.retentionClass,
+    required this.rawRetentionDays,
+    required this.deleteOnConsentWithdrawal,
+    required this.exportable,
+    required Iterable<AiroAnalyticsAccessRole> allowedRoles,
+    required Iterable<AiroAnalyticsAccessPurpose> allowedPurposes,
+  }) : allowedRoles = Set.unmodifiable(allowedRoles),
+       allowedPurposes = Set.unmodifiable(allowedPurposes);
+
+  final AiroAnalyticsRetentionClass retentionClass;
+  final int rawRetentionDays;
+  final bool deleteOnConsentWithdrawal;
+  final bool exportable;
+  final Set<AiroAnalyticsAccessRole> allowedRoles;
+  final Set<AiroAnalyticsAccessPurpose> allowedPurposes;
+
+  Map<String, Object?> toPublicMap() {
+    return {
+      'retentionClass': retentionClass.stableId,
+      'rawRetentionDays': rawRetentionDays,
+      'deleteOnConsentWithdrawal': deleteOnConsentWithdrawal,
+      'exportable': exportable,
+      'allowedRoles':
+          allowedRoles.map((role) => role.stableId).toList(growable: false)
+            ..sort(),
+      'allowedPurposes':
+          allowedPurposes
+              .map((purpose) => purpose.stableId)
+              .toList(growable: false)
+            ..sort(),
+    };
+  }
+
+  @override
+  List<Object?> get props => [
+    retentionClass,
+    rawRetentionDays,
+    deleteOnConsentWithdrawal,
+    exportable,
+    allowedRoles,
+    allowedPurposes,
+  ];
+}
+
+class AiroAnalyticsDeletionPlan extends Equatable {
+  AiroAnalyticsDeletionPlan({
+    required this.reason,
+    required Iterable<AiroAnalyticsRetentionClass> retentionClasses,
+    required Iterable<AiroAnalyticsDeletionStep> steps,
+    required Iterable<AiroAnalyticsPurpose> affectedPurposes,
+  }) : retentionClasses = List.unmodifiable(retentionClasses),
+       steps = List.unmodifiable(steps),
+       affectedPurposes = List.unmodifiable(affectedPurposes);
+
+  final AiroAnalyticsDeletionReason reason;
+  final List<AiroAnalyticsRetentionClass> retentionClasses;
+  final List<AiroAnalyticsDeletionStep> steps;
+  final List<AiroAnalyticsPurpose> affectedPurposes;
+
+  Map<String, Object?> toPublicMap() {
+    return {
+      'reason': reason.stableId,
+      'retentionClasses': retentionClasses
+          .map((retentionClass) => retentionClass.stableId)
+          .toList(growable: false),
+      'steps': steps.map((step) => step.stableId).toList(growable: false),
+      'affectedPurposes': affectedPurposes
+          .map((purpose) => purpose.stableId)
+          .toList(growable: false),
+    };
+  }
+
+  @override
+  List<Object?> get props => [
+    reason,
+    retentionClasses,
+    steps,
+    affectedPurposes,
+  ];
+}
+
+class AiroAnalyticsAccessRequest extends Equatable {
+  const AiroAnalyticsAccessRequest({
+    required this.role,
+    required this.purpose,
+    required this.retentionClass,
+    this.productionData = false,
+    this.approved = false,
+  });
+
+  final AiroAnalyticsAccessRole role;
+  final AiroAnalyticsAccessPurpose purpose;
+  final AiroAnalyticsRetentionClass retentionClass;
+  final bool productionData;
+  final bool approved;
+
+  Map<String, Object?> toPublicMap() {
+    return {
+      'role': role.stableId,
+      'purpose': purpose.stableId,
+      'retentionClass': retentionClass.stableId,
+      'productionData': productionData,
+      'approved': approved,
+    };
+  }
+
+  @override
+  List<Object?> get props => [
+    role,
+    purpose,
+    retentionClass,
+    productionData,
+    approved,
+  ];
+}
+
+class AiroAnalyticsAccessDecision extends Equatable {
+  AiroAnalyticsAccessDecision({
+    required this.request,
+    required List<AiroAnalyticsAccessDecisionCode> codes,
+  }) : codes = List.unmodifiable(codes);
+
+  final AiroAnalyticsAccessRequest request;
+  final List<AiroAnalyticsAccessDecisionCode> codes;
+
+  bool get accepted =>
+      codes.length == 1 &&
+      codes.single == AiroAnalyticsAccessDecisionCode.accepted;
+
+  Map<String, Object?> toPublicMap() {
+    return {
+      'accepted': accepted,
+      'request': request.toPublicMap(),
+      'codes': codes.map((code) => code.stableId).toList(growable: false),
+    };
+  }
+
+  @override
+  List<Object?> get props => [request, codes];
+}
+
+class AiroAnalyticsRetentionPolicy extends Equatable {
+  AiroAnalyticsRetentionPolicy({
+    required Iterable<AiroAnalyticsRetentionRule> rules,
+    this.schemaVersion = kAiroAnalyticsSchemaVersion,
+  }) : rules = List.unmodifiable(rules);
+
+  final String schemaVersion;
+  final List<AiroAnalyticsRetentionRule> rules;
+
+  AiroAnalyticsRetentionRule? ruleFor(
+    AiroAnalyticsRetentionClass retentionClass,
+  ) {
+    for (final rule in rules) {
+      if (rule.retentionClass == retentionClass) return rule;
+    }
+    return null;
+  }
+
+  AiroAnalyticsRetentionPolicyResult validate() {
+    final codes = <AiroAnalyticsRetentionPolicyCode>[];
+    for (final retentionClass in AiroAnalyticsRetentionClass.values) {
+      final rule = ruleFor(retentionClass);
+      if (rule == null) {
+        codes.add(AiroAnalyticsRetentionPolicyCode.retentionClassMissing);
+        continue;
+      }
+      if (retentionClass == AiroAnalyticsRetentionClass.aggregateOnly) {
+        if (rule.rawRetentionDays != 0) {
+          codes.add(AiroAnalyticsRetentionPolicyCode.aggregateHasRawRetention);
+        }
+      } else if (rule.rawRetentionDays != retentionClass.days) {
+        codes.add(AiroAnalyticsRetentionPolicyCode.retentionDaysMismatch);
+      }
+      if (rule.allowedRoles.isEmpty) {
+        codes.add(AiroAnalyticsRetentionPolicyCode.accessRoleMissing);
+      }
+      if (rule.allowedPurposes.isEmpty) {
+        codes.add(AiroAnalyticsRetentionPolicyCode.accessPurposeMissing);
+      }
+    }
+    return AiroAnalyticsRetentionPolicyResult(
+      codes: codes.isEmpty
+          ? const [AiroAnalyticsRetentionPolicyCode.accepted]
+          : codes.toSet().toList(growable: false),
+    );
+  }
+
+  AiroAnalyticsDeletionPlan deletionPlan(AiroAnalyticsDeletionReason reason) {
+    return switch (reason) {
+      AiroAnalyticsDeletionReason.consentWithdrawal =>
+        AiroAnalyticsDeletionPlan(
+          reason: reason,
+          retentionClasses: const [
+            AiroAnalyticsRetentionClass.product90Days,
+            AiroAnalyticsRetentionClass.diagnostics30Days,
+            AiroAnalyticsRetentionClass.crash90Days,
+          ],
+          steps: const [
+            AiroAnalyticsDeletionStep.clearLocalQueue,
+            AiroAnalyticsDeletionStep.clearLocalCrashDiagnostics,
+            AiroAnalyticsDeletionStep.resetAnalyticsIdentity,
+            AiroAnalyticsDeletionStep.requestProviderDelete,
+            AiroAnalyticsDeletionStep.writeAuditRecord,
+          ],
+          affectedPurposes: const [
+            AiroAnalyticsPurpose.product,
+            AiroAnalyticsPurpose.playbackQuality,
+            AiroAnalyticsPurpose.diagnostics,
+            AiroAnalyticsPurpose.crash,
+            AiroAnalyticsPurpose.personalized,
+          ],
+        ),
+      AiroAnalyticsDeletionReason.privacyRequest ||
+      AiroAnalyticsDeletionReason.accountDeletion => AiroAnalyticsDeletionPlan(
+        reason: reason,
+        retentionClasses: const [
+          AiroAnalyticsRetentionClass.operational30Days,
+          AiroAnalyticsRetentionClass.product90Days,
+          AiroAnalyticsRetentionClass.diagnostics30Days,
+          AiroAnalyticsRetentionClass.crash90Days,
+          AiroAnalyticsRetentionClass.aggregateOnly,
+        ],
+        steps: const [
+          AiroAnalyticsDeletionStep.clearLocalQueue,
+          AiroAnalyticsDeletionStep.clearLocalCrashDiagnostics,
+          AiroAnalyticsDeletionStep.resetAnalyticsIdentity,
+          AiroAnalyticsDeletionStep.requestProviderExport,
+          AiroAnalyticsDeletionStep.requestProviderDelete,
+          AiroAnalyticsDeletionStep.writeAggregateTombstone,
+          AiroAnalyticsDeletionStep.writeAuditRecord,
+        ],
+        affectedPurposes: AiroAnalyticsPurpose.values,
+      ),
+      AiroAnalyticsDeletionReason.retentionExpiry => AiroAnalyticsDeletionPlan(
+        reason: reason,
+        retentionClasses: const [
+          AiroAnalyticsRetentionClass.operational30Days,
+          AiroAnalyticsRetentionClass.product90Days,
+          AiroAnalyticsRetentionClass.diagnostics30Days,
+          AiroAnalyticsRetentionClass.crash90Days,
+        ],
+        steps: const [
+          AiroAnalyticsDeletionStep.clearLocalQueue,
+          AiroAnalyticsDeletionStep.clearLocalCrashDiagnostics,
+          AiroAnalyticsDeletionStep.requestProviderDelete,
+          AiroAnalyticsDeletionStep.writeAuditRecord,
+        ],
+        affectedPurposes: AiroAnalyticsPurpose.values,
+      ),
+    };
+  }
+
+  AiroAnalyticsAccessDecision evaluateAccess(
+    AiroAnalyticsAccessRequest request,
+  ) {
+    final rule = ruleFor(request.retentionClass);
+    if (rule == null) {
+      return AiroAnalyticsAccessDecision(
+        request: request,
+        codes: const [AiroAnalyticsAccessDecisionCode.roleNotAllowed],
+      );
+    }
+    final codes = <AiroAnalyticsAccessDecisionCode>[];
+    if (!rule.allowedRoles.contains(request.role)) {
+      codes.add(AiroAnalyticsAccessDecisionCode.roleNotAllowed);
+    }
+    if (!rule.allowedPurposes.contains(request.purpose)) {
+      codes.add(AiroAnalyticsAccessDecisionCode.purposeNotAllowed);
+    }
+    if (request.productionData && !request.approved) {
+      codes.add(AiroAnalyticsAccessDecisionCode.approvalRequired);
+    }
+    if (request.productionData &&
+        request.role == AiroAnalyticsAccessRole.support) {
+      codes.add(AiroAnalyticsAccessDecisionCode.productionAccessBlocked);
+    }
+    return AiroAnalyticsAccessDecision(
+      request: request,
+      codes: codes.isEmpty
+          ? const [AiroAnalyticsAccessDecisionCode.accepted]
+          : codes.toSet().toList(growable: false),
+    );
+  }
+
+  Map<String, Object?> toPublicMap() {
+    return {
+      'schemaVersion': schemaVersion,
+      'rules': rules.map((rule) => rule.toPublicMap()).toList(growable: false),
+    };
+  }
+
+  @override
+  List<Object?> get props => [schemaVersion, rules];
 }
 
 class AiroAnalyticsProductEditionProfile extends Equatable {
@@ -2463,6 +2857,97 @@ class AiroAnalyticsConsentTransitionPolicy {
           : codes,
       removedEventCount: removedEventCount,
       resetGeneration: resetGeneration,
+    );
+  }
+}
+
+class AiroTvAnalyticsRetentionPolicies {
+  const AiroTvAnalyticsRetentionPolicies._();
+
+  static AiroAnalyticsRetentionPolicy standard() {
+    return AiroAnalyticsRetentionPolicy(
+      rules: [
+        AiroAnalyticsRetentionRule(
+          retentionClass: AiroAnalyticsRetentionClass.operational30Days,
+          rawRetentionDays: 30,
+          deleteOnConsentWithdrawal: false,
+          exportable: true,
+          allowedRoles: const {
+            AiroAnalyticsAccessRole.privacyOfficer,
+            AiroAnalyticsAccessRole.securityAuditor,
+            AiroAnalyticsAccessRole.releaseEngineer,
+          },
+          allowedPurposes: const {
+            AiroAnalyticsAccessPurpose.privacyRequest,
+            AiroAnalyticsAccessPurpose.securityInvestigation,
+            AiroAnalyticsAccessPurpose.releaseQuality,
+          },
+        ),
+        AiroAnalyticsRetentionRule(
+          retentionClass: AiroAnalyticsRetentionClass.product90Days,
+          rawRetentionDays: 90,
+          deleteOnConsentWithdrawal: true,
+          exportable: true,
+          allowedRoles: const {
+            AiroAnalyticsAccessRole.productAnalyst,
+            AiroAnalyticsAccessRole.privacyOfficer,
+          },
+          allowedPurposes: const {
+            AiroAnalyticsAccessPurpose.productMeasurement,
+            AiroAnalyticsAccessPurpose.privacyRequest,
+          },
+        ),
+        AiroAnalyticsRetentionRule(
+          retentionClass: AiroAnalyticsRetentionClass.diagnostics30Days,
+          rawRetentionDays: 30,
+          deleteOnConsentWithdrawal: true,
+          exportable: true,
+          allowedRoles: const {
+            AiroAnalyticsAccessRole.privacyOfficer,
+            AiroAnalyticsAccessRole.securityAuditor,
+            AiroAnalyticsAccessRole.releaseEngineer,
+          },
+          allowedPurposes: const {
+            AiroAnalyticsAccessPurpose.privacyRequest,
+            AiroAnalyticsAccessPurpose.securityInvestigation,
+            AiroAnalyticsAccessPurpose.releaseQuality,
+          },
+        ),
+        AiroAnalyticsRetentionRule(
+          retentionClass: AiroAnalyticsRetentionClass.crash90Days,
+          rawRetentionDays: 90,
+          deleteOnConsentWithdrawal: true,
+          exportable: true,
+          allowedRoles: const {
+            AiroAnalyticsAccessRole.privacyOfficer,
+            AiroAnalyticsAccessRole.securityAuditor,
+            AiroAnalyticsAccessRole.releaseEngineer,
+          },
+          allowedPurposes: const {
+            AiroAnalyticsAccessPurpose.privacyRequest,
+            AiroAnalyticsAccessPurpose.securityInvestigation,
+            AiroAnalyticsAccessPurpose.releaseQuality,
+          },
+        ),
+        AiroAnalyticsRetentionRule(
+          retentionClass: AiroAnalyticsRetentionClass.aggregateOnly,
+          rawRetentionDays: 0,
+          deleteOnConsentWithdrawal: false,
+          exportable: false,
+          allowedRoles: const {
+            AiroAnalyticsAccessRole.productAnalyst,
+            AiroAnalyticsAccessRole.privacyOfficer,
+            AiroAnalyticsAccessRole.securityAuditor,
+            AiroAnalyticsAccessRole.releaseEngineer,
+          },
+          allowedPurposes: const {
+            AiroAnalyticsAccessPurpose.productMeasurement,
+            AiroAnalyticsAccessPurpose.privacyRequest,
+            AiroAnalyticsAccessPurpose.securityInvestigation,
+            AiroAnalyticsAccessPurpose.releaseQuality,
+          },
+        ),
+      ],
     );
   }
 }
