@@ -69,11 +69,7 @@ class FlutterChromeCastController implements AiroCastController {
 
     try {
       await GoogleCastContext.instance.setSharedInstanceWithOptions(
-        GoogleCastOptions(
-          disableDiscoveryAutostart: true,
-          startDiscoveryAfterFirstTapOnCastButton: false,
-          stopReceiverApplicationWhenEndingSession: false,
-        ),
+        buildCastOptions(),
       );
       _listenToPluginStreams();
       _initialized = true;
@@ -87,6 +83,16 @@ class FlutterChromeCastController implements AiroCastController {
         ),
       );
     }
+  }
+
+  @visibleForTesting
+  static GoogleCastOptions buildCastOptions() {
+    return GoogleCastOptions(
+      disableAnalyticsLogging: true,
+      disableDiscoveryAutostart: true,
+      startDiscoveryAfterFirstTapOnCastButton: false,
+      stopReceiverApplicationWhenEndingSession: false,
+    );
   }
 
   @override
