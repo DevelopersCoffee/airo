@@ -10,6 +10,7 @@ handoff state.
 ## Scope
 
 - Receiver-authoritative playback session snapshots.
+- Playback ownership, operation authority, and ownership transfer policy.
 - Monotonic revisions and deterministic conflict policy.
 - Privacy-safe local sync deltas with redacted payload handles.
 - Two-phase handoff preflight and phase records.
