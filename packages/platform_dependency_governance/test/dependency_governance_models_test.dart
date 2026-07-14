@@ -139,5 +139,119 @@ void main() {
         );
       },
     );
+
+    test('builds a passing dependency audit report', () {
+      final audit = AiroDependencyGovernanceAudit(
+        auditId: 'audit-v2-lite',
+        releaseLine: 'v2.0.0.1',
+        targetProfile: 'lite_receiver',
+        records: [
+          record(packageName: 'video_player'),
+          record(packageName: 'platform_device_profile'),
+        ],
+        createdAt: DateTime.utc(2026, 7, 14, 15),
+      );
+
+      final report = audit.evaluate(
+        checklist: checklist,
+        generatedAt: DateTime.utc(2026, 7, 14, 16),
+      );
+
+      expect(report.passed, isTrue);
+      expect(report.blockedPackages, isEmpty);
+      expect(report.blockerCodes, isEmpty);
+      expect(report.results, hasLength(2));
+    });
+
+    test('summarizes blocked packages and blocker codes', () {
+      final audit = AiroDependencyGovernanceAudit(
+        auditId: 'audit-v2-lite',
+        releaseLine: 'v2.0.0.1',
+        targetProfile: 'lite_receiver',
+        records: [
+          record(packageName: 'video_player'),
+          record(
+            packageName: 'heavy_native_sdk',
+            minimumAndroidApi: 28,
+            estimatedBinarySizeKb: 8192,
+            tvIssuesReviewed: false,
+          ),
+          record(
+            packageName: 'background_worker',
+            hasBackgroundBehavior: true,
+            backgroundBehavior: '',
+          ),
+        ],
+        createdAt: DateTime.utc(2026, 7, 14, 15),
+      );
+
+      final report = audit.evaluate(
+        checklist: checklist,
+        generatedAt: DateTime.utc(2026, 7, 14, 16),
+      );
+
+      expect(report.passed, isFalse);
+      expect(report.blockedPackages, const [
+        'heavy_native_sdk',
+        'background_worker',
+      ]);
+      expect(
+        report.blockerCodes,
+        containsAll(const {
+          AiroDependencyBlockerCode.raisesAndroidApiFloor,
+          AiroDependencyBlockerCode.missingFallbackForRaisedApi,
+          AiroDependencyBlockerCode.binarySizeBudgetExceeded,
+          AiroDependencyBlockerCode.tvIssuesNotReviewed,
+          AiroDependencyBlockerCode.backgroundBehaviorUndeclared,
+        }),
+      );
+    });
+
+    test('serializes audit report without local machine details', () {
+      final audit = AiroDependencyGovernanceAudit(
+        auditId: 'audit-v2-lite',
+        releaseLine: 'v2.0.0.1',
+        targetProfile: 'lite_receiver',
+        records: [
+          record(
+            packageName: 'heavy_native_sdk',
+            minimumAndroidApi: 28,
+            estimatedRuntimeMemoryMb: 64,
+          ),
+        ],
+        createdAt: DateTime.utc(2026, 7, 14, 15),
+      );
+
+      final report = audit.evaluate(
+        checklist: checklist,
+        generatedAt: DateTime.utc(2026, 7, 14, 16),
+      );
+      final publicMap = report.toPublicMap();
+
+      expect(publicMap, containsPair('auditId', 'audit-v2-lite'));
+      expect(publicMap, containsPair('targetProfile', 'lite_receiver'));
+      expect(publicMap, isNot(contains('workspacePath')));
+      expect(publicMap, isNot(contains('diagnosticsDump')));
+      expect(publicMap['results'], isA<List<Object?>>());
+    });
+
+    test('empty audit report is deterministic', () {
+      final audit = AiroDependencyGovernanceAudit(
+        auditId: 'audit-empty',
+        releaseLine: 'v2.0.0.1',
+        targetProfile: 'lite_receiver',
+        records: const [],
+        createdAt: DateTime.utc(2026, 7, 14, 15),
+      );
+
+      final report = audit.evaluate(
+        checklist: checklist,
+        generatedAt: DateTime.utc(2026, 7, 14, 16),
+      );
+
+      expect(report.passed, isTrue);
+      expect(report.results, isEmpty);
+      expect(report.toPublicMap()['blockedPackages'], isEmpty);
+    });
   });
 }

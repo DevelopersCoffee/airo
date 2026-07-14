@@ -253,3 +253,141 @@ class AiroDependencyGovernanceResult extends Equatable {
   @override
   List<Object?> get props => [packageName, blockers];
 }
+
+class AiroDependencyGovernanceAudit extends Equatable {
+  AiroDependencyGovernanceAudit({
+    required this.auditId,
+    required this.releaseLine,
+    required this.targetProfile,
+    required List<AiroDependencyAuditRecord> records,
+    required this.createdAt,
+    this.schemaVersion = kAiroDependencyGovernanceSchemaVersion,
+  }) : records = List.unmodifiable(records);
+
+  final String schemaVersion;
+  final String auditId;
+  final String releaseLine;
+  final String targetProfile;
+  final List<AiroDependencyAuditRecord> records;
+  final DateTime createdAt;
+
+  AiroDependencyGovernanceAuditReport evaluate({
+    AiroDependencyGovernanceChecklist checklist =
+        const AiroDependencyGovernanceChecklist(),
+    required DateTime generatedAt,
+  }) {
+    final results = records.map(checklist.evaluate).toList(growable: false);
+
+    return AiroDependencyGovernanceAuditReport(
+      auditId: auditId,
+      releaseLine: releaseLine,
+      targetProfile: targetProfile,
+      checklist: checklist,
+      results: results,
+      createdAt: createdAt,
+      generatedAt: generatedAt,
+      schemaVersion: schemaVersion,
+    );
+  }
+
+  @override
+  List<Object?> get props => [
+    schemaVersion,
+    auditId,
+    releaseLine,
+    targetProfile,
+    records,
+    createdAt,
+  ];
+}
+
+class AiroDependencyGovernanceAuditReport extends Equatable {
+  AiroDependencyGovernanceAuditReport({
+    required this.auditId,
+    required this.releaseLine,
+    required this.targetProfile,
+    required this.checklist,
+    required List<AiroDependencyGovernanceResult> results,
+    required this.createdAt,
+    required this.generatedAt,
+    this.schemaVersion = kAiroDependencyGovernanceSchemaVersion,
+  }) : results = List.unmodifiable(results);
+
+  final String schemaVersion;
+  final String auditId;
+  final String releaseLine;
+  final String targetProfile;
+  final AiroDependencyGovernanceChecklist checklist;
+  final List<AiroDependencyGovernanceResult> results;
+  final DateTime createdAt;
+  final DateTime generatedAt;
+
+  bool get passed => results.every((result) => result.passed);
+
+  List<String> get blockedPackages {
+    return List.unmodifiable(
+      results
+          .where((result) => !result.passed)
+          .map((result) => result.packageName),
+    );
+  }
+
+  Set<AiroDependencyBlockerCode> get blockerCodes {
+    return Set.unmodifiable(
+      results.expand(
+        (result) => result.blockers.map((blocker) => blocker.code),
+      ),
+    );
+  }
+
+  Map<String, Object?> toPublicMap() {
+    return {
+      'schemaVersion': schemaVersion,
+      'auditId': auditId,
+      'releaseLine': releaseLine,
+      'targetProfile': targetProfile,
+      'passed': passed,
+      'blockedPackages': blockedPackages,
+      'blockerCodes': blockerCodes
+          .map((code) => code.stableId)
+          .toList(growable: false),
+      'checklist': {
+        'androidApiBaseline': checklist.androidApiBaseline,
+        'maxBinarySizeKb': checklist.maxBinarySizeKb,
+        'maxRuntimeMemoryMb': checklist.maxRuntimeMemoryMb,
+      },
+      'results': results.map(_resultToPublicMap).toList(growable: false),
+      'createdAt': createdAt.toIso8601String(),
+      'generatedAt': generatedAt.toIso8601String(),
+    };
+  }
+
+  Map<String, Object?> _resultToPublicMap(
+    AiroDependencyGovernanceResult result,
+  ) {
+    return {
+      'packageName': result.packageName,
+      'passed': result.passed,
+      'blockers': result.blockers
+          .map(
+            (blocker) => {
+              'packageName': blocker.packageName,
+              'code': blocker.code.stableId,
+            },
+          )
+          .toList(growable: false),
+    };
+  }
+
+  @override
+  List<Object?> get props => [
+    schemaVersion,
+    auditId,
+    releaseLine,
+    targetProfile,
+    checklist,
+    results,
+    createdAt,
+    generatedAt,
+  ];
+}
