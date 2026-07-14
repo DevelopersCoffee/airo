@@ -10,10 +10,12 @@ defining product-specific trust or playback authorization models.
 
 - Pairing challenge lifecycle with explicit expiry.
 - Trusted-device relationships with scoped permissions and revocation.
+- Trusted-device trust levels, public key descriptors, and rotation policy
+  evaluation.
 - Receiver-bound and session-bound playback tickets.
 - Redacted playback source handles that reject raw URLs, local paths, and
   credential-like values.
 - Deterministic validation results with machine-readable codes.
 
 This package does not render QR codes, open sockets, persist records, sign
-payloads, or start playback.
+payloads, generate keys, store raw key material, or start playback.
