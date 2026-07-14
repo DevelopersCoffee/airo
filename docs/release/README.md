@@ -48,6 +48,7 @@ Documentation for Airo releases and version history.
 | [V2 Distribution Matrix](./V2_DISTRIBUTION_MATRIX.md) | Supported v2 profiles, artifact naming, channels, and support policy |
 | [V2 Publishing Human Setup](./V2_PUBLISHING_HUMAN_SETUP.md) | Account, credential, signing, store, and governance decisions maintainers must complete |
 | [V2 License Review](./V2_LICENSE_REVIEW.md) | License-readiness baseline and maintainer decisions before public distribution |
+| [V2 Third-Party Notices](./V2_THIRD_PARTY_NOTICES.md) | Third-party notices for v2 Android release profiles |
 | [V2 Release Qualification](./V2_RELEASE_QUALIFICATION.md) | Required release evidence, device matrix, waiver behavior, and qualification report format |
 | [V2 Release Orchestrator](./V2_RELEASE_ORCHESTRATOR.md) | Top-level v2 release workflow, dry-run behavior, TV workflow reuse, and remaining publishing blockers |
 | [Download Verification](../../VERIFY_DOWNLOAD.md) | SHA256 verification and safe direct APK install guidance |
