@@ -517,6 +517,159 @@ void main() {
     });
   });
 
+  group('Airo TV profile navigation manifests', () {
+    test('full TV navigation validates against full TV composition', () {
+      final manifest = AiroTvNavigationManifests.fullTv();
+      final result = manifest.validate(
+        profile: AiroTvProductProfiles.fullTv(),
+        composition: AiroTvProductCompositions.fullTv(),
+      );
+
+      expect(result, const [ProductNavigationValidationCode.accepted]);
+      expect(
+        manifest.sections.map((section) => section.entry),
+        contains(ProductNavigationEntry.guide),
+      );
+      expect(
+        manifest.sections.map((section) => section.renderTier),
+        contains(ProductNavigationRenderTier.rich),
+      );
+    });
+
+    test('lite receiver navigation excludes unavailable heavy sections', () {
+      final manifest = AiroTvNavigationManifests.liteReceiver();
+      final result = manifest.validate(
+        profile: AiroTvProductProfiles.liteReceiver(),
+        composition: AiroTvProductCompositions.liteReceiver(),
+      );
+
+      expect(result, const [ProductNavigationValidationCode.accepted]);
+      expect(
+        manifest.sections.map((section) => section.entry),
+        isNot(contains(ProductNavigationEntry.guide)),
+      );
+      expect(
+        manifest.sections.map((section) => section.renderTier).toSet(),
+        const {ProductNavigationRenderTier.lightweight},
+      );
+    });
+
+    test('embedded receiver rejects rich unavailable navigation sections', () {
+      final profile = _embeddedReceiverProfile();
+      final manifest = ProductNavigationManifest(
+        profileId: ProductProfileId.embeddedReceiver,
+        sections: const [
+          ProductNavigationSection(
+            entry: ProductNavigationEntry.guide,
+            routeId: 'embedded.guide',
+            displayKey: 'navigation.guide',
+            renderTier: ProductNavigationRenderTier.rich,
+            requiredModule: ProductModule.fullEpg,
+            requiredCapability: ProductCapability.fullEpg,
+          ),
+        ],
+      );
+
+      final result = manifest.validate(profile: profile);
+
+      expect(
+        result,
+        contains(ProductNavigationValidationCode.entryUnsupported),
+      );
+      expect(
+        result,
+        contains(ProductNavigationValidationCode.moduleUnavailable),
+      );
+      expect(
+        result,
+        contains(ProductNavigationValidationCode.capabilityUnsupported),
+      );
+      expect(
+        result,
+        contains(ProductNavigationValidationCode.renderTierUnsupported),
+      );
+    });
+
+    test('navigation validation rejects empty and duplicate routes', () {
+      final manifest = ProductNavigationManifest(
+        profileId: ProductProfileId.liteReceiver,
+        sections: const [
+          ProductNavigationSection(
+            entry: ProductNavigationEntry.home,
+            routeId: '',
+            displayKey: '',
+            renderTier: ProductNavigationRenderTier.lightweight,
+          ),
+          ProductNavigationSection(
+            entry: ProductNavigationEntry.live,
+            routeId: 'lite.live',
+            displayKey: 'navigation.live',
+            renderTier: ProductNavigationRenderTier.lightweight,
+            requiredModule: ProductModule.playback,
+          ),
+          ProductNavigationSection(
+            entry: ProductNavigationEntry.search,
+            routeId: 'lite.live',
+            displayKey: 'navigation.search',
+            renderTier: ProductNavigationRenderTier.lightweight,
+            requiredModule: ProductModule.basicSearch,
+          ),
+        ],
+      );
+
+      final result = manifest.validate(
+        profile: AiroTvProductProfiles.liteReceiver(),
+      );
+
+      expect(result, contains(ProductNavigationValidationCode.routeIdMissing));
+      expect(
+        result,
+        contains(ProductNavigationValidationCode.displayKeyMissing),
+      );
+      expect(
+        result,
+        contains(ProductNavigationValidationCode.duplicateRouteId),
+      );
+    });
+
+    test('navigation validation catches modules absent from composition', () {
+      final profile = AiroTvProductProfiles.liteReceiver();
+      final composition = ProductCompositionManifest(
+        profileManifest: profile,
+        compiledModules: profile.includedModules.difference({
+          ProductModule.basicSearch,
+        }),
+        lifecycleManifests: AiroTvModuleLifecycleManifests.liteReceiver(),
+      );
+
+      final result = AiroTvNavigationManifests.liteReceiver().validate(
+        profile: profile,
+        composition: composition,
+      );
+
+      expect(
+        result,
+        contains(ProductNavigationValidationCode.compositionModuleNotCompiled),
+      );
+    });
+
+    test('navigation public map exposes stable route ids only', () {
+      final publicMap = AiroTvNavigationManifests.liteReceiver().toPublicMap();
+      final flattened = publicMap.toString();
+
+      expect(publicMap['profileId'], ProductProfileId.liteReceiver.stableId);
+      expect(flattened, contains('lite.search'));
+      expect(
+        flattened,
+        contains(ProductNavigationRenderTier.lightweight.stableId),
+      );
+      expect(flattened, isNot(contains('/Users/')));
+      expect(flattened, isNot(contains('providerPayload')));
+      expect(flattened, isNot(contains('storeConsoleAccount')));
+      expect(flattened, isNot(contains('rawCredential')));
+    });
+  });
+
   group('Airo TV profile-aware capability advertisements', () {
     test('full TV advertises runtime-safe profile capabilities', () {
       final advertisement = AiroTvCapabilityAdvertisements.fullTv(
@@ -656,6 +809,49 @@ void main() {
       expect(flattened, isNot(contains('rawCredential')));
     });
   });
+}
+
+ProductProfileManifest _embeddedReceiverProfile() {
+  return ProductProfileManifest(
+    profileId: ProductProfileId.embeddedReceiver,
+    displayName: 'Airo Embedded Receiver',
+    supportLevel: ProductSupportLevel.compatible,
+    releaseChannel: ProductReleaseChannel.receiverStable,
+    includedModules: const {ProductModule.playback},
+    excludedModules: const {
+      ProductModule.fullEpg,
+      ProductModule.localAi,
+      ProductModule.recording,
+      ProductModule.downloads,
+      ProductModule.multiview,
+    },
+    capabilities: const {
+      ProductCapability.directPlayback,
+      ProductCapability.dpadNavigation,
+    },
+    navigation: const [
+      ProductNavigationEntry.home,
+      ProductNavigationEntry.live,
+      ProductNavigationEntry.settings,
+    ],
+    androidPermissions: const {'android.permission.INTERNET'},
+    resourceBudget: const ProductResourceBudget(
+      maxMemoryMb: 256,
+      maxStorageMb: 64,
+      maxArtworkCacheMb: 8,
+      maxBackgroundJobs: 0,
+    ),
+    deviceRequirement: DeviceCapabilityRequirement(
+      minApiLevel: 26,
+      minMemoryMb: 768,
+      minFreeStorageMb: 64,
+      minDecoderCount: 1,
+      requiredCodecs: const {
+        MediaCodecCapability.h264,
+        MediaCodecCapability.aac,
+      },
+    ),
+  );
 }
 
 DeviceCapabilitySnapshot _fullTvDeviceSnapshot() {

@@ -92,6 +92,16 @@ enum ProductNavigationEntry {
   final String stableId;
 }
 
+enum ProductNavigationRenderTier {
+  rich('rich'),
+  standard('standard'),
+  lightweight('lightweight');
+
+  const ProductNavigationRenderTier(this.stableId);
+
+  final String stableId;
+}
+
 enum ProductManifestValidationCode {
   accepted('accepted'),
   moduleOverlap('module_overlap'),
@@ -103,6 +113,23 @@ enum ProductManifestValidationCode {
   supportLevelMismatch('support_level_mismatch');
 
   const ProductManifestValidationCode(this.stableId);
+
+  final String stableId;
+}
+
+enum ProductNavigationValidationCode {
+  accepted('accepted'),
+  profileMismatch('profile_mismatch'),
+  routeIdMissing('route_id_missing'),
+  displayKeyMissing('display_key_missing'),
+  duplicateRouteId('duplicate_route_id'),
+  entryUnsupported('entry_unsupported'),
+  moduleUnavailable('module_unavailable'),
+  capabilityUnsupported('capability_unsupported'),
+  compositionModuleNotCompiled('composition_module_not_compiled'),
+  renderTierUnsupported('render_tier_unsupported');
+
+  const ProductNavigationValidationCode(this.stableId);
 
   final String stableId;
 }
@@ -1286,6 +1313,160 @@ class ProductCapabilityAdvertisementPolicy extends Equatable {
   List<Object?> get props => const [];
 }
 
+class ProductNavigationSection extends Equatable {
+  const ProductNavigationSection({
+    required this.entry,
+    required this.routeId,
+    required this.displayKey,
+    required this.renderTier,
+    this.requiredModule,
+    this.requiredCapability,
+  });
+
+  final ProductNavigationEntry entry;
+  final String routeId;
+  final String displayKey;
+  final ProductNavigationRenderTier renderTier;
+  final ProductModule? requiredModule;
+  final ProductCapability? requiredCapability;
+
+  Map<String, Object?> toPublicMap() {
+    return {
+      'entry': entry.stableId,
+      'routeId': routeId,
+      'displayKey': displayKey,
+      'renderTier': renderTier.stableId,
+      'requiredModule': requiredModule?.stableId,
+      'requiredCapability': requiredCapability?.stableId,
+    };
+  }
+
+  @override
+  List<Object?> get props => [
+    entry,
+    routeId,
+    displayKey,
+    renderTier,
+    requiredModule,
+    requiredCapability,
+  ];
+}
+
+class ProductNavigationManifest extends Equatable {
+  ProductNavigationManifest({
+    required this.profileId,
+    required List<ProductNavigationSection> sections,
+    this.schemaVersion = kProductCapabilitiesSchemaVersion,
+  }) : sections = List.unmodifiable(sections);
+
+  final String schemaVersion;
+  final ProductProfileId profileId;
+  final List<ProductNavigationSection> sections;
+
+  List<ProductNavigationValidationCode> validate({
+    required ProductProfileManifest profile,
+    ProductCompositionManifest? composition,
+  }) {
+    return ProductNavigationManifestPolicy().evaluate(
+      manifest: this,
+      profile: profile,
+      composition: composition,
+    );
+  }
+
+  Map<String, Object?> toPublicMap() {
+    return {
+      'schemaVersion': schemaVersion,
+      'profileId': profileId.stableId,
+      'sections': sections
+          .map((section) => section.toPublicMap())
+          .toList(growable: false),
+    };
+  }
+
+  @override
+  List<Object?> get props => [schemaVersion, profileId, sections];
+}
+
+class ProductNavigationManifestPolicy extends Equatable {
+  const ProductNavigationManifestPolicy();
+
+  List<ProductNavigationValidationCode> evaluate({
+    required ProductNavigationManifest manifest,
+    required ProductProfileManifest profile,
+    ProductCompositionManifest? composition,
+  }) {
+    final codes = <ProductNavigationValidationCode>[];
+    final routeIds = <String>{};
+
+    if (manifest.profileId != profile.profileId) {
+      codes.add(ProductNavigationValidationCode.profileMismatch);
+    }
+
+    for (final section in manifest.sections) {
+      final routeId = section.routeId.trim();
+      if (routeId.isEmpty) {
+        codes.add(ProductNavigationValidationCode.routeIdMissing);
+      } else if (!routeIds.add(routeId)) {
+        codes.add(ProductNavigationValidationCode.duplicateRouteId);
+      }
+      if (section.displayKey.trim().isEmpty) {
+        codes.add(ProductNavigationValidationCode.displayKeyMissing);
+      }
+      if (!profile.navigation.contains(section.entry)) {
+        codes.add(ProductNavigationValidationCode.entryUnsupported);
+      }
+      final requiredModule = section.requiredModule;
+      if (requiredModule != null && !profile.includesModule(requiredModule)) {
+        codes.add(ProductNavigationValidationCode.moduleUnavailable);
+      }
+      final requiredCapability = section.requiredCapability;
+      if (requiredCapability != null &&
+          !profile.supportsCapability(requiredCapability)) {
+        codes.add(ProductNavigationValidationCode.capabilityUnsupported);
+      }
+      if (requiredModule != null &&
+          composition != null &&
+          !composition.compiledModules.contains(requiredModule)) {
+        codes.add(ProductNavigationValidationCode.compositionModuleNotCompiled);
+      }
+      if (!_allowedRenderTiers(
+        profile.profileId,
+      ).contains(section.renderTier)) {
+        codes.add(ProductNavigationValidationCode.renderTierUnsupported);
+      }
+    }
+
+    return codes.isEmpty
+        ? const [ProductNavigationValidationCode.accepted]
+        : codes.toSet().toList(growable: false);
+  }
+
+  Set<ProductNavigationRenderTier> _allowedRenderTiers(
+    ProductProfileId profileId,
+  ) {
+    return switch (profileId) {
+      ProductProfileId.fullTv => const {
+        ProductNavigationRenderTier.rich,
+        ProductNavigationRenderTier.standard,
+        ProductNavigationRenderTier.lightweight,
+      },
+      ProductProfileId.standardTv => const {
+        ProductNavigationRenderTier.standard,
+        ProductNavigationRenderTier.lightweight,
+      },
+      ProductProfileId.liteReceiver ||
+      ProductProfileId.embeddedReceiver ||
+      ProductProfileId.experimentalLegacy => const {
+        ProductNavigationRenderTier.lightweight,
+      },
+    };
+  }
+
+  @override
+  List<Object?> get props => const [];
+}
+
 class AiroTvProductProfiles {
   const AiroTvProductProfiles._();
 
@@ -1438,6 +1619,162 @@ class AiroTvProductProfiles {
           MediaCodecCapability.hls,
         },
       ),
+    );
+  }
+}
+
+class AiroTvNavigationManifests {
+  const AiroTvNavigationManifests._();
+
+  static ProductNavigationManifest fullTv() {
+    return ProductNavigationManifest(
+      profileId: ProductProfileId.fullTv,
+      sections: const [
+        ProductNavigationSection(
+          entry: ProductNavigationEntry.home,
+          routeId: 'tv.home',
+          displayKey: 'navigation.home',
+          renderTier: ProductNavigationRenderTier.rich,
+        ),
+        ProductNavigationSection(
+          entry: ProductNavigationEntry.live,
+          routeId: 'tv.live',
+          displayKey: 'navigation.live',
+          renderTier: ProductNavigationRenderTier.rich,
+          requiredModule: ProductModule.playback,
+          requiredCapability: ProductCapability.directPlayback,
+        ),
+        ProductNavigationSection(
+          entry: ProductNavigationEntry.guide,
+          routeId: 'tv.guide',
+          displayKey: 'navigation.guide',
+          renderTier: ProductNavigationRenderTier.standard,
+          requiredModule: ProductModule.fullEpg,
+          requiredCapability: ProductCapability.fullEpg,
+        ),
+        ProductNavigationSection(
+          entry: ProductNavigationEntry.favorites,
+          routeId: 'tv.favorites',
+          displayKey: 'navigation.favorites',
+          renderTier: ProductNavigationRenderTier.standard,
+          requiredModule: ProductModule.favorites,
+        ),
+        ProductNavigationSection(
+          entry: ProductNavigationEntry.recent,
+          routeId: 'tv.recent',
+          displayKey: 'navigation.recent',
+          renderTier: ProductNavigationRenderTier.standard,
+          requiredModule: ProductModule.recent,
+        ),
+        ProductNavigationSection(
+          entry: ProductNavigationEntry.search,
+          routeId: 'tv.search',
+          displayKey: 'navigation.search',
+          renderTier: ProductNavigationRenderTier.standard,
+          requiredModule: ProductModule.basicSearch,
+          requiredCapability: ProductCapability.basicSearch,
+        ),
+        ProductNavigationSection(
+          entry: ProductNavigationEntry.settings,
+          routeId: 'tv.settings',
+          displayKey: 'navigation.settings',
+          renderTier: ProductNavigationRenderTier.standard,
+        ),
+        ProductNavigationSection(
+          entry: ProductNavigationEntry.diagnostics,
+          routeId: 'tv.diagnostics',
+          displayKey: 'navigation.diagnostics',
+          renderTier: ProductNavigationRenderTier.lightweight,
+          requiredModule: ProductModule.diagnostics,
+          requiredCapability: ProductCapability.diagnostics,
+        ),
+      ],
+    );
+  }
+
+  static ProductNavigationManifest liteReceiver() {
+    return ProductNavigationManifest(
+      profileId: ProductProfileId.liteReceiver,
+      sections: const [
+        ProductNavigationSection(
+          entry: ProductNavigationEntry.home,
+          routeId: 'lite.home',
+          displayKey: 'navigation.home',
+          renderTier: ProductNavigationRenderTier.lightweight,
+        ),
+        ProductNavigationSection(
+          entry: ProductNavigationEntry.live,
+          routeId: 'lite.live',
+          displayKey: 'navigation.live',
+          renderTier: ProductNavigationRenderTier.lightweight,
+          requiredModule: ProductModule.playback,
+          requiredCapability: ProductCapability.directPlayback,
+        ),
+        ProductNavigationSection(
+          entry: ProductNavigationEntry.favorites,
+          routeId: 'lite.favorites',
+          displayKey: 'navigation.favorites',
+          renderTier: ProductNavigationRenderTier.lightweight,
+          requiredModule: ProductModule.favorites,
+        ),
+        ProductNavigationSection(
+          entry: ProductNavigationEntry.recent,
+          routeId: 'lite.recent',
+          displayKey: 'navigation.recent',
+          renderTier: ProductNavigationRenderTier.lightweight,
+          requiredModule: ProductModule.recent,
+        ),
+        ProductNavigationSection(
+          entry: ProductNavigationEntry.search,
+          routeId: 'lite.search',
+          displayKey: 'navigation.search',
+          renderTier: ProductNavigationRenderTier.lightweight,
+          requiredModule: ProductModule.basicSearch,
+          requiredCapability: ProductCapability.basicSearch,
+        ),
+        ProductNavigationSection(
+          entry: ProductNavigationEntry.settings,
+          routeId: 'lite.settings',
+          displayKey: 'navigation.settings',
+          renderTier: ProductNavigationRenderTier.lightweight,
+        ),
+        ProductNavigationSection(
+          entry: ProductNavigationEntry.diagnostics,
+          routeId: 'lite.diagnostics',
+          displayKey: 'navigation.diagnostics',
+          renderTier: ProductNavigationRenderTier.lightweight,
+          requiredModule: ProductModule.diagnostics,
+          requiredCapability: ProductCapability.diagnostics,
+        ),
+      ],
+    );
+  }
+
+  static ProductNavigationManifest embeddedReceiver() {
+    return ProductNavigationManifest(
+      profileId: ProductProfileId.embeddedReceiver,
+      sections: const [
+        ProductNavigationSection(
+          entry: ProductNavigationEntry.home,
+          routeId: 'embedded.home',
+          displayKey: 'navigation.home',
+          renderTier: ProductNavigationRenderTier.lightweight,
+        ),
+        ProductNavigationSection(
+          entry: ProductNavigationEntry.live,
+          routeId: 'embedded.live',
+          displayKey: 'navigation.live',
+          renderTier: ProductNavigationRenderTier.lightweight,
+          requiredModule: ProductModule.playback,
+          requiredCapability: ProductCapability.directPlayback,
+        ),
+        ProductNavigationSection(
+          entry: ProductNavigationEntry.settings,
+          routeId: 'embedded.settings',
+          displayKey: 'navigation.settings',
+          renderTier: ProductNavigationRenderTier.lightweight,
+        ),
+      ],
     );
   }
 }

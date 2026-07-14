@@ -18,6 +18,8 @@ and capabilities are available for a product profile.
   lifecycle manifests, and runtime feature flags.
 - Profile-aware capability advertisements that publish runtime-safe
   capabilities, compiled modules, profile guarantees, and unsupported reasons.
+- Profile navigation manifests that bind routes, display keys, render tiers,
+  modules, and capabilities to active product profiles.
 - Runtime device capability snapshots.
 - Deterministic requirement evaluation with machine-readable blocker codes.
 - Deterministic product manifest validation for module overlap, unsupported
@@ -32,5 +34,8 @@ and capabilities are available for a product profile.
 - Deterministic capability advertisement policy that prevents controllers,
   routers, and handoff flows from seeing capabilities blocked by profile,
   composition, lifecycle, or runtime device requirements.
+- Deterministic navigation validation that prevents unavailable routes, empty
+  sections, unsupported render tiers, and routes backed by absent modules from
+  reaching product UI.
 
 This package does not render UI, import vendor SDKs, or start playback.
