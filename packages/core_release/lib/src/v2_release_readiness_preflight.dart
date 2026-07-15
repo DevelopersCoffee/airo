@@ -269,6 +269,50 @@ class AiroV2ReleaseReadinessPreflightRunner {
       status: AiroV2ReleaseGateStatus.unknown,
     ),
     AiroV2ReleaseReadinessGate(
+      id: 'tv_ui_dpad_qualification',
+      issueNumber: 589,
+      title: 'Airo TV UI and D-pad release audit evidence',
+      owner: 'Mobile UI and QA Automation',
+      status: AiroV2ReleaseGateStatus.unknown,
+      note: 'Requires physical Android TV or Fire TV D-pad traversal evidence.',
+    ),
+    AiroV2ReleaseReadinessGate(
+      id: 'cast_active_receiver_switching',
+      issueNumber: 590,
+      title: 'Cast active-receiver channel switching evidence',
+      owner: 'Media and QA Automation',
+      status: AiroV2ReleaseGateStatus.unknown,
+      note:
+          'Requires physical Android sender to BRAVIA or Chromecast-class '
+          'receiver validation.',
+    ),
+    AiroV2ReleaseReadinessGate(
+      id: 'cast_v1_device_qa',
+      issueNumber: 459,
+      title: 'IPTV Cast V1 real-device QA matrix evidence',
+      owner: 'Media and QA Automation',
+      status: AiroV2ReleaseGateStatus.unknown,
+      note: 'Covers the Cast V1 QA matrix and parent Cast epic closure path.',
+    ),
+    AiroV2ReleaseReadinessGate(
+      id: 'ipad_air_qualification',
+      issueNumber: 716,
+      title: 'iPad Air UI/UX qualification evidence',
+      owner: 'QA Automation',
+      status: AiroV2ReleaseGateStatus.unknown,
+      note: 'Requires physical iPad Air qualification report or waiver.',
+    ),
+    AiroV2ReleaseReadinessGate(
+      id: 'memory_playback_soak',
+      issueNumber: 779,
+      title: 'Airo TV memory playback soak evidence',
+      owner: 'Performance and QA Automation',
+      status: AiroV2ReleaseGateStatus.unknown,
+      note:
+          'Requires constrained TV memory timeline and 30-minute playback '
+          'soak drift evidence.',
+    ),
+    AiroV2ReleaseReadinessGate(
       id: 'legal_provenance',
       issueNumber: 687,
       title: 'Legal and provenance decisions',

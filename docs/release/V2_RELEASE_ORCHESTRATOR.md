@@ -116,6 +116,10 @@ human setup or waiver evidence is available. The report writes redacted JSON and
 Markdown under `artifacts/release/` and fails while required account,
 credential, store-console, device-evidence, legal, governance, or maintainer
 decision gates remain `unknown`, `blocked`, or required-and-`deferred`.
+The device-evidence gates include the TV D-pad/UI audit, Cast active-receiver
+switching, Cast V1 real-device QA matrix, iPad Air qualification, and constrained
+TV memory playback-soak evidence tracked in
+`docs/release/V2_HUMAN_IN_LOOP_BLOCKERS.md`.
 
 When `dry_run` is `true`, the orchestrator forces GitHub Release publication
 off and sets the TV and mobile/tablet Play tracks plus Firebase distribution to
