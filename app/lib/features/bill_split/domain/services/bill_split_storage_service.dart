@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:core_data/core_data.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/bill_split_models.dart';
@@ -27,29 +28,56 @@ class LocalBillSplitStorage implements BillSplitStorageService {
   static const _splitHistoryKey = 'bill_split_history';
   static const _billHistoryKey = 'bill_history';
 
+  LocalBillSplitStorage({
+    SharedPreferences? preferences,
+    KeyValueStore? store,
+    this.maxPreferenceValueBytes = kKeyValueStorePreferenceMaxValueBytes,
+  }) : assert(
+         preferences == null || store == null,
+         'Provide either preferences or store, not both.',
+       ),
+       _prefs = preferences,
+       _store = store;
+
   SharedPreferences? _prefs;
+  KeyValueStore? _store;
+  final int maxPreferenceValueBytes;
 
   Future<SharedPreferences> get _preferences async {
     _prefs ??= await SharedPreferences.getInstance();
     return _prefs!;
   }
 
+  Future<KeyValueStore> get _keyValueStore async {
+    _store ??= PreferencesStore(
+      await _preferences,
+      maxValueBytes: maxPreferenceValueBytes,
+    );
+    return _store!;
+  }
+
   @override
   Future<void> saveSplitHistory(SplitResult result) async {
     try {
-      final prefs = await _preferences;
+      final store = await _keyValueStore;
       final history = await getSplitHistory();
       history.insert(0, result); // Add to front (most recent first)
 
       // Keep only last 100 splits
       final trimmed = history.take(100).toList();
       final jsonList = trimmed.map((r) => _splitResultToJson(r)).toList();
-      await prefs.setString(_splitHistoryKey, jsonEncode(jsonList));
-
-      final summary = result.generateSummaryMessage();
-      debugPrint(
-        'Saved split: ${summary.substring(0, summary.length.clamp(0, 50))}...',
+      final saved = await _setHistoryJson(
+        store,
+        _splitHistoryKey,
+        jsonEncode(jsonList),
       );
+
+      if (saved) {
+        final summary = result.generateSummaryMessage();
+        debugPrint(
+          'Saved split: ${summary.substring(0, summary.length.clamp(0, 50))}...',
+        );
+      }
     } catch (e) {
       debugPrint('Error saving split history: $e');
     }
@@ -58,8 +86,8 @@ class LocalBillSplitStorage implements BillSplitStorageService {
   @override
   Future<List<SplitResult>> getSplitHistory() async {
     try {
-      final prefs = await _preferences;
-      final jsonStr = prefs.getString(_splitHistoryKey);
+      final store = await _keyValueStore;
+      final jsonStr = await store.getString(_splitHistoryKey);
       if (jsonStr == null) return [];
 
       final List<dynamic> jsonList = jsonDecode(jsonStr);
@@ -73,14 +101,14 @@ class LocalBillSplitStorage implements BillSplitStorageService {
   @override
   Future<void> saveBill(Bill bill) async {
     try {
-      final prefs = await _preferences;
+      final store = await _keyValueStore;
       final history = await getBillHistory();
       history.insert(0, bill);
 
       // Keep only last 50 bills
       final trimmed = history.take(50).toList();
       final jsonList = trimmed.map((b) => _billToJson(b)).toList();
-      await prefs.setString(_billHistoryKey, jsonEncode(jsonList));
+      await _setHistoryJson(store, _billHistoryKey, jsonEncode(jsonList));
     } catch (e) {
       debugPrint('Error saving bill: $e');
     }
@@ -89,8 +117,8 @@ class LocalBillSplitStorage implements BillSplitStorageService {
   @override
   Future<List<Bill>> getBillHistory() async {
     try {
-      final prefs = await _preferences;
-      final jsonStr = prefs.getString(_billHistoryKey);
+      final store = await _keyValueStore;
+      final jsonStr = await store.getString(_billHistoryKey);
       if (jsonStr == null) return [];
 
       final List<dynamic> jsonList = jsonDecode(jsonStr);
@@ -103,9 +131,23 @@ class LocalBillSplitStorage implements BillSplitStorageService {
 
   @override
   Future<void> clearHistory() async {
-    final prefs = await _preferences;
-    await prefs.remove(_splitHistoryKey);
-    await prefs.remove(_billHistoryKey);
+    final store = await _keyValueStore;
+    await store.remove(_splitHistoryKey);
+    await store.remove(_billHistoryKey);
+  }
+
+  Future<bool> _setHistoryJson(
+    KeyValueStore store,
+    String key,
+    String json,
+  ) async {
+    try {
+      return await store.setString(key, json);
+    } on KeyValueStoreValueTooLargeException catch (e) {
+      await store.remove(key);
+      debugPrint('Bill split history exceeded preference tier: $e');
+      return false;
+    }
   }
 
   // ============================================================================
