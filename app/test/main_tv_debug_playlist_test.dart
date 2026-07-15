@@ -59,6 +59,19 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
     final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+    final cacheDir = await Directory.systemTemp.createTemp(
+      'airo_tv_playlist_cache_test_',
+    );
+    addTearDown(() async {
+      if (await cacheDir.exists()) {
+        await cacheDir.delete(recursive: true);
+      }
+    });
+    final parser = M3UParserService(
+      dio: Dio(),
+      prefs: prefs,
+      cacheDirectoryProvider: () async => cacheDir,
+    );
 
     unawaited(
       server.forEach((request) {
@@ -80,18 +93,22 @@ https://cdn.example.com/live/news.m3u8
       path: '/fixture.m3u',
     ).toString();
 
-    final seeded = await seedTvDebugDefaultPlaylist(
-      prefs,
-      playlistUrl: playlistUrl,
-    );
-    expect(seeded, isTrue);
-    await warmTvDebugDefaultPlaylistCache(prefs, playlistUrl: playlistUrl);
-
-    final parser = M3UParserService(dio: Dio(), prefs: prefs);
-    expect(parser.getPlaylistUrl(), playlistUrl);
-
-    final cachedChannels = await parser.fetchPlaylist();
     try {
+      final seeded = await seedTvDebugDefaultPlaylist(
+        prefs,
+        playlistUrl: playlistUrl,
+        parser: parser,
+      );
+      expect(seeded, isTrue);
+      await warmTvDebugDefaultPlaylistCache(
+        prefs,
+        playlistUrl: playlistUrl,
+        parser: parser,
+      );
+
+      expect(parser.getPlaylistUrl(), playlistUrl);
+
+      final cachedChannels = await parser.fetchPlaylist();
       expect(cachedChannels, hasLength(1));
       expect(cachedChannels.single.name, 'Airo News');
     } finally {
