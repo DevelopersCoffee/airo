@@ -90,6 +90,22 @@ void main() {
     expect(result.error!.code, AiroCastErrorCode.unsupportedStream);
   });
 
+  test('rejects private network stream URLs', () {
+    final result = adapter.toCastRequest(
+      channel(streamUrl: 'http://192.168.1.20/live.m3u8'),
+    );
+
+    expect(result.isCastable, false);
+    expect(result.error!.code, AiroCastErrorCode.unsupportedStream);
+  });
+
+  test('drops unsafe artwork URLs from cast metadata', () {
+    final result = adapter.toCastRequest(channel(logoUrl: 'javascript:bad()'));
+
+    expect(result.isCastable, true);
+    expect(result.request!.imageUrl, isNull);
+  });
+
   test('rejects unknown stream formats', () {
     final result = adapter.toCastRequest(
       channel(streamUrl: 'https://example.com/playlist.ts'),

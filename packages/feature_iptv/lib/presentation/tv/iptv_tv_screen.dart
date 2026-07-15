@@ -1,3 +1,4 @@
+import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:platform_channels/platform_channels.dart';
@@ -1086,12 +1087,13 @@ class _ChannelLogo extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.all(10),
         child: channel.hasLogo
-            ? Image.network(
-                channel.logoUrl!,
+            ? AiroNetworkImage(
+                url: channel.logoUrl!,
                 fit: BoxFit.contain,
-                errorBuilder: (_, _, _) => IptvIconPlaceholder.channel(
-                  isAudioOnly: channel.isAudioOnly,
-                ),
+                errorBuilder: (context, error, stackTrace) =>
+                    IptvIconPlaceholder.channel(
+                      isAudioOnly: channel.isAudioOnly,
+                    ),
               )
             : IptvIconPlaceholder.channel(isAudioOnly: channel.isAudioOnly),
       ),

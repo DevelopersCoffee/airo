@@ -1,4 +1,5 @@
 import 'dart:developer' as developer;
+import 'dart:io';
 
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -9,7 +10,12 @@ class M3UParserService {
   static const String _playlistUrlKey = 'iptv_user_playlist_url';
   static const String _cacheKey = 'iptv_playlist_cache';
   static const String _cacheTimestampKey = 'iptv_playlist_timestamp';
+  static const String _cacheEtagKey = 'iptv_playlist_etag';
+  static const String _cacheLastModifiedKey = 'iptv_playlist_last_modified';
   static const Duration _cacheValidity = Duration(hours: 24);
+  static final RegExp _extInfAttributePattern = RegExp(
+    r'(\w+[-\w]*)="([^"]*)"',
+  );
 
   final Dio _dio;
   final SharedPreferences _prefs;
@@ -76,6 +82,8 @@ class M3UParserService {
     await _prefs.setString(_playlistUrlKey, normalized);
     await _prefs.remove(_cacheKey);
     await _prefs.remove(_cacheTimestampKey);
+    await _prefs.remove(_cacheEtagKey);
+    await _prefs.remove(_cacheLastModifiedKey);
   }
 
   /// Remove the configured playlist and its user-derived cache.
@@ -86,19 +94,44 @@ class M3UParserService {
 
   /// Fetch and parse M3U from URL
   Future<List<IPTVChannel>> _fetchAndParse(String url) async {
+    final headers = <String, String>{'Accept-Encoding': 'gzip, deflate'};
+    final etag = _prefs.getString(_cacheEtagKey);
+    final lastModified = _prefs.getString(_cacheLastModifiedKey);
+    if (etag != null && etag.isNotEmpty) {
+      headers[HttpHeaders.ifNoneMatchHeader] = etag;
+    }
+    if (lastModified != null && lastModified.isNotEmpty) {
+      headers[HttpHeaders.ifModifiedSinceHeader] = lastModified;
+    }
+
     final response = await _dio.get<String>(
       url,
       options: Options(
+        headers: headers,
         responseType: ResponseType.plain,
         receiveTimeout: const Duration(seconds: 30),
+        validateStatus: (status) =>
+            status != null &&
+            ((status >= HttpStatus.ok && status < HttpStatus.multipleChoices) ||
+                status == HttpStatus.notModified),
       ),
     );
+
+    if (response.statusCode == HttpStatus.notModified) {
+      final cached = await _loadFromCache(ignoreExpiry: true);
+      if (cached != null && cached.isNotEmpty) {
+        return cached;
+      }
+      throw Exception('Playlist not modified but no cache is available');
+    }
 
     if (response.data == null || response.data!.isEmpty) {
       throw Exception('Empty playlist response');
     }
 
-    return parseM3U(response.data!);
+    final channels = parseM3U(response.data!);
+    await _saveHttpValidators(response.headers);
+    return channels;
   }
 
   /// Parse M3U content into channels with deduplication
@@ -130,14 +163,26 @@ class M3UParserService {
       } else if (line.isNotEmpty &&
           !line.startsWith('#') &&
           currentName != null) {
+        final streamUri = AiroPlaylistUrlPolicy.normalizeStreamUrl(line);
+        if (streamUri == null) {
+          currentName = null;
+          currentLogo = null;
+          currentGroup = null;
+          currentTvgId = null;
+          currentTvgName = null;
+          currentLanguage = null;
+          continue;
+        }
+
         // Normalize the channel name for deduplication
         final normalizedName = _normalizeChannelName(currentName);
+        final logoUri = AiroPlaylistUrlPolicy.normalizeLogoUrl(currentLogo);
 
         // Create the channel
         final channel = IPTVChannel.fromM3U(
           name: _formatChannelName(currentName), // Use formatted name
-          url: line,
-          logo: currentLogo,
+          url: streamUri.toString(),
+          logo: logoUri?.toString(),
           group: currentGroup,
           tvgId: currentTvgId,
           tvgName: currentTvgName,
@@ -172,29 +217,61 @@ class M3UParserService {
 
   /// Normalize channel name for deduplication (lowercase, remove special chars)
   String _normalizeChannelName(String name) {
-    return name
-        .toLowerCase()
-        .replaceAll(RegExp(r'[^a-z0-9]'), '') // Remove non-alphanumeric
-        .replaceAll(RegExp(r'\s+'), ''); // Remove whitespace
+    final buffer = StringBuffer();
+    for (var i = 0; i < name.length; i++) {
+      final codeUnit = name.codeUnitAt(i);
+
+      if (codeUnit >= 0x30 && codeUnit <= 0x39) {
+        buffer.writeCharCode(codeUnit);
+      } else if (codeUnit >= 0x41 && codeUnit <= 0x5A) {
+        buffer.writeCharCode(codeUnit + 0x20);
+      } else if (codeUnit >= 0x61 && codeUnit <= 0x7A) {
+        buffer.writeCharCode(codeUnit);
+      }
+    }
+    return buffer.toString();
   }
 
   /// Format channel name for display (proper capitalization)
   String _formatChannelName(String name) {
-    // Remove extra whitespace
-    name = name.trim().replaceAll(RegExp(r'\s+'), ' ');
+    final buffer = StringBuffer();
+    var index = 0;
 
-    // Title case without correcting to specific channel brands.
-    return name
-        .split(' ')
-        .map((word) {
-          if (word.isEmpty) return word;
-          // Keep acronyms uppercase (2-4 letter all-caps words)
-          if (word.length <= 4 && word == word.toUpperCase()) {
-            return word;
-          }
-          return word[0].toUpperCase() + word.substring(1).toLowerCase();
-        })
-        .join(' ');
+    while (index < name.length) {
+      while (index < name.length && _isWhitespace(name.codeUnitAt(index))) {
+        index++;
+      }
+      if (index >= name.length) break;
+
+      final wordStart = index;
+      while (index < name.length && !_isWhitespace(name.codeUnitAt(index))) {
+        index++;
+      }
+
+      if (buffer.isNotEmpty) {
+        buffer.write(' ');
+      }
+
+      final word = name.substring(wordStart, index);
+      if (word.length <= 4 && word == word.toUpperCase()) {
+        buffer.write(word);
+      } else {
+        buffer
+          ..write(word[0].toUpperCase())
+          ..write(word.substring(1).toLowerCase());
+      }
+    }
+
+    return buffer.toString();
+  }
+
+  bool _isWhitespace(int codeUnit) {
+    return codeUnit == 0x20 ||
+        codeUnit == 0x09 ||
+        codeUnit == 0x0A ||
+        codeUnit == 0x0B ||
+        codeUnit == 0x0C ||
+        codeUnit == 0x0D;
   }
 
   /// Parse #EXTINF line attributes
@@ -208,8 +285,7 @@ class M3UParserService {
     }
 
     // Extract attributes
-    final attrPattern = RegExp(r'(\w+[-\w]*)="([^"]*)"');
-    for (final match in attrPattern.allMatches(line)) {
+    for (final match in _extInfAttributePattern.allMatches(line)) {
       result[match.group(1)!] = match.group(2);
     }
 
@@ -217,12 +293,13 @@ class M3UParserService {
   }
 
   /// Load channels from cache
-  Future<List<IPTVChannel>?> _loadFromCache() async {
+  Future<List<IPTVChannel>?> _loadFromCache({bool ignoreExpiry = false}) async {
     final timestamp = _prefs.getInt(_cacheTimestampKey);
     if (timestamp == null) return null;
 
     final cacheTime = DateTime.fromMillisecondsSinceEpoch(timestamp);
-    if (DateTime.now().difference(cacheTime) > _cacheValidity) {
+    if (!ignoreExpiry &&
+        DateTime.now().difference(cacheTime) > _cacheValidity) {
       return null; // Cache expired
     }
 
@@ -253,5 +330,24 @@ class M3UParserService {
   Future<void> clearCache() async {
     await _prefs.remove(_cacheKey);
     await _prefs.remove(_cacheTimestampKey);
+    await _prefs.remove(_cacheEtagKey);
+    await _prefs.remove(_cacheLastModifiedKey);
+  }
+
+  Future<void> _saveHttpValidators(Headers headers) async {
+    await _setOrRemove(_cacheEtagKey, headers.value(HttpHeaders.etagHeader));
+    await _setOrRemove(
+      _cacheLastModifiedKey,
+      headers.value(HttpHeaders.lastModifiedHeader),
+    );
+  }
+
+  Future<void> _setOrRemove(String key, String? value) async {
+    final normalized = value?.trim();
+    if (normalized == null || normalized.isEmpty) {
+      await _prefs.remove(key);
+      return;
+    }
+    await _prefs.setString(key, normalized);
   }
 }

@@ -1,3 +1,4 @@
+import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import "package:platform_player/platform_player.dart";
@@ -107,11 +108,12 @@ class _TvPlayerControlsState extends ConsumerState<TvPlayerControls> {
           if (channel.logoUrl != null)
             ClipRRect(
               borderRadius: BorderRadius.circular(8),
-              child: Image.network(
-                channel.logoUrl!,
+              child: AiroNetworkImage(
+                url: channel.logoUrl!,
                 width: 48,
                 height: 48,
-                errorBuilder: (_, _, _) => const SizedBox.shrink(),
+                errorBuilder: (context, error, stackTrace) =>
+                    const SizedBox.shrink(),
               ),
             ),
           const SizedBox(width: 16),

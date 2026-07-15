@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:core_ui/core_ui.dart';
 import '../../application/providers/iptv_providers.dart';
 import "package:platform_channels/platform_channels.dart";
 import 'iptv_icon_placeholder.dart';
@@ -320,10 +321,11 @@ class _RecentChannelCard extends StatelessWidget {
                 height: 56,
                 color: Colors.grey[200],
                 child: channel.hasLogo
-                    ? Image.network(
-                        channel.logoUrl!,
+                    ? AiroNetworkImage(
+                        url: channel.logoUrl!,
                         fit: BoxFit.cover,
-                        errorBuilder: (_, _, _) => _buildDefaultIcon(),
+                        errorBuilder: (context, error, stackTrace) =>
+                            _buildDefaultIcon(),
                       )
                     : _buildDefaultIcon(),
               ),
@@ -406,26 +408,19 @@ class _ChannelListTile extends ConsumerWidget {
                       height: 48,
                       color: colorScheme.surface.withValues(alpha: 0.42),
                       child: channel.hasLogo
-                          ? Image.network(
-                              channel.logoUrl!,
+                          ? AiroNetworkImage(
+                              url: channel.logoUrl!,
                               fit: BoxFit.cover,
-                              loadingBuilder: (_, child, loadingProgress) {
-                                if (loadingProgress == null) return child;
+                              placeholderBuilder: (_) {
                                 return Center(
                                   child: CircularProgressIndicator(
                                     strokeWidth: 2,
-                                    value:
-                                        loadingProgress.expectedTotalBytes !=
-                                            null
-                                        ? loadingProgress
-                                                  .cumulativeBytesLoaded /
-                                              loadingProgress
-                                                  .expectedTotalBytes!
-                                        : null,
+                                    color: colorScheme.primary,
                                   ),
                                 );
                               },
-                              errorBuilder: (_, _, _) => _buildDefaultIcon(),
+                              errorBuilder: (context, error, stackTrace) =>
+                                  _buildDefaultIcon(),
                             )
                           : _buildDefaultIcon(),
                     ),

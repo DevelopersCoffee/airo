@@ -4,6 +4,10 @@ Store-submission checklist for Airo release profiles. Use this as the
 pre-submission working document; account setup, credentials, and final store
 metadata decisions remain tracked in the linked GitHub issues.
 
+For a consolidated list of account, credential, store-console, device, legal,
+and maintainer-decision blockers, see
+[V2 Human-In-Loop Blocker Index](./V2_HUMAN_IN_LOOP_BLOCKERS.md).
+
 ## Live Legal URLs
 
 These URLs were verified with HTTP 200 responses on July 14, 2026.

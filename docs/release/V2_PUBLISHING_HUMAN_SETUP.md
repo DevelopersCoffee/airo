@@ -8,6 +8,9 @@ Use this alongside the v2 distribution matrix before enabling real publishing
 jobs. Automation may support dry-run mode before these items are complete, but
 production publishing cannot be verified without them.
 
+For the current cross-issue blocker list and recommended parallel setup order,
+see [V2 Human-In-Loop Blocker Index](./V2_HUMAN_IN_LOOP_BLOCKERS.md).
+
 ## Google Play
 
 Related issues: #681, #585, #657.
@@ -35,12 +38,18 @@ Related issues: #681, #585, #657.
 
 ## Firebase App Distribution
 
-Related issues: #682, #574.
+Related issues: #682, #574, #756.
 
 - [ ] Create or confirm Firebase apps for each package ID that should receive
       internal APKs.
-- [ ] Add or confirm Firebase Android client configs for the registered
-      `io.airo.app.*` packages that should use Firebase services.
+- [x] Confirm the TV Firebase Android client for `io.airo.app.tv` is
+      registered and represented in public Flutter Firebase options.
+- [x] Confirm `GOOGLE_SERVICES_JSON` exists as a GitHub secret. Secret contents
+      cannot be read back from GitHub; compare against the local ignored config
+      before publishing.
+- [ ] Add or confirm Firebase Android client configs for the remaining
+      registered `io.airo.app.*` mobile/tablet packages that should use
+      Firebase services.
 - [ ] Create a Firebase service account or distribution token for CI.
 - [ ] Store the Firebase service account JSON as the GitHub Actions secret
       `FIREBASE_SERVICE_ACCOUNT_JSON`.

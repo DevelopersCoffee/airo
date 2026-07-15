@@ -13,6 +13,38 @@ not be hard-coded inside Airo TV screens or tied to a concrete storage engine.
   batch-write, and diagnostic contracts.
 - Fake and no-op worker/batch-writer adapters for deterministic automation.
 
+## M3U Deduplication Contract
+
+The M3U parser normalizes channel names inside the platform package before
+deduplication, so Airo TV screens consume already-collapsed channel lists.
+Normalization is ASCII-only for stable M3U behavior: letters are folded to
+lowercase, digits are preserved, and punctuation or whitespace is ignored.
+
+When duplicate normalized names are found, the first channel is kept unless a
+later duplicate has a logo and the existing channel does not. This preserves the
+existing first-entry policy while making logo preference deterministic for large
+user playlists.
+
+## Playlist-Derived URL Policy
+
+M3U stream URLs and `tvg-logo` values are validated while parsing. Unsafe stream
+URLs are dropped before an `IPTVChannel` is created, and unsafe logo URLs are
+stripped from otherwise valid channels. The parser uses the shared
+`AiroPlaylistUrlPolicy` from `platform_channels`, which allows HTTP(S) public
+network URLs and blocks credentials, local files, script/content schemes,
+localhost, link-local, and private network hosts by default.
+
+## Conditional Playlist Refresh
+
+Playlist fetches send `Accept-Encoding: gzip, deflate` and reuse cached HTTP
+validators when available. `ETag` is stored as `iptv_playlist_etag`, and
+`Last-Modified` is stored as `iptv_playlist_last_modified` beside the
+user-derived playlist cache.
+
+On `304 Not Modified`, the parser returns the existing user-derived cache
+without downloading or parsing a new response body. Changing or clearing the
+playlist URL removes the cached body, timestamp, and validators together.
+
 This package does not choose a database engine, own Airo TV progress UI,
 download provider-specific bundled content, expose raw playlist URLs in worker
 diagnostics, or import storage SDKs directly. Concrete storage adapters should

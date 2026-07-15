@@ -1,3 +1,4 @@
+import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../application/providers/iptv_providers.dart';
@@ -57,10 +58,11 @@ class IPTVMiniPlayer extends ConsumerWidget {
                   height: 64,
                   color: Colors.black,
                   child: state.currentChannel!.logoUrl != null
-                      ? Image.network(
-                          state.currentChannel!.logoUrl!,
+                      ? AiroNetworkImage(
+                          url: state.currentChannel!.logoUrl!,
                           fit: BoxFit.cover,
-                          errorBuilder: (_, _, _) => _buildDefaultIcon(),
+                          errorBuilder: (context, error, stackTrace) =>
+                              _buildDefaultIcon(),
                         )
                       : _buildDefaultIcon(),
                 ),

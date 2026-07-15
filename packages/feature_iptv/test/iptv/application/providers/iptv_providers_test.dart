@@ -80,6 +80,51 @@ void main() {
         final category = container.read(selectedCategoryProvider);
         expect(category, equals(ChannelCategory.all));
       });
+
+      test('uses platform search index for combined filters', () async {
+        final container = ProviderContainer(
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(
+              await SharedPreferences.getInstance(),
+            ),
+            iptvChannelsProvider.overrideWith((ref) async => _channels),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        await container.read(iptvChannelsProvider.future);
+        container.read(selectedCategoryProvider.notifier).state =
+            ChannelCategory.news;
+        container.read(selectedFlavorProvider.notifier).state =
+            ChannelFlavor.englishNews;
+        container.read(channelSearchQueryProvider.notifier).state = 'global';
+
+        final filtered = container.read(filteredChannelsProvider);
+
+        expect(filtered.map((channel) => channel.id), ['3']);
+      });
+
+      test('uses platform search index counts', () async {
+        final container = ProviderContainer(
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(
+              await SharedPreferences.getInstance(),
+            ),
+            iptvChannelsProvider.overrideWith((ref) async => _channels),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        await container.read(iptvChannelsProvider.future);
+
+        final categories = container.read(categoryCounts);
+        final flavors = container.read(flavorCounts);
+
+        expect(categories[ChannelCategory.all], 4);
+        expect(categories[ChannelCategory.news], 2);
+        expect(flavors[ChannelFlavor.hindiMusic], 1);
+        expect(flavors[ChannelFlavor.sports], 1);
+      });
     });
 
     group('Preference sorting', () {
@@ -165,3 +210,38 @@ void main() {
     });
   });
 }
+
+const _channels = [
+  IPTVChannel(
+    id: '1',
+    name: 'Bharat Samachar',
+    streamUrl: 'https://example.com/1.m3u8',
+    group: 'Hindi News',
+    category: ChannelCategory.news,
+    flavor: ChannelFlavor.hindiNews,
+  ),
+  IPTVChannel(
+    id: '2',
+    name: 'Aaj Music',
+    streamUrl: 'https://example.com/2.m3u8',
+    group: 'Hindi Hits',
+    category: ChannelCategory.music,
+    flavor: ChannelFlavor.hindiMusic,
+  ),
+  IPTVChannel(
+    id: '3',
+    name: 'Global News',
+    streamUrl: 'https://example.com/3.m3u8',
+    group: 'World',
+    category: ChannelCategory.news,
+    flavor: ChannelFlavor.englishNews,
+  ),
+  IPTVChannel(
+    id: '4',
+    name: 'Cricket Live',
+    streamUrl: 'https://example.com/4.m3u8',
+    group: 'Sports',
+    category: ChannelCategory.sports,
+    flavor: ChannelFlavor.sports,
+  ),
+];

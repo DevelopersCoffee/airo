@@ -16,6 +16,25 @@ For every feature, bug fix, or architecture change:
 6. Sync the task branch or worktree from the correct release-line base before writing code.
 7. Only then start implementation.
 
+## GitHub Actions Cost Control
+
+GitHub Actions minutes are a shared cost. Agents must prefer focused local
+validation over broad remote CI.
+
+Default rule:
+
+1. Run the narrowest local tests, analyzers, format checks, docs checks, or
+   package builds that prove the touched contract.
+2. Do not intentionally trigger full GitHub Actions build matrices for small
+   issue slices unless branch protection, release/signing validation, or the
+   issue explicitly requires them.
+3. If an expensive workflow starts accidentally or is no longer needed, cancel
+   it rather than waiting for artifact builds.
+4. Do not keep a PR or issue open only to wait for non-required artifact builds.
+   Merge/close the bounded slice when required checks and local evidence are
+   sufficient; split remaining acceptance evidence into follow-up work instead
+   of blocking unrelated progress.
+
 ## Worktree Sync Rule
 
 When an LLM, agent, or human starts a new task, creates a branch, or creates a

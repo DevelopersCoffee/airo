@@ -13,6 +13,7 @@
 /// ```
 library;
 
+import 'package:core_ui/core_ui.dart';
 import 'package:dio/dio.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
@@ -41,6 +42,7 @@ const _debugDefaultPlaylistUrl = String.fromEnvironment(
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  AiroImageCacheBudget.configureAndroidTv();
 
   // Initialize global error handler for unhandled exceptions
   GlobalErrorHandler.initialize();

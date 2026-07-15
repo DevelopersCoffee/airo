@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:core_ui/core_ui.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -453,12 +454,13 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
       ),
       child: Center(
         child: channel != null && channel.hasLogo
-            ? Image.network(
-                channel.logoUrl!,
+            ? AiroNetworkImage(
+                url: channel.logoUrl!,
                 width: 120,
                 height: 120,
                 fit: BoxFit.contain,
-                errorBuilder: (_, _, _) => _buildDefaultPlaceholder(),
+                errorBuilder: (context, error, stackTrace) =>
+                    _buildDefaultPlaceholder(),
               )
             : _buildDefaultPlaceholder(),
       ),
@@ -512,11 +514,12 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                     if (state.currentChannel!.logoUrl != null)
                       ClipRRect(
                         borderRadius: BorderRadius.circular(4),
-                        child: Image.network(
-                          state.currentChannel!.logoUrl!,
+                        child: AiroNetworkImage(
+                          url: state.currentChannel!.logoUrl!,
                           width: 32,
                           height: 32,
-                          errorBuilder: (_, _, _) => const SizedBox.shrink(),
+                          errorBuilder: (context, error, stackTrace) =>
+                              const SizedBox.shrink(),
                         ),
                       ),
                     const SizedBox(width: 8),

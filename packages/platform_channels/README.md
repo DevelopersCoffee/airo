@@ -1,39 +1,36 @@
-<!--
-This README describes the package. If you publish this package to pub.dev,
-this README's contents appear on the landing page for your package.
+# Platform Channels
 
-For information about how to write a good package README, see the guide for
-[writing package pages](https://dart.dev/tools/pub/writing-package-pages).
+Reusable IPTV channel models, source helpers, and playlist-derived URL policy
+for Airo products.
 
-For general information about developing packages, see the Dart guide for
-[creating packages](https://dart.dev/guides/libraries/create-packages)
-and the Flutter guide for
-[developing packages and plugins](https://flutter.dev/to/develop-packages).
--->
+## Scope
 
-TODO: Put a short description of the package here that helps potential users
-know whether this package might be useful for them.
+- `IPTVChannel` and related channel metadata models.
+- `ChannelDataService` for first-party channel data boundaries.
+- `AiroChannelSearchIndex` for reusable channel search, filtering, sorting, and
+  aggregate counts over loaded playlist data.
+- `AiroPlaylistUrlPolicy` for validating stream and artwork URLs parsed from
+  user-supplied playlist content.
 
-## Features
+## Playlist URL Policy
 
-TODO: List what your package can do. Maybe include images, gifs, or videos.
+Playlist content is hostile input. `AiroPlaylistUrlPolicy` accepts only HTTP(S)
+network URLs, rejects URL credentials, and blocks localhost, link-local,
+private, carrier-grade NAT, multicast, and other non-public host ranges by
+default.
 
-## Getting started
+Callers may opt into private hosts only after a product-level user consent flow
+exists for LAN streams. Airo TV screens should consume the sanitized platform
+models instead of revalidating stream and logo URLs in UI code.
 
-TODO: List prerequisites and provide or point to information on how to
-start using the package.
+## Channel Search Index
 
-## Usage
+`AiroChannelSearchIndex` precomputes normalized channel search text and category
+/ flavor counts once per loaded playlist. Airo TV providers should consume this
+index instead of lowercasing channel names, rebuilding count maps, or running
+separate category/flavor/search list passes on every keystroke.
 
-TODO: Include short and useful examples for package users. Add longer examples
-to `/example` folder.
-
-```dart
-const like = 'sample';
-```
-
-## Additional information
-
-TODO: Tell users more about the package: where to find more information, how to
-contribute to the package, how to file issues, what response they can expect
-from the package authors, and more.
+The current implementation preserves the existing exact substring behavior for
+channel name and group searches. Future Rust, trie, or tantivy-backed search can
+replace the internals behind this platform-owned contract without moving search
+logic back into product screens.

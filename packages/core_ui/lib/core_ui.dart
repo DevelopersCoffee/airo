@@ -16,6 +16,7 @@ export 'src/theme/bedtime_theme.dart';
 // Widgets
 export 'src/widgets/app_button.dart';
 export 'src/widgets/app_card.dart';
+export 'src/widgets/airo_network_image.dart';
 export 'src/widgets/loading_indicator.dart';
 export 'src/widgets/error_view.dart';
 

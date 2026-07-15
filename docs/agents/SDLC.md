@@ -37,7 +37,7 @@ graph LR
     A[Pick Issue] --> B[Complete Spec Gate]
     B --> C[Create Branch]
     C --> D[Implement]
-    D --> E[Local CI: act]
+    D --> E[Focused Local Validation]
     E --> F{Passes?}
     F -->|No| D
     F -->|Yes| G[Create PR]
@@ -73,9 +73,12 @@ Examples:
 
 ### 5. PR Requirements
 - [ ] Branch is up-to-date with main
-- [ ] `act` local CI passes
-- [ ] `flutter analyze` clean
-- [ ] `flutter test` passes
+- [ ] Focused local validation covers the touched contract
+- [ ] `flutter analyze` clean for touched packages/files
+- [ ] `flutter test` passes for touched packages/features
+- [ ] GitHub Actions build matrices were not intentionally triggered unless
+      required by branch protection, release/signing, artifact validation, or
+      issue risk
 - [ ] Android Emulator was not used unless explicitly approved with
       `AIRO_ALLOW_ANDROID_EMULATOR=true`
 - [ ] Issue linked in PR description
@@ -101,6 +104,22 @@ Device-only tests must name the environment in the issue and PR. Android
 Emulator verification requires explicit risk acceptance by setting
 `AIRO_ALLOW_ANDROID_EMULATOR=true`; otherwise agents should use a connected
 physical Android device via `AIRO_JOURNEY_ANDROID_DEVICE=<adb-serial>`.
+
+### 7. GitHub Actions Cost Policy
+
+GitHub Actions minutes are shared cost. The default agent path is focused local
+validation, not broad remote CI.
+
+Agents must:
+- Run the narrowest local checks that prove the change.
+- Avoid full Android, release, upload, signing, artifact, or broad integration
+  workflows unless required by branch protection, release ownership, or the
+  issue.
+- Cancel accidental or redundant expensive runs with `gh run cancel <run-id>`.
+- Merge/close bounded slices once required evidence exists instead of waiting
+  on non-required artifact builds.
+- Split physical-device benchmarks, release evidence, or other long-running
+  acceptance into follow-up work when the code slice is otherwise complete.
 
 ---
 

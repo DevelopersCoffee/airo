@@ -1,0 +1,8 @@
+name: package_info_plus
+description: Stub implementation of package_info_plus for TV builds
+version: 10.2.0
+publish_to: none
+
+environment:
+  sdk: '>=3.12.2 <4.0.0'
+  flutter: '>=3.44.4'

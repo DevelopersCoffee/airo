@@ -69,6 +69,7 @@ class _ManageSkillsSheetState extends State<ManageSkillsSheet> {
             const SizedBox(height: 16),
             TextField(
               decoration: const InputDecoration(
+                labelText: 'Search skills',
                 hintText: 'Search for a skill',
                 prefixIcon: Icon(Icons.search),
                 border: OutlineInputBorder(),
@@ -142,6 +143,7 @@ class _SkillTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final toggleLabel = '${skill.name} skill';
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -163,7 +165,16 @@ class _SkillTile extends StatelessWidget {
                   ),
                 ),
               ),
-              Switch(value: skill.enabled, onChanged: onChanged),
+              Semantics(
+                container: true,
+                label: toggleLabel,
+                value: skill.enabled ? 'Enabled' : 'Disabled',
+                toggled: skill.enabled,
+                onTap: () => onChanged(!skill.enabled),
+                child: ExcludeSemantics(
+                  child: Switch(value: skill.enabled, onChanged: onChanged),
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 4),
