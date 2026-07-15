@@ -20,6 +20,26 @@ exports, playlist URLs, local IP addresses, or private device logs.
 | #585 | Store automation credentials | Create/confirm Play Console service account, app access, upload permissions, first tracks, and App Store Connect credentials only if iOS/iPadOS enters scope. |
 | #682 | Firebase App Distribution | Create/confirm Firebase apps, app IDs, tester groups, and service account/token for internal QA uploads. |
 
+### Exact Secret And Input Names
+
+Do not commit these values. Add secrets only through GitHub repository or
+environment secret settings, and provide workflow inputs only when an approved
+release or distribution run is intentionally started.
+
+| Purpose | GitHub secret or workflow input | Issues |
+| --- | --- | --- |
+| Firebase Android config for `io.airo.app`, `io.airo.app.iptv`, `io.airo.app.streaming`, and `io.airo.app.tv` | Secret: `GOOGLE_SERVICES_JSON` containing the base64-encoded regenerated `google-services.json` | #574, #756 |
+| Android release keystore | Secret: `ANDROID_RELEASE_KEYSTORE_BASE64` | #576 |
+| Android keystore password | Secret: `KEYSTORE_PASSWORD` | #576 |
+| Android key alias | Secret: `KEY_ALIAS` | #576 |
+| Android key password | Secret: `KEY_PASSWORD` | #576 |
+| Google Play upload service account | Secret: `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON` | #585 |
+| Play package selection | Fastlane/env value: `SUPPLY_PACKAGE_NAME`; use `io.airo.app.tv`, `io.airo.app.iptv`, or `io.airo.app.streaming` | #585 |
+| Firebase App Distribution service account | Secret: `FIREBASE_SERVICE_ACCOUNT_JSON` | #682 |
+| Firebase App Distribution app IDs | Workflow inputs: `firebase_app_id`, `mobile_firebase_app_id`, `tv_firebase_app_id` depending on release workflow | #682 |
+| Firebase App Distribution tester groups | Workflow inputs: `firebase_tester_groups`, `mobile_firebase_tester_groups`, `tv_firebase_tester_groups` depending on release workflow | #682 |
+| iOS/App Store Connect if iOS enters scope | Secrets: `MATCH_PASSWORD`, `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_KEY_CONTENT`; env: `APP_IDENTIFIER`, `APPLE_ID`, `TEAM_ID`, `ITC_TEAM_ID` | #585 |
+
 ## Store Console And Legal Submission Blockers
 
 | Issue | Blocker | Human action needed |
