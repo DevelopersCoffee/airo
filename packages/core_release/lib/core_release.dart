@@ -1,5 +1,6 @@
 library;
 
+export 'src/android_signing_preflight.dart';
 export 'src/content_rating_preflight.dart';
 export 'src/data_safety_preflight.dart';
 export 'src/fastlane_credentials_preflight.dart';

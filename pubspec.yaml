@@ -175,6 +175,17 @@ melos:
           --output-json ../../artifacts/release/firebase-android-client-preflight.json \
           --output-markdown ../../artifacts/release/firebase-android-client-preflight.md
 
+    release:android-signing-preflight:
+      description: Write Android signing readiness evidence
+      run: |
+        cd packages/core_release
+        flutter pub get
+        dart run tool/preflight_android_signing.dart \
+          --repo-root ../.. \
+          --production-signing "${AIRO_PRODUCTION_SIGNING:-true}" \
+          --output-json ../../artifacts/release/android-signing-preflight.json \
+          --output-markdown ../../artifacts/release/android-signing-preflight.md
+
     qa:ipad-qualification-report:
       description: Write iPad Air UI/UX qualification report evidence
       run: |
