@@ -189,7 +189,8 @@ class AiroTvEpgWarmupBenchmarkRunner {
   ) async {
     final config = rawConfig.normalized();
     final fixture = File(config.fixturePath);
-    final content = await fixture.readAsString();
+    final fixtureBytes = await fixture.length();
+    final fixtureSha256 = await sha256.bind(fixture.openRead()).first;
     final channels = _generatedChannels(config.channelCount);
     final visibleChannelIds = channels
         .take(config.visibleChannelCount)
@@ -203,7 +204,7 @@ class AiroTvEpgWarmupBenchmarkRunner {
     final stopwatch = Stopwatch()..start();
     final snapshot = await Isolate.run<CompactEpgSlice>(
       () async => _buildSnapshot(
-        content: content,
+        xmltvPath: fixture.path,
         now: config.now!,
         channels: channels,
       ),
@@ -218,8 +219,8 @@ class AiroTvEpgWarmupBenchmarkRunner {
       schemaVersion: kAiroTvEpgWarmupBenchmarkSchemaVersion,
       capturedAt: DateTime.now().toUtc(),
       fixturePath: fixture.path,
-      fixtureBytes: await fixture.length(),
-      fixtureSha256: sha256.convert(utf8.encode(content)).toString(),
+      fixtureBytes: fixtureBytes,
+      fixtureSha256: fixtureSha256.toString(),
       channelCount: config.channelCount,
       visibleChannelCount: visibleChannelIds.length,
       now: config.now!,
@@ -280,7 +281,7 @@ class _MainIsolateHeartbeat {
 }
 
 Future<CompactEpgSlice> _buildSnapshot({
-  required String content,
+  required String xmltvPath,
   required DateTime now,
   required List<IPTVChannel> channels,
 }) async {
@@ -295,8 +296,8 @@ Future<CompactEpgSlice> _buildSnapshot({
     for (final channel in channels)
       for (final alias in aliasesByChannel[channel.id]!) alias: channel.name,
   };
-  final guideRepository = XmltvCompactEpgRepository.fromXmltv(
-    content: content,
+  final guideRepository = XmltvCompactEpgRepository.fromXmltvFile(
+    path: xmltvPath,
     ingestedAt: now,
     sourceRef: CompactEpgSourceRef.redacted('benchmark-xmltv-fixture'),
     channelNamesById: channelNamesByGuideId,

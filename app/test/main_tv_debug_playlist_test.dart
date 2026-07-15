@@ -168,6 +168,14 @@ https://cdn.example.com/live/news.m3u8
     final repository = SnapshotBackedCompactEpgRepository(
       store: InMemoryCompactEpgSnapshotStore(),
     );
+    final downloadDir = await Directory.systemTemp.createTemp(
+      'airo-tv-epg-download-',
+    );
+    addTearDown(() async {
+      if (await downloadDir.exists()) {
+        await downloadDir.delete(recursive: true);
+      }
+    });
     final parser = _RecordingM3UParserService(prefs, const [
       IPTVChannel(
         id: 'stream-news',
@@ -189,6 +197,7 @@ https://cdn.example.com/live/news.m3u8
         repository: repository,
         epgUrl: _serverUrl(server, '/guide.xml'),
         parser: parser,
+        epgDownloadDirectoryProvider: () async => downloadDir,
         clock: () => now,
       );
 
@@ -208,6 +217,7 @@ https://cdn.example.com/live/news.m3u8
         'Live Sports',
       );
       expect(snapshot.entryForChannel('news.local'), isNull);
+      expect(await downloadDir.list().isEmpty, isTrue);
     } finally {
       await server.close(force: true);
     }
@@ -227,6 +237,14 @@ https://cdn.example.com/live/news.m3u8
     final repository = SnapshotBackedCompactEpgRepository(
       store: InMemoryCompactEpgSnapshotStore(),
     );
+    final downloadDir = await Directory.systemTemp.createTemp(
+      'airo-tv-epg-deferred-download-',
+    );
+    addTearDown(() async {
+      if (await downloadDir.exists()) {
+        await downloadDir.delete(recursive: true);
+      }
+    });
     final parser = _RecordingM3UParserService(prefs, const [
       IPTVChannel(
         id: 'stream-news',
@@ -243,6 +261,7 @@ https://cdn.example.com/live/news.m3u8
       repository: repository,
       epgUrl: _serverUrl(server, '/guide.xml'),
       parser: parser,
+      epgDownloadDirectoryProvider: () async => downloadDir,
       clock: () => now,
       addPostFrameCallback: (callback) {
         frameCallback = callback;
