@@ -180,6 +180,13 @@
         "timezone",
         "pdfx"
       ],
+      "legacyKotlinGradlePluginRiskPackages": [
+        "flutter_image_compress",
+        "flutter_tts",
+        "package_info_plus",
+        "pdfx",
+        "wakelock_plus"
+      ],
       "requiredDependencyOverrides": {
         "stockfish": "../packages/stubs/stockfish_stub",
         "chess": "../packages/stubs/chess_stub",
@@ -197,6 +204,8 @@
         "flutter_local_notifications": "../packages/stubs/flutter_local_notifications_stub",
         "timezone": "../packages/stubs/timezone_stub",
         "pdfx": "../packages/stubs/pdfx_stub",
+        "package_info_plus": "../packages/stubs/package_info_plus_stub",
+        "wakelock_plus": "../packages/stubs/wakelock_plus_stub",
         "flutter_chrome_cast": "../packages/platform_player/third_party/flutter_chrome_cast"
       },
       "assetAllowlist": ["assets/airo_icon.png"],

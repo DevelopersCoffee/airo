@@ -191,6 +191,41 @@ def main():
                 failures += 1
                 status = "FAIL"
 
+        kgp_guarded = 0
+        required_overrides = profile.get("requiredDependencyOverrides", {})
+        for package in profile.get("legacyKotlinGradlePluginRiskPackages", []):
+            if package not in deps:
+                continue
+
+            expected_path = required_overrides.get(package)
+            if not expected_path:
+                error(
+                    f"{profile_id}: KGP-risk package {package} must be listed in requiredDependencyOverrides",
+                    profile_file,
+                )
+                failures += 1
+                status = "FAIL"
+                continue
+
+            if not normalize_path(expected_path).startswith("../packages/stubs/"):
+                error(
+                    f"{profile_id}: KGP-risk package {package} must use a packages/stubs override, got {expected_path}",
+                    profile_file,
+                )
+                failures += 1
+                status = "FAIL"
+
+            if package not in overrides:
+                error(
+                    f"{profile_id}: KGP-risk package {package} must be stubbed/overridden in {pubspec}",
+                    pubspec,
+                )
+                failures += 1
+                status = "FAIL"
+                continue
+
+            kgp_guarded += 1
+
         for package in profile.get("heavyPackages", []):
             if package in deps and package not in overrides:
                 error(f"{profile_id}: heavy package {package} is not stubbed/overridden", pubspec)
@@ -256,6 +291,8 @@ def main():
             notes.append(f"release <= {android.get('releaseBudgetMb')} MiB")
             notes.append(f"debug tracked <= {android.get('debugBudgetMb')} MiB")
             notes.append(f"{len(profile.get('heavyPackages', []))} heavy deps guarded")
+            if profile.get("legacyKotlinGradlePluginRiskPackages"):
+                notes.append(f"{kgp_guarded} KGP-risk deps guarded")
         else:
             notes.append("report only")
 
