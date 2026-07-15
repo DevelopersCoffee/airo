@@ -7,3 +7,4 @@
 
 pub mod m3u;
 pub mod text;
+pub mod xmltv;
