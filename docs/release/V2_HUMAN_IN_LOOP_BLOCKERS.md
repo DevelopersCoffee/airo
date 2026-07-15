@@ -74,6 +74,9 @@ exports, playlist URLs, local IP addresses, or private device logs.
 | #337 | Calendar integration and export sync | Current scope can use native device-calendar export. It is blocked on the missing LifeTrack app/module boundary and settings surface, not Google or Apple account credentials. |
 | #287 | Remote model servers | Remote server support should be opt-in with user-provided LAN/API endpoints. It is blocked on privacy/security architecture and UI, not a project account setup task. |
 | #312 | Community Skills gallery | Built-in skill metadata and tests are healthy. Production community install/update/remove remains blocked on governance, trusted source policy, quarantine/removal policy, and #307 alignment. |
+| #498 | Model warm-up | Meeting-specific preload orchestration for Whisper, diarization, embeddings, and LLM readiness is missing. It is larger AI runtime/product work, not a credential task. |
+| #497 | Model routing | The app has partial task-aware selection, but the requested dedicated routing matrix for chat, meetings, STT, TTS, OCR, embeddings, and translation is larger AI runtime architecture work, not account setup. |
+| #350 | LifeTrack deadline notifications and digests | Notification primitives exist elsewhere, but LifeTrack-specific scheduling, postponed-state suppression, and morning digest orchestration are missing. This is product/framework integration work, not credential setup. |
 
 ## Fastest Parallel Setup Order
 
