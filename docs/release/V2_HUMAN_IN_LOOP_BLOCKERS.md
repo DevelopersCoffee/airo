@@ -74,7 +74,7 @@ release or distribution run is intentionally started.
 | Issue | Blocker | Human action needed |
 | --- | --- | --- |
 | #673 | Local workspace cleanup | Decide which local stashes should be kept, backed up, applied, or dropped. |
-| #568 | Kotlin Gradle Plugin future warning | Remaining third-party plugins need compatible upstream releases, dependency resolution work, or approved scoped local patches. |
+| #568 | Kotlin Gradle Plugin future warning | PR #759 cleared the lean Airo TV release-path warning for `package_info_plus` and `wakelock_plus`. Remaining work is physical TV sleep-behavior validation and a maintainer decision on whether broader full-app/debug KGP warnings stay deferred. |
 
 ## Product Or Service Setup Outside The Narrow Release Track
 
