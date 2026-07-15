@@ -1,0 +1,90 @@
+{
+  "schemaVersion": "1.0.0",
+  "deviceClass": "host_local",
+  "capturedAt": "2026-07-15T10:23:04.443473Z",
+  "iterations": 5,
+  "channelCount": 2000,
+  "host": {
+    "operatingSystem": "macos",
+    "operatingSystemVersion": "Version 26.5.1 (Build 25F80)",
+    "dartVersion": "3.12.2 (stable) (Tue Jun 9 01:11:39 2026 -0700) on \"macos_arm64\""
+  },
+  "plan": {
+    "schemaVersion": "1.0.0",
+    "planId": "airo-tv-host-iptv-2000",
+    "dataset": {
+      "schemaVersion": "1.0.0",
+      "profileId": "synthetic-iptv-2000",
+      "kind": "live_iptv",
+      "liveChannelCount": 2000,
+      "vodItemCount": 0,
+      "epgProgramCount": 0,
+      "playlistSourceCount": 1,
+      "metadataFieldCount": 6
+    },
+    "steps": [
+      {
+        "schemaVersion": "1.0.0",
+        "stepId": "parse-m3u",
+        "operation": "import_batch",
+        "recordCount": 2000,
+        "queryCount": 0,
+        "concurrency": 1
+      },
+      {
+        "schemaVersion": "1.0.0",
+        "stepId": "search-index",
+        "operation": "search_text",
+        "recordCount": 2000,
+        "queryCount": 5,
+        "concurrency": 1
+      }
+    ],
+    "requiredMetrics": [
+      "elapsed_millis",
+      "rows_per_second"
+    ],
+    "budget": {
+      "schemaVersion": "1.0.0",
+      "maxElapsedMillis": 30000,
+      "maxPeakMemoryMb": 512,
+      "maxStorageMb": 64,
+      "minRowsPerSecond": 50.0
+    }
+  },
+  "run": {
+    "schemaVersion": "1.0.0",
+    "planId": "airo-tv-host-iptv-2000",
+    "runnerId": "airo-tv-host-smoke",
+    "totalElapsedMillis": 16,
+    "peakMemoryMb": 0,
+    "minRowsPerSecond": 135823.42954159592,
+    "failedStepIds": [],
+    "samples": [
+      {
+        "schemaVersion": "1.0.0",
+        "stepId": "parse-m3u",
+        "operation": "import_batch",
+        "completedRecordCount": 2000,
+        "elapsedMillis": 14,
+        "rowsPerSecond": 135823.42954159592
+      },
+      {
+        "schemaVersion": "1.0.0",
+        "stepId": "search-index",
+        "operation": "search_text",
+        "completedRecordCount": 10000,
+        "elapsedMillis": 2,
+        "rowsPerSecond": 3871467.286101433
+      }
+    ]
+  },
+  "evaluation": {
+    "planId": "airo-tv-host-iptv-2000",
+    "runnerId": "airo-tv-host-smoke",
+    "accepted": true,
+    "blockers": [
+      "accepted"
+    ]
+  }
+}

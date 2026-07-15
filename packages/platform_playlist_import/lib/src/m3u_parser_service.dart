@@ -144,14 +144,14 @@ class M3UParserService {
   }
 
   /// Parse M3U content into channels with deduplication.
-  List<IPTVChannel> parseM3U(String content) => _parseM3UContent(content);
+  List<IPTVChannel> parseM3U(String content) => parseM3UChannels(content);
 
   /// Parse M3U content in the platform worker boundary used by async flows.
   Future<List<IPTVChannel>> parseM3UOffMain(String content) {
     return workerExecutor.run<List<IPTVChannel>>(
       debugName: 'm3u_playlist_parse',
       kind: AiroWorkerJobKind.playlistImport,
-      computation: () => _parseM3UContent(content),
+      computation: () => parseM3UChannels(content),
     );
   }
 
@@ -274,7 +274,8 @@ Future<List<IPTVChannel>> _readChannelCacheFile(String path) async {
       .toList();
 }
 
-List<IPTVChannel> _parseM3UContent(String content) {
+/// Parse M3U content into normalized, deduplicated IPTV channels.
+List<IPTVChannel> parseM3UChannels(String content) {
   final channels = <IPTVChannel>[];
   // Track seen channels by normalized name to deduplicate.
   final seenChannels = <String, IPTVChannel>{};
