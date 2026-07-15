@@ -283,6 +283,7 @@ void scheduleTvDebugDefaultEpgWarmup(
   String epgUrl = _debugDefaultEpgUrl,
   M3UParserService? parser,
   Dio? dio,
+  Future<Directory> Function()? epgDownloadDirectoryProvider,
   DateTime Function()? clock,
   WidgetsBinding? binding,
   void Function(DeferredStartupFrameCallback callback)? addPostFrameCallback,
@@ -301,6 +302,7 @@ void scheduleTvDebugDefaultEpgWarmup(
       epgUrl: epgUrl,
       parser: parser,
       dio: dio,
+      epgDownloadDirectoryProvider: epgDownloadDirectoryProvider,
       clock: clock,
     ),
   );
@@ -313,6 +315,7 @@ Future<Duration?> warmTvDebugDefaultEpgCache(
   String epgUrl = _debugDefaultEpgUrl,
   M3UParserService? parser,
   Dio? dio,
+  Future<Directory> Function()? epgDownloadDirectoryProvider,
   DateTime Function()? clock,
 }) async {
   final normalizedEpgUrl = epgUrl.trim();
@@ -334,35 +337,50 @@ Future<Duration?> warmTvDebugDefaultEpgCache(
   final channels = await parserService.fetchPlaylist();
   if (channels.isEmpty) return null;
 
-  final response = await http.get<String>(
-    normalizedEpgUrl,
-    options: Options(
-      responseType: ResponseType.plain,
-      receiveTimeout: const Duration(seconds: 30),
-      validateStatus: (status) =>
-          status != null && status >= 200 && status < 300,
-    ),
+  final downloadDirectory =
+      await (epgDownloadDirectoryProvider ?? getTemporaryDirectory)();
+  await downloadDirectory.create(recursive: true);
+  final guideFile = File(
+    '${downloadDirectory.path}/airo_tv_debug_epg_${DateTime.now().microsecondsSinceEpoch}.xml',
   );
-  final content = response.data;
-  if (content == null || content.isEmpty) return null;
 
-  final stopwatch = Stopwatch()..start();
-  final now = (clock ?? DateTime.now)().toUtc();
-  final snapshot = await Isolate.run<CompactEpgSlice>(
-    () async => _buildTvCompactEpgSnapshot(
-      content: content,
-      now: now,
-      channels: channels,
-    ),
-    debugName: 'tv_debug_epg_warmup',
-  );
-  await repository.saveSnapshot(snapshot);
-  stopwatch.stop();
-  return stopwatch.elapsed;
+  try {
+    await http.download(
+      normalizedEpgUrl,
+      guideFile.path,
+      options: Options(
+        responseType: ResponseType.stream,
+        receiveTimeout: const Duration(seconds: 30),
+        validateStatus: (status) =>
+            status != null && status >= 200 && status < 300,
+      ),
+    );
+    if (!await guideFile.exists() || await guideFile.length() == 0) {
+      return null;
+    }
+
+    final stopwatch = Stopwatch()..start();
+    final now = (clock ?? DateTime.now)().toUtc();
+    final snapshot = await Isolate.run<CompactEpgSlice>(
+      () async => _buildTvCompactEpgSnapshot(
+        xmltvPath: guideFile.path,
+        now: now,
+        channels: channels,
+      ),
+      debugName: 'tv_debug_epg_warmup',
+    );
+    await repository.saveSnapshot(snapshot);
+    stopwatch.stop();
+    return stopwatch.elapsed;
+  } finally {
+    if (await guideFile.exists()) {
+      await guideFile.delete();
+    }
+  }
 }
 
 Future<CompactEpgSlice> _buildTvCompactEpgSnapshot({
-  required String content,
+  required String xmltvPath,
   required DateTime now,
   required List<IPTVChannel> channels,
 }) async {
@@ -377,8 +395,8 @@ Future<CompactEpgSlice> _buildTvCompactEpgSnapshot({
     for (final channel in channels)
       for (final alias in aliasesByChannel[channel.id]!) alias: channel.name,
   };
-  final guideRepository = XmltvCompactEpgRepository.fromXmltv(
-    content: content,
+  final guideRepository = XmltvCompactEpgRepository.fromXmltvFile(
+    path: xmltvPath,
     ingestedAt: now,
     sourceRef: CompactEpgSourceRef.redacted('debug-tv-epg'),
     channelNamesById: channelNamesByGuideId,
