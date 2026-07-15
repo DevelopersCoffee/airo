@@ -54,6 +54,7 @@ vendor/
 *.log
 logs/
 artifacts/agent-skills-journey/
+artifacts/airo-tv-browser-viewports/
 $CODEX_HOME/
 app/pubspec.yaml.backup
 .superpowers/

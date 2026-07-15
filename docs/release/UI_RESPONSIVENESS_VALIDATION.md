@@ -40,6 +40,38 @@ device-only behavior, full-screen system UI, or feature-specific states:
 | Error state | Recoverable failures show actionable retry/error UI | Feature-specific manual flows |
 | Loading state | Long-running operations show progress without layout jumps | Feature-specific manual flows |
 
+## Airo TV Browser Viewport Qualification
+
+For Airo TV IPTV release candidates, capture browser or qualification-app
+screenshots for the viewports below before closing the UI release audit:
+
+| Viewport | Qualification profile | Required result |
+| --- | --- | --- |
+| `1920x1080` | `Android TV 1080p` | TV shell renders without overflow, clipped actions, or hidden channel browsing |
+| `1280x720` | `Android TV 720p` | At least one full channel row remains visible with a clear scroll affordance |
+| `1024x576` | `Android TV Compact Browser` | Compact TV layout keeps primary actions and browsing reachable |
+| `390x844` | `Mobile Browser Fallback` | The responsive mobile IPTV surface is used instead of the 10-foot TV shell |
+
+Use `app/lib/main_qualification.dart` with
+`packages/platform_device_qualification` when device screenshots are required.
+The reusable `SimulatedDevice` profiles include this matrix so QA can capture
+consistent evidence without adding Airo-TV-only viewport logic.
+
+For repeatable browser evidence, run:
+
+```bash
+scripts/validate_airo_tv_browser_viewports.sh
+```
+
+The script builds the Airo TV web profile bundle from `app/lib/main_tv.dart`,
+serves the deterministic IPTV fixture, checks the viewport matrix with
+Playwright, and writes screenshots under
+`artifacts/airo-tv-browser-viewports/`.
+
+If the local Playwright browser cache is unavailable but Google Chrome is
+installed, set `AIRO_TV_USE_SYSTEM_CHROME=1` for local evidence capture. CI
+should continue to install and use the standard Playwright browser package.
+
 ## Suggested Android Checks
 
 Use a connected Android device when possible:

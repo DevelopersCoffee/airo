@@ -49,26 +49,32 @@ fi
 echo "📡 Seeding and loading IPTV channels (https://iptv-org.github.io/iptv/index.m3u)..."
 sleep 10
 
-# Simulated devices order in SimulatedDevice enum:
+# The overlay auto-cycles every 8 seconds and this script waits 10 seconds for
+# playlist warmup before the first screenshot. Labels start at the first
+# post-warmup profile, then follow the SimulatedDevice enum cycle.
 # 1. Native
-# 2. Android TV 720p
-# 3. Android TV 1080p
-# 4. Fire TV Stick
-# 5. Google TV 4K
-# 6. Shield TV 4K
-# 7. Tablet Landscape
-# 8. Foldable Portrait
-# 9. Foldable Landscape
+# 2. Mobile Browser Fallback
+# 3. Android TV Compact Browser
+# 4. Android TV 720p
+# 5. Android TV 1080p
+# 6. Fire TV Stick
+# 7. Google TV 4K
+# 8. Shield TV 4K
+# 9. Tablet Landscape
+# 10. Foldable Portrait
+# 11. Foldable Landscape
 DEVICES=(
-  "01_native_ipad_air"
-  "02_android_tv_720p"
-  "03_android_tv_1080p"
-  "04_fire_tv_stick"
-  "05_google_tv_4k"
-  "06_shield_tv_4k"
-  "07_tablet_landscape"
-  "08_foldable_portrait"
-  "09_foldable_landscape"
+  "01_mobile_browser_fallback_390x844"
+  "02_android_tv_compact_browser_1024x576"
+  "03_android_tv_720p"
+  "04_android_tv_1080p"
+  "05_fire_tv_stick"
+  "06_google_tv_4k"
+  "07_shield_tv_4k"
+  "08_tablet_landscape"
+  "09_foldable_portrait"
+  "10_foldable_landscape"
+  "11_native_ipad_air"
 )
 
 # Step 5: Loop to take screenshots at each layout cycle

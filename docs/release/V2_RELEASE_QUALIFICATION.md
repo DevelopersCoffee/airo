@@ -41,6 +41,30 @@ Store-only AAB artifacts require build integrity, checksum, and upload-result
 evidence before production store submission. Play upload automation is tracked
 separately in #681.
 
+### Airo TV Viewport Evidence
+
+The Airo TV IPTV browser release audit additionally requires responsive
+viewport evidence for:
+
+- `1920x1080` Android TV 1080p;
+- `1280x720` Android TV 720p;
+- `1024x576` Android TV compact browser;
+- `390x844` mobile browser fallback.
+
+Capture this evidence through `app/lib/main_qualification.dart` and the
+reusable `platform_device_qualification` simulated-device profiles. Attach the
+screenshots or browser validation notes to the release qualification evidence
+before closing the Airo TV UI audit.
+
+When browser-only evidence is enough for a pre-device release audit slice, run:
+
+```bash
+scripts/validate_airo_tv_browser_viewports.sh
+```
+
+Attach the generated `artifacts/airo-tv-browser-viewports/` screenshots or the
+Playwright result summary to the release qualification evidence.
+
 ## Evidence JSON Format
 
 Evidence files are intentionally simple JSON so local QA, BrowserStack,

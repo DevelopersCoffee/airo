@@ -1,42 +1,29 @@
 import 'package:flutter/material.dart';
 
 enum SimulatedDevice {
-  native(
-    name: 'Native (Full Screen)',
-    width: 0,
-    height: 0,
+  native(name: 'Native (Full Screen)', width: 0, height: 0, isTv: false),
+  mobileBrowserPortrait(
+    name: 'Mobile Browser Fallback',
+    width: 390,
+    height: 844,
     isTv: false,
   ),
-  androidTv720p(
-    name: 'Android TV 720p',
-    width: 1280,
-    height: 720,
+  androidTvCompactBrowser(
+    name: 'Android TV Compact Browser',
+    width: 1024,
+    height: 576,
     isTv: true,
   ),
+  androidTv720p(name: 'Android TV 720p', width: 1280, height: 720, isTv: true),
   androidTv1080p(
     name: 'Android TV 1080p',
     width: 1920,
     height: 1080,
     isTv: true,
   ),
-  fireTvStick(
-    name: 'Fire TV Stick',
-    width: 1920,
-    height: 1080,
-    isTv: true,
-  ),
-  googleTv4k(
-    name: 'Google TV 4K',
-    width: 3840,
-    height: 2160,
-    isTv: true,
-  ),
-  shieldTv4k(
-    name: 'Shield TV 4K',
-    width: 3840,
-    height: 2160,
-    isTv: true,
-  ),
+  fireTvStick(name: 'Fire TV Stick', width: 1920, height: 1080, isTv: true),
+  googleTv4k(name: 'Google TV 4K', width: 3840, height: 2160, isTv: true),
+  shieldTv4k(name: 'Shield TV 4K', width: 3840, height: 2160, isTv: true),
   tabletLandscape(
     name: 'Tablet Landscape (iPad)',
     width: 1024,
@@ -56,11 +43,6 @@ enum SimulatedDevice {
     isTv: false,
   );
 
-  final String name;
-  final double width;
-  final double height;
-  final bool isTv;
-
   const SimulatedDevice({
     required this.name,
     required this.width,
@@ -68,20 +50,25 @@ enum SimulatedDevice {
     required this.isTv,
   });
 
+  final String name;
+  final double width;
+  final double height;
+  final bool isTv;
+
   bool get isNative => this == SimulatedDevice.native;
 }
 
 class ResolutionSimulator extends StatelessWidget {
-  final Widget child;
-  final SimulatedDevice device;
-  final bool showBezel;
-
   const ResolutionSimulator({
-    super.key,
     required this.child,
     required this.device,
     this.showBezel = true,
+    super.key,
   });
+
+  final Widget child;
+  final SimulatedDevice device;
+  final bool showBezel;
 
   @override
   Widget build(BuildContext context) {
@@ -96,10 +83,10 @@ class ResolutionSimulator extends StatelessWidget {
         final parentSize = constraints.biggest;
 
         // Calculate aspect ratios
-        final double parentAspect = parentSize.width / parentSize.height;
-        final double targetAspect = simulatedSize.width / simulatedSize.height;
+        final parentAspect = parentSize.width / parentSize.height;
+        final targetAspect = simulatedSize.width / simulatedSize.height;
 
-        double scale = 1.0;
+        var scale = 1.toDouble();
         if (targetAspect > parentAspect) {
           // Limited by width
           scale = parentSize.width / simulatedSize.width;
@@ -109,11 +96,11 @@ class ResolutionSimulator extends StatelessWidget {
         }
 
         // Apply a small margin so the simulated screen doesn't touch the edges
-        final double marginFactor = showBezel ? 0.90 : 1.0;
+        final marginFactor = showBezel ? 0.9 : 1.toDouble();
         scale *= marginFactor;
 
-        final double finalWidth = simulatedSize.width * scale;
-        final double finalHeight = simulatedSize.height * scale;
+        final finalWidth = simulatedSize.width * scale;
+        final finalHeight = simulatedSize.height * scale;
 
         return Container(
           color: Colors.grey[950],
@@ -123,7 +110,7 @@ class ResolutionSimulator extends StatelessWidget {
               children: [
                 if (showBezel) ...[
                   Padding(
-                    padding: const EdgeInsets.only(bottom: 8.0),
+                    padding: const EdgeInsets.only(bottom: 8),
                     child: Text(
                       '${device.name} (${device.width.toInt()} × ${device.height.toInt()})',
                       style: const TextStyle(
@@ -143,7 +130,7 @@ class ResolutionSimulator extends StatelessWidget {
                     boxShadow: showBezel
                         ? [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.6),
+                              color: Colors.black.withValues(alpha: 0.6),
                               blurRadius: 16,
                               spreadRadius: 2,
                             ),
@@ -155,7 +142,6 @@ class ResolutionSimulator extends StatelessWidget {
                   ),
                   child: ClipRect(
                     child: FittedBox(
-                      fit: BoxFit.contain,
                       child: SizedBox(
                         width: simulatedSize.width,
                         height: simulatedSize.height,
