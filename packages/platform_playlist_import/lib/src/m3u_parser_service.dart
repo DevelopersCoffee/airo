@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:developer' as developer;
 import 'dart:io';
 
+import 'package:core_data/core_data.dart';
 import 'package:core_native/core_native.dart';
 import 'package:dio/dio.dart';
 import 'package:path_provider/path_provider.dart';
@@ -21,16 +22,22 @@ class M3UParserService {
 
   final Dio _dio;
   final SharedPreferences _prefs;
+  final KeyValueStore _store;
   final Future<Directory> Function() _cacheDirectoryProvider;
   final AiroWorkerExecutor workerExecutor;
 
   M3UParserService({
     required Dio dio,
     required SharedPreferences prefs,
+    KeyValueStore? store,
+    int maxPreferenceValueBytes = kKeyValueStorePreferenceMaxValueBytes,
     Future<Directory> Function()? cacheDirectoryProvider,
     this.workerExecutor = const AiroWorkerExecutor(),
   }) : _dio = dio,
        _prefs = prefs,
+       _store =
+           store ??
+           PreferencesStore(prefs, maxValueBytes: maxPreferenceValueBytes),
        _cacheDirectoryProvider =
            cacheDirectoryProvider ?? getApplicationSupportDirectory;
 
@@ -91,21 +98,21 @@ class M3UParserService {
       );
     }
 
-    await _prefs.setString(_playlistUrlKey, normalized);
+    await _store.setString(_playlistUrlKey, normalized);
     await clearCache();
   }
 
   /// Remove the configured playlist and its user-derived cache.
   Future<void> clearPlaylist() async {
-    await _prefs.remove(_playlistUrlKey);
+    await _store.remove(_playlistUrlKey);
     await clearCache();
   }
 
   /// Fetch and parse M3U from URL.
   Future<_PlaylistFetchResult> _fetchAndParse(String url) async {
     final headers = <String, String>{'Accept-Encoding': 'gzip, deflate'};
-    final etag = _prefs.getString(_cacheEtagKey);
-    final lastModified = _prefs.getString(_cacheLastModifiedKey);
+    final etag = await _store.getString(_cacheEtagKey);
+    final lastModified = await _store.getString(_cacheLastModifiedKey);
     if (etag != null && etag.isNotEmpty) {
       headers[HttpHeaders.ifNoneMatchHeader] = etag;
     }
@@ -162,9 +169,9 @@ class M3UParserService {
 
   /// Load channels from structured cache without reparsing the M3U payload.
   Future<List<IPTVChannel>?> _loadFromCache({bool ignoreExpiry = false}) async {
-    await _prefs.remove(_legacyCacheKey);
+    await _store.remove(_legacyCacheKey);
 
-    final timestamp = _prefs.getInt(_cacheTimestampKey);
+    final timestamp = await _store.getInt(_cacheTimestampKey);
     if (timestamp == null) return null;
 
     final cacheTime = DateTime.fromMillisecondsSinceEpoch(timestamp);
@@ -205,8 +212,8 @@ class M3UParserService {
         computation: () => _encodeChannelCache(channels),
       );
       await file.writeAsString(payload);
-      await _prefs.setInt(_cacheTimestampKey, now);
-      await _prefs.remove(_legacyCacheKey);
+      await _store.setInt(_cacheTimestampKey, now);
+      await _store.remove(_legacyCacheKey);
     } catch (error, stackTrace) {
       developer.log(
         'Channel cache write failed.',
@@ -219,10 +226,10 @@ class M3UParserService {
 
   /// Clear cache.
   Future<void> clearCache() async {
-    await _prefs.remove(_legacyCacheKey);
-    await _prefs.remove(_cacheTimestampKey);
-    await _prefs.remove(_cacheEtagKey);
-    await _prefs.remove(_cacheLastModifiedKey);
+    await _store.remove(_legacyCacheKey);
+    await _store.remove(_cacheTimestampKey);
+    await _store.remove(_cacheEtagKey);
+    await _store.remove(_cacheLastModifiedKey);
 
     try {
       final file = await _cacheFile();
@@ -245,10 +252,20 @@ class M3UParserService {
   Future<void> _setOrRemove(String key, String? value) async {
     final normalized = value?.trim();
     if (normalized == null || normalized.isEmpty) {
-      await _prefs.remove(key);
+      await _store.remove(key);
       return;
     }
-    await _prefs.setString(key, normalized);
+    try {
+      await _store.setString(key, normalized);
+    } on KeyValueStoreValueTooLargeException catch (error, stackTrace) {
+      await _store.remove(key);
+      developer.log(
+        'Playlist HTTP validator exceeded preference tier and was dropped.',
+        name: 'platform_playlist_import',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
   }
 }
 

@@ -359,6 +359,9 @@ Default validation order:
   physical-device, or release evidence remaining, merge the slice and record
   the remaining evidence as follow-up. Do not hold unrelated code open solely
   for non-required CI artifact builds.
+- Close issues as soon as their bounded acceptance criteria are met. Do not
+  keep completed issue slices open for optional CI, broad matrix runs, release
+  artifacts, or physical-device evidence that can be tracked separately.
 
 ## Feature Packet Template
 

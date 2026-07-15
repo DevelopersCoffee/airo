@@ -179,6 +179,23 @@ https://cdn.example.com/live.m3u8
       expect(parser.getPlaylistUrl(), 'http://example.com/playlist.m3u');
     });
 
+    test('rejects oversized playlist URLs before persisting', () async {
+      parser = M3UParserService(
+        dio: Dio(),
+        prefs: prefs,
+        cacheDirectoryProvider: () async => cacheDir,
+        maxPreferenceValueBytes: 32,
+      );
+
+      await expectLater(
+        parser.setPlaylistUrl('https://example.com/${'x' * 64}.m3u'),
+        throwsA(isA<Exception>()),
+      );
+
+      expect(parser.getPlaylistUrl(), isNull);
+      expect(prefs.getString('iptv_user_playlist_url'), isNull);
+    });
+
     test('clears playlist URL and user-derived cache', () async {
       await parser.setPlaylistUrl('https://example.com/playlist.m3u');
       await parser.clearPlaylist();
@@ -348,6 +365,46 @@ https://cdn.example.com/conditional-news.m3u8
       expect(
         requests.last.value(HttpHeaders.acceptEncodingHeader),
         contains('gzip'),
+      );
+    });
+
+    test('drops oversized HTTP validators without failing import', () async {
+      parser = M3UParserService(
+        dio: Dio(),
+        prefs: prefs,
+        cacheDirectoryProvider: () async => cacheDir,
+        maxPreferenceValueBytes: 96,
+      );
+
+      final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+      addTearDown(() => server.close(force: true));
+
+      server.listen((request) async {
+        request.response.headers
+          ..set(HttpHeaders.etagHeader, '"${'validator' * 24}"')
+          ..set(
+            HttpHeaders.lastModifiedHeader,
+            'Wed, 21 Oct 2015 07:28:00 GMT',
+          );
+        request.response.write('''
+#EXTM3U
+#EXTINF:-1 group-title="News",Oversized Validator News
+https://cdn.example.com/oversized-validator-news.m3u8
+''');
+        await request.response.close();
+      });
+
+      await parser.setPlaylistUrl(
+        'http://${server.address.address}:${server.port}/playlist.m3u',
+      );
+
+      final channels = await parser.fetchPlaylist(forceRefresh: true);
+
+      expect(channels.single.name, 'Oversized Validator News');
+      expect(prefs.getString('iptv_playlist_etag'), isNull);
+      expect(
+        prefs.getString('iptv_playlist_last_modified'),
+        'Wed, 21 Oct 2015 07:28:00 GMT',
       );
     });
   });
