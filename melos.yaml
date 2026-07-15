@@ -295,6 +295,19 @@ scripts:
         --output-json ../../artifacts/release/android-signing-preflight.json \
         --output-markdown ../../artifacts/release/android-signing-preflight.md
 
+  # Check release legal/provenance readiness before public distribution.
+  release:legal-preflight:
+    description: Write v2 legal and provenance readiness evidence
+    run: |
+      cd packages/core_release
+      flutter pub get
+      dart run tool/preflight_legal_release.dart \
+        --repo-root ../.. \
+        --private-dependencies "${AIRO_PRIVATE_DEPENDENCIES:-unknown}" \
+        --provenance "${AIRO_RELEASE_PROVENANCE:-unknown}" \
+        --output-json ../../artifacts/release/legal-release-preflight.json \
+        --output-markdown ../../artifacts/release/legal-release-preflight.md
+
   # Check macOS Developer ID signing and notarization readiness without printing secrets.
   release:macos-signing-preflight:
     description: Write macOS signing and notarization readiness evidence

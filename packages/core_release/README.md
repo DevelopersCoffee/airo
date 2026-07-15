@@ -38,6 +38,9 @@ instead of duplicating profile rules in CI scripts.
 - Redacted macOS Developer ID signing and notarization preflight for checking
   public-consumer release readiness before humans dispatch notarized macOS
   release workflows.
+- Legal and provenance preflight for checking root/package licenses,
+  third-party notice docs, private-dependency confirmation, and release
+  provenance decisions before public distribution.
 - Validation findings for duplicate profile/package IDs and incomplete Android
   release candidates.
 
