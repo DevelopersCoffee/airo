@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/utils/locale_settings.dart';
+import '../../application/providers/android_import_permission_provider.dart';
 import '../../application/providers/dashboard_providers.dart';
 import '../../application/providers/expense_providers.dart';
+import '../../application/services/android_finance_import_service.dart';
 import '../../application/services/transaction_review_service.dart';
 import '../../domain/entities/transaction.dart';
 import '../../domain/models/budget_status.dart';
@@ -11,6 +13,7 @@ import '../../domain/services/quick_add_expense_parser.dart';
 import '../widgets/expense_card.dart';
 import 'add_expense_screen.dart';
 import 'groups_list_screen.dart';
+import 'budget_management_screen.dart';
 
 /// Coins Dashboard Screen
 ///
@@ -139,12 +142,17 @@ class CoinsDashboardScreen extends ConsumerWidget {
   }
 }
 
-class _AndroidImportPermissionCard extends StatelessWidget {
+class _AndroidImportPermissionCard extends ConsumerWidget {
   const _AndroidImportPermissionCard();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final permissionState = ref.watch(
+      androidFinanceImportPermissionControllerProvider,
+    );
+    final permission = permissionState.valueOrNull;
+    final enabled = permission == AndroidFinanceImportPermission.enabled;
     return Card(
       elevation: 0,
       child: Padding(
@@ -165,7 +173,9 @@ class _AndroidImportPermissionCard extends StatelessWidget {
                   ),
                 ),
                 Chip(
-                  label: const Text('Permission disabled'),
+                  label: Text(
+                    enabled ? 'Permission enabled' : 'Permission disabled',
+                  ),
                   visualDensity: VisualDensity.compact,
                   backgroundColor: theme.colorScheme.surfaceContainerHighest,
                 ),
@@ -173,16 +183,31 @@ class _AndroidImportPermissionCard extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'Import bank, UPI, and card alerts only after you enable access. Airo parses locally, ignores OTP/auth messages, and queues matches for review.',
+              enabled
+                  ? 'Airo can now parse supported bank, UPI, and card alerts locally and queue matches for review. OTP/auth messages stay ignored.'
+                  : 'Import bank, UPI, and card alerts only after you enable access. Airo parses locally, ignores OTP/auth messages, and queues matches for review.',
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),
             ),
             const SizedBox(height: 12),
-            OutlinedButton.icon(
-              onPressed: null,
-              icon: const Icon(Icons.lock_outline),
-              label: const Text('Enable explicitly later'),
+            SwitchListTile.adaptive(
+              value: enabled,
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Allow local Android import'),
+              subtitle: const Text(
+                'This only flips Airo\'s local import gate. Android OS inbox/listener permissions are still a separate future step.',
+              ),
+              onChanged: permissionState.isLoading
+                  ? null
+                  : (value) {
+                      ref
+                          .read(
+                            androidFinanceImportPermissionControllerProvider
+                                .notifier,
+                          )
+                          .setEnabled(value);
+                    },
             ),
           ],
         ),
@@ -713,9 +738,12 @@ class _QuickActionsRow extends StatelessWidget {
             context,
           ).push(MaterialPageRoute(builder: (_) => const GroupsListScreen())),
         ),
-        const _QuickActionButton(
+        _QuickActionButton(
           icon: Icons.pie_chart_outline,
           label: 'Budgets',
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const BudgetManagementScreen()),
+          ),
         ),
         const _QuickActionButton(icon: Icons.camera_alt, label: 'Scan Receipt'),
       ],

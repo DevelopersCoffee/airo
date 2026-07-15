@@ -44,15 +44,10 @@ gh secret list
 
 ### Automatic Triggers
 
-**CI Workflow** - Runs on every push
+**Release validation checks** - Run when a release tag is pushed
 ```bash
-git push origin main
-```
-
-**PR Checks** - Runs on pull requests
-```bash
-# Create and push a pull request
-git push origin feature-branch
+git tag -a v1.0.0 -m "Release v1.0.0"
+git push origin v1.0.0
 ```
 
 **Release Workflow** - Runs on tag push
@@ -113,8 +108,11 @@ git push origin v1.0.0
 | File | Purpose | Trigger |
 |------|---------|---------|
 | `build-and-release.yml` | Build all platforms | Tag push (v*) |
-| `ci.yml` | Continuous integration | Push to main/develop |
-| `pr-checks.yml` | Pull request validation | Pull request |
+| `ci.yml` | Release validation checks | Tag push (v*) or manual |
+| `iptv_sanity.yml` | IPTV validation and publish | Tag push (v*) or manual |
+| `smoke-tests.yml` | Release smoke tests | Tag push (v*) or manual |
+| `pr-checks.yml` | PR check policy notice | Manual |
+| `size-gate.yml` | Size gate policy notice | Manual |
 | `version-and-changelog.yml` | Version management | Manual |
 
 ## 🎯 Release Process
@@ -136,7 +134,8 @@ git push origin v1.0.0
 ```
 
 ### Step 3: Wait for Build
-- GitHub Actions automatically triggers
+- GitHub Actions automatically triggers from the `v*` release tag
+- Release validation checks run from the same tag
 - Builds all platforms
 - Creates release with executables
 
@@ -207,8 +206,7 @@ A: Check Node.js version (14+)
 
 - [ ] Added GOOGLE_SERVICES_JSON secret
 - [ ] Verified secrets in Settings
-- [ ] Tested CI workflow
-- [ ] Tested PR checks
+- [ ] Tested release validation workflow
 - [ ] Created test release
 - [ ] Downloaded release assets
 - [ ] Verified all platforms build
@@ -216,13 +214,12 @@ A: Check Node.js version (14+)
 ## 🚀 Next Steps
 
 1. Add secrets to GitHub
-2. Test CI/CD pipeline
+2. Test release-tag CI/CD pipeline
 3. Create first release
 4. Monitor builds
 5. Iterate and improve
 
 ---
 
-**Last Updated**: November 2, 2025
+**Last Updated**: July 12, 2026
 **Status**: ✅ Ready for use
-

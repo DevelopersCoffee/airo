@@ -7,6 +7,8 @@ import 'package:drift/native.dart';
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
+// ignore: unused_import
+import 'package:sqlite3_flutter_libs/sqlite3_flutter_libs.dart';
 
 part 'app_database_native.g.dart';
 

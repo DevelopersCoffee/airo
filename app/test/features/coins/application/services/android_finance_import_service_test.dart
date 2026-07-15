@@ -1,12 +1,18 @@
+import 'package:airo_app/features/coins/application/services/android_finance_import_preferences.dart';
 import 'package:airo_app/features/coins/application/services/android_finance_import_service.dart';
 import 'package:airo_app/features/coins/application/services/finance_chat_ingestion_service.dart';
 import 'package:airo_app/features/coins/domain/entities/transaction.dart';
 import 'package:airo_app/features/coins/domain/repositories/transaction_repository.dart';
 import 'package:airo_app/features/coins/domain/services/finance_message_parser.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   group('AndroidFinanceImportService', () {
+    setUp(() {
+      SharedPreferences.setMockInitialValues({});
+    });
+
     test('does not import SMS text when permission is disabled', () async {
       final repository = _InMemoryTransactionRepository();
       final service = AndroidFinanceImportService(
@@ -72,6 +78,27 @@ void main() {
 
       expect(result.status, AndroidFinanceImportStatus.ignored);
       expect(repository.transactions, isEmpty);
+    });
+
+    test('reads the persisted import preference for service gating', () async {
+      final repository = _InMemoryTransactionRepository();
+      final preferences = const AndroidFinanceImportPreferences();
+      await preferences.setEnabled(true);
+      final service = AndroidFinanceImportService(
+        ingestionService: FinanceChatIngestionService(
+          parser: FinanceMessageParser(now: () => DateTime(2026, 6, 20)),
+          repository: repository,
+        ),
+        permissionReader: preferences.readPermission,
+      );
+
+      final result = await service.importText(
+        'INR 450.00 spent on your HDFC Bank Credit Card at Swiggy on 20-06-26.',
+        accountId: 'cash_default',
+      );
+
+      expect(result.status, AndroidFinanceImportStatus.queuedForReview);
+      expect(repository.transactions, hasLength(1));
     });
   });
 }

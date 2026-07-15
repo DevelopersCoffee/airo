@@ -344,7 +344,10 @@ test-database-reliability: ## Run deterministic native database reliability vali
 .PHONY: test-notification-validation
 test-notification-validation: ## Run deterministic notification validation suite
 	@echo "$(BLUE)Running notification validation suite...$(NC)"
-	@cd $(APP_DIR) && flutter test test/features/agent_chat/data/services/agent_notification_scheduler_test.dart
+	@cd $(APP_DIR) && flutter test \
+		test/features/agent_chat/data/services/agent_notification_scheduler_test.dart \
+		test/features/agent_chat/data/services/notification_navigation_service_test.dart \
+		test/features/agent_chat/presentation/screens/notifications_screen_test.dart
 	@echo "$(GREEN)Notification validation complete.$(NC)"
 	@echo "$(YELLOW)See docs/release/NOTIFICATION_VALIDATION.md for scope and follow-up.$(NC)"
 
@@ -610,6 +613,11 @@ test-ui-responsive: ## Run shared responsive UI validation tests
 	@echo "$(BLUE)Running shared UI responsiveness tests...$(NC)"
 	@cd $(APP_DIR) && rm -rf windows/flutter/ephemeral/.plugin_symlinks ios/Flutter/ephemeral/Packages/.packages macos/Flutter/ephemeral/Packages/.packages
 	@cd $(APP_DIR) && flutter test test/shared/widgets/adaptive_layout_test.dart
+
+.PHONY: test-storage-dashboard
+test-storage-dashboard: ## Run deterministic storage dashboard validation tests
+	@echo "$(BLUE)Running storage dashboard validation tests...$(NC)"
+	@cd $(APP_DIR) && flutter test test/features/settings/application/ai_storage_dashboard_test.dart
 
 .PHONY: benchmark-report
 benchmark-report: ## Create a release benchmark report template

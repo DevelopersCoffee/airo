@@ -1,0 +1,39 @@
+name: Performance Benchmarks
+
+on:
+  schedule:
+    # Weekly: Sunday at 04:00 UTC
+    - cron: '0 4 * * 0'
+  workflow_dispatch:
+
+concurrency:
+  group: benchmarks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  benchmarks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: packages/benchmarks
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: dart-lang/setup-dart@v1
+        with:
+          sdk: stable
+
+      - name: Install dependencies
+        run: dart pub get
+
+      - name: Run benchmarks
+        run: dart run bin/run_benchmarks.dart > benchmark_results.json
+
+      - name: Upload benchmark results
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results
+          path: packages/benchmarks/benchmark_results.json
+          retention-days: 90

@@ -19,6 +19,11 @@ final modelRegistryProvider = Provider<ModelRegistry>((ref) {
   return registry;
 });
 
+final modelRegistryEventsProvider = StreamProvider<ModelRegistryEvent>((ref) {
+  final registry = ref.watch(modelRegistryProvider);
+  return registry.changes;
+});
+
 Future<void> _hydrateDownloadedModels(
   ModelRegistry registry,
   ModelDownloadService service,

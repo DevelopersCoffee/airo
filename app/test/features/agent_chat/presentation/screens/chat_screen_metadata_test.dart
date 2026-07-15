@@ -3,6 +3,7 @@ import 'package:airo_app/features/agent_chat/domain/models/agent_skill.dart';
 import 'package:airo_app/features/agent_chat/domain/models/assistant_runtime_ids.dart';
 import 'package:airo_app/features/agent_chat/domain/models/chat_response_metadata.dart';
 import 'package:airo_app/features/agent_chat/presentation/screens/chat_screen.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -176,6 +177,77 @@ void main() {
       find.byKey(const Key('agent_chat_input')),
     );
     expect(input.controller?.text, 'Follow up on my reminder');
+  });
+
+  testWidgets('message actions copy assistant and user messages', (
+    tester,
+  ) async {
+    String? clipboardText;
+    final messenger =
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+    messenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
+      switch (call.method) {
+        case 'Clipboard.setData':
+          clipboardText =
+              (call.arguments as Map<Object?, Object?>)['text'] as String?;
+          return null;
+        case 'Clipboard.getData':
+          return <String, Object?>{'text': clipboardText};
+      }
+      return null;
+    });
+    addTearDown(() {
+      messenger.setMockMethodCallHandler(SystemChannels.platform, null);
+    });
+
+    await _pumpChatScreen(
+      tester,
+      initialMessages: [
+        ChatMessage(text: 'Assistant answer', isUser: false),
+        ChatMessage(text: 'User prompt', isUser: true),
+      ],
+    );
+
+    tester
+        .widget<IconButton>(
+          find.byKey(const ValueKey('agent_chat_message_actions_0')),
+        )
+        .onPressed
+        ?.call();
+    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(find.text('Message copied'), findsOneWidget);
+    expect(
+      (await Clipboard.getData('text/plain'))?.text,
+      equals('Assistant answer'),
+    );
+
+    tester
+        .widget<IconButton>(
+          find.byKey(const ValueKey('agent_chat_message_actions_1')),
+        )
+        .onPressed
+        ?.call();
+    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(
+      (await Clipboard.getData('text/plain'))?.text,
+      equals('User prompt'),
+    );
+  });
+
+  testWidgets('empty streaming placeholder hides copy action', (tester) async {
+    await _pumpChatScreen(
+      tester,
+      initialMessages: [ChatMessage(text: '', isUser: false)],
+    );
+
+    expect(
+      find.byKey(const ValueKey('agent_chat_message_actions_0')),
+      findsNothing,
+    );
   });
 }
 

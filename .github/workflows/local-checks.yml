@@ -9,8 +9,8 @@
 #   - Docker must be running
 #   - Install act: https://github.com/nektos/act
 #
-# Note: This workflow is designed to work without secrets
-# for local development. Use pr-checks.yml for actual PRs.
+# Note: This workflow is designed to work without secrets for local development.
+# Automated repository checks run from v* release tags.
 
 name: Local CI Checks
 

@@ -1,14 +1,9 @@
 name: IPTV Sanity Pipeline
 
 on:
-  schedule:
-    - cron: '0 0 * * *'
   push:
-    branches:
-      - main
-    paths:
-      - 'iptv-data/**'
-      - '.github/workflows/iptv_sanity.yml'
+    tags:
+      - 'v*'
   # Manual trigger
   workflow_dispatch:
     inputs:
@@ -96,7 +91,7 @@ jobs:
           retention-days: 30
 
       - name: Publish to GitHub Gist
-        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
         env:
           GIST_TOKEN: ${{ secrets.GIST_TOKEN }}
         run: |

@@ -2,14 +2,14 @@ import 'package:go_router/go_router.dart';
 import '../../features/auth/screens/login_screen.dart';
 import '../../features/auth/screens/register_screen.dart';
 import '../../features/bill_split/presentation/screens/bill_split_screen.dart';
+import '../../features/airo_explore/presentation/screens/airo_explore_screen.dart';
 import '../../features/agent_chat/presentation/screens/chat_screen.dart';
 import '../../features/agent_chat/presentation/screens/model_library_screen.dart';
 import '../../features/agent_chat/presentation/screens/notifications_screen.dart';
 import '../../features/agent_chat/presentation/screens/profile_screen.dart';
-import "package:feature_iptv/feature_iptv.dart";
+import 'package:feature_iptv/feature_iptv.dart';
 import '../../features/games/presentation/screens/games_hub_screen.dart';
 import '../../features/mind/presentation/screens/mind_screen.dart';
-import '../../features/money/presentation/screens/money_overview_screen.dart';
 import '../../features/music/presentation/screens/music_screen.dart';
 import '../../features/quest/presentation/screens/quest_chat_screen.dart';
 import '../../features/quest/presentation/screens/quest_list_screen.dart';
@@ -20,6 +20,8 @@ import '../../features/coins/presentation/screens/budget_management_screen.dart'
 import '../../features/coins/presentation/screens/groups_list_screen.dart';
 import '../../features/coins/presentation/screens/group_detail_screen.dart';
 import '../../features/coins/presentation/screens/add_split_expense_screen.dart';
+import '../../features/life_track/presentation/screens/track_detail_screen.dart';
+import '../../features/life_track/presentation/screens/track_list_screen.dart';
 import '../../core/auth/auth_service.dart';
 import '../../core/app/app_shell.dart';
 import '../http/http_dog.dart';
@@ -74,6 +76,24 @@ class AppRouter {
       GoRoute(path: '/live/music', redirect: (context, state) => '/music'),
       GoRoute(path: '/live/tv', redirect: (context, state) => '/iptv'),
       GoRoute(
+        path: '/life-track',
+        name: 'life_track',
+        builder: (context, state) => const TrackListScreen(),
+        routes: [
+          GoRoute(
+            path: ':trackId',
+            name: 'life_track_detail',
+            builder: (context, state) =>
+                TrackDetailScreen(trackId: state.pathParameters['trackId']!),
+          ),
+        ],
+      ),
+      GoRoute(
+        path: '/airo-explore',
+        name: 'airo_explore',
+        builder: (context, state) => const AiroExploreScreen(),
+      ),
+      GoRoute(
         path: RouteNames.login,
         name: RouteNames.login,
         builder: (context, state) => const LoginScreen(),
@@ -97,7 +117,7 @@ class AppRouter {
               GoRoute(
                 path: '/money',
                 name: 'Coins',
-                builder: (context, state) => const MoneyOverviewScreen(),
+                builder: (context, state) => const CoinsDashboardScreen(),
                 routes: [
                   GoRoute(
                     path: 'split',
@@ -167,7 +187,9 @@ class AppRouter {
                   GoRoute(
                     path: 'notifications',
                     name: 'agent_notifications',
-                    builder: (context, state) => const NotificationsScreen(),
+                    builder: (context, state) => NotificationsScreen(
+                      initialCategory: state.uri.queryParameters['category'],
+                    ),
                   ),
                   GoRoute(
                     path: 'profile',

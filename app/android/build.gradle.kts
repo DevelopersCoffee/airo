@@ -8,11 +8,18 @@ allprojects {
         google()
         mavenCentral()
         // Required for AI Edge SDK (Gemini Nano)
-        maven {
-            url = uri("https://maven.pkg.github.com/google/generative-ai-android")
-            credentials {
-                username = "x-access-token"
-                password = System.getenv("GITHUB_TOKEN") ?: ""
+        exclusiveContent {
+            forRepository {
+                maven {
+                    url = uri("https://maven.pkg.github.com/google/generative-ai-android")
+                    credentials {
+                        username = "x-access-token"
+                        password = System.getenv("GITHUB_TOKEN") ?: ""
+                    }
+                }
+            }
+            filter {
+                includeGroup("com.google.ai.edge.litertlm")
             }
         }
     }

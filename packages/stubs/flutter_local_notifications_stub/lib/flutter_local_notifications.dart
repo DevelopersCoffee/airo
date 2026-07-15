@@ -1,8 +1,14 @@
 library;
 
 class FlutterLocalNotificationsPlugin {
-  Future<bool?> initialize({required InitializationSettings settings}) async =>
+  Future<bool?> initialize({
+    required InitializationSettings settings,
+    DidReceiveNotificationResponseCallback? onDidReceiveNotificationResponse,
+  }) async =>
       true;
+
+  Future<NotificationAppLaunchDetails?>
+      getNotificationAppLaunchDetails() async => null;
 
   T? resolvePlatformSpecificImplementation<T>() => null;
 
@@ -28,6 +34,25 @@ class FlutterLocalNotificationsPlugin {
   Future<void> cancel({required int id}) async {}
 }
 
+typedef DidReceiveNotificationResponseCallback = void Function(
+    NotificationResponse response);
+
+class NotificationAppLaunchDetails {
+  const NotificationAppLaunchDetails({
+    required this.didNotificationLaunchApp,
+    this.notificationResponse,
+  });
+
+  final bool didNotificationLaunchApp;
+  final NotificationResponse? notificationResponse;
+}
+
+class NotificationResponse {
+  const NotificationResponse({this.payload});
+
+  final String? payload;
+}
+
 class AndroidFlutterLocalNotificationsPlugin {
   Future<bool?> requestNotificationsPermission() async => false;
 }
@@ -37,7 +62,8 @@ class IOSFlutterLocalNotificationsPlugin {
     bool alert = false,
     bool badge = false,
     bool sound = false,
-  }) async => false;
+  }) async =>
+      false;
 }
 
 class MacOSFlutterLocalNotificationsPlugin {
@@ -45,7 +71,8 @@ class MacOSFlutterLocalNotificationsPlugin {
     bool alert = false,
     bool badge = false,
     bool sound = false,
-  }) async => false;
+  }) async =>
+      false;
 }
 
 class AndroidInitializationSettings {

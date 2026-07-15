@@ -1,6 +1,9 @@
 name: Smoke Tests
 
 on:
+  push:
+    tags:
+      - 'v*'
   workflow_dispatch:
     inputs:
       environment:

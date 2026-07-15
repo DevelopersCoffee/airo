@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/utils/locale_settings.dart';
 import '../../domain/entities/budget.dart';
 import '../../application/providers/budget_providers.dart';
+import 'add_budget_screen.dart';
 
 /// Budget Management Screen
 ///
@@ -30,9 +31,9 @@ class BudgetManagementScreen extends ConsumerWidget {
             : [
                 IconButton(
                   icon: const Icon(Icons.add),
-                  onPressed: () {
-                    // TODO: Navigate to add budget screen
-                  },
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const AddBudgetScreen()),
+                  ),
                 ),
               ],
       ),
@@ -69,9 +70,10 @@ class BudgetManagementScreen extends ConsumerWidget {
       floatingActionButton: kIsWeb
           ? null
           : FloatingActionButton.extended(
-              onPressed: () {
-                // TODO: Navigate to add budget screen
-              },
+              key: const ValueKey('add_budget_fab_button'),
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const AddBudgetScreen()),
+              ),
               icon: const Icon(Icons.add),
               label: const Text('Add Budget'),
             ),
@@ -113,9 +115,11 @@ class _EmptyBudgetsView extends StatelessWidget {
             FilledButton.icon(
               onPressed: kIsWeb
                   ? null
-                  : () {
-                      // TODO: Navigate to add budget
-                    },
+                  : () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const AddBudgetScreen(),
+                      ),
+                    ),
               icon: Icon(kIsWeb ? Icons.lock_clock : Icons.add),
               label: Text(kIsWeb ? 'Storage Backend Pending' : 'Create Budget'),
             ),
@@ -201,7 +205,7 @@ class _BudgetCard extends ConsumerWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                budget.period.name.toUpperCase(),
+                budget.period.displayName,
                 style: Theme.of(context).textTheme.labelSmall?.copyWith(
                   color: Theme.of(context).colorScheme.secondary,
                 ),

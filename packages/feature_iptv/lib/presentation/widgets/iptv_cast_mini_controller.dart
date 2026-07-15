@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:platform_player/platform_player.dart';
 
 import '../../application/providers/iptv_cast_providers.dart';
+import "package:platform_player/platform_player.dart";
 
 class IptvCastMiniController extends ConsumerWidget {
   const IptvCastMiniController({super.key});

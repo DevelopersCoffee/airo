@@ -1,0 +1,17 @@
+name: core_workers
+description: "Isolate utilities — runOffMain<T>() wrapper for offloading parsing and serialization."
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ^3.12.2
+  flutter: ">=3.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0

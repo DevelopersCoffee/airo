@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart' hide Intent;
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:core_ui/core_ui.dart';
@@ -8,6 +9,7 @@ import '../../../../core/dictionary/dictionary.dart';
 import '../../../../core/utils/locale_settings.dart';
 import '../../../agent_chat/data/connectors/calendar_connector.dart';
 import '../../../agent_chat/data/connectors/date_time_connector.dart';
+import '../../../agent_chat/data/connectors/life_track_status_connector_factory.dart';
 import '../../../agent_chat/data/connectors/notification_connector.dart';
 import '../../../agent_chat/data/connectors/route_connector.dart';
 import '../../../agent_chat/data/services/assistant_chat_context_builder.dart';
@@ -17,6 +19,7 @@ import '../../../agent_chat/application/assistant_model_preferences.dart';
 import '../../../agent_chat/domain/models/agent_skill.dart';
 import '../../../agent_chat/domain/models/assistant_runtime_ids.dart';
 import '../../../agent_chat/domain/models/chat_response_metadata.dart';
+import '../../../agent_chat/domain/services/agent_connector.dart';
 import '../../../agent_chat/domain/services/agent_connector_registry.dart';
 import '../../../agent_chat/domain/services/agent_skill_orchestrator.dart';
 import '../../../agent_chat/domain/services/agent_skill_registry.dart';
@@ -79,16 +82,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   final List<ChatMessage> _messages = [];
   final ToolRegistry _toolRegistry = ToolRegistry();
   AgentSkillRegistry _skillRegistry = AgentSkillRegistry();
-  final AgentConnectorRegistry _connectorRegistry = AgentConnectorRegistry(
-    connectors: [
-      DateTimeConnector(),
-      NativeCalendarPermissionConnector(),
-      NativeCalendarConnector(),
-      NativeCreateCalendarEventConnector(),
-      ScheduleNotificationConnector(),
-      RouteConnector(),
-    ],
-  );
+  late final AgentConnectorRegistry _connectorRegistry;
   final GeminiNanoService _geminiNano = GeminiNanoService();
   final LiteRtLmService _liteRtLm = LiteRtLmService();
   late final AssistantRuntimeService _assistantRuntime;
@@ -109,6 +103,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   void initState() {
     super.initState();
     _messageController = TextEditingController(text: widget.initialDraft ?? '');
+    _connectorRegistry = _buildConnectorRegistry();
     _moveComposerCursorToEnd();
     _assistantRuntime =
         widget.assistantRuntimeService ??
@@ -142,6 +137,23 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     if (widget.enableAiInitialization) {
       _initializeAI();
     }
+    unawaited(initializeLifeTrackStatusConnector());
+  }
+
+  AgentConnectorRegistry _buildConnectorRegistry() {
+    final connectors = <AgentConnector>[
+      DateTimeConnector(),
+      NativeCalendarPermissionConnector(),
+      NativeCalendarConnector(),
+      NativeCreateCalendarEventConnector(),
+      ScheduleNotificationConnector(),
+      RouteConnector(),
+    ];
+    final lifeTrackStatusConnector = createLifeTrackStatusConnector();
+    if (lifeTrackStatusConnector != null) {
+      connectors.add(lifeTrackStatusConnector);
+    }
+    return AgentConnectorRegistry(connectors: connectors);
   }
 
   AgentSkillOrchestrator _buildSkillOrchestrator(AgentSkillRegistry registry) {
@@ -252,6 +264,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     _messageInputFocusNode.dispose();
     _sendButtonFocusNode.dispose();
     _localRuntimePreloader.abortPreload();
+    unawaited(closeLifeTrackStatusConnector());
     _messageController.dispose();
     super.dispose();
   }
@@ -296,7 +309,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   }
 
                   final message = _messages[index];
-                  return _buildMessage(message);
+                  return _buildMessage(message, index);
                 },
               ),
             ),
@@ -501,11 +514,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     return true;
   }
 
-  Widget _buildMessage(ChatMessage message) {
+  Widget _buildMessage(ChatMessage message, int index) {
     final colorScheme = Theme.of(context).colorScheme;
     final maxWidth =
         MediaQuery.of(context).size.width *
         (message.traces.isNotEmpty || message.metadata != null ? 0.86 : 0.75);
+    final canCopy = message.text.trim().isNotEmpty;
 
     return Align(
       alignment: message.isUser ? Alignment.centerRight : Alignment.centerLeft,
@@ -528,11 +542,32 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 border: Border.all(color: colorScheme.outlineVariant),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: Text(
-                message.text,
-                style: TextStyle(
-                  color: colorScheme.primary.withValues(alpha: 0.9),
-                ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Text(
+                      message.text,
+                      style: TextStyle(
+                        color: colorScheme.primary.withValues(alpha: 0.9),
+                      ),
+                    ),
+                  ),
+                  if (canCopy) ...[
+                    const SizedBox(width: 8),
+                    IconButton(
+                      key: ValueKey('agent_chat_message_actions_$index'),
+                      tooltip: 'Copy message',
+                      onPressed: () => _copyMessageText(message.text),
+                      icon: const Icon(Icons.copy_all, size: 18),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints.tightFor(
+                        width: 32,
+                        height: 32,
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ),
             if (!message.isUser && message.metadata != null)
@@ -561,6 +596,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _copyMessageText(String text) async {
+    await Clipboard.setData(ClipboardData(text: text));
+    if (!mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Message copied')));
   }
 
   void _sendMessage() async {

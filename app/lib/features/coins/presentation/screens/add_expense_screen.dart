@@ -185,9 +185,11 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
               _CategorySelector(
                 categories: categories
                     .where(
-                      (category) =>
-                          category.type == coins.CategoryType.expense ||
-                          category.type == coins.CategoryType.both,
+                      (category) => _transactionType == TransactionType.income
+                          ? (category.type == coins.CategoryType.income ||
+                                category.type == coins.CategoryType.both)
+                          : (category.type == coins.CategoryType.expense ||
+                                category.type == coins.CategoryType.both),
                     )
                     .toList(),
                 selectedCategoryId: _selectedCategoryId,

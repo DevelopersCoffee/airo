@@ -1,0 +1,154 @@
+name: Rust Core CI
+
+on:
+  push:
+    paths:
+      - 'rust/**'
+      - 'packages/core_native/**'
+      - '.github/workflows/rust-core.yml'
+  pull_request:
+    paths:
+      - 'rust/**'
+      - 'packages/core_native/**'
+      - '.github/workflows/rust-core.yml'
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  # ── Host tests (fast, runs on every push) ─────────────────────────────────
+  test-host:
+    name: Rust test + clippy (host)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
+      - name: Cache Cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            rust/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('rust/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-
+
+      - run: cargo test --manifest-path rust/Cargo.toml --all
+      - run: cargo clippy --manifest-path rust/Cargo.toml --all -- -D warnings
+      - run: cargo fmt --manifest-path rust/Cargo.toml --check
+
+  # ── Android cross-compile ──────────────────────────────────────────────────
+  build-android:
+    name: Android (${{ matrix.target }})
+    runs-on: ubuntu-latest
+    needs: test-host
+    strategy:
+      matrix:
+        target:
+          - aarch64-linux-android    # arm64-v8a  (primary)
+          - armv7-linux-androideabi  # armeabi-v7a
+          - x86_64-linux-android     # x86_64 (emulator)
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Cache Cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            rust/target
+          key: android-${{ matrix.target }}-cargo-${{ hashFiles('rust/Cargo.lock') }}
+          restore-keys: android-${{ matrix.target }}-cargo-
+
+      - name: Install cargo-ndk
+        run: cargo install cargo-ndk
+
+      - name: Set up JDK 17 (for NDK)
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: temurin
+
+      - name: Set up Android SDK + NDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install NDK
+        run: echo "y" | sdkmanager "ndk;27.2.12479018"
+
+      - name: Build ${{ matrix.target }}
+        run: |
+          cd rust
+          cargo ndk --target ${{ matrix.target }} --platform 21 \
+            build --release --manifest-path airo_core/Cargo.toml
+
+  # ── macOS / iOS ────────────────────────────────────────────────────────────
+  build-apple:
+    name: Apple (${{ matrix.target }})
+    runs-on: macos-latest
+    needs: test-host
+    strategy:
+      matrix:
+        target:
+          - aarch64-apple-ios
+          - aarch64-apple-darwin
+          - x86_64-apple-darwin
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Cache Cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            rust/target
+          key: apple-${{ matrix.target }}-cargo-${{ hashFiles('rust/Cargo.lock') }}
+          restore-keys: apple-${{ matrix.target }}-cargo-
+
+      - run: |
+          cd rust
+          cargo build --release --target ${{ matrix.target }} \
+            --manifest-path airo_core/Cargo.toml
+
+  # ── Linux / Windows ───────────────────────────────────────────────────────
+  build-desktop:
+    name: Desktop (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    needs: test-host
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            rust/target
+          key: desktop-${{ matrix.os }}-cargo-${{ hashFiles('rust/Cargo.lock') }}
+          restore-keys: desktop-${{ matrix.os }}-cargo-
+
+      - run: cargo build --release --manifest-path rust/Cargo.toml --all

@@ -1,0 +1,13 @@
+name: benchmarks
+description: "Performance benchmark harness for Airo"
+version: 0.0.1
+publish_to: 'none'
+
+environment:
+  sdk: ">=3.12.2 <4.0.0"
+
+dependencies:
+  benchmark_harness: ^2.3.0
+
+dev_dependencies:
+  test: ^1.25.0

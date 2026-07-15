@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../features/agent_chat/data/services/notification_navigation_service.dart';
 import '../error/global_error_handler.dart';
 import '../providers/app_theme_provider.dart';
 import '../routing/app_router.dart';
@@ -20,6 +23,13 @@ class _AiroAppState extends ConsumerState<AiroApp> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final navigatorKey = AppRouter.router.routerDelegate.navigatorKey;
       GlobalErrorHandler.setNavigatorKey(navigatorKey);
+      unawaited(
+        NotificationNavigationService.instance
+            .bind(navigate: AppRouter.router.go)
+            .catchError((Object error, StackTrace stackTrace) {
+              debugPrint('Notification navigation unavailable: $error');
+            }),
+      );
     });
   }
 

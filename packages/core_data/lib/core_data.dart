@@ -12,6 +12,7 @@ export 'src/storage/preferences_store.dart';
 export 'src/storage/secure_store.dart';
 export 'src/storage/flutter_secure_store.dart';
 export 'src/storage/life_track_local_data_source.dart';
+export 'src/storage/templates/life_track_template_fallback_resolver.dart';
 export 'src/storage/templates/template_registry.dart';
 
 // Connectivity
@@ -37,3 +38,7 @@ export 'src/plugins/plugin_kill_switch_service.dart';
 // Bug Reporting
 export 'src/bug_report/bug_report_model.dart';
 export 'src/bug_report/github_issue_service.dart';
+
+// Memory Budgets
+export 'src/memory/device_class.dart';
+export 'src/memory/memory_budget.dart';
