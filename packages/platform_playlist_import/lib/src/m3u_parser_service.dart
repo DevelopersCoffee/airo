@@ -1,4 +1,5 @@
 import 'dart:developer' as developer;
+import 'dart:io';
 
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -9,6 +10,8 @@ class M3UParserService {
   static const String _playlistUrlKey = 'iptv_user_playlist_url';
   static const String _cacheKey = 'iptv_playlist_cache';
   static const String _cacheTimestampKey = 'iptv_playlist_timestamp';
+  static const String _cacheEtagKey = 'iptv_playlist_etag';
+  static const String _cacheLastModifiedKey = 'iptv_playlist_last_modified';
   static const Duration _cacheValidity = Duration(hours: 24);
   static final RegExp _extInfAttributePattern = RegExp(
     r'(\w+[-\w]*)="([^"]*)"',
@@ -79,6 +82,8 @@ class M3UParserService {
     await _prefs.setString(_playlistUrlKey, normalized);
     await _prefs.remove(_cacheKey);
     await _prefs.remove(_cacheTimestampKey);
+    await _prefs.remove(_cacheEtagKey);
+    await _prefs.remove(_cacheLastModifiedKey);
   }
 
   /// Remove the configured playlist and its user-derived cache.
@@ -89,19 +94,44 @@ class M3UParserService {
 
   /// Fetch and parse M3U from URL
   Future<List<IPTVChannel>> _fetchAndParse(String url) async {
+    final headers = <String, String>{'Accept-Encoding': 'gzip, deflate'};
+    final etag = _prefs.getString(_cacheEtagKey);
+    final lastModified = _prefs.getString(_cacheLastModifiedKey);
+    if (etag != null && etag.isNotEmpty) {
+      headers[HttpHeaders.ifNoneMatchHeader] = etag;
+    }
+    if (lastModified != null && lastModified.isNotEmpty) {
+      headers[HttpHeaders.ifModifiedSinceHeader] = lastModified;
+    }
+
     final response = await _dio.get<String>(
       url,
       options: Options(
+        headers: headers,
         responseType: ResponseType.plain,
         receiveTimeout: const Duration(seconds: 30),
+        validateStatus: (status) =>
+            status != null &&
+            ((status >= HttpStatus.ok && status < HttpStatus.multipleChoices) ||
+                status == HttpStatus.notModified),
       ),
     );
+
+    if (response.statusCode == HttpStatus.notModified) {
+      final cached = await _loadFromCache(ignoreExpiry: true);
+      if (cached != null && cached.isNotEmpty) {
+        return cached;
+      }
+      throw Exception('Playlist not modified but no cache is available');
+    }
 
     if (response.data == null || response.data!.isEmpty) {
       throw Exception('Empty playlist response');
     }
 
-    return parseM3U(response.data!);
+    final channels = parseM3U(response.data!);
+    await _saveHttpValidators(response.headers);
+    return channels;
   }
 
   /// Parse M3U content into channels with deduplication
@@ -263,12 +293,13 @@ class M3UParserService {
   }
 
   /// Load channels from cache
-  Future<List<IPTVChannel>?> _loadFromCache() async {
+  Future<List<IPTVChannel>?> _loadFromCache({bool ignoreExpiry = false}) async {
     final timestamp = _prefs.getInt(_cacheTimestampKey);
     if (timestamp == null) return null;
 
     final cacheTime = DateTime.fromMillisecondsSinceEpoch(timestamp);
-    if (DateTime.now().difference(cacheTime) > _cacheValidity) {
+    if (!ignoreExpiry &&
+        DateTime.now().difference(cacheTime) > _cacheValidity) {
       return null; // Cache expired
     }
 
@@ -299,5 +330,24 @@ class M3UParserService {
   Future<void> clearCache() async {
     await _prefs.remove(_cacheKey);
     await _prefs.remove(_cacheTimestampKey);
+    await _prefs.remove(_cacheEtagKey);
+    await _prefs.remove(_cacheLastModifiedKey);
+  }
+
+  Future<void> _saveHttpValidators(Headers headers) async {
+    await _setOrRemove(_cacheEtagKey, headers.value(HttpHeaders.etagHeader));
+    await _setOrRemove(
+      _cacheLastModifiedKey,
+      headers.value(HttpHeaders.lastModifiedHeader),
+    );
+  }
+
+  Future<void> _setOrRemove(String key, String? value) async {
+    final normalized = value?.trim();
+    if (normalized == null || normalized.isEmpty) {
+      await _prefs.remove(key);
+      return;
+    }
+    await _prefs.setString(key, normalized);
   }
 }

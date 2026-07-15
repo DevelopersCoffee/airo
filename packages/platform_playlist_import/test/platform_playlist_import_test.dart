@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:platform_playlist_import/platform_playlist_import.dart';
@@ -152,6 +154,61 @@ https://cdn.example.com/live.m3u8
 
       expect(parser.getPlaylistUrl(), isNull);
       await expectLater(parser.fetchPlaylist(), completion(isEmpty));
+    });
+
+    test('uses HTTP validators and cached playlist on 304 refresh', () async {
+      final requests = <HttpHeaders>[];
+      final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+      addTearDown(() => server.close(force: true));
+
+      server.listen((request) async {
+        requests.add(request.headers);
+        request.response.headers
+          ..set(HttpHeaders.etagHeader, '"playlist-v1"')
+          ..set(
+            HttpHeaders.lastModifiedHeader,
+            'Wed, 21 Oct 2015 07:28:00 GMT',
+          );
+
+        if (requests.length == 1) {
+          request.response.write('''
+#EXTM3U
+#EXTINF:-1 group-title="News",Conditional News
+https://cdn.example.com/conditional-news.m3u8
+''');
+        } else {
+          request.response.statusCode = HttpStatus.notModified;
+        }
+        await request.response.close();
+      });
+
+      await parser.setPlaylistUrl(
+        'http://${server.address.address}:${server.port}/playlist.m3u',
+      );
+
+      final initial = await parser.fetchPlaylist(forceRefresh: true);
+      final refreshed = await parser.fetchPlaylist(forceRefresh: true);
+
+      expect(initial, hasLength(1));
+      expect(refreshed, hasLength(1));
+      expect(refreshed.single.name, 'Conditional News');
+      expect(
+        refreshed.single.streamUrl,
+        'https://cdn.example.com/conditional-news.m3u8',
+      );
+      expect(requests, hasLength(2));
+      expect(
+        requests.last.value(HttpHeaders.ifNoneMatchHeader),
+        '"playlist-v1"',
+      );
+      expect(
+        requests.last.value(HttpHeaders.ifModifiedSinceHeader),
+        'Wed, 21 Oct 2015 07:28:00 GMT',
+      );
+      expect(
+        requests.last.value(HttpHeaders.acceptEncodingHeader),
+        contains('gzip'),
+      );
     });
   });
 }
