@@ -15,16 +15,12 @@ class IptvCastMediaAdapter {
       );
     }
 
-    final rawUrl = channel.getStreamUrl(selectedQuality).trim();
-    final uri = Uri.tryParse(rawUrl);
-    if (uri == null || !uri.hasScheme || uri.host.isEmpty) {
+    final uri = AiroPlaylistUrlPolicy.normalizeStreamUrl(
+      channel.getStreamUrl(selectedQuality),
+    );
+    if (uri == null) {
       return IptvCastMediaResult.unsupported(
         'This channel does not have a valid network stream URL.',
-      );
-    }
-    if (uri.scheme != 'http' && uri.scheme != 'https') {
-      return IptvCastMediaResult.unsupported(
-        'Only http and https IPTV streams can be cast in V1.',
       );
     }
 
@@ -35,9 +31,9 @@ class IptvCastMediaAdapter {
       );
     }
 
-    final imageUrl = channel.effectiveLogoUrl == null
-        ? null
-        : Uri.tryParse(channel.effectiveLogoUrl!);
+    final imageUrl = AiroPlaylistUrlPolicy.normalizeLogoUrl(
+      channel.effectiveLogoUrl,
+    );
 
     return IptvCastMediaResult.castable(
       AiroCastMediaRequest(

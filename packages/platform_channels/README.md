@@ -1,39 +1,22 @@
-<!--
-This README describes the package. If you publish this package to pub.dev,
-this README's contents appear on the landing page for your package.
+# Platform Channels
 
-For information about how to write a good package README, see the guide for
-[writing package pages](https://dart.dev/tools/pub/writing-package-pages).
+Reusable IPTV channel models, source helpers, and playlist-derived URL policy
+for Airo products.
 
-For general information about developing packages, see the Dart guide for
-[creating packages](https://dart.dev/guides/libraries/create-packages)
-and the Flutter guide for
-[developing packages and plugins](https://flutter.dev/to/develop-packages).
--->
+## Scope
 
-TODO: Put a short description of the package here that helps potential users
-know whether this package might be useful for them.
+- `IPTVChannel` and related channel metadata models.
+- `ChannelDataService` for first-party channel data boundaries.
+- `AiroPlaylistUrlPolicy` for validating stream and artwork URLs parsed from
+  user-supplied playlist content.
 
-## Features
+## Playlist URL Policy
 
-TODO: List what your package can do. Maybe include images, gifs, or videos.
+Playlist content is hostile input. `AiroPlaylistUrlPolicy` accepts only HTTP(S)
+network URLs, rejects URL credentials, and blocks localhost, link-local,
+private, carrier-grade NAT, multicast, and other non-public host ranges by
+default.
 
-## Getting started
-
-TODO: List prerequisites and provide or point to information on how to
-start using the package.
-
-## Usage
-
-TODO: Include short and useful examples for package users. Add longer examples
-to `/example` folder.
-
-```dart
-const like = 'sample';
-```
-
-## Additional information
-
-TODO: Tell users more about the package: where to find more information, how to
-contribute to the package, how to file issues, what response they can expect
-from the package authors, and more.
+Callers may opt into private hosts only after a product-level user consent flow
+exists for LAN streams. Airo TV screens should consume the sanitized platform
+models instead of revalidating stream and logo URLs in UI code.
