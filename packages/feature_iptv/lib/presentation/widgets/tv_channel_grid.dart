@@ -11,6 +11,9 @@ class TvChannelGridConfig {
   /// Number of items to preload ahead of the visible area
   final int preloadItemCount;
 
+  /// Platform policy for bounding logo pre-cache bursts.
+  final AiroLogoBurstPolicy logoBurstPolicy;
+
   /// Whether to preload thumbnails in focus direction
   final bool preloadThumbnails;
 
@@ -19,6 +22,7 @@ class TvChannelGridConfig {
 
   const TvChannelGridConfig({
     this.preloadItemCount = 12,
+    this.logoBurstPolicy = const AiroLogoBurstPolicy(),
     this.preloadThumbnails = true,
     this.inputDebounceMs = 50,
   });
@@ -54,6 +58,7 @@ class TvChannelGrid extends ConsumerStatefulWidget {
 
 class _TvChannelGridState extends ConsumerState<TvChannelGrid> {
   final ScrollController _scrollController = ScrollController();
+  final Set<String> _preloadedLogoUrls = <String>{};
   int _currentFocusedIndex = 0;
   DateTime? _lastInputTime;
 
@@ -136,27 +141,34 @@ class _TvChannelGridState extends ConsumerState<TvChannelGrid> {
     int currentIndex,
     TvUiDimensions dimensions,
   ) {
-    final preloadCount = widget.config.preloadItemCount;
-    final startIndex = (currentIndex - preloadCount).clamp(0, channels.length);
-    final endIndex = (currentIndex + preloadCount).clamp(0, channels.length);
+    final policy = widget.config.logoBurstPolicy.copyWith(
+      lookBehind: widget.config.preloadItemCount,
+      lookAhead: widget.config.preloadItemCount,
+    );
 
-    for (var i = startIndex; i < endIndex; i++) {
-      final channel = channels[i];
-      if (channel.hasLogo) {
-        final devicePixelRatio = MediaQuery.devicePixelRatioOf(context);
-        final cacheWidth = (dimensions.channelCardWidth * devicePixelRatio)
-            .ceil();
-        final cacheHeight = (dimensions.channelCardHeight * devicePixelRatio)
-            .ceil();
-        precacheImage(
-          ResizeImage.resizeIfNeeded(
-            cacheWidth,
-            cacheHeight,
-            NetworkImage(channel.logoUrl!),
-          ),
-          context,
-        );
+    if (_preloadedLogoUrls.length > 256) {
+      _preloadedLogoUrls.clear();
+    }
+
+    final devicePixelRatio = MediaQuery.devicePixelRatioOf(context);
+    final cacheWidth = (dimensions.channelCardWidth * devicePixelRatio).ceil();
+    final cacheHeight = (dimensions.channelCardHeight * devicePixelRatio)
+        .ceil();
+
+    for (final channel in policy.precacheCandidates(channels, currentIndex)) {
+      final logoUrl = channel.logoUrl;
+      if (logoUrl == null || !_preloadedLogoUrls.add(logoUrl)) {
+        continue;
       }
+
+      precacheImage(
+        ResizeImage.resizeIfNeeded(
+          cacheWidth,
+          cacheHeight,
+          NetworkImage(logoUrl),
+        ),
+        context,
+      );
     }
   }
 
