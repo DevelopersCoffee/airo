@@ -9,7 +9,7 @@
 ///   - Payload kept small: only the fields the Dart model needs.
 ///   - Pure-Dart fallback exists in `m3u_parser_service.dart`.
 
-/// A single parsed M3U channel entry.
+// A single parsed M3U channel entry.
 #[derive(Debug, Clone, PartialEq)]
 pub struct M3UEntry {
     pub name: String,
