@@ -209,6 +209,18 @@ scripts:
         --output-json ../../artifacts/release/fastlane-credentials-preflight.json \
         --output-markdown ../../artifacts/release/fastlane-credentials-preflight.md
 
+  # Check content-rating questionnaire posture before store-console entry.
+  release:content-rating-preflight:
+    description: Write Airo content-rating questionnaire evidence
+    run: |
+      cd packages/core_release
+      flutter pub get
+      dart run tool/preflight_content_rating.dart \
+        --repo-root ../.. \
+        --profile "${AIRO_RELEASE_PROFILE:-tv}" \
+        --output-json ../../artifacts/release/content-rating-preflight.json \
+        --output-markdown ../../artifacts/release/content-rating-preflight.md
+
   # Run code generation
   generate:
     run: melos exec -- flutter pub run build_runner build --delete-conflicting-outputs
