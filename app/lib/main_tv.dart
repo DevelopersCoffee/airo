@@ -395,12 +395,15 @@ Future<CompactEpgSlice> _buildTvCompactEpgSnapshot({
     for (final channel in channels)
       for (final alias in aliasesByChannel[channel.id]!) alias: channel.name,
   };
-  final guideRepository = await XmltvCompactEpgRepository.fromXmltvFileNative(
-    path: xmltvPath,
-    ingestedAt: now,
-    sourceRef: CompactEpgSourceRef.redacted('debug-tv-epg'),
-    channelNamesById: channelNamesByGuideId,
-  );
+  final guideRepository =
+      await XmltvCompactEpgRepository.fromXmltvCurrentNextFileNative(
+        path: xmltvPath,
+        ingestedAt: now,
+        channelIds: guideChannelIds,
+        now: now,
+        sourceRef: CompactEpgSourceRef.redacted('debug-tv-epg'),
+        channelNamesById: channelNamesByGuideId,
+      );
   final guideSlice = await guideRepository.loadCurrentNext(
     channelIds: guideChannelIds,
     now: now,

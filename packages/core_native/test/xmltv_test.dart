@@ -122,6 +122,48 @@ void main() {
       },
     );
 
+    test(
+      'native-preferred current next file API filters requested channels',
+      () async {
+        final directory = Directory.systemTemp.createTempSync(
+          'core-native-xmltv-current-next-test-',
+        );
+        addTearDown(() {
+          if (directory.existsSync()) {
+            directory.deleteSync(recursive: true);
+          }
+        });
+        final file = File('${directory.path}/guide.xml')
+          ..writeAsStringSync('''
+<tv>
+  <programme channel="requested.one" start="20260715090000 +0000" stop="20260715100000 +0000">
+    <title>Requested Current</title>
+  </programme>
+  <programme channel="requested.one" start="20260715100000 +0000" stop="20260715103000 +0000">
+    <title>Requested Next</title>
+  </programme>
+  <programme channel="ignored.one" start="20260715090000 +0000" stop="20260715100000 +0000">
+    <title>Ignored Current</title>
+  </programme>
+</tv>
+''');
+
+        final result = await parseXmltvCurrentNextFileNative(
+          file.path,
+          channelIds: const ['requested.one'],
+          now: DateTime.utc(2026, 7, 15, 9, 30),
+        );
+
+        expect(result.entries, hasLength(1));
+        expect(result.entries.single.channelId, 'requested.one');
+        expect(result.entries.single.current?.title, 'Requested Current');
+        expect(result.entries.single.next?.title, 'Requested Next');
+        expect(result.stats.programmeCount, 3);
+        expect(result.stats.matchedProgrammeCount, 2);
+        expect(result.stats.requestedChannelCount, 1);
+      },
+    );
+
     test('rejects invalid file parser inputs', () {
       expect(
         () => parseXmltvProgrammesFile('', maxProgrammes: 1),

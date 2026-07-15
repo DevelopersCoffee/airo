@@ -37,7 +37,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
     default_rust_auto_opaque = RustAutoOpaqueMoi,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.11.1";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = -1781083130;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 1663432646;
 
 // Section: executor
 
@@ -113,6 +113,47 @@ fn wire__crate__api__m3u__parse_m3u_entries_impl(
         },
     )
 }
+fn wire__crate__api__xmltv__parse_xmltv_current_next_file_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "parse_xmltv_current_next_file",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_path = <String>::sse_decode(&mut deserializer);
+            let api_channel_ids = <Vec<String>>::sse_decode(&mut deserializer);
+            let api_now_epoch_seconds = <i64>::sse_decode(&mut deserializer);
+            let api_default_duration_seconds = <u32>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, String>((move || {
+                    let output_ok = crate::api::xmltv::parse_xmltv_current_next_file(
+                        api_path,
+                        api_channel_ids,
+                        api_now_epoch_seconds,
+                        api_default_duration_seconds,
+                    )?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
 fn wire__crate__api__xmltv__parse_xmltv_programmes_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
@@ -179,6 +220,72 @@ fn wire__crate__api__xmltv__parse_xmltv_programmes_file_impl(
                         api_path,
                         api_max_programmes,
                     )?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__crate__api__xmltv__xmltv_current_next_result_default_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "xmltv_current_next_result_default",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, ()>((move || {
+                    let output_ok =
+                        Result::<_, ()>::Ok(crate::api::xmltv::XmltvCurrentNextResult::default())?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__crate__api__xmltv__xmltv_current_next_stats_default_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "xmltv_current_next_stats_default",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, ()>((move || {
+                    let output_ok =
+                        Result::<_, ()>::Ok(crate::api::xmltv::XmltvCurrentNextStats::default())?;
                     Ok(output_ok)
                 })())
             }
@@ -269,6 +376,25 @@ impl SseDecode for bool {
     }
 }
 
+impl SseDecode for i64 {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        deserializer.cursor.read_i64::<NativeEndian>().unwrap()
+    }
+}
+
+impl SseDecode for Vec<String> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut len_ = <i32>::sse_decode(deserializer);
+        let mut ans_ = vec![];
+        for idx_ in 0..len_ {
+            ans_.push(<String>::sse_decode(deserializer));
+        }
+        return ans_;
+    }
+}
+
 impl SseDecode for Vec<crate::api::m3u::M3uEntry> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -288,6 +414,20 @@ impl SseDecode for Vec<u8> {
         let mut ans_ = vec![];
         for idx_ in 0..len_ {
             ans_.push(<u8>::sse_decode(deserializer));
+        }
+        return ans_;
+    }
+}
+
+impl SseDecode for Vec<crate::api::xmltv::XmltvCurrentNextEntry> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut len_ = <i32>::sse_decode(deserializer);
+        let mut ans_ = vec![];
+        for idx_ in 0..len_ {
+            ans_.push(<crate::api::xmltv::XmltvCurrentNextEntry>::sse_decode(
+                deserializer,
+            ));
         }
         return ans_;
     }
@@ -340,6 +480,19 @@ impl SseDecode for Option<String> {
     }
 }
 
+impl SseDecode for Option<crate::api::xmltv::XmltvProgramme> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        if (<bool>::sse_decode(deserializer)) {
+            return Some(<crate::api::xmltv::XmltvProgramme>::sse_decode(
+                deserializer,
+            ));
+        } else {
+            return None;
+        }
+    }
+}
+
 impl SseDecode for u32 {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -357,6 +510,51 @@ impl SseDecode for u8 {
 impl SseDecode for () {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {}
+}
+
+impl SseDecode for crate::api::xmltv::XmltvCurrentNextEntry {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_channelId = <String>::sse_decode(deserializer);
+        let mut var_current = <Option<crate::api::xmltv::XmltvProgramme>>::sse_decode(deserializer);
+        let mut var_next = <Option<crate::api::xmltv::XmltvProgramme>>::sse_decode(deserializer);
+        return crate::api::xmltv::XmltvCurrentNextEntry {
+            channel_id: var_channelId,
+            current: var_current,
+            next: var_next,
+        };
+    }
+}
+
+impl SseDecode for crate::api::xmltv::XmltvCurrentNextResult {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_entries =
+            <Vec<crate::api::xmltv::XmltvCurrentNextEntry>>::sse_decode(deserializer);
+        let mut var_stats = <crate::api::xmltv::XmltvCurrentNextStats>::sse_decode(deserializer);
+        return crate::api::xmltv::XmltvCurrentNextResult {
+            entries: var_entries,
+            stats: var_stats,
+        };
+    }
+}
+
+impl SseDecode for crate::api::xmltv::XmltvCurrentNextStats {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_programmeCount = <u32>::sse_decode(deserializer);
+        let mut var_skippedProgrammeCount = <u32>::sse_decode(deserializer);
+        let mut var_invalidTimestampCount = <u32>::sse_decode(deserializer);
+        let mut var_matchedProgrammeCount = <u32>::sse_decode(deserializer);
+        let mut var_requestedChannelCount = <u32>::sse_decode(deserializer);
+        return crate::api::xmltv::XmltvCurrentNextStats {
+            programme_count: var_programmeCount,
+            skipped_programme_count: var_skippedProgrammeCount,
+            invalid_timestamp_count: var_invalidTimestampCount,
+            matched_programme_count: var_matchedProgrammeCount,
+            requested_channel_count: var_requestedChannelCount,
+        };
+    }
 }
 
 impl SseDecode for crate::api::xmltv::XmltvParseResult {
@@ -419,22 +617,40 @@ fn pde_ffi_dispatcher_primary_impl(
     match func_id {
         1 => wire__crate__api__text__normalize_channel_name_impl(port, ptr, rust_vec_len, data_len),
         2 => wire__crate__api__m3u__parse_m3u_entries_impl(port, ptr, rust_vec_len, data_len),
-        3 => {
+        3 => wire__crate__api__xmltv__parse_xmltv_current_next_file_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        4 => {
             wire__crate__api__xmltv__parse_xmltv_programmes_impl(port, ptr, rust_vec_len, data_len)
         }
-        4 => wire__crate__api__xmltv__parse_xmltv_programmes_file_impl(
+        5 => wire__crate__api__xmltv__parse_xmltv_programmes_file_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        5 => wire__crate__api__xmltv__xmltv_parse_result_default_impl(
+        6 => wire__crate__api__xmltv__xmltv_current_next_result_default_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        6 => wire__crate__api__xmltv__xmltv_parse_stats_default_impl(
+        7 => wire__crate__api__xmltv__xmltv_current_next_stats_default_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        8 => wire__crate__api__xmltv__xmltv_parse_result_default_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        9 => wire__crate__api__xmltv__xmltv_parse_stats_default_impl(
             port,
             ptr,
             rust_vec_len,
@@ -476,6 +692,73 @@ impl flutter_rust_bridge::IntoDart for crate::api::m3u::M3uEntry {
 impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::api::m3u::M3uEntry {}
 impl flutter_rust_bridge::IntoIntoDart<crate::api::m3u::M3uEntry> for crate::api::m3u::M3uEntry {
     fn into_into_dart(self) -> crate::api::m3u::M3uEntry {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::xmltv::XmltvCurrentNextEntry {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.channel_id.into_into_dart().into_dart(),
+            self.current.into_into_dart().into_dart(),
+            self.next.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::xmltv::XmltvCurrentNextEntry
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::xmltv::XmltvCurrentNextEntry>
+    for crate::api::xmltv::XmltvCurrentNextEntry
+{
+    fn into_into_dart(self) -> crate::api::xmltv::XmltvCurrentNextEntry {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::xmltv::XmltvCurrentNextResult {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.entries.into_into_dart().into_dart(),
+            self.stats.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::xmltv::XmltvCurrentNextResult
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::xmltv::XmltvCurrentNextResult>
+    for crate::api::xmltv::XmltvCurrentNextResult
+{
+    fn into_into_dart(self) -> crate::api::xmltv::XmltvCurrentNextResult {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::xmltv::XmltvCurrentNextStats {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.programme_count.into_into_dart().into_dart(),
+            self.skipped_programme_count.into_into_dart().into_dart(),
+            self.invalid_timestamp_count.into_into_dart().into_dart(),
+            self.matched_programme_count.into_into_dart().into_dart(),
+            self.requested_channel_count.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::xmltv::XmltvCurrentNextStats
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::xmltv::XmltvCurrentNextStats>
+    for crate::api::xmltv::XmltvCurrentNextStats
+{
+    fn into_into_dart(self) -> crate::api::xmltv::XmltvCurrentNextStats {
         self
     }
 }
@@ -560,6 +843,23 @@ impl SseEncode for bool {
     }
 }
 
+impl SseEncode for i64 {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        serializer.cursor.write_i64::<NativeEndian>(self).unwrap();
+    }
+}
+
+impl SseEncode for Vec<String> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(self.len() as _, serializer);
+        for item in self {
+            <String>::sse_encode(item, serializer);
+        }
+    }
+}
+
 impl SseEncode for Vec<crate::api::m3u::M3uEntry> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -576,6 +876,16 @@ impl SseEncode for Vec<u8> {
         <i32>::sse_encode(self.len() as _, serializer);
         for item in self {
             <u8>::sse_encode(item, serializer);
+        }
+    }
+}
+
+impl SseEncode for Vec<crate::api::xmltv::XmltvCurrentNextEntry> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(self.len() as _, serializer);
+        for item in self {
+            <crate::api::xmltv::XmltvCurrentNextEntry>::sse_encode(item, serializer);
         }
     }
 }
@@ -613,6 +923,16 @@ impl SseEncode for Option<String> {
     }
 }
 
+impl SseEncode for Option<crate::api::xmltv::XmltvProgramme> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <bool>::sse_encode(self.is_some(), serializer);
+        if let Some(value) = self {
+            <crate::api::xmltv::XmltvProgramme>::sse_encode(value, serializer);
+        }
+    }
+}
+
 impl SseEncode for u32 {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -630,6 +950,34 @@ impl SseEncode for u8 {
 impl SseEncode for () {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {}
+}
+
+impl SseEncode for crate::api::xmltv::XmltvCurrentNextEntry {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <String>::sse_encode(self.channel_id, serializer);
+        <Option<crate::api::xmltv::XmltvProgramme>>::sse_encode(self.current, serializer);
+        <Option<crate::api::xmltv::XmltvProgramme>>::sse_encode(self.next, serializer);
+    }
+}
+
+impl SseEncode for crate::api::xmltv::XmltvCurrentNextResult {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <Vec<crate::api::xmltv::XmltvCurrentNextEntry>>::sse_encode(self.entries, serializer);
+        <crate::api::xmltv::XmltvCurrentNextStats>::sse_encode(self.stats, serializer);
+    }
+}
+
+impl SseEncode for crate::api::xmltv::XmltvCurrentNextStats {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <u32>::sse_encode(self.programme_count, serializer);
+        <u32>::sse_encode(self.skipped_programme_count, serializer);
+        <u32>::sse_encode(self.invalid_timestamp_count, serializer);
+        <u32>::sse_encode(self.matched_programme_count, serializer);
+        <u32>::sse_encode(self.requested_channel_count, serializer);
+    }
 }
 
 impl SseEncode for crate::api::xmltv::XmltvParseResult {

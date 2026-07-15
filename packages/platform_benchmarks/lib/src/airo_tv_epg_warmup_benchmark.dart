@@ -324,12 +324,15 @@ Future<CompactEpgSlice> _buildSnapshot({
     for (final channel in channels)
       for (final alias in aliasesByChannel[channel.id]!) alias: channel.name,
   };
-  final guideRepository = await XmltvCompactEpgRepository.fromXmltvFileNative(
-    path: xmltvPath,
-    ingestedAt: now,
-    sourceRef: CompactEpgSourceRef.redacted('benchmark-xmltv-fixture'),
-    channelNamesById: channelNamesByGuideId,
-  );
+  final guideRepository =
+      await XmltvCompactEpgRepository.fromXmltvCurrentNextFileNative(
+        path: xmltvPath,
+        ingestedAt: now,
+        channelIds: guideChannelIds,
+        now: now,
+        sourceRef: CompactEpgSourceRef.redacted('benchmark-xmltv-fixture'),
+        channelNamesById: channelNamesByGuideId,
+      );
   final guideSlice = await guideRepository.loadCurrentNext(
     channelIds: guideChannelIds,
     now: now,

@@ -31,10 +31,24 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   bool dco_decode_bool(dynamic raw);
 
   @protected
+  XmltvProgramme dco_decode_box_autoadd_xmltv_programme(dynamic raw);
+
+  @protected
+  PlatformInt64 dco_decode_i_64(dynamic raw);
+
+  @protected
+  List<String> dco_decode_list_String(dynamic raw);
+
+  @protected
   List<M3uEntry> dco_decode_list_m_3_u_entry(dynamic raw);
 
   @protected
   Uint8List dco_decode_list_prim_u_8_strict(dynamic raw);
+
+  @protected
+  List<XmltvCurrentNextEntry> dco_decode_list_xmltv_current_next_entry(
+    dynamic raw,
+  );
 
   @protected
   List<XmltvProgramme> dco_decode_list_xmltv_programme(dynamic raw);
@@ -46,6 +60,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   String? dco_decode_opt_String(dynamic raw);
 
   @protected
+  XmltvProgramme? dco_decode_opt_box_autoadd_xmltv_programme(dynamic raw);
+
+  @protected
   int dco_decode_u_32(dynamic raw);
 
   @protected
@@ -53,6 +70,15 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void dco_decode_unit(dynamic raw);
+
+  @protected
+  XmltvCurrentNextEntry dco_decode_xmltv_current_next_entry(dynamic raw);
+
+  @protected
+  XmltvCurrentNextResult dco_decode_xmltv_current_next_result(dynamic raw);
+
+  @protected
+  XmltvCurrentNextStats dco_decode_xmltv_current_next_stats(dynamic raw);
 
   @protected
   XmltvParseResult dco_decode_xmltv_parse_result(dynamic raw);
@@ -70,10 +96,26 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   bool sse_decode_bool(SseDeserializer deserializer);
 
   @protected
+  XmltvProgramme sse_decode_box_autoadd_xmltv_programme(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  PlatformInt64 sse_decode_i_64(SseDeserializer deserializer);
+
+  @protected
+  List<String> sse_decode_list_String(SseDeserializer deserializer);
+
+  @protected
   List<M3uEntry> sse_decode_list_m_3_u_entry(SseDeserializer deserializer);
 
   @protected
   Uint8List sse_decode_list_prim_u_8_strict(SseDeserializer deserializer);
+
+  @protected
+  List<XmltvCurrentNextEntry> sse_decode_list_xmltv_current_next_entry(
+    SseDeserializer deserializer,
+  );
 
   @protected
   List<XmltvProgramme> sse_decode_list_xmltv_programme(
@@ -87,6 +129,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   String? sse_decode_opt_String(SseDeserializer deserializer);
 
   @protected
+  XmltvProgramme? sse_decode_opt_box_autoadd_xmltv_programme(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   int sse_decode_u_32(SseDeserializer deserializer);
 
   @protected
@@ -94,6 +141,21 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_decode_unit(SseDeserializer deserializer);
+
+  @protected
+  XmltvCurrentNextEntry sse_decode_xmltv_current_next_entry(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  XmltvCurrentNextResult sse_decode_xmltv_current_next_result(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  XmltvCurrentNextStats sse_decode_xmltv_current_next_stats(
+    SseDeserializer deserializer,
+  );
 
   @protected
   XmltvParseResult sse_decode_xmltv_parse_result(SseDeserializer deserializer);
@@ -114,6 +176,18 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_bool(bool self, SseSerializer serializer);
 
   @protected
+  void sse_encode_box_autoadd_xmltv_programme(
+    XmltvProgramme self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_i_64(PlatformInt64 self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_list_String(List<String> self, SseSerializer serializer);
+
+  @protected
   void sse_encode_list_m_3_u_entry(
     List<M3uEntry> self,
     SseSerializer serializer,
@@ -122,6 +196,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_list_prim_u_8_strict(
     Uint8List self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_xmltv_current_next_entry(
+    List<XmltvCurrentNextEntry> self,
     SseSerializer serializer,
   );
 
@@ -138,6 +218,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_opt_String(String? self, SseSerializer serializer);
 
   @protected
+  void sse_encode_opt_box_autoadd_xmltv_programme(
+    XmltvProgramme? self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_u_32(int self, SseSerializer serializer);
 
   @protected
@@ -145,6 +231,24 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_unit(void self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_xmltv_current_next_entry(
+    XmltvCurrentNextEntry self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_xmltv_current_next_result(
+    XmltvCurrentNextResult self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_xmltv_current_next_stats(
+    XmltvCurrentNextStats self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_xmltv_parse_result(
