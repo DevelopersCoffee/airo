@@ -31,6 +31,33 @@ values, optional Dart heap/image cache placeholders, retained channel-list copy
 counts, and stable budget violation codes. They do not include raw `dumpsys`
 output, local file paths from the device, playlist payloads, or user data.
 
+## Airo TV Playback Soak
+
+Use the playback soak runner when a physical Android TV device or 1 GB profile
+is connected and the app is installed:
+
+```bash
+AIRO_TV_PACKAGE=io.airo.app.tv \
+AIRO_TV_SOAK_DART_HEAP_START_MB=42 \
+AIRO_TV_SOAK_DART_HEAP_END_MB=42 \
+melos run bench:tv-playback-soak
+```
+
+The command launches the package, cycles deterministic D-pad/media key events,
+samples `adb shell dumpsys meminfo <package>` every 30 seconds for 30 minutes,
+and writes sanitized evidence to:
+
+- `artifacts/performance/airo-tv-playback-soak-report.json`
+- `artifacts/performance/airo-tv-playback-soak-report.md`
+
+Use `AIRO_TV_SOAK_DART_HEAP_START_MB` and
+`AIRO_TV_SOAK_DART_HEAP_END_MB` from start/end DevTools heap snapshots so the
+report can evaluate the `<1 MB/h` playback drift budget. Reports contain
+aggregate RSS, heap, image-cache, retained-list, duration, sample-count, and
+violation-code values only. Do not include raw `dumpsys`, heap snapshots,
+playlist URLs, device serials, LAN IPs, local paths, screenshots, or logcat
+dumps in issue comments.
+
 ## Airo TV Logo Scroll Report
 
 After a physical Android TV or 1 GB profile logo-grid scroll run, write the
