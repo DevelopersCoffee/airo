@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:platform_epg/platform_epg.dart';
 
@@ -141,6 +143,46 @@ void main() {
       expect(repository.stats.nativeProgrammeCount, 2);
       expect(repository.stats.nativeTruncated, isTrue);
       expect(repository.stats.retainedProgrammeCount, 1);
+    });
+
+    test('loads current and next programs from an XMLTV file path', () async {
+      final directory = await Directory.systemTemp.createTemp(
+        'platform-epg-xmltv-file-test-',
+      );
+      addTearDown(() async {
+        if (await directory.exists()) {
+          await directory.delete(recursive: true);
+        }
+      });
+      final file = File('${directory.path}/guide.xml');
+      await file.writeAsString('''
+<tv>
+  <programme channel="file.news" start="20260715090000 +0000" stop="20260715100000 +0000">
+    <title>File Morning News</title>
+  </programme>
+  <programme channel="file.news" start="20260715100000 +0000" stop="20260715103000 +0000">
+    <title>File Market Watch</title>
+  </programme>
+</tv>
+''');
+
+      final repository = XmltvCompactEpgRepository.fromXmltvFile(
+        path: file.path,
+        ingestedAt: ingestedAt,
+        channelNamesById: const {'file.news': 'File News'},
+      );
+
+      final slice = await repository.loadCurrentNext(
+        channelIds: const ['file.news'],
+        now: DateTime.utc(2026, 7, 15, 9, 30),
+      );
+
+      final entry = slice.entryForChannel('file.news')!;
+      expect(entry.channelName, 'File News');
+      expect(entry.current?.title, 'File Morning News');
+      expect(entry.next?.title, 'File Market Watch');
+      expect(repository.stats.nativeProgrammeCount, 2);
+      expect(repository.stats.retainedProgrammeCount, 2);
     });
 
     test(

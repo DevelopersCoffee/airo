@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
 
 import 'frb_generated.dart' as frb;
+import 'xmltv_file_reader_stub.dart'
+    if (dart.library.io) 'xmltv_file_reader_io.dart';
 
 class NativeXmltvProgramme {
   const NativeXmltvProgramme({
@@ -52,26 +54,66 @@ NativeXmltvParseResult parseXmltvProgrammes(
       content: content,
       maxProgrammes: maxProgrammes,
     );
-    return NativeXmltvParseResult(
-      programmes: result.programmes
-          .map(
-            (programme) => NativeXmltvProgramme(
-              channelId: programme.channelId,
-              start: programme.start,
-              stop: programme.stop,
-              title: programme.title,
-            ),
-          )
-          .toList(growable: false),
-      stats: NativeXmltvParseStats(
-        programmeCount: result.stats.programmeCount,
-        skippedProgrammeCount: result.stats.skippedProgrammeCount,
-        truncated: result.stats.truncated,
-      ),
-    );
+    return _fromFrbXmltvParseResult(result);
   } on frb.NativeBridgeUnavailableException {
     return _dartParseXmltvProgrammes(content, maxProgrammes: maxProgrammes);
   }
+}
+
+NativeXmltvParseResult parseXmltvProgrammesFile(
+  String path, {
+  int maxProgrammes = 1000,
+}) {
+  if (maxProgrammes < 0) {
+    throw ArgumentError.value(maxProgrammes, 'maxProgrammes', 'must be >= 0');
+  }
+
+  final normalizedPath = path.trim();
+  if (normalizedPath.isEmpty) {
+    throw ArgumentError.value(path, 'path', 'must not be empty');
+  }
+
+  if (kIsWeb) {
+    throw UnsupportedError(
+      'XMLTV file parsing is not available on web. '
+      'Use parseXmltvProgrammes with XMLTV content instead.',
+    );
+  }
+
+  try {
+    final result = frb.parseXmltvProgrammesFile(
+      path: normalizedPath,
+      maxProgrammes: maxProgrammes,
+    );
+    return _fromFrbXmltvParseResult(result);
+  } on frb.NativeBridgeUnavailableException {
+    return _dartParseXmltvProgrammes(
+      readXmltvFileSync(normalizedPath),
+      maxProgrammes: maxProgrammes,
+    );
+  }
+}
+
+NativeXmltvParseResult _fromFrbXmltvParseResult(
+  frb.FrbXmltvParseResult result,
+) {
+  return NativeXmltvParseResult(
+    programmes: result.programmes
+        .map(
+          (programme) => NativeXmltvProgramme(
+            channelId: programme.channelId,
+            start: programme.start,
+            stop: programme.stop,
+            title: programme.title,
+          ),
+        )
+        .toList(growable: false),
+    stats: NativeXmltvParseStats(
+      programmeCount: result.stats.programmeCount,
+      skippedProgrammeCount: result.stats.skippedProgrammeCount,
+      truncated: result.stats.truncated,
+    ),
+  );
 }
 
 NativeXmltvParseResult _dartParseXmltvProgrammes(

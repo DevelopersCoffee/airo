@@ -12,7 +12,8 @@ or parse full XMLTV datasets.
 - Compact EPG programs and channel entries.
 - Current/next selection from a small program window.
 - XMLTV programme summary ingestion through `core_native` into compact
-  current/next repository windows.
+  current/next repository windows, including file-path ingest for native
+  streaming parser bindings.
 - Compact current/next JSON snapshot encoding and snapshot-backed repository
   adapters for app-owned cache storage.
 - Compact EPG slices with availability and expiry.
