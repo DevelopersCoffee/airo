@@ -42,6 +42,11 @@ void main() {
     expect(artifact.warmupWallTime, lessThan(const Duration(seconds: 1)));
     expect(artifact.mainHeartbeatTicks, greaterThan(0));
     expect(artifact.nowNextAccepted, isTrue);
+    expect(artifact.rssAccepted, isTrue);
+    expect(
+      artifact.peakRssBytes,
+      greaterThanOrEqualTo(artifact.baselineRssBytes),
+    );
     expect(artifact.toJson()['evaluation'], containsPair('accepted', true));
     expect(artifact.toPrettyJson(), isNot(contains(fixturePath)));
   });
