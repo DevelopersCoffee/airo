@@ -251,6 +251,13 @@ melos:
           --output-json artifacts/release/v2-release-readiness-preflight.json \
           --output-markdown artifacts/release/v2-release-readiness-preflight.md
 
+    release:v2-merge-readiness:
+      description: Dry-run next-v2.0.0.0 merge into v2 without pushing
+      run: |
+        scripts/check-v2-merge-readiness.sh \
+          --base "${AIRO_V2_MERGE_BASE:-origin/v2}" \
+          --next "${AIRO_V2_MERGE_NEXT:-origin/codex/next-v2.0.0.0}"
+
     release:macos-signing-preflight:
       description: Write macOS signing and notarization readiness evidence
       run: |

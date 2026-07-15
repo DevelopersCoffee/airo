@@ -121,6 +121,18 @@ switching, Cast V1 real-device QA matrix, iPad Air qualification, and constraine
 TV memory playback-soak evidence tracked in
 `docs/release/V2_HUMAN_IN_LOOP_BLOCKERS.md`.
 
+Before merging the rolling v2 development branch back to `v2`, run the local
+merge-readiness guard:
+
+```bash
+dart pub global run melos run release:v2-merge-readiness
+```
+
+The guard creates a temporary `origin/v2` worktree, dry-merges
+`origin/codex/next-v2.0.0.0`, checks YAML and whitespace, runs the top-level
+readiness preflight, then removes the temporary worktree. It is local-only and
+does not push, dispatch CI, publish releases, or upload artifacts.
+
 When `dry_run` is `true`, the orchestrator forces GitHub Release publication
 off and sets the TV and mobile/tablet Play tracks plus Firebase distribution to
 `none`.
