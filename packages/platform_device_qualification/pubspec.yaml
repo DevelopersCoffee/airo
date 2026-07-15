@@ -9,6 +9,8 @@ environment:
   flutter: ">=3.44.4"
 
 dependencies:
+  core_data:
+    path: ../core_data
   flutter:
     sdk: flutter
   flutter_riverpod: ^2.6.1

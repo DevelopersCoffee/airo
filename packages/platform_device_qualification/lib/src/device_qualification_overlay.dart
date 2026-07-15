@@ -1,3 +1,4 @@
+import 'package:core_data/core_data.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -10,11 +11,15 @@ import 'dpad_remote_controller.dart';
 // In main_qualification.dart we will import both. In this package, we can define a callback or invoke a method dynamically.
 typedef FormFactorOverrideCallback = void Function(String formFactor, String? tvPlatform);
 
+const String deviceQualificationPlaylistUrlKey = 'user_playlist_url';
+
 class DeviceQualificationOverlay extends StatefulWidget {
   final Widget child;
   final String defaultPlaylistUrl;
   final FormFactorOverrideCallback? onFormFactorOverride;
   final bool autoCycle;
+  final KeyValueStore? playlistStore;
+  final int maxPreferenceValueBytes;
 
   const DeviceQualificationOverlay({
     super.key,
@@ -22,6 +27,8 @@ class DeviceQualificationOverlay extends StatefulWidget {
     this.defaultPlaylistUrl = 'https://iptv-org.github.io/iptv/index.m3u',
     this.onFormFactorOverride,
     this.autoCycle = false,
+    this.playlistStore,
+    this.maxPreferenceValueBytes = kKeyValueStorePreferenceMaxValueBytes,
   });
 
   @override
@@ -78,11 +85,26 @@ class _DeviceQualificationOverlayState extends State<DeviceQualificationOverlay>
   }
 
   void _seedPlaylist() async {
-    final prefs = await SharedPreferences.getInstance();
+    final store = widget.playlistStore ?? await _createPlaylistStore();
     // Pre-seed user playlist URL if empty
-    if (prefs.getString('user_playlist_url') == null) {
-      await prefs.setString('user_playlist_url', widget.defaultPlaylistUrl);
+    if (await store.getString(deviceQualificationPlaylistUrlKey) == null) {
+      try {
+        await store.setString(
+          deviceQualificationPlaylistUrlKey,
+          widget.defaultPlaylistUrl,
+        );
+      } on KeyValueStoreValueTooLargeException {
+        await store.remove(deviceQualificationPlaylistUrlKey);
+      }
     }
+  }
+
+  Future<KeyValueStore> _createPlaylistStore() async {
+    final prefs = await SharedPreferences.getInstance();
+    return PreferencesStore(
+      prefs,
+      maxValueBytes: widget.maxPreferenceValueBytes,
+    );
   }
 
   void _startFpsTicker() {
