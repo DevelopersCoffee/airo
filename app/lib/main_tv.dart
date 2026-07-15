@@ -36,6 +36,7 @@ import 'firebase_options.dart';
 
 /// Global flag to track if Firebase is available
 bool isFirebaseInitialized = false;
+typedef TvFirebaseInitializer = Future<void> Function();
 
 const _debugDefaultPlaylistUrl = String.fromEnvironment(
   'DEBUG_IPTV_PLAYLIST_URL',
@@ -62,32 +63,12 @@ void main() async {
     '📺 Features: ${PlatformFeatures.enabledFeatures.map((f) => f.name).join(', ')}',
   );
 
-  // Initialize Firebase with TV variant configuration
-  try {
-    if (!DefaultFirebaseOptions.isCurrentPlatformConfigured) {
-      isFirebaseInitialized = false;
-      debugPrint('⚠️ Firebase not configured for this platform; skipping init');
-    } else {
-      await Firebase.initializeApp(
-        options: DefaultFirebaseOptions.currentPlatform,
-      );
-      isFirebaseInitialized = true;
-      debugPrint(
-        '✅ Firebase initialized (TV variant: ${DefaultFirebaseOptions.currentVariant.name})',
-      );
-    }
-  } catch (e) {
-    isFirebaseInitialized = false;
-    debugPrint('⚠️ Firebase initialization failed: $e');
-  }
-
   // Initialize SharedPreferences for IPTV caching
   final prefs = await SharedPreferences.getInstance();
   final shouldWarmDebugPlaylist = await seedTvDebugDefaultPlaylist(prefs);
 
   // Initialize feature registry with TV-specific features
   FeatureRegistry.register(IptvFeatureModule());
-  await FeatureRegistry.initializeAll();
 
   debugPrint(
     '📦 Registered features: ${FeatureRegistry.featureNames.join(', ')}',
@@ -104,6 +85,8 @@ void main() async {
     ),
   );
 
+  scheduleTvFirebaseInitialization();
+  scheduleTvFeatureInitialization();
   if (shouldWarmDebugPlaylist) {
     scheduleTvDebugDefaultPlaylistWarmup(prefs);
   }
@@ -138,6 +121,80 @@ Future<void> configureTvSystemChrome({
 
   await applyOrientations([]);
   await applySystemUiMode(SystemUiMode.edgeToEdge);
+}
+
+@visibleForTesting
+void scheduleTvFirebaseInitialization({
+  void Function(DeferredStartupFrameCallback callback)? addPostFrameCallback,
+  void Function(String message)? log,
+  TvFirebaseInitializer? initializeApp,
+  bool? isConfigured,
+  String variantName = '',
+}) {
+  scheduleDeferredStartupTask(
+    debugName: 'tv_firebase_initialization',
+    addPostFrameCallback: addPostFrameCallback,
+    log: log,
+    task: () => initializeTvFirebase(
+      initializeApp: initializeApp,
+      isConfigured: isConfigured,
+      variantName: variantName.isEmpty
+          ? DefaultFirebaseOptions.currentVariant.name
+          : variantName,
+      log: log,
+    ),
+  );
+}
+
+@visibleForTesting
+Future<bool> initializeTvFirebase({
+  TvFirebaseInitializer? initializeApp,
+  bool? isConfigured,
+  String variantName = '',
+  void Function(String message)? log,
+}) async {
+  final logger = log ?? debugPrint;
+  final configured =
+      isConfigured ?? DefaultFirebaseOptions.isCurrentPlatformConfigured;
+  try {
+    if (!configured) {
+      isFirebaseInitialized = false;
+      logger('⚠️ Firebase not configured for this platform; skipping init');
+      return false;
+    }
+
+    await (initializeApp ??
+        () {
+          return Firebase.initializeApp(
+            options: DefaultFirebaseOptions.currentPlatform,
+          );
+        })();
+    isFirebaseInitialized = true;
+    logger('✅ Firebase initialized (TV variant: $variantName)');
+    return true;
+  } catch (e) {
+    isFirebaseInitialized = false;
+    logger('⚠️ Firebase initialization failed: $e');
+    return false;
+  }
+}
+
+@visibleForTesting
+void scheduleTvFeatureInitialization({
+  void Function(DeferredStartupFrameCallback callback)? addPostFrameCallback,
+  void Function(String message)? log,
+}) {
+  scheduleDeferredStartupTask(
+    debugName: 'tv_feature_initialization',
+    addPostFrameCallback: addPostFrameCallback,
+    log: log,
+    task: () async {
+      await FeatureRegistry.initializeAll();
+      (log ?? debugPrint)(
+        '📦 Initialized features: ${FeatureRegistry.featureNames.join(', ')}',
+      );
+    },
+  );
 }
 
 @visibleForTesting
