@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:developer' as developer;
 import 'dart:io';
 
+import 'package:core_workers/core_workers.dart';
 import 'package:dio/dio.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -88,7 +89,7 @@ class M3UParserService {
     await clearCache();
   }
 
-  /// Fetch and parse M3U from URL
+  /// Fetch and parse M3U from URL. Parsing runs on a worker isolate.
   Future<List<IPTVChannel>> _fetchAndParse(String url) async {
     final response = await _dio.get<String>(
       url,
@@ -102,7 +103,8 @@ class M3UParserService {
       throw Exception('Empty playlist response');
     }
 
-    return parseM3U(response.data!);
+    final content = response.data!;
+    return runOffMain(() => parseM3U(content));
   }
 
   /// Parse M3U content into channels with deduplication
