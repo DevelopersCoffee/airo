@@ -73,7 +73,7 @@ class _TvFocusableState extends State<TvFocusable>
   late FocusNode _focusNode;
   late AnimationController _animationController;
   late Animation<double> _scaleAnimation;
-  bool _isFocused = false;
+  final ValueNotifier<bool> _isFocused = ValueNotifier<bool>(false);
 
   @override
   void initState() {
@@ -103,27 +103,29 @@ class _TvFocusableState extends State<TvFocusable>
     _focusNode.removeListener(_onFocusChange);
     _focusNode.dispose();
     _animationController.dispose();
+    _isFocused.dispose();
     super.dispose();
   }
 
   void _onFocusChange() {
     final hasFocus = _focusNode.hasFocus;
-    if (hasFocus != _isFocused) {
-      setState(() => _isFocused = hasFocus);
+    if (hasFocus == _isFocused.value) {
+      return;
+    }
+    _isFocused.value = hasFocus;
 
-      if (hasFocus) {
-        _animationController.forward();
-        widget.onFocus?.call();
+    if (hasFocus) {
+      _animationController.forward();
+      widget.onFocus?.call();
 
-        // Announce focus to screen readers if enabled (CP-AC-003)
-        if (widget.announceFocus && widget.semanticLabel != null) {
-          // ignore: deprecated_member_use
-          SemanticsService.announce(widget.semanticLabel!, TextDirection.ltr);
-        }
-      } else {
-        _animationController.reverse();
-        widget.onUnfocus?.call();
+      // Announce focus to screen readers if enabled (CP-AC-003)
+      if (widget.announceFocus && widget.semanticLabel != null) {
+        // ignore: deprecated_member_use
+        SemanticsService.announce(widget.semanticLabel!, TextDirection.ltr);
       }
+    } else {
+      _animationController.reverse();
+      widget.onUnfocus?.call();
     }
   }
 
@@ -164,50 +166,56 @@ class _TvFocusableState extends State<TvFocusable>
       focusNode: _focusNode,
       autofocus: widget.autofocus,
       onKeyEvent: _handleKeyEvent,
-      child: AnimatedBuilder(
-        animation: _scaleAnimation,
-        builder: (context, child) {
-          return Transform.scale(
-            scale: widget.showScaleEffect ? _scaleAnimation.value : 1.0,
-            child: Container(
-              decoration: _isFocused && widget.showBorderEffect
-                  ? BoxDecoration(
-                      borderRadius: BorderRadius.circular(widget.borderRadius),
-                      border: Border.all(
-                        color: focusColor,
-                        width: TvFocusConstants.focusBorderWidth,
-                      ),
-                      boxShadow: widget.showGlowEffect
-                          ? [
-                              BoxShadow(
-                                color: focusColor.withValues(alpha: 0.4),
-                                blurRadius:
-                                    TvFocusConstants.focusGlowSpread * 2,
-                                spreadRadius: TvFocusConstants.focusGlowSpread,
-                              ),
-                            ]
-                          : null,
-                    )
-                  : null,
-              child: widget.child,
-            ),
+      child: ValueListenableBuilder<bool>(
+        valueListenable: _isFocused,
+        child: widget.child,
+        builder: (context, isFocused, child) {
+          final decoration = isFocused && widget.showBorderEffect
+              ? BoxDecoration(
+                  borderRadius: BorderRadius.circular(widget.borderRadius),
+                  border: Border.all(
+                    color: focusColor,
+                    width: TvFocusConstants.focusBorderWidth,
+                  ),
+                  boxShadow: widget.showGlowEffect
+                      ? [
+                          BoxShadow(
+                            color: focusColor.withValues(alpha: 0.4),
+                            blurRadius: TvFocusConstants.focusGlowSpread * 2,
+                            spreadRadius: TvFocusConstants.focusGlowSpread,
+                          ),
+                        ]
+                      : null,
+                )
+              : const BoxDecoration();
+
+          Widget result = AnimatedBuilder(
+            animation: _scaleAnimation,
+            child: child,
+            builder: (context, child) {
+              return Transform.scale(
+                scale: widget.showScaleEffect ? _scaleAnimation.value : 1.0,
+                child: DecoratedBox(decoration: decoration, child: child),
+              );
+            },
           );
+
+          if (widget.semanticLabel != null || isButton) {
+            result = Semantics(
+              label: widget.semanticLabel,
+              hint: widget.semanticHint,
+              button: isButton,
+              enabled: widget.enabled,
+              focused: isFocused,
+              onTap: widget.onSelect,
+              child: result,
+            );
+          }
+
+          return result;
         },
       ),
     );
-
-    // Wrap with Semantics for screen reader support (CP-AC-003)
-    if (widget.semanticLabel != null || isButton) {
-      focusableWidget = Semantics(
-        label: widget.semanticLabel,
-        hint: widget.semanticHint,
-        button: isButton,
-        enabled: widget.enabled,
-        focused: _isFocused,
-        onTap: widget.onSelect,
-        child: focusableWidget,
-      );
-    }
 
     return MouseRegion(
       cursor: widget.onSelect == null
