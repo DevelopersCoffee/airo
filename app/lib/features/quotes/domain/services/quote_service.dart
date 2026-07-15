@@ -1,4 +1,7 @@
+// ignore_for_file: prefer_initializing_formals
+
 import 'dart:convert';
+import 'package:core_data/core_data.dart';
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/quote_model.dart';
@@ -33,8 +36,18 @@ class ZenQuotesService implements QuoteService {
 
   final Dio _dio;
   final SharedPreferences _prefs;
+  final KeyValueStore _store;
 
-  ZenQuotesService({required this._dio, required this._prefs});
+  ZenQuotesService({
+    required Dio dio,
+    required SharedPreferences prefs,
+    KeyValueStore? store,
+    int maxPreferenceValueBytes = kKeyValueStorePreferenceMaxValueBytes,
+  }) : _dio = dio,
+       _prefs = prefs,
+       _store =
+           store ??
+           PreferencesStore(prefs, maxValueBytes: maxPreferenceValueBytes);
 
   @override
   Future<Quote> getDailyQuote(String userId) async {
@@ -100,8 +113,8 @@ class ZenQuotesService implements QuoteService {
 
   @override
   Future<void> clearCache() async {
-    await _prefs.remove(_cacheKey);
-    await _prefs.remove(_lastFetchKey);
+    await _store.remove(_cacheKey);
+    await _store.remove(_lastFetchKey);
   }
 
   /// Get cached quotes or fetch new ones if cache is stale
@@ -144,8 +157,13 @@ class ZenQuotesService implements QuoteService {
   /// Cache quotes to local storage
   Future<void> _cacheQuotes(List<Quote> quotes) async {
     final jsonList = quotes.map((q) => q.toJson()).toList();
-    await _prefs.setString(_cacheKey, jsonEncode(jsonList));
-    await _prefs.setString(_lastFetchKey, DateTime.now().toIso8601String());
+    try {
+      await _store.setString(_cacheKey, jsonEncode(jsonList));
+      await _store.setString(_lastFetchKey, DateTime.now().toIso8601String());
+    } on KeyValueStoreValueTooLargeException {
+      await _store.remove(_cacheKey);
+      await _store.remove(_lastFetchKey);
+    }
   }
 }
 
@@ -158,13 +176,20 @@ class ViewBitsService implements QuoteService {
 
   final Dio _dio;
   final SharedPreferences _prefs;
+  final KeyValueStore _store;
   final QuoteSource _source;
 
   ViewBitsService({
-    required this._dio,
-    required this._prefs,
+    required Dio dio,
+    required SharedPreferences prefs,
+    KeyValueStore? store,
+    int maxPreferenceValueBytes = kKeyValueStorePreferenceMaxValueBytes,
     this._source = QuoteSource.fortuneCookie,
-  });
+  }) : _dio = dio,
+       _prefs = prefs,
+       _store =
+           store ??
+           PreferencesStore(prefs, maxValueBytes: maxPreferenceValueBytes);
 
   @override
   Future<Quote> getDailyQuote(String userId) async {
@@ -224,8 +249,8 @@ class ViewBitsService implements QuoteService {
 
   @override
   Future<void> clearCache() async {
-    await _prefs.remove(_cacheKey);
-    await _prefs.remove(_lastFetchKey);
+    await _store.remove(_cacheKey);
+    await _store.remove(_lastFetchKey);
   }
 
   String _getEndpoint() {
@@ -307,8 +332,13 @@ class ViewBitsService implements QuoteService {
 
   Future<void> _cacheQuotes(List<Quote> quotes) async {
     final jsonList = quotes.map((q) => q.toJson()).toList();
-    await _prefs.setString(_cacheKey, jsonEncode(jsonList));
-    await _prefs.setString(_lastFetchKey, DateTime.now().toIso8601String());
+    try {
+      await _store.setString(_cacheKey, jsonEncode(jsonList));
+      await _store.setString(_lastFetchKey, DateTime.now().toIso8601String());
+    } on KeyValueStoreValueTooLargeException {
+      await _store.remove(_cacheKey);
+      await _store.remove(_lastFetchKey);
+    }
   }
 }
 
