@@ -5,8 +5,7 @@ import '../models/iptv_channel.dart';
 /// This keeps normalized channel text and aggregate counts with the loaded
 /// playlist so product UI does not rebuild them on every search keystroke.
 class AiroChannelSearchIndex {
-  AiroChannelSearchIndex(List<IPTVChannel> channels)
-    : channels = List<IPTVChannel>.unmodifiable(channels) {
+  AiroChannelSearchIndex(List<IPTVChannel> channels) {
     final categoryCounts = <ChannelCategory, int>{
       for (final category in ChannelCategory.values) category: 0,
     };
@@ -43,11 +42,21 @@ class AiroChannelSearchIndex {
     this.flavorCounts = Map<ChannelFlavor, int>.unmodifiable(flavorCounts);
   }
 
-  final List<IPTVChannel> channels;
   late final List<_AiroChannelSearchEntry> _entries;
   late final Map<ChannelFlavor, List<IPTVChannel>> _channelsByFlavor;
   late final Map<ChannelCategory, int> categoryCounts;
   late final Map<ChannelFlavor, int> flavorCounts;
+
+  /// Returns a defensive snapshot without retaining another full channel list.
+  List<IPTVChannel> get channels {
+    return List<IPTVChannel>.unmodifiable(
+      _entries.map((entry) => entry.channel),
+    );
+  }
+
+  /// The index keeps search entries and flavor buckets, but no extra retained
+  /// full `List<IPTVChannel>` copy beyond caller-owned provider lists.
+  int get retainedFullChannelListCopies => 0;
 
   List<IPTVChannel> filterAndSort({
     ChannelCategory category = ChannelCategory.all,

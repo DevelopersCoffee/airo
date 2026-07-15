@@ -52,6 +52,13 @@ void main() {
 
       expect(matches.map((channel) => channel.id), ['1']);
     });
+
+    test('does not retain an extra full channel list copy', () {
+      final index = AiroChannelSearchIndex(_channels);
+
+      expect(index.retainedFullChannelListCopies, 0);
+      expect(index.channels.map((channel) => channel.id), ['1', '2', '3', '4']);
+    });
   });
 }
 

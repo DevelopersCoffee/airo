@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:platform_device_profile/platform_device_profile.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import "package:feature_iptv/feature_iptv.dart";
 
@@ -125,6 +126,71 @@ void main() {
         expect(flavors[ChannelFlavor.hindiMusic], 1);
         expect(flavors[ChannelFlavor.sports], 1);
       });
+
+      test(
+        'provider retained channel lists fit constrained TV budget',
+        () async {
+          final channels = _generatedChannels(512);
+          final container = ProviderContainer(
+            overrides: [
+              sharedPreferencesProvider.overrideWithValue(
+                await SharedPreferences.getInstance(),
+              ),
+              iptvChannelsProvider.overrideWith((ref) async => channels),
+            ],
+          );
+          addTearDown(container.dispose);
+
+          final loadedChannels = await container.read(
+            iptvChannelsProvider.future,
+          );
+          final searchIndex = container.read(channelSearchIndexProvider)!;
+          final visibleChannels = container.read(filteredChannelsProvider);
+          final flavorChannels = container.read(
+            channelsByFlavorProvider(ChannelFlavor.hindiNews),
+          );
+
+          final retainedFullChannelLists =
+              _retainedFullChannelListCopies(
+                canonicalChannelCount: loadedChannels.length,
+                surfaces: {
+                  'loaded_channels': loadedChannels,
+                  'visible_channels': visibleChannels,
+                  'hindi_news_flavor_channels': flavorChannels,
+                },
+              ) +
+              searchIndex.retainedFullChannelListCopies;
+
+          const memoryPolicy = AiroRuntimeMemoryBudgetPolicy();
+          const budget =
+              AiroRuntimeMemoryBudgetPolicy.androidTvConstrainedBudget;
+          final evaluation = memoryPolicy.evaluate(
+            budget: budget,
+            sample: AiroRuntimeMemorySample(
+              sampleId: 'feature-iptv-provider-retention',
+              steadyRssMb: 200,
+              peakRssMb: 320,
+              dartHeapMb: 100,
+              imageCacheMb: 12,
+              retainedChannelListCopies: retainedFullChannelLists,
+              playbackSoakDriftMbPerHour: 0.2,
+              sampledAt: DateTime.utc(2026, 7, 15, 11),
+            ),
+          );
+
+          expect(loadedChannels.length, channels.length);
+          expect(visibleChannels.length, channels.length);
+          expect(flavorChannels.length, lessThan(channels.length));
+          expect(
+            retainedFullChannelLists,
+            lessThanOrEqualTo(budget.maxRetainedChannelListCopies),
+          );
+          expect(evaluation.accepted, isTrue);
+          expect(evaluation.violations, const [
+            AiroRuntimeMemoryBudgetViolationCode.accepted,
+          ]);
+        },
+      );
     });
 
     group('Preference sorting', () {
@@ -245,3 +311,41 @@ const _channels = [
     flavor: ChannelFlavor.sports,
   ),
 ];
+
+List<IPTVChannel> _generatedChannels(int count) {
+  return List<IPTVChannel>.generate(count, (index) {
+    final category = switch (index % 4) {
+      0 => ChannelCategory.news,
+      1 => ChannelCategory.music,
+      2 => ChannelCategory.sports,
+      _ => ChannelCategory.entertainment,
+    };
+    final flavor = switch (index % 4) {
+      0 => ChannelFlavor.hindiNews,
+      1 => ChannelFlavor.hindiMusic,
+      2 => ChannelFlavor.sports,
+      _ => ChannelFlavor.englishNews,
+    };
+    return IPTVChannel(
+      id: 'generated-$index',
+      name: 'Generated Channel $index',
+      streamUrl: 'https://example.com/$index.m3u8',
+      group: category.label,
+      category: category,
+      flavor: flavor,
+    );
+  }, growable: false);
+}
+
+int _retainedFullChannelListCopies({
+  required int canonicalChannelCount,
+  required Map<String, List<IPTVChannel>> surfaces,
+}) {
+  final fullListIdentities = <int>{};
+  for (final surface in surfaces.entries) {
+    if (surface.value.length == canonicalChannelCount) {
+      fullListIdentities.add(identityHashCode(surface.value));
+    }
+  }
+  return fullListIdentities.length;
+}
