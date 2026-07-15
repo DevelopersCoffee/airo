@@ -10,4 +10,5 @@ export 'src/legal_release_preflight.dart';
 export 'src/macos_signing_preflight.dart';
 export 'src/play_upload_plan.dart';
 export 'src/release_matrix.dart';
+export 'src/release_qualification_preflight.dart';
 export 'src/repository_health_preflight.dart';

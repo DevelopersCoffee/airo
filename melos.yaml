@@ -322,6 +322,20 @@ scripts:
         --output-json ../../artifacts/release/repository-health-preflight.json \
         --output-markdown ../../artifacts/release/repository-health-preflight.md
 
+  # Check release qualification evidence before public publication.
+  release:qualification-preflight:
+    description: Write release qualification readiness evidence
+    run: |
+      cd packages/core_release
+      flutter pub get
+      dart run tool/preflight_release_qualification.dart \
+        --repo-root ../.. \
+        --manifest "${AIRO_RELEASE_MANIFEST:?Set AIRO_RELEASE_MANIFEST to the release manifest JSON path}" \
+        --evidence "${AIRO_QUALIFICATION_EVIDENCE:-}" \
+        --mode "${QUALIFICATION_MODE:-internal}" \
+        --output-json artifacts/release/release-qualification-preflight.json \
+        --output-markdown artifacts/release/release-qualification-preflight.md
+
   # Check macOS Developer ID signing and notarization readiness without printing secrets.
   release:macos-signing-preflight:
     description: Write macOS signing and notarization readiness evidence
