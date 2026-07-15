@@ -60,16 +60,13 @@ pub fn parse_xmltv(xml: &[u8]) -> Vec<EpgEntry> {
                         for attr in e.attributes().flatten() {
                             match attr.key.as_ref() {
                                 b"channel" => {
-                                    channel = String::from_utf8_lossy(&attr.value)
-                                        .into_owned();
+                                    channel = String::from_utf8_lossy(&attr.value).into_owned();
                                 }
                                 b"start" => {
-                                    start_str = String::from_utf8_lossy(&attr.value)
-                                        .into_owned();
+                                    start_str = String::from_utf8_lossy(&attr.value).into_owned();
                                 }
                                 b"stop" => {
-                                    stop_str = String::from_utf8_lossy(&attr.value)
-                                        .into_owned();
+                                    stop_str = String::from_utf8_lossy(&attr.value).into_owned();
                                 }
                                 _ => {}
                             }
@@ -340,7 +337,10 @@ mod tests {
     #[test]
     fn xmltv_datetime_known_values() {
         // 2026-07-15 12:00:00 +0530 -> UTC 06:30:00 -> epoch
-        assert_eq!(parse_xmltv_datetime("20260715120000 +0530"), Some(1784097000));
+        assert_eq!(
+            parse_xmltv_datetime("20260715120000 +0530"),
+            Some(1784097000)
+        );
         // 2026-01-01 00:00:00 UTC
         assert_eq!(parse_xmltv_datetime("20260101000000"), Some(1767225600));
         // Too short
