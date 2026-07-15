@@ -1,8 +1,11 @@
 // ignore_for_file: avoid_unused_constructor_parameters
 
 /// Web-compatible database implementation using Hive for IndexedDB storage.
-/// This provides the same interface as the native AppDatabase but uses
-/// Hive boxes instead of SQLite for web platform compatibility.
+///
+/// **DEPRECATED** -- Hive is RETIRED (ADR-0008). This file is the sole
+/// remaining Hive consumer. It will be replaced with Drift's sql.js / sqlite3
+/// WASM backend when web becomes a primary target. Do NOT add new Hive usage
+/// elsewhere in the codebase.
 library;
 
 import 'package:hive_flutter/hive_flutter.dart';

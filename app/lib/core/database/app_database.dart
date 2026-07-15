@@ -2,7 +2,7 @@
 ///
 /// This file uses conditional imports to provide:
 /// - Native platforms (Android, iOS, Windows, Linux, macOS): SQLite/Drift
-/// - Web platform: Hive/IndexedDB
+/// - Web platform: Hive/IndexedDB (DEPRECATED -- see ADR-0008)
 ///
 /// Usage:
 /// ```dart

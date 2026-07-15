@@ -18,8 +18,10 @@ class PreferencesStore implements KeyValueStore {
   Future<String?> getString(String key) async => _prefs.getString(key);
 
   @override
-  Future<bool> setString(String key, String value) async =>
-      _prefs.setString(key, value);
+  Future<bool> setString(String key, String value) async {
+    KeyValueStore.assertValueSize(value, key);
+    return _prefs.setString(key, value);
+  }
 
   @override
   Future<int?> getInt(String key) async => _prefs.getInt(key);
@@ -46,8 +48,12 @@ class PreferencesStore implements KeyValueStore {
       _prefs.getStringList(key);
 
   @override
-  Future<bool> setStringList(String key, List<String> value) async =>
-      _prefs.setStringList(key, value);
+  Future<bool> setStringList(String key, List<String> value) async {
+    for (final item in value) {
+      KeyValueStore.assertValueSize(item, key);
+    }
+    return _prefs.setStringList(key, value);
+  }
 
   @override
   Future<bool> containsKey(String key) async => _prefs.containsKey(key);
