@@ -278,10 +278,7 @@ mod tests {
 
     #[test]
     fn non_http_url_skipped() {
-        let content = concat!(
-            "#EXTINF:-1,FTP Channel\n",
-            "ftp://example.com/stream\n",
-        );
+        let content = concat!("#EXTINF:-1,FTP Channel\n", "ftp://example.com/stream\n",);
         let entries = parse_m3u(content.to_string());
         assert!(entries.is_empty());
     }
@@ -295,8 +292,7 @@ mod tests {
 
     #[test]
     fn handles_windows_line_endings() {
-        let content =
-            "#EXTM3U\r\n#EXTINF:-1,Win Channel\r\nhttp://example.com/win\r\n";
+        let content = "#EXTM3U\r\n#EXTINF:-1,Win Channel\r\nhttp://example.com/win\r\n";
         let entries = parse_m3u(content.to_string());
         assert_eq!(entries.len(), 1);
         assert_eq!(entries[0].name, "Win Channel");
