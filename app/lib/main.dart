@@ -19,6 +19,11 @@ bool isFirebaseInitialized = false;
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Mobile ImageCache budgets: generous for phones/tablets with more RAM.
+  // 100 MB / 500 images covers IPTV channel logos + other app images.
+  PaintingBinding.instance.imageCache.maximumSizeBytes = 100 * 1024 * 1024;
+  PaintingBinding.instance.imageCache.maximumSize = 500;
+
   GlobalErrorHandler.initialize();
 
   if (kIsWeb) {

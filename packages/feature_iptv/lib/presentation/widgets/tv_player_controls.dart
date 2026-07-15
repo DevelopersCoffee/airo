@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import "package:platform_player/platform_player.dart";
 import "package:platform_media/platform_media.dart";
 import '../tv/tv_support.dart';
+import 'channel_logo.dart';
 
 /// TV-specific player controls for Android TV/Fire TV
 ///
@@ -105,14 +106,12 @@ class _TvPlayerControlsState extends ConsumerState<TvPlayerControls> {
       child: Row(
         children: [
           if (channel.logoUrl != null)
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: Image.network(
-                channel.logoUrl!,
-                width: 48,
-                height: 48,
-                errorBuilder: (_, _, _) => const SizedBox.shrink(),
-              ),
+            ChannelLogo(
+              logoUrl: channel.logoUrl,
+              channelName: channel.name,
+              size: 48,
+              fit: BoxFit.contain,
+              borderRadius: 8,
             ),
           const SizedBox(width: 16),
           Expanded(
