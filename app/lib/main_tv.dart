@@ -51,7 +51,7 @@ void main() async {
   GlobalErrorHandler.initialize();
 
   if (kIsWeb) {
-    SemanticsBinding.instance.ensureSemantics();
+    WidgetsBinding.instance.ensureSemantics();
     debugPrint('Semantics enabled for Airo TV web testing');
   }
 
@@ -77,7 +77,6 @@ void main() async {
     ProviderScope(
       overrides: [
         sharedPreferencesProvider.overrideWithValue(prefs),
-        realIptvCastControllerOverride(),
         ...FeatureRegistry.allProviderOverrides,
       ],
       child: const AiroTvApp(),
@@ -86,7 +85,6 @@ void main() async {
 
   WidgetsBinding.instance.addPostFrameCallback((_) {
     unawaited(FeatureRegistry.initializeAll());
-    unawaited(seedTvDebugDefaultPlaylist(prefs));
   });
 }
 
