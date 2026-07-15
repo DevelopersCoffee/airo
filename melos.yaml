@@ -137,6 +137,27 @@ scripts:
         --output-json ../../artifacts/performance/airo-tv-logo-scroll-report.json \
         --output-markdown ../../artifacts/performance/airo-tv-logo-scroll-report.md
 
+  # Render local Airo TV physical D-pad traversal evidence.
+  bench:tv-dpad-report:
+    description: Write sanitized Airo TV D-pad traversal evidence
+    run: |
+      cd packages/platform_benchmarks
+      flutter pub get
+      dart run tool/write_dpad_traversal_report.dart \
+        --report-id "${AIRO_TV_DPAD_REPORT_ID:-manual-dpad-traversal-sample}" \
+        --device-profile "${AIRO_TV_DPAD_DEVICE_PROFILE:?Set AIRO_TV_DPAD_DEVICE_PROFILE from the physical device class}" \
+        --viewport-profile "${AIRO_TV_DPAD_VIEWPORT_PROFILE:?Set AIRO_TV_DPAD_VIEWPORT_PROFILE from the tested viewport/profile}" \
+        --required-actions "${AIRO_TV_DPAD_REQUIRED_ACTIONS:?Set AIRO_TV_DPAD_REQUIRED_ACTIONS from the traversal checklist}" \
+        --reachable-actions "${AIRO_TV_DPAD_REACHABLE_ACTIONS:?Set AIRO_TV_DPAD_REACHABLE_ACTIONS from the traversal result}" \
+        --channel-cards-traversed "${AIRO_TV_DPAD_CHANNEL_CARDS_TRAVERSED:?Set AIRO_TV_DPAD_CHANNEL_CARDS_TRAVERSED from the traversal result}" \
+        --help-opened "${AIRO_TV_DPAD_HELP_OPENED:?Set AIRO_TV_DPAD_HELP_OPENED true/false}" \
+        --help-dismissed "${AIRO_TV_DPAD_HELP_DISMISSED:?Set AIRO_TV_DPAD_HELP_DISMISSED true/false}" \
+        --focus-loss-count "${AIRO_TV_DPAD_FOCUS_LOSS_COUNT:-0}" \
+        --overflow-count "${AIRO_TV_DPAD_OVERFLOW_COUNT:-0}" \
+        --render-error-count "${AIRO_TV_DPAD_RENDER_ERROR_COUNT:-0}" \
+        --output-json ../../artifacts/performance/airo-tv-dpad-traversal-report.json \
+        --output-markdown ../../artifacts/performance/airo-tv-dpad-traversal-report.md
+
   # Render a local Cast proxy benchmark report from captured device metrics.
   bench:cast-proxy-report:
     description: Write sanitized Cast proxy benchmark evidence from local metrics

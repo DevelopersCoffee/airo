@@ -62,6 +62,36 @@ Reports contain aggregate channel counts, RSS, image-cache, and jank counts
 only. Do not include raw playlist URLs, logo URLs, device serials, LAN IPs,
 local paths, profile traces, or screenshots in issue comments.
 
+## Airo TV D-pad Traversal Report
+
+After a physical Android TV / Fire TV D-pad pass, write the sanitized #589
+evidence artifact with:
+
+```bash
+dart run tool/write_dpad_traversal_report.dart \
+  --report-id shield-tv-dpad-traversal \
+  --device-profile shield-tv-physical \
+  --viewport-profile android-tv-1080p \
+  --required-actions 9 \
+  --reachable-actions 9 \
+  --channel-cards-traversed 12 \
+  --help-opened true \
+  --help-dismissed true \
+  --focus-loss-count 0 \
+  --overflow-count 0 \
+  --render-error-count 0
+```
+
+The command evaluates the captured run and writes:
+
+- `artifacts/performance/airo-tv-dpad-traversal-report.json`
+- `artifacts/performance/airo-tv-dpad-traversal-report.md`
+
+Reports contain aggregate D-pad reachability, focus-loss, overflow, and render
+error counts only. Do not include device serials, receiver identifiers, raw
+playlist URLs, logo URLs, LAN IPs, local paths, screenshots, or logcat dumps in
+issue comments.
+
 ## Cast Proxy Benchmark Report
 
 After a physical sender-device Cast proxy run, write the sanitized benchmark
