@@ -8,6 +8,9 @@ Use this alongside the v2 distribution matrix before enabling real publishing
 jobs. Automation may support dry-run mode before these items are complete, but
 production publishing cannot be verified without them.
 
+For the current cross-issue blocker list and recommended parallel setup order,
+see [V2 Human-In-Loop Blocker Index](./V2_HUMAN_IN_LOOP_BLOCKERS.md).
+
 ## Google Play
 
 Related issues: #681, #585, #657.
@@ -39,8 +42,13 @@ Related issues: #682, #574.
 
 - [ ] Create or confirm Firebase apps for each package ID that should receive
       internal APKs.
+- [x] Confirm the checked-in Firebase config currently only contains
+      `io.airo.app`; v2 Firebase setup must regenerate the secret instead of
+      changing package IDs.
 - [ ] Add or confirm Firebase Android client configs for the registered
-      `io.airo.app.*` packages that should use Firebase services.
+      `io.airo.app.*` packages that should use Firebase services. The TV
+      package `io.airo.app.tv` is already registered and must be included in
+      the regenerated config.
 - [ ] Create a Firebase service account or distribution token for CI.
 - [ ] Store the Firebase service account JSON as the GitHub Actions secret
       `FIREBASE_SERVICE_ACCOUNT_JSON`.
