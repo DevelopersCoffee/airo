@@ -43,6 +43,7 @@ exports, playlist URLs, local IP addresses, or private device logs.
 | #516 | Database reliability validation | Run device/manual migration, crash-recovery, corrupted-database, large-history, search-indexing, backup, and restore checks after the host database reliability suite. |
 | #515 | Notification validation | Run notification validation on a supported physical/emulated target and attach evidence. |
 | #520 | Performance benchmarks | Run benchmark matrix and attach reproducible results. |
+| #514 | Audio playback validation | Run physical Android audio-route and interruption checks for seek accuracy, playback speed, background playback, headphones, Bluetooth, incoming calls, resume, and audio-focus changes. |
 
 ## Repository Or Workspace Decision Blockers
 
@@ -70,6 +71,6 @@ exports, playlist URLs, local IP addresses, or private device logs.
    groups exist.
 4. Store forms: complete #583 and #584 while engineering continues.
 5. Device evidence: schedule #683, #589, #590, #716, #459/#453, #257, #519,
-   #516, #515, and #520 after signed or release-candidate artifacts are
+   #516, #515, #520, and #514 after signed or release-candidate artifacts are
    available.
 6. Governance/legal: complete #687, #689, and #673 before broad public release.
