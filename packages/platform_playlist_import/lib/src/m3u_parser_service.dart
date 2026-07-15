@@ -1,14 +1,21 @@
+import 'dart:convert';
 import 'dart:developer' as developer;
+import 'dart:io';
 
 import 'package:dio/dio.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:platform_channels/platform_channels.dart';
 
 /// M3U playlist parser for user-supplied sources.
 class M3UParserService {
   static const String _playlistUrlKey = 'iptv_user_playlist_url';
-  static const String _cacheKey = 'iptv_playlist_cache';
+
+  // Legacy prefs keys — kept only for migration (removal on first load).
+  static const String _legacyCacheKey = 'iptv_playlist_cache';
   static const String _cacheTimestampKey = 'iptv_playlist_timestamp';
+
+  static const String _cacheFileName = 'iptv_channel_cache.json';
   static const Duration _cacheValidity = Duration(hours: 24);
 
   final Dio _dio;
@@ -23,7 +30,6 @@ class M3UParserService {
       return const [];
     }
 
-    // Try cache first if not forcing refresh
     if (!forceRefresh) {
       final cached = await _loadFromCache();
       if (cached != null && cached.isNotEmpty) {
@@ -44,7 +50,6 @@ class M3UParserService {
       );
     }
 
-    // Network failed; use only a cache derived from the user's own playlist.
     final cached = await _loadFromCache();
     if (cached != null && cached.isNotEmpty) {
       return cached;
@@ -74,8 +79,7 @@ class M3UParserService {
     }
 
     await _prefs.setString(_playlistUrlKey, normalized);
-    await _prefs.remove(_cacheKey);
-    await _prefs.remove(_cacheTimestampKey);
+    await clearCache();
   }
 
   /// Remove the configured playlist and its user-derived cache.
@@ -105,7 +109,6 @@ class M3UParserService {
   List<IPTVChannel> parseM3U(String content) {
     final lines = content.split('\n');
     final channels = <IPTVChannel>[];
-    // Track seen channels by normalized name to deduplicate
     final seenChannels = <String, IPTVChannel>{};
 
     String? currentName;
@@ -119,7 +122,6 @@ class M3UParserService {
       final line = lines[i].trim();
 
       if (line.startsWith('#EXTINF:')) {
-        // Parse channel info
         final info = _parseExtInf(line);
         currentName = info['name'];
         currentLogo = info['tvg-logo'];
@@ -130,12 +132,10 @@ class M3UParserService {
       } else if (line.isNotEmpty &&
           !line.startsWith('#') &&
           currentName != null) {
-        // Normalize the channel name for deduplication
         final normalizedName = _normalizeChannelName(currentName);
 
-        // Create the channel
         final channel = IPTVChannel.fromM3U(
-          name: _formatChannelName(currentName), // Use formatted name
+          name: _formatChannelName(currentName),
           url: line,
           logo: currentLogo,
           group: currentGroup,
@@ -144,18 +144,15 @@ class M3UParserService {
           language: currentLanguage,
         );
 
-        // Deduplicate: keep the one with logo, or first occurrence
         if (!seenChannels.containsKey(normalizedName)) {
           seenChannels[normalizedName] = channel;
         } else {
-          // Prefer channel with logo over one without
           final existing = seenChannels[normalizedName]!;
           if (existing.logoUrl == null && channel.logoUrl != null) {
             seenChannels[normalizedName] = channel;
           }
         }
 
-        // Reset for next channel
         currentName = null;
         currentLogo = null;
         currentGroup = null;
@@ -165,7 +162,6 @@ class M3UParserService {
       }
     }
 
-    // Return deduplicated channels
     channels.addAll(seenChannels.values);
     return channels;
   }
@@ -174,21 +170,18 @@ class M3UParserService {
   String _normalizeChannelName(String name) {
     return name
         .toLowerCase()
-        .replaceAll(RegExp(r'[^a-z0-9]'), '') // Remove non-alphanumeric
-        .replaceAll(RegExp(r'\s+'), ''); // Remove whitespace
+        .replaceAll(RegExp(r'[^a-z0-9]'), '')
+        .replaceAll(RegExp(r'\s+'), '');
   }
 
   /// Format channel name for display (proper capitalization)
   String _formatChannelName(String name) {
-    // Remove extra whitespace
     name = name.trim().replaceAll(RegExp(r'\s+'), ' ');
 
-    // Title case without correcting to specific channel brands.
     return name
         .split(' ')
         .map((word) {
           if (word.isEmpty) return word;
-          // Keep acronyms uppercase (2-4 letter all-caps words)
           if (word.length <= 4 && word == word.toUpperCase()) {
             return word;
           }
@@ -201,13 +194,11 @@ class M3UParserService {
   Map<String, String?> _parseExtInf(String line) {
     final result = <String, String?>{};
 
-    // Extract name (after the comma)
     final commaIndex = line.lastIndexOf(',');
     if (commaIndex != -1) {
       result['name'] = line.substring(commaIndex + 1).trim();
     }
 
-    // Extract attributes
     final attrPattern = RegExp(r'(\w+[-\w]*)="([^"]*)"');
     for (final match in attrPattern.allMatches(line)) {
       result[match.group(1)!] = match.group(2);
@@ -216,42 +207,73 @@ class M3UParserService {
     return result;
   }
 
-  /// Load channels from cache
+  Future<File> _cacheFile() async {
+    final dir = await getApplicationSupportDirectory();
+    return File('${dir.path}/$_cacheFileName');
+  }
+
+  /// Load channels from JSON file cache. Migrates legacy prefs M3U string.
   Future<List<IPTVChannel>?> _loadFromCache() async {
+    // One-time migration: remove multi-MB M3U string from SharedPreferences.
+    if (_prefs.containsKey(_legacyCacheKey)) {
+      unawaited(_prefs.remove(_legacyCacheKey));
+    }
+
+    // Quick validity check via prefs timestamp before opening the file.
     final timestamp = _prefs.getInt(_cacheTimestampKey);
     if (timestamp == null) return null;
 
     final cacheTime = DateTime.fromMillisecondsSinceEpoch(timestamp);
     if (DateTime.now().difference(cacheTime) > _cacheValidity) {
-      return null; // Cache expired
+      return null;
     }
 
-    final cached = _prefs.getString(_cacheKey);
-    if (cached == null) return null;
+    try {
+      final file = await _cacheFile();
+      if (!file.existsSync()) return null;
 
-    return parseM3U(cached);
-  }
-
-  /// Save channels to cache
-  Future<void> _saveToCache(List<IPTVChannel> channels) async {
-    // Store as simplified M3U format for easy re-parsing
-    final buffer = StringBuffer('#EXTM3U\n');
-    for (final ch in channels) {
-      buffer.writeln(
-        '#EXTINF:-1 tvg-logo="${ch.logoUrl ?? ""}" group-title="${ch.group}",${ch.name}',
+      final raw = await file.readAsString();
+      final json = jsonDecode(raw) as Map<String, dynamic>;
+      return (json['channels'] as List<dynamic>)
+          .map((c) => IPTVChannel.fromJson(c as Map<String, dynamic>))
+          .toList();
+    } catch (e) {
+      developer.log(
+        'Channel cache read failed: $e',
+        name: 'platform_playlist_import',
       );
-      buffer.writeln(ch.streamUrl);
+      return null;
     }
-    await _prefs.setString(_cacheKey, buffer.toString());
-    await _prefs.setInt(
-      _cacheTimestampKey,
-      DateTime.now().millisecondsSinceEpoch,
-    );
   }
 
-  /// Clear cache
+  /// Save channels to JSON file cache; remove legacy M3U string from prefs.
+  Future<void> _saveToCache(List<IPTVChannel> channels) async {
+    try {
+      final now = DateTime.now().millisecondsSinceEpoch;
+      final file = await _cacheFile();
+      await file.writeAsString(
+        jsonEncode({'timestamp': now, 'channels': channels.map((c) => c.toJson()).toList()}),
+      );
+      await _prefs.setInt(_cacheTimestampKey, now);
+      await _prefs.remove(_legacyCacheKey);
+    } catch (e) {
+      developer.log(
+        'Channel cache write failed: $e',
+        name: 'platform_playlist_import',
+      );
+    }
+  }
+
+  /// Clear cache (file + prefs timestamp).
   Future<void> clearCache() async {
-    await _prefs.remove(_cacheKey);
+    await _prefs.remove(_legacyCacheKey);
     await _prefs.remove(_cacheTimestampKey);
+    try {
+      final file = await _cacheFile();
+      if (file.existsSync()) await file.delete();
+    } catch (_) {}
   }
 }
+
+// Suppress lint for fire-and-forget unawaited calls.
+void unawaited(Future<void> future) {}
