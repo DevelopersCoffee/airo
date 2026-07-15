@@ -101,6 +101,28 @@ release or distribution run is intentionally started.
 | #169 | Games plugin migration | Blocked on #164 plugin architecture, #168 delivery setup if downloaded outside the APK, release packaging strategy, and QA coverage for download/offline/uninstall behavior. |
 | #170 | Beats plugin migration | Blocked on #164 plugin architecture, #168 delivery setup if downloaded outside the APK, #249 music/catalog strategy, and background-audio policy for downloaded/plugin code. |
 
+## Broad Blocked Backlog Not In Credential Queue
+
+As of 2026-07-15, the remaining open blocked issues not listed individually
+above are mostly larger product, AI runtime, on-device, UI, security, or QA
+scope. They are not fast credential/account setup tasks.
+
+Current label shape for those unlisted blocked issues:
+
+| Label family | Count | What it means for fast-close triage |
+| --- | ---: | --- |
+| `agent/ai-llm` | 65 | Larger AI/runtime/model work; requires architecture, implementation, and native/on-device validation. |
+| `on-device` | 61 | Requires device/runtime behavior, model assets, native integration, or physical/emulator validation. |
+| `agent/mobile-ui` | 49 | Requires app UX implementation and UI automation or manual device evidence. |
+| `ai` | 41 | Product AI feature backlog, not release credential setup. |
+| `ui` | 30 | UI/product work, not account creation. |
+| `agent/security` | 23 | Requires security/privacy design review, not just secret provisioning. |
+
+Treat these as future feature or hardening work unless a maintainer explicitly
+pulls one into the current release wave. The current fast-close queue should
+stay focused on the account, credential, store-console, device-evidence, and
+maintainer-decision blockers above.
+
 ## Fastest Parallel Setup Order
 
 1. Firebase: complete #574 and #756 first because the repo currently proves
