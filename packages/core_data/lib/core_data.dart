@@ -38,3 +38,7 @@ export 'src/plugins/plugin_kill_switch_service.dart';
 // Bug Reporting
 export 'src/bug_report/bug_report_model.dart';
 export 'src/bug_report/github_issue_service.dart';
+
+// Memory Budgets
+export 'src/memory/device_class.dart';
+export 'src/memory/memory_budget.dart';
