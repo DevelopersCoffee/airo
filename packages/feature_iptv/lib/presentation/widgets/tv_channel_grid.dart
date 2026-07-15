@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:core_ui/core_ui.dart';
 import '../../application/providers/iptv_providers.dart';
 import "package:platform_channels/platform_channels.dart";
 import '../tv/iptv_tv.dart';
@@ -142,8 +143,19 @@ class _TvChannelGridState extends ConsumerState<TvChannelGrid> {
     for (var i = startIndex; i < endIndex; i++) {
       final channel = channels[i];
       if (channel.hasLogo) {
-        // Precache the image in Flutter's image cache
-        precacheImage(NetworkImage(channel.logoUrl!), context);
+        final devicePixelRatio = MediaQuery.devicePixelRatioOf(context);
+        final cacheWidth = (dimensions.channelCardWidth * devicePixelRatio)
+            .ceil();
+        final cacheHeight = (dimensions.channelCardHeight * devicePixelRatio)
+            .ceil();
+        precacheImage(
+          ResizeImage.resizeIfNeeded(
+            cacheWidth,
+            cacheHeight,
+            NetworkImage(channel.logoUrl!),
+          ),
+          context,
+        );
       }
     }
   }
@@ -329,10 +341,10 @@ class _TvChannelCard extends StatelessWidget {
     if (channel.hasLogo) {
       return ClipRRect(
         borderRadius: BorderRadius.circular(8),
-        child: Image.network(
-          channel.logoUrl!,
+        child: AiroNetworkImage(
+          url: channel.logoUrl!,
           fit: BoxFit.contain,
-          errorBuilder: (_, _, _) => _buildDefaultIcon(),
+          errorBuilder: (context, error, stackTrace) => _buildDefaultIcon(),
         ),
       );
     }

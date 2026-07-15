@@ -5,7 +5,7 @@
 # Heavy dependencies excluded:
 # - stockfish: 1.8.1 (~108MB native libs)
 # - flame: 1.35.0 + flame_audio: 2.11.13 (~5MB)
-# - google_mlkit_text_recognition: 0.15.1 (~10MB)
+# - google_mlkit_text_recognition: 0.16.0 (~10MB)
 # - chess: 0.8.1 (requires stockfish)
 
 name: airo_app
@@ -93,7 +93,7 @@ dependencies:
   stockfish: 1.8.1
   chess: 0.8.1
   flame: 1.35.0
-  google_mlkit_text_recognition: 0.15.1
+  google_mlkit_text_recognition: 0.16.0
   just_audio: 0.10.5
   audioplayers: 6.5.1
   flutter_tts: 4.2.5
@@ -110,7 +110,7 @@ dependencies:
   # - flame_audio: 2.11.13 (game audio - not needed)
   # - chess: 0.8.1 (chess logic - not needed)
   # - stockfish: 1.8.1 (chess AI - 108MB native libs!)
-  # - google_mlkit_text_recognition: 0.15.1 (OCR - not needed)
+  # - google_mlkit_text_recognition: 0.16.0 (OCR - not needed)
   # - audio_service native Android activity is still required by MainActivity
   # - just_audio: (music player - not needed)
   # - audioplayers: (game audio - not needed)
