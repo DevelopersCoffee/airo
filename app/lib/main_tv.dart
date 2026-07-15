@@ -14,6 +14,7 @@
 library;
 
 import 'dart:io';
+import 'dart:isolate';
 
 import 'package:core_ui/core_ui.dart';
 import 'package:dio/dio.dart';
@@ -347,6 +348,24 @@ Future<Duration?> warmTvDebugDefaultEpgCache(
 
   final stopwatch = Stopwatch()..start();
   final now = (clock ?? DateTime.now)().toUtc();
+  final snapshot = await Isolate.run<CompactEpgSlice>(
+    () async => _buildTvCompactEpgSnapshot(
+      content: content,
+      now: now,
+      channels: channels,
+    ),
+    debugName: 'tv_debug_epg_warmup',
+  );
+  await repository.saveSnapshot(snapshot);
+  stopwatch.stop();
+  return stopwatch.elapsed;
+}
+
+Future<CompactEpgSlice> _buildTvCompactEpgSnapshot({
+  required String content,
+  required DateTime now,
+  required List<IPTVChannel> channels,
+}) async {
   final aliasesByChannel = {
     for (final channel in channels) channel.id: _xmltvGuideAliasesFor(channel),
   };
@@ -390,18 +409,14 @@ Future<Duration?> warmTvDebugDefaultEpgCache(
     }
   }
 
-  await repository.saveSnapshot(
-    CompactEpgSlice(
-      entries: entries,
-      generatedAt: guideSlice.generatedAt,
-      expiresAt: guideSlice.expiresAt,
-      source: entries.isEmpty
-          ? CompactEpgSliceSource.unavailable
-          : CompactEpgSliceSource.localCache,
-    ),
+  return CompactEpgSlice(
+    entries: entries,
+    generatedAt: guideSlice.generatedAt,
+    expiresAt: guideSlice.expiresAt,
+    source: entries.isEmpty
+        ? CompactEpgSliceSource.unavailable
+        : CompactEpgSliceSource.localCache,
   );
-  stopwatch.stop();
-  return stopwatch.elapsed;
 }
 
 List<String> _xmltvGuideAliasesFor(IPTVChannel channel) {
