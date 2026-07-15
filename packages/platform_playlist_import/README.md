@@ -45,12 +45,22 @@ On `304 Not Modified`, the parser returns the existing user-derived cache
 without downloading or parsing a new response body. Changing or clearing the
 playlist URL removes the cached body, timestamp, and validators together.
 
+## Structured Playlist Cache
+
+Fetched playlists are parsed once, then stored as structured `IPTVChannel` JSON
+in the app support directory. Warm cache reads decode that channel cache through
+the platform worker boundary instead of reparsing M3U text.
+
+The legacy `iptv_playlist_cache` SharedPreferences M3U payload is removed on
+cache reads and writes. SharedPreferences keeps only small metadata such as the
+playlist timestamp and HTTP validators.
+
 ## Off-Main Parse Boundary
 
-Async playlist fetch and cache-load paths parse through `AiroWorkerExecutor`
-from `platform_worker_jobs`. This keeps large user-supplied M3U parsing behind
-the reusable platform worker boundary instead of running it from Airo TV screen
-code.
+Async playlist fetches parse M3U through `AiroWorkerExecutor` from
+`platform_worker_jobs`. Structured cache encode/decode also runs through that
+worker boundary. This keeps large user-supplied M3U parsing and cache
+serialization away from Airo TV screen code.
 
 `parseM3U` remains synchronous for deterministic unit tests and small direct
 inputs. Production callers should prefer `fetchPlaylist` or `parseM3UOffMain`

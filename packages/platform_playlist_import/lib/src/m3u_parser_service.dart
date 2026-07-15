@@ -1,18 +1,21 @@
+import 'dart:convert';
 import 'dart:developer' as developer;
 import 'dart:io';
 
 import 'package:dio/dio.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:platform_channels/platform_channels.dart';
 import 'package:platform_worker_jobs/platform_worker_jobs.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// M3U playlist parser for user-supplied sources.
 class M3UParserService {
   static const String _playlistUrlKey = 'iptv_user_playlist_url';
-  static const String _cacheKey = 'iptv_playlist_cache';
+  static const String _legacyCacheKey = 'iptv_playlist_cache';
   static const String _cacheTimestampKey = 'iptv_playlist_timestamp';
   static const String _cacheEtagKey = 'iptv_playlist_etag';
   static const String _cacheLastModifiedKey = 'iptv_playlist_last_modified';
+  static const String _cacheFileName = 'iptv_channel_cache.json';
   static const Duration _cacheValidity = Duration(hours: 24);
   static final RegExp _extInfAttributePattern = RegExp(
     r'(\w+[-\w]*)="([^"]*)"',
@@ -20,13 +23,18 @@ class M3UParserService {
 
   final Dio _dio;
   final SharedPreferences _prefs;
+  final Future<Directory> Function() _cacheDirectoryProvider;
   final AiroWorkerExecutor workerExecutor;
 
   M3UParserService({
-    required this._dio,
-    required this._prefs,
+    required Dio dio,
+    required SharedPreferences prefs,
+    Future<Directory> Function()? cacheDirectoryProvider,
     this.workerExecutor = const AiroWorkerExecutor(),
-  });
+  }) : _dio = dio,
+       _prefs = prefs,
+       _cacheDirectoryProvider =
+           cacheDirectoryProvider ?? getApplicationSupportDirectory;
 
   /// Fetch and parse the user-supplied playlist with caching.
   Future<List<IPTVChannel>> fetchPlaylist({bool forceRefresh = false}) async {
@@ -35,7 +43,6 @@ class M3UParserService {
       return const [];
     }
 
-    // Try cache first if not forcing refresh
     if (!forceRefresh) {
       final cached = await _loadFromCache();
       if (cached != null && cached.isNotEmpty) {
@@ -44,10 +51,12 @@ class M3UParserService {
     }
 
     try {
-      final channels = await _fetchAndParse(playlistUrl);
-      if (channels.isNotEmpty) {
-        await _saveToCache(channels);
-        return channels;
+      final result = await _fetchAndParse(playlistUrl);
+      if (result.channels.isNotEmpty) {
+        if (!result.fromCache) {
+          await _saveToCache(result.channels);
+        }
+        return result.channels;
       }
     } catch (_) {
       developer.log(
@@ -56,7 +65,6 @@ class M3UParserService {
       );
     }
 
-    // Network failed; use only a cache derived from the user's own playlist.
     final cached = await _loadFromCache();
     if (cached != null && cached.isNotEmpty) {
       return cached;
@@ -86,10 +94,7 @@ class M3UParserService {
     }
 
     await _prefs.setString(_playlistUrlKey, normalized);
-    await _prefs.remove(_cacheKey);
-    await _prefs.remove(_cacheTimestampKey);
-    await _prefs.remove(_cacheEtagKey);
-    await _prefs.remove(_cacheLastModifiedKey);
+    await clearCache();
   }
 
   /// Remove the configured playlist and its user-derived cache.
@@ -98,8 +103,8 @@ class M3UParserService {
     await clearCache();
   }
 
-  /// Fetch and parse M3U from URL
-  Future<List<IPTVChannel>> _fetchAndParse(String url) async {
+  /// Fetch and parse M3U from URL.
+  Future<_PlaylistFetchResult> _fetchAndParse(String url) async {
     final headers = <String, String>{'Accept-Encoding': 'gzip, deflate'};
     final etag = _prefs.getString(_cacheEtagKey);
     final lastModified = _prefs.getString(_cacheLastModifiedKey);
@@ -126,7 +131,7 @@ class M3UParserService {
     if (response.statusCode == HttpStatus.notModified) {
       final cached = await _loadFromCache(ignoreExpiry: true);
       if (cached != null && cached.isNotEmpty) {
-        return cached;
+        return _PlaylistFetchResult(channels: cached, fromCache: true);
       }
       throw Exception('Playlist not modified but no cache is available');
     }
@@ -137,10 +142,10 @@ class M3UParserService {
 
     final channels = await parseM3UOffMain(response.data!);
     await _saveHttpValidators(response.headers);
-    return channels;
+    return _PlaylistFetchResult(channels: channels);
   }
 
-  /// Parse M3U content into channels with deduplication
+  /// Parse M3U content into channels with deduplication.
   List<IPTVChannel> parseM3U(String content) => _parseM3UContent(content);
 
   /// Parse M3U content in the platform worker boundary used by async flows.
@@ -152,46 +157,83 @@ class M3UParserService {
     );
   }
 
-  /// Load channels from cache
+  Future<File> _cacheFile() async {
+    final dir = await _cacheDirectoryProvider();
+    return File('${dir.path}/$_cacheFileName');
+  }
+
+  /// Load channels from structured cache without reparsing the M3U payload.
   Future<List<IPTVChannel>?> _loadFromCache({bool ignoreExpiry = false}) async {
+    await _prefs.remove(_legacyCacheKey);
+
     final timestamp = _prefs.getInt(_cacheTimestampKey);
     if (timestamp == null) return null;
 
     final cacheTime = DateTime.fromMillisecondsSinceEpoch(timestamp);
     if (!ignoreExpiry &&
         DateTime.now().difference(cacheTime) > _cacheValidity) {
-      return null; // Cache expired
+      return null;
     }
 
-    final cached = _prefs.getString(_cacheKey);
-    if (cached == null) return null;
+    try {
+      final file = await _cacheFile();
+      if (!file.existsSync()) return null;
 
-    return parseM3UOffMain(cached);
-  }
-
-  /// Save channels to cache
-  Future<void> _saveToCache(List<IPTVChannel> channels) async {
-    // Store as simplified M3U format for easy re-parsing
-    final buffer = StringBuffer('#EXTM3U\n');
-    for (final ch in channels) {
-      buffer.writeln(
-        '#EXTINF:-1 tvg-logo="${ch.logoUrl ?? ""}" group-title="${ch.group}",${ch.name}',
+      return workerExecutor.run<List<IPTVChannel>>(
+        debugName: 'm3u_playlist_cache_decode',
+        kind: AiroWorkerJobKind.playlistImport,
+        computation: () => _readChannelCacheFile(file.path),
       );
-      buffer.writeln(ch.streamUrl);
+    } catch (error, stackTrace) {
+      developer.log(
+        'Channel cache read failed.',
+        name: 'platform_playlist_import',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      return null;
     }
-    await _prefs.setString(_cacheKey, buffer.toString());
-    await _prefs.setInt(
-      _cacheTimestampKey,
-      DateTime.now().millisecondsSinceEpoch,
-    );
   }
 
-  /// Clear cache
+  /// Save channels to structured cache and remove the legacy M3U prefs value.
+  Future<void> _saveToCache(List<IPTVChannel> channels) async {
+    try {
+      final now = DateTime.now().millisecondsSinceEpoch;
+      final file = await _cacheFile();
+      await file.parent.create(recursive: true);
+      final payload = await workerExecutor.run<String>(
+        debugName: 'm3u_playlist_cache_encode',
+        kind: AiroWorkerJobKind.playlistImport,
+        computation: () => _encodeChannelCache(channels),
+      );
+      await file.writeAsString(payload);
+      await _prefs.setInt(_cacheTimestampKey, now);
+      await _prefs.remove(_legacyCacheKey);
+    } catch (error, stackTrace) {
+      developer.log(
+        'Channel cache write failed.',
+        name: 'platform_playlist_import',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+  }
+
+  /// Clear cache.
   Future<void> clearCache() async {
-    await _prefs.remove(_cacheKey);
+    await _prefs.remove(_legacyCacheKey);
     await _prefs.remove(_cacheTimestampKey);
     await _prefs.remove(_cacheEtagKey);
     await _prefs.remove(_cacheLastModifiedKey);
+
+    try {
+      final file = await _cacheFile();
+      if (file.existsSync()) {
+        await file.delete();
+      }
+    } catch (_) {
+      // Cache deletion is best-effort; stale metadata was already removed.
+    }
   }
 
   Future<void> _saveHttpValidators(Headers headers) async {
@@ -212,10 +254,32 @@ class M3UParserService {
   }
 }
 
+class _PlaylistFetchResult {
+  const _PlaylistFetchResult({required this.channels, this.fromCache = false});
+
+  final List<IPTVChannel> channels;
+  final bool fromCache;
+}
+
+String _encodeChannelCache(List<IPTVChannel> channels) {
+  return jsonEncode({
+    'channels': channels.map((channel) => channel.toJson()).toList(),
+  });
+}
+
+Future<List<IPTVChannel>> _readChannelCacheFile(String path) async {
+  final raw = await File(path).readAsString();
+  final payload = jsonDecode(raw) as Map<String, dynamic>;
+  final channels = payload['channels'] as List<dynamic>? ?? const [];
+  return channels
+      .map((channel) => IPTVChannel.fromJson(channel as Map<String, dynamic>))
+      .toList();
+}
+
 List<IPTVChannel> _parseM3UContent(String content) {
   final lines = content.split('\n');
   final channels = <IPTVChannel>[];
-  // Track seen channels by normalized name to deduplicate
+  // Track seen channels by normalized name to deduplicate.
   final seenChannels = <String, IPTVChannel>{};
 
   String? currentName;
@@ -229,7 +293,6 @@ List<IPTVChannel> _parseM3UContent(String content) {
     final line = lines[i].trim();
 
     if (line.startsWith('#EXTINF:')) {
-      // Parse channel info
       final info = _parseExtInf(line);
       currentName = info['name'];
       currentLogo = info['tvg-logo'];
@@ -251,13 +314,11 @@ List<IPTVChannel> _parseM3UContent(String content) {
         continue;
       }
 
-      // Normalize the channel name for deduplication
       final normalizedName = _normalizeChannelName(currentName);
       final logoUri = AiroPlaylistUrlPolicy.normalizeLogoUrl(currentLogo);
 
-      // Create the channel
       final channel = IPTVChannel.fromM3U(
-        name: _formatChannelName(currentName), // Use formatted name
+        name: _formatChannelName(currentName),
         url: streamUri.toString(),
         logo: logoUri?.toString(),
         group: currentGroup,
@@ -266,18 +327,15 @@ List<IPTVChannel> _parseM3UContent(String content) {
         language: currentLanguage,
       );
 
-      // Deduplicate: keep the one with logo, or first occurrence
       if (!seenChannels.containsKey(normalizedName)) {
         seenChannels[normalizedName] = channel;
       } else {
-        // Prefer channel with logo over one without
         final existing = seenChannels[normalizedName]!;
         if (existing.logoUrl == null && channel.logoUrl != null) {
           seenChannels[normalizedName] = channel;
         }
       }
 
-      // Reset for next channel
       currentName = null;
       currentLogo = null;
       currentGroup = null;
@@ -287,12 +345,11 @@ List<IPTVChannel> _parseM3UContent(String content) {
     }
   }
 
-  // Return deduplicated channels
   channels.addAll(seenChannels.values);
   return channels;
 }
 
-/// Normalize channel name for deduplication (lowercase, remove special chars)
+/// Normalize channel name for deduplication (lowercase, remove special chars).
 String _normalizeChannelName(String name) {
   final buffer = StringBuffer();
   for (var i = 0; i < name.length; i++) {
@@ -309,7 +366,7 @@ String _normalizeChannelName(String name) {
   return buffer.toString();
 }
 
-/// Format channel name for display (proper capitalization)
+/// Format channel name for display (proper capitalization).
 String _formatChannelName(String name) {
   final buffer = StringBuffer();
   var index = 0;
@@ -351,17 +408,15 @@ bool _isWhitespace(int codeUnit) {
       codeUnit == 0x0D;
 }
 
-/// Parse #EXTINF line attributes
+/// Parse #EXTINF line attributes.
 Map<String, String?> _parseExtInf(String line) {
   final result = <String, String?>{};
 
-  // Extract name (after the comma)
   final commaIndex = line.lastIndexOf(',');
   if (commaIndex != -1) {
     result['name'] = line.substring(commaIndex + 1).trim();
   }
 
-  // Extract attributes
   for (final match in M3UParserService._extInfAttributePattern.allMatches(
     line,
   )) {

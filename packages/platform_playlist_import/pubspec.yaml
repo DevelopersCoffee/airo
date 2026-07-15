@@ -17,6 +17,7 @@ dependencies:
     path: ../platform_channels
   platform_worker_jobs:
     path: ../platform_worker_jobs
+  path_provider: ^2.1.6
   shared_preferences: ^2.5.5
 
 dev_dependencies:
