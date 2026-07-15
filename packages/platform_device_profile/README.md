@@ -30,3 +30,47 @@ harnesses can consume:
 High runtime memory pressure forces the constrained budget. Critical pressure
 or sub-1 GB memory maps to an unsupported budget so certification and soak
 harnesses can fail fast.
+
+## Memory Timeline Reports
+
+`AiroRuntimeMemoryTimelineReport` turns sampled memory readings into
+deterministic issue or release evidence. Harnesses should collect aggregate
+values from sources such as `adb shell dumpsys meminfo`, DevTools heap snapshots,
+and image-cache counters, then publish the sanitized markdown report.
+
+```dart
+const policy = AiroRuntimeMemoryBudgetPolicy();
+final budget = policy.budgetForSignals(deviceSignals);
+
+final report = AiroRuntimeMemoryTimelineReport(
+  reportId: 'tv-30m-soak-2026-07-15',
+  scenarioId: '30m-playback-soak',
+  budget: budget,
+  points: [
+    AiroRuntimeMemoryTimelinePoint(
+      pointId: 'start',
+      sampledAt: DateTime.utc(2026, 7, 15, 12),
+      rssMb: 180,
+      dartHeapMb: 96,
+      imageCacheMb: 12,
+      retainedChannelListCopies: 1,
+    ),
+    AiroRuntimeMemoryTimelinePoint(
+      pointId: 'end',
+      sampledAt: DateTime.utc(2026, 7, 15, 12, 30),
+      rssMb: 225,
+      dartHeapMb: 96,
+      imageCacheMb: 12,
+      retainedChannelListCopies: 1,
+    ),
+  ],
+);
+
+final evaluation = report.evaluate();
+final markdown = report.toMarkdown();
+```
+
+Reports include peak RSS, final steady RSS, peak Dart heap, peak image cache,
+retained channel-list copies, playback drift in MB/hour, and stable violation
+codes. They intentionally exclude raw playlist contents, raw `dumpsys` output,
+user identifiers, and local file paths.
