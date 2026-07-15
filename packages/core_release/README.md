@@ -20,6 +20,8 @@ instead of duplicating profile rules in CI scripts.
 - Distribution-channel behavior for GitHub Releases, Firebase App
   Distribution, Google Play, Amazon Appstore, F-Droid, direct APK, direct macOS
   download, Homebrew Cask, and local validation.
+- Data Safety/App Privacy preflight for source-level TV privacy posture checks
+  before maintainers enter store-console forms.
 - Google Play upload planning for no-upload, internal, alpha, beta, and
   production modes before workflows write credentials or run upload tools.
 - Content-rating preflight for Google Play/IARC and future App Store Connect
