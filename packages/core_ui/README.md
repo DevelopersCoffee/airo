@@ -28,6 +28,12 @@ Flutter's network image renderer with `cacheWidth` and `cacheHeight` derived
 from layout constraints and device pixel ratio, so large source images decode
 near display size instead of native size.
 
+`AiroNetworkImageUrlPolicy` accepts only absolute `http` and `https` URLs with a
+host. Unsupported values route to the widget fallback path before Flutter starts
+a network image request or decode attempt. Fallback errors expose the stable
+`unsupported_network_image_url` code and do not include the raw user-supplied
+URL.
+
 Android TV and Fire TV entrypoints should call
 `AiroImageCacheBudget.configureAndroidTv()` after
 `WidgetsFlutterBinding.ensureInitialized()` to keep Flutter's in-memory
