@@ -19,3 +19,16 @@ accessibility behavior in product screens.
 This package does not implement runtime platform detection, rewrite product
 screens, define product navigation manifests, run device certification, or ship
 golden-test assets.
+
+## Image Rendering
+
+Use `AiroNetworkImage` for user-supplied remote artwork that appears in product
+UI at a known visual size, such as channel logos. The widget forwards to
+Flutter's network image renderer with `cacheWidth` and `cacheHeight` derived
+from layout constraints and device pixel ratio, so large source images decode
+near display size instead of native size.
+
+Android TV and Fire TV entrypoints should call
+`AiroImageCacheBudget.configureAndroidTv()` after
+`WidgetsFlutterBinding.ensureInitialized()` to keep Flutter's in-memory
+`ImageCache` bounded on constrained devices.
