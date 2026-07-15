@@ -252,6 +252,19 @@ scripts:
         --output-json ../../artifacts/release/data-safety-preflight.json \
         --output-markdown ../../artifacts/release/data-safety-preflight.md
 
+  # Check Firebase Android client coverage before enabling v2 Firebase runtime services.
+  release:firebase-android-preflight:
+    description: Write Firebase Android client coverage evidence
+    run: |
+      cd packages/core_release
+      flutter pub get
+      dart run tool/preflight_firebase_android_clients.dart \
+        --repo-root ../.. \
+        --profile iptv-standalone \
+        --profile mobile-streaming \
+        --output-json ../../artifacts/release/firebase-android-client-preflight.json \
+        --output-markdown ../../artifacts/release/firebase-android-client-preflight.md
+
   # Render iPad Air qualification campaign evidence from explicit phase results.
   qa:ipad-qualification-report:
     description: Write iPad Air UI/UX qualification report evidence

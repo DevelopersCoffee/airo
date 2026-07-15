@@ -28,6 +28,9 @@ instead of duplicating profile rules in CI scripts.
   questionnaire posture before maintainers enter store-console forms.
 - Redacted Fastlane credential preflight for Play Store and App Store Connect
   setup checks before humans run upload lanes.
+- Redacted Firebase Android client preflight for checking whether
+  `google-services.json` and public Firebase options cover expected v2 package
+  IDs before release workflows depend on Firebase runtime services.
 - Validation findings for duplicate profile/package IDs and incomplete Android
   release candidates.
 
