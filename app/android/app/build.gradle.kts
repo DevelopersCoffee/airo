@@ -164,7 +164,7 @@ dependencies {
     if (useLocalLiteRtAar) {
         implementation(files(localLiteRtAar))
         implementation("com.google.code.gson:gson:2.14.0")
-        implementation("org.jetbrains.kotlin:kotlin-reflect:2.2.21")
+        implementation("org.jetbrains.kotlin:kotlin-reflect:2.4.10")
     } else {
         implementation("com.google.ai.edge.litertlm:litertlm-android:0.14.0")
     }
