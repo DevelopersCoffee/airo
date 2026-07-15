@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:core_data/core_data.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../domain/models/beats_queue_state.dart';
 import '../../domain/models/beats_models.dart';
@@ -10,14 +11,24 @@ class BeatsQueueStorage {
   static const int _maxHistorySize = 50;
 
   final SharedPreferences _prefs;
+  final KeyValueStore _store;
 
-  BeatsQueueStorage(this._prefs);
+  BeatsQueueStorage(
+    this._prefs, {
+    KeyValueStore? store,
+    int maxPreferenceValueBytes = kKeyValueStorePreferenceMaxValueBytes,
+  }) : _store =
+           store ??
+           PreferencesStore(_prefs, maxValueBytes: maxPreferenceValueBytes);
 
   /// Save queue state to persistent storage
   Future<void> saveQueue(BeatsQueueState state) async {
     try {
       final json = jsonEncode(state.toJson());
-      await _prefs.setString(_queueKey, json);
+      await _store.setString(_queueKey, json);
+    } on KeyValueStoreValueTooLargeException catch (e) {
+      await _store.remove(_queueKey);
+      print('[BeatsQueueStorage] ${e.valueKind} value exceeded prefs tier');
     } catch (e) {
       print('[BeatsQueueStorage] Error saving queue: $e');
     }
@@ -26,7 +37,7 @@ class BeatsQueueStorage {
   /// Load queue state from persistent storage
   Future<BeatsQueueState?> loadQueue() async {
     try {
-      final json = _prefs.getString(_queueKey);
+      final json = await _store.getString(_queueKey);
       if (json == null) return null;
 
       final map = jsonDecode(json) as Map<String, dynamic>;
@@ -39,7 +50,7 @@ class BeatsQueueStorage {
 
   /// Clear saved queue
   Future<void> clearQueue() async {
-    await _prefs.remove(_queueKey);
+    await _store.remove(_queueKey);
   }
 
   /// Add track to play history
@@ -60,6 +71,9 @@ class BeatsQueueStorage {
 
       // Save
       await _saveHistory(history);
+    } on KeyValueStoreValueTooLargeException catch (e) {
+      await _store.remove(_historyKey);
+      print('[BeatsQueueStorage] ${e.valueKind} value exceeded prefs tier');
     } catch (e) {
       print('[BeatsQueueStorage] Error adding to history: $e');
     }
@@ -68,7 +82,7 @@ class BeatsQueueStorage {
   /// Get play history
   Future<List<BeatsTrack>> getHistory() async {
     try {
-      final json = _prefs.getString(_historyKey);
+      final json = await _store.getString(_historyKey);
       if (json == null) return [];
 
       final list = jsonDecode(json) as List;
@@ -83,13 +97,13 @@ class BeatsQueueStorage {
 
   /// Clear play history
   Future<void> clearHistory() async {
-    await _prefs.remove(_historyKey);
+    await _store.remove(_historyKey);
   }
 
   /// Save history to storage
   Future<void> _saveHistory(List<BeatsTrack> history) async {
     final json = jsonEncode(history.map((t) => t.toJson()).toList());
-    await _prefs.setString(_historyKey, json);
+    await _store.setString(_historyKey, json);
   }
 
   /// Get recently played tracks (alias for getHistory)
