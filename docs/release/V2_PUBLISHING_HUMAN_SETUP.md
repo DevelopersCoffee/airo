@@ -8,6 +8,9 @@ Use this alongside the v2 distribution matrix before enabling real publishing
 jobs. Automation may support dry-run mode before these items are complete, but
 production publishing cannot be verified without them.
 
+For the current cross-issue blocker list and recommended parallel setup order,
+see [V2 Human-In-Loop Blocker Index](./V2_HUMAN_IN_LOOP_BLOCKERS.md).
+
 ## Google Play
 
 Related issues: #681, #585, #657.
