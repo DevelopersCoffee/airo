@@ -394,6 +394,13 @@ packages:
       relative: true
     source: path
     version: "0.0.1"
+  core_workers:
+    dependency: transitive
+    description:
+      path: "../packages/core_workers"
+      relative: true
+    source: path
+    version: "0.1.0"
   cross_file:
     dependency: transitive
     description:

@@ -1,9 +1,10 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../application/providers/iptv_providers.dart';
 import "package:platform_channels/platform_channels.dart";
 import '../tv/tv_support.dart';
-import 'app_icon_placeholder.dart';
+import 'channel_logo.dart';
 
 /// Configuration for lazy loading behavior
 class TvChannelGridConfig {
@@ -134,7 +135,11 @@ class _TvChannelGridState extends ConsumerState<TvChannelGrid> {
     );
   }
 
-  /// Preload thumbnails for adjacent items in focus direction
+  /// Preload thumbnails for adjacent items in focus direction.
+  ///
+  /// Uses [ResizeImage] so precached entries are decoded at the card's
+  /// display size rather than native resolution, matching what
+  /// [ChannelLogo] will request and avoiding double-decode.
   void _preloadAdjacentThumbnails(
     List<IPTVChannel> channels,
     int currentIndex,
@@ -143,12 +148,22 @@ class _TvChannelGridState extends ConsumerState<TvChannelGrid> {
     final preloadCount = widget.config.preloadItemCount;
     final startIndex = (currentIndex - preloadCount).clamp(0, channels.length);
     final endIndex = (currentIndex + preloadCount).clamp(0, channels.length);
+    final dpr = MediaQuery.devicePixelRatioOf(context);
+    // Use the logo area height (flex 3/5 of card) as the target size.
+    final logoSize =
+        (dimensions.channelCardHeight * 3 / 5 * dpr).ceil();
 
     for (var i = startIndex; i < endIndex; i++) {
       final channel = channels[i];
       if (channel.hasLogo) {
-        // Precache the image in Flutter's image cache
-        precacheImage(NetworkImage(channel.logoUrl!), context);
+        precacheImage(
+          CachedNetworkImageProvider(
+            channel.logoUrl!,
+            maxWidth: logoSize,
+            maxHeight: logoSize,
+          ),
+          context,
+        );
       }
     }
   }
@@ -274,12 +289,24 @@ class _TvChannelCard extends ConsumerWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Channel logo
+            // Channel logo (decode-at-display-size)
             Expanded(
               flex: 3,
               child: Padding(
                 padding: EdgeInsets.all(dimensions.cardPadding),
-                child: _buildChannelLogo(),
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final logoSize = constraints.biggest.shortestSide;
+                    return ChannelLogo(
+                      logoUrl: channel.logoUrl,
+                      channelName: channel.name,
+                      size: logoSize,
+                      fit: BoxFit.contain,
+                      borderRadius: 8,
+                      isAudioOnly: channel.isAudioOnly,
+                    );
+                  },
+                ),
               ),
             ),
             // Channel name
@@ -336,21 +363,4 @@ class _TvChannelCard extends ConsumerWidget {
     );
   }
 
-  Widget _buildChannelLogo() {
-    if (channel.hasLogo) {
-      return ClipRRect(
-        borderRadius: BorderRadius.circular(8),
-        child: Image.network(
-          channel.logoUrl!,
-          fit: BoxFit.contain,
-          errorBuilder: (_, _, _) => _buildDefaultIcon(),
-        ),
-      );
-    }
-    return _buildDefaultIcon();
-  }
-
-  Widget _buildDefaultIcon() {
-    return AppIconPlaceholder.channel(isAudioOnly: channel.isAudioOnly);
-  }
 }
