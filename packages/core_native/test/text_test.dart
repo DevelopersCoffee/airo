@@ -20,5 +20,12 @@ void main() {
     test('already normalized', () {
       expect(normalizeChannelName('starnews'), 'starnews');
     });
+
+    test(
+      'native-preferred async API falls back when bridge is unavailable',
+      () async {
+        expect(await normalizeChannelNameNative('BBC  News!'), 'bbcnews');
+      },
+    );
   });
 }

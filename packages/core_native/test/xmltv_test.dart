@@ -26,6 +26,7 @@ void main() {
       expect(result.stats.programmeCount, 2);
       expect(result.stats.skippedProgrammeCount, 0);
       expect(result.stats.truncated, isTrue);
+      expect(result.backend, NativeXmltvParseBackend.dartFallback);
     });
 
     test('skips programmes missing required channel or start', () {
@@ -91,6 +92,35 @@ void main() {
       expect(result.programmes.single.title, 'File Path');
       expect(result.stats.programmeCount, 1);
     });
+
+    test(
+      'native-preferred async API parses file path when bridge falls back',
+      () async {
+        final directory = Directory.systemTemp.createTempSync(
+          'core-native-xmltv-file-native-test-',
+        );
+        addTearDown(() {
+          if (directory.existsSync()) {
+            directory.deleteSync(recursive: true);
+          }
+        });
+        final file = File('${directory.path}/guide.xml')
+          ..writeAsStringSync('''
+<tv>
+  <programme channel="native.file" start="20260715090000 +0000">
+    <title>Native Preferred File Path</title>
+  </programme>
+</tv>
+''');
+
+        final result = await parseXmltvProgrammesFileNative(file.path);
+
+        expect(result.programmes, hasLength(1));
+        expect(result.programmes.single.channelId, 'native.file');
+        expect(result.programmes.single.title, 'Native Preferred File Path');
+        expect(result.stats.programmeCount, 1);
+      },
+    );
 
     test('rejects invalid file parser inputs', () {
       expect(

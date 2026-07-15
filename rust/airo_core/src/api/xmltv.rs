@@ -27,6 +27,7 @@ pub struct XmltvParseResult {
     pub stats: XmltvParseStats,
 }
 
+#[flutter_rust_bridge::frb(ignore)]
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 struct PendingProgramme {
     channel_id: Option<String>,

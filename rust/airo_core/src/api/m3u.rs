@@ -11,6 +11,7 @@ pub struct M3uEntry {
     pub language: Option<String>,
 }
 
+#[flutter_rust_bridge::frb(ignore)]
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 struct PendingExtInf {
     name: String,

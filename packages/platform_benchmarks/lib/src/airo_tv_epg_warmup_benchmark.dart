@@ -74,7 +74,6 @@ class AiroTvEpgWarmupBenchmarkArtifact extends Equatable {
   const AiroTvEpgWarmupBenchmarkArtifact({
     required this.schemaVersion,
     required this.capturedAt,
-    required this.fixturePath,
     required this.fixtureBytes,
     required this.fixtureSha256,
     required this.channelCount,
@@ -93,7 +92,6 @@ class AiroTvEpgWarmupBenchmarkArtifact extends Equatable {
 
   final String schemaVersion;
   final DateTime capturedAt;
-  final String fixturePath;
   final int fixtureBytes;
   final String fixtureSha256;
   final int channelCount;
@@ -121,11 +119,7 @@ class AiroTvEpgWarmupBenchmarkArtifact extends Equatable {
     return {
       'schemaVersion': schemaVersion,
       'capturedAt': capturedAt.toUtc().toIso8601String(),
-      'fixture': {
-        'path': fixturePath,
-        'byteCount': fixtureBytes,
-        'sha256': fixtureSha256,
-      },
+      'fixture': {'byteCount': fixtureBytes, 'sha256': fixtureSha256},
       'config': {
         'channelCount': channelCount,
         'visibleChannelCount': visibleChannelCount,
@@ -163,7 +157,6 @@ class AiroTvEpgWarmupBenchmarkArtifact extends Equatable {
   List<Object?> get props => [
     schemaVersion,
     capturedAt,
-    fixturePath,
     fixtureBytes,
     fixtureSha256,
     channelCount,
@@ -218,7 +211,6 @@ class AiroTvEpgWarmupBenchmarkRunner {
     return AiroTvEpgWarmupBenchmarkArtifact(
       schemaVersion: kAiroTvEpgWarmupBenchmarkSchemaVersion,
       capturedAt: DateTime.now().toUtc(),
-      fixturePath: fixture.path,
       fixtureBytes: fixtureBytes,
       fixtureSha256: fixtureSha256.toString(),
       channelCount: config.channelCount,
@@ -296,7 +288,7 @@ Future<CompactEpgSlice> _buildSnapshot({
     for (final channel in channels)
       for (final alias in aliasesByChannel[channel.id]!) alias: channel.name,
   };
-  final guideRepository = XmltvCompactEpgRepository.fromXmltvFile(
+  final guideRepository = await XmltvCompactEpgRepository.fromXmltvFileNative(
     path: xmltvPath,
     ingestedAt: now,
     sourceRef: CompactEpgSourceRef.redacted('benchmark-xmltv-fixture'),

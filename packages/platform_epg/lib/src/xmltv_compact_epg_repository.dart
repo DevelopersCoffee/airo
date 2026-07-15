@@ -12,6 +12,7 @@ class XmltvCompactEpgIngestStats extends Equatable {
     required this.nativeProgrammeCount,
     required this.nativeSkippedProgrammeCount,
     required this.nativeTruncated,
+    required this.nativeBackend,
     required this.retainedProgrammeCount,
     required this.invalidTimestampCount,
   });
@@ -19,6 +20,7 @@ class XmltvCompactEpgIngestStats extends Equatable {
   final int nativeProgrammeCount;
   final int nativeSkippedProgrammeCount;
   final bool nativeTruncated;
+  final String nativeBackend;
   final int retainedProgrammeCount;
   final int invalidTimestampCount;
 
@@ -27,6 +29,7 @@ class XmltvCompactEpgIngestStats extends Equatable {
     nativeProgrammeCount,
     nativeSkippedProgrammeCount,
     nativeTruncated,
+    nativeBackend,
     retainedProgrammeCount,
     invalidTimestampCount,
   ];
@@ -86,6 +89,32 @@ class XmltvCompactEpgRepository implements CompactEpgRepository {
     Map<String, String> channelNumbersById = const {},
   }) {
     final nativeResult = parseXmltvProgrammesFile(
+      path,
+      maxProgrammes: maxProgrammes,
+    );
+    return XmltvCompactEpgRepository._fromNativeResult(
+      nativeResult: nativeResult,
+      ingestedAt: ingestedAt,
+      maxAge: maxAge,
+      defaultProgrammeDuration: defaultProgrammeDuration,
+      sourceRef: sourceRef,
+      channelNamesById: channelNamesById,
+      channelNumbersById: channelNumbersById,
+    );
+  }
+
+  static Future<XmltvCompactEpgRepository> fromXmltvFileNative({
+    required String path,
+    required DateTime ingestedAt,
+    int maxProgrammes = kXmltvCompactEpgDefaultMaxProgrammes,
+    Duration maxAge = kXmltvCompactEpgDefaultMaxAge,
+    Duration defaultProgrammeDuration =
+        kXmltvCompactEpgDefaultProgrammeDuration,
+    CompactEpgSourceRef? sourceRef,
+    Map<String, String> channelNamesById = const {},
+    Map<String, String> channelNumbersById = const {},
+  }) async {
+    final nativeResult = await parseXmltvProgrammesFileNative(
       path,
       maxProgrammes: maxProgrammes,
     );
@@ -162,6 +191,7 @@ class XmltvCompactEpgRepository implements CompactEpgRepository {
         nativeProgrammeCount: nativeResult.stats.programmeCount,
         nativeSkippedProgrammeCount: nativeResult.stats.skippedProgrammeCount,
         nativeTruncated: nativeResult.stats.truncated,
+        nativeBackend: nativeResult.backend.stableId,
         retainedProgrammeCount: retainedProgrammeCount,
         invalidTimestampCount: invalidTimestampCount,
       ),
