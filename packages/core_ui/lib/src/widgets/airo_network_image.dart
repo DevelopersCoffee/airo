@@ -6,6 +6,28 @@ import 'package:platform_device_profile/platform_device_profile.dart';
 typedef AiroImageFallbackBuilder =
     Widget Function(BuildContext context, Object error, StackTrace? stackTrace);
 
+/// Validates remote artwork URLs before product UI starts image fetches.
+class AiroNetworkImageUrlPolicy {
+  const AiroNetworkImageUrlPolicy._();
+
+  static const String unsupportedUrlCode = 'unsupported_network_image_url';
+
+  static Uri? normalize(String value) {
+    final trimmed = value.trim();
+    if (trimmed.isEmpty) return null;
+
+    final uri = Uri.tryParse(trimmed);
+    if (uri == null || uri.host.isEmpty) return null;
+
+    final scheme = uri.scheme.toLowerCase();
+    if (scheme != 'https' && scheme != 'http') return null;
+
+    return uri;
+  }
+
+  static bool accepts(String value) => normalize(value) != null;
+}
+
 /// Network image that decodes near its rendered size.
 class AiroNetworkImage extends StatelessWidget {
   const AiroNetworkImage({
@@ -37,6 +59,13 @@ class AiroNetworkImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final normalizedUri = AiroNetworkImageUrlPolicy.normalize(url);
+    if (normalizedUri == null) {
+      final error = ArgumentError(AiroNetworkImageUrlPolicy.unsupportedUrlCode);
+      return errorBuilder?.call(context, error, null) ??
+          const SizedBox.shrink();
+    }
+
     return LayoutBuilder(
       builder: (context, constraints) {
         final devicePixelRatio = MediaQuery.devicePixelRatioOf(context);
@@ -52,7 +81,7 @@ class AiroNetworkImage extends StatelessWidget {
         );
 
         return Image.network(
-          url,
+          normalizedUri.toString(),
           width: width,
           height: height,
           fit: fit,

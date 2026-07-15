@@ -57,6 +57,65 @@ void main() {
     expect(imageProvider.height, 256);
   });
 
+  testWidgets('trims supported URLs before creating network image', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      const Directionality(
+        textDirection: TextDirection.ltr,
+        child: AiroNetworkImage(url: '  https://example.com/logo.png  '),
+      ),
+    );
+
+    final image = tester.widget<Image>(find.byType(Image));
+    final imageProvider = image.image as ResizeImage;
+    final networkImage = imageProvider.imageProvider as NetworkImage;
+    expect(networkImage.url, 'https://example.com/logo.png');
+  });
+
+  testWidgets('routes unsupported URLs to fallback without image request', (
+    tester,
+  ) async {
+    Object? capturedError;
+
+    await tester.pumpWidget(
+      Directionality(
+        textDirection: TextDirection.ltr,
+        child: AiroNetworkImage(
+          url: 'javascript:alert(1)',
+          errorBuilder: (context, error, stackTrace) {
+            capturedError = error;
+            return const SizedBox(key: ValueKey('fallback'));
+          },
+        ),
+      ),
+    );
+
+    expect(find.byType(Image), findsNothing);
+    expect(find.byKey(const ValueKey('fallback')), findsOneWidget);
+    expect(capturedError, isA<ArgumentError>());
+    expect(
+      capturedError.toString(),
+      contains(AiroNetworkImageUrlPolicy.unsupportedUrlCode),
+    );
+    expect(capturedError.toString(), isNot(contains('javascript')));
+  });
+
+  test('URL policy accepts only absolute http and https URLs with hosts', () {
+    expect(
+      AiroNetworkImageUrlPolicy.accepts('https://example.com/a.png'),
+      isTrue,
+    );
+    expect(
+      AiroNetworkImageUrlPolicy.accepts('http://example.com/a.png'),
+      isTrue,
+    );
+    expect(AiroNetworkImageUrlPolicy.accepts('file:///tmp/a.png'), isFalse);
+    expect(AiroNetworkImageUrlPolicy.accepts('javascript:alert(1)'), isFalse);
+    expect(AiroNetworkImageUrlPolicy.accepts('/relative/a.png'), isFalse);
+    expect(AiroNetworkImageUrlPolicy.accepts(''), isFalse);
+  });
+
   test('configures Android TV image cache budget', () {
     final imageCache = PaintingBinding.instance.imageCache;
     final originalMaximumSize = imageCache.maximumSize;
