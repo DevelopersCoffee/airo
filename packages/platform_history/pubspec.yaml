@@ -9,6 +9,8 @@ environment:
   flutter: ">=1.17.0"
 
 dependencies:
+  core_data:
+    path: ../core_data
   flutter:
     sdk: flutter
   platform_channels:
