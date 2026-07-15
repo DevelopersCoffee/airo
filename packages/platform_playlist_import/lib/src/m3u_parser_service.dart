@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:developer' as developer;
 import 'dart:io';
 
+import 'package:core_native/core_native.dart';
 import 'package:dio/dio.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:platform_channels/platform_channels.dart';
@@ -17,9 +18,6 @@ class M3UParserService {
   static const String _cacheLastModifiedKey = 'iptv_playlist_last_modified';
   static const String _cacheFileName = 'iptv_channel_cache.json';
   static const Duration _cacheValidity = Duration(hours: 24);
-  static final RegExp _extInfAttributePattern = RegExp(
-    r'(\w+[-\w]*)="([^"]*)"',
-  );
 
   final Dio _dio;
   final SharedPreferences _prefs;
@@ -277,71 +275,36 @@ Future<List<IPTVChannel>> _readChannelCacheFile(String path) async {
 }
 
 List<IPTVChannel> _parseM3UContent(String content) {
-  final lines = content.split('\n');
   final channels = <IPTVChannel>[];
   // Track seen channels by normalized name to deduplicate.
   final seenChannels = <String, IPTVChannel>{};
 
-  String? currentName;
-  String? currentLogo;
-  String? currentGroup;
-  String? currentTvgId;
-  String? currentTvgName;
-  String? currentLanguage;
+  for (final entry in parseM3uEntries(content)) {
+    final streamUri = AiroPlaylistUrlPolicy.normalizeStreamUrl(entry.url);
+    if (streamUri == null) {
+      continue;
+    }
 
-  for (var i = 0; i < lines.length; i++) {
-    final line = lines[i].trim();
+    final normalizedName = _normalizeChannelName(entry.name);
+    final logoUri = AiroPlaylistUrlPolicy.normalizeLogoUrl(entry.logo);
 
-    if (line.startsWith('#EXTINF:')) {
-      final info = _parseExtInf(line);
-      currentName = info['name'];
-      currentLogo = info['tvg-logo'];
-      currentGroup = info['group-title'];
-      currentTvgId = info['tvg-id'];
-      currentTvgName = info['tvg-name'];
-      currentLanguage = info['tvg-language'];
-    } else if (line.isNotEmpty &&
-        !line.startsWith('#') &&
-        currentName != null) {
-      final streamUri = AiroPlaylistUrlPolicy.normalizeStreamUrl(line);
-      if (streamUri == null) {
-        currentName = null;
-        currentLogo = null;
-        currentGroup = null;
-        currentTvgId = null;
-        currentTvgName = null;
-        currentLanguage = null;
-        continue;
-      }
+    final channel = IPTVChannel.fromM3U(
+      name: _formatChannelName(entry.name),
+      url: streamUri.toString(),
+      logo: logoUri?.toString(),
+      group: entry.group,
+      tvgId: entry.tvgId,
+      tvgName: entry.tvgName,
+      language: entry.language,
+    );
 
-      final normalizedName = _normalizeChannelName(currentName);
-      final logoUri = AiroPlaylistUrlPolicy.normalizeLogoUrl(currentLogo);
-
-      final channel = IPTVChannel.fromM3U(
-        name: _formatChannelName(currentName),
-        url: streamUri.toString(),
-        logo: logoUri?.toString(),
-        group: currentGroup,
-        tvgId: currentTvgId,
-        tvgName: currentTvgName,
-        language: currentLanguage,
-      );
-
-      if (!seenChannels.containsKey(normalizedName)) {
+    if (!seenChannels.containsKey(normalizedName)) {
+      seenChannels[normalizedName] = channel;
+    } else {
+      final existing = seenChannels[normalizedName]!;
+      if (existing.logoUrl == null && channel.logoUrl != null) {
         seenChannels[normalizedName] = channel;
-      } else {
-        final existing = seenChannels[normalizedName]!;
-        if (existing.logoUrl == null && channel.logoUrl != null) {
-          seenChannels[normalizedName] = channel;
-        }
       }
-
-      currentName = null;
-      currentLogo = null;
-      currentGroup = null;
-      currentTvgId = null;
-      currentTvgName = null;
-      currentLanguage = null;
     }
   }
 
@@ -406,22 +369,4 @@ bool _isWhitespace(int codeUnit) {
       codeUnit == 0x0B ||
       codeUnit == 0x0C ||
       codeUnit == 0x0D;
-}
-
-/// Parse #EXTINF line attributes.
-Map<String, String?> _parseExtInf(String line) {
-  final result = <String, String?>{};
-
-  final commaIndex = line.lastIndexOf(',');
-  if (commaIndex != -1) {
-    result['name'] = line.substring(commaIndex + 1).trim();
-  }
-
-  for (final match in M3UParserService._extInfAttributePattern.allMatches(
-    line,
-  )) {
-    result[match.group(1)!] = match.group(2);
-  }
-
-  return result;
 }
