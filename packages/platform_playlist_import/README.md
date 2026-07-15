@@ -45,6 +45,17 @@ On `304 Not Modified`, the parser returns the existing user-derived cache
 without downloading or parsing a new response body. Changing or clearing the
 playlist URL removes the cached body, timestamp, and validators together.
 
+## Off-Main Parse Boundary
+
+Async playlist fetch and cache-load paths parse through `AiroWorkerExecutor`
+from `platform_worker_jobs`. This keeps large user-supplied M3U parsing behind
+the reusable platform worker boundary instead of running it from Airo TV screen
+code.
+
+`parseM3U` remains synchronous for deterministic unit tests and small direct
+inputs. Production callers should prefer `fetchPlaylist` or `parseM3UOffMain`
+when content may be large.
+
 This package does not choose a database engine, own Airo TV progress UI,
 download provider-specific bundled content, expose raw playlist URLs in worker
 diagnostics, or import storage SDKs directly. Concrete storage adapters should

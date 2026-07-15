@@ -15,8 +15,10 @@ pressure.
 - Resource snapshots for playback, focus/navigation, memory, storage, thermal,
   battery, network, and currently running work.
 - Deterministic scheduler policy decisions with machine-readable blocker codes.
+- `AiroWorkerExecutor` for traced off-main isolate execution with inline
+  fallback for tests and runtimes without isolate support.
 - Fake and no-op scheduler adapters for deterministic tests.
 
-This package does not spawn isolates, run native workers, open sockets, persist
-jobs, collect telemetry, request OS background permissions, execute playback,
-parse playlists, process EPG data, or render UI.
+This package does not run native workers, open sockets, persist jobs, collect
+telemetry, request OS background permissions, execute playback, parse playlists,
+process EPG data, or render UI.

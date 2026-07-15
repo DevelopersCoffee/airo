@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:platform_playlist_import/platform_playlist_import.dart';
+import 'package:platform_worker_jobs/platform_worker_jobs.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -20,6 +21,22 @@ https://example.com/news.m3u8
     expect(channels, hasLength(1));
     expect(channels.single.name, 'News One');
     expect(channels.single.streamUrl, 'https://example.com/news.m3u8');
+  });
+
+  test('parses M3U channel entries through default worker executor', () async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    final parser = M3UParserService(dio: Dio(), prefs: prefs);
+
+    final channels = await parser.parseM3UOffMain('''
+#EXTM3U
+#EXTINF:-1 group-title="News",Worker One
+https://example.com/worker.m3u8
+''');
+
+    expect(channels, hasLength(1));
+    expect(channels.single.name, 'Worker One');
+    expect(channels.single.streamUrl, 'https://example.com/worker.m3u8');
   });
 
   group('M3UParserService deduplication', () {
@@ -156,6 +173,62 @@ https://cdn.example.com/live.m3u8
       await expectLater(parser.fetchPlaylist(), completion(isEmpty));
     });
 
+    test(
+      'parses async fetch and 304 cache paths through worker executor',
+      () async {
+        final workerExecutor = _RecordingWorkerExecutor();
+        parser = M3UParserService(
+          dio: Dio(),
+          prefs: prefs,
+          workerExecutor: workerExecutor,
+        );
+
+        final requests = <HttpHeaders>[];
+        final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+        addTearDown(() => server.close(force: true));
+
+        server.listen((request) async {
+          requests.add(request.headers);
+          request.response.headers
+            ..set(HttpHeaders.etagHeader, '"worker-playlist-v1"')
+            ..set(
+              HttpHeaders.lastModifiedHeader,
+              'Wed, 21 Oct 2015 07:28:00 GMT',
+            );
+
+          if (requests.length == 1) {
+            request.response.write('''
+#EXTM3U
+#EXTINF:-1 group-title="News",Worker News
+https://cdn.example.com/worker-news.m3u8
+''');
+          } else {
+            request.response.statusCode = HttpStatus.notModified;
+          }
+          await request.response.close();
+        });
+
+        await parser.setPlaylistUrl(
+          'http://${server.address.address}:${server.port}/playlist.m3u',
+        );
+
+        final initial = await parser.fetchPlaylist(forceRefresh: true);
+        final cached = await parser.fetchPlaylist(forceRefresh: true);
+
+        expect(initial.single.name, 'Worker News');
+        expect(
+          cached.single.streamUrl,
+          'https://cdn.example.com/worker-news.m3u8',
+        );
+        expect(workerExecutor.calls, 2);
+        expect(
+          workerExecutor.kinds,
+          everyElement(AiroWorkerJobKind.playlistImport),
+        );
+        expect(workerExecutor.debugNames, everyElement('m3u_playlist_parse'));
+      },
+    );
+
     test('uses HTTP validators and cached playlist on 304 refresh', () async {
       final requests = <HttpHeaders>[];
       final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
@@ -211,4 +284,25 @@ https://cdn.example.com/conditional-news.m3u8
       );
     });
   });
+}
+
+class _RecordingWorkerExecutor implements AiroWorkerExecutor {
+  var calls = 0;
+  final debugNames = <String>[];
+  final kinds = <AiroWorkerJobKind>[];
+
+  @override
+  bool get forceInline => true;
+
+  @override
+  Future<T> run<T>({
+    required String debugName,
+    required AiroWorkerJobKind kind,
+    required AiroWorkerComputation<T> computation,
+  }) async {
+    calls++;
+    debugNames.add(debugName);
+    kinds.add(kind);
+    return Future<T>.sync(computation);
+  }
 }
