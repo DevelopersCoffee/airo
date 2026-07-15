@@ -115,6 +115,23 @@ scripts:
         --output-json ../../artifacts/performance/airo-tv-adb-memory-timeline.json \
         --output-markdown ../../artifacts/performance/airo-tv-adb-memory-timeline.md
 
+  # Render a local Cast proxy benchmark report from captured device metrics.
+  bench:cast-proxy-report:
+    description: Write sanitized Cast proxy benchmark evidence from local metrics
+    run: |
+      cd packages/platform_benchmarks
+      flutter pub get
+      dart run tool/write_cast_proxy_benchmark_report.dart \
+        --sample-id "${CAST_PROXY_SAMPLE_ID:-manual-cast-proxy-sample}" \
+        --scenario-id "${CAST_PROXY_SCENARIO_ID:-20mbps-10m-cast-relay}" \
+        --target-mbps "${CAST_PROXY_TARGET_MBPS:-20}" \
+        --observed-mbps "${CAST_PROXY_OBSERVED_MBPS:?Set CAST_PROXY_OBSERVED_MBPS from measured throughput}" \
+        --cpu-percent "${CAST_PROXY_CPU_PERCENT:?Set CAST_PROXY_CPU_PERCENT from measured sender CPU}" \
+        --duration-seconds "${CAST_PROXY_DURATION_SECONDS:-600}" \
+        --dropped-connections "${CAST_PROXY_DROPPED_CONNECTIONS:-0}" \
+        --output-json ../../artifacts/performance/cast-proxy-benchmark.json \
+        --output-markdown ../../artifacts/performance/cast-proxy-benchmark.md
+
   # Run code generation
   generate:
     run: melos exec -- flutter pub run build_runner build --delete-conflicting-outputs
