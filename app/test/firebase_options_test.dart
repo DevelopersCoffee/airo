@@ -23,6 +23,26 @@ void main() {
         DefaultFirebaseOptions.isConfigured(DefaultFirebaseOptions.android),
         isTrue,
       );
+      expect(
+        DefaultFirebaseOptions.isConfigured(DefaultFirebaseOptions.androidTv),
+        isTrue,
+      );
+    });
+
+    test('uses the registered Android TV Firebase app id', () {
+      expect(
+        DefaultFirebaseOptions.androidTv.appId,
+        '1:906799550225:android:dfa957aac3a2fdc62206b0',
+      );
+    });
+
+    test('keeps streaming disabled until its Firebase app is registered', () {
+      expect(
+        DefaultFirebaseOptions.isConfigured(
+          DefaultFirebaseOptions.androidStreaming,
+        ),
+        isFalse,
+      );
     });
   });
 }
