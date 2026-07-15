@@ -53,6 +53,8 @@ Minimum requirement:
    as applicable.
 2. Add `[skip ci]` to iterative issue commits and merge commits unless the user
    explicitly requests a CI run or the change is a release verification step.
+   Do not manually dispatch, rerun, or unblock GitHub Actions for iteration
+   branches unless a maintainer asks for that remote evidence.
 3. Prefer pushing issue branches and the `codex/next-v2.0.0.0` integration
    branch for v2 development. Do not push directly to `v2` just to validate a
    work-in-progress change, because release-line pushes can trigger additional
@@ -66,6 +68,9 @@ Minimum requirement:
    local validation evidence has been recorded in the issue. Do not close issues
    before required policy artifacts, deterministic use cases, and validation
    notes are present.
+7. Keep issues open only when a real external gate remains, such as physical
+   device evidence, store-console access, credentials, production secrets, or a
+   maintainer/product decision. Record that blocker explicitly in the issue.
 
 If remote CI is intentionally required, state why in the issue or PR before
 pushing without `[skip ci]`.

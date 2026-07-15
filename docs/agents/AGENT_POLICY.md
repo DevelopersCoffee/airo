@@ -212,6 +212,8 @@ Required cost controls:
   applicable.
 - Add `[skip ci]` to iterative issue commits and merge commits unless the user
   explicitly requests remote CI or the change is a release verification step.
+- Do not manually dispatch, rerun, or unblock GitHub Actions for iteration
+  branches unless a maintainer asks for that remote evidence.
 - For v2 work, push issue branches and the `codex/next-v2.0.0.0` integration
   branch. Do not push directly to `v2` just to validate work in progress.
 - Avoid empty commits, no-op pushes, repeated metadata-only pushes, and branch
@@ -221,6 +223,9 @@ Required cost controls:
 - Close GitHub issues as soon as the acceptance criteria are met and the issue
   records the required policy artifacts, deterministic use cases, and
   validation evidence.
+- Keep issues open only when a real external gate remains, such as physical
+  device evidence, store-console access, credentials, production secrets, or a
+  maintainer/product decision. Record that blocker explicitly in the issue.
 
 If remote CI is intentionally required, explain why in the issue or PR before
 pushing without `[skip ci]`.
