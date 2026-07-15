@@ -1,0 +1,20 @@
+name: airo_pro_bootstrap
+description: Open-source no-op bootstrap for Airo pro modules. Replaced by the private airo-pro overlay via pubspec_overrides.yaml.
+version: 0.0.1
+homepage:
+publish_to: none
+
+environment:
+  sdk: ^3.12.2
+  flutter: ">=1.17.0"
+
+dependencies:
+  core_entitlements:
+    path: ../core_entitlements
+  flutter:
+    sdk: flutter
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
