@@ -6,9 +6,9 @@ abstract final class AppSpacing {
   static const double unit = 4.0;
 
   // Named spacing values
-  static const double xxs = 2.0;
-  static const double xs = 4.0;
-  static const double sm = 8.0;
+  static const double xxs = 4.0;
+  static const double xs = 8.0;
+  static const double sm = 12.0;
   static const double md = 16.0;
   static const double lg = 24.0;
   static const double xl = 32.0;
@@ -49,6 +49,8 @@ abstract final class AppSpacing {
 
   // Card padding
   static const EdgeInsets cardPadding = EdgeInsets.all(md);
+  static const EdgeInsets cardPaddingSm = EdgeInsets.all(sm);
+  static const EdgeInsets cardPaddingLg = EdgeInsets.all(lg);
 
   // List item padding
   static const EdgeInsets listItemPadding = EdgeInsets.symmetric(
@@ -57,12 +59,13 @@ abstract final class AppSpacing {
   );
 
   // Border radius
+  static const double radiusCyber = 0.0;
   static const double radiusXs = 4.0;
   static const double radiusSm = 8.0;
   static const double radiusMd = 12.0;
   static const double radiusLg = 16.0;
   static const double radiusXl = 24.0;
-  static const double radiusFull = 999.0;
+  static const double radiusFull = 9999.0;
 
   // Standard border radius
   static const BorderRadius borderRadiusXs = BorderRadius.all(
@@ -80,4 +83,22 @@ abstract final class AppSpacing {
   static const BorderRadius borderRadiusXl = BorderRadius.all(
     Radius.circular(radiusXl),
   );
+  static const BorderRadius borderRadiusCyber = BorderRadius.zero;
+  static const BorderRadius borderRadiusFull = BorderRadius.all(
+    Radius.circular(radiusFull),
+  );
+
+  // TV (10-foot UI) platform tokens
+  static const double tvMinTarget = 56.0;
+  static const double tvCardPadding = 16.0;
+  static const double tvGridSpacing = 24.0;
+  static const double tvControlSize = 64.0;
+  static const double tvChannelCardW = 200.0;
+  static const double tvChannelCardH = 150.0;
+  static const double tvFocusBorder = 3.0;
+
+  // Mobile platform tokens
+  static const double mobileMinTarget = 48.0;
+  static const double mobileCardPadding = 12.0;
+  static const double mobileGridSpacing = 16.0;
 }

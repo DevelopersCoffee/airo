@@ -68,4 +68,22 @@ abstract final class AppColors {
   static const Color cyberOutline = Color(0x66FFE6CB);
   static const Color cyberGridLine = Color(0x33FFE6CB);
   static const Color cyberGlow = Color(0x38FFBD38);
+
+  // Cyber semantic surfaces
+  static const Color cyberSurfaceSolid = Color(0xFF0A2020);
+  static const Color cyberSurfaceRaised = Color(0xFF0F2828);
+
+  // Live / status
+  static const Color live = Color(0xFFE53935);
+  static const Color liveGlow = Color(0x66E53935);
+  static const Color cyberError = Color(0xFFFF6B6B);
+
+  // Bedtime colors
+  static const Color bedtimeBackground = Color(0xFF000000);
+  static const Color bedtimeSurface = Color(0xFF1A1A1A);
+  static const Color bedtimeSurfaceMid = Color(0xFF2D2D2D);
+  static const Color bedtimePrimary = Color(0xFFFFE4B5);
+  static const Color bedtimeSecondary = Color(0xFFFFD699);
+  static const Color bedtimeOnPrimary = Color(0xFF000000);
+  static const Color bedtimeError = Color(0xFFCF6679);
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'airo_effects.dart';
 import 'airo_theme_tokens.dart';
 import 'app_colors.dart';
 import 'app_theme_definition.dart';
@@ -116,6 +117,7 @@ abstract final class AppTheme {
         success: AppColors.success,
         warning: AppColors.warning,
       ),
+      AiroEffects.classic,
     ],
   );
 
@@ -155,6 +157,7 @@ abstract final class AppTheme {
         success: AppColors.success,
         warning: AppColors.warning,
       ),
+      AiroEffects.classic,
     ],
   );
 
@@ -403,6 +406,7 @@ abstract final class AppTheme {
           success: AppColors.cyberTertiary,
           warning: AppColors.cyberPrimary,
         ),
+        AiroEffects.cyber,
       ],
     );
 
