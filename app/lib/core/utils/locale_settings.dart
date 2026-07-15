@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:core_data/core_data.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -96,10 +97,21 @@ class LocaleSettingsNotifier extends StateNotifier<LocaleSettings> {
   static const String _storageKey = 'airo_locale_settings';
   static const String _profileKey = 'airo_user_profile';
   static const String _currentUserIdKey = 'airo_current_user_id';
+  final int maxPreferenceValueBytes;
   SharedPreferences? _prefs;
+  KeyValueStore? _store;
 
-  LocaleSettingsNotifier() : super(LocaleSettings.india) {
+  LocaleSettingsNotifier({
+    this.maxPreferenceValueBytes = kKeyValueStorePreferenceMaxValueBytes,
+  }) : super(LocaleSettings.india) {
     _initialize();
+  }
+
+  Future<KeyValueStore> get _keyValueStore async {
+    final prefs = _prefs ?? await SharedPreferences.getInstance();
+    _prefs = prefs;
+    _store ??= PreferencesStore(prefs, maxValueBytes: maxPreferenceValueBytes);
+    return _store!;
   }
 
   Future<void> _initialize() async {
@@ -108,10 +120,7 @@ class LocaleSettingsNotifier extends StateNotifier<LocaleSettings> {
       final profileSettings = _loadCurrentProfileLocaleSettings(_prefs!);
       if (profileSettings != null) {
         state = profileSettings;
-        await _prefs?.setString(
-          _storageKey,
-          jsonEncode(profileSettings.toJson()),
-        );
+        await _persistString(_storageKey, jsonEncode(profileSettings.toJson()));
         return;
       }
 
@@ -127,7 +136,7 @@ class LocaleSettingsNotifier extends StateNotifier<LocaleSettings> {
 
   Future<void> updateSettings(LocaleSettings settings) async {
     state = settings;
-    await _prefs?.setString(_storageKey, jsonEncode(settings.toJson()));
+    await _persistString(_storageKey, jsonEncode(settings.toJson()));
     await _persistCurrentProfileSettings(settings);
   }
 
@@ -174,9 +183,18 @@ class LocaleSettingsNotifier extends StateNotifier<LocaleSettings> {
         ..['localeSettings'] = settings.toJson()
         ..['updatedAt'] = DateTime.now().toIso8601String();
 
-      await prefs.setString(key, jsonEncode(updatedProfile));
+      await _persistString(key, jsonEncode(updatedProfile));
     } catch (e) {
       debugPrint('Error syncing locale settings to profile: $e');
+    }
+  }
+
+  Future<void> _persistString(String key, String value) async {
+    try {
+      final store = await _keyValueStore;
+      await store.setString(key, value);
+    } on KeyValueStoreValueTooLargeException catch (e) {
+      debugPrint('Locale settings exceeded preference tier: $e');
     }
   }
 }
