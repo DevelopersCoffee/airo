@@ -45,3 +45,18 @@ Neither layer should make unilateral changes across the boundary.
 
 If the required policy artifacts are missing, stop implementation and add them
 to the issue first.
+
+## Isolate policy — no parsing on the main isolate
+
+**Rule:** All parsing, JSON decoding, M3U/EPG processing, and serialization of
+payloads >50 KB must run via `runOffMain()` from `packages/core_workers`.
+
+```dart
+import 'package:core_workers/core_workers.dart';
+final channels = await runOffMain(() => parseM3U(content));
+```
+
+`Isolate.run` / `compute()` are acceptable equivalents. Direct inline
+`jsonDecode` of large network responses on the widget/provider layer is a lint
+violation. The Rust FFI core (`packages/core_native`) will eventually replace
+these call sites, but the isolate boundary must be preserved as web fallback.
