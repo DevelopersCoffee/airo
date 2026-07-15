@@ -163,7 +163,7 @@ dependencies {
     // unavailable; otherwise resolve the canonical Maven dependency.
     if (useLocalLiteRtAar) {
         implementation(files(localLiteRtAar))
-        implementation("com.google.code.gson:gson:2.13.2")
+        implementation("com.google.code.gson:gson:2.14.0")
         implementation("org.jetbrains.kotlin:kotlin-reflect:2.2.21")
     } else {
         implementation("com.google.ai.edge.litertlm:litertlm-android:0.14.0")
