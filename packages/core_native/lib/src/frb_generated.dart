@@ -24,6 +24,18 @@ List<FrbM3uEntry> parseM3uEntries({required String content}) {
   );
 }
 
+/// Stub: calls the Rust parse_xmltv_programmes via FFI.
+/// Replaced by real generated code after `flutter_rust_bridge_codegen generate`.
+FrbXmltvParseResult parseXmltvProgrammes({
+  required String content,
+  required int maxProgrammes,
+}) {
+  throw NativeBridgeUnavailableException(
+    'flutter_rust_bridge_codegen has not been run yet. '
+    'Run `flutter_rust_bridge_codegen generate` from the repo root.',
+  );
+}
+
 class FrbM3uEntry {
   const FrbM3uEntry({
     required this.name,
@@ -42,6 +54,39 @@ class FrbM3uEntry {
   final String? tvgId;
   final String? tvgName;
   final String? language;
+}
+
+class FrbXmltvProgramme {
+  const FrbXmltvProgramme({
+    required this.channelId,
+    required this.start,
+    this.stop,
+    this.title,
+  });
+
+  final String channelId;
+  final String start;
+  final String? stop;
+  final String? title;
+}
+
+class FrbXmltvParseStats {
+  const FrbXmltvParseStats({
+    required this.programmeCount,
+    required this.skippedProgrammeCount,
+    required this.truncated,
+  });
+
+  final int programmeCount;
+  final int skippedProgrammeCount;
+  final bool truncated;
+}
+
+class FrbXmltvParseResult {
+  const FrbXmltvParseResult({required this.programmes, required this.stats});
+
+  final List<FrbXmltvProgramme> programmes;
+  final FrbXmltvParseStats stats;
 }
 
 class NativeBridgeUnavailableException implements Exception {
