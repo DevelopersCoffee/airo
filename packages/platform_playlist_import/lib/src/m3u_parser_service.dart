@@ -133,14 +133,26 @@ class M3UParserService {
       } else if (line.isNotEmpty &&
           !line.startsWith('#') &&
           currentName != null) {
+        final streamUri = AiroPlaylistUrlPolicy.normalizeStreamUrl(line);
+        if (streamUri == null) {
+          currentName = null;
+          currentLogo = null;
+          currentGroup = null;
+          currentTvgId = null;
+          currentTvgName = null;
+          currentLanguage = null;
+          continue;
+        }
+
         // Normalize the channel name for deduplication
         final normalizedName = _normalizeChannelName(currentName);
+        final logoUri = AiroPlaylistUrlPolicy.normalizeLogoUrl(currentLogo);
 
         // Create the channel
         final channel = IPTVChannel.fromM3U(
           name: _formatChannelName(currentName), // Use formatted name
-          url: line,
-          logo: currentLogo,
+          url: streamUri.toString(),
+          logo: logoUri?.toString(),
           group: currentGroup,
           tvgId: currentTvgId,
           tvgName: currentTvgName,

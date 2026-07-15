@@ -1,8 +1,10 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 
 import 'package:flutter/foundation.dart';
+import 'package:platform_channels/platform_channels.dart';
 
 /// Local HTTP server that re-serves media to a Cast receiver with permissive
 /// CORS headers.
@@ -12,9 +14,25 @@ import 'package:flutter/foundation.dart';
 /// receiver needs a local rewritten playlist, such as synthesized HEVC master
 /// playlists or live IPTV manifests with relative child playlists.
 class CastHttpProxy {
+  CastHttpProxy({bool allowPrivateTargets = false, String? accessToken})
+    : this._(allowPrivateTargets, accessToken);
+
+  CastHttpProxy._(this._allowPrivateTargets, String? accessToken)
+    : _accessToken = accessToken ?? _generateAccessToken() {
+    if (_accessToken.isEmpty) {
+      throw ArgumentError.value(
+        accessToken,
+        'accessToken',
+        'Must not be empty',
+      );
+    }
+  }
+
   HttpServer? _server;
   Uri? _baseUri;
   final HttpClient _httpClient = HttpClient();
+  final bool _allowPrivateTargets;
+  final String _accessToken;
 
   Future<Uri> start() async {
     final existing = _baseUri;
@@ -41,9 +59,10 @@ class CastHttpProxy {
     if (base == null) {
       throw StateError('Cast proxy is not running.');
     }
+    _validateTarget(original);
     return base.replace(
       path: '/proxy',
-      queryParameters: {'url': original.toString()},
+      queryParameters: {'url': original.toString(), 'token': _accessToken},
     );
   }
 
@@ -56,7 +75,12 @@ class CastHttpProxy {
     if (base == null) {
       throw StateError('Cast proxy is not running.');
     }
-    final queryParameters = {'url': mediaPlaylist.toString(), 'codecs': codecs};
+    _validateTarget(mediaPlaylist);
+    final queryParameters = {
+      'url': mediaPlaylist.toString(),
+      'codecs': codecs,
+      'token': _accessToken,
+    };
     if (resolution != null) {
       queryParameters['res'] = resolution;
     }
@@ -121,9 +145,15 @@ class CastHttpProxy {
       return;
     }
 
+    if (request.uri.queryParameters['token'] != _accessToken) {
+      response.statusCode = HttpStatus.forbidden;
+      await response.close();
+      return;
+    }
+
     final targetUrl = Uri.tryParse(targetParam);
-    if (targetUrl == null) {
-      response.statusCode = HttpStatus.badRequest;
+    if (targetUrl == null || !_isAllowedTarget(targetUrl)) {
+      response.statusCode = HttpStatus.forbidden;
       await response.close();
       return;
     }
@@ -232,9 +262,15 @@ class CastHttpProxy {
       if (trimmed.isEmpty) continue;
       if (_shouldDropTag(trimmed)) continue;
       if (trimmed.startsWith('#')) {
-        buffer.writeln(_rewriteTagUris(trimmed, playlistUrl));
+        final rewritten = _rewriteTagUris(trimmed, playlistUrl);
+        if (rewritten.isNotEmpty) {
+          buffer.writeln(rewritten);
+        }
       } else {
-        buffer.writeln(proxiedUrl(playlistUrl.resolve(trimmed)).toString());
+        final resolved = playlistUrl.resolve(trimmed);
+        if (_isAllowedTarget(resolved)) {
+          buffer.writeln(proxiedUrl(resolved).toString());
+        }
       }
     }
     return buffer.toString();
@@ -242,6 +278,11 @@ class CastHttpProxy {
 
   String _rewriteTagUris(String tagLine, Uri playlistUrl) {
     final uriPattern = RegExp(r'URI="([^"]+)"');
+    for (final match in uriPattern.allMatches(tagLine)) {
+      if (!_isAllowedTarget(playlistUrl.resolve(match.group(1)!))) {
+        return '';
+      }
+    }
     return tagLine.replaceAllMapped(uriPattern, (match) {
       final resolved = playlistUrl.resolve(match.group(1)!);
       return 'URI="${proxiedUrl(resolved)}"';
@@ -258,5 +299,28 @@ class CastHttpProxy {
     if (uri == null) return 'none';
     final port = uri.hasPort ? ':${uri.port}' : '';
     return '${uri.scheme}://${uri.host}$port${uri.path}';
+  }
+
+  bool _isAllowedTarget(Uri uri) {
+    return AiroPlaylistUrlPolicy.isAllowedCastProxyTarget(
+      uri,
+      allowPrivateHosts: _allowPrivateTargets,
+    );
+  }
+
+  void _validateTarget(Uri uri) {
+    if (!_isAllowedTarget(uri)) {
+      throw ArgumentError.value(
+        uri,
+        'uri',
+        'Cast proxy target must be a public HTTP(S) URL.',
+      );
+    }
+  }
+
+  static String _generateAccessToken() {
+    final random = Random.secure();
+    final bytes = List<int>.generate(16, (_) => random.nextInt(256));
+    return base64Url.encode(bytes).replaceAll('=', '');
   }
 }

@@ -36,7 +36,7 @@ void main() {
       await request.response.close();
     });
 
-    proxy = CastHttpProxy();
+    proxy = CastHttpProxy(allowPrivateTargets: true, accessToken: 'test-token');
     await proxy.start();
   });
 
@@ -89,5 +89,34 @@ void main() {
 
     expect(response.headers.value('access-control-allow-origin'), '*');
     expect(bytes, [1, 2, 3, 4]);
+  });
+
+  test('rejects requests without the generated access token', () async {
+    final originUrl = Uri.parse(
+      'http://${origin.address.address}:${origin.port}/segment1.ts',
+    );
+    final base = await proxy.start();
+    final missingTokenUrl = base.replace(
+      path: '/proxy',
+      queryParameters: {'url': originUrl.toString()},
+    );
+
+    final client = HttpClient();
+    final response = await (await client.getUrl(missingTokenUrl)).close();
+    await response.drain<void>();
+    client.close(force: true);
+
+    expect(response.statusCode, HttpStatus.forbidden);
+  });
+
+  test('rejects private relay targets by default', () async {
+    final hardened = CastHttpProxy(accessToken: 'test-token');
+    await hardened.start();
+    addTearDown(hardened.stop);
+
+    expect(
+      () => hardened.proxiedUrl(Uri.parse('http://192.168.1.20/live.m3u8')),
+      throwsArgumentError,
+    );
   });
 }

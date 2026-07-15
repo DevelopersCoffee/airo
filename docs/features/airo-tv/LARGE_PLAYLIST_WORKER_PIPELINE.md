@@ -72,6 +72,19 @@ has a logo and the existing channel does not. Deterministic tests cover this
 logo-preference rule in both input orders so large playlists do not regress
 while the Rust parser target is developed.
 
+## Playlist URL Security
+
+Playlist-derived stream and logo URLs are sanitized in platform code before
+Airo TV UI consumes channel models. `platform_playlist_import` uses the shared
+`AiroPlaylistUrlPolicy` to accept public HTTP(S) URLs and reject local files,
+script/content schemes, URL credentials, localhost, link-local, and private
+network hosts by default.
+
+Unsafe stream entries are dropped from parsed channel output, and unsafe logo
+values are stripped. Cast proxy relay targets use the same policy and require a
+generated token on proxy requests, so malicious playlist content cannot cause
+unauthenticated local relay fetches.
+
 ## Privacy
 
 Worker diagnostics use stable ids, counts, stages, statuses, and blocker codes

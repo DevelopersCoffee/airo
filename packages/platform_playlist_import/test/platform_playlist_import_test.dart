@@ -79,6 +79,35 @@ https://example.com/bbc-world-news.m3u8
     });
   });
 
+  group('M3UParserService URL policy', () {
+    late M3UParserService parser;
+
+    setUp(() async {
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      parser = M3UParserService(dio: Dio(), prefs: prefs);
+    });
+
+    test('drops forbidden stream URLs and strips forbidden logo URLs', () {
+      final channels = parser.parseM3U('''
+#EXTM3U
+#EXTINF:-1,Local File
+file:///etc/passwd
+#EXTINF:-1,Private Host
+http://192.168.1.1/live.m3u8
+#EXTINF:-1,Script
+javascript:alert(1)
+#EXTINF:-1 tvg-logo="file:///private/logo.png",Public Stream
+https://cdn.example.com/live.m3u8
+''');
+
+      expect(channels, hasLength(1));
+      expect(channels.single.name, 'Public Stream');
+      expect(channels.single.streamUrl, 'https://cdn.example.com/live.m3u8');
+      expect(channels.single.logoUrl, isNull);
+    });
+  });
+
   group('M3UParserService BYOC source', () {
     late SharedPreferences prefs;
     late M3UParserService parser;

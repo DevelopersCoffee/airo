@@ -25,6 +25,15 @@ later duplicate has a logo and the existing channel does not. This preserves the
 existing first-entry policy while making logo preference deterministic for large
 user playlists.
 
+## Playlist-Derived URL Policy
+
+M3U stream URLs and `tvg-logo` values are validated while parsing. Unsafe stream
+URLs are dropped before an `IPTVChannel` is created, and unsafe logo URLs are
+stripped from otherwise valid channels. The parser uses the shared
+`AiroPlaylistUrlPolicy` from `platform_channels`, which allows HTTP(S) public
+network URLs and blocks credentials, local files, script/content schemes,
+localhost, link-local, and private network hosts by default.
+
 This package does not choose a database engine, own Airo TV progress UI,
 download provider-specific bundled content, expose raw playlist URLs in worker
 diagnostics, or import storage SDKs directly. Concrete storage adapters should
