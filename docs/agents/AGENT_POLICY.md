@@ -347,6 +347,8 @@ Default validation order:
   host-only smoke checks.
 - Open PRs after local evidence is recorded. Do not trigger extra workflow
   re-runs unless a failed required check is relevant to the change.
+- Use `[skip ci]` for local-only commits and direct release-line sync pushes
+  when remote CI is not required and repository/branch policy permits it.
 - Treat release, signing, Play upload, APK/AAB artifact, full Android matrix,
   emulator, and broad integration workflows as opt-in. Use them only when the
   issue, branch protection, or release owner requires them.

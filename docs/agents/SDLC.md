@@ -115,6 +115,8 @@ Agents must:
 - Avoid full Android, release, upload, signing, artifact, or broad integration
   workflows unless required by branch protection, release ownership, or the
   issue.
+- Use `[skip ci]` for local-only commits and direct sync pushes when remote CI
+  is not required and repository/branch policy permits it.
 - Cancel accidental or redundant expensive runs with `gh run cancel <run-id>`.
 - Merge/close bounded slices once required evidence exists instead of waiting
   on non-required artifact builds.
