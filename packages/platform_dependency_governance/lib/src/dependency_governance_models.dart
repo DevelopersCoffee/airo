@@ -28,6 +28,7 @@ enum AiroDependencyBlockerCode {
   raisesAndroidApiFloor('raises_android_api_floor'),
   missingFallbackForRaisedApi('missing_fallback_for_raised_api'),
   missingNativeArchitectures('missing_native_architectures'),
+  legacyKotlinGradlePluginRisk('legacy_kotlin_gradle_plugin_risk'),
   binarySizeBudgetExceeded('binary_size_budget_exceeded'),
   memoryBudgetExceeded('memory_budget_exceeded'),
   backgroundBehaviorUndeclared('background_behavior_undeclared'),
@@ -58,6 +59,7 @@ class AiroDependencyAuditRecord extends Equatable {
     this.estimatedRuntimeMemoryMb,
     this.hasBackgroundBehavior = false,
     this.backgroundBehavior,
+    this.hasLegacyKotlinGradlePluginRisk = false,
     this.requiresShrinkerRules = false,
     this.shrinkerRulesValidated = false,
     this.tvIssuesReviewed = false,
@@ -78,6 +80,7 @@ class AiroDependencyAuditRecord extends Equatable {
   final int? estimatedRuntimeMemoryMb;
   final bool hasBackgroundBehavior;
   final String? backgroundBehavior;
+  final bool hasLegacyKotlinGradlePluginRisk;
   final bool requiresShrinkerRules;
   final bool shrinkerRulesValidated;
   final bool tvIssuesReviewed;
@@ -102,6 +105,7 @@ class AiroDependencyAuditRecord extends Equatable {
       'estimatedRuntimeMemoryMb': estimatedRuntimeMemoryMb,
       'hasBackgroundBehavior': hasBackgroundBehavior,
       'backgroundBehavior': backgroundBehavior,
+      'hasLegacyKotlinGradlePluginRisk': hasLegacyKotlinGradlePluginRisk,
       'requiresShrinkerRules': requiresShrinkerRules,
       'shrinkerRulesValidated': shrinkerRulesValidated,
       'tvIssuesReviewed': tvIssuesReviewed,
@@ -124,6 +128,7 @@ class AiroDependencyAuditRecord extends Equatable {
     estimatedRuntimeMemoryMb,
     hasBackgroundBehavior,
     backgroundBehavior,
+    hasLegacyKotlinGradlePluginRisk,
     requiresShrinkerRules,
     shrinkerRulesValidated,
     tvIssuesReviewed,
@@ -218,6 +223,15 @@ class AiroDependencyGovernanceChecklist extends Equatable {
         AiroDependencyBlocker(
           packageName: record.packageName,
           code: AiroDependencyBlockerCode.backgroundBehaviorUndeclared,
+        ),
+      );
+    }
+
+    if (record.hasLegacyKotlinGradlePluginRisk && !record.hasFallbackOrStub) {
+      blockers.add(
+        AiroDependencyBlocker(
+          packageName: record.packageName,
+          code: AiroDependencyBlockerCode.legacyKotlinGradlePluginRisk,
         ),
       );
     }
