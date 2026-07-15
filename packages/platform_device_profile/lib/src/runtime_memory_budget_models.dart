@@ -181,6 +181,205 @@ class AiroRuntimeMemoryBudgetEvaluation extends Equatable {
   List<Object?> get props => [budget, sample, violations];
 }
 
+class AiroRuntimeMemoryTimelinePoint extends Equatable {
+  const AiroRuntimeMemoryTimelinePoint({
+    required this.pointId,
+    required this.sampledAt,
+    required this.rssMb,
+    required this.dartHeapMb,
+    required this.imageCacheMb,
+    required this.retainedChannelListCopies,
+    this.schemaVersion = kAiroRuntimeMemoryBudgetSchemaVersion,
+  });
+
+  final String schemaVersion;
+  final String pointId;
+  final DateTime sampledAt;
+  final int rssMb;
+  final int dartHeapMb;
+  final int imageCacheMb;
+  final int retainedChannelListCopies;
+
+  Map<String, Object?> toPublicMap() {
+    return {
+      'schemaVersion': schemaVersion,
+      'pointId': pointId,
+      'sampledAt': sampledAt.toIso8601String(),
+      'rssMb': rssMb,
+      'dartHeapMb': dartHeapMb,
+      'imageCacheMb': imageCacheMb,
+      'retainedChannelListCopies': retainedChannelListCopies,
+    };
+  }
+
+  @override
+  List<Object?> get props => [
+    schemaVersion,
+    pointId,
+    sampledAt,
+    rssMb,
+    dartHeapMb,
+    imageCacheMb,
+    retainedChannelListCopies,
+  ];
+}
+
+class AiroRuntimeMemoryTimelineReport extends Equatable {
+  AiroRuntimeMemoryTimelineReport({
+    required this.reportId,
+    required this.scenarioId,
+    required this.budget,
+    required Iterable<AiroRuntimeMemoryTimelinePoint> points,
+    this.schemaVersion = kAiroRuntimeMemoryBudgetSchemaVersion,
+  }) : points = List.unmodifiable(
+         points.toList()..sort((a, b) => a.sampledAt.compareTo(b.sampledAt)),
+       ) {
+    if (this.points.isEmpty) {
+      throw ArgumentError.value(points, 'points', 'must not be empty');
+    }
+  }
+
+  final String schemaVersion;
+  final String reportId;
+  final String scenarioId;
+  final AiroRuntimeMemoryBudget budget;
+  final List<AiroRuntimeMemoryTimelinePoint> points;
+
+  AiroRuntimeMemoryTimelinePoint get firstPoint => points.first;
+  AiroRuntimeMemoryTimelinePoint get lastPoint => points.last;
+
+  Duration get duration => lastPoint.sampledAt.difference(firstPoint.sampledAt);
+
+  int get steadyRssMb => lastPoint.rssMb;
+
+  int get peakRssMb => points
+      .map((point) => point.rssMb)
+      .reduce((current, next) => current > next ? current : next);
+
+  int get peakDartHeapMb => points
+      .map((point) => point.dartHeapMb)
+      .reduce((current, next) => current > next ? current : next);
+
+  int get peakImageCacheMb => points
+      .map((point) => point.imageCacheMb)
+      .reduce((current, next) => current > next ? current : next);
+
+  int get peakRetainedChannelListCopies => points
+      .map((point) => point.retainedChannelListCopies)
+      .reduce((current, next) => current > next ? current : next);
+
+  double get playbackSoakDriftMbPerHour {
+    if (duration.inMilliseconds <= 0) return 0;
+    final driftMb = lastPoint.dartHeapMb - firstPoint.dartHeapMb;
+    if (driftMb <= 0) return 0;
+    return driftMb / (duration.inMilliseconds / Duration.millisecondsPerHour);
+  }
+
+  AiroRuntimeMemorySample get aggregateSample {
+    return AiroRuntimeMemorySample(
+      sampleId: '$reportId-aggregate',
+      profileId: budget.budgetId,
+      steadyRssMb: steadyRssMb,
+      peakRssMb: peakRssMb,
+      dartHeapMb: peakDartHeapMb,
+      imageCacheMb: peakImageCacheMb,
+      retainedChannelListCopies: peakRetainedChannelListCopies,
+      playbackSoakDriftMbPerHour: playbackSoakDriftMbPerHour,
+      sampledAt: lastPoint.sampledAt,
+    );
+  }
+
+  AiroRuntimeMemoryBudgetEvaluation evaluate({
+    AiroRuntimeMemoryBudgetPolicy policy =
+        const AiroRuntimeMemoryBudgetPolicy(),
+  }) {
+    return policy.evaluate(budget: budget, sample: aggregateSample);
+  }
+
+  Map<String, Object?> toPublicMap({
+    AiroRuntimeMemoryBudgetPolicy policy =
+        const AiroRuntimeMemoryBudgetPolicy(),
+  }) {
+    final evaluation = evaluate(policy: policy);
+    return {
+      'schemaVersion': schemaVersion,
+      'reportId': reportId,
+      'scenarioId': scenarioId,
+      'budgetId': budget.budgetId,
+      'accepted': evaluation.accepted,
+      'violations': evaluation.violations
+          .map((violation) => violation.stableId)
+          .toList(growable: false),
+      'durationSeconds': duration.inSeconds,
+      'sampleCount': points.length,
+      'steadyRssMb': steadyRssMb,
+      'peakRssMb': peakRssMb,
+      'peakDartHeapMb': peakDartHeapMb,
+      'peakImageCacheMb': peakImageCacheMb,
+      'peakRetainedChannelListCopies': peakRetainedChannelListCopies,
+      'playbackSoakDriftMbPerHour': playbackSoakDriftMbPerHour,
+      'points': points
+          .map((point) => point.toPublicMap())
+          .toList(growable: false),
+    };
+  }
+
+  String toMarkdown({
+    AiroRuntimeMemoryBudgetPolicy policy =
+        const AiroRuntimeMemoryBudgetPolicy(),
+  }) {
+    final evaluation = evaluate(policy: policy);
+    final buffer = StringBuffer()
+      ..writeln('# Airo Runtime Memory Timeline')
+      ..writeln()
+      ..writeln('- Report: `$reportId`')
+      ..writeln('- Scenario: `$scenarioId`')
+      ..writeln('- Budget: `${budget.budgetId}`')
+      ..writeln('- Accepted: `${evaluation.accepted}`')
+      ..writeln('- Duration: ${duration.inSeconds}s')
+      ..writeln('- Samples: ${points.length}')
+      ..writeln('- Steady RSS: $steadyRssMb MB / ${budget.maxSteadyRssMb} MB')
+      ..writeln('- Peak RSS: $peakRssMb MB / ${budget.maxPeakRssMb} MB')
+      ..writeln(
+        '- Dart heap peak: $peakDartHeapMb MB / ${budget.maxDartHeapMb} MB',
+      )
+      ..writeln(
+        '- Image cache peak: $peakImageCacheMb MB / ${budget.imageCacheMb} MB',
+      )
+      ..writeln(
+        '- Playback drift: ${playbackSoakDriftMbPerHour.toStringAsFixed(2)} MB/h / '
+        '${budget.maxPlaybackSoakDriftMbPerHour.toStringAsFixed(2)} MB/h',
+      )
+      ..writeln(
+        '- Violations: ${evaluation.violations.map((code) => code.stableId).join(', ')}',
+      )
+      ..writeln()
+      ..writeln(
+        '| Sample | Time | RSS MB | Dart heap MB | Image cache MB | Retained channel lists |',
+      )
+      ..writeln('| --- | --- | ---: | ---: | ---: | ---: |');
+
+    for (final point in points) {
+      buffer.writeln(
+        '| `${point.pointId}` | ${point.sampledAt.toIso8601String()} | '
+        '${point.rssMb} | ${point.dartHeapMb} | ${point.imageCacheMb} | '
+        '${point.retainedChannelListCopies} |',
+      );
+    }
+
+    return buffer.toString();
+  }
+
+  @override
+  List<Object?> get props => [
+    schemaVersion,
+    reportId,
+    scenarioId,
+    budget,
+    points,
+  ];
+}
+
 class AiroRuntimeMemoryBudgetPolicy extends Equatable {
   const AiroRuntimeMemoryBudgetPolicy({
     this.constrainedBudget = androidTvConstrainedBudget,
