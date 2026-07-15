@@ -131,7 +131,7 @@ implementation starts.
 ### Release and DevEx Agent
 
 Owns:
-- CI gates
+- CI gates and GitHub Actions cost controls
 - build/release workflows
 - local developer commands
 - docs completeness checks
@@ -330,8 +330,33 @@ Before completion:
 Release Agent confirms:
 - docs or ADR updated when contract changes
 - migrations are safe
-- CI checks cover the change
+- focused local validation covers the change
+- remote CI/build checks were used only when required by branch protection,
+  release/signing, artifact validation, or the issue risk profile
 - rollback or disable path exists for risky features
+
+### 10. GitHub Actions Cost Control
+
+GitHub Actions minutes are shared project cost. Agents must avoid unnecessary
+remote builds and must not wait on expensive artifact jobs when they are not
+required to prove the slice.
+
+Default validation order:
+- Run the narrowest local checks that cover the touched contract: package
+  tests, focused `flutter analyze`, formatting, docs completeness, scripts, or
+  host-only smoke checks.
+- Open PRs after local evidence is recorded. Do not trigger extra workflow
+  re-runs unless a failed required check is relevant to the change.
+- Treat release, signing, Play upload, APK/AAB artifact, full Android matrix,
+  emulator, and broad integration workflows as opt-in. Use them only when the
+  issue, branch protection, or release owner requires them.
+- If an expensive workflow starts accidentally, becomes redundant, or is only
+  producing non-required artifacts, cancel it with `gh run cancel <run-id>`
+  instead of waiting.
+- If a bounded slice is complete but the parent issue has broader benchmark,
+  physical-device, or release evidence remaining, merge the slice and record
+  the remaining evidence as follow-up. Do not hold unrelated code open solely
+  for non-required CI artifact builds.
 
 ## Feature Packet Template
 
@@ -374,7 +399,9 @@ Do not merge implementation PRs unless:
 - Required review agents are listed.
 - Cross-agent contract exists for mixed work.
 - Deterministic use cases and automation flows exist.
-- Tests or explicit test gaps are documented.
+- Focused local validation, required checks, or explicit test gaps are
+  documented.
+- Non-required expensive GitHub Actions runs are not left running.
 
 ## Delegation Prompt
 

@@ -1,7 +1,7 @@
 # 🤖 Airo Agent Operating Rules
 
-> **Last Updated:** 2026-06-27  
-> **Version:** 1.1.0  
+> **Last Updated:** 2026-07-15
+> **Version:** 1.2.0
 > **Project Board:** https://github.com/orgs/DevelopersCoffee/projects/2
 
 ## 📋 Rule Updates
@@ -93,8 +93,9 @@ DORMANT → ACTIVATED → IN_PROGRESS → REVIEW → COMPLETE → DORMANT
    - Action: Move issue to "Review" column
 
 4. **REVIEW → COMPLETE**
-   - Trigger: PR merged, CI green
-   - Action: Move issue to "Done", close issue
+   - Trigger: PR merged and required validation evidence recorded
+   - Action: Move issue to "Done", close issue or split remaining acceptance
+     evidence into a follow-up issue
 
 ---
 
@@ -110,9 +111,32 @@ DORMANT → ACTIVATED → IN_PROGRESS → REVIEW → COMPLETE → DORMANT
 ### During Work
 1. Update issue with progress comments (daily minimum)
 2. Check off completed subtasks in issue body
-3. Run `act` before each push
+3. Run focused local validation before each push
 4. Keep commits small and focused
 5. Document blockers immediately
+
+### GitHub Actions Cost Guardrail
+GitHub Actions minutes are a shared project cost. Agents must not spend them by
+default.
+
+Allowed default validation:
+1. Focused local `flutter test`, `flutter analyze`, format, docs, and package
+   checks for the files/contracts changed.
+2. Host-only scripts or small package builds that directly prove the slice.
+3. Required branch-protection checks after PR creation.
+
+Cost rules:
+- Do not intentionally trigger full GitHub Actions build matrices for small
+  slices unless branch protection, release/signing, artifact validation, or the
+  issue explicitly requires them.
+- Do not re-run failed workflows until confirming the failure is relevant to
+  the change.
+- Cancel accidental or redundant expensive runs with `gh run cancel <run-id>`.
+- Do not wait on non-required artifact builds before merging a bounded,
+  locally validated slice.
+- Close issues as soon as their bounded acceptance is met. If the parent issue
+  still needs physical-device, benchmark, release, or long-running evidence,
+  record that as follow-up work instead of keeping unrelated code open.
 
 ### Host Stability Guardrail
 LLM agents must not use the Android Emulator as the default verification path.
@@ -160,13 +184,14 @@ Agent rules:
 | ❌ Don't | ✅ Do Instead |
 |----------|---------------|
 | Work without issue | Create issue first |
-| Push without CI | Run `act` locally |
+| Spend GitHub Actions minutes by default | Run focused local validation first |
 | Skip issue updates | Comment daily progress |
 | Ignore blockers | Document and escalate |
 | Large PRs (>500 lines) | Split into smaller PRs |
 | Direct push to main | Always use PR |
 | Hardcode secrets | Use environment/secrets |
 | Skip tests | Add tests for new code |
+| Wait on non-required artifact builds | Merge the validated slice and record follow-up evidence |
 | Retry Android Emulator after QEMU crash | Stop, preserve report, use host checks or physical device |
 
 ---
@@ -190,9 +215,11 @@ An agent task is DONE when:
 - [ ] All acceptance criteria checked
 - [ ] Tests pass (`flutter test`)
 - [ ] Linting clean (`flutter analyze`)
-- [ ] Local CI passes (`act`)
+- [ ] Focused local validation passes
+- [ ] Required remote checks pass, if branch protection or release ownership
+      requires them
 - [ ] PR approved and merged
-- [ ] Issue closed
+- [ ] Issue closed, or remaining broad evidence split into a follow-up issue
 - [ ] No regressions in related features
 
 ---
