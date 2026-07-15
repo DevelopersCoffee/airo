@@ -41,6 +41,7 @@ void main() {
     expect(json['deviceClass'], 'host_local');
     expect(json['iterations'], 5);
     expect(json['channelCount'], 20);
+    expect(json['fixture'], containsPair('sourceKind', 'synthetic_m3u'));
     expect(json['evaluation'], containsPair('accepted', true));
 
     final run = json['run'] as Map<String, dynamic>;
@@ -51,6 +52,38 @@ void main() {
       containsAll(['parse-m3u', 'search-index']),
     );
   });
+
+  test(
+    'runner accepts file-backed M3U fixture without exposing raw URLs',
+    () async {
+      final fixture = File('${Directory.systemTemp.path}/airo-tv-fixture.m3u')
+        ..writeAsStringSync('''
+#EXTM3U
+#EXTINF:-1 tvg-id="news" tvg-logo="https://logo.example/news.png" group-title="News",Fixture News
+https://stream.example/news.m3u8
+#EXTINF:-1 tvg-id="sports" group-title="Sports",Fixture Sports
+https://stream.example/sports.m3u8
+''');
+
+      final artifact = await const AiroTvHostBenchmarkRunner().run(
+        AiroTvHostBenchmarkConfig(
+          fixturePath: fixture.path,
+          fixtureId: 'public-fixture-test',
+        ),
+      );
+
+      final json = artifact.toJson();
+      final encoded = jsonEncode(json);
+
+      expect(artifact.accepted, isTrue);
+      expect(artifact.channelCount, 2);
+      expect(json['fixture'], containsPair('fixtureId', 'public-fixture-test'));
+      expect(json['fixture'], containsPair('sourceKind', 'file_m3u'));
+      expect(encoded, isNot(contains('stream.example')));
+      expect(encoded, isNot(contains('logo.example')));
+      expect(encoded, isNot(contains(fixture.path)));
+    },
+  );
 
   test('renders privacy-safe markdown benchmark report', () async {
     final artifact = await const AiroTvHostBenchmarkRunner().run(
@@ -63,6 +96,7 @@ void main() {
 
     expect(report, contains('# Airo TV Host Benchmark Report'));
     expect(report, contains('| Status | `accepted` |'));
+    expect(report, contains('| Fixture source | `synthetic_m3u` |'));
     expect(report, contains('| `parse-m3u` | `import_batch` |'));
     expect(report, contains('| `search-index` | `search_text` |'));
     expect(report, isNot(contains('https://')));
