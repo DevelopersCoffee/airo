@@ -75,9 +75,11 @@ Map<String, Object?> compactEpgProgramToJson(CompactEpgProgram program) {
     'schemaVersion': program.schemaVersion,
     'programId': program.programId,
     'title': program.title,
+    if (program.eventId != null) 'eventId': program.eventId,
     if (program.subtitle != null) 'subtitle': program.subtitle,
     if (program.category != null) 'category': program.category,
     if (program.rating != null) 'rating': program.rating,
+    'kind': program.kind.stableId,
     'startsAt': program.startsAt.toUtc().toIso8601String(),
     'endsAt': program.endsAt.toUtc().toIso8601String(),
   };
@@ -87,9 +89,11 @@ CompactEpgProgram compactEpgProgramFromJson(Map<String, dynamic> json) {
   return CompactEpgProgram(
     programId: _requiredString(json, 'programId'),
     title: _requiredString(json, 'title'),
+    eventId: _optionalString(json, 'eventId'),
     subtitle: _optionalString(json, 'subtitle'),
     category: _optionalString(json, 'category'),
     rating: _optionalString(json, 'rating'),
+    kind: _optionalProgramKind(json, 'kind') ?? CompactEpgProgramKind.standard,
     startsAt: _requiredDateTime(json, 'startsAt'),
     endsAt: _requiredDateTime(json, 'endsAt'),
     schemaVersion:
@@ -108,6 +112,18 @@ CompactEpgSliceSource _sliceSourceFromStableId(String value) {
     if (source.stableId == value) return source;
   }
   throw FormatException('Unknown CompactEpgSliceSource "$value".');
+}
+
+CompactEpgProgramKind? _optionalProgramKind(
+  Map<String, dynamic> json,
+  String key,
+) {
+  final value = _optionalString(json, key);
+  if (value == null) return null;
+  for (final kind in CompactEpgProgramKind.values) {
+    if (kind.stableId == value) return kind;
+  }
+  throw FormatException('Unknown CompactEpgProgramKind "$value".');
 }
 
 CompactEpgSourceRef _redactedSourceRef(String value, String key) {

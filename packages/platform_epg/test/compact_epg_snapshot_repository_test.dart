@@ -17,10 +17,12 @@ void main() {
             sourceRef: CompactEpgSourceRef.redacted('user-guide-primary'),
             current: CompactEpgProgram(
               programId: 'current',
+              eventId: 'event-news-current',
               title: 'Morning News',
               subtitle: 'Top stories',
               category: 'news',
               rating: 'G',
+              kind: CompactEpgProgramKind.news,
               startsAt: now.subtract(const Duration(minutes: 15)),
               endsAt: now.add(const Duration(minutes: 15)),
             ),
@@ -40,6 +42,14 @@ void main() {
       expect(
         decoded.entryForChannel('news-1')?.sourceRef?.value,
         'user-guide-primary',
+      );
+      expect(
+        decoded.entryForChannel('news-1')?.current?.eventId,
+        'event-news-current',
+      );
+      expect(
+        decoded.entryForChannel('news-1')?.current?.kind,
+        CompactEpgProgramKind.news,
       );
     });
 
