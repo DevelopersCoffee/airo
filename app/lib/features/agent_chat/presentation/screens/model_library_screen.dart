@@ -1,4 +1,5 @@
 import 'package:core_ai/core_ai.dart';
+import 'package:core_ui/core_ui.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -524,21 +525,18 @@ class ModelLibraryScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final library = ref.watch(assistantModelLibraryProvider);
 
-    return Scaffold(
-      body: SafeArea(
-        child: library.when(
-          data: (state) => _ModelLibraryContent(
-            state: state,
-            onModelSelected: onModelSelected,
-            onOpenModelManager: onOpenModelManager,
-            runtimeService: runtimeService ?? AssistantRuntimeService(),
-          ),
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (error, _) => _ModelLibraryError(
-            message: error.toString(),
-            onRetry: () => ref.invalidate(assistantModelLibraryProvider),
-          ),
+    return AiroResponsiveScaffold(
+      isLoading: library.isLoading,
+      errorMessage: library.hasError ? library.error.toString() : null,
+      onRetry: () => ref.invalidate(assistantModelLibraryProvider),
+      body: library.maybeWhen(
+        data: (state) => _ModelLibraryContent(
+          state: state,
+          onModelSelected: onModelSelected,
+          onOpenModelManager: onOpenModelManager,
+          runtimeService: runtimeService ?? AssistantRuntimeService(),
         ),
+        orElse: () => const SizedBox.shrink(),
       ),
     );
   }
@@ -1001,142 +999,157 @@ class _ProjectTemplateCard extends StatelessWidget {
         ? Colors.green.shade700
         : theme.colorScheme.onSurfaceVariant;
 
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        border: Border.all(color: outline),
-        borderRadius: BorderRadius.circular(8),
-        color: selected
-            ? theme.colorScheme.primaryContainer.withValues(alpha: 0.28)
-            : theme.colorScheme.surface,
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  width: 38,
-                  height: 38,
-                  decoration: BoxDecoration(
-                    color: candidate.local
-                        ? Colors.teal.withValues(alpha: 0.12)
-                        : Colors.indigo.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(8),
+    final semanticsLabel =
+        'Project: ${template.title}. '
+        'Artifact: ${template.artifactLabel}. '
+        'Description: ${template.description}. '
+        'Model: ${candidate.name}. '
+        'Status: ${candidate.available ? "Ready" : "Requires setup"}. '
+        'Privacy: ${candidate.privacyLabel}.';
+
+    return Semantics(
+      container: true,
+      label: semanticsLabel,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          border: Border.all(color: outline),
+          borderRadius: BorderRadius.circular(8),
+          color: selected
+              ? theme.colorScheme.primaryContainer.withValues(alpha: 0.28)
+              : theme.colorScheme.surface,
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 38,
+                    height: 38,
+                    decoration: BoxDecoration(
+                      color: candidate.local
+                          ? Colors.teal.withValues(alpha: 0.12)
+                          : Colors.indigo.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(
+                      template.task.icon,
+                      color: theme.colorScheme.primary,
+                    ),
                   ),
-                  child: Icon(
-                    template.task.icon,
-                    color: theme.colorScheme.primary,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              template.title,
-                              style: theme.textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.w700,
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                template.title,
+                                style: theme.textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                ),
                               ),
                             ),
-                          ),
-                          _StatusPill(
-                            label: candidate.available ? 'Ready' : 'Setup',
-                            color: statusColor,
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        template.artifactLabel,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
+                            _StatusPill(
+                              label: candidate.available ? 'Ready' : 'Setup',
+                              color: statusColor,
+                            ),
+                          ],
                         ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Text(template.description, style: theme.textTheme.bodyMedium),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                _StatusPill(
-                  label: candidate.name,
-                  color: theme.colorScheme.primary,
-                ),
-                if (package != null && package!.name != candidate.name)
-                  _StatusPill(
-                    label: package!.name,
-                    color: Colors.deepPurple.shade600,
-                  ),
-                _StatusPill(label: candidate.sizeLabel, color: Colors.blueGrey),
-                if (package != null)
-                  _StatusPill(
-                    label: package!.backendPreference.displayName,
-                    color: Colors.brown.shade600,
-                  ),
-                _StatusPill(
-                  label: candidate.privacyLabel,
-                  color: candidate.local ? Colors.teal : Colors.indigo,
-                ),
-                for (final tag in candidate.tags)
-                  _StatusPill(label: tag, color: Colors.grey.shade700),
-              ],
-            ),
-            if (candidate.local && candidate.compatibility != null) ...[
-              const SizedBox(height: 12),
-              _CompatibilityPanel(compatibility: candidate.compatibility!),
-            ],
-            if (candidate.unavailableReason != null) ...[
-              const SizedBox(height: 10),
-              Text(
-                candidate.unavailableReason!,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ],
-            const SizedBox(height: 12),
-            Align(
-              alignment: Alignment.centerRight,
-              child: OverflowBar(
-                alignment: MainAxisAlignment.end,
-                spacing: 8,
-                overflowAlignment: OverflowBarAlignment.end,
-                children: [
-                  if ((package ?? candidate.package)?.learnMoreUri != null)
-                    TextButton(
-                      onPressed: onLearnMore,
-                      child: const Text('Learn more'),
-                    ),
-                  FilledButton.icon(
-                    onPressed: onStart,
-                    icon: Icon(
-                      candidate.opensModelManager
-                          ? Icons.settings_outlined
-                          : Icons.play_arrow,
-                    ),
-                    label: Text(
-                      candidate.opensModelManager
-                          ? 'Download package'
-                          : template.primaryAction,
+                        const SizedBox(height: 2),
+                        Text(
+                          template.artifactLabel,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
               ),
-            ),
-          ],
+              const SizedBox(height: 12),
+              Text(template.description, style: theme.textTheme.bodyMedium),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  _StatusPill(
+                    label: candidate.name,
+                    color: theme.colorScheme.primary,
+                  ),
+                  if (package != null && package!.name != candidate.name)
+                    _StatusPill(
+                      label: package!.name,
+                      color: Colors.deepPurple.shade600,
+                    ),
+                  _StatusPill(
+                    label: candidate.sizeLabel,
+                    color: Colors.blueGrey,
+                  ),
+                  if (package != null)
+                    _StatusPill(
+                      label: package!.backendPreference.displayName,
+                      color: Colors.brown.shade600,
+                    ),
+                  _StatusPill(
+                    label: candidate.privacyLabel,
+                    color: candidate.local ? Colors.teal : Colors.indigo,
+                  ),
+                  for (final tag in candidate.tags)
+                    _StatusPill(label: tag, color: Colors.grey.shade700),
+                ],
+              ),
+              if (candidate.local && candidate.compatibility != null) ...[
+                const SizedBox(height: 12),
+                _CompatibilityPanel(compatibility: candidate.compatibility!),
+              ],
+              if (candidate.unavailableReason != null) ...[
+                const SizedBox(height: 10),
+                Text(
+                  candidate.unavailableReason!,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+              const SizedBox(height: 12),
+              Align(
+                alignment: Alignment.centerRight,
+                child: OverflowBar(
+                  alignment: MainAxisAlignment.end,
+                  spacing: 8,
+                  overflowAlignment: OverflowBarAlignment.end,
+                  children: [
+                    if ((package ?? candidate.package)?.learnMoreUri != null)
+                      TextButton(
+                        onPressed: onLearnMore,
+                        child: const Text('Learn more'),
+                      ),
+                    FilledButton.icon(
+                      onPressed: onStart,
+                      icon: Icon(
+                        candidate.opensModelManager
+                            ? Icons.settings_outlined
+                            : Icons.play_arrow,
+                      ),
+                      label: Text(
+                        candidate.opensModelManager
+                            ? 'Download package'
+                            : template.primaryAction,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -1269,45 +1282,6 @@ class _StatusPill extends StatelessWidget {
             color: color,
             fontWeight: FontWeight.w600,
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _ModelLibraryError extends StatelessWidget {
-  const _ModelLibraryError({required this.message, required this.onRetry});
-
-  final String message;
-  final VoidCallback onRetry;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.error_outline,
-              size: 44,
-              color: Theme.of(context).colorScheme.error,
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'Model library failed to load',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 8),
-            Text(message, textAlign: TextAlign.center),
-            const SizedBox(height: 16),
-            FilledButton.icon(
-              onPressed: onRetry,
-              icon: const Icon(Icons.refresh),
-              label: const Text('Retry'),
-            ),
-          ],
         ),
       ),
     );
