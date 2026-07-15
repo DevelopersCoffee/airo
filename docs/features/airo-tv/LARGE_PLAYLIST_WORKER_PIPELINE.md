@@ -85,6 +85,20 @@ values are stripped. Cast proxy relay targets use the same policy and require a
 generated token on proxy requests, so malicious playlist content cannot cause
 unauthenticated local relay fetches.
 
+## Playlist Refresh Networking
+
+The platform playlist importer owns HTTP validators for user-supplied M3U
+sources. After a successful fetch, it stores `ETag` and `Last-Modified`
+metadata with the user-derived cache. Forced refreshes send
+`If-None-Match`/`If-Modified-Since` when validators exist, and a `304 Not
+Modified` response returns the cached channel list instead of downloading a
+full playlist body again.
+
+Compression negotiation is explicit with `Accept-Encoding: gzip, deflate`.
+HTTP/2 logo burst optimization remains a separate network slice; Airo TV UI
+must continue to consume the platform importer rather than issuing playlist
+refresh logic directly.
+
 ## Privacy
 
 Worker diagnostics use stable ids, counts, stages, statuses, and blocker codes

@@ -34,6 +34,17 @@ stripped from otherwise valid channels. The parser uses the shared
 network URLs and blocks credentials, local files, script/content schemes,
 localhost, link-local, and private network hosts by default.
 
+## Conditional Playlist Refresh
+
+Playlist fetches send `Accept-Encoding: gzip, deflate` and reuse cached HTTP
+validators when available. `ETag` is stored as `iptv_playlist_etag`, and
+`Last-Modified` is stored as `iptv_playlist_last_modified` beside the
+user-derived playlist cache.
+
+On `304 Not Modified`, the parser returns the existing user-derived cache
+without downloading or parsing a new response body. Changing or clearing the
+playlist URL removes the cached body, timestamp, and validators together.
+
 This package does not choose a database engine, own Airo TV progress UI,
 download provider-specific bundled content, expose raw playlist URLs in worker
 diagnostics, or import storage SDKs directly. Concrete storage adapters should
