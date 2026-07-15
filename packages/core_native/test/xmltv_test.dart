@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:core_native/core_native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -60,6 +62,43 @@ void main() {
     test('rejects negative bounds', () {
       expect(
         () => parseXmltvProgrammes('<tv></tv>', maxProgrammes: -1),
+        throwsArgumentError,
+      );
+    });
+
+    test('parses bounded programme summaries from file path', () {
+      final directory = Directory.systemTemp.createTempSync(
+        'core-native-xmltv-file-test-',
+      );
+      addTearDown(() {
+        if (directory.existsSync()) {
+          directory.deleteSync(recursive: true);
+        }
+      });
+      final file = File('${directory.path}/guide.xml')
+        ..writeAsStringSync('''
+<tv>
+  <programme channel="file.one" start="20260715090000 +0000">
+    <title>File Path</title>
+  </programme>
+</tv>
+''');
+
+      final result = parseXmltvProgrammesFile(file.path);
+
+      expect(result.programmes, hasLength(1));
+      expect(result.programmes.single.channelId, 'file.one');
+      expect(result.programmes.single.title, 'File Path');
+      expect(result.stats.programmeCount, 1);
+    });
+
+    test('rejects invalid file parser inputs', () {
+      expect(
+        () => parseXmltvProgrammesFile('', maxProgrammes: 1),
+        throwsArgumentError,
+      );
+      expect(
+        () => parseXmltvProgrammesFile('/tmp/missing.xml', maxProgrammes: -1),
         throwsArgumentError,
       );
     });

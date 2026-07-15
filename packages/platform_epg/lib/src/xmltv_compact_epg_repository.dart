@@ -63,6 +63,52 @@ class XmltvCompactEpgRepository implements CompactEpgRepository {
       content,
       maxProgrammes: maxProgrammes,
     );
+    return XmltvCompactEpgRepository._fromNativeResult(
+      nativeResult: nativeResult,
+      ingestedAt: ingestedAt,
+      maxAge: maxAge,
+      defaultProgrammeDuration: defaultProgrammeDuration,
+      sourceRef: sourceRef,
+      channelNamesById: channelNamesById,
+      channelNumbersById: channelNumbersById,
+    );
+  }
+
+  factory XmltvCompactEpgRepository.fromXmltvFile({
+    required String path,
+    required DateTime ingestedAt,
+    int maxProgrammes = kXmltvCompactEpgDefaultMaxProgrammes,
+    Duration maxAge = kXmltvCompactEpgDefaultMaxAge,
+    Duration defaultProgrammeDuration =
+        kXmltvCompactEpgDefaultProgrammeDuration,
+    CompactEpgSourceRef? sourceRef,
+    Map<String, String> channelNamesById = const {},
+    Map<String, String> channelNumbersById = const {},
+  }) {
+    final nativeResult = parseXmltvProgrammesFile(
+      path,
+      maxProgrammes: maxProgrammes,
+    );
+    return XmltvCompactEpgRepository._fromNativeResult(
+      nativeResult: nativeResult,
+      ingestedAt: ingestedAt,
+      maxAge: maxAge,
+      defaultProgrammeDuration: defaultProgrammeDuration,
+      sourceRef: sourceRef,
+      channelNamesById: channelNamesById,
+      channelNumbersById: channelNumbersById,
+    );
+  }
+
+  factory XmltvCompactEpgRepository._fromNativeResult({
+    required NativeXmltvParseResult nativeResult,
+    required DateTime ingestedAt,
+    required Duration maxAge,
+    required Duration defaultProgrammeDuration,
+    required CompactEpgSourceRef? sourceRef,
+    required Map<String, String> channelNamesById,
+    required Map<String, String> channelNumbersById,
+  }) {
     final programsByChannel = <String, List<CompactEpgProgram>>{};
     var retainedProgrammeCount = 0;
     var invalidTimestampCount = 0;

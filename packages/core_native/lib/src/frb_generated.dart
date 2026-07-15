@@ -36,6 +36,18 @@ FrbXmltvParseResult parseXmltvProgrammes({
   );
 }
 
+/// Stub: calls the Rust parse_xmltv_programmes_file via FFI.
+/// Replaced by real generated code after `flutter_rust_bridge_codegen generate`.
+FrbXmltvParseResult parseXmltvProgrammesFile({
+  required String path,
+  required int maxProgrammes,
+}) {
+  throw NativeBridgeUnavailableException(
+    'flutter_rust_bridge_codegen has not been run yet. '
+    'Run `flutter_rust_bridge_codegen generate` from the repo root.',
+  );
+}
+
 class FrbM3uEntry {
   const FrbM3uEntry({
     required this.name,

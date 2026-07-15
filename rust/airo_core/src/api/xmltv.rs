@@ -1,4 +1,5 @@
-use std::io::{BufRead, Cursor};
+use std::fs::File;
+use std::io::{BufRead, BufReader, Cursor};
 
 use quick_xml::encoding::Decoder;
 use quick_xml::escape::{resolve_predefined_entity, unescape};
@@ -39,6 +40,17 @@ pub fn parse_xmltv_programmes(
     max_programmes: u32,
 ) -> Result<XmltvParseResult, String> {
     parse_xmltv_programmes_reader(Cursor::new(content.into_bytes()), max_programmes as usize)
+        .map_err(|error| error.to_string())
+}
+
+pub fn parse_xmltv_programmes_file(
+    path: String,
+    max_programmes: u32,
+) -> Result<XmltvParseResult, String> {
+    let file = File::open(&path)
+        .map_err(|error| format!("failed to open XMLTV file `{path}`: {error}"))?;
+    let reader = BufReader::with_capacity(1024 * 1024, file);
+    parse_xmltv_programmes_reader(reader, max_programmes as usize)
         .map_err(|error| error.to_string())
 }
 
@@ -289,5 +301,31 @@ mod tests {
         assert_eq!(result.programmes.len(), 1);
         assert_eq!(result.programmes[0].channel_id, "reader.one");
         assert_eq!(result.programmes[0].title.as_deref(), Some("Reader Path"));
+    }
+
+    #[test]
+    fn parses_from_file_without_string_ownership() {
+        let path = std::env::temp_dir().join(format!(
+            "airo-core-xmltv-file-{}-{}.xml",
+            std::process::id(),
+            "reader"
+        ));
+        std::fs::write(
+            &path,
+            r#"<tv>
+  <programme channel="file.one" start="20260715090000 +0000">
+    <title>File Path</title>
+  </programme>
+</tv>"#,
+        )
+        .expect("write XMLTV fixture");
+
+        let result =
+            parse_xmltv_programmes_file(path.display().to_string(), 10).expect("valid XMLTV file");
+        let _ = std::fs::remove_file(path);
+
+        assert_eq!(result.programmes.len(), 1);
+        assert_eq!(result.programmes[0].channel_id, "file.one");
+        assert_eq!(result.programmes[0].title.as_deref(), Some("File Path"));
     }
 }
