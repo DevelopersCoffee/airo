@@ -123,7 +123,9 @@ class _IptvTvScreenState extends ConsumerState<IptvTvScreen> {
     final hasActiveFilter = ref.watch(hasActiveFilterProvider);
     final productProfile = ref.watch(airoTvProductProfileProvider);
 
-    return Scaffold(
+    return AiroResponsiveScaffold(
+      overrideFormFactor: AiroFormFactor.tv,
+      padding: EdgeInsets.zero,
       backgroundColor: Theme.of(context).colorScheme.surface,
       body: SafeArea(
         child: channelsAsync.when(

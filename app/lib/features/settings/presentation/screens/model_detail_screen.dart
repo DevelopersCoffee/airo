@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:core_ai/core_ai.dart';
+import 'package:core_ui/core_ui.dart';
 
 import '../../application/ai_model_management.dart';
 import '../../../../core/ai/model_learn_more_launcher.dart';
@@ -22,7 +23,7 @@ class ModelDetailScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return Scaffold(
+    return AiroResponsiveScaffold(
       appBar: AppBar(
         title: Text(model.name),
         actions: [
@@ -35,7 +36,6 @@ class ModelDetailScreen extends ConsumerWidget {
         ],
       ),
       body: ListView(
-        padding: const EdgeInsets.all(16),
         children: [
           // Header card with main info
           _buildHeaderCard(context),
@@ -46,12 +46,24 @@ class ModelDetailScreen extends ConsumerWidget {
             context,
             title: 'Specifications',
             children: [
-              _buildInfoRow('Family', model.family.displayName),
-              _buildInfoRow('Quantization', model.quantization.displayName),
-              _buildInfoRow('Size', model.fileSizeDisplay),
+              _buildInfoRow(context, 'Family', model.family.displayName),
+              _buildInfoRow(
+                context,
+                'Quantization',
+                model.quantization.displayName,
+              ),
+              _buildInfoRow(context, 'Size', model.fileSizeDisplay),
               if (model.parameterCountDisplay != null)
-                _buildInfoRow('Parameters', model.parameterCountDisplay!),
-              _buildInfoRow('Context Length', '${model.contextLength} tokens'),
+                _buildInfoRow(
+                  context,
+                  'Parameters',
+                  model.parameterCountDisplay!,
+                ),
+              _buildInfoRow(
+                context,
+                'Context Length',
+                '${model.contextLength} tokens',
+              ),
             ],
           ),
           const SizedBox(height: 16),
@@ -61,12 +73,18 @@ class ModelDetailScreen extends ConsumerWidget {
             context,
             title: 'Capabilities',
             children: [
-              _buildCapabilityRow('Vision/Image Input', model.supportsVision),
               _buildCapabilityRow(
+                context,
+                'Vision/Image Input',
+                model.supportsVision,
+              ),
+              _buildCapabilityRow(
+                context,
                 'Function Calling',
                 model.supportsFunctionCalling,
               ),
               _buildInfoRow(
+                context,
                 'Languages',
                 model.languages.map((l) => l.toUpperCase()).join(', '),
               ),
@@ -80,10 +98,12 @@ class ModelDetailScreen extends ConsumerWidget {
             title: 'Memory Requirements',
             children: [
               _buildInfoRow(
+                context,
                 'Minimum RAM',
                 _formatBytes(model.estimatedMinMemoryBytes),
               ),
               _buildInfoRow(
+                context,
                 'Recommended RAM',
                 _formatBytes(model.estimatedRecommendedMemoryBytes),
               ),
@@ -100,11 +120,11 @@ class ModelDetailScreen extends ConsumerWidget {
               title: 'Metadata',
               children: [
                 if (model.author != null)
-                  _buildInfoRow('Author', model.author!),
+                  _buildInfoRow(context, 'Author', model.author!),
                 if (model.version != null)
-                  _buildInfoRow('Version', model.version!),
+                  _buildInfoRow(context, 'Version', model.version!),
                 if (model.license != null)
-                  _buildInfoRow('License', model.license!),
+                  _buildInfoRow(context, 'License', model.license!),
               ],
             ),
 
@@ -193,33 +213,65 @@ class ModelDetailScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildInfoRow(String label, String value) {
+  Widget _buildInfoRow(BuildContext context, String label, String value) {
+    final mediaQuery = MediaQuery.of(context);
+    final isTextLarge = mediaQuery.textScaler.scale(10) > 12.5;
+
+    final labelText = Text(label);
+    final valueText = Text(
+      value,
+      style: const TextStyle(fontWeight: FontWeight.w500),
+      textAlign: isTextLarge ? TextAlign.start : TextAlign.end,
+    );
+
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label),
-          Text(value, style: const TextStyle(fontWeight: FontWeight.w500)),
-        ],
-      ),
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: isTextLarge
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [labelText, const SizedBox(height: 2), valueText],
+            )
+          : Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(child: labelText),
+                const SizedBox(width: 8),
+                valueText,
+              ],
+            ),
     );
   }
 
-  Widget _buildCapabilityRow(String label, bool supported) {
+  Widget _buildCapabilityRow(
+    BuildContext context,
+    String label,
+    bool supported,
+  ) {
+    final mediaQuery = MediaQuery.of(context);
+    final isTextLarge = mediaQuery.textScaler.scale(10) > 12.5;
+
+    final labelText = Text(label);
+    final statusIcon = Icon(
+      supported ? Icons.check_circle : Icons.cancel,
+      color: supported ? Colors.green : Colors.grey,
+      size: 20,
+    );
+
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label),
-          Icon(
-            supported ? Icons.check_circle : Icons.cancel,
-            color: supported ? Colors.green : Colors.grey,
-            size: 20,
-          ),
-        ],
-      ),
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: isTextLarge
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [labelText, const SizedBox(height: 4), statusIcon],
+            )
+          : Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(child: labelText),
+                const SizedBox(width: 8),
+                statusIcon,
+              ],
+            ),
     );
   }
 
@@ -228,27 +280,51 @@ class ModelDetailScreen extends ConsumerWidget {
     final activeDownloads = ref.watch(activeDownloadsProvider);
     final downloadProgress = activeDownloads[model.id];
     final isDownloading = downloadProgress?.isActive ?? false;
+    final mediaQuery = MediaQuery.of(context);
+    final isTextLarge = mediaQuery.textScaler.scale(10) > 12.5;
 
     if (model.isDownloaded) {
-      return Row(
-        children: [
-          Expanded(
-            child: FilledButton.icon(
+      if (isTextLarge) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            FilledButton.icon(
               onPressed: () => _setActive(context, ref),
               icon: const Icon(Icons.play_arrow),
               label: const Text('Set as Active Model'),
             ),
-          ),
-          const SizedBox(width: 12),
-          OutlinedButton(
-            onPressed: () => _deleteModel(context, ref),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: theme.colorScheme.error,
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: () => _deleteModel(context, ref),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: theme.colorScheme.error,
+              ),
+              icon: const Icon(Icons.delete_outline),
+              label: const Text('Delete Model'),
             ),
-            child: const Icon(Icons.delete_outline),
-          ),
-        ],
-      );
+          ],
+        );
+      } else {
+        return Row(
+          children: [
+            Expanded(
+              child: FilledButton.icon(
+                onPressed: () => _setActive(context, ref),
+                icon: const Icon(Icons.play_arrow),
+                label: const Text('Set as Active Model'),
+              ),
+            ),
+            const SizedBox(width: 12),
+            OutlinedButton(
+              onPressed: () => _deleteModel(context, ref),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: theme.colorScheme.error,
+              ),
+              child: const Icon(Icons.delete_outline),
+            ),
+          ],
+        );
+      }
     }
 
     return FilledButton.icon(

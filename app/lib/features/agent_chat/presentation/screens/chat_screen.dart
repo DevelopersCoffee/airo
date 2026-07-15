@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart' hide Intent;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:core_ui/core_ui.dart';
 import '../../../../core/dictionary/dictionary.dart';
 import '../../../../core/utils/locale_settings.dart';
 import '../../../agent_chat/data/connectors/calendar_connector.dart';
@@ -98,6 +99,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   Map<String, dynamic>? _pendingCalendarEvent;
   bool _isDeviceSupported = false;
   bool _isGenerating = false;
+
+  final FocusNode _selectedModelBarFocusNode = FocusNode();
+  final FocusNode _skillsButtonFocusNode = FocusNode();
+  final FocusNode _messageInputFocusNode = FocusNode();
+  final FocusNode _sendButtonFocusNode = FocusNode();
 
   @override
   void initState() {
@@ -241,6 +247,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   @override
   void dispose() {
+    _selectedModelBarFocusNode.dispose();
+    _skillsButtonFocusNode.dispose();
+    _messageInputFocusNode.dispose();
+    _sendButtonFocusNode.dispose();
     _localRuntimePreloader.abortPreload();
     _messageController.dispose();
     super.dispose();
@@ -267,7 +277,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
     // No AppBar here - global AppBar is in AppShell
     final colorScheme = Theme.of(context).colorScheme;
-    return Scaffold(
+    return AiroResponsiveScaffold(
       backgroundColor: Colors.transparent,
       body: DictionarySelectionArea(
         child: Column(
@@ -304,6 +314,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 children: [
                   OutlinedButton.icon(
                     key: const Key('agent_chat_skills_button'),
+                    focusNode: _skillsButtonFocusNode,
                     onPressed: _showManageSkills,
                     icon: const Icon(Icons.auto_fix_high, size: 18),
                     label: const Text('Skills'),
@@ -312,6 +323,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   Expanded(
                     child: TextField(
                       key: const Key('agent_chat_input'),
+                      focusNode: _messageInputFocusNode,
                       controller: _messageController,
                       decoration: InputDecoration(
                         hintText: 'Type a message...',
@@ -331,6 +343,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   const SizedBox(width: 8),
                   IconButton.filled(
                     key: const Key('agent_chat_send_button'),
+                    focusNode: _sendButtonFocusNode,
                     onPressed: _sendMessage,
                     icon: const Icon(Icons.send),
                   ),
@@ -395,6 +408,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 ),
               ),
               IconButton(
+                focusNode: _selectedModelBarFocusNode,
                 tooltip: 'Change model',
                 onPressed: () {
                   ref
