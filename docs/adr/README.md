@@ -12,6 +12,7 @@ An Architecture Decision Record (ADR) captures an important architectural decisi
 |----|-------|--------|------|
 | [0001](0001-package-structure.md) | Modular Package Structure | Accepted | 2025-11-30 |
 | [0006](0006-mobile-ui-governance-and-shell-ownership.md) | Mobile UI Governance and Shell Ownership | Accepted | 2026-06-27 |
+| [0008](0008-storage-tiering-and-preference-size-guards.md) | Storage Tiering and Preference Size Guards | Accepted | 2026-07-15 |
 
 ## Creating a New ADR
 
