@@ -13,6 +13,8 @@ or parse full XMLTV datasets.
 - Current/next selection from a small program window.
 - XMLTV programme summary ingestion through `core_native` into compact
   current/next repository windows.
+- Compact current/next JSON snapshot encoding and snapshot-backed repository
+  adapters for app-owned cache storage.
 - Compact EPG slices with availability and expiry.
 - Repository boundary with no-op and in-memory fake implementations.
 - Redacted EPG source references that reject raw URLs, local paths, local IP
@@ -22,4 +24,6 @@ or parse full XMLTV datasets.
 - Fake and no-op distributed worker adapters for deterministic automation.
 
 This package does not render guide UI, persist full guide data, import vendor
-SDKs, open sockets, transfer payloads, or start playback.
+SDKs, open sockets, transfer payloads, or start playback. Snapshot storage is
+limited to compact current/next slices that products can regenerate from an
+XMLTV-backed repository after guide downloads complete.
