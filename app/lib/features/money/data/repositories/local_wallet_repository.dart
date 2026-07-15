@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:core_data/core_data.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
@@ -13,7 +14,13 @@ class LocalWalletRepository implements WalletRepository {
   static const String _userIdKey = 'airo_current_user_id';
 
   final Uuid _uuid = const Uuid();
+  final int maxPreferenceValueBytes;
   SharedPreferences? _prefs;
+  KeyValueStore? _store;
+
+  LocalWalletRepository({
+    this.maxPreferenceValueBytes = kKeyValueStorePreferenceMaxValueBytes,
+  });
 
   /// In-memory cache for performance
   Map<String, Wallet>? _cache;
@@ -22,6 +29,14 @@ class LocalWalletRepository implements WalletRepository {
   Future<SharedPreferences> get _preferences async {
     _prefs ??= await SharedPreferences.getInstance();
     return _prefs!;
+  }
+
+  Future<KeyValueStore> get _keyValueStore async {
+    _store ??= PreferencesStore(
+      await _preferences,
+      maxValueBytes: maxPreferenceValueBytes,
+    );
+    return _store!;
   }
 
   /// Get storage key for current user (wallets are user-specific)
@@ -36,9 +51,9 @@ class LocalWalletRepository implements WalletRepository {
     if (_cache != null) return;
 
     try {
-      final prefs = await _preferences;
+      final store = await _keyValueStore;
       final key = await _userStorageKey;
-      final jsonStr = prefs.getString(key);
+      final jsonStr = await store.getString(key);
 
       if (jsonStr == null) {
         _cache = {};
@@ -61,10 +76,16 @@ class LocalWalletRepository implements WalletRepository {
     if (_cache == null) return;
 
     try {
-      final prefs = await _preferences;
+      final store = await _keyValueStore;
       final key = await _userStorageKey;
       final jsonList = _cache!.values.map((w) => w.toJson()).toList();
-      await prefs.setString(key, jsonEncode(jsonList));
+      await store.setString(key, jsonEncode(jsonList));
+    } on KeyValueStoreValueTooLargeException catch (e) {
+      final key = await _userStorageKey;
+      final store = await _keyValueStore;
+      await store.remove(key);
+      debugPrint('Wallet data exceeded preference tier: $e');
+      throw Exception('Failed to save wallet data: preference tier exceeded');
     } catch (e) {
       debugPrint('Error saving wallets: $e');
       throw Exception('Failed to save wallet data: $e');
