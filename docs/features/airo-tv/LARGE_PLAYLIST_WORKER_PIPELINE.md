@@ -99,6 +99,18 @@ HTTP/2 logo burst optimization remains a separate network slice; Airo TV UI
 must continue to consume the platform importer rather than issuing playlist
 refresh logic directly.
 
+## Logo Image Rendering
+
+Channel logo rendering is shared UI behavior, not screen-local image plumbing.
+Airo TV logo widgets consume `AiroNetworkImage` from `packages/core_ui`, which
+sets Flutter decode cache dimensions from the rendered size and device pixel
+ratio. The TV entrypoint also applies `AiroImageCacheBudget.configureAndroidTv()`
+so large playlists cannot leave the default process-wide `ImageCache`
+unbounded.
+
+This does not add disk LRU caching or HTTP/2 logo request coalescing. Those
+remain separate platform/network slices.
+
 ## Privacy
 
 Worker diagnostics use stable ids, counts, stages, statuses, and blocker codes

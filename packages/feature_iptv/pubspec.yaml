@@ -9,6 +9,8 @@ environment:
   flutter: ">=1.17.0"
 
 dependencies:
+  core_ui:
+    path: ../core_ui
   dio: ^5.10.0
   equatable: ^2.0.8
   flutter:
