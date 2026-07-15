@@ -163,6 +163,51 @@ void main() {
       expect(logs.first.entityId, 'txn_002'); // Most recent first
       expect(logs.last.entityId, 'txn_001');
     });
+
+    test('should trim oldest logs to fit preference tier', () async {
+      final auditService = AuditService(
+        userId: 'test_user',
+        maxPreferenceValueBytes: 700,
+      );
+
+      for (var i = 0; i < 6; i++) {
+        await auditService.logTransactionCreated(
+          transactionId: 'txn_$i',
+          amountCents: 1000 + i,
+          category: 'Test',
+          description: 'entry-$i ${List.filled(80, 'x').join()}',
+        );
+      }
+
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString('airo_audit_log');
+      final logs = await auditService.getRecentLogs(limit: 10);
+
+      expect(raw, isNotNull);
+      expect(raw!.length, lessThanOrEqualTo(700));
+      expect(logs, isNotEmpty);
+      expect(logs.length, lessThan(6));
+      expect(logs.first.entityId, 'txn_5');
+      expect(logs.any((entry) => entry.entityId == 'txn_0'), isFalse);
+    });
+
+    test('should drop single oversized log before raw persistence', () async {
+      final auditService = AuditService(
+        userId: 'test_user',
+        maxPreferenceValueBytes: 128,
+      );
+
+      await auditService.logTransactionCreated(
+        transactionId: 'txn_huge',
+        amountCents: 2500,
+        category: 'Test',
+        description: 'huge ${List.filled(512, 'x').join()}',
+      );
+
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getString('airo_audit_log'), isNull);
+      expect(await auditService.getRecentLogs(limit: 10), isEmpty);
+    });
   });
 
   group('AuditLogEntry', () {

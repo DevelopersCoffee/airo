@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:core_data/core_data.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Audit log entry for financial operations
@@ -76,9 +77,22 @@ class AuditService {
   static const String _storageKey = 'airo_audit_log';
   static const int _maxEntries = 1000; // Retain last 1000 entries
 
-  final String _userId;
+  final String userId;
+  KeyValueStore? _store;
+  final int maxPreferenceValueBytes;
 
-  AuditService({this._userId = 'default_user'});
+  AuditService({
+    this.userId = 'default_user',
+    this.maxPreferenceValueBytes = kKeyValueStorePreferenceMaxValueBytes,
+  });
+
+  Future<KeyValueStore> get _keyValueStore async {
+    _store ??= PreferencesStore(
+      await SharedPreferences.getInstance(),
+      maxValueBytes: maxPreferenceValueBytes,
+    );
+    return _store!;
+  }
 
   /// Log a financial operation
   Future<void> log({
@@ -94,7 +108,7 @@ class AuditService {
       operation: operation,
       entityType: entityType,
       entityId: entityId,
-      userId: _userId,
+      userId: userId,
       timestamp: DateTime.now(),
       metadata: metadata,
       previousValue: previousValue,
@@ -258,8 +272,8 @@ class AuditService {
 
   Future<List<AuditLogEntry>> _loadEntries() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final jsonString = prefs.getString(_storageKey);
+      final store = await _keyValueStore;
+      final jsonString = await store.getString(_storageKey);
       if (jsonString == null) return [];
 
       final jsonList = json.decode(jsonString) as List;
@@ -273,8 +287,19 @@ class AuditService {
   }
 
   Future<void> _saveEntries(List<AuditLogEntry> entries) async {
-    final prefs = await SharedPreferences.getInstance();
-    final jsonString = json.encode(entries.map((e) => e.toJson()).toList());
-    await prefs.setString(_storageKey, jsonString);
+    final store = await _keyValueStore;
+    var bounded = entries;
+
+    while (bounded.isNotEmpty) {
+      final jsonString = json.encode(bounded.map((e) => e.toJson()).toList());
+      try {
+        await store.setString(_storageKey, jsonString);
+        return;
+      } on KeyValueStoreValueTooLargeException {
+        bounded = bounded.take(bounded.length - 1).toList();
+      }
+    }
+
+    await store.remove(_storageKey);
   }
 }
