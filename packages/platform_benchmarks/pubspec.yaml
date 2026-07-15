@@ -16,6 +16,8 @@ dependencies:
     sdk: flutter
   platform_channels:
     path: ../platform_channels
+  platform_epg:
+    path: ../platform_epg
   platform_playlist_import:
     path: ../platform_playlist_import
 
