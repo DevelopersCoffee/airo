@@ -79,7 +79,8 @@ class CastHttpProxy {
     _throughputTimer?.cancel();
     _throughputTimer = Timer.periodic(_throughputLogInterval, (_) {
       if (_bytesSinceLastLog == 0) return;
-      final mbPerSec = _bytesSinceLastLog /
+      final mbPerSec =
+          _bytesSinceLastLog /
           _throughputLogInterval.inMicroseconds *
           Duration.microsecondsPerSecond /
           (1024 * 1024);
