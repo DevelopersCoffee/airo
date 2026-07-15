@@ -9,7 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'core/app/airo_app.dart';
 import 'core/auth/auth_service.dart';
 import 'core/error/global_error_handler.dart';
-import "package:feature_iptv/feature_iptv.dart";
+import 'package:feature_iptv/feature_iptv.dart';
 import 'features/music/application/providers/beats_audio_provider.dart';
 import 'firebase_options.dart';
 
@@ -19,25 +19,38 @@ bool isFirebaseInitialized = false;
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize global error handler for unhandled exceptions
   GlobalErrorHandler.initialize();
 
-  // Enable semantics for web testing (Playwright/Selenium/accessibility)
-  // This creates DOM elements from Flutter's semantic tree
   if (kIsWeb) {
     SemanticsBinding.instance.ensureSemantics();
     debugPrint('🔧 Semantics enabled for web testing');
   }
 
-  // Initialize Firebase with platform-specific options
+  // Firebase + SharedPreferences in parallel; AuthService reuses cached prefs.
+  final (prefs, _) = await (
+    SharedPreferences.getInstance(),
+    _initFirebase(),
+  ).wait;
+
+  await AuthService.instance.initialize();
+
+  runApp(
+    ProviderScope(
+      overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+      child: const AiroApp(),
+    ),
+  );
+
+  _scheduleAudioServiceInitialization();
+}
+
+Future<void> _initFirebase() async {
   try {
     if (kIsWeb) {
-      // On web, check if Firebase is already initialized from index.html
       if (Firebase.apps.isNotEmpty) {
         isFirebaseInitialized = true;
         debugPrint('✅ Firebase already initialized (from index.html)');
       } else {
-        // Try to initialize if not already done
         await Firebase.initializeApp(
           options: DefaultFirebaseOptions.currentPlatform,
         );
@@ -51,7 +64,6 @@ void main() async {
         '📝 Demo login (admin/admin) available. Google Sign-In needs Firebase.',
       );
     } else {
-      // Native platforms
       final options = DefaultFirebaseOptions.currentPlatform;
       if (DefaultFirebaseOptions.isConfigured(options)) {
         await Firebase.initializeApp(options: options);
@@ -63,7 +75,6 @@ void main() async {
       }
     }
   } catch (e) {
-    // On web, Firebase might already be initialized from index.html
     if (kIsWeb && Firebase.apps.isNotEmpty) {
       isFirebaseInitialized = true;
       debugPrint('✅ Firebase available (initialized from index.html)');
@@ -75,21 +86,6 @@ void main() async {
       );
     }
   }
-
-  // Initialize AuthService
-  await AuthService.instance.initialize();
-
-  // Initialize SharedPreferences for IPTV caching
-  final prefs = await SharedPreferences.getInstance();
-
-  runApp(
-    ProviderScope(
-      overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
-      child: const AiroApp(),
-    ),
-  );
-
-  _scheduleAudioServiceInitialization();
 }
 
 void _scheduleAudioServiceInitialization() {

@@ -13,7 +13,10 @@
 /// ```
 library;
 
+import 'dart:async';
+
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -24,37 +27,70 @@ import 'core/auth/auth_service.dart';
 import 'core/config/platform_features.dart';
 import 'core/error/global_error_handler.dart';
 import 'core/features/feature_registry.dart';
-import "package:feature_iptv/feature_iptv.dart";
-import "features/iptv/iptv_feature_module.dart";
+import 'package:feature_iptv/feature_iptv.dart';
+import 'features/iptv/iptv_feature_module.dart';
 import 'firebase_options.dart';
 
 /// Global flag to track if Firebase is available
 bool isFirebaseInitialized = false;
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-
-  // Initialize global error handler for unhandled exceptions
-  GlobalErrorHandler.initialize();
-
-  // TV-specific setup: Force landscape orientation
+Future<void> configureTvSystemChrome() async {
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.landscapeLeft,
     DeviceOrientation.landscapeRight,
   ]);
-
-  // TV-specific setup: Hide system UI for immersive experience
   await SystemChrome.setEnabledSystemUIMode(
     SystemUiMode.immersiveSticky,
     overlays: [],
   );
+}
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  GlobalErrorHandler.initialize();
+
+  if (kIsWeb) {
+    SemanticsBinding.instance.ensureSemantics();
+    debugPrint('Semantics enabled for Airo TV web testing');
+  }
+
+  await configureTvSystemChrome();
 
   debugPrint('🖥️ Starting Airo TV (${PlatformFeatures.platformName})');
   debugPrint(
     '📺 Features: ${PlatformFeatures.enabledFeatures.map((f) => f.name).join(', ')}',
   );
 
-  // Initialize Firebase with TV variant configuration
+  FeatureRegistry.register(IptvFeatureModule());
+
+  final (prefs, _) = await (
+    SharedPreferences.getInstance(),
+    _initFirebase(),
+  ).wait;
+
+  debugPrint(
+    '📦 Registered features: ${FeatureRegistry.featureNames.join(', ')}',
+  );
+
+  runApp(
+    ProviderScope(
+      overrides: [
+        sharedPreferencesProvider.overrideWithValue(prefs),
+        realIptvCastControllerOverride(),
+        ...FeatureRegistry.allProviderOverrides,
+      ],
+      child: const AiroTvApp(),
+    ),
+  );
+
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    unawaited(FeatureRegistry.initializeAll());
+    unawaited(seedTvDebugDefaultPlaylist(prefs));
+  });
+}
+
+Future<void> _initFirebase() async {
   try {
     if (!DefaultFirebaseOptions.isCurrentPlatformConfigured) {
       isFirebaseInitialized = false;
@@ -72,28 +108,4 @@ void main() async {
     isFirebaseInitialized = false;
     debugPrint('⚠️ Firebase initialization failed: $e');
   }
-
-  // Initialize AuthService
-  await AuthService.instance.initialize();
-
-  // Initialize SharedPreferences for IPTV caching
-  final prefs = await SharedPreferences.getInstance();
-
-  // Initialize feature registry with TV-specific features
-  FeatureRegistry.register(IptvFeatureModule());
-  await FeatureRegistry.initializeAll();
-
-  debugPrint(
-    '📦 Registered features: ${FeatureRegistry.featureNames.join(', ')}',
-  );
-
-  runApp(
-    ProviderScope(
-      overrides: [
-        sharedPreferencesProvider.overrideWithValue(prefs),
-        ...FeatureRegistry.allProviderOverrides,
-      ],
-      child: const AiroTvApp(),
-    ),
-  );
 }
