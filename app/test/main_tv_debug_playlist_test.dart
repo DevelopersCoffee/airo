@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:io';
+
 import 'package:airo_app/core/platform/device_form_factor.dart';
 import 'package:airo_app/main_tv.dart';
 import 'package:dio/dio.dart';
@@ -32,6 +35,45 @@ void main() {
     );
 
     expect(parser.getPlaylistUrl(), 'https://example.com/user.m3u');
+  });
+
+  test('warms cache for DEBUG_IPTV_PLAYLIST_URL fixture', () async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+
+    unawaited(
+      server.forEach((request) {
+        request.response
+          ..headers.contentType = ContentType.text
+          ..write('''
+#EXTM3U
+#EXTINF:-1 tvg-id="news.local" group-title="News",Airo News
+https://example.test/live/news.m3u8
+''')
+          ..close();
+      }),
+    );
+
+    final playlistUrl = Uri(
+      scheme: 'http',
+      host: InternetAddress.loopbackIPv4.address,
+      port: server.port,
+      path: '/fixture.m3u',
+    ).toString();
+
+    try {
+      await seedTvDebugDefaultPlaylist(prefs, playlistUrl: playlistUrl);
+    } finally {
+      await server.close(force: true);
+    }
+
+    final parser = M3UParserService(dio: Dio(), prefs: prefs);
+    expect(parser.getPlaylistUrl(), playlistUrl);
+
+    final cachedChannels = await parser.fetchPlaylist();
+    expect(cachedChannels, hasLength(1));
+    expect(cachedChannels.single.name, 'Airo News');
   });
 
   test('does not lock orientation on mobile devices', () async {

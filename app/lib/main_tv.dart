@@ -15,7 +15,9 @@ library;
 
 import 'package:dio/dio.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -42,6 +44,13 @@ void main() async {
 
   // Initialize global error handler for unhandled exceptions
   GlobalErrorHandler.initialize();
+
+  // Enable semantics for browser release-audit automation and accessibility
+  // inspection. This mirrors the main web entrypoint behavior.
+  if (kIsWeb) {
+    SemanticsBinding.instance.ensureSemantics();
+    debugPrint('Semantics enabled for Airo TV web testing');
+  }
 
   await configureTvSystemChrome();
 
@@ -136,4 +145,5 @@ Future<void> seedTvDebugDefaultPlaylist(
   if (parserService.getPlaylistUrl() != null) return;
 
   await parserService.setPlaylistUrl(playlistUrl);
+  await parserService.fetchPlaylist(forceRefresh: true);
 }
