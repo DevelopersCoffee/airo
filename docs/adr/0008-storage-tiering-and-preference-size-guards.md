@@ -18,9 +18,9 @@ Historically, package-level code could write arbitrarily large JSON strings to
 preferences. That made startup slower, increased memory spikes, and let bulk
 playlist/cache payloads land in the weakest storage tier.
 
-Hive also remains present in app manifests and the web database adapter. It is
-not the target storage tier for native Airo TV data, but removing it requires a
-separate web compatibility migration.
+Hive is not the target storage tier for native Airo TV data. The web database
+facade uses a lightweight in-memory adapter until a queryable IndexedDB/Drift
+web store is selected and migrated explicitly.
 
 ## Decision
 
@@ -32,9 +32,8 @@ separate web compatibility migration.
    `KeyValueStoreValueTooLargeException` before writing oversized values.
 4. Bulk structured data must use a file-backed cache, SQLite/drift, or a native
    platform store depending on access pattern.
-5. Hive is not approved for new native Airo TV persistence. Existing Hive web
-   compatibility code must be migrated or explicitly replaced before Hive
-   dependencies can be removed from the workspace.
+5. Hive is not approved for new native Airo TV persistence. Web storage must use
+   an explicitly approved adapter instead of reintroducing Hive.
 
 ## Consequences
 
@@ -49,7 +48,8 @@ separate web compatibility migration.
 
 - Existing direct `SharedPreferences` call sites are not automatically guarded
   until they move behind `KeyValueStore`.
-- Full Hive removal still needs web database migration work.
+- The current web database facade is process-local memory only; persistent web
+  storage still needs a dedicated migration/design before production web use.
 
 ### Risks
 
@@ -60,10 +60,10 @@ separate web compatibility migration.
 
 ## Alternatives Considered
 
-### Remove Hive Immediately
+### Restore Hive For Web Compatibility
 
-Rejected for this slice because `app/lib/core/database/app_database_web.dart`
-still uses Hive for web compatibility.
+Rejected because #776 explicitly retires Hive as an approved app storage tier.
+Web persistence needs a first-class IndexedDB/Drift strategy instead.
 
 ### Add Guards To Every SharedPreferences Call Site
 

@@ -21,11 +21,6 @@ final dioProvider = Provider<Dio>((ref) {
 //   return AppDb();
 // });
 
-// TODO: Add Hive boxes provider
-// final hiveBoxesProvider = Provider<HiveBoxes>((ref) {
-//   return HiveBoxes();
-// });
-
 // TODO: Add repository providers
 // final accountsRepositoryProvider = Provider<AccountsRepository>((ref) {
 //   return AccountsRepository(ref.watch(appDbProvider));

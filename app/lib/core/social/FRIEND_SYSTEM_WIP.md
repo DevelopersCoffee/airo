@@ -178,28 +178,15 @@ class LocalFriendStub {
 
 ## Data Storage
 
-### Local Storage (Hive)
+### Local Storage
 
-```dart
-class FriendBox {
-  static const String boxName = 'friends';
+Use the repository storage policy in
+`docs/adr/0008-storage-tiering-and-preference-size-guards.md`:
 
-  static Future<void> saveFriend(Friend friend) async {
-    final box = Hive.box<Friend>(boxName);
-    await box.put(friend.id, friend);
-  }
-
-  static Future<Friend?> getFriend(String id) async {
-    final box = Hive.box<Friend>(boxName);
-    return box.get(id);
-  }
-
-  static Future<List<Friend>> getAllFriends() async {
-    final box = Hive.box<Friend>(boxName);
-    return box.values.toList();
-  }
-}
-```
+- Small flags and compact profile settings use `PreferencesStore`.
+- Queryable friend, presence, and activity state belongs in SQLite/drift or an
+  approved platform storage adapter.
+- Do not introduce a feature-local key-value database.
 
 ## Privacy & Security
 
@@ -228,7 +215,7 @@ class FriendBox {
 - [ ] Build FriendListScreen UI
 - [ ] Build PresenceIndicator component
 - [ ] Integrate with ChatScreen
-- [ ] Add Hive storage
+- [ ] Add policy-compliant local storage adapter
 - [ ] Add Agent tool plumbing
 - [ ] Add tests
 
@@ -239,4 +226,3 @@ class FriendBox {
 - Presence is mock data for now
 - Activity tracking is opt-in
 - No real-time sync in v1
-

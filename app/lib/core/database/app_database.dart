@@ -2,7 +2,8 @@
 ///
 /// This file uses conditional imports to provide:
 /// - Native platforms (Android, iOS, Windows, Linux, macOS): SQLite/Drift
-/// - Web platform: Hive/IndexedDB
+/// - Web platform: lightweight in-memory facade until a Drift/IndexedDB
+///   adapter is selected explicitly
 ///
 /// Usage:
 /// ```dart
@@ -13,6 +14,7 @@
 /// ```
 library;
 
-// Conditional export: use native SQLite by default and Hive/IndexedDB on web.
+// Conditional export: use native SQLite by default and the web storage facade
+// on web.
 export 'app_database_native.dart'
     if (dart.library.html) 'app_database_web.dart';
