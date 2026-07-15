@@ -22,6 +22,8 @@ instead of duplicating profile rules in CI scripts.
   download, Homebrew Cask, and local validation.
 - Google Play upload planning for no-upload, internal, alpha, beta, and
   production modes before workflows write credentials or run upload tools.
+- Content-rating preflight for Google Play/IARC and future App Store Connect
+  questionnaire posture before maintainers enter store-console forms.
 - Redacted Fastlane credential preflight for Play Store and App Store Connect
   setup checks before humans run upload lanes.
 - Validation findings for duplicate profile/package IDs and incomplete Android
