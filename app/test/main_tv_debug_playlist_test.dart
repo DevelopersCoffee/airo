@@ -135,6 +135,56 @@ https://example.test/live/news.m3u8
     );
   });
 
+  test('initializes TV Firebase through deferred startup task', () async {
+    isFirebaseInitialized = false;
+    var initialized = false;
+    final logs = <String>[];
+    void Function(Duration timestamp)? frameCallback;
+
+    scheduleTvFirebaseInitialization(
+      isConfigured: true,
+      variantName: 'tvTest',
+      initializeApp: () async {
+        initialized = true;
+      },
+      addPostFrameCallback: (callback) {
+        frameCallback = callback;
+      },
+      log: logs.add,
+    );
+
+    expect(initialized, isFalse);
+    expect(isFirebaseInitialized, isFalse);
+
+    frameCallback!(Duration.zero);
+    await Future<void>.delayed(Duration.zero);
+
+    expect(initialized, isTrue);
+    expect(isFirebaseInitialized, isTrue);
+    expect(logs, contains('✅ Firebase initialized (TV variant: tvTest)'));
+    expect(
+      logs,
+      contains('✅ Deferred startup task completed: tv_firebase_initialization'),
+    );
+  });
+
+  test('skips TV Firebase when platform options are not configured', () async {
+    isFirebaseInitialized = true;
+    final logs = <String>[];
+
+    final initialized = await initializeTvFirebase(
+      isConfigured: false,
+      log: logs.add,
+    );
+
+    expect(initialized, isFalse);
+    expect(isFirebaseInitialized, isFalse);
+    expect(
+      logs,
+      contains('⚠️ Firebase not configured for this platform; skipping init'),
+    );
+  });
+
   test('does not lock orientation on mobile devices', () async {
     List<DeviceOrientation>? orientations;
     SystemUiMode? systemUiMode;
