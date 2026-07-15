@@ -70,6 +70,8 @@ scripts:
       cd packages/platform_benchmarks
       flutter pub get
       dart run tool/run_airo_tv_benchmarks.dart \
+        --fixture ../../iptv-data/fixtures/iptv-org/index.m3u \
+        --fixture-id iptv-org-index-sanitized-2026-07-15 \
         --output ../../artifacts/performance/airo-tv-host-benchmark.json
       dart run tool/render_airo_tv_benchmark_report.dart \
         --input ../../artifacts/performance/airo-tv-host-benchmark.json \

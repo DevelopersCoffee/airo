@@ -25,6 +25,8 @@ AiroTvHostBenchmarkConfig _parseArgs(List<String> args) {
   var iterations = 5;
   var outputPath = 'artifacts/performance/airo-tv-host-benchmark.json';
   var deviceClass = 'host_local';
+  String? fixturePath;
+  String? fixtureId;
 
   for (var i = 0; i < args.length; i++) {
     final arg = args[i];
@@ -44,12 +46,17 @@ AiroTvHostBenchmarkConfig _parseArgs(List<String> args) {
       outputPath = nextValue();
     } else if (arg == '--device-class') {
       deviceClass = nextValue();
+    } else if (arg == '--fixture') {
+      fixturePath = nextValue();
+    } else if (arg == '--fixture-id') {
+      fixtureId = nextValue();
     } else if (arg == '--help' || arg == '-h') {
       stdout.writeln(
         'Usage: dart run tool/run_airo_tv_benchmarks.dart '
         '[--channels 2000] [--iterations 5] '
         '[--output artifacts/performance/airo-tv-host-benchmark.json] '
-        '[--device-class host_local]',
+        '[--device-class host_local] '
+        '[--fixture path/to/index.m3u] [--fixture-id iptv-org-index]',
       );
       exit(0);
     } else {
@@ -62,5 +69,7 @@ AiroTvHostBenchmarkConfig _parseArgs(List<String> args) {
     iterations: iterations,
     outputPath: outputPath,
     deviceClass: deviceClass,
+    fixturePath: fixturePath,
+    fixtureId: fixtureId,
   );
 }

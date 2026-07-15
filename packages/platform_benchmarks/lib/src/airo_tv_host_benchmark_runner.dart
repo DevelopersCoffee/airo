@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:core_media_data/core_media_data.dart';
+import 'package:crypto/crypto.dart';
 import 'package:equatable/equatable.dart';
 import 'package:platform_channels/channel_search.dart';
 import 'package:platform_playlist_import/m3u_playlist_parser.dart';
@@ -15,19 +16,32 @@ class AiroTvHostBenchmarkConfig extends Equatable {
     this.iterations = 5,
     this.outputPath = 'artifacts/performance/airo-tv-host-benchmark.json',
     this.deviceClass = 'host_local',
+    this.fixturePath,
+    this.fixtureId,
   });
 
   final int channelCount;
   final int iterations;
   final String outputPath;
   final String deviceClass;
+  final String? fixturePath;
+  final String? fixtureId;
 
   AiroTvHostBenchmarkConfig normalized() {
+    final normalizedFixturePath = fixturePath?.trim();
+    final normalizedFixtureId = fixtureId?.trim();
     return AiroTvHostBenchmarkConfig(
       channelCount: math.max(channelCount, 1),
       iterations: math.max(iterations, 5),
       outputPath: outputPath,
       deviceClass: deviceClass.trim().isEmpty ? 'host_local' : deviceClass,
+      fixturePath:
+          normalizedFixturePath == null || normalizedFixturePath.isEmpty
+          ? null
+          : normalizedFixturePath,
+      fixtureId: normalizedFixtureId == null || normalizedFixtureId.isEmpty
+          ? null
+          : normalizedFixtureId,
     );
   }
 
@@ -37,6 +51,8 @@ class AiroTvHostBenchmarkConfig extends Equatable {
     iterations,
     outputPath,
     deviceClass,
+    fixturePath,
+    fixtureId,
   ];
 }
 
@@ -47,6 +63,7 @@ class AiroTvHostBenchmarkArtifact extends Equatable {
     required this.capturedAt,
     required this.iterations,
     required this.channelCount,
+    required this.fixture,
     required this.plan,
     required this.run,
     required this.evaluation,
@@ -58,6 +75,7 @@ class AiroTvHostBenchmarkArtifact extends Equatable {
   final DateTime capturedAt;
   final int iterations;
   final int channelCount;
+  final AiroTvBenchmarkFixtureInfo fixture;
   final AiroMediaDatabaseBenchmarkPlan plan;
   final AiroMediaDatabaseBenchmarkRun run;
   final AiroMediaDatabaseBenchmarkEvaluation evaluation;
@@ -72,6 +90,7 @@ class AiroTvHostBenchmarkArtifact extends Equatable {
       'capturedAt': capturedAt.toUtc().toIso8601String(),
       'iterations': iterations,
       'channelCount': channelCount,
+      'fixture': fixture.toJson(),
       'host': host.toJson(),
       'plan': {
         'schemaVersion': plan.schemaVersion,
@@ -130,11 +149,38 @@ class AiroTvHostBenchmarkArtifact extends Equatable {
     capturedAt,
     iterations,
     channelCount,
+    fixture,
     plan,
     run,
     evaluation,
     host,
   ];
+}
+
+class AiroTvBenchmarkFixtureInfo extends Equatable {
+  const AiroTvBenchmarkFixtureInfo({
+    required this.fixtureId,
+    required this.sourceKind,
+    required this.byteCount,
+    required this.sha256,
+  });
+
+  final String fixtureId;
+  final String sourceKind;
+  final int byteCount;
+  final String sha256;
+
+  Map<String, Object?> toJson() {
+    return {
+      'fixtureId': fixtureId,
+      'sourceKind': sourceKind,
+      'byteCount': byteCount,
+      'sha256': sha256,
+    };
+  }
+
+  @override
+  List<Object?> get props => [fixtureId, sourceKind, byteCount, sha256];
 }
 
 class AiroTvHostBenchmarkHost extends Equatable {
@@ -183,11 +229,9 @@ class AiroTvHostBenchmarkRunner {
     AiroTvHostBenchmarkConfig rawConfig,
   ) async {
     final config = rawConfig.normalized();
-    final fixture = AiroTvSyntheticPlaylistFixture(
-      channelCount: config.channelCount,
-    );
-    final m3u = fixture.toM3u();
-    final queries = fixture.searchQueries;
+    final input = await _loadInput(config);
+    final m3u = input.content;
+    final queries = input.searchQueries;
 
     final parseRuns = <_TimedParseRun>[];
     final searchRuns = <_TimedSearchRun>[];
@@ -220,7 +264,12 @@ class AiroTvHostBenchmarkRunner {
       );
     }
 
-    final plan = _plan(config, queries.length);
+    final channelCount = _medianParse(parseRuns).channelCount;
+    final plan = _plan(
+      fixture: input.fixture,
+      channelCount: channelCount,
+      queryCount: queries.length,
+    );
     final run = AiroMediaDatabaseBenchmarkRun(
       planId: plan.planId,
       runnerId: 'airo-tv-host-smoke',
@@ -235,7 +284,8 @@ class AiroTvHostBenchmarkRunner {
       deviceClass: config.deviceClass,
       capturedAt: DateTime.now(),
       iterations: config.iterations,
-      channelCount: config.channelCount,
+      channelCount: channelCount,
+      fixture: input.fixture,
       plan: plan,
       run: run,
       evaluation: evaluation,
@@ -253,16 +303,52 @@ class AiroTvHostBenchmarkRunner {
     return artifact;
   }
 
-  AiroMediaDatabaseBenchmarkPlan _plan(
+  Future<_AiroTvBenchmarkInput> _loadInput(
     AiroTvHostBenchmarkConfig config,
-    int queryCount,
-  ) {
+  ) async {
+    final fixturePath = config.fixturePath;
+    if (fixturePath != null) {
+      final bytes = await File(fixturePath).readAsBytes();
+      return _AiroTvBenchmarkInput(
+        content: utf8.decode(bytes),
+        searchQueries: const ['news', 'sports', 'music', 'kids', 'global'],
+        fixture: AiroTvBenchmarkFixtureInfo(
+          fixtureId: config.fixtureId ?? 'file-backed-m3u',
+          sourceKind: 'file_m3u',
+          byteCount: bytes.length,
+          sha256: sha256.convert(bytes).toString(),
+        ),
+      );
+    }
+
+    final fixture = AiroTvSyntheticPlaylistFixture(
+      channelCount: config.channelCount,
+    );
+    final content = fixture.toM3u();
+    final bytes = utf8.encode(content);
+    return _AiroTvBenchmarkInput(
+      content: content,
+      searchQueries: fixture.searchQueries,
+      fixture: AiroTvBenchmarkFixtureInfo(
+        fixtureId: 'synthetic-iptv-${config.channelCount}',
+        sourceKind: 'synthetic_m3u',
+        byteCount: bytes.length,
+        sha256: sha256.convert(bytes).toString(),
+      ),
+    );
+  }
+
+  AiroMediaDatabaseBenchmarkPlan _plan({
+    required AiroTvBenchmarkFixtureInfo fixture,
+    required int channelCount,
+    required int queryCount,
+  }) {
     return AiroMediaDatabaseBenchmarkPlan(
-      planId: 'airo-tv-host-iptv-${config.channelCount}',
+      planId: 'airo-tv-host-${fixture.fixtureId}',
       dataset: AiroMediaBenchmarkDatasetProfile(
-        profileId: 'synthetic-iptv-${config.channelCount}',
+        profileId: fixture.fixtureId,
         kind: AiroMediaBenchmarkDatasetKind.liveIptv,
-        liveChannelCount: config.channelCount,
+        liveChannelCount: channelCount,
         vodItemCount: 0,
         epgProgramCount: 0,
         playlistSourceCount: 1,
@@ -272,12 +358,12 @@ class AiroTvHostBenchmarkRunner {
         AiroMediaBenchmarkWorkloadStep(
           stepId: 'parse-m3u',
           operation: AiroMediaBenchmarkOperation.importBatch,
-          recordCount: config.channelCount,
+          recordCount: channelCount,
         ),
         AiroMediaBenchmarkWorkloadStep(
           stepId: 'search-index',
           operation: AiroMediaBenchmarkOperation.searchText,
-          recordCount: config.channelCount,
+          recordCount: channelCount,
           queryCount: queryCount,
         ),
       ],
@@ -293,6 +379,18 @@ class AiroTvHostBenchmarkRunner {
       ),
     );
   }
+}
+
+class _AiroTvBenchmarkInput {
+  const _AiroTvBenchmarkInput({
+    required this.content,
+    required this.searchQueries,
+    required this.fixture,
+  });
+
+  final String content;
+  final List<String> searchQueries;
+  final AiroTvBenchmarkFixtureInfo fixture;
 }
 
 class AiroTvSyntheticPlaylistFixture extends Equatable {

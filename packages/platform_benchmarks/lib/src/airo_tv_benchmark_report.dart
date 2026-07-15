@@ -16,6 +16,7 @@ class AiroTvBenchmarkReportRenderer {
 
   String render(Map<String, dynamic> artifact) {
     final evaluation = _map(artifact['evaluation']);
+    final fixture = _map(artifact['fixture']);
     final plan = _map(artifact['plan']);
     final dataset = _map(plan['dataset']);
     final budget = _map(plan['budget']);
@@ -36,6 +37,10 @@ class AiroTvBenchmarkReportRenderer {
       ..writeln('| Blockers | `$blockers` |')
       ..writeln('| Iterations | `${_text(artifact['iterations'])}` |')
       ..writeln('| Channel count | `${_text(artifact['channelCount'])}` |')
+      ..writeln('| Fixture | `${_text(fixture['fixtureId'])}` |')
+      ..writeln('| Fixture source | `${_text(fixture['sourceKind'])}` |')
+      ..writeln('| Fixture bytes | `${_text(fixture['byteCount'])}` |')
+      ..writeln('| Fixture SHA-256 | `${_text(fixture['sha256'])}` |')
       ..writeln()
       ..writeln('## Dataset')
       ..writeln()
@@ -91,7 +96,10 @@ class AiroTvBenchmarkReportRenderer {
       ..writeln('## Notes')
       ..writeln()
       ..writeln(
-        '- Host benchmark fixtures are synthetic and contain no provider playlist data.',
+        '- Host benchmark artifacts record fixture metadata, counts, and timings only.',
+      )
+      ..writeln(
+        '- Public fixture runs must not copy raw stream URLs, logo URLs, or local paths into reports.',
       )
       ..writeln(
         '- Use this report for local regression review; device RSS/frame evidence is tracked separately.',
