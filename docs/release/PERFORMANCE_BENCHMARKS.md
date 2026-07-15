@@ -49,6 +49,7 @@ iteration:
 melos run bench
 melos run bench:report
 melos run bench:xmltv-fixture
+cargo bench --manifest-path rust/Cargo.toml --bench m3u_parser
 make benchmark-gemini-warmup
 make test-integration
 ```
@@ -78,6 +79,16 @@ iptv-data/fixtures/xmltv/generated-50mb.manifest.json
 The XMLTV fixture contains no provider URLs, credentials, or user data. The
 manifest records byte count, SHA-256, channel count, programme count, and the
 generator version for reproducible local validation.
+
+Rust parser benchmark smoke:
+
+```bash
+cargo bench --manifest-path rust/Cargo.toml --bench m3u_parser
+```
+
+The criterion bench reads the sanitized public `iptv-org` fixture and reports
+local parser throughput. Benchmark output is local Cargo target data and is not
+committed.
 
 `benchmark-gemini-warmup` is the minimum host-runnable proof that the Gemini
 Nano support check, initialize path, and warmup path are still wired correctly
