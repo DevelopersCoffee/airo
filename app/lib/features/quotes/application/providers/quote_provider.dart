@@ -1,4 +1,6 @@
 import 'dart:convert';
+import 'package:core_data/core_data.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/auth/auth_service.dart';
@@ -15,15 +17,26 @@ final quotePreferencesProvider =
 /// Quote preferences notifier
 class QuotePreferencesNotifier extends StateNotifier<QuotePreferences> {
   static const String _prefKey = 'quote_preferences';
-  late SharedPreferences _prefs;
+  final int maxPreferenceValueBytes;
+  SharedPreferences? _prefs;
+  KeyValueStore? _store;
 
-  QuotePreferencesNotifier() : super(const QuotePreferences()) {
+  QuotePreferencesNotifier({
+    this.maxPreferenceValueBytes = kKeyValueStorePreferenceMaxValueBytes,
+  }) : super(const QuotePreferences()) {
     _initialize();
+  }
+
+  Future<KeyValueStore> get _keyValueStore async {
+    final prefs = _prefs ?? await SharedPreferences.getInstance();
+    _prefs = prefs;
+    _store ??= PreferencesStore(prefs, maxValueBytes: maxPreferenceValueBytes);
+    return _store!;
   }
 
   Future<void> _initialize() async {
     _prefs = await SharedPreferences.getInstance();
-    final saved = _prefs.getString(_prefKey);
+    final saved = _prefs?.getString(_prefKey);
     if (saved != null) {
       try {
         final json = jsonDecode(saved) as Map<String, dynamic>;
@@ -45,7 +58,12 @@ class QuotePreferencesNotifier extends StateNotifier<QuotePreferences> {
   }
 
   Future<void> _savePreferences() async {
-    await _prefs.setString(_prefKey, jsonEncode(state.toJson()));
+    try {
+      final store = await _keyValueStore;
+      await store.setString(_prefKey, jsonEncode(state.toJson()));
+    } on KeyValueStoreValueTooLargeException catch (e) {
+      debugPrint('Quote preferences exceeded preference tier: $e');
+    }
   }
 }
 
