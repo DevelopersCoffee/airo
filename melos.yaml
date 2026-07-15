@@ -115,6 +115,28 @@ scripts:
         --output-json ../../artifacts/performance/airo-tv-adb-memory-timeline.json \
         --output-markdown ../../artifacts/performance/airo-tv-adb-memory-timeline.md
 
+  # Render local Airo TV logo-scroll memory and jank evidence.
+  bench:tv-logo-scroll-report:
+    description: Write sanitized Airo TV logo-scroll evidence from local metrics
+    run: |
+      cd packages/platform_benchmarks
+      flutter pub get
+      dart run tool/write_logo_scroll_report.dart \
+        --report-id "${AIRO_TV_LOGO_SCROLL_REPORT_ID:-manual-logo-scroll-sample}" \
+        --scenario-id "${AIRO_TV_LOGO_SCROLL_SCENARIO_ID:-large-logo-grid-scroll}" \
+        --playlist-channels "${AIRO_TV_LOGO_SCROLL_PLAYLIST_CHANNELS:?Set AIRO_TV_LOGO_SCROLL_PLAYLIST_CHANNELS from the measured playlist}" \
+        --visible-cells "${AIRO_TV_LOGO_SCROLL_VISIBLE_CELLS:?Set AIRO_TV_LOGO_SCROLL_VISIBLE_CELLS from the measured viewport}" \
+        --duration-seconds "${AIRO_TV_LOGO_SCROLL_DURATION_SECONDS:?Set AIRO_TV_LOGO_SCROLL_DURATION_SECONDS from the measured run}" \
+        --baseline-rss-mb "${AIRO_TV_LOGO_SCROLL_BASELINE_RSS_MB:?Set AIRO_TV_LOGO_SCROLL_BASELINE_RSS_MB from adb meminfo}" \
+        --peak-rss-mb "${AIRO_TV_LOGO_SCROLL_PEAK_RSS_MB:?Set AIRO_TV_LOGO_SCROLL_PEAK_RSS_MB from adb meminfo}" \
+        --steady-rss-mb "${AIRO_TV_LOGO_SCROLL_STEADY_RSS_MB:?Set AIRO_TV_LOGO_SCROLL_STEADY_RSS_MB from adb meminfo}" \
+        --rss-plateau-delta-mb "${AIRO_TV_LOGO_SCROLL_PLATEAU_DELTA_MB:?Set AIRO_TV_LOGO_SCROLL_PLATEAU_DELTA_MB from the final sample window}" \
+        --image-cache-peak-mb "${AIRO_TV_LOGO_SCROLL_IMAGE_CACHE_PEAK_MB:?Set AIRO_TV_LOGO_SCROLL_IMAGE_CACHE_PEAK_MB from image-cache telemetry}" \
+        --frame-jank-count "${AIRO_TV_LOGO_SCROLL_FRAME_JANK_COUNT:-0}" \
+        --decode-jank-frame-count "${AIRO_TV_LOGO_SCROLL_DECODE_JANK_FRAME_COUNT:-0}" \
+        --output-json ../../artifacts/performance/airo-tv-logo-scroll-report.json \
+        --output-markdown ../../artifacts/performance/airo-tv-logo-scroll-report.md
+
   # Render a local Cast proxy benchmark report from captured device metrics.
   bench:cast-proxy-report:
     description: Write sanitized Cast proxy benchmark evidence from local metrics
