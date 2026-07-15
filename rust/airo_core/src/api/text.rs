@@ -26,10 +26,7 @@ mod tests {
 
     #[test]
     fn strips_punctuation_and_lowercases() {
-        assert_eq!(
-            normalize_channel_name("BBC  News!".to_string()),
-            "bbcnews"
-        );
+        assert_eq!(normalize_channel_name("BBC  News!".to_string()), "bbcnews");
     }
 
     #[test]
