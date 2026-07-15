@@ -11,6 +11,8 @@ or parse full XMLTV datasets.
 
 - Compact EPG programs and channel entries.
 - Current/next selection from a small program window.
+- XMLTV programme summary ingestion through `core_native` into compact
+  current/next repository windows.
 - Compact EPG slices with availability and expiry.
 - Repository boundary with no-op and in-memory fake implementations.
 - Redacted EPG source references that reject raw URLs, local paths, local IP
@@ -19,5 +21,5 @@ or parse full XMLTV datasets.
   validation contracts for delegated compact guide processing.
 - Fake and no-op distributed worker adapters for deterministic automation.
 
-This package does not parse XMLTV, render guide UI, persist guide data, import
-vendor SDKs, open sockets, transfer payloads, or start playback.
+This package does not render guide UI, persist full guide data, import vendor
+SDKs, open sockets, transfer payloads, or start playback.
