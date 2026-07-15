@@ -1,6 +1,9 @@
+import 'package:core_data/core_data.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:platform_device_qualification/src/device_qualification_overlay.dart';
 import 'package:platform_device_qualification/src/resolution_simulator.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   testWidgets(
@@ -108,4 +111,72 @@ void main() {
       expect(capturedMediaQuery.navigationMode, NavigationMode.traditional);
     },
   );
+
+  testWidgets(
+    'DeviceQualificationOverlay seeds default playlist through guarded store',
+    (WidgetTester tester) async {
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: DeviceQualificationOverlay(
+            defaultPlaylistUrl: 'https://example.com/qualification.m3u',
+            child: SizedBox.shrink(),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      expect(
+        prefs.getString(deviceQualificationPlaylistUrlKey),
+        'https://example.com/qualification.m3u',
+      );
+    },
+  );
+
+  testWidgets('DeviceQualificationOverlay preserves existing playlist seed', (
+    WidgetTester tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({
+      deviceQualificationPlaylistUrlKey: 'https://example.com/existing.m3u',
+    });
+    final prefs = await SharedPreferences.getInstance();
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: DeviceQualificationOverlay(
+          defaultPlaylistUrl: 'https://example.com/new.m3u',
+          child: SizedBox.shrink(),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(
+      prefs.getString(deviceQualificationPlaylistUrlKey),
+      'https://example.com/existing.m3u',
+    );
+  });
+
+  testWidgets('DeviceQualificationOverlay drops oversized playlist seed', (
+    WidgetTester tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    final store = PreferencesStore(prefs, maxValueBytes: 32);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: DeviceQualificationOverlay(
+          playlistStore: store,
+          defaultPlaylistUrl: 'https://example.com/${'x' * 64}.m3u',
+          child: const SizedBox.shrink(),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(prefs.getString(deviceQualificationPlaylistUrlKey), isNull);
+  });
 }
