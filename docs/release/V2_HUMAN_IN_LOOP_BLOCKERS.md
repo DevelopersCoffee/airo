@@ -65,6 +65,15 @@ exports, playlist URLs, local IP addresses, or private device logs.
 | #249 | Cloud-only Music/Beats | Confirm licensed catalog/backend/compliance strategy before productionizing cloud playback. |
 | #339 | LifeTrack template marketplace | Choose source repository/service, contribution/review policy, and token/service account strategy. |
 | #342 | Premium plugin licensing | Decide monetization mechanism, product IDs/SKUs, store/test credentials, and offline entitlement policy. |
+| #15 | Observability and crash reporting | Deferred for this fast-close pass. If later included, choose provider, privacy/consent policy, DSN/API keys, dashboard access, and release token strategy. |
+
+## Blocked But Not Credential Or Account Creation
+
+| Issue | Blocker | Why it is not a credential/account task |
+| --- | --- | --- |
+| #337 | Calendar integration and export sync | Current scope can use native device-calendar export. It is blocked on the missing LifeTrack app/module boundary and settings surface, not Google or Apple account credentials. |
+| #287 | Remote model servers | Remote server support should be opt-in with user-provided LAN/API endpoints. It is blocked on privacy/security architecture and UI, not a project account setup task. |
+| #312 | Community Skills gallery | Built-in skill metadata and tests are healthy. Production community install/update/remove remains blocked on governance, trusted source policy, quarantine/removal policy, and #307 alignment. |
 
 ## Fastest Parallel Setup Order
 
@@ -80,3 +89,5 @@ exports, playlist URLs, local IP addresses, or private device logs.
    #516, #515, #520, #514, #510, #511, #512, and #513 after signed or
    release-candidate artifacts are available.
 6. Governance/legal: complete #687, #689, and #673 before broad public release.
+7. Deferred service/product setup: handle #168, #250, #249, #339, #342, and
+   #15 only after the first release wave scope is confirmed.
