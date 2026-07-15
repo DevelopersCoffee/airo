@@ -99,6 +99,37 @@ melos:
           --channels 512 \
           --programme-minutes 30
 
+    bench:tv-memory:
+      description: Capture local Airo TV memory timeline from adb meminfo
+      run: |
+        cd packages/platform_benchmarks
+        flutter pub get
+        dart run tool/capture_airo_tv_memory_timeline.dart \
+          --package "${AIRO_TV_PACKAGE:-io.airo.app}" \
+          --samples "${AIRO_TV_MEMORY_SAMPLES:-60}" \
+          --interval-seconds "${AIRO_TV_MEMORY_INTERVAL_SECONDS:-30}" \
+          --budget "${AIRO_TV_MEMORY_BUDGET:-constrained}" \
+          --output-json ../../artifacts/performance/airo-tv-adb-memory-timeline.json \
+          --output-markdown ../../artifacts/performance/airo-tv-adb-memory-timeline.md
+
+    bench:tv-playback-soak:
+      description: Run local Airo TV playback soak and write memory evidence
+      run: |
+        cd packages/platform_benchmarks
+        flutter pub get
+        dart run tool/run_airo_tv_playback_soak.dart \
+          --package "${AIRO_TV_PACKAGE:-io.airo.app.tv}" \
+          --duration-seconds "${AIRO_TV_SOAK_DURATION_SECONDS:-1800}" \
+          --interval-seconds "${AIRO_TV_SOAK_INTERVAL_SECONDS:-30}" \
+          --budget "${AIRO_TV_MEMORY_BUDGET:-constrained}" \
+          --dart-heap-start-mb "${AIRO_TV_SOAK_DART_HEAP_START_MB:?Set AIRO_TV_SOAK_DART_HEAP_START_MB from the start DevTools heap snapshot}" \
+          --dart-heap-end-mb "${AIRO_TV_SOAK_DART_HEAP_END_MB:?Set AIRO_TV_SOAK_DART_HEAP_END_MB from the end DevTools heap snapshot}" \
+          --image-cache-mb "${AIRO_TV_SOAK_IMAGE_CACHE_MB:-0}" \
+          --retained-channel-list-copies "${AIRO_TV_SOAK_RETAINED_CHANNEL_LIST_COPIES:-1}" \
+          --key-events "${AIRO_TV_SOAK_KEY_EVENTS:-DPAD_DOWN,DPAD_CENTER,MEDIA_PLAY_PAUSE,MEDIA_PLAY_PAUSE,DPAD_DOWN,DPAD_CENTER}" \
+          --output-json ../../artifacts/performance/airo-tv-playback-soak-report.json \
+          --output-markdown ../../artifacts/performance/airo-tv-playback-soak-report.md
+
     release:fastlane-preflight:
       description: Write redacted Fastlane credential readiness evidence
       run: |
