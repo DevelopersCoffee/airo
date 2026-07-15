@@ -22,7 +22,7 @@ void main() async {
   GlobalErrorHandler.initialize();
 
   if (kIsWeb) {
-    SemanticsBinding.instance.ensureSemantics();
+    WidgetsBinding.instance.ensureSemantics();
     debugPrint('🔧 Semantics enabled for web testing');
   }
 
