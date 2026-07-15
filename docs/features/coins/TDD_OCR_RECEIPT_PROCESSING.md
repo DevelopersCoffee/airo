@@ -65,6 +65,20 @@ flutter drive \
 The generator is dependency-free and writes PDF pages containing only raster
 image XObjects, not extractable PDF text.
 
+### 1.5 Android Shared Preferences Registration Guard
+
+Android builds currently keep a temporary Gradle shim that rewrites Flutter's
+generated `shared_preferences_android` registration from the DataStore-backed
+`SharedPreferencesPlugin` to `LegacySharedPreferencesPlugin`. This is scoped to
+Android Java compilation and preserves the legacy `package:shared_preferences`
+backend used by startup, settings, and Coins flows while v2 receipt hardening is
+being validated on emulator/device.
+
+Do not treat this as receipt business logic. It is a compatibility guard for
+existing preference reads and writes. Remove it only after the Android receipt
+parser integration test and a startup/preferences smoke test pass with the
+unmodified Flutter `GeneratedPluginRegistrant`.
+
 ---
 
 ## 2. Architecture

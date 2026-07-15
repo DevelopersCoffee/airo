@@ -432,6 +432,14 @@ flutter {
 
 tasks.withType<JavaCompile>().configureEach {
     doFirst {
+        // Temporary Android compatibility shim for v2 receipt/device hardening.
+        // The app still relies on the package:shared_preferences legacy API across
+        // startup and Coins flows. Keep registration on the legacy Android backend
+        // until emulator/device coverage proves the default DataStore-backed
+        // SharedPreferencesPlugin preserves existing preference reads and writes.
+        // Removal criteria: delete this rewrite only after the Android receipt
+        // parser integration test and a startup/preferences smoke test pass with
+        // the unmodified Flutter GeneratedPluginRegistrant.
         val registrant = file("src/main/java/io/flutter/plugins/GeneratedPluginRegistrant.java")
         if (!registrant.exists()) return@doFirst
 
