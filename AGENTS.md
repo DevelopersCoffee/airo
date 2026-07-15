@@ -35,6 +35,21 @@ Default rule:
    sufficient; split remaining acceptance evidence into follow-up work instead
    of blocking unrelated progress.
 
+## Worker Offload Rule
+
+Large parsing, serialization, indexing, cache hydration, and playlist/EPG data
+transforms must not be added directly to UI or feature code on the main isolate.
+
+Default rule:
+
+1. Put reusable heavy-work boundaries in platform/framework packages.
+2. Use `platform_worker_jobs` and `AiroWorkerExecutor` for Dart isolate-backed
+   work unless the issue explicitly requires native/Rust execution.
+3. Keep synchronous helpers only for deterministic tests and small direct
+   parsing. Async production paths should use the worker boundary.
+4. Do not add screen-local `compute`, `Isolate.run`, or parser loops inside
+   Airo TV presentation code. Application modules consume platform services.
+
 ## Worktree Sync Rule
 
 When an LLM, agent, or human starts a new task, creates a branch, or creates a

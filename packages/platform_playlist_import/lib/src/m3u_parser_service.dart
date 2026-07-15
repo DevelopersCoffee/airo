@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:platform_channels/platform_channels.dart';
+import 'package:platform_worker_jobs/platform_worker_jobs.dart';
 
 /// M3U playlist parser for user-supplied sources.
 class M3UParserService {
@@ -19,8 +20,13 @@ class M3UParserService {
 
   final Dio _dio;
   final SharedPreferences _prefs;
+  final AiroWorkerExecutor workerExecutor;
 
-  M3UParserService({required this._dio, required this._prefs});
+  M3UParserService({
+    required this._dio,
+    required this._prefs,
+    this.workerExecutor = const AiroWorkerExecutor(),
+  });
 
   /// Fetch and parse the user-supplied playlist with caching.
   Future<List<IPTVChannel>> fetchPlaylist({bool forceRefresh = false}) async {
@@ -129,167 +135,21 @@ class M3UParserService {
       throw Exception('Empty playlist response');
     }
 
-    final channels = parseM3U(response.data!);
+    final channels = await parseM3UOffMain(response.data!);
     await _saveHttpValidators(response.headers);
     return channels;
   }
 
   /// Parse M3U content into channels with deduplication
-  List<IPTVChannel> parseM3U(String content) {
-    final lines = content.split('\n');
-    final channels = <IPTVChannel>[];
-    // Track seen channels by normalized name to deduplicate
-    final seenChannels = <String, IPTVChannel>{};
+  List<IPTVChannel> parseM3U(String content) => _parseM3UContent(content);
 
-    String? currentName;
-    String? currentLogo;
-    String? currentGroup;
-    String? currentTvgId;
-    String? currentTvgName;
-    String? currentLanguage;
-
-    for (var i = 0; i < lines.length; i++) {
-      final line = lines[i].trim();
-
-      if (line.startsWith('#EXTINF:')) {
-        // Parse channel info
-        final info = _parseExtInf(line);
-        currentName = info['name'];
-        currentLogo = info['tvg-logo'];
-        currentGroup = info['group-title'];
-        currentTvgId = info['tvg-id'];
-        currentTvgName = info['tvg-name'];
-        currentLanguage = info['tvg-language'];
-      } else if (line.isNotEmpty &&
-          !line.startsWith('#') &&
-          currentName != null) {
-        final streamUri = AiroPlaylistUrlPolicy.normalizeStreamUrl(line);
-        if (streamUri == null) {
-          currentName = null;
-          currentLogo = null;
-          currentGroup = null;
-          currentTvgId = null;
-          currentTvgName = null;
-          currentLanguage = null;
-          continue;
-        }
-
-        // Normalize the channel name for deduplication
-        final normalizedName = _normalizeChannelName(currentName);
-        final logoUri = AiroPlaylistUrlPolicy.normalizeLogoUrl(currentLogo);
-
-        // Create the channel
-        final channel = IPTVChannel.fromM3U(
-          name: _formatChannelName(currentName), // Use formatted name
-          url: streamUri.toString(),
-          logo: logoUri?.toString(),
-          group: currentGroup,
-          tvgId: currentTvgId,
-          tvgName: currentTvgName,
-          language: currentLanguage,
-        );
-
-        // Deduplicate: keep the one with logo, or first occurrence
-        if (!seenChannels.containsKey(normalizedName)) {
-          seenChannels[normalizedName] = channel;
-        } else {
-          // Prefer channel with logo over one without
-          final existing = seenChannels[normalizedName]!;
-          if (existing.logoUrl == null && channel.logoUrl != null) {
-            seenChannels[normalizedName] = channel;
-          }
-        }
-
-        // Reset for next channel
-        currentName = null;
-        currentLogo = null;
-        currentGroup = null;
-        currentTvgId = null;
-        currentTvgName = null;
-        currentLanguage = null;
-      }
-    }
-
-    // Return deduplicated channels
-    channels.addAll(seenChannels.values);
-    return channels;
-  }
-
-  /// Normalize channel name for deduplication (lowercase, remove special chars)
-  String _normalizeChannelName(String name) {
-    final buffer = StringBuffer();
-    for (var i = 0; i < name.length; i++) {
-      final codeUnit = name.codeUnitAt(i);
-
-      if (codeUnit >= 0x30 && codeUnit <= 0x39) {
-        buffer.writeCharCode(codeUnit);
-      } else if (codeUnit >= 0x41 && codeUnit <= 0x5A) {
-        buffer.writeCharCode(codeUnit + 0x20);
-      } else if (codeUnit >= 0x61 && codeUnit <= 0x7A) {
-        buffer.writeCharCode(codeUnit);
-      }
-    }
-    return buffer.toString();
-  }
-
-  /// Format channel name for display (proper capitalization)
-  String _formatChannelName(String name) {
-    final buffer = StringBuffer();
-    var index = 0;
-
-    while (index < name.length) {
-      while (index < name.length && _isWhitespace(name.codeUnitAt(index))) {
-        index++;
-      }
-      if (index >= name.length) break;
-
-      final wordStart = index;
-      while (index < name.length && !_isWhitespace(name.codeUnitAt(index))) {
-        index++;
-      }
-
-      if (buffer.isNotEmpty) {
-        buffer.write(' ');
-      }
-
-      final word = name.substring(wordStart, index);
-      if (word.length <= 4 && word == word.toUpperCase()) {
-        buffer.write(word);
-      } else {
-        buffer
-          ..write(word[0].toUpperCase())
-          ..write(word.substring(1).toLowerCase());
-      }
-    }
-
-    return buffer.toString();
-  }
-
-  bool _isWhitespace(int codeUnit) {
-    return codeUnit == 0x20 ||
-        codeUnit == 0x09 ||
-        codeUnit == 0x0A ||
-        codeUnit == 0x0B ||
-        codeUnit == 0x0C ||
-        codeUnit == 0x0D;
-  }
-
-  /// Parse #EXTINF line attributes
-  Map<String, String?> _parseExtInf(String line) {
-    final result = <String, String?>{};
-
-    // Extract name (after the comma)
-    final commaIndex = line.lastIndexOf(',');
-    if (commaIndex != -1) {
-      result['name'] = line.substring(commaIndex + 1).trim();
-    }
-
-    // Extract attributes
-    for (final match in _extInfAttributePattern.allMatches(line)) {
-      result[match.group(1)!] = match.group(2);
-    }
-
-    return result;
+  /// Parse M3U content in the platform worker boundary used by async flows.
+  Future<List<IPTVChannel>> parseM3UOffMain(String content) {
+    return workerExecutor.run<List<IPTVChannel>>(
+      debugName: 'm3u_playlist_parse',
+      kind: AiroWorkerJobKind.playlistImport,
+      computation: () => _parseM3UContent(content),
+    );
   }
 
   /// Load channels from cache
@@ -306,7 +166,7 @@ class M3UParserService {
     final cached = _prefs.getString(_cacheKey);
     if (cached == null) return null;
 
-    return parseM3U(cached);
+    return parseM3UOffMain(cached);
   }
 
   /// Save channels to cache
@@ -350,4 +210,163 @@ class M3UParserService {
     }
     await _prefs.setString(key, normalized);
   }
+}
+
+List<IPTVChannel> _parseM3UContent(String content) {
+  final lines = content.split('\n');
+  final channels = <IPTVChannel>[];
+  // Track seen channels by normalized name to deduplicate
+  final seenChannels = <String, IPTVChannel>{};
+
+  String? currentName;
+  String? currentLogo;
+  String? currentGroup;
+  String? currentTvgId;
+  String? currentTvgName;
+  String? currentLanguage;
+
+  for (var i = 0; i < lines.length; i++) {
+    final line = lines[i].trim();
+
+    if (line.startsWith('#EXTINF:')) {
+      // Parse channel info
+      final info = _parseExtInf(line);
+      currentName = info['name'];
+      currentLogo = info['tvg-logo'];
+      currentGroup = info['group-title'];
+      currentTvgId = info['tvg-id'];
+      currentTvgName = info['tvg-name'];
+      currentLanguage = info['tvg-language'];
+    } else if (line.isNotEmpty &&
+        !line.startsWith('#') &&
+        currentName != null) {
+      final streamUri = AiroPlaylistUrlPolicy.normalizeStreamUrl(line);
+      if (streamUri == null) {
+        currentName = null;
+        currentLogo = null;
+        currentGroup = null;
+        currentTvgId = null;
+        currentTvgName = null;
+        currentLanguage = null;
+        continue;
+      }
+
+      // Normalize the channel name for deduplication
+      final normalizedName = _normalizeChannelName(currentName);
+      final logoUri = AiroPlaylistUrlPolicy.normalizeLogoUrl(currentLogo);
+
+      // Create the channel
+      final channel = IPTVChannel.fromM3U(
+        name: _formatChannelName(currentName), // Use formatted name
+        url: streamUri.toString(),
+        logo: logoUri?.toString(),
+        group: currentGroup,
+        tvgId: currentTvgId,
+        tvgName: currentTvgName,
+        language: currentLanguage,
+      );
+
+      // Deduplicate: keep the one with logo, or first occurrence
+      if (!seenChannels.containsKey(normalizedName)) {
+        seenChannels[normalizedName] = channel;
+      } else {
+        // Prefer channel with logo over one without
+        final existing = seenChannels[normalizedName]!;
+        if (existing.logoUrl == null && channel.logoUrl != null) {
+          seenChannels[normalizedName] = channel;
+        }
+      }
+
+      // Reset for next channel
+      currentName = null;
+      currentLogo = null;
+      currentGroup = null;
+      currentTvgId = null;
+      currentTvgName = null;
+      currentLanguage = null;
+    }
+  }
+
+  // Return deduplicated channels
+  channels.addAll(seenChannels.values);
+  return channels;
+}
+
+/// Normalize channel name for deduplication (lowercase, remove special chars)
+String _normalizeChannelName(String name) {
+  final buffer = StringBuffer();
+  for (var i = 0; i < name.length; i++) {
+    final codeUnit = name.codeUnitAt(i);
+
+    if (codeUnit >= 0x30 && codeUnit <= 0x39) {
+      buffer.writeCharCode(codeUnit);
+    } else if (codeUnit >= 0x41 && codeUnit <= 0x5A) {
+      buffer.writeCharCode(codeUnit + 0x20);
+    } else if (codeUnit >= 0x61 && codeUnit <= 0x7A) {
+      buffer.writeCharCode(codeUnit);
+    }
+  }
+  return buffer.toString();
+}
+
+/// Format channel name for display (proper capitalization)
+String _formatChannelName(String name) {
+  final buffer = StringBuffer();
+  var index = 0;
+
+  while (index < name.length) {
+    while (index < name.length && _isWhitespace(name.codeUnitAt(index))) {
+      index++;
+    }
+    if (index >= name.length) break;
+
+    final wordStart = index;
+    while (index < name.length && !_isWhitespace(name.codeUnitAt(index))) {
+      index++;
+    }
+
+    if (buffer.isNotEmpty) {
+      buffer.write(' ');
+    }
+
+    final word = name.substring(wordStart, index);
+    if (word.length <= 4 && word == word.toUpperCase()) {
+      buffer.write(word);
+    } else {
+      buffer
+        ..write(word[0].toUpperCase())
+        ..write(word.substring(1).toLowerCase());
+    }
+  }
+
+  return buffer.toString();
+}
+
+bool _isWhitespace(int codeUnit) {
+  return codeUnit == 0x20 ||
+      codeUnit == 0x09 ||
+      codeUnit == 0x0A ||
+      codeUnit == 0x0B ||
+      codeUnit == 0x0C ||
+      codeUnit == 0x0D;
+}
+
+/// Parse #EXTINF line attributes
+Map<String, String?> _parseExtInf(String line) {
+  final result = <String, String?>{};
+
+  // Extract name (after the comma)
+  final commaIndex = line.lastIndexOf(',');
+  if (commaIndex != -1) {
+    result['name'] = line.substring(commaIndex + 1).trim();
+  }
+
+  // Extract attributes
+  for (final match in M3UParserService._extInfAttributePattern.allMatches(
+    line,
+  )) {
+    result[match.group(1)!] = match.group(2);
+  }
+
+  return result;
 }
