@@ -47,7 +47,7 @@ class DefaultFirebaseOptions {
   /// Returns false for generated placeholder options that would crash native
   /// Firebase initialization before Dart can recover.
   static bool isConfigured(FirebaseOptions options) {
-    return options.appId.isNotEmpty && !options.appId.contains('YOUR_');
+    return _isConfigured(options);
   }
 
   /// Get Firebase options for the current platform and variant
@@ -147,13 +147,9 @@ class DefaultFirebaseOptions {
   );
 
   /// Android TV - io.airo.app.tv
-  ///
-  /// The current TV release is auth-free, so Firebase remains disabled until a
-  /// Firebase Android client is registered for this package and this app id is
-  /// regenerated.
   static const FirebaseOptions androidTv = FirebaseOptions(
     apiKey: 'AIzaSyCBhj62CjX9G7-QNbF3e-53BiM3FYcWNxw',
-    appId: 'TODO_REGISTER_IO_AIRO_APP_TV',
+    appId: '1:906799550225:android:dfa957aac3a2fdc62206b0',
     messagingSenderId: '906799550225',
     projectId: 'devscoffee-airo',
     storageBucket: 'devscoffee-airo.firebasestorage.app',
