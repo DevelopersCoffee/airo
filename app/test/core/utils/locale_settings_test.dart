@@ -50,14 +50,44 @@ void main() {
       expect(updatedLocale['currency'], 'INR');
       expect(updatedLocale['locale'], 'en_US');
     });
+
+    test(
+      'does not overwrite profile when updated profile exceeds prefs tier',
+      () async {
+        final profileJson = _profileJson(
+          localeSettings: LocaleSettings.us,
+          displayName: 'Uday ${List.filled(512, 'x').join()}',
+        );
+        final originalProfileJson = jsonEncode(profileJson);
+        SharedPreferences.setMockInitialValues({
+          'airo_current_user_id': 'user_1',
+          'airo_user_profile_user_1': originalProfileJson,
+        });
+
+        final notifier = LocaleSettingsNotifier(maxPreferenceValueBytes: 256);
+        await pumpEventQueue();
+
+        await notifier.setCurrency('INR');
+
+        final prefs = await SharedPreferences.getInstance();
+        expect(
+          prefs.getString('airo_user_profile_user_1'),
+          originalProfileJson,
+        );
+        expect(notifier.state.currency, 'INR');
+      },
+    );
   });
 }
 
-Map<String, dynamic> _profileJson({required LocaleSettings localeSettings}) {
+Map<String, dynamic> _profileJson({
+  required LocaleSettings localeSettings,
+  String displayName = 'Uday',
+}) {
   return {
     'id': 'user_1',
     'username': 'uday',
-    'displayName': 'Uday',
+    'displayName': displayName,
     'email': 'uday@example.com',
     'avatarUrl': null,
     'phoneNumber': null,
