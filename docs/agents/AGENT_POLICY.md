@@ -193,9 +193,37 @@ Required bootstrap sequence:
 - create the task branch or worktree from that chosen remote base
 - verify the task branch/worktree base matches the fetched remote base
 
-If new commits land on `main` before implementation starts, the agent must
-or `v2` before implementation starts, the agent must repeat this sync step and
-restack or recreate the worktree as needed.
+If new commits land on `main` or `v2` before implementation starts, the agent
+must repeat this sync step and restack or recreate the worktree as needed.
+
+### CI Cost Control
+
+GitHub Actions minutes are a costed resource. During iterative issue work,
+agents must avoid unnecessary remote builds and use focused local validation
+first.
+For current v2.0.0.0 development, agents should treat remote CI as opt-in
+during issue iteration and integration-branch merges. Local validation plus
+recorded evidence in the issue is enough to close issues unless the maintainer
+explicitly requests CI or the change is a release verification step.
+
+Required cost controls:
+- Run the smallest useful local checks for the touched module before pushing:
+  formatting, analyzer/lint, targeted tests, and `git diff --check` as
+  applicable.
+- Add `[skip ci]` to iterative issue commits and merge commits unless the user
+  explicitly requests remote CI or the change is a release verification step.
+- For v2 work, push issue branches and the `codex/next-v2.0.0.0` integration
+  branch. Do not push directly to `v2` just to validate work in progress.
+- Avoid empty commits, no-op pushes, repeated metadata-only pushes, and branch
+  churn that can trigger workflows without changing reviewable behavior.
+- Do not hold an otherwise complete issue open only to wait for remote CI when
+  the acceptance criteria are met by focused local validation.
+- Close GitHub issues as soon as the acceptance criteria are met and the issue
+  records the required policy artifacts, deterministic use cases, and
+  validation evidence.
+
+If remote CI is intentionally required, explain why in the issue or PR before
+pushing without `[skip ci]`.
 
 ### 2. Critical Agent Clarity Gate
 
@@ -330,7 +358,8 @@ Before completion:
 Release Agent confirms:
 - docs or ADR updated when contract changes
 - migrations are safe
-- CI checks cover the change
+- CI checks cover release validation, or focused local validation is documented
+  for iterative work where `[skip ci]` was used
 - rollback or disable path exists for risky features
 
 ## Feature Packet Template

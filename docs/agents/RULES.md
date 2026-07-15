@@ -1,7 +1,7 @@
 # 🤖 Airo Agent Operating Rules
 
-> **Last Updated:** 2026-06-27  
-> **Version:** 1.1.0  
+> **Last Updated:** 2026-07-15
+> **Version:** 1.2.1
 > **Project Board:** https://github.com/orgs/DevelopersCoffee/projects/2
 
 ## 📋 Rule Updates
@@ -110,9 +110,31 @@ DORMANT → ACTIVATED → IN_PROGRESS → REVIEW → COMPLETE → DORMANT
 ### During Work
 1. Update issue with progress comments (daily minimum)
 2. Check off completed subtasks in issue body
-3. Run `act` before each push
-4. Keep commits small and focused
-5. Document blockers immediately
+3. Run focused local validation for the touched module before each push
+4. Add `[skip ci]` to iterative issue commits and merge commits unless remote
+   CI is explicitly required
+5. Keep commits small and focused
+6. Document blockers immediately
+
+### CI Cost Guardrail
+GitHub Actions minutes are a costed resource. Agents should avoid unnecessary
+remote builds during iterative issue work.
+
+- Prefer local validation first: formatting, analyzer/lint, targeted tests, and
+  `git diff --check` as applicable.
+- Use `[skip ci]` on iterative issue commits and integration merge commits.
+- For current v2.0.0.0 development, remote CI is opt-in during issue iteration
+  unless a maintainer explicitly asks for it or the change is a release
+  verification step.
+- Do not push directly to release-line branches such as `main` or `v2` just to
+  validate work in progress.
+- Avoid empty commits, no-op pushes, repeated metadata-only pushes, or branch
+  churn that can trigger workflows without changing reviewable behavior.
+- Close issues as soon as acceptance criteria and focused local validation
+  evidence are recorded. Do not keep an accepted issue open just to wait for
+  remote CI unless CI was explicitly required.
+- If remote CI is intentionally required, explain why in the issue or PR before
+  pushing without `[skip ci]`.
 
 ### Host Stability Guardrail
 LLM agents must not use the Android Emulator as the default verification path.
@@ -160,7 +182,7 @@ Agent rules:
 | ❌ Don't | ✅ Do Instead |
 |----------|---------------|
 | Work without issue | Create issue first |
-| Push without CI | Run `act` locally |
+| Trigger unnecessary Actions builds | Run focused local validation and use `[skip ci]` for iterative pushes |
 | Skip issue updates | Comment daily progress |
 | Ignore blockers | Document and escalate |
 | Large PRs (>500 lines) | Split into smaller PRs |
@@ -190,7 +212,7 @@ An agent task is DONE when:
 - [ ] All acceptance criteria checked
 - [ ] Tests pass (`flutter test`)
 - [ ] Linting clean (`flutter analyze`)
-- [ ] Local CI passes (`act`)
+- [ ] Focused local validation passes, with remote CI reserved for explicit release or PR gates
 - [ ] PR approved and merged
 - [ ] Issue closed
 - [ ] No regressions in related features

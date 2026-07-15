@@ -38,6 +38,38 @@ Minimum requirement:
 If this sync step is skipped, implementation must stop until the worktree is
 rebased, recreated, or reset onto the correct current remote base.
 
+## CI Cost Control Rule
+
+GitHub Actions minutes are a costed resource. During iterative issue work,
+agents must avoid unnecessary remote CI builds and use local validation first.
+For current v2.0.0.0 development, the default is to skip remote CI for
+issue-iteration and integration-branch merge commits unless a maintainer
+explicitly asks for a CI run.
+
+Minimum requirement:
+
+1. Run focused local validation for the touched package or module before
+   pushing: formatting, analyzer/lint, targeted tests, and `git diff --check`
+   as applicable.
+2. Add `[skip ci]` to iterative issue commits and merge commits unless the user
+   explicitly requests a CI run or the change is a release verification step.
+3. Prefer pushing issue branches and the `codex/next-v2.0.0.0` integration
+   branch for v2 development. Do not push directly to `v2` just to validate a
+   work-in-progress change, because release-line pushes can trigger additional
+   workflows such as Pages builds.
+4. Avoid empty commits, no-op pushes, repeated metadata-only pushes, or branch
+   churn that would trigger workflows without changing reviewable behavior.
+5. Do not wait for remote CI to close an issue when the agreed acceptance
+   criteria are satisfied by focused local validation and the issue records the
+   evidence.
+6. Close GitHub issues as soon as the acceptance criteria are satisfied and
+   local validation evidence has been recorded in the issue. Do not close issues
+   before required policy artifacts, deterministic use cases, and validation
+   notes are present.
+
+If remote CI is intentionally required, state why in the issue or PR before
+pushing without `[skip ci]`.
+
 Framework agents own reusable contracts, runtime boundaries, storage schemas,
 security rules, and platform abstractions. Application agents own product
 journeys, screens, copy, routine packs, templates, and end-user workflows.
