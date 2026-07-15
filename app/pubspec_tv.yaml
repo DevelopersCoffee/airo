@@ -53,7 +53,7 @@ dependencies:
   audio_service: 0.18.18
   video_player: ^2.13.0
   flutter_chrome_cast: ^1.4.6
-  wakelock_plus: 1.5.2
+  wakelock_plus: 1.6.1
   pdfx: 2.9.2
   flutter_local_notifications: 20.1.0
   timezone: 0.10.1
@@ -86,7 +86,7 @@ dependencies:
   cached_network_image: 3.4.1
 
   # TV-specific
-  package_info_plus: 9.0.1
+  package_info_plus: 10.2.0
 
   # Dependencies with stub overrides (required for compilation but using lightweight stubs)
   # These are overridden by dependency_overrides section below
@@ -175,6 +175,10 @@ dependency_overrides:
     path: ../packages/stubs/timezone_stub
   pdfx:
     path: ../packages/stubs/pdfx_stub
+  package_info_plus:
+    path: ../packages/stubs/package_info_plus_stub
+  wakelock_plus:
+    path: ../packages/stubs/wakelock_plus_stub
 
 flutter:
   uses-material-design: true
