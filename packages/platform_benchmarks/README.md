@@ -92,6 +92,37 @@ error counts only. Do not include device serials, receiver identifiers, raw
 playlist URLs, logo URLs, LAN IPs, local paths, screenshots, or logcat dumps in
 issue comments.
 
+## Cast Channel Switch Report
+
+After a physical sender-to-receiver active Cast channel-switch pass, write the
+sanitized #590 evidence artifact with:
+
+```bash
+dart run tool/write_cast_channel_switch_report.dart \
+  --report-id pixel9-bravia-switch-pass \
+  --sender-profile pixel9-physical \
+  --receiver-profile bravia-chromecast \
+  --playlist-profile iptv-org-public \
+  --attempted-switches 2 \
+  --successful-switches 2 \
+  --receiver-reconnects 0 \
+  --stale-previous-statuses 0 \
+  --previous-channel-errors 0 \
+  --latest-error-matched-selected true \
+  --local-playback-restarts 0 \
+  --recovery-actions 0
+```
+
+The command evaluates active receiver channel switching and writes:
+
+- `artifacts/performance/cast-channel-switch-report.json`
+- `artifacts/performance/cast-channel-switch-report.md`
+
+Reports contain aggregate switch, reconnect, stale-status, error-attribution,
+local-playback, and recovery counts only. Do not include raw stream URLs,
+receiver identifiers, LAN IPs, device serials, local paths, or logcat dumps in
+issue comments.
+
 ## Cast Proxy Benchmark Report
 
 After a physical sender-device Cast proxy run, write the sanitized benchmark
