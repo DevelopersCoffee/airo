@@ -197,6 +197,18 @@ scripts:
         --output-json ../../artifacts/performance/cast-proxy-benchmark.json \
         --output-markdown ../../artifacts/performance/cast-proxy-benchmark.md
 
+  # Check Fastlane credential readiness without printing secret values.
+  release:fastlane-preflight:
+    description: Write redacted Fastlane credential readiness evidence
+    run: |
+      cd packages/core_release
+      flutter pub get
+      dart run tool/preflight_fastlane_credentials.dart \
+        --repo-root ../.. \
+        --profile "${AIRO_RELEASE_PROFILE:-tv}" \
+        --output-json ../../artifacts/release/fastlane-credentials-preflight.json \
+        --output-markdown ../../artifacts/release/fastlane-credentials-preflight.md
+
   # Run code generation
   generate:
     run: melos exec -- flutter pub run build_runner build --delete-conflicting-outputs

@@ -36,6 +36,13 @@ Human setup still required:
 - Confirm the first track for each profile: `internal`, `alpha`, `beta`,
   `production`, or `none`.
 
+Run the redacted local preflight before upload. It checks package/profile
+alignment and whether credentials are present without printing secret values:
+
+```bash
+AIRO_RELEASE_PROFILE=tv melos run release:fastlane-preflight
+```
+
 Local smoke check after credentials are available:
 
 ```bash
@@ -65,3 +72,10 @@ Human setup still required before TestFlight/App Store upload:
 - Configure signing certificates and provisioning profiles.
 - Store `MATCH_PASSWORD`, `ASC_KEY_ID`, `ASC_ISSUER_ID`, and
   `ASC_KEY_CONTENT` as GitHub Actions secrets if iOS enters release scope.
+
+When iOS upload enters scope, make App Store Connect findings blocking in the
+same local preflight:
+
+```bash
+AIRO_IOS_UPLOAD_IN_SCOPE=true melos run release:fastlane-preflight
+```
