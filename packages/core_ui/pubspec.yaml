@@ -10,6 +10,8 @@ dependencies:
   flutter:
     sdk: flutter
   cupertino_icons: ^1.0.9
+  platform_device_profile:
+    path: ../platform_device_profile
 
 dev_dependencies:
   flutter_test:
@@ -19,4 +21,3 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
-
