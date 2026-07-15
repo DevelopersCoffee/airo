@@ -336,6 +336,17 @@ scripts:
         --output-json artifacts/release/release-qualification-preflight.json \
         --output-markdown artifacts/release/release-qualification-preflight.md
 
+  # Roll up the current v2 release gates into a single public-readiness report.
+  release:v2-readiness-preflight:
+    description: Write top-level v2 release readiness evidence
+    run: |
+      cd packages/core_release
+      flutter pub get
+      dart run tool/preflight_v2_release_readiness.dart \
+        --repo-root ../.. \
+        --output-json artifacts/release/v2-release-readiness-preflight.json \
+        --output-markdown artifacts/release/v2-release-readiness-preflight.md
+
   # Check macOS Developer ID signing and notarization readiness without printing secrets.
   release:macos-signing-preflight:
     description: Write macOS signing and notarization readiness evidence
