@@ -59,6 +59,19 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
     final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+    final cacheDir = await Directory.systemTemp.createTemp(
+      'airo_tv_playlist_cache_test_',
+    );
+    addTearDown(() async {
+      if (await cacheDir.exists()) {
+        await cacheDir.delete(recursive: true);
+      }
+    });
+    final parser = M3UParserService(
+      dio: Dio(),
+      prefs: prefs,
+      cacheDirectoryProvider: () async => cacheDir,
+    );
 
     unawaited(
       server.forEach((request) {
@@ -67,7 +80,7 @@ void main() {
           ..write('''
 #EXTM3U
 #EXTINF:-1 tvg-id="news.local" group-title="News",Airo News
-https://example.test/live/news.m3u8
+https://example.com/live/news.m3u8
 ''')
           ..close();
       }),
@@ -84,14 +97,18 @@ https://example.test/live/news.m3u8
       final seeded = await seedTvDebugDefaultPlaylist(
         prefs,
         playlistUrl: playlistUrl,
+        parser: parser,
       );
       expect(seeded, isTrue);
-      await warmTvDebugDefaultPlaylistCache(prefs, playlistUrl: playlistUrl);
+      await warmTvDebugDefaultPlaylistCache(
+        prefs,
+        playlistUrl: playlistUrl,
+        parser: parser,
+      );
     } finally {
       await server.close(force: true);
     }
 
-    final parser = M3UParserService(dio: Dio(), prefs: prefs);
     expect(parser.getPlaylistUrl(), playlistUrl);
 
     final cachedChannels = await parser.fetchPlaylist();
