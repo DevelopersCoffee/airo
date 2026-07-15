@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -7,9 +5,9 @@ import 'package:flutter/semantics.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'core/app/airo_app.dart';
-import 'core/auth/auth_service.dart';
 import 'core/error/global_error_handler.dart';
-import "package:feature_iptv/feature_iptv.dart";
+import 'core/startup/app_startup_tasks.dart';
+import 'package:feature_iptv/feature_iptv.dart';
 import 'features/music/application/providers/beats_audio_provider.dart';
 import 'firebase_options.dart';
 
@@ -76,9 +74,6 @@ void main() async {
     }
   }
 
-  // Initialize AuthService
-  await AuthService.instance.initialize();
-
   // Initialize SharedPreferences for IPTV caching
   final prefs = await SharedPreferences.getInstance();
 
@@ -89,21 +84,9 @@ void main() async {
     ),
   );
 
-  _scheduleAudioServiceInitialization();
-}
-
-void _scheduleAudioServiceInitialization() {
-  if (kIsWeb) return;
-
-  WidgetsBinding.instance.addPostFrameCallback((_) {
-    unawaited(() async {
-      try {
-        await initAudioService();
-        debugPrint('✅ Audio service initialized for background playback');
-      } catch (e) {
-        debugPrint('⚠️ Audio service initialization failed: $e');
-        debugPrint('📝 Background music playback may not work');
-      }
-    }());
-  });
+  scheduleDeferredAuthInitialization();
+  scheduleDeferredAudioInitialization(
+    initializeAudio: initAudioService,
+    skipOnWeb: true,
+  );
 }

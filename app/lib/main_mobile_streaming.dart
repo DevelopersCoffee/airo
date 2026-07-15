@@ -13,22 +13,19 @@
 /// ```
 library;
 
-import 'dart:async';
-
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'core/app/airo_app.dart';
-import 'core/auth/auth_service.dart';
 import 'core/config/platform_features.dart';
 import 'core/error/global_error_handler.dart';
 import 'core/features/feature_registry.dart';
+import 'core/startup/app_startup_tasks.dart';
 import 'package:feature_iptv/feature_iptv.dart';
 import 'features/iptv/iptv_cast_provider_override.dart';
 import 'features/iptv/iptv_feature_module.dart';
-import 'features/music/application/providers/beats_audio_provider.dart';
 import 'features/music/music_feature_module.dart';
 import 'firebase_options.dart';
 
@@ -65,16 +62,12 @@ void main() async {
     debugPrint('⚠️ Firebase initialization failed: $e');
   }
 
-  // Initialize AuthService
-  await AuthService.instance.initialize();
-
   // Initialize SharedPreferences for caching
   final prefs = await SharedPreferences.getInstance();
 
   // Initialize feature registry with streaming features
   FeatureRegistry.register(IptvFeatureModule());
   FeatureRegistry.register(MusicFeatureModule());
-  await FeatureRegistry.initializeAll();
 
   debugPrint(
     '📦 Registered features: ${FeatureRegistry.featureNames.join(', ')}',
@@ -91,19 +84,6 @@ void main() async {
     ),
   );
 
-  _scheduleAudioServiceInitialization();
-}
-
-void _scheduleAudioServiceInitialization() {
-  WidgetsBinding.instance.addPostFrameCallback((_) {
-    unawaited(() async {
-      try {
-        await initAudioService();
-        debugPrint('✅ Audio service initialized for background playback');
-      } catch (e) {
-        debugPrint('⚠️ Audio service initialization failed: $e');
-        debugPrint('📝 Background music playback may not work');
-      }
-    }());
-  });
+  scheduleDeferredAuthInitialization();
+  scheduleDeferredFeatureInitialization();
 }

@@ -15,7 +15,7 @@
 /// FeatureRegistry.register(MusicFeatureModule());
 /// ```
 ///
-/// Note: Requires initAudioService() to be called before app startup.
+/// Note: Audio initialization is scheduled by startup orchestration.
 library;
 
 import 'package:flutter/foundation.dart';

@@ -9,7 +9,7 @@ import '../../domain/services/beats_context_integration.dart';
 BeatsAudioHandler? _audioHandler;
 Future<BeatsAudioHandler>? _audioHandlerInitialization;
 
-/// Initialize the audio service - call this once at app startup
+/// Initialize the audio service - call this once from startup orchestration.
 Future<BeatsAudioHandler> initAudioService() async {
   if (_audioHandler != null) return _audioHandler!;
   if (_audioHandlerInitialization != null) return _audioHandlerInitialization!;
@@ -60,11 +60,11 @@ bool _isSharedEngineStartupRace(PlatformException error) {
 }
 
 /// Provider for BeatsAudioHandler
-/// This requires initAudioService() to be called before use
+/// This requires initAudioService() to complete before use.
 final beatsAudioHandlerProvider = Provider<BeatsAudioHandler>((ref) {
   if (_audioHandler == null) {
     throw StateError(
-      'Audio service not initialized. Call initAudioService() in main.dart before runApp().',
+      'Audio service not initialized. It is scheduled during startup and may still be warming up.',
     );
   }
   return _audioHandler!;
