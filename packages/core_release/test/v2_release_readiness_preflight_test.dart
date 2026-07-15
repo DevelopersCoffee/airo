@@ -28,6 +28,37 @@ void main() {
       );
     });
 
+    test('tracks open device and QA evidence blockers as required gates', () {
+      final gateIds = AiroV2ReleaseReadinessPreflightRunner.defaultGates.map(
+        (gate) => gate.id,
+      );
+
+      expect(
+        gateIds,
+        containsAll([
+          'tv_ui_dpad_qualification',
+          'cast_active_receiver_switching',
+          'cast_v1_device_qa',
+          'ipad_air_qualification',
+          'memory_playback_soak',
+        ]),
+      );
+
+      final preflight = runner.run();
+      expect(
+        preflight.findings
+            .where((finding) => finding.blocking)
+            .map((finding) => finding.gateId),
+        containsAll([
+          'tv_ui_dpad_qualification',
+          'cast_active_receiver_switching',
+          'cast_v1_device_qa',
+          'ipad_air_qualification',
+          'memory_playback_soak',
+        ]),
+      );
+    });
+
     test('accepts public readiness when required gates are ready', () {
       final preflight = runner.run(overrides: allRequiredReady());
 
