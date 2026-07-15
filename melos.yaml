@@ -233,6 +233,32 @@ scripts:
         --output-json ../../artifacts/release/data-safety-preflight.json \
         --output-markdown ../../artifacts/release/data-safety-preflight.md
 
+  # Render iPad Air qualification campaign evidence from explicit phase results.
+  qa:ipad-qualification-report:
+    description: Write iPad Air UI/UX qualification report evidence
+    run: |
+      cd packages/platform_device_qualification
+      flutter pub get
+      dart run tool/write_ipad_qualification_report.dart \
+        --report-id "${IPAD_QA_REPORT_ID:-manual-ipad-air-qualification}" \
+        --campaign-id "${IPAD_QA_CAMPAIGN_ID:-issue-716-ipad-air}" \
+        --device "${IPAD_QA_DEVICE:-iPad Air}" \
+        --app-profile "${IPAD_QA_APP_PROFILE:-Airo TV qualification}" \
+        --playlist-profile "${IPAD_QA_PLAYLIST_PROFILE:-iptv-org-public}" \
+        --phase "phase1_splash=${IPAD_QA_PHASE_SPLASH:?Set IPAD_QA_PHASE_SPLASH to passed/failed/waived}" \
+        --phase "phase1_home=${IPAD_QA_PHASE_HOME:?Set IPAD_QA_PHASE_HOME to passed/failed/waived}" \
+        --phase "phase1_channel_grid=${IPAD_QA_PHASE_CHANNEL_GRID:?Set IPAD_QA_PHASE_CHANNEL_GRID to passed/failed/waived}" \
+        --phase "phase1_video_player=${IPAD_QA_PHASE_VIDEO_PLAYER:?Set IPAD_QA_PHASE_VIDEO_PLAYER to passed/failed/waived}" \
+        --phase "phase1_search=${IPAD_QA_PHASE_SEARCH:?Set IPAD_QA_PHASE_SEARCH to passed/failed/waived}" \
+        --phase "phase1_settings=${IPAD_QA_PHASE_SETTINGS:?Set IPAD_QA_PHASE_SETTINGS to passed/failed/waived}" \
+        --phase "phase1_playlist_management=${IPAD_QA_PHASE_PLAYLIST_MANAGEMENT:?Set IPAD_QA_PHASE_PLAYLIST_MANAGEMENT to passed/failed/waived}" \
+        --phase "phase2_responsive_layouts=${IPAD_QA_PHASE_RESPONSIVE_LAYOUTS:?Set IPAD_QA_PHASE_RESPONSIVE_LAYOUTS to passed/failed/waived}" \
+        --phase "phase3_dpad_focus=${IPAD_QA_PHASE_DPAD_FOCUS:?Set IPAD_QA_PHASE_DPAD_FOCUS to passed/failed/waived}" \
+        --phase "phase4_streaming_stress=${IPAD_QA_PHASE_STREAMING_STRESS:?Set IPAD_QA_PHASE_STREAMING_STRESS to passed/failed/waived}" \
+        --phase "phase5_network_profiles=${IPAD_QA_PHASE_NETWORK_PROFILES:?Set IPAD_QA_PHASE_NETWORK_PROFILES to passed/failed/waived}" \
+        --output-json ../../artifacts/qualification/ipad-air-qualification-report.json \
+        --output-markdown ../../artifacts/qualification/ipad-air-qualification-report.md
+
   # Run code generation
   generate:
     run: melos exec -- flutter pub run build_runner build --delete-conflicting-outputs
