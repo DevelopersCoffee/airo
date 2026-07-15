@@ -84,6 +84,19 @@ the active iOS dependency set and runtime behavior.
 | Diagnostics | None unless a crash-reporting SDK is added before submission |
 | User Content | User-provided playlist URLs are local app functionality data, not collected by the developer |
 
+## Local Preflight
+
+Generate deterministic local evidence before entering store-console forms:
+
+```bash
+AIRO_RELEASE_PROFILE=tv melos run release:data-safety-preflight
+```
+
+The preflight reads the TV pubspec and Android TV manifest, confirms Analytics,
+Crashlytics, advertising SDK, and sensitive permission signals, then writes JSON
+and Markdown under `artifacts/release/`. It intentionally does not submit or
+replace Google Play/App Store forms.
+
 ## Human Console Actions
 
 - Complete Google Play Data Safety using the final answers above.

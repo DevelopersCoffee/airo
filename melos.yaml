@@ -221,6 +221,18 @@ scripts:
         --output-json ../../artifacts/release/content-rating-preflight.json \
         --output-markdown ../../artifacts/release/content-rating-preflight.md
 
+  # Check Data Safety and App Privacy posture before store-console entry.
+  release:data-safety-preflight:
+    description: Write Airo Data Safety and App Privacy evidence
+    run: |
+      cd packages/core_release
+      flutter pub get
+      dart run tool/preflight_data_safety.dart \
+        --repo-root ../.. \
+        --profile "${AIRO_RELEASE_PROFILE:-tv}" \
+        --output-json ../../artifacts/release/data-safety-preflight.json \
+        --output-markdown ../../artifacts/release/data-safety-preflight.md
+
   # Run code generation
   generate:
     run: melos exec -- flutter pub run build_runner build --delete-conflicting-outputs

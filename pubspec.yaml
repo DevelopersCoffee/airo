@@ -121,6 +121,17 @@ melos:
           --output-json ../../artifacts/release/content-rating-preflight.json \
           --output-markdown ../../artifacts/release/content-rating-preflight.md
 
+    release:data-safety-preflight:
+      description: Write Airo Data Safety and App Privacy evidence
+      run: |
+        cd packages/core_release
+        flutter pub get
+        dart run tool/preflight_data_safety.dart \
+          --repo-root ../.. \
+          --profile "${AIRO_RELEASE_PROFILE:-tv}" \
+          --output-json ../../artifacts/release/data-safety-preflight.json \
+          --output-markdown ../../artifacts/release/data-safety-preflight.md
+
     generate:
       run: melos exec -- flutter pub run build_runner build --delete-conflicting-outputs
       description: Run build_runner for all packages
