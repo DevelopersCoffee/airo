@@ -1,7 +1,32 @@
+/// Default maximum value size for SharedPreferences-backed storage.
+const int kKeyValueStorePreferenceMaxValueBytes = 64 * 1024;
+
+/// Thrown when a value is too large for the configured key-value tier.
+class KeyValueStoreValueTooLargeException implements Exception {
+  const KeyValueStoreValueTooLargeException({
+    required this.key,
+    required this.actualBytes,
+    required this.maxBytes,
+    required this.valueKind,
+  });
+
+  final String key;
+  final int actualBytes;
+  final int maxBytes;
+  final String valueKind;
+
+  @override
+  String toString() {
+    return 'KeyValueStoreValueTooLargeException: $valueKind value for "$key" '
+        'is $actualBytes bytes, exceeding the $maxBytes byte preference tier '
+        'limit.';
+  }
+}
+
 /// Abstract interface for key-value storage operations.
 ///
 /// This abstraction allows for different storage backends
-/// (SharedPreferences, Hive, secure storage, etc.)
+/// (SharedPreferences, secure storage, SQLite-backed adapters, etc.)
 abstract class KeyValueStore {
   /// Gets a string value
   Future<String?> getString(String key);
