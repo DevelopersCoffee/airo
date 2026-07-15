@@ -104,6 +104,19 @@ on:
           - none
           - iptv-standalone
           - mobile-streaming
+      macos_profile:
+        description: 'Optional macOS profile to build'
+        required: true
+        default: none
+        type: choice
+        options:
+          - none
+          - tv
+      macos_require_notarization:
+        description: 'Fail macOS leg unless Developer ID signing and notarization succeed'
+        required: true
+        default: false
+        type: boolean
       qualification_mode:
         description: 'Qualification report mode for top-level summary'
         required: true
@@ -147,6 +160,8 @@ jobs:
       tv_firebase_app_id: ${{ steps.release.outputs.tv_firebase_app_id }}
       tv_firebase_tester_groups: ${{ steps.release.outputs.tv_firebase_tester_groups }}
       mobile_profile: ${{ steps.release.outputs.mobile_profile }}
+      macos_profile: ${{ steps.release.outputs.macos_profile }}
+      macos_require_notarization: ${{ steps.release.outputs.macos_require_notarization }}
       qualification_mode: ${{ steps.release.outputs.qualification_mode }}
     steps:
       - uses: actions/checkout@v7
@@ -174,6 +189,8 @@ jobs:
           INPUT_TV_FIREBASE_APP_ID: ${{ inputs.tv_firebase_app_id }}
           INPUT_TV_FIREBASE_TESTER_GROUPS: ${{ inputs.tv_firebase_tester_groups }}
           INPUT_MOBILE_PROFILE: ${{ inputs.mobile_profile }}
+          INPUT_MACOS_PROFILE: ${{ inputs.macos_profile }}
+          INPUT_MACOS_REQUIRE_NOTARIZATION: ${{ inputs.macos_require_notarization }}
           INPUT_QUALIFICATION_MODE: ${{ inputs.qualification_mode }}
         run: |
           git fetch origin main v2 --tags
@@ -195,6 +212,8 @@ jobs:
           tv_firebase_app_id="${INPUT_TV_FIREBASE_APP_ID:-}"
           tv_firebase_tester_groups="${INPUT_TV_FIREBASE_TESTER_GROUPS:-}"
           mobile_profile="${INPUT_MOBILE_PROFILE:-none}"
+          macos_profile="${INPUT_MACOS_PROFILE:-none}"
+          macos_require_notarization="${INPUT_MACOS_REQUIRE_NOTARIZATION:-false}"
           qualification_mode="${INPUT_QUALIFICATION_MODE:-internal}"
 
           if [ "$dry_run" = "true" ]; then
@@ -244,6 +263,14 @@ jobs:
             fi
           fi
 
+          case "$macos_profile" in
+            none|tv) ;;
+            *)
+              echo "::error::Unsupported macOS profile: $macos_profile"
+              exit 1
+              ;;
+          esac
+
           case "$github_release_mode" in
             draft|published) ;;
             *)
@@ -285,6 +312,8 @@ jobs:
             echo "tv_firebase_app_id=$tv_firebase_app_id"
             echo "tv_firebase_tester_groups=$tv_firebase_tester_groups"
             echo "mobile_profile=$mobile_profile"
+            echo "macos_profile=$macos_profile"
+            echo "macos_require_notarization=$macos_require_notarization"
             echo "qualification_mode=$qualification_mode"
           } >> "$GITHUB_OUTPUT"
 
@@ -306,6 +335,8 @@ jobs:
             echo "| Mobile/tablet Play track | $mobile_play_track |"
             echo "| Firebase distribution | $firebase_distribution |"
             echo "| Mobile/tablet profile | $mobile_profile |"
+            echo "| macOS profile | $macos_profile |"
+            echo "| macOS notarization required | $macos_require_notarization |"
             echo "| Qualification mode | $qualification_mode |"
           } >> "$GITHUB_STEP_SUMMARY"
 
@@ -325,7 +356,8 @@ jobs:
           ruby -e 'require "yaml"; ARGV.each { |f| YAML.load_file(f); puts "ok #{f}" }' \
             .github/workflows/v2-release-orchestrator.yml \
             .github/workflows/airo-tv-release.yml \
-            .github/workflows/airo-mobile-tablet-release.yml
+            .github/workflows/airo-mobile-tablet-release.yml \
+            .github/workflows/airo-macos-release.yml
           python3 -m py_compile \
             scripts/check-build-profiles.py \
             scripts/generate-release-manifest.py \
@@ -354,6 +386,23 @@ jobs:
       firebase_tester_groups: ${{ needs.prepare.outputs.mobile_firebase_tester_groups }}
     secrets: inherit
 
+  macos-release:
+    name: macOS release leg
+    if: needs.prepare.outputs.macos_profile != 'none'
+    needs: [prepare, release-contracts]
+    permissions:
+      contents: write
+    uses: ./.github/workflows/airo-macos-release.yml
+    with:
+      profile: ${{ needs.prepare.outputs.macos_profile }}
+      version: ${{ needs.prepare.outputs.version }}
+      build_name: ${{ needs.prepare.outputs.build_name }}
+      build_number: ${{ needs.prepare.outputs.build_number }}
+      release_ref: ${{ needs.prepare.outputs.release_ref }}
+      release_branch: ${{ needs.prepare.outputs.release_branch }}
+      require_notarization: ${{ needs.prepare.outputs.macos_require_notarization == 'true' }}
+    secrets: inherit
+
   tv-release:
     name: TV release leg
     needs: [prepare, release-contracts]
@@ -378,7 +427,7 @@ jobs:
   release-summary:
     name: V2 release summary
     runs-on: ubuntu-latest
-    needs: [prepare, release-contracts, mobile-tablet-release, tv-release]
+    needs: [prepare, release-contracts, mobile-tablet-release, macos-release, tv-release]
     if: always()
     permissions:
       actions: read
@@ -401,6 +450,13 @@ jobs:
         with:
           name: airo-mobile-tablet-${{ needs.prepare.outputs.mobile_profile }}-${{ needs.prepare.outputs.version }}
           path: release-artifacts/mobile-tablet
+
+      - name: Download macOS release artifacts
+        if: needs.macos-release.result == 'success'
+        uses: actions/download-artifact@v8
+        with:
+          name: airo-macos-${{ needs.prepare.outputs.macos_profile }}-${{ needs.prepare.outputs.version }}
+          path: release-artifacts/macos
 
       - name: Generate TV qualification report
         if: needs.tv-release.result == 'success'
@@ -447,6 +503,7 @@ jobs:
           RELEASE_REF: ${{ needs.prepare.outputs.release_ref }}
           RELEASE_SHA: ${{ needs.prepare.outputs.release_sha }}
           MOBILE_PROFILE: ${{ needs.prepare.outputs.mobile_profile }}
+          MACOS_PROFILE: ${{ needs.prepare.outputs.macos_profile }}
         run: |
           rm -rf github-release-assets
           mkdir -p github-release-assets
@@ -479,6 +536,20 @@ jobs:
               ;;
           esac
 
+          case "$MACOS_PROFILE" in
+            none)
+              ;;
+            tv)
+              require_asset "release-artifacts/macos/Airo-TV-${BUILD_NAME}-macOS.zip"
+              require_asset "release-artifacts/macos/Airo-TV-${BUILD_NAME}-macOS.dmg"
+              require_asset "release-artifacts/macos/homebrew/airo-tv.rb"
+              ;;
+            *)
+              echo "::error::Unsupported macOS profile for release assets: $MACOS_PROFILE"
+              exit 1
+              ;;
+          esac
+
           scripts/generate-release-manifest.py \
             --artifacts-dir github-release-assets \
             --version "$BUILD_NAME" \
@@ -495,12 +566,12 @@ jobs:
           {
             echo "# Airo ${BUILD_NAME}"
             echo ""
-            echo "This v2 release publishes the selected Android profile artifacts produced by the release orchestrator."
+            echo "This v2 release publishes the selected Android and macOS profile artifacts produced by the release orchestrator."
             echo ""
             echo "## Included Artifacts"
             echo ""
             find github-release-assets -maxdepth 1 -type f \
-              \( -name '*.apk' -o -name '*.aab' -o -name '*Release-Manifest.json' -o -name 'SHA256SUMS' \) \
+              \( -name '*.apk' -o -name '*.aab' -o -name '*.zip' -o -name '*.dmg' -o -name '*.rb' -o -name '*Release-Manifest.json' -o -name 'SHA256SUMS' \) \
               -printf '- %f\n' | sort
             echo ""
             echo "## Verification"
@@ -515,6 +586,8 @@ jobs:
             echo ""
             echo "- APK assets are for direct install and internal verification."
             echo "- AAB assets are Google Play upload inputs."
+            echo "- macOS zip and DMG assets are direct-download artifacts."
+            echo "- airo-tv.rb is generated Homebrew Cask metadata for the macOS zip."
             echo "- Store and Firebase uploads remain controlled by the credential-specific workflows."
           } > "$notes"
 
@@ -575,6 +648,10 @@ jobs:
           TV_RESULT: ${{ needs.tv-release.result }}
           MOBILE_RESULT: ${{ needs.mobile-tablet-release.result }}
           MOBILE_PROFILE: ${{ needs.prepare.outputs.mobile_profile }}
+          MACOS_RESULT: ${{ needs.macos-release.result }}
+          MACOS_PROFILE: ${{ needs.prepare.outputs.macos_profile }}
+          MACOS_SIGNING_STATUS: ${{ needs.macos-release.outputs.signing_status }}
+          MACOS_NOTARIZATION_STATUS: ${{ needs.macos-release.outputs.notarization_status }}
           TV_PLAY_TRACK: ${{ needs.prepare.outputs.tv_play_track }}
           MOBILE_PLAY_TRACK: ${{ needs.prepare.outputs.mobile_play_track }}
           FIREBASE_DISTRIBUTION: ${{ needs.prepare.outputs.firebase_distribution }}
@@ -602,6 +679,10 @@ jobs:
             echo "| Mobile/tablet profile | $MOBILE_PROFILE |"
             echo "| Mobile/tablet leg | $MOBILE_RESULT |"
             echo "| Mobile/tablet Play track | $MOBILE_PLAY_TRACK |"
+            echo "| macOS profile | $MACOS_PROFILE |"
+            echo "| macOS leg | $MACOS_RESULT |"
+            echo "| macOS signing | ${MACOS_SIGNING_STATUS:-none} |"
+            echo "| macOS notarization | ${MACOS_NOTARIZATION_STATUS:-none} |"
             echo "| Firebase distribution | $FIREBASE_DISTRIBUTION |"
             echo "| TV Firebase status | ${TV_FIREBASE_STATUS:-none} |"
             echo "| Mobile/tablet Firebase status | ${MOBILE_FIREBASE_STATUS:-none} |"
@@ -644,6 +725,21 @@ jobs:
             echo "Mobile/tablet artifacts were not available because the mobile/tablet leg result was $MOBILE_RESULT." >> "$GITHUB_STEP_SUMMARY"
           fi
 
+          if [ -d release-artifacts/macos ]; then
+            {
+              echo ""
+              echo "### macOS"
+              echo ""
+              find release-artifacts/macos -maxdepth 2 -type f -printf '- %P\n' | sort
+              echo ""
+              echo "macOS artifacts include zip/DMG files, SHA256SUMS, release manifest, and generated Homebrew Cask metadata."
+            } >> "$GITHUB_STEP_SUMMARY"
+          elif [ "$MACOS_PROFILE" = "none" ]; then
+            echo "macOS artifacts were not requested for this orchestrator run." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "macOS artifacts were not available because the macOS leg result was $MACOS_RESULT." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
           if [ -d github-release-assets ]; then
             {
               echo ""
@@ -660,6 +756,8 @@ jobs:
           TV_RESULT: ${{ needs.tv-release.result }}
           MOBILE_RESULT: ${{ needs.mobile-tablet-release.result }}
           MOBILE_PROFILE: ${{ needs.prepare.outputs.mobile_profile }}
+          MACOS_RESULT: ${{ needs.macos-release.result }}
+          MACOS_PROFILE: ${{ needs.prepare.outputs.macos_profile }}
           CONTRACT_RESULT: ${{ needs.release-contracts.result }}
         run: |
           if [ "$CONTRACT_RESULT" != "success" ]; then
@@ -672,5 +770,9 @@ jobs:
           fi
           if [ "$MOBILE_PROFILE" != "none" ] && [ "$MOBILE_RESULT" != "success" ]; then
             echo "::error::Mobile/tablet release leg did not pass: $MOBILE_RESULT"
+            exit 1
+          fi
+          if [ "$MACOS_PROFILE" != "none" ] && [ "$MACOS_RESULT" != "success" ]; then
+            echo "::error::macOS release leg did not pass: $MACOS_RESULT"
             exit 1
           fi

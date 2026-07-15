@@ -50,6 +50,7 @@ Documentation for Airo releases and version history.
 | [Airo V1 and V2 Version Lines](./VERSION_LINES.md) | Base branch, tag, artifact, and support policy for monolith V1 and modular V2 |
 | [V2 Distribution Matrix](./V2_DISTRIBUTION_MATRIX.md) | Supported v2 profiles, artifact naming, channels, and support policy |
 | [V2 Publishing Human Setup](./V2_PUBLISHING_HUMAN_SETUP.md) | Account, credential, signing, store, and governance decisions maintainers must complete |
+| [Airo TV macOS Release](./MACOS_AIRO_TV_RELEASE.md) | Direct-download, notarization, and Homebrew Cask runbook for the v2 Airo TV macOS app |
 | [V2 License Review](./V2_LICENSE_REVIEW.md) | License-readiness baseline and maintainer decisions before public distribution |
 | [V2 Third-Party Notices](./V2_THIRD_PARTY_NOTICES.md) | Third-party notices for v2 Android release profiles |
 | [V2 Release Qualification](./V2_RELEASE_QUALIFICATION.md) | Required release evidence, device matrix, waiver behavior, and qualification report format |

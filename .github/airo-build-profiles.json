@@ -145,6 +145,10 @@
       "entrypoint": "app/lib/main_tv.dart",
       "pubspec": "app/pubspec_tv.yaml",
       "appId": "io.airo.app.tv",
+      "platformAppIds": {
+        "android": "io.airo.app.tv",
+        "macos": "com.developerscoffee.airo.tv"
+      },
       "appVariant": "tv",
       "appPlatform": "androidTv",
       "ciBuild": true,
@@ -202,6 +206,15 @@
         "releaseBudgetMb": 35,
         "debugBudgetMb": 650,
         "enforceReleaseBudget": true
+      },
+      "macos": {
+        "appName": "Airo TV",
+        "bundleId": "com.developerscoffee.airo.tv",
+        "artifactZip": "Airo-TV-macOS.zip",
+        "artifactDmg": "Airo-TV-macOS.dmg",
+        "distribution": ["github-release", "homebrew-cask"],
+        "signing": "optional-developer-id",
+        "notarization": "optional-required-for-public-direct-download"
       }
     },
     {

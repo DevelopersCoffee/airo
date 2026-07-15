@@ -1,11 +1,16 @@
+import 'dart:async';
+
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/services.dart';
+import 'package:feature_iptv/presentation/utils/native_fullscreen.dart';
 import 'package:platform_channels/platform_channels.dart';
 import 'package:platform_player/platform_player.dart';
 import 'package:product_capabilities/product_capabilities.dart';
 
 import '../../application/providers/iptv_providers.dart';
+import '../../application/services/airo_macos_update_service.dart';
 import '../screens/iptv_screen.dart';
 import '../widgets/iptv_icon_placeholder.dart';
 import '../widgets/iptv_mini_player.dart';
@@ -83,6 +88,13 @@ class _IptvTvScreenState extends ConsumerState<IptvTvScreen> {
     controller.dispose();
   }
 
+  Future<void> _showMacosUpdateDialog() async {
+    await showDialog<void>(
+      context: context,
+      builder: (context) => const _MacosUpdateDialog(),
+    );
+  }
+
   Future<void> _showPlaylistSheet() async {
     await showPlaylistSourceSheet(context, ref);
   }
@@ -147,6 +159,7 @@ class _IptvTvScreenState extends ConsumerState<IptvTvScreen> {
               onPlaylistSourceTap: _showPlaylistSheet,
               onPlaylistHelpTap: _showPlaylistGuideDialog,
               onSearchTap: _showSearchDialog,
+              onUpdateTap: _showMacosUpdateDialog,
               onRefresh: () {
                 ref.invalidate(iptvChannelsProvider);
                 ref.invalidate(recentlyWatchedChannelsProvider);
@@ -180,6 +193,7 @@ class _TvBrowseLayout extends ConsumerWidget {
     required this.onPlaylistSourceTap,
     required this.onPlaylistHelpTap,
     required this.onSearchTap,
+    required this.onUpdateTap,
     required this.onRefresh,
     required this.onClearFilters,
     required this.onRecentOnlyChanged,
@@ -198,6 +212,7 @@ class _TvBrowseLayout extends ConsumerWidget {
   final VoidCallback onPlaylistSourceTap;
   final VoidCallback onPlaylistHelpTap;
   final VoidCallback onSearchTap;
+  final VoidCallback onUpdateTap;
   final VoidCallback onRefresh;
   final VoidCallback onClearFilters;
   final ValueChanged<bool> onRecentOnlyChanged;
@@ -231,6 +246,8 @@ class _TvBrowseLayout extends ConsumerWidget {
             onPlaylistSourceTap: onPlaylistSourceTap,
             onPlaylistHelpTap: onPlaylistHelpTap,
             onSearchTap: onSearchTap,
+            showUpdateAction: AiroMacosUpdateService.isSupportedPlatform,
+            onUpdateTap: onUpdateTap,
             onRefresh: onRefresh,
           ),
           SizedBox(height: compactTv ? 16 : 24),
@@ -443,6 +460,8 @@ class _TvHeader extends StatelessWidget {
     required this.onPlaylistSourceTap,
     required this.onPlaylistHelpTap,
     required this.onSearchTap,
+    required this.showUpdateAction,
+    required this.onUpdateTap,
     required this.onRefresh,
   });
 
@@ -452,6 +471,8 @@ class _TvHeader extends StatelessWidget {
   final VoidCallback onPlaylistSourceTap;
   final VoidCallback onPlaylistHelpTap;
   final VoidCallback onSearchTap;
+  final bool showUpdateAction;
+  final VoidCallback onUpdateTap;
   final VoidCallback onRefresh;
 
   @override
@@ -497,6 +518,14 @@ class _TvHeader extends StatelessWidget {
           label: 'Help',
           onSelect: onPlaylistHelpTap,
         ),
+        if (showUpdateAction) ...[
+          const SizedBox(width: 12),
+          _TvActionButton(
+            icon: Icons.system_update_alt,
+            label: 'Update',
+            onSelect: onUpdateTap,
+          ),
+        ],
         const SizedBox(width: 12),
         _TvActionButton(
           icon: Icons.refresh,
@@ -653,6 +682,15 @@ class _TvPlayerPanel extends StatelessWidget {
   final IPTVChannel? currentChannel;
   final bool compact;
 
+  void _openFullscreenPlayer(BuildContext context) {
+    Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        fullscreenDialog: true,
+        builder: (_) => const _TvFullscreenPlayerPage(),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -675,7 +713,11 @@ class _TvPlayerPanel extends StatelessWidget {
                 child: streamingState.when(
                   data: (state) => state.currentChannel == null
                       ? const _TvPlayerPlaceholder()
-                      : const VideoPlayerWidget(showControls: true),
+                      : VideoPlayerWidget(
+                          showControls: true,
+                          onFullscreenToggle: () =>
+                              _openFullscreenPlayer(context),
+                        ),
                   loading: () => const _TvPlayerPlaceholder(),
                   error: (_, _) => const _TvPlayerPlaceholder(),
                 ),
@@ -727,6 +769,83 @@ class _TvPlayerPanel extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TvFullscreenPlayerPage extends StatefulWidget {
+  const _TvFullscreenPlayerPage();
+
+  @override
+  State<_TvFullscreenPlayerPage> createState() =>
+      _TvFullscreenPlayerPageState();
+}
+
+class _TvFullscreenPlayerPageState extends State<_TvFullscreenPlayerPage> {
+  late final FocusNode _focusNode;
+  bool _isClosing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _focusNode = FocusNode(debugLabel: 'Airo TV fullscreen player');
+    AiroNativeFullscreen.setMacosFullscreenExitHandler(
+      _handleNativeFullscreenExit,
+    );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _focusNode.requestFocus();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    AiroNativeFullscreen.setMacosFullscreenExitHandler(null);
+    _focusNode.dispose();
+    unawaited(AiroNativeFullscreen.exitMacosFullscreen());
+    super.dispose();
+  }
+
+  void _handleNativeFullscreenExit() {
+    _close(exitNativeFullscreen: false);
+  }
+
+  void _close({bool exitNativeFullscreen = true}) {
+    if (_isClosing || !mounted) {
+      return;
+    }
+    _isClosing = true;
+    if (exitNativeFullscreen) {
+      unawaited(AiroNativeFullscreen.exitMacosFullscreen());
+    }
+    Navigator.of(context, rootNavigator: true).pop();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return KeyboardListener(
+      focusNode: _focusNode,
+      autofocus: true,
+      onKeyEvent: (event) {
+        if (event is KeyDownEvent &&
+            event.logicalKey == LogicalKeyboardKey.escape) {
+          _close();
+        }
+      },
+      child: Scaffold(
+        key: const ValueKey('airo-tv-fullscreen-player'),
+        backgroundColor: Colors.black,
+        body: SizedBox.expand(
+          child: VideoPlayerWidget(
+            key: const ValueKey('airo-tv-fullscreen-video-player'),
+            showControls: true,
+            enableSwipeChannelChange: true,
+            initiallyFullscreen: true,
+            onFullscreenToggle: _close,
+          ),
         ),
       ),
     );
@@ -1491,6 +1610,179 @@ class _TvErrorState extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _MacosUpdateDialog extends ConsumerStatefulWidget {
+  const _MacosUpdateDialog();
+
+  @override
+  ConsumerState<_MacosUpdateDialog> createState() => _MacosUpdateDialogState();
+}
+
+class _MacosUpdateDialogState extends ConsumerState<_MacosUpdateDialog> {
+  late Future<AiroMacosUpdateResult> _updateFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _updateFuture = _checkForUpdate();
+  }
+
+  Future<AiroMacosUpdateResult> _checkForUpdate() {
+    return AiroMacosUpdateService(ref.read(dioProvider)).checkLatest();
+  }
+
+  void _retry() {
+    setState(() {
+      _updateFuture = _checkForUpdate();
+    });
+  }
+
+  Future<void> _openRelease(Uri releaseUrl) async {
+    await AiroMacosUpdateService(ref.read(dioProvider)).openRelease(releaseUrl);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Airo TV updates'),
+      content: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 520),
+        child: FutureBuilder<AiroMacosUpdateResult>(
+          future: _updateFuture,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState != ConnectionState.done) {
+              return const _MacosUpdateDialogBody(
+                icon: CircularProgressIndicator(),
+                title: 'Checking for updates',
+                message: 'Looking for a macOS release on GitHub.',
+              );
+            }
+
+            final result = snapshot.data;
+            if (snapshot.hasError || result == null) {
+              return _MacosUpdateDialogBody(
+                icon: Icon(
+                  Icons.error_outline,
+                  color: Theme.of(context).colorScheme.error,
+                  size: 40,
+                ),
+                title: 'Could not check updates',
+                message:
+                    snapshot.error?.toString() ??
+                    'The update check did not return a result.',
+              );
+            }
+
+            return _MacosUpdateResultBody(result: result);
+          },
+        ),
+      ),
+      actions: [
+        TextButton(onPressed: _retry, child: const Text('Check again')),
+        FutureBuilder<AiroMacosUpdateResult>(
+          future: _updateFuture,
+          builder: (context, snapshot) {
+            final result = snapshot.data;
+            if (result == null || !result.hasUpdate) {
+              return const SizedBox.shrink();
+            }
+            return FilledButton.icon(
+              onPressed: () => _openRelease(result.releaseUrl),
+              icon: const Icon(Icons.open_in_new),
+              label: const Text('Open release'),
+            );
+          },
+        ),
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Close'),
+        ),
+      ],
+    );
+  }
+}
+
+class _MacosUpdateResultBody extends StatelessWidget {
+  const _MacosUpdateResultBody({required this.result});
+
+  final AiroMacosUpdateResult result;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return switch (result.availability) {
+      AiroMacosUpdateAvailability.available => _MacosUpdateDialogBody(
+        icon: Icon(
+          Icons.system_update_alt,
+          color: colorScheme.primary,
+          size: 40,
+        ),
+        title: 'Update available',
+        message:
+            'Airo TV ${result.latestVersion} is available for macOS. Current version: ${result.currentVersion}.',
+      ),
+      AiroMacosUpdateAvailability.upToDate => _MacosUpdateDialogBody(
+        icon: Icon(Icons.check_circle, color: colorScheme.primary, size: 40),
+        title: 'Airo TV is up to date',
+        message:
+            'Current version: ${result.currentVersion}. Latest macOS release: ${result.latestVersion}.',
+      ),
+      AiroMacosUpdateAvailability.unavailable => _MacosUpdateDialogBody(
+        icon: Icon(
+          Icons.info_outline,
+          color: colorScheme.onSurfaceVariant,
+          size: 40,
+        ),
+        title: 'No macOS update available',
+        message:
+            result.detail ??
+            'The latest GitHub release does not include a newer macOS app.',
+      ),
+    };
+  }
+}
+
+class _MacosUpdateDialogBody extends StatelessWidget {
+  const _MacosUpdateDialogBody({
+    required this.icon,
+    required this.title,
+    required this.message,
+  });
+
+  final Widget icon;
+  final String title;
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(width: 44, height: 44, child: Center(child: icon)),
+        const SizedBox(width: 16),
+        Expanded(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: theme.textTheme.titleLarge),
+              const SizedBox(height: 8),
+              Text(
+                message,
+                style: theme.textTheme.bodyLarge?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

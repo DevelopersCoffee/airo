@@ -25,6 +25,10 @@ void main() {
         matrix.profileById('mobile-streaming').entrypoint,
         'app/lib/main_mobile_streaming.dart',
       );
+      expect(
+        matrix.profileById('tv').platformPackageIds['macos'],
+        'com.developerscoffee.airo.tv',
+      );
       expect(matrix.profileById('tv').pubspec, 'app/pubspec_tv.yaml');
     });
 
@@ -66,6 +70,21 @@ void main() {
           version: 'v2.0.0',
         ),
         'SHA256SUMS',
+      );
+
+      expect(
+        tv.artifactFileName(
+          kind: AiroReleaseArtifactKind.macosZip,
+          version: 'v2.0.0',
+        ),
+        'Airo-TV-v2.0.0-macOS.zip',
+      );
+      expect(
+        tv.artifactFileName(
+          kind: AiroReleaseArtifactKind.macosDmg,
+          version: 'v2.0.0',
+        ),
+        'Airo-TV-v2.0.0-macOS.dmg',
       );
     });
 
@@ -134,6 +153,12 @@ void main() {
       );
       expect(
         matrix
+            .profileById('tv')
+            .supportStatuses[AiroReleaseDeviceClass.macos],
+        AiroReleaseSupportStatus.supported,
+      );
+      expect(
+        matrix
             .profileById('web-validation')
             .supportStatuses[AiroReleaseDeviceClass.web],
         AiroReleaseSupportStatus.validationOnly,
@@ -154,6 +179,7 @@ void main() {
       final publicMap = AiroReleaseMatrix.v2Default().toPublicMap().toString();
 
       expect(publicMap, contains('io.airo.app.tv'));
+      expect(publicMap, contains('com.developerscoffee.airo.tv'));
       expect(publicMap, isNot(contains('keystore')));
       expect(publicMap, isNot(contains('signing')));
       expect(

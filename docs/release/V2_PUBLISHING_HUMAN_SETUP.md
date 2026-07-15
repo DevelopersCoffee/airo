@@ -89,6 +89,24 @@ Related issue: #585.
       `ASC_KEY_CONTENT` as GitHub Actions secrets before TestFlight/App Store
       upload.
 
+## macOS Developer ID / Homebrew
+
+Related issue: `.github/issues/v2-macos-release.md`.
+
+- [ ] Create or export a Developer ID Application certificate for
+      `com.developerscoffee.airo.tv`.
+- [ ] Add GitHub Actions secrets: `APPLE_CERTIFICATE_BASE64`,
+      `APPLE_CERTIFICATE_PASSWORD`, `APPLE_KEYCHAIN_PASSWORD`,
+      `MACOS_CODESIGN_IDENTITY`, `APPLE_ID`, `APPLE_TEAM_ID`, and
+      `APPLE_APP_SPECIFIC_PASSWORD`.
+- [ ] Run `.github/workflows/airo-macos-release.yml` with
+      `profile=tv` and `require_notarization=true`.
+- [ ] Confirm `codesign`, `notarytool`, `stapler`, and `spctl` pass before a
+      public direct-download macOS release.
+- [ ] Review generated `homebrew/airo-tv.rb` and decide whether to
+      submit it to `homebrew-cask` or keep it as release evidence for the first
+      macOS launch.
+
 ## Distribution Channels
 
 Related issues: #675, #685, #647, #657.
@@ -102,6 +120,8 @@ Related issues: #675, #685, #647, #657.
       experimental, or unsupported.
 - [ ] Confirm whether direct APK install is officially supported for every
       published profile or only for selected profiles.
+- [ ] Confirm whether direct macOS download and Homebrew Cask are public in the
+      same v2 release or staged as draft release evidence first.
 
 ## Repository Governance
 
@@ -133,3 +153,5 @@ Related issues: #687, #689.
   and `none` tracks for selected v2 Android profiles.
 - Firebase App Distribution automation supports `upload` and `none` modes for
   selected v2 Android profiles.
+- macOS automation supports unsigned dry-run artifacts and signed/notarized
+  public-ready artifacts when Apple Developer ID secrets are present.

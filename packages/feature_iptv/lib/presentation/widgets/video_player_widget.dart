@@ -9,6 +9,7 @@ import '../../application/providers/iptv_providers.dart';
 import "package:platform_channels/platform_channels.dart";
 import "package:platform_player/platform_player.dart";
 import "package:platform_media/platform_media.dart";
+import '../utils/native_fullscreen.dart';
 import '../utils/web_fullscreen.dart' as web_fullscreen;
 import 'iptv_icon_placeholder.dart';
 import 'live_indicators.dart';
@@ -18,12 +19,14 @@ class VideoPlayerWidget extends ConsumerStatefulWidget {
   final bool showControls;
   final VoidCallback? onFullscreenToggle;
   final bool enableSwipeChannelChange;
+  final bool initiallyFullscreen;
 
   const VideoPlayerWidget({
     super.key,
     this.showControls = true,
     this.onFullscreenToggle,
     this.enableSwipeChannelChange = false,
+    this.initiallyFullscreen = false,
   });
 
   @override
@@ -45,6 +48,7 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
   @override
   void initState() {
     super.initState();
+    _isFullscreen = widget.initiallyFullscreen;
     _startHideControlsTimer();
     // Note: Wakelock is now managed by _updateWakelockForPlayback
     // based on actual playback state, not just widget mount
@@ -121,10 +125,12 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
   }
 
   void _toggleFullscreen() {
+    final enteringFullscreen = !_isFullscreen;
     if (kIsWeb) {
       _toggleWebFullscreen();
     }
-    setState(() => _isFullscreen = !_isFullscreen);
+    setState(() => _isFullscreen = enteringFullscreen);
+    unawaited(AiroNativeFullscreen.setMacosFullscreen(enteringFullscreen));
     widget.onFullscreenToggle?.call();
   }
 
@@ -580,6 +586,7 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                       ),
                       // Fullscreen button
                       IconButton(
+                        key: const ValueKey('iptv-player-fullscreen-button'),
                         icon: Icon(
                           _isFullscreen
                               ? Icons.fullscreen_exit

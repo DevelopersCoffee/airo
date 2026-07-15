@@ -14,7 +14,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_PROFILE_FILE = ROOT / ".github" / "airo-build-profiles.json"
-RELEASE_EXTENSIONS = {".apk", ".aab"}
+RELEASE_EXTENSIONS = {".apk", ".aab", ".dmg", ".zip"}
 MANIFEST_FILENAME = "Release-Manifest.json"
 SHA256_FILENAME = "SHA256SUMS"
 
@@ -72,17 +72,29 @@ def infer_artifact_type(path: Path) -> str:
         return "apk"
     if path.suffix == ".aab":
         return "aab"
+    if path.suffix == ".dmg":
+        return "macos_dmg"
+    if path.suffix == ".zip" and "macos" in path.name.lower():
+        return "macos_zip"
     return path.suffix.lstrip(".")
 
 
 def infer_distribution_channel(path: Path) -> str:
     if path.suffix == ".aab":
         return "play-store"
+    if path.suffix in {".dmg", ".zip"} and "macos" in path.name.lower():
+        return "direct-macos"
     return "direct-apk"
 
 
 def infer_abi(path: Path, profile: dict) -> str:
     filename = path.name.lower()
+    if path.suffix in {".dmg", ".zip"} and "macos" in filename:
+        if "arm64" in filename:
+            return "macos-arm64"
+        if "x64" in filename or "x86_64" in filename:
+            return "macos-x64"
+        return "macos-universal"
     if "arm64" in filename or "arm64-v8a" in filename:
         return "android-arm64"
     android = profile.get("android") or {}
@@ -91,6 +103,13 @@ def infer_abi(path: Path, profile: dict) -> str:
     if path.suffix == ".aab":
         return "play-managed"
     return "unknown"
+
+
+def package_id_for_artifact(path: Path, profile: dict) -> str:
+    if path.suffix in {".dmg", ".zip"} and "macos" in path.name.lower():
+        macos = profile.get("macos") or {}
+        return macos.get("bundleId") or profile.get("appId", "unknown")
+    return profile.get("appId", "unknown")
 
 
 def release_files(artifacts_dir: Path) -> list[Path]:
@@ -145,7 +164,7 @@ def build_manifest(args: argparse.Namespace) -> int:
         artifact = {
             "filename": path.name,
             "profileId": profile_id,
-            "packageId": profile.get("appId", "unknown"),
+            "packageId": package_id_for_artifact(path, profile),
             "version": args.version,
             "buildNumber": args.build_number,
             "artifactType": infer_artifact_type(path),
@@ -154,6 +173,11 @@ def build_manifest(args: argparse.Namespace) -> int:
             "sizeBytes": path.stat().st_size,
             "sha256": checksums[path.name],
         }
+        if artifact["artifactType"] in {"macos_dmg", "macos_zip"}:
+            artifact["macos"] = {
+                "signingStatus": args.macos_signing_status,
+                "notarizationStatus": args.macos_notarization_status,
+            }
         artifacts.append(artifact)
 
     if failures:
@@ -194,7 +218,7 @@ def build_manifest(args: argparse.Namespace) -> int:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Generate SHA256SUMS and a v2 release manifest for APK/AAB artifacts."
+        description="Generate SHA256SUMS and a v2 release manifest for release artifacts."
     )
     parser.add_argument("--artifacts-dir", type=Path, required=True)
     parser.add_argument("--profiles-file", type=Path, default=DEFAULT_PROFILE_FILE)
@@ -207,6 +231,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--workflow-run", default=env_default("GITHUB_RUN_ID", "unknown"))
     parser.add_argument("--workflow-run-attempt", default=env_default("GITHUB_RUN_ATTEMPT", "unknown"))
     parser.add_argument("--repository", default=env_default("GITHUB_REPOSITORY", "DevelopersCoffee/airo"))
+    parser.add_argument("--macos-signing-status", default=env_default("MACOS_SIGNING_STATUS", "unsigned"))
+    parser.add_argument("--macos-notarization-status", default=env_default("MACOS_NOTARIZATION_STATUS", "not_notarized"))
     parser.add_argument("--allow-empty", action="store_true")
     return parser.parse_args()
 

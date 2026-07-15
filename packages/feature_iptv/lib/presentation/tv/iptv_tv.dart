@@ -284,10 +284,21 @@ class _TvFocusableState extends State<TvFocusable>
     if (event is! KeyDownEvent) return KeyEventResult.ignored;
     final key = TvInputHandler.mapLogicalKeyToTvInput(event.logicalKey);
     if (key == TvInputKey.select && widget.onSelect != null) {
-      widget.onSelect!();
+      _handleSelect();
       return KeyEventResult.handled;
     }
     return KeyEventResult.ignored;
+  }
+
+  void _handlePointerEnter(PointerEnterEvent _) {
+    if (!_focusNode.hasFocus && _focusNode.canRequestFocus) {
+      _focusNode.requestFocus();
+    }
+  }
+
+  void _handleSelect() {
+    if (!widget.enabled) return;
+    widget.onSelect?.call();
   }
 
   @override
@@ -344,7 +355,17 @@ class _TvFocusableState extends State<TvFocusable>
         child: result,
       );
     }
-    return result;
+    return MouseRegion(
+      cursor: widget.onSelect == null
+          ? MouseCursor.defer
+          : SystemMouseCursors.click,
+      onEnter: _handlePointerEnter,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: widget.onSelect == null ? null : _handleSelect,
+        child: result,
+      ),
+    );
   }
 }
 

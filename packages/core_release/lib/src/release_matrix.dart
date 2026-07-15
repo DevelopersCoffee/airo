@@ -18,6 +18,7 @@ enum AiroReleaseDeviceClass {
   googleTv('google_tv'),
   fireTv('fire_tv'),
   iosIpadOs('ios_ipados'),
+  macos('macos'),
   web('web'),
   legacyAndroidTvBox('legacy_android_tv_box');
 
@@ -65,6 +66,8 @@ enum AiroReleaseArtifactKind {
   playStoreAab('play_store_aab'),
   releaseManifest('release_manifest'),
   checksum('checksum'),
+  macosZip('macos_zip'),
+  macosDmg('macos_dmg'),
   releaseNotes('release_notes'),
   sourceArchive('source_archive'),
   debugSymbols('debug_symbols'),
@@ -82,6 +85,8 @@ enum AiroReleaseDistributionChannel {
   amazonAppstore('amazon_appstore'),
   fDroid('fdroid'),
   directApk('direct_apk'),
+  directMacosDownload('direct_macos_download'),
+  homebrewCask('homebrew_cask'),
   localValidation('local_validation');
 
   const AiroReleaseDistributionChannel(this.stableId);
@@ -176,11 +181,13 @@ class AiroReleaseProfile extends Equatable {
     required Iterable<AiroReleaseDistributionRule> distributionRules,
     this.tabletStrategy = AiroReleaseTabletStrategy.notApplicable,
     this.decisionNote,
+    Map<String, String> platformPackageIds = const {},
     this.schemaVersion = kAiroReleaseMatrixSchemaVersion,
   }) : deviceClasses = Set.unmodifiable(deviceClasses),
        supportStatuses = Map.unmodifiable(supportStatuses),
        artifactKinds = Set.unmodifiable(artifactKinds),
-       distributionRules = List.unmodifiable(distributionRules);
+       distributionRules = List.unmodifiable(distributionRules),
+       platformPackageIds = Map.unmodifiable(platformPackageIds);
 
   final String schemaVersion;
   final String id;
@@ -197,6 +204,7 @@ class AiroReleaseProfile extends Equatable {
   final List<AiroReleaseDistributionRule> distributionRules;
   final AiroReleaseTabletStrategy tabletStrategy;
   final String? decisionNote;
+  final Map<String, String> platformPackageIds;
 
   bool get isAndroidReleaseCandidate {
     return deviceClasses.any(
@@ -208,6 +216,10 @@ class AiroReleaseProfile extends Equatable {
           deviceClass == AiroReleaseDeviceClass.fireTv ||
           deviceClass == AiroReleaseDeviceClass.legacyAndroidTvBox,
     );
+  }
+
+  bool get isMacosReleaseCandidate {
+    return deviceClasses.contains(AiroReleaseDeviceClass.macos);
   }
 
   bool supportsArtifact(AiroReleaseArtifactKind kind) {
@@ -244,6 +256,10 @@ class AiroReleaseProfile extends Equatable {
         return 'Airo-$artifactNamePart-$version-Release-Manifest.json';
       case AiroReleaseArtifactKind.checksum:
         return 'SHA256SUMS';
+      case AiroReleaseArtifactKind.macosZip:
+        return 'Airo-$artifactNamePart-$version-macOS.zip';
+      case AiroReleaseArtifactKind.macosDmg:
+        return 'Airo-$artifactNamePart-$version-macOS.dmg';
       case AiroReleaseArtifactKind.releaseNotes:
         return 'Airo-$artifactNamePart-$version-Release-Notes.md';
       case AiroReleaseArtifactKind.sourceArchive:
@@ -263,6 +279,7 @@ class AiroReleaseProfile extends Equatable {
       'artifactNamePart': artifactNamePart,
       'releaseLine': releaseLine.stableId,
       'packageId': packageId,
+      'platformPackageIds': platformPackageIds,
       'entrypoint': entrypoint,
       'pubspec': pubspec,
       'abiStrategy': abiStrategy.stableId,
@@ -300,6 +317,7 @@ class AiroReleaseProfile extends Equatable {
     distributionRules,
     tabletStrategy,
     decisionNote,
+    platformPackageIds,
   ];
 }
 
@@ -467,6 +485,10 @@ class AiroReleaseMatrix extends Equatable {
           artifactNamePart: 'TV',
           releaseLine: AiroReleaseLine.v2,
           packageId: 'io.airo.app.tv',
+          platformPackageIds: const {
+            'android': 'io.airo.app.tv',
+            'macos': 'com.developerscoffee.airo.tv',
+          },
           entrypoint: 'app/lib/main_tv.dart',
           pubspec: 'app/pubspec_tv.yaml',
           abiStrategy: AiroReleaseAbiStrategy.singleArm64Apk,
@@ -474,6 +496,7 @@ class AiroReleaseMatrix extends Equatable {
             AiroReleaseDeviceClass.androidTv,
             AiroReleaseDeviceClass.googleTv,
             AiroReleaseDeviceClass.fireTv,
+            AiroReleaseDeviceClass.macos,
           },
           supportStatuses: const {
             AiroReleaseDeviceClass.androidTv:
@@ -481,12 +504,36 @@ class AiroReleaseMatrix extends Equatable {
             AiroReleaseDeviceClass.googleTv: AiroReleaseSupportStatus.supported,
             AiroReleaseDeviceClass.fireTv:
                 AiroReleaseSupportStatus.compatibleExperimental,
+            AiroReleaseDeviceClass.macos: AiroReleaseSupportStatus.supported,
           },
-          artifactKinds: androidArtifactKinds,
-          distributionRules: tvDistributionRules,
+          artifactKinds: const {
+            ...androidArtifactKinds,
+            AiroReleaseArtifactKind.macosZip,
+            AiroReleaseArtifactKind.macosDmg,
+          },
+          distributionRules: const [
+            ...tvDistributionRules,
+            AiroReleaseDistributionRule(
+              channel: AiroReleaseDistributionChannel.directMacosDownload,
+              status: AiroReleaseDistributionStatus.required,
+              publicArtifact: true,
+              note:
+                  'Notarized direct-download Airo TV macOS archive via '
+                  'GitHub Releases.',
+            ),
+            AiroReleaseDistributionRule(
+              channel: AiroReleaseDistributionChannel.homebrewCask,
+              status: AiroReleaseDistributionStatus.required,
+              publicArtifact: true,
+              note:
+                  'Homebrew Cask metadata points to the Airo TV GitHub '
+                  'Release zip.',
+            ),
+          ],
           decisionNote:
               'Fire TV remains compatible/experimental until qualification '
-              'evidence is attached.',
+              'evidence is attached. macOS ships from the same Airo TV '
+              'profile for the first v2 desktop release.',
         ),
         AiroReleaseProfile(
           id: 'ios-spm',
@@ -615,6 +662,43 @@ class AiroReleaseMatrix extends Equatable {
                 profileId: profile.id,
                 message:
                     'Android release candidates require ${channel.stableId}.',
+              ),
+            );
+          }
+        }
+      }
+
+      if (profile.isMacosReleaseCandidate) {
+        const requiredArtifactKinds = {
+          AiroReleaseArtifactKind.macosZip,
+          AiroReleaseArtifactKind.macosDmg,
+          AiroReleaseArtifactKind.releaseManifest,
+          AiroReleaseArtifactKind.checksum,
+        };
+        for (final kind in requiredArtifactKinds) {
+          if (!profile.supportsArtifact(kind)) {
+            findings.add(
+              AiroReleaseValidationFinding(
+                code: AiroReleaseValidationCode.missingArtifactKind,
+                profileId: profile.id,
+                message: 'macOS release candidates require ${kind.stableId}.',
+              ),
+            );
+          }
+        }
+        const requiredChannels = {
+          AiroReleaseDistributionChannel.githubRelease,
+          AiroReleaseDistributionChannel.directMacosDownload,
+          AiroReleaseDistributionChannel.homebrewCask,
+        };
+        for (final channel in requiredChannels) {
+          if (profile.distributionFor(channel) == null) {
+            findings.add(
+              AiroReleaseValidationFinding(
+                code: AiroReleaseValidationCode.missingDistributionRule,
+                profileId: profile.id,
+                message:
+                    'macOS release candidates require ${channel.stableId}.',
               ),
             );
           }

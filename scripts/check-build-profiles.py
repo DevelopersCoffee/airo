@@ -236,6 +236,22 @@ def main():
             failures += 1
             status = "FAIL"
 
+        macos = profile.get("macos")
+        if macos:
+            for key in ["appName", "bundleId", "artifactZip", "artifactDmg", "distribution", "signing", "notarization"]:
+                if key not in macos:
+                    error(f"{profile_id}: macos.{key} is required", profile_file)
+                    failures += 1
+                    status = "FAIL"
+            if macos.get("artifactZip") and not macos["artifactZip"].endswith(".zip"):
+                error(f"{profile_id}: macos.artifactZip must end with .zip", profile_file)
+                failures += 1
+                status = "FAIL"
+            if macos.get("artifactDmg") and not macos["artifactDmg"].endswith(".dmg"):
+                error(f"{profile_id}: macos.artifactDmg must end with .dmg", profile_file)
+                failures += 1
+                status = "FAIL"
+
         if profile.get("edgeProfile"):
             notes.append(f"release <= {android.get('releaseBudgetMb')} MiB")
             notes.append(f"debug tracked <= {android.get('debugBudgetMb')} MiB")

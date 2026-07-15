@@ -17,6 +17,7 @@ that platform contract aligned before changing release workflows.
 | `iptv-standalone` | `io.airo.app.iptv` | `app/lib/main_airo_iptv.dart` | `app/pubspec_iptv.yaml` | Android phone and tablet IPTV-only builds | APK, Play Store AAB | GitHub Release evidence, Firebase App Distribution, Play track after credentials |
 | `mobile-streaming` | `io.airo.app.streaming` | `app/lib/main_mobile_streaming.dart` | `app/pubspec_streaming.yaml` | Android phone and tablet streaming builds | APK, Play Store AAB | GitHub Release evidence, Firebase App Distribution, Play track after credentials |
 | `tv` | `io.airo.app.tv` | `app/lib/main_tv.dart` | `app/pubspec_tv.yaml` | Android TV, Google TV, Fire TV-compatible APK testing | APK, Play Store AAB | GitHub Release, Firebase App Distribution where supported, Play TV track after credentials |
+| `tv` | `com.developerscoffee.airo.tv` | `app/lib/main_tv.dart` | `app/pubspec_tv.yaml` | macOS Airo TV IPTV build | ZIP, DMG, Homebrew Cask metadata | GitHub Release direct download, Homebrew Cask after notarization |
 | `ios-spm` | `com.developerscoffee.airo` | `app/lib/main.dart` | `app/pubspec_ios_spm.yaml` | iOS/iPadOS validation profile | Deferred | Not part of the first v2 Android publishing wave |
 | `web-validation` | `web` | `app/lib/main_airo_iptv.dart` | `app/pubspec.yaml` | Browser validation only | Deferred | Local validation only |
 
@@ -33,6 +34,8 @@ Every public v2 Android release must publish:
 
 - APK artifacts for supported direct-install profiles;
 - AAB artifacts for profiles uploaded to Google Play;
+- macOS ZIP/DMG artifacts for direct macOS distribution when the macOS leg is
+  selected;
 - `SHA256SUMS`;
 - release notes or changelog entry;
 - release manifest with profile, package ID, version, build number, ABI, source
@@ -50,6 +53,9 @@ mobile/tablet release leg passes.
 | --- | --- | --- | --- | --- |
 | Profile APK | Required for direct-install profiles | Required for tester distribution | Not used for Play upload | Final filename must follow the naming standard below. |
 | Profile AAB | Optional unless publishing a store profile | Optional | Required for Play upload | Store-only AABs may be attached to draft/internal releases before public approval. |
+| macOS ZIP | Required when macOS profile is selected | Required for macOS QA | Not used for Mac App Store | Final filename must follow the naming standard below and should be notarized before public direct download. |
+| macOS DMG | Required when macOS profile is selected | Required for macOS QA | Not used for Mac App Store | DMG mirrors the notarized app bundle for visual installation. |
+| Homebrew Cask | Required when macOS profile is selected | Optional | Not a store upload | Generated Cask metadata points to the GitHub Release ZIP and checksum. |
 | `SHA256SUMS` | Required | Required | Required as release evidence | Must be generated after final artifact renaming. |
 | Release manifest JSON | Required | Required | Required as release evidence | Maps each artifact to profile, package ID, version, build number, source ref, workflow run, and checksum. The orchestrator publishes a combined manifest for GitHub Releases. |
 | Release notes/changelog | Required | Required | Required as listing/release evidence | Must describe supported profiles and known limitations. |
@@ -70,6 +76,8 @@ Use stable, user-facing names:
 Airo-<Profile>-<Version>.apk
 Airo-<Profile>-<Version>-<Abi>.apk
 Airo-<Profile>-<Version>-Play-Store.aab
+Airo-<Profile>-<Version>-macOS.zip
+Airo-<Profile>-<Version>-macOS.dmg
 Airo-<Profile>-<Version>-Release-Manifest.json
 SHA256SUMS
 ```
@@ -81,6 +89,8 @@ Airo-IPTV-v2.0.0.apk
 Airo-Streaming-v2.0.0.apk
 Airo-TV-v2.0.0.apk
 Airo-TV-v2.0.0-Play-Store.aab
+Airo-TV-v2.0.0-macOS.zip
+Airo-TV-v2.0.0-macOS.dmg
 Airo-TV-v2.0.0-Release-Manifest.json
 ```
 
@@ -99,6 +109,7 @@ consistent across GitHub Releases, QA distribution, and store-upload jobs.
 | Android tablet | Supported through adaptive mobile profiles until a separate tablet profile is approved |
 | Android TV / Google TV | Supported through the `tv` profile after TV qualification |
 | Fire TV | Compatible/experimental until Fire TV qualification evidence is attached |
+| macOS | Supported through the `tv` profile after macOS build, signing, notarization, and pointer smoke validation |
 | iOS / iPadOS | Deferred for this v2 Android publishing wave |
 | Web | Validation only; not a public v2 release artifact |
 | Legacy Android TV boxes | Compatible, experimental, or unsupported based on release qualification evidence |
@@ -110,6 +121,8 @@ consistent across GitHub Releases, QA distribution, and store-upload jobs.
 - Whether `iptv-standalone` or `mobile-streaming` is the first public mobile
   profile.
 - Whether Amazon Appstore and F-Droid are in the first v2 release wave.
+- Whether the generated Homebrew Cask is submitted immediately to
+  `homebrew-cask` or retained as release evidence for the first macOS launch.
 - First Play tracks for mobile/tablet and TV.
 - Whether Fire TV moves from compatible/experimental to supported for the first
   public release.

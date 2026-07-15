@@ -1,9 +1,12 @@
 import 'package:feature_iptv/feature_iptv.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import 'package:feature_iptv/presentation/utils/native_fullscreen.dart';
 
 void main() {
   final channels = [
@@ -47,10 +50,19 @@ void main() {
   Future<void> pumpScreen(
     WidgetTester tester, {
     List<IPTVChannel>? visibleChannels,
+    StreamingState streamingState = const StreamingState(
+      playbackState: PlaybackState.idle,
+      isLiveStream: true,
+    ),
     Size surfaceSize = const Size(1280, 720),
+    bool settle = true,
   }) async {
-    await tester.binding.setSurfaceSize(surfaceSize);
-    addTearDown(() => tester.binding.setSurfaceSize(null));
+    tester.view.devicePixelRatio = 1.0;
+    tester.view.physicalSize = surfaceSize;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
 
@@ -63,18 +75,18 @@ void main() {
           ),
           recentlyWatchedChannelsProvider.overrideWith((ref) async => const []),
           streamingStateProvider.overrideWith(
-            (ref) => Stream.value(
-              const StreamingState(
-                playbackState: PlaybackState.idle,
-                isLiveStream: true,
-              ),
-            ),
+            (ref) => Stream.value(streamingState),
           ),
         ],
         child: const MaterialApp(home: IptvTvScreen()),
       ),
     );
-    await tester.pumpAndSettle();
+    if (settle) {
+      await tester.pumpAndSettle();
+    } else {
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+    }
   }
 
   testWidgets('renders TV browsing surface with categories and actions', (
@@ -127,6 +139,18 @@ void main() {
     expect(find.byType(Scrollbar), findsOneWidget);
   });
 
+  testWidgets('shows macOS update action on desktop builds', (tester) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+    try {
+      await pumpScreen(tester, surfaceSize: const Size(1440, 900));
+
+      expect(find.text('Update'), findsOneWidget);
+      expect(find.bySemanticsLabel('Update'), findsWidgets);
+    } finally {
+      debugDefaultTargetPlatformOverride = null;
+    }
+  });
+
   testWidgets('shows readable playlist guide with primary dismissal', (
     tester,
   ) async {
@@ -142,6 +166,100 @@ void main() {
     expect(find.text('How to add a playlist'), findsOneWidget);
     expect(find.text('Find your playlist URL'), findsOneWidget);
     expect(find.widgetWithText(FilledButton, 'Done'), findsOneWidget);
+  });
+
+  testWidgets('opens fullscreen player from embedded TV controls', (
+    tester,
+  ) async {
+    await pumpScreen(
+      tester,
+      streamingState: StreamingState(
+        currentChannel: channels[2],
+        playbackState: PlaybackState.playing,
+        isLiveStream: true,
+      ),
+      surfaceSize: const Size(1440, 900),
+      settle: false,
+    );
+
+    expect(find.text('Music India'), findsWidgets);
+    expect(
+      find.byKey(const ValueKey('airo-tv-fullscreen-player')),
+      findsNothing,
+    );
+
+    await tester.tap(
+      find.byKey(const ValueKey('iptv-player-fullscreen-button')),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
+
+    expect(
+      find.byKey(const ValueKey('airo-tv-fullscreen-player')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('airo-tv-fullscreen-video-player')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('airo-tv-fullscreen-player')),
+        matching: find.byIcon(Icons.fullscreen_exit),
+      ),
+      findsOneWidget,
+    );
+
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('airo-tv-fullscreen-player')),
+        matching: find.byKey(const ValueKey('iptv-player-fullscreen-button')),
+      ),
+      findsOneWidget,
+    );
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump();
+  });
+
+  testWidgets('native fullscreen exit restores TV screen without blanking', (
+    tester,
+  ) async {
+    await pumpScreen(
+      tester,
+      streamingState: StreamingState(
+        currentChannel: channels[2],
+        playbackState: PlaybackState.playing,
+        isLiveStream: true,
+      ),
+      surfaceSize: const Size(1440, 900),
+      settle: false,
+    );
+
+    await tester.tap(
+      find.byKey(const ValueKey('iptv-player-fullscreen-button')),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
+
+    expect(
+      find.byKey(const ValueKey('airo-tv-fullscreen-player')),
+      findsOneWidget,
+    );
+    expect(AiroNativeFullscreen.debugHasMacosFullscreenExitHandler, isTrue);
+
+    AiroNativeFullscreen.debugNotifyMacosFullscreenExited();
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+
+    expect(
+      find.byKey(const ValueKey('airo-tv-fullscreen-player')),
+      findsNothing,
+    );
+    expect(find.text('Live channels'), findsOneWidget);
+    expect(find.text('Browse'), findsOneWidget);
+    expect(find.text('Music India'), findsWidgets);
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump();
   });
 
   testWidgets('shows TV empty playlist state', (tester) async {
