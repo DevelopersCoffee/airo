@@ -14,8 +14,8 @@ exports, playlist URLs, local IP addresses, or private device logs.
 
 | Issue | Blocker | Human action needed |
 | --- | --- | --- |
-| #574 | Firebase Android client for TV | Add or confirm Firebase Android app/client for `io.airo.app.tv`, then regenerate the production `google-services.json` or `GOOGLE_SERVICES_JSON` secret that includes that package. |
-| #756 | Firebase Android clients for mobile/tablet profiles | Add or confirm Firebase Android clients for `io.airo.app.iptv` and `io.airo.app.streaming`, then regenerate the production Firebase config/secret. |
+| #574 | Firebase Android client for TV | `io.airo.app.tv` is registered; regenerate the production `google-services.json` or `GOOGLE_SERVICES_JSON` secret so it includes that package. |
+| #756 | Firebase Android clients for mobile/tablet profiles | The checked-in Firebase config currently only contains `io.airo.app`; add or confirm Firebase Android clients for the v2 `io.airo.app.*` mobile/tablet profiles, then regenerate the production Firebase config/secret. |
 | #576 | Android release signing | Confirm keystore owner, upload key strategy, key backup/rotation owner, and GitHub Actions signing secrets. |
 | #585 | Store automation credentials | Create/confirm Play Console service account, app access, upload permissions, first tracks, and App Store Connect credentials only if iOS/iPadOS enters scope. |
 | #682 | Firebase App Distribution | Create/confirm Firebase apps, app IDs, tester groups, and service account/token for internal QA uploads. |
@@ -68,8 +68,10 @@ exports, playlist URLs, local IP addresses, or private device logs.
 
 ## Fastest Parallel Setup Order
 
-1. Firebase: complete #574 and #756 first because package-specific Firebase
-   configs unblock app initialization and Firebase App Distribution setup.
+1. Firebase: complete #574 and #756 first because the repo currently proves
+   only `io.airo.app` in `app/android/app/google-services.json`; regenerated
+   package-specific Firebase configs unblock app initialization and Firebase
+   App Distribution setup.
 2. Signing and Play access: complete #576 and #585 before any real store upload.
 3. Firebase App Distribution: complete #682 after Firebase app IDs and tester
    groups exist.
