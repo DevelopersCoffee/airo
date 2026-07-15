@@ -157,7 +157,7 @@ dependencies {
     testImplementation("junit:junit:4.13.2")
 
     // ML Kit GenAI Prompt API for on-device Gemini Nano.
-    implementation("com.google.mlkit:genai-prompt:1.0.0-beta2")
+    implementation("com.google.mlkit:genai-prompt:1.0.0-beta3")
 
     // Use the cached local LiteRT artifact when GitHub Packages credentials are
     // unavailable; otherwise resolve the canonical Maven dependency.
