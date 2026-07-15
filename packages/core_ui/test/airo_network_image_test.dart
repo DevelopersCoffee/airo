@@ -1,6 +1,7 @@
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:platform_device_profile/platform_device_profile.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -72,5 +73,29 @@ void main() {
 
     expect(imageCache.maximumSize, 12);
     expect(imageCache.maximumSizeBytes, 34);
+  });
+
+  test('configures Android TV image cache from runtime memory budget', () {
+    final imageCache = PaintingBinding.instance.imageCache;
+    final originalMaximumSize = imageCache.maximumSize;
+    final originalMaximumSizeBytes = imageCache.maximumSizeBytes;
+    addTearDown(() {
+      imageCache.maximumSize = originalMaximumSize;
+      imageCache.maximumSizeBytes = originalMaximumSizeBytes;
+    });
+
+    AiroImageCacheBudget.configureAndroidTv(
+      memoryBudget: AiroRuntimeMemoryBudgetPolicy.androidTvStandardBudget,
+    );
+
+    expect(
+      imageCache.maximumSize,
+      AiroRuntimeMemoryBudgetPolicy.standardTvImageCacheEntries,
+    );
+    expect(
+      imageCache.maximumSizeBytes,
+      AiroRuntimeMemoryBudgetPolicy.standardTvImageCacheMb *
+          AiroRuntimeMemoryBudgetPolicy.bytesPerMb,
+    );
   });
 }

@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/widgets.dart';
+import 'package:platform_device_profile/platform_device_profile.dart';
 
 typedef AiroImageFallbackBuilder =
     Widget Function(BuildContext context, Object error, StackTrace? stackTrace);
@@ -97,15 +98,24 @@ class AiroNetworkImage extends StatelessWidget {
 class AiroImageCacheBudget {
   const AiroImageCacheBudget._();
 
-  static const int androidTvMaxEntries = 300;
-  static const int androidTvMaxBytes = 64 * 1024 * 1024;
+  static const int androidTvMaxEntries =
+      AiroRuntimeMemoryBudgetPolicy.constrainedTvImageCacheEntries;
+  static const int androidTvMaxBytes =
+      AiroRuntimeMemoryBudgetPolicy.constrainedTvImageCacheMb *
+      AiroRuntimeMemoryBudgetPolicy.bytesPerMb;
 
   static void configureAndroidTv({
-    int maximumSize = androidTvMaxEntries,
-    int maximumSizeBytes = androidTvMaxBytes,
+    AiroRuntimeMemoryBudget? memoryBudget,
+    int? maximumSize,
+    int? maximumSizeBytes,
   }) {
+    final effectiveBudget =
+        memoryBudget ??
+        AiroRuntimeMemoryBudgetPolicy.androidTvConstrainedBudget;
     final imageCache = PaintingBinding.instance.imageCache;
-    imageCache.maximumSize = maximumSize;
-    imageCache.maximumSizeBytes = maximumSizeBytes;
+    imageCache.maximumSize = maximumSize ?? effectiveBudget.imageCacheEntries;
+    imageCache.maximumSizeBytes =
+        maximumSizeBytes ??
+        effectiveBudget.imageCacheMb * AiroRuntimeMemoryBudgetPolicy.bytesPerMb;
   }
 }

@@ -31,4 +31,7 @@ near display size instead of native size.
 Android TV and Fire TV entrypoints should call
 `AiroImageCacheBudget.configureAndroidTv()` after
 `WidgetsFlutterBinding.ensureInitialized()` to keep Flutter's in-memory
-`ImageCache` bounded on constrained devices.
+`ImageCache` bounded on constrained devices. The default uses the constrained
+Android TV memory budget from `platform_device_profile`; callers with a runtime
+device profile can pass the selected `AiroRuntimeMemoryBudget` to apply a
+device-class-specific image cache ceiling.
