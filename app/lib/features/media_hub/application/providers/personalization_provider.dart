@@ -1,6 +1,7 @@
+import 'package:core_data/core_data.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import "package:feature_iptv/feature_iptv.dart" show sharedPreferencesProvider;
+import 'package:feature_iptv/feature_iptv.dart' show sharedPreferencesProvider;
 import '../../domain/models/personalization_state.dart';
 import '../../domain/models/unified_media_content.dart';
 
@@ -11,11 +12,15 @@ final personalizationProvider =
       PersonalizationNotifier.new,
     );
 
+final mediaHubPersonalizationStoreProvider = Provider<KeyValueStore>((ref) {
+  return PreferencesStore(ref.watch(sharedPreferencesProvider));
+});
+
 class PersonalizationNotifier extends AsyncNotifier<PersonalizationState> {
   @override
   Future<PersonalizationState> build() async {
-    final prefs = ref.watch(sharedPreferencesProvider);
-    final raw = prefs.getString(mediaHubPersonalizationStorageKey);
+    final store = ref.watch(mediaHubPersonalizationStoreProvider);
+    final raw = await store.getString(mediaHubPersonalizationStorageKey);
     if (raw == null || raw.trim().isEmpty) {
       return const PersonalizationState();
     }
@@ -96,11 +101,11 @@ class PersonalizationNotifier extends AsyncNotifier<PersonalizationState> {
   }
 
   Future<void> _persist(PersonalizationState next) async {
-    state = AsyncData(next);
-    final prefs = ref.read(sharedPreferencesProvider);
-    await prefs.setString(
+    final store = ref.read(mediaHubPersonalizationStoreProvider);
+    await store.setString(
       mediaHubPersonalizationStorageKey,
       next.toStorageValue(),
     );
+    state = AsyncData(next);
   }
 }
