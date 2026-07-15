@@ -19,9 +19,11 @@ artifacts without creating public GitHub Releases or uploading to Google Play.
 
 The orchestrator currently validates the release contract, calls the existing
 Airo TV release workflow through `workflow_call`, optionally calls the
-mobile/tablet release workflow when a mobile profile is selected, downloads the
-selected profile artifacts, generates the top-level evidence bundle, optionally
-publishes a single aggregate GitHub Release, and writes the release summary.
+mobile/tablet release workflow when a mobile profile is selected, optionally
+calls the macOS release workflow when `macos_profile` is selected, downloads
+the selected profile artifacts, generates the top-level evidence bundle,
+optionally publishes a single aggregate GitHub Release, and writes the release
+summary.
 
 The TV leg reuses `.github/workflows/airo-tv-release.yml` so package checks,
 Leanback validation, release artifact naming, checksums, manifest generation,
@@ -43,6 +45,15 @@ Distribution after release artifacts are staged. Firebase release notes include
 the artifact name, package ID, version/build number, checksum, and source ref
 from the generated release manifest.
 
+When `macos_profile` is `tv`, the orchestrator calls
+`.github/workflows/airo-macos-release.yml` to build `Airo TV.app`, produce ZIP
+and DMG artifacts, generate `SHA256SUMS`, write a macOS release manifest, and
+generate Homebrew Cask metadata. `macos_require_notarization`
+controls whether the macOS leg may complete with unsigned/non-notarized
+validation artifacts or must fail unless Developer ID signing and notarization
+succeed. The macOS build passes `APP_VERSION=$BUILD_NAME` so the in-app update
+check can compare the installed version against GitHub Release assets.
+
 ## Release Evidence
 
 Successful orchestrator runs upload:
@@ -50,6 +61,8 @@ Successful orchestrator runs upload:
 - `airo-tv-release-<version>` from the TV workflow;
 - `airo-mobile-tablet-<profile>-<version>` from the mobile/tablet workflow when
   `mobile_profile` is not `none`;
+- `airo-macos-<profile>-<version>` from the macOS workflow when
+  `macos_profile` is not `none`;
 - `v2-release-evidence-<version>` from the orchestrator.
 
 The top-level evidence bundle includes selected profile artifacts,
@@ -62,6 +75,8 @@ orchestrator prepares a flat GitHub Release asset directory that contains:
 
 - every required APK and Play Store AAB for TV and the selected mobile/tablet
   profile;
+- every required macOS ZIP/DMG artifact and generated Homebrew Cask file for
+  the selected macOS profile;
 - a combined `SHA256SUMS` generated after final asset naming;
 - a combined `Airo-<version>-Release-Manifest.json`;
 - generated release notes derived from the selected artifact set.
@@ -85,6 +100,10 @@ Public/store publishing requires:
   package ID, track mode, and Play Console URL before upload tools run;
 - `firebase_distribution` set to `upload` for Firebase App Distribution,
   alongside the required Firebase app IDs and tester groups.
+- `macos_profile` set to `tv` for macOS artifacts;
+- `macos_require_notarization` set to `true` for public direct-download macOS
+  releases, alongside the Developer ID and notarytool secrets documented in
+  `docs/release/MACOS_AIRO_TV_RELEASE.md`.
 
 When `dry_run` is `true`, the orchestrator forces GitHub Release publication
 off and sets the TV and mobile/tablet Play tracks plus Firebase distribution to
@@ -104,3 +123,7 @@ off and sets the TV and mobile/tablet Play tracks plus Firebase distribution to
 - Mobile/tablet and TV Firebase apps, tester groups, and
   `FIREBASE_SERVICE_ACCOUNT_JSON` for #682. Package IDs are registered under
   `io.airo.app.*`.
+- Apple Developer ID certificate/notarytool credentials for public macOS
+  direct downloads.
+- Whether to submit the generated `airo-tv.rb` to Homebrew immediately
+  or attach it as release evidence first.

@@ -1,0 +1,380 @@
+name: Airo TV macOS Release
+
+on:
+  workflow_call:
+    outputs:
+      signing_status:
+        description: 'macOS signing status'
+        value: ${{ jobs.build-macos.outputs.signing_status }}
+      notarization_status:
+        description: 'macOS notarization status'
+        value: ${{ jobs.build-macos.outputs.notarization_status }}
+    inputs:
+      profile:
+        description: 'macOS v2 profile to build'
+        required: true
+        type: string
+      version:
+        description: 'Artifact and release version label'
+        required: true
+        type: string
+      build_name:
+        description: 'Flutter build name, for example 2.0.0'
+        required: true
+        type: string
+      build_number:
+        description: 'Flutter build number'
+        required: true
+        type: string
+      release_ref:
+        description: 'Git ref to release; must contain latest origin/v2'
+        required: true
+        type: string
+      release_branch:
+        description: 'Release branch to create/update from release_ref before building'
+        required: false
+        type: string
+      require_notarization:
+        description: 'Fail unless Developer ID signing and notarization succeed'
+        required: true
+        type: boolean
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: 'macOS v2 profile to build'
+        required: true
+        default: tv
+        type: choice
+        options:
+          - tv
+      version:
+        description: 'Artifact and release version label'
+        required: true
+        default: airo-tv-v0.0.2
+      build_name:
+        description: 'Flutter build name, for example 0.0.2'
+        required: true
+        default: 0.0.2
+      build_number:
+        description: 'Flutter build number'
+        required: true
+        default: '2'
+      release_ref:
+        description: 'Git ref to release; must contain latest origin/v2'
+        required: true
+        default: v2
+      release_branch:
+        description: 'Release branch to create/update from release_ref before building'
+        required: true
+        default: release/airo-tv-v0.0.2
+      require_notarization:
+        description: 'Fail unless Developer ID signing and notarization succeed'
+        required: true
+        default: false
+        type: boolean
+
+concurrency:
+  group: airo-macos-release-${{ github.ref }}-${{ inputs.profile || github.event.inputs.profile || 'manual' }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+env:
+  FLUTTER_VERSION: '3.44.4'
+  RELEASE_VERSION: ${{ inputs.version || github.event.inputs.version || github.ref_name || 'airo-tv-v0.0.2' }}
+  BUILD_NAME: ${{ inputs.build_name || github.event.inputs.build_name || '0.0.2' }}
+  BUILD_NUMBER: ${{ inputs.build_number || github.event.inputs.build_number || '2' }}
+  PROFILE: ${{ inputs.profile || github.event.inputs.profile || 'tv' }}
+
+jobs:
+  prepare-release-ref:
+    name: Cut or validate macOS release ref
+    runs-on: ubuntu-latest
+    outputs:
+      release_ref: ${{ steps.release_ref.outputs.ref }}
+      release_sha: ${{ steps.release_ref.outputs.sha }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.release_ref || github.event.inputs.release_ref || github.ref }}
+
+      - name: Resolve and validate v2 ref
+        id: release_ref
+        env:
+          RELEASE_REF: ${{ inputs.release_ref || github.event.inputs.release_ref || github.ref }}
+          RELEASE_BRANCH: ${{ inputs.release_branch || github.event.inputs.release_branch }}
+        run: |
+          git fetch origin main v2 --tags
+
+          if git rev-parse --verify "origin/$RELEASE_REF^{commit}" >/dev/null 2>&1; then
+            release_commit="$(git rev-parse "origin/$RELEASE_REF^{commit}")"
+          elif git rev-parse --verify "$RELEASE_REF^{commit}" >/dev/null 2>&1; then
+            release_commit="$(git rev-parse "$RELEASE_REF^{commit}")"
+          else
+            echo "::error::Cannot resolve release_ref: $RELEASE_REF"
+            exit 1
+          fi
+
+          if ! git merge-base --is-ancestor origin/v2 "$release_commit"; then
+            echo "::error::Release ref $RELEASE_REF does not contain latest origin/v2."
+            exit 1
+          fi
+
+          if [[ -n "$RELEASE_BRANCH" ]]; then
+            git checkout -B "$RELEASE_BRANCH" "$release_commit"
+            if ! git push origin "$RELEASE_BRANCH" --force-with-lease; then
+              remote_sha="$(git ls-remote origin "refs/heads/$RELEASE_BRANCH" | awk '{print $1}')"
+              if [[ "$remote_sha" != "$release_commit" ]]; then
+                echo "::error::Could not update release branch $RELEASE_BRANCH to $release_commit."
+                exit 1
+              fi
+              echo "Release branch $RELEASE_BRANCH already points at $release_commit."
+            fi
+            echo "ref=$RELEASE_BRANCH" >> "$GITHUB_OUTPUT"
+            echo "sha=$release_commit" >> "$GITHUB_OUTPUT"
+          else
+            echo "ref=$RELEASE_REF" >> "$GITHUB_OUTPUT"
+            echo "sha=$release_commit" >> "$GITHUB_OUTPUT"
+          fi
+
+  build-macos:
+    name: Build Airo TV macOS zip and DMG
+    runs-on: macos-latest
+    timeout-minutes: 60
+    needs: [prepare-release-ref]
+    outputs:
+      signing_status: ${{ steps.package.outputs.signing_status }}
+      notarization_status: ${{ steps.package.outputs.notarization_status }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.prepare-release-ref.outputs.release_sha }}
+
+      - name: Resolve macOS profile metadata
+        run: |
+          release_version="$(printf '%s' "$RELEASE_VERSION" | sed 's/[^A-Za-z0-9._-]/-/g')"
+          echo "RELEASE_VERSION=$release_version" >> "$GITHUB_ENV"
+
+          case "$PROFILE" in
+            tv)
+              echo "TARGET_ENTRYPOINT=lib/main_tv.dart" >> "$GITHUB_ENV"
+              echo "PROFILE_PUBSPEC=pubspec_tv.yaml" >> "$GITHUB_ENV"
+              echo "APP_VARIANT=tv" >> "$GITHUB_ENV"
+              echo "APP_PLATFORM=androidTv" >> "$GITHUB_ENV"
+              echo "BUNDLE_ID=com.developerscoffee.airo.tv" >> "$GITHUB_ENV"
+              echo "APP_NAME=Airo TV" >> "$GITHUB_ENV"
+              echo "ARTIFACT_PREFIX=Airo-TV" >> "$GITHUB_ENV"
+              ;;
+            *)
+              echo "::error::Unsupported macOS profile: $PROFILE"
+              exit 1
+              ;;
+          esac
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: 'stable'
+          cache: true
+
+      - name: Cache pub dependencies
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.pub-cache
+            app/.dart_tool
+            packages/*/.dart_tool
+          key: macos-pub-${{ runner.os }}-${{ env.PROFILE }}-${{ hashFiles('**/pubspec.lock', 'app/pubspec_tv.yaml') }}
+          restore-keys: macos-pub-${{ runner.os }}-${{ env.PROFILE }}-
+
+      - name: Apply TV pubspec
+        run: |
+          cp app/pubspec.yaml app/pubspec.yaml.backup
+          cp "app/$PROFILE_PUBSPEC" app/pubspec.yaml
+
+      - name: Get dependencies
+        run: |
+          (cd packages/core_domain && flutter pub get) &
+          (cd packages/core_ui && flutter pub get) &
+          (cd packages/core_data && flutter pub get) &
+          (cd packages/core_ai && flutter pub get) &
+          (cd packages/core_auth && flutter pub get) &
+          wait
+          cd app && flutter pub get
+
+      - name: Run macOS release quality gates
+        run: |
+          ruby -e 'require "yaml"; ARGV.each { |f| YAML.load_file(f); puts "workflow-yaml-ok #{f}" }' \
+            .github/workflows/v2-release-orchestrator.yml \
+            .github/workflows/airo-tv-release.yml \
+            .github/workflows/airo-mobile-tablet-release.yml \
+            .github/workflows/airo-macos-release.yml
+          python3 -m py_compile scripts/generate-release-manifest.py scripts/generate-release-qualification-report.py
+          scripts/check-build-profiles.py
+          scripts/test-generate-release-manifest.sh
+          scripts/test-generate-release-qualification-report.sh
+          cd packages/core_release && flutter test
+          cd ../../app
+          flutter analyze "$TARGET_ENTRYPOINT" --no-fatal-infos --no-fatal-warnings
+          cd ..
+          git diff --check
+
+      - name: Build macOS app
+        run: |
+          cd app
+          flutter build macos --release \
+            --target="$TARGET_ENTRYPOINT" \
+            --dart-define=APP_VARIANT="$APP_VARIANT" \
+            --dart-define=APP_PLATFORM="$APP_PLATFORM" \
+            --dart-define=APP_VERSION="$BUILD_NAME" \
+            --build-name="$BUILD_NAME" \
+            --build-number="$BUILD_NUMBER" \
+            --tree-shake-icons
+
+      - name: Package, sign, and notarize macOS artifacts
+        id: package
+        env:
+          APPLE_CERTIFICATE_BASE64: ${{ secrets.APPLE_CERTIFICATE_BASE64 }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_KEYCHAIN_PASSWORD: ${{ secrets.APPLE_KEYCHAIN_PASSWORD }}
+          MACOS_CODESIGN_IDENTITY: ${{ secrets.MACOS_CODESIGN_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          REQUIRE_NOTARIZATION: ${{ inputs.require_notarization || github.event.inputs.require_notarization || 'false' }}
+        run: |
+          set -euo pipefail
+
+          app_path="app/build/macos/Build/Products/Release/${APP_NAME}.app"
+          if [[ ! -d "$app_path" ]]; then
+            echo "::error::Expected macOS app not found: $app_path"
+            exit 1
+          fi
+
+          signing_status="unsigned"
+          notarization_status="not_notarized"
+          missing_signing=0
+          for name in APPLE_CERTIFICATE_BASE64 APPLE_CERTIFICATE_PASSWORD APPLE_KEYCHAIN_PASSWORD MACOS_CODESIGN_IDENTITY; do
+            if [[ -z "${!name}" ]]; then
+              missing_signing=1
+            fi
+          done
+
+          if [[ "$missing_signing" -eq 0 ]]; then
+            security create-keychain -p "$APPLE_KEYCHAIN_PASSWORD" build.keychain
+            security default-keychain -s build.keychain
+            security unlock-keychain -p "$APPLE_KEYCHAIN_PASSWORD" build.keychain
+            security set-keychain-settings -lut 21600 build.keychain
+            echo "$APPLE_CERTIFICATE_BASE64" | base64 -D > certificate.p12
+            security import certificate.p12 -k build.keychain -P "$APPLE_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+            security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$APPLE_KEYCHAIN_PASSWORD" build.keychain
+
+            codesign --force --deep --options runtime --timestamp \
+              --sign "$MACOS_CODESIGN_IDENTITY" "$app_path"
+            codesign --verify --deep --strict --verbose=2 "$app_path"
+            signing_status="signed"
+          elif [[ "$REQUIRE_NOTARIZATION" == "true" ]]; then
+            echo "::error::Notarization was required but Developer ID signing secrets are missing."
+            exit 1
+          fi
+
+          mkdir -p release-artifacts
+          zip_name="${ARTIFACT_PREFIX}-${BUILD_NAME}-macOS.zip"
+          dmg_name="${ARTIFACT_PREFIX}-${BUILD_NAME}-macOS.dmg"
+          ditto -c -k --keepParent "$app_path" "release-artifacts/$zip_name"
+
+          missing_notary=0
+          for name in APPLE_ID APPLE_TEAM_ID APPLE_APP_SPECIFIC_PASSWORD; do
+            if [[ -z "${!name}" ]]; then
+              missing_notary=1
+            fi
+          done
+
+          if [[ "$signing_status" == "signed" && "$missing_notary" -eq 0 ]]; then
+            xcrun notarytool submit "release-artifacts/$zip_name" \
+              --apple-id "$APPLE_ID" \
+              --team-id "$APPLE_TEAM_ID" \
+              --password "$APPLE_APP_SPECIFIC_PASSWORD" \
+              --wait
+            xcrun stapler staple "$app_path"
+            spctl --assess --type execute --verbose "$app_path"
+            notarization_status="notarized"
+            rm "release-artifacts/$zip_name"
+            ditto -c -k --keepParent "$app_path" "release-artifacts/$zip_name"
+          elif [[ "$REQUIRE_NOTARIZATION" == "true" ]]; then
+            echo "::error::Notarization was required but notarytool credentials are missing."
+            exit 1
+          fi
+
+          hdiutil create \
+            -volname "$APP_NAME" \
+            -srcfolder "$app_path" \
+            -ov \
+            -format UDZO \
+            "release-artifacts/$dmg_name"
+
+          if [[ "$signing_status" == "signed" ]]; then
+            codesign --force --timestamp --sign "$MACOS_CODESIGN_IDENTITY" "release-artifacts/$dmg_name"
+            codesign --verify --verbose=2 "release-artifacts/$dmg_name"
+          fi
+
+          scripts/generate-release-manifest.py \
+            --artifacts-dir release-artifacts \
+            --profile-id "$PROFILE" \
+            --version "$BUILD_NAME" \
+            --build-number "$BUILD_NUMBER" \
+            --source-ref "${{ needs.prepare-release-ref.outputs.release_ref }}" \
+            --source-sha "${{ needs.prepare-release-ref.outputs.release_sha }}" \
+            --workflow-name "$GITHUB_WORKFLOW" \
+            --workflow-run "$GITHUB_RUN_ID" \
+            --workflow-run-attempt "$GITHUB_RUN_ATTEMPT" \
+            --repository "$GITHUB_REPOSITORY" \
+            --macos-signing-status "$signing_status" \
+            --macos-notarization-status "$notarization_status"
+
+          mv release-artifacts/Release-Manifest.json "release-artifacts/${ARTIFACT_PREFIX}-${BUILD_NAME}-macOS-Release-Manifest.json"
+
+          zip_sha="$(awk -v file="$zip_name" '$2 == file { print $1 }' release-artifacts/SHA256SUMS)"
+          if [[ -z "$zip_sha" ]]; then
+            echo "::error::Could not resolve SHA256 for $zip_name"
+            exit 1
+          fi
+          mkdir -p release-artifacts/homebrew
+          sed \
+            -e "s/{{VERSION}}/$BUILD_NAME/g" \
+            -e "s/{{SHA256}}/$zip_sha/g" \
+            -e "s/{{RELEASE_TAG}}/$RELEASE_VERSION/g" \
+            -e "s/{{BUNDLE_ID}}/$BUNDLE_ID/g" \
+            -e "s/{{APP_NAME}}/$APP_NAME/g" \
+            packaging/homebrew/Casks/airo-tv.rb.template \
+            > release-artifacts/homebrew/airo-tv.rb
+
+          ruby -c release-artifacts/homebrew/airo-tv.rb
+          grep -q "$zip_name" release-artifacts/SHA256SUMS
+          grep -q "$dmg_name" release-artifacts/SHA256SUMS
+          echo "signing_status=$signing_status" >> "$GITHUB_OUTPUT"
+          echo "notarization_status=$notarization_status" >> "$GITHUB_OUTPUT"
+
+          {
+            echo "# Airo macOS release artifacts"
+            echo ""
+            echo "| Field | Value |"
+            echo "| --- | --- |"
+            echo "| Profile | $PROFILE |"
+            echo "| Bundle ID | $BUNDLE_ID |"
+            echo "| Signing | $signing_status |"
+            echo "| Notarization | $notarization_status |"
+            echo "| Zip | $zip_name |"
+            echo "| DMG | $dmg_name |"
+            echo "| Homebrew Cask | homebrew/airo-tv.rb |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload macOS release artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: airo-macos-${{ env.PROFILE }}-${{ env.RELEASE_VERSION }}
+          path: release-artifacts/
+          retention-days: 30

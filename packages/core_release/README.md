@@ -9,16 +9,17 @@ instead of duplicating profile rules in CI scripts.
 
 ## Scope
 
-- V2 profile matrix for IPTV, Streaming, TV, iOS SPM validation, and web
-  validation profiles.
-- Stable APK, AAB, checksum, release-notes, and manifest filename helpers.
-- Android phone, tablet, Android TV, Google TV, Fire TV, iOS/iPadOS, web, and
-  legacy TV support status contracts.
+- V2 profile matrix for IPTV, Streaming, TV, macOS Airo TV distribution, iOS
+  SPM validation, and web validation profiles.
+- Stable APK, AAB, macOS zip/DMG, checksum, release-notes, and manifest
+  filename helpers.
+- Android phone, tablet, Android TV, Google TV, Fire TV, macOS, iOS/iPadOS,
+  web, and legacy TV support status contracts.
 - Tablet strategy contract that keeps the current release wave on adaptive
   mobile artifacts until maintainers approve a separate tablet flavor/listing.
 - Distribution-channel behavior for GitHub Releases, Firebase App
-  Distribution, Google Play, Amazon Appstore, F-Droid, direct APK, and local
-  validation.
+  Distribution, Google Play, Amazon Appstore, F-Droid, direct APK, direct macOS
+  download, Homebrew Cask, and local validation.
 - Google Play upload planning for no-upload, internal, alpha, beta, and
   production modes before workflows write credentials or run upload tools.
 - Validation findings for duplicate profile/package IDs and incomplete Android

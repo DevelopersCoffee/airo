@@ -1,0 +1,17 @@
+cask "airo-tv" do
+  version "{{VERSION}}"
+  sha256 "{{SHA256}}"
+
+  url "https://github.com/DevelopersCoffee/airo/releases/download/{{RELEASE_TAG}}/Airo-TV-#{version}-macOS.zip"
+  name "{{APP_NAME}}"
+  desc "Airo TV v2 IPTV player for macOS"
+  homepage "https://github.com/DevelopersCoffee/airo"
+
+  app "{{APP_NAME}}.app"
+
+  zap trash: [
+    "~/Library/Application Support/{{BUNDLE_ID}}",
+    "~/Library/Preferences/{{BUNDLE_ID}}.plist",
+    "~/Library/Saved Application State/{{BUNDLE_ID}}.savedState",
+  ]
+end
