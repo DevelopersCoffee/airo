@@ -115,3 +115,6 @@ iptv-data/output/reports/
 # Keep output directory structure with .gitkeep files
 !iptv-data/output/.gitkeep
 !iptv-data/output/current/.gitkeep
+
+# Rust build artifacts
+rust/target/
