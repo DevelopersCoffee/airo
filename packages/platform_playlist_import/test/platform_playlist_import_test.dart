@@ -20,6 +20,65 @@ https://example.com/news.m3u8
     expect(channels.single.streamUrl, 'https://example.com/news.m3u8');
   });
 
+  group('M3UParserService deduplication', () {
+    late M3UParserService parser;
+
+    setUp(() async {
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      parser = M3UParserService(dio: Dio(), prefs: prefs);
+    });
+
+    test('deduplicates normalized channel names and prefers logo entries', () {
+      final channels = parser.parseM3U('''
+#EXTM3U
+#EXTINF:-1 group-title="News",News One
+https://example.com/news-no-logo.m3u8
+#EXTINF:-1 tvg-logo="https://example.com/news.png" group-title="News", news-one
+https://example.com/news-logo.m3u8
+''');
+
+      expect(channels, hasLength(1));
+      expect(channels.single.name, 'News-one');
+      expect(channels.single.logoUrl, 'https://example.com/news.png');
+      expect(channels.single.streamUrl, 'https://example.com/news-logo.m3u8');
+    });
+
+    test('keeps logo-preferred dedup output stable when order changes', () {
+      final logoFirst = parser.parseM3U('''
+#EXTM3U
+#EXTINF:-1 tvg-logo="https://example.com/sports.png",SPORTS 24
+https://example.com/sports-logo.m3u8
+#EXTINF:-1,sports-24
+https://example.com/sports-no-logo.m3u8
+''');
+
+      final logoSecond = parser.parseM3U('''
+#EXTM3U
+#EXTINF:-1,sports-24
+https://example.com/sports-no-logo.m3u8
+#EXTINF:-1 tvg-logo="https://example.com/sports.png",SPORTS 24
+https://example.com/sports-logo.m3u8
+''');
+
+      expect(logoFirst, hasLength(1));
+      expect(logoSecond, hasLength(1));
+      expect(logoFirst.single.name, logoSecond.single.name);
+      expect(logoFirst.single.logoUrl, logoSecond.single.logoUrl);
+      expect(logoFirst.single.streamUrl, logoSecond.single.streamUrl);
+    });
+
+    test('collapses display whitespace without lowercasing short acronyms', () {
+      final channels = parser.parseM3U('''
+#EXTM3U
+#EXTINF:-1,  BBC    WORLD   news
+https://example.com/bbc-world-news.m3u8
+''');
+
+      expect(channels.single.name, 'BBC World News');
+    });
+  });
+
   group('M3UParserService BYOC source', () {
     late SharedPreferences prefs;
     late M3UParserService parser;
