@@ -3,6 +3,7 @@ import 'package:feature_iptv/presentation/widgets/tv_channel_grid.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:leak_tracker_flutter_testing/leak_tracker_flutter_testing.dart';
 import 'package:platform_channels/platform_channels.dart';
 import 'package:platform_player/platform_player.dart';
 
@@ -66,27 +67,31 @@ void main() {
     );
   }
 
-  testWidgets('wraps each visible channel tile in repaint boundaries', (
-    tester,
-  ) async {
-    tester.view.physicalSize = const Size(1280, 720);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
+  testWidgets(
+    'wraps each visible channel tile in repaint boundaries',
+    experimentalLeakTesting: LeakTesting.settings,
+    (tester) async {
+      tester.view.physicalSize = const Size(1280, 720);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
 
-    await tester.pumpWidget(buildGrid());
-    await tester.pumpAndSettle();
+      await tester.pumpWidget(buildGrid());
+      await tester.pumpAndSettle();
 
-    for (final channel in channels) {
-      expect(find.text(channel.name), findsOneWidget);
-      expect(
-        find.byKey(ValueKey('tv_channel_card_boundary_${channel.id}')),
-        findsOneWidget,
-      );
-      expect(
-        find.byKey(ValueKey('tv_channel_card_content_boundary_${channel.id}')),
-        findsOneWidget,
-      );
-    }
-  });
+      for (final channel in channels) {
+        expect(find.text(channel.name), findsOneWidget);
+        expect(
+          find.byKey(ValueKey('tv_channel_card_boundary_${channel.id}')),
+          findsOneWidget,
+        );
+        expect(
+          find.byKey(
+            ValueKey('tv_channel_card_content_boundary_${channel.id}'),
+          ),
+          findsOneWidget,
+        );
+      }
+    },
+  );
 }

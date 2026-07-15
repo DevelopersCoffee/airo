@@ -24,7 +24,7 @@ enum TvInputResult { handled, notHandled }
 
 typedef TvInputCallback = TvInputResult Function(TvInputKey key);
 
-class TvInputHandler extends StatelessWidget {
+class TvInputHandler extends StatefulWidget {
   final Widget child;
   final TvInputCallback? onInput;
   final bool enabled;
@@ -37,20 +37,7 @@ class TvInputHandler extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    if (!enabled) return child;
-    return KeyboardListener(
-      focusNode: FocusNode()..skipTraversal = true,
-      onKeyEvent: _handleKeyEvent,
-      child: child,
-    );
-  }
-
-  void _handleKeyEvent(KeyEvent event) {
-    if (event is! KeyDownEvent) return;
-    final key = mapLogicalKeyToTvInput(event.logicalKey);
-    if (key != null) onInput?.call(key);
-  }
+  State<TvInputHandler> createState() => _TvInputHandlerState();
 
   static TvInputKey? mapLogicalKeyToTvInput(LogicalKeyboardKey key) {
     if (key == LogicalKeyboardKey.arrowUp) return TvInputKey.up;
@@ -95,6 +82,38 @@ class TvInputHandler extends StatelessWidget {
       return TvInputKey.home;
     }
     return null;
+  }
+}
+
+class _TvInputHandlerState extends State<TvInputHandler> {
+  late final FocusNode _focusNode;
+
+  @override
+  void initState() {
+    super.initState();
+    _focusNode = FocusNode()..skipTraversal = true;
+  }
+
+  @override
+  void dispose() {
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!widget.enabled) return widget.child;
+    return KeyboardListener(
+      focusNode: _focusNode,
+      onKeyEvent: _handleKeyEvent,
+      child: widget.child,
+    );
+  }
+
+  void _handleKeyEvent(KeyEvent event) {
+    if (event is! KeyDownEvent) return;
+    final key = TvInputHandler.mapLogicalKeyToTvInput(event.logicalKey);
+    if (key != null) widget.onInput?.call(key);
   }
 }
 
@@ -212,6 +231,7 @@ class _TvFocusableState extends State<TvFocusable>
     with SingleTickerProviderStateMixin {
   late final FocusNode _focusNode;
   late final AnimationController _animationController;
+  late final CurvedAnimation _focusCurve;
   late final Animation<double> _scaleAnimation;
   bool _isFocused = false;
 
@@ -223,13 +243,14 @@ class _TvFocusableState extends State<TvFocusable>
       duration: TvFocusConstants.focusAnimationDuration,
       vsync: this,
     );
-    _scaleAnimation =
-        Tween<double>(begin: 1, end: TvFocusConstants.focusScaleFactor).animate(
-          CurvedAnimation(
-            parent: _animationController,
-            curve: Curves.easeOutCubic,
-          ),
-        );
+    _focusCurve = CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.easeOutCubic,
+    );
+    _scaleAnimation = Tween<double>(
+      begin: 1,
+      end: TvFocusConstants.focusScaleFactor,
+    ).animate(_focusCurve);
   }
 
   @override
@@ -237,6 +258,7 @@ class _TvFocusableState extends State<TvFocusable>
     _focusNode
       ..removeListener(_onFocusChange)
       ..dispose();
+    _focusCurve.dispose();
     _animationController.dispose();
     super.dispose();
   }

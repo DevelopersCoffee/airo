@@ -20,6 +20,7 @@ class VoiceSearchOverlay extends ConsumerStatefulWidget {
 class _VoiceSearchOverlayState extends ConsumerState<VoiceSearchOverlay>
     with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
+  late CurvedAnimation _pulseCurve;
   late Animation<double> _pulseAnimation;
   String? _recognizedText;
   bool _isListening = false;
@@ -32,9 +33,11 @@ class _VoiceSearchOverlayState extends ConsumerState<VoiceSearchOverlay>
       duration: const Duration(milliseconds: 1500),
     )..repeat(reverse: true);
 
-    _pulseAnimation = Tween<double>(begin: 1.0, end: 1.3).animate(
-      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
+    _pulseCurve = CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.easeInOut,
     );
+    _pulseAnimation = Tween<double>(begin: 1.0, end: 1.3).animate(_pulseCurve);
 
     // Start listening when overlay appears
     _startListening();
@@ -42,6 +45,7 @@ class _VoiceSearchOverlayState extends ConsumerState<VoiceSearchOverlay>
 
   @override
   void dispose() {
+    _pulseCurve.dispose();
     _animationController.dispose();
     super.dispose();
   }

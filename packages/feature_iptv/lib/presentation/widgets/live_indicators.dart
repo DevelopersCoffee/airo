@@ -81,6 +81,7 @@ class _LiveDot extends StatefulWidget {
 class _LiveDotState extends State<_LiveDot>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
+  late CurvedAnimation _curve;
   late Animation<double> _animation;
 
   @override
@@ -90,10 +91,8 @@ class _LiveDotState extends State<_LiveDot>
       duration: const Duration(milliseconds: 1000),
       vsync: this,
     );
-    _animation = Tween<double>(
-      begin: 0.6,
-      end: 1.0,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+    _curve = CurvedAnimation(parent: _controller, curve: Curves.easeInOut);
+    _animation = Tween<double>(begin: 0.6, end: 1.0).animate(_curve);
     if (widget.isActive) {
       _controller.repeat(reverse: true);
     }
@@ -112,6 +111,7 @@ class _LiveDotState extends State<_LiveDot>
 
   @override
   void dispose() {
+    _curve.dispose();
     _controller.dispose();
     super.dispose();
   }
