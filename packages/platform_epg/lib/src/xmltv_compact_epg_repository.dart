@@ -15,6 +15,8 @@ class XmltvCompactEpgIngestStats extends Equatable {
     required this.nativeBackend,
     required this.retainedProgrammeCount,
     required this.invalidTimestampCount,
+    required this.nativeMatchedProgrammeCount,
+    required this.nativeRequestedChannelCount,
   });
 
   final int nativeProgrammeCount;
@@ -23,6 +25,8 @@ class XmltvCompactEpgIngestStats extends Equatable {
   final String nativeBackend;
   final int retainedProgrammeCount;
   final int invalidTimestampCount;
+  final int nativeMatchedProgrammeCount;
+  final int nativeRequestedChannelCount;
 
   @override
   List<Object?> get props => [
@@ -32,6 +36,8 @@ class XmltvCompactEpgIngestStats extends Equatable {
     nativeBackend,
     retainedProgrammeCount,
     invalidTimestampCount,
+    nativeMatchedProgrammeCount,
+    nativeRequestedChannelCount,
   ];
 }
 
@@ -129,6 +135,35 @@ class XmltvCompactEpgRepository implements CompactEpgRepository {
     );
   }
 
+  static Future<XmltvCompactEpgRepository> fromXmltvCurrentNextFileNative({
+    required String path,
+    required DateTime ingestedAt,
+    required Iterable<String> channelIds,
+    required DateTime now,
+    Duration maxAge = kXmltvCompactEpgDefaultMaxAge,
+    Duration defaultProgrammeDuration =
+        kXmltvCompactEpgDefaultProgrammeDuration,
+    CompactEpgSourceRef? sourceRef,
+    Map<String, String> channelNamesById = const {},
+    Map<String, String> channelNumbersById = const {},
+  }) async {
+    final nativeResult = await parseXmltvCurrentNextFileNative(
+      path,
+      channelIds: channelIds,
+      now: now,
+      defaultProgrammeDuration: defaultProgrammeDuration,
+    );
+    return XmltvCompactEpgRepository._fromNativeCurrentNextResult(
+      nativeResult: nativeResult,
+      ingestedAt: ingestedAt,
+      maxAge: maxAge,
+      defaultProgrammeDuration: defaultProgrammeDuration,
+      sourceRef: sourceRef,
+      channelNamesById: channelNamesById,
+      channelNumbersById: channelNumbersById,
+    );
+  }
+
   factory XmltvCompactEpgRepository._fromNativeResult({
     required NativeXmltvParseResult nativeResult,
     required DateTime ingestedAt,
@@ -194,6 +229,67 @@ class XmltvCompactEpgRepository implements CompactEpgRepository {
         nativeBackend: nativeResult.backend.stableId,
         retainedProgrammeCount: retainedProgrammeCount,
         invalidTimestampCount: invalidTimestampCount,
+        nativeMatchedProgrammeCount: nativeResult.programmes.length,
+        nativeRequestedChannelCount: 0,
+      ),
+      sourceRef: sourceRef,
+      channelNamesById: channelNamesById,
+      channelNumbersById: channelNumbersById,
+    );
+  }
+
+  factory XmltvCompactEpgRepository._fromNativeCurrentNextResult({
+    required NativeXmltvCurrentNextResult nativeResult,
+    required DateTime ingestedAt,
+    required Duration maxAge,
+    required Duration defaultProgrammeDuration,
+    required CompactEpgSourceRef? sourceRef,
+    required Map<String, String> channelNamesById,
+    required Map<String, String> channelNumbersById,
+  }) {
+    final programsByChannel = <String, List<CompactEpgProgram>>{};
+    var retainedProgrammeCount = 0;
+    var invalidTimestampCount = nativeResult.stats.invalidTimestampCount;
+    var programmeIndex = 0;
+
+    for (final entry in nativeResult.entries) {
+      final programs = <CompactEpgProgram>[];
+      for (final nativeProgramme in [entry.current, entry.next]) {
+        if (nativeProgramme == null) {
+          continue;
+        }
+        final program = _compactProgramFromNative(
+          nativeProgramme,
+          defaultProgrammeDuration: defaultProgrammeDuration,
+          index: programmeIndex,
+        );
+        programmeIndex++;
+        if (program == null) {
+          invalidTimestampCount++;
+          continue;
+        }
+        programs.add(program);
+        retainedProgrammeCount++;
+      }
+      if (programs.isNotEmpty) {
+        programs.sort((a, b) => a.startsAt.compareTo(b.startsAt));
+        programsByChannel[entry.channelId] = programs;
+      }
+    }
+
+    return XmltvCompactEpgRepository._(
+      programsByChannel: programsByChannel,
+      ingestedAt: ingestedAt.toUtc(),
+      expiresAt: ingestedAt.toUtc().add(maxAge),
+      stats: XmltvCompactEpgIngestStats(
+        nativeProgrammeCount: nativeResult.stats.programmeCount,
+        nativeSkippedProgrammeCount: nativeResult.stats.skippedProgrammeCount,
+        nativeTruncated: false,
+        nativeBackend: nativeResult.backend.stableId,
+        retainedProgrammeCount: retainedProgrammeCount,
+        invalidTimestampCount: invalidTimestampCount,
+        nativeMatchedProgrammeCount: nativeResult.stats.matchedProgrammeCount,
+        nativeRequestedChannelCount: nativeResult.stats.requestedChannelCount,
       ),
       sourceRef: sourceRef,
       channelNamesById: channelNamesById,
@@ -316,4 +412,34 @@ String _programId(
     endsAt.toUtc().toIso8601String(),
     index.toString(),
   ].join('|');
+}
+
+CompactEpgProgram? _compactProgramFromNative(
+  NativeXmltvProgramme programme, {
+  required Duration defaultProgrammeDuration,
+  required int index,
+}) {
+  final startsAt = parseXmltvTimestamp(programme.start);
+  if (startsAt == null) {
+    return null;
+  }
+
+  final parsedEndsAt = programme.stop == null
+      ? null
+      : parseXmltvTimestamp(programme.stop!);
+  if (programme.stop != null && parsedEndsAt == null) {
+    return null;
+  }
+
+  final endsAt = parsedEndsAt ?? startsAt.add(defaultProgrammeDuration);
+  if (!endsAt.isAfter(startsAt)) {
+    return null;
+  }
+
+  return CompactEpgProgram(
+    programId: _programId(programme, startsAt, endsAt, index),
+    title: _programTitle(programme),
+    startsAt: startsAt,
+    endsAt: endsAt,
+  );
 }

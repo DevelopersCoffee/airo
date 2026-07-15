@@ -7,11 +7,11 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
 import '../frb_generated.dart';
 
-// These functions are ignored because they are not marked as `pub`: `append_title`, `attribute_value`, `finish_programme`, `pending_programme`, `resolve_general_ref`
-// These functions are ignored because they have generic arguments: `parse_xmltv_programmes_reader`
-// These types are ignored because they are neither used by any `pub` functions nor (for structs and enums) marked `#[frb(unignore)]`: `PendingProgramme`
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `clone`, `clone`, `clone`, `clone`, `eq`, `eq`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`
-// These functions are ignored (category: IgnoreBecauseOwnerTyShouldIgnore): `default`
+// These functions are ignored because they are not marked as `pub`: `append_title`, `attribute_value`, `days_from_civil`, `finish_current_next_programme`, `finish_programme`, `is_leap_year`, `parse_xmltv_timestamp_epoch_seconds`, `pending_programme`, `resolve_general_ref`, `valid_datetime`
+// These functions are ignored because they have generic arguments: `parse_xmltv_current_next_reader`, `parse_xmltv_programmes_reader`
+// These types are ignored because they are neither used by any `pub` functions nor (for structs and enums) marked `#[frb(unignore)]`: `CurrentNextCandidate`, `PendingProgramme`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`
+// These functions are ignored (category: IgnoreBecauseOwnerTyShouldIgnore): `default`, `default`
 
 Future<XmltvParseResult> parseXmltvProgrammes({
   required String content,
@@ -28,6 +28,98 @@ Future<XmltvParseResult> parseXmltvProgrammesFile({
   path: path,
   maxProgrammes: maxProgrammes,
 );
+
+Future<XmltvCurrentNextResult> parseXmltvCurrentNextFile({
+  required String path,
+  required List<String> channelIds,
+  required PlatformInt64 nowEpochSeconds,
+  required int defaultDurationSeconds,
+}) => RustLib.instance.api.crateApiXmltvParseXmltvCurrentNextFile(
+  path: path,
+  channelIds: channelIds,
+  nowEpochSeconds: nowEpochSeconds,
+  defaultDurationSeconds: defaultDurationSeconds,
+);
+
+class XmltvCurrentNextEntry {
+  const XmltvCurrentNextEntry({
+    required this.channelId,
+    this.current,
+    this.next,
+  });
+  final String channelId;
+  final XmltvProgramme? current;
+  final XmltvProgramme? next;
+
+  @override
+  int get hashCode => channelId.hashCode ^ current.hashCode ^ next.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is XmltvCurrentNextEntry &&
+          runtimeType == other.runtimeType &&
+          channelId == other.channelId &&
+          current == other.current &&
+          next == other.next;
+}
+
+class XmltvCurrentNextResult {
+  const XmltvCurrentNextResult({required this.entries, required this.stats});
+  final List<XmltvCurrentNextEntry> entries;
+  final XmltvCurrentNextStats stats;
+
+  static Future<XmltvCurrentNextResult> default_() =>
+      RustLib.instance.api.crateApiXmltvXmltvCurrentNextResultDefault();
+
+  @override
+  int get hashCode => entries.hashCode ^ stats.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is XmltvCurrentNextResult &&
+          runtimeType == other.runtimeType &&
+          entries == other.entries &&
+          stats == other.stats;
+}
+
+class XmltvCurrentNextStats {
+  const XmltvCurrentNextStats({
+    required this.programmeCount,
+    required this.skippedProgrammeCount,
+    required this.invalidTimestampCount,
+    required this.matchedProgrammeCount,
+    required this.requestedChannelCount,
+  });
+  final int programmeCount;
+  final int skippedProgrammeCount;
+  final int invalidTimestampCount;
+  final int matchedProgrammeCount;
+  final int requestedChannelCount;
+
+  static Future<XmltvCurrentNextStats> default_() =>
+      RustLib.instance.api.crateApiXmltvXmltvCurrentNextStatsDefault();
+
+  @override
+  int get hashCode =>
+      programmeCount.hashCode ^
+      skippedProgrammeCount.hashCode ^
+      invalidTimestampCount.hashCode ^
+      matchedProgrammeCount.hashCode ^
+      requestedChannelCount.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is XmltvCurrentNextStats &&
+          runtimeType == other.runtimeType &&
+          programmeCount == other.programmeCount &&
+          skippedProgrammeCount == other.skippedProgrammeCount &&
+          invalidTimestampCount == other.invalidTimestampCount &&
+          matchedProgrammeCount == other.matchedProgrammeCount &&
+          requestedChannelCount == other.requestedChannelCount;
+}
 
 class XmltvParseResult {
   const XmltvParseResult({required this.programmes, required this.stats});

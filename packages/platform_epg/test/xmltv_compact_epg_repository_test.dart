@@ -225,6 +225,58 @@ void main() {
     );
 
     test(
+      'loads requested current next programs from native-preferred XMLTV file',
+      () async {
+        final directory = await Directory.systemTemp.createTemp(
+          'platform-epg-xmltv-current-next-file-test-',
+        );
+        addTearDown(() async {
+          if (await directory.exists()) {
+            await directory.delete(recursive: true);
+          }
+        });
+        final file = File('${directory.path}/guide.xml');
+        await file.writeAsString('''
+<tv>
+  <programme channel="requested.news" start="20260715090000 +0000" stop="20260715100000 +0000">
+    <title>Requested Morning News</title>
+  </programme>
+  <programme channel="requested.news" start="20260715100000 +0000" stop="20260715103000 +0000">
+    <title>Requested Market Watch</title>
+  </programme>
+  <programme channel="ignored.news" start="20260715090000 +0000" stop="20260715100000 +0000">
+    <title>Ignored Morning News</title>
+  </programme>
+</tv>
+''');
+
+        final repository =
+            await XmltvCompactEpgRepository.fromXmltvCurrentNextFileNative(
+              path: file.path,
+              ingestedAt: ingestedAt,
+              channelIds: const ['requested.news'],
+              now: DateTime.utc(2026, 7, 15, 9, 30),
+              channelNamesById: const {'requested.news': 'Requested News'},
+            );
+
+        final slice = await repository.loadCurrentNext(
+          channelIds: const ['requested.news', 'ignored.news'],
+          now: DateTime.utc(2026, 7, 15, 9, 30),
+        );
+
+        final entry = slice.entryForChannel('requested.news')!;
+        expect(entry.channelName, 'Requested News');
+        expect(entry.current?.title, 'Requested Morning News');
+        expect(entry.next?.title, 'Requested Market Watch');
+        expect(slice.entryForChannel('ignored.news'), isNull);
+        expect(repository.stats.nativeProgrammeCount, 3);
+        expect(repository.stats.retainedProgrammeCount, 2);
+        expect(repository.stats.nativeMatchedProgrammeCount, 2);
+        expect(repository.stats.nativeRequestedChannelCount, 1);
+      },
+    );
+
+    test(
       'parses valid XMLTV timestamps with offsets and rejects invalid values',
       () {
         expect(

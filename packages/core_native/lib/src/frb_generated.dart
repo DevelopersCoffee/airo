@@ -67,7 +67,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.11.1';
 
   @override
-  int get rustContentHash => -1781083130;
+  int get rustContentHash => 1663432646;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -82,6 +82,13 @@ abstract class RustLibApi extends BaseApi {
 
   Future<List<M3uEntry>> crateApiM3UParseM3UEntries({required String content});
 
+  Future<XmltvCurrentNextResult> crateApiXmltvParseXmltvCurrentNextFile({
+    required String path,
+    required List<String> channelIds,
+    required PlatformInt64 nowEpochSeconds,
+    required int defaultDurationSeconds,
+  });
+
   Future<XmltvParseResult> crateApiXmltvParseXmltvProgrammes({
     required String content,
     required int maxProgrammes,
@@ -91,6 +98,10 @@ abstract class RustLibApi extends BaseApi {
     required String path,
     required int maxProgrammes,
   });
+
+  Future<XmltvCurrentNextResult> crateApiXmltvXmltvCurrentNextResultDefault();
+
+  Future<XmltvCurrentNextStats> crateApiXmltvXmltvCurrentNextStatsDefault();
 
   Future<XmltvParseResult> crateApiXmltvXmltvParseResultDefault();
 
@@ -167,6 +178,50 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   );
 
   @override
+  Future<XmltvCurrentNextResult> crateApiXmltvParseXmltvCurrentNextFile({
+    required String path,
+    required List<String> channelIds,
+    required PlatformInt64 nowEpochSeconds,
+    required int defaultDurationSeconds,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(path, serializer);
+          sse_encode_list_String(channelIds, serializer);
+          sse_encode_i_64(nowEpochSeconds, serializer);
+          sse_encode_u_32(defaultDurationSeconds, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 3,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_xmltv_current_next_result,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiXmltvParseXmltvCurrentNextFileConstMeta,
+        argValues: [path, channelIds, nowEpochSeconds, defaultDurationSeconds],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiXmltvParseXmltvCurrentNextFileConstMeta =>
+      const TaskConstMeta(
+        debugName: 'parse_xmltv_current_next_file',
+        argNames: [
+          'path',
+          'channelIds',
+          'nowEpochSeconds',
+          'defaultDurationSeconds',
+        ],
+      );
+
+  @override
   Future<XmltvParseResult> crateApiXmltvParseXmltvProgrammes({
     required String content,
     required int maxProgrammes,
@@ -180,7 +235,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 3,
+            funcId: 4,
             port: port_,
           );
         },
@@ -215,7 +270,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 4,
+            funcId: 5,
             port: port_,
           );
         },
@@ -237,6 +292,66 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
+  Future<XmltvCurrentNextResult> crateApiXmltvXmltvCurrentNextResultDefault() {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 6,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_xmltv_current_next_result,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiXmltvXmltvCurrentNextResultDefaultConstMeta,
+        argValues: [],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiXmltvXmltvCurrentNextResultDefaultConstMeta =>
+      const TaskConstMeta(
+        debugName: 'xmltv_current_next_result_default',
+        argNames: [],
+      );
+
+  @override
+  Future<XmltvCurrentNextStats> crateApiXmltvXmltvCurrentNextStatsDefault() {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 7,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_xmltv_current_next_stats,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiXmltvXmltvCurrentNextStatsDefaultConstMeta,
+        argValues: [],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiXmltvXmltvCurrentNextStatsDefaultConstMeta =>
+      const TaskConstMeta(
+        debugName: 'xmltv_current_next_stats_default',
+        argNames: [],
+      );
+
+  @override
   Future<XmltvParseResult> crateApiXmltvXmltvParseResultDefault() {
     return handler.executeNormal(
       NormalTask(
@@ -245,7 +360,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 5,
+            funcId: 8,
             port: port_,
           );
         },
@@ -275,7 +390,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 6,
+            funcId: 9,
             port: port_,
           );
         },
@@ -306,6 +421,24 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  XmltvProgramme dco_decode_box_autoadd_xmltv_programme(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_xmltv_programme(raw);
+  }
+
+  @protected
+  PlatformInt64 dco_decode_i_64(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dcoDecodeI64(raw);
+  }
+
+  @protected
+  List<String> dco_decode_list_String(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_String).toList();
+  }
+
+  @protected
   List<M3uEntry> dco_decode_list_m_3_u_entry(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return (raw as List<dynamic>).map(dco_decode_m_3_u_entry).toList();
@@ -315,6 +448,16 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   Uint8List dco_decode_list_prim_u_8_strict(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw as Uint8List;
+  }
+
+  @protected
+  List<XmltvCurrentNextEntry> dco_decode_list_xmltv_current_next_entry(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>)
+        .map(dco_decode_xmltv_current_next_entry)
+        .toList();
   }
 
   @protected
@@ -347,6 +490,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  XmltvProgramme? dco_decode_opt_box_autoadd_xmltv_programme(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw == null ? null : dco_decode_box_autoadd_xmltv_programme(raw);
+  }
+
+  @protected
   int dco_decode_u_32(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw as int;
@@ -362,6 +511,46 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   void dco_decode_unit(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return;
+  }
+
+  @protected
+  XmltvCurrentNextEntry dco_decode_xmltv_current_next_entry(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 3)
+      throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
+    return XmltvCurrentNextEntry(
+      channelId: dco_decode_String(arr[0]),
+      current: dco_decode_opt_box_autoadd_xmltv_programme(arr[1]),
+      next: dco_decode_opt_box_autoadd_xmltv_programme(arr[2]),
+    );
+  }
+
+  @protected
+  XmltvCurrentNextResult dco_decode_xmltv_current_next_result(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 2)
+      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
+    return XmltvCurrentNextResult(
+      entries: dco_decode_list_xmltv_current_next_entry(arr[0]),
+      stats: dco_decode_xmltv_current_next_stats(arr[1]),
+    );
+  }
+
+  @protected
+  XmltvCurrentNextStats dco_decode_xmltv_current_next_stats(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 5)
+      throw Exception('unexpected arr length: expect 5 but see ${arr.length}');
+    return XmltvCurrentNextStats(
+      programmeCount: dco_decode_u_32(arr[0]),
+      skippedProgrammeCount: dco_decode_u_32(arr[1]),
+      invalidTimestampCount: dco_decode_u_32(arr[2]),
+      matchedProgrammeCount: dco_decode_u_32(arr[3]),
+      requestedChannelCount: dco_decode_u_32(arr[4]),
+    );
   }
 
   @protected
@@ -417,6 +606,32 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  XmltvProgramme sse_decode_box_autoadd_xmltv_programme(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return sse_decode_xmltv_programme(deserializer);
+  }
+
+  @protected
+  PlatformInt64 sse_decode_i_64(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return deserializer.buffer.getPlatformInt64();
+  }
+
+  @protected
+  List<String> sse_decode_list_String(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    final len_ = sse_decode_i_32(deserializer);
+    final ans_ = <String>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_String(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
   List<M3uEntry> sse_decode_list_m_3_u_entry(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
 
@@ -433,6 +648,20 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     final len_ = sse_decode_i_32(deserializer);
     return deserializer.buffer.getUint8List(len_);
+  }
+
+  @protected
+  List<XmltvCurrentNextEntry> sse_decode_list_xmltv_current_next_entry(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    final len_ = sse_decode_i_32(deserializer);
+    final ans_ = <XmltvCurrentNextEntry>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_xmltv_current_next_entry(deserializer));
+    }
+    return ans_;
   }
 
   @protected
@@ -482,6 +711,19 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  XmltvProgramme? sse_decode_opt_box_autoadd_xmltv_programme(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    if (sse_decode_bool(deserializer)) {
+      return sse_decode_box_autoadd_xmltv_programme(deserializer);
+    } else {
+      return null;
+    }
+  }
+
+  @protected
   int sse_decode_u_32(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return deserializer.buffer.getUint32();
@@ -496,6 +738,52 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   @protected
   void sse_decode_unit(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
+  }
+
+  @protected
+  XmltvCurrentNextEntry sse_decode_xmltv_current_next_entry(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    final var_channelId = sse_decode_String(deserializer);
+    final var_current = sse_decode_opt_box_autoadd_xmltv_programme(
+      deserializer,
+    );
+    final var_next = sse_decode_opt_box_autoadd_xmltv_programme(deserializer);
+    return XmltvCurrentNextEntry(
+      channelId: var_channelId,
+      current: var_current,
+      next: var_next,
+    );
+  }
+
+  @protected
+  XmltvCurrentNextResult sse_decode_xmltv_current_next_result(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    final var_entries = sse_decode_list_xmltv_current_next_entry(deserializer);
+    final var_stats = sse_decode_xmltv_current_next_stats(deserializer);
+    return XmltvCurrentNextResult(entries: var_entries, stats: var_stats);
+  }
+
+  @protected
+  XmltvCurrentNextStats sse_decode_xmltv_current_next_stats(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    final var_programmeCount = sse_decode_u_32(deserializer);
+    final var_skippedProgrammeCount = sse_decode_u_32(deserializer);
+    final var_invalidTimestampCount = sse_decode_u_32(deserializer);
+    final var_matchedProgrammeCount = sse_decode_u_32(deserializer);
+    final var_requestedChannelCount = sse_decode_u_32(deserializer);
+    return XmltvCurrentNextStats(
+      programmeCount: var_programmeCount,
+      skippedProgrammeCount: var_skippedProgrammeCount,
+      invalidTimestampCount: var_invalidTimestampCount,
+      matchedProgrammeCount: var_matchedProgrammeCount,
+      requestedChannelCount: var_requestedChannelCount,
+    );
   }
 
   @protected
@@ -553,6 +841,30 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_box_autoadd_xmltv_programme(
+    XmltvProgramme self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_xmltv_programme(self, serializer);
+  }
+
+  @protected
+  void sse_encode_i_64(PlatformInt64 self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    serializer.buffer.putPlatformInt64(self);
+  }
+
+  @protected
+  void sse_encode_list_String(List<String> self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_String(item, serializer);
+    }
+  }
+
+  @protected
   void sse_encode_list_m_3_u_entry(
     List<M3uEntry> self,
     SseSerializer serializer,
@@ -572,6 +884,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_i_32(self.length, serializer);
     serializer.buffer.putUint8List(self);
+  }
+
+  @protected
+  void sse_encode_list_xmltv_current_next_entry(
+    List<XmltvCurrentNextEntry> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_xmltv_current_next_entry(item, serializer);
+    }
   }
 
   @protected
@@ -609,6 +933,19 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_opt_box_autoadd_xmltv_programme(
+    XmltvProgramme? self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    sse_encode_bool(self != null, serializer);
+    if (self != null) {
+      sse_encode_box_autoadd_xmltv_programme(self, serializer);
+    }
+  }
+
+  @protected
   void sse_encode_u_32(int self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     serializer.buffer.putUint32(self);
@@ -623,6 +960,40 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   @protected
   void sse_encode_unit(void self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
+  }
+
+  @protected
+  void sse_encode_xmltv_current_next_entry(
+    XmltvCurrentNextEntry self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.channelId, serializer);
+    sse_encode_opt_box_autoadd_xmltv_programme(self.current, serializer);
+    sse_encode_opt_box_autoadd_xmltv_programme(self.next, serializer);
+  }
+
+  @protected
+  void sse_encode_xmltv_current_next_result(
+    XmltvCurrentNextResult self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_list_xmltv_current_next_entry(self.entries, serializer);
+    sse_encode_xmltv_current_next_stats(self.stats, serializer);
+  }
+
+  @protected
+  void sse_encode_xmltv_current_next_stats(
+    XmltvCurrentNextStats self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_u_32(self.programmeCount, serializer);
+    sse_encode_u_32(self.skippedProgrammeCount, serializer);
+    sse_encode_u_32(self.invalidTimestampCount, serializer);
+    sse_encode_u_32(self.matchedProgrammeCount, serializer);
+    sse_encode_u_32(self.requestedChannelCount, serializer);
   }
 
   @protected
