@@ -10,7 +10,7 @@ Implementation contract:
 - Schema: `kAiroMediaLocationSchemaVersion`
 - Location model: `AiroMediaLocation`
 - Access model: `AiroRouteAccessGrant`
-- Current release branch: `codex/next-v2.0.0.0`
+- Release-line base: `origin/v2`
 
 ## Location Kinds
 

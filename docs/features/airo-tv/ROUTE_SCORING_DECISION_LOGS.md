@@ -9,7 +9,7 @@ Implementation contract:
 - Schema: `kAiroMediaRouteScoringSchemaVersion`
 - Score policy: `AiroMediaRouteScoringPolicy`
 - Decision log: `AiroMediaRouteDecisionLog`
-- Current release branch: `codex/next-v2.0.0.0`
+- Release-line base: `origin/v2`
 
 ## Score Inputs
 
