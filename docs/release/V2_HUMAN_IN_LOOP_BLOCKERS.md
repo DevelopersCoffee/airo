@@ -39,6 +39,7 @@ exports, playlist URLs, local IP addresses, or private device logs.
 | #716 | iPad Air qualification | Run iPad Air UI/UX qualification and attach defect report or waiver. |
 | #459 / #453 | Cast V1 QA matrix and epic | Provide real-device Cast QA evidence so the Cast V1 epic can close. |
 | #257 | Coins receipt OCR hardening | Run Android emulator/device receipt integration against the image-only PDF fixture and itemized split tap-through UI smoke evidence. |
+| #519 | UI responsiveness validation | Run manual device matrix for orientation, split screen, foldables, tablets, dynamic font scaling, dark mode, accessibility, keyboard handling, and feature-specific offline/empty/error/loading states. |
 | #515 | Notification validation | Run notification validation on a supported physical/emulated target and attach evidence. |
 | #520 | Performance benchmarks | Run benchmark matrix and attach reproducible results. |
 
@@ -67,6 +68,6 @@ exports, playlist URLs, local IP addresses, or private device logs.
 3. Firebase App Distribution: complete #682 after Firebase app IDs and tester
    groups exist.
 4. Store forms: complete #583 and #584 while engineering continues.
-5. Device evidence: schedule #683, #589, #590, #716, #459/#453, #257, #515,
-   and #520 after signed or release-candidate artifacts are available.
+5. Device evidence: schedule #683, #589, #590, #716, #459/#453, #257, #519,
+   #515, and #520 after signed or release-candidate artifacts are available.
 6. Governance/legal: complete #687, #689, and #673 before broad public release.
