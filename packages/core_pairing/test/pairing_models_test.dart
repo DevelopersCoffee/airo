@@ -246,6 +246,185 @@ void main() {
         1,
       );
     });
+
+    test('restricted receiver allows valid playback ticket redemption', () {
+      final policy = AiroRestrictedReceiverTrustPolicy();
+      final now = issuedAt.add(const Duration(minutes: 1));
+      final ticket = AiroPlaybackTicket(
+        ticketId: 'playback-ticket-1',
+        receiverDeviceId: 'receiver-tv-1',
+        sessionId: 'session-1',
+        sourceHandle: AiroPlaybackSourceHandle.redacted('source-ref-1'),
+        scopes: const {AiroPairingScope.playbackControl},
+        issuedAt: issuedAt,
+        notBefore: issuedAt,
+        expiresAt: issuedAt.add(const Duration(minutes: 5)),
+      );
+
+      final decision = policy.evaluate(
+        relationship: trustedDeviceRecord(
+          issuedAt: issuedAt,
+          expiresAt: trustedUntil,
+          trustLevel: AiroTrustedDeviceTrustLevel.restricted,
+        ),
+        action: AiroRestrictedReceiverAction.redeemPlaybackTicket,
+        receiverDeviceId: 'receiver-tv-1',
+        sessionId: 'session-1',
+        playbackTicket: ticket,
+        now: now,
+      );
+
+      expect(decision.accepted, isTrue);
+      expect(
+        decision.playbackTicketCode,
+        AiroPlaybackTicketValidationCode.accepted,
+      );
+      expect(decision.toPublicMap(), {
+        'relationshipId': 'trusted-device-1',
+        'receiverDeviceId': 'receiver-tv-1',
+        'action': AiroRestrictedReceiverAction.redeemPlaybackTicket.stableId,
+        'codes': [AiroRestrictedReceiverTrustCode.accepted.stableId],
+        'accessCode': AiroTrustedDeviceAccessCode.accepted.stableId,
+        'playbackTicketCode':
+            AiroPlaybackTicketValidationCode.accepted.stableId,
+      });
+    });
+
+    test('restricted receiver allows scoped reporting and basic control', () {
+      final policy = AiroRestrictedReceiverTrustPolicy();
+      final relationship = trustedDeviceRecord(
+        issuedAt: issuedAt,
+        expiresAt: trustedUntil,
+        trustLevel: AiroTrustedDeviceTrustLevel.restricted,
+        scopes: const {
+          AiroPairingScope.playbackControl,
+          AiroPairingScope.diagnostics,
+        },
+      );
+      final now = issuedAt.add(const Duration(minutes: 1));
+
+      final report = policy.evaluate(
+        relationship: relationship,
+        action: AiroRestrictedReceiverAction.reportPlaybackState,
+        receiverDeviceId: 'receiver-tv-1',
+        now: now,
+      );
+      final control = policy.evaluate(
+        relationship: relationship,
+        action: AiroRestrictedReceiverAction.playbackControl,
+        receiverDeviceId: 'receiver-tv-1',
+        now: now,
+      );
+
+      expect(report.accepted, isTrue);
+      expect(control.accepted, isTrue);
+    });
+
+    test('restricted receiver denies privileged product actions', () {
+      final policy = AiroRestrictedReceiverTrustPolicy();
+      final relationship = trustedDeviceRecord(
+        issuedAt: issuedAt,
+        expiresAt: trustedUntil,
+        trustLevel: AiroTrustedDeviceTrustLevel.owner,
+      );
+      final now = issuedAt.add(const Duration(minutes: 1));
+
+      final deniedActions = {
+        AiroRestrictedReceiverAction.sourceCredentialRead:
+            AiroRestrictedReceiverTrustCode.credentialAccessDenied,
+        AiroRestrictedReceiverAction.rawSourceHandleRead:
+            AiroRestrictedReceiverTrustCode.rawSourceAccessDenied,
+        AiroRestrictedReceiverAction.adminAction:
+            AiroRestrictedReceiverTrustCode.adminActionDenied,
+        AiroRestrictedReceiverAction.billingAction:
+            AiroRestrictedReceiverTrustCode.billingActionDenied,
+        AiroRestrictedReceiverAction.profileManagement:
+            AiroRestrictedReceiverTrustCode.profileManagementDenied,
+        AiroRestrictedReceiverAction.trustedDeviceManagement:
+            AiroRestrictedReceiverTrustCode.trustedDeviceManagementDenied,
+        AiroRestrictedReceiverAction.issuePlaybackTicket:
+            AiroRestrictedReceiverTrustCode.ticketIssueDenied,
+      };
+
+      for (final entry in deniedActions.entries) {
+        final decision = policy.evaluate(
+          relationship: relationship,
+          action: entry.key,
+          receiverDeviceId: 'receiver-tv-1',
+          now: now,
+        );
+
+        expect(decision.accepted, isFalse);
+        expect(
+          decision.codes,
+          contains(AiroRestrictedReceiverTrustCode.actionNotAllowed),
+        );
+        expect(decision.codes, contains(entry.value));
+      }
+    });
+
+    test('restricted receiver maps relationship and ticket failures', () {
+      final policy = AiroRestrictedReceiverTrustPolicy();
+      final now = issuedAt.add(const Duration(minutes: 1));
+      final ticket = AiroPlaybackTicket(
+        ticketId: 'playback-ticket-1',
+        receiverDeviceId: 'other-tv',
+        sessionId: 'session-1',
+        sourceHandle: AiroPlaybackSourceHandle.redacted('source-ref-1'),
+        scopes: const {AiroPairingScope.playbackControl},
+        issuedAt: issuedAt,
+        notBefore: issuedAt,
+        expiresAt: issuedAt.add(const Duration(minutes: 5)),
+      );
+
+      final decision = policy.evaluate(
+        relationship: trustedDeviceRecord(
+          issuedAt: issuedAt,
+          expiresAt: trustedUntil,
+          revokedAt: now,
+          trustLevel: AiroTrustedDeviceTrustLevel.restricted,
+        ),
+        action: AiroRestrictedReceiverAction.redeemPlaybackTicket,
+        receiverDeviceId: 'receiver-tv-1',
+        sessionId: 'session-1',
+        playbackTicket: ticket,
+        now: now,
+      );
+
+      expect(
+        decision.codes,
+        contains(AiroRestrictedReceiverTrustCode.relationshipRevoked),
+      );
+      expect(
+        decision.codes,
+        contains(AiroRestrictedReceiverTrustCode.playbackTicketDenied),
+      );
+      expect(
+        decision.playbackTicketCode,
+        AiroPlaybackTicketValidationCode.receiverMismatch,
+      );
+    });
+
+    test('restricted receiver diagnostics omit source material', () {
+      final policy = AiroRestrictedReceiverTrustPolicy();
+
+      final decision = policy.evaluate(
+        relationship: trustedDeviceRecord(
+          issuedAt: issuedAt,
+          expiresAt: trustedUntil,
+          trustLevel: AiroTrustedDeviceTrustLevel.owner,
+        ),
+        action: AiroRestrictedReceiverAction.sourceCredentialRead,
+        receiverDeviceId: 'receiver-tv-1',
+        now: issuedAt.add(const Duration(minutes: 1)),
+      );
+      final flattened = decision.toPublicMap().toString();
+
+      expect(flattened, isNot(contains('source-ref-1')));
+      expect(flattened, isNot(contains('/Users/')));
+      expect(flattened, isNot(contains('https://')));
+      expect(flattened, isNot(contains('providerPayload')));
+    });
   });
 
   group('Airo playback-ticket contracts', () {
@@ -430,6 +609,10 @@ AiroTrustedDeviceRecord trustedDeviceRecord({
   required DateTime issuedAt,
   required DateTime expiresAt,
   AiroTrustedDeviceTrustLevel trustLevel = AiroTrustedDeviceTrustLevel.trusted,
+  Set<AiroPairingScope> scopes = const {
+    AiroPairingScope.playbackControl,
+    AiroPairingScope.companionSearch,
+  },
   AiroTrustedDeviceKeyDescriptor? keyDescriptor,
   bool includeKeyDescriptor = true,
   DateTime? revokedAt,
@@ -440,10 +623,7 @@ AiroTrustedDeviceRecord trustedDeviceRecord({
     receiverDeviceId: 'receiver-tv-1',
     controllerRole: AiroDeviceRole.mobileController,
     receiverRole: AiroDeviceRole.tvReceiver,
-    scopes: const {
-      AiroPairingScope.playbackControl,
-      AiroPairingScope.companionSearch,
-    },
+    scopes: scopes,
     createdAt: issuedAt,
     expiresAt: expiresAt,
     revokedAt: revokedAt,

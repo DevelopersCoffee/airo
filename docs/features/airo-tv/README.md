@@ -34,4 +34,6 @@ The repository release policy uses immutable semantic v2 tags such as
 Do not publish four-part Git release tags such as `v2.0.0.1` for this
 workstream unless `docs/release/VERSION_LINES.md` is deliberately changed by
 Release and DevEx. Release candidates and public releases are tagged from `v2`
-with the next normal semantic v2 version.
+with the next normal semantic v2 version. The active next development stream
+uses branch `codex/next-v2.0.0.0` from latest `origin/v2`; release candidates
+and public tags are cut from `v2` after the issue-scoped work merges back.

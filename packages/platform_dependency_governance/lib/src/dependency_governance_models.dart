@@ -304,6 +304,51 @@ class AiroDependencyGovernanceResult extends Equatable {
   List<Object?> get props => [packageName, blockers];
 }
 
+class AiroDependencyGovernanceAudit extends Equatable {
+  AiroDependencyGovernanceAudit({
+    required this.auditId,
+    required this.releaseLine,
+    required this.targetProfile,
+    required List<AiroDependencyAuditRecord> records,
+    required this.createdAt,
+    this.schemaVersion = kAiroDependencyGovernanceSchemaVersion,
+  }) : records = List.unmodifiable(records);
+
+  final String schemaVersion;
+  final String auditId;
+  final String releaseLine;
+  final String targetProfile;
+  final List<AiroDependencyAuditRecord> records;
+  final DateTime createdAt;
+
+  AiroDependencyGovernanceAuditReport evaluate({
+    AiroDependencyGovernanceChecklist checklist =
+        const AiroDependencyGovernanceChecklist(),
+    required DateTime generatedAt,
+  }) {
+    return AiroDependencyGovernanceAuditReport.evaluate(
+      profileName: targetProfile,
+      releaseLine: releaseLine,
+      auditId: auditId,
+      createdAtUtc: createdAt,
+      generatedAtUtc: generatedAt,
+      records: records,
+      checklist: checklist,
+      schemaVersion: schemaVersion,
+    );
+  }
+
+  @override
+  List<Object?> get props => [
+    schemaVersion,
+    auditId,
+    releaseLine,
+    targetProfile,
+    records,
+    createdAt,
+  ];
+}
+
 class AiroDependencyGovernanceAuditEntry extends Equatable {
   const AiroDependencyGovernanceAuditEntry({
     required this.record,
@@ -325,6 +370,9 @@ class AiroDependencyGovernanceAuditEntry extends Equatable {
 
 class AiroDependencyGovernanceAuditReport extends Equatable {
   AiroDependencyGovernanceAuditReport({
+    this.auditId,
+    this.releaseLine,
+    this.createdAtUtc,
     required this.profileName,
     required this.generatedAtUtc,
     required this.checklist,
@@ -351,6 +399,9 @@ class AiroDependencyGovernanceAuditReport extends Equatable {
        );
 
   factory AiroDependencyGovernanceAuditReport.evaluate({
+    String? auditId,
+    String? releaseLine,
+    DateTime? createdAtUtc,
     required String profileName,
     required DateTime generatedAtUtc,
     required Iterable<AiroDependencyAuditRecord> records,
@@ -359,6 +410,9 @@ class AiroDependencyGovernanceAuditReport extends Equatable {
     String schemaVersion = kAiroDependencyGovernanceSchemaVersion,
   }) {
     return AiroDependencyGovernanceAuditReport(
+      auditId: auditId,
+      releaseLine: releaseLine,
+      createdAtUtc: createdAtUtc?.toUtc(),
       profileName: profileName,
       generatedAtUtc: generatedAtUtc.toUtc(),
       checklist: checklist,
@@ -374,16 +428,32 @@ class AiroDependencyGovernanceAuditReport extends Equatable {
     );
   }
 
+  final String? auditId;
+  final String? releaseLine;
+  final DateTime? createdAtUtc;
   final String schemaVersion;
   final String profileName;
   final DateTime generatedAtUtc;
   final AiroDependencyGovernanceChecklist checklist;
   final List<AiroDependencyGovernanceAuditEntry> entries;
 
+  String get targetProfile => profileName;
+  DateTime get generatedAt => generatedAtUtc;
+  DateTime? get createdAt => createdAtUtc;
+  List<AiroDependencyGovernanceResult> get results {
+    return List.unmodifiable(entries.map((entry) => entry.result));
+  }
+
   bool get passed => entries.every((entry) => entry.passed);
 
   List<AiroDependencyGovernanceAuditEntry> get failingEntries {
     return List.unmodifiable(entries.where((entry) => !entry.passed));
+  }
+
+  List<String> get blockedPackages {
+    return List.unmodifiable(
+      failingEntries.map((entry) => entry.record.packageName),
+    );
   }
 
   List<AiroDependencyBlockerCode> get blockerCodes {
@@ -410,9 +480,41 @@ class AiroDependencyGovernanceAuditReport extends Equatable {
     };
   }
 
+  Map<String, Object?> toPublicMap() {
+    return {
+      'schemaVersion': schemaVersion,
+      if (auditId != null) 'auditId': auditId,
+      if (releaseLine != null) 'releaseLine': releaseLine,
+      'targetProfile': profileName,
+      'passed': passed,
+      'blockedPackages': blockedPackages,
+      'blockerCodes': blockerCodes
+          .map((code) => code.stableId)
+          .toList(growable: false),
+      'checklist': checklist.toJson(),
+      'results': entries
+          .map(
+            (entry) => {
+              'packageName': entry.record.packageName,
+              'passed': entry.passed,
+              'blockers': entry.result.blockerCodes
+                  .map((code) => code.stableId)
+                  .toList(growable: false),
+            },
+          )
+          .toList(growable: false),
+      if (createdAtUtc != null)
+        'createdAt': createdAtUtc!.toUtc().toIso8601String(),
+      'generatedAt': generatedAtUtc.toUtc().toIso8601String(),
+    };
+  }
+
   @override
   List<Object?> get props => [
     schemaVersion,
+    auditId,
+    releaseLine,
+    createdAtUtc,
     profileName,
     generatedAtUtc,
     checklist,

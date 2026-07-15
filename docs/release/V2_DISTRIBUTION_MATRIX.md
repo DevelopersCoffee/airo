@@ -6,6 +6,10 @@ v2 release-line policy in `docs/release/VERSION_LINES.md`.
 
 Implementation work for these profiles must start from latest `origin/v2`.
 
+The automation-facing source of truth is `packages/core_release`, specifically
+`AiroReleaseMatrix.v2Default()`. Keep this document, the build profile JSON, and
+that platform contract aligned before changing release workflows.
+
 ## Current V2 Profiles
 
 | Profile | Package ID | Entrypoint | Pubspec | Device class | Release artifacts | Distribution |
@@ -83,6 +87,10 @@ Airo-TV-v2.0.0-Release-Manifest.json
 Do not publish debug-looking names such as `app-release.apk` or
 `app-arm64-v8a-release.apk` as final public assets.
 
+Automation should resolve these names through `core_release` so APK, AAB,
+manifest, checksum, release-note, and optional ABI suffix behavior stays
+consistent across GitHub Releases, QA distribution, and store-upload jobs.
+
 ## Support Policy
 
 | Device class | Status | Notes |
@@ -105,3 +113,7 @@ Do not publish debug-looking names such as `app-release.apk` or
 - First Play tracks for mobile/tablet and TV.
 - Whether Fire TV moves from compatible/experimental to supported for the first
   public release.
+
+Until those decisions are approved, `core_release` must keep these channels and
+device statuses as `pendingDecision`, `deferred`, or
+`compatibleExperimental` rather than treating them as publishable defaults.

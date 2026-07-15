@@ -66,12 +66,59 @@ enum AiroCommandValidationCode {
 
 enum AiroCommandResultStatus {
   accepted('accepted'),
+  inProgress('in_progress'),
   rejected('rejected'),
+  expired('expired'),
+  duplicate('duplicate'),
   unsupported('unsupported'),
   completed('completed'),
-  failed('failed');
+  failed('failed'),
+  conflict('conflict'),
+  authRequired('auth_required'),
+  receiverUnavailable('receiver_unavailable');
 
   const AiroCommandResultStatus(this.stableId);
+
+  final String stableId;
+}
+
+enum AiroCommandDeliveryPath {
+  lan('lan'),
+  cloud('cloud'),
+  localLoopback('local_loopback'),
+  recoveryReplay('recovery_replay');
+
+  const AiroCommandDeliveryPath(this.stableId);
+
+  final String stableId;
+}
+
+enum AiroCommandLifecycleAction {
+  execute('execute'),
+  duplicate('duplicate'),
+  reject('reject'),
+  noOp('no_op');
+
+  const AiroCommandLifecycleAction(this.stableId);
+
+  final String stableId;
+}
+
+enum AiroCommandLifecycleCode {
+  accepted('accepted'),
+  expired('expired'),
+  targetMismatch('target_mismatch'),
+  scopeMissing('scope_missing'),
+  unsafePayload('unsafe_payload'),
+  duplicateCommandId('duplicate_command_id'),
+  duplicateIdempotencyKey('duplicate_idempotency_key'),
+  staleExpectedRevision('stale_expected_revision'),
+  revisionConflict('revision_conflict'),
+  receiverUnavailable('receiver_unavailable'),
+  unsupportedAction('unsupported_action'),
+  storeUnavailable('store_unavailable');
+
+  const AiroCommandLifecycleCode(this.stableId);
 
   final String stableId;
 }
@@ -232,6 +279,8 @@ class AiroCommandEnvelope extends Equatable {
     required this.expiresAt,
     required this.idempotencyKey,
     AiroCommandPayload? payload,
+    this.expectedRevision,
+    this.deliveryPath = AiroCommandDeliveryPath.lan,
     this.schemaVersion = kAiroCommandSchemaVersion,
     this.protocolVersion = kAiroCommandProtocolVersion,
   }) : payload = payload ?? const AiroCommandPayload.empty();
@@ -249,6 +298,8 @@ class AiroCommandEnvelope extends Equatable {
   final DateTime expiresAt;
   final String idempotencyKey;
   final AiroCommandPayload payload;
+  final int? expectedRevision;
+  final AiroCommandDeliveryPath deliveryPath;
 
   bool isExpired(DateTime now) => !now.isBefore(expiresAt);
 
@@ -266,6 +317,8 @@ class AiroCommandEnvelope extends Equatable {
       'issuedAt': issuedAt.toIso8601String(),
       'expiresAt': expiresAt.toIso8601String(),
       'idempotencyKey': idempotencyKey,
+      'expectedRevision': expectedRevision,
+      'deliveryPath': deliveryPath.stableId,
       'payloadKeys': payload.values.keys.toList(growable: false),
     };
   }
@@ -300,6 +353,8 @@ class AiroCommandEnvelope extends Equatable {
     expiresAt,
     idempotencyKey,
     payload,
+    expectedRevision,
+    deliveryPath,
   ];
 }
 
@@ -464,6 +519,440 @@ class AiroCommandResult extends Equatable {
     completedAt,
     payload,
   ];
+}
+
+class AiroCommandLifecycleRecord extends Equatable {
+  const AiroCommandLifecycleRecord({
+    required this.commandId,
+    required this.sessionId,
+    required this.idempotencyKey,
+    required this.senderNodeId,
+    required this.targetNodeId,
+    required this.action,
+    required this.status,
+    required this.revision,
+    required this.deliveryPath,
+    required this.updatedAt,
+    this.resultCode,
+    this.schemaVersion = kAiroCommandSchemaVersion,
+  });
+
+  final String schemaVersion;
+  final String commandId;
+  final String sessionId;
+  final String idempotencyKey;
+  final String senderNodeId;
+  final String targetNodeId;
+  final AiroCommandAction action;
+  final AiroCommandResultStatus status;
+  final int revision;
+  final AiroCommandDeliveryPath deliveryPath;
+  final DateTime updatedAt;
+  final String? resultCode;
+
+  bool get terminal {
+    return switch (status) {
+      AiroCommandResultStatus.completed ||
+      AiroCommandResultStatus.rejected ||
+      AiroCommandResultStatus.expired ||
+      AiroCommandResultStatus.duplicate ||
+      AiroCommandResultStatus.unsupported ||
+      AiroCommandResultStatus.failed ||
+      AiroCommandResultStatus.conflict ||
+      AiroCommandResultStatus.authRequired ||
+      AiroCommandResultStatus.receiverUnavailable => true,
+      AiroCommandResultStatus.accepted ||
+      AiroCommandResultStatus.inProgress => false,
+    };
+  }
+
+  AiroCommandResult toResult({DateTime? completedAt}) {
+    return AiroCommandResult(
+      commandId: commandId,
+      status: status,
+      code: resultCode,
+      completedAt: completedAt ?? updatedAt,
+    );
+  }
+
+  Map<String, Object?> toPublicMap() {
+    return {
+      'schemaVersion': schemaVersion,
+      'commandId': commandId,
+      'sessionId': sessionId,
+      'idempotencyKey': idempotencyKey,
+      'senderNodeId': senderNodeId,
+      'targetNodeId': targetNodeId,
+      'action': action.stableId,
+      'status': status.stableId,
+      'revision': revision,
+      'deliveryPath': deliveryPath.stableId,
+      'updatedAt': updatedAt.toIso8601String(),
+      'resultCode': resultCode,
+    };
+  }
+
+  @override
+  String toString() {
+    return 'AiroCommandLifecycleRecord('
+        'commandId: $commandId, '
+        'sessionId: $sessionId, '
+        'senderNodeId: $senderNodeId, '
+        'targetNodeId: $targetNodeId, '
+        'action: ${action.stableId}, '
+        'status: ${status.stableId}, '
+        'revision: $revision, '
+        'deliveryPath: ${deliveryPath.stableId}, '
+        'updatedAt: $updatedAt'
+        ')';
+  }
+
+  @override
+  List<Object?> get props => [
+    schemaVersion,
+    commandId,
+    sessionId,
+    idempotencyKey,
+    senderNodeId,
+    targetNodeId,
+    action,
+    status,
+    revision,
+    deliveryPath,
+    updatedAt,
+    resultCode,
+  ];
+}
+
+class AiroCommandLifecycleDecision extends Equatable {
+  AiroCommandLifecycleDecision({
+    required this.action,
+    required Iterable<AiroCommandLifecycleCode> codes,
+    required this.result,
+    this.existingRecord,
+  }) : codes = List.unmodifiable(codes);
+
+  final AiroCommandLifecycleAction action;
+  final List<AiroCommandLifecycleCode> codes;
+  final AiroCommandResult result;
+  final AiroCommandLifecycleRecord? existingRecord;
+
+  bool get accepted =>
+      action == AiroCommandLifecycleAction.execute &&
+      codes.length == 1 &&
+      codes.single == AiroCommandLifecycleCode.accepted;
+
+  Map<String, Object?> toDiagnosticMap() {
+    return {
+      'commandId': result.commandId,
+      'action': action.stableId,
+      'status': result.status.stableId,
+      'codes': codes.map((code) => code.stableId).toList(growable: false),
+      'existingStatus': existingRecord?.status.stableId,
+    };
+  }
+
+  @override
+  List<Object?> get props => [action, codes, result, existingRecord];
+}
+
+class AiroCommandLifecyclePolicy extends Equatable {
+  AiroCommandLifecyclePolicy({
+    required Set<AiroPairingScope> grantedScopes,
+    Set<AiroCommandAction> supportedActions = const {
+      AiroCommandAction.play,
+      AiroCommandAction.pause,
+      AiroCommandAction.stop,
+      AiroCommandAction.seek,
+      AiroCommandAction.select,
+      AiroCommandAction.back,
+      AiroCommandAction.home,
+      AiroCommandAction.focus,
+      AiroCommandAction.submitTextHandle,
+      AiroCommandAction.searchHandle,
+      AiroCommandAction.askAssistantHandle,
+      AiroCommandAction.refreshCapabilities,
+      AiroCommandAction.diagnosticsPing,
+    },
+    this.targetNodeId,
+    this.receiverAvailable = true,
+  }) : grantedScopes = Set.unmodifiable(grantedScopes),
+       supportedActions = Set.unmodifiable(supportedActions);
+
+  final String? targetNodeId;
+  final Set<AiroPairingScope> grantedScopes;
+  final Set<AiroCommandAction> supportedActions;
+  final bool receiverAvailable;
+
+  AiroCommandLifecycleDecision evaluate({
+    required AiroCommandEnvelope envelope,
+    required DateTime now,
+    int? currentRevision,
+    Iterable<AiroCommandLifecycleRecord> records = const [],
+  }) {
+    final codes = <AiroCommandLifecycleCode>[];
+    final duplicate = _duplicateFor(envelope, records);
+
+    if (envelope.isExpired(now)) {
+      codes.add(AiroCommandLifecycleCode.expired);
+    }
+    if (targetNodeId != null && envelope.targetNodeId != targetNodeId) {
+      codes.add(AiroCommandLifecycleCode.targetMismatch);
+    }
+    if (!grantedScopes.contains(envelope.requiredScope)) {
+      codes.add(AiroCommandLifecycleCode.scopeMissing);
+    }
+    final privacy = AiroCommandPrivacyFilter.standard.validate(
+      envelope.payload.values,
+    );
+    if (!privacy.accepted) {
+      codes.add(AiroCommandLifecycleCode.unsafePayload);
+    }
+    if (!supportedActions.contains(envelope.action)) {
+      codes.add(AiroCommandLifecycleCode.unsupportedAction);
+    }
+    if (!receiverAvailable) {
+      codes.add(AiroCommandLifecycleCode.receiverUnavailable);
+    }
+    if (duplicate != null) {
+      if (duplicate.commandId == envelope.commandId) {
+        codes.add(AiroCommandLifecycleCode.duplicateCommandId);
+      }
+      if (duplicate.idempotencyKey == envelope.idempotencyKey) {
+        codes.add(AiroCommandLifecycleCode.duplicateIdempotencyKey);
+      }
+    }
+
+    final expectedRevision = envelope.expectedRevision;
+    if (currentRevision != null && expectedRevision != null) {
+      if (expectedRevision < currentRevision) {
+        codes.add(AiroCommandLifecycleCode.staleExpectedRevision);
+      } else if (expectedRevision == currentRevision && duplicate == null) {
+        final conflicting = records.any(
+          (record) =>
+              record.sessionId == envelope.sessionId &&
+              record.revision == expectedRevision &&
+              record.senderNodeId != envelope.senderNodeId,
+        );
+        if (conflicting) {
+          codes.add(AiroCommandLifecycleCode.revisionConflict);
+        }
+      }
+    }
+
+    return _decisionFor(
+      envelope: envelope,
+      now: now,
+      codes: codes,
+      duplicate: duplicate,
+    );
+  }
+
+  AiroCommandLifecycleRecord? _duplicateFor(
+    AiroCommandEnvelope envelope,
+    Iterable<AiroCommandLifecycleRecord> records,
+  ) {
+    for (final record in records) {
+      if (record.commandId == envelope.commandId ||
+          record.idempotencyKey == envelope.idempotencyKey) {
+        return record;
+      }
+    }
+    return null;
+  }
+
+  AiroCommandLifecycleDecision _decisionFor({
+    required AiroCommandEnvelope envelope,
+    required DateTime now,
+    required List<AiroCommandLifecycleCode> codes,
+    required AiroCommandLifecycleRecord? duplicate,
+  }) {
+    if (duplicate != null &&
+        codes.every(
+          (code) =>
+              code == AiroCommandLifecycleCode.duplicateCommandId ||
+              code == AiroCommandLifecycleCode.duplicateIdempotencyKey,
+        )) {
+      return AiroCommandLifecycleDecision(
+        action: AiroCommandLifecycleAction.duplicate,
+        codes: codes,
+        existingRecord: duplicate,
+        result: AiroCommandResult(
+          commandId: envelope.commandId,
+          status: AiroCommandResultStatus.duplicate,
+          code: 'duplicate_command',
+          completedAt: now,
+        ),
+      );
+    }
+    if (codes.isEmpty) {
+      return AiroCommandLifecycleDecision(
+        action: AiroCommandLifecycleAction.execute,
+        codes: const [AiroCommandLifecycleCode.accepted],
+        result: AiroCommandResult(
+          commandId: envelope.commandId,
+          status: AiroCommandResultStatus.accepted,
+          completedAt: now,
+        ),
+      );
+    }
+    return AiroCommandLifecycleDecision(
+      action: AiroCommandLifecycleAction.reject,
+      codes: codes,
+      existingRecord: duplicate,
+      result: AiroCommandResult(
+        commandId: envelope.commandId,
+        status: _statusFor(codes),
+        code: codes.map((code) => code.stableId).join(','),
+        completedAt: now,
+      ),
+    );
+  }
+
+  AiroCommandResultStatus _statusFor(List<AiroCommandLifecycleCode> codes) {
+    if (codes.contains(AiroCommandLifecycleCode.expired)) {
+      return AiroCommandResultStatus.expired;
+    }
+    if (codes.contains(AiroCommandLifecycleCode.scopeMissing)) {
+      return AiroCommandResultStatus.authRequired;
+    }
+    if (codes.contains(AiroCommandLifecycleCode.revisionConflict)) {
+      return AiroCommandResultStatus.conflict;
+    }
+    if (codes.contains(AiroCommandLifecycleCode.receiverUnavailable)) {
+      return AiroCommandResultStatus.receiverUnavailable;
+    }
+    if (codes.contains(AiroCommandLifecycleCode.unsupportedAction)) {
+      return AiroCommandResultStatus.unsupported;
+    }
+    return AiroCommandResultStatus.rejected;
+  }
+
+  @override
+  List<Object?> get props => [
+    targetNodeId,
+    grantedScopes,
+    supportedActions,
+    receiverAvailable,
+  ];
+}
+
+abstract interface class AiroCommandLifecycleStore {
+  Future<AiroCommandLifecycleDecision> accept({
+    required AiroCommandEnvelope envelope,
+    required DateTime now,
+    int? currentRevision,
+  });
+
+  Future<AiroCommandLifecycleRecord?> recordResult({
+    required AiroCommandResult result,
+    required DateTime now,
+  });
+
+  Future<List<AiroCommandLifecycleRecord>> list();
+}
+
+class AiroNoOpCommandLifecycleStore implements AiroCommandLifecycleStore {
+  const AiroNoOpCommandLifecycleStore();
+
+  @override
+  Future<AiroCommandLifecycleDecision> accept({
+    required AiroCommandEnvelope envelope,
+    required DateTime now,
+    int? currentRevision,
+  }) async {
+    return AiroCommandLifecycleDecision(
+      action: AiroCommandLifecycleAction.noOp,
+      codes: const [AiroCommandLifecycleCode.storeUnavailable],
+      result: AiroCommandResult(
+        commandId: envelope.commandId,
+        status: AiroCommandResultStatus.receiverUnavailable,
+        code: AiroCommandLifecycleCode.storeUnavailable.stableId,
+        completedAt: now,
+      ),
+    );
+  }
+
+  @override
+  Future<List<AiroCommandLifecycleRecord>> list() async => const [];
+
+  @override
+  Future<AiroCommandLifecycleRecord?> recordResult({
+    required AiroCommandResult result,
+    required DateTime now,
+  }) async {
+    return null;
+  }
+}
+
+class AiroFakeCommandLifecycleStore implements AiroCommandLifecycleStore {
+  AiroFakeCommandLifecycleStore({required this.policy});
+
+  final AiroCommandLifecyclePolicy policy;
+  final List<AiroCommandLifecycleRecord> _records = [];
+
+  @override
+  Future<AiroCommandLifecycleDecision> accept({
+    required AiroCommandEnvelope envelope,
+    required DateTime now,
+    int? currentRevision,
+  }) async {
+    final decision = policy.evaluate(
+      envelope: envelope,
+      now: now,
+      currentRevision: currentRevision,
+      records: _records,
+    );
+    if (decision.accepted) {
+      _records.add(
+        AiroCommandLifecycleRecord(
+          commandId: envelope.commandId,
+          sessionId: envelope.sessionId,
+          idempotencyKey: envelope.idempotencyKey,
+          senderNodeId: envelope.senderNodeId,
+          targetNodeId: envelope.targetNodeId,
+          action: envelope.action,
+          status: AiroCommandResultStatus.accepted,
+          revision: envelope.expectedRevision ?? currentRevision ?? 0,
+          deliveryPath: envelope.deliveryPath,
+          updatedAt: now,
+        ),
+      );
+    }
+    return decision;
+  }
+
+  @override
+  Future<List<AiroCommandLifecycleRecord>> list() async {
+    return List.unmodifiable(_records);
+  }
+
+  @override
+  Future<AiroCommandLifecycleRecord?> recordResult({
+    required AiroCommandResult result,
+    required DateTime now,
+  }) async {
+    final index = _records.indexWhere(
+      (record) => record.commandId == result.commandId,
+    );
+    if (index < 0) return null;
+    final current = _records[index];
+    final updated = AiroCommandLifecycleRecord(
+      commandId: current.commandId,
+      sessionId: current.sessionId,
+      idempotencyKey: current.idempotencyKey,
+      senderNodeId: current.senderNodeId,
+      targetNodeId: current.targetNodeId,
+      action: current.action,
+      status: result.status,
+      revision: current.revision,
+      deliveryPath: current.deliveryPath,
+      updatedAt: now,
+      resultCode: result.code,
+    );
+    _records[index] = updated;
+    return updated;
+  }
 }
 
 abstract class AiroCommandDispatcher {

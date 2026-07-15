@@ -1,0 +1,29 @@
+name: core_device_merge
+description: Local and cloud device merge contracts for Airo V2.
+version: 0.0.1
+homepage:
+publish_to: none
+
+environment:
+  sdk: ^3.12.2
+  flutter: ">=1.17.0"
+
+dependencies:
+  core_device_identity:
+    path: ../core_device_identity
+  core_presence:
+    path: ../core_presence
+  core_protocol:
+    path: ../core_protocol
+  equatable: ^2.0.8
+  flutter:
+    sdk: flutter
+
+dev_dependencies:
+  core_pairing:
+    path: ../core_pairing
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:

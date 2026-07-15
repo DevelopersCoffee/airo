@@ -1,0 +1,21 @@
+name: core_delegation
+description: Delegation task framework contracts for Airo connected products.
+version: 0.0.1
+homepage:
+publish_to: none
+
+environment:
+  sdk: ^3.12.2
+  flutter: ">=1.17.0"
+
+dependencies:
+  equatable: ^2.0.8
+  flutter:
+    sdk: flutter
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:

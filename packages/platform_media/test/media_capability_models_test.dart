@@ -264,6 +264,135 @@ void main() {
       expect(mediaRequirement.toString(), isNot(contains('http')));
       expect(result.toString(), contains('accepted'));
     });
+
+    test(
+      'probe matrix passes required baseline probes on matching receiver',
+      () {
+        final matrix = AiroMediaDecoderProbeMatrices.legacyReceiverBaseline();
+        final report = matrix.evaluate(profile: profile(), now: now);
+
+        expect(report.requiredProbesPassed, isTrue);
+        expect(report.blockedRequiredProbeIds, isEmpty);
+        expect(report.blockedProbeIds, contains(AiroMediaProbeId.hevc1080pSdr));
+        expect(report.provenOptionalProbeIds, isEmpty);
+      },
+    );
+
+    test(
+      'probe matrix blocks required probes when baseline support is missing',
+      () {
+        final matrix = AiroMediaDecoderProbeMatrices.legacyReceiverBaseline();
+        final report = matrix.evaluate(
+          profile: profile(
+            containers: const {AiroMediaContainer.mp4},
+            videoDecoders: [
+              AiroVideoDecoderCapability(
+                codec: AiroVideoCodec.h265,
+                kind: AiroMediaDecoderKind.hardware,
+                maxWidth: 1920,
+                maxHeight: 1080,
+                maxBitrateKbps: 8000,
+                hdrFormats: const {AiroHdrFormat.sdr},
+              ),
+            ],
+          ),
+          now: now,
+        );
+
+        expect(report.requiredProbesPassed, isFalse);
+        expect(
+          report.blockedRequiredProbeIds,
+          contains(AiroMediaProbeId.baselineHlsH264Aac),
+        );
+        expect(
+          report.blockerCodes,
+          contains(AiroMediaCapabilityBlockerCode.videoCodecUnsupported),
+        );
+      },
+    );
+
+    test(
+      'probe matrix advertises optional advanced probes only when proven',
+      () {
+        final matrix = AiroMediaDecoderProbeMatrices.legacyReceiverBaseline();
+        final report = matrix.evaluate(
+          profile: profile(
+            containers: const {
+              AiroMediaContainer.hls,
+              AiroMediaContainer.mp4,
+              AiroMediaContainer.mpegTs,
+            },
+            videoDecoders: [
+              AiroVideoDecoderCapability(
+                codec: AiroVideoCodec.h264,
+                kind: AiroMediaDecoderKind.hardware,
+                maxWidth: 3840,
+                maxHeight: 2160,
+                maxBitrateKbps: 20000,
+                hdrFormats: const {AiroHdrFormat.sdr},
+              ),
+              AiroVideoDecoderCapability(
+                codec: AiroVideoCodec.h265,
+                kind: AiroMediaDecoderKind.hardware,
+                maxWidth: 1920,
+                maxHeight: 1080,
+                maxBitrateKbps: 12000,
+                hdrFormats: const {AiroHdrFormat.sdr, AiroHdrFormat.hdr10},
+              ),
+              AiroVideoDecoderCapability(
+                codec: AiroVideoCodec.av1,
+                kind: AiroMediaDecoderKind.hardware,
+                maxWidth: 1920,
+                maxHeight: 1080,
+                maxBitrateKbps: 8000,
+                hdrFormats: const {AiroHdrFormat.sdr},
+              ),
+            ],
+          ),
+          now: now,
+        );
+
+        expect(report.requiredProbesPassed, isTrue);
+        expect(
+          report.provenOptionalProbeIds,
+          containsAll(const {
+            AiroMediaProbeId.hevc1080pSdr,
+            AiroMediaProbeId.av11080pSdr,
+            AiroMediaProbeId.hdr10Hevc1080p,
+            AiroMediaProbeId.h2644kSdr,
+          }),
+        );
+      },
+    );
+
+    test('probe matrix reports unavailable profile with stable blockers', () {
+      final matrix = AiroMediaDecoderProbeMatrices.legacyReceiverBaseline();
+      final report = matrix.evaluate(
+        profile: AiroMediaDeviceCapabilityProfile.unavailable(observedAt: now),
+        now: now,
+      );
+
+      expect(report.requiredProbesPassed, isFalse);
+      expect(
+        report.blockerCodes,
+        contains(AiroMediaCapabilityBlockerCode.profileUnavailable),
+      );
+      expect(
+        report.blockedRequiredProbeIds,
+        contains(AiroMediaProbeId.baselineHlsH264Aac),
+      );
+    });
+
+    test('probe matrix public map omits raw stream and device identifiers', () {
+      final matrix = AiroMediaDecoderProbeMatrices.legacyReceiverBaseline();
+      final report = matrix.evaluate(profile: profile(), now: now);
+      final publicMap = report.toPublicMap();
+
+      expect(publicMap, containsPair('profileId', 'receiver-1'));
+      expect(publicMap, isNot(contains('streamUrl')));
+      expect(publicMap, isNot(contains('filePath')));
+      expect(publicMap, isNot(contains('deviceSerial')));
+    });
   });
 
   group('AiroMediaCapabilityDetector adapters', () {

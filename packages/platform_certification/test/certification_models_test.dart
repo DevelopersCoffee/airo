@@ -292,5 +292,459 @@ void main() {
         AiroCertificationBlockerCode.unsupportedTarget,
       );
     });
+
+    test('program report advertises only fully evidenced support claims', () {
+      final matrix = AiroTvLegacyCertification.matrix();
+      final program = AiroCertificationProgram(
+        programId: 'legacy-device-v2',
+        releaseLine: 'v2.0.0.1',
+        targetIds: const [
+          'android-tv-api-26-lite',
+          'android-tv-api-28-lite',
+          'fire-tv-legacy-lite',
+        ],
+        createdAt: now,
+      );
+
+      final report = program.evaluate(
+        evidence: [
+          ...passingEvidenceFor(
+            matrix: matrix,
+            targetId: 'android-tv-api-26-lite',
+          ),
+          ...passingEvidenceFor(
+            matrix: matrix,
+            targetId: 'android-tv-api-28-lite',
+          ),
+          ...passingEvidenceFor(
+            matrix: matrix,
+            targetId: 'fire-tv-legacy-lite',
+          ),
+        ],
+        now: now,
+      );
+
+      expect(report.passed, isTrue);
+      expect(report.blockedTargets, isEmpty);
+      expect(
+        report.advertisedSupportClaims.map((claim) => claim.targetId),
+        const [
+          'android-tv-api-26-lite',
+          'android-tv-api-28-lite',
+          'fire-tv-legacy-lite',
+        ],
+      );
+      expect(
+        report.advertisedSupportClaims.first.level,
+        AiroCertificationLevel.certified,
+      );
+    });
+
+    test('program report blocks only targets without matching evidence', () {
+      final matrix = AiroTvLegacyCertification.matrix();
+      final program = AiroCertificationProgram(
+        programId: 'legacy-device-v2',
+        releaseLine: 'v2.0.0.1',
+        targetIds: const ['android-tv-api-26-lite', 'android-tv-api-28-lite'],
+        createdAt: now,
+      );
+
+      final report = program.evaluate(
+        evidence: passingEvidenceFor(
+          matrix: matrix,
+          targetId: 'android-tv-api-26-lite',
+        ),
+        now: now,
+      );
+
+      expect(report.passed, isFalse);
+      expect(report.blockedTargets, const ['android-tv-api-28-lite']);
+      expect(
+        report.blockerCodes,
+        contains(AiroCertificationBlockerCode.evidenceWrongTarget),
+      );
+      expect(
+        report.advertisedSupportClaims.map((claim) => claim.targetId),
+        const ['android-tv-api-26-lite'],
+      );
+    });
+
+    test('program report keeps unsupported targets out of support claims', () {
+      final program = AiroCertificationProgram(
+        programId: 'legacy-device-v2',
+        releaseLine: 'v2.0.0.1',
+        targetIds: const ['lower-api-experimental'],
+        createdAt: now,
+      );
+
+      final report = program.evaluate(evidence: const [], now: now);
+
+      expect(report.passed, isFalse);
+      expect(report.blockedTargets, const ['lower-api-experimental']);
+      expect(report.advertisedSupportClaims, isEmpty);
+      expect(
+        report.blockerCodes,
+        contains(AiroCertificationBlockerCode.unsupportedTarget),
+      );
+    });
+
+    test('program report public map excludes raw evidence details', () {
+      final matrix = AiroTvLegacyCertification.matrix();
+      final program = AiroCertificationProgram(
+        programId: 'legacy-device-v2',
+        releaseLine: 'v2.0.0.1',
+        targetIds: const ['android-tv-api-26-lite'],
+        createdAt: now,
+      );
+
+      final report = program.evaluate(
+        evidence: passingEvidenceFor(
+          matrix: matrix,
+          targetId: 'android-tv-api-26-lite',
+        ),
+        now: now,
+      );
+      final publicMap = report.toPublicMap();
+
+      expect(publicMap, containsPair('programId', 'legacy-device-v2'));
+      expect(publicMap, containsPair('releaseLine', 'v2.0.0.1'));
+      expect(publicMap, isNot(contains('evidence')));
+      expect(publicMap, isNot(contains('workspacePath')));
+      expect(publicMap, isNot(contains('diagnosticsDump')));
+    });
+
+    test('empty program target list is deterministic', () {
+      final program = AiroCertificationProgram(
+        programId: 'empty-program',
+        releaseLine: 'v2.0.0.1',
+        targetIds: const [],
+        createdAt: now,
+      );
+
+      final report = program.evaluate(evidence: const [], now: now);
+
+      expect(report.passed, isTrue);
+      expect(report.results, isEmpty);
+      expect(report.blockedTargets, isEmpty);
+      expect(report.advertisedSupportClaims, isEmpty);
+    });
+  });
+
+  group('Airo TV legacy distribution matrix', () {
+    final now = DateTime.utc(2026, 7, 14, 12);
+
+    List<AiroDistributionEvidence> passingEvidenceFor({
+      required AiroDistributionMatrix matrix,
+      required String targetId,
+      DateTime? capturedAt,
+    }) {
+      final target = matrix.targetById(targetId)!;
+      return [
+        for (final kind in target.requiredEvidenceKinds)
+          AiroDistributionEvidence(
+            evidenceId: '${targetId}_${kind.stableId}',
+            targetId: targetId,
+            kind: kind,
+            capturedAt: capturedAt ?? now,
+            passed: true,
+          ),
+      ];
+    }
+
+    test('default matrix exposes stable legacy distribution channels', () {
+      final matrix = AiroTvLegacyDistribution.matrix();
+
+      expect(matrix.schemaVersion, kAiroDistributionSchemaVersion);
+      expect(matrix.targetById('google-play-tv-android-tv'), isNotNull);
+      expect(matrix.targetById('amazon-appstore-fire-tv'), isNotNull);
+      expect(matrix.targetById('direct-apk-legacy-android-tv'), isNotNull);
+      expect(matrix.targetById('operator-box-legacy-receiver'), isNotNull);
+      expect(
+        matrix
+            .targetsForChannel(AiroDistributionChannel.amazonAppstore)
+            .single
+            .platform,
+        AiroValidationPlatform.fireTv,
+      );
+    });
+
+    test('Google Play TV requires store and physical TV evidence', () {
+      final matrix = AiroTvLegacyDistribution.matrix();
+      final target = matrix.targetById('google-play-tv-android-tv')!;
+
+      expect(target.channel, AiroDistributionChannel.googlePlayTv);
+      expect(
+        target.requiredEvidenceKinds,
+        containsAll({
+          AiroDistributionEvidenceKind.playAabArtifact,
+          AiroDistributionEvidenceKind.storeListing,
+          AiroDistributionEvidenceKind.contentRating,
+          AiroDistributionEvidenceKind.dataSafety,
+          AiroDistributionEvidenceKind.storePolicyReview,
+          AiroDistributionEvidenceKind.physicalDeviceEvidence,
+        }),
+      );
+    });
+
+    test('Amazon Appstore Fire TV requires APK and remote evidence', () {
+      final matrix = AiroTvLegacyDistribution.matrix();
+      final target = matrix.targetById('amazon-appstore-fire-tv')!;
+      final result = matrix.evaluate(
+        targetId: target.targetId,
+        evidence: passingEvidenceFor(matrix: matrix, targetId: target.targetId),
+        now: now,
+      );
+
+      expect(target.channel, AiroDistributionChannel.amazonAppstore);
+      expect(target.platform, AiroValidationPlatform.fireTv);
+      expect(
+        target.requiredEvidenceKinds,
+        contains(AiroDistributionEvidenceKind.remoteNavigationEvidence),
+      );
+      expect(result.passed, isTrue);
+      expect(result.canAdvertiseChannelSupport, isTrue);
+    });
+
+    test('direct APK requires checksum manifest and package scan', () {
+      final matrix = AiroTvLegacyDistribution.matrix();
+      final target = matrix.targetById('direct-apk-legacy-android-tv')!;
+      final result = matrix.evaluate(
+        targetId: target.targetId,
+        evidence: [
+          AiroDistributionEvidence(
+            evidenceId: 'apk',
+            targetId: 'direct-apk-legacy-android-tv',
+            kind: AiroDistributionEvidenceKind.apkArtifact,
+            capturedAt: DateTime.utc(2026, 7, 14, 12),
+            passed: true,
+          ),
+        ],
+        now: now,
+      );
+
+      expect(target.channel, AiroDistributionChannel.directApk);
+      expect(
+        result.blockers.map((blocker) => blocker.evidenceKind),
+        containsAll({
+          AiroDistributionEvidenceKind.sha256Sums,
+          AiroDistributionEvidenceKind.releaseManifest,
+          AiroDistributionEvidenceKind.packageContentScan,
+        }),
+      );
+      expect(result.canAdvertiseChannelSupport, isFalse);
+    });
+
+    test('operator boxes require explicit approval evidence', () {
+      final matrix = AiroTvLegacyDistribution.matrix();
+      final target = matrix.targetById('operator-box-legacy-receiver')!;
+      final result = matrix.evaluate(
+        targetId: target.targetId,
+        evidence: passingEvidenceFor(matrix: matrix, targetId: target.targetId)
+            .where(
+              (record) =>
+                  record.kind != AiroDistributionEvidenceKind.operatorApproval,
+            ),
+        now: now,
+      );
+
+      expect(target.channel, AiroDistributionChannel.operatorBox);
+      expect(
+        result.blockers.map((blocker) => blocker.evidenceKind),
+        contains(AiroDistributionEvidenceKind.operatorApproval),
+      );
+      expect(result.passed, isFalse);
+    });
+
+    test('wrong target and stale evidence return stable blockers', () {
+      final matrix = AiroTvLegacyDistribution.matrix();
+      final wrongTarget = matrix.evaluate(
+        targetId: 'google-play-tv-android-tv',
+        evidence: passingEvidenceFor(
+          matrix: matrix,
+          targetId: 'amazon-appstore-fire-tv',
+        ),
+        now: now,
+      );
+      final stale = matrix.evaluate(
+        targetId: 'direct-apk-legacy-android-tv',
+        evidence: passingEvidenceFor(
+          matrix: matrix,
+          targetId: 'direct-apk-legacy-android-tv',
+          capturedAt: now.subtract(const Duration(days: 45)),
+        ),
+        now: now,
+      );
+
+      expect(
+        wrongTarget.blockers.map((blocker) => blocker.code),
+        contains(AiroDistributionBlockerCode.evidenceWrongTarget),
+      );
+      expect(
+        stale.blockers.map((blocker) => blocker.code),
+        contains(AiroDistributionBlockerCode.evidenceStale),
+      );
+    });
+
+    test('public maps exclude release evidence internals', () {
+      final matrix = AiroTvLegacyDistribution.matrix();
+      final result = matrix.evaluate(
+        targetId: 'google-play-tv-android-tv',
+        evidence: passingEvidenceFor(
+          matrix: matrix,
+          targetId: 'google-play-tv-android-tv',
+        ),
+        now: now,
+      );
+      final flattened = result.toPublicMap().toString();
+
+      expect(result.passed, isTrue);
+      expect(
+        flattened,
+        contains(AiroDistributionChannel.googlePlayTv.stableId),
+      );
+      expect(flattened, isNot(contains('/Users/')));
+      expect(flattened, isNot(contains('storeConsoleAccount')));
+      expect(flattened, isNot(contains('signingMaterial')));
+      expect(flattened, isNot(contains('providerPayload')));
+    });
+  });
+
+  group('Airo lower API evaluation process', () {
+    final now = DateTime.utc(2026, 7, 14, 12);
+    final policy = AiroLowerApiEvaluationPolicy();
+
+    AiroLowerApiCandidate candidate({
+      String candidateId = 'api-23-25-experimental',
+      int minAndroidApi = 23,
+      int maxAndroidApi = 25,
+      bool requestsPublicSupportClaim = false,
+    }) {
+      return AiroLowerApiCandidate(
+        candidateId: candidateId,
+        minAndroidApi: minAndroidApi,
+        maxAndroidApi: maxAndroidApi,
+        productProfile: AiroValidationProductProfile.liteReceiver,
+        releaseChannel: AiroDistributionChannel.directApk,
+        requestsPublicSupportClaim: requestsPublicSupportClaim,
+      );
+    }
+
+    List<AiroLowerApiEvidence> passingEvidenceFor({
+      String candidateId = 'api-23-25-experimental',
+      DateTime? capturedAt,
+    }) {
+      return [
+        for (final kind in policy.requiredEvidenceKinds)
+          AiroLowerApiEvidence(
+            evidenceId: '${candidateId}_${kind.stableId}',
+            candidateId: candidateId,
+            kind: kind,
+            capturedAt: capturedAt ?? now,
+            passed: true,
+          ),
+      ];
+    }
+
+    test(
+      'complete API 23-25 evidence enters internal experimental evaluation',
+      () {
+        final result = policy.evaluate(
+          candidate: candidate(),
+          evidence: passingEvidenceFor(),
+          now: now,
+        );
+
+        expect(result.accepted, isTrue);
+        expect(
+          result.status,
+          AiroLowerApiEvaluationStatus.experimentalEligible,
+        );
+        expect(result.canEnterExperimentalCertification, isTrue);
+        expect(result.canAdvertisePublicSupport, isFalse);
+      },
+    );
+
+    test('public support claims remain blocked below API 26', () {
+      final result = policy.evaluate(
+        candidate: candidate(requestsPublicSupportClaim: true),
+        evidence: passingEvidenceFor(),
+        now: now,
+      );
+
+      expect(result.accepted, isFalse);
+      expect(
+        result.blockers.map((blocker) => blocker.code),
+        contains(AiroLowerApiEvaluationCode.publicSupportBlocked),
+      );
+      expect(result.canAdvertisePublicSupport, isFalse);
+    });
+
+    test('out-of-range API candidates are rejected deterministically', () {
+      final result = policy.evaluate(
+        candidate: candidate(minAndroidApi: 22, maxAndroidApi: 25),
+        evidence: passingEvidenceFor(),
+        now: now,
+      );
+
+      expect(
+        result.blockers.map((blocker) => blocker.code),
+        contains(AiroLowerApiEvaluationCode.apiRangeUnsupported),
+      );
+    });
+
+    test('missing lower API evidence blocks experimental evaluation', () {
+      final result = policy.evaluate(
+        candidate: candidate(),
+        evidence: passingEvidenceFor().where(
+          (record) => record.kind != AiroLowerApiEvidenceKind.restrictedTrust,
+        ),
+        now: now,
+      );
+
+      expect(result.accepted, isFalse);
+      expect(
+        result.blockers.map((blocker) => blocker.evidenceKind),
+        contains(AiroLowerApiEvidenceKind.restrictedTrust),
+      );
+    });
+
+    test('wrong-candidate and stale lower API evidence are typed', () {
+      final wrongCandidate = policy.evaluate(
+        candidate: candidate(),
+        evidence: passingEvidenceFor(candidateId: 'other-candidate'),
+        now: now,
+      );
+      final stale = policy.evaluate(
+        candidate: candidate(),
+        evidence: passingEvidenceFor(
+          capturedAt: now.subtract(const Duration(days: 45)),
+        ),
+        now: now,
+      );
+
+      expect(
+        wrongCandidate.blockers.map((blocker) => blocker.code),
+        contains(AiroLowerApiEvaluationCode.evidenceWrongCandidate),
+      );
+      expect(
+        stale.blockers.map((blocker) => blocker.code),
+        contains(AiroLowerApiEvaluationCode.evidenceStale),
+      );
+    });
+
+    test('lower API public map excludes raw evidence details', () {
+      final result = policy.evaluate(
+        candidate: candidate(),
+        evidence: passingEvidenceFor(),
+        now: now,
+      );
+      final flattened = result.toPublicMap().toString();
+
+      expect(flattened, contains('api-23-25-experimental'));
+      expect(flattened, isNot(contains('/Users/')));
+      expect(flattened, isNot(contains('deviceLog')));
+      expect(flattened, isNot(contains('providerPayload')));
+      expect(flattened, isNot(contains('privateReleaseMaterial')));
+    });
   });
 }

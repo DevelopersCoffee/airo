@@ -13,6 +13,9 @@ defining product-specific trust or playback authorization models.
 - Trusted-device trust levels, public key descriptors, and rotation policy
   evaluation.
 - Receiver-bound and session-bound playback tickets.
+- Restricted receiver trust decisions that allow playback-ticket redemption and
+  basic scoped receiver actions while denying credential, admin, billing,
+  profile, and trusted-device management actions.
 - Redacted playback source handles that reject raw URLs, local paths, and
   credential-like values.
 - Deterministic validation results with machine-readable codes.

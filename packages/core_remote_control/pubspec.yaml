@@ -1,0 +1,29 @@
+name: core_remote_control
+description: Remote-control permission contracts for Airo V2.
+version: 0.0.1
+homepage:
+publish_to: none
+
+environment:
+  sdk: ^3.12.2
+  flutter: ">=1.17.0"
+
+dependencies:
+  core_commands:
+    path: ../core_commands
+  core_pairing:
+    path: ../core_pairing
+  core_protocol:
+    path: ../core_protocol
+  core_sessions:
+    path: ../core_sessions
+  equatable: ^2.0.8
+  flutter:
+    sdk: flutter
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:

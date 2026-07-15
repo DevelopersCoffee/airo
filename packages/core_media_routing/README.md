@@ -21,10 +21,14 @@ product screens.
 - Temporary phone-local hosting gates for trusted receivers, LAN-only exposure,
   expiry, HEAD/probe handling, range reads, entity validation, auto-shutdown,
   and battery/thermal state.
+- Phone-local serving decisions for GET/HEAD, byte ranges, 206 Partial Content,
+  cancellation, entity validators, host safety gates, and public response
+  headers.
 - Privacy-safe diagnostics that expose ids, scores, reasons, and blocker codes,
   not raw source values.
 
 This package does not start a media server, open playback, inspect codecs from a
 platform SDK, collect route health events, issue playback access grants, or own
 playback-session state. Fake and no-op temporary mobile server controllers exist
-only for deterministic tests and product integration boundaries.
+only for deterministic tests and product integration boundaries. Production
+phone-local file I/O must live behind the same controller interface.

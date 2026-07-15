@@ -237,5 +237,36 @@ void main() {
       expect(json['checklist'], containsPair('maxBinarySizeKb', 2048));
       expect(json['checklist'], containsPair('maxRuntimeMemoryMb', 16));
     });
+
+    test('release-line audit wrapper exposes public report metadata', () {
+      final audit = AiroDependencyGovernanceAudit(
+        auditId: 'audit-v2-lite',
+        releaseLine: 'v2.0.0.1',
+        targetProfile: 'lite_receiver',
+        records: [
+          record(packageName: 'video_player'),
+          record(
+            packageName: 'heavy_native_sdk',
+            minimumAndroidApi: 28,
+            estimatedRuntimeMemoryMb: 64,
+          ),
+        ],
+        createdAt: DateTime.utc(2026, 7, 14, 15),
+      );
+
+      final report = audit.evaluate(
+        checklist: checklist,
+        generatedAt: DateTime.utc(2026, 7, 14, 16),
+      );
+      final publicMap = report.toPublicMap();
+
+      expect(report.passed, isFalse);
+      expect(report.blockedPackages, const ['heavy_native_sdk']);
+      expect(publicMap, containsPair('auditId', 'audit-v2-lite'));
+      expect(publicMap, containsPair('releaseLine', 'v2.0.0.1'));
+      expect(publicMap, containsPair('targetProfile', 'lite_receiver'));
+      expect(publicMap, isNot(contains('workspacePath')));
+      expect(publicMap, isNot(contains('diagnosticsDump')));
+    });
   });
 }

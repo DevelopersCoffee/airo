@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package airo.v2.protocol;
 
-option java_package = "io.airo.app.protocol.v2";
+option java_package = "app.airo.protocol.v2";
 option java_multiple_files = true;
 
 enum AiroMessageFamily {
