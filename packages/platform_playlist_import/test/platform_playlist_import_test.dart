@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:dio/dio.dart';
@@ -130,11 +131,24 @@ https://cdn.example.com/live.m3u8
   group('M3UParserService BYOC source', () {
     late SharedPreferences prefs;
     late M3UParserService parser;
+    late Directory cacheDir;
 
     setUp(() async {
       SharedPreferences.setMockInitialValues({});
       prefs = await SharedPreferences.getInstance();
-      parser = M3UParserService(dio: Dio(), prefs: prefs);
+      cacheDir = await Directory.systemTemp.createTemp(
+        'platform_playlist_import_test_',
+      );
+      addTearDown(() async {
+        if (cacheDir.existsSync()) {
+          await cacheDir.delete(recursive: true);
+        }
+      });
+      parser = M3UParserService(
+        dio: Dio(),
+        prefs: prefs,
+        cacheDirectoryProvider: () async => cacheDir,
+      );
     });
 
     test(
@@ -180,6 +194,7 @@ https://cdn.example.com/live.m3u8
         parser = M3UParserService(
           dio: Dio(),
           prefs: prefs,
+          cacheDirectoryProvider: () async => cacheDir,
           workerExecutor: workerExecutor,
         );
 
@@ -220,14 +235,66 @@ https://cdn.example.com/worker-news.m3u8
           cached.single.streamUrl,
           'https://cdn.example.com/worker-news.m3u8',
         );
-        expect(workerExecutor.calls, 2);
-        expect(
-          workerExecutor.kinds,
-          everyElement(AiroWorkerJobKind.playlistImport),
-        );
-        expect(workerExecutor.debugNames, everyElement('m3u_playlist_parse'));
+        expect(workerExecutor.calls, 3);
+        expect(workerExecutor.kinds, [
+          AiroWorkerJobKind.playlistImport,
+          AiroWorkerJobKind.playlistImport,
+          AiroWorkerJobKind.playlistImport,
+        ]);
+        expect(workerExecutor.debugNames, [
+          'm3u_playlist_parse',
+          'm3u_playlist_cache_encode',
+          'm3u_playlist_cache_decode',
+        ]);
       },
     );
+
+    test('stores structured cache and reads it without M3U reparse', () async {
+      final workerExecutor = _RecordingWorkerExecutor();
+      parser = M3UParserService(
+        dio: Dio(),
+        prefs: prefs,
+        cacheDirectoryProvider: () async => cacheDir,
+        workerExecutor: workerExecutor,
+      );
+
+      var requestCount = 0;
+      final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+      addTearDown(() => server.close(force: true));
+
+      server.listen((request) async {
+        requestCount++;
+        request.response.write('''
+#EXTM3U
+#EXTINF:-1 group-title="News",Structured News
+https://cdn.example.com/structured-news.m3u8
+''');
+        await request.response.close();
+      });
+
+      await parser.setPlaylistUrl(
+        'http://${server.address.address}:${server.port}/playlist.m3u',
+      );
+
+      final initial = await parser.fetchPlaylist(forceRefresh: true);
+      final cached = await parser.fetchPlaylist();
+
+      final cacheFile = File('${cacheDir.path}/iptv_channel_cache.json');
+      final payload = jsonDecode(await cacheFile.readAsString());
+
+      expect(initial.single.name, 'Structured News');
+      expect(cached.single.streamUrl, initial.single.streamUrl);
+      expect(requestCount, 1);
+      expect(prefs.getString('iptv_playlist_cache'), isNull);
+      expect(cacheFile.existsSync(), isTrue);
+      expect(payload, isA<Map<String, dynamic>>());
+      expect(payload['channels'], isA<List<dynamic>>());
+      expect(workerExecutor.debugNames, [
+        'm3u_playlist_parse',
+        'm3u_playlist_cache_encode',
+        'm3u_playlist_cache_decode',
+      ]);
+    });
 
     test('uses HTTP validators and cached playlist on 304 refresh', () async {
       final requests = <HttpHeaders>[];
