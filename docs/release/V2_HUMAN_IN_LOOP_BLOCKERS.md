@@ -44,6 +44,10 @@ exports, playlist URLs, local IP addresses, or private device logs.
 | #515 | Notification validation | Run notification validation on a supported physical/emulated target and attach evidence. |
 | #520 | Performance benchmarks | Run benchmark matrix and attach reproducible results. |
 | #514 | Audio playback validation | Run physical Android audio-route and interruption checks for seek accuracy, playback speed, background playback, headphones, Bluetooth, incoming calls, resume, and audio-focus changes. |
+| #510 | Downloads edge-case validation | Run Android download lifecycle checks for restart/reboot recovery, network transport changes, corruption recovery, storage pressure, verification, and queue/progress behavior. |
+| #511 | Whisper robustness validation | Provide native/runtime evidence for long meetings, silence/background noise, large audio, interruption, low-RAM, rotation, model switching, and memory-leak behavior. |
+| #512 | Speaker diarization validation | Provide implemented/native evidence for similar voices, fast switching, overlaps, unknown speakers, rename/merge, speaker persistence, and meeting continuation. |
+| #513 | LLM stability validation | Run on-device/local-runtime validation for context overflow, memory exhaustion, model switching, cancellation, summary generation, long meetings, large prompts, offline mode, and low-battery mode. |
 
 ## Repository Or Workspace Decision Blockers
 
@@ -71,6 +75,6 @@ exports, playlist URLs, local IP addresses, or private device logs.
    groups exist.
 4. Store forms: complete #583 and #584 while engineering continues.
 5. Device evidence: schedule #683, #589, #590, #716, #459/#453, #257, #519,
-   #516, #515, #520, and #514 after signed or release-candidate artifacts are
-   available.
+   #516, #515, #520, #514, #510, #511, #512, and #513 after signed or
+   release-candidate artifacts are available.
 6. Governance/legal: complete #687, #689, and #673 before broad public release.
