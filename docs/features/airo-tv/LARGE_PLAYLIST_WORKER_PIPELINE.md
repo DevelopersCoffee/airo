@@ -59,6 +59,19 @@ payloads in the contract.
 - `index`
 - `finalize`
 
+## Parser Hot-Path Contract
+
+M3U channel normalization and deduplication remain owned by
+`packages/platform_playlist_import`, not by Airo TV screens. The parser builds a
+single normalized key per channel during parse using ASCII letter folding,
+digit preservation, and punctuation/whitespace removal. This keeps duplicate
+channel collapse reusable for Android TV, Fire TV, and future import workers.
+
+Duplicate handling keeps the first normalized channel unless a later duplicate
+has a logo and the existing channel does not. Deterministic tests cover this
+logo-preference rule in both input orders so large playlists do not regress
+while the Rust parser target is developed.
+
 ## Privacy
 
 Worker diagnostics use stable ids, counts, stages, statuses, and blocker codes
