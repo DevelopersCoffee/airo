@@ -171,8 +171,9 @@ class _TvFocusableState extends State<TvFocusable>
                 child: Container(
                   decoration: isFocused && widget.showBorderEffect
                       ? BoxDecoration(
-                          borderRadius:
-                              BorderRadius.circular(widget.borderRadius),
+                          borderRadius: BorderRadius.circular(
+                            widget.borderRadius,
+                          ),
                           border: Border.all(
                             color: focusColor,
                             width: TvFocusConstants.focusBorderWidth,
