@@ -117,4 +117,61 @@ https://stream.example/sports.m3u8
     expect(normalized.iterations, 5);
     expect(normalized.deviceClass, 'host_local');
   });
+
+  test(
+    'XMLTV fixture generator writes deterministic privacy-safe metadata',
+    () async {
+      final dir = Directory.systemTemp.createTempSync(
+        'airo-xmltv-fixture-test-',
+      );
+      addTearDown(() {
+        if (dir.existsSync()) {
+          dir.deleteSync(recursive: true);
+        }
+      });
+
+      final config = AiroXmltvFixtureConfig(
+        fixtureId: 'xmltv-test-fixture',
+        outputPath: '${dir.path}/fixture.xml',
+        manifestPath: '${dir.path}/manifest.json',
+        targetByteCount: 4096,
+        channelCount: 4,
+      );
+
+      final first = await const AiroXmltvFixtureGenerator().writeFixture(
+        config,
+      );
+      final second = await const AiroXmltvFixtureGenerator().writeFixture(
+        config,
+      );
+
+      final fixture = File(config.outputPath);
+      final manifest = File(config.manifestPath);
+      final rawXml = fixture.readAsStringSync();
+      final manifestJson =
+          jsonDecode(manifest.readAsStringSync()) as Map<String, dynamic>;
+
+      expect(first.byteCount, greaterThanOrEqualTo(4096));
+      expect(second.sha256, first.sha256);
+      expect(second.byteCount, first.byteCount);
+      expect(second.programmeCount, first.programmeCount);
+      expect(fixture.lengthSync(), first.byteCount);
+      expect(rawXml, startsWith('<?xml version="1.0" encoding="UTF-8"?>'));
+      expect(rawXml, contains('<tv generator-info-name='));
+      expect(rawXml, contains('<channel id="channel-00000">'));
+      expect(rawXml, contains('<programme start='));
+      expect(rawXml, isNot(contains('https://')));
+      expect(rawXml, isNot(contains('token=')));
+      expect(manifestJson, containsPair('fixtureId', 'xmltv-test-fixture'));
+      expect(manifestJson.containsKey('source'), isFalse);
+      expect(
+        manifestJson['privacy'],
+        containsPair('source', 'synthetic_xmltv'),
+      );
+      expect(
+        jsonEncode(manifestJson),
+        isNot(contains(Directory.systemTemp.path)),
+      );
+    },
+  );
 }

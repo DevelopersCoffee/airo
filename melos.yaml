@@ -87,6 +87,20 @@ scripts:
         --input ../../artifacts/performance/airo-tv-host-benchmark.json \
         --output ../../artifacts/performance/airo-tv-host-benchmark.md
 
+  # Generate the deterministic synthetic XMLTV fixture used by EPG benchmarks.
+  bench:xmltv-fixture:
+    description: Generate the 50 MiB XMLTV benchmark fixture and manifest
+    run: |
+      cd packages/platform_benchmarks
+      flutter pub get
+      dart run tool/generate_xmltv_fixture.dart \
+        --fixture-id generated-xmltv-50mb-v1 \
+        --output ../../iptv-data/fixtures/xmltv/generated-50mb.xml \
+        --manifest ../../iptv-data/fixtures/xmltv/generated-50mb.manifest.json \
+        --target-bytes 52428800 \
+        --channels 512 \
+        --programme-minutes 30
+
   # Run code generation
   generate:
     run: melos exec -- flutter pub run build_runner build --delete-conflicting-outputs
