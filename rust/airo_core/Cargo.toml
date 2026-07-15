@@ -1,0 +1,16 @@
+[package]
+name = "airo_core"
+version = "0.1.0"
+edition = "2021"
+description = "Airo platform core — high-performance Rust engines for playlist, EPG, search and dedup"
+license = "MIT"
+
+[lib]
+name = "airo_core"
+crate-type = ["cdylib", "staticlib"]
+
+[dependencies]
+flutter_rust_bridge = "2"
+
+[dev-dependencies]
+# bench harness lives in benches/

@@ -129,6 +129,8 @@ Cost rules:
 - Do not intentionally trigger full GitHub Actions build matrices for small
   slices unless branch protection, release/signing, artifact validation, or the
   issue explicitly requires them.
+- Use `[skip ci]` for local-only commits and direct sync pushes when remote CI
+  is not required and repository/branch policy permits it.
 - Do not re-run failed workflows until confirming the failure is relevant to
   the change.
 - Cancel accidental or redundant expensive runs with `gh run cancel <run-id>`.
