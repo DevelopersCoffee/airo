@@ -53,6 +53,32 @@ void main() {
 
         expect(result1.getOrNull()!.id, isNot(result2.getOrNull()!.id));
       });
+
+      test(
+        'should reject oversized wallet payload before raw persistence',
+        () async {
+          final prefs = await SharedPreferences.getInstance();
+          repository = LocalWalletRepository(maxPreferenceValueBytes: 256);
+
+          final result = await repository.create(
+            name: 'Oversized Wallet',
+            description: 'description ${List.filled(512, 'x').join()}',
+            balanceCents: 1000,
+            type: WalletType.bank,
+            currency: 'INR',
+            bankName: 'Bank ${List.filled(128, 'x').join()}',
+            accountNumber: '1234567890',
+          );
+
+          expect(result.isErr, true);
+          expect(prefs.getString('airo_wallets_v1_default'), isNull);
+
+          repository.invalidateCache();
+          final wallets = await repository.fetchAll();
+          expect(wallets.isOk, true);
+          expect(wallets.getOrNull(), isEmpty);
+        },
+      );
     });
 
     group('fetchAll', () {
