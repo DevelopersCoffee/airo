@@ -158,6 +158,28 @@ scripts:
         --output-json ../../artifacts/performance/airo-tv-dpad-traversal-report.json \
         --output-markdown ../../artifacts/performance/airo-tv-dpad-traversal-report.md
 
+  # Render local Cast active-receiver channel-switch evidence.
+  bench:cast-channel-switch-report:
+    description: Write sanitized Cast channel-switch evidence from local metrics
+    run: |
+      cd packages/platform_benchmarks
+      flutter pub get
+      dart run tool/write_cast_channel_switch_report.dart \
+        --report-id "${CAST_SWITCH_REPORT_ID:-manual-cast-switch-sample}" \
+        --sender-profile "${CAST_SWITCH_SENDER_PROFILE:?Set CAST_SWITCH_SENDER_PROFILE from the sender device class}" \
+        --receiver-profile "${CAST_SWITCH_RECEIVER_PROFILE:?Set CAST_SWITCH_RECEIVER_PROFILE from the receiver class}" \
+        --playlist-profile "${CAST_SWITCH_PLAYLIST_PROFILE:-iptv-org-public}" \
+        --attempted-switches "${CAST_SWITCH_ATTEMPTED:?Set CAST_SWITCH_ATTEMPTED from channel A->B/C attempts}" \
+        --successful-switches "${CAST_SWITCH_SUCCESSFUL:?Set CAST_SWITCH_SUCCESSFUL from observed receiver channel changes}" \
+        --receiver-reconnects "${CAST_SWITCH_RECEIVER_RECONNECTS:-0}" \
+        --stale-previous-statuses "${CAST_SWITCH_STALE_PREVIOUS_STATUSES:-0}" \
+        --previous-channel-errors "${CAST_SWITCH_PREVIOUS_CHANNEL_ERRORS:-0}" \
+        --latest-error-matched-selected "${CAST_SWITCH_LATEST_ERROR_MATCHED_SELECTED:-true}" \
+        --local-playback-restarts "${CAST_SWITCH_LOCAL_PLAYBACK_RESTARTS:-0}" \
+        --recovery-actions "${CAST_SWITCH_RECOVERY_ACTIONS:-0}" \
+        --output-json ../../artifacts/performance/cast-channel-switch-report.json \
+        --output-markdown ../../artifacts/performance/cast-channel-switch-report.md
+
   # Render a local Cast proxy benchmark report from captured device metrics.
   bench:cast-proxy-report:
     description: Write sanitized Cast proxy benchmark evidence from local metrics
