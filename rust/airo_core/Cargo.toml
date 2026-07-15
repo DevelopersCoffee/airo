@@ -16,6 +16,7 @@ quick-xml = "0.38"
 
 [dev-dependencies]
 criterion = "0.5"
+libc = "0.2"
 
 [[bench]]
 name = "m3u_parser"

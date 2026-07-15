@@ -1,3 +1,5 @@
+use std::io::{BufRead, Cursor};
+
 use quick_xml::encoding::Decoder;
 use quick_xml::escape::{resolve_predefined_entity, unescape};
 use quick_xml::events::{attributes::Attribute, BytesRef, BytesStart, Event};
@@ -36,21 +38,22 @@ pub fn parse_xmltv_programmes(
     content: String,
     max_programmes: u32,
 ) -> Result<XmltvParseResult, String> {
-    parse_xmltv_programmes_str(&content, max_programmes as usize).map_err(|error| error.to_string())
+    parse_xmltv_programmes_reader(Cursor::new(content.into_bytes()), max_programmes as usize)
+        .map_err(|error| error.to_string())
 }
 
-fn parse_xmltv_programmes_str(
-    content: &str,
+pub fn parse_xmltv_programmes_reader<R: BufRead>(
+    input: R,
     max_programmes: usize,
 ) -> quick_xml::Result<XmltvParseResult> {
-    let mut reader = Reader::from_str(content);
-
+    let mut reader = Reader::from_reader(input);
+    let mut buffer = Vec::with_capacity(8192);
     let mut result = XmltvParseResult::default();
     let mut pending: Option<PendingProgramme> = None;
     let mut inside_title = false;
 
     loop {
-        match reader.read_event()? {
+        match reader.read_event_into(&mut buffer)? {
             Event::Start(element) if element.name().as_ref() == b"programme" => {
                 pending = Some(pending_programme(&element, reader.decoder())?);
             }
@@ -80,9 +83,18 @@ fn parse_xmltv_programmes_str(
             Event::Eof => break,
             _ => {}
         }
+        buffer.clear();
     }
 
     Ok(result)
+}
+
+#[cfg(test)]
+fn parse_xmltv_programmes_str(
+    content: &str,
+    max_programmes: usize,
+) -> quick_xml::Result<XmltvParseResult> {
+    parse_xmltv_programmes_reader(Cursor::new(content.as_bytes()), max_programmes)
 }
 
 fn pending_programme(
@@ -259,5 +271,23 @@ mod tests {
             result.programmes[0].title.as_deref(),
             Some("Morning & Markets")
         );
+    }
+
+    #[test]
+    fn parses_from_buffered_reader_without_string_ownership() {
+        let input = Cursor::new(
+            br#"<tv>
+  <programme channel="reader.one" start="20260715090000 +0000">
+    <title>Reader Path</title>
+  </programme>
+</tv>"#
+                .as_slice(),
+        );
+
+        let result = parse_xmltv_programmes_reader(input, 10).expect("valid XMLTV");
+
+        assert_eq!(result.programmes.len(), 1);
+        assert_eq!(result.programmes[0].channel_id, "reader.one");
+        assert_eq!(result.programmes[0].title.as_deref(), Some("Reader Path"));
     }
 }

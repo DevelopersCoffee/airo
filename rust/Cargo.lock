@@ -32,6 +32,7 @@ version = "0.1.0"
 dependencies = [
  "criterion",
  "flutter_rust_bridge",
+ "libc",
  "memchr",
  "quick-xml",
 ]
