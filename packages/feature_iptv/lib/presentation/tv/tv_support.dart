@@ -215,21 +215,28 @@ class TvFocusable extends StatefulWidget {
 
 class _TvFocusableState extends State<TvFocusable> {
   late final FocusNode _focusNode;
-  bool _focused = false;
+  final ValueNotifier<bool> _focused = ValueNotifier<bool>(false);
 
   @override
   void initState() {
     super.initState();
     _focusNode = FocusNode();
-    _focusNode.addListener(() {
-      setState(() => _focused = _focusNode.hasFocus);
-      if (_focused) widget.onFocus?.call();
-    });
+    _focusNode.addListener(_onFocusChange);
+  }
+
+  void _onFocusChange() {
+    final hasFocus = _focusNode.hasFocus;
+    if (hasFocus != _focused.value) {
+      _focused.value = hasFocus;
+      if (hasFocus) widget.onFocus?.call();
+    }
   }
 
   @override
   void dispose() {
+    _focusNode.removeListener(_onFocusChange);
     _focusNode.dispose();
+    _focused.dispose();
     super.dispose();
   }
 
@@ -248,17 +255,25 @@ class _TvFocusableState extends State<TvFocusable> {
       },
       child: InkWell(
         onTap: widget.enabled ? widget.onSelect : null,
-        child: AnimatedContainer(
-          duration: TvFocusConstants.focusAnimationDuration,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(widget.borderRadius),
-            border: _focused
-                ? Border.all(
-                    color: Theme.of(context).colorScheme.primary,
-                    width: 3,
-                  )
-                : null,
-          ),
+        // ValueListenableBuilder rebuilds only the decoration,
+        // not the entire widget subtree, on focus changes.
+        child: ValueListenableBuilder<bool>(
+          valueListenable: _focused,
+          builder: (context, isFocused, child) {
+            return AnimatedContainer(
+              duration: TvFocusConstants.focusAnimationDuration,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(widget.borderRadius),
+                border: isFocused
+                    ? Border.all(
+                        color: Theme.of(context).colorScheme.primary,
+                        width: 3,
+                      )
+                    : null,
+              ),
+              child: child,
+            );
+          },
           child: widget.child,
         ),
       ),
