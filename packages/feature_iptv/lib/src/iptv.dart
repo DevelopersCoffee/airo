@@ -13,6 +13,7 @@
 library;
 
 export 'package:platform_channels/platform_channels.dart';
+export 'package:platform_epg/platform_epg.dart';
 export 'package:platform_history/platform_history.dart';
 export 'package:platform_media/platform_media.dart';
 export 'package:platform_player/platform_player.dart';

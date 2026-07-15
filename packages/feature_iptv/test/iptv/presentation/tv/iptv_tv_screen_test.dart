@@ -47,6 +47,8 @@ void main() {
   Future<void> pumpScreen(
     WidgetTester tester, {
     List<IPTVChannel>? visibleChannels,
+    CompactEpgRepository? compactEpgRepository,
+    DateTime? compactEpgNow,
     Size surfaceSize = const Size(1280, 720),
   }) async {
     await tester.binding.setSurfaceSize(surfaceSize);
@@ -62,6 +64,12 @@ void main() {
             (ref) async => visibleChannels ?? channels,
           ),
           recentlyWatchedChannelsProvider.overrideWith((ref) async => const []),
+          if (compactEpgRepository != null)
+            compactEpgRepositoryProvider.overrideWithValue(
+              compactEpgRepository,
+            ),
+          if (compactEpgNow != null)
+            compactEpgReferenceTimeProvider.overrideWithValue(compactEpgNow),
           streamingStateProvider.overrideWith(
             (ref) => Stream.value(
               const StreamingState(
@@ -110,6 +118,42 @@ void main() {
     expect(find.byType(Scrollbar), findsOneWidget);
     expect(find.bySemanticsLabel('Search'), findsWidgets);
     expect(find.bySemanticsLabel('City News Live'), findsOneWidget);
+  });
+
+  testWidgets('renders compact current EPG from platform repository', (
+    tester,
+  ) async {
+    final now = DateTime.utc(2026, 7, 15, 9);
+    final repository = InMemoryCompactEpgRepository(
+      seed: CompactEpgSlice(
+        entries: [
+          CompactEpgEntry.fromPrograms(
+            channelId: 'news-1',
+            channelName: 'City News Live',
+            now: now,
+            programs: [
+              CompactEpgProgram(
+                programId: 'morning-news',
+                title: 'Morning Bulletin',
+                startsAt: now.subtract(const Duration(minutes: 10)),
+                endsAt: now.add(const Duration(minutes: 20)),
+              ),
+            ],
+          ),
+        ],
+        generatedAt: now,
+        expiresAt: now.add(const Duration(minutes: 15)),
+        source: CompactEpgSliceSource.localCache,
+      ),
+    );
+
+    await pumpScreen(
+      tester,
+      compactEpgRepository: repository,
+      compactEpgNow: now,
+    );
+
+    expect(find.text('Now: Morning Bulletin'), findsOneWidget);
   });
 
   testWidgets('keeps compact TV viewport browse controls reachable', (

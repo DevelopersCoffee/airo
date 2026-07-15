@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import "package:platform_history/platform_history.dart";
 import "package:platform_channels/platform_channels.dart";
+import "package:platform_epg/platform_epg.dart";
 import "package:platform_player/platform_player.dart";
 import "package:platform_media/platform_media.dart";
 import "package:platform_playlist_import/platform_playlist_import.dart";
@@ -247,6 +248,49 @@ final flavorCounts = Provider<Map<ChannelFlavor, int>>((ref) {
   final searchIndex = ref.watch(channelSearchIndexProvider);
   return searchIndex?.flavorCounts ?? const {};
 });
+
+class CompactEpgChannelQuery {
+  const CompactEpgChannelQuery({required this.channelIds, required this.now});
+
+  final List<String> channelIds;
+  final DateTime now;
+
+  @override
+  bool operator ==(Object other) {
+    return other is CompactEpgChannelQuery &&
+        listEquals(other.channelIds, channelIds) &&
+        other.now == now;
+  }
+
+  @override
+  int get hashCode => Object.hash(Object.hashAll(channelIds), now);
+}
+
+/// Platform compact EPG repository consumed by Airo TV.
+///
+/// Apps can override this with `XmltvCompactEpgRepository`, a storage-backed
+/// repository, or a delegated compact EPG source. The default keeps guide UI
+/// unavailable without parsing XMLTV in presentation code.
+final compactEpgRepositoryProvider = Provider<CompactEpgRepository>((ref) {
+  return const EmptyCompactEpgRepository();
+});
+
+/// Reference time for current/next guide queries.
+final compactEpgReferenceTimeProvider = Provider<DateTime>((ref) {
+  return DateTime.now().toUtc();
+});
+
+final compactEpgSliceForChannelsProvider =
+    FutureProvider.family<CompactEpgSlice, CompactEpgChannelQuery>((
+      ref,
+      query,
+    ) async {
+      final repository = ref.watch(compactEpgRepositoryProvider);
+      return repository.loadCurrentNext(
+        channelIds: query.channelIds,
+        now: query.now,
+      );
+    });
 
 /// Streaming state provider
 final streamingStateProvider = StreamProvider<StreamingState>((ref) {

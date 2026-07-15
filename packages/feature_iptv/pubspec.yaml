@@ -18,6 +18,8 @@ dependencies:
   flutter_riverpod: ^2.6.1
   platform_channels:
     path: ../platform_channels
+  platform_epg:
+    path: ../platform_epg
   platform_history:
     path: ../platform_history
   platform_media:
