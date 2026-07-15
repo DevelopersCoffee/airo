@@ -16,6 +16,7 @@ const Duration kAiroTvEpgWarmupDefaultMaxHeartbeatDelay = Duration(
 const Duration kAiroTvEpgWarmupDefaultHeartbeatInterval = Duration(
   milliseconds: 16,
 );
+const int kAiroTvEpgWarmupDefaultMaxRssDeltaBytes = 50 * 1024 * 1024;
 
 class AiroTvEpgWarmupBenchmarkConfig extends Equatable {
   const AiroTvEpgWarmupBenchmarkConfig({
@@ -27,6 +28,7 @@ class AiroTvEpgWarmupBenchmarkConfig extends Equatable {
     this.maxNowNextLatency = kAiroTvEpgWarmupDefaultMaxNowNextLatency,
     this.maxHeartbeatDelay = kAiroTvEpgWarmupDefaultMaxHeartbeatDelay,
     this.heartbeatInterval = kAiroTvEpgWarmupDefaultHeartbeatInterval,
+    this.maxRssDeltaBytes = kAiroTvEpgWarmupDefaultMaxRssDeltaBytes,
   });
 
   final String fixturePath;
@@ -37,6 +39,7 @@ class AiroTvEpgWarmupBenchmarkConfig extends Equatable {
   final Duration maxNowNextLatency;
   final Duration maxHeartbeatDelay;
   final Duration heartbeatInterval;
+  final int maxRssDeltaBytes;
 
   AiroTvEpgWarmupBenchmarkConfig normalized() {
     final normalizedFixturePath = fixturePath.trim();
@@ -54,6 +57,9 @@ class AiroTvEpgWarmupBenchmarkConfig extends Equatable {
       maxNowNextLatency: maxNowNextLatency,
       maxHeartbeatDelay: maxHeartbeatDelay,
       heartbeatInterval: heartbeatInterval,
+      maxRssDeltaBytes: maxRssDeltaBytes < 0
+          ? kAiroTvEpgWarmupDefaultMaxRssDeltaBytes
+          : maxRssDeltaBytes,
     );
   }
 
@@ -67,6 +73,7 @@ class AiroTvEpgWarmupBenchmarkConfig extends Equatable {
     maxNowNextLatency,
     maxHeartbeatDelay,
     heartbeatInterval,
+    maxRssDeltaBytes,
   ];
 }
 
@@ -86,8 +93,11 @@ class AiroTvEpgWarmupBenchmarkArtifact extends Equatable {
     required this.warmupWallTime,
     required this.mainHeartbeatTicks,
     required this.maxMainHeartbeatDelay,
+    required this.baselineRssBytes,
+    required this.peakRssBytes,
     required this.maxNowNextLatency,
     required this.maxHeartbeatDelay,
+    required this.maxRssDeltaBytes,
   });
 
   final String schemaVersion;
@@ -104,8 +114,13 @@ class AiroTvEpgWarmupBenchmarkArtifact extends Equatable {
   final Duration warmupWallTime;
   final int mainHeartbeatTicks;
   final Duration maxMainHeartbeatDelay;
+  final int baselineRssBytes;
+  final int peakRssBytes;
   final Duration maxNowNextLatency;
   final Duration maxHeartbeatDelay;
+  final int maxRssDeltaBytes;
+
+  int get maxRssDeltaBytesObserved => peakRssBytes - baselineRssBytes;
 
   bool get nowNextAccepted =>
       warmupWallTime <= maxNowNextLatency &&
@@ -113,7 +128,9 @@ class AiroTvEpgWarmupBenchmarkArtifact extends Equatable {
 
   bool get mainHeartbeatAccepted => maxMainHeartbeatDelay <= maxHeartbeatDelay;
 
-  bool get accepted => nowNextAccepted && mainHeartbeatAccepted;
+  bool get rssAccepted => maxRssDeltaBytesObserved <= maxRssDeltaBytes;
+
+  bool get accepted => nowNextAccepted && mainHeartbeatAccepted && rssAccepted;
 
   Map<String, Object?> toJson() {
     return {
@@ -126,6 +143,7 @@ class AiroTvEpgWarmupBenchmarkArtifact extends Equatable {
         'now': now.toUtc().toIso8601String(),
         'maxNowNextLatencyMs': maxNowNextLatency.inMilliseconds,
         'maxMainHeartbeatDelayMs': maxHeartbeatDelay.inMilliseconds,
+        'maxRssDeltaBytes': maxRssDeltaBytes,
       },
       'result': {
         'programmeCount': programmeCount,
@@ -135,11 +153,15 @@ class AiroTvEpgWarmupBenchmarkArtifact extends Equatable {
         'warmupWallTimeMs': warmupWallTime.inMilliseconds,
         'mainHeartbeatTicks': mainHeartbeatTicks,
         'maxMainHeartbeatDelayMs': maxMainHeartbeatDelay.inMilliseconds,
+        'baselineRssBytes': baselineRssBytes,
+        'peakRssBytes': peakRssBytes,
+        'maxRssDeltaBytes': maxRssDeltaBytesObserved,
       },
       'evaluation': {
         'accepted': accepted,
         'nowNextAccepted': nowNextAccepted,
         'mainHeartbeatAccepted': mainHeartbeatAccepted,
+        'rssAccepted': rssAccepted,
       },
       'host': {
         'operatingSystem': Platform.operatingSystem,
@@ -169,8 +191,11 @@ class AiroTvEpgWarmupBenchmarkArtifact extends Equatable {
     warmupWallTime,
     mainHeartbeatTicks,
     maxMainHeartbeatDelay,
+    baselineRssBytes,
+    peakRssBytes,
     maxNowNextLatency,
     maxHeartbeatDelay,
+    maxRssDeltaBytes,
   ];
 }
 
@@ -227,8 +252,11 @@ class AiroTvEpgWarmupBenchmarkRunner {
       warmupWallTime: stopwatch.elapsed,
       mainHeartbeatTicks: heartbeat.tickCount,
       maxMainHeartbeatDelay: heartbeat.maxDelay,
+      baselineRssBytes: heartbeat.baselineRssBytes,
+      peakRssBytes: heartbeat.maxRssBytes,
       maxNowNextLatency: config.maxNowNextLatency,
       maxHeartbeatDelay: config.maxHeartbeatDelay,
+      maxRssDeltaBytes: config.maxRssDeltaBytes,
     );
   }
 
@@ -241,9 +269,13 @@ class AiroTvEpgWarmupBenchmarkRunner {
 }
 
 class _MainIsolateHeartbeat {
-  _MainIsolateHeartbeat({required this.interval});
+  _MainIsolateHeartbeat({required this.interval})
+    : baselineRssBytes = ProcessInfo.currentRss,
+      maxRssBytes = ProcessInfo.currentRss;
 
   final Duration interval;
+  final int baselineRssBytes;
+  int maxRssBytes;
   Timer? _timer;
   Stopwatch? _stopwatch;
   int _lastElapsedUs = 0;
@@ -261,6 +293,10 @@ class _MainIsolateHeartbeat {
       final delayUs = deltaUs - interval.inMicroseconds;
       if (delayUs > maxDelay.inMicroseconds) {
         maxDelay = Duration(microseconds: delayUs);
+      }
+      final rssBytes = ProcessInfo.currentRss;
+      if (rssBytes > maxRssBytes) {
+        maxRssBytes = rssBytes;
       }
     });
   }
