@@ -13,6 +13,8 @@
 /// ```
 library;
 
+import 'dart:async';
+
 import 'package:dio/dio.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
@@ -42,16 +44,14 @@ const _debugDefaultPlaylistUrl = String.fromEnvironment(
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize global error handler for unhandled exceptions
   GlobalErrorHandler.initialize();
 
-  // Enable semantics for browser release-audit automation and accessibility
-  // inspection. This mirrors the main web entrypoint behavior.
   if (kIsWeb) {
     SemanticsBinding.instance.ensureSemantics();
     debugPrint('Semantics enabled for Airo TV web testing');
   }
 
+  // First-frame critical: UI mode must be set before runApp.
   await configureTvSystemChrome();
 
   debugPrint('🖥️ Starting Airo TV (${PlatformFeatures.platformName})');
@@ -59,7 +59,38 @@ void main() async {
     '📺 Features: ${PlatformFeatures.enabledFeatures.map((f) => f.name).join(', ')}',
   );
 
-  // Initialize Firebase with TV variant configuration
+  // Register features synchronously — providerOverrides available immediately.
+  FeatureRegistry.register(IptvFeatureModule());
+
+  // Firebase + SharedPreferences in parallel.
+  final (prefs, _) = await (
+    SharedPreferences.getInstance(),
+    _initFirebase(),
+  ).wait;
+
+  debugPrint(
+    '📦 Registered features: ${FeatureRegistry.featureNames.join(', ')}',
+  );
+
+  runApp(
+    ProviderScope(
+      overrides: [
+        sharedPreferencesProvider.overrideWithValue(prefs),
+        realIptvCastControllerOverride(),
+        ...FeatureRegistry.allProviderOverrides,
+      ],
+      child: const AiroTvApp(),
+    ),
+  );
+
+  // Defer post-frame: feature init (currently no-op) + debug network seed.
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    unawaited(FeatureRegistry.initializeAll());
+    unawaited(seedTvDebugDefaultPlaylist(prefs));
+  });
+}
+
+Future<void> _initFirebase() async {
   try {
     if (!DefaultFirebaseOptions.isCurrentPlatformConfigured) {
       isFirebaseInitialized = false;
@@ -77,29 +108,6 @@ void main() async {
     isFirebaseInitialized = false;
     debugPrint('⚠️ Firebase initialization failed: $e');
   }
-
-  // Initialize SharedPreferences for IPTV caching
-  final prefs = await SharedPreferences.getInstance();
-  await seedTvDebugDefaultPlaylist(prefs);
-
-  // Initialize feature registry with TV-specific features
-  FeatureRegistry.register(IptvFeatureModule());
-  await FeatureRegistry.initializeAll();
-
-  debugPrint(
-    '📦 Registered features: ${FeatureRegistry.featureNames.join(', ')}',
-  );
-
-  runApp(
-    ProviderScope(
-      overrides: [
-        sharedPreferencesProvider.overrideWithValue(prefs),
-        realIptvCastControllerOverride(),
-        ...FeatureRegistry.allProviderOverrides,
-      ],
-      child: const AiroTvApp(),
-    ),
-  );
 }
 
 @visibleForTesting
