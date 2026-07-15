@@ -203,6 +203,19 @@ melos:
           --output-json ../../artifacts/release/android-signing-preflight.json \
           --output-markdown ../../artifacts/release/android-signing-preflight.md
 
+    release:macos-signing-preflight:
+      description: Write macOS signing and notarization readiness evidence
+      run: |
+        cd packages/core_release
+        flutter pub get
+        dart run tool/preflight_macos_signing.dart \
+          --repo-root ../.. \
+          --profile "${AIRO_MACOS_PROFILE:-tv}" \
+          --require-signing "${AIRO_MACOS_REQUIRE_SIGNING:-true}" \
+          --require-notarization "${AIRO_MACOS_REQUIRE_NOTARIZATION:-true}" \
+          --output-json ../../artifacts/release/macos-signing-preflight.json \
+          --output-markdown ../../artifacts/release/macos-signing-preflight.md
+
     qa:ipad-qualification-report:
       description: Write iPad Air UI/UX qualification report evidence
       run: |

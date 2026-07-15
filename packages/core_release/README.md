@@ -35,6 +35,9 @@ instead of duplicating profile rules in CI scripts.
   groups, and service-account presence before upload workflows run.
 - Redacted Android signing preflight for checking production signing secret
   readiness before humans dispatch Android release workflows.
+- Redacted macOS Developer ID signing and notarization preflight for checking
+  public-consumer release readiness before humans dispatch notarized macOS
+  release workflows.
 - Validation findings for duplicate profile/package IDs and incomplete Android
   release candidates.
 
