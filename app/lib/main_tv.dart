@@ -13,6 +13,8 @@
 /// ```
 library;
 
+import 'dart:io';
+
 import 'package:core_ui/core_ui.dart';
 import 'package:dio/dio.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -21,6 +23,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'core/app/airo_tv_app.dart';
@@ -41,6 +44,7 @@ typedef TvFirebaseInitializer = Future<void> Function();
 const _debugDefaultPlaylistUrl = String.fromEnvironment(
   'DEBUG_IPTV_PLAYLIST_URL',
 );
+const _debugDefaultEpgUrl = String.fromEnvironment('DEBUG_IPTV_EPG_URL');
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -66,6 +70,7 @@ void main() async {
   // Initialize SharedPreferences for IPTV caching
   final prefs = await SharedPreferences.getInstance();
   final shouldWarmDebugPlaylist = await seedTvDebugDefaultPlaylist(prefs);
+  final compactEpgRepository = createTvCompactEpgRepository();
 
   // Initialize feature registry with TV-specific features
   FeatureRegistry.register(IptvFeatureModule());
@@ -78,6 +83,7 @@ void main() async {
     ProviderScope(
       overrides: [
         sharedPreferencesProvider.overrideWithValue(prefs),
+        compactEpgRepositoryProvider.overrideWithValue(compactEpgRepository),
         realIptvCastControllerOverride(),
         ...FeatureRegistry.allProviderOverrides,
       ],
@@ -90,6 +96,7 @@ void main() async {
   if (shouldWarmDebugPlaylist) {
     scheduleTvDebugDefaultPlaylistWarmup(prefs);
   }
+  scheduleTvDebugDefaultEpgWarmup(prefs, repository: compactEpgRepository);
 }
 
 @visibleForTesting
@@ -249,4 +256,164 @@ Future<void> warmTvDebugDefaultPlaylistCache(
   if (parserService.getPlaylistUrl() != playlistUrl) return;
 
   await parserService.fetchPlaylist(forceRefresh: true);
+}
+
+@visibleForTesting
+SnapshotBackedCompactEpgRepository createTvCompactEpgRepository({
+  Future<Directory> Function()? supportDirectoryProvider,
+}) {
+  final directoryProvider =
+      supportDirectoryProvider ?? getApplicationSupportDirectory;
+  return SnapshotBackedCompactEpgRepository(
+    store: FileCompactEpgSnapshotStore(
+      fileProvider: () async {
+        final supportDir = await directoryProvider();
+        return File('${supportDir.path}/epg/compact_epg_snapshot.json');
+      },
+    ),
+  );
+}
+
+@visibleForTesting
+void scheduleTvDebugDefaultEpgWarmup(
+  SharedPreferences prefs, {
+  required SnapshotBackedCompactEpgRepository repository,
+  String debugName = 'tv_debug_epg_warmup',
+  String epgUrl = _debugDefaultEpgUrl,
+  M3UParserService? parser,
+  Dio? dio,
+  DateTime Function()? clock,
+  WidgetsBinding? binding,
+  void Function(DeferredStartupFrameCallback callback)? addPostFrameCallback,
+  void Function(String message)? log,
+}) {
+  if (epgUrl.isEmpty) return;
+
+  scheduleDeferredStartupTask(
+    debugName: debugName,
+    binding: binding,
+    addPostFrameCallback: addPostFrameCallback,
+    log: log,
+    task: () => warmTvDebugDefaultEpgCache(
+      prefs,
+      repository: repository,
+      epgUrl: epgUrl,
+      parser: parser,
+      dio: dio,
+      clock: clock,
+    ),
+  );
+}
+
+@visibleForTesting
+Future<Duration?> warmTvDebugDefaultEpgCache(
+  SharedPreferences prefs, {
+  required SnapshotBackedCompactEpgRepository repository,
+  String epgUrl = _debugDefaultEpgUrl,
+  M3UParserService? parser,
+  Dio? dio,
+  DateTime Function()? clock,
+}) async {
+  final normalizedEpgUrl = epgUrl.trim();
+  if (normalizedEpgUrl.isEmpty) return null;
+
+  final uri = Uri.tryParse(normalizedEpgUrl);
+  if (uri == null ||
+      uri.host.isEmpty ||
+      (uri.scheme != 'https' && uri.scheme != 'http')) {
+    throw ArgumentError.value(
+      epgUrl,
+      'epgUrl',
+      'Enter a valid HTTP(S) XMLTV EPG URL.',
+    );
+  }
+
+  final http = dio ?? Dio();
+  final parserService = parser ?? M3UParserService(dio: http, prefs: prefs);
+  final channels = await parserService.fetchPlaylist();
+  if (channels.isEmpty) return null;
+
+  final response = await http.get<String>(
+    normalizedEpgUrl,
+    options: Options(
+      responseType: ResponseType.plain,
+      receiveTimeout: const Duration(seconds: 30),
+      validateStatus: (status) =>
+          status != null && status >= 200 && status < 300,
+    ),
+  );
+  final content = response.data;
+  if (content == null || content.isEmpty) return null;
+
+  final stopwatch = Stopwatch()..start();
+  final now = (clock ?? DateTime.now)().toUtc();
+  final aliasesByChannel = {
+    for (final channel in channels) channel.id: _xmltvGuideAliasesFor(channel),
+  };
+  final guideChannelIds = aliasesByChannel.values
+      .expand((aliases) => aliases)
+      .toSet()
+      .toList(growable: false);
+  final channelNamesByGuideId = {
+    for (final channel in channels)
+      for (final alias in aliasesByChannel[channel.id]!) alias: channel.name,
+  };
+  final guideRepository = XmltvCompactEpgRepository.fromXmltv(
+    content: content,
+    ingestedAt: now,
+    sourceRef: CompactEpgSourceRef.redacted('debug-tv-epg'),
+    channelNamesById: channelNamesByGuideId,
+  );
+  final guideSlice = await guideRepository.loadCurrentNext(
+    channelIds: guideChannelIds,
+    now: now,
+  );
+  final entries = <CompactEpgEntry>[];
+
+  for (final channel in channels) {
+    for (final alias in aliasesByChannel[channel.id]!) {
+      final guideEntry = guideSlice.entryForChannel(alias);
+      if (guideEntry == null || !guideEntry.hasPrograms) {
+        continue;
+      }
+      entries.add(
+        CompactEpgEntry(
+          channelId: channel.id,
+          channelName: channel.name,
+          channelNumber: channel.tvgId?.toString(),
+          current: guideEntry.current,
+          next: guideEntry.next,
+          sourceRef: guideEntry.sourceRef,
+        ),
+      );
+      break;
+    }
+  }
+
+  await repository.saveSnapshot(
+    CompactEpgSlice(
+      entries: entries,
+      generatedAt: guideSlice.generatedAt,
+      expiresAt: guideSlice.expiresAt,
+      source: entries.isEmpty
+          ? CompactEpgSliceSource.unavailable
+          : CompactEpgSliceSource.localCache,
+    ),
+  );
+  stopwatch.stop();
+  return stopwatch.elapsed;
+}
+
+List<String> _xmltvGuideAliasesFor(IPTVChannel channel) {
+  final aliases = <String>{
+    channel.id,
+    if (channel.tvgId != null) channel.tvgId.toString(),
+    if (channel.tvgName != null) channel.tvgName!,
+    channel.name,
+    ...channel.altNames,
+  };
+  return aliases
+      .map((alias) => alias.trim())
+      .where((alias) => alias.isNotEmpty)
+      .toList(growable: false);
 }
