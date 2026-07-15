@@ -1,3 +1,5 @@
+import 'dart:developer' as developer;
+
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:platform_channels/platform_channels.dart';
@@ -35,8 +37,11 @@ class M3UParserService {
         await _saveToCache(channels);
         return channels;
       }
-    } catch (e) {
-      print('[M3U] Failed to fetch user playlist: $e');
+    } catch (_) {
+      developer.log(
+        'Failed to fetch user playlist.',
+        name: 'platform_playlist_import',
+      );
     }
 
     // Network failed; use only a cache derived from the user's own playlist.

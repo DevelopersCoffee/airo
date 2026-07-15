@@ -1,39 +1,19 @@
-<!--
-This README describes the package. If you publish this package to pub.dev,
-this README's contents appear on the landing page for your package.
+# Platform Playlist Import
 
-For information about how to write a good package README, see the guide for
-[writing package pages](https://dart.dev/tools/pub/writing-package-pages).
+Reusable playlist import contracts and services for Airo products.
 
-For general information about developing packages, see the Dart guide for
-[creating packages](https://dart.dev/guides/libraries/create-packages)
-and the Flutter guide for
-[developing packages and plugins](https://flutter.dev/to/develop-packages).
--->
+This package owns playlist parsing and import pipeline boundaries that should
+not be hard-coded inside Airo TV screens or tied to a concrete storage engine.
 
-TODO: Put a short description of the package here that helps potential users
-know whether this package might be useful for them.
+## Scope
 
-## Features
+- User-supplied M3U parsing and cache helpers.
+- Generic import pipeline stage abstraction.
+- Large playlist worker plan, progress, cancellation, partial availability,
+  batch-write, and diagnostic contracts.
+- Fake and no-op worker/batch-writer adapters for deterministic automation.
 
-TODO: List what your package can do. Maybe include images, gifs, or videos.
-
-## Getting started
-
-TODO: List prerequisites and provide or point to information on how to
-start using the package.
-
-## Usage
-
-TODO: Include short and useful examples for package users. Add longer examples
-to `/example` folder.
-
-```dart
-const like = 'sample';
-```
-
-## Additional information
-
-TODO: Tell users more about the package: where to find more information, how to
-contribute to the package, how to file issues, what response they can expect
-from the package authors, and more.
+This package does not choose a database engine, own Airo TV progress UI,
+download provider-specific bundled content, expose raw playlist URLs in worker
+diagnostics, or import storage SDKs directly. Concrete storage adapters should
+plug in behind `AiroPlaylistBatchWriter`.
