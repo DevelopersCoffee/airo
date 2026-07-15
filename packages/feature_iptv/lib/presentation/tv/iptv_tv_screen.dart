@@ -208,13 +208,21 @@ class _TvBrowseLayout extends ConsumerWidget {
     final searchQuery = ref.watch(channelSearchQueryProvider);
     final selectedCategory = ref.watch(selectedCategoryProvider);
     final currentChannel = ref.watch(currentChannelProvider);
+    final viewport = MediaQuery.sizeOf(context);
+    final compactTv = viewport.height < 760 || viewport.width < 1200;
+    final denseTv = viewport.height < 650;
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(32, 24, 32, 24),
+      padding: EdgeInsets.fromLTRB(
+        compactTv ? 20 : 32,
+        compactTv ? 16 : 24,
+        compactTv ? 20 : 32,
+        compactTv ? 16 : 24,
+      ),
       child: Column(
         children: [
           _TvLiteReceiverShellHeader(productProfile: productProfile),
-          const SizedBox(height: 18),
+          SizedBox(height: compactTv ? 12 : 18),
           _TvHeader(
             channelCount: allChannels.length,
             visibleCount: visibleChannels.length,
@@ -224,13 +232,13 @@ class _TvBrowseLayout extends ConsumerWidget {
             onSearchTap: onSearchTap,
             onRefresh: onRefresh,
           ),
-          const SizedBox(height: 24),
+          SizedBox(height: compactTv ? 16 : 24),
           Expanded(
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 SizedBox(
-                  width: 320,
+                  width: compactTv ? 280 : 320,
                   child: _TvCategoryRail(
                     selectedCategory: selectedCategory,
                     onCategorySelected: (category) {
@@ -244,11 +252,14 @@ class _TvBrowseLayout extends ConsumerWidget {
                 Expanded(
                   child: Column(
                     children: [
-                      _TvPlayerPanel(
-                        streamingState: streamingState,
-                        currentChannel: currentChannel,
-                      ),
-                      const SizedBox(height: 20),
+                      if (!denseTv) ...[
+                        _TvPlayerPanel(
+                          streamingState: streamingState,
+                          currentChannel: currentChannel,
+                          compact: compactTv,
+                        ),
+                        SizedBox(height: compactTv ? 12 : 20),
+                      ],
                       _TvChannelToolbar(
                         viewMode: viewMode,
                         recentOnly: recentOnly,
@@ -258,7 +269,7 @@ class _TvBrowseLayout extends ConsumerWidget {
                         onClearFilters: onClearFilters,
                         onViewModeChanged: onViewModeChanged,
                       ),
-                      const SizedBox(height: 16),
+                      SizedBox(height: compactTv ? 10 : 16),
                       Expanded(
                         child: DecoratedBox(
                           decoration: BoxDecoration(
@@ -278,6 +289,7 @@ class _TvBrowseLayout extends ConsumerWidget {
                               ? _TvChannelGridView(
                                   channels: visibleChannels,
                                   currentChannel: currentChannel,
+                                  compact: denseTv,
                                   onChannelSelect: onChannelSelect,
                                 )
                               : _TvChannelListView(
@@ -293,7 +305,7 @@ class _TvBrowseLayout extends ConsumerWidget {
               ],
             ),
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: compactTv ? 8 : 12),
           const IPTVMiniPlayer(forceVisible: true),
         ],
       ),
@@ -521,6 +533,14 @@ class _TvCategoryRail extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final counts = ref.watch(categoryCounts);
     final theme = Theme.of(context);
+    final visibleCategories = _visibleCategories
+        .where(
+          (category) =>
+              category == ChannelCategory.all ||
+              category == selectedCategory ||
+              (counts[category] ?? 0) > 0,
+        )
+        .toList(growable: false);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -536,9 +556,9 @@ class _TvCategoryRail extends ConsumerWidget {
               mainAxisSpacing: 12,
               crossAxisSpacing: 12,
             ),
-            itemCount: _visibleCategories.length,
+            itemCount: visibleCategories.length,
             itemBuilder: (context, index) {
-              final category = _visibleCategories[index];
+              final category = visibleCategories[index];
               return _TvCategoryTile(
                 category: category,
                 count: counts[category] ?? 0,
@@ -625,10 +645,12 @@ class _TvPlayerPanel extends StatelessWidget {
   const _TvPlayerPanel({
     required this.streamingState,
     required this.currentChannel,
+    required this.compact,
   });
 
   final AsyncValue<StreamingState> streamingState;
   final IPTVChannel? currentChannel;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -642,11 +664,11 @@ class _TvPlayerPanel extends StatelessWidget {
         borderRadius: BorderRadius.circular(8),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(compact ? 12 : 16),
         child: Row(
           children: [
             SizedBox(
-              width: 420,
+              width: compact ? 300 : 420,
               child: AspectRatio(
                 aspectRatio: 16 / 9,
                 child: streamingState.when(
@@ -658,7 +680,7 @@ class _TvPlayerPanel extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(width: 20),
+            SizedBox(width: compact ? 16 : 20),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -668,7 +690,9 @@ class _TvPlayerPanel extends StatelessWidget {
                     currentChannel?.name ?? 'Choose a channel',
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.headlineSmall,
+                    style: compact
+                        ? theme.textTheme.titleLarge
+                        : theme.textTheme.headlineSmall,
                   ),
                   const SizedBox(height: 8),
                   Text(
@@ -770,42 +794,68 @@ class _TvChannelToolbar extends StatelessWidget {
   }
 }
 
-class _TvChannelGridView extends StatelessWidget {
+class _TvChannelGridView extends StatefulWidget {
   const _TvChannelGridView({
     required this.channels,
     required this.currentChannel,
+    required this.compact,
     required this.onChannelSelect,
   });
 
   final List<IPTVChannel> channels;
   final IPTVChannel? currentChannel;
+  final bool compact;
   final ValueChanged<IPTVChannel> onChannelSelect;
 
   @override
+  State<_TvChannelGridView> createState() => _TvChannelGridViewState();
+}
+
+class _TvChannelGridViewState extends State<_TvChannelGridView> {
+  late final ScrollController _scrollController;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController = ScrollController();
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return GridView.builder(
-      padding: const EdgeInsets.all(16),
-      gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-        maxCrossAxisExtent: 220,
-        childAspectRatio: 1.03,
-        mainAxisSpacing: 16,
-        crossAxisSpacing: 16,
+    return Scrollbar(
+      controller: _scrollController,
+      thumbVisibility: true,
+      child: GridView.builder(
+        controller: _scrollController,
+        padding: const EdgeInsets.all(16),
+        gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+          maxCrossAxisExtent: widget.compact ? 180 : 220,
+          childAspectRatio: widget.compact ? 1.2 : 1.03,
+          mainAxisSpacing: 16,
+          crossAxisSpacing: 16,
+        ),
+        itemCount: widget.channels.length,
+        itemBuilder: (context, index) {
+          final channel = widget.channels[index];
+          return _TvChannelCard(
+            channel: channel,
+            isPlaying: widget.currentChannel?.id == channel.id,
+            autofocus: index == 0,
+            onSelect: () => widget.onChannelSelect(channel),
+          );
+        },
       ),
-      itemCount: channels.length,
-      itemBuilder: (context, index) {
-        final channel = channels[index];
-        return _TvChannelCard(
-          channel: channel,
-          isPlaying: currentChannel?.id == channel.id,
-          autofocus: index == 0,
-          onSelect: () => onChannelSelect(channel),
-        );
-      },
     );
   }
 }
 
-class _TvChannelListView extends StatelessWidget {
+class _TvChannelListView extends StatefulWidget {
   const _TvChannelListView({
     required this.channels,
     required this.currentChannel,
@@ -817,20 +867,44 @@ class _TvChannelListView extends StatelessWidget {
   final ValueChanged<IPTVChannel> onChannelSelect;
 
   @override
+  State<_TvChannelListView> createState() => _TvChannelListViewState();
+}
+
+class _TvChannelListViewState extends State<_TvChannelListView> {
+  late final ScrollController _scrollController;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController = ScrollController();
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return ListView.separated(
-      padding: const EdgeInsets.all(16),
-      itemCount: channels.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 10),
-      itemBuilder: (context, index) {
-        final channel = channels[index];
-        return _TvChannelRow(
-          channel: channel,
-          isPlaying: currentChannel?.id == channel.id,
-          autofocus: index == 0,
-          onSelect: () => onChannelSelect(channel),
-        );
-      },
+    return Scrollbar(
+      controller: _scrollController,
+      thumbVisibility: true,
+      child: ListView.separated(
+        controller: _scrollController,
+        padding: const EdgeInsets.all(16),
+        itemCount: widget.channels.length,
+        separatorBuilder: (_, _) => const SizedBox(height: 10),
+        itemBuilder: (context, index) {
+          final channel = widget.channels[index];
+          return _TvChannelRow(
+            channel: channel,
+            isPlaying: widget.currentChannel?.id == channel.id,
+            autofocus: index == 0,
+            onSelect: () => widget.onChannelSelect(channel),
+          );
+        },
+      ),
     );
   }
 }
@@ -1472,7 +1546,7 @@ class _TvPlaylistGuideDialog extends StatelessWidget {
         ),
       ),
       actions: [
-        TextButton(
+        FilledButton(
           onPressed: () => Navigator.of(context).pop(),
           child: const Text('Done'),
         ),
