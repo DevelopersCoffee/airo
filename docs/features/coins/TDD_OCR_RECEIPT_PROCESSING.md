@@ -33,6 +33,38 @@ The OCR Receipt Processing Pipeline enables users to scan physical receipts usin
 - Handwritten receipt recognition
 - Non-receipt document scanning (invoices, statements)
 
+### 1.4 Image-only PDF Fixture
+
+The PDF receipt integration test uses an image-only Urban Company invoice
+fixture so the parser must exercise the PDF renderer and OCR path. Generate it
+from the repository root:
+
+```bash
+python3 scripts/generate_receipt_pdf_fixture.py
+```
+
+The default output is:
+
+```text
+artifacts/fixtures/uc_invoice_image_only.pdf
+```
+
+Push it to an attached Android device or emulator before running the device
+test:
+
+```bash
+adb push artifacts/fixtures/uc_invoice_image_only.pdf /data/local/tmp/uc_invoice.pdf
+cd app
+flutter drive \
+  --driver=test_driver/integration_test.dart \
+  --target=integration_test/receipt_on_device_parser_test.dart \
+  -d emulator-5554 \
+  --dart-define=RECEIPT_PDF_PATH=/data/local/tmp/uc_invoice.pdf
+```
+
+The generator is dependency-free and writes PDF pages containing only raster
+image XObjects, not extractable PDF text.
+
 ---
 
 ## 2. Architecture
@@ -875,4 +907,3 @@ app/lib/features/coins/
 |------|---------|--------|---------|
 | 2026-02-15 | 1.0 | Airo Team | Initial draft |
 ```
-
