@@ -31,6 +31,8 @@ instead of duplicating profile rules in CI scripts.
 - Redacted Firebase Android client preflight for checking whether
   `google-services.json` and public Firebase options cover expected v2 package
   IDs before release workflows depend on Firebase runtime services.
+- Redacted Firebase App Distribution preflight for checking app IDs, tester
+  groups, and service-account presence before upload workflows run.
 - Redacted Android signing preflight for checking production signing secret
   readiness before humans dispatch Android release workflows.
 - Validation findings for duplicate profile/package IDs and incomplete Android
