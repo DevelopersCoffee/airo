@@ -7,11 +7,15 @@ license = "MIT"
 
 [lib]
 name = "airo_core"
-crate-type = ["cdylib", "staticlib"]
+crate-type = ["cdylib", "staticlib", "rlib"]
 
 [dependencies]
 flutter_rust_bridge = "2"
 memchr = "2"
 
 [dev-dependencies]
-# bench harness lives in benches/
+criterion = "0.5"
+
+[[bench]]
+name = "m3u_parser"
+harness = false
