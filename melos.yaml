@@ -63,6 +63,15 @@ scripts:
     packageFilters:
       dirExists: test
 
+  # Run host-only Airo TV performance benchmark smoke.
+  bench:
+    description: Run host-only Airo TV benchmark harness and write metrics JSON
+    run: |
+      cd packages/platform_benchmarks
+      flutter pub get
+      dart run tool/run_airo_tv_benchmarks.dart \
+        --output ../../artifacts/performance/airo-tv-host-benchmark.json
+
   # Run code generation
   generate:
     run: melos exec -- flutter pub run build_runner build --delete-conflicting-outputs
@@ -153,4 +162,3 @@ scripts:
     run: |
       echo "=== APK Sizes ==="
       ls -lh app/build/app/outputs/flutter-apk/*.apk 2>/dev/null || echo "No APKs found. Run build:all-platforms first."
-

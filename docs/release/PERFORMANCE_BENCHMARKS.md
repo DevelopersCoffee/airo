@@ -46,8 +46,18 @@ These are safe on a laptop CI-style host and should be run on every benchmark
 iteration:
 
 ```bash
+melos run bench
 make benchmark-gemini-warmup
 make test-integration
+```
+
+`melos run bench` is the v2 Airo TV host benchmark smoke. It generates a
+synthetic authorized M3U fixture, runs parser/search workloads for at least five
+iterations, evaluates the median metrics against the platform benchmark budget,
+and writes:
+
+```text
+artifacts/performance/airo-tv-host-benchmark.json
 ```
 
 `benchmark-gemini-warmup` is the minimum host-runnable proof that the Gemini

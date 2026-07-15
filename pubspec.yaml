@@ -1,0 +1,150 @@
+name: airo_workspace
+publish_to: none
+
+environment:
+  sdk: ^3.12.2
+
+dev_dependencies:
+  melos: ^8.2.2
+
+melos:
+  repository: https://github.com/DevelopersCoffee/airo
+
+  packages:
+    - app
+    - packages/**
+
+  ide:
+    intellij:
+      enabled: true
+      moduleNamePrefix: ''
+
+  command:
+    version:
+      linkToCommits: true
+      workspaceChangelog: true
+    bootstrap:
+      usePubspecOverrides: true
+
+  scripts:
+    bootstrap:
+      run: melos bootstrap
+      description: Bootstrap all packages in the workspace
+
+    clean:
+      run: melos clean
+      description: Clean all packages
+
+    get:
+      run: melos exec -- flutter pub get
+      description: Get dependencies for all packages
+
+    analyze:
+      run: melos exec -- flutter analyze --fatal-infos
+      description: Run flutter analyze on all packages
+      failFast: true
+
+    format:
+      run: melos exec -- dart format --set-exit-if-changed .
+      description: Format all Dart files
+
+    format:fix:
+      run: melos exec -- dart format .
+      description: Format all Dart files (apply changes)
+
+    test:
+      run: melos exec --fail-fast -- flutter test
+      description: Run tests for all packages
+      packageFilters:
+        dirExists: test
+
+    test:coverage:
+      run: melos exec -- flutter test --coverage
+      description: Run tests with coverage for all packages
+      packageFilters:
+        dirExists: test
+
+    bench:
+      description: Run host-only Airo TV benchmark harness and write metrics JSON
+      run: |
+        cd packages/platform_benchmarks
+        flutter pub get
+        dart run tool/run_airo_tv_benchmarks.dart \
+          --output ../../artifacts/performance/airo-tv-host-benchmark.json
+
+    generate:
+      run: melos exec -- flutter pub run build_runner build --delete-conflicting-outputs
+      description: Run build_runner for all packages
+      packageFilters:
+        dependsOn: build_runner
+
+    outdated:
+      run: melos exec -- flutter pub outdated
+      description: Check for outdated dependencies
+
+    upgrade:
+      run: melos exec -- flutter pub upgrade
+      description: Upgrade dependencies for all packages
+
+    ci:
+      description: Run all CI checks
+      run: |
+        melos run format
+        melos run analyze
+        melos run test
+
+    precommit:
+      description: Run format and analyze before commit
+      run: |
+        melos run format:fix
+        melos run analyze
+
+    build:tv:
+      description: Build Android TV APK (<120MB target)
+      run: |
+        cd app
+        flutter build apk --release \
+          --target=lib/main_tv.dart \
+          --dart-define=APP_VARIANT=tv \
+          --dart-define=APP_PLATFORM=androidTv \
+          --split-per-abi \
+          --tree-shake-icons
+        echo "✓ TV APK created at build/app/outputs/flutter-apk/"
+
+    build:streaming:
+      description: Build Mobile Streaming APK (<150MB target)
+      run: |
+        cd app
+        flutter build apk --release \
+          --target=lib/main_mobile_streaming.dart \
+          --dart-define=APP_VARIANT=streaming \
+          --dart-define=APP_PLATFORM=mobileStreaming \
+          --split-per-abi \
+          --tree-shake-icons
+        echo "✓ Streaming APK created at build/app/outputs/flutter-apk/"
+
+    build:full:
+      description: Build Mobile Full APK (all features)
+      run: |
+        cd app
+        flutter build apk --release \
+          --target=lib/main.dart \
+          --dart-define=APP_VARIANT=full \
+          --dart-define=APP_PLATFORM=mobileFull \
+          --split-per-abi \
+          --tree-shake-icons
+        echo "✓ Full APK created at build/app/outputs/flutter-apk/"
+
+    build:all-platforms:
+      description: Build APKs for all platforms (TV, Streaming, Full)
+      run: |
+        melos run build:tv
+        melos run build:streaming
+        melos run build:full
+        echo "✓ All platform APKs created!"
+
+    apk:sizes:
+      description: Show APK sizes for all built variants
+      run: |
+        echo "=== APK Sizes ==="
+        ls -lh app/build/app/outputs/flutter-apk/*.apk 2>/dev/null || echo "No APKs found. Run build:all-platforms first."
