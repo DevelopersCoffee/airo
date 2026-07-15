@@ -157,4 +157,62 @@ void main() {
           AiroRuntimeMemoryBudgetPolicy.bytesPerMb,
     );
   });
+
+  test('captures image cache snapshot for logo-scroll evidence', () {
+    final imageCache = PaintingBinding.instance.imageCache;
+    final originalMaximumSize = imageCache.maximumSize;
+    final originalMaximumSizeBytes = imageCache.maximumSizeBytes;
+    addTearDown(() {
+      imageCache.maximumSize = originalMaximumSize;
+      imageCache.maximumSizeBytes = originalMaximumSizeBytes;
+    });
+
+    imageCache.maximumSize = 17;
+    imageCache.maximumSizeBytes = 9 * AiroRuntimeMemoryBudgetPolicy.bytesPerMb;
+
+    final snapshot = AiroImageCacheSnapshot.capture(
+      capturedAt: DateTime.utc(2026, 7, 15, 10),
+    );
+
+    expect(snapshot.maximumEntryCount, 17);
+    expect(snapshot.maximumSizeMb, 9);
+    expect(snapshot.toPublicMap(), containsPair('currentSizeMb', 0));
+    expect(snapshot.toPublicMap(), isNot(contains('url')));
+  });
+
+  test('evaluates image cache snapshots against TV memory budget', () {
+    final snapshot = AiroImageCacheSnapshot(
+      capturedAt: DateTime.utc(2026, 7, 15, 10),
+      currentEntryCount:
+          AiroRuntimeMemoryBudgetPolicy
+              .androidTvConstrainedBudget
+              .imageCacheEntries +
+          1,
+      currentSizeBytes:
+          (AiroRuntimeMemoryBudgetPolicy
+                  .androidTvConstrainedBudget
+                  .imageCacheMb +
+              1) *
+          AiroRuntimeMemoryBudgetPolicy.bytesPerMb,
+      liveImageCount: 10,
+      pendingImageCount: 0,
+      maximumEntryCount: AiroRuntimeMemoryBudgetPolicy
+          .androidTvConstrainedBudget
+          .imageCacheEntries,
+      maximumSizeBytes:
+          AiroRuntimeMemoryBudgetPolicy
+              .androidTvConstrainedBudget
+              .imageCacheMb *
+          AiroRuntimeMemoryBudgetPolicy.bytesPerMb,
+    );
+
+    final evaluation = snapshot.evaluate();
+
+    expect(evaluation.accepted, isFalse);
+    expect(
+      evaluation.violations,
+      contains(AiroRuntimeMemoryBudgetViolationCode.imageCacheExceeded),
+    );
+    expect(evaluation.toPublicMap(), containsPair('accepted', false));
+  });
 }
