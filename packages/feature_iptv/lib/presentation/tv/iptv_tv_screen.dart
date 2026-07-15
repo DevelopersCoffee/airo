@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
 import 'package:feature_iptv/presentation/utils/native_fullscreen.dart';
 import 'package:platform_channels/platform_channels.dart';
+import 'package:platform_epg/platform_epg.dart';
 import 'package:platform_player/platform_player.dart';
 import 'package:product_capabilities/product_capabilities.dart';
 
@@ -122,7 +123,9 @@ class _IptvTvScreenState extends ConsumerState<IptvTvScreen> {
     final hasActiveFilter = ref.watch(hasActiveFilterProvider);
     final productProfile = ref.watch(airoTvProductProfileProvider);
 
-    return Scaffold(
+    return AiroResponsiveScaffold(
+      overrideFormFactor: AiroFormFactor.tv,
+      padding: EdgeInsets.zero,
       backgroundColor: Theme.of(context).colorScheme.surface,
       body: SafeArea(
         child: channelsAsync.when(
@@ -227,6 +230,19 @@ class _TvBrowseLayout extends ConsumerWidget {
     final viewport = MediaQuery.sizeOf(context);
     final compactTv = viewport.height < 760 || viewport.width < 1200;
     final denseTv = viewport.height < 650;
+    final compactEpg = ref.watch(
+      compactEpgSliceForChannelsProvider(
+        CompactEpgChannelQuery(
+          channelIds: visibleChannels
+              .map((channel) => channel.id)
+              .toList(growable: false),
+          now: ref.watch(compactEpgReferenceTimeProvider),
+        ),
+      ),
+    );
+    final compactEpgEntries = _compactEpgEntriesByChannel(
+      compactEpg.valueOrNull,
+    );
 
     return Padding(
       padding: EdgeInsets.fromLTRB(
@@ -308,11 +324,13 @@ class _TvBrowseLayout extends ConsumerWidget {
                                   channels: visibleChannels,
                                   currentChannel: currentChannel,
                                   compact: denseTv,
+                                  compactEpgEntries: compactEpgEntries,
                                   onChannelSelect: onChannelSelect,
                                 )
                               : _TvChannelListView(
                                   channels: visibleChannels,
                                   currentChannel: currentChannel,
+                                  compactEpgEntries: compactEpgEntries,
                                   onChannelSelect: onChannelSelect,
                                 ),
                         ),
@@ -329,6 +347,15 @@ class _TvBrowseLayout extends ConsumerWidget {
       ),
     );
   }
+}
+
+Map<String, CompactEpgEntry> _compactEpgEntriesByChannel(
+  CompactEpgSlice? slice,
+) {
+  if (slice == null || slice.entries.isEmpty) {
+    return const {};
+  }
+  return {for (final entry in slice.entries) entry.channelId: entry};
 }
 
 class _TvLiteReceiverShellHeader extends StatelessWidget {
@@ -919,12 +946,14 @@ class _TvChannelGridView extends StatefulWidget {
     required this.channels,
     required this.currentChannel,
     required this.compact,
+    required this.compactEpgEntries,
     required this.onChannelSelect,
   });
 
   final List<IPTVChannel> channels;
   final IPTVChannel? currentChannel;
   final bool compact;
+  final Map<String, CompactEpgEntry> compactEpgEntries;
   final ValueChanged<IPTVChannel> onChannelSelect;
 
   @override
@@ -966,6 +995,7 @@ class _TvChannelGridViewState extends State<_TvChannelGridView> {
           return _TvChannelCard(
             channel: channel,
             isPlaying: widget.currentChannel?.id == channel.id,
+            epgEntry: widget.compactEpgEntries[channel.id],
             autofocus: index == 0,
             onSelect: () => widget.onChannelSelect(channel),
           );
@@ -979,11 +1009,13 @@ class _TvChannelListView extends StatefulWidget {
   const _TvChannelListView({
     required this.channels,
     required this.currentChannel,
+    required this.compactEpgEntries,
     required this.onChannelSelect,
   });
 
   final List<IPTVChannel> channels;
   final IPTVChannel? currentChannel;
+  final Map<String, CompactEpgEntry> compactEpgEntries;
   final ValueChanged<IPTVChannel> onChannelSelect;
 
   @override
@@ -1020,6 +1052,7 @@ class _TvChannelListViewState extends State<_TvChannelListView> {
           return _TvChannelRow(
             channel: channel,
             isPlaying: widget.currentChannel?.id == channel.id,
+            epgEntry: widget.compactEpgEntries[channel.id],
             autofocus: index == 0,
             onSelect: () => widget.onChannelSelect(channel),
           );
@@ -1033,12 +1066,14 @@ class _TvChannelCard extends StatelessWidget {
   const _TvChannelCard({
     required this.channel,
     required this.isPlaying,
+    required this.epgEntry,
     required this.autofocus,
     required this.onSelect,
   });
 
   final IPTVChannel channel;
   final bool isPlaying;
+  final CompactEpgEntry? epgEntry;
   final bool autofocus;
   final VoidCallback onSelect;
 
@@ -1098,6 +1133,10 @@ class _TvChannelCard extends StatelessWidget {
                     Icon(Icons.equalizer, color: colorScheme.primary, size: 20),
                 ],
               ),
+              if (epgEntry?.hasPrograms ?? false) ...[
+                const SizedBox(height: 6),
+                _CompactEpgLine(entry: epgEntry!),
+              ],
             ],
           ),
         ),
@@ -1110,12 +1149,14 @@ class _TvChannelRow extends StatelessWidget {
   const _TvChannelRow({
     required this.channel,
     required this.isPlaying,
+    required this.epgEntry,
     required this.autofocus,
     required this.onSelect,
   });
 
   final IPTVChannel channel;
   final bool isPlaying;
+  final CompactEpgEntry? epgEntry;
   final bool autofocus;
   final VoidCallback onSelect;
 
@@ -1172,6 +1213,10 @@ class _TvChannelRow extends StatelessWidget {
                         color: colorScheme.onSurfaceVariant,
                       ),
                     ),
+                    if (epgEntry?.hasPrograms ?? false) ...[
+                      const SizedBox(height: 6),
+                      _CompactEpgLine(entry: epgEntry!),
+                    ],
                   ],
                 ),
               ),
@@ -1185,6 +1230,40 @@ class _TvChannelRow extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _CompactEpgLine extends StatelessWidget {
+  const _CompactEpgLine({required this.entry});
+
+  final CompactEpgEntry entry;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final program = entry.current ?? entry.next;
+    if (program == null) {
+      return const SizedBox.shrink();
+    }
+
+    final prefix = entry.current != null ? 'Now' : 'Next';
+    return Row(
+      children: [
+        Icon(Icons.schedule, size: 14, color: colorScheme.primary),
+        const SizedBox(width: 4),
+        Expanded(
+          child: Text(
+            '$prefix: ${program.title}',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

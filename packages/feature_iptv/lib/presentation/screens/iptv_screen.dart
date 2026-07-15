@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:core_ui/core_ui.dart';
 import '../../application/providers/iptv_providers.dart';
 import "package:platform_channels/platform_channels.dart";
 import "package:platform_player/platform_player.dart";
@@ -288,7 +289,8 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen> {
     final isFullscreen = ref.watch(isFullscreenModeProvider);
 
     if (isFullscreen) {
-      return Scaffold(
+      return AiroResponsiveScaffold(
+        padding: EdgeInsets.zero,
         backgroundColor: Colors.black,
         body: VideoPlayerWidget(
           showControls: true,
@@ -297,7 +299,8 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen> {
       );
     }
 
-    return Scaffold(
+    return AiroResponsiveScaffold(
+      padding: EdgeInsets.zero,
       appBar: AppBar(
         title: const Text('Stream'),
         actions: [
@@ -425,8 +428,9 @@ class _IPTVScreenBodyState extends ConsumerState<IPTVScreenBody> {
         return FadeTransition(opacity: animation, child: child);
       },
       child: isFullscreen
-          ? Scaffold(
+          ? AiroResponsiveScaffold(
               key: const ValueKey('fullscreen'),
+              padding: EdgeInsets.zero,
               backgroundColor: Colors.black,
               body: VideoPlayerWidget(
                 showControls: true,

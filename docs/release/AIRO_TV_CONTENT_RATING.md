@@ -59,6 +59,18 @@ user-provided media/network content and accept the resulting Teen/12+ or
 stricter rating.
 ```
 
+## Local Preflight
+
+Generate deterministic local evidence before entering store-console forms:
+
+```bash
+AIRO_RELEASE_PROFILE=tv melos run release:content-rating-preflight
+```
+
+The preflight writes JSON and Markdown under `artifacts/release/`, confirms the
+current questionnaire posture, and intentionally does not claim a final
+store-assigned rating.
+
 ## Human Console Actions
 
 - Complete the Google Play IARC questionnaire for `io.airo.app.tv`.

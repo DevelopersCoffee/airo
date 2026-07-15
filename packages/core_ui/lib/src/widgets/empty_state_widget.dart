@@ -18,15 +18,18 @@ class EmptyStateWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: Padding(
+      child: SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Icon(
-              icon ?? Icons.inbox_outlined,
-              size: 64,
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ExcludeSemantics(
+              child: Icon(
+                icon ?? Icons.inbox_outlined,
+                size: 64,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
             const SizedBox(height: 16),
             if (title != null)

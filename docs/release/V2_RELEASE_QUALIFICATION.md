@@ -26,6 +26,20 @@ block internal QA builds. The script writes `Release-Qualification-Report.md`
 next to the release manifest; workflows can rename it to the public asset name
 after generation.
 
+Use the reusable `core_release` preflight before public publication to verify
+the same evidence policy from package code instead of ad hoc script logic:
+
+```bash
+AIRO_RELEASE_MANIFEST=release-artifacts/Airo-TV-v2.0.0-Release-Manifest.json \
+AIRO_QUALIFICATION_EVIDENCE=release-artifacts/qualification-evidence.json \
+QUALIFICATION_MODE=public \
+dart pub global run melos run release:qualification-preflight
+```
+
+The preflight writes redacted JSON and Markdown under `artifacts/release/` and
+fails in public mode when a required device row lacks passing evidence or an
+approved waiver.
+
 ## Required Checks By Profile
 
 | Profile | Device class | Required evidence | Public release behavior |

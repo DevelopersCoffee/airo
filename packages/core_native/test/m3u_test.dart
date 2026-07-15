@@ -45,5 +45,19 @@ https://example.com/ignored-without-extinf.m3u8
       expect(entries.single.name, 'First');
       expect(entries.single.url, 'not-a-valid-url');
     });
+
+    test(
+      'native-preferred async API falls back when bridge is unavailable',
+      () async {
+        final entries = await parseM3uEntriesNative('''
+#EXTM3U
+#EXTINF:-1 tvg-name="Async News",Async News
+https://example.com/async-news.m3u8
+''');
+
+        expect(entries, hasLength(1));
+        expect(entries.single.name, 'Async News');
+      },
+    );
   });
 }

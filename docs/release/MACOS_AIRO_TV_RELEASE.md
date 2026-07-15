@@ -73,6 +73,13 @@ Set these secrets before requiring public notarized artifacts:
 - `APPLE_TEAM_ID`
 - `APPLE_APP_SPECIFIC_PASSWORD`
 
+Generate redacted local readiness evidence before dispatching a public macOS
+release workflow:
+
+```bash
+dart pub global run melos run release:macos-signing-preflight
+```
+
 When `require_notarization=true`, the workflow fails unless Developer ID
 signing, notarytool submission, stapling, and `spctl` assessment succeed.
 

@@ -105,6 +105,34 @@ Public/store publishing requires:
   releases, alongside the Developer ID and notarytool secrets documented in
   `docs/release/MACOS_AIRO_TV_RELEASE.md`.
 
+Before any public release dispatch, generate the top-level readiness rollup:
+
+```bash
+dart pub global run melos run release:v2-readiness-preflight
+```
+
+Set `AIRO_V2_RELEASE_GATES` with comma-separated `gate_id=status` values when
+human setup or waiver evidence is available. The report writes redacted JSON and
+Markdown under `artifacts/release/` and fails while required account,
+credential, store-console, device-evidence, legal, governance, or maintainer
+decision gates remain `unknown`, `blocked`, or required-and-`deferred`.
+The device-evidence gates include the TV D-pad/UI audit, Cast active-receiver
+switching, Cast V1 real-device QA matrix, iPad Air qualification, and constrained
+TV memory playback-soak evidence tracked in
+`docs/release/V2_HUMAN_IN_LOOP_BLOCKERS.md`.
+
+Before merging the rolling v2 development branch back to `v2`, run the local
+merge-readiness guard:
+
+```bash
+dart pub global run melos run release:v2-merge-readiness
+```
+
+The guard creates a temporary `origin/v2` worktree, dry-merges
+`origin/codex/next-v2.0.0.0`, checks YAML and whitespace, runs the top-level
+readiness preflight, then removes the temporary worktree. It is local-only and
+does not push, dispatch CI, publish releases, or upload artifacts.
+
 When `dry_run` is `true`, the orchestrator forces GitHub Release publication
 off and sets the TV and mobile/tablet Play tracks plus Firebase distribution to
 `none`.

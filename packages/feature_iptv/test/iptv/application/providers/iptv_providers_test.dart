@@ -193,6 +193,66 @@ void main() {
       );
     });
 
+    group('compactEpgSliceForChannelsProvider', () {
+      test('defaults to unavailable compact EPG', () async {
+        final result = await container.read(
+          compactEpgSliceForChannelsProvider(
+            CompactEpgChannelQuery(
+              channelIds: const ['1'],
+              now: DateTime.utc(2026, 7, 15, 9),
+            ),
+          ).future,
+        );
+
+        expect(result.entries, isEmpty);
+        expect(result.source, CompactEpgSliceSource.unavailable);
+      });
+
+      test(
+        'loads current next data from overridden platform repository',
+        () async {
+          final now = DateTime.utc(2026, 7, 15, 9);
+          final repository = InMemoryCompactEpgRepository(
+            seed: CompactEpgSlice(
+              entries: [
+                CompactEpgEntry.fromPrograms(
+                  channelId: '1',
+                  channelName: 'Sports News',
+                  now: now,
+                  programs: [
+                    CompactEpgProgram(
+                      programId: 'current',
+                      title: 'Morning Sports',
+                      startsAt: now.subtract(const Duration(minutes: 10)),
+                      endsAt: now.add(const Duration(minutes: 20)),
+                    ),
+                  ],
+                ),
+              ],
+              generatedAt: now,
+              expiresAt: now.add(const Duration(minutes: 15)),
+              source: CompactEpgSliceSource.localCache,
+            ),
+          );
+          final container = ProviderContainer(
+            overrides: [
+              compactEpgRepositoryProvider.overrideWithValue(repository),
+            ],
+          );
+          addTearDown(container.dispose);
+
+          final result = await container.read(
+            compactEpgSliceForChannelsProvider(
+              CompactEpgChannelQuery(channelIds: const ['1'], now: now),
+            ).future,
+          );
+
+          expect(result.entryForChannel('1')?.current?.title, 'Morning Sports');
+          expect(result.source, CompactEpgSliceSource.localCache);
+        },
+      );
+    });
+
     group('Preference sorting', () {
       test('channels matching preferences should be ranked higher', () {
         final channels = [

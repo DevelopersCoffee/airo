@@ -99,6 +99,203 @@ melos:
           --channels 512 \
           --programme-minutes 30
 
+    bench:tv-memory:
+      description: Capture local Airo TV memory timeline from adb meminfo
+      run: |
+        cd packages/platform_benchmarks
+        flutter pub get
+        dart run tool/capture_airo_tv_memory_timeline.dart \
+          --package "${AIRO_TV_PACKAGE:-io.airo.app}" \
+          --samples "${AIRO_TV_MEMORY_SAMPLES:-60}" \
+          --interval-seconds "${AIRO_TV_MEMORY_INTERVAL_SECONDS:-30}" \
+          --budget "${AIRO_TV_MEMORY_BUDGET:-constrained}" \
+          --output-json ../../artifacts/performance/airo-tv-adb-memory-timeline.json \
+          --output-markdown ../../artifacts/performance/airo-tv-adb-memory-timeline.md
+
+    bench:tv-playback-soak:
+      description: Run local Airo TV playback soak and write memory evidence
+      run: |
+        cd packages/platform_benchmarks
+        flutter pub get
+        dart run tool/run_airo_tv_playback_soak.dart \
+          --package "${AIRO_TV_PACKAGE:-io.airo.app.tv}" \
+          --duration-seconds "${AIRO_TV_SOAK_DURATION_SECONDS:-1800}" \
+          --interval-seconds "${AIRO_TV_SOAK_INTERVAL_SECONDS:-30}" \
+          --budget "${AIRO_TV_MEMORY_BUDGET:-constrained}" \
+          --dart-heap-start-mb "${AIRO_TV_SOAK_DART_HEAP_START_MB:?Set AIRO_TV_SOAK_DART_HEAP_START_MB from the start DevTools heap snapshot}" \
+          --dart-heap-end-mb "${AIRO_TV_SOAK_DART_HEAP_END_MB:?Set AIRO_TV_SOAK_DART_HEAP_END_MB from the end DevTools heap snapshot}" \
+          --image-cache-mb "${AIRO_TV_SOAK_IMAGE_CACHE_MB:-0}" \
+          --retained-channel-list-copies "${AIRO_TV_SOAK_RETAINED_CHANNEL_LIST_COPIES:-1}" \
+          --key-events "${AIRO_TV_SOAK_KEY_EVENTS:-DPAD_DOWN,DPAD_CENTER,MEDIA_PLAY_PAUSE,MEDIA_PLAY_PAUSE,DPAD_DOWN,DPAD_CENTER}" \
+          --output-json ../../artifacts/performance/airo-tv-playback-soak-report.json \
+          --output-markdown ../../artifacts/performance/airo-tv-playback-soak-report.md
+
+    release:fastlane-preflight:
+      description: Write redacted Fastlane credential readiness evidence
+      run: |
+        cd packages/core_release
+        flutter pub get
+        dart run tool/preflight_fastlane_credentials.dart \
+          --repo-root ../.. \
+          --profile "${AIRO_RELEASE_PROFILE:-tv}" \
+          --output-json ../../artifacts/release/fastlane-credentials-preflight.json \
+          --output-markdown ../../artifacts/release/fastlane-credentials-preflight.md
+
+    release:content-rating-preflight:
+      description: Write Airo content-rating questionnaire evidence
+      run: |
+        cd packages/core_release
+        flutter pub get
+        dart run tool/preflight_content_rating.dart \
+          --repo-root ../.. \
+          --profile "${AIRO_RELEASE_PROFILE:-tv}" \
+          --output-json ../../artifacts/release/content-rating-preflight.json \
+          --output-markdown ../../artifacts/release/content-rating-preflight.md
+
+    release:data-safety-preflight:
+      description: Write Airo Data Safety and App Privacy evidence
+      run: |
+        cd packages/core_release
+        flutter pub get
+        dart run tool/preflight_data_safety.dart \
+          --repo-root ../.. \
+          --profile "${AIRO_RELEASE_PROFILE:-tv}" \
+          --output-json ../../artifacts/release/data-safety-preflight.json \
+          --output-markdown ../../artifacts/release/data-safety-preflight.md
+
+    release:firebase-android-preflight:
+      description: Write Firebase Android client coverage evidence
+      run: |
+        cd packages/core_release
+        flutter pub get
+        dart run tool/preflight_firebase_android_clients.dart \
+          --repo-root ../.. \
+          --profile iptv-standalone \
+          --profile mobile-streaming \
+          --output-json ../../artifacts/release/firebase-android-client-preflight.json \
+          --output-markdown ../../artifacts/release/firebase-android-client-preflight.md
+
+    release:firebase-distribution-preflight:
+      description: Write Firebase App Distribution readiness evidence
+      run: |
+        cd packages/core_release
+        flutter pub get
+        dart run tool/preflight_firebase_distribution.dart \
+          --repo-root ../.. \
+          --mode "${AIRO_FIREBASE_DISTRIBUTION:-upload}" \
+          --profile "${AIRO_MOBILE_PROFILE:-iptv-standalone}" \
+          --profile tv \
+          --firebase-app-id "${AIRO_MOBILE_PROFILE:-iptv-standalone}=${AIRO_MOBILE_FIREBASE_APP_ID:-}" \
+          --firebase-app-id "tv=${AIRO_TV_FIREBASE_APP_ID:-}" \
+          --tester-groups "${AIRO_MOBILE_PROFILE:-iptv-standalone}=${AIRO_MOBILE_FIREBASE_TESTER_GROUPS:-}" \
+          --tester-groups "tv=${AIRO_TV_FIREBASE_TESTER_GROUPS:-}" \
+          --output-json ../../artifacts/release/firebase-distribution-preflight.json \
+          --output-markdown ../../artifacts/release/firebase-distribution-preflight.md
+
+    release:android-signing-preflight:
+      description: Write Android signing readiness evidence
+      run: |
+        cd packages/core_release
+        flutter pub get
+        dart run tool/preflight_android_signing.dart \
+          --repo-root ../.. \
+          --production-signing "${AIRO_PRODUCTION_SIGNING:-true}" \
+          --output-json ../../artifacts/release/android-signing-preflight.json \
+          --output-markdown ../../artifacts/release/android-signing-preflight.md
+
+    release:legal-preflight:
+      description: Write v2 legal and provenance readiness evidence
+      run: |
+        cd packages/core_release
+        flutter pub get
+        dart run tool/preflight_legal_release.dart \
+          --repo-root ../.. \
+          --private-dependencies "${AIRO_PRIVATE_DEPENDENCIES:-unknown}" \
+          --provenance "${AIRO_RELEASE_PROVENANCE:-unknown}" \
+          --output-json ../../artifacts/release/legal-release-preflight.json \
+          --output-markdown ../../artifacts/release/legal-release-preflight.md
+
+    release:repo-health-preflight:
+      description: Write repository health readiness evidence
+      run: |
+        cd packages/core_release
+        flutter pub get
+        dart run tool/preflight_repository_health.dart \
+          --repo-root ../.. \
+          --discussions "${AIRO_REPO_DISCUSSIONS:-unknown}" \
+          --codeowners "${AIRO_REPO_CODEOWNERS:-unknown}" \
+          --funding "${AIRO_REPO_FUNDING:-unknown}" \
+          --output-json ../../artifacts/release/repository-health-preflight.json \
+          --output-markdown ../../artifacts/release/repository-health-preflight.md
+
+    release:qualification-preflight:
+      description: Write release qualification readiness evidence
+      run: |
+        cd packages/core_release
+        flutter pub get
+        dart run tool/preflight_release_qualification.dart \
+          --repo-root ../.. \
+          --manifest "${AIRO_RELEASE_MANIFEST:?Set AIRO_RELEASE_MANIFEST to the release manifest JSON path}" \
+          --evidence "${AIRO_QUALIFICATION_EVIDENCE:-}" \
+          --mode "${QUALIFICATION_MODE:-internal}" \
+          --output-json artifacts/release/release-qualification-preflight.json \
+          --output-markdown artifacts/release/release-qualification-preflight.md
+
+    release:v2-readiness-preflight:
+      description: Write top-level v2 release readiness evidence
+      run: |
+        cd packages/core_release
+        flutter pub get
+        dart run tool/preflight_v2_release_readiness.dart \
+          --repo-root ../.. \
+          --output-json artifacts/release/v2-release-readiness-preflight.json \
+          --output-markdown artifacts/release/v2-release-readiness-preflight.md
+
+    release:v2-merge-readiness:
+      description: Dry-run next-v2.0.0.0 merge into v2 without pushing
+      run: |
+        scripts/check-v2-merge-readiness.sh \
+          --base "${AIRO_V2_MERGE_BASE:-origin/v2}" \
+          --next "${AIRO_V2_MERGE_NEXT:-origin/codex/next-v2.0.0.0}"
+
+    release:macos-signing-preflight:
+      description: Write macOS signing and notarization readiness evidence
+      run: |
+        cd packages/core_release
+        flutter pub get
+        dart run tool/preflight_macos_signing.dart \
+          --repo-root ../.. \
+          --profile "${AIRO_MACOS_PROFILE:-tv}" \
+          --require-signing "${AIRO_MACOS_REQUIRE_SIGNING:-true}" \
+          --require-notarization "${AIRO_MACOS_REQUIRE_NOTARIZATION:-true}" \
+          --output-json ../../artifacts/release/macos-signing-preflight.json \
+          --output-markdown ../../artifacts/release/macos-signing-preflight.md
+
+    qa:ipad-qualification-report:
+      description: Write iPad Air UI/UX qualification report evidence
+      run: |
+        cd packages/platform_device_qualification
+        flutter pub get
+        dart run tool/write_ipad_qualification_report.dart \
+          --report-id "${IPAD_QA_REPORT_ID:-manual-ipad-air-qualification}" \
+          --campaign-id "${IPAD_QA_CAMPAIGN_ID:-issue-716-ipad-air}" \
+          --device "${IPAD_QA_DEVICE:-iPad Air}" \
+          --app-profile "${IPAD_QA_APP_PROFILE:-Airo TV qualification}" \
+          --playlist-profile "${IPAD_QA_PLAYLIST_PROFILE:-iptv-org-public}" \
+          --phase "phase1_splash=${IPAD_QA_PHASE_SPLASH:?Set IPAD_QA_PHASE_SPLASH to passed/failed/waived}" \
+          --phase "phase1_home=${IPAD_QA_PHASE_HOME:?Set IPAD_QA_PHASE_HOME to passed/failed/waived}" \
+          --phase "phase1_channel_grid=${IPAD_QA_PHASE_CHANNEL_GRID:?Set IPAD_QA_PHASE_CHANNEL_GRID to passed/failed/waived}" \
+          --phase "phase1_video_player=${IPAD_QA_PHASE_VIDEO_PLAYER:?Set IPAD_QA_PHASE_VIDEO_PLAYER to passed/failed/waived}" \
+          --phase "phase1_search=${IPAD_QA_PHASE_SEARCH:?Set IPAD_QA_PHASE_SEARCH to passed/failed/waived}" \
+          --phase "phase1_settings=${IPAD_QA_PHASE_SETTINGS:?Set IPAD_QA_PHASE_SETTINGS to passed/failed/waived}" \
+          --phase "phase1_playlist_management=${IPAD_QA_PHASE_PLAYLIST_MANAGEMENT:?Set IPAD_QA_PHASE_PLAYLIST_MANAGEMENT to passed/failed/waived}" \
+          --phase "phase2_responsive_layouts=${IPAD_QA_PHASE_RESPONSIVE_LAYOUTS:?Set IPAD_QA_PHASE_RESPONSIVE_LAYOUTS to passed/failed/waived}" \
+          --phase "phase3_dpad_focus=${IPAD_QA_PHASE_DPAD_FOCUS:?Set IPAD_QA_PHASE_DPAD_FOCUS to passed/failed/waived}" \
+          --phase "phase4_streaming_stress=${IPAD_QA_PHASE_STREAMING_STRESS:?Set IPAD_QA_PHASE_STREAMING_STRESS to passed/failed/waived}" \
+          --phase "phase5_network_profiles=${IPAD_QA_PHASE_NETWORK_PROFILES:?Set IPAD_QA_PHASE_NETWORK_PROFILES to passed/failed/waived}" \
+          --output-json ../../artifacts/qualification/ipad-air-qualification-report.json \
+          --output-markdown ../../artifacts/qualification/ipad-air-qualification-report.md
+
     generate:
       run: melos exec -- flutter pub run build_runner build --delete-conflicting-outputs
       description: Run build_runner for all packages

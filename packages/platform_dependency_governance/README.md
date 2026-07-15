@@ -9,7 +9,8 @@ and legacy-device support from being broken by unnecessary dependency choices.
 ## Scope
 
 - Dependency audit records with Android API, native architecture, size, memory,
-  background behavior, shrinker, TV-issue, and ownership fields.
+  background behavior, Kotlin Gradle Plugin migration risk, shrinker,
+  TV-issue, and ownership fields.
 - A reusable checklist for API 26 baseline governance.
 - Audit reports that capture profile, timestamp, checklist thresholds,
   dependency results, and aggregate blocker codes.

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:core_ai/core_ai.dart';
+import 'package:core_ui/core_ui.dart';
 
 import '../../application/ai_model_management.dart';
 import '../../../../core/ai/model_learn_more_launcher.dart';
@@ -112,7 +113,8 @@ class _AIModelsScreenState extends ConsumerState<AIModelsScreen>
     final models = ref.watch(filteredModelsProvider);
     final downloadedModels = ref.watch(downloadedModelsProvider);
 
-    return Scaffold(
+    return AiroResponsiveScaffold(
+      padding: EdgeInsets.zero,
       appBar: AppBar(
         title: const Text('AI Models'),
         bottom: TabBar(
@@ -184,25 +186,10 @@ class _AIModelsScreenState extends ConsumerState<AIModelsScreen>
     final activeDownloads = ref.watch(activeDownloadsProvider);
 
     if (models.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.search_off,
-              size: 64,
-              color: Theme.of(context).colorScheme.outline,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              emptyMessage ?? 'No models found.\nTry adjusting your filters.',
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                color: Theme.of(context).colorScheme.outline,
-              ),
-            ),
-          ],
-        ),
+      return EmptyStateWidget(
+        icon: Icons.search_off,
+        message:
+            emptyMessage ?? 'No models found.\nTry adjusting your filters.',
       );
     }
 

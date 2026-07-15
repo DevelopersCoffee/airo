@@ -1,8 +1,8 @@
 # V2 Airo TV macOS Release
 
-**Primary owner:** Release and DevEx Agent  
+**Primary owner:** Release and DevEx Agent
 **Review agents:** Media Agent, Framework Agent, Security and Privacy Agent, QA
-Automation Agent, Mobile UI Agent  
+Automation Agent, Mobile UI Agent
 **Layer:** Mixed. This touches release automation, native macOS target metadata,
 TV app profile validation, signing/notarization, and distribution docs.
 
@@ -57,52 +57,52 @@ assets fail the workflow.
 
 ### UC-001: Dry-run Airo TV macOS artifact build
 
-**Given:** Apple signing secrets are not configured.  
+**Given:** Apple signing secrets are not configured.
 **Trigger:** Run `Airo TV macOS Release` with `profile=tv`,
 `release_ref=v2`, `release_branch=release/airo-tv-v0.0.2`, and
-`require_notarization=false`.  
+`require_notarization=false`.
 **Happy path:** The workflow cuts/updates the release branch, builds
 `Airo TV.app`, uploads ZIP/DMG/checksum/manifest/Homebrew Cask artifacts, and
-marks the macOS artifacts as `unsigned` and `not_notarized`.  
+marks the macOS artifacts as `unsigned` and `not_notarized`.
 **Failure path:** The workflow fails if the ref is stale, the TV pubspec cannot
 resolve, or the macOS build does not produce `Airo TV.app`.
 
 ### UC-002: Public notarized Airo TV macOS release
 
-**Given:** Developer ID signing and notarytool secrets are configured.  
-**Trigger:** Run the macOS release workflow with `require_notarization=true`.  
+**Given:** Developer ID signing and notarytool secrets are configured.
+**Trigger:** Run the macOS release workflow with `require_notarization=true`.
 **Happy path:** The workflow signs the app, notarizes and staples it, verifies
 with `codesign` and `spctl`, then packages public release assets and generated
-Homebrew metadata.  
+Homebrew metadata.
 **Failure path:** Missing secrets, codesign failure, notary failure, or failed
 `spctl` assessment blocks publication.
 
 ### UC-003: V2 orchestrated Airo TV release
 
-**Given:** The `V2 Release Orchestrator` is run with `macos_profile=tv`.  
+**Given:** The `V2 Release Orchestrator` is run with `macos_profile=tv`.
 **Trigger:** The orchestrator builds Android TV assets and the macOS Airo TV
-assets from the same v2 release inputs.  
+assets from the same v2 release inputs.
 **Happy path:** GitHub Release assets include Android TV APK/AAB plus macOS
 ZIP/DMG/Cask artifacts, all covered by the top-level manifest and `SHA256SUMS`.
 
 ### UC-004: Cursor-driven fullscreen playback on macOS
 
-**Given:** A live channel is selected in the Airo TV macOS app.  
+**Given:** A live channel is selected in the Airo TV macOS app.
 **Trigger:** The user clicks the player fullscreen control with a mouse or
-trackpad.  
+trackpad.
 **Happy path:** The embedded TV player opens a full-window playback route,
 shows cursor-accessible playback controls, requests native macOS fullscreen,
-and exits native fullscreen when the full-player route is dismissed.  
+and exits native fullscreen when the full-player route is dismissed.
 **Failure path:** Missing macOS native channel support is logged as a no-op and
 must not crash playback.
 
 ### UC-005: In-app macOS update check
 
 **Given:** A user is running the macOS Airo TV app built with
-`APP_VERSION=<build_name>`.  
-**Trigger:** The user clicks `Update` in the Airo TV header.  
+`APP_VERSION=<build_name>`.
+**Trigger:** The user clicks `Update` in the Airo TV header.
 **Happy path:** The app checks the latest GitHub Release, detects a newer
-macOS ZIP/DMG asset, and opens the release page for manual download.  
+macOS ZIP/DMG asset, and opens the release page for manual download.
 **Failure path:** Android-only releases, missing macOS assets, unreadable
 versions, or network failures are shown as no-update/error states without
 claiming that a desktop update is available.

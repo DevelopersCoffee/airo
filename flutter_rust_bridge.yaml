@@ -1,0 +1,4 @@
+rust_root: rust/airo_core
+rust_input: crate::api
+dart_output: packages/core_native/lib/src
+rust_output: rust/airo_core/src/frb_generated.rs

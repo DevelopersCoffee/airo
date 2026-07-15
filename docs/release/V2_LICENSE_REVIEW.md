@@ -107,6 +107,12 @@ distribution:
 
 - Keep the root MIT `LICENSE` and package license files aligned.
 - Keep `docs/release/V2_THIRD_PARTY_NOTICES.md` with the release asset set.
+- Generate redacted local legal/provenance evidence before public release:
+
+  ```bash
+  dart pub global run melos run release:legal-preflight
+  ```
+
 - Regenerate or re-check third-party notices when v2 release profile
   dependencies change.
 - Confirm whether any private, commercial, gated, or restricted-license

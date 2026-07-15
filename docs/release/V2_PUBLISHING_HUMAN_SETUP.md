@@ -139,6 +139,8 @@ Related issues: #687, #689.
 - [ ] Confirm CODEOWNERS entries for release, security, docs, v2 platform, and
       app/profile ownership.
 - [ ] Confirm whether funding/sponsor configuration is intentionally absent.
+- [ ] Generate repository-health evidence with
+      `dart pub global run melos run release:repo-health-preflight`.
 
 ## Current Non-Secret Defaults
 

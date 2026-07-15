@@ -72,114 +72,125 @@ class ModelCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDownloaded = model.isDownloaded;
+    final semanticsLabel =
+        'Model: ${model.name}. '
+        'Family: ${model.family.displayName}. '
+        'Size: ${model.fileSizeDisplay}. '
+        '${isActive ? "Active." : ""} '
+        '${isDownloading ? "Downloading." : ""} '
+        '${isDownloaded && !isActive ? "Downloaded." : "Not downloaded."}';
 
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Header row: Name + badges
-              Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          model.name,
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        if (model.author != null)
+    return Semantics(
+      container: true,
+      label: semanticsLabel,
+      child: Card(
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header row: Name + badges
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
                           Text(
-                            model.author!,
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant,
+                            model.name,
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w600,
                             ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
+                          if (model.author != null)
+                            Text(
+                              model.author!,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    CredibilityBadge(
+                      credibility: model.credibility,
+                      size: CredibilityBadgeSize.small,
+                    ),
+                    if (onLearnMore != null)
+                      IconButton(
+                        onPressed: onLearnMore,
+                        icon: const Icon(Icons.open_in_new, size: 18),
+                        visualDensity: VisualDensity.compact,
+                        tooltip: 'Learn more',
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+
+                // Info row: Family, Size, Quantization
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 4,
+                  children: [
+                    _InfoChip(
+                      icon: Icons.category_outlined,
+                      label: model.family.displayName,
+                    ),
+                    _InfoChip(
+                      icon: Icons.storage_outlined,
+                      label: model.fileSizeDisplay,
+                    ),
+                    _InfoChip(
+                      icon: Icons.memory_outlined,
+                      label: model.quantization.displayName,
+                    ),
+                    if (model.supportsVision)
+                      const _InfoChip(
+                        icon: Icons.visibility_outlined,
+                        label: 'Vision',
+                      ),
+                    if (model.contextLength > 2048)
+                      _InfoChip(
+                        icon: Icons.format_list_numbered,
+                        label: '${(model.contextLength / 1024).round()}K ctx',
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+
+                // Status row: Downloaded/Downloading/Download button
+                _buildStatusRow(context, isDownloaded),
+
+                // Compatibility warning
+                if (!isCompatible)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.warning_amber_rounded,
+                          size: 16,
+                          color: theme.colorScheme.error,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          'May exceed device memory',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.error,
+                          ),
+                        ),
                       ],
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  CredibilityBadge(
-                    credibility: model.credibility,
-                    size: CredibilityBadgeSize.small,
-                  ),
-                  if (onLearnMore != null)
-                    IconButton(
-                      onPressed: onLearnMore,
-                      icon: const Icon(Icons.open_in_new, size: 18),
-                      visualDensity: VisualDensity.compact,
-                      tooltip: 'Learn more',
-                    ),
-                ],
-              ),
-              const SizedBox(height: 12),
-
-              // Info row: Family, Size, Quantization
-              Wrap(
-                spacing: 8,
-                runSpacing: 4,
-                children: [
-                  _InfoChip(
-                    icon: Icons.category_outlined,
-                    label: model.family.displayName,
-                  ),
-                  _InfoChip(
-                    icon: Icons.storage_outlined,
-                    label: model.fileSizeDisplay,
-                  ),
-                  _InfoChip(
-                    icon: Icons.memory_outlined,
-                    label: model.quantization.displayName,
-                  ),
-                  if (model.supportsVision)
-                    const _InfoChip(
-                      icon: Icons.visibility_outlined,
-                      label: 'Vision',
-                    ),
-                  if (model.contextLength > 2048)
-                    _InfoChip(
-                      icon: Icons.format_list_numbered,
-                      label: '${(model.contextLength / 1024).round()}K ctx',
-                    ),
-                ],
-              ),
-              const SizedBox(height: 12),
-
-              // Status row: Downloaded/Downloading/Download button
-              _buildStatusRow(context, isDownloaded),
-
-              // Compatibility warning
-              if (!isCompatible)
-                Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.warning_amber_rounded,
-                        size: 16,
-                        color: theme.colorScheme.error,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        'May exceed device memory',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.error,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -190,72 +201,75 @@ class ModelCard extends StatelessWidget {
     final theme = Theme.of(context);
 
     if (isDownloading && downloadProgress != null) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Progress info row
-          Row(
-            children: [
-              const SizedBox(
-                width: 16,
-                height: 16,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                downloadStatus ?? 'Downloading',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  fontWeight: FontWeight.w600,
+      final percentage = (downloadProgress! * 100).round();
+      return Semantics(
+        liveRegion: true,
+        label:
+            'Download progress: ${downloadStatus ?? "Downloading"} $percentage percent. ${downloadEta ?? ""}',
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Progress info row
+            Row(
+              children: [
+                const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
                 ),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                '${(downloadProgress! * 100).round()}%',
-                style: theme.textTheme.bodySmall,
-              ),
-              if (downloadSpeed != null) ...[
                 const SizedBox(width: 8),
                 Text(
-                  '• $downloadSpeed',
+                  downloadStatus ?? 'Downloading',
                   style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.primary,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
+                const SizedBox(width: 8),
+                Text('$percentage%', style: theme.textTheme.bodySmall),
+                if (downloadSpeed != null) ...[
+                  const SizedBox(width: 8),
+                  Text(
+                    '• $downloadSpeed',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.primary,
+                    ),
+                  ),
+                ],
+                const Spacer(),
+                // Cancel button
+                if (onCancelDownload != null)
+                  IconButton(
+                    onPressed: onCancelDownload,
+                    icon: const Icon(Icons.close, size: 18),
+                    visualDensity: VisualDensity.compact,
+                    tooltip: 'Cancel download',
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                  ),
               ],
-              const Spacer(),
-              // Cancel button
-              if (onCancelDownload != null)
-                IconButton(
-                  onPressed: onCancelDownload,
-                  icon: const Icon(Icons.close, size: 18),
-                  visualDensity: VisualDensity.compact,
-                  tooltip: 'Cancel download',
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          // ETA display
-          if (downloadEta != null)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 4),
-              child: Text(
-                downloadEta!,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
+            ),
+            const SizedBox(height: 4),
+            // ETA display
+            if (downloadEta != null)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Text(
+                  downloadEta!,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
                 ),
               ),
+            // Progress bar
+            ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: LinearProgressIndicator(
+                value: downloadProgress,
+                minHeight: 6,
+              ),
             ),
-          // Progress bar
-          ClipRRect(
-            borderRadius: BorderRadius.circular(4),
-            child: LinearProgressIndicator(
-              value: downloadProgress,
-              minHeight: 6,
-            ),
-          ),
-        ],
+          ],
+        ),
       );
     }
     return _buildActionButtons(context, isDownloaded);
@@ -263,61 +277,71 @@ class ModelCard extends StatelessWidget {
 
   Widget _buildActionButtons(BuildContext context, bool isDownloaded) {
     final theme = Theme.of(context);
+    final mediaQuery = MediaQuery.of(context);
+    final isTextLarge = mediaQuery.textScaler.scale(10) > 12.5;
 
-    return Row(
-      children: [
-        if (isDownloaded && isActive)
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.primaryContainer,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.check_circle,
-                  size: 14,
+    final children = [
+      if (isDownloaded && isActive)
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.primaryContainer,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.check_circle,
+                size: 14,
+                color: theme.colorScheme.primary,
+              ),
+              const SizedBox(width: 4),
+              Text(
+                'Active',
+                style: theme.textTheme.labelSmall?.copyWith(
                   color: theme.colorScheme.primary,
+                  fontWeight: FontWeight.w600,
                 ),
-                const SizedBox(width: 4),
-                Text(
-                  'Active',
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: theme.colorScheme.primary,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-          )
-        else if (isDownloaded)
-          TextButton.icon(
-            onPressed: onSetActive,
-            icon: const Icon(Icons.play_arrow, size: 18),
-            label: const Text('Set Active'),
-            style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
-          )
-        else if (onDownload != null)
-          OutlinedButton.icon(
-            onPressed: onDownload,
-            icon: const Icon(Icons.download, size: 18),
-            label: const Text('Download'),
-            style: OutlinedButton.styleFrom(
-              visualDensity: VisualDensity.compact,
-            ),
+              ),
+            ],
           ),
-        const Spacer(),
-        if (isDownloaded && onDelete != null)
-          IconButton(
-            onPressed: onDelete,
-            icon: Icon(Icons.delete_outline, color: theme.colorScheme.error),
-            visualDensity: VisualDensity.compact,
-            tooltip: 'Delete model',
-          ),
+        )
+      else if (isDownloaded)
+        TextButton.icon(
+          onPressed: onSetActive,
+          icon: const Icon(Icons.play_arrow, size: 18),
+          label: const Text('Set Active'),
+          style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
+        )
+      else if (onDownload != null)
+        OutlinedButton.icon(
+          onPressed: onDownload,
+          icon: const Icon(Icons.download, size: 18),
+          label: const Text('Download'),
+          style: OutlinedButton.styleFrom(visualDensity: VisualDensity.compact),
+        ),
+      if (isDownloaded && onDelete != null) ...[
+        if (!isTextLarge) const Spacer(),
+        IconButton(
+          onPressed: onDelete,
+          icon: Icon(Icons.delete_outline, color: theme.colorScheme.error),
+          visualDensity: VisualDensity.compact,
+          tooltip: 'Delete model ${model.name}',
+        ),
       ],
-    );
+    ];
+
+    if (isTextLarge) {
+      return Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: children,
+      );
+    }
+
+    return Row(children: children);
   }
 }
 

@@ -1,4 +1,15 @@
 library;
 
+export 'src/android_signing_preflight.dart';
+export 'src/content_rating_preflight.dart';
+export 'src/data_safety_preflight.dart';
+export 'src/fastlane_credentials_preflight.dart';
+export 'src/firebase_android_client_preflight.dart';
+export 'src/firebase_distribution_preflight.dart';
+export 'src/legal_release_preflight.dart';
+export 'src/macos_signing_preflight.dart';
 export 'src/play_upload_plan.dart';
 export 'src/release_matrix.dart';
+export 'src/release_qualification_preflight.dart';
+export 'src/repository_health_preflight.dart';
+export 'src/v2_release_readiness_preflight.dart';

@@ -20,8 +20,35 @@ instead of duplicating profile rules in CI scripts.
 - Distribution-channel behavior for GitHub Releases, Firebase App
   Distribution, Google Play, Amazon Appstore, F-Droid, direct APK, direct macOS
   download, Homebrew Cask, and local validation.
+- Data Safety/App Privacy preflight for source-level TV privacy posture checks
+  before maintainers enter store-console forms.
 - Google Play upload planning for no-upload, internal, alpha, beta, and
   production modes before workflows write credentials or run upload tools.
+- Content-rating preflight for Google Play/IARC and future App Store Connect
+  questionnaire posture before maintainers enter store-console forms.
+- Redacted Fastlane credential preflight for Play Store and App Store Connect
+  setup checks before humans run upload lanes.
+- Redacted Firebase Android client preflight for checking whether
+  `google-services.json` and public Firebase options cover expected v2 package
+  IDs before release workflows depend on Firebase runtime services.
+- Redacted Firebase App Distribution preflight for checking app IDs, tester
+  groups, and service-account presence before upload workflows run.
+- Redacted Android signing preflight for checking production signing secret
+  readiness before humans dispatch Android release workflows.
+- Redacted macOS Developer ID signing and notarization preflight for checking
+  public-consumer release readiness before humans dispatch notarized macOS
+  release workflows.
+- Legal and provenance preflight for checking root/package licenses,
+  third-party notice docs, private-dependency confirmation, and release
+  provenance decisions before public distribution.
+- Repository-health preflight for checking public release repository files,
+  issue templates, README release links, label taxonomy, and maintainer
+  governance decisions before public distribution.
+- Release qualification preflight for checking final artifact filenames,
+  checksums, device evidence, and approved waivers before public publication.
+- Top-level v2 release-readiness preflight for rolling account, credential,
+  store-console, device-evidence, legal, governance, and maintainer-decision
+  gates into one public-release readiness report.
 - Validation findings for duplicate profile/package IDs and incomplete Android
   release candidates.
 

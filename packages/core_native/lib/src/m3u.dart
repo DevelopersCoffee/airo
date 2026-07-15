@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
 
-import 'frb_generated.dart' as frb;
+import 'api/m3u.dart' as native_m3u;
+import 'native_bridge.dart';
 
 class NativeM3uEntry {
   const NativeM3uEntry({
@@ -23,25 +24,30 @@ class NativeM3uEntry {
 }
 
 List<NativeM3uEntry> parseM3uEntries(String content) {
+  return _dartParseM3uEntries(content);
+}
+
+Future<List<NativeM3uEntry>> parseM3uEntriesNative(String content) async {
   if (kIsWeb) return _dartParseM3uEntries(content);
+  if (!await initializeCoreNativeBridge()) return _dartParseM3uEntries(content);
   try {
-    return frb
-        .parseM3uEntries(content: content)
-        .map(
-          (entry) => NativeM3uEntry(
-            name: entry.name,
-            url: entry.url,
-            logo: entry.logo,
-            group: entry.group,
-            tvgId: entry.tvgId,
-            tvgName: entry.tvgName,
-            language: entry.language,
-          ),
-        )
-        .toList(growable: false);
-  } on Exception {
+    final result = await native_m3u.parseM3UEntries(content: content);
+    return result.map(_fromNativeM3uEntry).toList(growable: false);
+  } on Object {
     return _dartParseM3uEntries(content);
   }
+}
+
+NativeM3uEntry _fromNativeM3uEntry(native_m3u.M3uEntry entry) {
+  return NativeM3uEntry(
+    name: entry.name,
+    url: entry.url,
+    logo: entry.logo,
+    group: entry.group,
+    tvgId: entry.tvgId,
+    tvgName: entry.tvgName,
+    language: entry.language,
+  );
 }
 
 List<NativeM3uEntry> _dartParseM3uEntries(String content) {

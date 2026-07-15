@@ -233,7 +233,7 @@ class _TvFocusableState extends State<TvFocusable>
   late final AnimationController _animationController;
   late final CurvedAnimation _focusCurve;
   late final Animation<double> _scaleAnimation;
-  bool _isFocused = false;
+  final ValueNotifier<bool> _isFocused = ValueNotifier<bool>(false);
 
   @override
   void initState() {
@@ -260,13 +260,14 @@ class _TvFocusableState extends State<TvFocusable>
       ..dispose();
     _focusCurve.dispose();
     _animationController.dispose();
+    _isFocused.dispose();
     super.dispose();
   }
 
   void _onFocusChange() {
     final hasFocus = _focusNode.hasFocus;
-    if (hasFocus == _isFocused) return;
-    setState(() => _isFocused = hasFocus);
+    if (hasFocus == _isFocused.value) return;
+    _isFocused.value = hasFocus;
     if (hasFocus) {
       _animationController.forward();
       widget.onFocus?.call();
@@ -312,49 +313,56 @@ class _TvFocusableState extends State<TvFocusable>
       focusNode: _focusNode,
       autofocus: widget.autofocus,
       onKeyEvent: _handleKeyEvent,
-      child: AnimatedBuilder(
-        animation: _scaleAnimation,
-        builder: (context, child) {
-          return Transform.scale(
-            scale: widget.showScaleEffect ? _scaleAnimation.value : 1,
-            child: Container(
-              decoration: _isFocused && widget.showBorderEffect
-                  ? BoxDecoration(
-                      borderRadius: BorderRadius.circular(widget.borderRadius),
-                      border: Border.all(
-                        color: focusColor,
-                        width: TvFocusConstants.focusBorderWidth,
-                      ),
-                      boxShadow: widget.showGlowEffect
-                          ? [
-                              BoxShadow(
-                                color: focusColor.withValues(alpha: 0.4),
-                                blurRadius:
-                                    TvFocusConstants.focusGlowSpread * 2,
-                                spreadRadius: TvFocusConstants.focusGlowSpread,
-                              ),
-                            ]
-                          : null,
-                    )
-                  : null,
-              child: widget.child,
-            ),
+      child: ValueListenableBuilder<bool>(
+        valueListenable: _isFocused,
+        child: widget.child,
+        builder: (context, isFocused, child) {
+          final decoration = isFocused && widget.showBorderEffect
+              ? BoxDecoration(
+                  borderRadius: BorderRadius.circular(widget.borderRadius),
+                  border: Border.all(
+                    color: focusColor,
+                    width: TvFocusConstants.focusBorderWidth,
+                  ),
+                  boxShadow: widget.showGlowEffect
+                      ? [
+                          BoxShadow(
+                            color: focusColor.withValues(alpha: 0.4),
+                            blurRadius: TvFocusConstants.focusGlowSpread * 2,
+                            spreadRadius: TvFocusConstants.focusGlowSpread,
+                          ),
+                        ]
+                      : null,
+                )
+              : const BoxDecoration();
+
+          Widget focusEffect = AnimatedBuilder(
+            animation: _scaleAnimation,
+            child: child,
+            builder: (context, child) {
+              return Transform.scale(
+                scale: widget.showScaleEffect ? _scaleAnimation.value : 1,
+                child: DecoratedBox(decoration: decoration, child: child),
+              );
+            },
           );
+
+          if (widget.semanticLabel != null || isButton) {
+            focusEffect = Semantics(
+              label: widget.semanticLabel,
+              hint: widget.semanticHint,
+              button: isButton,
+              enabled: widget.enabled,
+              focused: isFocused,
+              onTap: widget.onSelect,
+              child: focusEffect,
+            );
+          }
+
+          return focusEffect;
         },
       ),
     );
-
-    if (widget.semanticLabel != null || isButton) {
-      result = Semantics(
-        label: widget.semanticLabel,
-        hint: widget.semanticHint,
-        button: isButton,
-        enabled: widget.enabled,
-        focused: _isFocused,
-        onTap: widget.onSelect,
-        child: result,
-      );
-    }
     return MouseRegion(
       cursor: widget.onSelect == null
           ? MouseCursor.defer

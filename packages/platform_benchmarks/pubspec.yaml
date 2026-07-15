@@ -16,6 +16,12 @@ dependencies:
     sdk: flutter
   platform_channels:
     path: ../platform_channels
+  platform_device_profile:
+    path: ../platform_device_profile
+  platform_epg:
+    path: ../platform_epg
+  platform_player:
+    path: ../platform_player
   platform_playlist_import:
     path: ../platform_playlist_import
 

@@ -16,6 +16,7 @@ void main() {
       int? estimatedRuntimeMemoryMb = 8,
       bool hasBackgroundBehavior = false,
       String? backgroundBehavior,
+      bool hasLegacyKotlinGradlePluginRisk = false,
       bool requiresShrinkerRules = false,
       bool shrinkerRulesValidated = false,
       bool tvIssuesReviewed = true,
@@ -34,6 +35,7 @@ void main() {
         estimatedRuntimeMemoryMb: estimatedRuntimeMemoryMb,
         hasBackgroundBehavior: hasBackgroundBehavior,
         backgroundBehavior: backgroundBehavior,
+        hasLegacyKotlinGradlePluginRisk: hasLegacyKotlinGradlePluginRisk,
         requiresShrinkerRules: requiresShrinkerRules,
         shrinkerRulesValidated: shrinkerRulesValidated,
         tvIssuesReviewed: tvIssuesReviewed,
@@ -141,6 +143,32 @@ void main() {
       },
     );
 
+    test('blocks legacy Kotlin Gradle Plugin risks without fallback', () {
+      final blocked = checklist.evaluate(
+        record(
+          packageName: 'wakelock_plus',
+          hasLegacyKotlinGradlePluginRisk: true,
+        ),
+      );
+      final accepted = checklist.evaluate(
+        record(
+          packageName: 'wakelock_plus',
+          hasLegacyKotlinGradlePluginRisk: true,
+          hasFallbackOrStub: true,
+        ),
+      );
+
+      expect(
+        blocked.blockers.map((blocker) => blocker.code),
+        contains(AiroDependencyBlockerCode.legacyKotlinGradlePluginRisk),
+      );
+      expect(accepted.passed, isTrue);
+      expect(
+        accepted.blockers.map((blocker) => blocker.code),
+        isNot(contains(AiroDependencyBlockerCode.legacyKotlinGradlePluginRisk)),
+      );
+    });
+
     test('creates a passing empty audit report', () {
       final report = AiroDependencyGovernanceAuditReport.evaluate(
         profileName: 'tv',
@@ -184,6 +212,7 @@ void main() {
             packageName: 'api_raiser',
             minimumAndroidApi: 28,
             estimatedRuntimeMemoryMb: 64,
+            hasLegacyKotlinGradlePluginRisk: true,
           ),
         ],
       );
@@ -193,6 +222,7 @@ void main() {
       expect(
         report.blockerCodes.map((code) => code.stableId),
         orderedEquals([
+          'legacy_kotlin_gradle_plugin_risk',
           'memory_budget_exceeded',
           'missing_fallback_for_raised_api',
           'missing_native_architectures',
