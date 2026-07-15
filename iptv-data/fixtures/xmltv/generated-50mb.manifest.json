@@ -1,0 +1,19 @@
+{
+  "schemaVersion": "1.0.0",
+  "fixtureId": "generated-xmltv-50mb-v1",
+  "generatorVersion": "1.0.0",
+  "outputPath": "iptv-data/fixtures/xmltv/generated-50mb.xml",
+  "targetByteCount": 52428800,
+  "byteCount": 52428888,
+  "sha256": "ee8b0a45cdf3e3bbec346064faf2a32ee4729a450c041e354a283e6d8e6f11f9",
+  "channelCount": 512,
+  "programmeCount": 83209,
+  "programmeDurationMinutes": 30,
+  "startUtc": "2026-01-01T00:00:00.000Z",
+  "privacy": {
+    "source": "synthetic_xmltv",
+    "containsProviderUrls": false,
+    "containsUserData": false,
+    "containsCredentials": false
+  }
+}

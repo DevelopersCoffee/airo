@@ -48,6 +48,7 @@ iteration:
 ```bash
 melos run bench
 melos run bench:report
+melos run bench:xmltv-fixture
 make benchmark-gemini-warmup
 make test-integration
 ```
@@ -65,6 +66,18 @@ artifacts/performance/airo-tv-host-benchmark.md
 
 `melos run bench:report` regenerates only the markdown report from the latest
 JSON artifact.
+
+`melos run bench:xmltv-fixture` regenerates the deterministic synthetic XMLTV
+fixture used by large-guide EPG/parser benchmark work:
+
+```text
+iptv-data/fixtures/xmltv/generated-50mb.xml
+iptv-data/fixtures/xmltv/generated-50mb.manifest.json
+```
+
+The XMLTV fixture contains no provider URLs, credentials, or user data. The
+manifest records byte count, SHA-256, channel count, programme count, and the
+generator version for reproducible local validation.
 
 `benchmark-gemini-warmup` is the minimum host-runnable proof that the Gemini
 Nano support check, initialize path, and warmup path are still wired correctly
