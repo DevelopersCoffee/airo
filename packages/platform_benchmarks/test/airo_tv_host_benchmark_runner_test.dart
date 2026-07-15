@@ -52,6 +52,24 @@ void main() {
     );
   });
 
+  test('renders privacy-safe markdown benchmark report', () async {
+    final artifact = await const AiroTvHostBenchmarkRunner().run(
+      const AiroTvHostBenchmarkConfig(channelCount: 20, iterations: 5),
+    );
+
+    final report = const AiroTvBenchmarkReportRenderer().render(
+      artifact.toJson(),
+    );
+
+    expect(report, contains('# Airo TV Host Benchmark Report'));
+    expect(report, contains('| Status | `accepted` |'));
+    expect(report, contains('| `parse-m3u` | `import_batch` |'));
+    expect(report, contains('| `search-index` | `search_text` |'));
+    expect(report, isNot(contains('https://')));
+    expect(report, isNot(contains('/Users/')));
+    expect(report, isNot(contains('token')));
+  });
+
   test('config enforces minimum benchmark iterations', () {
     const config = AiroTvHostBenchmarkConfig(
       channelCount: 0,

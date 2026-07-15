@@ -47,6 +47,7 @@ iteration:
 
 ```bash
 melos run bench
+melos run bench:report
 make benchmark-gemini-warmup
 make test-integration
 ```
@@ -54,11 +55,15 @@ make test-integration
 `melos run bench` is the v2 Airo TV host benchmark smoke. It generates a
 synthetic authorized M3U fixture, runs parser/search workloads for at least five
 iterations, evaluates the median metrics against the platform benchmark budget,
-and writes:
+and writes both machine-readable JSON and a markdown report:
 
 ```text
 artifacts/performance/airo-tv-host-benchmark.json
+artifacts/performance/airo-tv-host-benchmark.md
 ```
+
+`melos run bench:report` regenerates only the markdown report from the latest
+JSON artifact.
 
 `benchmark-gemini-warmup` is the minimum host-runnable proof that the Gemini
 Nano support check, initialize path, and warmup path are still wired correctly

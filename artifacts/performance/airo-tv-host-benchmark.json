@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0.0",
   "deviceClass": "host_local",
-  "capturedAt": "2026-07-15T10:23:04.443473Z",
+  "capturedAt": "2026-07-15T10:29:49.105141Z",
   "iterations": 5,
   "channelCount": 2000,
   "host": {
@@ -56,9 +56,9 @@
     "schemaVersion": "1.0.0",
     "planId": "airo-tv-host-iptv-2000",
     "runnerId": "airo-tv-host-smoke",
-    "totalElapsedMillis": 16,
+    "totalElapsedMillis": 17,
     "peakMemoryMb": 0,
-    "minRowsPerSecond": 135823.42954159592,
+    "minRowsPerSecond": 142318.3661851562,
     "failedStepIds": [],
     "samples": [
       {
@@ -67,15 +67,15 @@
         "operation": "import_batch",
         "completedRecordCount": 2000,
         "elapsedMillis": 14,
-        "rowsPerSecond": 135823.42954159592
+        "rowsPerSecond": 142318.3661851562
       },
       {
         "schemaVersion": "1.0.0",
         "stepId": "search-index",
         "operation": "search_text",
         "completedRecordCount": 10000,
-        "elapsedMillis": 2,
-        "rowsPerSecond": 3871467.286101433
+        "elapsedMillis": 3,
+        "rowsPerSecond": 3022061.045633122
       }
     ]
   },
