@@ -265,6 +265,24 @@ scripts:
         --output-json ../../artifacts/release/firebase-android-client-preflight.json \
         --output-markdown ../../artifacts/release/firebase-android-client-preflight.md
 
+  # Check Firebase App Distribution setup without uploading artifacts.
+  release:firebase-distribution-preflight:
+    description: Write Firebase App Distribution readiness evidence
+    run: |
+      cd packages/core_release
+      flutter pub get
+      dart run tool/preflight_firebase_distribution.dart \
+        --repo-root ../.. \
+        --mode "${AIRO_FIREBASE_DISTRIBUTION:-upload}" \
+        --profile "${AIRO_MOBILE_PROFILE:-iptv-standalone}" \
+        --profile tv \
+        --firebase-app-id "${AIRO_MOBILE_PROFILE:-iptv-standalone}=${AIRO_MOBILE_FIREBASE_APP_ID:-}" \
+        --firebase-app-id "tv=${AIRO_TV_FIREBASE_APP_ID:-}" \
+        --tester-groups "${AIRO_MOBILE_PROFILE:-iptv-standalone}=${AIRO_MOBILE_FIREBASE_TESTER_GROUPS:-}" \
+        --tester-groups "tv=${AIRO_TV_FIREBASE_TESTER_GROUPS:-}" \
+        --output-json ../../artifacts/release/firebase-distribution-preflight.json \
+        --output-markdown ../../artifacts/release/firebase-distribution-preflight.md
+
   # Check Android release signing readiness without printing secret values.
   release:android-signing-preflight:
     description: Write Android signing readiness evidence
