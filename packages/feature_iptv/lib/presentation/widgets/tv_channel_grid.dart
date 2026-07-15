@@ -113,11 +113,6 @@ class _TvChannelGridState extends ConsumerState<TvChannelGrid> {
               ? channel.id == widget.initialFocusChannelId
               : index == 0;
 
-          // Preload adjacent thumbnails when configured
-          if (widget.config.preloadThumbnails) {
-            _preloadAdjacentThumbnails(channels, index, dimensions);
-          }
-
           return _TvChannelCard(
             key: ValueKey('channel_card_${channel.id}'),
             channel: channel,
@@ -127,6 +122,9 @@ class _TvChannelGridState extends ConsumerState<TvChannelGrid> {
             onSelect: () => widget.onChannelSelect(channel),
             onFocus: () {
               _currentFocusedIndex = index;
+              if (widget.config.preloadThumbnails) {
+                _preloadAdjacentThumbnails(channels, index, dimensions);
+              }
               _ensureVisible(index, channels.length, dimensions);
             },
           );
@@ -265,63 +263,89 @@ class _TvChannelCard extends StatelessWidget {
         ? 'Press OK to view controls'
         : 'Press OK to play channel';
 
-    return TvFocusable(
-      onSelect: onSelect,
-      onFocus: onFocus,
-      autofocus: autofocus,
-      focusColor: isPlaying ? Colors.green : null,
-      // Accessibility: semantic labels for screen readers (CP-AC-003)
-      semanticLabel: semanticLabel,
-      semanticHint: semanticHint,
-      semanticButton: true,
-      child: Container(
-        decoration: BoxDecoration(
-          color: isPlaying
-              ? Colors.green.withValues(alpha: 0.1)
-              : Colors.grey[850],
-          borderRadius: BorderRadius.circular(
-            TvFocusConstants.focusBorderRadius,
+    return RepaintBoundary(
+      key: ValueKey('tv_channel_card_boundary_${channel.id}'),
+      child: TvFocusable(
+        onSelect: onSelect,
+        onFocus: onFocus,
+        autofocus: autofocus,
+        focusColor: isPlaying ? Colors.green : null,
+        // Accessibility: semantic labels for screen readers (CP-AC-003)
+        semanticLabel: semanticLabel,
+        semanticHint: semanticHint,
+        semanticButton: true,
+        child: RepaintBoundary(
+          key: ValueKey('tv_channel_card_content_boundary_${channel.id}'),
+          child: _TvChannelCardContent(
+            channel: channel,
+            dimensions: dimensions,
+            isPlaying: isPlaying,
           ),
-          border: isPlaying ? Border.all(color: Colors.green, width: 2) : null,
         ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // Channel logo
-            Expanded(
-              flex: 3,
-              child: Padding(
-                padding: EdgeInsets.all(dimensions.cardPadding),
-                child: _buildChannelLogo(),
-              ),
+      ),
+    );
+  }
+}
+
+class _TvChannelCardContent extends StatelessWidget {
+  final IPTVChannel channel;
+  final TvUiDimensions dimensions;
+  final bool isPlaying;
+
+  const _TvChannelCardContent({
+    required this.channel,
+    required this.dimensions,
+    required this.isPlaying,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: isPlaying
+            ? Colors.green.withValues(alpha: 0.1)
+            : Colors.grey[850],
+        borderRadius: BorderRadius.circular(TvFocusConstants.focusBorderRadius),
+        border: isPlaying ? Border.all(color: Colors.green, width: 2) : null,
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          // Channel logo
+          Expanded(
+            flex: 3,
+            child: Padding(
+              padding: EdgeInsets.all(dimensions.cardPadding),
+              child: _buildChannelLogo(),
             ),
-            // Channel name
-            Expanded(
-              flex: 2,
-              child: Padding(
-                padding: EdgeInsets.symmetric(
-                  horizontal: dimensions.cardPadding,
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      channel.name,
-                      maxLines: 2,
-                      textAlign: TextAlign.center,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 14 * dimensions.textScaleFactor,
-                        fontWeight: isPlaying
-                            ? FontWeight.bold
-                            : FontWeight.normal,
-                      ),
+          ),
+          // Channel name
+          Expanded(
+            flex: 2,
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: dimensions.cardPadding),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    channel.name,
+                    maxLines: isPlaying ? 1 : 2,
+                    textAlign: TextAlign.center,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 14 * dimensions.textScaleFactor,
+                      fontWeight: isPlaying
+                          ? FontWeight.bold
+                          : FontWeight.normal,
                     ),
-                    if (isPlaying) ...[
-                      const SizedBox(height: 4),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
+                  ),
+                  if (isPlaying) ...[
+                    const SizedBox(height: 4),
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(
                             Icons.play_circle_filled,
@@ -338,13 +362,13 @@ class _TvChannelCard extends StatelessWidget {
                           ),
                         ],
                       ),
-                    ],
+                    ),
                   ],
-                ),
+                ],
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
