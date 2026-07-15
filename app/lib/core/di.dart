@@ -21,10 +21,8 @@ final dioProvider = Provider<Dio>((ref) {
 //   return AppDb();
 // });
 
-// TODO: Add Hive boxes provider
-// final hiveBoxesProvider = Provider<HiveBoxes>((ref) {
-//   return HiveBoxes();
-// });
+// Hive: RETIRED (ADR-0008). Do not add Hive providers.
+// Use PreferencesStore (prefs tier) or Drift/SQLite (structured tier).
 
 // TODO: Add repository providers
 // final accountsRepositoryProvider = Provider<AccountsRepository>((ref) {
