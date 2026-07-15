@@ -31,6 +31,37 @@ values, optional Dart heap/image cache placeholders, retained channel-list copy
 counts, and stable budget violation codes. They do not include raw `dumpsys`
 output, local file paths from the device, playlist payloads, or user data.
 
+## Airo TV Logo Scroll Report
+
+After a physical Android TV or 1 GB profile logo-grid scroll run, write the
+sanitized #773 evidence artifact with:
+
+```bash
+dart run tool/write_logo_scroll_report.dart \
+  --report-id shield-tv-logo-scroll-10k \
+  --scenario-id large-logo-grid-scroll \
+  --playlist-channels 12000 \
+  --visible-cells 24 \
+  --duration-seconds 180 \
+  --baseline-rss-mb 180 \
+  --peak-rss-mb 242 \
+  --steady-rss-mb 230 \
+  --rss-plateau-delta-mb 8 \
+  --image-cache-peak-mb 14 \
+  --frame-jank-count 0 \
+  --decode-jank-frame-count 0
+```
+
+The command evaluates the captured run against the constrained Android TV
+memory budget and writes:
+
+- `artifacts/performance/airo-tv-logo-scroll-report.json`
+- `artifacts/performance/airo-tv-logo-scroll-report.md`
+
+Reports contain aggregate channel counts, RSS, image-cache, and jank counts
+only. Do not include raw playlist URLs, logo URLs, device serials, LAN IPs,
+local paths, profile traces, or screenshots in issue comments.
+
 ## Cast Proxy Benchmark Report
 
 After a physical sender-device Cast proxy run, write the sanitized benchmark
