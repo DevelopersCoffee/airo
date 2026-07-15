@@ -41,6 +41,9 @@ instead of duplicating profile rules in CI scripts.
 - Legal and provenance preflight for checking root/package licenses,
   third-party notice docs, private-dependency confirmation, and release
   provenance decisions before public distribution.
+- Repository-health preflight for checking public release repository files,
+  issue templates, README release links, label taxonomy, and maintainer
+  governance decisions before public distribution.
 - Validation findings for duplicate profile/package IDs and incomplete Android
   release candidates.
 

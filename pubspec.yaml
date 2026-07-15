@@ -215,6 +215,19 @@ melos:
           --output-json ../../artifacts/release/legal-release-preflight.json \
           --output-markdown ../../artifacts/release/legal-release-preflight.md
 
+    release:repo-health-preflight:
+      description: Write repository health readiness evidence
+      run: |
+        cd packages/core_release
+        flutter pub get
+        dart run tool/preflight_repository_health.dart \
+          --repo-root ../.. \
+          --discussions "${AIRO_REPO_DISCUSSIONS:-unknown}" \
+          --codeowners "${AIRO_REPO_CODEOWNERS:-unknown}" \
+          --funding "${AIRO_REPO_FUNDING:-unknown}" \
+          --output-json ../../artifacts/release/repository-health-preflight.json \
+          --output-markdown ../../artifacts/release/repository-health-preflight.md
+
     release:macos-signing-preflight:
       description: Write macOS signing and notarization readiness evidence
       run: |

@@ -61,6 +61,22 @@ Airo TV is the Android TV variant of Airo, built from the v2 release line with p
 - Google Cast requires receiver discovery over `_googlecast._tcp` and port `8009` reachability on the local network.
 - Release artifacts are published at https://github.com/DevelopersCoffee/airo/releases/tag/airo-tv-v0.0.2.
 
+## V2 Release Health
+
+The v2 release line is coordinated through
+[`.github/workflows/v2-release-orchestrator.yml`](.github/workflows/v2-release-orchestrator.yml)
+and documented in
+[`docs/release/V2_RELEASE_ORCHESTRATOR.md`](docs/release/V2_RELEASE_ORCHESTRATOR.md).
+Public-release setup, maintainer decisions, and local evidence gates are tracked
+in
+[`docs/release/V2_PUBLISHING_HUMAN_SETUP.md`](docs/release/V2_PUBLISHING_HUMAN_SETUP.md),
+[`docs/release/V2_HUMAN_IN_LOOP_BLOCKERS.md`](docs/release/V2_HUMAN_IN_LOOP_BLOCKERS.md),
+[`docs/release/REPOSITORY_HEALTH_STATUS.md`](docs/release/REPOSITORY_HEALTH_STATUS.md),
+and [`docs/release/RELEASE_CHECKLIST.md`](docs/release/RELEASE_CHECKLIST.md).
+Security and community process files live in [`SECURITY.md`](SECURITY.md),
+[`CONTRIBUTING.md`](CONTRIBUTING.md), and
+[`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md).
+
 ## Why Trust Airo?
 
 - Open source codebase with public issue tracking.
