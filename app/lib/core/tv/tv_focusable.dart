@@ -73,7 +73,10 @@ class _TvFocusableState extends State<TvFocusable>
   late FocusNode _focusNode;
   late AnimationController _animationController;
   late Animation<double> _scaleAnimation;
-  bool _isFocused = false;
+
+  /// Focus state as ValueNotifier — drives ValueListenableBuilder so
+  /// focus changes never call setState on the whole TvFocusable subtree.
+  final ValueNotifier<bool> _isFocused = ValueNotifier<bool>(false);
 
   @override
   void initState() {
@@ -103,13 +106,14 @@ class _TvFocusableState extends State<TvFocusable>
     _focusNode.removeListener(_onFocusChange);
     _focusNode.dispose();
     _animationController.dispose();
+    _isFocused.dispose();
     super.dispose();
   }
 
   void _onFocusChange() {
     final hasFocus = _focusNode.hasFocus;
-    if (hasFocus != _isFocused) {
-      setState(() => _isFocused = hasFocus);
+    if (hasFocus != _isFocused.value) {
+      _isFocused.value = hasFocus;
 
       if (hasFocus) {
         _animationController.forward();
@@ -149,54 +153,68 @@ class _TvFocusableState extends State<TvFocusable>
     // Determine if this is a button (has onSelect action)
     final isButton = widget.semanticButton ?? widget.onSelect != null;
 
+    // ValueListenableBuilder rebuilds only the focus-decoration and
+    // semantics layers when focus changes — the child subtree is
+    // passed through unchanged via the `child` parameter.
     Widget focusableWidget = Focus(
       focusNode: _focusNode,
       autofocus: widget.autofocus,
       onKeyEvent: _handleKeyEvent,
-      child: AnimatedBuilder(
-        animation: _scaleAnimation,
-        builder: (context, child) {
-          return Transform.scale(
-            scale: widget.showScaleEffect ? _scaleAnimation.value : 1.0,
-            child: Container(
-              decoration: _isFocused && widget.showBorderEffect
-                  ? BoxDecoration(
-                      borderRadius: BorderRadius.circular(widget.borderRadius),
-                      border: Border.all(
-                        color: focusColor,
-                        width: TvFocusConstants.focusBorderWidth,
-                      ),
-                      boxShadow: widget.showGlowEffect
-                          ? [
-                              BoxShadow(
-                                color: focusColor.withValues(alpha: 0.4),
-                                blurRadius:
-                                    TvFocusConstants.focusGlowSpread * 2,
-                                spreadRadius: TvFocusConstants.focusGlowSpread,
-                              ),
-                            ]
-                          : null,
-                    )
-                  : null,
-              child: widget.child,
-            ),
+      child: ValueListenableBuilder<bool>(
+        valueListenable: _isFocused,
+        builder: (context, isFocused, child) {
+          Widget inner = AnimatedBuilder(
+            animation: _scaleAnimation,
+            builder: (context, animChild) {
+              return Transform.scale(
+                scale: widget.showScaleEffect ? _scaleAnimation.value : 1.0,
+                child: Container(
+                  decoration: isFocused && widget.showBorderEffect
+                      ? BoxDecoration(
+                          borderRadius:
+                              BorderRadius.circular(widget.borderRadius),
+                          border: Border.all(
+                            color: focusColor,
+                            width: TvFocusConstants.focusBorderWidth,
+                          ),
+                          boxShadow: widget.showGlowEffect
+                              ? [
+                                  BoxShadow(
+                                    color: focusColor.withValues(alpha: 0.4),
+                                    blurRadius:
+                                        TvFocusConstants.focusGlowSpread * 2,
+                                    spreadRadius:
+                                        TvFocusConstants.focusGlowSpread,
+                                  ),
+                                ]
+                              : null,
+                        )
+                      : null,
+                  child: animChild,
+                ),
+              );
+            },
+            child: child,
           );
+
+          // Wrap with Semantics for screen reader support (CP-AC-003)
+          if (widget.semanticLabel != null || isButton) {
+            inner = Semantics(
+              label: widget.semanticLabel,
+              hint: widget.semanticHint,
+              button: isButton,
+              enabled: widget.enabled,
+              focused: isFocused,
+              onTap: widget.onSelect,
+              child: inner,
+            );
+          }
+
+          return inner;
         },
+        child: widget.child,
       ),
     );
-
-    // Wrap with Semantics for screen reader support (CP-AC-003)
-    if (widget.semanticLabel != null || isButton) {
-      focusableWidget = Semantics(
-        label: widget.semanticLabel,
-        hint: widget.semanticHint,
-        button: isButton,
-        enabled: widget.enabled,
-        focused: _isFocused,
-        onTap: widget.onSelect,
-        child: focusableWidget,
-      );
-    }
 
     return focusableWidget;
   }

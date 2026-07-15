@@ -35,6 +35,8 @@ class TvChannelGridConfig {
 ///   - Thumbnail preloading in focus direction
 ///   - D-pad input debouncing for rapid navigation
 ///   - Channel up/down navigation for Fire TV
+///   - RepaintBoundary per cell to isolate focus repaints
+///   - Per-cell provider watch for isPlaying (no full-grid rebuild)
 class TvChannelGrid extends ConsumerStatefulWidget {
   final Function(IPTVChannel) onChannelSelect;
   final String? initialFocusChannelId;
@@ -75,11 +77,15 @@ class _TvChannelGridState extends ConsumerState<TvChannelGrid> {
     return false;
   }
 
+  void _onCellFocused(int index, TvUiDimensions dimensions, int totalItems) {
+    _currentFocusedIndex = index;
+    _ensureVisible(index, totalItems, dimensions);
+  }
+
   @override
   Widget build(BuildContext context) {
     final channels = ref.watch(filteredChannelsProvider);
     final dimensions = ref.watch(tvDimensionsProvider(context));
-    final currentChannel = ref.watch(currentChannelProvider);
 
     // Apply safe zone padding for Fire TV
     final padding =
@@ -102,7 +108,6 @@ class _TvChannelGridState extends ConsumerState<TvChannelGrid> {
         itemCount: channels.length,
         itemBuilder: (context, index) {
           final channel = channels[index];
-          final isPlaying = currentChannel?.id == channel.id;
           final isInitialFocus = widget.initialFocusChannelId != null
               ? channel.id == widget.initialFocusChannelId
               : index == 0;
@@ -112,17 +117,17 @@ class _TvChannelGridState extends ConsumerState<TvChannelGrid> {
             _preloadAdjacentThumbnails(channels, index, dimensions);
           }
 
-          return _TvChannelCard(
-            key: ValueKey('channel_card_${channel.id}'),
-            channel: channel,
-            dimensions: dimensions,
-            isPlaying: isPlaying,
-            autofocus: isInitialFocus,
-            onSelect: () => widget.onChannelSelect(channel),
-            onFocus: () {
-              _currentFocusedIndex = index;
-              _ensureVisible(index, channels.length, dimensions);
-            },
+          // RepaintBoundary isolates focus-change repaints to this cell
+          return RepaintBoundary(
+            child: _TvChannelCard(
+              key: ValueKey('channel_card_${channel.id}'),
+              channel: channel,
+              dimensions: dimensions,
+              autofocus: isInitialFocus,
+              onSelect: () => widget.onChannelSelect(channel),
+              onFocus: () =>
+                  _onCellFocused(index, dimensions, channels.length),
+            ),
           );
         },
       ),
@@ -210,13 +215,16 @@ class _TvChannelGridState extends ConsumerState<TvChannelGrid> {
   }
 }
 
-/// TV-optimized channel card with focus support
+/// TV-optimized channel card with per-cell focus and playing state
+///
+/// Each card independently watches [currentChannelProvider] so that
+/// changing the playing channel only rebuilds the affected cards
+/// (old playing + new playing) instead of the entire grid.
 ///
 /// Includes semantic labels for screen reader support (CP-AC-003)
-class _TvChannelCard extends StatelessWidget {
+class _TvChannelCard extends ConsumerWidget {
   final IPTVChannel channel;
   final TvUiDimensions dimensions;
-  final bool isPlaying;
   final bool autofocus;
   final VoidCallback onSelect;
   final VoidCallback? onFocus;
@@ -225,14 +233,17 @@ class _TvChannelCard extends StatelessWidget {
     super.key,
     required this.channel,
     required this.dimensions,
-    required this.isPlaying,
     required this.autofocus,
     required this.onSelect,
     this.onFocus,
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Per-cell watch: only this card rebuilds when the playing channel changes
+    final currentChannel = ref.watch(currentChannelProvider);
+    final isPlaying = currentChannel?.id == channel.id;
+
     // Build semantic label for screen readers (CP-AC-003)
     final semanticLabel = isPlaying
         ? '${channel.name}, currently playing'
