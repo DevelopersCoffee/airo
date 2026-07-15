@@ -5,7 +5,7 @@
 # Heavy dependencies excluded:
 # - stockfish: 1.8.1 (~108MB native libs)
 # - flame: 1.35.0 + flame_audio: 2.11.13 (~5MB)
-# - google_mlkit_text_recognition: 0.15.1 (~10MB)
+# - google_mlkit_text_recognition: 0.16.0 (~10MB)
 # - chess: 0.8.1 (requires stockfish)
 
 name: airo_app
@@ -94,7 +94,7 @@ dependencies:
   stockfish: 1.8.1
   chess: 0.8.1
   flame: 1.35.0
-  google_mlkit_text_recognition: 0.15.1
+  google_mlkit_text_recognition: 0.16.0
   image_picker: 1.2.1
   file_picker: 10.3.10
   share_plus: 10.1.4
