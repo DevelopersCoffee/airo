@@ -46,6 +46,9 @@ instead of duplicating profile rules in CI scripts.
   governance decisions before public distribution.
 - Release qualification preflight for checking final artifact filenames,
   checksums, device evidence, and approved waivers before public publication.
+- Top-level v2 release-readiness preflight for rolling account, credential,
+  store-console, device-evidence, legal, governance, and maintainer-decision
+  gates into one public-release readiness report.
 - Validation findings for duplicate profile/package IDs and incomplete Android
   release candidates.
 

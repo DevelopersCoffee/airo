@@ -12,3 +12,4 @@ export 'src/play_upload_plan.dart';
 export 'src/release_matrix.dart';
 export 'src/release_qualification_preflight.dart';
 export 'src/repository_health_preflight.dart';
+export 'src/v2_release_readiness_preflight.dart';

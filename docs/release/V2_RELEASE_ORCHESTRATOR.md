@@ -105,6 +105,18 @@ Public/store publishing requires:
   releases, alongside the Developer ID and notarytool secrets documented in
   `docs/release/MACOS_AIRO_TV_RELEASE.md`.
 
+Before any public release dispatch, generate the top-level readiness rollup:
+
+```bash
+dart pub global run melos run release:v2-readiness-preflight
+```
+
+Set `AIRO_V2_RELEASE_GATES` with comma-separated `gate_id=status` values when
+human setup or waiver evidence is available. The report writes redacted JSON and
+Markdown under `artifacts/release/` and fails while required account,
+credential, store-console, device-evidence, legal, governance, or maintainer
+decision gates remain `unknown`, `blocked`, or required-and-`deferred`.
+
 When `dry_run` is `true`, the orchestrator forces GitHub Release publication
 off and sets the TV and mobile/tablet Play tracks plus Firebase distribution to
 `none`.
