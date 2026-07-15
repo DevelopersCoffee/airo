@@ -44,6 +44,8 @@ instead of duplicating profile rules in CI scripts.
 - Repository-health preflight for checking public release repository files,
   issue templates, README release links, label taxonomy, and maintainer
   governance decisions before public distribution.
+- Release qualification preflight for checking final artifact filenames,
+  checksums, device evidence, and approved waivers before public publication.
 - Validation findings for duplicate profile/package IDs and incomplete Android
   release candidates.
 
