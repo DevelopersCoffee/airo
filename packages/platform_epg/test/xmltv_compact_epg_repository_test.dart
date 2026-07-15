@@ -186,6 +186,45 @@ void main() {
     });
 
     test(
+      'loads current programs from native-preferred XMLTV file path',
+      () async {
+        final directory = await Directory.systemTemp.createTemp(
+          'platform-epg-xmltv-native-file-test-',
+        );
+        addTearDown(() async {
+          if (await directory.exists()) {
+            await directory.delete(recursive: true);
+          }
+        });
+        final file = File('${directory.path}/guide.xml');
+        await file.writeAsString('''
+<tv>
+  <programme channel="native.news" start="20260715090000 +0000" stop="20260715100000 +0000">
+    <title>Native File Morning News</title>
+  </programme>
+</tv>
+''');
+
+        final repository = await XmltvCompactEpgRepository.fromXmltvFileNative(
+          path: file.path,
+          ingestedAt: ingestedAt,
+          channelNamesById: const {'native.news': 'Native File News'},
+        );
+
+        final slice = await repository.loadCurrentNext(
+          channelIds: const ['native.news'],
+          now: DateTime.utc(2026, 7, 15, 9, 30),
+        );
+
+        final entry = slice.entryForChannel('native.news')!;
+        expect(entry.channelName, 'Native File News');
+        expect(entry.current?.title, 'Native File Morning News');
+        expect(repository.stats.nativeProgrammeCount, 1);
+        expect(repository.stats.retainedProgrammeCount, 1);
+      },
+    );
+
+    test(
       'parses valid XMLTV timestamps with offsets and rejects invalid values',
       () {
         expect(

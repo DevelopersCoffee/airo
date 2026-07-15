@@ -395,7 +395,7 @@ Future<CompactEpgSlice> _buildTvCompactEpgSnapshot({
     for (final channel in channels)
       for (final alias in aliasesByChannel[channel.id]!) alias: channel.name,
   };
-  final guideRepository = XmltvCompactEpgRepository.fromXmltvFile(
+  final guideRepository = await XmltvCompactEpgRepository.fromXmltvFileNative(
     path: xmltvPath,
     ingestedAt: now,
     sourceRef: CompactEpgSourceRef.redacted('debug-tv-epg'),

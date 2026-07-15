@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
 
-import 'frb_generated.dart' as frb;
+import 'api/xmltv.dart' as native_xmltv;
+import 'native_bridge.dart';
 import 'xmltv_file_reader_stub.dart'
     if (dart.library.io) 'xmltv_file_reader_io.dart';
 
@@ -30,11 +31,25 @@ class NativeXmltvParseStats {
   final bool truncated;
 }
 
+enum NativeXmltvParseBackend {
+  nativeBridge('native_bridge'),
+  dartFallback('dart_fallback');
+
+  const NativeXmltvParseBackend(this.stableId);
+
+  final String stableId;
+}
+
 class NativeXmltvParseResult {
-  const NativeXmltvParseResult({required this.programmes, required this.stats});
+  const NativeXmltvParseResult({
+    required this.programmes,
+    required this.stats,
+    this.backend = NativeXmltvParseBackend.dartFallback,
+  });
 
   final List<NativeXmltvProgramme> programmes;
   final NativeXmltvParseStats stats;
+  final NativeXmltvParseBackend backend;
 }
 
 NativeXmltvParseResult parseXmltvProgrammes(
@@ -45,17 +60,32 @@ NativeXmltvParseResult parseXmltvProgrammes(
     throw ArgumentError.value(maxProgrammes, 'maxProgrammes', 'must be >= 0');
   }
 
+  return _dartParseXmltvProgrammes(content, maxProgrammes: maxProgrammes);
+}
+
+Future<NativeXmltvParseResult> parseXmltvProgrammesNative(
+  String content, {
+  int maxProgrammes = 1000,
+}) async {
+  if (maxProgrammes < 0) {
+    throw ArgumentError.value(maxProgrammes, 'maxProgrammes', 'must be >= 0');
+  }
+
   if (kIsWeb) {
     return _dartParseXmltvProgrammes(content, maxProgrammes: maxProgrammes);
   }
 
+  if (!await initializeCoreNativeBridge()) {
+    return _dartParseXmltvProgrammes(content, maxProgrammes: maxProgrammes);
+  }
+
   try {
-    final result = frb.parseXmltvProgrammes(
+    final result = await native_xmltv.parseXmltvProgrammes(
       content: content,
       maxProgrammes: maxProgrammes,
     );
-    return _fromFrbXmltvParseResult(result);
-  } on frb.NativeBridgeUnavailableException {
+    return _fromNativeXmltvParseResult(result);
+  } on Object {
     return _dartParseXmltvProgrammes(content, maxProgrammes: maxProgrammes);
   }
 }
@@ -80,13 +110,46 @@ NativeXmltvParseResult parseXmltvProgrammesFile(
     );
   }
 
+  return _dartParseXmltvProgrammes(
+    readXmltvFileSync(normalizedPath),
+    maxProgrammes: maxProgrammes,
+  );
+}
+
+Future<NativeXmltvParseResult> parseXmltvProgrammesFileNative(
+  String path, {
+  int maxProgrammes = 1000,
+}) async {
+  if (maxProgrammes < 0) {
+    throw ArgumentError.value(maxProgrammes, 'maxProgrammes', 'must be >= 0');
+  }
+
+  final normalizedPath = path.trim();
+  if (normalizedPath.isEmpty) {
+    throw ArgumentError.value(path, 'path', 'must not be empty');
+  }
+
+  if (kIsWeb) {
+    throw UnsupportedError(
+      'XMLTV file parsing is not available on web. '
+      'Use parseXmltvProgrammes with XMLTV content instead.',
+    );
+  }
+
+  if (!await initializeCoreNativeBridge()) {
+    return _dartParseXmltvProgrammes(
+      readXmltvFileSync(normalizedPath),
+      maxProgrammes: maxProgrammes,
+    );
+  }
+
   try {
-    final result = frb.parseXmltvProgrammesFile(
+    final result = await native_xmltv.parseXmltvProgrammesFile(
       path: normalizedPath,
       maxProgrammes: maxProgrammes,
     );
-    return _fromFrbXmltvParseResult(result);
-  } on frb.NativeBridgeUnavailableException {
+    return _fromNativeXmltvParseResult(result);
+  } on Object {
     return _dartParseXmltvProgrammes(
       readXmltvFileSync(normalizedPath),
       maxProgrammes: maxProgrammes,
@@ -94,8 +157,8 @@ NativeXmltvParseResult parseXmltvProgrammesFile(
   }
 }
 
-NativeXmltvParseResult _fromFrbXmltvParseResult(
-  frb.FrbXmltvParseResult result,
+NativeXmltvParseResult _fromNativeXmltvParseResult(
+  native_xmltv.XmltvParseResult result,
 ) {
   return NativeXmltvParseResult(
     programmes: result.programmes
@@ -108,6 +171,7 @@ NativeXmltvParseResult _fromFrbXmltvParseResult(
           ),
         )
         .toList(growable: false),
+    backend: NativeXmltvParseBackend.nativeBridge,
     stats: NativeXmltvParseStats(
       programmeCount: result.stats.programmeCount,
       skippedProgrammeCount: result.stats.skippedProgrammeCount,
