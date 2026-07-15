@@ -1,13 +1,19 @@
 import 'dart:convert';
+import 'package:core_data/core_data.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:feature_iptv/feature_iptv.dart' show sharedPreferencesProvider;
 import 'audio_context_manager.dart';
 import 'audio_context_settings.dart';
 
+const audioContextSettingsStorageKey = 'audio_context_settings';
+
+final audioContextSettingsStoreProvider = Provider<KeyValueStore>((ref) {
+  return PreferencesStore(ref.watch(sharedPreferencesProvider));
+});
+
 /// Audio context settings notifier for persisting user preferences
 class AudioContextSettingsNotifier extends StateNotifier<AudioContextSettings> {
   final Ref _ref;
-  static const String _storageKey = 'audio_context_settings';
 
   AudioContextSettingsNotifier(this._ref)
     : super(const AudioContextSettings()) {
@@ -90,8 +96,8 @@ class AudioContextSettingsNotifier extends StateNotifier<AudioContextSettings> {
 
   Future<void> _loadFromStorage() async {
     try {
-      final prefs = _ref.read(sharedPreferencesProvider);
-      final jsonString = prefs.getString(_storageKey);
+      final store = _ref.read(audioContextSettingsStoreProvider);
+      final jsonString = await store.getString(audioContextSettingsStorageKey);
       if (jsonString != null) {
         final json = jsonDecode(jsonString) as Map<String, dynamic>;
         state = AudioContextSettings.fromJson(json);
@@ -105,9 +111,13 @@ class AudioContextSettingsNotifier extends StateNotifier<AudioContextSettings> {
 
   Future<void> _saveToStorage() async {
     try {
-      final prefs = _ref.read(sharedPreferencesProvider);
+      final store = _ref.read(audioContextSettingsStoreProvider);
       final jsonString = jsonEncode(state.toJson());
-      await prefs.setString(_storageKey, jsonString);
+      await store.setString(audioContextSettingsStorageKey, jsonString);
+    } on KeyValueStoreValueTooLargeException {
+      await _ref
+          .read(audioContextSettingsStoreProvider)
+          .remove(audioContextSettingsStorageKey);
     } catch (e) {
       // Failed to save
     }
