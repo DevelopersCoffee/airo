@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../application/providers/iptv_providers.dart';
 import "package:platform_player/platform_player.dart";
+import 'channel_logo.dart';
 
 /// Mini player widget for IPTV background playback
 /// Shows at bottom when:
@@ -53,18 +54,13 @@ class IPTVMiniPlayer extends ConsumerWidget {
             ),
             child: Row(
               children: [
-                // Channel logo
-                Container(
-                  width: 64,
-                  height: 64,
-                  color: Colors.black,
-                  child: state.currentChannel!.logoUrl != null
-                      ? Image.network(
-                          state.currentChannel!.logoUrl!,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, _, _) => _buildDefaultIcon(),
-                        )
-                      : _buildDefaultIcon(),
+                // Channel logo (decode-at-display-size)
+                ChannelLogo(
+                  logoUrl: state.currentChannel!.logoUrl,
+                  channelName: state.currentChannel!.name,
+                  size: 64,
+                  borderRadius: 0,
+                  isAudioOnly: state.currentChannel!.isAudioOnly,
                 ),
                 const SizedBox(width: 12),
 
@@ -127,11 +123,6 @@ class IPTVMiniPlayer extends ConsumerWidget {
     );
   }
 
-  Widget _buildDefaultIcon() {
-    return const Center(
-      child: Icon(Icons.radio, color: Colors.white54, size: 32),
-    );
-  }
 }
 
 class _PlayPauseButton extends ConsumerWidget {

@@ -48,6 +48,12 @@ Future<void> configureTvSystemChrome() async {
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // TV ImageCache budgets: smaller than mobile because TV devices have
+  // limited RAM. 50 MB / 200 images keeps memory predictable for 10k+
+  // channel playlists where logos are decoded at display size.
+  PaintingBinding.instance.imageCache.maximumSizeBytes = 50 * 1024 * 1024;
+  PaintingBinding.instance.imageCache.maximumSize = 200;
+
   GlobalErrorHandler.initialize();
 
   if (kIsWeb) {

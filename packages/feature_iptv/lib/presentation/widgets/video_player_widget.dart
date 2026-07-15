@@ -10,6 +10,7 @@ import "package:platform_player/platform_player.dart";
 import "package:platform_media/platform_media.dart";
 import '../utils/web_fullscreen.dart' as web_fullscreen;
 import 'app_icon_placeholder.dart';
+import 'channel_logo.dart';
 import 'live_indicators.dart';
 
 /// Video player widget with YouTube-like controls
@@ -453,12 +454,13 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
       ),
       child: Center(
         child: channel != null && channel.hasLogo
-            ? Image.network(
-                channel.logoUrl!,
-                width: 120,
-                height: 120,
+            ? ChannelLogo(
+                logoUrl: channel.logoUrl,
+                channelName: channel.name,
+                size: 120,
                 fit: BoxFit.contain,
-                errorBuilder: (_, _, _) => _buildDefaultPlaceholder(),
+                borderRadius: 12,
+                isAudioOnly: channel.isAudioOnly,
               )
             : _buildDefaultPlaceholder(),
       ),
@@ -511,14 +513,12 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                 child: Row(
                   children: [
                     if (state.currentChannel!.logoUrl != null)
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(4),
-                        child: Image.network(
-                          state.currentChannel!.logoUrl!,
-                          width: 32,
-                          height: 32,
-                          errorBuilder: (_, _, _) => const SizedBox.shrink(),
-                        ),
+                      ChannelLogo(
+                        logoUrl: state.currentChannel!.logoUrl,
+                        channelName: state.currentChannel!.name,
+                        size: 32,
+                        fit: BoxFit.contain,
+                        borderRadius: 4,
                       ),
                     const SizedBox(width: 8),
                     Expanded(
