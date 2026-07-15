@@ -28,6 +28,7 @@ import 'core/config/platform_features.dart';
 import 'core/error/global_error_handler.dart';
 import 'core/features/feature_registry.dart';
 import 'core/platform/device_form_factor.dart';
+import 'core/startup/deferred_startup_task.dart';
 import 'package:feature_iptv/feature_iptv.dart';
 import 'features/iptv/iptv_cast_provider_override.dart';
 import 'features/iptv/iptv_feature_module.dart';
@@ -82,7 +83,7 @@ void main() async {
 
   // Initialize SharedPreferences for IPTV caching
   final prefs = await SharedPreferences.getInstance();
-  await seedTvDebugDefaultPlaylist(prefs);
+  final shouldWarmDebugPlaylist = await seedTvDebugDefaultPlaylist(prefs);
 
   // Initialize feature registry with TV-specific features
   FeatureRegistry.register(IptvFeatureModule());
@@ -102,6 +103,10 @@ void main() async {
       child: const AiroTvApp(),
     ),
   );
+
+  if (shouldWarmDebugPlaylist) {
+    scheduleTvDebugDefaultPlaylistWarmup(prefs);
+  }
 }
 
 @visibleForTesting
@@ -136,7 +141,47 @@ Future<void> configureTvSystemChrome({
 }
 
 @visibleForTesting
-Future<void> seedTvDebugDefaultPlaylist(
+Future<bool> seedTvDebugDefaultPlaylist(
+  SharedPreferences prefs, {
+  String playlistUrl = _debugDefaultPlaylistUrl,
+  M3UParserService? parser,
+}) async {
+  if (playlistUrl.isEmpty) return false;
+
+  final parserService = parser ?? M3UParserService(dio: Dio(), prefs: prefs);
+  if (parserService.getPlaylistUrl() != null) return false;
+
+  await parserService.setPlaylistUrl(playlistUrl);
+  return true;
+}
+
+@visibleForTesting
+void scheduleTvDebugDefaultPlaylistWarmup(
+  SharedPreferences prefs, {
+  String debugName = 'tv_debug_playlist_warmup',
+  String playlistUrl = _debugDefaultPlaylistUrl,
+  M3UParserService? parser,
+  WidgetsBinding? binding,
+  void Function(DeferredStartupFrameCallback callback)? addPostFrameCallback,
+  void Function(String message)? log,
+}) {
+  if (playlistUrl.isEmpty) return;
+
+  scheduleDeferredStartupTask(
+    debugName: debugName,
+    binding: binding,
+    addPostFrameCallback: addPostFrameCallback,
+    log: log,
+    task: () => warmTvDebugDefaultPlaylistCache(
+      prefs,
+      playlistUrl: playlistUrl,
+      parser: parser,
+    ),
+  );
+}
+
+@visibleForTesting
+Future<void> warmTvDebugDefaultPlaylistCache(
   SharedPreferences prefs, {
   String playlistUrl = _debugDefaultPlaylistUrl,
   M3UParserService? parser,
@@ -144,8 +189,7 @@ Future<void> seedTvDebugDefaultPlaylist(
   if (playlistUrl.isEmpty) return;
 
   final parserService = parser ?? M3UParserService(dio: Dio(), prefs: prefs);
-  if (parserService.getPlaylistUrl() != null) return;
+  if (parserService.getPlaylistUrl() != playlistUrl) return;
 
-  await parserService.setPlaylistUrl(playlistUrl);
   await parserService.fetchPlaylist(forceRefresh: true);
 }

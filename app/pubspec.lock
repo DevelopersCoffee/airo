@@ -1582,6 +1582,13 @@ packages:
       relative: true
     source: path
     version: "0.0.1"
+  platform_worker_jobs:
+    dependency: transitive
+    description:
+      path: "../packages/platform_worker_jobs"
+      relative: true
+    source: path
+    version: "0.0.1"
   plugin_platform_interface:
     dependency: transitive
     description:
