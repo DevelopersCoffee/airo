@@ -1560,6 +1560,13 @@ packages:
       relative: true
     source: path
     version: "0.0.1"
+  platform_epg:
+    dependency: transitive
+    description:
+      path: "../packages/platform_epg"
+      relative: true
+    source: path
+    version: "0.0.1"
   platform_history:
     dependency: "direct main"
     description:

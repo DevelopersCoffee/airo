@@ -67,7 +67,7 @@ void main() {
           ..write('''
 #EXTM3U
 #EXTINF:-1 tvg-id="news.local" group-title="News",Airo News
-https://example.test/live/news.m3u8
+https://cdn.example.com/live/news.m3u8
 ''')
           ..close();
       }),
@@ -80,23 +80,204 @@ https://example.test/live/news.m3u8
       path: '/fixture.m3u',
     ).toString();
 
-    try {
-      final seeded = await seedTvDebugDefaultPlaylist(
-        prefs,
-        playlistUrl: playlistUrl,
-      );
-      expect(seeded, isTrue);
-      await warmTvDebugDefaultPlaylistCache(prefs, playlistUrl: playlistUrl);
-    } finally {
-      await server.close(force: true);
-    }
+    final seeded = await seedTvDebugDefaultPlaylist(
+      prefs,
+      playlistUrl: playlistUrl,
+    );
+    expect(seeded, isTrue);
+    await warmTvDebugDefaultPlaylistCache(prefs, playlistUrl: playlistUrl);
 
     final parser = M3UParserService(dio: Dio(), prefs: prefs);
     expect(parser.getPlaylistUrl(), playlistUrl);
 
     final cachedChannels = await parser.fetchPlaylist();
-    expect(cachedChannels, hasLength(1));
-    expect(cachedChannels.single.name, 'Airo News');
+    try {
+      expect(cachedChannels, hasLength(1));
+      expect(cachedChannels.single.name, 'Airo News');
+    } finally {
+      await server.close(force: true);
+    }
+  });
+
+  test(
+    'creates file-backed compact EPG repository for TV support dir',
+    () async {
+      final supportDir = await Directory.systemTemp.createTemp(
+        'airo_tv_epg_support_',
+      );
+      addTearDown(() async {
+        if (await supportDir.exists()) {
+          await supportDir.delete(recursive: true);
+        }
+      });
+      final repository = createTvCompactEpgRepository(
+        supportDirectoryProvider: () async => supportDir,
+      );
+      final now = DateTime.utc(2026, 7, 15, 9, 30);
+
+      await repository.saveSnapshot(
+        CompactEpgSlice(
+          entries: [
+            CompactEpgEntry(
+              channelId: 'news-1',
+              channelName: 'Airo News',
+              current: CompactEpgProgram(
+                programId: 'news-current',
+                title: 'Morning Bulletin',
+                startsAt: now.subtract(const Duration(minutes: 10)),
+                endsAt: now.add(const Duration(minutes: 20)),
+              ),
+            ),
+          ],
+          generatedAt: now,
+          expiresAt: now.add(const Duration(minutes: 15)),
+          source: CompactEpgSliceSource.localCache,
+        ),
+      );
+
+      final result = await repository.loadCurrentNext(
+        channelIds: const ['news-1'],
+        now: now,
+      );
+
+      expect(
+        File('${supportDir.path}/epg/compact_epg_snapshot.json').existsSync(),
+        isTrue,
+      );
+      expect(
+        result.entryForChannel('news-1')?.current?.title,
+        'Morning Bulletin',
+      );
+    },
+  );
+
+  test('warms compact EPG snapshot from XMLTV using channel aliases', () async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    final now = DateTime.utc(2026, 7, 15, 9, 30);
+    final server = await _xmltvServer('''
+<tv>
+  <programme channel="news.local" start="20260715090000 +0000" stop="20260715100000 +0000">
+    <title>Morning Bulletin</title>
+  </programme>
+  <programme channel="42" start="20260715093000 +0000" stop="20260715103000 +0000">
+    <title>Live Sports</title>
+  </programme>
+</tv>
+''');
+    final repository = SnapshotBackedCompactEpgRepository(
+      store: InMemoryCompactEpgSnapshotStore(),
+    );
+    final parser = _RecordingM3UParserService(prefs, const [
+      IPTVChannel(
+        id: 'stream-news',
+        name: 'Airo News',
+        streamUrl: 'https://example.com/news.m3u8',
+        tvgName: 'news.local',
+      ),
+      IPTVChannel(
+        id: 'stream-sports',
+        name: 'Airo Sports',
+        streamUrl: 'https://example.com/sports.m3u8',
+        tvgId: 42,
+      ),
+    ]);
+
+    try {
+      final elapsed = await warmTvDebugDefaultEpgCache(
+        prefs,
+        repository: repository,
+        epgUrl: _serverUrl(server, '/guide.xml'),
+        parser: parser,
+        clock: () => now,
+      );
+
+      final snapshot = await repository.loadCurrentNext(
+        channelIds: const ['stream-news', 'stream-sports'],
+        now: now,
+      );
+
+      expect(elapsed, isNotNull);
+      expect(elapsed!, lessThan(const Duration(seconds: 1)));
+      expect(
+        snapshot.entryForChannel('stream-news')?.current?.title,
+        'Morning Bulletin',
+      );
+      expect(
+        snapshot.entryForChannel('stream-sports')?.current?.title,
+        'Live Sports',
+      );
+      expect(snapshot.entryForChannel('news.local'), isNull);
+    } finally {
+      await server.close(force: true);
+    }
+  });
+
+  test('schedules DEBUG_IPTV_EPG_URL warmup after frame', () async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    final now = DateTime.utc(2026, 7, 15, 9, 30);
+    final server = await _xmltvServer('''
+<tv>
+  <programme channel="news.local" start="20260715090000 +0000" stop="20260715100000 +0000">
+    <title>Morning Bulletin</title>
+  </programme>
+</tv>
+''');
+    final repository = SnapshotBackedCompactEpgRepository(
+      store: InMemoryCompactEpgSnapshotStore(),
+    );
+    final parser = _RecordingM3UParserService(prefs, const [
+      IPTVChannel(
+        id: 'stream-news',
+        name: 'Airo News',
+        streamUrl: 'https://example.com/news.m3u8',
+        tvgName: 'news.local',
+      ),
+    ]);
+    final logs = <String>[];
+    void Function(Duration timestamp)? frameCallback;
+
+    scheduleTvDebugDefaultEpgWarmup(
+      prefs,
+      repository: repository,
+      epgUrl: _serverUrl(server, '/guide.xml'),
+      parser: parser,
+      clock: () => now,
+      addPostFrameCallback: (callback) {
+        frameCallback = callback;
+      },
+      log: logs.add,
+    );
+
+    expect(parser.fetchCalls, 0);
+
+    try {
+      frameCallback!(Duration.zero);
+      for (var attempt = 0; attempt < 20; attempt++) {
+        if (logs.contains(
+          '✅ Deferred startup task completed: tv_debug_epg_warmup',
+        )) {
+          break;
+        }
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+      }
+
+      expect(parser.fetchCalls, 1);
+      expect(
+        logs,
+        contains('✅ Deferred startup task completed: tv_debug_epg_warmup'),
+      );
+      expect(
+        (await repository.loadCurrentNext(
+          channelIds: const ['stream-news'],
+          now: now,
+        )).entryForChannel('stream-news')?.current?.title,
+        'Morning Bulletin',
+      );
+    } finally {
+      await server.close(force: true);
+    }
   });
 
   test('schedules DEBUG_IPTV_PLAYLIST_URL warmup after frame', () async {
@@ -229,14 +410,39 @@ https://example.test/live/news.m3u8
 }
 
 class _RecordingM3UParserService extends M3UParserService {
-  _RecordingM3UParserService(SharedPreferences prefs)
-    : super(dio: Dio(), prefs: prefs);
+  _RecordingM3UParserService(
+    SharedPreferences prefs, [
+    this.channels = const [],
+  ]) : super(dio: Dio(), prefs: prefs);
 
+  final List<IPTVChannel> channels;
   var fetchCalls = 0;
 
   @override
   Future<List<IPTVChannel>> fetchPlaylist({bool forceRefresh = false}) async {
     fetchCalls++;
-    return const [];
+    return channels;
   }
+}
+
+Future<HttpServer> _xmltvServer(String body) async {
+  final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+  unawaited(
+    server.forEach((request) {
+      request.response
+        ..headers.contentType = ContentType.text
+        ..write(body)
+        ..close();
+    }),
+  );
+  return server;
+}
+
+String _serverUrl(HttpServer server, String path) {
+  return Uri(
+    scheme: 'http',
+    host: InternetAddress.loopbackIPv4.address,
+    port: server.port,
+    path: path,
+  ).toString();
 }
