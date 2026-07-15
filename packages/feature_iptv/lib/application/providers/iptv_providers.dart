@@ -172,61 +172,38 @@ final preferenceKeywordsProvider = StateProvider<List<String>>((ref) {
   ];
 });
 
+/// Reusable platform search index for the loaded channel list.
+final channelSearchIndexProvider = Provider<AiroChannelSearchIndex?>((ref) {
+  final channelsAsync = ref.watch(iptvChannelsProvider);
+  return channelsAsync.when(
+    data: AiroChannelSearchIndex.new,
+    loading: () => null,
+    error: (_, _) => null,
+  );
+});
+
 /// Filtered and sorted channels
 final filteredChannelsProvider = Provider<List<IPTVChannel>>((ref) {
-  final channelsAsync = ref.watch(iptvChannelsProvider);
+  final searchIndex = ref.watch(channelSearchIndexProvider);
   final category = ref.watch(selectedCategoryProvider);
   final flavor = ref.watch(selectedFlavorProvider);
-  final searchQuery = ref.watch(channelSearchQueryProvider).toLowerCase();
+  final searchQuery = ref.watch(channelSearchQueryProvider);
   final preferences = ref.watch(preferenceKeywordsProvider);
 
-  return channelsAsync.when(
-    data: (channels) {
-      // Filter by category
-      var filtered = category == ChannelCategory.all
-          ? channels.toList()
-          : channels.where((c) => c.category == category).toList();
-
-      // Filter by flavor (taste-based filtering)
-      if (flavor != null) {
-        filtered = filtered.where((c) => c.flavor == flavor).toList();
-      }
-
-      // Filter by search query
-      if (searchQuery.isNotEmpty) {
-        filtered = filtered
-            .where(
-              (c) =>
-                  c.name.toLowerCase().contains(searchQuery) ||
-                  c.group.toLowerCase().contains(searchQuery),
-            )
-            .toList();
-      }
-
-      // Sort by preference score
-      filtered.sort((a, b) {
-        final scoreA = _getPreferenceScore(a, preferences);
-        final scoreB = _getPreferenceScore(b, preferences);
-        if (scoreA != scoreB) return scoreB.compareTo(scoreA);
-        return a.name.compareTo(b.name);
-      });
-
-      return filtered;
-    },
-    loading: () => [],
-    error: (_, _) => [],
-  );
+  return searchIndex?.filterAndSort(
+        category: category,
+        flavor: flavor,
+        query: searchQuery,
+        preferenceKeywords: preferences,
+      ) ??
+      const [];
 });
 
 /// Channels filtered by specific flavor
 final channelsByFlavorProvider =
     Provider.family<List<IPTVChannel>, ChannelFlavor>((ref, flavor) {
-      final channelsAsync = ref.watch(iptvChannelsProvider);
-      return channelsAsync.when(
-        data: (channels) => channels.where((c) => c.flavor == flavor).toList(),
-        loading: () => [],
-        error: (_, _) => [],
-      );
+      final searchIndex = ref.watch(channelSearchIndexProvider);
+      return searchIndex?.channelsByFlavor(flavor) ?? const [];
     });
 
 /// Hindi music channels provider (convenience)
@@ -249,38 +226,10 @@ final englishNewsChannelsProvider = Provider<List<IPTVChannel>>((ref) {
   return ref.watch(channelsByFlavorProvider(ChannelFlavor.englishNews));
 });
 
-int _getPreferenceScore(IPTVChannel channel, List<String> preferences) {
-  final str = '${channel.name} ${channel.group}'.toLowerCase();
-  for (var i = 0; i < preferences.length; i++) {
-    if (str.contains(preferences[i])) {
-      return preferences.length - i; // Higher score for earlier preferences
-    }
-  }
-  return 0;
-}
-
 /// Category counts provider - shows how many channels in each category
 final categoryCounts = Provider<Map<ChannelCategory, int>>((ref) {
-  final channelsAsync = ref.watch(iptvChannelsProvider);
-
-  return channelsAsync.when(
-    data: (channels) {
-      final counts = <ChannelCategory, int>{};
-      // Count 'All' as total channels
-      counts[ChannelCategory.all] = channels.length;
-      // Count each category
-      for (final category in ChannelCategory.values) {
-        if (category != ChannelCategory.all) {
-          counts[category] = channels
-              .where((c) => c.category == category)
-              .length;
-        }
-      }
-      return counts;
-    },
-    loading: () => {},
-    error: (_, _) => {},
-  );
+  final searchIndex = ref.watch(channelSearchIndexProvider);
+  return searchIndex?.categoryCounts ?? const {};
 });
 
 /// Check if any filter is active (category, flavor, or search)
@@ -295,19 +244,8 @@ final hasActiveFilterProvider = Provider<bool>((ref) {
 
 /// Flavor counts provider - shows how many channels in each flavor
 final flavorCounts = Provider<Map<ChannelFlavor, int>>((ref) {
-  final channelsAsync = ref.watch(iptvChannelsProvider);
-
-  return channelsAsync.when(
-    data: (channels) {
-      final counts = <ChannelFlavor, int>{};
-      for (final flavor in ChannelFlavor.values) {
-        counts[flavor] = channels.where((c) => c.flavor == flavor).length;
-      }
-      return counts;
-    },
-    loading: () => {},
-    error: (_, _) => {},
-  );
+  final searchIndex = ref.watch(channelSearchIndexProvider);
+  return searchIndex?.flavorCounts ?? const {};
 });
 
 /// Streaming state provider
