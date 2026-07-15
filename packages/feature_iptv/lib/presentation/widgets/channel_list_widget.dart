@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../application/providers/iptv_providers.dart';
 import "package:platform_channels/platform_channels.dart";
-import 'app_icon_placeholder.dart';
+import 'channel_logo.dart';
 
 /// Channel list widget with category tabs and search
 class ChannelListWidget extends ConsumerWidget {
@@ -289,21 +289,13 @@ class _RecentChannelCard extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Channel logo
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: Container(
-                width: 56,
-                height: 56,
-                color: Colors.grey[200],
-                child: channel.hasLogo
-                    ? Image.network(
-                        channel.logoUrl!,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, _, _) => _buildDefaultIcon(),
-                      )
-                    : _buildDefaultIcon(),
-              ),
+            // Channel logo (decode-at-display-size)
+            ChannelLogo(
+              logoUrl: channel.logoUrl,
+              channelName: channel.name,
+              size: 56,
+              borderRadius: 8,
+              isAudioOnly: channel.isAudioOnly,
             ),
             const SizedBox(height: 4),
             // Channel name
@@ -320,15 +312,6 @@ class _RecentChannelCard extends StatelessWidget {
     );
   }
 
-  Widget _buildDefaultIcon() {
-    return Center(
-      child: Icon(
-        channel.isAudioOnly ? Icons.radio : Icons.live_tv,
-        color: Colors.grey,
-        size: 28,
-      ),
-    );
-  }
 }
 
 class _ChannelListTile extends ConsumerWidget {
@@ -345,34 +328,11 @@ class _ChannelListTile extends ConsumerWidget {
     return Material(
       type: MaterialType.transparency,
       child: ListTile(
-        leading: ClipRRect(
-          borderRadius: BorderRadius.circular(6),
-          child: Container(
-            width: 48,
-            height: 48,
-            color: Theme.of(
-              context,
-            ).colorScheme.surface.withValues(alpha: 0.42),
-            child: channel.hasLogo
-                ? Image.network(
-                    channel.logoUrl!,
-                    fit: BoxFit.cover,
-                    loadingBuilder: (_, child, loadingProgress) {
-                      if (loadingProgress == null) return child;
-                      return Center(
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          value: loadingProgress.expectedTotalBytes != null
-                              ? loadingProgress.cumulativeBytesLoaded /
-                                    loadingProgress.expectedTotalBytes!
-                              : null,
-                        ),
-                      );
-                    },
-                    errorBuilder: (_, _, _) => _buildDefaultIcon(),
-                  )
-                : _buildDefaultIcon(),
-          ),
+        leading: ChannelLogo(
+          logoUrl: channel.logoUrl,
+          channelName: channel.name,
+          size: 48,
+          isAudioOnly: channel.isAudioOnly,
         ),
         title: Text(
           channel.name,
@@ -432,10 +392,6 @@ class _ChannelListTile extends ConsumerWidget {
     );
   }
 
-  Widget _buildDefaultIcon() {
-    // Use shared AppIconPlaceholder for brand consistency and optimized caching
-    return AppIconPlaceholder.channel(isAudioOnly: channel.isAudioOnly);
-  }
 }
 
 class _LiveStatusPill extends StatelessWidget {

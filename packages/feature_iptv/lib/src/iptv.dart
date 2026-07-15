@@ -14,6 +14,7 @@ export '../presentation/screens/iptv_screen.dart';
 
 // Widgets
 export '../presentation/widgets/channel_list_widget.dart';
+export '../presentation/widgets/channel_logo.dart';
 export '../presentation/widgets/go_live_button.dart';
 export '../presentation/widgets/iptv_mini_player.dart';
 export '../presentation/widgets/live_indicators.dart';
