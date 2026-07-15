@@ -36,6 +36,9 @@ Default rule:
    Merge/close the bounded slice when required checks and local evidence are
    sufficient; split remaining acceptance evidence into follow-up work instead
    of blocking unrelated progress.
+6. Close issues as soon as their bounded acceptance criteria are met. Do not
+   hold completed slices open for optional CI, broad matrix runs, release
+   artifacts, or physical-device evidence that can be tracked separately.
 
 ## Worker Offload Rule
 
