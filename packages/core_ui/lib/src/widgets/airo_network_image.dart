@@ -6,6 +6,8 @@ import 'package:platform_device_profile/platform_device_profile.dart';
 typedef AiroImageFallbackBuilder =
     Widget Function(BuildContext context, Object error, StackTrace? stackTrace);
 
+const String kAiroImageCacheTelemetrySchemaVersion = '1.0.0';
+
 /// Validates remote artwork URLs before product UI starts image fetches.
 class AiroNetworkImageUrlPolicy {
   const AiroNetworkImageUrlPolicy._();
@@ -120,6 +122,118 @@ class AiroNetworkImage extends StatelessWidget {
   int? _clampCacheDimension(int? value) {
     if (value == null) return null;
     return math.max(1, math.min(value, maxDecodeDimension));
+  }
+}
+
+class AiroImageCacheSnapshot {
+  const AiroImageCacheSnapshot({
+    required this.capturedAt,
+    required this.currentEntryCount,
+    required this.currentSizeBytes,
+    required this.liveImageCount,
+    required this.pendingImageCount,
+    required this.maximumEntryCount,
+    required this.maximumSizeBytes,
+    this.schemaVersion = kAiroImageCacheTelemetrySchemaVersion,
+  });
+
+  final String schemaVersion;
+  final DateTime capturedAt;
+  final int currentEntryCount;
+  final int currentSizeBytes;
+  final int liveImageCount;
+  final int pendingImageCount;
+  final int maximumEntryCount;
+  final int maximumSizeBytes;
+
+  int get currentSizeMb =>
+      (currentSizeBytes / AiroRuntimeMemoryBudgetPolicy.bytesPerMb).ceil();
+
+  int get maximumSizeMb =>
+      (maximumSizeBytes / AiroRuntimeMemoryBudgetPolicy.bytesPerMb).ceil();
+
+  static AiroImageCacheSnapshot capture({
+    ImageCache? imageCache,
+    DateTime? capturedAt,
+  }) {
+    final cache = imageCache ?? PaintingBinding.instance.imageCache;
+    return AiroImageCacheSnapshot(
+      capturedAt: (capturedAt ?? DateTime.now()).toUtc(),
+      currentEntryCount: cache.currentSize,
+      currentSizeBytes: cache.currentSizeBytes,
+      liveImageCount: cache.liveImageCount,
+      pendingImageCount: cache.pendingImageCount,
+      maximumEntryCount: cache.maximumSize,
+      maximumSizeBytes: cache.maximumSizeBytes,
+    );
+  }
+
+  AiroImageCacheBudgetEvaluation evaluate({
+    AiroRuntimeMemoryBudget budget =
+        AiroRuntimeMemoryBudgetPolicy.androidTvConstrainedBudget,
+  }) {
+    final violations = <AiroRuntimeMemoryBudgetViolationCode>[];
+    if (currentSizeBytes >
+        budget.imageCacheMb * AiroRuntimeMemoryBudgetPolicy.bytesPerMb) {
+      violations.add(AiroRuntimeMemoryBudgetViolationCode.imageCacheExceeded);
+    }
+    if (currentEntryCount > budget.imageCacheEntries) {
+      violations.add(AiroRuntimeMemoryBudgetViolationCode.imageCacheExceeded);
+    }
+    return AiroImageCacheBudgetEvaluation(
+      snapshot: this,
+      budget: budget,
+      violations: violations.isEmpty
+          ? const [AiroRuntimeMemoryBudgetViolationCode.accepted]
+          : violations.toSet(),
+    );
+  }
+
+  Map<String, Object?> toPublicMap() {
+    return {
+      'schemaVersion': schemaVersion,
+      'capturedAt': capturedAt.toIso8601String(),
+      'currentEntryCount': currentEntryCount,
+      'currentSizeBytes': currentSizeBytes,
+      'currentSizeMb': currentSizeMb,
+      'liveImageCount': liveImageCount,
+      'pendingImageCount': pendingImageCount,
+      'maximumEntryCount': maximumEntryCount,
+      'maximumSizeBytes': maximumSizeBytes,
+      'maximumSizeMb': maximumSizeMb,
+    };
+  }
+}
+
+class AiroImageCacheBudgetEvaluation {
+  AiroImageCacheBudgetEvaluation({
+    required this.snapshot,
+    required this.budget,
+    required Iterable<AiroRuntimeMemoryBudgetViolationCode> violations,
+  }) : violations = List.unmodifiable(violations);
+
+  final AiroImageCacheSnapshot snapshot;
+  final AiroRuntimeMemoryBudget budget;
+  final List<AiroRuntimeMemoryBudgetViolationCode> violations;
+
+  bool get accepted =>
+      violations.length == 1 &&
+      violations.first == AiroRuntimeMemoryBudgetViolationCode.accepted;
+
+  Map<String, Object?> toPublicMap() {
+    return {
+      'schemaVersion': snapshot.schemaVersion,
+      'budgetId': budget.budgetId,
+      'accepted': accepted,
+      'violations': violations
+          .map((violation) => violation.stableId)
+          .toList(growable: false),
+      'imageCache': snapshot.toPublicMap(),
+      'limits': {
+        'imageCacheEntries': budget.imageCacheEntries,
+        'imageCacheMb': budget.imageCacheMb,
+      },
+    };
   }
 }
 

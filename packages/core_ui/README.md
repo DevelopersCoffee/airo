@@ -41,3 +41,9 @@ Android TV and Fire TV entrypoints should call
 Android TV memory budget from `platform_device_profile`; callers with a runtime
 device profile can pass the selected `AiroRuntimeMemoryBudget` to apply a
 device-class-specific image cache ceiling.
+
+`AiroImageCacheSnapshot.capture()` records current and maximum ImageCache
+entries/bytes, live image count, and pending image count. Airo TV benchmark and
+QA harnesses should attach `snapshot.evaluate()` output to logo-scroll evidence
+so image-cache budget violations use the same stable
+`platform_device_profile` codes as RSS and heap reports.
