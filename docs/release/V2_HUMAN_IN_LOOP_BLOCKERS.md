@@ -97,6 +97,9 @@ release or distribution run is intentionally started.
 | #498 | Model warm-up | Meeting-specific preload orchestration for Whisper, diarization, embeddings, and LLM readiness is missing. It is larger AI runtime/product work, not a credential task. |
 | #497 | Model routing | The app has partial task-aware selection, but the requested dedicated routing matrix for chat, meetings, STT, TTS, OCR, embeddings, and translation is larger AI runtime architecture work, not account setup. |
 | #350 | LifeTrack deadline notifications and digests | Notification primitives exist elsewhere, but LifeTrack-specific scheduling, postponed-state suppression, and morning digest orchestration are missing. This is product/framework integration work, not credential setup. |
+| #164 | Plugin architecture epic | Blocked on loader/runtime contract, verification, cache/offline behavior, uninstall, compatibility, kill switches, packaging strategy, and security review. The account piece is tracked separately by #168. |
+| #169 | Games plugin migration | Blocked on #164 plugin architecture, #168 delivery setup if downloaded outside the APK, release packaging strategy, and QA coverage for download/offline/uninstall behavior. |
+| #170 | Beats plugin migration | Blocked on #164 plugin architecture, #168 delivery setup if downloaded outside the APK, #249 music/catalog strategy, and background-audio policy for downloaded/plugin code. |
 
 ## Fastest Parallel Setup Order
 
