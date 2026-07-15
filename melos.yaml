@@ -71,6 +71,19 @@ scripts:
       flutter pub get
       dart run tool/run_airo_tv_benchmarks.dart \
         --output ../../artifacts/performance/airo-tv-host-benchmark.json
+      dart run tool/render_airo_tv_benchmark_report.dart \
+        --input ../../artifacts/performance/airo-tv-host-benchmark.json \
+        --output ../../artifacts/performance/airo-tv-host-benchmark.md
+
+  # Render a readable markdown report from the latest host benchmark JSON.
+  bench:report:
+    description: Render Airo TV benchmark markdown report from metrics JSON
+    run: |
+      cd packages/platform_benchmarks
+      flutter pub get
+      dart run tool/render_airo_tv_benchmark_report.dart \
+        --input ../../artifacts/performance/airo-tv-host-benchmark.json \
+        --output ../../artifacts/performance/airo-tv-host-benchmark.md
 
   # Run code generation
   generate:

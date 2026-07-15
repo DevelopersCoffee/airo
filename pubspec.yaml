@@ -71,6 +71,18 @@ melos:
         flutter pub get
         dart run tool/run_airo_tv_benchmarks.dart \
           --output ../../artifacts/performance/airo-tv-host-benchmark.json
+        dart run tool/render_airo_tv_benchmark_report.dart \
+          --input ../../artifacts/performance/airo-tv-host-benchmark.json \
+          --output ../../artifacts/performance/airo-tv-host-benchmark.md
+
+    bench:report:
+      description: Render Airo TV benchmark markdown report from metrics JSON
+      run: |
+        cd packages/platform_benchmarks
+        flutter pub get
+        dart run tool/render_airo_tv_benchmark_report.dart \
+          --input ../../artifacts/performance/airo-tv-host-benchmark.json \
+          --output ../../artifacts/performance/airo-tv-host-benchmark.md
 
     generate:
       run: melos exec -- flutter pub run build_runner build --delete-conflicting-outputs
