@@ -15,6 +15,35 @@ String normalizeChannelName({required String name}) {
   );
 }
 
+/// Stub: calls the Rust parse_m3u_entries via FFI.
+/// Replaced by real generated code after `flutter_rust_bridge_codegen generate`.
+List<FrbM3uEntry> parseM3uEntries({required String content}) {
+  throw NativeBridgeUnavailableException(
+    'flutter_rust_bridge_codegen has not been run yet. '
+    'Run `flutter_rust_bridge_codegen generate` from the repo root.',
+  );
+}
+
+class FrbM3uEntry {
+  const FrbM3uEntry({
+    required this.name,
+    required this.url,
+    this.logo,
+    this.group,
+    this.tvgId,
+    this.tvgName,
+    this.language,
+  });
+
+  final String name;
+  final String url;
+  final String? logo;
+  final String? group;
+  final String? tvgId;
+  final String? tvgName;
+  final String? language;
+}
+
 class NativeBridgeUnavailableException implements Exception {
   const NativeBridgeUnavailableException(this.message);
 

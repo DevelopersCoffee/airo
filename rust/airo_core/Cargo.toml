@@ -11,6 +11,7 @@ crate-type = ["cdylib", "staticlib"]
 
 [dependencies]
 flutter_rust_bridge = "2"
+memchr = "2"
 
 [dev-dependencies]
 # bench harness lives in benches/

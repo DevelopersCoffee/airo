@@ -24,6 +24,12 @@ work usable before `flutter_rust_bridge` generated bindings are installed.
 The initial vertical slice is `normalizeChannelName`, used to prove a small
 Rust-owned text contract and matching Dart fallback.
 
+The first playlist slice is `parseM3uEntries`. Rust owns raw M3U tokenization
+and EXTINF attribute parsing. Dart platform packages still own URL safety,
+dedupe preference, display formatting, and `IPTVChannel` construction so Airo
+TV behavior stays stable while the parser engine moves behind the platform
+boundary.
+
 ## Rules For Consumers
 
 1. Import `package:core_native/core_native.dart`.
