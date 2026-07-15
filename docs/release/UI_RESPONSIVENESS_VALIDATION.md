@@ -57,6 +57,21 @@ Use `app/lib/main_qualification.dart` with
 The reusable `SimulatedDevice` profiles include this matrix so QA can capture
 consistent evidence without adding Airo-TV-only viewport logic.
 
+For repeatable browser evidence, run:
+
+```bash
+scripts/validate_airo_tv_browser_viewports.sh
+```
+
+The script builds the Airo TV web profile bundle from `app/lib/main_tv.dart`,
+serves the deterministic IPTV fixture, checks the viewport matrix with
+Playwright, and writes screenshots under
+`artifacts/airo-tv-browser-viewports/`.
+
+If the local Playwright browser cache is unavailable but Google Chrome is
+installed, set `AIRO_TV_USE_SYSTEM_CHROME=1` for local evidence capture. CI
+should continue to install and use the standard Playwright browser package.
+
 ## Suggested Android Checks
 
 Use a connected Android device when possible:

@@ -56,6 +56,15 @@ reusable `platform_device_qualification` simulated-device profiles. Attach the
 screenshots or browser validation notes to the release qualification evidence
 before closing the Airo TV UI audit.
 
+When browser-only evidence is enough for a pre-device release audit slice, run:
+
+```bash
+scripts/validate_airo_tv_browser_viewports.sh
+```
+
+Attach the generated `artifacts/airo-tv-browser-viewports/` screenshots or the
+Playwright result summary to the release qualification evidence.
+
 ## Evidence JSON Format
 
 Evidence files are intentionally simple JSON so local QA, BrowserStack,

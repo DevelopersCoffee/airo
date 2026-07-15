@@ -1,0 +1,9 @@
+#EXTM3U
+#EXTINF:-1 tvg-id="news.local" tvg-name="Airo News" group-title="News",Airo News
+https://example.test/live/news.m3u8
+#EXTINF:-1 tvg-id="sports.local" tvg-name="Airo Sports" group-title="Sports",Airo Sports
+https://example.test/live/sports.m3u8
+#EXTINF:-1 tvg-id="movies.local" tvg-name="Airo Movies" group-title="Movies",Airo Movies
+https://example.test/live/movies.m3u8
+#EXTINF:-1 tvg-id="kids.local" tvg-name="Airo Kids" group-title="Kids",Airo Kids
+https://example.test/live/kids.m3u8

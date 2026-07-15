@@ -8,6 +8,7 @@
     "test:firefox": "playwright test --project=firefox",
     "test:webkit": "playwright test --project=webkit",
     "test:mobile": "playwright test --project='Mobile Chrome' --project='Mobile Safari'",
+    "test:airo-tv-viewports": "playwright test --config=playwright.airo-tv.config.ts",
     "test:bill-split": "playwright test bill-split",
     "test:auth": "playwright test auth",
     "test:smoke": "playwright test --grep @smoke",
@@ -25,4 +26,3 @@
     "typescript": "^5.3.0"
   }
 }
-
