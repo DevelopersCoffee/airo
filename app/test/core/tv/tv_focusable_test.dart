@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:airo_app/core/tv/tv_focusable.dart';
@@ -142,5 +143,56 @@ void main() {
       final tvFocusable = tester.widget<TvFocusable>(find.byType(TvFocusable));
       expect(tvFocusable.enabled, isFalse);
     });
+
+    testWidgets('should not rebuild child subtree on focus changes', (
+      tester,
+    ) async {
+      var buildCount = 0;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Center(
+              child: SizedBox(
+                width: 160,
+                height: 80,
+                child: TvFocusable(
+                  child: _BuildCounter(
+                    onBuild: () => buildCount += 1,
+                    child: const Text('Stable child'),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      expect(buildCount, 1);
+
+      final gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
+      addTearDown(gesture.removePointer);
+
+      await gesture.addPointer(location: Offset.zero);
+      await tester.pump();
+      await gesture.moveTo(tester.getCenter(find.text('Stable child')));
+      await tester.pumpAndSettle();
+
+      expect(FocusManager.instance.primaryFocus?.hasFocus, isTrue);
+      expect(buildCount, 1);
+    });
   });
+}
+
+class _BuildCounter extends StatelessWidget {
+  final VoidCallback onBuild;
+  final Widget child;
+
+  const _BuildCounter({required this.onBuild, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    onBuild();
+    return child;
+  }
 }
