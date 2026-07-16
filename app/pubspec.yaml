@@ -41,7 +41,7 @@ dependencies:
   # Storage & Persistence
   shared_preferences: ^2.5.5
   # NOTE: Drift upgrade requires analyzer ^13, but current Flutter SDK pins analyzer 12.1.0. Until SDK or custom_lint supports newer analyzer, we cannot upgrade drift further.
-  drift: ^2.34.20
+  drift: ^2.32.1
   sqlite3_flutter_libs: ^0.6.0+eol
   path: 1.9.1
   path_provider: ^2.1.6
