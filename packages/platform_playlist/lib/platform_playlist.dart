@@ -4,3 +4,4 @@ library platform_playlist;
 
 export 'src/content_source.dart';
 export 'src/content_source_credential_store.dart';
+export 'src/m3u_content_source.dart';
