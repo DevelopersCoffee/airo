@@ -277,6 +277,103 @@ void main() {
     );
 
     test(
+      'loadWindow returns only programmes intersecting the window, per '
+      'channel, in start order',
+      () async {
+        final repository = XmltvCompactEpgRepository.fromXmltv(
+          content: '''
+<tv>
+  <programme channel="sports.one" start="20260715083000 +0000" stop="20260715090000 +0000">
+    <title>Before Window</title>
+  </programme>
+  <programme channel="sports.one" start="20260715090000 +0000" stop="20260715093000 +0000">
+    <title>Overlaps Start</title>
+  </programme>
+  <programme channel="sports.one" start="20260715100000 +0000" stop="20260715103000 +0000">
+    <title>Fully Inside</title>
+  </programme>
+  <programme channel="sports.one" start="20260715110000 +0000" stop="20260715120000 +0000">
+    <title>Overlaps End</title>
+  </programme>
+  <programme channel="sports.one" start="20260715120000 +0000" stop="20260715123000 +0000">
+    <title>After Window</title>
+  </programme>
+  <programme channel="news.one" start="20260715093000 +0000" stop="20260715100000 +0000">
+    <title>News Block</title>
+  </programme>
+</tv>
+''',
+          ingestedAt: ingestedAt,
+          channelNamesById: const {'news.one': 'News One'},
+        );
+
+        final window = await repository.loadWindow(
+          GuideWindowQuery(
+            channelIds: const ['sports.one', 'news.one'],
+            windowStart: DateTime.utc(2026, 7, 15, 9),
+            windowEnd: DateTime.utc(2026, 7, 15, 11, 30),
+            now: DateTime.utc(2026, 7, 15, 10, 15),
+          ),
+        );
+
+        expect(window.source, CompactEpgSliceSource.localCache);
+        expect(window.windowStart, DateTime.utc(2026, 7, 15, 9));
+        expect(window.windowEnd, DateTime.utc(2026, 7, 15, 11, 30));
+        expect(window.entries.map((e) => e.channelId), [
+          'sports.one',
+          'news.one',
+        ]);
+
+        final sports = window.entryForChannel('sports.one')!;
+        expect(
+          sports.programs.map((p) => p.title),
+          ['Overlaps Start', 'Fully Inside', 'Overlaps End'],
+        );
+
+        final news = window.entryForChannel('news.one')!;
+        expect(news.channelName, 'News One');
+        expect(news.programs.single.title, 'News Block');
+      },
+    );
+
+    test('loadWindow omits channels with no programmes in range', () async {
+      final repository = XmltvCompactEpgRepository.fromXmltv(
+        content: '''
+<tv>
+  <programme channel="empty.one" start="20260715000000 +0000" stop="20260715010000 +0000">
+    <title>Long Gone</title>
+  </programme>
+</tv>
+''',
+        ingestedAt: ingestedAt,
+      );
+
+      final window = await repository.loadWindow(
+        GuideWindowQuery(
+          channelIds: const ['empty.one', 'missing.one'],
+          windowStart: DateTime.utc(2026, 7, 15, 9),
+          windowEnd: DateTime.utc(2026, 7, 15, 10),
+          now: DateTime.utc(2026, 7, 15, 9, 30),
+        ),
+      );
+
+      expect(window.entries, isEmpty);
+      expect(window.source, CompactEpgSliceSource.unavailable);
+    });
+
+    test('GuideWindowQuery rejects a non-positive time range', () {
+      expect(
+        () => GuideWindowQuery(
+          channelIds: const ['x'],
+          windowStart: DateTime.utc(2026, 7, 15, 10),
+          windowEnd: DateTime.utc(2026, 7, 15, 9),
+          now: DateTime.utc(2026, 7, 15, 9, 30),
+        ),
+        throwsArgumentError,
+      );
+    });
+
+    test(
       'parses valid XMLTV timestamps with offsets and rejects invalid values',
       () {
         expect(

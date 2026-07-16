@@ -101,4 +101,14 @@ class SnapshotBackedCompactEpgRepository implements CompactEpgRepository {
       return fallback.loadCurrentNext(channelIds: channelIds, now: now);
     }
   }
+
+  /// The snapshot format only persists current/next entries, not a full
+  /// timetable, so it cannot answer a bounded window query — delegate to
+  /// [fallback], which should be a repository backed by the full parsed
+  /// timetable (e.g. [XmltvCompactEpgRepository]) when window queries are
+  /// needed.
+  @override
+  Future<CompactEpgWindow> loadWindow(GuideWindowQuery query) {
+    return fallback.loadWindow(query);
+  }
 }

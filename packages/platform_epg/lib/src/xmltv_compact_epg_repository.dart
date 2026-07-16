@@ -335,6 +335,47 @@ class XmltvCompactEpgRepository implements CompactEpgRepository {
           : CompactEpgSliceSource.localCache,
     );
   }
+
+  /// Filters the already-parsed per-channel timetable down to programmes
+  /// intersecting the requested window — `endsAt > windowStart && startsAt
+  /// < windowEnd` — per CV-015's lookup pattern. Nothing outside the window
+  /// is allocated here; the full timetable was already bounded at ingest
+  /// time by `maxProgrammes`.
+  @override
+  Future<CompactEpgWindow> loadWindow(GuideWindowQuery query) async {
+    final entries = <CompactEpgWindowEntry>[];
+    for (final channelId in query.channelIds) {
+      final programs = _programsByChannel[channelId] ?? const [];
+      final windowed = [
+        for (final program in programs)
+          if (program.endsAt.isAfter(query.windowStart) &&
+              program.startsAt.isBefore(query.windowEnd))
+            program,
+      ];
+      if (windowed.isNotEmpty) {
+        entries.add(
+          CompactEpgWindowEntry(
+            channelId: channelId,
+            channelName: _channelNamesById[channelId] ?? channelId,
+            channelNumber: _channelNumbersById[channelId],
+            sourceRef: sourceRef,
+            programs: windowed,
+          ),
+        );
+      }
+    }
+
+    return CompactEpgWindow(
+      entries: entries,
+      windowStart: query.windowStart,
+      windowEnd: query.windowEnd,
+      generatedAt: ingestedAt,
+      expiresAt: expiresAt,
+      source: entries.isEmpty
+          ? CompactEpgSliceSource.unavailable
+          : CompactEpgSliceSource.localCache,
+    );
+  }
 }
 
 DateTime? parseXmltvTimestamp(String value) {

@@ -279,11 +279,133 @@ class CompactEpgSlice extends Equatable {
   ];
 }
 
+/// A bounded guide-window request: which channels, what time range, and the
+/// reference "now" for current/next classification within that range.
+///
+/// Mirrors the query shape from CV-015 — repositories must return only
+/// programmes intersecting [windowStart, windowEnd), never the full
+/// timetable.
+class GuideWindowQuery extends Equatable {
+  GuideWindowQuery({
+    required Iterable<String> channelIds,
+    required DateTime windowStart,
+    required DateTime windowEnd,
+    required DateTime now,
+  }) : channelIds = List.unmodifiable(channelIds),
+       windowStart = windowStart.toUtc(),
+       windowEnd = windowEnd.toUtc(),
+       now = now.toUtc() {
+    if (!this.windowEnd.isAfter(this.windowStart)) {
+      throw ArgumentError.value(
+        windowEnd,
+        'windowEnd',
+        'must be after windowStart',
+      );
+    }
+  }
+
+  final List<String> channelIds;
+  final DateTime windowStart;
+  final DateTime windowEnd;
+  final DateTime now;
+
+  @override
+  List<Object?> get props => [channelIds, windowStart, windowEnd, now];
+}
+
+/// One channel's programmes intersecting a [GuideWindowQuery]'s time range,
+/// in start-time order.
+class CompactEpgWindowEntry extends Equatable {
+  const CompactEpgWindowEntry({
+    required this.channelId,
+    required this.channelName,
+    required this.programs,
+    this.channelNumber,
+    this.sourceRef,
+  });
+
+  final String channelId;
+  final String channelName;
+  final String? channelNumber;
+  final List<CompactEpgProgram> programs;
+  final CompactEpgSourceRef? sourceRef;
+
+  @override
+  List<Object?> get props => [
+    channelId,
+    channelName,
+    channelNumber,
+    programs,
+    sourceRef,
+  ];
+}
+
+/// The result of a [GuideWindowQuery]: bounded per-channel programme lists,
+/// never the full XMLTV timetable.
+class CompactEpgWindow extends Equatable {
+  CompactEpgWindow({
+    required Iterable<CompactEpgWindowEntry> entries,
+    required this.windowStart,
+    required this.windowEnd,
+    required this.generatedAt,
+    required this.expiresAt,
+    required this.source,
+    this.schemaVersion = kCompactEpgSchemaVersion,
+  }) : entries = List.unmodifiable(entries);
+
+  final String schemaVersion;
+  final List<CompactEpgWindowEntry> entries;
+  final DateTime windowStart;
+  final DateTime windowEnd;
+  final DateTime generatedAt;
+  final DateTime expiresAt;
+  final CompactEpgSliceSource source;
+
+  bool isExpired(DateTime now) => !now.isBefore(expiresAt);
+
+  CompactEpgAvailability availabilityAt(DateTime now) {
+    if (entries.isEmpty || source == CompactEpgSliceSource.unavailable) {
+      return CompactEpgAvailability.unavailable;
+    }
+    if (isExpired(now)) {
+      return CompactEpgAvailability.stale;
+    }
+    return CompactEpgAvailability.available;
+  }
+
+  CompactEpgWindowEntry? entryForChannel(String channelId) {
+    for (final entry in entries) {
+      if (entry.channelId == channelId) {
+        return entry;
+      }
+    }
+    return null;
+  }
+
+  @override
+  List<Object?> get props => [
+    schemaVersion,
+    entries,
+    windowStart,
+    windowEnd,
+    generatedAt,
+    expiresAt,
+    source,
+  ];
+}
+
 abstract class CompactEpgRepository {
   Future<CompactEpgSlice> loadCurrentNext({
     required Iterable<String> channelIds,
     required DateTime now,
   });
+
+  /// Bounded window lookup per CV-015: only programmes with
+  /// `endsAt > query.windowStart && startsAt < query.windowEnd` are
+  /// returned, per channel, in start-time order. Implementations must not
+  /// materialize the full timetable to satisfy this — see
+  /// [XmltvCompactEpgRepository.loadWindow] for the reference filter.
+  Future<CompactEpgWindow> loadWindow(GuideWindowQuery query);
 }
 
 class EmptyCompactEpgRepository implements CompactEpgRepository {
@@ -300,6 +422,18 @@ class EmptyCompactEpgRepository implements CompactEpgRepository {
       entries: const [],
       generatedAt: now,
       expiresAt: now.add(maxAge),
+      source: CompactEpgSliceSource.unavailable,
+    );
+  }
+
+  @override
+  Future<CompactEpgWindow> loadWindow(GuideWindowQuery query) async {
+    return CompactEpgWindow(
+      entries: const [],
+      windowStart: query.windowStart,
+      windowEnd: query.windowEnd,
+      generatedAt: query.now,
+      expiresAt: query.now.add(maxAge),
       source: CompactEpgSliceSource.unavailable,
     );
   }
@@ -322,5 +456,38 @@ class InMemoryCompactEpgRepository implements CompactEpgRepository {
     required DateTime now,
   }) async {
     return _slice.filterForChannels(channelIds);
+  }
+
+  /// Best-effort: this cache only ever holds current/next programmes, not a
+  /// full timetable, so the result is those programmes intersecting the
+  /// window rather than the complete window contents.
+  @override
+  Future<CompactEpgWindow> loadWindow(GuideWindowQuery query) async {
+    final filtered = _slice.filterForChannels(query.channelIds);
+    final entries = <CompactEpgWindowEntry>[
+      for (final entry in filtered.entries)
+        CompactEpgWindowEntry(
+          channelId: entry.channelId,
+          channelName: entry.channelName,
+          channelNumber: entry.channelNumber,
+          sourceRef: entry.sourceRef,
+          programs: [
+            for (final program in [entry.current, entry.next])
+              if (program != null &&
+                  program.endsAt.isAfter(query.windowStart) &&
+                  program.startsAt.isBefore(query.windowEnd))
+                program,
+          ],
+        ),
+    ];
+
+    return CompactEpgWindow(
+      entries: entries,
+      windowStart: query.windowStart,
+      windowEnd: query.windowEnd,
+      generatedAt: filtered.generatedAt,
+      expiresAt: filtered.expiresAt,
+      source: filtered.source,
+    );
   }
 }

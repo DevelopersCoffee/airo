@@ -293,6 +293,17 @@ final compactEpgSliceForChannelsProvider =
       );
     });
 
+/// Bounded guide-window lookup (CV-015): programmes intersecting
+/// [GuideWindowQuery]'s time range, per channel — never the full timetable.
+final compactEpgWindowProvider =
+    FutureProvider.family<CompactEpgWindow, GuideWindowQuery>((
+      ref,
+      query,
+    ) async {
+      final repository = ref.watch(compactEpgRepositoryProvider);
+      return repository.loadWindow(query);
+    });
+
 /// Streaming state provider
 final streamingStateProvider = StreamProvider<StreamingState>((ref) {
   final service = ref.watch(iptvStreamingServiceProvider);
