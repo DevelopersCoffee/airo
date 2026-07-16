@@ -1,14 +1,22 @@
 import 'package:dio/dio.dart';
 import 'package:equatable/equatable.dart';
 
-class JellyfinAuthResult extends Equatable {
+class JellyfinAuthResult {
   const JellyfinAuthResult({required this.accessToken, required this.userId});
 
   final String accessToken;
   final String userId;
 
   @override
-  List<Object?> get props => [accessToken, userId];
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is JellyfinAuthResult &&
+          runtimeType == other.runtimeType &&
+          accessToken == other.accessToken &&
+          userId == other.userId;
+
+  @override
+  int get hashCode => Object.hash(accessToken, userId);
 
   @override
   String toString() =>
