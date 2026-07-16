@@ -84,9 +84,10 @@ def main() -> int:
     root = args.root.resolve()
     index = root / "docs" / "index.html"
     guides = root / "docs" / "airo-tv" / "guides" / "index.html"
+    site_script = root / "docs" / "assets" / "airo-tv" / "site.js"
     errors: list[str] = []
 
-    for required in (index, guides):
+    for required in (index, guides, site_script):
         if not required.is_file():
             errors.append(f"missing required file: {required.relative_to(root)}")
 
@@ -98,6 +99,7 @@ def main() -> int:
     release_tag = args.release_tag or latest_tv_release(args.repository)
     index_text, index_inventory = inspect_html(index)
     guide_text, guide_inventory = inspect_html(guides)
+    site_script_text = site_script.read_text(encoding="utf-8")
 
     required_sections = {
         "product",
@@ -147,6 +149,17 @@ def main() -> int:
     }
     for snippet, label in required_snippets.items():
         if snippet not in index_text:
+            errors.append(f"missing {label}: {snippet}")
+
+    required_demo_logic = {
+        "Retrying live stream automatically": "automatic recovery status",
+        "recoverMediaError": "HLS media recovery",
+        "demoRecoveryAttempts >= 1": "bounded recovery attempt",
+        "8000": "recovery deadline",
+        "airo_retry=": "native HLS cache-busted retry",
+    }
+    for snippet, label in required_demo_logic.items():
+        if snippet not in site_script_text:
             errors.append(f"missing {label}: {snippet}")
 
     forbidden = {

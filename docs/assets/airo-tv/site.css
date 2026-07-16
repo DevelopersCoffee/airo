@@ -570,6 +570,11 @@ button,
   color: var(--text);
 }
 
+.live-demo-status[data-state="recovering"] {
+  border-color: var(--gold);
+  color: var(--text);
+}
+
 .live-demo-status[data-state="error"] {
   border-color: var(--red);
   color: var(--text);

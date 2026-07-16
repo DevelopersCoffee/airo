@@ -71,5 +71,7 @@ Higher-priority sources override lower-priority sources.
   Airo TV app bundles or provides channels.
 - Provide accessible loading, playing, unsupported, unavailable, and fatal
   error states, and destroy the session when the visitor leaves the page.
+- Attempt at most one automatic media or network recovery within a finite
+  deadline, then expose an enabled manual retry instead of looping silently.
 - Revalidate source availability, browser CORS behavior, and disclosure copy
   during every release-branding refresh.

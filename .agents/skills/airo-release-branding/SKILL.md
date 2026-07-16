@@ -38,7 +38,9 @@ into shipped-product claims.
 8. For an approved live demo, require an explicit user gesture before any
    manifest request, identify the third-party source and network/privacy
    boundary, provide unavailable and unsupported states, and destroy playback
-   on page exit. Never proxy, cache, rebroadcast, or silently preload it.
+   on page exit. Attempt at most one automatic recovery within a finite
+   deadline before showing manual retry. Never proxy, cache, rebroadcast, or
+   silently preload it.
 9. Update device tutorials only for behavior supported by the claim state.
 10. Run the deterministic audit:
 

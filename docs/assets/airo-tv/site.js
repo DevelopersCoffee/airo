@@ -53,6 +53,11 @@
   var demoStatus = document.querySelector("[data-live-demo-status]");
   var demoHls = null;
   var demoStarted = false;
+  var demoRecovering = false;
+  var demoRecoveryAttempts = 0;
+  var demoRecoveryTimer = null;
+  var demoSource = "";
+  var demoUsesNativeHls = false;
 
   function setDemoStatus(message, state) {
     if (!demoStatus) return;
@@ -60,7 +65,36 @@
     demoStatus.setAttribute("data-state", state || "ready");
   }
 
+  function clearDemoRecoveryTimer() {
+    if (!demoRecoveryTimer) return;
+    window.clearTimeout(demoRecoveryTimer);
+    demoRecoveryTimer = null;
+  }
+
+  function requestDemoPlayback() {
+    if (!demoVideo || !demoStarted) return;
+    var playRequest = demoVideo.play();
+    if (!playRequest) return;
+    playRequest
+      .then(function () {
+        if (demoStart) demoStart.hidden = true;
+      })
+      .catch(function (error) {
+        if (!demoStarted) return;
+        if (demoRecovering && error && error.name !== "NotAllowedError") return;
+        if (!demoRecovering && error && error.name !== "NotAllowedError") {
+          setDemoStatus("Preparing the live stream...", "loading");
+          return;
+        }
+        clearDemoRecoveryTimer();
+        demoRecovering = false;
+        if (demoStart) demoStart.hidden = true;
+        setDemoStatus("Stream ready. Press the video Play control to continue.", "ready");
+      });
+  }
+
   function destroyDemoStream() {
+    clearDemoRecoveryTimer();
     if (demoHls) {
       demoHls.destroy();
       demoHls = null;
@@ -71,6 +105,10 @@
       demoVideo.load();
     }
     demoStarted = false;
+    demoRecovering = false;
+    demoRecoveryAttempts = 0;
+    demoSource = "";
+    demoUsesNativeHls = false;
   }
 
   function resetDemoAfterFailure() {
@@ -83,33 +121,82 @@
     }
   }
 
+  function failDemo(message) {
+    setDemoStatus(message, "error");
+    resetDemoAfterFailure();
+  }
+
+  function retryNativeDemo() {
+    if (!demoVideo || !demoSource) return;
+    var separator = demoSource.includes("?") ? "&" : "?";
+    demoVideo.pause();
+    demoVideo.removeAttribute("src");
+    demoVideo.load();
+    window.setTimeout(function () {
+      if (!demoStarted || !demoRecovering) return;
+      demoVideo.src = demoSource + separator + "airo_retry=" + Date.now();
+      requestDemoPlayback();
+    }, 250);
+  }
+
+  function recoverDemo(kind) {
+    if (!demoStarted || demoRecovering) return true;
+    if (demoRecoveryAttempts >= 1) return false;
+
+    demoRecoveryAttempts += 1;
+    demoRecovering = true;
+    setDemoStatus("Connection interrupted. Retrying live stream automatically...", "recovering");
+    clearDemoRecoveryTimer();
+    demoRecoveryTimer = window.setTimeout(function () {
+      if (!demoStarted || !demoRecovering) return;
+      failDemo("The live sample is unavailable or blocked in this region.");
+    }, 8000);
+
+    if (demoHls) {
+      try {
+        if (kind === "network") {
+          demoHls.startLoad(-1);
+        } else {
+          demoHls.recoverMediaError();
+        }
+        requestDemoPlayback();
+      } catch (_error) {
+        failDemo("The live sample could not recover automatically.");
+      }
+      return true;
+    }
+
+    if (demoUsesNativeHls) {
+      retryNativeDemo();
+      return true;
+    }
+
+    return false;
+  }
+
   if (demoVideo && demoStart && demoButton && demoStatus) {
     demoButton.addEventListener("click", function () {
       var source = demoButton.getAttribute("data-live-source");
       if (!source || demoStarted) return;
 
       demoStarted = true;
+      demoSource = source;
+      demoRecoveryAttempts = 0;
+      demoRecovering = false;
       demoButton.disabled = true;
       setDemoStatus("Connecting directly to the third-party live stream...", "loading");
-
-      function requestPlayback() {
-        var playRequest = demoVideo.play();
-        if (playRequest) {
-          playRequest
-            .then(function () {
-              demoStart.hidden = true;
-            })
-            .catch(function () {
-              if (!demoStarted) return;
-              demoStart.hidden = true;
-              setDemoStatus("Stream ready. Press the video Play control to continue.", "ready");
-            });
+      clearDemoRecoveryTimer();
+      demoRecoveryTimer = window.setTimeout(function () {
+        if (!demoStarted || demoVideo.currentTime > 0 || demoRecovering) return;
+        if (!recoverDemo("network")) {
+          failDemo("The live sample did not respond in time.");
         }
-      }
+      }, 8000);
 
       if (demoVideo.canPlayType("application/vnd.apple.mpegurl")) {
+        demoUsesNativeHls = true;
         demoVideo.src = source;
-        requestPlayback();
+        requestDemoPlayback();
         return;
       }
 
@@ -122,30 +209,40 @@
         });
         demoHls.on(window.Hls.Events.ERROR, function (_event, data) {
           if (!data.fatal) return;
-          setDemoStatus("The live sample is unavailable or blocked in this region.", "error");
-          resetDemoAfterFailure();
+          if (demoRecovering) return;
+          var kind = data.type === window.Hls.ErrorTypes.NETWORK_ERROR ? "network" : "media";
+          if (!recoverDemo(kind)) {
+            failDemo("The live sample is unavailable or blocked in this region.");
+          }
         });
         demoHls.loadSource(source);
         demoHls.attachMedia(demoVideo);
-        requestPlayback();
+        requestDemoPlayback();
         return;
       }
 
-      setDemoStatus("This browser cannot play the live HLS sample.", "error");
-      resetDemoAfterFailure();
+      failDemo("This browser cannot play the live HLS sample.");
     });
 
     demoVideo.addEventListener("playing", function () {
+      clearDemoRecoveryTimer();
+      demoRecovering = false;
       demoStart.hidden = true;
       setDemoStatus("Playing YRF Music live through the browser.", "playing");
     });
+    demoVideo.addEventListener("canplay", function () {
+      if (!demoStarted || !demoVideo.paused) return;
+      requestDemoPlayback();
+    });
     demoVideo.addEventListener("waiting", function () {
+      if (demoRecovering) return;
       setDemoStatus("The live stream is buffering...", "loading");
     });
     demoVideo.addEventListener("error", function () {
       if (!demoStarted) return;
-      setDemoStatus("The live sample could not be played.", "error");
-      resetDemoAfterFailure();
+      if (!recoverDemo("media")) {
+        failDemo("The live sample could not be played.");
+      }
     });
 
     document.addEventListener("visibilitychange", function () {
