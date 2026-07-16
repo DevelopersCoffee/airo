@@ -1,1312 +1,312 @@
 ---
 layout: null
 ---
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  
-  <!-- SEO Meta Tags -->
-  <title>Airo Super App — The Privacy-First, On-Device AI Platform</title>
-  <meta name="description" content="Airo brings together media, chat assistants, finance tracking, music, and gaming into a single privacy-first super app. Powered by LiteRT and Gemma 1B.">
-  <meta name="keywords" content="Airo, Airo TV, Airo Super App, On-device AI, Privacy App, LiteRT, Gemma 1B, M3U IPTV, Finance Tracker">
-  
-  <!-- Open Graph / Facebook -->
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Airo TV | The first modular app in the Airo super app</title>
+  <meta name="description" content="Airo TV is the active modular product in the Airo super-app vision. Bring your own authorized IPTV playlists to Android TV, Google TV, compatible Fire TV devices, Cast, and preview desktop builds.">
+  <meta name="theme-color" content="#071010">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://developerscoffee.github.io/airo/">
-  <meta property="og:title" content="Airo Super App — The Privacy-First, On-Device AI Platform">
-  <meta property="og:description" content="Airo brings together media, chat assistants, finance tracking, music, and gaming into a single privacy-first super app. Powered by LiteRT and Gemma 1B.">
-  <meta property="og:image" content="./assets/images/airo_superapp_mockup.jpg">
-
-  <!-- Twitter -->
-  <meta property="twitter:card" content="summary_large_image">
-  <meta property="twitter:url" content="https://developerscoffee.github.io/airo/">
-  <meta property="twitter:title" content="Airo Super App — The Privacy-First, On-Device AI Platform">
-  <meta property="twitter:description" content="Airo brings together media, chat assistants, finance tracking, music, and gaming into a single privacy-first super app. Powered by LiteRT and Gemma 1B.">
-  <meta property="twitter:image" content="./assets/images/airo_superapp_mockup.jpg">
-
-  <!-- Google Fonts -->
+  <meta property="og:title" content="Airo TV | One modular platform, purpose-built for every screen">
+  <meta property="og:description" content="Use Airo TV today and follow the public roadmap toward the wider Airo modular super app.">
+  <meta property="og:image" content="https://developerscoffee.github.io/airo/store-assets/airo-tv/feature-graphic-1024x500.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" type="image/svg+xml" href="./assets/airo-tv/airo-icon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
-  
-  <!-- Lucide Icons via CDN -->
-  <script src="https://unpkg.com/lucide@latest"></script>
-
-  <style>
-    :root {
-      --bg-dark: #08090C;
-      --bg-card: rgba(20, 22, 28, 0.6);
-      --bg-card-hover: rgba(28, 31, 39, 0.85);
-      --border-color: rgba(255, 255, 255, 0.08);
-      --border-color-hover: rgba(0, 229, 255, 0.3);
-      --text-main: #FFFFFF;
-      --text-sub: #8F9CAE;
-      --accent-cyan: #00E5FF;
-      --accent-purple: #BD00FF;
-      --gradient-primary: linear-gradient(135deg, #00E5FF 0%, #BD00FF 100%);
-      --gradient-card: linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0) 100%);
-      --glow-shadow: 0 0 40px rgba(0, 229, 255, 0.15);
-      --font-outfit: 'Outfit', sans-serif;
-      --font-inter: 'Inter', sans-serif;
-    }
-
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
-
-    html, body {
-      background-color: var(--bg-dark);
-      color: var(--text-main);
-      font-family: var(--font-inter);
-      overflow-x: hidden;
-      scroll-behavior: smooth;
-      -webkit-font-smoothing: antialiased;
-    }
-
-    /* Ambient Background Glows */
-    .ambient-glow {
-      position: absolute;
-      width: 600px;
-      height: 600px;
-      border-radius: 50%;
-      background: radial-gradient(circle, rgba(189, 0, 255, 0.08) 0%, rgba(0, 229, 255, 0.05) 50%, rgba(8, 9, 12, 0) 100%);
-      filter: blur(80px);
-      z-index: -1;
-      pointer-events: none;
-    }
-    
-    .glow-1 { top: -100px; right: -100px; }
-    .glow-2 { top: 600px; left: -200px; }
-    .glow-3 { bottom: 200px; right: -200px; }
-
-    /* Layout & Container */
-    .container {
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 0 24px;
-    }
-
-    /* Navbar */
-    header {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      backdrop-filter: blur(20px);
-      border-bottom: 1px solid var(--border-color);
-      z-index: 100;
-      transition: all 0.3s ease;
-    }
-    
-    header.scrolled {
-      background-color: rgba(8, 9, 12, 0.85);
-      padding: 12px 0;
-    }
-
-    header .nav-container {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 18px 24px;
-      max-width: 1200px;
-      margin: 0 auto;
-    }
-
-    .logo-container {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      text-decoration: none;
-      color: var(--text-main);
-    }
-
-    .logo-icon {
-      width: 36px;
-      height: 36px;
-      border-radius: 10px;
-      background: var(--gradient-primary);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: 800;
-      font-family: var(--font-outfit);
-      box-shadow: 0 0 15px rgba(0, 229, 255, 0.4);
-    }
-
-    .logo-text {
-      font-family: var(--font-outfit);
-      font-weight: 800;
-      font-size: 22px;
-      letter-spacing: 0.5px;
-      background: var(--gradient-primary);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
-
-    nav {
-      display: flex;
-      align-items: center;
-      gap: 32px;
-    }
-
-    nav a {
-      color: var(--text-sub);
-      text-decoration: none;
-      font-size: 14px;
-      font-weight: 500;
-      transition: color 0.2s ease;
-    }
-
-    nav a:hover {
-      color: var(--text-main);
-    }
-
-    .cta-btn {
-      background: var(--gradient-primary);
-      color: #000;
-      border: none;
-      padding: 10px 20px;
-      border-radius: 8px;
-      font-weight: 600;
-      font-size: 14px;
-      cursor: pointer;
-      text-decoration: none;
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      transition: transform 0.2s ease, box-shadow 0.2s ease;
-    }
-
-    .cta-btn:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 4px 15px rgba(0, 229, 255, 0.4);
-    }
-
-    /* Hero Section */
-    .hero {
-      padding-top: 160px;
-      padding-bottom: 80px;
-      text-align: center;
-      position: relative;
-    }
-
-    .hero-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      background: rgba(189, 0, 255, 0.1);
-      border: 1px solid rgba(189, 0, 255, 0.2);
-      color: var(--accent-purple);
-      padding: 6px 14px;
-      border-radius: 100px;
-      font-size: 13px;
-      font-weight: 600;
-      margin-bottom: 24px;
-      animation: pulse 2s infinite;
-    }
-
-    @keyframes pulse {
-      0% { box-shadow: 0 0 0 0 rgba(189, 0, 255, 0.4); }
-      70% { box-shadow: 0 0 0 10px rgba(189, 0, 255, 0); }
-      100% { box-shadow: 0 0 0 0 rgba(189, 0, 255, 0); }
-    }
-
-    .hero h1 {
-      font-family: var(--font-outfit);
-      font-size: 64px;
-      font-weight: 800;
-      line-height: 1.1;
-      letter-spacing: -1.5px;
-      margin-bottom: 20px;
-    }
-
-    .gradient-text {
-      background: linear-gradient(90deg, #FFFFFF 0%, #C5D1EC 50%, #00E5FF 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
-
-    .hero p {
-      font-size: 18px;
-      color: var(--text-sub);
-      max-width: 720px;
-      margin: 0 auto 40px auto;
-      line-height: 1.6;
-    }
-
-    .hero-buttons {
-      display: flex;
-      justify-content: center;
-      gap: 16px;
-      flex-wrap: wrap;
-      margin-bottom: 60px;
-    }
-
-    .btn-secondary {
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid var(--border-color);
-      color: var(--text-main);
-      padding: 12px 24px;
-      border-radius: 8px;
-      font-weight: 600;
-      font-size: 15px;
-      text-decoration: none;
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      transition: background 0.2s, border-color 0.2s;
-    }
-
-    .btn-secondary:hover {
-      background: rgba(255, 255, 255, 0.1);
-      border-color: rgba(255, 255, 255, 0.2);
-    }
-
-    /* Mockup Showcase */
-    .mockup-wrapper {
-      max-width: 1000px;
-      margin: 0 auto;
-      position: relative;
-      border-radius: 16px;
-      padding: 8px;
-      background: linear-gradient(135deg, rgba(0, 229, 255, 0.2) 0%, rgba(189, 0, 255, 0.2) 100%);
-      box-shadow: var(--glow-shadow);
-      animation: float 6s ease-in-out infinite;
-    }
-
-    @keyframes float {
-      0%, 100% { transform: translateY(0); }
-      50% { transform: translateY(-10px); }
-    }
-
-    .mockup-container {
-      background: var(--bg-dark);
-      border-radius: 12px;
-      overflow: hidden;
-      display: block;
-      line-height: 0;
-    }
-
-    .mockup-container img {
-      width: 100%;
-      height: auto;
-      display: block;
-      border-radius: 10px;
-    }
-
-    /* Features Grid Section */
-    .features-section {
-      padding: 100px 0;
-      position: relative;
-    }
-
-    .section-header {
-      text-align: center;
-      margin-bottom: 60px;
-    }
-
-    .section-header h2 {
-      font-family: var(--font-outfit);
-      font-size: 40px;
-      font-weight: 800;
-      letter-spacing: -0.5px;
-      margin-bottom: 16px;
-    }
-
-    .section-header p {
-      color: var(--text-sub);
-      font-size: 16px;
-      max-width: 600px;
-      margin: 0 auto;
-    }
-
-    .features-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-      gap: 24px;
-    }
-
-    .feature-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border-color);
-      border-radius: 16px;
-      padding: 32px;
-      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-      position: relative;
-      overflow: hidden;
-    }
-
-    .feature-card::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: var(--gradient-card);
-      z-index: 1;
-      pointer-events: none;
-    }
-
-    .feature-card:hover {
-      background: var(--bg-card-hover);
-      border-color: var(--border-color-hover);
-      transform: translateY(-5px);
-      box-shadow: 0 10px 30px rgba(0, 229, 255, 0.05);
-    }
-
-    .feature-icon {
-      width: 48px;
-      height: 48px;
-      border-radius: 12px;
-      background: rgba(0, 229, 255, 0.1);
-      color: var(--accent-cyan);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin-bottom: 24px;
-      transition: all 0.3s ease;
-    }
-
-    .feature-card:hover .feature-icon {
-      background: var(--gradient-primary);
-      color: #000;
-      transform: scale(1.05);
-    }
-
-    .feature-card h3 {
-      font-family: var(--font-outfit);
-      font-size: 20px;
-      font-weight: 600;
-      margin-bottom: 12px;
-    }
-
-    .feature-card p {
-      color: var(--text-sub);
-      font-size: 14px;
-      line-height: 1.6;
-    }
-
-    /* Live Parser Interactive Widget */
-    .interactive-demo {
-      padding: 80px 0;
-      position: relative;
-    }
-
-    .demo-wrapper {
-      background: var(--bg-card);
-      border: 1px solid var(--border-color);
-      border-radius: 20px;
-      padding: 40px;
-      display: grid;
-      grid-template-columns: 1.1fr 1fr;
-      gap: 40px;
-      align-items: flex-start;
-    }
-
-    @media (max-width: 992px) {
-      .demo-wrapper {
-        grid-template-columns: 1fr;
-        padding: 24px;
-      }
-    }
-
-    .demo-info h3 {
-      font-family: var(--font-outfit);
-      font-size: 32px;
-      font-weight: 800;
-      margin-bottom: 16px;
-    }
-
-    .demo-info p {
-      color: var(--text-sub);
-      font-size: 15px;
-      line-height: 1.6;
-      margin-bottom: 24px;
-    }
-
-    /* Sandbox Navigation Tabs */
-    .sandbox-tabs {
-      display: flex;
-      background: rgba(0,0,0,0.3);
-      border: 1px solid var(--border-color);
-      padding: 6px;
-      border-radius: 10px;
-      margin-bottom: 20px;
-      gap: 4px;
-    }
-
-    .sandbox-tab {
-      flex: 1;
-      border: none;
-      background: transparent;
-      color: var(--text-sub);
-      padding: 10px;
-      font-family: var(--font-outfit);
-      font-weight: 600;
-      font-size: 14px;
-      cursor: pointer;
-      border-radius: 6px;
-      transition: all 0.2s;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-    }
-
-    .sandbox-tab.active {
-      background: var(--gradient-primary);
-      color: #000;
-    }
-
-    .sandbox-content {
-      display: none;
-    }
-
-    .sandbox-content.active {
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-    }
-
-    .playlist-input-container {
-      display: flex;
-      gap: 8px;
-    }
-
-    .playlist-input {
-      flex: 1;
-      background: rgba(0, 0, 0, 0.3);
-      border: 1px solid var(--border-color);
-      border-radius: 8px;
-      color: var(--text-main);
-      padding: 12px 16px;
-      font-family: var(--font-inter);
-      font-size: 14px;
-      outline: none;
-      transition: border-color 0.2s;
-    }
-
-    .playlist-input:focus {
-      border-color: var(--accent-cyan);
-    }
-
-    .parse-btn {
-      background: var(--gradient-primary);
-      color: #000;
-      border: none;
-      border-radius: 8px;
-      padding: 12px 20px;
-      font-weight: 600;
-      font-size: 14px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      flex-shrink: 0;
-    }
-
-    .preset-btns {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
-
-    .preset-btn {
-      background: rgba(255, 255, 255, 0.03);
-      border: 1px solid var(--border-color);
-      border-radius: 6px;
-      color: var(--text-sub);
-      padding: 6px 12px;
-      font-size: 12px;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-
-    .preset-btn:hover {
-      background: rgba(255, 255, 255, 0.08);
-      color: var(--text-main);
-      border-color: rgba(255, 255, 255, 0.2);
-    }
-
-    /* Terminal Console Display */
-    .demo-terminal {
-      background: #040508;
-      border: 1px solid rgba(255, 255, 255, 0.05);
-      border-radius: 12px;
-      padding: 20px;
-      font-family: 'Courier New', Courier, monospace;
-      font-size: 13px;
-      line-height: 1.5;
-      color: #00FF66;
-      height: 350px;
-      overflow-y: auto;
-      box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.8);
-      position: relative;
-      width: 100%;
-    }
-
-    .terminal-header {
-      display: flex;
-      justify-content: space-between;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-      padding-bottom: 8px;
-      margin-bottom: 12px;
-      color: var(--text-sub);
-      font-size: 11px;
-    }
-
-    .terminal-dots {
-      display: flex;
-      gap: 6px;
-    }
-
-    .terminal-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-    }
-    .dot-red { background-color: #FF5F56; }
-    .dot-yellow { background-color: #FFBD2E; }
-    .dot-green { background-color: #27C93F; }
-
-    .terminal-title {
-      font-family: var(--font-inter);
-    }
-
-    .terminal-line {
-      margin-bottom: 6px;
-      white-space: pre-wrap;
-      word-break: break-all;
-    }
-
-    .terminal-line.info { color: #8F9CAE; }
-    .terminal-line.cyan { color: #00E5FF; }
-    .terminal-line.purple { color: #BD00FF; }
-    .terminal-line.error { color: #FF4A4A; }
-
-    /* Download Section */
-    .downloads-section {
-      padding: 100px 0;
-      position: relative;
-    }
-
-    .download-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-      gap: 24px;
-    }
-
-    .download-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border-color);
-      border-radius: 16px;
-      padding: 30px;
-      text-align: center;
-      transition: all 0.3s;
-    }
-
-    .download-card:hover {
-      background: var(--bg-card-hover);
-      border-color: var(--border-color-hover);
-      transform: translateY(-5px);
-    }
-
-    .download-card-icon {
-      width: 56px;
-      height: 56px;
-      border-radius: 50%;
-      background: rgba(189, 0, 255, 0.1);
-      color: var(--accent-purple);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin: 0 auto 20px auto;
-      transition: all 0.3s;
-    }
-
-    .download-card:hover .download-card-icon {
-      background: var(--gradient-primary);
-      color: #000;
-    }
-
-    .download-card h3 {
-      font-family: var(--font-outfit);
-      font-size: 20px;
-      margin-bottom: 8px;
-    }
-
-    .download-card p {
-      color: var(--text-sub);
-      font-size: 13px;
-      margin-bottom: 24px;
-    }
-
-    .download-btn {
-      display: block;
-      background: rgba(255, 255, 255, 0.03);
-      border: 1px solid var(--border-color);
-      color: var(--text-main);
-      padding: 10px;
-      border-radius: 8px;
-      text-decoration: none;
-      font-weight: 600;
-      font-size: 13px;
-      transition: all 0.2s;
-    }
-
-    .download-btn:hover {
-      background: var(--gradient-primary);
-      color: #000;
-      border-color: transparent;
-    }
-
-    /* Technical Callout */
-    .tech-callout {
-      margin-top: 80px;
-      background: radial-gradient(circle at top left, rgba(0, 229, 255, 0.05), rgba(8, 9, 12, 0) 50%), var(--bg-card);
-      border: 1px solid var(--border-color);
-      border-radius: 16px;
-      padding: 40px;
-      text-align: center;
-    }
-
-    .tech-callout h3 {
-      font-family: var(--font-outfit);
-      font-size: 24px;
-      margin-bottom: 12px;
-    }
-
-    .tech-callout p {
-      color: var(--text-sub);
-      font-size: 14px;
-      max-width: 680px;
-      margin: 0 auto 24px auto;
-      line-height: 1.6;
-    }
-
-    /* Scroll Reveal Animations */
-    .reveal {
-      opacity: 0;
-      transform: translateY(30px);
-      transition: opacity 0.8s ease, transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
-    }
-
-    .reveal.active {
-      opacity: 1;
-      transform: translateY(0);
-    }
-
-    /* Footer */
-    footer {
-      border-top: 1px solid var(--border-color);
-      padding: 60px 0;
-      background: rgba(4, 5, 8, 0.6);
-    }
-
-    .footer-grid {
-      display: grid;
-      grid-template-columns: 2fr 1fr 1fr 1.2fr;
-      gap: 40px;
-      margin-bottom: 40px;
-    }
-
-    @media (max-width: 768px) {
-      .footer-grid {
-        grid-template-columns: 1fr;
-        gap: 30px;
-      }
-    }
-
-    .footer-brand p {
-      color: var(--text-sub);
-      font-size: 13px;
-      line-height: 1.6;
-      margin-top: 12px;
-      max-width: 260px;
-    }
-
-    .footer-col h4 {
-      font-family: var(--font-outfit);
-      font-size: 14px;
-      font-weight: 600;
-      margin-bottom: 16px;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-    }
-
-    .footer-col ul {
-      list-style: none;
-    }
-
-    .footer-col ul li {
-      margin-bottom: 10px;
-    }
-
-    .footer-col ul li a {
-      color: var(--text-sub);
-      text-decoration: none;
-      font-size: 13px;
-      transition: color 0.2s;
-    }
-
-    .footer-col ul li a:hover {
-      color: var(--text-main);
-    }
-
-    .footer-bottom {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      color: var(--text-sub);
-      font-size: 13px;
-    }
-
-    @media (max-width: 576px) {
-      .footer-bottom {
-        flex-direction: column;
-        gap: 16px;
-        text-align: center;
-      }
-    }
-  </style>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700;9..40,800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./assets/airo-tv/site.css">
+  <script defer src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
+  <script defer src="./assets/airo-tv/site.js"></script>
 </head>
 <body>
+  <a class="skip-link" href="#main-content">Skip to content</a>
 
-  <!-- Ambient Glow Elements -->
-  <div class="ambient-glow glow-1"></div>
-  <div class="ambient-glow glow-2"></div>
-  <div class="ambient-glow glow-3"></div>
-
-  <!-- Header -->
-  <header id="header">
-    <div class="nav-container">
-      <a href="#" class="logo-container">
-        <div class="logo-icon">A</div>
-        <span class="logo-text">Airo Super App</span>
+  <header class="site-header">
+    <div class="container nav-shell">
+      <a class="brand" href="#top" aria-label="Airo TV home">
+        <img src="./assets/airo-tv/airo-icon.svg" alt="">
+        <span>Airo TV <small>an Airo modular app</small></span>
       </a>
-      <nav>
-        <a href="#features">Features</a>
-        <a href="#sandbox">AI Sandbox</a>
-        <a href="#tv-release">Airo TV v0.0.2</a>
-        <a href="#downloads">Downloads</a>
-        <a href="./technical-docs/">Docs</a>
+      <button class="menu-button" type="button" aria-label="Open navigation" aria-controls="site-navigation" aria-expanded="false" data-menu-button>
+        <i data-lucide="menu" aria-hidden="true"></i>
+      </button>
+      <nav class="site-nav" id="site-navigation" aria-label="Primary navigation" data-navigation>
+        <a href="#product">Product</a>
+        <a href="#difference">Why Airo</a>
+        <a href="#devices">Devices</a>
+        <a href="#guides">Guides</a>
+        <a href="#community">Community</a>
+        <a href="#roadmap">Roadmap</a>
+        <a class="button button-primary" href="https://github.com/DevelopersCoffee/airo/releases/tag/airo-tv-v0.0.3">
+          <i data-lucide="download" aria-hidden="true"></i> Download
+        </a>
       </nav>
-      <a href="#downloads" class="cta-btn">
-        <i data-lucide="download" style="width:16px; height:16px;"></i> Download APK
-      </a>
     </div>
   </header>
 
-  <!-- Hero Section -->
-  <section class="hero container">
-    <div class="hero-badge">
-      <i data-lucide="shield" style="width:14px; height:14px;"></i>
-      100% On-Device AI Super App
-    </div>
-    <h1>
-      <span class="gradient-text">Smart Capabilities.</span><br>
-      <span>Absolute On-Device Privacy.</span>
-    </h1>
-    <p>
-      Airo brings together smart assistants, finance extraction, music feeds, offline gaming, and a dedicated <strong>AI-First IPTV Player (Airo TV)</strong> into a single secure platform. Zero telemetry, zero cloud leak, zero registration.
-    </p>
-    <div class="hero-buttons">
-      <a href="#downloads" class="cta-btn" style="padding: 14px 28px; font-size: 15px;">
-        <i data-lucide="download" style="width:18px; height:18px;"></i> Get Airo App
-      </a>
-      <a href="./technical-docs/" class="btn-secondary" style="padding: 14px 28px; font-size: 15px;">
-        <i data-lucide="book-open" style="width:18px; height:18px;"></i> Inspect Tech Docs
-      </a>
-    </div>
-    
-    <!-- Mockup Player Showcase -->
-    <div class="mockup-wrapper">
-      <div class="mockup-container">
-        <img src="./assets/images/airo_superapp_mockup.jpg" alt="Airo Super App Dashboard Mockup">
-      </div>
-    </div>
-  </section>
-
-  <!-- Features Section -->
-  <section id="features" class="features-section container reveal">
-    <div class="section-header">
-      <h2>Integrated Super App Suite</h2>
-      <p>Powerful independent modules running securely under a shared edge computing architecture</p>
-    </div>
-    
-    <div class="features-grid">
-      <!-- Feature 1: Airo TV -->
-      <div class="feature-card" style="border-color: rgba(0, 229, 255, 0.25);">
-        <div class="feature-icon" style="background: rgba(0, 229, 255, 0.15); color: var(--accent-cyan);">
-          <i data-lucide="tv"></i>
-        </div>
-        <h3>📺 Airo TV (AI-First IPTV)</h3>
-        <p>A flagship media player. Local AI models parse, categorize, and search 10,000+ playlists automatically. Supports natural voice searches, XMLTV program guide matching, and fluid remote control navigation for Android TV & Fire TV.</p>
-      </div>
-
-      <!-- Feature 2: Airo Quest -->
-      <div class="feature-card">
-        <div class="feature-icon">
-          <i data-lucide="sparkles"></i>
-        </div>
-        <h3>💬 Airo Quest (AI Chat & Docs)</h3>
-        <p>Your on-device RAG engine. Upload files, extract documents, and converse with Gemma 1B locally. All prompts remain strictly on-device, offering secure file-interaction without cloud connections.</p>
-      </div>
-
-      <!-- Feature 3: Airo Money -->
-      <div class="feature-card">
-        <div class="feature-icon">
-          <i data-lucide="wallet"></i>
-        </div>
-        <h3>💰 Airo Money (Finance Tracker)</h3>
-        <p>Smart transactional monitoring. Parses transactional SMS messages and extracts merchants, amounts, and tags locally. Stores all financials in encrypted SQLCipher databases.</p>
-      </div>
-
-      <!-- Feature 4: Airo Beats -->
-      <div class="feature-card">
-        <div class="feature-icon">
-          <i data-lucide="music"></i>
-        </div>
-        <h3>🎵 Airo Beats (Music Player)</h3>
-        <p>Fluid, premium media hub for streaming and offline music playback. Built with elegant glassmorphic layouts, dynamic album-art colors, and responsive visualizers.</p>
-      </div>
-
-      <!-- Feature 5: Airo Chess -->
-      <div class="feature-card">
-        <div class="feature-icon">
-          <i data-lucide="swords"></i>
-        </div>
-        <h3>♟️ Airo Chess (Gaming Hub)</h3>
-        <p>Clean, local gaming engine. Play offline chess, solve puzzles, and track game performance with local analytics and custom animations.</p>
-      </div>
-
-      <!-- Feature 6: Core Security -->
-      <div class="feature-card">
-        <div class="feature-icon">
-          <i data-lucide="lock"></i>
-        </div>
-        <h3>🔐 Edge Security Sandbox</h3>
-        <p>Airo runs under unified local constraints: no external tracking pixels, no analytics logging, and strictly quarantined databases keeping the platform safe.</p>
-      </div>
-    </div>
-  </section>
-
-  <!-- Interactive Sandbox Widget -->
-  <section id="sandbox" class="interactive-demo container reveal">
-    <div class="demo-wrapper">
-      <div class="demo-info">
-        <h3>Local AI Sandbox</h3>
-        <p>
-          Interact with Airo's local on-device processing. Toggle between tabs to test the IPTV playlist classifier, transactional financial parser, or local search routers.
-        </p>
-        
-        <!-- Sandbox Tabs -->
-        <div class="sandbox-tabs">
-          <button class="sandbox-tab active" id="tab-iptv" onclick="switchTab('iptv')">
-            <i data-lucide="tv" style="width:14px; height:14px;"></i> IPTV Parser
-          </button>
-          <button class="sandbox-tab" id="tab-finance" onclick="switchTab('finance')">
-            <i data-lucide="wallet" style="width:14px; height:14px;"></i> Finance Extractor
-          </button>
-          <button class="sandbox-tab" id="tab-agent" onclick="switchTab('agent')">
-            <i data-lucide="sparkles" style="width:14px; height:14px;"></i> Chat Search
-          </button>
-        </div>
-
-        <!-- Tab contents -->
-        <!-- IPTV Tab -->
-        <div class="sandbox-content active" id="content-iptv">
-          <div class="playlist-input-container">
-            <input type="text" id="m3u-input" class="playlist-input" placeholder="Paste M3U playlist line...">
-            <button class="parse-btn" onclick="parseM3U()">
-              <i data-lucide="zap" style="width:16px; height:16px;"></i> Classify M3U
-            </button>
+  <main id="main-content">
+    <section class="hero" id="top" aria-labelledby="hero-title">
+      <img class="hero-media" src="./store-assets/airo-tv/01-tv-home-channel-grid.png" alt="Airo TV channel browser showing an authorized demo playlist">
+      <div class="container">
+        <div class="hero-content">
+          <p class="eyebrow">Airo is a modular super app. Airo TV is where it begins.</p>
+          <h1 id="hero-title">Airo TV</h1>
+          <p class="hero-lede">One modular platform, purpose-built for every screen.</p>
+          <p class="hero-copy">Bring your authorized M3U or M3U8 playlist to a calm, remote-friendly player today. Follow a public roadmap toward smarter organization, richer guides, resilient playback, and the wider Airo experience.</p>
+          <div class="hero-actions">
+            <a class="button button-primary" href="https://github.com/DevelopersCoffee/airo/releases/tag/airo-tv-v0.0.3">
+              <i data-lucide="download" aria-hidden="true"></i> Download v0.0.3
+            </a>
+            <a class="button button-secondary" href="./airo-tv/guides/">
+              <i data-lucide="book-open" aria-hidden="true"></i> Choose your device
+            </a>
+            <a class="button button-secondary" href="#roadmap">
+              <i data-lucide="route" aria-hidden="true"></i> See the vision
+            </a>
           </div>
-          <div class="preset-btns">
-            <span style="font-size:12px; color:var(--text-sub); display:flex; align-items:center;">Presets:</span>
-            <button class="preset-btn" onclick="loadIPTVPreset(1)">Sci-Fi Feed</button>
-            <button class="preset-btn" onclick="loadIPTVPreset(2)">Sports Live HD</button>
-            <button class="preset-btn" onclick="loadIPTVPreset(3)">News Stream</button>
+          <ul class="hero-status" aria-label="Product boundaries">
+            <li>No channels included</li>
+            <li>Local playlist workflow</li>
+            <li>Open development roadmap</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="proof-strip" id="product" aria-label="Available in the current release">
+      <div class="container proof-grid">
+        <div class="proof-item"><strong>M3U / M3U8</strong><span>Bring your own authorized playlist</span></div>
+        <div class="proof-item"><strong>TV-first search</strong><span>Find channels without endless scrolling</span></div>
+        <div class="proof-item"><strong>Cast controls</strong><span>Play, pause, stop, reload, and volume</span></div>
+        <div class="proof-item"><strong>Verified releases</strong><span>Checksums and known limitations included</span></div>
+      </div>
+    </section>
+
+    <section class="band" id="difference">
+      <div class="container">
+        <div class="section-intro">
+          <div>
+            <p class="eyebrow">Why Airo TV</p>
+            <h2>Designed around real viewing problems.</h2>
           </div>
+          <p>Not another stretched phone interface or copied IPTV checklist. Airo TV uses shared modular foundations, then adapts navigation, layouts, release profiles, and qualification to each device class.</p>
         </div>
 
-        <!-- Finance Tab -->
-        <div class="sandbox-content" id="content-finance">
-          <div class="playlist-input-container">
-            <input type="text" id="sms-input" class="playlist-input" placeholder="Paste transactional SMS text...">
-            <button class="parse-btn" onclick="parseSMS()">
-              <i data-lucide="trending-up" style="width:16px; height:16px;"></i> Extract SMS
-            </button>
+        <div class="difference-list">
+          <article class="difference-row">
+            <span class="difference-icon"><i data-lucide="panels-top-left" aria-hidden="true"></i></span>
+            <h3>One platform, adapted per device</h3>
+            <p>TV, mobile, Cast, and desktop paths share product foundations while preserving remote, touch, and desktop interaction needs.</p>
+            <span class="status status-available">Available</span>
+          </article>
+          <article class="difference-row">
+            <span class="difference-icon"><i data-lucide="scan" aria-hidden="true"></i></span>
+            <h3>Qualified at real viewports</h3>
+            <p>The release process defines 1920x1080, 1280x720, 1024x576, and 390x844 profiles instead of assuming one layout fits all.</p>
+            <span class="status status-qualifying">Under qualification</span>
+          </article>
+          <article class="difference-row">
+            <span class="difference-icon"><i data-lucide="list-filter" aria-hidden="true"></i></span>
+            <h3>Built for very large playlists</h3>
+            <p>Local indexing, worker-based processing, and virtualized lists target playlists with thousands of entries without freezing the interface.</p>
+            <a class="text-link" href="https://github.com/DevelopersCoffee/airo/issues/814">Track #814 <i data-lucide="arrow-up-right" aria-hidden="true"></i></a>
+          </article>
+          <article class="difference-row">
+            <span class="difference-icon"><i data-lucide="activity" aria-hidden="true"></i></span>
+            <h3>Failures that explain themselves</h3>
+            <p>Playback diagnostics and bounded recovery aim to replace generic black screens with clear, local, actionable states.</p>
+            <a class="text-link" href="https://github.com/DevelopersCoffee/airo/issues/805">Track #805 <i data-lucide="arrow-up-right" aria-hidden="true"></i></a>
+          </article>
+          <article class="difference-row">
+            <span class="difference-icon"><i data-lucide="accessibility" aria-hidden="true"></i></span>
+            <h3>Remote-first and accessibility-aware</h3>
+            <p>Focus-safe navigation, TV font modes, captions, and remote shortcuts are treated as core living-room behavior.</p>
+            <a class="text-link" href="https://github.com/DevelopersCoffee/airo/issues/812">Track #812 <i data-lucide="arrow-up-right" aria-hidden="true"></i></a>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="band band-alt" aria-labelledby="product-story-title">
+      <div class="container">
+        <div class="section-intro">
+          <div>
+            <p class="eyebrow">The current product</p>
+            <h2 id="product-story-title">From playlist to playback.</h2>
           </div>
-          <div class="preset-btns">
-            <span style="font-size:12px; color:var(--text-sub); display:flex; align-items:center;">Presets:</span>
-            <button class="preset-btn" onclick="loadFinancePreset(1)">Card purchase</button>
-            <button class="preset-btn" onclick="loadFinancePreset(2)">Bank withdrawal</button>
-            <button class="preset-btn" onclick="loadFinancePreset(3)">Subscription billing</button>
+          <p>Airo TV keeps the core journey direct. Add a source you are authorized to use, browse or search it, and start watching on the screen in front of you.</p>
+        </div>
+
+        <div class="screen-story">
+          <article class="screen-step">
+            <figure class="screen-shot"><img src="./store-assets/airo-tv/04-tv-playlist-source.png" alt="Airo TV playlist source setup using a neutral authorized demo URL"></figure>
+            <div class="screen-copy"><span class="step-number">01</span><h3>Bring your source</h3><p>Add an authorized M3U or M3U8 URL. Airo TV does not sell, bundle, recommend, or unlock channels.</p></div>
+          </article>
+          <article class="screen-step">
+            <figure class="screen-shot"><img src="./store-assets/airo-tv/01-tv-home-channel-grid.png" alt="Airo TV browse screen at 1920 by 1080"></figure>
+            <div class="screen-copy"><span class="step-number">02</span><h3>Browse from the couch</h3><p>TV-sized hierarchy, visible focus, and clear categories make the experience readable at living-room distance.</p></div>
+          </article>
+          <article class="screen-step">
+            <figure class="screen-shot"><img src="./store-assets/airo-tv/03-tv-search-dialog.png" alt="Airo TV channel search using neutral demo data"></figure>
+            <div class="screen-copy"><span class="step-number">03</span><h3>Find channels quickly</h3><p>Search the playlist by channel name instead of scrolling through every group and entry.</p></div>
+          </article>
+          <article class="screen-step">
+            <figure class="screen-shot"><img src="./store-assets/airo-tv/02-tv-now-playing.png" alt="Airo TV now-playing screen using authorized demo content"></figure>
+            <div class="screen-copy"><span class="step-number">04</span><h3>Play with clear controls</h3><p>Start supported streams, return to browsing, and use Cast controls where the sender device and network support discovery.</p></div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="band" id="devices">
+      <div class="container">
+        <div class="section-intro">
+          <div>
+            <p class="eyebrow">Device paths</p>
+            <h2>One product. Honest support levels.</h2>
           </div>
+          <p>Each device path keeps its real release status. Experimental, partial, deferred, and unsigned builds are labeled instead of being presented as finished storefront products.</p>
         </div>
+        <div class="device-list">
+          <article class="device-row"><h3>Android TV / Google TV</h3><p>Primary remote-first experience with direct-install APKs and a Play Store bundle.</p><span class="status status-available">Available</span><a class="text-link" href="./airo-tv/guides/#android-tv">Setup guide</a></article>
+          <article class="device-row"><h3>Fire TV</h3><p>Android TV-compatible APK path. Dedicated remote and performance qualification remains required.</p><span class="status status-qualifying">Experimental</span><a class="text-link" href="./airo-tv/guides/#fire-tv">Setup guide</a></article>
+          <article class="device-row"><h3>Android phone / tablet</h3><p>Separate modular profiles support mobile validation and Cast workflows; public profile selection is still being finalized.</p><span class="status status-qualifying">Partial</span><a class="text-link" href="./airo-tv/guides/#mobile">Setup guide</a></article>
+          <article class="device-row"><h3>Chromecast / Google Cast</h3><p>Discovery and sender controls depend on the same usable local network and receiver reachability.</p><span class="status status-available">Supported path</span><a class="text-link" href="./airo-tv/guides/#cast">Cast guide</a></article>
+          <article class="device-row"><h3>macOS</h3><p>v0.0.3 includes unsigned, unnotarized validation artifacts for direct testing.</p><span class="status status-qualifying">Preview</span><a class="text-link" href="./airo-tv/guides/#macos">Install guide</a></article>
+          <article class="device-row"><h3>iPhone / iPad</h3><p>Not part of the current Airo TV v2 publishing wave.</p><span class="status status-planned">Deferred</span><span></span></article>
+        </div>
+      </div>
+    </section>
 
-        <!-- Agent Search Tab -->
-        <div class="sandbox-content" id="content-agent">
-          <div class="playlist-input-container">
-            <input type="text" id="agent-input" class="playlist-input" placeholder="Ask local agent...">
-            <button class="parse-btn" onclick="routeAgent()">
-              <i data-lucide="arrow-right" style="width:16px; height:16px;"></i> Ask Agent
-            </button>
+    <section class="band band-alt" id="guides">
+      <div class="container">
+        <div class="section-intro">
+          <div>
+            <p class="eyebrow">Quick start and tutorials</p>
+            <h2>Set it up once. Know what your device supports.</h2>
           </div>
-          <div class="preset-btns">
-            <span style="font-size:12px; color:var(--text-sub); display:flex; align-items:center;">Presets:</span>
-            <button class="preset-btn" onclick="loadAgentPreset(1)">Query local files</button>
-            <button class="preset-btn" onclick="loadAgentPreset(2)">Search watch history</button>
-            <button class="preset-btn" onclick="loadAgentPreset(3)">Complex question</button>
-          </div>
+          <p>Guides cover the current product first. Planned features remain in the roadmap until a qualified release makes them available.</p>
         </div>
-
-      </div>
-      
-      <!-- Terminal Console -->
-      <div class="demo-terminal" id="terminal">
-        <div class="terminal-header">
-          <div class="terminal-dots">
-            <div class="terminal-dot dot-red"></div>
-            <div class="terminal-dot dot-yellow"></div>
-            <div class="terminal-dot dot-green"></div>
-          </div>
-          <span class="terminal-title" id="terminal-title">Airo-On-Device-Sandbox</span>
+        <div class="guide-filter" role="tablist" aria-label="Filter guides by device">
+          <button type="button" role="tab" aria-selected="true" data-guide-filter="all">All</button>
+          <button type="button" role="tab" aria-selected="false" data-guide-filter="tv">TV</button>
+          <button type="button" role="tab" aria-selected="false" data-guide-filter="mobile">Mobile and Cast</button>
+          <button type="button" role="tab" aria-selected="false" data-guide-filter="desktop">Desktop</button>
         </div>
-        <div class="terminal-line info">Airo Super App Sandbox initialized. Select a tool to start...</div>
-      </div>
-    </div>
-  </section>
-
-
-  <!-- Airo TV Release Section -->
-  <section id="tv-release" class="features-section container reveal">
-    <div class="section-header">
-      <span class="eyebrow">Release ready</span>
-      <h2>Airo TV v0.0.2</h2>
-      <p>Airo TV is part of Airo: a focused Android TV player for your own authorized M3U playlists.</p>
-    </div>
-    <div class="features-grid">
-      <div class="feature-card">
-        <div class="feature-icon"><i data-lucide="tv"></i></div>
-        <h3>Android TV package</h3>
-        <p>Ships from the v2 release line as <code>io.airo.app.tv</code> with both mobile launcher and Leanback launcher support for Pixel and TV smoke tests.</p>
-      </div>
-      <div class="feature-card">
-        <div class="feature-icon"><i data-lucide="list-video"></i></div>
-        <h3>Bring your playlist</h3>
-        <p>Paste an authorized M3U URL, search channels, and play streams. Airo TV does not provide IPTV content or copyrighted media sources.</p>
-      </div>
-      <div class="feature-card">
-        <div class="feature-icon"><i data-lucide="cast"></i></div>
-        <h3>Cast controls and status</h3>
-        <p>Includes discovery messaging, pause/play, stop, reload, new session, and volume controls. Cast requires <code>_googlecast._tcp</code> and port <code>8009</code> reachability.</p>
-      </div>
-    </div>
-    <div class="tech-callout">
-      <h3>Play Store readiness</h3>
-      <p>Category: Entertainment / Video Players & Editors. Release checks cover TV launch, Pixel portrait/landscape fallback, IPTV playlist flow, Music India search/play, Cast diagnostics, accessibility labels, SHA256 checksums, and clean release assets.</p>
-      <a href="https://github.com/DevelopersCoffee/airo/releases/tag/airo-tv-v0.0.2" class="btn-secondary">
-        <i data-lucide="tag" style="width:16px; height:16px;"></i> Airo TV v0.0.2 Release
-      </a>
-    </div>
-  </section>
-
-  <!-- Downloads Section -->
-  <section id="downloads" class="downloads-section container reveal">
-    <div class="section-header">
-      <h2>Get Started with Airo</h2>
-      <p>Download Airo for your phone, TV, browser, or desktop</p>
-    </div>
-
-    <div class="download-grid">
-      <!-- Android TV -->
-      <div class="download-card" style="border-color: rgba(0, 229, 255, 0.2);">
-        <div class="download-card-icon" style="background: rgba(0, 229, 255, 0.15); color: var(--accent-cyan);">
-          <i data-lucide="tv"></i>
+        <div class="guide-list">
+          <a class="guide-item" data-guide-device="tv" href="./airo-tv/guides/#android-tv"><i data-lucide="tv" aria-hidden="true"></i><h3>Set up Android TV or Google TV</h3><p>Install, add a playlist, browse, search, and play.</p><i data-lucide="arrow-right" aria-hidden="true"></i></a>
+          <a class="guide-item" data-guide-device="tv" href="./airo-tv/guides/#fire-tv"><i data-lucide="flame" aria-hidden="true"></i><h3>Install on Fire TV</h3><p>Use the compatible APK safely and understand experimental status.</p><i data-lucide="arrow-right" aria-hidden="true"></i></a>
+          <a class="guide-item" data-guide-device="mobile" href="./airo-tv/guides/#mobile"><i data-lucide="smartphone" aria-hidden="true"></i><h3>Use Android phone or tablet</h3><p>Validate playback and use the mobile Cast sender path.</p><i data-lucide="arrow-right" aria-hidden="true"></i></a>
+          <a class="guide-item" data-guide-device="mobile tv" href="./airo-tv/guides/#cast"><i data-lucide="cast" aria-hidden="true"></i><h3>Connect with Google Cast</h3><p>Check the network, receiver, VPN, and discovery path.</p><i data-lucide="arrow-right" aria-hidden="true"></i></a>
+          <a class="guide-item" data-guide-device="desktop" href="./airo-tv/guides/#macos"><i data-lucide="monitor" aria-hidden="true"></i><h3>Test the macOS preview</h3><p>Understand unsigned artifacts and current limitations.</p><i data-lucide="arrow-right" aria-hidden="true"></i></a>
+          <a class="guide-item" data-guide-device="tv mobile desktop" href="./airo-tv/guides/#troubleshooting"><i data-lucide="wrench" aria-hidden="true"></i><h3>Troubleshoot playlists and playback</h3><p>Separate source, network, decoder, EPG, and device problems.</p><i data-lucide="arrow-right" aria-hidden="true"></i></a>
         </div>
-        <h3>Airo TV (Android TV)</h3>
-        <p>Airo TV v0.0.2 for authorized M3U playlists, Cast controls, and couch-friendly watching.</p>
-        <a href="https://github.com/DevelopersCoffee/airo/releases/tag/airo-tv-v0.0.2" class="download-btn">Download Airo TV</a>
       </div>
+    </section>
 
-      <!-- Android Mobile -->
-      <div class="download-card">
-        <div class="download-card-icon">
-          <i data-lucide="smartphone"></i>
+    <section class="band" id="community">
+      <div class="container">
+        <div class="community-header">
+          <div><p class="eyebrow">Community Voice</p><h2>Built from viewer problems, not a copied feature checklist.</h2></div>
+          <a class="button button-secondary" href="https://github.com/DevelopersCoffee/airo/issues?q=state%3Aopen%20label%3Acommunity-voice"><i data-lucide="messages-square" aria-hidden="true"></i> View all Community Voice issues</a>
         </div>
-        <h3>Airo Mobile</h3>
-        <p>Full super app container for Android phones.</p>
-        <a href="https://github.com/DevelopersCoffee/airo/releases" class="download-btn">Download Mobile APK</a>
-      </div>
-
-      <!-- iOS App -->
-      <div class="download-card">
-        <div class="download-card-icon">
-          <i data-lucide="tablet"></i>
+        <div class="community-grid">
+          <article class="community-item"><span class="status status-planned">Planned</span><h3>Large lists without frozen screens</h3><p>Local indexing, worker processing, and virtualized browsing for real-world playlist sizes.</p><a class="text-link" href="https://github.com/DevelopersCoffee/airo/issues/814">Issue #814</a></article>
+          <article class="community-item"><span class="status status-planned">Planned</span><h3>A guide that remains useful</h3><p>Windowed EPG, a full timeline, search, and explicit stale or missing guide states.</p><a class="text-link" href="https://github.com/DevelopersCoffee/airo/issues/825">Issue #825</a></article>
+          <article class="community-item"><span class="status status-planned">Planned</span><h3>Favorites that survive a restart</h3><p>Persistent favorites, hidden categories, and a real TV organization surface.</p><a class="text-link" href="https://github.com/DevelopersCoffee/airo/issues/826">Issue #826</a></article>
+          <article class="community-item"><span class="status status-planned">Planned</span><h3>More source choices, same BYOC boundary</h3><p>Xtream, Stalker, and Jellyfin adapters without turning Airo into a content provider.</p><a class="text-link" href="https://github.com/DevelopersCoffee/airo/issues/823">Issue #823</a></article>
+          <article class="community-item"><span class="status status-planned">Planned</span><h3>Subtitles, audio, and better timelines</h3><p>Track selection and separate behavior for live streams and on-demand playback.</p><a class="text-link" href="https://github.com/DevelopersCoffee/airo/issues/820">Issue #820</a></article>
+          <article class="community-item"><span class="status status-planned">Planned</span><h3>Organize on one screen, watch on another</h3><p>Companion pairing and TV organization sync with explicit privacy and conflict rules.</p><a class="text-link" href="https://github.com/DevelopersCoffee/airo/issues/833">Issue #833</a></article>
         </div>
-        <h3>iOS App</h3>
-        <p>Super App player compatible with iPhone & iPad.</p>
-        <a href="https://github.com/DevelopersCoffee/airo/releases" class="download-btn">View App Store</a>
       </div>
+    </section>
 
-      <!-- Web / Desktop -->
-      <div class="download-card">
-        <div class="download-card-icon">
-          <i data-lucide="monitor"></i>
+    <section class="band band-alt" id="pro-vision">
+      <div class="container pro-shell">
+        <div>
+          <span class="status status-private">Private validation</span>
+          <h2>Airo Pro explores the intelligence layer.</h2>
+          <p>These capabilities are being validated privately. They are not included in the public Airo TV release and carry no delivery promise until public evidence is published.</p>
+          <p>The public page describes customer outcomes only. Private repositories, services, implementation details, and commercial rules remain private.</p>
         </div>
-        <h3>Web & Desktop</h3>
-        <p>Web sandbox players and native PC builds.</p>
-        <a href="https://github.com/DevelopersCoffee/airo/releases" class="download-btn">Launch Web App</a>
+        <div class="pro-list">
+          <article class="pro-item"><h3>Cleaner imports</h3><p>Recognize channel variants, merge duplicates, preserve unknown entries, and prefer healthier sources.</p></article>
+          <article class="pro-item"><h3>More resilient playback</h3><p>Rank alternate sources and use bounded failover when a stream errors or stalls.</p></article>
+          <article class="pro-item"><h3>Regional discovery</h3><p>Explore curated and health-informed rows without implying popularity tracking that does not exist.</p></article>
+          <article class="pro-item"><h3>Guide intelligence and reminders</h3><p>Validate bounded programme windows and local reminder behavior before public release.</p></article>
+          <article class="pro-item"><h3>Richer context</h3><p>Explore licensed metadata and sports-event surfaces behind explicit data and provider gates.</p></article>
+        </div>
       </div>
-    </div>
+    </section>
 
-    <!-- Tech Docs Redirect Callout -->
-    <div class="tech-callout">
-      <i data-lucide="terminal" style="width:36px; height:36px; color:var(--accent-purple); margin-bottom:16px;"></i>
-      <h3>Open Source & Technical Design</h3>
-      <p>
-        Airo Super App features modular Dart packages, local SQLite/SQLCipher layers, automated Snyk security checks, and continuous integration pipelines.
-      </p>
-      <a href="./technical-docs/" class="btn-secondary">
-        <i data-lucide="file-text" style="width:16px; height:16px;"></i> Inspect Technical Docs
-      </a>
-    </div>
-  </section>
+    <section class="band" id="roadmap">
+      <div class="container">
+        <div class="section-intro">
+          <div><p class="eyebrow">The path forward</p><h2>Useful today. Building toward more.</h2></div>
+          <p>The roadmap is a public sequence of evidence, not a collection of vague promises. Open an issue, read the scope, and see why work was adopted, deferred, or rejected.</p>
+        </div>
+        <div class="roadmap">
+          <article class="roadmap-stage"><span class="status status-available">Available now</span><h3>Airo TV v0.0.3</h3><p>The focused modular player and current release foundation.</p><ul><li>M3U and M3U8 sources</li><li>Channel search</li><li>Android TV artifacts</li><li>Cast controls</li><li>Checksums and manifests</li></ul></article>
+          <article class="roadmap-stage"><span class="status status-planned">Building in public</span><h3>Platform hardening</h3><p>Reliability, guide, organization, providers, playback controls, and TV input depth.</p><a class="text-link" href="https://github.com/DevelopersCoffee/airo/milestone/5">Open milestone 5 <i data-lucide="arrow-up-right" aria-hidden="true"></i></a></article>
+          <article class="roadmap-stage"><span class="status status-qualifying">Foundation</span><h3>Performance platform</h3><p>Native parsing, indexed search, structured storage, networking, and measured device budgets.</p><a class="text-link" href="https://github.com/DevelopersCoffee/airo/milestone/6">Open milestone 6 <i data-lucide="arrow-up-right" aria-hidden="true"></i></a></article>
+          <article class="roadmap-stage"><span class="status status-private">Private validation</span><h3>Airo Pro intelligence</h3><p>Import cleanup, health-informed sources, richer guide context, regional discovery, and event surfaces under disclosure and release gates.</p></article>
+        </div>
+      </div>
+    </section>
 
-  <!-- Footer -->
-  <footer>
+    <section class="band band-alt" aria-labelledby="super-app-title">
+      <div class="container">
+        <div class="section-intro">
+          <div><p class="eyebrow">The wider Airo vision</p><h2 id="super-app-title">Focused apps. Shared foundations. One future home.</h2></div>
+          <p>Airo TV is the first active modular app. Future Airo modules will be introduced only when they have a clear product boundary, release evidence, and a reason to benefit from the shared platform.</p>
+        </div>
+        <div class="vision-line" aria-label="Airo product sequence">
+          <div class="vision-step"><strong>Airo TV</strong><span>Active modular product and current public focus.</span></div>
+          <div class="vision-step"><strong>Shared Airo platform</strong><span>Release, privacy, device, storage, and capability foundations.</span></div>
+          <div class="vision-step"><strong>Future modules</strong><span>Money, Quest, routines, games, and other focused experiences.</span></div>
+          <div class="vision-step"><strong>Airo super app</strong><span>A connected home for modules that earn their place.</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="band" id="trust">
+      <div class="container trust-grid">
+        <div>
+          <p class="eyebrow">Trust before features</p>
+          <h2>Your sources. Clear boundaries. Public evidence.</h2>
+          <p>Airo TV is a media player for playlists and streams you are authorized to access. It does not provide, host, sell, endorse, verify, or distribute television channels, playlists, subscriptions, or media catalogs.</p>
+          <p>Local-first means local where the product can be local. Remote playlists, streams, Cast, and optional future services still use a network, and the page will say so plainly.</p>
+        </div>
+        <div class="trust-links">
+          <a href="./legal/privacy-policy/">Privacy policy <i data-lucide="arrow-right" aria-hidden="true"></i></a>
+          <a href="./legal/terms-conditions/">Terms and conditions <i data-lucide="arrow-right" aria-hidden="true"></i></a>
+          <a href="https://github.com/DevelopersCoffee/airo/releases/tag/airo-tv-v0.0.3">Release checksums <i data-lucide="arrow-right" aria-hidden="true"></i></a>
+          <a href="https://github.com/DevelopersCoffee/airo">Source repository <i data-lucide="arrow-right" aria-hidden="true"></i></a>
+          <a href="./technical-docs/">Technical documentation <i data-lucide="arrow-right" aria-hidden="true"></i></a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
     <div class="container">
       <div class="footer-grid">
-        <div class="footer-brand">
-          <a href="#" class="logo-container">
-            <div class="logo-icon">A</div>
-            <span class="logo-text">Airo Super App</span>
-          </a>
-          <p>The ultimate privacy-centric, local-first utility and entertainment platform.</p>
+        <div>
+          <a class="brand" href="#top"><img src="./assets/airo-tv/airo-icon.svg" alt=""><span>Airo TV</span></a>
+          <h2>Try today. Follow tomorrow.</h2>
+          <p>Airo TV is the first active modular product in the wider Airo super-app vision.</p>
         </div>
-        <div class="footer-col">
-          <h4>Modules</h4>
-          <ul>
-            <li><a href="#features">Airo TV</a></li>
-            <li><a href="#features">Airo Quest</a></li>
-            <li><a href="#features">Airo Money</a></li>
-          </ul>
-        </div>
-        <div class="footer-col">
-          <h4>Developers</h4>
-          <ul>
-            <li><a href="https://github.com/DevelopersCoffee/airo">GitHub Repository</a></li>
-            <li><a href="./technical-docs/">Technical Guides</a></li>
-            <li><a href="https://github.com/DevelopersCoffee/airo/releases">App Releases</a></li>
-          </ul>
-        </div>
-        <div class="footer-col">
-          <h4>Compliance</h4>
-          <ul>
-            <li><a href="./legal/privacy-policy/">Privacy Policy</a></li>
-            <li><a href="./legal/terms-conditions/">Terms & Conditions</a></li>
-            <li><a href="mailto:coffee.devloper@gmail.com">Contact Support</a></li>
-          </ul>
-        </div>
+        <div class="footer-col"><h3>Product</h3><a href="#difference">Why Airo TV</a><a href="#devices">Devices</a><a href="./airo-tv/guides/">Guides</a></div>
+        <div class="footer-col"><h3>Progress</h3><a href="#community">Community Voice</a><a href="#roadmap">Roadmap</a><a href="https://github.com/DevelopersCoffee/airo/releases">Releases</a></div>
+        <div class="footer-col"><h3>Trust</h3><a href="#trust">Content boundary</a><a href="./legal/privacy-policy/">Privacy</a><a href="mailto:coffee.devloper@gmail.com">Support</a></div>
       </div>
-      
-      <div class="footer-bottom">
-        <p>&copy; 2026 Airo Super App / DevelopersCoffee. All rights reserved.</p>
-        <p>Built with ❤️ by <a href="https://github.com/DevelopersCoffee" style="color:var(--text-main); text-decoration:none; font-weight:600;">DevelopersCoffee</a></p>
-      </div>
+      <div class="footer-bottom"><span>&copy; <span data-current-year>2026</span> DevelopersCoffee</span><span>Airo is built in public. Roadmap scope may change as evidence changes.</span></div>
     </div>
   </footer>
-
-  <script>
-    // Initialize Lucide Icons
-    lucide.createIcons();
-
-    // Scroll header styling
-    window.addEventListener('scroll', () => {
-      const header = document.getElementById('header');
-      if (window.scrollY > 50) {
-        header.classList.add('scrolled');
-      } else {
-        header.classList.remove('scrolled');
-      }
-    });
-
-    // Reveal animations
-    const reveals = document.querySelectorAll('.reveal');
-    const revealObserver = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          entry.target.classList.add('active');
-        }
-      });
-    }, { threshold: 0.15 });
-
-    reveals.forEach(reveal => {
-      revealObserver.observe(reveal);
-    });
-
-    // Sandbox Tab Switching Logic
-    function switchTab(tabId) {
-      document.querySelectorAll('.sandbox-tab').forEach(tab => tab.classList.remove('active'));
-      document.querySelectorAll('.sandbox-content').forEach(content => content.classList.remove('active'));
-      
-      document.getElementById(`tab-${tabId}`).classList.add('active');
-      document.getElementById(`content-${tabId}`).classList.add('active');
-      
-      logToTerminal(`Switched sandbox context to [Airo-${tabId.toUpperCase()}]`, 'info');
-      document.getElementById('terminal-title').textContent = `Airo-On-Device-${tabId.toUpperCase()}`;
-    }
-
-    function logToTerminal(text, type = 'info') {
-      const terminal = document.getElementById('terminal');
-      const line = document.createElement('div');
-      line.className = `terminal-line ${type}`;
-      
-      const timestamp = new Date().toLocaleTimeString();
-      line.textContent = `[${timestamp}] ${text}`;
-      
-      terminal.appendChild(line);
-      terminal.scrollTop = terminal.scrollHeight;
-    }
-
-    // IPTV presets
-    const iptvPresets = {
-      1: '#EXTINF:-1 tvg-id="orion-sci" tvg-name="The Orion Protocol HD" tvg-logo="https://airo.dev/logo-orion.png",The Orion Protocol (2026)\nhttp://streams.airo.dev/movies/orion_protocol.m3u8',
-      2: '#EXTINF:-1 tvg-id="sports-epl" tvg-name="Sky Sports Premier League HD" group-title="Live Sports",EPL Live Direct\nhttp://sports.direct.stream/sky_epl.ts',
-      3: '#EXTINF:-1 tvg-id="cnn-global" tvg-name="CNN International" tvg-country="US" group-title="News",CNN Global Stream\nhttp://news.global.cnn/live/stream.m3u8'
-    };
-
-    function loadIPTVPreset(id) {
-      document.getElementById('m3u-input').value = iptvPresets[id];
-      logToTerminal(`M3U playlist preset ${id} loaded. Click "Classify" to parse.`);
-    }
-
-    function parseM3U() {
-      const input = document.getElementById('m3u-input').value.trim();
-      if (!input) {
-        logToTerminal("Error: M3U input is empty.", "error");
-        return;
-      }
-      logToTerminal("Starting on-device M3U parsing engine...", "cyan");
-      setTimeout(() => {
-        const nameMatch = input.match(/,\s*(.+)$/m);
-        const name = nameMatch ? nameMatch[1] : "General stream";
-        logToTerminal(`Parsing metadata for: "${name}"`, "info");
-        logToTerminal(`[Airo TV] Resolving category and tags via LiteRT model...`, "purple");
-        
-        setTimeout(() => {
-          let category = "Movies";
-          let tags = ["1080p", "HLS"];
-          if (name.toLowerCase().includes("orion") || name.toLowerCase().includes("sci")) {
-            category = "Sci-Fi / Space Cinema";
-            tags.push("Trending");
-          } else if (name.toLowerCase().includes("epl") || name.toLowerCase().includes("sports")) {
-            category = "Live Sports Channel";
-            tags.push("TS Flow");
-          } else if (name.toLowerCase().includes("cnn") || name.toLowerCase().includes("news")) {
-            category = "Live Global News";
-            tags.push("News Feed");
-          }
-          logToTerminal(`[AI CLASSIFICATION]: Category resolved to "${category}"`, "cyan");
-          logToTerminal(`[AI RESOLVED TAGS]: ${tags.join(" | ")}`, "cyan");
-          logToTerminal(`Success. Channel verified and cached locally.`, "cyan");
-        }, 500);
-      }, 300);
-    }
-
-    // Finance presets
-    const financePresets = {
-      1: 'Alert: Spent $45.90 at WALMART STORE 2810. Card ending 4402. Avail Bal: $1,284.10.',
-      2: 'Withdrawal of $120.00 cash from ATM Chase 12. Transaction fee $2.50.',
-      3: 'Paid: Your monthly subscription fee of $15.49 to NETFLIX was processed successfully.'
-    };
-
-    function loadFinancePreset(id) {
-      document.getElementById('sms-input').value = financePresets[id];
-      logToTerminal(`SMS preset ${id} loaded. Click "Extract" to analyze.`);
-    }
-
-    function parseSMS() {
-      const input = document.getElementById('sms-input').value.trim();
-      if (!input) {
-        logToTerminal("Error: SMS input is empty.", "error");
-        return;
-      }
-      logToTerminal("Executing on-device text entity parsing...", "cyan");
-      setTimeout(() => {
-        // Regex extraction
-        const amtMatch = input.match(/\$\s*(\d+(\.\d{2})?)/);
-        const amt = amtMatch ? `$${amtMatch[1]}` : "Unknown Amount";
-        
-        logToTerminal(`Scanning text blocks...`, "info");
-        logToTerminal(`[Airo Money] Matching transaction patterns...`, "purple");
-        
-        setTimeout(() => {
-          let category = "Shopping";
-          let merchant = "Walmart";
-          if (input.toLowerCase().includes("netflix")) {
-            category = "Subscriptions";
-            merchant = "Netflix";
-          } else if (input.toLowerCase().includes("atm") || input.toLowerCase().includes("withdrawal")) {
-            category = "Cash/ATM Withdrawal";
-            merchant = "Chase Bank ATM";
-          }
-          logToTerminal(`[AMOUNT EXTRACTED]: ${amt}`, "cyan");
-          logToTerminal(`[MERCHANT MATCH]: ${merchant.toUpperCase()}`, "cyan");
-          logToTerminal(`[AI FINANCE CATEGORY]: ${category.toUpperCase()}`, "cyan");
-          logToTerminal(`Success. Transaction logged to encrypted SQLCipher schema.`, "cyan");
-        }, 500);
-      }, 300);
-    }
-
-    // Agent presets
-    const agentPresets = {
-      1: 'Search for "User Guide 2026" PDF in local folders.',
-      2: 'List what movies I watched yesterday in Airo Cinema.',
-      3: 'Route query: How does Airo secure my offline SQLCipher databases?'
-    };
-
-    function loadAgentPreset(id) {
-      document.getElementById('agent-input').value = agentPresets[id];
-      logToTerminal(`Agent query preset ${id} loaded. Click "Ask Agent" to route.`);
-    }
-
-    function routeAgent() {
-      const input = document.getElementById('agent-input').value.trim();
-      if (!input) {
-        logToTerminal("Error: Agent query is empty.", "error");
-        return;
-      }
-      logToTerminal("Initializing Agent routing sequence...", "cyan");
-      setTimeout(() => {
-        logToTerminal(`Input: "${input}"`, "info");
-        logToTerminal(`[Airo Quest] Evaluating prompt context for on-device Gemma-1B...`, "purple");
-        
-        setTimeout(() => {
-          let action = "RAG search";
-          let response = "Gemma-1B returned: Document parsed successfully. Data remains offline.";
-          
-          if (input.toLowerCase().includes("movies") || input.toLowerCase().includes("watched")) {
-            action = "Local watch-history query";
-            response = "Agent routed query to Airo TV: You recently finished 'ASTRA: Odyssey' yesterday at 21:38.";
-          } else if (input.toLowerCase().includes("sqlcipher") || input.toLowerCase().includes("secure")) {
-            action = "Local policy lookup";
-            response = "Agent resolved: Airo uses SQLite encryption via SQLCipher using a local biometric-derived salt key.";
-          }
-          
-          logToTerminal(`[ROUTER ACTION]: ${action.toUpperCase()}`, "cyan");
-          logToTerminal(`[AGENT REPLY]: ${response}`, "cyan");
-          logToTerminal(`Sequence finished. Status: Complete.`, "cyan");
-        }, 600);
-      }, 300);
-    }
-  </script>
 </body>
 </html>

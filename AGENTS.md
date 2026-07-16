@@ -1,5 +1,13 @@
 # Airo Agent Policy
 
+## Release Branding Skill
+
+Before updating the public GitHub Pages site or preparing public product copy
+for any Airo/Airo TV release, read and follow
+`.agents/skills/airo-release-branding/SKILL.md`. The skill governs release
+evidence, Community Voice summaries, Airo Pro disclosure, screenshots, device
+claims, guides, and roadmap consistency.
+
 Every implementation agent working in this repository must follow the agent
 lifecycle in [docs/agents/AGENT_POLICY.md](docs/agents/AGENT_POLICY.md) before
 writing feature code.

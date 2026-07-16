@@ -1,0 +1,4 @@
+interface:
+  display_name: "Airo Release Branding"
+  short_description: "Refresh public release branding from evidence"
+  default_prompt: "Use $airo-release-branding to refresh the Airo public page for the latest release."
