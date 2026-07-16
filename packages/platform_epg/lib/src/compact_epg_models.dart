@@ -23,6 +23,18 @@ enum CompactEpgAvailability {
   final String stableId;
 }
 
+enum CompactEpgProgramKind {
+  standard('standard'),
+  movie('movie'),
+  episode('episode'),
+  sports('sports'),
+  news('news');
+
+  const CompactEpgProgramKind(this.stableId);
+
+  final String stableId;
+}
+
 enum CompactEpgSourceRefRejectionCode {
   empty('empty'),
   urlValue('url_value'),
@@ -91,18 +103,22 @@ class CompactEpgProgram extends Equatable {
     required this.title,
     required this.startsAt,
     required this.endsAt,
+    this.eventId,
     this.subtitle,
     this.category,
     this.rating,
+    this.kind = CompactEpgProgramKind.standard,
     this.schemaVersion = kCompactEpgSchemaVersion,
   });
 
   final String schemaVersion;
   final String programId;
   final String title;
+  final String? eventId;
   final String? subtitle;
   final String? category;
   final String? rating;
+  final CompactEpgProgramKind kind;
   final DateTime startsAt;
   final DateTime endsAt;
 
@@ -118,9 +134,11 @@ class CompactEpgProgram extends Equatable {
     schemaVersion,
     programId,
     title,
+    eventId,
     subtitle,
     category,
     rating,
+    kind,
     startsAt,
     endsAt,
   ];
