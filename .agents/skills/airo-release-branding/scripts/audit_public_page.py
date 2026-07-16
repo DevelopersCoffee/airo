@@ -159,8 +159,8 @@ def main() -> int:
         "Third-party stream": "external stream status",
         "github.com/iptv-org/iptv": "public source attribution",
         "cdn-uw2-prod.tsv2.amagi.tv": "approved live demo source",
-        "VEVO 2K": "immersive live showcase name",
-        "d1s6jz7jeei17.cloudfront.net": "approved VEVO 2K showcase source",
+        "Vevo Pop": "immersive live showcase name",
+        "d128y56w6v2kax.cloudfront.net": "approved Vevo Pop showcase source",
         "Starts muted. Nothing loads until you press Play.": "muted showcase boundary",
         "HLS.js Apache license": "player dependency attribution",
     }
