@@ -96,6 +96,19 @@ final builtInAgentSkills = <AgentSkill>[
     capabilities: const [SkillCapability.notificationsSchedule],
   ),
   AgentSkill(
+    id: 'query-lifetrack-status',
+    name: 'LifeTrack Status',
+    description:
+        'Answer questions about active LifeTrack goals from local data.',
+    instructions:
+        'Use this when the user asks what is pending, what documents are '
+        'needed, or what the status is for a LifeTrack goal. Call '
+        'query_lifetrack_status with the original query and return the '
+        'connector markdown directly without inventing missing data.',
+    tools: const ['query_lifetrack_status'],
+    capabilities: const [SkillCapability.lifeTrackRead],
+  ),
+  AgentSkill(
     id: 'open-airo-feature',
     name: 'Open Airo Feature',
     description: 'Open Money, Quest, Beats, Games, Stream, or Reader.',
