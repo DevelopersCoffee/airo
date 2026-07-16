@@ -16,7 +16,6 @@ import '../screens/iptv_screen.dart';
 import '../widgets/iptv_icon_placeholder.dart';
 import '../widgets/iptv_mini_player.dart';
 import '../widgets/video_player_widget.dart';
-import 'iptv_tv.dart';
 
 enum _TvChannelViewMode { grid, list }
 
