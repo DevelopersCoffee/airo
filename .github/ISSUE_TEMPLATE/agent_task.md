@@ -28,9 +28,10 @@ assignees: ''
 
 **Framework or application layer:**
 
-**Owning agent:**
+**Owning agent:** <!-- role name from docs/agents/COUNCIL.md -->
 
-**Reviewing agents:**
+**Reviewing agents:** <!-- from the Decision Matrix in docs/agents/COUNCIL.md -->
+
 
 **Impacted modules/files:**
 

@@ -21,6 +21,24 @@
 - [ ] Android Emulator was not used unless the linked issue explicitly accepted
       `AIRO_ALLOW_ANDROID_EMULATOR=true`.
 
+## Council Review
+
+Per the Decision Matrix in [docs/agents/COUNCIL.md](../docs/agents/COUNCIL.md),
+list every role required for this change's category and confirm each has
+reviewed (name a human/agent session, or link their review comment):
+
+<!-- Example:
+- Rust Architect: reviewed by @handle
+- Chief Performance Officer: reviewed by claude session <link>
+- Chief Security Officer: reviewed by claude session <link>
+-->
+
+- [ ] I checked the Decision Matrix and listed every required role above.
+- [ ] Every package touched has a `module.yaml`; if not, this PR adds one
+      (`scripts/check-module-manifests.py` enforces this in CI).
+- [ ] `owner`/`reviewers` in any touched `module.yaml` still match who
+      actually reviewed this PR — updated if the roster has drifted.
+
 ## User-Facing Documentation
 
 Every PR must keep the Airo public capability wiki accurate.
