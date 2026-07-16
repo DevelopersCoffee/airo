@@ -18,6 +18,7 @@ class _ScriptedPlaybackEngine implements AiroPlaybackEngine {
 
   final List<AiroPlaybackErrorCode?> _openScript;
   int openCallCount = 0;
+  int disposeCallCount = 0;
   AiroPlaybackState _state;
 
   final StreamController<AiroPlaybackState> _controller =
@@ -86,7 +87,20 @@ class _ScriptedPlaybackEngine implements AiroPlaybackEngine {
   Future<AiroPlaybackState> exitPictureInPicture() async => _state;
 
   @override
-  Future<void> dispose() async => _controller.close();
+  Future<void> dispose() async {
+    disposeCallCount++;
+    await _controller.close();
+  }
+
+  /// Test-only: simulate a mid-playback runtime error arriving on this
+  /// engine's own `states` stream (distinct from an `open()` failure).
+  void emitRuntimeError(AiroPlaybackErrorCode code) {
+    _state = _state.copyWith(
+      phase: AiroPlaybackEnginePhase.failed,
+      error: AiroPlaybackError(code: code),
+    );
+    _controller.add(_state);
+  }
 }
 
 void main() {
@@ -147,6 +161,13 @@ void main() {
         AiroPlaybackBackendKind.videoPlayer,
         AiroPlaybackBackendKind.mpv,
       });
+      expect(
+        primary.disposeCallCount,
+        1,
+        reason:
+            'abandoned primary must be disposed before the fallback swap, '
+            'never left alive alongside the new engine',
+      );
     });
 
     test(
@@ -171,6 +192,12 @@ void main() {
         expect(primary.openCallCount, 1);
         expect(fallback.openCallCount, 1);
         expect(coordinator.isLocked, isFalse);
+        expect(
+          primary.disposeCallCount,
+          1,
+          reason: 'primary must be disposed before the fallback is attempted, '
+              'regardless of whether the fallback itself succeeds',
+        );
 
         // Calling open() again must not attempt a 3rd engine (anti-loop).
         final secondDecision = await coordinator.open(request());
@@ -274,6 +301,57 @@ void main() {
       expect(runtimeDecision.code, AiroEngineFallbackDecisionCode.ignoredLocked);
       expect(fallback.openCallCount, 0);
       expect(coordinator.activeEngine.backendKind, primary.backendKind);
+    });
+
+    test(
+      'a real runtime codec error on the locked engine\'s states stream is '
+      'observed automatically and never swaps',
+      () async {
+        final primary = _ScriptedPlaybackEngine(
+          backendKind: AiroPlaybackBackendKind.videoPlayer,
+          openScript: const [null],
+        );
+        final fallback = _ScriptedPlaybackEngine(
+          backendKind: AiroPlaybackBackendKind.mpv,
+          openScript: const [null],
+        );
+        final coordinator = AiroEngineFallbackCoordinator(
+          primaryEngine: primary,
+          fallbackEngine: fallback,
+        );
+
+        await coordinator.open(request());
+        expect(coordinator.isLocked, isTrue);
+
+        final observed = <AiroEngineFallbackDecision>[];
+        final subscription = coordinator.runtimeDecisions.listen(
+          observed.add,
+        );
+
+        // Simulate a real mid-playback decode failure arriving on the
+        // engine's own states stream, not a direct recordRuntimeError call.
+        primary.emitRuntimeError(AiroPlaybackErrorCode.decoderFailed);
+        await Future<void>.delayed(Duration.zero);
+        await subscription.cancel();
+
+        expect(observed, hasLength(1));
+        expect(observed.single.code, AiroEngineFallbackDecisionCode.ignoredLocked);
+        expect(fallback.openCallCount, 0);
+        expect(coordinator.activeEngine.backendKind, primary.backendKind);
+      },
+    );
+
+    test('dispose() tears down the currently active engine', () async {
+      final primary = _ScriptedPlaybackEngine(
+        backendKind: AiroPlaybackBackendKind.videoPlayer,
+        openScript: const [null],
+      );
+      final coordinator = AiroEngineFallbackCoordinator(primaryEngine: primary);
+
+      await coordinator.open(request());
+      await coordinator.dispose();
+
+      expect(primary.disposeCallCount, 1);
     });
   });
 }
