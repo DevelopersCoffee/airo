@@ -27,6 +27,7 @@ export 'src/widgets/loading_indicator.dart';
 export 'src/widgets/error_view.dart';
 export 'src/widgets/empty_state_widget.dart';
 export 'src/widgets/airo_responsive_scaffold.dart';
+export 'src/widgets/tv_focus_manager.dart';
 export 'src/widgets/tv_focusable.dart';
 
 // Adaptive UI

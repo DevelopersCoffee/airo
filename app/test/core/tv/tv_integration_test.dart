@@ -912,7 +912,7 @@ void main() {
     });
 
     test('Fire TV touch targets meet 56dp minimum requirement', () {
-      final fireTvDimensions = TvUiDimensions.fireTv();
+      final fireTvDimensions = TvUiDimensions.tv();
       expect(fireTvDimensions.minTargetSize, greaterThanOrEqualTo(56.0));
     });
 
@@ -998,7 +998,7 @@ void main() {
     });
 
     test('Fire TV uses same text scale factor', () {
-      final fireTvDimensions = TvUiDimensions.fireTv();
+      final fireTvDimensions = TvUiDimensions.tv();
       expect(fireTvDimensions.textScaleFactor, equals(1.25));
     });
 
