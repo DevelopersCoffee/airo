@@ -50,7 +50,10 @@ into shipped-product claims.
 
 11. Serve `docs/`, test keyboard navigation and responsive layouts, and capture
     evidence at `1920x1080`, `1280x720`, `1024x576`, and `390x844`.
-12. Report which claims changed, which remained planned, and which private
+12. For scroll effects, verify one-time reveals, progress accuracy, no layout
+    shift, visible fallback without IntersectionObserver, and fully static
+    content under `prefers-reduced-motion: reduce`.
+13. Report which claims changed, which remained planned, and which private
     findings were withheld. Do not publish, tag, or deploy unless the user
     explicitly requests it.
 

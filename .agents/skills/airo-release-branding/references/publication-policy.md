@@ -75,3 +75,15 @@ Higher-priority sources override lower-priority sources.
   deadline, then expose an enabled manual retry instead of looping silently.
 - Revalidate source availability, browser CORS behavior, and disclosure copy
   during every release-branding refresh.
+
+## Motion and scrolling
+
+- Use scroll motion to preserve orientation and reveal hierarchy, not as
+  decoration that competes with the product.
+- Prefer one-time opacity and transform transitions. Do not apply continuous
+  parallax to screenshots, live video, controls, or readable text.
+- Keep all content visible when JavaScript or IntersectionObserver is missing.
+- Disable non-essential motion and progress animation for
+  `prefers-reduced-motion: reduce` and print output.
+- Scroll effects must not change document dimensions, move focus targets, or
+  become required to understand or operate the page.

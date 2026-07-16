@@ -85,9 +85,10 @@ def main() -> int:
     index = root / "docs" / "index.html"
     guides = root / "docs" / "airo-tv" / "guides" / "index.html"
     site_script = root / "docs" / "assets" / "airo-tv" / "site.js"
+    site_styles = root / "docs" / "assets" / "airo-tv" / "site.css"
     errors: list[str] = []
 
-    for required in (index, guides, site_script):
+    for required in (index, guides, site_script, site_styles):
         if not required.is_file():
             errors.append(f"missing required file: {required.relative_to(root)}")
 
@@ -100,6 +101,7 @@ def main() -> int:
     index_text, index_inventory = inspect_html(index)
     guide_text, guide_inventory = inspect_html(guides)
     site_script_text = site_script.read_text(encoding="utf-8")
+    site_styles_text = site_styles.read_text(encoding="utf-8")
 
     required_sections = {
         "product",
@@ -160,6 +162,25 @@ def main() -> int:
     }
     for snippet, label in required_demo_logic.items():
         if snippet not in site_script_text:
+            errors.append(f"missing {label}: {snippet}")
+
+    required_scroll_logic = {
+        "IntersectionObserver": "one-time viewport reveal",
+        "revealObserver.unobserve": "completed reveal cleanup",
+        "requestAnimationFrame": "composited progress scheduling",
+        "prefers-reduced-motion: reduce": "motion preference detection",
+    }
+    for snippet, label in required_scroll_logic.items():
+        if snippet not in site_script_text:
+            errors.append(f"missing {label}: {snippet}")
+
+    required_scroll_styles = {
+        ".scroll-progress": "scroll progress style",
+        ".scroll-reveal.is-visible": "visible reveal state",
+        "@media (prefers-reduced-motion: reduce)": "reduced motion style",
+    }
+    for snippet, label in required_scroll_styles.items():
+        if snippet not in site_styles_text:
             errors.append(f"missing {label}: {snippet}")
 
     forbidden = {

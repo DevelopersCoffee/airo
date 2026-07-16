@@ -47,6 +47,75 @@
   var year = document.querySelector("[data-current-year]");
   if (year) year.textContent = String(new Date().getFullYear());
 
+  var reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  if (!reducedMotion) {
+    var scrollProgress = document.createElement("div");
+    scrollProgress.className = "scroll-progress";
+    scrollProgress.setAttribute("aria-hidden", "true");
+    document.body.appendChild(scrollProgress);
+
+    var progressFrameRequested = false;
+
+    function updateScrollProgress() {
+      var scrollRange = document.documentElement.scrollHeight - window.innerHeight;
+      var progress = scrollRange > 0 ? window.scrollY / scrollRange : 0;
+      scrollProgress.style.transform = "scaleX(" + Math.min(1, Math.max(0, progress)) + ")";
+      progressFrameRequested = false;
+    }
+
+    function requestProgressUpdate() {
+      if (progressFrameRequested) return;
+      progressFrameRequested = true;
+      window.requestAnimationFrame(updateScrollProgress);
+    }
+
+    window.addEventListener("scroll", requestProgressUpdate, { passive: true });
+    window.addEventListener("resize", requestProgressUpdate);
+    requestProgressUpdate();
+
+    var revealSelectors = [
+      ".section-intro",
+      ".screen-step",
+      ".live-demo-stage",
+      ".live-demo-details",
+      ".device-row",
+      ".community-item",
+      ".roadmap-stage",
+      ".vision-step",
+      ".trust-grid > *",
+    ];
+    var revealTargets = [];
+
+    revealSelectors.forEach(function (selector) {
+      document.querySelectorAll(selector).forEach(function (element, index) {
+        element.classList.add("scroll-reveal");
+        element.style.setProperty("--reveal-delay", Math.min(index, 3) * 55 + "ms");
+        revealTargets.push(element);
+      });
+    });
+
+    if (typeof window.IntersectionObserver === "function") {
+      var revealObserver = new IntersectionObserver(
+        function (entries) {
+          entries.forEach(function (entry) {
+            if (!entry.isIntersecting) return;
+            entry.target.classList.add("is-visible");
+            revealObserver.unobserve(entry.target);
+          });
+        },
+        { threshold: 0.12, rootMargin: "0px 0px -8% 0px" },
+      );
+      revealTargets.forEach(function (element) {
+        revealObserver.observe(element);
+      });
+    } else {
+      revealTargets.forEach(function (element) {
+        element.classList.add("is-visible");
+      });
+    }
+  }
+
   var demoVideo = document.querySelector("[data-live-demo-video]");
   var demoStart = document.querySelector("[data-live-demo-start]");
   var demoButton = document.querySelector("[data-live-demo-button]");
