@@ -11,3 +11,6 @@ export 'src/xtream/xtream_epg_repository.dart';
 export 'src/stalker/stalker_client.dart';
 export 'src/stalker/stalker_content_source.dart';
 export 'src/stalker/stalker_epg_repository.dart';
+export 'src/jellyfin/jellyfin_client.dart';
+export 'src/jellyfin/jellyfin_content_source.dart';
+export 'src/jellyfin/jellyfin_epg_repository.dart';
