@@ -230,6 +230,11 @@ class AppRouter {
                 name: 'Stream',
                 builder: (context, state) => const IPTVScreen(),
               ),
+              GoRoute(
+                path: '/vod',
+                name: 'VOD',
+                builder: (context, state) => const VodScreen(),
+              ),
             ],
           ),
           // Games branch
