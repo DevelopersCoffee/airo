@@ -22,6 +22,8 @@ and minimal maintenance overhead (few engines, not many).
   gates whether a fallback attempt is worthwhile.
 - Feature-complete for VOD: subtitles (embedded + external), audio-track switch,
   aspect-ratio control, quality/bitrate, playback speed.
+- Picture-in-Picture (auto-enter when app is backgrounded during playback), with a master
+  on/off toggle in a new Playback settings screen. Capability-gated per platform.
 - Minimal maintenance: **two** concrete engines, not four.
 
 ## Non-Goals
@@ -32,6 +34,9 @@ and minimal maintenance overhead (few engines, not many).
 - No continuous runtime engine-switching / capability probing per session (rejected as
   hard-to-maintain and prone to "stuck switching").
 - No mid-playback engine swap.
+- No manual PiP button (auto-enter-on-background only, for now).
+- No PiP on Windows/Linux (mpv has no OS PiP) or Android TV (10-ft UI; leaving the app
+  mid-playback is not a TV usage pattern).
 
 ## What Already Exists (reuse, do not rebuild)
 
@@ -161,6 +166,46 @@ attempt.
 | Aspect ratio | not in contract | new `AiroPlaybackViewFit` enum (contain/cover/fill/stretch) — view-layer only, no engine change |
 | Quality/bitrate | `selectQuality` exists | mpv engine must honor it |
 | Playback speed | `setPlaybackSpeed` exists | mpv engine must honor it |
+| Picture-in-Picture | not in contract | new engine methods + capability flag + settings toggle (see below) |
+
+## Picture-in-Picture
+
+**Behavior (decided):** auto-enter PiP when the app is backgrounded while a video is
+playing. No manual PiP button for now. Governed by a single master on/off setting.
+
+**PiP is a `videoPlayer`-engine capability**, tied to native OS PiP — not mpv. It follows
+the engine matrix:
+
+| Platform | Primary engine | PiP |
+|---|---|---|
+| Android mobile | `videoPlayer` | ✓ native Android PiP (API 26+) |
+| iOS | `videoPlayer` | ✓ AVKit PiP |
+| macOS | `videoPlayer` | ✓ AVKit PiP |
+| Web | `videoPlayer` | ✓ Picture-in-Picture API on `<video>` |
+| Android TV | `videoPlayer` | ✗ disabled (not a TV pattern) |
+| Windows, Linux | `mpv` | ✗ no OS PiP |
+
+**Contract additions** (`platform_player`):
+- `AiroPlaybackEngine.enterPictureInPicture()` / `exitPictureInPicture()` → return
+  `AiroPlaybackState`. Engines without support throw the existing
+  `AiroPlaybackErrorCode.unsupportedOperation`.
+- A `supportsPictureInPicture` capability flag on `media_capability_models` (platform +
+  engine derived). Single source of truth for gating both the lifecycle trigger and the
+  settings UI.
+
+**Auto-enter trigger:** an app-lifecycle observer (`WidgetsBindingObserver`,
+`AppLifecycleState.inactive/paused`) calls `enterPictureInPicture()` when ALL hold:
+playing, setting enabled, and `supportsPictureInPicture == true`. Never triggers otherwise
+(no-op), so unsupported platforms are inert.
+
+**Settings** (`app/lib/features/settings`): a new **Playback settings screen** (none exists
+today — only Audio + AI), following the established pattern —
+`PlaybackSettings` model + Riverpod `playbackSettingsProvider` + shared_preferences
+persistence (mirror `audio_context_settings.dart` / `audioContextSettingsProvider`). Screen
+holds one `SwitchListTile`: **"Picture-in-Picture — automatically shrink video when you
+leave the app."** The tile is **hidden entirely** when `supportsPictureInPicture == false`
+(Win/Linux/TV), so users never see a dead toggle. This Playback screen is also the natural
+future home for the aspect-ratio default.
 
 ## Resilience Invariants (asserted as tests, not prose)
 
@@ -183,15 +228,28 @@ attempt.
 - **mpv engine** — reuse the videoPlayer contract-conformance suite, parameterized over
   `AiroPlaybackEngine`. Both engines pass identical behavior tests.
 - **Fake engine** — drives coordinator tests without real decode (already exists).
+- **PiP** —
+  - capability flag table test: each platform → expected `supportsPictureInPicture`.
+  - lifecycle trigger: backgrounded + playing + enabled + supported → `enterPictureInPicture`
+    called exactly once; any condition false → not called.
+  - unsupported engine (mpv/fake): `enterPictureInPicture` → `unsupportedOperation`, no crash.
+  - settings: toggle persists across restart; tile hidden when capability false.
 
 ## Package Placement
 
 - `platform_player`: `AiroPlaybackEngineResolver`, `AiroEngineFallbackCoordinator`,
-  `AiroPlaybackViewFit`, external-sub additions to `AiroMediaOpenRequest`.
+  `AiroPlaybackViewFit`, external-sub additions to `AiroMediaOpenRequest`, PiP engine methods
+  (`enterPictureInPicture`/`exitPictureInPicture`).
 - `platform_media`: the concrete `mpv` engine implementation (alongside existing
-  videoPlayer engine), new `media_kit` dependency scoped here.
+  videoPlayer engine), new `media_kit` dependency scoped here; `supportsPictureInPicture`
+  capability flag on `media_capability_models`.
+- `app/lib/features/settings`: new Playback settings screen + `PlaybackSettings` model +
+  `playbackSettingsProvider`; app-lifecycle PiP observer wired near the player surface.
 - New dependency `media_kit` requires chief-open-source-officer + chief-performance-officer
   review (license, binary-size, per-arch native lib impact) per Engineering Council rules.
+- PiP native config: Android requires `android:supportsPictureInPicture` + `PictureInPicture`
+  activity flags on the mobile flavor (not TV); iOS/macOS require the AVKit PiP background
+  mode / entitlement. chief-security-officer / chief-release-devops-officer touch-point.
 
 ## Open Questions for Implementation Plan
 
