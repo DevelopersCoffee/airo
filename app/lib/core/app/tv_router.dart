@@ -73,8 +73,9 @@ class TvRouter {
             GoRoute(
               path: TvRouteNames.guide,
               name: 'tv_guide',
-              builder: (context, state) =>
-                  const _TvComingSoonPlaceholder(label: 'Guide'),
+              builder: (context, state) => IptvGuideScreen(
+                onChannelSelected: () => context.go(TvRouteNames.live),
+              ),
             ),
             // Favorites route
             GoRoute(
