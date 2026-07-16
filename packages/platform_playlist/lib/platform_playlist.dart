@@ -8,3 +8,6 @@ export 'src/m3u_content_source.dart';
 export 'src/xtream/xtream_client.dart';
 export 'src/xtream/xtream_content_source.dart';
 export 'src/xtream/xtream_epg_repository.dart';
+export 'src/stalker/stalker_client.dart';
+export 'src/stalker/stalker_content_source.dart';
+export 'src/stalker/stalker_epg_repository.dart';
