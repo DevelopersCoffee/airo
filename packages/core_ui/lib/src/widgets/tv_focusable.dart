@@ -26,8 +26,27 @@ enum TvInputResult { handled, notHandled }
 typedef TvInputCallback = TvInputResult Function(TvInputKey key);
 
 extension TvInputKeyExtension on TvInputKey {
+  /// Whether this key triggers focus movement.
+  bool get isNavigationKey =>
+      this == TvInputKey.up ||
+      this == TvInputKey.down ||
+      this == TvInputKey.left ||
+      this == TvInputKey.right;
+
+  /// Whether this key triggers playback control.
+  bool get isMediaKey =>
+      this == TvInputKey.playPause ||
+      this == TvInputKey.fastForward ||
+      this == TvInputKey.rewind;
+
   bool get isChannelKey =>
       this == TvInputKey.channelUp || this == TvInputKey.channelDown;
+
+  /// Whether this key is Fire TV specific.
+  bool get isFireTvKey =>
+      this == TvInputKey.voiceSearch ||
+      this == TvInputKey.channelUp ||
+      this == TvInputKey.channelDown;
 }
 
 /// Captures raw key events under [child] and reports them as [TvInputKey]s.
@@ -89,6 +108,11 @@ class TvInputHandler extends StatefulWidget {
       return TvInputKey.home;
     }
     return null;
+  }
+
+  /// Whether a logical key maps to a recognized TV input.
+  static bool isTvNavigationKey(LogicalKeyboardKey key) {
+    return mapLogicalKeyToTvInput(key) != null;
   }
 }
 
