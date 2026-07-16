@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+export 'package:core_ui/core_ui.dart' show TvFocusConstants;
+
 /// Focus memory entry for restoring focus when navigating back
 class FocusMemoryEntry {
   final String screenId;
@@ -117,26 +119,6 @@ class TvFocusManager extends ChangeNotifier {
     _focusMemory.clear();
     super.dispose();
   }
-}
-
-/// TV Focus constants
-class TvFocusConstants {
-  TvFocusConstants._();
-
-  /// Default focus border width
-  static const double focusBorderWidth = 3.0;
-
-  /// Default focus border radius
-  static const double focusBorderRadius = 8.0;
-
-  /// Focus animation duration
-  static const Duration focusAnimationDuration = Duration(milliseconds: 200);
-
-  /// Focus scale factor (slight enlargement when focused)
-  static const double focusScaleFactor = 1.05;
-
-  /// Focus glow spread radius
-  static const double focusGlowSpread = 4.0;
 }
 
 /// Configuration for focus wrap-around behavior
