@@ -5,12 +5,14 @@ reviewers:
   - Platform Architect
   - Chief QA Officer
 allowed_dependencies:
+  - core_data
   - core_ui
   - platform_channels
   - platform_epg
   - platform_history
   - platform_media
   - platform_player
+  - platform_playlist
   - platform_playlist_import
   - platform_streams
   - product_capabilities

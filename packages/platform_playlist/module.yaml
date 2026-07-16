@@ -4,7 +4,12 @@ reviewers:
   - Chief Architect
   - Platform Architect
   - Chief QA Officer
-allowed_dependencies: []
+  - Chief Security Officer
+allowed_dependencies:
+  - core_data
+  - platform_channels
+  - platform_epg
+  - platform_playlist_import
 forbidden_dependencies:
   - app
 quality_gates: {}
