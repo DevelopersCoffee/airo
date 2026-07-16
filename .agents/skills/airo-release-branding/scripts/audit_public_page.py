@@ -20,6 +20,7 @@ class Inventory(HTMLParser):
         self.sources: list[str] = []
         self.autoplay_videos = 0
         self.live_demo_roots = 0
+        self.sound_enabled_live_demo_roots = 0
         self.live_demo_videos = 0
         self.muted_live_demo_videos = 0
         self.preloading_live_demo_videos = 0
@@ -34,6 +35,8 @@ class Inventory(HTMLParser):
             self.sources.append(values["src"] or "")
         if "data-live-demo" in values:
             self.live_demo_roots += 1
+        if "data-live-start-with-sound" in values:
+            self.sound_enabled_live_demo_roots += 1
         if tag == "video" and "autoplay" in values:
             self.autoplay_videos += 1
         if tag == "video" and "data-live-demo-video" in values:
@@ -161,7 +164,9 @@ def main() -> int:
         "cdn-uw2-prod.tsv2.amagi.tv": "approved live demo source",
         "Vevo Pop": "immersive live showcase name",
         "d128y56w6v2kax.cloudfront.net": "approved Vevo Pop showcase source",
-        "Starts muted. Nothing loads until you press Play.": "muted showcase boundary",
+        "Play Vevo Pop with sound": "explicit click-to-sound action",
+        "Nothing loads before your click.": "idle showcase network boundary",
+        "Third-party stream details": "compact stream disclosure",
         "HLS.js Apache license": "player dependency attribution",
     }
     for snippet, label in required_snippets.items():
@@ -175,6 +180,8 @@ def main() -> int:
         "demoRecoveryAttempts >= 1": "bounded recovery attempt",
         "8000": "recovery deadline",
         "airo_retry=": "native HLS cache-busted retry",
+        'root.hasAttribute("data-live-start-with-sound")': "explicit sound contract",
+        "demoVideo.muted = false": "gesture-bound unmute behavior",
     }
     for snippet, label in required_demo_logic.items():
         if snippet not in site_script_text:
@@ -235,10 +242,20 @@ def main() -> int:
         errors.append("public page must expose exactly two live demo roots")
     if index_inventory.live_demo_videos != 2:
         errors.append("public page must expose exactly two live demo videos")
-    if index_inventory.muted_live_demo_videos != 1:
-        errors.append("exactly one immersive live showcase must start muted")
+    if index_inventory.sound_enabled_live_demo_roots != 1:
+        errors.append("exactly one immersive live showcase must declare click-to-sound")
+    if index_inventory.muted_live_demo_videos:
+        errors.append("click-to-sound live demos must not declare muted playback")
     if index_inventory.preloading_live_demo_videos:
         errors.append("every live demo video must use preload=none")
+
+    product_position = index_text.find('id="product"')
+    showcase_position = index_text.find('id="vevo-showcase"')
+    difference_position = index_text.find('id="difference"')
+    if min(product_position, showcase_position, difference_position) < 0 or not (
+        product_position < showcase_position < difference_position
+    ):
+        errors.append("immersive showcase must follow the release proof strip")
 
     hls_license = (
         root

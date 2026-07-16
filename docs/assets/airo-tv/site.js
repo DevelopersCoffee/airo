@@ -161,6 +161,7 @@
 
     var channelName = root.getAttribute("data-live-channel") || "live sample";
     var retryLabel = root.getAttribute("data-live-retry-label") || "Try live sample again";
+    var startWithSound = root.hasAttribute("data-live-start-with-sound");
     var initialButtonMarkup = demoButton.innerHTML;
     var idleStatus = demoStatus.textContent;
     var demoHls = null;
@@ -296,6 +297,11 @@
       liveDemoInstances.forEach(function (instance) {
         if (instance.root !== root) instance.stopForSwitch();
       });
+      if (startWithSound) {
+        demoVideo.defaultMuted = false;
+        demoVideo.muted = false;
+        demoVideo.volume = 1;
+      }
       demoStarted = true;
       demoSource = source;
       demoRecoveryAttempts = 0;

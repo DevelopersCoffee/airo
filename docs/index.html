@@ -58,7 +58,7 @@ layout: null
           <p class="eyebrow">Airo TV available now</p>
           <h1 id="hero-title">Airo</h1>
           <p class="hero-lede">One modular home. Airo TV is where it begins.</p>
-          <p class="hero-copy">Airo brings AI, media, money, routines, productivity, games, and everyday tools into one evolving experience. Start today with Airo TV, the focused big-screen product for your authorized M3U or M3U8 playlist.</p>
+          <p class="hero-copy">Airo is the modular home for everyday tools. Start with Airo TV: bring an authorized playlist and watch on the screen you choose.</p>
           <div class="hero-actions">
             <a class="button button-primary" href="https://github.com/DevelopersCoffee/airo/releases/tag/airo-tv-v0.0.3">
               <i data-lucide="download" aria-hidden="true"></i> Download Airo TV
@@ -86,6 +86,54 @@ layout: null
         <div class="proof-item"><strong>TV-first search</strong><span>Find channels without endless scrolling</span></div>
         <div class="proof-item"><strong>Cast controls</strong><span>Play, pause, stop, reload, and volume</span></div>
         <div class="proof-item"><strong>Verified releases</strong><span>Checksums and known limitations included</span></div>
+      </div>
+    </section>
+
+    <section
+      class="channel-showcase"
+      id="vevo-showcase"
+      aria-labelledby="vevo-showcase-title"
+      data-live-demo
+      data-live-channel="Vevo Pop"
+      data-live-retry-label="Try Vevo Pop again"
+      data-live-start-with-sound
+    >
+      <video
+        class="channel-showcase-video"
+        controls
+        playsinline
+        preload="none"
+        poster="./store-assets/airo-tv/01-tv-home-channel-grid.png"
+        data-live-demo-video
+        aria-label="Vevo Pop public live showcase player"
+      ></video>
+      <div class="container channel-showcase-content">
+        <div class="channel-showcase-meta">
+          <p class="eyebrow"><span class="live-signal" aria-hidden="true"></span>Airo TV live</p>
+          <p class="live-demo-status channel-showcase-status" role="status" aria-live="polite" data-live-demo-status>Ready when you are.</p>
+        </div>
+        <div class="channel-showcase-pitch">
+          <h2 id="vevo-showcase-title">TV that feels immediate.</h2>
+          <p class="channel-showcase-lede">One click. Live picture and sound.</p>
+          <div class="channel-showcase-start" data-live-demo-start>
+            <button
+              class="button button-primary"
+              type="button"
+              data-live-demo-button
+              data-live-source="https://d128y56w6v2kax.cloudfront.net/playlist/amg00056-vevotv-vevopopau-samsungau/playlist.m3u8"
+            >
+              <i data-lucide="volume-2" aria-hidden="true"></i> Play Vevo Pop with sound
+            </button>
+            <span>Nothing loads before your click.</span>
+          </div>
+          <details class="channel-showcase-details">
+            <summary><i data-lucide="info" aria-hidden="true"></i> Third-party stream details</summary>
+            <p id="vevo-showcase-disclosure">
+              Vevo Pop is a public HLS listing from
+              <a href="https://github.com/iptv-org/iptv">iptv-org</a>. After Play, your browser connects directly to the operator, which may serve advertising, apply regional limits, or change availability. Airo does not host, proxy, cache, transcode, copy, or rebroadcast the channel.
+            </p>
+          </details>
+        </div>
       </div>
     </section>
 
@@ -162,48 +210,6 @@ layout: null
             <div class="screen-copy"><span class="step-number">04</span><h3>Play with clear controls</h3><p>Start supported streams, return to browsing, and use Cast controls where the sender device and network support discovery.</p></div>
           </article>
         </div>
-      </div>
-    </section>
-
-    <section
-      class="channel-showcase"
-      id="vevo-showcase"
-      aria-labelledby="vevo-showcase-title"
-      data-live-demo
-      data-live-channel="Vevo Pop"
-      data-live-retry-label="Try Vevo Pop again"
-    >
-      <video
-        class="channel-showcase-video"
-        controls
-        muted
-        playsinline
-        preload="none"
-        poster="./store-assets/airo-tv/01-tv-home-channel-grid.png"
-        data-live-demo-video
-        aria-label="Vevo Pop public live showcase player"
-        aria-describedby="vevo-showcase-disclosure"
-      ></video>
-      <div class="container channel-showcase-content">
-        <p class="eyebrow">Live channel showcase</p>
-        <h2 id="vevo-showcase-title">Your channel. The big-screen treatment.</h2>
-        <p class="channel-showcase-lede">See how live television can sit inside the Airo experience without taking over the interface. Start a second public music sample, keep the product story in view, and use the browser controls whenever you need them.</p>
-        <div class="channel-showcase-start" data-live-demo-start>
-          <button
-            class="button button-primary"
-            type="button"
-            data-live-demo-button
-            data-live-source="https://d128y56w6v2kax.cloudfront.net/playlist/amg00056-vevotv-vevopopau-samsungau/playlist.m3u8"
-          >
-            <i data-lucide="play" aria-hidden="true"></i> Play Vevo Pop showcase
-          </button>
-          <span>Starts muted. Nothing loads until you press Play.</span>
-        </div>
-        <p class="live-demo-status channel-showcase-status" role="status" aria-live="polite" data-live-demo-status>Ready. No Vevo Pop stream connection has been made.</p>
-        <p class="channel-showcase-disclosure" id="vevo-showcase-disclosure">
-          Vevo Pop is a third-party public HLS listing from
-          <a href="https://github.com/iptv-org/iptv">iptv-org</a>. Your browser connects directly to the operator after Play. Advertising, regional limits, and availability may change. Airo does not host, proxy, cache, transcode, copy, or rebroadcast the channel.
-        </p>
       </div>
     </section>
 

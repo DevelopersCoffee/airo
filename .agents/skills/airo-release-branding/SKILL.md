@@ -42,9 +42,11 @@ into shipped-product claims.
    deadline before showing manual retry. Never proxy, cache, rebroadcast, or
    silently preload it. Keep no more than two public samples on the page, use
    one shared controller for every sample, stop an active sample before another
-   begins, and require immersive/background samples to start muted. Idle poster
-   art must be owned or sanitized Airo material rather than captured third-party
-   broadcast frames.
+   begins. An immersive/background sample may start with sound only when its
+   explicit Play control promises sound and the controller unmutes directly
+   inside that user gesture; otherwise it must start muted. Idle poster art must
+   be owned or sanitized Airo material rather than captured third-party broadcast
+   frames.
 9. Update device tutorials only for behavior supported by the claim state.
 10. Preserve the professional visual contract:
     - use one shared spacing and typography scale across product sections;
