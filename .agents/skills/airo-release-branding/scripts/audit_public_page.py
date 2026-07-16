@@ -18,6 +18,7 @@ class Inventory(HTMLParser):
         self.ids: set[str] = set()
         self.links: list[str] = []
         self.sources: list[str] = []
+        self.autoplay_videos = 0
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         values = dict(attrs)
@@ -27,6 +28,8 @@ class Inventory(HTMLParser):
             self.links.append(values["href"] or "")
         if values.get("src"):
             self.sources.append(values["src"] or "")
+        if tag == "video" and "autoplay" in values:
+            self.autoplay_videos += 1
 
 
 def latest_tv_release(repository: str) -> str:
@@ -99,6 +102,7 @@ def main() -> int:
     required_sections = {
         "product",
         "difference",
+        "live-demo",
         "devices",
         "guides",
         "community",
@@ -129,12 +133,17 @@ def main() -> int:
         "community-voice": "Community Voice link",
         "/milestone/5": "product milestone link",
         "/milestone/6": "performance milestone link",
-        "No channels included": "content boundary",
+        "Airo TV app includes no channels": "application content boundary",
         '<h1 id="hero-title">Airo</h1>': "default Airo hero identity",
         "Airo TV available now": "current focused product status",
         "Airo TV Pro": "advanced TV edition name",
         "In testing": "unreleased Pro status",
         "Airo is the home": "superapp parent positioning",
+        "Nothing loads until you press Play": "user-initiated demo boundary",
+        "Third-party stream": "external stream status",
+        "github.com/iptv-org/iptv": "public source attribution",
+        "cdn-uw2-prod.tsv2.amagi.tv": "approved live demo source",
+        "HLS.js Apache license": "player dependency attribution",
     }
     for snippet, label in required_snippets.items():
         if snippet not in index_text:
@@ -157,6 +166,21 @@ def main() -> int:
     for snippet, label in forbidden.items():
         if snippet in combined:
             errors.append(f"forbidden {label}: {snippet}")
+
+    if index_inventory.autoplay_videos:
+        errors.append("live demo video must not use autoplay")
+
+    hls_license = (
+        root
+        / "docs"
+        / "assets"
+        / "airo-tv"
+        / "third-party"
+        / "hls.js-1.6.16"
+        / "LICENSE.txt"
+    )
+    if not hls_license.is_file():
+        errors.append("missing vendored HLS.js license")
 
     for html_path, inventory in ((index, index_inventory), (guides, guide_inventory)):
         for raw in inventory.sources:

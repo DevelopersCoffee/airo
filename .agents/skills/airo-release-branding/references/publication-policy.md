@@ -58,3 +58,18 @@ Higher-priority sources override lower-priority sources.
   account details.
 - Label visual concepts and private previews so they cannot be mistaken for a
   shipped screen.
+
+## Third-party live demos
+
+- Require explicit maintainer approval for the named source and channel.
+- Connect only after a user gesture. Do not autoplay or preload manifests,
+  media, advertising, or tracking endpoints.
+- Identify the channel, public listing, external host boundary, possible ads,
+  regional restrictions, and availability risk before playback.
+- Do not proxy, copy, cache, repackage, or rebroadcast third-party media.
+- Keep the application boundary explicit: a website sample does not mean the
+  Airo TV app bundles or provides channels.
+- Provide accessible loading, playing, unsupported, unavailable, and fatal
+  error states, and destroy the session when the visitor leaves the page.
+- Revalidate source availability, browser CORS behavior, and disclosure copy
+  during every release-branding refresh.

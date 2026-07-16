@@ -35,16 +35,20 @@ into shipped-product claims.
      issue links.
 7. Use real or sanitized Airo screenshots. Remove private URLs, credentials,
    third-party broadcast frames, unlicensed logos, and personal data.
-8. Update device tutorials only for behavior supported by the claim state.
-9. Run the deterministic audit:
+8. For an approved live demo, require an explicit user gesture before any
+   manifest request, identify the third-party source and network/privacy
+   boundary, provide unavailable and unsupported states, and destroy playback
+   on page exit. Never proxy, cache, rebroadcast, or silently preload it.
+9. Update device tutorials only for behavior supported by the claim state.
+10. Run the deterministic audit:
 
    ```bash
    python3 .agents/skills/airo-release-branding/scripts/audit_public_page.py
    ```
 
-10. Serve `docs/`, test keyboard navigation and responsive layouts, and capture
+11. Serve `docs/`, test keyboard navigation and responsive layouts, and capture
     evidence at `1920x1080`, `1280x720`, `1024x576`, and `390x844`.
-11. Report which claims changed, which remained planned, and which private
+12. Report which claims changed, which remained planned, and which private
     findings were withheld. Do not publish, tag, or deploy unless the user
     explicitly requests it.
 
@@ -52,4 +56,5 @@ into shipped-product claims.
 
 Stop publication when the release tag is stale, device status conflicts with
 the matrices, a private capability lacks approval, a screenshot has unclear
-rights, or the page audit fails.
+rights, a live demo preloads or lacks source disclosure, or the page audit
+fails.
