@@ -160,6 +160,26 @@ class FakeAiroPlaybackEngine implements AiroPlaybackEngine {
   Future<AiroPlaybackDiagnostics> diagnostics() async => _diagnostics;
 
   @override
+  Future<AiroPlaybackState> enterPictureInPicture() async {
+    return _fail(
+      AiroPlaybackError(
+        code: AiroPlaybackErrorCode.unsupportedOperation,
+        operation: 'enterPictureInPicture',
+      ),
+    );
+  }
+
+  @override
+  Future<AiroPlaybackState> exitPictureInPicture() async {
+    return _fail(
+      AiroPlaybackError(
+        code: AiroPlaybackErrorCode.unsupportedOperation,
+        operation: 'exitPictureInPicture',
+      ),
+    );
+  }
+
+  @override
   Future<void> dispose() async {
     await _controller.close();
   }

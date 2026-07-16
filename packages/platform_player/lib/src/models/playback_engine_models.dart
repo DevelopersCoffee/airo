@@ -59,6 +59,17 @@ enum AiroPlaybackTrackKind {
   final String stableId;
 }
 
+enum AiroPlaybackViewFit {
+  contain('contain'),
+  cover('cover'),
+  fill('fill'),
+  stretch('stretch');
+
+  const AiroPlaybackViewFit(this.stableId);
+
+  final String stableId;
+}
+
 enum AiroPlaybackSourceHandleRejectionCode {
   empty('empty'),
   urlValue('url_value'),
@@ -137,15 +148,40 @@ class AiroPlaybackSourceHandle extends Equatable {
   List<Object?> get props => [value];
 }
 
+class AiroPlaybackExternalSubtitle extends Equatable {
+  const AiroPlaybackExternalSubtitle({
+    required this.handle,
+    this.languageCode,
+    this.label,
+  });
+
+  final AiroPlaybackSourceHandle handle;
+  final String? languageCode;
+  final String? label;
+
+  @override
+  String toString() {
+    return 'AiroPlaybackExternalSubtitle('
+        'languageCode: $languageCode, '
+        'label: $label, '
+        'handle: redacted'
+        ')';
+  }
+
+  @override
+  List<Object?> get props => [handle, languageCode, label];
+}
+
 class AiroMediaOpenRequest extends Equatable {
-  const AiroMediaOpenRequest({
+  AiroMediaOpenRequest({
     required this.requestId,
     required this.sourceHandle,
     required this.mediaKind,
     this.startPosition = Duration.zero,
     this.preferredQualityId,
+    List<AiroPlaybackExternalSubtitle> externalSubtitles = const [],
     this.schemaVersion = kAiroPlaybackEngineSchemaVersion,
-  });
+  }) : externalSubtitles = List.unmodifiable(externalSubtitles);
 
   final String schemaVersion;
   final String requestId;
@@ -153,6 +189,7 @@ class AiroMediaOpenRequest extends Equatable {
   final AiroPlaybackMediaKind mediaKind;
   final Duration startPosition;
   final String? preferredQualityId;
+  final List<AiroPlaybackExternalSubtitle> externalSubtitles;
 
   @override
   String toString() {
@@ -161,6 +198,7 @@ class AiroMediaOpenRequest extends Equatable {
         'mediaKind: ${mediaKind.stableId}, '
         'startPosition: $startPosition, '
         'preferredQualityId: $preferredQualityId, '
+        'externalSubtitleCount: ${externalSubtitles.length}, '
         'sourceHandle: redacted'
         ')';
   }
@@ -173,6 +211,7 @@ class AiroMediaOpenRequest extends Equatable {
     mediaKind,
     startPosition,
     preferredQualityId,
+    externalSubtitles,
   ];
 }
 

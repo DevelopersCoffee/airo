@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:platform_media/platform_media.dart';
+import 'package:platform_player/platform_player.dart';
 
 void main() {
   group('AiroMediaCapabilityPolicy', () {
@@ -460,5 +461,37 @@ void main() {
         expect(result.selectedDecoderKind, AiroMediaDecoderKind.hardware);
       },
     );
+  });
+
+  group('AiroPictureInPictureCapability', () {
+    const table = <(AiroPlaybackPlatform, AiroPlaybackBackendKind), bool>{
+      (AiroPlaybackPlatform.androidMobile, AiroPlaybackBackendKind.videoPlayer):
+          true,
+      (AiroPlaybackPlatform.ios, AiroPlaybackBackendKind.videoPlayer): true,
+      (AiroPlaybackPlatform.macos, AiroPlaybackBackendKind.videoPlayer): true,
+      (AiroPlaybackPlatform.web, AiroPlaybackBackendKind.videoPlayer): true,
+      (AiroPlaybackPlatform.androidTv, AiroPlaybackBackendKind.videoPlayer):
+          false,
+      (AiroPlaybackPlatform.windows, AiroPlaybackBackendKind.mpv): false,
+      (AiroPlaybackPlatform.linux, AiroPlaybackBackendKind.mpv): false,
+      (AiroPlaybackPlatform.unknown, AiroPlaybackBackendKind.unavailable):
+          false,
+    };
+
+    for (final entry in table.entries) {
+      final (platform, engineKind) = entry.key;
+      test(
+        '${platform.stableId} + ${engineKind.stableId} -> ${entry.value}',
+        () {
+          expect(
+            AiroPictureInPictureCapability.supports(
+              platform: platform,
+              engineKind: engineKind,
+            ),
+            entry.value,
+          );
+        },
+      );
+    }
   });
 }

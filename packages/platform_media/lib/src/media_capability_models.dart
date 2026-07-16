@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:platform_player/platform_player.dart';
+
 const String kAiroMediaCapabilitySchemaVersion = '1.0.0';
 
 enum AiroMediaContainer {
@@ -782,6 +784,25 @@ class AiroNoOpMediaCapabilityDetector implements AiroMediaCapabilityDetector {
       ),
       requirement: requirement,
     );
+  }
+}
+
+class AiroPictureInPictureCapability {
+  const AiroPictureInPictureCapability._();
+
+  static const Set<AiroPlaybackPlatform> _pictureInPicturePlatforms = {
+    AiroPlaybackPlatform.androidMobile,
+    AiroPlaybackPlatform.ios,
+    AiroPlaybackPlatform.macos,
+    AiroPlaybackPlatform.web,
+  };
+
+  static bool supports({
+    required AiroPlaybackPlatform platform,
+    required AiroPlaybackBackendKind engineKind,
+  }) {
+    return engineKind == AiroPlaybackBackendKind.videoPlayer &&
+        _pictureInPicturePlatforms.contains(platform);
   }
 }
 

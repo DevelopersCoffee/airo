@@ -150,5 +150,94 @@ void main() {
       expect(state.toString(), isNot(contains('opaque-source-ref')));
       expect(mediaRequest.toString(), contains('sourceHandle: redacted'));
     });
+
+    test(
+      'fake engine returns unsupportedOperation for picture-in-picture',
+      () async {
+        final engine = FakeAiroPlaybackEngine();
+        await engine.open(request());
+
+        final enterState = await engine.enterPictureInPicture();
+        expect(
+          enterState.error?.code,
+          AiroPlaybackErrorCode.unsupportedOperation,
+        );
+
+        final exitState = await engine.exitPictureInPicture();
+        expect(
+          exitState.error?.code,
+          AiroPlaybackErrorCode.unsupportedOperation,
+        );
+        await engine.dispose();
+      },
+    );
+
+    test(
+      'unavailable engine returns backendUnavailable for picture-in-picture',
+      () async {
+        final engine = UnavailableAiroPlaybackEngine();
+
+        final enterState = await engine.enterPictureInPicture();
+        expect(enterState.error?.code, AiroPlaybackErrorCode.backendUnavailable);
+        expect(enterState.error?.operation, 'enterPictureInPicture');
+
+        final exitState = await engine.exitPictureInPicture();
+        expect(exitState.error?.code, AiroPlaybackErrorCode.backendUnavailable);
+        expect(exitState.error?.operation, 'exitPictureInPicture');
+        await engine.dispose();
+      },
+    );
+
+    test('AiroPlaybackViewFit exposes stable ids for all values', () {
+      const expected = {
+        AiroPlaybackViewFit.contain: 'contain',
+        AiroPlaybackViewFit.cover: 'cover',
+        AiroPlaybackViewFit.fill: 'fill',
+        AiroPlaybackViewFit.stretch: 'stretch',
+      };
+      expect(
+        {for (final v in AiroPlaybackViewFit.values) v: v.stableId},
+        expected,
+      );
+    });
+
+    test(
+      'AiroMediaOpenRequest defaults to empty external subtitles',
+      () {
+        final mediaRequest = request();
+        expect(mediaRequest.externalSubtitles, isEmpty);
+      },
+    );
+
+    test(
+      'AiroMediaOpenRequest accepts optional external subtitle handles',
+      () {
+        final mediaRequest = AiroMediaOpenRequest(
+          requestId: 'open-2',
+          sourceHandle: AiroPlaybackSourceHandle.redacted('source-handle-1'),
+          mediaKind: AiroPlaybackMediaKind.hls,
+          externalSubtitles: [
+            AiroPlaybackExternalSubtitle(
+              handle: AiroPlaybackSourceHandle.redacted('sub-handle-en'),
+              languageCode: 'en',
+              label: 'English',
+            ),
+          ],
+        );
+
+        expect(mediaRequest.externalSubtitles, hasLength(1));
+        expect(
+          mediaRequest.externalSubtitles.single.languageCode,
+          'en',
+        );
+      },
+    );
+
+    test('external subtitle handle rejects raw urls like source handles', () {
+      expect(
+        AiroPlaybackSourceHandle.validate('https://example.com/en.vtt'),
+        AiroPlaybackSourceHandleRejectionCode.urlValue,
+      );
+    });
   });
 }

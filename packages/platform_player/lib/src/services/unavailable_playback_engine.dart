@@ -78,6 +78,16 @@ class UnavailableAiroPlaybackEngine implements AiroPlaybackEngine {
   }
 
   @override
+  Future<AiroPlaybackState> enterPictureInPicture() async {
+    return _unsupported('enterPictureInPicture');
+  }
+
+  @override
+  Future<AiroPlaybackState> exitPictureInPicture() async {
+    return _unsupported('exitPictureInPicture');
+  }
+
+  @override
   Future<void> dispose() async {
     await _controller.close();
   }
