@@ -17,6 +17,8 @@ export 'src/theme/bedtime_theme.dart';
 // Widgets
 export 'src/widgets/airo_badge.dart';
 export 'src/widgets/airo_channel_card.dart';
+export 'src/widgets/airo_rail.dart';
+export 'src/widgets/airo_rail_card.dart';
 export 'src/widgets/airo_text_field.dart';
 export 'src/widgets/app_button.dart';
 export 'src/widgets/app_card.dart';
