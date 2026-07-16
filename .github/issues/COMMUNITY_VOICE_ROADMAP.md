@@ -10,6 +10,8 @@ This roadmap converts community requests into a v2 milestone plan that fits the 
 
 **Do not adopt for v2:** Docker/Home Server mode. It is a different product surface with server security, packaging, support, and release obligations.
 
+**2026-07-16 update:** A competitive gap analysis against AerioTV (a broader native Android IPTV client — Dispatcharr/Xtream/M3U, full guide, VOD, DVR, multiview, Google Drive sync) added CV-018 through CV-020. Two items (Xtream adapter, local VOD listing) fit the BYOC model and were adopted bounded; multiview was deferred pending resource guardrails. Everything requiring an account, cloud sync, or background recording — the majority of AerioTV's claimed surface — was left out, consistent with this roadmap's existing local-first decision, not overlooked.
+
 ## Current V2 Scope
 
 **Primary owner agent:** Media Agent
@@ -51,6 +53,9 @@ This roadmap converts community requests into a v2 milestone plan that fits the 
 | CV-015 | Program guide timeline | Adopt bounded | Build a windowed, virtualized EPG guide using existing Rust XMLTV/current-next boundaries. No Xtream/Stalker, server sync, custom RenderObject requirement, or AI guide queries. |
 | CV-016 | Playback track selection and VOD timeline | Adopt bounded | Add audio/subtitle track controls, VOD duration/seek behavior, and single-session connection lifecycle checks. No transcoding or native playback rewrite. |
 | CV-017 | Smart playlists and canonical channels | Adopt bounded | Let users collapse huge BYOC playlists into local rule-based packages and canonical channel aliases. No AI setup, provider marketplace, or cloud migration. |
+| CV-018 | Xtream Codes provider adapter | Adopt bounded | Xtream Codes is still user-supplied URL + credentials against a server the user already has access to — no Airo-hosted account, same BYOC shape as M3U. Add a typed `ContentSource`/adapter contract so M3U and Xtream share one capability model. No Dispatcharr, no Stalker, no provider marketplace. |
+| CV-019 | Local VOD listing over BYOC sources | Adopt bounded | Parse VOD entries already present in user-supplied M3U/Xtream sources and list them with local continue-watching from existing history. No TMDB/provider metadata enrichment, no cloud poster cache — that reintroduces an external account/API dependency this milestone explicitly avoids. |
+| CV-020 | Local multiview | Defer | Multiple simultaneous local tiles is BYOC-compatible in principle, but needs CV-001's diagnostics/resource guardrails proven first so N streams don't silently degrade playback. Revisit after CV-001 and CV-016 ship. |
 
 ## Adopted Issue Order
 
@@ -86,6 +91,14 @@ This roadmap converts community requests into a v2 milestone plan that fits the 
    - Reason: Reddit product feedback shows users mostly want less clutter and a consistent cable-TV experience over a huge, unreliable provider feed.
    - Outcome: Users can build a small local "My TV" view using deterministic filters and aliases without editing the raw playlist.
 
+9. **CV-018: Xtream Codes Provider Adapter**
+   - Reason: Xtream comparison analysis (AerioTV) shows this is the single largest capability gap that still fits the BYOC model — it's user-supplied credentials against a server the user already controls access to, not an Airo-hosted account.
+   - Outcome: M3U and Xtream sources share one `ContentSource` capability contract; no new account, sync, or marketplace surface.
+
+10. **CV-019: Local VOD Listing**
+    - Reason: BYOC sources (M3U/Xtream) already carry VOD entries; listing them locally with existing history-based continue-watching closes a real gap without adding a cloud metadata dependency.
+    - Outcome: Users browse VOD from their own source without Airo fetching or caching third-party metadata.
+
 ## Explicit Non-Goals For Current V2
 
 - No bundled, default, first-party, or reviewer-specific IPTV sources.
@@ -94,11 +107,16 @@ This roadmap converts community requests into a v2 milestone plan that fits the 
 - No background DVR, SMB/NFS recording, broad storage permission, or recording-rights workflow.
 - No public plugin marketplace or arbitrary community code execution.
 - No YouTube, Plex, Jellyfin, DLNA, podcast, or external provider aggregation.
-- No Xtream/Stalker provider implementation in the current program-guide slice.
+- No Stalker provider implementation. Xtream is scoped separately under CV-018; still no Xtream/Stalker work inside the program-guide slice itself.
 - No online subtitle provider integration.
 - No AI/SLM program-guide query execution.
 - No AI/SLM smart-playlist rule generation in the current slice.
 - No provider marketplace, provider scoring marketplace, multi-provider automatic failover, or automatic provider replacement workflow.
+- No Dispatcharr or any server-hosted-account provider model — that reintroduces an account/identity surface this milestone stays local-first to avoid.
+- No DVR (local or server-side), recording scheduler, or comskip-style processing — see CV-004.
+- No Google Drive, iCloud, or any cloud AppData sync for configs, favorites, watch progress, or reminders — see CV-002.
+- No third-party VOD metadata (TMDB or otherwise) — see CV-019; VOD listing stays limited to what the user's own source already provides.
+- No multiview product surface until CV-020's prerequisites (CV-001, CV-016) ship.
 - No server-side transcoding, hardware encoder selection, or FFmpeg pipeline work in the current playback-control slice.
 - No promise to bypass provider, ISP, CORS, DRM, paywall, or geo restrictions.
 - No full playback-engine rewrite, custom GPU texture pipeline, or required custom EPG RenderObject in this milestone.
