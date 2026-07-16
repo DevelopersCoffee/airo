@@ -86,4 +86,24 @@ abstract final class AppColors {
   static const Color bedtimeSecondary = Color(0xFFFFD699);
   static const Color bedtimeOnPrimary = Color(0xFF000000);
   static const Color bedtimeError = Color(0xFFCF6679);
+
+  // Airo TV colors (from the Airo TV.dc.html design handoff — green accent
+  // on near-black blue-gray, converted from the mockup's OKLCH values)
+  static const Color airoTvBackground = Color(0xFF010204);
+  static const Color airoTvSurface = Color(0xFF06080C);
+  static const Color airoTvSurfaceHigh = Color(0xFF0E1115);
+  static const Color airoTvChrome = Color(0xFF06080C);
+  static const Color airoTvBorder = Color(0xFF1C2128);
+  static const Color airoTvPrimary = Color(0xFF11A22F);
+  static const Color airoTvOnPrimary = Color(0xFF010204);
+  static const Color airoTvPrimaryContainer = Color(0xFF002203);
+  static const Color airoTvSecondary = Color(0xFFE1A948);
+  static const Color airoTvOnSecondary = Color(0xFF010204);
+  static const Color airoTvText = Color(0xFFE8EBF1);
+  static const Color airoTvMutedText = Color(0xFF646970);
+  static const Color airoTvOutline = Color(0xFF1C2128);
+  static const Color airoTvGridLine = Color(0xFF1C2128);
+  static const Color airoTvGlow = Color(0x6611A22F);
+  static const Color airoTvLive = Color(0xFFD74745);
+  static const Color airoTvError = Color(0xFFD74745);
 }

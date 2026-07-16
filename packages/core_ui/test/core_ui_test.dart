@@ -44,9 +44,11 @@ void main() {
         AppThemeId.cyber,
         AppThemeId.classic,
         AppThemeId.bedtime,
+        AppThemeId.airoTv,
       ]);
       expect(AppTheme.byId(AppThemeId.classic).name, 'Airo Classic');
       expect(AppTheme.byId(AppThemeId.bedtime).name, 'Bedtime');
+      expect(AppTheme.byId(AppThemeId.airoTv).name, 'Airo TV');
     });
 
     test('cyber theme exposes Hermes-style editorial tokens', () {
