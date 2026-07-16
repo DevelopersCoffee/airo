@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/legacy.dart';
 import 'package:video_player/video_player.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 import '../../application/providers/iptv_providers.dart';
+import '../../application/providers/video_aspect_ratio_provider.dart';
 import "package:platform_channels/platform_channels.dart";
 import "package:platform_player/platform_player.dart";
 import "package:platform_media/platform_media.dart";
@@ -181,9 +182,11 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
   Widget build(BuildContext context) {
     final streamingService = ref.watch(iptvStreamingServiceProvider);
     final streamingState = ref.watch(streamingStateProvider);
+    final aspectRatioFit = ref.watch(videoAspectRatioProvider);
 
     return streamingState.when(
-      data: (state) => _buildPlayer(context, streamingService, state),
+      data: (state) =>
+          _buildPlayer(context, streamingService, state, aspectRatioFit),
       loading: () => _buildLoading(),
       error: (err, _) => _buildError(err.toString()),
     );
@@ -193,6 +196,7 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
     BuildContext context,
     VideoPlayerStreamingService service,
     StreamingState state,
+    AiroPlaybackViewFit aspectRatioFit,
   ) {
     // Update wakelock based on current playback state
     // This is called on every build when state changes
@@ -214,9 +218,15 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
             children: [
               // Video display
               if (controller != null && controller.value.isInitialized)
-                AspectRatio(
-                  aspectRatio: controller.value.aspectRatio,
-                  child: VideoPlayer(controller),
+                SizedBox.expand(
+                  child: FittedBox(
+                    fit: _boxFitFor(aspectRatioFit),
+                    child: SizedBox(
+                      width: controller.value.size.width,
+                      height: controller.value.size.height,
+                      child: VideoPlayer(controller),
+                    ),
+                  ),
                 )
               else if (state.playbackState == PlaybackState.loading)
                 _buildLoading()
@@ -571,6 +581,18 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                         onPressed: () => service.toggleMute(),
                       ),
                       const Spacer(),
+                      // Aspect ratio toggle
+                      IconButton(
+                        key: const ValueKey('iptv-player-aspect-ratio-button'),
+                        icon: const Icon(
+                          Icons.aspect_ratio,
+                          color: Colors.white,
+                        ),
+                        tooltip: 'Aspect Ratio',
+                        onPressed: () => ref
+                            .read(videoAspectRatioProvider.notifier)
+                            .cycleToNext(),
+                      ),
                       // Cinema mode toggle
                       IconButton(
                         icon: Icon(
@@ -738,5 +760,22 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
         style: const TextStyle(color: Colors.white, fontSize: 12),
       ),
     );
+  }
+
+  /// Maps the view-layer [AiroPlaybackViewFit] contract to a concrete
+  /// [BoxFit]. `fill` keeps the full frame (letterboxed on one axis only,
+  /// matching the common TV "fill width" mode); `stretch` is Flutter's
+  /// [BoxFit.fill] — a full non-uniform stretch to the edges.
+  BoxFit _boxFitFor(AiroPlaybackViewFit fit) {
+    switch (fit) {
+      case AiroPlaybackViewFit.contain:
+        return BoxFit.contain;
+      case AiroPlaybackViewFit.cover:
+        return BoxFit.cover;
+      case AiroPlaybackViewFit.fill:
+        return BoxFit.fitWidth;
+      case AiroPlaybackViewFit.stretch:
+        return BoxFit.fill;
+    }
   }
 }

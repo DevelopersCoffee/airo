@@ -19,6 +19,7 @@ import '../../../settings/application/ai_preferences_settings.dart';
 import '../../../settings/application/ai_model_management.dart';
 import '../../../settings/presentation/screens/ai_models_screen.dart';
 import '../../../settings/presentation/screens/audio_settings_screen.dart';
+import '../../../settings/presentation/screens/playback_settings_screen.dart';
 
 /// User profile screen
 class ProfileScreen extends ConsumerWidget {
@@ -145,6 +146,21 @@ class ProfileScreen extends ConsumerWidget {
                 Navigator.of(context).push(
                   MaterialPageRoute(
                     builder: (context) => const AudioSettingsScreen(),
+                  ),
+                );
+              },
+            ),
+
+            // Playback Settings (Aspect Ratio)
+            ListTile(
+              leading: const Icon(Icons.aspect_ratio),
+              title: const Text('Playback Settings'),
+              subtitle: const Text('Configure video aspect ratio'),
+              trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => const PlaybackSettingsScreen(),
                   ),
                 );
               },
