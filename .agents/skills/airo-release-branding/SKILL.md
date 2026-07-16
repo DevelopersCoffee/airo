@@ -42,18 +42,32 @@ into shipped-product claims.
    deadline before showing manual retry. Never proxy, cache, rebroadcast, or
    silently preload it.
 9. Update device tutorials only for behavior supported by the claim state.
-10. Run the deterministic audit:
+10. Preserve the professional visual contract:
+    - use one shared spacing and typography scale across product sections;
+    - keep screenshots in the same product journey at equal 16:9 prominence,
+      including when their text/media order alternates;
+    - keep headings subordinate to the Airo hero and avoid repeating hero-scale
+      type throughout the page;
+    - keep controls and navigation targets at least 44 pixels high;
+    - prefer aligned ledgers and timelines over decorative or nested cards;
+    - verify the live demo, device matrix, guides, Community Voice, roadmap,
+      Airo hierarchy, and trust sections share the same grid and border system.
+11. Run the deterministic audit:
 
    ```bash
    python3 .agents/skills/airo-release-branding/scripts/audit_public_page.py
    ```
 
-11. Serve `docs/`, test keyboard navigation and responsive layouts, and capture
+12. Serve `docs/`, test keyboard navigation and responsive layouts, and capture
     evidence at `1920x1080`, `1280x720`, `1024x576`, and `390x844`.
-12. For scroll effects, verify one-time reveals, progress accuracy, no layout
+13. Compare full-page and key-section screenshots against the previous public
+    version. Block publication if alternating media changes screenshot size,
+    text overlaps, section spacing becomes accidental, or the page gains
+    horizontal overflow.
+14. For scroll effects, verify one-time reveals, progress accuracy, no layout
     shift, visible fallback without IntersectionObserver, and fully static
     content under `prefers-reduced-motion: reduce`.
-13. Report which claims changed, which remained planned, and which private
+15. Report which claims changed, which remained planned, and which private
     findings were withheld. Do not publish, tag, or deploy unless the user
     explicitly requests it.
 
@@ -62,4 +76,6 @@ into shipped-product claims.
 Stop publication when the release tag is stale, device status conflicts with
 the matrices, a private capability lacks approval, a screenshot has unclear
 rights, a live demo preloads or lacks source disclosure, or the page audit
-fails.
+fails. Also stop when same-journey screenshots render at inconsistent sizes,
+interactive targets fall below 44 pixels, or required responsive viewports
+show overlap or horizontal overflow.

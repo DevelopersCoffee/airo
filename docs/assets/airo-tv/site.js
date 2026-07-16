@@ -28,6 +28,39 @@
     });
   }
 
+  var sectionLinks = document.querySelectorAll('.site-nav > a[href^="#"]:not(.button)');
+  var sectionLinkMap = new Map();
+
+  sectionLinks.forEach(function (link) {
+    var section = document.querySelector(link.getAttribute("href"));
+    if (section) sectionLinkMap.set(section, link);
+  });
+
+  if (typeof window.IntersectionObserver === "function" && sectionLinkMap.size) {
+    var sectionObserver = new IntersectionObserver(
+      function (entries) {
+        var current = entries
+          .filter(function (entry) {
+            return entry.isIntersecting;
+          })
+          .sort(function (left, right) {
+            return right.intersectionRatio - left.intersectionRatio;
+          })[0];
+
+        if (!current) return;
+        sectionLinks.forEach(function (link) {
+          link.removeAttribute("aria-current");
+        });
+        sectionLinkMap.get(current.target).setAttribute("aria-current", "location");
+      },
+      { rootMargin: "-18% 0px -62% 0px", threshold: [0, 0.1, 0.25] },
+    );
+
+    sectionLinkMap.forEach(function (_link, section) {
+      sectionObserver.observe(section);
+    });
+  }
+
   var filters = document.querySelectorAll("[data-guide-filter]");
   var guides = document.querySelectorAll("[data-guide-device]");
 

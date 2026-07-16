@@ -183,6 +183,18 @@ def main() -> int:
         if snippet not in site_styles_text:
             errors.append(f"missing {label}: {snippet}")
 
+    required_visual_styles = {
+        "--section-space": "shared section rhythm token",
+        "text-wrap: balance": "balanced heading treatment",
+        ".screen-step:nth-child(even)": "alternating media proportion rule",
+        'aria-current="location"': "active section navigation treatment",
+        "min-height: 44px": "minimum interactive target rule",
+    }
+    visual_contract_text = site_styles_text + site_script_text
+    for snippet, label in required_visual_styles.items():
+        if snippet not in visual_contract_text:
+            errors.append(f"missing {label}: {snippet}")
+
     forbidden = {
         "github.com/DevelopersCoffee/airo-pro": "private repository URL",
         "packages_pro/": "private package path",
