@@ -99,7 +99,7 @@ layout: null
       data-live-autoplay-muted
     >
       <video
-        class="channel-showcase-video"
+        class="live-sample-video channel-showcase-video"
         controls
         muted
         playsinline
@@ -225,42 +225,36 @@ layout: null
       <div class="container">
         <div class="section-intro">
           <div>
-            <p class="eyebrow">Try Airo TV now</p>
-            <h2 id="live-demo-title">A real channel. A real playback path.</h2>
+            <p class="eyebrow">Second live sample</p>
+            <h2 id="live-demo-title">Same player. Another stream.</h2>
           </div>
-          <p>Press Play to connect directly to the public YRF Music HLS stream currently listed by iptv-org. This website demo is separate from the Airo TV app, which includes no channels.</p>
+          <p>YRF Music starts only when you press Play. The Airo TV app remains channel-free.</p>
         </div>
 
         <div class="live-demo-layout">
           <div class="live-demo-stage">
             <div class="live-demo-player">
-              <video class="live-demo-video" controls playsinline preload="none" poster="./store-assets/airo-tv/02-tv-now-playing.png" data-live-demo-video aria-label="YRF Music live sample player" aria-describedby="live-demo-disclosure"></video>
+              <video class="live-sample-video live-demo-video" controls playsinline preload="none" poster="./store-assets/airo-tv/02-tv-now-playing.png" data-live-demo-video aria-label="YRF Music live sample player"></video>
               <div class="live-demo-start" data-live-demo-start>
-                <span class="status status-available">Public live sample</span>
                 <h3>YRF Music</h3>
                 <p>Nothing loads until you press Play.</p>
                 <button class="button button-primary" type="button" data-live-demo-button data-live-source="https://cdn-uw2-prod.tsv2.amagi.tv/linear/amg01412-xiaomiasia-yrfmusic-xiaomi/playlist.m3u8">
                   <i data-lucide="play" aria-hidden="true"></i> Play YRF Music sample
                 </button>
               </div>
+              <p class="live-demo-status live-demo-player-status" role="status" aria-live="polite" data-live-demo-status>Ready. No stream connection has been made.</p>
             </div>
-            <p class="live-demo-status" role="status" aria-live="polite" data-live-demo-status>Ready. No stream connection has been made.</p>
-          </div>
-
-          <div class="live-demo-details" id="live-demo-disclosure">
-            <span class="status status-qualifying">Third-party stream</span>
-            <h3>What happens when you press Play</h3>
-            <p>Your browser connects directly to the stream operator. The operator may receive normal network information, serve advertising, apply regional restrictions, or stop the stream without notice.</p>
-            <ul>
-              <li>Airo does not host, proxy, copy, cache, or rebroadcast this channel.</li>
-              <li>The sample can be unavailable even when the Airo website is working.</li>
-              <li>Leaving this page stops and destroys the browser stream session.</li>
-            </ul>
-            <div class="live-demo-links">
-              <a class="text-link" href="https://github.com/iptv-org/iptv">Source listing: iptv-org <i data-lucide="arrow-up-right" aria-hidden="true"></i></a>
-              <a class="text-link" href="./airo-tv/guides/#playlist">Use your own playlist <i data-lucide="arrow-right" aria-hidden="true"></i></a>
-              <a class="text-link" href="./assets/airo-tv/third-party/hls.js-1.6.16/LICENSE.txt">HLS.js Apache license <i data-lucide="file-text" aria-hidden="true"></i></a>
-            </div>
+            <details class="channel-showcase-details live-demo-disclosure">
+              <summary><i data-lucide="info" aria-hidden="true"></i> Third-party stream details</summary>
+              <p id="live-demo-disclosure">
+                YRF Music is a public HLS listing from
+                <a href="https://github.com/iptv-org/iptv">iptv-org</a>. After Play, your browser connects directly to the operator, which may serve advertising, apply regional limits, or change availability. Airo does not host, proxy, cache, copy, or rebroadcast the channel.
+              </p>
+              <div class="live-demo-links">
+                <a class="text-link" href="./airo-tv/guides/#playlist">Use your own playlist <i data-lucide="arrow-right" aria-hidden="true"></i></a>
+                <a class="text-link" href="./assets/airo-tv/third-party/hls.js-1.6.16/LICENSE.txt">HLS.js Apache license <i data-lucide="file-text" aria-hidden="true"></i></a>
+              </div>
+            </details>
           </div>
         </div>
       </div>

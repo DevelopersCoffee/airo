@@ -22,6 +22,7 @@ class Inventory(HTMLParser):
         self.live_demo_roots = 0
         self.muted_autoplay_live_demo_roots = 0
         self.live_demo_videos = 0
+        self.live_sample_videos = 0
         self.muted_live_demo_videos = 0
         self.preloading_live_demo_videos = 0
 
@@ -41,6 +42,8 @@ class Inventory(HTMLParser):
             self.autoplay_videos += 1
         if tag == "video" and "data-live-demo-video" in values:
             self.live_demo_videos += 1
+            if "live-sample-video" in (values.get("class") or "").split():
+                self.live_sample_videos += 1
             if "muted" in values:
                 self.muted_live_demo_videos += 1
             if values.get("preload") != "none":
@@ -168,6 +171,8 @@ def main() -> int:
         "Muted preview starts on screen.": "visibility-gated preview status",
         ">Unmute</span>": "explicit audio control",
         "Third-party stream details": "compact stream disclosure",
+        "live-demo-player-status": "secondary player overlay status",
+        "live-demo-disclosure": "secondary compact disclosure",
         "HLS.js Apache license": "player dependency attribution",
     }
     for snippet, label in required_snippets.items():
@@ -219,6 +224,9 @@ def main() -> int:
         ".screen-step:nth-child(even)": "alternating media proportion rule",
         'aria-current="location"': "active section navigation treatment",
         "min-height: 44px": "minimum interactive target rule",
+        ".live-sample-video": "shared live media geometry",
+        ".live-demo-player-status": "secondary overlay status alignment",
+        "aspect-ratio: 16 / 9": "secondary live media ratio",
     }
     visual_contract_text = site_styles_text + site_script_text
     for snippet, label in required_visual_styles.items():
@@ -249,6 +257,8 @@ def main() -> int:
         errors.append("public page must expose exactly two live demo roots")
     if index_inventory.live_demo_videos != 2:
         errors.append("public page must expose exactly two live demo videos")
+    if index_inventory.live_sample_videos != 2:
+        errors.append("both live demo videos must use the shared media geometry")
     if index_inventory.muted_autoplay_live_demo_roots != 1:
         errors.append("exactly one immersive showcase must declare muted autoplay")
     if index_inventory.muted_live_demo_videos != 1:

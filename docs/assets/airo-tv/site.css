@@ -591,10 +591,20 @@ button,
   color: var(--muted);
 }
 
+.live-sample-video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: #000;
+  object-fit: cover;
+  object-position: center;
+}
+
 .channel-showcase {
   position: relative;
   display: flex;
   align-items: center;
+  height: min(100svh, 56.25vw);
   min-height: min(780px, 88svh);
   overflow: hidden;
   border-bottom: 1px solid var(--border);
@@ -619,12 +629,7 @@ button,
   position: absolute;
   inset: 0;
   z-index: 0;
-  display: block;
-  width: 100%;
-  height: 100%;
-  background: #000;
   opacity: 0.52;
-  object-fit: cover;
   object-position: 62% center;
   transform: scale(1.015);
   transition: opacity 420ms ease, transform 700ms ease;
@@ -636,6 +641,7 @@ button,
   display: flex;
   flex-direction: column;
   justify-content: space-between;
+  height: 100%;
   min-height: min(780px, 88svh);
   padding: 74px 0 82px;
   pointer-events: none;
@@ -809,14 +815,12 @@ button,
 }
 
 .live-demo-layout {
-  display: grid;
-  grid-template-columns: minmax(520px, 1.42fr) minmax(300px, 0.58fr);
-  gap: 52px;
-  align-items: start;
+  width: 100%;
 }
 
 .live-demo-stage {
   min-width: 0;
+  width: 100%;
 }
 
 .live-demo-player {
@@ -824,17 +828,7 @@ button,
   overflow: hidden;
   aspect-ratio: 16 / 9;
   border: 1px solid var(--border);
-  border-radius: 8px;
   background: #020506;
-  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.28);
-}
-
-.live-demo-video {
-  display: block;
-  width: 100%;
-  height: 100%;
-  background: #000;
-  object-fit: contain;
 }
 
 .live-demo-start {
@@ -844,7 +838,8 @@ button,
   flex-direction: column;
   align-items: flex-start;
   justify-content: center;
-  padding: 36px;
+  z-index: 2;
+  padding: clamp(28px, 5vw, 72px);
   background: color-mix(in oklch, var(--bg), transparent 8%);
 }
 
@@ -853,7 +848,7 @@ button,
 }
 
 .live-demo-start h3 {
-  margin: 16px 0 2px;
+  margin: 0 0 2px;
   font-size: 38px;
   line-height: 1.1;
 }
@@ -888,33 +883,27 @@ button,
   color: var(--text);
 }
 
-.live-demo-details {
-  padding-top: 6px;
+.live-demo-player-status {
+  position: absolute;
+  top: clamp(24px, 6.4vw, 82px);
+  right: 0;
+  z-index: 3;
+  max-width: min(420px, calc(100% - 48px));
+  margin: 0;
+  background: color-mix(in oklch, var(--bg), transparent 8%);
 }
 
-.live-demo-details h3 {
-  margin: 18px 0 12px;
-  font-size: 27px;
-  line-height: 1.15;
-}
-
-.live-demo-details p,
-.live-demo-details ul {
-  color: var(--muted);
-}
-
-.live-demo-details ul {
-  padding-left: 20px;
-}
-
-.live-demo-details li + li {
-  margin-top: 8px;
+.live-demo-disclosure {
+  max-width: none;
+  margin-top: 14px;
 }
 
 .live-demo-links {
-  display: grid;
-  gap: 10px;
-  margin-top: 24px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+  margin-top: 10px;
+  padding-left: 18px;
 }
 
 .device-list {
@@ -1522,7 +1511,6 @@ button,
   .proof-grid,
   .section-intro,
   .screen-step,
-  .live-demo-layout,
   .community-grid,
   .pro-shell,
   .roadmap,
@@ -1585,8 +1573,15 @@ button,
     padding-top: 14px;
   }
 
-  .live-demo-layout {
-    gap: 30px;
+  .live-demo-player-status {
+    top: 12px;
+    right: 12px;
+    max-width: calc(100% - 24px);
+  }
+
+  .live-demo-links {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   .device-row {
@@ -1687,7 +1682,12 @@ button,
   }
 
   .live-demo-start h3 {
+    margin-bottom: 16px;
     font-size: 30px;
+  }
+
+  .live-demo-start p {
+    display: none;
   }
 
   .guide-filter {

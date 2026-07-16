@@ -53,6 +53,8 @@ into shipped-product claims.
     - use one shared spacing and typography scale across product sections;
     - keep screenshots in the same product journey at equal 16:9 prominence,
       including when their text/media order alternates;
+    - keep all public live players on one shared 16:9 media geometry with status
+      over the top-right of the media and compact disclosure below or above it;
     - keep headings subordinate to the Airo hero and avoid repeating hero-scale
       type throughout the page;
     - keep controls and navigation targets at least 44 pixels high;
