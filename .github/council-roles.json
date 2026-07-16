@@ -1,0 +1,33 @@
+{
+  "description": "Canonical list of valid Engineering Council owner/reviewer role names. Source: docs/agents/COUNCIL.md (Chiefs, Airo TV domain, other sub-app domains) and docs/agents/AGENT_POLICY.md (remaining super-app-level Framework/Domain/Security/QA/Release roles). Update this file whenever a role is renamed, added, or removed in either doc.",
+  "roles": [
+    "Chief Architect",
+    "Chief Security Officer",
+    "Chief Performance Officer",
+    "Chief QA Officer",
+    "Chief UX Officer",
+    "Chief Documentation Officer",
+    "Chief Open Source Officer",
+    "Chief Release/DevOps Officer",
+    "Chief Cloud Officer",
+    "Product Manager",
+    "Flutter Architect",
+    "Rust Architect",
+    "Playback Architect",
+    "Media Intelligence Architect",
+    "TV Experience Architect",
+    "Platform Architect",
+    "Edge Architect",
+    "Coins / Finance Agent",
+    "AI/Brain Agent",
+    "Meeting Intelligence Agent",
+    "Framework Agent",
+    "Application Agent",
+    "Agent Skills Agent",
+    "Memory Agent",
+    "Routine OS Agent",
+    "Security and Privacy Agent",
+    "QA Automation Agent",
+    "Release and DevEx Agent"
+  ]
+}

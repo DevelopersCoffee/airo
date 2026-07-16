@@ -75,6 +75,12 @@ jobs:
           scripts/test-generate-release-manifest.sh
           scripts/test-generate-release-qualification-report.sh
 
+      - name: Validate Engineering Council module manifests
+        run: |
+          chmod +x scripts/check-module-manifests.py scripts/test-check-module-manifests.sh
+          scripts/test-check-module-manifests.sh
+          scripts/check-module-manifests.py
+
   # ============================================
   # Code Quality (analyze, format) - ~2 minutes
   # ============================================
