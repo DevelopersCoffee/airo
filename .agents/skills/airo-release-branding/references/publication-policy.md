@@ -36,8 +36,10 @@ Higher-priority sources override lower-priority sources.
 
 ## Brand invariants
 
-- Airo is the modular super-app umbrella.
-- Airo TV is the active modular product for the current release line.
+- Airo is the default master experience, root-page identity, and modular
+  super-app umbrella.
+- Airo TV is the first focused product and the active modular product for the
+  current release line.
 - Airo TV Pro is the only advanced TV edition name. It remains `In testing`
   until a public release proves availability.
 - Non-TV capabilities remain part of Airo and do not become separate public
@@ -56,3 +58,32 @@ Higher-priority sources override lower-priority sources.
   account details.
 - Label visual concepts and private previews so they cannot be mistaken for a
   shipped screen.
+
+## Third-party live demos
+
+- Require explicit maintainer approval for the named source and channel.
+- Connect only after a user gesture. Do not autoplay or preload manifests,
+  media, advertising, or tracking endpoints.
+- Identify the channel, public listing, external host boundary, possible ads,
+  regional restrictions, and availability risk before playback.
+- Do not proxy, copy, cache, repackage, or rebroadcast third-party media.
+- Keep the application boundary explicit: a website sample does not mean the
+  Airo TV app bundles or provides channels.
+- Provide accessible loading, playing, unsupported, unavailable, and fatal
+  error states, and destroy the session when the visitor leaves the page.
+- Attempt at most one automatic media or network recovery within a finite
+  deadline, then expose an enabled manual retry instead of looping silently.
+- Revalidate source availability, browser CORS behavior, and disclosure copy
+  during every release-branding refresh.
+
+## Motion and scrolling
+
+- Use scroll motion to preserve orientation and reveal hierarchy, not as
+  decoration that competes with the product.
+- Prefer one-time opacity and transform transitions. Do not apply continuous
+  parallax to screenshots, live video, controls, or readable text.
+- Keep all content visible when JavaScript or IntersectionObserver is missing.
+- Disable non-essential motion and progress animation for
+  `prefers-reduced-motion: reduce` and print output.
+- Scroll effects must not change document dimensions, move focus targets, or
+  become required to understand or operate the page.
