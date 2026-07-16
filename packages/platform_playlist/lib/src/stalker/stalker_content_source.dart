@@ -39,6 +39,13 @@ class StalkerContentSource extends ContentSource {
 /// Resolves each Stalker channel's play URL via `create_link` — Stalker's
 /// `cmd` field from the channel list is a middleware-internal command, not
 /// a directly playable stream URL.
+///
+/// `loadChannels` resolves every channel's `create_link` eagerly and
+/// sequentially, which does not scale to portals with hundreds of channels
+/// and can produce stale URLs if a resolved link's session token expires
+/// before playback. Fine for this issue's scope (no UI consumes this yet),
+/// but whoever wires this into CV-022 should resolve `create_link` lazily
+/// at play time instead of up front here.
 class StalkerContentSourceAdapter {
   StalkerContentSourceAdapter(this._client);
 
