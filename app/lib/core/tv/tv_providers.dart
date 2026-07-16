@@ -1,9 +1,9 @@
+import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import '../platform/device_form_factor.dart';
 import '../providers/platform_providers.dart';
-import 'tv_focus_manager.dart';
 
 /// Provider for TV Focus Manager
 ///
@@ -43,85 +43,6 @@ final tvDimensionsProvider = Provider.family<TvUiDimensions, BuildContext>((
   return isTV ? TvUiDimensions.tv() : TvUiDimensions.mobile();
 });
 
-/// TV-specific UI dimensions
-class TvUiDimensions {
-  /// Minimum touch/click target size
-  final double minTargetSize;
-
-  /// Card padding
-  final double cardPadding;
-
-  /// Grid spacing
-  final double gridSpacing;
-
-  /// Control button size
-  final double controlButtonSize;
-
-  /// Text scale factor for 10ft UI
-  final double textScaleFactor;
-
-  /// Channel card width
-  final double channelCardWidth;
-
-  /// Channel card height
-  final double channelCardHeight;
-
-  /// Focus border width
-  final double focusBorderWidth;
-
-  /// Safe zone padding (for Fire TV)
-  final EdgeInsets safeZone;
-
-  const TvUiDimensions._({
-    required this.minTargetSize,
-    required this.cardPadding,
-    required this.gridSpacing,
-    required this.controlButtonSize,
-    required this.textScaleFactor,
-    required this.channelCardWidth,
-    required this.channelCardHeight,
-    required this.focusBorderWidth,
-    this.safeZone = EdgeInsets.zero,
-  });
-
-  /// TV dimensions (10ft UI) - Android TV
-  factory TvUiDimensions.tv() => const TvUiDimensions._(
-    minTargetSize: 56.0,
-    cardPadding: 16.0,
-    gridSpacing: 24.0,
-    controlButtonSize: 64.0,
-    textScaleFactor: 1.25,
-    channelCardWidth: 200.0,
-    channelCardHeight: 150.0,
-    focusBorderWidth: 3.0,
-  );
-
-  /// Fire TV dimensions (10ft UI with Fire TV safe zones)
-  factory TvUiDimensions.fireTv() => TvUiDimensions._(
-    minTargetSize: 56.0,
-    cardPadding: 16.0,
-    gridSpacing: 24.0,
-    controlButtonSize: 64.0,
-    textScaleFactor: 1.25,
-    channelCardWidth: 200.0,
-    channelCardHeight: 150.0,
-    focusBorderWidth: 3.0,
-    safeZone: DeviceFormFactorDetector.getFireTvSafeZone(),
-  );
-
-  /// Mobile dimensions
-  factory TvUiDimensions.mobile() => const TvUiDimensions._(
-    minTargetSize: 48.0,
-    cardPadding: 12.0,
-    gridSpacing: 16.0,
-    controlButtonSize: 48.0,
-    textScaleFactor: 1.0,
-    channelCardWidth: 140.0,
-    channelCardHeight: 100.0,
-    focusBorderWidth: 2.0,
-  );
-}
-
 /// Provider for current focus section
 final currentFocusSectionProvider = Provider<String?>((ref) {
   final manager = ref.watch(tvFocusManagerProvider);
@@ -156,7 +77,9 @@ final tvDimensionsWithFireTvProvider =
 
       final tvPlatform = await ref.watch(tvPlatformProvider.future);
       if (tvPlatform == TvPlatform.fireTv) {
-        return TvUiDimensions.fireTv();
+        return TvUiDimensions.tv(
+          safeZone: DeviceFormFactorDetector.getFireTvSafeZone(),
+        );
       }
       return TvUiDimensions.tv();
     });

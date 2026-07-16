@@ -33,7 +33,7 @@
 /// Fire TV specific features:
 /// - Voice search button mapping (`TvInputKey.voiceSearch`)
 /// - Channel up/down buttons (`TvInputKey.channelUp`, `TvInputKey.channelDown`)
-/// - Safe zone padding via `TvUiDimensions.fireTv()`
+/// - Safe zone padding via `TvUiDimensions.tv(safeZone: ...)`
 /// - Platform detection via `DeviceFormFactorDetector.isFireTv()`
 ///
 /// ## Usage Example
