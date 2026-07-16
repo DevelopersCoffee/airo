@@ -1,3 +1,4 @@
+import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/auth/auth_service.dart';
@@ -5,7 +6,6 @@ import '../../../core/auth/google_auth_service.dart';
 import '../../../core/config/app_config.dart';
 import '../../../core/routing/route_names.dart';
 import '../../../main.dart' show isFirebaseInitialized;
-import '../../../shared/widgets/loading_widget.dart';
 import '../../../shared/widgets/custom_text_field.dart';
 import '../../../shared/widgets/responsive_center.dart';
 
@@ -237,12 +237,12 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
 
                     // Login button
-                    LoadingButton(
-                      text: 'Sign In',
+                    AppButton(
+                      label: 'Sign In',
                       onPressed: _login,
                       isLoading: _isLoading,
                       icon: Icons.login,
-                      width: double.infinity,
+                      isExpanded: true,
                     ),
                     const SizedBox(height: 16),
 

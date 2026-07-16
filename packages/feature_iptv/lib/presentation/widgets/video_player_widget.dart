@@ -9,7 +9,6 @@ import '../../application/providers/iptv_providers.dart';
 import "package:platform_channels/platform_channels.dart";
 import "package:platform_player/platform_player.dart";
 import "package:platform_media/platform_media.dart";
-import '../utils/native_fullscreen.dart';
 import '../utils/web_fullscreen.dart' as web_fullscreen;
 import 'iptv_icon_placeholder.dart';
 import 'live_indicators.dart';

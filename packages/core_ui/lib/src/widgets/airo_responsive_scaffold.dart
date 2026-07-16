@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../adaptive/adaptive_ui_models.dart';
 import 'empty_state_widget.dart';
-import 'error_widget.dart';
+import 'error_view.dart';
 import 'loading_indicator.dart';
 
 /// A platform-level responsive scaffold that automatically adapts to device form factor,
@@ -159,7 +159,7 @@ class AiroResponsiveScaffold extends StatelessWidget {
     } else if (errorMessage != null) {
       content =
           errorWidget ??
-          ErrorDisplayWidget(message: errorMessage!, onRetry: onRetry);
+          ErrorView(message: errorMessage!, onRetry: onRetry);
     } else if (isEmpty) {
       content =
           emptyWidget ??
