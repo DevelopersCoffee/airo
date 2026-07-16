@@ -6,6 +6,7 @@ reviewers:
   - Chief Security Officer
 allowed_dependencies:
   - platform_channels
+  - flutter_chrome_cast
 forbidden_dependencies:
   - app
 quality_gates: {}

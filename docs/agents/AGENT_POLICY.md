@@ -93,9 +93,12 @@ Full current roster with package ownership lives in
 just an index:
 
 - Airo TV domain (Flutter, Rust, Playback, Media Intelligence, TV Experience,
-  Platform, Edge, Cloud Architects) — supersedes the former generic "Media
-  Agent" / "Mobile UI Agent" entries for all Airo TV work.
-- Brain / AI Agent — `core_ai`, `core_ai_delegation`, `core_delegation`
+  Platform, Edge Architects; Chief Cloud Officer owns the auth/entitlements/
+  session packages) — supersedes the former generic "Media Agent" / "Mobile
+  UI Agent" entries for all Airo TV work.
+- Brain / AI Agent — no packages yet; owns product-layer Brain/chat journeys
+  once built. `core_ai`, `core_ai_delegation`, `core_delegation` stay with
+  Framework Agent below (runtime/model-routing, not a product journey).
 - Coins / Finance Agent — `airomoney`
 - Meeting Intelligence Agent — dormant, no packages yet
 - Agent Skills Agent, Memory Agent, Routine OS Agent — super-app-level,
@@ -144,7 +147,9 @@ Owns:
 ## Ownership Map
 
 Airo TV package ownership (Flutter, Rust, Playback, Media Intelligence, TV
-Experience, Platform, Edge, Cloud) and the full decision matrix now live in
+Experience, Platform, Edge) plus the Chief Cloud Officer's ownership of
+`core_cloud_orchestration`/`core_auth`/`core_entitlements`/`core_sessions`/
+`core_device_merge`, and the full decision matrix, now live in
 [COUNCIL.md](./COUNCIL.md) — do not duplicate that table here. Remaining
 super-app-level areas not yet covered by COUNCIL.md:
 

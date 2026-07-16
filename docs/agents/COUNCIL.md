@@ -72,8 +72,15 @@ Owns: CI, build/release workflows, versioning, branching, signing, artifacts.
 Maps to the existing "Release and DevEx Agent" in `AGENT_POLICY.md`.
 
 ### Chief Cloud Officer
-Owns: Firebase/GCP/AWS, sync, auth backend, monitoring. Required reviewer for
-`core_cloud_orchestration`, `core_sessions`.
+Owns: Firebase/GCP/AWS, sync, auth backend, monitoring. Primary owner of
+`core_cloud_orchestration`, `core_auth`, `core_entitlements`, `core_sessions`,
+`core_device_merge` — auth flow, entitlement checks, and session lifecycle.
+Chief Security Officer is a required reviewer on these, not the owner.
+
+### Product Manager
+Owns: business value, feature completeness, roadmap alignment, `product_capabilities`.
+Required reviewer for every new end-user feature. Does not review
+implementation detail — that's the domain agent's job.
 
 ## Sub-App Domain Agents
 
@@ -88,14 +95,13 @@ Owns: Firebase/GCP/AWS, sync, auth backend, monitoring. Required reviewer for
 | TV Experience Architect | `core_remote_control`, `core_remote_views`, `platform_receiver_modes` | Focus engine, remote input mapping, overscan handling | Focus traversal that breaks 10-foot navigation |
 | Platform Architect | `core_native`, `platform_channels`, `core_device_identity`, `core_pairing`, `core_protocol`, `platform_device_profile`, `platform_device_qualification` | Native bridge/FFI shape, platform channel contracts | Direct native calls bypassing the channel contract |
 | Edge Architect | `core_orchestration_storage`, `core_watch_progress`, `core_presence` | Offline/caching/sync design, background workers | Sync logic duplicated outside these packages |
-| Cloud Architect | `core_cloud_orchestration`, `core_auth`, `core_entitlements`, `core_sessions`, `core_device_merge` | Auth flow, entitlement checks, session lifecycle | Client-side-only entitlement checks |
 
 ### Other sub-app domains (existing, kept)
 
 | Role | Owns | Notes |
 | --- | --- | --- |
-| Finance/Coins Agent | `airomoney` | Super-app-level, unrelated to Airo TV work |
-| AI/Brain Agent | `core_ai`, `core_ai_delegation`, `core_delegation` | Super-app-level LLM/agent runtime |
+| Coins / Finance Agent | `airomoney` | Super-app-level, unrelated to Airo TV work |
+| AI/Brain Agent | (none yet) | Owns product-layer Brain/chat journeys once built. Does **not** own `core_ai`, `core_ai_delegation`, `core_delegation` — those runtime/model-routing packages stay with Framework Agent per `AGENT_POLICY.md`'s Ownership Map, to avoid a two-owner conflict on the same package. |
 | Meeting Intelligence Agent | (none yet) | Dormant — no packages exist for this sub-app yet |
 
 ### Unassigned packages
@@ -103,7 +109,7 @@ Owns: Firebase/GCP/AWS, sync, auth backend, monitoring. Required reviewer for
 Default to Chief Architect until a phase-2 pass assigns them: `core_analytics`,
 `core_commands`, `core_data`, `core_domain`, `core_push_wake`,
 `platform_benchmarks`, `platform_certification`, `platform_worker_jobs`,
-`product_capabilities`, `stubs`, `benchmarks`, `airo_pro_bootstrap`.
+`stubs`, `benchmarks`, `airo_pro_bootstrap`.
 
 ## Decision Matrix
 
@@ -116,7 +122,7 @@ Default to Chief Architect until a phase-2 pass assigns them: `core_analytics`,
 | Change TV navigation/focus/remote handling | TV Experience Architect + Flutter Architect + Chief UX Officer |
 | Change architecture/module boundaries | Chief Architect + Platform Architect |
 | Add a dependency (any package) | Owning domain agent + Chief Open Source Officer + Chief Security Officer |
-| Change sync/offline/storage engine | Edge Architect + Cloud Architect + Chief Performance Officer |
+| Change sync/offline/storage engine | Edge Architect + Chief Cloud Officer + Chief Performance Officer |
 | New end-user feature | Product Manager + Chief Architect + Chief QA Officer |
 | Release cut | Entire council |
 
