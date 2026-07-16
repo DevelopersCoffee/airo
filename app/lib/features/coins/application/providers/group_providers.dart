@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 import '../../../../core/utils/locale_settings.dart';
 import '../../domain/entities/group.dart';
 import '../../domain/entities/group_member.dart';

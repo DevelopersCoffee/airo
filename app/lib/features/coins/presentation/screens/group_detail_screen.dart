@@ -137,7 +137,7 @@ class GroupDetailScreen extends ConsumerWidget {
     WidgetRef ref,
     Group group,
   ) async {
-    final cloudState = ref.read(coinsCloudModeControllerProvider).valueOrNull;
+    final cloudState = ref.read(coinsCloudModeControllerProvider).value;
     var isCloudMode = cloudState?.isCloudMode == true;
     var user = cloudState?.user;
 
@@ -167,7 +167,7 @@ class GroupDetailScreen extends ConsumerWidget {
       isCloudMode = await ref
           .read(coinsCloudModeControllerProvider.notifier)
           .enableCloudMode();
-      user = ref.read(coinsCloudModeControllerProvider).valueOrNull?.user;
+      user = ref.read(coinsCloudModeControllerProvider).value?.user;
       if (!context.mounted) return;
       if (!isCloudMode || user?.isGoogleUser != true) {
         ScaffoldMessenger.of(context).showSnackBar(

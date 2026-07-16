@@ -2,6 +2,7 @@ import 'package:airo_app/features/settings/presentation/screens/model_detail_scr
 import 'package:core_ai/core_ai.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:url_launcher/url_launcher.dart';
 

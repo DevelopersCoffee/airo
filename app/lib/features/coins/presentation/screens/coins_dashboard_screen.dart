@@ -151,7 +151,7 @@ class _AndroidImportPermissionCard extends ConsumerWidget {
     final permissionState = ref.watch(
       androidFinanceImportPermissionControllerProvider,
     );
-    final permission = permissionState.valueOrNull;
+    final permission = permissionState.value;
     final enabled = permission == AndroidFinanceImportPermission.enabled;
     return Card(
       elevation: 0,

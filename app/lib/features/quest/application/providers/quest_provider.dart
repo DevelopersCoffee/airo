@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 import '../../domain/models/quest_models.dart';
 import '../../domain/services/quest_service.dart';
 import '../../domain/services/gemini_quest_service.dart';

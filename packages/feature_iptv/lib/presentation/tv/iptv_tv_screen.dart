@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 import 'package:flutter/services.dart';
 import 'package:feature_iptv/presentation/utils/native_fullscreen.dart';
 import 'package:platform_channels/platform_channels.dart';
@@ -136,7 +137,7 @@ class _IptvTvScreenState extends ConsumerState<IptvTvScreen> {
           ),
           data: (allChannels) {
             final visibleChannels = _recentOnly
-                ? recentAsync.valueOrNull ?? const <IPTVChannel>[]
+                ? recentAsync.value ?? const <IPTVChannel>[]
                 : filteredChannels;
 
             if (allChannels.isEmpty) {
@@ -154,7 +155,7 @@ class _IptvTvScreenState extends ConsumerState<IptvTvScreen> {
               allChannels: allChannels,
               visibleChannels: visibleChannels,
               streamingState: streamingState,
-              recentChannels: recentAsync.valueOrNull ?? const [],
+              recentChannels: recentAsync.value ?? const [],
               viewMode: _viewMode,
               recentOnly: _recentOnly,
               hasActiveFilter: hasActiveFilter || _recentOnly,
@@ -241,7 +242,7 @@ class _TvBrowseLayout extends ConsumerWidget {
       ),
     );
     final compactEpgEntries = _compactEpgEntriesByChannel(
-      compactEpg.valueOrNull,
+      compactEpg.value,
     );
 
     return Padding(

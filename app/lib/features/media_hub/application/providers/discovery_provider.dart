@@ -32,19 +32,19 @@ final mediaHubDiscoveryProvider =
       DiscoveryNotifier.new,
     );
 
-class DiscoveryNotifier extends FamilyAsyncNotifier<DiscoveryState, MediaMode> {
-  late MediaMode _mode;
+class DiscoveryNotifier extends AsyncNotifier<DiscoveryState> {
+  final MediaMode _mode;
+  DiscoveryNotifier(this._mode);
 
   @override
-  FutureOr<DiscoveryState> build(MediaMode arg) async {
-    _mode = arg;
-    final items = await ref.watch(mediaHubDiscoverySourceProvider(arg).future);
+  FutureOr<DiscoveryState> build() async {
+    final items = await ref.watch(mediaHubDiscoverySourceProvider(_mode).future);
     final pageSize = ref.watch(mediaHubDiscoveryPageSizeProvider);
-    return DiscoveryState.initial(mode: arg, items: items, pageSize: pageSize);
+    return DiscoveryState.initial(mode: _mode, items: items, pageSize: pageSize);
   }
 
   void setSearchQuery(String query) {
-    final current = state.valueOrNull;
+    final current = state.value;
     if (current == null) return;
     state = AsyncData(
       _rebuild(current, searchQuery: query.trim(), currentPage: 1),
@@ -52,7 +52,7 @@ class DiscoveryNotifier extends FamilyAsyncNotifier<DiscoveryState, MediaMode> {
   }
 
   void setCategory(MediaCategory category) {
-    final current = state.valueOrNull;
+    final current = state.value;
     if (current == null) return;
     state = AsyncData(
       _rebuild(current, selectedCategory: category, currentPage: 1),
@@ -60,13 +60,13 @@ class DiscoveryNotifier extends FamilyAsyncNotifier<DiscoveryState, MediaMode> {
   }
 
   void loadNextPage() {
-    final current = state.valueOrNull;
+    final current = state.value;
     if (current == null || !current.hasMore) return;
     state = AsyncData(_rebuild(current, currentPage: current.currentPage + 1));
   }
 
   Future<void> refresh() async {
-    final previous = state.valueOrNull;
+    final previous = state.value;
     state = const AsyncLoading();
     final items = await ref.refresh(
       mediaHubDiscoverySourceProvider(_mode).future,

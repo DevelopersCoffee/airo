@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 import '../domain/models/blackjack_model.dart';
 import '../domain/services/deck_of_cards_service.dart';
 

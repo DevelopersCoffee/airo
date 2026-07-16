@@ -13,7 +13,7 @@ dependencies:
     path: ../core_data
   flutter:
     sdk: flutter
-  flutter_riverpod: ^2.6.1
+  flutter_riverpod: ^3.3.2
   shared_preferences: ^2.5.5
   platform_channels:
     path: ../platform_channels

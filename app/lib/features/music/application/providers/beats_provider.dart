@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 import '../../domain/models/beats_models.dart';
 import '../../domain/repositories/beats_repository.dart';
 import '../../data/repositories/mock_beats_repository.dart';

@@ -27,7 +27,7 @@ melos:
       usePubspecOverrides: true
 
   scripts:
-    bootstrap:
+    bootstrap_workspace:
       run: melos bootstrap
       description: Bootstrap all packages in the workspace
 

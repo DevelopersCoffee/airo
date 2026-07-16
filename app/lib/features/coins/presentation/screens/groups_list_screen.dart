@@ -98,7 +98,7 @@ class GroupsListScreen extends ConsumerWidget {
         .read(coinsCloudModeControllerProvider.notifier)
         .enableCloudMode();
     if (!context.mounted) return enabled;
-    final state = ref.read(coinsCloudModeControllerProvider).valueOrNull;
+    final state = ref.read(coinsCloudModeControllerProvider).value;
     if (!enabled) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -158,7 +158,7 @@ class GroupsListScreen extends ConsumerWidget {
               }
               final cloudState = ref
                   .read(coinsCloudModeControllerProvider)
-                  .valueOrNull;
+                  .value;
               final user = cloudState?.user;
               final creatorId =
                   cloudState?.isCloudMode == true && user?.isGoogleUser == true
@@ -325,7 +325,7 @@ class _CloudModeCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final state = stateAsync.valueOrNull;
+    final state = stateAsync.value;
     final isCloud = state?.isCloudMode == true;
 
     return Card(

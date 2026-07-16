@@ -1,6 +1,7 @@
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 import '../../../../core/audio/audio_context_provider.dart';
 import '../../domain/services/beats_audio_handler.dart';
 import '../../domain/services/beats_context_integration.dart';

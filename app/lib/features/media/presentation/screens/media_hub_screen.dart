@@ -72,16 +72,16 @@ class MediaHubScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final personalization = ref.watch(personalizationProvider);
     final personalizationNotifier = ref.read(personalizationProvider.notifier);
-    final state = personalization.valueOrNull;
+    final state = personalization.value;
     final favoriteItems = state == null
         ? const <UnifiedMediaContent>[]
         : favoriteItemsForSection(state, section);
     final continueWatchingItems = state == null
         ? const <UnifiedMediaContent>[]
         : continueWatchingItemsForSection(state, section);
-    final recentItems = personalization.valueOrNull == null
+    final recentItems = personalization.value == null
         ? const <UnifiedMediaContent>[]
-        : recentItemsForSection(personalization.valueOrNull!, section);
+        : recentItemsForSection(personalization.value!, section);
     final discoveryMode = mediaModeForSection(section);
     final discovery = ref.watch(mediaHubDiscoveryProvider(discoveryMode));
 

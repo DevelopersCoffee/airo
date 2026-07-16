@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:core_ai/core_ai.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../agent_chat/application/assistant_model_preferences.dart';

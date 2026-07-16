@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 import '../../../../core/utils/locale_settings.dart';
 import '../../../money/application/providers/money_provider.dart';
 import '../../domain/entities/account.dart';

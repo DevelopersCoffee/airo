@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 import '../../domain/entities/shared_expense.dart';
 import '../../domain/entities/split_entry.dart';
 import '../../domain/services/split_calculator.dart';

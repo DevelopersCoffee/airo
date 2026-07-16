@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 import '../platform/device_form_factor.dart';
 import '../providers/platform_providers.dart';
 import 'tv_focus_manager.dart';

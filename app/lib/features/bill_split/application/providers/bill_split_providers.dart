@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 import '../../domain/models/bill_split_models.dart';
 import '../../domain/models/split_result.dart';
 import '../../domain/services/bill_split_service.dart';

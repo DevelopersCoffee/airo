@@ -28,7 +28,7 @@ class PersonalizationNotifier extends AsyncNotifier<PersonalizationState> {
   }
 
   Future<void> toggleFavorite(UnifiedMediaContent item) async {
-    final current = state.valueOrNull ?? await future;
+    final current = state.value ?? await future;
     final nextFavorites = List<UnifiedMediaContent>.from(current.favorites);
     final index = nextFavorites.indexWhere((entry) => entry.id == item.id);
     if (index >= 0) {
@@ -43,7 +43,7 @@ class PersonalizationNotifier extends AsyncNotifier<PersonalizationState> {
   }
 
   Future<void> addRecent(UnifiedMediaContent item) async {
-    final current = state.valueOrNull ?? await future;
+    final current = state.value ?? await future;
     final nextRecent = _upsertAtFront(current.recentlyPlayed, item);
     _trim(nextRecent, PersonalizationState.maxRecentlyPlayed);
     await _persist(
@@ -56,7 +56,7 @@ class PersonalizationNotifier extends AsyncNotifier<PersonalizationState> {
     Duration position, {
     Duration? duration,
   }) async {
-    final current = state.valueOrNull ?? await future;
+    final current = state.value ?? await future;
     final updatedItem = item.copyWith(
       duration: duration ?? item.duration,
       lastPosition: position,

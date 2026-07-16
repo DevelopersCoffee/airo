@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 import '../../domain/models/beats_models.dart';
 import '../../domain/models/beats_queue_state.dart';
 import '../../data/services/beats_queue_storage.dart';

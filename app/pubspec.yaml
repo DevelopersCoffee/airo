@@ -35,8 +35,8 @@ dependencies:
   go_router: ^17.3.0
 
   # State Management
-  riverpod: 2.6.1
-  flutter_riverpod: 2.6.1
+  riverpod: 3.3.2
+  flutter_riverpod: 3.3.2
 
   # Storage & Persistence
   shared_preferences: ^2.5.5
@@ -131,22 +131,25 @@ dev_dependencies:
     sdk: flutter
 
   # Code generation
-  build_runner: 2.4.13
-  drift_dev: ^2.18.0
-  riverpod_generator: 2.4.0
-
-  # Testing
+  build_runner: ^2.15.2
+  drift_dev: 2.32.1
+  riverpod_generator: 4.0.4
   mocktail: ^1.0.5
   alchemist: ^0.14.0  # Golden testing (replaces discontinued golden_toolkit)
   patrol: ^4.7.0  # E2E testing for iOS/Android devices
   shared_preferences_platform_interface: ^2.4.1
-
-  # Linting
   flutter_lints: 6.0.0
-  custom_lint: 0.6.4
-  riverpod_lint: 2.3.10
+  custom_lint: ^0.8.1
+  riverpod_lint: 3.1.4
 
 dependency_overrides:
+  meta: ^1.19.0
+  analyzer_plugin: ^0.14.0
+  analyzer: ^12.0.0
+  dart_style: 3.1.8
+  mockito: 5.6.1
+  source_gen: ^4.2.0
+  build: ^4.0.0
   # IPTV/TV builds do not ship games, and stockfish 1.8.1's Android plugin is
   # incompatible with the current AGP toolchain. Use the existing no-native stub
   # so lean streaming variants can build without bundling the chess engine.

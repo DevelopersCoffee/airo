@@ -19,7 +19,7 @@ command:
 
 scripts:
   # Bootstrap all packages
-  bootstrap:
+  bootstrap_workspace:
     run: melos bootstrap
     description: Bootstrap all packages in the workspace
 

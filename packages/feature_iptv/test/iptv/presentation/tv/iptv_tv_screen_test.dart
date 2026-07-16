@@ -2,7 +2,9 @@ import 'package:feature_iptv/feature_iptv.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -100,36 +102,40 @@ void main() {
   testWidgets('renders TV browsing surface with categories and actions', (
     tester,
   ) async {
-    await pumpScreen(tester);
-
-    expect(find.text('Live channels'), findsOneWidget);
-    expect(find.text('Airo TV Lite Receiver'), findsOneWidget);
-    expect(find.text('Compatible profile'), findsOneWidget);
-    expect(find.text('Home'), findsOneWidget);
-    expect(find.text('Live'), findsOneWidget);
-    expect(find.text('Favorites'), findsOneWidget);
-    expect(find.text('Recent'), findsWidgets);
-    expect(find.text('Settings'), findsOneWidget);
-    expect(find.text('Diagnostics'), findsOneWidget);
-    expect(find.text('Guide'), findsNothing);
-    expect(find.textContaining('Profile-limited:'), findsOneWidget);
-    expect(find.text('5 of 5 live channels'), findsOneWidget);
-    expect(find.text('Browse'), findsOneWidget);
-    expect(find.text('All'), findsWidgets);
-    expect(find.text('News'), findsWidgets);
-    expect(find.text('Sports'), findsWidgets);
-    expect(find.text('Music'), findsWidgets);
-    expect(find.text('Business'), findsNothing);
-    expect(find.text('General'), findsNothing);
-    expect(find.text('Search'), findsWidgets);
-    expect(find.text('Playlist'), findsOneWidget);
-    expect(find.text('Help'), findsOneWidget);
-    expect(find.text('Refresh'), findsOneWidget);
-    expect(find.text('City News Live'), findsOneWidget);
-    expect(find.text('Music India'), findsOneWidget);
-    expect(find.byType(Scrollbar), findsOneWidget);
-    expect(find.bySemanticsLabel('Search'), findsWidgets);
-    expect(find.bySemanticsLabel('City News Live'), findsOneWidget);
+    final semantics = tester.ensureSemantics();
+    try {
+      await pumpScreen(tester);
+      expect(find.text('Live channels'), findsOneWidget);
+      expect(find.text('Airo TV Lite Receiver'), findsOneWidget);
+      expect(find.text('Compatible profile'), findsOneWidget);
+      expect(find.text('Home'), findsOneWidget);
+      expect(find.text('Live'), findsOneWidget);
+      expect(find.text('Favorites'), findsOneWidget);
+      expect(find.text('Recent'), findsWidgets);
+      expect(find.text('Settings'), findsOneWidget);
+      expect(find.text('Diagnostics'), findsOneWidget);
+      expect(find.text('Guide'), findsNothing);
+      expect(find.textContaining('Profile-limited:'), findsOneWidget);
+      expect(find.text('5 of 5 live channels'), findsOneWidget);
+      expect(find.text('Browse'), findsOneWidget);
+      expect(find.text('All'), findsWidgets);
+      expect(find.text('News'), findsWidgets);
+      expect(find.text('Sports'), findsWidgets);
+      expect(find.text('Music'), findsWidgets);
+      expect(find.text('Business'), findsNothing);
+      expect(find.text('General'), findsNothing);
+      expect(find.text('Search'), findsWidgets);
+      expect(find.text('Playlist'), findsOneWidget);
+      expect(find.text('Help'), findsOneWidget);
+      expect(find.text('Refresh'), findsOneWidget);
+      expect(find.text('City News Live'), findsOneWidget);
+      expect(find.text('Music India'), findsOneWidget);
+      expect(find.byType(Scrollbar), findsOneWidget);
+      expect(find.bySemanticsLabel(RegExp('Search')), findsWidgets);
+      expect(find.bySemanticsLabel(RegExp('City News Live')), findsOneWidget);
+    } finally {
+      semantics.dispose();
+    }
   });
 
   testWidgets('renders compact current EPG from platform repository', (
@@ -184,14 +190,16 @@ void main() {
   });
 
   testWidgets('shows macOS update action on desktop builds', (tester) async {
+    final semantics = tester.ensureSemantics();
     debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
     try {
       await pumpScreen(tester, surfaceSize: const Size(1440, 900));
 
       expect(find.text('Update'), findsOneWidget);
-      expect(find.bySemanticsLabel('Update'), findsWidgets);
+      expect(find.bySemanticsLabel(RegExp('Update')), findsWidgets);
     } finally {
       debugDefaultTargetPlatformOverride = null;
+      semantics.dispose();
     }
   });
 

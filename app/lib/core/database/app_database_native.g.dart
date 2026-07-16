@@ -14834,7 +14834,7 @@ final class $$MeetingRecordsTableReferences
     final manager = $$MeetingSegmentsTableTableManager(
       $_db,
       $_db.meetingSegments,
-    ).filter((f) => f.meetingId.id($_item.id));
+    ).filter((f) => f.meetingId.id.sqlEquals($_itemColumn<String>('id')!));
 
     final cache = $_typedResult.readTableOrNull(
       _meetingSegmentsRefsTable($_db),
@@ -14857,7 +14857,7 @@ final class $$MeetingRecordsTableReferences
     final manager = $$TranscriptChunksTableTableManager(
       $_db,
       $_db.transcriptChunks,
-    ).filter((f) => f.meetingId.id($_item.id));
+    ).filter((f) => f.meetingId.id.sqlEquals($_itemColumn<String>('id')!));
 
     final cache = $_typedResult.readTableOrNull(
       _transcriptChunksRefsTable($_db),
@@ -14881,7 +14881,7 @@ final class $$MeetingRecordsTableReferences
     final manager = $$MeetingActionItemsTableTableManager(
       $_db,
       $_db.meetingActionItems,
-    ).filter((f) => f.meetingId.id($_item.id));
+    ).filter((f) => f.meetingId.id.sqlEquals($_itemColumn<String>('id')!));
 
     final cache = $_typedResult.readTableOrNull(
       _meetingActionItemsRefsTable($_db),
@@ -14904,7 +14904,7 @@ final class $$MeetingRecordsTableReferences
     final manager = $$MeetingSummariesTableTableManager(
       $_db,
       $_db.meetingSummaries,
-    ).filter((f) => f.meetingId.id($_item.id));
+    ).filter((f) => f.meetingId.id.sqlEquals($_itemColumn<String>('id')!));
 
     final cache = $_typedResult.readTableOrNull(
       _meetingSummariesRefsTable($_db),
@@ -14932,7 +14932,7 @@ final class $$MeetingRecordsTableReferences
     final manager = $$MeetingAudioMetadataTableTableManager(
       $_db,
       $_db.meetingAudioMetadata,
-    ).filter((f) => f.meetingId.id($_item.id));
+    ).filter((f) => f.meetingId.id.sqlEquals($_itemColumn<String>('id')!));
 
     final cache = $_typedResult.readTableOrNull(
       _meetingAudioMetadataRefsTable($_db),
@@ -14956,7 +14956,7 @@ final class $$MeetingRecordsTableReferences
     final manager = $$MeetingEmbeddingsTableTableManager(
       $_db,
       $_db.meetingEmbeddings,
-    ).filter((f) => f.meetingId.id($_item.id));
+    ).filter((f) => f.meetingId.id.sqlEquals($_itemColumn<String>('id')!));
 
     final cache = $_typedResult.readTableOrNull(
       _meetingEmbeddingsRefsTable($_db),
@@ -15501,7 +15501,11 @@ class $$MeetingRecordsTableTableManager
                   getPrefetchedDataCallback: (items) async {
                     return [
                       if (meetingSegmentsRefs)
-                        await $_getPrefetchedData(
+                        await $_getPrefetchedData<
+                          MeetingRecord,
+                          $MeetingRecordsTable,
+                          MeetingSegment
+                        >(
                           currentTable: table,
                           referencedTable: $$MeetingRecordsTableReferences
                               ._meetingSegmentsRefsTable(db),
@@ -15518,7 +15522,11 @@ class $$MeetingRecordsTableTableManager
                           typedResults: items,
                         ),
                       if (transcriptChunksRefs)
-                        await $_getPrefetchedData(
+                        await $_getPrefetchedData<
+                          MeetingRecord,
+                          $MeetingRecordsTable,
+                          TranscriptChunk
+                        >(
                           currentTable: table,
                           referencedTable: $$MeetingRecordsTableReferences
                               ._transcriptChunksRefsTable(db),
@@ -15535,7 +15543,11 @@ class $$MeetingRecordsTableTableManager
                           typedResults: items,
                         ),
                       if (meetingActionItemsRefs)
-                        await $_getPrefetchedData(
+                        await $_getPrefetchedData<
+                          MeetingRecord,
+                          $MeetingRecordsTable,
+                          MeetingActionItem
+                        >(
                           currentTable: table,
                           referencedTable: $$MeetingRecordsTableReferences
                               ._meetingActionItemsRefsTable(db),
@@ -15552,7 +15564,11 @@ class $$MeetingRecordsTableTableManager
                           typedResults: items,
                         ),
                       if (meetingSummariesRefs)
-                        await $_getPrefetchedData(
+                        await $_getPrefetchedData<
+                          MeetingRecord,
+                          $MeetingRecordsTable,
+                          MeetingSummary
+                        >(
                           currentTable: table,
                           referencedTable: $$MeetingRecordsTableReferences
                               ._meetingSummariesRefsTable(db),
@@ -15569,7 +15585,11 @@ class $$MeetingRecordsTableTableManager
                           typedResults: items,
                         ),
                       if (meetingAudioMetadataRefs)
-                        await $_getPrefetchedData(
+                        await $_getPrefetchedData<
+                          MeetingRecord,
+                          $MeetingRecordsTable,
+                          MeetingAudioMetadataData
+                        >(
                           currentTable: table,
                           referencedTable: $$MeetingRecordsTableReferences
                               ._meetingAudioMetadataRefsTable(db),
@@ -15586,7 +15606,11 @@ class $$MeetingRecordsTableTableManager
                           typedResults: items,
                         ),
                       if (meetingEmbeddingsRefs)
-                        await $_getPrefetchedData(
+                        await $_getPrefetchedData<
+                          MeetingRecord,
+                          $MeetingRecordsTable,
+                          MeetingEmbedding
+                        >(
                           currentTable: table,
                           referencedTable: $$MeetingRecordsTableReferences
                               ._meetingEmbeddingsRefsTable(db),
@@ -15667,12 +15691,13 @@ final class $$MeetingSegmentsTableReferences
         ),
       );
 
-  $$MeetingRecordsTableProcessedTableManager? get meetingId {
-    if ($_item.meetingId == null) return null;
+  $$MeetingRecordsTableProcessedTableManager get meetingId {
+    final $_column = $_itemColumn<String>('meeting_id')!;
+
     final manager = $$MeetingRecordsTableTableManager(
       $_db,
       $_db.meetingRecords,
-    ).filter((f) => f.id($_item.meetingId!));
+    ).filter((f) => f.id.sqlEquals($_column));
     final item = $_typedResult.readTableOrNull(_meetingIdTable($_db));
     if (item == null) return manager;
     return ProcessedTableManager(
@@ -15693,7 +15718,7 @@ final class $$MeetingSegmentsTableReferences
     final manager = $$TranscriptChunksTableTableManager(
       $_db,
       $_db.transcriptChunks,
-    ).filter((f) => f.segmentId.id($_item.id));
+    ).filter((f) => f.segmentId.id.sqlEquals($_itemColumn<String>('id')!));
 
     final cache = $_typedResult.readTableOrNull(
       _transcriptChunksRefsTable($_db),
@@ -16019,7 +16044,11 @@ class $$MeetingSegmentsTableTableManager
                   getPrefetchedDataCallback: (items) async {
                     return [
                       if (transcriptChunksRefs)
-                        await $_getPrefetchedData(
+                        await $_getPrefetchedData<
+                          MeetingSegment,
+                          $MeetingSegmentsTable,
+                          TranscriptChunk
+                        >(
                           currentTable: table,
                           referencedTable: $$MeetingSegmentsTableReferences
                               ._transcriptChunksRefsTable(db),
@@ -16101,12 +16130,13 @@ final class $$TranscriptChunksTableReferences
         ),
       );
 
-  $$MeetingRecordsTableProcessedTableManager? get meetingId {
-    if ($_item.meetingId == null) return null;
+  $$MeetingRecordsTableProcessedTableManager get meetingId {
+    final $_column = $_itemColumn<String>('meeting_id')!;
+
     final manager = $$MeetingRecordsTableTableManager(
       $_db,
       $_db.meetingRecords,
-    ).filter((f) => f.id($_item.meetingId!));
+    ).filter((f) => f.id.sqlEquals($_column));
     final item = $_typedResult.readTableOrNull(_meetingIdTable($_db));
     if (item == null) return manager;
     return ProcessedTableManager(
@@ -16123,11 +16153,12 @@ final class $$TranscriptChunksTableReferences
       );
 
   $$MeetingSegmentsTableProcessedTableManager? get segmentId {
-    if ($_item.segmentId == null) return null;
+    final $_column = $_itemColumn<String>('segment_id');
+    if ($_column == null) return null;
     final manager = $$MeetingSegmentsTableTableManager(
       $_db,
       $_db.meetingSegments,
-    ).filter((f) => f.id($_item.segmentId!));
+    ).filter((f) => f.id.sqlEquals($_column));
     final item = $_typedResult.readTableOrNull(_segmentIdTable($_db));
     if (item == null) return manager;
     return ProcessedTableManager(
@@ -16149,7 +16180,7 @@ final class $$TranscriptChunksTableReferences
     final manager = $$MeetingEmbeddingsTableTableManager(
       $_db,
       $_db.meetingEmbeddings,
-    ).filter((f) => f.chunkId.id($_item.id));
+    ).filter((f) => f.chunkId.id.sqlEquals($_itemColumn<String>('id')!));
 
     final cache = $_typedResult.readTableOrNull(
       _meetingEmbeddingsRefsTable($_db),
@@ -16627,7 +16658,11 @@ class $$TranscriptChunksTableTableManager
                   getPrefetchedDataCallback: (items) async {
                     return [
                       if (meetingEmbeddingsRefs)
-                        await $_getPrefetchedData(
+                        await $_getPrefetchedData<
+                          TranscriptChunk,
+                          $TranscriptChunksTable,
+                          MeetingEmbedding
+                        >(
                           currentTable: table,
                           referencedTable: $$TranscriptChunksTableReferences
                               ._meetingEmbeddingsRefsTable(db),
@@ -16711,12 +16746,13 @@ final class $$MeetingActionItemsTableReferences
         ),
       );
 
-  $$MeetingRecordsTableProcessedTableManager? get meetingId {
-    if ($_item.meetingId == null) return null;
+  $$MeetingRecordsTableProcessedTableManager get meetingId {
+    final $_column = $_itemColumn<String>('meeting_id')!;
+
     final manager = $$MeetingRecordsTableTableManager(
       $_db,
       $_db.meetingRecords,
-    ).filter((f) => f.id($_item.meetingId!));
+    ).filter((f) => f.id.sqlEquals($_column));
     final item = $_typedResult.readTableOrNull(_meetingIdTable($_db));
     if (item == null) return manager;
     return ProcessedTableManager(
@@ -17079,12 +17115,13 @@ final class $$MeetingSummariesTableReferences
         ),
       );
 
-  $$MeetingRecordsTableProcessedTableManager? get meetingId {
-    if ($_item.meetingId == null) return null;
+  $$MeetingRecordsTableProcessedTableManager get meetingId {
+    final $_column = $_itemColumn<String>('meeting_id')!;
+
     final manager = $$MeetingRecordsTableTableManager(
       $_db,
       $_db.meetingRecords,
-    ).filter((f) => f.id($_item.meetingId!));
+    ).filter((f) => f.id.sqlEquals($_column));
     final item = $_typedResult.readTableOrNull(_meetingIdTable($_db));
     if (item == null) return manager;
     return ProcessedTableManager(
@@ -17537,12 +17574,13 @@ final class $$MeetingAudioMetadataTableReferences
         ),
       );
 
-  $$MeetingRecordsTableProcessedTableManager? get meetingId {
-    if ($_item.meetingId == null) return null;
+  $$MeetingRecordsTableProcessedTableManager get meetingId {
+    final $_column = $_itemColumn<String>('meeting_id')!;
+
     final manager = $$MeetingRecordsTableTableManager(
       $_db,
       $_db.meetingRecords,
-    ).filter((f) => f.id($_item.meetingId!));
+    ).filter((f) => f.id.sqlEquals($_column));
     final item = $_typedResult.readTableOrNull(_meetingIdTable($_db));
     if (item == null) return manager;
     return ProcessedTableManager(
@@ -17917,12 +17955,13 @@ final class $$MeetingEmbeddingsTableReferences
         ),
       );
 
-  $$MeetingRecordsTableProcessedTableManager? get meetingId {
-    if ($_item.meetingId == null) return null;
+  $$MeetingRecordsTableProcessedTableManager get meetingId {
+    final $_column = $_itemColumn<String>('meeting_id')!;
+
     final manager = $$MeetingRecordsTableTableManager(
       $_db,
       $_db.meetingRecords,
-    ).filter((f) => f.id($_item.meetingId!));
+    ).filter((f) => f.id.sqlEquals($_column));
     final item = $_typedResult.readTableOrNull(_meetingIdTable($_db));
     if (item == null) return manager;
     return ProcessedTableManager(
@@ -17939,11 +17978,12 @@ final class $$MeetingEmbeddingsTableReferences
       );
 
   $$TranscriptChunksTableProcessedTableManager? get chunkId {
-    if ($_item.chunkId == null) return null;
+    final $_column = $_itemColumn<String>('chunk_id');
+    if ($_column == null) return null;
     final manager = $$TranscriptChunksTableTableManager(
       $_db,
       $_db.transcriptChunks,
-    ).filter((f) => f.id($_item.chunkId!));
+    ).filter((f) => f.id.sqlEquals($_column));
     final item = $_typedResult.readTableOrNull(_chunkIdTable($_db));
     if (item == null) return manager;
     return ProcessedTableManager(
