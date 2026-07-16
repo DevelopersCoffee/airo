@@ -130,10 +130,11 @@ def main() -> int:
         "/milestone/5": "product milestone link",
         "/milestone/6": "performance milestone link",
         "No channels included": "content boundary",
-        "Born from Airo": "parent-brand endorsement",
+        '<h1 id="hero-title">Airo</h1>': "default Airo hero identity",
+        "Airo TV available now": "current focused product status",
         "Airo TV Pro": "advanced TV edition name",
         "In testing": "unreleased Pro status",
-        "Airo is the bigger vision": "superapp parent positioning",
+        "Airo is the home": "superapp parent positioning",
     }
     for snippet, label in required_snippets.items():
         if snippet not in index_text:

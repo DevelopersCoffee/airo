@@ -36,8 +36,10 @@ Higher-priority sources override lower-priority sources.
 
 ## Brand invariants
 
-- Airo is the modular super-app umbrella.
-- Airo TV is the active modular product for the current release line.
+- Airo is the default master experience, root-page identity, and modular
+  super-app umbrella.
+- Airo TV is the first focused product and the active modular product for the
+  current release line.
 - Airo TV Pro is the only advanced TV edition name. It remains `In testing`
   until a public release proves availability.
 - Non-TV capabilities remain part of Airo and do not become separate public
