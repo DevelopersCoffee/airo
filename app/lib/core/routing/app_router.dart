@@ -228,7 +228,8 @@ class AppRouter {
               GoRoute(
                 path: '/iptv',
                 name: 'Stream',
-                builder: (context, state) => const IPTVScreen(),
+                builder: (context, state) =>
+                    IPTVScreen(onOpenVod: () => context.go('/vod')),
               ),
               GoRoute(
                 path: '/vod',

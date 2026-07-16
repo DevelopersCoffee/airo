@@ -16,7 +16,15 @@ import '../widgets/video_player_widget.dart';
 
 /// IPTV Screen with YouTube-like streaming experience
 class IPTVScreen extends ConsumerStatefulWidget {
-  const IPTVScreen({super.key});
+  const IPTVScreen({this.onOpenVod, super.key});
+
+  /// Invoked when the user taps the "Movies & Shows" action to navigate to
+  /// the VOD screen. Left as an optional callback (rather than a direct
+  /// `go_router` dependency) so this feature package doesn't need to depend
+  /// on the app's routing package; the app wires this in when constructing
+  /// [IPTVScreen] for the `/iptv` route (see [IptvGuideScreen.onChannelSelected]
+  /// for the same pattern).
+  final VoidCallback? onOpenVod;
 
   @override
   ConsumerState<IPTVScreen> createState() => _IPTVScreenState();
@@ -310,6 +318,12 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen> {
             tooltip: 'Search channels',
             onPressed: _showSearchSheet,
           ),
+          if (widget.onOpenVod != null)
+            IconButton(
+              icon: const Icon(Icons.movie_outlined),
+              tooltip: 'Movies & Shows',
+              onPressed: widget.onOpenVod,
+            ),
           IconButton(
             icon: const Icon(Icons.link),
             tooltip: 'Playlist source',
