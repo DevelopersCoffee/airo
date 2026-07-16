@@ -6,7 +6,7 @@
 2. Public feature, distribution, and qualification matrices
 3. Closed public issues with release evidence
 4. Open public issues and milestones
-5. Approved summaries from private Airo Pro work
+5. Approved summaries from private Airo TV Pro work
 
 Higher-priority sources override lower-priority sources.
 
@@ -27,7 +27,9 @@ Higher-priority sources override lower-priority sources.
 - Never publish source excerpts, server hosts, credentials, API keys, billing
   rules, entitlement logic, internal architecture, or commercial timing.
 - Describe the customer outcome, not the implementation.
-- Use `Private validation` until a public release proves availability.
+- Keep the internal state as `Private validation` until a public release proves
+  availability. Customer-facing copy may say `In testing` when the same release
+  boundary remains explicit.
 - Map a private capability to a public issue when one exists.
 - Omit the capability when disclosure approval or a safe public description is
   missing.
@@ -36,6 +38,10 @@ Higher-priority sources override lower-priority sources.
 
 - Airo is the modular super-app umbrella.
 - Airo TV is the active modular product for the current release line.
+- Airo TV Pro is the only advanced TV edition name. It remains `In testing`
+  until a public release proves availability.
+- Non-TV capabilities remain part of Airo and do not become separate public
+  product brands without a new approved brand decision.
 - Airo TV provides no channels, playlists, subscriptions, or media catalog.
 - Device wording must preserve experimental, partial, deferred, and unsigned
   limitations.

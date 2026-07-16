@@ -1,6 +1,6 @@
 ---
 name: airo-release-branding
-description: Refresh Airo public branding, GitHub Pages content, device guides, screenshots, release links, and public roadmap from verified release evidence. Use for every Airo or Airo TV release, public website refresh, tutorial update, community-voice summary, or approved Airo Pro capability announcement.
+description: Refresh Airo public branding, GitHub Pages content, device guides, screenshots, release links, and public roadmap from verified release evidence. Use for every Airo or Airo TV release, public website refresh, tutorial update, community-voice summary, or approved Airo TV Pro capability announcement.
 ---
 
 # Airo Release Branding
@@ -20,7 +20,7 @@ into shipped-product claims.
    - `docs/release/V2_DISTRIBUTION_MATRIX.md`;
    - `docs/release/V2_RELEASE_QUALIFICATION.md`;
    - open public milestones and `community-voice` issues.
-4. If Airo Pro is in scope, read it only as a private research input. Apply the
+4. If Airo TV Pro is in scope, read it only as a private research input. Apply the
    disclosure policy in `references/publication-policy.md` before using any
    finding.
 5. Classify every claim as `Available`, `Under qualification`, `Private

@@ -104,6 +104,7 @@ def main() -> int:
         "community",
         "pro-vision",
         "roadmap",
+        "airo",
         "trust",
     }
     missing_sections = sorted(required_sections - index_inventory.ids)
@@ -129,8 +130,10 @@ def main() -> int:
         "/milestone/5": "product milestone link",
         "/milestone/6": "performance milestone link",
         "No channels included": "content boundary",
-        "Private validation": "private capability status",
-        "Airo is a modular super app": "super-app positioning",
+        "Born from Airo": "parent-brand endorsement",
+        "Airo TV Pro": "advanced TV edition name",
+        "In testing": "unreleased Pro status",
+        "Airo is the bigger vision": "superapp parent positioning",
     }
     for snippet, label in required_snippets.items():
         if snippet not in index_text:
@@ -143,6 +146,11 @@ def main() -> int:
         "cdn.airo.tv": "private service host",
         "Launch Web App": "unsupported web CTA",
         "View App Store": "unsupported iOS CTA",
+        "Airo Pro": "retired Pro product name",
+        "Airo Mind": "unsupported Airo sub-brand",
+        "Airo Money": "unsupported Airo sub-brand",
+        "Airo Life": "unsupported Airo sub-brand",
+        "Airo Play": "unsupported Airo sub-brand",
     }
     combined = index_text + guide_text
     for snippet, label in forbidden.items():
