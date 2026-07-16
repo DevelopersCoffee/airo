@@ -20,7 +20,7 @@ class Inventory(HTMLParser):
         self.sources: list[str] = []
         self.autoplay_videos = 0
         self.live_demo_roots = 0
-        self.sound_enabled_live_demo_roots = 0
+        self.muted_autoplay_live_demo_roots = 0
         self.live_demo_videos = 0
         self.muted_live_demo_videos = 0
         self.preloading_live_demo_videos = 0
@@ -35,8 +35,8 @@ class Inventory(HTMLParser):
             self.sources.append(values["src"] or "")
         if "data-live-demo" in values:
             self.live_demo_roots += 1
-        if "data-live-start-with-sound" in values:
-            self.sound_enabled_live_demo_roots += 1
+        if "data-live-autoplay-muted" in values:
+            self.muted_autoplay_live_demo_roots += 1
         if tag == "video" and "autoplay" in values:
             self.autoplay_videos += 1
         if tag == "video" and "data-live-demo-video" in values:
@@ -164,8 +164,9 @@ def main() -> int:
         "cdn-uw2-prod.tsv2.amagi.tv": "approved live demo source",
         "Vevo Pop": "immersive live showcase name",
         "d128y56w6v2kax.cloudfront.net": "approved Vevo Pop showcase source",
-        "Play Vevo Pop with sound": "explicit click-to-sound action",
-        "Nothing loads before your click.": "idle showcase network boundary",
+        "Start muted preview": "manual autoplay fallback",
+        "Muted preview starts on screen.": "visibility-gated preview status",
+        ">Unmute</span>": "explicit audio control",
         "Third-party stream details": "compact stream disclosure",
         "HLS.js Apache license": "player dependency attribution",
     }
@@ -180,8 +181,13 @@ def main() -> int:
         "demoRecoveryAttempts >= 1": "bounded recovery attempt",
         "8000": "recovery deadline",
         "airo_retry=": "native HLS cache-busted retry",
-        'root.hasAttribute("data-live-start-with-sound")': "explicit sound contract",
-        "demoVideo.muted = false": "gesture-bound unmute behavior",
+        'root.hasAttribute("data-live-autoplay-muted")': "muted autoplay contract",
+        "entry.intersectionRatio >= 0.35": "visibility threshold",
+        "observeMutedPreview": "deep-link-safe observer setup",
+        "demoVideo.muted = true": "forced muted autoplay",
+        "demoAudio.addEventListener": "user-controlled audio toggle",
+        "demoHls.stopLoad()": "off-screen network pause",
+        "instance.isActive()": "manual playback precedence",
     }
     for snippet, label in required_demo_logic.items():
         if snippet not in site_script_text:
@@ -242,10 +248,10 @@ def main() -> int:
         errors.append("public page must expose exactly two live demo roots")
     if index_inventory.live_demo_videos != 2:
         errors.append("public page must expose exactly two live demo videos")
-    if index_inventory.sound_enabled_live_demo_roots != 1:
-        errors.append("exactly one immersive live showcase must declare click-to-sound")
-    if index_inventory.muted_live_demo_videos:
-        errors.append("click-to-sound live demos must not declare muted playback")
+    if index_inventory.muted_autoplay_live_demo_roots != 1:
+        errors.append("exactly one immersive showcase must declare muted autoplay")
+    if index_inventory.muted_live_demo_videos != 1:
+        errors.append("exactly one immersive live showcase must declare muted playback")
     if index_inventory.preloading_live_demo_videos:
         errors.append("every live demo video must use preload=none")
 

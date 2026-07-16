@@ -35,18 +35,19 @@ into shipped-product claims.
      issue links.
 7. Use real or sanitized Airo screenshots. Remove private URLs, credentials,
    third-party broadcast frames, unlicensed logos, and personal data.
-8. For an approved live demo, require an explicit user gesture before any
+8. For an approved live demo, default to an explicit user gesture before any
    manifest request, identify the third-party source and network/privacy
    boundary, provide unavailable and unsupported states, and destroy playback
-   on page exit. Attempt at most one automatic recovery within a finite
-   deadline before showing manual retry. Never proxy, cache, rebroadcast, or
-   silently preload it. Keep no more than two public samples on the page, use
-   one shared controller for every sample, stop an active sample before another
-   begins. An immersive/background sample may start with sound only when its
-   explicit Play control promises sound and the controller unmutes directly
-   inside that user gesture; otherwise it must start muted. Idle poster art must
-   be owned or sanitized Airo material rather than captured third-party broadcast
-   frames.
+   on page exit. A single immersive preview may autoplay only when it is at
+   least 35% visible, begins muted, uses `preload=none` without an HTML autoplay
+   attribute, waits for deep-link anchor positioning before observing, exposes a
+   persistent Unmute control, pauses and stops HLS.js loading off screen, and
+   retains a manual fallback. Attempt at most one
+   automatic recovery within a finite deadline before showing manual retry.
+   Never proxy, cache, rebroadcast, or silently preload it. Keep no more than two
+   public samples on the page, use one shared controller for every sample, and
+   stop an active sample before another begins. Idle poster art must be owned or
+   sanitized Airo material rather than captured third-party broadcast frames.
 9. Update device tutorials only for behavior supported by the claim state.
 10. Preserve the professional visual contract:
     - use one shared spacing and typography scale across product sections;

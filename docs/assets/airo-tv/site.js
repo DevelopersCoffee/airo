@@ -156,12 +156,13 @@
     var demoVideo = root.querySelector("[data-live-demo-video]");
     var demoStart = root.querySelector("[data-live-demo-start]");
     var demoButton = root.querySelector("[data-live-demo-button]");
+    var demoAudio = root.querySelector("[data-live-demo-audio]");
     var demoStatus = root.querySelector("[data-live-demo-status]");
     if (!demoVideo || !demoStart || !demoButton || !demoStatus) return null;
 
     var channelName = root.getAttribute("data-live-channel") || "live sample";
     var retryLabel = root.getAttribute("data-live-retry-label") || "Try live sample again";
-    var startWithSound = root.hasAttribute("data-live-start-with-sound");
+    var autoplayMuted = root.hasAttribute("data-live-autoplay-muted");
     var initialButtonMarkup = demoButton.innerHTML;
     var idleStatus = demoStatus.textContent;
     var demoHls = null;
@@ -171,11 +172,37 @@
     var demoRecoveryTimer = null;
     var demoSource = "";
     var demoUsesNativeHls = false;
+    var demoAutomaticStart = false;
+    var demoAutoplayAttempted = false;
+    var demoPausedByViewport = false;
+    var demoViewportObserver = null;
+    var demoViewportTimer = null;
 
     function setDemoStatus(message, state) {
       demoStatus.textContent = message;
       demoStatus.setAttribute("data-state", state || "ready");
       root.setAttribute("data-live-state", state || "ready");
+    }
+
+    function updateDemoAudioControl() {
+      if (!demoAudio) return;
+      var soundEnabled = !demoVideo.muted;
+      demoAudio.setAttribute("aria-pressed", String(soundEnabled));
+      demoAudio.innerHTML = soundEnabled
+        ? '<i data-lucide="volume-2" aria-hidden="true"></i><span>Mute</span>'
+        : '<i data-lucide="volume-x" aria-hidden="true"></i><span>Unmute</span>';
+      if (window.lucide) window.lucide.createIcons();
+    }
+
+    function showDemoAudioControl() {
+      if (!demoAudio) return;
+      demoAudio.hidden = false;
+      updateDemoAudioControl();
+    }
+
+    function hideDemoAudioControl() {
+      if (!demoAudio) return;
+      demoAudio.hidden = true;
     }
 
     function clearDemoRecoveryTimer() {
@@ -194,6 +221,14 @@
         })
         .catch(function (error) {
           if (!demoStarted) return;
+          if (demoAutomaticStart && error && error.name === "NotAllowedError") {
+            clearDemoRecoveryTimer();
+            demoAutomaticStart = false;
+            demoButton.disabled = false;
+            demoStart.hidden = false;
+            setDemoStatus("Autoplay unavailable. Start the muted preview.", "ready");
+            return;
+          }
           if (demoRecovering && error && error.name !== "NotAllowedError") return;
           if (!demoRecovering && error && error.name !== "NotAllowedError") {
             setDemoStatus("Preparing the live stream...", "loading");
@@ -211,8 +246,11 @@
       demoStarted = false;
       demoRecovering = false;
       demoRecoveryAttempts = 0;
+      demoAutomaticStart = false;
+      demoPausedByViewport = false;
       demoSource = "";
       demoUsesNativeHls = false;
+      hideDemoAudioControl();
       if (demoHls) {
         demoHls.destroy();
         demoHls = null;
@@ -290,24 +328,35 @@
       return false;
     }
 
-    demoButton.addEventListener("click", function () {
+    function startDemoPlayback(isAutomatic) {
       var source = demoButton.getAttribute("data-live-source");
-      if (!source || demoStarted) return;
+      if (!source) return;
+      if (demoStarted) {
+        if (!demoVideo.paused) return;
+        demoAutomaticStart = false;
+        demoButton.disabled = true;
+        requestDemoPlayback();
+        return;
+      }
 
       liveDemoInstances.forEach(function (instance) {
         if (instance.root !== root) instance.stopForSwitch();
       });
-      if (startWithSound) {
-        demoVideo.defaultMuted = false;
-        demoVideo.muted = false;
+      if (autoplayMuted) {
+        demoVideo.defaultMuted = true;
+        demoVideo.muted = true;
         demoVideo.volume = 1;
       }
       demoStarted = true;
+      demoAutomaticStart = isAutomatic;
       demoSource = source;
       demoRecoveryAttempts = 0;
       demoRecovering = false;
       demoButton.disabled = true;
-      setDemoStatus("Connecting directly to the third-party live stream...", "loading");
+      setDemoStatus(
+        isAutomatic ? "Starting the muted live preview..." : "Connecting directly to the third-party live stream...",
+        "loading"
+      );
       clearDemoRecoveryTimer();
       demoRecoveryTimer = window.setTimeout(function () {
         if (!demoStarted || demoVideo.currentTime > 0 || demoRecovering) return;
@@ -344,16 +393,40 @@
       }
 
       failDemo("This browser cannot play the live HLS sample.");
+    }
+
+    demoButton.addEventListener("click", function () {
+      startDemoPlayback(false);
     });
+
+    if (demoAudio) {
+      demoAudio.addEventListener("click", function () {
+        if (!demoStarted) return;
+        var enableSound = demoVideo.muted;
+        demoVideo.defaultMuted = !enableSound;
+        demoVideo.muted = !enableSound;
+        demoVideo.volume = 1;
+        updateDemoAudioControl();
+        setDemoStatus(
+          enableSound ? "Sound on for " + channelName + "." : "Muted " + channelName + " preview.",
+          "playing"
+        );
+      });
+    }
 
     demoVideo.addEventListener("playing", function () {
       clearDemoRecoveryTimer();
       demoRecovering = false;
+      demoAutomaticStart = false;
       demoStart.hidden = true;
-      setDemoStatus("Playing " + channelName + " live through the browser.", "playing");
+      if (autoplayMuted) showDemoAudioControl();
+      setDemoStatus(
+        demoVideo.muted ? "Playing " + channelName + " muted." : "Playing " + channelName + " with sound.",
+        "playing"
+      );
     });
     demoVideo.addEventListener("canplay", function () {
-      if (!demoStarted || !demoVideo.paused) return;
+      if (!demoStarted || !demoVideo.paused || demoPausedByViewport) return;
       requestDemoPlayback();
     });
     demoVideo.addEventListener("waiting", function () {
@@ -366,6 +439,59 @@
         failDemo("The live sample could not be played.");
       }
     });
+
+    if (autoplayMuted && "IntersectionObserver" in window) {
+      demoViewportObserver = new IntersectionObserver(
+        function (entries) {
+          var entry = entries[0];
+          var visibleEnough = entry.isIntersecting && entry.intersectionRatio >= 0.35;
+
+          if (visibleEnough) {
+            if (!demoAutoplayAttempted && !demoStarted) {
+              demoAutoplayAttempted = true;
+              var anotherDemoActive = liveDemoInstances.some(function (instance) {
+                return instance.root !== root && instance.isActive();
+              });
+              if (anotherDemoActive) return;
+              startDemoPlayback(true);
+              return;
+            }
+            if (demoPausedByViewport && demoStarted) {
+              demoPausedByViewport = false;
+              demoVideo.defaultMuted = true;
+              demoVideo.muted = true;
+              updateDemoAudioControl();
+              if (demoHls) demoHls.startLoad(-1);
+              setDemoStatus("Resuming the muted live preview...", "loading");
+              requestDemoPlayback();
+            }
+            return;
+          }
+
+          if (!demoStarted || demoPausedByViewport) return;
+          demoPausedByViewport = true;
+          demoVideo.defaultMuted = true;
+          demoVideo.muted = true;
+          updateDemoAudioControl();
+          demoVideo.pause();
+          if (demoHls) demoHls.stopLoad();
+          setDemoStatus("Muted preview paused off screen.", "paused");
+        },
+        { threshold: [0, 0.35] }
+      );
+      function observeMutedPreview() {
+        demoViewportTimer = window.setTimeout(function () {
+          demoViewportTimer = null;
+          if (demoViewportObserver) demoViewportObserver.observe(root);
+        }, 250);
+      }
+
+      if (document.readyState === "complete") {
+        observeMutedPreview();
+      } else {
+        window.addEventListener("load", observeMutedPreview, { once: true });
+      }
+    }
 
     document.addEventListener("visibilitychange", function () {
       if (!demoStarted) return;
@@ -381,7 +507,14 @@
 
     return {
       root: root,
-      destroy: destroyDemoStream,
+      isActive: function () {
+        return demoStarted;
+      },
+      destroy: function () {
+        if (demoViewportTimer) window.clearTimeout(demoViewportTimer);
+        if (demoViewportObserver) demoViewportObserver.disconnect();
+        destroyDemoStream();
+      },
       stopForSwitch: function () {
         if (!demoStarted) return;
         destroyDemoStream();
