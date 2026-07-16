@@ -1,11 +1,10 @@
 import 'package:core_data/core_data.dart';
-import 'package:equatable/equatable.dart';
 
 import 'content_source.dart';
 
 /// A source's auth secret. Never persisted or logged outside
 /// [ContentSourceCredentialStore] — [toString] is always redacted.
-class ContentSourceCredentials extends Equatable {
+class ContentSourceCredentials {
   const ContentSourceCredentials({
     required this.username,
     required this.password,
@@ -15,7 +14,15 @@ class ContentSourceCredentials extends Equatable {
   final String password;
 
   @override
-  List<Object?> get props => [username, password];
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ContentSourceCredentials &&
+          runtimeType == other.runtimeType &&
+          username == other.username &&
+          password == other.password;
+
+  @override
+  int get hashCode => Object.hash(username, password);
 
   @override
   String toString() => 'ContentSourceCredentials(redacted)';
