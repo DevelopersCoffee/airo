@@ -110,6 +110,7 @@
     var revealSelectors = [
       ".section-intro",
       ".screen-step",
+      ".channel-showcase-content",
       ".live-demo-stage",
       ".live-demo-details",
       ".device-row",
@@ -149,144 +150,215 @@
     }
   }
 
-  var demoVideo = document.querySelector("[data-live-demo-video]");
-  var demoStart = document.querySelector("[data-live-demo-start]");
-  var demoButton = document.querySelector("[data-live-demo-button]");
-  var demoStatus = document.querySelector("[data-live-demo-status]");
-  var demoHls = null;
-  var demoStarted = false;
-  var demoRecovering = false;
-  var demoRecoveryAttempts = 0;
-  var demoRecoveryTimer = null;
-  var demoSource = "";
-  var demoUsesNativeHls = false;
+  var liveDemoInstances = [];
 
-  function setDemoStatus(message, state) {
-    if (!demoStatus) return;
-    demoStatus.textContent = message;
-    demoStatus.setAttribute("data-state", state || "ready");
-  }
+  function initializeLiveDemo(root) {
+    var demoVideo = root.querySelector("[data-live-demo-video]");
+    var demoStart = root.querySelector("[data-live-demo-start]");
+    var demoButton = root.querySelector("[data-live-demo-button]");
+    var demoAudio = root.querySelector("[data-live-demo-audio]");
+    var demoStatus = root.querySelector("[data-live-demo-status]");
+    if (!demoVideo || !demoStart || !demoButton || !demoStatus) return null;
 
-  function clearDemoRecoveryTimer() {
-    if (!demoRecoveryTimer) return;
-    window.clearTimeout(demoRecoveryTimer);
-    demoRecoveryTimer = null;
-  }
+    var channelName = root.getAttribute("data-live-channel") || "live sample";
+    var retryLabel = root.getAttribute("data-live-retry-label") || "Try live sample again";
+    var autoplayMuted = root.hasAttribute("data-live-autoplay-muted");
+    var initialButtonMarkup = demoButton.innerHTML;
+    var idleStatus = demoStatus.textContent;
+    var demoHls = null;
+    var demoStarted = false;
+    var demoRecovering = false;
+    var demoRecoveryAttempts = 0;
+    var demoRecoveryTimer = null;
+    var demoSource = "";
+    var demoUsesNativeHls = false;
+    var demoAutomaticStart = false;
+    var demoAutoplayAttempted = false;
+    var autoplayBlockedByInitialHash =
+      autoplayMuted && Boolean(window.location.hash) && window.location.hash !== "#vevo-showcase";
+    var demoPausedByViewport = false;
+    var demoViewportObserver = null;
+    var demoViewportTimer = null;
 
-  function requestDemoPlayback() {
-    if (!demoVideo || !demoStarted) return;
-    var playRequest = demoVideo.play();
-    if (!playRequest) return;
-    playRequest
-      .then(function () {
-        if (demoStart) demoStart.hidden = true;
-      })
-      .catch(function (error) {
-        if (!demoStarted) return;
-        if (demoRecovering && error && error.name !== "NotAllowedError") return;
-        if (!demoRecovering && error && error.name !== "NotAllowedError") {
-          setDemoStatus("Preparing the live stream...", "loading");
-          return;
-        }
-        clearDemoRecoveryTimer();
-        demoRecovering = false;
-        if (demoStart) demoStart.hidden = true;
-        setDemoStatus("Stream ready. Press the video Play control to continue.", "ready");
-      });
-  }
-
-  function destroyDemoStream() {
-    clearDemoRecoveryTimer();
-    if (demoHls) {
-      demoHls.destroy();
-      demoHls = null;
+    function setDemoStatus(message, state) {
+      demoStatus.textContent = message;
+      demoStatus.setAttribute("data-state", state || "ready");
+      root.setAttribute("data-live-state", state || "ready");
     }
-    if (demoVideo) {
+
+    function updateDemoAudioControl() {
+      if (!demoAudio) return;
+      var soundEnabled = !demoVideo.muted;
+      demoAudio.setAttribute("aria-pressed", String(soundEnabled));
+      demoAudio.innerHTML = soundEnabled
+        ? '<i data-lucide="volume-2" aria-hidden="true"></i><span>Mute</span>'
+        : '<i data-lucide="volume-x" aria-hidden="true"></i><span>Unmute</span>';
+      if (window.lucide) window.lucide.createIcons();
+    }
+
+    function showDemoAudioControl() {
+      if (!demoAudio) return;
+      demoAudio.hidden = false;
+      updateDemoAudioControl();
+    }
+
+    function hideDemoAudioControl() {
+      if (!demoAudio) return;
+      demoAudio.hidden = true;
+    }
+
+    function clearDemoRecoveryTimer() {
+      if (!demoRecoveryTimer) return;
+      window.clearTimeout(demoRecoveryTimer);
+      demoRecoveryTimer = null;
+    }
+
+    function requestDemoPlayback() {
+      if (!demoStarted) return;
+      var playRequest = demoVideo.play();
+      if (!playRequest) return;
+      playRequest
+        .then(function () {
+          demoStart.hidden = true;
+        })
+        .catch(function (error) {
+          if (!demoStarted) return;
+          if (demoAutomaticStart && error && error.name === "NotAllowedError") {
+            clearDemoRecoveryTimer();
+            demoAutomaticStart = false;
+            demoButton.disabled = false;
+            demoStart.hidden = false;
+            setDemoStatus("Autoplay unavailable. Start the muted preview.", "ready");
+            return;
+          }
+          if (demoRecovering && error && error.name !== "NotAllowedError") return;
+          if (!demoRecovering && error && error.name !== "NotAllowedError") {
+            setDemoStatus("Preparing the live stream...", "loading");
+            return;
+          }
+          clearDemoRecoveryTimer();
+          demoRecovering = false;
+          demoStart.hidden = true;
+          setDemoStatus("Stream ready. Press the video Play control to continue.", "ready");
+        });
+    }
+
+    function destroyDemoStream() {
+      clearDemoRecoveryTimer();
+      demoStarted = false;
+      demoRecovering = false;
+      demoRecoveryAttempts = 0;
+      demoAutomaticStart = false;
+      demoPausedByViewport = false;
+      demoSource = "";
+      demoUsesNativeHls = false;
+      hideDemoAudioControl();
+      if (demoHls) {
+        demoHls.destroy();
+        demoHls = null;
+      }
       demoVideo.pause();
       demoVideo.removeAttribute("src");
       demoVideo.load();
     }
-    demoStarted = false;
-    demoRecovering = false;
-    demoRecoveryAttempts = 0;
-    demoSource = "";
-    demoUsesNativeHls = false;
-  }
 
-  function resetDemoAfterFailure() {
-    destroyDemoStream();
-    if (demoStart) demoStart.hidden = false;
-    if (demoButton) {
+    function restoreDemoUi(useRetryLabel) {
+      demoStart.hidden = false;
       demoButton.disabled = false;
-      demoButton.innerHTML = '<i data-lucide="rotate-cw" aria-hidden="true"></i> Try live sample again';
+      demoButton.innerHTML = useRetryLabel
+        ? '<i data-lucide="rotate-cw" aria-hidden="true"></i> ' + retryLabel
+        : initialButtonMarkup;
+      if (!useRetryLabel) setDemoStatus(idleStatus, "ready");
       if (window.lucide) window.lucide.createIcons();
     }
-  }
 
-  function failDemo(message) {
-    setDemoStatus(message, "error");
-    resetDemoAfterFailure();
-  }
+    function resetDemoAfterFailure() {
+      destroyDemoStream();
+      restoreDemoUi(true);
+    }
 
-  function retryNativeDemo() {
-    if (!demoVideo || !demoSource) return;
-    var separator = demoSource.includes("?") ? "&" : "?";
-    demoVideo.pause();
-    demoVideo.removeAttribute("src");
-    demoVideo.load();
-    window.setTimeout(function () {
-      if (!demoStarted || !demoRecovering) return;
-      demoVideo.src = demoSource + separator + "airo_retry=" + Date.now();
-      requestDemoPlayback();
-    }, 250);
-  }
+    function failDemo(message) {
+      setDemoStatus(message, "error");
+      resetDemoAfterFailure();
+    }
 
-  function recoverDemo(kind) {
-    if (!demoStarted || demoRecovering) return true;
-    if (demoRecoveryAttempts >= 1) return false;
-
-    demoRecoveryAttempts += 1;
-    demoRecovering = true;
-    setDemoStatus("Connection interrupted. Retrying live stream automatically...", "recovering");
-    clearDemoRecoveryTimer();
-    demoRecoveryTimer = window.setTimeout(function () {
-      if (!demoStarted || !demoRecovering) return;
-      failDemo("The live sample is unavailable or blocked in this region.");
-    }, 8000);
-
-    if (demoHls) {
-      try {
-        if (kind === "network") {
-          demoHls.startLoad(-1);
-        } else {
-          demoHls.recoverMediaError();
-        }
+    function retryNativeDemo() {
+      if (!demoSource) return;
+      var separator = demoSource.includes("?") ? "&" : "?";
+      demoVideo.pause();
+      demoVideo.removeAttribute("src");
+      demoVideo.load();
+      window.setTimeout(function () {
+        if (!demoStarted || !demoRecovering) return;
+        demoVideo.src = demoSource + separator + "airo_retry=" + Date.now();
         requestDemoPlayback();
-      } catch (_error) {
-        failDemo("The live sample could not recover automatically.");
+      }, 250);
+    }
+
+    function recoverDemo(kind) {
+      if (!demoStarted || demoRecovering) return true;
+      if (demoRecoveryAttempts >= 1) return false;
+
+      demoRecoveryAttempts += 1;
+      demoRecovering = true;
+      setDemoStatus("Connection interrupted. Retrying live stream automatically...", "recovering");
+      clearDemoRecoveryTimer();
+      demoRecoveryTimer = window.setTimeout(function () {
+        if (!demoStarted || !demoRecovering) return;
+        failDemo("The live sample is unavailable or blocked in this region.");
+      }, 8000);
+
+      if (demoHls) {
+        try {
+          if (kind === "network") {
+            demoHls.startLoad(-1);
+          } else {
+            demoHls.recoverMediaError();
+          }
+          requestDemoPlayback();
+        } catch (_error) {
+          failDemo("The live sample could not recover automatically.");
+        }
+        return true;
       }
-      return true;
+
+      if (demoUsesNativeHls) {
+        retryNativeDemo();
+        return true;
+      }
+
+      return false;
     }
 
-    if (demoUsesNativeHls) {
-      retryNativeDemo();
-      return true;
-    }
-
-    return false;
-  }
-
-  if (demoVideo && demoStart && demoButton && demoStatus) {
-    demoButton.addEventListener("click", function () {
+    function startDemoPlayback(isAutomatic) {
       var source = demoButton.getAttribute("data-live-source");
-      if (!source || demoStarted) return;
+      if (!source) return;
+      if (demoStarted) {
+        if (!demoVideo.paused) return;
+        demoAutomaticStart = false;
+        demoButton.disabled = true;
+        requestDemoPlayback();
+        return;
+      }
 
+      liveDemoInstances.forEach(function (instance) {
+        if (instance.root !== root) instance.stopForSwitch();
+      });
+      if (autoplayMuted) {
+        demoVideo.defaultMuted = true;
+        demoVideo.muted = true;
+        demoVideo.volume = 1;
+      }
       demoStarted = true;
+      demoAutomaticStart = isAutomatic;
       demoSource = source;
       demoRecoveryAttempts = 0;
       demoRecovering = false;
       demoButton.disabled = true;
-      setDemoStatus("Connecting directly to the third-party live stream...", "loading");
+      setDemoStatus(
+        isAutomatic ? "Starting the muted live preview..." : "Connecting directly to the third-party live stream...",
+        "loading"
+      );
       clearDemoRecoveryTimer();
       demoRecoveryTimer = window.setTimeout(function () {
         if (!demoStarted || demoVideo.currentTime > 0 || demoRecovering) return;
@@ -310,8 +382,7 @@
           maxMaxBufferLength: 24,
         });
         demoHls.on(window.Hls.Events.ERROR, function (_event, data) {
-          if (!data.fatal) return;
-          if (demoRecovering) return;
+          if (!data.fatal || demoRecovering) return;
           var kind = data.type === window.Hls.ErrorTypes.NETWORK_ERROR ? "network" : "media";
           if (!recoverDemo(kind)) {
             failDemo("The live sample is unavailable or blocked in this region.");
@@ -324,16 +395,40 @@
       }
 
       failDemo("This browser cannot play the live HLS sample.");
+    }
+
+    demoButton.addEventListener("click", function () {
+      startDemoPlayback(false);
     });
+
+    if (demoAudio) {
+      demoAudio.addEventListener("click", function () {
+        if (!demoStarted) return;
+        var enableSound = demoVideo.muted;
+        demoVideo.defaultMuted = !enableSound;
+        demoVideo.muted = !enableSound;
+        demoVideo.volume = 1;
+        updateDemoAudioControl();
+        setDemoStatus(
+          enableSound ? "Sound on for " + channelName + "." : "Muted " + channelName + " preview.",
+          "playing"
+        );
+      });
+    }
 
     demoVideo.addEventListener("playing", function () {
       clearDemoRecoveryTimer();
       demoRecovering = false;
+      demoAutomaticStart = false;
       demoStart.hidden = true;
-      setDemoStatus("Playing YRF Music live through the browser.", "playing");
+      if (autoplayMuted) showDemoAudioControl();
+      setDemoStatus(
+        demoVideo.muted ? "Playing " + channelName + " muted." : "Playing " + channelName + " with sound.",
+        "playing"
+      );
     });
     demoVideo.addEventListener("canplay", function () {
-      if (!demoStarted || !demoVideo.paused) return;
+      if (!demoStarted || !demoVideo.paused || demoPausedByViewport) return;
       requestDemoPlayback();
     });
     demoVideo.addEventListener("waiting", function () {
@@ -347,6 +442,68 @@
       }
     });
 
+    if (autoplayMuted && "IntersectionObserver" in window) {
+      demoViewportObserver = new IntersectionObserver(
+        function (entries) {
+          var entry = entries[0];
+          var visibleEnough = entry.isIntersecting && entry.intersectionRatio >= 0.35;
+
+          if (visibleEnough) {
+            if (!demoAutoplayAttempted && !demoStarted) {
+              demoAutoplayAttempted = true;
+              if (autoplayBlockedByInitialHash) return;
+              var anotherDemoActive = liveDemoInstances.some(function (instance) {
+                return instance.root !== root && instance.isActive();
+              });
+              if (anotherDemoActive) return;
+              startDemoPlayback(true);
+              return;
+            }
+            if (demoPausedByViewport && demoStarted) {
+              demoPausedByViewport = false;
+              demoVideo.defaultMuted = true;
+              demoVideo.muted = true;
+              updateDemoAudioControl();
+              if (demoHls) demoHls.startLoad(-1);
+              setDemoStatus("Resuming the muted live preview...", "loading");
+              requestDemoPlayback();
+            }
+            return;
+          }
+
+          if (!demoStarted || demoPausedByViewport) return;
+          demoPausedByViewport = true;
+          demoVideo.defaultMuted = true;
+          demoVideo.muted = true;
+          updateDemoAudioControl();
+          demoVideo.pause();
+          if (demoHls) demoHls.stopLoad();
+          setDemoStatus("Muted preview paused off screen.", "paused");
+        },
+        { threshold: [0, 0.35] }
+      );
+      function observeMutedPreview() {
+        demoViewportTimer = window.setTimeout(function () {
+          demoViewportTimer = null;
+          if (demoViewportObserver) demoViewportObserver.observe(root);
+        }, 250);
+      }
+
+      if (document.readyState === "complete") {
+        observeMutedPreview();
+      } else {
+        window.addEventListener("load", observeMutedPreview, { once: true });
+      }
+    }
+
+    function handleDemoHashChange() {
+      if (!autoplayMuted || demoStarted || window.location.hash !== "#vevo-showcase") return;
+      autoplayBlockedByInitialHash = false;
+      demoAutoplayAttempted = false;
+    }
+
+    if (autoplayMuted) window.addEventListener("hashchange", handleDemoHashChange);
+
     document.addEventListener("visibilitychange", function () {
       if (!demoStarted) return;
       if (document.hidden) {
@@ -358,8 +515,36 @@
         setDemoStatus("Stream ready. Press the video Play control to continue.", "ready");
       }
     });
-    window.addEventListener("pagehide", destroyDemoStream);
+
+    return {
+      root: root,
+      isActive: function () {
+        return demoStarted;
+      },
+      destroy: function () {
+        if (demoViewportTimer) window.clearTimeout(demoViewportTimer);
+        if (demoViewportObserver) demoViewportObserver.disconnect();
+        if (autoplayMuted) window.removeEventListener("hashchange", handleDemoHashChange);
+        destroyDemoStream();
+      },
+      stopForSwitch: function () {
+        if (!demoStarted) return;
+        destroyDemoStream();
+        restoreDemoUi(false);
+      },
+    };
   }
+
+  document.querySelectorAll("[data-live-demo]").forEach(function (root) {
+    var instance = initializeLiveDemo(root);
+    if (instance) liveDemoInstances.push(instance);
+  });
+
+  window.addEventListener("pagehide", function () {
+    liveDemoInstances.forEach(function (instance) {
+      instance.destroy();
+    });
+  });
 
   if (window.lucide) window.lucide.createIcons();
 })();
