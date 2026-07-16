@@ -88,15 +88,18 @@ Application Agent must not bypass framework contracts for convenience.
 
 ### Domain Agents
 
-Domain agents own specialized business behavior:
-- Brain / AI Agent
-- Agent Skills Agent
-- Memory Agent
-- Routine OS Agent
-- Coins / Finance Agent
-- Meeting Intelligence Agent
-- Media Agent
-- Mobile UI Agent
+Full current roster with package ownership lives in
+[COUNCIL.md](./COUNCIL.md) — that file is the source of truth, this list is
+just an index:
+
+- Airo TV domain (Flutter, Rust, Playback, Media Intelligence, TV Experience,
+  Platform, Edge, Cloud Architects) — supersedes the former generic "Media
+  Agent" / "Mobile UI Agent" entries for all Airo TV work.
+- Brain / AI Agent — `core_ai`, `core_ai_delegation`, `core_delegation`
+- Coins / Finance Agent — `airomoney`
+- Meeting Intelligence Agent — dormant, no packages yet
+- Agent Skills Agent, Memory Agent, Routine OS Agent — super-app-level,
+  unchanged, no owned packages exist yet in this repo pass
 
 Domain agents define domain invariants, workflows, and acceptance criteria.
 They consume framework contracts instead of redefining infrastructure locally.
@@ -140,6 +143,11 @@ Owns:
 
 ## Ownership Map
 
+Airo TV package ownership (Flutter, Rust, Playback, Media Intelligence, TV
+Experience, Platform, Edge, Cloud) and the full decision matrix now live in
+[COUNCIL.md](./COUNCIL.md) — do not duplicate that table here. Remaining
+super-app-level areas not yet covered by COUNCIL.md:
+
 | Area | Primary Owner | Secondary Review |
 | --- | --- | --- |
 | `packages/core_ai`, model routing, LiteRT/HF contracts | Framework Agent | Security, QA |
@@ -150,7 +158,6 @@ Owns:
 | Routine Packs, templates, habit coach, Airo OS Home | Routine OS Agent | Mobile UI, Memory |
 | Coins and finance workflows | Coins / Finance Agent | Security, QA |
 | Meeting recording, transcription, speaker identity | Meeting Intelligence Agent | Security, Memory |
-| Shared widgets, navigation, visual system | Mobile UI Agent | Domain owner |
 | CI/CD, release, automation infrastructure | Release and DevEx Agent | QA |
 
 ## Lifecycle

@@ -4,6 +4,11 @@ Every implementation agent working in this repository must follow the agent
 lifecycle in [docs/agents/AGENT_POLICY.md](docs/agents/AGENT_POLICY.md) before
 writing feature code.
 
+For module ownership and required reviewers by change type, read
+[docs/agents/COUNCIL.md](docs/agents/COUNCIL.md) — the Airo Engineering
+Council roster. This applies regardless of which AI tool is writing the
+code (Claude Code, Codex, Antigravity, or any other agent reading this file).
+
 ## Required Before Implementation
 
 For every feature, bug fix, or architecture change:

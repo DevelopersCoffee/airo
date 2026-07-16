@@ -1,0 +1,13 @@
+name: platform_epg
+owner: Media Intelligence Architect
+reviewers:
+  - Chief Architect
+  - Flutter Architect
+  - Chief Performance Officer
+contracts:
+  - compact_epg_v1
+allowed_dependencies:
+  - core_native
+forbidden_dependencies:
+  - app
+quality_gates: {}

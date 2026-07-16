@@ -1,0 +1,9 @@
+name: platform_dependency_governance
+owner: Chief Open Source Officer
+reviewers:
+  - Chief Architect
+  - Chief Security Officer
+allowed_dependencies: []
+forbidden_dependencies:
+  - app
+quality_gates: {}

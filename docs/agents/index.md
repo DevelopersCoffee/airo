@@ -9,6 +9,7 @@
 | [📋 Project Board](https://github.com/orgs/DevelopersCoffee/projects/2) | Live task tracking |
 | [📜 Rules](./RULES.md) | Agent operating rules |
 | [🧭 Agent Policy](./AGENT_POLICY.md) | Ownership, lifecycle gates, contracts, and Critical Agent workflow |
+| [🏛️ Engineering Council](./COUNCIL.md) | Domain roster, decision matrix, `module.yaml` schema — tool-agnostic |
 | [🧪 Kaggle Adoption](./KAGGLE_VIBE_CODING_ADOPTION.md) | Spec-driven, skills, tools, security, and evaluation adoption plan |
 | [📱 Mobile UI Agent](./mobile-ui-agent/README.md) | Canonical UI/UX owner for shell ownership, header governance, standards, and execution tasks |
 | [🔄 SDLC](./SDLC.md) | Development workflow |
