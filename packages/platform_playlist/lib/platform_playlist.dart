@@ -2,7 +2,7 @@
 /// Jellyfin) and provider adapters for Airo TV.
 library platform_playlist;
 
-export 'package:platform_channels/platform_channels.dart';
+export 'package:platform_channels/platform_channels.dart' show VodItem, VodContentKind;
 
 export 'src/content_source.dart';
 export 'src/content_source_credential_store.dart';
