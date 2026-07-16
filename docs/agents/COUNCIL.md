@@ -114,9 +114,11 @@ of 21 independent third-party-compatibility shims, not itself a package (no
 
 Packages assigned to `Chief Architect` as primary owner (no dedicated domain
 fits): `airo` (super-app host/routing), `airo_pro_bootstrap`, `core_data`,
-`core_domain`, `core_experimentation`. These stay Chief-Architect-owned
-until a future pass finds a better-fitting domain, not because they're
-unimportant.
+`core_domain`, `core_experimentation`, `core_media_data` (data/benchmark
+models, not decoder/DRM/subtitle logic — not a real Playback fit),
+`platform_worker_jobs` (generic resource-scheduler contracts, no UI —
+not a real Flutter fit). These stay Chief-Architect-owned until a future
+pass finds a better-fitting domain, not because they're unimportant.
 
 ## Decision Matrix
 
@@ -135,8 +137,11 @@ unimportant.
 
 ## `module.yaml` Manifest Schema
 
-One file per package, at `packages/<name>/module.yaml`. Not CI-enforced yet
-(phase 2). Fields are omitted, never fabricated, when a value isn't measured.
+One file per package, at `packages/<name>/module.yaml`. Enforced in CI by
+`scripts/check-module-manifests.py` (name/pubspec match, valid roles,
+allowed/forbidden dependencies vs. real pubspec path deps) — wired into
+`pr-checks.yml`. Fields are omitted, never fabricated, when a value isn't
+measured.
 
 ```yaml
 name: <package name, must match pubspec.yaml name>

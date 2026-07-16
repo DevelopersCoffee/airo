@@ -1,9 +1,8 @@
 name: core_media_data
-owner: Playback Architect
+owner: Chief Architect
 reviewers:
-  - Chief Architect
+  - Playback Architect
   - Chief Performance Officer
-  - Chief Security Officer
 allowed_dependencies: []
 forbidden_dependencies:
   - app

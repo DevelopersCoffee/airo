@@ -1,9 +1,7 @@
 name: platform_worker_jobs
-owner: Flutter Architect
+owner: Chief Architect
 reviewers:
-  - Chief Architect
   - Chief Performance Officer
-  - Chief Open Source Officer
   - Rust Architect
 allowed_dependencies: []
 forbidden_dependencies:
