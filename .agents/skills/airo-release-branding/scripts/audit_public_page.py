@@ -184,6 +184,7 @@ def main() -> int:
         'root.hasAttribute("data-live-autoplay-muted")': "muted autoplay contract",
         "entry.intersectionRatio >= 0.35": "visibility threshold",
         "observeMutedPreview": "deep-link-safe observer setup",
+        "autoplayBlockedByInitialHash": "non-showcase deep-link guard",
         "demoVideo.muted = true": "forced muted autoplay",
         "demoAudio.addEventListener": "user-controlled audio toggle",
         "demoHls.stopLoad()": "off-screen network pause",

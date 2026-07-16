@@ -174,6 +174,8 @@
     var demoUsesNativeHls = false;
     var demoAutomaticStart = false;
     var demoAutoplayAttempted = false;
+    var autoplayBlockedByInitialHash =
+      autoplayMuted && Boolean(window.location.hash) && window.location.hash !== "#vevo-showcase";
     var demoPausedByViewport = false;
     var demoViewportObserver = null;
     var demoViewportTimer = null;
@@ -449,6 +451,7 @@
           if (visibleEnough) {
             if (!demoAutoplayAttempted && !demoStarted) {
               demoAutoplayAttempted = true;
+              if (autoplayBlockedByInitialHash) return;
               var anotherDemoActive = liveDemoInstances.some(function (instance) {
                 return instance.root !== root && instance.isActive();
               });
@@ -493,6 +496,14 @@
       }
     }
 
+    function handleDemoHashChange() {
+      if (!autoplayMuted || demoStarted || window.location.hash !== "#vevo-showcase") return;
+      autoplayBlockedByInitialHash = false;
+      demoAutoplayAttempted = false;
+    }
+
+    if (autoplayMuted) window.addEventListener("hashchange", handleDemoHashChange);
+
     document.addEventListener("visibilitychange", function () {
       if (!demoStarted) return;
       if (document.hidden) {
@@ -513,6 +524,7 @@
       destroy: function () {
         if (demoViewportTimer) window.clearTimeout(demoViewportTimer);
         if (demoViewportObserver) demoViewportObserver.disconnect();
+        if (autoplayMuted) window.removeEventListener("hashchange", handleDemoHashChange);
         destroyDemoStream();
       },
       stopForSwitch: function () {
