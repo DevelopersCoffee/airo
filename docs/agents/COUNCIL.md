@@ -104,12 +104,19 @@ implementation detail — that's the domain agent's job.
 | AI/Brain Agent | (none yet) | Owns product-layer Brain/chat journeys once built. Does **not** own `core_ai`, `core_ai_delegation`, `core_delegation` — those runtime/model-routing packages stay with Framework Agent per `AGENT_POLICY.md`'s Ownership Map, to avoid a two-owner conflict on the same package. |
 | Meeting Intelligence Agent | (none yet) | Dormant — no packages exist for this sub-app yet |
 
-### Unassigned packages
+### Package ownership — full retrofit (phase 2)
 
-Default to Chief Architect until a phase-2 pass assigns them: `core_analytics`,
-`core_commands`, `core_data`, `core_domain`, `core_push_wake`,
-`platform_benchmarks`, `platform_certification`, `platform_worker_jobs`,
-`stubs`, `benchmarks`, `airo_pro_bootstrap`.
+Every real package (a directory with its own `pubspec.yaml`) now has a
+`packages/<name>/module.yaml`, validated by
+`scripts/check-module-manifests.py` in CI. `packages/stubs/` is a container
+of 21 independent third-party-compatibility shims, not itself a package (no
+`pubspec.yaml` at its own root) — excluded from manifest coverage by design.
+
+Packages assigned to `Chief Architect` as primary owner (no dedicated domain
+fits): `airo` (super-app host/routing), `airo_pro_bootstrap`, `core_data`,
+`core_domain`, `core_experimentation`. These stay Chief-Architect-owned
+until a future pass finds a better-fitting domain, not because they're
+unimportant.
 
 ## Decision Matrix
 

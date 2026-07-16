@@ -1,0 +1,10 @@
+name: core_data
+owner: Chief Architect
+reviewers:
+  - Chief Security Officer
+  - Chief QA Officer
+allowed_dependencies:
+  - core_domain
+forbidden_dependencies:
+  - app
+quality_gates: {}

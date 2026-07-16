@@ -1,0 +1,8 @@
+name: core_release
+owner: Chief Release/DevOps Officer
+reviewers:
+  - Chief Architect
+allowed_dependencies: []
+forbidden_dependencies:
+  - app
+quality_gates: {}

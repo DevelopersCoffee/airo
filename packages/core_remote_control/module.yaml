@@ -1,0 +1,14 @@
+name: core_remote_control
+owner: TV Experience Architect
+reviewers:
+  - Chief Architect
+  - Flutter Architect
+  - Chief UX Officer
+allowed_dependencies:
+  - core_commands
+  - core_pairing
+  - core_protocol
+  - core_sessions
+forbidden_dependencies:
+  - app
+quality_gates: {}

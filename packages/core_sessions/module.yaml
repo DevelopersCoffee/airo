@@ -1,0 +1,13 @@
+name: core_sessions
+owner: Chief Cloud Officer
+reviewers:
+  - Chief Architect
+  - Chief Security Officer
+allowed_dependencies:
+  - core_commands
+  - core_media_routing
+  - core_pairing
+  - core_protocol
+forbidden_dependencies:
+  - app
+quality_gates: {}

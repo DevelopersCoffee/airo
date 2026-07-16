@@ -1,0 +1,12 @@
+name: platform_device_qualification
+owner: Platform Architect
+reviewers:
+  - Chief Architect
+  - Chief Performance Officer
+  - Chief QA Officer
+allowed_dependencies:
+  - core_data
+  - platform_channels
+forbidden_dependencies:
+  - app
+quality_gates: {}

@@ -1,0 +1,12 @@
+name: platform_receiver_modes
+owner: TV Experience Architect
+reviewers:
+  - Chief Architect
+  - Flutter Architect
+  - Chief UX Officer
+allowed_dependencies:
+  - platform_device_profile
+  - product_capabilities
+forbidden_dependencies:
+  - app
+quality_gates: {}

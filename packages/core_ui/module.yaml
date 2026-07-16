@@ -1,0 +1,11 @@
+name: core_ui
+owner: Flutter Architect
+reviewers:
+  - Chief Architect
+  - Chief Performance Officer
+  - Chief Open Source Officer
+allowed_dependencies:
+  - platform_device_profile
+forbidden_dependencies:
+  - app
+quality_gates: {}

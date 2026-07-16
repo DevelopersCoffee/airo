@@ -1,0 +1,10 @@
+name: core_experimentation
+owner: Chief Architect
+reviewers:
+  - Chief Security Officer
+  - Chief QA Officer
+  - Product Manager
+allowed_dependencies: []
+forbidden_dependencies:
+  - app
+quality_gates: {}

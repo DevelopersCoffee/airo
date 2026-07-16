@@ -1,0 +1,11 @@
+name: airo_pro_bootstrap
+owner: Chief Architect
+reviewers:
+  - Chief Security Officer
+  - Chief QA Officer
+  - Chief Open Source Officer
+allowed_dependencies:
+  - core_entitlements
+forbidden_dependencies:
+  - app
+quality_gates: {}

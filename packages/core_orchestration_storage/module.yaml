@@ -1,0 +1,15 @@
+name: core_orchestration_storage
+owner: Edge Architect
+reviewers:
+  - Chief Architect
+  - Chief Cloud Officer
+  - Chief Performance Officer
+allowed_dependencies:
+  - core_commands
+  - core_device_identity
+  - core_presence
+  - core_sessions
+  - core_watch_progress
+forbidden_dependencies:
+  - app
+quality_gates: {}

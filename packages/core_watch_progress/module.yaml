@@ -1,0 +1,11 @@
+name: core_watch_progress
+owner: Edge Architect
+reviewers:
+  - Chief Architect
+  - Chief Cloud Officer
+  - Chief Performance Officer
+allowed_dependencies:
+  - core_sessions
+forbidden_dependencies:
+  - app
+quality_gates: {}

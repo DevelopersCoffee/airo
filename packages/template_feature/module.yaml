@@ -1,0 +1,13 @@
+name: template_feature
+owner: Flutter Architect
+reviewers:
+  - Chief Architect
+  - Chief Performance Officer
+  - Chief Open Source Officer
+allowed_dependencies:
+  - core_domain
+  - core_data
+  - core_ui
+forbidden_dependencies:
+  - app
+quality_gates: {}

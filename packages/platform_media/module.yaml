@@ -1,0 +1,14 @@
+name: platform_media
+owner: Playback Architect
+reviewers:
+  - Chief Architect
+  - Chief Performance Officer
+  - Chief Security Officer
+allowed_dependencies:
+  - core_analytics
+  - platform_channels
+  - platform_player
+  - platform_streams
+forbidden_dependencies:
+  - app
+quality_gates: {}

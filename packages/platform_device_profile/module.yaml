@@ -1,0 +1,11 @@
+name: platform_device_profile
+owner: Platform Architect
+reviewers:
+  - Chief Architect
+  - Chief Performance Officer
+allowed_dependencies:
+  - core_protocol
+  - product_capabilities
+forbidden_dependencies:
+  - app
+quality_gates: {}

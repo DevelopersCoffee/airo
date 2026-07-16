@@ -78,6 +78,7 @@ jobs:
       - name: Validate Engineering Council module manifests
         run: |
           chmod +x scripts/check-module-manifests.py scripts/test-check-module-manifests.sh
+          ruby -e 'require "yaml"; Dir.glob("packages/*/module.yaml").each { |f| YAML.load_file(f); puts "yaml ok #{f}" }'
           scripts/test-check-module-manifests.sh
           scripts/check-module-manifests.py
 

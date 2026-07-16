@@ -1,0 +1,11 @@
+name: core_ai
+owner: Framework Agent
+reviewers:
+  - Chief Architect
+  - Chief Security Officer
+  - Chief QA Officer
+allowed_dependencies:
+  - core_domain
+forbidden_dependencies:
+  - app
+quality_gates: {}

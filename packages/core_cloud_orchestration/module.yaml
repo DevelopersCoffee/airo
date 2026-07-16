@@ -1,0 +1,11 @@
+name: core_cloud_orchestration
+owner: Chief Cloud Officer
+reviewers:
+  - Chief Architect
+  - Chief Security Officer
+allowed_dependencies:
+  - core_media_routing
+  - core_pairing
+forbidden_dependencies:
+  - app
+quality_gates: {}

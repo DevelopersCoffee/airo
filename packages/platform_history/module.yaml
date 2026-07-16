@@ -1,0 +1,12 @@
+name: platform_history
+owner: Media Intelligence Architect
+reviewers:
+  - Chief Architect
+  - Platform Architect
+  - Chief QA Officer
+allowed_dependencies:
+  - core_data
+  - platform_channels
+forbidden_dependencies:
+  - app
+quality_gates: {}

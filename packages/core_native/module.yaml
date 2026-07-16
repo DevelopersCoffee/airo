@@ -1,0 +1,9 @@
+name: core_native
+owner: Platform Architect
+reviewers:
+  - Chief Architect
+  - Chief Performance Officer
+allowed_dependencies: []
+forbidden_dependencies:
+  - app
+quality_gates: {}
