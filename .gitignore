@@ -118,3 +118,5 @@ iptv-data/output/reports/
 
 # Rust build artifacts
 rust/target/
+
+.worktrees/
