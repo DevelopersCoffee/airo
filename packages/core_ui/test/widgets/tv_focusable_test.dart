@@ -1,4 +1,4 @@
-import 'package:feature_iptv/presentation/tv/iptv_tv.dart';
+import 'package:core_ui/core_ui.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';

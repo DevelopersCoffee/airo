@@ -1,8 +1,8 @@
+import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import "package:platform_channels/platform_channels.dart";
-import '../tv/iptv_tv.dart';
 import 'tv_channel_grid.dart';
 import 'voice_search_overlay.dart';
 

@@ -24,6 +24,7 @@ abstract final class AppTheme {
     _cyberDefinition,
     _classicDefinition,
     _bedtimeDefinition,
+    _airoTvDefinition,
   ];
 
   static AppThemeDefinition byId(AppThemeId id) {
@@ -63,6 +64,15 @@ abstract final class AppTheme {
     description: 'Warm AMOLED low-light theme.',
     lightTheme: BedtimeTheme.bedtimeTheme,
     darkTheme: BedtimeTheme.bedtimeTheme,
+    themeMode: ThemeMode.dark,
+  );
+
+  static AppThemeDefinition get _airoTvDefinition => AppThemeDefinition(
+    id: AppThemeId.airoTv,
+    name: 'Airo TV',
+    description: 'Near-black streaming interface with a green accent.',
+    lightTheme: _airoTvDark,
+    darkTheme: _airoTvDark,
     themeMode: ThemeMode.dark,
   );
 
@@ -418,6 +428,154 @@ abstract final class AppTheme {
           color: AppColors.cyberMutedText,
         ),
       ),
+    );
+  }
+
+  static ThemeData get _airoTvDark {
+    final textTheme = AppTypography.textTheme.apply(
+      bodyColor: AppColors.airoTvText,
+      displayColor: AppColors.airoTvText,
+    );
+
+    return ThemeData(
+      useMaterial3: true,
+      brightness: Brightness.dark,
+      colorScheme: const ColorScheme.dark(
+        primary: AppColors.airoTvPrimary,
+        onPrimary: AppColors.airoTvOnPrimary,
+        primaryContainer: AppColors.airoTvPrimaryContainer,
+        onPrimaryContainer: AppColors.airoTvText,
+        secondary: AppColors.airoTvSecondary,
+        onSecondary: AppColors.airoTvOnSecondary,
+        error: AppColors.airoTvError,
+        onError: AppColors.airoTvOnPrimary,
+        surface: AppColors.airoTvSurface,
+        onSurface: AppColors.airoTvText,
+        surfaceContainerHighest: AppColors.airoTvSurfaceHigh,
+        onSurfaceVariant: AppColors.airoTvMutedText,
+        outline: AppColors.airoTvOutline,
+        outlineVariant: AppColors.airoTvGridLine,
+      ),
+      scaffoldBackgroundColor: AppColors.airoTvBackground,
+      textTheme: textTheme,
+      appBarTheme: const AppBarTheme(
+        centerTitle: false,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        backgroundColor: AppColors.airoTvChrome,
+        foregroundColor: AppColors.airoTvText,
+        surfaceTintColor: Colors.transparent,
+      ),
+      cardTheme: CardThemeData(
+        color: AppColors.airoTvSurface,
+        elevation: 0,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: const BorderSide(color: AppColors.airoTvBorder, width: 1.5),
+        ),
+      ),
+      dividerTheme: const DividerThemeData(
+        color: AppColors.airoTvBorder,
+        thickness: 1,
+      ),
+      chipTheme: const ChipThemeData(
+        backgroundColor: Colors.transparent,
+        selectedColor: AppColors.airoTvPrimary,
+        disabledColor: AppColors.airoTvSurfaceHigh,
+        labelStyle: TextStyle(color: AppColors.airoTvMutedText),
+        secondaryLabelStyle: TextStyle(color: AppColors.airoTvOnPrimary),
+        side: BorderSide(color: AppColors.airoTvBorder),
+        shape: StadiumBorder(),
+      ),
+      navigationBarTheme: NavigationBarThemeData(
+        backgroundColor: AppColors.airoTvSurface,
+        indicatorColor: Colors.transparent,
+        surfaceTintColor: Colors.transparent,
+        labelTextStyle: WidgetStateProperty.resolveWith((states) {
+          final color = states.contains(WidgetState.selected)
+              ? AppColors.airoTvPrimary
+              : AppColors.airoTvMutedText;
+          return TextStyle(color: color, fontSize: 9, fontWeight: FontWeight.w500);
+        }),
+        iconTheme: WidgetStateProperty.resolveWith((states) {
+          final color = states.contains(WidgetState.selected)
+              ? AppColors.airoTvPrimary
+              : AppColors.airoTvMutedText;
+          return IconThemeData(color: color);
+        }),
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.airoTvPrimary,
+          foregroundColor: AppColors.airoTvOnPrimary,
+          elevation: 0,
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(13),
+          ),
+          textStyle: textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700),
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: AppColors.airoTvMutedText,
+          side: const BorderSide(color: AppColors.airoTvBorder),
+          padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(9),
+          ),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(foregroundColor: AppColors.airoTvPrimary),
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: AppColors.airoTvBackground,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(11),
+          borderSide: const BorderSide(color: AppColors.airoTvBorder, width: 1.5),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(11),
+          borderSide: const BorderSide(color: AppColors.airoTvBorder, width: 1.5),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(11),
+          borderSide: const BorderSide(color: AppColors.airoTvPrimary),
+        ),
+        labelStyle: const TextStyle(color: AppColors.airoTvMutedText),
+        hintStyle: const TextStyle(color: AppColors.airoTvMutedText),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 15,
+          vertical: 12,
+        ),
+      ),
+      switchTheme: SwitchThemeData(
+        thumbColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return AppColors.airoTvPrimary;
+          }
+          return AppColors.airoTvMutedText;
+        }),
+        trackColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return AppColors.airoTvGlow;
+          }
+          return AppColors.airoTvSurfaceHigh;
+        }),
+      ),
+      extensions: const [
+        AiroThemeTokens(
+          gridLine: AppColors.airoTvGridLine,
+          chromeSurface: AppColors.airoTvChrome,
+          glow: AppColors.airoTvGlow,
+          success: AppColors.airoTvPrimary,
+          warning: AppColors.airoTvSecondary,
+        ),
+        AiroEffects.cyber,
+      ],
     );
   }
 }

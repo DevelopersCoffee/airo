@@ -317,8 +317,8 @@ void main() {
     expect(find.text('Airo TV Lite Receiver'), findsOneWidget);
     expect(find.text('Home'), findsOneWidget);
     expect(find.text('Guide'), findsNothing);
-    expect(find.text('Add your playlist'), findsOneWidget);
-    expect(find.text('Import playlist URL'), findsOneWidget);
+    expect(find.text('Airo TV'), findsOneWidget);
+    expect(find.text('Add Playlist URL'), findsOneWidget);
     expect(find.text('How to add'), findsOneWidget);
   });
 }

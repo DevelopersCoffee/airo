@@ -2,7 +2,8 @@
 enum AppThemeId {
   cyber,
   classic,
-  bedtime;
+  bedtime,
+  airoTv;
 
   String get storageValue => name;
 

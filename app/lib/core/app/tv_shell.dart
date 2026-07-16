@@ -52,6 +52,15 @@ class TvShell extends ConsumerWidget {
         context.go(TvRouteNames.live);
         break;
       case 1:
+        context.go(TvRouteNames.live);
+        break;
+      case 2:
+        context.go(TvRouteNames.guide);
+        break;
+      case 3:
+        context.go(TvRouteNames.favorites);
+        break;
+      case 4:
         context.go(TvRouteNames.settings);
         break;
     }
@@ -85,8 +94,19 @@ class _TvNavigationRail extends ConsumerWidget {
           icon: TvFocusable(
             onSelect: () => onDestinationSelected(0),
             child: Icon(
-              Icons.live_tv,
+              Icons.home_outlined,
               color: currentIndex == 0 ? theme.colorScheme.primary : null,
+            ),
+          ),
+          selectedIcon: const Icon(Icons.home),
+          label: const Text('Home'),
+        ),
+        NavigationRailDestination(
+          icon: TvFocusable(
+            onSelect: () => onDestinationSelected(1),
+            child: Icon(
+              Icons.live_tv,
+              color: currentIndex == 1 ? theme.colorScheme.primary : null,
             ),
           ),
           selectedIcon: const Icon(Icons.live_tv),
@@ -94,10 +114,32 @@ class _TvNavigationRail extends ConsumerWidget {
         ),
         NavigationRailDestination(
           icon: TvFocusable(
-            onSelect: () => onDestinationSelected(1),
+            onSelect: () => onDestinationSelected(2),
+            child: Icon(
+              Icons.grid_view_outlined,
+              color: currentIndex == 2 ? theme.colorScheme.primary : null,
+            ),
+          ),
+          selectedIcon: const Icon(Icons.grid_view),
+          label: const Text('Guide'),
+        ),
+        NavigationRailDestination(
+          icon: TvFocusable(
+            onSelect: () => onDestinationSelected(3),
+            child: Icon(
+              Icons.favorite_border,
+              color: currentIndex == 3 ? theme.colorScheme.primary : null,
+            ),
+          ),
+          selectedIcon: const Icon(Icons.favorite),
+          label: const Text('Favorites'),
+        ),
+        NavigationRailDestination(
+          icon: TvFocusable(
+            onSelect: () => onDestinationSelected(4),
             child: Icon(
               Icons.settings_outlined,
-              color: currentIndex == 1 ? theme.colorScheme.primary : null,
+              color: currentIndex == 4 ? theme.colorScheme.primary : null,
             ),
           ),
           selectedIcon: const Icon(Icons.settings),

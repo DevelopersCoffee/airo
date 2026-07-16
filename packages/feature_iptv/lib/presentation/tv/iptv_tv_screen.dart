@@ -16,7 +16,6 @@ import '../screens/iptv_screen.dart';
 import '../widgets/iptv_icon_placeholder.dart';
 import '../widgets/iptv_mini_player.dart';
 import '../widgets/video_player_widget.dart';
-import 'iptv_tv.dart';
 
 enum _TvChannelViewMode { grid, list }
 
@@ -1629,13 +1628,27 @@ class _TvEmptyPlaylistState extends StatelessWidget {
           children: [
             Icon(Icons.live_tv, size: 88, color: colorScheme.primary),
             const SizedBox(height: 24),
-            Text('Add your playlist', style: theme.textTheme.headlineMedium),
+            Text('Airo TV', style: theme.textTheme.headlineMedium),
             const SizedBox(height: 12),
-            Text(
-              'Airo TV is a media player. Add an M3U URL for media you own or are authorized to watch.',
+            RichText(
               textAlign: TextAlign.center,
-              style: theme.textTheme.titleMedium?.copyWith(
-                color: colorScheme.onSurfaceVariant,
+              text: TextSpan(
+                style: theme.textTheme.titleMedium?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
+                children: [
+                  const TextSpan(
+                    text: 'Import any M3U playlist and get a clean, ',
+                  ),
+                  TextSpan(
+                    text: 'smart TV experience',
+                    style: TextStyle(
+                      color: colorScheme.onSurface,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const TextSpan(text: ' — instantly.'),
+                ],
               ),
             ),
             const SizedBox(height: 24),
@@ -1646,7 +1659,7 @@ class _TvEmptyPlaylistState extends StatelessWidget {
               children: [
                 _TvActionButton(
                   icon: Icons.link,
-                  label: 'Import playlist URL',
+                  label: 'Add Playlist URL',
                   onSelect: onPlaylistSourceTap,
                   autofocus: true,
                 ),
@@ -1657,9 +1670,45 @@ class _TvEmptyPlaylistState extends StatelessWidget {
                 ),
               ],
             ),
+            const SizedBox(height: 20),
+            Wrap(
+              alignment: WrapAlignment.center,
+              spacing: 20,
+              runSpacing: 8,
+              children: const [
+                _EmptyStateChecklistItem(label: 'No account required'),
+                _EmptyStateChecklistItem(label: 'Dead links removed'),
+                _EmptyStateChecklistItem(label: 'Duplicates merged'),
+                _EmptyStateChecklistItem(label: 'Smart rails built'),
+              ],
+            ),
           ],
         ),
       ),
+    );
+  }
+}
+
+class _EmptyStateChecklistItem extends StatelessWidget {
+  const _EmptyStateChecklistItem({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(Icons.check, size: 14, color: colorScheme.primary),
+        const SizedBox(width: 5),
+        Text(
+          label,
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            color: colorScheme.onSurfaceVariant,
+          ),
+        ),
+      ],
     );
   }
 }
