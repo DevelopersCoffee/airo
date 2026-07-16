@@ -10,8 +10,7 @@ import '../routing/route_names.dart';
 import '../theme/bedtime_theme.dart';
 import 'app_shell_chrome.dart';
 import '../../features/music/presentation/widgets/mini_player.dart';
-import 'package:feature_iptv/feature_iptv.dart'
-    hide AppNavigationTab, currentNavigationTabProvider;
+import 'package:feature_iptv/feature_iptv.dart';
 
 /// App shell with bottom navigation for the six primary feature tabs.
 class AppShell extends ConsumerWidget {
