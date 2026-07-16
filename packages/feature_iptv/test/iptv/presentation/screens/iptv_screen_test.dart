@@ -29,7 +29,10 @@ void main() {
     ),
   ];
 
-  Widget createWidget({StreamingState? streamingState}) {
+  Widget createWidget({
+    StreamingState? streamingState,
+    VoidCallback? onOpenVod,
+  }) {
     SharedPreferences.setMockInitialValues({});
     return FutureBuilder<SharedPreferences>(
       future: SharedPreferences.getInstance(),
@@ -58,7 +61,7 @@ void main() {
               ),
             ),
           ],
-          child: const MaterialApp(home: IPTVScreen()),
+          child: MaterialApp(home: IPTVScreen(onOpenVod: onOpenVod)),
         );
       },
     );
@@ -184,5 +187,31 @@ void main() {
     expect(find.text('News'), findsWidgets);
     expect(find.text('LIVE'), findsWidgets);
     expect(find.byIcon(Icons.equalizer), findsOneWidget);
+  });
+
+  testWidgets('hides Movies & Shows action when onOpenVod is not provided', (
+    tester,
+  ) async {
+    await tester.pumpWidget(createWidget());
+    await tester.pumpAndSettle();
+
+    expect(find.byTooltip('Movies & Shows'), findsNothing);
+  });
+
+  testWidgets('opens VOD via the Movies & Shows app bar action', (
+    tester,
+  ) async {
+    var openVodCalled = false;
+    await tester.pumpWidget(
+      createWidget(onOpenVod: () => openVodCalled = true),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byTooltip('Movies & Shows'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Movies & Shows'));
+    await tester.pumpAndSettle();
+
+    expect(openVodCalled, isTrue);
   });
 }

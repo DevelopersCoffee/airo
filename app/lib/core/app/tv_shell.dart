@@ -58,9 +58,12 @@ class TvShell extends ConsumerWidget {
         context.go(TvRouteNames.guide);
         break;
       case 3:
-        context.go(TvRouteNames.favorites);
+        context.go(TvRouteNames.vod);
         break;
       case 4:
+        context.go(TvRouteNames.favorites);
+        break;
+      case 5:
         context.go(TvRouteNames.settings);
         break;
     }
@@ -127,8 +130,19 @@ class _TvNavigationRail extends ConsumerWidget {
           icon: TvFocusable(
             onSelect: () => onDestinationSelected(3),
             child: Icon(
-              Icons.favorite_border,
+              Icons.movie_outlined,
               color: currentIndex == 3 ? theme.colorScheme.primary : null,
+            ),
+          ),
+          selectedIcon: const Icon(Icons.movie),
+          label: const Text('Movies & Shows'),
+        ),
+        NavigationRailDestination(
+          icon: TvFocusable(
+            onSelect: () => onDestinationSelected(4),
+            child: Icon(
+              Icons.favorite_border,
+              color: currentIndex == 4 ? theme.colorScheme.primary : null,
             ),
           ),
           selectedIcon: const Icon(Icons.favorite),
@@ -136,10 +150,10 @@ class _TvNavigationRail extends ConsumerWidget {
         ),
         NavigationRailDestination(
           icon: TvFocusable(
-            onSelect: () => onDestinationSelected(4),
+            onSelect: () => onDestinationSelected(5),
             child: Icon(
               Icons.settings_outlined,
-              color: currentIndex == 4 ? theme.colorScheme.primary : null,
+              color: currentIndex == 5 ? theme.colorScheme.primary : null,
             ),
           ),
           selectedIcon: const Icon(Icons.settings),
