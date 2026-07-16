@@ -47,6 +47,28 @@ void main() {
     },
   );
 
+  test(
+    'authenticate() throws DioException when the server returns 401',
+    () async {
+      final dio = Dio(BaseOptions(baseUrl: 'https://jellyfin.example.com'));
+      dio.httpClientAdapter = FakeHttpClientAdapter({
+        authUrl: (options) => Response(
+          requestOptions: options,
+          statusCode: 401,
+          data: {},
+        ),
+      });
+      final client = JellyfinClient(
+        dio: dio,
+        serverUrl: 'https://jellyfin.example.com',
+        username: 'alice',
+        password: 'wrongpassword',
+      );
+
+      await expectLater(client.authenticate(), throwsA(isA<DioException>()));
+    },
+  );
+
   test('getLiveTvChannels() maps Id/Name/Number', () async {
     final dio = Dio(BaseOptions(baseUrl: 'https://jellyfin.example.com'));
     dio.httpClientAdapter = FakeHttpClientAdapter({

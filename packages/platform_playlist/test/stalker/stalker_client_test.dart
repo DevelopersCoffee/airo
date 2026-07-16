@@ -34,6 +34,24 @@ void main() {
     expect(token, 'tok-123');
   });
 
+  test('handshake() throws DioException when the server returns 401', () async {
+    final dio = Dio(BaseOptions(baseUrl: 'https://stalker.example.com'));
+    dio.httpClientAdapter = FakeHttpClientAdapter({
+      portalUrl: (options) => Response(
+        requestOptions: options,
+        statusCode: 401,
+        data: {'js': null},
+      ),
+    });
+    final client = StalkerClient(
+      dio: dio,
+      serverUrl: 'https://stalker.example.com',
+      macAddress: 'AA:BB:CC:DD:EE:FF',
+    );
+
+    await expectLater(client.handshake(), throwsA(isA<DioException>()));
+  });
+
   test('getChannels() maps id/name/number/logo/cmd', () async {
     final dio = Dio(BaseOptions(baseUrl: 'https://stalker.example.com'));
     dio.httpClientAdapter = FakeHttpClientAdapter({

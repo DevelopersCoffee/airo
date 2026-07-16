@@ -144,6 +144,25 @@ void main() {
     expect(listings.single.end, DateTime.utc(2026, 7, 16, 18, 30, 0));
   });
 
+  test('authenticate() throws DioException when the server returns 401', () async {
+    dio = Dio(BaseOptions(baseUrl: 'https://xtream.example.com'));
+    dio.httpClientAdapter = FakeHttpClientAdapter({
+      playerApiUrl: (options) => Response(
+        requestOptions: options,
+        statusCode: 401,
+        data: {'user_info': {'auth': 0, 'status': 'Disabled'}},
+      ),
+    });
+    final client = XtreamClient(
+      dio: dio,
+      serverUrl: 'https://xtream.example.com',
+      username: 'user1',
+      password: 'pass1',
+    );
+
+    await expectLater(client.authenticate(), throwsA(isA<DioException>()));
+  });
+
   test('liveStreamUrl builds username/password/stream_id path', () {
     final client = XtreamClient(
       dio: Dio(),
