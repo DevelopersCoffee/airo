@@ -109,6 +109,41 @@ void main() {
     expect(listings.single.description, 'Top stories');
   });
 
+  test('getShortEpg() parses timestamps as UTC, not device-local', () async {
+    dio = Dio(BaseOptions(baseUrl: 'https://xtream.example.com'));
+    dio.httpClientAdapter = FakeHttpClientAdapter({
+      playerApiUrl: (options) => Response(
+        requestOptions: options,
+        statusCode: 200,
+        data: {
+          'epg_listings': [
+            {
+              'id': '1',
+              'title': base64Encode(utf8.encode('Test')),
+              'description': base64Encode(utf8.encode('Test')),
+              'start': '2026-07-16 18:00:00',
+              'end': '2026-07-16 18:30:00',
+              'stream_id': '101',
+            },
+          ],
+        },
+      ),
+    });
+    final client = XtreamClient(
+      dio: dio,
+      serverUrl: 'https://xtream.example.com',
+      username: 'user1',
+      password: 'pass1',
+    );
+
+    final listings = await client.getShortEpg(streamId: 101);
+
+    expect(listings.single.start.isUtc, isTrue);
+    expect(listings.single.end.isUtc, isTrue);
+    expect(listings.single.start, DateTime.utc(2026, 7, 16, 18, 0, 0));
+    expect(listings.single.end, DateTime.utc(2026, 7, 16, 18, 30, 0));
+  });
+
   test('liveStreamUrl builds username/password/stream_id path', () {
     final client = XtreamClient(
       dio: Dio(),

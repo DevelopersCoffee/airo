@@ -175,8 +175,8 @@ class XtreamClient {
         id: json['id'] as String,
         title: utf8.decode(base64.decode(json['title'] as String)),
         description: utf8.decode(base64.decode(json['description'] as String)),
-        start: DateTime.parse((json['start'] as String).replaceFirst(' ', 'T')),
-        end: DateTime.parse((json['end'] as String).replaceFirst(' ', 'T')),
+        start: DateTime.parse('${(json['start'] as String).replaceFirst(' ', 'T')}Z'),
+        end: DateTime.parse('${(json['end'] as String).replaceFirst(' ', 'T')}Z'),
         streamId: int.parse(json['stream_id'] as String),
       );
     }).toList();
