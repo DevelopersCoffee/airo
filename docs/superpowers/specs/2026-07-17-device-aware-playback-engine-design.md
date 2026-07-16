@@ -78,11 +78,26 @@ terminal state → typed error to the UI. Neither can loop.
 ### Engine set (two only)
 
 - **`videoPlayer`** — primary. ExoPlayer (Android/TV) / AVPlayer (iOS/macOS) / `<video>` (web).
-  Hardware-accelerated, battery-efficient, official. Covers Web, Android, Android TV, iOS,
-  macOS. Already implemented.
-- **`mpv`** (media_kit) — (a) desktop-filler for Windows/Linux (videoPlayer has no backend
-  there) and (b) the single universal fallback for codec/decoder failures on any platform.
-  FFmpeg core provides multi-codec breadth. New implementation.
+  Hardware-accelerated, battery-efficient, official. Already implemented.
+- **`mpv`** (media_kit) — (a) primary on Windows/Linux (videoPlayer has no backend there)
+  and (b) the codec/decoder fallback on resource-capable platforms. FFmpeg core provides
+  multi-codec breadth. New implementation.
+
+**mpv shipping matrix (decided):** mpv is bundled on all platforms **except Android TV and
+Web**. Rationale: Android TV boxes are storage-starved (often 8GB total) and cannot absorb
+the ~20-30MB per-arch native libs; media_kit's web support is weak. Result:
+
+| Platform | Primary | Engine fallback |
+|---|---|---|
+| Android mobile, iOS | `videoPlayer` | `mpv` |
+| macOS | `videoPlayer` | `mpv` |
+| Windows, Linux | `mpv` | none (sole engine) |
+| Android TV | `videoPlayer` | none (mpv excluded — storage) |
+| Web | `videoPlayer` | none (media_kit web support weak) |
+
+So engine-level fallback is active on Android-mobile / iOS / macOS. Android TV and Web run
+videoPlayer only; a codec failure there yields a clean typed error (source failover still
+covers dead-stream cases). Windows/Linux run mpv only.
 
 `libVlc` is intentionally not built. If mpv underperforms on some device class later,
 swapping in a `libVlc` engine is an isolated future change the contract already permits.
@@ -125,9 +140,16 @@ try primary.open(request)
       engine locked for the session (never re-swaps mid-playback)
 ```
 
-**Fallback gate (device-awareness lives only here):** on a device below a RAM/codec
-threshold where mpv software-decode would OOM or crawl, `fallback` is set to `null` so a
-primary failure goes straight to a clean error rather than a doomed second attempt.
+`fallback` is `mpv` on Android-mobile / iOS / macOS, and `null` on Android TV, Web, and
+Windows/Linux (per the shipping matrix — TV/Web don't bundle mpv; Win/Linux already run mpv
+as primary). Where `fallback == null`, the coordinator degrades cleanly to "primary only;
+codec failure → typed error." No platform ever runs two engines except transiently during
+the single `open()` switch on mobile/macOS.
+
+**Fallback gate (device-awareness lives only here):** even where mpv is bundled, on a device
+below a RAM/codec threshold where mpv software-decode would OOM or crawl, `fallback` is set
+to `null` so a primary failure goes straight to a clean error rather than a doomed second
+attempt.
 
 ### Feature layer
 
@@ -175,6 +197,9 @@ primary failure goes straight to a clean error rather than a doomed second attem
 
 - Exact RAM/codec threshold for the fallback gate (needs a device-profile source of truth —
   check `media_capability_models` + `platform_device_qualification`).
-- media_kit binary-size budget on Android TV (it adds native libs; may be desktop-only if
-  the TV size cost is unacceptable — in which case TV has no engine fallback, only source
-  failover). **This is the biggest risk to validate early.**
+- Confirm media_kit build config can EXCLUDE the mpv native libs from the Android TV flavor
+  while INCLUDING them on the Android mobile flavor (same Android platform, different build
+  flavor). If the plugin can't be flavor-gated cleanly, Android mobile may have to drop mpv
+  too. **Validate this early — it's the main build-system risk.**
+- Confirm macOS media_kit fallback pulls its weight (macOS already has strong AVPlayer;
+  mpv fallback may be low-value there — could be dropped to shrink the macOS bundle).
