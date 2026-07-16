@@ -19,6 +19,10 @@ class Inventory(HTMLParser):
         self.links: list[str] = []
         self.sources: list[str] = []
         self.autoplay_videos = 0
+        self.live_demo_roots = 0
+        self.live_demo_videos = 0
+        self.muted_live_demo_videos = 0
+        self.preloading_live_demo_videos = 0
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         values = dict(attrs)
@@ -28,8 +32,16 @@ class Inventory(HTMLParser):
             self.links.append(values["href"] or "")
         if values.get("src"):
             self.sources.append(values["src"] or "")
+        if "data-live-demo" in values:
+            self.live_demo_roots += 1
         if tag == "video" and "autoplay" in values:
             self.autoplay_videos += 1
+        if tag == "video" and "data-live-demo-video" in values:
+            self.live_demo_videos += 1
+            if "muted" in values:
+                self.muted_live_demo_videos += 1
+            if values.get("preload") != "none":
+                self.preloading_live_demo_videos += 1
 
 
 def latest_tv_release(repository: str) -> str:
@@ -147,6 +159,9 @@ def main() -> int:
         "Third-party stream": "external stream status",
         "github.com/iptv-org/iptv": "public source attribution",
         "cdn-uw2-prod.tsv2.amagi.tv": "approved live demo source",
+        "VEVO 2K": "immersive live showcase name",
+        "d1s6jz7jeei17.cloudfront.net": "approved VEVO 2K showcase source",
+        "Starts muted. Nothing loads until you press Play.": "muted showcase boundary",
         "HLS.js Apache license": "player dependency attribution",
     }
     for snippet, label in required_snippets.items():
@@ -154,6 +169,7 @@ def main() -> int:
             errors.append(f"missing {label}: {snippet}")
 
     required_demo_logic = {
+        'querySelectorAll("[data-live-demo]")': "shared multi-sample initialization",
         "Retrying live stream automatically": "automatic recovery status",
         "recoverMediaError": "HLS media recovery",
         "demoRecoveryAttempts >= 1": "bounded recovery attempt",
@@ -215,6 +231,14 @@ def main() -> int:
 
     if index_inventory.autoplay_videos:
         errors.append("live demo video must not use autoplay")
+    if index_inventory.live_demo_roots != 2:
+        errors.append("public page must expose exactly two live demo roots")
+    if index_inventory.live_demo_videos != 2:
+        errors.append("public page must expose exactly two live demo videos")
+    if index_inventory.muted_live_demo_videos != 1:
+        errors.append("exactly one immersive live showcase must start muted")
+    if index_inventory.preloading_live_demo_videos:
+        errors.append("every live demo video must use preload=none")
 
     hls_license = (
         root

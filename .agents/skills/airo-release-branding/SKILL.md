@@ -40,7 +40,11 @@ into shipped-product claims.
    boundary, provide unavailable and unsupported states, and destroy playback
    on page exit. Attempt at most one automatic recovery within a finite
    deadline before showing manual retry. Never proxy, cache, rebroadcast, or
-   silently preload it.
+   silently preload it. Keep no more than two public samples on the page, use
+   one shared controller for every sample, stop an active sample before another
+   begins, and require immersive/background samples to start muted. Idle poster
+   art must be owned or sanitized Airo material rather than captured third-party
+   broadcast frames.
 9. Update device tutorials only for behavior supported by the claim state.
 10. Preserve the professional visual contract:
     - use one shared spacing and typography scale across product sections;
@@ -78,4 +82,6 @@ the matrices, a private capability lacks approval, a screenshot has unclear
 rights, a live demo preloads or lacks source disclosure, or the page audit
 fails. Also stop when same-journey screenshots render at inconsistent sizes,
 interactive targets fall below 44 pixels, or required responsive viewports
-show overlap or horizontal overflow.
+show overlap or horizontal overflow. Multiple live samples also block release
+when they do not share lifecycle/recovery behavior, can play concurrently, or
+make provider requests before their own explicit Play actions.

@@ -110,6 +110,7 @@
     var revealSelectors = [
       ".section-intro",
       ".screen-step",
+      ".channel-showcase-content",
       ".live-demo-stage",
       ".live-demo-details",
       ".device-row",
@@ -149,138 +150,152 @@
     }
   }
 
-  var demoVideo = document.querySelector("[data-live-demo-video]");
-  var demoStart = document.querySelector("[data-live-demo-start]");
-  var demoButton = document.querySelector("[data-live-demo-button]");
-  var demoStatus = document.querySelector("[data-live-demo-status]");
-  var demoHls = null;
-  var demoStarted = false;
-  var demoRecovering = false;
-  var demoRecoveryAttempts = 0;
-  var demoRecoveryTimer = null;
-  var demoSource = "";
-  var demoUsesNativeHls = false;
+  var liveDemoInstances = [];
 
-  function setDemoStatus(message, state) {
-    if (!demoStatus) return;
-    demoStatus.textContent = message;
-    demoStatus.setAttribute("data-state", state || "ready");
-  }
+  function initializeLiveDemo(root) {
+    var demoVideo = root.querySelector("[data-live-demo-video]");
+    var demoStart = root.querySelector("[data-live-demo-start]");
+    var demoButton = root.querySelector("[data-live-demo-button]");
+    var demoStatus = root.querySelector("[data-live-demo-status]");
+    if (!demoVideo || !demoStart || !demoButton || !demoStatus) return null;
 
-  function clearDemoRecoveryTimer() {
-    if (!demoRecoveryTimer) return;
-    window.clearTimeout(demoRecoveryTimer);
-    demoRecoveryTimer = null;
-  }
+    var channelName = root.getAttribute("data-live-channel") || "live sample";
+    var retryLabel = root.getAttribute("data-live-retry-label") || "Try live sample again";
+    var initialButtonMarkup = demoButton.innerHTML;
+    var idleStatus = demoStatus.textContent;
+    var demoHls = null;
+    var demoStarted = false;
+    var demoRecovering = false;
+    var demoRecoveryAttempts = 0;
+    var demoRecoveryTimer = null;
+    var demoSource = "";
+    var demoUsesNativeHls = false;
 
-  function requestDemoPlayback() {
-    if (!demoVideo || !demoStarted) return;
-    var playRequest = demoVideo.play();
-    if (!playRequest) return;
-    playRequest
-      .then(function () {
-        if (demoStart) demoStart.hidden = true;
-      })
-      .catch(function (error) {
-        if (!demoStarted) return;
-        if (demoRecovering && error && error.name !== "NotAllowedError") return;
-        if (!demoRecovering && error && error.name !== "NotAllowedError") {
-          setDemoStatus("Preparing the live stream...", "loading");
-          return;
-        }
-        clearDemoRecoveryTimer();
-        demoRecovering = false;
-        if (demoStart) demoStart.hidden = true;
-        setDemoStatus("Stream ready. Press the video Play control to continue.", "ready");
-      });
-  }
-
-  function destroyDemoStream() {
-    clearDemoRecoveryTimer();
-    if (demoHls) {
-      demoHls.destroy();
-      demoHls = null;
+    function setDemoStatus(message, state) {
+      demoStatus.textContent = message;
+      demoStatus.setAttribute("data-state", state || "ready");
+      root.setAttribute("data-live-state", state || "ready");
     }
-    if (demoVideo) {
+
+    function clearDemoRecoveryTimer() {
+      if (!demoRecoveryTimer) return;
+      window.clearTimeout(demoRecoveryTimer);
+      demoRecoveryTimer = null;
+    }
+
+    function requestDemoPlayback() {
+      if (!demoStarted) return;
+      var playRequest = demoVideo.play();
+      if (!playRequest) return;
+      playRequest
+        .then(function () {
+          demoStart.hidden = true;
+        })
+        .catch(function (error) {
+          if (!demoStarted) return;
+          if (demoRecovering && error && error.name !== "NotAllowedError") return;
+          if (!demoRecovering && error && error.name !== "NotAllowedError") {
+            setDemoStatus("Preparing the live stream...", "loading");
+            return;
+          }
+          clearDemoRecoveryTimer();
+          demoRecovering = false;
+          demoStart.hidden = true;
+          setDemoStatus("Stream ready. Press the video Play control to continue.", "ready");
+        });
+    }
+
+    function destroyDemoStream() {
+      clearDemoRecoveryTimer();
+      demoStarted = false;
+      demoRecovering = false;
+      demoRecoveryAttempts = 0;
+      demoSource = "";
+      demoUsesNativeHls = false;
+      if (demoHls) {
+        demoHls.destroy();
+        demoHls = null;
+      }
       demoVideo.pause();
       demoVideo.removeAttribute("src");
       demoVideo.load();
     }
-    demoStarted = false;
-    demoRecovering = false;
-    demoRecoveryAttempts = 0;
-    demoSource = "";
-    demoUsesNativeHls = false;
-  }
 
-  function resetDemoAfterFailure() {
-    destroyDemoStream();
-    if (demoStart) demoStart.hidden = false;
-    if (demoButton) {
+    function restoreDemoUi(useRetryLabel) {
+      demoStart.hidden = false;
       demoButton.disabled = false;
-      demoButton.innerHTML = '<i data-lucide="rotate-cw" aria-hidden="true"></i> Try live sample again';
+      demoButton.innerHTML = useRetryLabel
+        ? '<i data-lucide="rotate-cw" aria-hidden="true"></i> ' + retryLabel
+        : initialButtonMarkup;
+      if (!useRetryLabel) setDemoStatus(idleStatus, "ready");
       if (window.lucide) window.lucide.createIcons();
     }
-  }
 
-  function failDemo(message) {
-    setDemoStatus(message, "error");
-    resetDemoAfterFailure();
-  }
+    function resetDemoAfterFailure() {
+      destroyDemoStream();
+      restoreDemoUi(true);
+    }
 
-  function retryNativeDemo() {
-    if (!demoVideo || !demoSource) return;
-    var separator = demoSource.includes("?") ? "&" : "?";
-    demoVideo.pause();
-    demoVideo.removeAttribute("src");
-    demoVideo.load();
-    window.setTimeout(function () {
-      if (!demoStarted || !demoRecovering) return;
-      demoVideo.src = demoSource + separator + "airo_retry=" + Date.now();
-      requestDemoPlayback();
-    }, 250);
-  }
+    function failDemo(message) {
+      setDemoStatus(message, "error");
+      resetDemoAfterFailure();
+    }
 
-  function recoverDemo(kind) {
-    if (!demoStarted || demoRecovering) return true;
-    if (demoRecoveryAttempts >= 1) return false;
-
-    demoRecoveryAttempts += 1;
-    demoRecovering = true;
-    setDemoStatus("Connection interrupted. Retrying live stream automatically...", "recovering");
-    clearDemoRecoveryTimer();
-    demoRecoveryTimer = window.setTimeout(function () {
-      if (!demoStarted || !demoRecovering) return;
-      failDemo("The live sample is unavailable or blocked in this region.");
-    }, 8000);
-
-    if (demoHls) {
-      try {
-        if (kind === "network") {
-          demoHls.startLoad(-1);
-        } else {
-          demoHls.recoverMediaError();
-        }
+    function retryNativeDemo() {
+      if (!demoSource) return;
+      var separator = demoSource.includes("?") ? "&" : "?";
+      demoVideo.pause();
+      demoVideo.removeAttribute("src");
+      demoVideo.load();
+      window.setTimeout(function () {
+        if (!demoStarted || !demoRecovering) return;
+        demoVideo.src = demoSource + separator + "airo_retry=" + Date.now();
         requestDemoPlayback();
-      } catch (_error) {
-        failDemo("The live sample could not recover automatically.");
+      }, 250);
+    }
+
+    function recoverDemo(kind) {
+      if (!demoStarted || demoRecovering) return true;
+      if (demoRecoveryAttempts >= 1) return false;
+
+      demoRecoveryAttempts += 1;
+      demoRecovering = true;
+      setDemoStatus("Connection interrupted. Retrying live stream automatically...", "recovering");
+      clearDemoRecoveryTimer();
+      demoRecoveryTimer = window.setTimeout(function () {
+        if (!demoStarted || !demoRecovering) return;
+        failDemo("The live sample is unavailable or blocked in this region.");
+      }, 8000);
+
+      if (demoHls) {
+        try {
+          if (kind === "network") {
+            demoHls.startLoad(-1);
+          } else {
+            demoHls.recoverMediaError();
+          }
+          requestDemoPlayback();
+        } catch (_error) {
+          failDemo("The live sample could not recover automatically.");
+        }
+        return true;
       }
-      return true;
+
+      if (demoUsesNativeHls) {
+        retryNativeDemo();
+        return true;
+      }
+
+      return false;
     }
 
-    if (demoUsesNativeHls) {
-      retryNativeDemo();
-      return true;
-    }
-
-    return false;
-  }
-
-  if (demoVideo && demoStart && demoButton && demoStatus) {
     demoButton.addEventListener("click", function () {
       var source = demoButton.getAttribute("data-live-source");
       if (!source || demoStarted) return;
 
+      liveDemoInstances.forEach(function (instance) {
+        if (instance.root !== root) instance.stopForSwitch();
+      });
       demoStarted = true;
       demoSource = source;
       demoRecoveryAttempts = 0;
@@ -310,8 +325,7 @@
           maxMaxBufferLength: 24,
         });
         demoHls.on(window.Hls.Events.ERROR, function (_event, data) {
-          if (!data.fatal) return;
-          if (demoRecovering) return;
+          if (!data.fatal || demoRecovering) return;
           var kind = data.type === window.Hls.ErrorTypes.NETWORK_ERROR ? "network" : "media";
           if (!recoverDemo(kind)) {
             failDemo("The live sample is unavailable or blocked in this region.");
@@ -330,7 +344,7 @@
       clearDemoRecoveryTimer();
       demoRecovering = false;
       demoStart.hidden = true;
-      setDemoStatus("Playing YRF Music live through the browser.", "playing");
+      setDemoStatus("Playing " + channelName + " live through the browser.", "playing");
     });
     demoVideo.addEventListener("canplay", function () {
       if (!demoStarted || !demoVideo.paused) return;
@@ -358,8 +372,28 @@
         setDemoStatus("Stream ready. Press the video Play control to continue.", "ready");
       }
     });
-    window.addEventListener("pagehide", destroyDemoStream);
+
+    return {
+      root: root,
+      destroy: destroyDemoStream,
+      stopForSwitch: function () {
+        if (!demoStarted) return;
+        destroyDemoStream();
+        restoreDemoUi(false);
+      },
+    };
   }
+
+  document.querySelectorAll("[data-live-demo]").forEach(function (root) {
+    var instance = initializeLiveDemo(root);
+    if (instance) liveDemoInstances.push(instance);
+  });
+
+  window.addEventListener("pagehide", function () {
+    liveDemoInstances.forEach(function (instance) {
+      instance.destroy();
+    });
+  });
 
   if (window.lucide) window.lucide.createIcons();
 })();

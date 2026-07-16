@@ -39,7 +39,7 @@ layout: null
       <nav class="site-nav" id="site-navigation" aria-label="Primary navigation" data-navigation>
         <a href="#top">Airo</a>
         <a href="#difference">Airo TV</a>
-        <a href="#live-demo">Live demo</a>
+        <a href="#vevo-showcase">Live demos</a>
         <a href="#pro-vision">Airo TV Pro</a>
         <a href="#devices">Devices</a>
         <a href="#guides">Guides</a>
@@ -63,8 +63,8 @@ layout: null
             <a class="button button-primary" href="https://github.com/DevelopersCoffee/airo/releases/tag/airo-tv-v0.0.3">
               <i data-lucide="download" aria-hidden="true"></i> Download Airo TV
             </a>
-            <a class="button button-secondary" href="#live-demo">
-              <i data-lucide="circle-play" aria-hidden="true"></i> Try live sample
+            <a class="button button-secondary" href="#vevo-showcase">
+              <i data-lucide="circle-play" aria-hidden="true"></i> Try live showcase
             </a>
             <a class="hero-vision-link" href="#pro-vision">
               Airo TV Pro <i data-lucide="arrow-right" aria-hidden="true"></i>
@@ -165,7 +165,49 @@ layout: null
       </div>
     </section>
 
-    <section class="band live-demo-band" id="live-demo" aria-labelledby="live-demo-title">
+    <section
+      class="channel-showcase"
+      id="vevo-showcase"
+      aria-labelledby="vevo-showcase-title"
+      data-live-demo
+      data-live-channel="VEVO 2K"
+      data-live-retry-label="Try VEVO 2K again"
+    >
+      <video
+        class="channel-showcase-video"
+        controls
+        muted
+        playsinline
+        preload="none"
+        poster="./store-assets/airo-tv/01-tv-home-channel-grid.png"
+        data-live-demo-video
+        aria-label="VEVO 2K public live showcase player"
+        aria-describedby="vevo-showcase-disclosure"
+      ></video>
+      <div class="container channel-showcase-content">
+        <p class="eyebrow">Live channel showcase</p>
+        <h2 id="vevo-showcase-title">Your channel. The big-screen treatment.</h2>
+        <p class="channel-showcase-lede">See how live television can sit inside the Airo experience without taking over the interface. Start a second public music sample, keep the product story in view, and use the browser controls whenever you need them.</p>
+        <div class="channel-showcase-start" data-live-demo-start>
+          <button
+            class="button button-primary"
+            type="button"
+            data-live-demo-button
+            data-live-source="https://d1s6jz7jeei17.cloudfront.net/playlist/amg00056-vevotv-vevo2kau-samsungau/playlist.m3u8"
+          >
+            <i data-lucide="play" aria-hidden="true"></i> Play VEVO 2K showcase
+          </button>
+          <span>Starts muted. Nothing loads until you press Play.</span>
+        </div>
+        <p class="live-demo-status channel-showcase-status" role="status" aria-live="polite" data-live-demo-status>Ready. No VEVO stream connection has been made.</p>
+        <p class="channel-showcase-disclosure" id="vevo-showcase-disclosure">
+          VEVO 2K is a third-party public HLS listing from
+          <a href="https://github.com/iptv-org/iptv">iptv-org</a>. Your browser connects directly to the operator after Play. Advertising, regional limits, and availability may change. Airo does not host, proxy, cache, transcode, copy, or rebroadcast the channel.
+        </p>
+      </div>
+    </section>
+
+    <section class="band live-demo-band" id="live-demo" aria-labelledby="live-demo-title" data-live-demo data-live-channel="YRF Music" data-live-retry-label="Try YRF Music again">
       <div class="container">
         <div class="section-intro">
           <div>
