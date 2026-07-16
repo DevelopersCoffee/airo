@@ -6,11 +6,11 @@ This roadmap converts community requests into a v2 milestone plan that fits the 
 
 **Adopt now:** community requests that improve user-provided playlist playback, provider capability/health visibility, large playlist handling, local search, smart playlist filtering, EPG/program guide performance, logo cache performance, diagnostics, captions, and D-pad usability.
 
-**Defer:** requests that require accounts, cloud sync, household identity, DVR storage permissions, external media provider integrations, multi-provider failover, full AI routing, or playback-engine rewrites.
+**Defer:** requests that require accounts, cloud sync, household identity, DVR storage permissions, server-hosted-account provider integrations (e.g. Dispatcharr), multi-provider failover, full AI routing, or playback-engine rewrites. (BYOC-shaped provider adapters — Xtream/Stalker/Jellyfin, still user-supplied credentials — are adopted bounded under CV-018, not deferred.)
 
 **Do not adopt for v2:** Docker/Home Server mode. It is a different product surface with server security, packaging, support, and release obligations.
 
-**2026-07-16 update:** A competitive gap analysis against AerioTV (a broader native Android IPTV client — Dispatcharr/Xtream/M3U, full guide, VOD, DVR, multiview, Google Drive sync) added CV-018 through CV-020. Two items (Xtream adapter, local VOD listing) fit the BYOC model and were adopted bounded; multiview was deferred pending resource guardrails. Everything requiring an account, cloud sync, or background recording — the majority of AerioTV's claimed surface — was left out, consistent with this roadmap's existing local-first decision, not overlooked.
+**2026-07-16 update:** Two competitive gap analyses — AerioTV (Dispatcharr/Xtream/M3U, full guide, VOD, DVR, multiview, Google Drive sync) and StreamVault (Xtream/Stalker/Jellyfin, EPG grid with search/overrides, catch-up, DVR, offline downloads, plugins, TV Input Framework, 25 locales) — were triaged together and added CV-018 through CV-024, plus a slice-2 follow-on to CV-015. Provider adapters, VOD listing, the EPG grid, favorites, TV settings, and remote UX fit the BYOC model and were adopted bounded (issues [#823](https://github.com/DevelopersCoffee/airo/issues/823)–[#828](https://github.com/DevelopersCoffee/airo/issues/828)). Multiview and localization are tracked but deferred ([#829](https://github.com/DevelopersCoffee/airo/issues/829), [#830](https://github.com/DevelopersCoffee/airo/issues/830)). Everything requiring an account, cloud sync, background recording, or third-party metadata — the majority of both competitors' claimed surface — stays out, consistent with this roadmap's existing local-first decision, not overlooked.
 
 ## Current V2 Scope
 
@@ -53,9 +53,14 @@ This roadmap converts community requests into a v2 milestone plan that fits the 
 | CV-015 | Program guide timeline | Adopt bounded | Build a windowed, virtualized EPG guide using existing Rust XMLTV/current-next boundaries. No Xtream/Stalker, server sync, custom RenderObject requirement, or AI guide queries. |
 | CV-016 | Playback track selection and VOD timeline | Adopt bounded | Add audio/subtitle track controls, VOD duration/seek behavior, and single-session connection lifecycle checks. No transcoding or native playback rewrite. |
 | CV-017 | Smart playlists and canonical channels | Adopt bounded | Let users collapse huge BYOC playlists into local rule-based packages and canonical channel aliases. No AI setup, provider marketplace, or cloud migration. |
-| CV-018 | Xtream Codes provider adapter | Adopt bounded | Xtream Codes is still user-supplied URL + credentials against a server the user already has access to — no Airo-hosted account, same BYOC shape as M3U. Add a typed `ContentSource`/adapter contract so M3U and Xtream share one capability model. No Dispatcharr, no Stalker, no provider marketplace. |
-| CV-019 | Local VOD listing over BYOC sources | Adopt bounded | Parse VOD entries already present in user-supplied M3U/Xtream sources and list them with local continue-watching from existing history. No TMDB/provider metadata enrichment, no cloud poster cache — that reintroduces an external account/API dependency this milestone explicitly avoids. |
-| CV-020 | Local multiview | Defer | Multiple simultaneous local tiles is BYOC-compatible in principle, but needs CV-001's diagnostics/resource guardrails proven first so N streams don't silently degrade playback. Revisit after CV-001 and CV-016 ship. |
+| CV-018 | Provider adapter contracts (Xtream, Stalker, Jellyfin) | Adopt bounded | All three are still user-supplied URL + credentials against a server the user already has access to — no Airo-hosted account, same BYOC shape as M3U. Add a typed `ContentSource`/adapter contract so M3U, Xtream, Stalker, and Jellyfin share one capability model. No Dispatcharr, no provider marketplace. [Issue #823](https://github.com/DevelopersCoffee/airo/issues/823). |
+| CV-019 | Local VOD listing over BYOC sources | Adopt bounded | Parse VOD entries already present in user-supplied M3U/Xtream sources and list them with local continue-watching from existing history. No TMDB/provider metadata enrichment, no offline downloads — those reintroduce an external API dependency or storage/DRM complexity this milestone explicitly avoids. [Issue #824](https://github.com/DevelopersCoffee/airo/issues/824). |
+| CV-015b | Full EPG grid UI, guide search, XMLTV source management | Adopt bounded | Follow-on to CV-015 slice 1 (data layer, shipped). Wires the existing windowed-guide repository into a real horizontal-timeline grid with virtualization, proportional block widths, current-time indicator, search, and manual channel-to-EPG-id overrides. [Issue #825](https://github.com/DevelopersCoffee/airo/issues/825), parent [#819](https://github.com/DevelopersCoffee/airo/issues/819). |
+| CV-021 | Favorites and hidden categories with persistence | Adopt bounded | `platform_favorites` is still the unmodified package template. Build a real local data layer plus a real TV Favorites screen (currently a placeholder), distinct from CV-017's rule-based smart playlists. [Issue #826](https://github.com/DevelopersCoffee/airo/issues/826). |
+| CV-022 | TV settings and provider management screen | Adopt bounded | TV Settings route is currently a literal placeholder. Real screen: theme switcher, playback/accessibility preferences, source list/management once CV-018 lands. Parental-control PIN locking explicitly deferred, not silently dropped. [Issue #827](https://github.com/DevelopersCoffee/airo/issues/827). |
+| CV-023 | TV remote UX: numeric entry, button remap, TV Input Framework | Adopt bounded | Extends the unified `TvFocusable`/`TvInputHandler` infra with numeric channel jump, colored-button remapping, and Android TIF sync. [Issue #828](https://github.com/DevelopersCoffee/airo/issues/828). |
+| CV-020 | Local multiview | Defer | Multiple simultaneous local tiles is BYOC-compatible in principle, but needs CV-001's diagnostics/resource guardrails proven first so N streams don't silently degrade playback. Revisit after CV-001 and CV-016 ship. [Issue #829](https://github.com/DevelopersCoffee/airo/issues/829) (tracking only). |
+| CV-024 | TV localization coverage | Defer | Tracked so it isn't lost, not release-blocking for Play Store v2 hardening. [Issue #830](https://github.com/DevelopersCoffee/airo/issues/830) (tracking only). |
 
 ## Adopted Issue Order
 
@@ -91,13 +96,29 @@ This roadmap converts community requests into a v2 milestone plan that fits the 
    - Reason: Reddit product feedback shows users mostly want less clutter and a consistent cable-TV experience over a huge, unreliable provider feed.
    - Outcome: Users can build a small local "My TV" view using deterministic filters and aliases without editing the raw playlist.
 
-9. **CV-018: Xtream Codes Provider Adapter**
-   - Reason: Xtream comparison analysis (AerioTV) shows this is the single largest capability gap that still fits the BYOC model — it's user-supplied credentials against a server the user already controls access to, not an Airo-hosted account.
-   - Outcome: M3U and Xtream sources share one `ContentSource` capability contract; no new account, sync, or marketplace surface.
+9. **CV-018: Provider Adapter Contracts** — [Issue #823](https://github.com/DevelopersCoffee/airo/issues/823)
+   - Reason: Two independent comparisons (AerioTV, StreamVault) both flag provider depth as the single largest capability gap that still fits the BYOC model — user-supplied credentials against a server the user already controls access to, not an Airo-hosted account.
+   - Outcome: M3U, Xtream, Stalker, and Jellyfin sources share one `ContentSource` capability contract; no new account, sync, or marketplace surface.
 
-10. **CV-019: Local VOD Listing**
+10. **CV-019: Local VOD Listing** — [Issue #824](https://github.com/DevelopersCoffee/airo/issues/824)
     - Reason: BYOC sources (M3U/Xtream) already carry VOD entries; listing them locally with existing history-based continue-watching closes a real gap without adding a cloud metadata dependency.
     - Outcome: Users browse VOD from their own source without Airo fetching or caching third-party metadata.
+
+11. **CV-015b: Full EPG Grid UI** — [Issue #825](https://github.com/DevelopersCoffee/airo/issues/825)
+    - Reason: CV-015 slice 1 (data layer) shipped, but the guide screen is still a current/next list, not the windowed timeline both comparisons expected.
+    - Outcome: Real virtualized guide grid with proportional block widths, current-time indicator, search, and manual EPG-match overrides.
+
+12. **CV-021: Favorites and Hidden Categories** — [Issue #826](https://github.com/DevelopersCoffee/airo/issues/826)
+    - Reason: `platform_favorites` has no real data layer yet and the TV route is a placeholder — a directly-requested, simpler feature than CV-017's rule engine.
+    - Outcome: Favorite/hide channels and groups with real local persistence.
+
+13. **CV-022: TV Settings and Provider Management** — [Issue #827](https://github.com/DevelopersCoffee/airo/issues/827)
+    - Reason: TV Settings is a literal placeholder today; both comparisons note settings/provider-management is thin-to-nonexistent.
+    - Outcome: Real theme/playback/accessibility settings and source management, once CV-018 exists.
+
+14. **CV-023: TV Remote UX** — [Issue #828](https://github.com/DevelopersCoffee/airo/issues/828)
+    - Reason: Numeric channel entry and remote button remapping are common TV-client expectations Airo lacks.
+    - Outcome: Numeric jump-to-channel, colored-button remapping, Android TV Input Framework sync.
 
 ## Explicit Non-Goals For Current V2
 
