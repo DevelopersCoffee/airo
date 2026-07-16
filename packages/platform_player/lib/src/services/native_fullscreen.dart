@@ -16,9 +16,22 @@ class AiroNativeFullscreen {
   );
   static bool _isHandlerConfigured = false;
   static VoidCallback? _macosFullscreenExitHandler;
+  static VoidCallback? _macosFullscreenEnterHandler;
 
+  /// Called once NSWindow has actually finished animating out of
+  /// fullscreen ([NSWindow.didExitFullScreenNotification]). This is the
+  /// only reliable signal that the window is back to windowed size —
+  /// requesting an exit and flipping app state immediately races the OS
+  /// animation and can leave the window painted black.
   static void setMacosFullscreenExitHandler(VoidCallback? handler) {
     _macosFullscreenExitHandler = handler;
+    _configureMacosMethodCallHandler();
+  }
+
+  /// Called once NSWindow has actually finished animating into
+  /// fullscreen ([NSWindow.didEnterFullScreenNotification]).
+  static void setMacosFullscreenEnterHandler(VoidCallback? handler) {
+    _macosFullscreenEnterHandler = handler;
     _configureMacosMethodCallHandler();
   }
 
@@ -49,6 +62,8 @@ class AiroNativeFullscreen {
       switch (call.method) {
         case 'nativeFullscreenExited':
           _macosFullscreenExitHandler?.call();
+        case 'nativeFullscreenEntered':
+          _macosFullscreenEnterHandler?.call();
         default:
           debugPrint('Unknown macOS fullscreen callback: ${call.method}');
       }
@@ -61,6 +76,15 @@ class AiroNativeFullscreen {
   }
 
   @visibleForTesting
+  static void debugNotifyMacosFullscreenEntered() {
+    _macosFullscreenEnterHandler?.call();
+  }
+
+  @visibleForTesting
   static bool get debugHasMacosFullscreenExitHandler =>
       _macosFullscreenExitHandler != null;
+
+  @visibleForTesting
+  static bool get debugHasMacosFullscreenEnterHandler =>
+      _macosFullscreenEnterHandler != null;
 }

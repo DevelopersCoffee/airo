@@ -1,8 +1,8 @@
+import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/auth/auth_service.dart';
 import '../../../core/routing/route_names.dart';
-import '../../../shared/widgets/loading_widget.dart';
 import '../../../shared/widgets/custom_text_field.dart';
 import '../../../shared/widgets/responsive_center.dart';
 
@@ -206,12 +206,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
 
                   // Register button
-                  LoadingButton(
-                    text: 'Create Account',
+                  AppButton(
+                    label: 'Create Account',
                     onPressed: _register,
                     isLoading: _isLoading,
                     icon: Icons.person_add,
-                    width: double.infinity,
+                    isExpanded: true,
                   ),
                   const SizedBox(height: 16),
 

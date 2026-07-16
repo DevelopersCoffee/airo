@@ -4,10 +4,14 @@ import FlutterMacOS
 class MainFlutterWindow: NSWindow {
   private var fullscreenChannel: FlutterMethodChannel?
   private var fullscreenExitObserver: NSObjectProtocol?
+  private var fullscreenEnterObserver: NSObjectProtocol?
 
   deinit {
     if let fullscreenExitObserver {
       NotificationCenter.default.removeObserver(fullscreenExitObserver)
+    }
+    if let fullscreenEnterObserver {
+      NotificationCenter.default.removeObserver(fullscreenEnterObserver)
     }
   }
 
@@ -34,6 +38,13 @@ class MainFlutterWindow: NSWindow {
       queue: .main
     ) { [weak self] _ in
       self?.fullscreenChannel?.invokeMethod("nativeFullscreenExited", arguments: nil)
+    }
+    fullscreenEnterObserver = NotificationCenter.default.addObserver(
+      forName: NSWindow.didEnterFullScreenNotification,
+      object: self,
+      queue: .main
+    ) { [weak self] _ in
+      self?.fullscreenChannel?.invokeMethod("nativeFullscreenEntered", arguments: nil)
     }
 
     channel.setMethodCallHandler { [weak self] call, result in

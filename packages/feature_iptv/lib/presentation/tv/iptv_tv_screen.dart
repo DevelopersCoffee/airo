@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:flutter/services.dart';
-import 'package:feature_iptv/presentation/utils/native_fullscreen.dart';
 import 'package:platform_channels/platform_channels.dart';
 import 'package:platform_epg/platform_epg.dart';
 import 'package:platform_player/platform_player.dart';
@@ -711,7 +710,11 @@ class _TvPlayerPanel extends StatelessWidget {
   final bool compact;
 
   void _openFullscreenPlayer(BuildContext context) {
-    Navigator.of(context).push<void>(
+    // Must use the root navigator: this screen sits inside TvShell's
+    // ShellRoute, whose nested navigator only covers the content area next
+    // to the sidebar. Pushing there leaves the sidebar visible; pushing on
+    // root escapes the shell entirely and covers the whole window.
+    Navigator.of(context, rootNavigator: true).push<void>(
       MaterialPageRoute<void>(
         fullscreenDialog: true,
         builder: (_) => const _TvFullscreenPlayerPage(),
@@ -822,6 +825,11 @@ class _TvFullscreenPlayerPageState extends State<_TvFullscreenPlayerPage> {
     AiroNativeFullscreen.setMacosFullscreenExitHandler(
       _handleNativeFullscreenExit,
     );
+    // Entering this page only maximizes the video within the current
+    // window bounds; it never asked the OS to actually go fullscreen.
+    // dispose() below already pairs with an exit call, so request the
+    // matching enter here.
+    unawaited(AiroNativeFullscreen.setMacosFullscreen(true));
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         _focusNode.requestFocus();
@@ -849,6 +857,8 @@ class _TvFullscreenPlayerPageState extends State<_TvFullscreenPlayerPage> {
     if (exitNativeFullscreen) {
       unawaited(AiroNativeFullscreen.exitMacosFullscreen());
     }
+    // Must match the navigator used to push this page in
+    // _openFullscreenPlayer (root — see the comment there for why).
     Navigator.of(context, rootNavigator: true).pop();
   }
 

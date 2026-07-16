@@ -8,8 +8,6 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:feature_iptv/presentation/utils/native_fullscreen.dart';
-
 void main() {
   final channels = [
     const IPTVChannel(
