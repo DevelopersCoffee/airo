@@ -240,4 +240,79 @@ void main() {
       );
     });
   });
+
+  group('externalSubtitleTracksFor', () {
+    AiroMediaOpenRequest requestWith(List<AiroPlaybackExternalSubtitle> subs) {
+      return AiroMediaOpenRequest(
+        requestId: 'open-tracks',
+        sourceHandle: AiroPlaybackSourceHandle.redacted('opaque-1'),
+        mediaKind: AiroPlaybackMediaKind.hls,
+        externalSubtitles: subs,
+      );
+    }
+
+    test('empty subtitles yields empty catalog', () {
+      expect(externalSubtitleTracksFor(requestWith(const [])), isEmpty);
+    });
+
+    test('projects each subtitle as a subtitle track with stable id', () {
+      final tracks = externalSubtitleTracksFor(
+        requestWith([
+          AiroPlaybackExternalSubtitle(
+            handle: AiroPlaybackSourceHandle.redacted('sub-0'),
+            languageCode: 'en',
+            label: 'English',
+          ),
+          AiroPlaybackExternalSubtitle(
+            handle: AiroPlaybackSourceHandle.redacted('sub-1'),
+            languageCode: 'fr',
+          ),
+        ]),
+      );
+
+      expect(tracks, hasLength(2));
+      expect(tracks[0].id, 'external_sub_0');
+      expect(tracks[0].kind, AiroPlaybackTrackKind.subtitle);
+      expect(tracks[0].label, 'English');
+      expect(tracks[0].isExternal, isTrue);
+      expect(tracks[0].languageCode, 'en');
+
+      expect(tracks[1].id, 'external_sub_1');
+      // Falls back to languageCode when label is null.
+      expect(tracks[1].label, 'fr');
+    });
+
+    test('falls back to positional label when both label and language null', () {
+      final tracks = externalSubtitleTracksFor(
+        requestWith([
+          AiroPlaybackExternalSubtitle(
+            handle: AiroPlaybackSourceHandle.redacted('sub-0'),
+          ),
+        ]),
+      );
+
+      expect(tracks.single.label, 'External subtitle 1');
+      expect(tracks.single.languageCode, isNull);
+    });
+
+    test('projected list is unmodifiable', () {
+      final tracks = externalSubtitleTracksFor(
+        requestWith([
+          AiroPlaybackExternalSubtitle(
+            handle: AiroPlaybackSourceHandle.redacted('sub-0'),
+          ),
+        ]),
+      );
+      expect(
+        () => tracks.add(
+          const AiroPlaybackTrackOption(
+            id: 'mut',
+            kind: AiroPlaybackTrackKind.subtitle,
+            label: 'mut',
+          ),
+        ),
+        throwsUnsupportedError,
+      );
+    });
+  });
 }
