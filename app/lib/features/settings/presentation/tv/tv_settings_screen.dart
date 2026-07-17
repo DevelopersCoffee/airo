@@ -2,12 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:core_ui/core_ui.dart';
 
+import 'tv_theme_section.dart';
+
 enum _TvSettingsSection { theme, playback, sources, accessibility }
 
 /// TV Settings screen (CV-022): a left-hand section list, right-hand detail
-/// pane. Task 3 stubs each pane; Tasks 4-6 replace the stubs with real
-/// section widgets (`TvThemeSection`, `TvPlaybackSection`,
-/// `TvSourceManagementSection`).
+/// pane. Tasks 5-6 replace the remaining stubs with real section widgets
+/// (`TvPlaybackSection`, `TvSourceManagementSection`).
 class TvSettingsScreen extends ConsumerStatefulWidget {
   const TvSettingsScreen({super.key});
 
@@ -94,7 +95,7 @@ class _TvSettingsScreenState extends ConsumerState<TvSettingsScreen> {
   Widget _buildDetail() {
     switch (_selected) {
       case _TvSettingsSection.theme:
-        return const SizedBox(key: ValueKey('tv_settings_section_theme'));
+        return const TvThemeSection(key: ValueKey('tv_settings_section_theme'));
       case _TvSettingsSection.playback:
         return const SizedBox(key: ValueKey('tv_settings_section_playback'));
       case _TvSettingsSection.sources:
