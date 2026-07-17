@@ -21,5 +21,6 @@ export "presentation/tv/vod_tv_screen.dart";
 export "presentation/widgets/cast_device_picker_sheet.dart";
 export "presentation/widgets/iptv_cast_mini_controller.dart";
 export "presentation/widgets/iptv_mini_player.dart";
+export "presentation/widgets/phone_media_play_on_tv_sheet.dart";
 export "presentation/widgets/xmltv_source_sheet.dart";
 export "presentation/widgets/epg_match_override_sheet.dart";

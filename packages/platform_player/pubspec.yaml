@@ -9,6 +9,8 @@ environment:
   flutter: ">=1.17.0"
 
 dependencies:
+  core_media_routing:
+    path: ../core_media_routing
   equatable: ^2.0.8
   flutter:
     sdk: flutter
