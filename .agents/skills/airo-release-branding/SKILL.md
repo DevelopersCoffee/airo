@@ -35,17 +35,26 @@ into shipped-product claims.
      issue links.
 7. Use real or sanitized Airo screenshots. Remove private URLs, credentials,
    third-party broadcast frames, unlicensed logos, and personal data.
-8. For an approved live demo, require an explicit user gesture before any
+8. For an approved live demo, default to an explicit user gesture before any
    manifest request, identify the third-party source and network/privacy
    boundary, provide unavailable and unsupported states, and destroy playback
-   on page exit. Attempt at most one automatic recovery within a finite
-   deadline before showing manual retry. Never proxy, cache, rebroadcast, or
-   silently preload it.
+   on page exit. A single immersive preview may autoplay only when it is at
+   least 35% visible, begins muted, uses `preload=none` without an HTML autoplay
+   attribute, waits for deep-link anchor positioning before observing, exposes a
+   persistent Unmute control, pauses and stops HLS.js loading off screen, and
+   retains a manual fallback. Attempt at most one
+   automatic recovery within a finite deadline before showing manual retry.
+   Never proxy, cache, rebroadcast, or silently preload it. Keep no more than two
+   public samples on the page, use one shared controller for every sample, and
+   stop an active sample before another begins. Idle poster art must be owned or
+   sanitized Airo material rather than captured third-party broadcast frames.
 9. Update device tutorials only for behavior supported by the claim state.
 10. Preserve the professional visual contract:
     - use one shared spacing and typography scale across product sections;
     - keep screenshots in the same product journey at equal 16:9 prominence,
       including when their text/media order alternates;
+    - keep all public live players on one shared 16:9 media geometry with status
+      over the top-right of the media and compact disclosure below or above it;
     - keep headings subordinate to the Airo hero and avoid repeating hero-scale
       type throughout the page;
     - keep controls and navigation targets at least 44 pixels high;
@@ -78,4 +87,6 @@ the matrices, a private capability lacks approval, a screenshot has unclear
 rights, a live demo preloads or lacks source disclosure, or the page audit
 fails. Also stop when same-journey screenshots render at inconsistent sizes,
 interactive targets fall below 44 pixels, or required responsive viewports
-show overlap or horizontal overflow.
+show overlap or horizontal overflow. Multiple live samples also block release
+when they do not share lifecycle/recovery behavior, can play concurrently, or
+make provider requests before their own explicit Play actions.

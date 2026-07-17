@@ -19,6 +19,12 @@ class Inventory(HTMLParser):
         self.links: list[str] = []
         self.sources: list[str] = []
         self.autoplay_videos = 0
+        self.live_demo_roots = 0
+        self.muted_autoplay_live_demo_roots = 0
+        self.live_demo_videos = 0
+        self.live_sample_videos = 0
+        self.muted_live_demo_videos = 0
+        self.preloading_live_demo_videos = 0
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         values = dict(attrs)
@@ -28,8 +34,20 @@ class Inventory(HTMLParser):
             self.links.append(values["href"] or "")
         if values.get("src"):
             self.sources.append(values["src"] or "")
+        if "data-live-demo" in values:
+            self.live_demo_roots += 1
+        if "data-live-autoplay-muted" in values:
+            self.muted_autoplay_live_demo_roots += 1
         if tag == "video" and "autoplay" in values:
             self.autoplay_videos += 1
+        if tag == "video" and "data-live-demo-video" in values:
+            self.live_demo_videos += 1
+            if "live-sample-video" in (values.get("class") or "").split():
+                self.live_sample_videos += 1
+            if "muted" in values:
+                self.muted_live_demo_videos += 1
+            if values.get("preload") != "none":
+                self.preloading_live_demo_videos += 1
 
 
 def latest_tv_release(repository: str) -> str:
@@ -147,6 +165,14 @@ def main() -> int:
         "Third-party stream": "external stream status",
         "github.com/iptv-org/iptv": "public source attribution",
         "cdn-uw2-prod.tsv2.amagi.tv": "approved live demo source",
+        "Vevo Pop": "immersive live showcase name",
+        "d128y56w6v2kax.cloudfront.net": "approved Vevo Pop showcase source",
+        "Start muted preview": "manual autoplay fallback",
+        "Muted preview starts on screen.": "visibility-gated preview status",
+        ">Unmute</span>": "explicit audio control",
+        "Third-party stream details": "compact stream disclosure",
+        "live-demo-player-status": "secondary player overlay status",
+        "live-demo-disclosure": "secondary compact disclosure",
         "HLS.js Apache license": "player dependency attribution",
     }
     for snippet, label in required_snippets.items():
@@ -154,11 +180,20 @@ def main() -> int:
             errors.append(f"missing {label}: {snippet}")
 
     required_demo_logic = {
+        'querySelectorAll("[data-live-demo]")': "shared multi-sample initialization",
         "Retrying live stream automatically": "automatic recovery status",
         "recoverMediaError": "HLS media recovery",
         "demoRecoveryAttempts >= 1": "bounded recovery attempt",
         "8000": "recovery deadline",
         "airo_retry=": "native HLS cache-busted retry",
+        'root.hasAttribute("data-live-autoplay-muted")': "muted autoplay contract",
+        "entry.intersectionRatio >= 0.35": "visibility threshold",
+        "observeMutedPreview": "deep-link-safe observer setup",
+        "autoplayBlockedByInitialHash": "non-showcase deep-link guard",
+        "demoVideo.muted = true": "forced muted autoplay",
+        "demoAudio.addEventListener": "user-controlled audio toggle",
+        "demoHls.stopLoad()": "off-screen network pause",
+        "instance.isActive()": "manual playback precedence",
     }
     for snippet, label in required_demo_logic.items():
         if snippet not in site_script_text:
@@ -189,6 +224,9 @@ def main() -> int:
         ".screen-step:nth-child(even)": "alternating media proportion rule",
         'aria-current="location"': "active section navigation treatment",
         "min-height: 44px": "minimum interactive target rule",
+        ".live-sample-video": "shared live media geometry",
+        ".live-demo-player-status": "secondary overlay status alignment",
+        "aspect-ratio: 16 / 9": "secondary live media ratio",
     }
     visual_contract_text = site_styles_text + site_script_text
     for snippet, label in required_visual_styles.items():
@@ -215,6 +253,26 @@ def main() -> int:
 
     if index_inventory.autoplay_videos:
         errors.append("live demo video must not use autoplay")
+    if index_inventory.live_demo_roots != 2:
+        errors.append("public page must expose exactly two live demo roots")
+    if index_inventory.live_demo_videos != 2:
+        errors.append("public page must expose exactly two live demo videos")
+    if index_inventory.live_sample_videos != 2:
+        errors.append("both live demo videos must use the shared media geometry")
+    if index_inventory.muted_autoplay_live_demo_roots != 1:
+        errors.append("exactly one immersive showcase must declare muted autoplay")
+    if index_inventory.muted_live_demo_videos != 1:
+        errors.append("exactly one immersive live showcase must declare muted playback")
+    if index_inventory.preloading_live_demo_videos:
+        errors.append("every live demo video must use preload=none")
+
+    product_position = index_text.find('id="product"')
+    showcase_position = index_text.find('id="vevo-showcase"')
+    difference_position = index_text.find('id="difference"')
+    if min(product_position, showcase_position, difference_position) < 0 or not (
+        product_position < showcase_position < difference_position
+    ):
+        errors.append("immersive showcase must follow the release proof strip")
 
     hls_license = (
         root

@@ -18,6 +18,7 @@ class TvRouteNames {
   static const String live = '/live';
   static const String player = '/player';
   static const String guide = '/guide';
+  static const String vod = '/vod';
   static const String favorites = '/favorites';
   static const String settings = '/settings';
   static const String legacyLogin = '/login';
@@ -76,6 +77,12 @@ class TvRouter {
               builder: (context, state) => IptvGuideScreen(
                 onChannelSelected: () => context.go(TvRouteNames.live),
               ),
+            ),
+            // VOD (movies/shows) route
+            GoRoute(
+              path: TvRouteNames.vod,
+              name: 'tv_vod',
+              builder: (context, state) => const VodTvScreen(),
             ),
             // Favorites route
             GoRoute(
