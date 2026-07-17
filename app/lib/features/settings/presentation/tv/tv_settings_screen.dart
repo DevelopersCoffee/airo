@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:core_ui/core_ui.dart';
 
+import 'tv_playback_section.dart';
 import 'tv_theme_section.dart';
 
 enum _TvSettingsSection { theme, playback, sources, accessibility }
@@ -97,7 +98,9 @@ class _TvSettingsScreenState extends ConsumerState<TvSettingsScreen> {
       case _TvSettingsSection.theme:
         return const TvThemeSection(key: ValueKey('tv_settings_section_theme'));
       case _TvSettingsSection.playback:
-        return const SizedBox(key: ValueKey('tv_settings_section_playback'));
+        return const TvPlaybackSection(
+          key: ValueKey('tv_settings_section_playback'),
+        );
       case _TvSettingsSection.sources:
         return const SizedBox(key: ValueKey('tv_settings_section_sources'));
       case _TvSettingsSection.accessibility:
