@@ -101,6 +101,92 @@ void main() {
       await engine.dispose();
     });
 
+    test(
+      'external subtitles from open request appear in state.tracks',
+      () async {
+        final engine = MpvAiroPlaybackEngine(
+          playerFactory: FakeMpvPlayerFacade.new,
+        );
+        await engine.open(
+          AiroMediaOpenRequest(
+            requestId: 'open-sub',
+            sourceHandle: AiroPlaybackSourceHandle.redacted('opaque-1'),
+            mediaKind: AiroPlaybackMediaKind.hls,
+            externalSubtitles: [
+              AiroPlaybackExternalSubtitle(
+                handle: AiroPlaybackSourceHandle.redacted('sub-fr'),
+                languageCode: 'fr',
+                label: 'Français',
+              ),
+              AiroPlaybackExternalSubtitle(
+                handle: AiroPlaybackSourceHandle.redacted('sub-de'),
+                languageCode: 'de',
+              ),
+            ],
+          ),
+        );
+        expect(engine.currentState.tracks, hasLength(2));
+        expect(engine.currentState.tracks[0].label, 'Français');
+        expect(engine.currentState.tracks[1].languageCode, 'de');
+        expect(
+          engine.currentState.tracks.every((t) => t.isExternal),
+          isTrue,
+        );
+        await engine.dispose();
+      },
+    );
+
+    test(
+      'selectTrack succeeds for a projected external subtitle',
+      () async {
+        final engine = MpvAiroPlaybackEngine(
+          playerFactory: FakeMpvPlayerFacade.new,
+        );
+        await engine.open(
+          AiroMediaOpenRequest(
+            requestId: 'open-sub',
+            sourceHandle: AiroPlaybackSourceHandle.redacted('opaque-1'),
+            mediaKind: AiroPlaybackMediaKind.hls,
+            externalSubtitles: [
+              AiroPlaybackExternalSubtitle(
+                handle: AiroPlaybackSourceHandle.redacted('sub-fr'),
+                languageCode: 'fr',
+              ),
+            ],
+          ),
+        );
+
+        final state = await engine.selectTrack(
+          kind: AiroPlaybackTrackKind.subtitle,
+          trackId: 'external_sub_0',
+        );
+
+        expect(state.error, isNull);
+        expect(
+          state.selectedTrackIds[AiroPlaybackTrackKind.subtitle],
+          'external_sub_0',
+        );
+        await engine.dispose();
+      },
+    );
+
+    test(
+      'selectTrack fails typed for an unknown track id',
+      () async {
+        final engine = MpvAiroPlaybackEngine(
+          playerFactory: FakeMpvPlayerFacade.new,
+        );
+        await engine.open(request());
+
+        final state = await engine.selectTrack(
+          kind: AiroPlaybackTrackKind.audio,
+          trackId: 'nope',
+        );
+        expect(state.error?.code, AiroPlaybackErrorCode.trackUnavailable);
+        await engine.dispose();
+      },
+    );
+
     test('dispose releases the facade', () async {
       FakeMpvPlayerFacade? capturedFake;
       final engine = MpvAiroPlaybackEngine(

@@ -73,6 +73,7 @@ class VideoPlayerAiroPlaybackEngine implements AiroPlaybackEngine {
         request: request,
         position: request.startPosition,
         duration: controller.value.duration,
+        tracks: externalSubtitleTracksFor(request),
         diagnostics: AiroPlaybackDiagnostics(
           backendId: backendKind.stableId,
           hardwareAccelerated: true,
@@ -148,11 +149,24 @@ class VideoPlayerAiroPlaybackEngine implements AiroPlaybackEngine {
     required AiroPlaybackTrackKind kind,
     required String trackId,
   }) async {
-    return _fail(
-      AiroPlaybackErrorCode.trackUnavailable,
-      'selectTrack',
-      _state.request,
+    final matches = _state.tracks.where(
+      (t) => t.kind == kind && t.id == trackId,
     );
+    if (matches.isEmpty) {
+      return _fail(
+        AiroPlaybackErrorCode.trackUnavailable,
+        'selectTrack',
+        _state.request,
+      );
+    }
+    // video_player has no built-in track switch; for external subtitle tracks
+    // the app-layer subtitle renderer consumes selectedTrackIds directly. This
+    // engine only records the selection.
+    final nextSelected = Map<AiroPlaybackTrackKind, String>.from(
+      _state.selectedTrackIds,
+    )..[kind] = trackId;
+    _emit(_state.copyWith(selectedTrackIds: nextSelected));
+    return _state;
   }
 
   @override
