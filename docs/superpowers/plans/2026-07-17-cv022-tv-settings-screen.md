@@ -647,7 +647,7 @@ Expected: `00:00 +2: All tests passed!`
 
 - [ ] **Step 5: Wire into `app/lib/core/app/tv_router.dart`**
 
-Read the file first (it's actively evolving on `origin/v2` per this session's other concurrent work — re-derive the exact current Settings `GoRoute` and `_TvSettingsPlaceholder` class before editing, don't assume line numbers). Replace:
+Read the file first (it's actively evolving on `origin/main` per this session's other concurrent work — re-derive the exact current Settings `GoRoute` and `_TvSettingsPlaceholder` class before editing, don't assume line numbers). Replace:
 
 ```dart
 GoRoute(

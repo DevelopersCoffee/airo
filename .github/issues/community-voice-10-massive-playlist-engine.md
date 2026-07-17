@@ -67,7 +67,7 @@ Users of IPTV players complain that playlists with 7,000 to 30,000+ entries make
 **Owning agent:** Framework Agent.
 **Reviewing agents:** Media Agent, Mobile UI Agent, Security and Privacy Agent, QA Automation Agent, Release and DevEx Agent.
 **Impacted modules/files:** `rust/airo_core`, `packages/platform_playlist_import`, `packages/platform_playlist`, `packages/feature_iptv`, `packages/platform_benchmarks`.
-**Base branch/worktree:** confirmed from latest `origin/v2`: yes.
+**Base branch/worktree:** confirmed from latest `origin/main`: yes.
 **Open questions:** Whether the existing structured cache is sufficient for paging, or whether a small local index is required.
 **Decision:** Ready.
 

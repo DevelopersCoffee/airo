@@ -108,4 +108,81 @@ void main() {
     );
     expect(sources, isEmpty);
   });
+
+  testWidgets(
+    'shows a validation error and does not persist when the URL is empty',
+    (tester) async {
+      final container = await buildContainer();
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: const MaterialApp(
+            home: Scaffold(body: TvSourceManagementSection()),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      await tester.tap(find.text('Add M3U Source'));
+      await tester.pump();
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Label'),
+        'My Playlist',
+      );
+      await tester.tap(find.text('Save'));
+      await tester.pump();
+
+      expect(find.text('Enter a playlist URL.'), findsOneWidget);
+
+      final sources = await container.read(
+        configuredContentSourcesProvider.future,
+      );
+      expect(sources, isEmpty);
+    },
+  );
+
+  testWidgets(
+    'shows a validation error and does not persist when the URL is malformed',
+    (tester) async {
+      final container = await buildContainer();
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: const MaterialApp(
+            home: Scaffold(body: TvSourceManagementSection()),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      await tester.tap(find.text('Add M3U Source'));
+      await tester.pump();
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Label'),
+        'My Playlist',
+      );
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Playlist URL'),
+        'not-a-url',
+      );
+      await tester.tap(find.text('Save'));
+      await tester.pump();
+
+      expect(
+        find.text('Enter a valid http:// or https:// URL.'),
+        findsOneWidget,
+      );
+
+      final sources = await container.read(
+        configuredContentSourcesProvider.future,
+      );
+      expect(sources, isEmpty);
+    },
+  );
 }

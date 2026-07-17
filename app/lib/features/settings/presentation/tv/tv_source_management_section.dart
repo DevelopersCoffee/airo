@@ -1,3 +1,4 @@
+import 'package:core_ui/core_ui.dart';
 import 'package:feature_iptv/feature_iptv.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -20,6 +21,9 @@ class _TvSourceManagementSectionState
   bool _showAddForm = false;
   final _labelController = TextEditingController();
   final _urlController = TextEditingController();
+  String? _labelError;
+  String? _urlError;
+  String? _submitError;
 
   @override
   void dispose() {
@@ -28,14 +32,70 @@ class _TvSourceManagementSectionState
     super.dispose();
   }
 
+  void _openAddForm() {
+    setState(() {
+      _showAddForm = true;
+      _labelError = null;
+      _urlError = null;
+      _submitError = null;
+    });
+  }
+
+  void _closeAddForm() {
+    setState(() {
+      _showAddForm = false;
+      _labelError = null;
+      _urlError = null;
+      _submitError = null;
+    });
+  }
+
+  /// Accepts only well-formed http/https URLs — the M3U fetcher can't do
+  /// anything useful with anything else, and a bad URL persisted silently
+  /// is worse than an inline error asking the user to fix it now.
+  String? _validateUrl(String url) {
+    if (url.isEmpty) return 'Enter a playlist URL.';
+    final uri = Uri.tryParse(url);
+    if (uri == null ||
+        !uri.hasScheme ||
+        !(uri.isScheme('http') || uri.isScheme('https'))) {
+      return 'Enter a valid http:// or https:// URL.';
+    }
+    return null;
+  }
+
   Future<void> _addSource() async {
     final label = _labelController.text.trim();
     final url = _urlController.text.trim();
-    if (label.isEmpty || url.isEmpty) return;
 
-    await ref.read(
-      addM3uContentSourceProvider((label: label, url: url)).future,
-    );
+    final labelError = label.isEmpty ? 'Enter a label.' : null;
+    final urlError = _validateUrl(url);
+
+    if (labelError != null || urlError != null) {
+      setState(() {
+        _labelError = labelError;
+        _urlError = urlError;
+        _submitError = null;
+      });
+      return;
+    }
+
+    setState(() {
+      _labelError = null;
+      _urlError = null;
+      _submitError = null;
+    });
+
+    try {
+      await ref.read(
+        addM3uContentSourceProvider((label: label, url: url)).future,
+      );
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _submitError = 'Could not add source: $error');
+      return;
+    }
+
     if (!mounted) return;
     setState(() {
       _showAddForm = false;
@@ -53,13 +113,23 @@ class _TvSourceManagementSectionState
           'This removes the source and any saved credentials.',
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
+          TvFocusable(
+            onSelect: () => Navigator.of(context).pop(false),
+            semanticLabel: 'Cancel',
+            semanticButton: true,
+            child: TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel'),
+            ),
           ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Remove'),
+          TvFocusable(
+            onSelect: () => Navigator.of(context).pop(true),
+            semanticLabel: 'Remove',
+            semanticButton: true,
+            child: TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Remove'),
+            ),
           ),
         ],
       ),
@@ -96,21 +166,29 @@ class _TvSourceManagementSectionState
               return Column(
                 children: [
                   for (final config in sources)
-                    ListTile(
-                      title: Text(
-                        config.label,
-                        style: const TextStyle(color: Colors.white),
-                      ),
-                      subtitle: Text(
-                        config.kind.stableId,
-                        style: const TextStyle(color: Colors.white70),
-                      ),
-                      trailing: IconButton(
-                        icon: const Icon(
-                          Icons.delete_outline,
-                          color: Colors.white,
+                    TvFocusable(
+                      semanticLabel: config.label,
+                      child: ListTile(
+                        title: Text(
+                          config.label,
+                          style: const TextStyle(color: Colors.white),
                         ),
-                        onPressed: () => _confirmRemove(config),
+                        subtitle: Text(
+                          config.kind.stableId,
+                          style: const TextStyle(color: Colors.white70),
+                        ),
+                        trailing: TvFocusable(
+                          onSelect: () => _confirmRemove(config),
+                          semanticLabel: 'Remove ${config.label}',
+                          semanticButton: true,
+                          child: IconButton(
+                            icon: const Icon(
+                              Icons.delete_outline,
+                              color: Colors.white,
+                            ),
+                            onPressed: () => _confirmRemove(config),
+                          ),
+                        ),
                       ),
                     ),
                 ],
@@ -119,42 +197,72 @@ class _TvSourceManagementSectionState
           ),
           const SizedBox(height: 16),
           if (!_showAddForm)
-            FilledButton(
-              onPressed: () => setState(() => _showAddForm = true),
-              child: const Text('Add M3U Source'),
+            TvFocusable(
+              onSelect: _openAddForm,
+              semanticLabel: 'Add M3U Source',
+              semanticButton: true,
+              child: FilledButton(
+                onPressed: _openAddForm,
+                child: const Text('Add M3U Source'),
+              ),
             )
           else
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                TextField(
-                  controller: _labelController,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: const InputDecoration(
-                    labelText: 'Label',
-                    border: OutlineInputBorder(),
+                TvFocusable(
+                  semanticLabel: 'Label',
+                  child: TextField(
+                    controller: _labelController,
+                    style: const TextStyle(color: Colors.white),
+                    decoration: InputDecoration(
+                      labelText: 'Label',
+                      border: const OutlineInputBorder(),
+                      errorText: _labelError,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 8),
-                TextField(
-                  controller: _urlController,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: const InputDecoration(
-                    labelText: 'Playlist URL',
-                    border: OutlineInputBorder(),
+                TvFocusable(
+                  semanticLabel: 'Playlist URL',
+                  child: TextField(
+                    controller: _urlController,
+                    style: const TextStyle(color: Colors.white),
+                    decoration: InputDecoration(
+                      labelText: 'Playlist URL',
+                      border: const OutlineInputBorder(),
+                      errorText: _urlError,
+                    ),
                   ),
                 ),
+                if (_submitError != null) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    _submitError!,
+                    style: const TextStyle(color: Colors.redAccent),
+                  ),
+                ],
                 const SizedBox(height: 8),
                 Row(
                   children: [
-                    FilledButton(
-                      onPressed: _addSource,
-                      child: const Text('Save'),
+                    TvFocusable(
+                      onSelect: _addSource,
+                      semanticLabel: 'Save',
+                      semanticButton: true,
+                      child: FilledButton(
+                        onPressed: _addSource,
+                        child: const Text('Save'),
+                      ),
                     ),
                     const SizedBox(width: 8),
-                    TextButton(
-                      onPressed: () => setState(() => _showAddForm = false),
-                      child: const Text('Cancel'),
+                    TvFocusable(
+                      onSelect: _closeAddForm,
+                      semanticLabel: 'Cancel',
+                      semanticButton: true,
+                      child: TextButton(
+                        onPressed: _closeAddForm,
+                        child: const Text('Cancel'),
+                      ),
                     ),
                   ],
                 ),

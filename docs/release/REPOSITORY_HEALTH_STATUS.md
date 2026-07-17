@@ -3,7 +3,7 @@
 This document records the repository-health baseline for the v2 public-release
 wave. It is backed by the local `core_release` repository-health preflight.
 
-Implementation work for this release line must start from latest `origin/v2`.
+Implementation work for this release line must start from latest `origin/main`.
 
 ## Local Evidence Command
 
