@@ -2,7 +2,7 @@
 
 **Status:** Draft  
 **Date:** 2026-07-13  
-**Release line:** V2 modular, based on latest `origin/v2`  
+**Release line:** V2 modular, based on latest `origin/main`
 **Source:** `docs/features/airo-tv/PRD_SOURCE_v2.0.0.1.md`  
 **GitHub release tracker:** https://github.com/DevelopersCoffee/airo/issues/672  
 **GitHub milestone:** `v2.0.0.1 - Airo TV Platform Hardening`  
@@ -15,9 +15,9 @@
 - Public release tags remain semantic v2 tags from the release-line policy:
   `v2.0.0`, `v2.0.1`, `v2.1.0`, and later `v2.x.y` tags.
 - The active next development branch is `codex/next-v2.0.0.0`, created from
-  latest `origin/v2` on 2026-07-14.
+  latest `origin/main` on 2026-07-14.
 - Issue-scoped implementation branches may be stacked from this next branch or
-  created directly from latest `origin/v2`; release candidates must still be cut
+  created directly from latest `origin/main`; release candidates must still be cut
   from `v2` after reviewed work merges back.
 - Four-part labels such as `v2.0.0.0` and `v2.0.0.1` must not be published as
   immutable Git release tags unless the repository release policy is changed by

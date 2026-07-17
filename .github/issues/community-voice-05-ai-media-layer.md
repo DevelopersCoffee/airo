@@ -46,7 +46,7 @@ This request depends on the Offline LLM roadmap, especially:
 **Owning agent:** AI LLM Agent.
 **Reviewing agents:** Media Agent, Framework Agent, Security and Privacy Agent, QA Automation Agent.
 **Impacted modules/files:** `packages/core_ai`, `packages/platform_playlist`, `packages/platform_epg`, `packages/feature_iptv`.
-**Base branch/worktree:** Must be reconfirmed from latest `origin/v2` when reopened.
+**Base branch/worktree:** Must be reconfirmed from latest `origin/main` when reopened.
 **Open questions:** Approved local model, ASR dependency, schema, latency budget, no-model fallback.
 **Decision:** Blocked until Offline LLM foundation is accepted.
 

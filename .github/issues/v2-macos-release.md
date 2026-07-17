@@ -32,7 +32,7 @@ TV feature gate. No new product edition or runtime public API is introduced.
 
 ## Cross-Agent Contract
 
-**Inputs:** latest `origin/v2`, release version/build inputs, optional release
+**Inputs:** latest `origin/main`, release version/build inputs, optional release
 branch, optional Developer ID certificate and notarytool credentials.
 
 **Output shape:** `Airo-TV-<version>-macOS.zip`,
@@ -48,7 +48,7 @@ macOS. The macOS app exposes an in-app `Update` action that checks the latest
 GitHub Release and only reports an update when a newer release contains a
 macOS ZIP or DMG asset.
 
-**Error handling:** release ref not based on latest `origin/v2`, unsupported
+**Error handling:** release ref not based on latest `origin/main`, unsupported
 profile, macOS build failure, missing signing/notarization secrets when
 required, codesign verification failure, notarytool failure, or missing release
 assets fail the workflow.
@@ -59,7 +59,7 @@ assets fail the workflow.
 
 **Given:** Apple signing secrets are not configured.
 **Trigger:** Run `Airo TV macOS Release` with `profile=tv`,
-`release_ref=v2`, `release_branch=release/airo-tv-v0.0.2`, and
+`release_ref=main`, `release_branch=release/airo-tv-v0.0.2`, and
 `require_notarization=false`.
 **Happy path:** The workflow cuts/updates the release branch, builds
 `Airo TV.app`, uploads ZIP/DMG/checksum/manifest/Homebrew Cask artifacts, and

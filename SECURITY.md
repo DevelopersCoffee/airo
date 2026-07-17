@@ -40,8 +40,8 @@ Maintainers should:
 
 | Release line | Status | Notes |
 | --- | --- | --- |
-| Airo TV v0.0.x | Supported | Security fixes target the latest Airo TV release from `v2`. |
-| `main` | Supported | Security fixes also target the latest development branch. |
+| Airo TV v0.0.x | Supported | Security fixes target the latest Airo TV release from `main`. |
+| `main` | Supported | Security fixes target the active development branch and release line. |
 | Older releases | Best effort | Upgrade to the latest release before reporting issues that are already fixed. |
 
 ## Contributor Hygiene

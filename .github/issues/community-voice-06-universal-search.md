@@ -65,7 +65,7 @@ Users want search that is faster than remote-control letter-by-letter browsing. 
 **Owning agent:** Media Agent.
 **Reviewing agents:** Framework Agent, Mobile UI Agent, Security and Privacy Agent, QA Automation Agent.
 **Impacted modules/files:** `packages/platform_playlist`, `packages/platform_epg`, `packages/platform_favorites`, `packages/platform_history`, `packages/feature_iptv`.
-**Base branch/worktree:** confirmed from latest `origin/v2`: yes.
+**Base branch/worktree:** confirmed from latest `origin/main`: yes.
 **Open questions:** Whether the index is built eagerly after playlist import or lazily on first search.
 **Decision:** Ready.
 

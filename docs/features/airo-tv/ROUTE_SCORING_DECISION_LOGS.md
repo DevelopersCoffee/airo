@@ -9,7 +9,7 @@ Implementation contract:
 - Schema: `kAiroMediaRouteScoringSchemaVersion`
 - Score policy: `AiroMediaRouteScoringPolicy`
 - Decision log: `AiroMediaRouteDecisionLog`
-- Release-line base: `origin/v2`
+- Release-line base: `origin/main`
 
 ## Score Inputs
 

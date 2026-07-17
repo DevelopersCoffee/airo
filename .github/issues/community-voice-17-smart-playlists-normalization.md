@@ -77,7 +77,7 @@ The current v2 slice should implement deterministic local rules and channel iden
 **Owning agent:** Media Agent.
 **Reviewing agents:** Framework Agent, Mobile UI Agent, Security and Privacy Agent, QA Automation Agent, Release and DevEx Agent.
 **Impacted modules/files:** `packages/platform_channels`, `packages/platform_playlist_import`, `packages/platform_playlist`, `packages/feature_iptv`.
-**Base branch/worktree:** confirmed from latest `origin/v2`: yes.
+**Base branch/worktree:** confirmed from latest `origin/main`: yes.
 **Open questions:** Exact language and content-type inference available from current M3U metadata.
 **Decision:** Ready for deterministic local rules and canonical alias model.
 

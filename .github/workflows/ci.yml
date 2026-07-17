@@ -8,9 +8,9 @@ name: Continuous Integration
 
 on:
   push:
-    branches: [ main, v2, master, develop ]
+    branches: [ main, master, develop ]
   pull_request:
-    branches: [ main, v2, master, develop ]
+    branches: [ main, master, develop ]
   workflow_dispatch:
     inputs:
       build_full_android:

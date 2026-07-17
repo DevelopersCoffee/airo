@@ -255,7 +255,7 @@ melos:
       description: Dry-run next-v2.0.0.0 merge into v2 without pushing
       run: |
         scripts/check-v2-merge-readiness.sh \
-          --base "${AIRO_V2_MERGE_BASE:-origin/v2}" \
+          --base "${AIRO_V2_MERGE_BASE:-origin/main}" \
           --next "${AIRO_V2_MERGE_NEXT:-origin/codex/next-v2.0.0.0}"
 
     release:macos-signing-preflight:
