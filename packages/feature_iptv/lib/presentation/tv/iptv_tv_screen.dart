@@ -472,10 +472,11 @@ class _TvHeroBanner extends StatelessWidget {
                     begin: Alignment.centerLeft,
                     end: Alignment.centerRight,
                     colors: [
-                      Color(0xB3000000),
+                      Color(0xE6000000),
+                      Color(0xE6000000),
                       Colors.transparent,
                     ],
-                    stops: [0.0, 0.7],
+                    stops: [0.0, 0.38, 0.65],
                   ),
                 ),
               ),
