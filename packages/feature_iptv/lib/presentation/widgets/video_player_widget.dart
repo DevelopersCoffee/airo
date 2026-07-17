@@ -8,6 +8,7 @@ import 'package:video_player/video_player.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 import '../../application/providers/iptv_providers.dart';
 import '../../application/providers/video_aspect_ratio_provider.dart';
+import '../../domain/wakelock_debouncer.dart';
 import "package:platform_channels/platform_channels.dart";
 import "package:platform_player/platform_player.dart";
 import "package:platform_media/platform_media.dart";
@@ -40,7 +41,9 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
   bool _isCinemaMode = false;
   Timer? _hideControlsTimer;
   static const _controlsHideDelay = Duration(seconds: 4);
+  static const _volumeStep = 0.1;
   bool _wakelockEnabled = false;
+  final _wakelockDebouncer = WakelockDebouncer();
 
   // Channel change overlay state
   String? _channelChangeOverlayText;
@@ -59,23 +62,35 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
   void dispose() {
     _cancelHideControlsTimer();
     _channelChangeOverlayTimer?.cancel();
+    _wakelockDebouncer.cancel();
     _disableWakelock();
     super.dispose();
   }
 
   /// Update wakelock based on playback state
   /// Enable only when video is actively playing (not audio-only)
+  ///
+  /// Debounced via [WakelockDebouncer]: a single buffering tick shouldn't
+  /// flip the OS wakelock, only a target that holds steady does.
   void _updateWakelockForPlayback(StreamingState state) {
+    if (!mounted) return;
     final isVideoPlaying =
         state.isPlaying &&
         state.currentChannel != null &&
         !state.currentChannel!.isAudioOnly;
 
-    if (isVideoPlaying && !_wakelockEnabled) {
-      _enableWakelock();
-    } else if (!isVideoPlaying && _wakelockEnabled) {
-      _disableWakelock();
-    }
+    _wakelockDebouncer.update(
+      current: _wakelockEnabled,
+      target: isVideoPlaying,
+      onSettled: (target) {
+        if (!mounted) return;
+        if (target) {
+          _enableWakelock();
+        } else {
+          _disableWakelock();
+        }
+      },
+    );
   }
 
   /// Enable screen wake lock to prevent screen from going off during video playback
@@ -573,32 +588,44 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       // Mute button
-                      IconButton(
-                        icon: Icon(
-                          state.isMuted ? Icons.volume_off : Icons.volume_up,
-                          color: Colors.white,
-                        ),
+                      _PlayerControlButton(
+                        icon: state.isMuted
+                            ? Icons.volume_off
+                            : Icons.volume_up,
                         onPressed: () => service.toggleMute(),
+                      ),
+                      // Volume down
+                      _PlayerControlButton(
+                        key: const ValueKey('iptv-player-volume-down-button'),
+                        icon: Icons.remove_circle_outline,
+                        tooltip: 'Volume down',
+                        onPressed: () => service.setVolume(
+                          (state.volume - _volumeStep).clamp(0.0, 1.0),
+                        ),
+                      ),
+                      // Volume up
+                      _PlayerControlButton(
+                        key: const ValueKey('iptv-player-volume-up-button'),
+                        icon: Icons.add_circle_outline,
+                        tooltip: 'Volume up',
+                        onPressed: () => service.setVolume(
+                          (state.volume + _volumeStep).clamp(0.0, 1.0),
+                        ),
                       ),
                       const Spacer(),
                       // Aspect ratio toggle
-                      IconButton(
+                      _PlayerControlButton(
                         key: const ValueKey('iptv-player-aspect-ratio-button'),
-                        icon: const Icon(
-                          Icons.aspect_ratio,
-                          color: Colors.white,
-                        ),
+                        icon: Icons.aspect_ratio,
                         tooltip: 'Aspect Ratio',
                         onPressed: () => ref
                             .read(videoAspectRatioProvider.notifier)
                             .cycleToNext(),
                       ),
                       // Cinema mode toggle
-                      IconButton(
-                        icon: Icon(
-                          _isCinemaMode ? Icons.wb_sunny : Icons.theaters,
-                          color: _isCinemaMode ? Colors.amber : Colors.white,
-                        ),
+                      _PlayerControlButton(
+                        icon: _isCinemaMode ? Icons.wb_sunny : Icons.theaters,
+                        iconColor: _isCinemaMode ? Colors.amber : Colors.white,
                         tooltip: _isCinemaMode
                             ? 'Standard Mode'
                             : 'Cinema Mode',
@@ -607,14 +634,11 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                         },
                       ),
                       // Fullscreen button
-                      IconButton(
+                      _PlayerControlButton(
                         key: const ValueKey('iptv-player-fullscreen-button'),
-                        icon: Icon(
-                          _isFullscreen
-                              ? Icons.fullscreen_exit
-                              : Icons.fullscreen,
-                          color: Colors.white,
-                        ),
+                        icon: _isFullscreen
+                            ? Icons.fullscreen_exit
+                            : Icons.fullscreen,
                         onPressed: _toggleFullscreen,
                       ),
                     ],
@@ -777,5 +801,36 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
       case AiroPlaybackViewFit.stretch:
         return BoxFit.fill;
     }
+  }
+}
+
+/// A tight-footprint control-bar icon button. The default [IconButton]'s
+/// 48x48 minimum tap target doesn't fit six of them in the compact mini
+/// player's ~268px width (see CV-016 volume controls); this trims padding
+/// and tap-target constraints while keeping icons legible and tappable.
+class _PlayerControlButton extends StatelessWidget {
+  const _PlayerControlButton({
+    super.key,
+    required this.icon,
+    required this.onPressed,
+    this.tooltip,
+    this.iconColor = Colors.white,
+  });
+
+  final IconData icon;
+  final VoidCallback onPressed;
+  final String? tooltip;
+  final Color iconColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      icon: Icon(icon, color: iconColor, size: 20),
+      tooltip: tooltip,
+      onPressed: onPressed,
+      visualDensity: VisualDensity.compact,
+      padding: const EdgeInsets.all(6),
+      constraints: const BoxConstraints(),
+    );
   }
 }

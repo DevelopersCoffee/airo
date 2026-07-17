@@ -1,15 +1,19 @@
 name: platform_favorites
-description: "A new Flutter package project."
+description: "Favorite channels and hidden categories storage for Airo."
 version: 0.0.1
 homepage:
+publish_to: none
 
 environment:
   sdk: ^3.12.2
   flutter: ">=1.17.0"
 
 dependencies:
+  core_data:
+    path: ../core_data
   flutter:
     sdk: flutter
+  shared_preferences: ^2.5.5
 
 dev_dependencies:
   flutter_test:

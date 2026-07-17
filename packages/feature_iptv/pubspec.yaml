@@ -23,6 +23,8 @@ dependencies:
     path: ../platform_channels
   platform_epg:
     path: ../platform_epg
+  platform_favorites:
+    path: ../platform_favorites
   platform_history:
     path: ../platform_history
   platform_media:

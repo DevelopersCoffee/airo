@@ -88,8 +88,7 @@ class TvRouter {
             GoRoute(
               path: TvRouteNames.favorites,
               name: 'tv_favorites',
-              builder: (context, state) =>
-                  const _TvComingSoonPlaceholder(label: 'Favorites'),
+              builder: (context, state) => const TvFavoritesScreen(),
             ),
             // Settings route
             GoRoute(
@@ -145,33 +144,6 @@ class _TvSettingsPlaceholder extends StatelessWidget {
   Widget build(BuildContext context) {
     return const Center(
       child: Text('Settings', style: TextStyle(fontSize: 24)),
-    );
-  }
-}
-
-/// Placeholder for TV screens not yet implemented (Guide, Favorites).
-class _TvComingSoonPlaceholder extends StatelessWidget {
-  const _TvComingSoonPlaceholder({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(label, style: theme.textTheme.headlineSmall),
-          const SizedBox(height: 8),
-          Text(
-            'Coming soon',
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

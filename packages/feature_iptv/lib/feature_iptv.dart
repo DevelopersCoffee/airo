@@ -9,6 +9,7 @@ export "presentation/screens/iptv_screen.dart";
 export "presentation/screens/vod_screen.dart";
 export "presentation/tv/iptv_guide_screen.dart";
 export "presentation/tv/iptv_tv_screen.dart";
+export "presentation/tv/tv_favorites_screen.dart";
 export "presentation/tv/vod_tv_screen.dart";
 export "presentation/widgets/cast_device_picker_sheet.dart";
 export "presentation/widgets/iptv_cast_mini_controller.dart";

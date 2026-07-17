@@ -59,3 +59,5 @@ export 'src/parsing/json_parser.dart';
 
 // Utilities
 export 'src/utils/token_counter.dart';
+export 'src/intelligent_model_manager/model_entry.dart';
+export 'src/intelligent_model_manager/intelligent_model_manager.dart';

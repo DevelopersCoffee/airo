@@ -164,6 +164,12 @@ class TvFocusConstants {
 class TvFocusable extends StatefulWidget {
   final Widget child;
   final VoidCallback? onSelect;
+
+  /// Secondary action for this item — e.g. toggling a favorite or opening
+  /// an options menu. Reachable via the remote's context-menu key or a
+  /// long-press/right-click, without adding an extra focus stop to D-pad
+  /// grid/list navigation.
+  final VoidCallback? onSecondaryAction;
   final VoidCallback? onFocus;
   final VoidCallback? onUnfocus;
   final bool autofocus;
@@ -182,6 +188,7 @@ class TvFocusable extends StatefulWidget {
     super.key,
     required this.child,
     this.onSelect,
+    this.onSecondaryAction,
     this.onFocus,
     this.onUnfocus,
     this.autofocus = false,
@@ -260,6 +267,10 @@ class _TvFocusableState extends State<TvFocusable>
     final key = TvInputHandler.mapLogicalKeyToTvInput(event.logicalKey);
     if (key == TvInputKey.select && widget.onSelect != null) {
       _handleSelect();
+      return KeyEventResult.handled;
+    }
+    if (key == TvInputKey.menu && widget.onSecondaryAction != null) {
+      widget.onSecondaryAction!.call();
       return KeyEventResult.handled;
     }
     return KeyEventResult.ignored;
@@ -345,6 +356,8 @@ class _TvFocusableState extends State<TvFocusable>
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: widget.onSelect == null ? null : _handleSelect,
+        onLongPress: widget.onSecondaryAction,
+        onSecondaryTap: widget.onSecondaryAction,
         child: result,
       ),
     );

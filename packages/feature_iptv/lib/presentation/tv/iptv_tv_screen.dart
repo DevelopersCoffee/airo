@@ -226,6 +226,11 @@ class _TvBrowseLayout extends ConsumerWidget {
     final searchQuery = ref.watch(channelSearchQueryProvider);
     final selectedCategory = ref.watch(selectedCategoryProvider);
     final currentChannel = ref.watch(currentChannelProvider);
+    final favoriteChannelIds =
+        ref.watch(favoriteChannelIdsProvider).value ?? const <String>{};
+    void toggleFavorite(IPTVChannel channel) {
+      ref.read(toggleChannelFavoriteProvider(channel.id));
+    }
     final viewport = MediaQuery.sizeOf(context);
     final compactTv = viewport.height < 760 || viewport.width < 1200;
     final denseTv = viewport.height < 650;
@@ -325,12 +330,16 @@ class _TvBrowseLayout extends ConsumerWidget {
                                   compact: denseTv,
                                   compactEpgEntries: compactEpgEntries,
                                   onChannelSelect: onChannelSelect,
+                                  favoriteChannelIds: favoriteChannelIds,
+                                  onToggleFavorite: toggleFavorite,
                                 )
                               : _TvChannelListView(
                                   channels: visibleChannels,
                                   currentChannel: currentChannel,
                                   compactEpgEntries: compactEpgEntries,
                                   onChannelSelect: onChannelSelect,
+                                  favoriteChannelIds: favoriteChannelIds,
+                                  onToggleFavorite: toggleFavorite,
                                 ),
                         ),
                       ),
@@ -958,6 +967,8 @@ class _TvChannelGridView extends StatefulWidget {
     required this.compact,
     required this.compactEpgEntries,
     required this.onChannelSelect,
+    required this.favoriteChannelIds,
+    required this.onToggleFavorite,
   });
 
   final List<IPTVChannel> channels;
@@ -965,6 +976,8 @@ class _TvChannelGridView extends StatefulWidget {
   final bool compact;
   final Map<String, CompactEpgEntry> compactEpgEntries;
   final ValueChanged<IPTVChannel> onChannelSelect;
+  final Set<String> favoriteChannelIds;
+  final ValueChanged<IPTVChannel> onToggleFavorite;
 
   @override
   State<_TvChannelGridView> createState() => _TvChannelGridViewState();
@@ -1005,9 +1018,11 @@ class _TvChannelGridViewState extends State<_TvChannelGridView> {
           return _TvChannelCard(
             channel: channel,
             isPlaying: widget.currentChannel?.id == channel.id,
+            isFavorite: widget.favoriteChannelIds.contains(channel.id),
             epgEntry: widget.compactEpgEntries[channel.id],
             autofocus: index == 0,
             onSelect: () => widget.onChannelSelect(channel),
+            onToggleFavorite: () => widget.onToggleFavorite(channel),
           );
         },
       ),
@@ -1021,12 +1036,16 @@ class _TvChannelListView extends StatefulWidget {
     required this.currentChannel,
     required this.compactEpgEntries,
     required this.onChannelSelect,
+    required this.favoriteChannelIds,
+    required this.onToggleFavorite,
   });
 
   final List<IPTVChannel> channels;
   final IPTVChannel? currentChannel;
   final Map<String, CompactEpgEntry> compactEpgEntries;
   final ValueChanged<IPTVChannel> onChannelSelect;
+  final Set<String> favoriteChannelIds;
+  final ValueChanged<IPTVChannel> onToggleFavorite;
 
   @override
   State<_TvChannelListView> createState() => _TvChannelListViewState();
@@ -1062,9 +1081,11 @@ class _TvChannelListViewState extends State<_TvChannelListView> {
           return _TvChannelRow(
             channel: channel,
             isPlaying: widget.currentChannel?.id == channel.id,
+            isFavorite: widget.favoriteChannelIds.contains(channel.id),
             epgEntry: widget.compactEpgEntries[channel.id],
             autofocus: index == 0,
             onSelect: () => widget.onChannelSelect(channel),
+            onToggleFavorite: () => widget.onToggleFavorite(channel),
           );
         },
       ),
@@ -1076,16 +1097,20 @@ class _TvChannelCard extends StatelessWidget {
   const _TvChannelCard({
     required this.channel,
     required this.isPlaying,
+    required this.isFavorite,
     required this.epgEntry,
     required this.autofocus,
     required this.onSelect,
+    required this.onToggleFavorite,
   });
 
   final IPTVChannel channel;
   final bool isPlaying;
+  final bool isFavorite;
   final CompactEpgEntry? epgEntry;
   final bool autofocus;
   final VoidCallback onSelect;
+  final VoidCallback onToggleFavorite;
 
   @override
   Widget build(BuildContext context) {
@@ -1094,10 +1119,13 @@ class _TvChannelCard extends StatelessWidget {
     return TvFocusable(
       autofocus: autofocus,
       onSelect: onSelect,
+      onSecondaryAction: onToggleFavorite,
       semanticLabel: isPlaying
           ? '${channel.name}, currently playing'
           : channel.name,
-      semanticHint: 'Press OK to play this channel',
+      semanticHint: isFavorite
+          ? 'Press OK to play this channel. Press menu to remove from favorites.'
+          : 'Press OK to play this channel. Press menu to add to favorites.',
       semanticButton: true,
       child: DecoratedBox(
         decoration: BoxDecoration(
@@ -1109,46 +1137,66 @@ class _TvChannelCard extends StatelessWidget {
           ),
           borderRadius: BorderRadius.circular(8),
         ),
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Center(child: _ChannelLogo(channel: channel)),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                channel.name,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(
-                  context,
-                ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
-              ),
-              const SizedBox(height: 4),
-              Row(
+        child: Stack(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(
-                    child: Text(
-                      channel.group,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: colorScheme.onSurfaceVariant,
-                      ),
+                    child: Center(child: _ChannelLogo(channel: channel)),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    channel.name,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
-                  if (isPlaying)
-                    Icon(Icons.equalizer, color: colorScheme.primary, size: 20),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          channel.group,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(
+                            context,
+                          ).textTheme.bodySmall?.copyWith(
+                            color: colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ),
+                      if (isPlaying)
+                        Icon(
+                          Icons.equalizer,
+                          color: colorScheme.primary,
+                          size: 20,
+                        ),
+                    ],
+                  ),
+                  if (epgEntry?.hasPrograms ?? false) ...[
+                    const SizedBox(height: 6),
+                    _CompactEpgLine(entry: epgEntry!),
+                  ],
                 ],
               ),
-              if (epgEntry?.hasPrograms ?? false) ...[
-                const SizedBox(height: 6),
-                _CompactEpgLine(entry: epgEntry!),
-              ],
-            ],
-          ),
+            ),
+            if (isFavorite)
+              Positioned(
+                top: 6,
+                right: 6,
+                child: Icon(
+                  Icons.star,
+                  color: colorScheme.primary,
+                  size: 18,
+                ),
+              ),
+          ],
         ),
       ),
     );
@@ -1159,16 +1207,20 @@ class _TvChannelRow extends StatelessWidget {
   const _TvChannelRow({
     required this.channel,
     required this.isPlaying,
+    required this.isFavorite,
     required this.epgEntry,
     required this.autofocus,
     required this.onSelect,
+    required this.onToggleFavorite,
   });
 
   final IPTVChannel channel;
   final bool isPlaying;
+  final bool isFavorite;
   final CompactEpgEntry? epgEntry;
   final bool autofocus;
   final VoidCallback onSelect;
+  final VoidCallback onToggleFavorite;
 
   @override
   Widget build(BuildContext context) {
@@ -1177,10 +1229,13 @@ class _TvChannelRow extends StatelessWidget {
     return TvFocusable(
       autofocus: autofocus,
       onSelect: onSelect,
+      onSecondaryAction: onToggleFavorite,
       semanticLabel: isPlaying
           ? '${channel.name}, currently playing'
           : channel.name,
-      semanticHint: 'Press OK to play this channel',
+      semanticHint: isFavorite
+          ? 'Press OK to play this channel. Press menu to remove from favorites.'
+          : 'Press OK to play this channel. Press menu to add to favorites.',
       semanticButton: true,
       child: DecoratedBox(
         decoration: BoxDecoration(
@@ -1231,6 +1286,15 @@ class _TvChannelRow extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 16),
+              if (isFavorite)
+                Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: Icon(
+                    Icons.star,
+                    color: colorScheme.primary,
+                    size: 18,
+                  ),
+                ),
               if (!channel.isAudioOnly) const _LivePill(),
               if (isPlaying) ...[
                 const SizedBox(width: 12),

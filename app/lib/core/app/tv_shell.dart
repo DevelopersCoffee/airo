@@ -52,18 +52,15 @@ class TvShell extends ConsumerWidget {
         context.go(TvRouteNames.live);
         break;
       case 1:
-        context.go(TvRouteNames.live);
-        break;
-      case 2:
         context.go(TvRouteNames.guide);
         break;
-      case 3:
+      case 2:
         context.go(TvRouteNames.vod);
         break;
-      case 4:
+      case 3:
         context.go(TvRouteNames.favorites);
         break;
-      case 5:
+      case 4:
         context.go(TvRouteNames.settings);
         break;
     }
@@ -97,19 +94,8 @@ class _TvNavigationRail extends ConsumerWidget {
           icon: TvFocusable(
             onSelect: () => onDestinationSelected(0),
             child: Icon(
-              Icons.home_outlined,
-              color: currentIndex == 0 ? theme.colorScheme.primary : null,
-            ),
-          ),
-          selectedIcon: const Icon(Icons.home),
-          label: const Text('Home'),
-        ),
-        NavigationRailDestination(
-          icon: TvFocusable(
-            onSelect: () => onDestinationSelected(1),
-            child: Icon(
               Icons.live_tv,
-              color: currentIndex == 1 ? theme.colorScheme.primary : null,
+              color: currentIndex == 0 ? theme.colorScheme.primary : null,
             ),
           ),
           selectedIcon: const Icon(Icons.live_tv),
@@ -117,10 +103,10 @@ class _TvNavigationRail extends ConsumerWidget {
         ),
         NavigationRailDestination(
           icon: TvFocusable(
-            onSelect: () => onDestinationSelected(2),
+            onSelect: () => onDestinationSelected(1),
             child: Icon(
               Icons.grid_view_outlined,
-              color: currentIndex == 2 ? theme.colorScheme.primary : null,
+              color: currentIndex == 1 ? theme.colorScheme.primary : null,
             ),
           ),
           selectedIcon: const Icon(Icons.grid_view),
@@ -128,10 +114,10 @@ class _TvNavigationRail extends ConsumerWidget {
         ),
         NavigationRailDestination(
           icon: TvFocusable(
-            onSelect: () => onDestinationSelected(3),
+            onSelect: () => onDestinationSelected(2),
             child: Icon(
               Icons.movie_outlined,
-              color: currentIndex == 3 ? theme.colorScheme.primary : null,
+              color: currentIndex == 2 ? theme.colorScheme.primary : null,
             ),
           ),
           selectedIcon: const Icon(Icons.movie),
@@ -139,10 +125,10 @@ class _TvNavigationRail extends ConsumerWidget {
         ),
         NavigationRailDestination(
           icon: TvFocusable(
-            onSelect: () => onDestinationSelected(4),
+            onSelect: () => onDestinationSelected(3),
             child: Icon(
               Icons.favorite_border,
-              color: currentIndex == 4 ? theme.colorScheme.primary : null,
+              color: currentIndex == 3 ? theme.colorScheme.primary : null,
             ),
           ),
           selectedIcon: const Icon(Icons.favorite),
@@ -150,10 +136,10 @@ class _TvNavigationRail extends ConsumerWidget {
         ),
         NavigationRailDestination(
           icon: TvFocusable(
-            onSelect: () => onDestinationSelected(5),
+            onSelect: () => onDestinationSelected(4),
             child: Icon(
               Icons.settings_outlined,
-              color: currentIndex == 5 ? theme.colorScheme.primary : null,
+              color: currentIndex == 4 ? theme.colorScheme.primary : null,
             ),
           ),
           selectedIcon: const Icon(Icons.settings),

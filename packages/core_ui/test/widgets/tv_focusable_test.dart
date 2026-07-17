@@ -1,6 +1,7 @@
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -82,6 +83,66 @@ void main() {
 
     expect(FocusManager.instance.primaryFocus?.hasFocus, isTrue);
     expect(buildCount, 1);
+  });
+
+  testWidgets('TvFocusable triggers onSecondaryAction via the menu key', (
+    tester,
+  ) async {
+    var secondaryCount = 0;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: SizedBox(
+              width: 160,
+              height: 80,
+              child: TvFocusable(
+                autofocus: true,
+                onSelect: () {},
+                onSecondaryAction: () => secondaryCount += 1,
+                child: const Center(child: Text('Favorite me')),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.contextMenu);
+    await tester.pump();
+
+    expect(secondaryCount, 1);
+  });
+
+  testWidgets('TvFocusable triggers onSecondaryAction via long-press', (
+    tester,
+  ) async {
+    var secondaryCount = 0;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: SizedBox(
+              width: 160,
+              height: 80,
+              child: TvFocusable(
+                onSelect: () {},
+                onSecondaryAction: () => secondaryCount += 1,
+                child: const Center(child: Text('Favorite me')),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.longPress(find.text('Favorite me'));
+    await tester.pump();
+
+    expect(secondaryCount, 1);
   });
 }
 

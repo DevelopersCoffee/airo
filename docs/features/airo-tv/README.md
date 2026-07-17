@@ -7,6 +7,7 @@ devices to improve discovery and playback without providing content.
 ## Documents
 
 - [PRD_SOURCE_v2.0.0.1.md](./PRD_SOURCE_v2.0.0.1.md): raw pasted source material saved from the clipboard attachment.
+- [AIRO_TV_DEVICE_GUIDE.md](./AIRO_TV_DEVICE_GUIDE.md): device setup guide, tutorial structure, troubleshooting, and current/planned feature status for Airo TV v2.
 - [V2_0_0_1_PLAN.md](./V2_0_0_1_PLAN.md): recommended release plan and scope for the v2.0.0.1 planning milestone.
 - [V2_0_0_1_REQUIREMENTS_REVIEW.md](./V2_0_0_1_REQUIREMENTS_REVIEW.md): requirement inventory, disposition, risks, and open questions.
 - [V2_0_0_1_GAP_ANALYSIS.md](./V2_0_0_1_GAP_ANALYSIS.md): static gap analysis between the core PRD, current repository state, and implementation readiness.

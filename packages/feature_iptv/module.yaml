@@ -9,6 +9,7 @@ allowed_dependencies:
   - core_ui
   - platform_channels
   - platform_epg
+  - platform_favorites
   - platform_history
   - platform_media
   - platform_player
