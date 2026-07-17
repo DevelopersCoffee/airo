@@ -302,6 +302,7 @@ class _TvBrowseLayout extends ConsumerWidget {
                             favoriteChannelIds: favoriteChannelIds,
                             onChannelSelect: onChannelSelect,
                             onToggleFavorite: toggleFavorite,
+                            compactTv: compactTv,
                           )
                         else
                           _TvPlayerPanel(
@@ -391,6 +392,7 @@ class _TvHeroRailsPanel extends StatelessWidget {
     required this.favoriteChannelIds,
     required this.onChannelSelect,
     required this.onToggleFavorite,
+    required this.compactTv,
   });
 
   final IPTVChannel heroChannel;
@@ -398,6 +400,7 @@ class _TvHeroRailsPanel extends StatelessWidget {
   final Set<String> favoriteChannelIds;
   final ValueChanged<IPTVChannel> onChannelSelect;
   final ValueChanged<IPTVChannel> onToggleFavorite;
+  final bool compactTv;
 
   @override
   Widget build(BuildContext context) {
@@ -419,6 +422,7 @@ class _TvHeroRailsPanel extends StatelessWidget {
           favoriteChannelIds: favoriteChannelIds,
           onChannelSelect: onChannelSelect,
           onToggleFavorite: onToggleFavorite,
+          compactTv: compactTv,
         ),
       ],
     );
@@ -581,6 +585,7 @@ class _TvChannelRailsSection extends StatelessWidget {
     required this.favoriteChannelIds,
     required this.onChannelSelect,
     required this.onToggleFavorite,
+    required this.compactTv,
   });
 
   final List<IPTVChannel> allChannels;
@@ -588,6 +593,7 @@ class _TvChannelRailsSection extends StatelessWidget {
   final Set<String> favoriteChannelIds;
   final ValueChanged<IPTVChannel> onChannelSelect;
   final ValueChanged<IPTVChannel> onToggleFavorite;
+  final bool compactTv;
 
   static const _maxPerRail = 14;
 
@@ -618,6 +624,7 @@ class _TvChannelRailsSection extends StatelessWidget {
       title: title,
       padding: EdgeInsets.zero,
       railHeight: 140,
+      headerGap: compactTv ? 11 : 16,
       children: [
         for (final channel in rail)
           AiroRailCard(

@@ -12,6 +12,7 @@ class AiroRail extends StatelessWidget {
     this.subtitle,
     this.padding = const EdgeInsets.symmetric(horizontal: 26),
     this.railHeight = 156,
+    this.headerGap = 16,
   });
 
   final String title;
@@ -24,6 +25,11 @@ class AiroRail extends StatelessWidget {
   /// thumbnailHeight (104) plus its two-line text block (~52) — override
   /// if using a different thumbnailHeight or single-line (no subtitle) cards.
   final double railHeight;
+
+  /// Vertical gap between the title/subtitle header and the card row.
+  /// Defaults to 16 (the platform-wide value); callers with a tight vertical
+  /// budget (e.g. a compact TV viewport) may override this to reclaim space.
+  final double headerGap;
 
   @override
   Widget build(BuildContext context) {
@@ -38,7 +44,7 @@ class AiroRail extends StatelessWidget {
             padding: EdgeInsets.only(
               left: padding.left,
               right: padding.right,
-              bottom: 11,
+              bottom: headerGap,
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.baseline,
