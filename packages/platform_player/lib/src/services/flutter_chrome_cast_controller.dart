@@ -16,6 +16,7 @@ import 'package:flutter_chrome_cast/session.dart';
 import '../models/cast_models.dart';
 import 'airo_cast_controller.dart';
 import 'cast_http_proxy.dart';
+import 'cast_log_redaction.dart';
 
 class FlutterChromeCastController implements AiroCastController {
   FlutterChromeCastController({this.useProxy = false});
@@ -301,7 +302,10 @@ class FlutterChromeCastController implements AiroCastController {
 
       await GoogleCastRemoteMediaClient.instance.loadMedia(mediaInfo);
       if (!_isCurrentLoad(generation, request)) return;
-      _log('load request sent gen=$generation content=${mediaInfo.contentId}');
+      _log(
+        'load request sent gen=$generation '
+        'content=${_uriSummary(Uri.tryParse(mediaInfo.contentId))}',
+      );
       _setSession(
         AiroCastSessionSnapshot.playing(
           device: device,
@@ -818,11 +822,9 @@ class FlutterChromeCastController implements AiroCastController {
     debugPrint('[AiroCast] $message');
   }
 
-  String _uriSummary(Uri? uri) {
-    if (uri == null) return 'none';
-    final port = uri.hasPort ? ':${uri.port}' : '';
-    return '${uri.scheme}://${uri.host}$port${uri.path}';
-  }
+  // Phone-hosted media URLs (CV-033) carry the session token in the path, so
+  // logs only ever see the redacted scheme://host:port form.
+  String _uriSummary(Uri? uri) => redactedUriForLog(uri);
 
   String _statusSummary(GoggleCastMediaStatus status) {
     final contentId = status.mediaInformation?.contentId;

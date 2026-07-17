@@ -48,10 +48,25 @@ class PhoneMediaFileServer implements AiroTemporaryMobileServerController {
   /// tokens, or file paths.
   final void Function(String event, Map<String, Object?> data)? onSessionEvent;
 
+  /// Cap on `request_rejected` diagnostics per [rejectedEventWindow]. A LAN
+  /// flooder hammering the port must not be able to spam the diagnostics
+  /// pipeline; overflow is folded into one `request_rejected_suppressed`
+  /// summary event when the window rolls or the session closes.
+  static const int maxRejectedEventsPerWindow = 10;
+  static const Duration rejectedEventWindow = Duration(minutes: 1);
+
   HttpServer? _server;
   Uri? _mediaUrl;
   DateTime? _lastActivityAt;
   Timer? _lifecycleTimer;
+  DateTime? _rejectedWindowStartedAt;
+  int _rejectedEventsInWindow = 0;
+  int _suppressedRejectedEvents = 0;
+
+  /// Random nonce mixed into the ETag instead of the file mtime, so entity
+  /// validators stay consistent within a session without leaking filesystem
+  /// timestamps to LAN peers.
+  final String _entityTagNonce = _generateEntityTagNonce();
 
   bool get isRunning => _server != null;
 
@@ -121,6 +136,7 @@ class PhoneMediaFileServer implements AiroTemporaryMobileServerController {
     _lifecycleTimer?.cancel();
     _lifecycleTimer = null;
     await server.close(force: true);
+    _flushSuppressedRejections();
     _emit('session_close', {'serverId': _initialSnapshot.serverId});
   }
 
@@ -234,13 +250,13 @@ class PhoneMediaFileServer implements AiroTemporaryMobileServerController {
     final response = request.response;
     try {
       if (!_isAuthorizedPath(request.uri.path)) {
-        _emit('request_rejected', {'reason': 'unknown_path'});
+        _emitRejected({'reason': 'unknown_path'});
         response.statusCode = HttpStatus.notFound;
         await response.close();
         return;
       }
       if (request.method != 'GET' && request.method != 'HEAD') {
-        _emit('request_rejected', {'reason': 'unsupported_method'});
+        _emitRejected({'reason': 'unsupported_method'});
         response.statusCode = HttpStatus.methodNotAllowed;
         await response.close();
         return;
@@ -254,8 +270,9 @@ class PhoneMediaFileServer implements AiroTemporaryMobileServerController {
       }
       final stat = await file.stat();
       final length = stat.size;
-      final etag =
-          '"${stat.modified.millisecondsSinceEpoch}-${length.toRadixString(16)}"';
+      // Nonce-based validator: stable for the session, changes with length,
+      // and never exposes the file mtime to LAN peers.
+      final etag = '"$_entityTagNonce-${length.toRadixString(16)}"';
 
       final decision = await evaluateServing(
         AiroTemporaryMobileServerServingRequest(
@@ -285,7 +302,7 @@ class PhoneMediaFileServer implements AiroTemporaryMobileServerController {
         final rangeNotSatisfiable = decision.servingCodes.contains(
           AiroTemporaryMobileServerServingCode.rangeNotSatisfiable,
         );
-        _emit('request_rejected', {
+        _emitRejected({
           'validationCodes': decision.validationCodes
               .map((code) => code.stableId)
               .toList(),
@@ -347,6 +364,35 @@ class PhoneMediaFileServer implements AiroTemporaryMobileServerController {
     }
   }
 
+  /// Emits `request_rejected` under a fixed-window cap. Once
+  /// [maxRejectedEventsPerWindow] events fire within [rejectedEventWindow],
+  /// further rejections only increment a counter that is flushed as one
+  /// `request_rejected_suppressed` event on window rollover or shutdown.
+  void _emitRejected(Map<String, Object?> data) {
+    final now = _now();
+    final windowStart = _rejectedWindowStartedAt;
+    if (windowStart == null ||
+        now.difference(windowStart) >= rejectedEventWindow) {
+      _flushSuppressedRejections();
+      _rejectedWindowStartedAt = now;
+      _rejectedEventsInWindow = 0;
+    }
+    if (_rejectedEventsInWindow >= maxRejectedEventsPerWindow) {
+      _suppressedRejectedEvents++;
+      return;
+    }
+    _rejectedEventsInWindow++;
+    _emit('request_rejected', data);
+  }
+
+  void _flushSuppressedRejections() {
+    if (_suppressedRejectedEvents == 0) return;
+    _emit('request_rejected_suppressed', {
+      'suppressedCount': _suppressedRejectedEvents,
+    });
+    _suppressedRejectedEvents = 0;
+  }
+
   void _emit(String event, Map<String, Object?> data) {
     final handler = onSessionEvent;
     if (handler != null) {
@@ -381,12 +427,18 @@ class PhoneMediaFileServer implements AiroTemporaryMobileServerController {
 
   static String _generateSessionToken() {
     final random = Random.secure();
-    const alphabet = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
+    const alphabet =
+        'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
         '0123456789';
     return List.generate(
       32,
       (_) => alphabet[random.nextInt(alphabet.length)],
     ).join();
+  }
+
+  static String _generateEntityTagNonce() {
+    final random = Random.secure();
+    return List.generate(8, (_) => random.nextInt(16).toRadixString(16)).join();
   }
 
   static String _generateRequestId() {

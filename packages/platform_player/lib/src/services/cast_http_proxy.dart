@@ -6,6 +6,8 @@ import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:platform_channels/platform_channels.dart';
 
+import 'cast_log_redaction.dart';
+
 /// Local HTTP server that re-serves media to a Cast receiver with permissive
 /// CORS headers.
 ///
@@ -295,11 +297,9 @@ class CastHttpProxy {
         line.contains('TYPE=CLOSED-CAPTIONS');
   }
 
-  String _uriSummary(Uri? uri) {
-    if (uri == null) return 'none';
-    final port = uri.hasPort ? ':${uri.port}' : '';
-    return '${uri.scheme}://${uri.host}$port${uri.path}';
-  }
+  // Proxy targets may be private LAN URLs whose paths embed session tokens,
+  // so logs only ever see the redacted scheme://host:port form.
+  String _uriSummary(Uri? uri) => redactedUriForLog(uri);
 
   bool _isAllowedTarget(Uri uri) {
     return AiroPlaylistUrlPolicy.isAllowedCastProxyTarget(
