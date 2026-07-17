@@ -477,9 +477,12 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
   Future<void> _disposeController() async {
     // Detach live edge detector
     _liveEdgeDetector.detach();
-    _controller?.removeListener(_onControllerUpdate);
-    await _controller?.dispose();
+    final oldController = _controller;
     _controller = null;
+    if (oldController != null) {
+      oldController.removeListener(_onControllerUpdate);
+      await oldController.dispose();
+    }
   }
 
   void _updateState(StreamingState newState) {

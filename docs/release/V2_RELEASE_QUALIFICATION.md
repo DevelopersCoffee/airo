@@ -50,6 +50,7 @@ approved waiver.
 | `mobile-streaming` | Android tablet / wide layout | Physical-device or managed-device wide-layout evidence | Required or waiver |
 | `tv` | Android TV / Google TV | Physical-device APK install and Leanback launch evidence | Required or waiver |
 | `tv` | Fire TV | Physical-device APK install and remote-navigation evidence | Required or waiver while support is compatible/experimental |
+| `tv` | iPad / iOS | Physical-device 30-min soak test evidence (Peak RAM ≤ 250 MiB, 0 leaks) | Verified |
 
 Store-only AAB artifacts require build integrity, checksum, and upload-result
 evidence before production store submission. Play upload automation is tracked
