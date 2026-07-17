@@ -120,11 +120,7 @@ class PlayerBenchmark {
         label: label,
       );
     } catch (e) {
-      return ZapTimeResult.failed(
-        url: url,
-        error: e.toString(),
-        label: label,
-      );
+      return ZapTimeResult.failed(url: url, error: e.toString(), label: label);
     } finally {
       await cleanupFn?.call();
     }

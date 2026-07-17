@@ -37,7 +37,6 @@ void main() {
     });
   });
 
-
   group('AiroPlaybackEngineResolver', () {
     const resolver = AiroPlaybackEngineResolver();
 
@@ -116,7 +115,9 @@ void main() {
 
     test('androidMobile: mpv is the fallback when hints are empty', () {
       expect(
-        resolver.resolveFallback(profileFor(AiroPlaybackPlatform.androidMobile)),
+        resolver.resolveFallback(
+          profileFor(AiroPlaybackPlatform.androidMobile),
+        ),
         AiroPlaybackBackendKind.mpv,
       );
     });
