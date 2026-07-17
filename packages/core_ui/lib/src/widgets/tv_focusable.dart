@@ -156,6 +156,7 @@ class TvFocusConstants {
   static const Duration focusAnimationDuration = Duration(milliseconds: 200);
   static const double focusScaleFactor = 1.05;
   static const double focusGlowSpread = 4.0;
+  static const double focusGlowBlur = 24.0;
 }
 
 /// A focusable wrapper for TV/D-pad navigation: draws a focus ring + glow,
@@ -312,9 +313,8 @@ class _TvFocusableState extends State<TvFocusable>
                   boxShadow: widget.showGlowEffect
                       ? [
                           BoxShadow(
-                            color: focusColor.withValues(alpha: 0.4),
-                            blurRadius: TvFocusConstants.focusGlowSpread * 2,
-                            spreadRadius: TvFocusConstants.focusGlowSpread,
+                            color: focusColor.withValues(alpha: 0.35),
+                            blurRadius: TvFocusConstants.focusGlowBlur,
                           ),
                         ]
                       : null,

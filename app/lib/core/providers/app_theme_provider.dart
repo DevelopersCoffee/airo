@@ -10,14 +10,20 @@ class AppThemeNotifier extends StateNotifier<AppThemeId> {
       'airo_bedtime_theme_default_migrated';
 
   SharedPreferences? _preferences;
+  final AppThemeId _defaultThemeId;
 
-  AppThemeNotifier() : super(AppTheme.defaultThemeId) {
+  AppThemeNotifier({AppThemeId defaultThemeId = AppTheme.defaultThemeId})
+    : _defaultThemeId = defaultThemeId,
+      super(defaultThemeId) {
     _load();
   }
 
-  AppThemeNotifier.withPreferences(SharedPreferences preferences)
-    : _preferences = preferences,
-      super(_themeFromPreferences(preferences));
+  AppThemeNotifier.withPreferences(
+    SharedPreferences preferences, {
+    AppThemeId defaultThemeId = AppTheme.defaultThemeId,
+  }) : _preferences = preferences,
+       _defaultThemeId = defaultThemeId,
+       super(_themeFromPreferences(preferences, fallback: defaultThemeId));
 
   AppThemeDefinition get currentTheme => AppTheme.byId(state);
 
@@ -29,24 +35,28 @@ class AppThemeNotifier extends StateNotifier<AppThemeId> {
   }
 
   Future<void> resetToDefault() async {
-    await setTheme(AppTheme.defaultThemeId);
+    await setTheme(_defaultThemeId);
   }
 
   Future<void> _load() async {
     final preferences = await SharedPreferences.getInstance();
     _preferences = preferences;
-    state = _themeFromPreferences(preferences);
+    state = _themeFromPreferences(preferences, fallback: _defaultThemeId);
   }
 
-  static AppThemeId _themeFromPreferences(SharedPreferences preferences) {
+  static AppThemeId _themeFromPreferences(
+    SharedPreferences preferences, {
+    required AppThemeId fallback,
+  }) {
     final savedTheme = AppThemeId.fromStorageValue(
       preferences.getString(storageKey),
+      fallback: fallback,
     );
     final migrated = preferences.getBool(bedtimeMigrationKey) ?? false;
     if (savedTheme == AppThemeId.bedtime && !migrated) {
-      preferences.setString(storageKey, AppTheme.defaultThemeId.storageValue);
+      preferences.setString(storageKey, fallback.storageValue);
       preferences.setBool(bedtimeMigrationKey, true);
-      return AppTheme.defaultThemeId;
+      return fallback;
     }
     return savedTheme;
   }

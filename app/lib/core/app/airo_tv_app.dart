@@ -14,7 +14,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../error/global_error_handler.dart';
 import '../platform/platform_config.dart';
-import '../theme/app_theme.dart';
+import '../providers/app_theme_provider.dart';
 import '../tv/tv.dart';
 import 'tv_router.dart';
 
@@ -41,12 +41,13 @@ class _AiroTvAppState extends ConsumerState<AiroTvApp> {
   Widget build(BuildContext context) {
     // Get TV focus manager
     final focusManager = ref.watch(tvFocusManagerProvider);
+    final selectedTheme = ref.watch(appThemeDefinitionProvider);
 
     return MaterialApp.router(
       title: 'Airo TV',
-      theme: _buildTvTheme(AppTheme.defaultLight),
-      darkTheme: _buildTvTheme(AppTheme.defaultDark),
-      themeMode: AppTheme.defaultThemeMode,
+      theme: _buildTvTheme(selectedTheme.lightTheme),
+      darkTheme: _buildTvTheme(selectedTheme.darkTheme),
+      themeMode: selectedTheme.themeMode,
       routerConfig: TvRouter.router,
       debugShowCheckedModeBanner: false,
       // TV-specific scroll behavior

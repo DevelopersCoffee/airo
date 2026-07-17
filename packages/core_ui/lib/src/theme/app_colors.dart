@@ -87,23 +87,42 @@ abstract final class AppColors {
   static const Color bedtimeOnPrimary = Color(0xFF000000);
   static const Color bedtimeError = Color(0xFFCF6679);
 
-  // Airo TV colors (from the Airo TV.dc.html design handoff — green accent
-  // on near-black blue-gray, converted from the mockup's OKLCH values)
-  static const Color airoTvBackground = Color(0xFF010204);
-  static const Color airoTvSurface = Color(0xFF06080C);
-  static const Color airoTvSurfaceHigh = Color(0xFF0E1115);
-  static const Color airoTvChrome = Color(0xFF06080C);
-  static const Color airoTvBorder = Color(0xFF1C2128);
-  static const Color airoTvPrimary = Color(0xFF11A22F);
-  static const Color airoTvOnPrimary = Color(0xFF010204);
-  static const Color airoTvPrimaryContainer = Color(0xFF002203);
-  static const Color airoTvSecondary = Color(0xFFE1A948);
-  static const Color airoTvOnSecondary = Color(0xFF010204);
-  static const Color airoTvText = Color(0xFFE8EBF1);
-  static const Color airoTvMutedText = Color(0xFF646970);
-  static const Color airoTvOutline = Color(0xFF1C2128);
-  static const Color airoTvGridLine = Color(0xFF1C2128);
-  static const Color airoTvGlow = Color(0x6611A22F);
-  static const Color airoTvLive = Color(0xFFD74745);
-  static const Color airoTvError = Color(0xFFD74745);
+  // Airo TV colors — Apple TV / Linear-style design system: one primary
+  // accent (emerald) plus a small set of semantic colors, rather than the
+  // design handoff's many different shades of green.
+  static const Color airoTvBackground = Color(0xFF090B0D);
+  static const Color airoTvSurface = Color(0xFF13161B);
+  static const Color airoTvSurfaceHigh = Color(0xFF1B2027);
+  // Sidebar/chrome gets its own slightly-lighter-than-background tone so it
+  // reads as a distinct rail rather than blending into the page.
+  static const Color airoTvChrome = Color(0xFF0D1014);
+  static const Color airoTvBorder = Color(0xFF2A3038);
+  static const Color airoTvPrimary = Color(0xFF3DDC84);
+  static const Color airoTvPrimaryHover = Color(0xFF5BE89B);
+  static const Color airoTvSelected = Color(0xFF2EBE72);
+  static const Color airoTvOnPrimary = Color(0xFF08120C);
+  static const Color airoTvPrimaryContainer = Color(0xFF16261C);
+  static const Color airoTvSecondary = Color(0xFFC9A167);
+  static const Color airoTvOnSecondary = Color(0xFF08120C);
+  static const Color airoTvText = Color(0xFFF5F7FA);
+  static const Color airoTvMutedText = Color(0xFF9AA3AF);
+  static const Color airoTvDisabledText = Color(0xFF5A6573);
+  static const Color airoTvOutline = Color(0xFF2A3038);
+  static const Color airoTvGridLine = Color(0xFF2A3038);
+  static const Color airoTvGlow = Color(0x593DDC84);
+  static const Color airoTvLive = Color(0xFFEF4444);
+  static const Color airoTvError = Color(0xFFEF4444);
+  static const Color airoTvWarning = Color(0xFFF59E0B);
+  static const Color airoTvInfo = Color(0xFF3B82F6);
+
+  /// Per-category accent colors (icon/top-border only — never a full fill)
+  /// so category identity doesn't rely on shading green differently.
+  static const Color airoTvCategoryNews = Color(0xFF3B82F6);
+  static const Color airoTvCategorySports = Color(0xFF22C55E);
+  static const Color airoTvCategoryMovies = Color(0xFFA855F7);
+  static const Color airoTvCategoryMusic = Color(0xFFEC4899);
+  static const Color airoTvCategoryKids = Color(0xFFF59E0B);
+  static const Color airoTvCategoryDocumentary = Color(0xFF14B8A6);
+  static const Color airoTvCategoryEntertainment = Color(0xFFEF4444);
+  static const Color airoTvCategoryDefault = Color(0xFF9AA3AF);
 }

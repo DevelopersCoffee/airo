@@ -126,11 +126,14 @@ void main() {
       expect(find.text('Playlist'), findsOneWidget);
       expect(find.text('Help'), findsOneWidget);
       expect(find.text('Refresh'), findsOneWidget);
-      expect(find.text('City News Live'), findsOneWidget);
-      expect(find.text('Music India'), findsOneWidget);
+      // The hero banner and its channel rail (added for the Airo TV design
+      // revamp) surface the same top channel the grid already shows below,
+      // so these now legitimately render more than once on screen.
+      expect(find.text('City News Live'), findsWidgets);
+      expect(find.text('Music India'), findsWidgets);
       expect(find.byType(Scrollbar), findsOneWidget);
       expect(find.bySemanticsLabel(RegExp('Search')), findsWidgets);
-      expect(find.bySemanticsLabel(RegExp('City News Live')), findsOneWidget);
+      expect(find.bySemanticsLabel(RegExp('City News Live')), findsWidgets);
     } finally {
       semantics.dispose();
     }

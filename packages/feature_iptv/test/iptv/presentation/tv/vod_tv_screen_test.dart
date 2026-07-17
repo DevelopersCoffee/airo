@@ -61,4 +61,45 @@ void main() {
 
     expect(find.text('No movies or shows found'), findsOneWidget);
   });
+
+  testWidgets(
+    'mounting fresh when iptvChannelsProvider is already resolved does not '
+    'throw setState-during-build (regression for cold VodGrid provider chain)',
+    (tester) async {
+      final prefs = await SharedPreferences.getInstance();
+      final container = ProviderContainer(
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          iptvChannelsProvider.overrideWith((ref) async => [movie]),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      // Simulate the channel list already having been fetched by an
+      // earlier-visited screen (e.g. the live-channels tab) before the VOD
+      // screen — and its VodGrid — ever mounts.
+      await container.read(iptvChannelsProvider.future);
+
+      final errors = <FlutterErrorDetails>[];
+      final originalOnError = FlutterError.onError;
+      FlutterError.onError = errors.add;
+      addTearDown(() => FlutterError.onError = originalOnError);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: const MaterialApp(home: VodTvScreen()),
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      expect(
+        errors,
+        isEmpty,
+        reason: 'VodGrid mount triggered a Flutter error: ${errors.map((e) => e.exception).join(', ')}',
+      );
+      expect(find.text('Example Movie'), findsOneWidget);
+    },
+  );
 }

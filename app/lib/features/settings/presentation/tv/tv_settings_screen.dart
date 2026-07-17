@@ -34,8 +34,10 @@ class _TvSettingsScreenState extends ConsumerState<TvSettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: colorScheme.surface,
       body: SafeArea(
         child: Row(
           children: [
@@ -55,7 +57,7 @@ class _TvSettingsScreenState extends ConsumerState<TvSettingsScreen> {
                         child: DecoratedBox(
                           decoration: BoxDecoration(
                             color: section == _selected
-                                ? Theme.of(context).colorScheme.primaryContainer
+                                ? colorScheme.primaryContainer
                                 : Colors.transparent,
                             borderRadius: BorderRadius.circular(8),
                           ),
@@ -63,13 +65,13 @@ class _TvSettingsScreenState extends ConsumerState<TvSettingsScreen> {
                             padding: const EdgeInsets.all(12),
                             child: Row(
                               children: [
-                                Icon(icon, color: Colors.white),
+                                Icon(icon, color: colorScheme.onSurface),
                                 const SizedBox(width: 12),
                                 Expanded(
                                   child: Text(
                                     label,
                                     overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(color: Colors.white),
+                                    style: TextStyle(color: colorScheme.onSurface),
                                   ),
                                 ),
                               ],
@@ -81,7 +83,7 @@ class _TvSettingsScreenState extends ConsumerState<TvSettingsScreen> {
                 ],
               ),
             ),
-            const VerticalDivider(width: 1),
+            VerticalDivider(width: 1, color: colorScheme.outlineVariant),
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.all(24),
@@ -117,13 +119,20 @@ class _AccessibilityComingSoon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
+    final colorScheme = Theme.of(context).colorScheme;
+    return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text('Accessibility', style: TextStyle(color: Colors.white, fontSize: 20)),
-          SizedBox(height: 8),
-          Text('Coming soon', style: TextStyle(color: Colors.white70)),
+          Text(
+            'Accessibility',
+            style: TextStyle(color: colorScheme.onSurface, fontSize: 20),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Coming soon',
+            style: TextStyle(color: colorScheme.onSurfaceVariant),
+          ),
         ],
       ),
     );

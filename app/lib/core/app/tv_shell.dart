@@ -4,13 +4,12 @@
 /// No bottom navigation - uses left-side rail navigation.
 library;
 
+import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../shared/widgets/app_icon_placeholder.dart';
-import '../tv/tv.dart';
 import 'tv_router.dart';
 
 /// Provider for current TV navigation index
@@ -37,8 +36,6 @@ class TvShell extends ConsumerWidget {
               _navigateToIndex(context, index);
             },
           ),
-          // Vertical divider
-          const VerticalDivider(width: 1, thickness: 1),
           // Main content
           Expanded(child: child),
         ],
@@ -67,8 +64,57 @@ class TvShell extends ConsumerWidget {
   }
 }
 
-/// TV Navigation Rail with D-pad focus support
-class _TvNavigationRail extends ConsumerWidget {
+class _TvNavDestination {
+  const _TvNavDestination({
+    required this.icon,
+    required this.selectedIcon,
+    required this.label,
+    required this.semanticLabel,
+  });
+
+  final IconData icon;
+  final IconData selectedIcon;
+  final String label;
+  final String semanticLabel;
+}
+
+const _tvNavDestinations = [
+  _TvNavDestination(
+    icon: Icons.home_outlined,
+    selectedIcon: Icons.home,
+    label: 'Home',
+    semanticLabel: 'Home',
+  ),
+  _TvNavDestination(
+    icon: Icons.grid_view_outlined,
+    selectedIcon: Icons.grid_view,
+    label: 'Guide',
+    semanticLabel: 'TV Guide',
+  ),
+  _TvNavDestination(
+    icon: Icons.movie_outlined,
+    selectedIcon: Icons.movie,
+    label: 'Movies',
+    semanticLabel: 'Movies & Shows',
+  ),
+  _TvNavDestination(
+    icon: Icons.favorite_border,
+    selectedIcon: Icons.favorite,
+    label: 'Favorites',
+    semanticLabel: 'Favorites',
+  ),
+  _TvNavDestination(
+    icon: Icons.settings_outlined,
+    selectedIcon: Icons.settings,
+    label: 'Settings',
+    semanticLabel: 'Settings',
+  ),
+];
+
+/// TV navigation sidebar with D-pad focus support, matching the Airo TV
+/// design handoff's rail: a green square logo mark up top, then icon+label
+/// stacks with a left accent bar on the active destination.
+class _TvNavigationRail extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onDestinationSelected;
 
@@ -78,88 +124,178 @@ class _TvNavigationRail extends ConsumerWidget {
   });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final chromeSurface =
+        theme.extension<AiroThemeTokens>()?.chromeSurface ?? colors.surface;
 
-    return NavigationRail(
-      selectedIndex: currentIndex,
-      onDestinationSelected: onDestinationSelected,
-      labelType: NavigationRailLabelType.all,
-      leading: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        child: _buildLogo(context),
+    return Container(
+      key: const Key('tv-sidebar-nav'),
+      width: 88,
+      padding: const EdgeInsets.symmetric(vertical: 22),
+      decoration: BoxDecoration(
+        color: chromeSurface,
+        border: Border(right: BorderSide(color: colors.outlineVariant)),
       ),
-      destinations: [
-        NavigationRailDestination(
-          icon: TvFocusable(
-            onSelect: () => onDestinationSelected(0),
-            child: Icon(
-              Icons.live_tv,
-              color: currentIndex == 0 ? theme.colorScheme.primary : null,
+      child: Column(
+        children: [
+          _TvSidebarLogo(onSelect: () => onDestinationSelected(0)),
+          const SizedBox(height: 12),
+          for (var i = 0; i < _tvNavDestinations.length; i++)
+            _TvNavItem(
+              destination: _tvNavDestinations[i],
+              selected: currentIndex == i,
+              onSelect: () => onDestinationSelected(i),
             ),
-          ),
-          selectedIcon: const Icon(Icons.live_tv),
-          label: const Text('Live TV'),
-        ),
-        NavigationRailDestination(
-          icon: TvFocusable(
-            onSelect: () => onDestinationSelected(1),
-            child: Icon(
-              Icons.grid_view_outlined,
-              color: currentIndex == 1 ? theme.colorScheme.primary : null,
-            ),
-          ),
-          selectedIcon: const Icon(Icons.grid_view),
-          label: const Text('Guide'),
-        ),
-        NavigationRailDestination(
-          icon: TvFocusable(
-            onSelect: () => onDestinationSelected(2),
-            child: Icon(
-              Icons.movie_outlined,
-              color: currentIndex == 2 ? theme.colorScheme.primary : null,
-            ),
-          ),
-          selectedIcon: const Icon(Icons.movie),
-          label: const Text('Movies & Shows'),
-        ),
-        NavigationRailDestination(
-          icon: TvFocusable(
-            onSelect: () => onDestinationSelected(3),
-            child: Icon(
-              Icons.favorite_border,
-              color: currentIndex == 3 ? theme.colorScheme.primary : null,
-            ),
-          ),
-          selectedIcon: const Icon(Icons.favorite),
-          label: const Text('Favorites'),
-        ),
-        NavigationRailDestination(
-          icon: TvFocusable(
-            onSelect: () => onDestinationSelected(4),
-            child: Icon(
-              Icons.settings_outlined,
-              color: currentIndex == 4 ? theme.colorScheme.primary : null,
-            ),
-          ),
-          selectedIcon: const Icon(Icons.settings),
-          label: const Text('Settings'),
-        ),
-      ],
+        ],
+      ),
     );
   }
+}
 
-  Widget _buildLogo(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        AppIconPlaceholder(
-          size: 48,
-          errorBuilder: (_, _, _) => const Icon(Icons.tv, size: 48),
+class _TvSidebarLogo extends StatelessWidget {
+  const _TvSidebarLogo({required this.onSelect});
+
+  final VoidCallback onSelect;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 22),
+      child: TvFocusable(
+        onSelect: onSelect,
+        semanticLabel: 'Airo TV home',
+        semanticButton: true,
+        child: Column(
+          children: [
+            Container(
+              width: 42,
+              height: 42,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: colors.primary,
+                borderRadius: BorderRadius.circular(11),
+                boxShadow: [
+                  BoxShadow(
+                    color: colors.primary.withValues(alpha: 0.4),
+                    blurRadius: 24,
+                  ),
+                ],
+              ),
+              child: Text(
+                'A',
+                style: TextStyle(
+                  fontSize: 21,
+                  fontWeight: FontWeight.w800,
+                  color: colors.onPrimary,
+                ),
+              ),
+            ),
+            const SizedBox(height: 5),
+            Text(
+              'AIRO TV',
+              style: TextStyle(
+                fontSize: 8,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 1.4,
+                color: colors.primary,
+              ),
+            ),
+          ],
         ),
-        const SizedBox(height: 8),
-        Text('Airo TV', style: Theme.of(context).textTheme.titleSmall),
-      ],
+      ),
+    );
+  }
+}
+
+class _TvNavItem extends StatefulWidget {
+  const _TvNavItem({
+    required this.destination,
+    required this.selected,
+    required this.onSelect,
+  });
+
+  final _TvNavDestination destination;
+  final bool selected;
+  final VoidCallback onSelect;
+
+  @override
+  State<_TvNavItem> createState() => _TvNavItemState();
+}
+
+class _TvNavItemState extends State<_TvNavItem> {
+  bool _focused = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final active = widget.selected;
+    final iconColor = active
+        ? colors.primary
+        : colors.onSurfaceVariant.withValues(alpha: 0.85);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 7),
+      child: TvFocusable(
+        onSelect: widget.onSelect,
+        onFocus: () => setState(() => _focused = true),
+        onUnfocus: () => setState(() => _focused = false),
+        semanticLabel: widget.destination.semanticLabel,
+        semanticButton: true,
+        borderRadius: 12,
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            if (active)
+              Positioned(
+                left: -7,
+                top: 0,
+                bottom: 0,
+                child: Center(
+                  child: Container(
+                    width: 3,
+                    height: 20,
+                    decoration: BoxDecoration(
+                      color: colors.primary,
+                      borderRadius: const BorderRadius.horizontal(
+                        right: Radius.circular(3),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+              decoration: BoxDecoration(
+                color: _focused ? colors.surfaceContainerHighest : null,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Column(
+                children: [
+                  Icon(
+                    active ? widget.destination.selectedIcon : widget.destination.icon,
+                    size: 19,
+                    color: iconColor,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    widget.destination.label,
+                    style: TextStyle(
+                      fontSize: 9,
+                      fontWeight: FontWeight.w500,
+                      letterSpacing: 0.3,
+                      color: iconColor,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

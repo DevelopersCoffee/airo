@@ -7,7 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   testWidgets(
-    'TV sidebar has no separate Home tab and Live TV is first',
+    'TV sidebar shows Home/Guide/Movies/Favorites/Settings, Home first',
     (tester) async {
       tester.view.devicePixelRatio = 1.0;
       tester.view.physicalSize = const Size(1280, 720);
@@ -44,22 +44,20 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.byType(NavigationRail), findsOneWidget);
-      final rail = tester.widget<NavigationRail>(
-        find.byType(NavigationRail),
-      );
-      expect(rail.destinations, hasLength(5));
-
-      final railLabels = rail.destinations
-          .map((d) => (d.label as Text).data)
-          .toList();
-      expect(railLabels, [
-        'Live TV',
+      final sidebar = find.byKey(const Key('tv-sidebar-nav'));
+      expect(sidebar, findsOneWidget);
+      for (final label in [
+        'Home',
         'Guide',
-        'Movies & Shows',
+        'Movies',
         'Favorites',
         'Settings',
-      ]);
+      ]) {
+        expect(
+          find.descendant(of: sidebar, matching: find.text(label)),
+          findsOneWidget,
+        );
+      }
     },
   );
 }

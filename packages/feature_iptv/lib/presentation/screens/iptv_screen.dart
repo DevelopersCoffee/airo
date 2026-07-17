@@ -767,6 +767,10 @@ class _PlaylistSourceSheetState extends ConsumerState<_PlaylistSourceSheet> {
                 onSubmitted: (_) => _save(),
               ),
             ),
+            if (!keyboardVisible) ...[
+              const SizedBox(height: 12),
+              _PlaylistSourceInfoCallout(),
+            ],
             const SizedBox(height: 12),
             Row(
               children: [
@@ -783,6 +787,48 @@ class _PlaylistSourceSheetState extends ConsumerState<_PlaylistSourceSheet> {
                   label: const Text('Save'),
                 ),
               ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Reassurance callout in the playlist-source sheet — matches the design
+/// handoff's modal copy: "Airo TV will deduplicate channels, prune dead
+/// links, and build smart rails."
+class _PlaylistSourceInfoCallout extends StatelessWidget {
+  const _PlaylistSourceInfoCallout();
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: colorScheme.primaryContainer.withValues(alpha: 0.28),
+        border: Border.all(
+          color: colorScheme.primary.withValues(alpha: 0.35),
+        ),
+        borderRadius: BorderRadius.circular(11),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(Icons.info_outline, size: 16, color: colorScheme.primary),
+            const SizedBox(width: 9),
+            Expanded(
+              child: Text(
+                'Airo TV will deduplicate channels, prune dead links, and '
+                'build smart rails.',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                  height: 1.4,
+                ),
+              ),
             ),
           ],
         ),

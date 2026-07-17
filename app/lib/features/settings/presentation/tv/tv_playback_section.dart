@@ -12,6 +12,7 @@ class TvPlaybackSection extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final current = ref.watch(videoAspectRatioProvider);
+    final colorScheme = Theme.of(context).colorScheme;
 
     return ListView.separated(
       itemCount: AiroPlaybackViewFit.values.length,
@@ -29,8 +30,8 @@ class TvPlaybackSection extends ConsumerWidget {
           child: DecoratedBox(
             decoration: BoxDecoration(
               color: isSelected
-                  ? Theme.of(context).colorScheme.primaryContainer
-                  : Colors.white10,
+                  ? colorScheme.primaryContainer
+                  : colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Padding(
@@ -39,10 +40,11 @@ class TvPlaybackSection extends ConsumerWidget {
                 children: [
                   Text(
                     label,
-                    style: const TextStyle(color: Colors.white, fontSize: 16),
+                    style: TextStyle(color: colorScheme.onSurface, fontSize: 16),
                   ),
                   const Spacer(),
-                  if (isSelected) const Icon(Icons.check, color: Colors.white),
+                  if (isSelected)
+                    Icon(Icons.check, color: colorScheme.primary),
                 ],
               ),
             ),

@@ -33,6 +33,7 @@ import 'core/config/platform_features.dart';
 import 'core/error/global_error_handler.dart';
 import 'core/features/feature_registry.dart';
 import 'core/platform/device_form_factor.dart';
+import 'core/providers/app_theme_provider.dart';
 import 'core/startup/deferred_startup_task.dart';
 import 'package:feature_iptv/feature_iptv.dart';
 import 'features/iptv/iptv_cast_provider_override.dart';
@@ -88,6 +89,11 @@ void main() async {
     ProviderScope(
       overrides: [
         sharedPreferencesProvider.overrideWithValue(prefs),
+        // Airo TV defaults to the design handoff's dedicated theme unless
+        // the user has explicitly picked a different one in Settings.
+        appThemeProvider.overrideWith(
+          (ref) => AppThemeNotifier(defaultThemeId: AppThemeId.airoTv),
+        ),
         compactEpgRepositoryProvider.overrideWithValue(compactEpgRepository),
         mutableXmltvCompactEpgRepositoryProvider.overrideWithValue(
           mutableXmltvRepository,

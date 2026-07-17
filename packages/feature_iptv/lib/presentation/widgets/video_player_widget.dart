@@ -689,20 +689,35 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
       );
     }
 
-    // Standard play/pause button
-    return IconButton(
-      iconSize: 64,
-      icon: Icon(
-        state.isPlaying ? Icons.pause_circle_filled : Icons.play_circle_filled,
-        color: Colors.white,
-      ),
-      onPressed: () {
+    // Standard play/pause button — translucent white circle behind a dark
+    // glyph, matching the design handoff's player chrome.
+    return GestureDetector(
+      onTap: () {
         if (state.isPlaying) {
           service.pause();
         } else {
           service.resume();
         }
       },
+      child: Container(
+        width: 70,
+        height: 70,
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.88),
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.45),
+              blurRadius: 24,
+            ),
+          ],
+        ),
+        child: Icon(
+          state.isPlaying ? Icons.pause : Icons.play_arrow,
+          color: Colors.black,
+          size: 32,
+        ),
+      ),
     );
   }
 

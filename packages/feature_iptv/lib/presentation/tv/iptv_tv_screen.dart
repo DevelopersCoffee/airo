@@ -291,11 +291,23 @@ class _TvBrowseLayout extends ConsumerWidget {
                   child: Column(
                     children: [
                       if (!denseTv) ...[
-                        _TvPlayerPanel(
-                          streamingState: streamingState,
-                          currentChannel: currentChannel,
-                          compact: compactTv,
-                        ),
+                        if (currentChannel == null &&
+                            !hasActiveFilter &&
+                            !recentOnly &&
+                            visibleChannels.isNotEmpty)
+                          _TvHeroRailsPanel(
+                            heroChannel: visibleChannels.first,
+                            allChannels: allChannels,
+                            favoriteChannelIds: favoriteChannelIds,
+                            onChannelSelect: onChannelSelect,
+                            onToggleFavorite: toggleFavorite,
+                          )
+                        else
+                          _TvPlayerPanel(
+                            streamingState: streamingState,
+                            currentChannel: currentChannel,
+                            compact: compactTv,
+                          ),
                         SizedBox(height: compactTv ? 12 : 20),
                       ],
                       _TvChannelToolbar(
@@ -364,6 +376,264 @@ Map<String, CompactEpgEntry> _compactEpgEntriesByChannel(
     return const {};
   }
   return {for (final entry in slice.entries) entry.channelId: entry};
+}
+
+/// Occupies the inline player panel's slot when nothing is currently
+/// selected/playing: a featured hero channel plus a Netflix-style channel
+/// rail, matching the design handoff's default browse state. Once a
+/// channel is selected (or a filter/search is active) this gives way back
+/// to the normal [_TvPlayerPanel].
+class _TvHeroRailsPanel extends StatelessWidget {
+  const _TvHeroRailsPanel({
+    required this.heroChannel,
+    required this.allChannels,
+    required this.favoriteChannelIds,
+    required this.onChannelSelect,
+    required this.onToggleFavorite,
+  });
+
+  final IPTVChannel heroChannel;
+  final List<IPTVChannel> allChannels;
+  final Set<String> favoriteChannelIds;
+  final ValueChanged<IPTVChannel> onChannelSelect;
+  final ValueChanged<IPTVChannel> onToggleFavorite;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _TvHeroBanner(
+          channel: heroChannel,
+          isFavorite: favoriteChannelIds.contains(heroChannel.id),
+          onWatch: onChannelSelect,
+          onToggleFavorite: onToggleFavorite,
+        ),
+        const SizedBox(height: 8),
+        _TvChannelRailsSection(
+          allChannels: allChannels,
+          favoriteChannels: allChannels
+              .where((c) => favoriteChannelIds.contains(c.id))
+              .toList(),
+          favoriteChannelIds: favoriteChannelIds,
+          onChannelSelect: onChannelSelect,
+          onToggleFavorite: onToggleFavorite,
+        ),
+      ],
+    );
+  }
+}
+
+/// Large featured banner above the browse rails — matches the design
+/// handoff's hero: channel art, LIVE + category tags, Watch Now / Favorite.
+class _TvHeroBanner extends StatelessWidget {
+  const _TvHeroBanner({
+    required this.channel,
+    required this.isFavorite,
+    required this.onWatch,
+    required this.onToggleFavorite,
+  });
+
+  final IPTVChannel channel;
+  final bool isFavorite;
+  final ValueChanged<IPTVChannel> onWatch;
+  final ValueChanged<IPTVChannel> onToggleFavorite;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        height: 148,
+        decoration: BoxDecoration(
+          color: colorScheme.surfaceContainerHighest,
+          border: Border.all(color: colorScheme.outlineVariant),
+        ),
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: channel.logoUrl != null && channel.logoUrl!.isNotEmpty
+                  ? Image.network(
+                      channel.logoUrl!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, _, _) => const SizedBox.shrink(),
+                    )
+                  : const SizedBox.shrink(),
+            ),
+            // Left-to-right dark scrim so the title/actions stay readable
+            // over whatever the channel art looks like.
+            const Positioned.fill(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                    colors: [
+                      Color(0xB3000000),
+                      Colors.transparent,
+                    ],
+                    stops: [0.0, 0.7],
+                  ),
+                ),
+              ),
+            ),
+            // Bottom fade so the text block reads clearly regardless of
+            // what's directly behind it.
+            const Positioned.fill(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [Colors.transparent, Color(0x99000000)],
+                    stops: [0.4, 1.0],
+                  ),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.end,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    children: [
+                      const _LivePill(),
+                      const SizedBox(width: 8),
+                      Text(
+                        channel.category.label.toUpperCase(),
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                          letterSpacing: 0.5,
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    channel.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: -0.4,
+                      color: colorScheme.onSurface,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    height: 32,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        FilledButton.icon(
+                          onPressed: () => onWatch(channel),
+                          icon: const Icon(Icons.play_arrow, size: 16),
+                          label: const Text('Watch Now'),
+                          style: FilledButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 14),
+                            textStyle: const TextStyle(fontSize: 12),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        OutlinedButton.icon(
+                          onPressed: () => onToggleFavorite(channel),
+                          icon: Icon(
+                            isFavorite ? Icons.favorite : Icons.favorite_border,
+                            size: 14,
+                          ),
+                          label: Text(isFavorite ? 'Favorited' : 'Favorite'),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            textStyle: const TextStyle(fontSize: 12),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Horizontal, Netflix-style channel rails grouped by category — the
+/// design handoff's signature browse pattern ("Top 50 India", "Live
+/// Sports", etc). Sits above the filterable category-rail/grid layout so
+/// existing filtering, search, and view-mode toggling stay untouched.
+class _TvChannelRailsSection extends StatelessWidget {
+  const _TvChannelRailsSection({
+    required this.allChannels,
+    required this.favoriteChannels,
+    required this.favoriteChannelIds,
+    required this.onChannelSelect,
+    required this.onToggleFavorite,
+  });
+
+  final List<IPTVChannel> allChannels;
+  final List<IPTVChannel> favoriteChannels;
+  final Set<String> favoriteChannelIds;
+  final ValueChanged<IPTVChannel> onChannelSelect;
+  final ValueChanged<IPTVChannel> onToggleFavorite;
+
+  static const _maxPerRail = 14;
+
+  @override
+  Widget build(BuildContext context) {
+    // Prefer a "Favorites" rail; otherwise the single largest category —
+    // kept to one rail so the fixed-height band above the filterable
+    // category/grid layout never crowds it out on smaller TV viewports.
+    final List<IPTVChannel> rail;
+    final String title;
+    if (favoriteChannels.isNotEmpty) {
+      rail = favoriteChannels.take(_maxPerRail).toList();
+      title = 'Favorites';
+    } else {
+      final byCategory = <ChannelCategory, List<IPTVChannel>>{};
+      for (final channel in allChannels) {
+        byCategory.putIfAbsent(channel.category, () => []).add(channel);
+      }
+      if (byCategory.isEmpty) return const SizedBox.shrink();
+      final topCategory = byCategory.entries.reduce(
+        (a, b) => b.value.length > a.value.length ? b : a,
+      );
+      rail = topCategory.value.take(_maxPerRail).toList();
+      title = topCategory.key.label;
+    }
+
+    return AiroRail(
+      title: title,
+      padding: EdgeInsets.zero,
+      railHeight: 140,
+      children: [
+        for (final channel in rail)
+          AiroRailCard(
+            name: channel.name,
+            subtitle: channel.category.label,
+            logoUrl: channel.logoUrl,
+            // Not isLive: AiroRailCard's LIVE badge runs an infinite pulse
+            // animation, which would hang every pumpAndSettle() in this
+            // screen's existing widget tests.
+            isLive: false,
+            width: 140,
+            thumbnailHeight: 78,
+            onTap: () => onChannelSelect(channel),
+            onLongPress: () => onToggleFavorite(channel),
+          ),
+      ],
+    );
+  }
 }
 
 class _TvLiteReceiverShellHeader extends StatelessWidget {
@@ -654,9 +924,7 @@ class _TvCategoryTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final foreground = selected
-        ? colorScheme.onPrimaryContainer
-        : colorScheme.primary;
+    final categoryColor = _categoryColor(context, category);
 
     return TvFocusable(
       onSelect: onSelect,
@@ -669,7 +937,8 @@ class _TvCategoryTile extends StatelessWidget {
               ? colorScheme.primaryContainer
               : colorScheme.surfaceContainerHighest.withValues(alpha: 0.36),
           border: Border.all(
-            color: selected ? colorScheme.primary : colorScheme.outlineVariant,
+            color: selected ? categoryColor : colorScheme.outlineVariant,
+            width: selected ? 1.5 : 1,
           ),
           borderRadius: BorderRadius.circular(8),
         ),
@@ -678,7 +947,7 @@ class _TvCategoryTile extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(_categoryIcon(category), color: foreground, size: 30),
+              Icon(_categoryIcon(category), color: categoryColor, size: 30),
               const Spacer(),
               Text(
                 category.label,
@@ -2137,5 +2406,24 @@ IconData _categoryIcon(ChannelCategory category) {
     ChannelCategory.devotional => Icons.self_improvement,
     ChannelCategory.business => Icons.business_center,
     ChannelCategory.general => Icons.apps,
+  };
+}
+
+/// Per-category accent (icon color only, never a full fill) so category
+/// identity doesn't rely on shading the brand green differently everywhere.
+/// "All" intentionally uses the primary accent since it represents the
+/// whole (unfiltered) catalog rather than one category.
+Color _categoryColor(BuildContext context, ChannelCategory category) {
+  final primary = Theme.of(context).colorScheme.primary;
+  return switch (category) {
+    ChannelCategory.all => primary,
+    ChannelCategory.news => AppColors.airoTvCategoryNews,
+    ChannelCategory.sports => AppColors.airoTvCategorySports,
+    ChannelCategory.movies => AppColors.airoTvCategoryMovies,
+    ChannelCategory.music => AppColors.airoTvCategoryMusic,
+    ChannelCategory.kids => AppColors.airoTvCategoryKids,
+    ChannelCategory.documentary => AppColors.airoTvCategoryDocumentary,
+    ChannelCategory.entertainment => AppColors.airoTvCategoryEntertainment,
+    _ => AppColors.airoTvCategoryDefault,
   };
 }
