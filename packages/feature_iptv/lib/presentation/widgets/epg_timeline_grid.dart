@@ -12,10 +12,19 @@ import '../tv/iptv_tv.dart';
 /// Horizontal-timeline EPG grid (CV-015 slice 2): a vertically-virtualized
 /// list of channel rows, each showing its programmes for the current guide
 /// window as proportionally-sized blocks. Rows share one horizontal
-/// [ScrollController] with the time-axis header (Flutter's [ScrollController]
-/// natively supports multiple simultaneous attachments) — scroll is driven
-/// by D-pad focus movement (see [_ProgramBlock]'s `onFocus`), not free drag,
-/// so every row's [SingleChildScrollView] uses [NeverScrollableScrollPhysics].
+/// [ScrollController] with the time-axis header — scroll is driven by D-pad
+/// focus movement (see [_ProgramBlock]'s `onFocus`), not free drag, so every
+/// row's [SingleChildScrollView] uses [NeverScrollableScrollPhysics].
+///
+/// [ScrollController] does support attaching to multiple [ScrollPosition]s
+/// at once (the header's plus every visible row's), and methods like
+/// [ScrollController.animateTo]/[ScrollController.jumpTo] apply to all of
+/// them. However, the singular [ScrollController.position] getter does NOT
+/// support multiple attachments — it asserts exactly one attached position
+/// and throws otherwise. Since this grid always has the header plus at
+/// least one row attached simultaneously, code here must read scroll
+/// extents via [ScrollController.positions] (e.g. `.positions.first`), not
+/// via `.position`.
 class EpgTimelineGrid extends ConsumerStatefulWidget {
   const EpgTimelineGrid({super.key, this.onChannelSelect});
 
@@ -41,8 +50,14 @@ class _EpgTimelineGridState extends ConsumerState<EpgTimelineGrid> {
 
   void _scrollTimelineTo(double offset) {
     if (!_timelineController.hasClients) return;
+    // Multiple ScrollPositions are attached (header + every visible row),
+    // so `.position` (which requires exactly one) would throw. All attached
+    // positions scroll the same timelineWidth-wide content within the same
+    // viewport width, so any one of them (e.g. `.positions.first`) yields
+    // the same maxScrollExtent.
+    final maxScrollExtent = _timelineController.positions.first.maxScrollExtent;
     _timelineController.animateTo(
-      offset.clamp(0.0, _timelineController.position.maxScrollExtent),
+      offset.clamp(0.0, maxScrollExtent),
       duration: const Duration(milliseconds: 200),
       curve: Curves.easeOutCubic,
     );

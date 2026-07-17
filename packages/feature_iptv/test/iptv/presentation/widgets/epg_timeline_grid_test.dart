@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:feature_iptv/application/providers/guide_providers.dart';
@@ -201,4 +202,104 @@ void main() {
     expect(builtRowCount, greaterThan(0));
     expect(builtRowCount, lessThan(30));
   });
+
+  testWidgets(
+    'moving D-pad focus onto a program block does not crash the shared '
+    'timeline ScrollController (regression: ScrollController.position '
+    'requires exactly one attached position, but header + every visible '
+    'row attach simultaneously)',
+    (tester) async {
+      final now = DateTime.utc(2026, 7, 17, 12);
+      const channelTwo = IPTVChannel(
+        id: 'channel-2',
+        name: 'Second Channel',
+        streamUrl: 'https://example.com/stream-2.m3u8',
+        group: 'News',
+      );
+      final window = CompactEpgWindow(
+        entries: [
+          CompactEpgWindowEntry(
+            channelId: 'channel-1',
+            channelName: 'Example Channel',
+            programs: [
+              CompactEpgProgram(
+                programId: 'p1',
+                title: 'Morning Show',
+                startsAt: now,
+                endsAt: now.add(const Duration(hours: 1)),
+              ),
+            ],
+          ),
+          CompactEpgWindowEntry(
+            channelId: 'channel-2',
+            channelName: 'Second Channel',
+            programs: [
+              CompactEpgProgram(
+                programId: 'p2',
+                title: 'Second Show',
+                startsAt: now,
+                endsAt: now.add(const Duration(hours: 1)),
+              ),
+            ],
+          ),
+        ],
+        windowStart: now,
+        windowEnd: now.add(const Duration(hours: 3)),
+        generatedAt: now,
+        expiresAt: now.add(const Duration(hours: 1)),
+        source: CompactEpgSliceSource.localCache,
+      );
+      final prefs = await SharedPreferences.getInstance();
+      final container = ProviderContainer(
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          iptvChannelsProvider.overrideWith((ref) async => [channel, channelTwo]),
+          guideEpgWindowProvider.overrideWith((ref) async => window),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(
+            home: MediaQuery(
+              data: const MediaQueryData(
+                size: Size(1280, 720),
+                navigationMode: NavigationMode.directional,
+              ),
+              child: Scaffold(
+                body: SizedBox(
+                  width: 1280,
+                  height: 720,
+                  child: EpgTimelineGrid(onChannelSelect: (_) {}),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      // Sanity check: both rows (and the header) are built and sharing the
+      // single timeline ScrollController simultaneously — the precondition
+      // for the crash this test guards against.
+      expect(find.text('Example Channel'), findsOneWidget);
+      expect(find.text('Second Channel'), findsOneWidget);
+
+      // No widget has focus yet. Sending a D-pad direction moves Flutter's
+      // directional focus traversal onto the nearest focusable — one of the
+      // _ProgramBlock's TvFocusable widgets — which fires its onFocus
+      // callback (EpgTimelineGrid's onProgramFocus -> _scrollTimelineTo).
+      // Before the fix, that call threw StateError('Bad state: Too many
+      // elements') because ScrollController.position requires exactly one
+      // attached ScrollPosition, but header + 2 rows are attached at once.
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+      await tester.pump();
+
+      expect(tester.takeException(), isNull);
+    },
+  );
 }
