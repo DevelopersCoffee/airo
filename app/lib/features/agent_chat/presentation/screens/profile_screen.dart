@@ -20,6 +20,7 @@ import '../../../settings/application/ai_model_management.dart';
 import '../../../settings/presentation/screens/ai_models_screen.dart';
 import '../../../settings/presentation/screens/audio_settings_screen.dart';
 import '../../../settings/presentation/screens/playback_settings_screen.dart';
+import '../../../settings/presentation/screens/intelligent_model_manager_screen.dart';
 
 /// User profile screen
 class ProfileScreen extends ConsumerWidget {
@@ -411,6 +412,19 @@ class _AIPreferencesSection extends ConsumerWidget {
                   Navigator.of(context).push(
                     MaterialPageRoute(
                       builder: (context) => const AIModelsScreen(),
+                    ),
+                  );
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.settings_suggest_outlined),
+                title: const Text('Intelligent Model Manager'),
+                subtitle: const Text('Advanced model management UI'),
+                trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => const IntelligentModelManagerScreen(),
                     ),
                   );
                 },
