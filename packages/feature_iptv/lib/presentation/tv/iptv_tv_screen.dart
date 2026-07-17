@@ -269,6 +269,7 @@ class _TvBrowseLayout extends ConsumerWidget {
             showUpdateAction: AiroMacosUpdateService.isSupportedPlatform,
             onUpdateTap: onUpdateTap,
             onRefresh: onRefresh,
+            compactTv: compactTv,
           ),
           SizedBox(height: compactTv ? 16 : 24),
           Expanded(
@@ -772,6 +773,7 @@ class _TvHeader extends StatelessWidget {
     required this.showUpdateAction,
     required this.onUpdateTap,
     required this.onRefresh,
+    required this.compactTv,
   });
 
   final int channelCount;
@@ -783,6 +785,7 @@ class _TvHeader extends StatelessWidget {
   final bool showUpdateAction;
   final VoidCallback onUpdateTap;
   final VoidCallback onRefresh;
+  final bool compactTv;
 
   @override
   Widget build(BuildContext context) {
@@ -799,7 +802,7 @@ class _TvHeader extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text('Live channels', style: theme.textTheme.headlineMedium),
-              const SizedBox(height: 6),
+              SizedBox(height: compactTv ? 6 : 12),
               Text(
                 subtitle,
                 style: theme.textTheme.titleMedium?.copyWith(
@@ -815,27 +818,27 @@ class _TvHeader extends StatelessWidget {
           onSelect: onSearchTap,
           autofocus: true,
         ),
-        const SizedBox(width: 12),
+        SizedBox(width: compactTv ? 12 : 16),
         _TvActionButton(
           icon: Icons.link,
           label: 'Playlist',
           onSelect: onPlaylistSourceTap,
         ),
-        const SizedBox(width: 12),
+        SizedBox(width: compactTv ? 12 : 16),
         _TvActionButton(
           icon: Icons.help_outline,
           label: 'Help',
           onSelect: onPlaylistHelpTap,
         ),
         if (showUpdateAction) ...[
-          const SizedBox(width: 12),
+          SizedBox(width: compactTv ? 12 : 16),
           _TvActionButton(
             icon: Icons.system_update_alt,
             label: 'Update',
             onSelect: onUpdateTap,
           ),
         ],
-        const SizedBox(width: 12),
+        SizedBox(width: compactTv ? 12 : 16),
         _TvActionButton(
           icon: Icons.refresh,
           label: 'Refresh',
