@@ -9,7 +9,7 @@ name: PR Checks
 
 on:
   pull_request:
-    branches: [ main, v2, master, develop ]
+    branches: [ main, master, develop ]
 
 # Cancel any in-progress runs for the same PR
 concurrency:

@@ -95,7 +95,7 @@ The guide grid must query by channel id and time range. It should not scan or re
 **Owning agent:** Media Agent.
 **Reviewing agents:** Framework Agent, Mobile UI Agent, Security and Privacy Agent, QA Automation Agent, Release and DevEx Agent.
 **Impacted modules/files:** `rust/airo_core`, `packages/platform_epg`, `packages/feature_iptv`, `packages/platform_playlist`, `packages/platform_benchmarks`.
-**Base branch/worktree:** confirmed from latest `origin/v2`: yes.
+**Base branch/worktree:** confirmed from latest `origin/main`: yes.
 **Open questions:** Whether the first implementation should be compact current/next plus upcoming windows, or a wider same-day timeline window.
 **Decision:** Ready for bounded guide-window contract and UI slice.
 

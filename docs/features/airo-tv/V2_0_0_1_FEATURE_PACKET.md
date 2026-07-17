@@ -39,9 +39,9 @@ future `core_protocol`, future `product_capabilities`, future
 `feature_analytics`, app TV entrypoints, Android build profiles, docs under
 `docs/features/airo-tv`.
 
-**Base branch/worktree:** confirmed from latest `origin/v2`: yes. `git fetch
+**Base branch/worktree:** confirmed from latest `origin/main`: yes. `git fetch
 origin main v2` completed on 2026-07-14. Current branch
-`codex/next-v2.0.0.0` is based on `origin/v2` at `5fef3498`.
+`codex/next-v2.0.0.0` is based on `origin/main` at `5fef3498`.
 
 **Open questions:** App listing strategy, first physical legacy test devices,
 billing provider, and compliance review for Stalker Portal, recording,

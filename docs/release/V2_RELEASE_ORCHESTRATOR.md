@@ -3,7 +3,7 @@
 This document defines the top-level v2 release orchestration workflow in
 `.github/workflows/v2-release-orchestrator.yml`.
 
-Implementation work for this release line must start from latest `origin/v2`.
+Implementation work for this release line must start from latest `origin/main`.
 
 ## Entry Points
 
@@ -128,7 +128,7 @@ merge-readiness guard:
 dart pub global run melos run release:v2-merge-readiness
 ```
 
-The guard creates a temporary `origin/v2` worktree, dry-merges
+The guard creates a temporary `origin/main` worktree, dry-merges
 `origin/codex/next-v2.0.0.0`, checks YAML and whitespace, runs the top-level
 readiness preflight, then removes the temporary worktree. It is local-only and
 does not push, dispatch CI, publish releases, or upload artifacts.

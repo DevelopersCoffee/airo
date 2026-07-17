@@ -35,7 +35,7 @@ assignees: ''
 **Owning agent:** Framework Agent.
 **Reviewing agents:** Security and Privacy Agent, Media Agent, QA Automation Agent, Release and DevEx Agent.
 **Impacted modules/files:** `packages/core_cloud_orchestration`, `packages/core_auth`, `packages/platform_favorites`, `packages/platform_history`, `packages/platform_playlist`, `packages/feature_iptv`.
-**Base branch/worktree:** Must be reconfirmed from latest `origin/v2` when reopened.
+**Base branch/worktree:** Must be reconfirmed from latest `origin/main` when reopened.
 **Open questions:** Backend provider, encryption model, account requirement, deletion/export policy, playlist credential handling.
 **Decision:** Blocked until product/security design is accepted.
 

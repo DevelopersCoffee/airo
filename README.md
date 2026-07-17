@@ -53,7 +53,7 @@ Start with:
 
 ## Airo TV v0.0.2
 
-Airo TV is the Android TV variant of Airo, built from the v2 release line with package name `io.airo.app.tv`. The v0.0.2 release focuses on release trust, documentation, checksums, clean artifact names, and Play Store readiness.
+Airo TV is the Android TV variant of Airo, built from the current `main` release line (formerly `v2`) with package name `io.airo.app.tv`. The v0.0.2 release focuses on release trust, documentation, checksums, clean artifact names, and Play Store readiness.
 
 - Bring your own authorized M3U playlist URL; Airo TV does not provide IPTV content.
 - Release assets include APK, Play Store AAB, and SHA256 checksums.
@@ -63,7 +63,7 @@ Airo TV is the Android TV variant of Airo, built from the v2 release line with p
 
 ## V2 Release Health
 
-The v2 release line is coordinated through
+The current mainline Airo TV release line is coordinated through
 [`.github/workflows/v2-release-orchestrator.yml`](.github/workflows/v2-release-orchestrator.yml)
 and documented in
 [`docs/release/V2_RELEASE_ORCHESTRATOR.md`](docs/release/V2_RELEASE_ORCHESTRATOR.md).
@@ -232,16 +232,16 @@ Android release builds require private signing material. Never commit
 3. Add the Critical Agent gate and Feature Packet required by
    [`docs/agents/AGENT_POLICY.md`](docs/agents/AGENT_POLICY.md).
 4. Create a short-lived branch or worktree from the correct release-line base.
-   Use `origin/v2` for v2 modular/release-profile work; otherwise follow the
-   base branch declared in the linked issue.
+   Use `origin/main` for current work. Only use `origin/v1_bkp` when the
+   linked issue explicitly targets the legacy pre-swap branch state.
 5. Keep the PR scoped, run the relevant checks, and document any test gaps.
 
 For parallel work, prefer a worktree:
 
 ```bash
-git fetch origin main v2
-git worktree add -b codex/my-v2-task ../airo-my-v2-task origin/v2
-cd ../airo-my-v2-task
+git fetch origin main v1_bkp
+git worktree add -b codex/my-task ../airo-my-task origin/main
+cd ../airo-my-task
 ```
 
 ## Documentation

@@ -30,13 +30,13 @@ profile=tv
 version=airo-tv-v0.0.2
 build_name=0.0.2
 build_number=2
-release_ref=v2
+release_ref=main
 release_branch=release/airo-tv-v0.0.2
 require_notarization=false
 ```
 
-The macOS workflow fetches `origin/main` and `origin/v2`, verifies the selected
-ref contains latest `origin/v2`, creates or updates the release branch, builds
+The macOS workflow fetches `origin/main` and `origin/main`, verifies the selected
+ref contains latest `origin/main`, creates or updates the release branch, builds
 `Airo TV.app`, and packages release artifacts.
 
 For local validation on macOS:
@@ -103,7 +103,7 @@ https://github.com/DevelopersCoffee/airo/releases/download/<release_tag>/Airo-TV
 
 ## Validation Checklist
 
-- `git merge-base --is-ancestor origin/v2 HEAD`
+- `git merge-base --is-ancestor origin/main HEAD`
 - `scripts/check-build-profiles.py`
 - `scripts/test-generate-release-manifest.sh`
 - `flutter test` in `packages/core_release`

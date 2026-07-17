@@ -186,7 +186,6 @@ void main() {
         await engine.dispose();
       },
     );
-
     test('dispose releases the facade', () async {
       FakeMpvPlayerFacade? capturedFake;
       final engine = MpvAiroPlaybackEngine(

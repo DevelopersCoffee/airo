@@ -6,7 +6,7 @@
 **Owning agent:** Release and DevEx Agent.
 **Reviewing agents:** Framework Agent, QA Automation Agent.
 **Impacted modules/files:** `app/pubspec.yaml`, `app/pubspec_streaming.yaml`, `app/pubspec_tv.yaml`, `app/pubspec_ios_spm.yaml`, `app/pubspec.lock`.
-**Base branch/worktree:** confirmed from latest `origin/v2`: yes (`e59f15d65aee9ce8dfee80c044a840754486a2e2`) in worktree `maintenance/health-20260715-090230`.
+**Base branch/worktree:** confirmed from latest `origin/main`: yes (`e59f15d65aee9ce8dfee80c044a840754486a2e2`) in worktree `maintenance/health-20260715-090230`.
 **Open questions:** Broader dependency drift remains, but the currently resolvable direct upgrade surface is intentionally limited to `google_mlkit_text_recognition` because `riverpod`, `drift`, and `custom_lint` major/minor jumps are still blocked by migration scope.
 **Decision:** Ready
 

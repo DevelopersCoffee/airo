@@ -19,9 +19,9 @@ on:
         required: true
         default: '200'
       release_ref:
-        description: 'Git ref to release; must be based on origin/v2'
+        description: 'Git ref to release; must be based on origin/main'
         required: true
-        default: 'v2'
+        default: 'main'
       release_branch:
         description: 'Release branch to create/update from release_ref'
         required: true
@@ -193,7 +193,7 @@ jobs:
           INPUT_MACOS_REQUIRE_NOTARIZATION: ${{ inputs.macos_require_notarization }}
           INPUT_QUALIFICATION_MODE: ${{ inputs.qualification_mode }}
         run: |
-          git fetch origin main v2 --tags
+          git fetch origin main v1_bkp --tags
 
           version="${INPUT_VERSION:-${GITHUB_REF_NAME:-$DEFAULT_VERSION}}"
           build_name="${INPUT_BUILD_NAME:-${version#v}}"
@@ -288,8 +288,8 @@ jobs:
             exit 1
           fi
 
-          if ! git merge-base --is-ancestor origin/v2 "$release_commit"; then
-            echo "::error::Release ref $release_ref does not contain latest origin/v2."
+          if ! git merge-base --is-ancestor origin/main "$release_commit"; then
+            echo "::error::Release ref $release_ref does not contain latest origin/main."
             exit 1
           fi
 

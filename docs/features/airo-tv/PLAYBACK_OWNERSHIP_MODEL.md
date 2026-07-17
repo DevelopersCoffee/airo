@@ -9,7 +9,7 @@ Implementation contract:
 - Schema: `kAiroSessionSchemaVersion`
 - Snapshot model: `AiroPlaybackOwnershipSnapshot`
 - Transfer policy: `AiroPlaybackOwnershipPolicy`
-- Release-line base: `origin/v2`
+- Release-line base: `origin/main`
 
 ## Ownership Snapshot
 

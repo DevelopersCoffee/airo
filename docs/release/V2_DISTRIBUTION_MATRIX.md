@@ -4,7 +4,7 @@ This document defines the current v2 release profile matrix and release asset
 naming standard. It is derived from `.github/airo-build-profiles.json` and the
 v2 release-line policy in `docs/release/VERSION_LINES.md`.
 
-Implementation work for these profiles must start from latest `origin/v2`.
+Implementation work for these profiles must start from latest `origin/main`.
 
 The automation-facing source of truth is `packages/core_release`, specifically
 `AiroReleaseMatrix.v2Default()`. Keep this document, the build profile JSON, and
