@@ -1,7 +1,7 @@
 # 🤖 Airo Agent Operating Rules
 
 > **Last Updated:** 2026-07-15
-> **Version:** 1.2.0
+> **Version:** 1.2.1
 > **Project Board:** https://github.com/orgs/DevelopersCoffee/projects/2
 
 ## 📋 Rule Updates
@@ -111,9 +111,11 @@ DORMANT → ACTIVATED → IN_PROGRESS → REVIEW → COMPLETE → DORMANT
 ### During Work
 1. Update issue with progress comments (daily minimum)
 2. Check off completed subtasks in issue body
-3. Run focused local validation before each push
-4. Keep commits small and focused
-5. Document blockers immediately
+3. Run focused local validation for the touched module before each push
+4. Add `[skip ci]` to iterative issue commits and merge commits unless remote
+   CI is explicitly required
+5. Keep commits small and focused
+6. Document blockers immediately
 
 ### GitHub Actions Cost Guardrail
 GitHub Actions minutes are a shared project cost. Agents must not spend them by
@@ -186,7 +188,7 @@ Agent rules:
 | ❌ Don't | ✅ Do Instead |
 |----------|---------------|
 | Work without issue | Create issue first |
-| Spend GitHub Actions minutes by default | Run focused local validation first |
+| Spend GitHub Actions minutes by default | Run focused local validation and use `[skip ci]` for iterative pushes |
 | Skip issue updates | Comment daily progress |
 | Ignore blockers | Document and escalate |
 | Large PRs (>500 lines) | Split into smaller PRs |
@@ -217,9 +219,9 @@ An agent task is DONE when:
 - [ ] All acceptance criteria checked
 - [ ] Tests pass (`flutter test`)
 - [ ] Linting clean (`flutter analyze`)
-- [ ] Focused local validation passes
-- [ ] Required remote checks pass, if branch protection or release ownership
-      requires them
+- [ ] Focused local validation passes, with remote CI reserved for explicit
+      release or PR gates, branch protection, or release ownership
+      requirements
 - [ ] PR approved and merged
 - [ ] Issue closed, or remaining broad evidence split into a follow-up issue
 - [ ] No regressions in related features
