@@ -258,7 +258,7 @@ class _TvBrowseLayout extends ConsumerWidget {
       child: Column(
         children: [
           _TvLiteReceiverShellHeader(productProfile: productProfile),
-          SizedBox(height: compactTv ? 12 : 18),
+          SizedBox(height: compactTv ? 12 : 16),
           _TvHeader(
             channelCount: allChannels.length,
             visibleCount: visibleChannels.length,
@@ -321,7 +321,7 @@ class _TvBrowseLayout extends ConsumerWidget {
                         onClearFilters: onClearFilters,
                         onViewModeChanged: onViewModeChanged,
                       ),
-                      SizedBox(height: compactTv ? 10 : 20),
+                      SizedBox(height: compactTv ? 8 : 20),
                       Expanded(
                         child: DecoratedBox(
                           decoration: BoxDecoration(
@@ -539,26 +539,44 @@ class _TvHeroBanner extends StatelessWidget {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        FilledButton.icon(
-                          onPressed: () => onWatch(channel),
-                          icon: const Icon(Icons.play_arrow, size: 16),
-                          label: const Text('Watch Now'),
-                          style: FilledButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(horizontal: 14),
-                            textStyle: const TextStyle(fontSize: 12),
+                        TvFocusable(
+                          onSelect: () => onWatch(channel),
+                          semanticLabel: 'Watch Now',
+                          semanticButton: true,
+                          borderRadius: 10,
+                          child: FilledButton.icon(
+                            onPressed: () => onWatch(channel),
+                            icon: const Icon(Icons.play_arrow, size: 16),
+                            label: const Text('Watch Now'),
+                            style: FilledButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                              ),
+                              textStyle: const TextStyle(fontSize: 12),
+                            ),
                           ),
                         ),
                         const SizedBox(width: 8),
-                        OutlinedButton.icon(
-                          onPressed: () => onToggleFavorite(channel),
-                          icon: Icon(
-                            isFavorite ? Icons.favorite : Icons.favorite_border,
-                            size: 14,
-                          ),
-                          label: Text(isFavorite ? 'Favorited' : 'Favorite'),
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(horizontal: 12),
-                            textStyle: const TextStyle(fontSize: 12),
+                        TvFocusable(
+                          onSelect: () => onToggleFavorite(channel),
+                          semanticLabel: isFavorite ? 'Favorited' : 'Favorite',
+                          semanticButton: true,
+                          borderRadius: 10,
+                          child: OutlinedButton.icon(
+                            onPressed: () => onToggleFavorite(channel),
+                            icon: Icon(
+                              isFavorite
+                                  ? Icons.favorite
+                                  : Icons.favorite_border,
+                              size: 14,
+                            ),
+                            label: Text(isFavorite ? 'Favorited' : 'Favorite'),
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                              ),
+                              textStyle: const TextStyle(fontSize: 12),
+                            ),
                           ),
                         ),
                       ],

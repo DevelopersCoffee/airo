@@ -3,7 +3,8 @@ import 'package:flutter/material.dart';
 /// A titled, horizontally-scrolling rail of content (e.g. "Top 50 India").
 /// Wraps [children] (typically [AiroRailCard]s) in a horizontal-scroll row
 /// below a title + subtitle header, matching the source design's rail
-/// layout exactly (26px page padding, 10px card gap, 11px header spacing).
+/// layout exactly (26px page padding, 10px card gap, 16px header spacing
+/// by default (configurable via `headerGap`)).
 class AiroRail extends StatelessWidget {
   const AiroRail({
     required this.title,
