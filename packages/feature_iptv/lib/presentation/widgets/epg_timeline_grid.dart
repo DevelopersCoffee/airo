@@ -212,13 +212,23 @@ class _EpgChannelRow extends StatelessWidget {
         children: [
           SizedBox(
             width: EpgTimelineGrid.channelLabelWidth,
-            child: Padding(
-              padding: EdgeInsets.all(dimensions.cardPadding),
-              child: Text(
-                channel.name,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.bodyMedium,
+            // The label itself is selectable so a channel can be played even
+            // when it has no programme blocks for the current window (e.g.
+            // no XMLTV source configured yet) — selection must not depend on
+            // EPG data being present.
+            child: TvFocusable(
+              onSelect: onSelect,
+              semanticLabel: channel.name,
+              semanticHint: 'Press OK to play this channel',
+              semanticButton: true,
+              child: Padding(
+                padding: EdgeInsets.all(dimensions.cardPadding),
+                child: Text(
+                  channel.name,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
               ),
             ),
           ),
