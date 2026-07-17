@@ -12,6 +12,7 @@ class PlaybackSettingsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final aspectRatio = ref.watch(videoAspectRatioProvider);
     final notifier = ref.read(videoAspectRatioProvider.notifier);
+    final extraSections = ref.watch(playbackSettingsExtraSectionsProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Playback Settings')),
@@ -45,6 +46,7 @@ class PlaybackSettingsScreen extends ConsumerWidget {
               ],
             ),
           ),
+          ...extraSections,
         ],
       ),
     );

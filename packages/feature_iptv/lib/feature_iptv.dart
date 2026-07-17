@@ -3,6 +3,7 @@ library;
 export "src/iptv.dart";
 export "application/providers/iptv_providers.dart";
 export "application/providers/iptv_cast_providers.dart";
+export "application/providers/playback_settings_extension_point.dart";
 export "application/providers/video_aspect_ratio_provider.dart";
 export "presentation/screens/iptv_screen.dart";
 export "presentation/screens/vod_screen.dart";
