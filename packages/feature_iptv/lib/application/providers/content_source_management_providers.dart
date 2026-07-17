@@ -24,9 +24,8 @@ final configuredContentSourcesProvider = FutureProvider<List<ContentSourceConfig
   return ref.watch(contentSourceStoreProvider).getAll();
 });
 
-/// Adds a new M3U [ContentSourceConfig] (M3U-only for this slice; other
-/// [ContentSourceKind]s get their own add providers when their settings UI
-/// lands) and invalidates [configuredContentSourcesProvider].
+/// Adds a new M3U [ContentSourceConfig] and invalidates
+/// [configuredContentSourcesProvider].
 final addM3uContentSourceProvider = FutureProvider.family<void, ({String label, String url})>((
   ref,
   args,
@@ -36,6 +35,81 @@ final addM3uContentSourceProvider = FutureProvider.family<void, ({String label, 
     ContentSourceConfig(
       id: id,
       kind: ContentSourceKind.m3u,
+      label: args.label,
+      url: args.url,
+    ),
+  );
+  ref.invalidate(configuredContentSourcesProvider);
+});
+
+/// Adds a new Xtream Codes [ContentSourceConfig] and stores its
+/// credentials via [contentSourceCredentialStoreProvider], keyed on the
+/// generated config id so [removeContentSourceProvider] deletes the same
+/// credential slot.
+final addXtreamContentSourceProvider =
+    FutureProvider.family<void, ({String label, String url, String username, String password})>((
+  ref,
+  args,
+) async {
+  final id = 'xtream-${DateTime.now().microsecondsSinceEpoch}';
+  await ref.watch(contentSourceCredentialStoreProvider).save(
+    ContentSourceCredentialRef(id),
+    ContentSourceCredentials(
+      username: args.username,
+      password: args.password,
+    ),
+  );
+  await ref.watch(contentSourceStoreProvider).add(
+    ContentSourceConfig(
+      id: id,
+      kind: ContentSourceKind.xtream,
+      label: args.label,
+      url: args.url,
+    ),
+  );
+  ref.invalidate(configuredContentSourcesProvider);
+});
+
+/// Adds a new Stalker Portal [ContentSourceConfig]. Stalker auth uses the
+/// device MAC address (persisted in the config itself, not a secret), so
+/// no credential store write is needed.
+final addStalkerContentSourceProvider =
+    FutureProvider.family<void, ({String label, String url, String macAddress})>((
+  ref,
+  args,
+) async {
+  final id = 'stalker-${DateTime.now().microsecondsSinceEpoch}';
+  await ref.watch(contentSourceStoreProvider).add(
+    ContentSourceConfig(
+      id: id,
+      kind: ContentSourceKind.stalker,
+      label: args.label,
+      url: args.url,
+      macAddress: args.macAddress,
+    ),
+  );
+  ref.invalidate(configuredContentSourcesProvider);
+});
+
+/// Adds a new Jellyfin [ContentSourceConfig] and stores its credentials
+/// (username + password/api-key) via [contentSourceCredentialStoreProvider].
+final addJellyfinContentSourceProvider =
+    FutureProvider.family<void, ({String label, String url, String username, String password})>((
+  ref,
+  args,
+) async {
+  final id = 'jellyfin-${DateTime.now().microsecondsSinceEpoch}';
+  await ref.watch(contentSourceCredentialStoreProvider).save(
+    ContentSourceCredentialRef(id),
+    ContentSourceCredentials(
+      username: args.username,
+      password: args.password,
+    ),
+  );
+  await ref.watch(contentSourceStoreProvider).add(
+    ContentSourceConfig(
+      id: id,
+      kind: ContentSourceKind.jellyfin,
       label: args.label,
       url: args.url,
     ),

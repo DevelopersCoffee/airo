@@ -1,6 +1,7 @@
 import 'package:airo_app/features/settings/presentation/tv/tv_source_management_section.dart';
 import 'package:core_data/core_data.dart';
 import 'package:feature_iptv/feature_iptv.dart';
+import 'package:platform_playlist/platform_playlist.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -54,7 +55,7 @@ void main() {
     await tester.pump();
     await tester.pump();
 
-    await tester.tap(find.text('Add M3U Source'));
+    await tester.tap(find.text('Add Source'));
     await tester.pump();
     await tester.enterText(
       find.widgetWithText(TextField, 'Label'),
@@ -69,6 +70,126 @@ void main() {
     await tester.pump();
 
     expect(find.text('My Playlist'), findsOneWidget);
+  });
+
+  testWidgets('adding an Xtream source persists credentials', (tester) async {
+    final container = await buildContainer();
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: const MaterialApp(
+          home: Scaffold(body: TvSourceManagementSection()),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    await tester.tap(find.text('Add Source'));
+    await tester.pump();
+
+    // Pick Xtream from the kind picker.
+    await tester.tap(find.byKey(const Key('source-kind-picker')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Xtream Codes').last);
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.widgetWithText(TextField, 'Label'), 'My Xtream');
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Server URL'),
+      'https://xtream.example.com',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Username'),
+      'user1',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Password'),
+      'secret',
+    );
+    await tester.tap(find.text('Save'));
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.text('My Xtream'), findsOneWidget);
+
+    final sources = await container.read(configuredContentSourcesProvider.future);
+    expect(sources.single.kind, ContentSourceKind.xtream);
+    final credential = await container
+        .read(contentSourceCredentialStoreProvider)
+        .read(ContentSourceCredentialRef(sources.single.id));
+    expect(credential?.username, 'user1');
+    expect(credential?.password, 'secret');
+  });
+
+  testWidgets('adding a Stalker source persists the MAC address', (tester) async {
+    final container = await buildContainer();
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: const MaterialApp(
+          home: Scaffold(body: TvSourceManagementSection()),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    await tester.tap(find.text('Add Source'));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('source-kind-picker')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Stalker Portal').last);
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.widgetWithText(TextField, 'Label'), 'Portal');
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Portal URL'),
+      'https://stalker.example.com',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextField, 'MAC Address'),
+      'AA:BB:CC:DD:EE:FF',
+    );
+    await tester.tap(find.text('Save'));
+    await tester.pump();
+    await tester.pump();
+
+    final sources = await container.read(configuredContentSourcesProvider.future);
+    expect(sources.single.kind, ContentSourceKind.stalker);
+    expect(sources.single.macAddress, 'AA:BB:CC:DD:EE:FF');
+  });
+
+  testWidgets('source list shows capability flags per source', (tester) async {
+    final container = await buildContainer();
+    addTearDown(container.dispose);
+    await container.read(
+      addXtreamContentSourceProvider((
+        label: 'Xtream',
+        url: 'https://xtream.example.com',
+        username: 'u',
+        password: 'p',
+      )).future,
+    );
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: const MaterialApp(
+          home: Scaffold(body: TvSourceManagementSection()),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    // Xtream advertises EPG + VOD + catch-up capabilities.
+    expect(find.text('EPG'), findsOneWidget);
+    expect(find.text('VOD'), findsOneWidget);
   });
 
   testWidgets('removing a source requires confirmation', (tester) async {
