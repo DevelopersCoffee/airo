@@ -1628,7 +1628,7 @@ packages:
     source: path
     version: "0.0.1"
   platform_playlist:
-    dependency: transitive
+    dependency: "direct main"
     description:
       path: "../packages/platform_playlist"
       relative: true
