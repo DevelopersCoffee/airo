@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
 import 'api/xmltv.dart' as native_xmltv;
 import 'native_bridge.dart';
@@ -248,7 +249,9 @@ Future<NativeXmltvCurrentNextResult> parseXmltvCurrentNextFileNative(
     final result = await native_xmltv.parseXmltvCurrentNextFile(
       path: normalizedPath,
       channelIds: requestedChannelIds,
-      nowEpochSeconds: now.toUtc().millisecondsSinceEpoch ~/ 1000,
+      nowEpochSeconds: PlatformInt64Util.from(
+        now.toUtc().millisecondsSinceEpoch ~/ 1000,
+      ),
       defaultDurationSeconds: defaultProgrammeDuration.inSeconds,
     );
     return _fromNativeXmltvCurrentNextResult(result);
