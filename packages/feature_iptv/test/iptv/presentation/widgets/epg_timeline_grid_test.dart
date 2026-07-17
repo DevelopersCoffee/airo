@@ -288,14 +288,42 @@ void main() {
       expect(find.text('Second Channel'), findsOneWidget);
 
       // No widget has focus yet. Sending a D-pad direction moves Flutter's
-      // directional focus traversal onto the nearest focusable — one of the
-      // _ProgramBlock's TvFocusable widgets — which fires its onFocus
-      // callback (EpgTimelineGrid's onProgramFocus -> _scrollTimelineTo).
-      // Before the fix, that call threw StateError('Bad state: Too many
-      // elements') because ScrollController.position requires exactly one
-      // attached ScrollPosition, but header + 2 rows are attached at once.
+      // directional focus traversal onto the nearest focusable. Since the
+      // channel label (left column) and the row's _ProgramBlock (right
+      // column) are BOTH focusable now (the label was made focusable so a
+      // channel with no programmes still has a tap/select target), Flutter's
+      // findFirstFocusInDirection fallback — which sorts by ascending
+      // rect.left for a rightward move — always lands the very first
+      // arrowRight on the label, not the program block. A second arrowRight
+      // is required to move focus rightward off the label and onto the
+      // first program block in that same row.
       await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
       await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pump();
+
+      // Explicitly verify focus landed on the "Morning Show" program block
+      // (not the "Example Channel" label) before proceeding — this is what
+      // makes the test actually exercise _ProgramBlock.onFocus ->
+      // EpgTimelineGrid._scrollTimelineTo, the crash path this test guards.
+      // Focus.of walks up from the "Morning Show" Text's context to the
+      // nearest ancestor Focus widget, which is the _ProgramBlock's
+      // TvFocusable — so hasFocus is true only if focus actually landed
+      // there rather than on the channel label.
+      final programBlockContext = tester.element(find.text('Morning Show'));
+      expect(
+        Focus.of(programBlockContext, createDependency: false).hasFocus,
+        isTrue,
+        reason:
+            'expected the second arrowRight to move focus off the channel '
+            'label and onto the "Morning Show" program block',
+      );
+
+      // Moving down from the focused program block re-triggers onFocus for
+      // the corresponding block in the row below, which is exactly what
+      // threw StateError('Bad state: Too many elements') before the fix
+      // (ScrollController.position requires exactly one attached
+      // ScrollPosition, but header + 2 rows are attached at once).
       await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
       await tester.pump();
 

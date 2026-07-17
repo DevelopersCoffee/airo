@@ -33,7 +33,6 @@ void main() {
   Future<void> pumpScreen(
     WidgetTester tester, {
     List<IPTVChannel>? visibleChannels,
-    bool called = false,
     void Function()? onSelectedCallback,
   }) async {
     final prefs = await SharedPreferences.getInstance();
