@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:feature_iptv/feature_iptv.dart';
+import '../../features/settings/presentation/tv/tv_settings_screen.dart';
 import 'tv_shell.dart';
 
 /// TV-specific routes
@@ -94,7 +95,7 @@ class TvRouter {
             GoRoute(
               path: TvRouteNames.settings,
               name: 'tv_settings',
-              builder: (context, state) => const _TvSettingsPlaceholder(),
+              builder: (context, state) => const TvSettingsScreen(),
             ),
           ],
         ),
@@ -134,16 +135,4 @@ class _AdaptiveLiveTvScreen extends StatelessWidget {
 bool _usesCompactPhoneLayout(BuildContext context) {
   final size = MediaQuery.sizeOf(context);
   return size.width < 900 || size.height < 600;
-}
-
-/// Placeholder for TV settings screen
-class _TvSettingsPlaceholder extends StatelessWidget {
-  const _TvSettingsPlaceholder();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Center(
-      child: Text('Settings', style: TextStyle(fontSize: 24)),
-    );
-  }
 }
