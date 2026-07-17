@@ -133,7 +133,7 @@ class _TvNavigationRail extends StatelessWidget {
     return Container(
       key: const Key('tv-sidebar-nav'),
       width: 88,
-      padding: const EdgeInsets.symmetric(vertical: 22),
+      padding: const EdgeInsets.symmetric(vertical: 24),
       decoration: BoxDecoration(
         color: chromeSurface,
         border: Border(right: BorderSide(color: colors.outlineVariant)),
@@ -141,7 +141,7 @@ class _TvNavigationRail extends StatelessWidget {
       child: Column(
         children: [
           _TvSidebarLogo(onSelect: () => onDestinationSelected(0)),
-          const SizedBox(height: 12),
+          const SizedBox(height: 28),
           for (var i = 0; i < _tvNavDestinations.length; i++)
             _TvNavItem(
               destination: _tvNavDestinations[i],
@@ -163,49 +163,46 @@ class _TvSidebarLogo extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
 
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 22),
-      child: TvFocusable(
-        onSelect: onSelect,
-        semanticLabel: 'Airo TV home',
-        semanticButton: true,
-        child: Column(
-          children: [
-            Container(
-              width: 42,
-              height: 42,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: colors.primary,
-                borderRadius: BorderRadius.circular(11),
-                boxShadow: [
-                  BoxShadow(
-                    color: colors.primary.withValues(alpha: 0.4),
-                    blurRadius: 24,
-                  ),
-                ],
-              ),
-              child: Text(
-                'A',
-                style: TextStyle(
-                  fontSize: 21,
-                  fontWeight: FontWeight.w800,
-                  color: colors.onPrimary,
+    return TvFocusable(
+      onSelect: onSelect,
+      semanticLabel: 'Airo TV home',
+      semanticButton: true,
+      child: Column(
+        children: [
+          Container(
+            width: 56,
+            height: 56,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: colors.primary,
+              borderRadius: BorderRadius.circular(15),
+              boxShadow: [
+                BoxShadow(
+                  color: colors.primary.withValues(alpha: 0.4),
+                  blurRadius: 24,
                 ),
-              ),
+              ],
             ),
-            const SizedBox(height: 5),
-            Text(
-              'AIRO TV',
+            child: Text(
+              'A',
               style: TextStyle(
-                fontSize: 8,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 1.4,
-                color: colors.primary,
+                fontSize: 28,
+                fontWeight: FontWeight.w800,
+                color: colors.onPrimary,
               ),
             ),
-          ],
-        ),
+          ),
+          const SizedBox(height: 5),
+          Text(
+            'AIRO TV',
+            style: TextStyle(
+              fontSize: 8,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 1.4,
+              color: colors.primary,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -238,7 +235,7 @@ class _TvNavItemState extends State<_TvNavItem> {
         : colors.onSurfaceVariant.withValues(alpha: 0.85);
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 7),
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 7),
       child: TvFocusable(
         onSelect: widget.onSelect,
         onFocus: () => setState(() => _focused = true),
@@ -276,7 +273,9 @@ class _TvNavItemState extends State<_TvNavItem> {
               child: Column(
                 children: [
                   Icon(
-                    active ? widget.destination.selectedIcon : widget.destination.icon,
+                    active
+                        ? widget.destination.selectedIcon
+                        : widget.destination.icon,
                     size: 19,
                     color: iconColor,
                   ),
