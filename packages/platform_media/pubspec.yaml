@@ -21,6 +21,11 @@ dependencies:
   platform_streams:
     path: ../platform_streams
   video_player: ^2.13.0
+  # CV-030: mpv/media_kit engine. Pins are EXACT per open-source council
+  # mitigation (no ^) — bump requires re-review of license, binary size, and
+  # per-arch native-lib impact.
+  media_kit: 1.1.11
+  media_kit_libs_video: 1.0.5
 
 dev_dependencies:
   flutter_test:

@@ -54,6 +54,25 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
+### media_kit (mpv playback backend)
+
+- Package: `media_kit` (MIT) + `media_kit_libs_video` (MIT wrapper) bundling
+  `libmpv` per-platform native builds. Pulled into `packages/platform_media`
+  for the CV-030 mpv playback engine.
+- Repository: `https://github.com/media-kit/media-kit`
+- Shipping matrix (per
+  `docs/superpowers/specs/2026-07-17-device-aware-playback-engine-design.md`):
+  bundled on Android mobile, iOS, macOS, Windows, Linux. **Excluded** from the
+  `tv` Android flavor via `app/android/app/build.gradle.kts`
+  (`packaging.jniLibs.excludes`) — storage-starved TV boxes cannot absorb the
+  per-arch libmpv + FFmpeg binaries.
+- Underlying `libmpv` is LGPL-2.1+; used as a dynamic library via media_kit's
+  native binding, satisfying LGPL dynamic-linking terms. FFmpeg components
+  bundled with libmpv are LGPL-2.1+ builds (no GPL codec plugins).
+- Version pins in `packages/platform_media/pubspec.yaml` are EXACT (no `^`)
+  per open-source council review — a bump requires re-review of license,
+  binary size, and per-arch native-lib impact.
+
 ## Direct Release Dependency Surface
 
 The current v2 release-profile pubspecs include these direct dependency names.
