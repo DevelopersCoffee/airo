@@ -1,3 +1,8 @@
+---
+layout: default
+title: iPad Air 4 Playback Soak Test Report
+---
+
 # Airo TV Playback Soak Test Report (iPad Air 4)
 
 This report documents the memory and performance metrics gathered during a continuous playback soak test of the Airo TV app running on a physical **iPad Air 4**.
