@@ -1,6 +1,7 @@
 ---
 layout: default
 title: V2 Release Qualification Matrix
+permalink: /release/V2_RELEASE_QUALIFICATION.html
 ---
 
 # V2 Release Qualification Matrix
