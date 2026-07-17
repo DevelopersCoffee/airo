@@ -809,7 +809,19 @@ class _TvHeader extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Live channels', style: theme.textTheme.headlineMedium),
+              Text(
+                'Live channels',
+                // Hierarchy comes from weight only. The TV theme already
+                // upscales headlineMedium via fontSizeFactor: 1.2 (see
+                // _buildTvTheme in airo_tv_app.dart) for 10-foot viewing, so
+                // a hardcoded fontSize would bypass that upscale and, in
+                // compactTv, actually shrink the heading. Bold the theme's
+                // real resolved size instead — no size override, no
+                // compactTv line-height risk.
+                style: theme.textTheme.headlineMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
               SizedBox(height: compactTv ? 6 : 12),
               Text(
                 subtitle,
@@ -895,7 +907,15 @@ class _TvCategoryRail extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Browse', style: theme.textTheme.titleLarge),
+        Text(
+          'Browse',
+          // Weight-only for the same reason as "Live channels" — the TV
+          // theme's fontSizeFactor already sizes titleLarge for viewing
+          // distance; a hardcoded fontSize would bypass it.
+          style: theme.textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.w600,
+          ),
+        ),
         const SizedBox(height: 20),
         Expanded(
           child: GridView.builder(
