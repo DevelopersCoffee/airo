@@ -89,6 +89,9 @@ void main() async {
       overrides: [
         sharedPreferencesProvider.overrideWithValue(prefs),
         compactEpgRepositoryProvider.overrideWithValue(compactEpgRepository),
+        mutableXmltvCompactEpgRepositoryProvider.overrideWithValue(
+          mutableXmltvRepository,
+        ),
         realIptvCastControllerOverride(),
         ...FeatureRegistry.allProviderOverrides,
       ],

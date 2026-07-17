@@ -7,6 +7,7 @@ import 'package:core_data/core_data.dart';
 import 'package:dio/dio.dart';
 import 'package:feature_iptv/feature_iptv.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -195,6 +196,58 @@ https://cdn.example.com/live/news.m3u8
       expect(
         result.entryForChannel('news-1')?.current?.title,
         'Fallback Bulletin',
+      );
+    },
+  );
+
+  test(
+    'mutableXmltvCompactEpgRepositoryProvider resolves to the same instance '
+    "main() passes as createTvCompactEpgRepository's fallback",
+    () async {
+      // Mirrors the ProviderScope overrides main() wires up: a single
+      // MutableXmltvCompactEpgRepository must back both the guide's EPG
+      // fallback (compactEpgRepositoryProvider) and the manual-refresh path
+      // (mutableXmltvCompactEpgRepositoryProvider), or "Save & Refresh"
+      // silently writes into an orphan instance the guide never reads.
+      final supportDir = await Directory.systemTemp.createTemp(
+        'airo_tv_epg_shared_instance_',
+      );
+      addTearDown(() async {
+        if (await supportDir.exists()) {
+          await supportDir.delete(recursive: true);
+        }
+      });
+      final mutableXmltvRepository = MutableXmltvCompactEpgRepository();
+      final compactEpgRepository = createTvCompactEpgRepository(
+        supportDirectoryProvider: () async => supportDir,
+        fallback: mutableXmltvRepository,
+      );
+
+      final container = ProviderContainer(
+        overrides: [
+          compactEpgRepositoryProvider.overrideWithValue(
+            compactEpgRepository,
+          ),
+          mutableXmltvCompactEpgRepositoryProvider.overrideWithValue(
+            mutableXmltvRepository,
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      expect(
+        identical(
+          container.read(mutableXmltvCompactEpgRepositoryProvider),
+          mutableXmltvRepository,
+        ),
+        isTrue,
+      );
+      expect(
+        identical(
+          container.read(compactEpgRepositoryProvider),
+          compactEpgRepository,
+        ),
+        isTrue,
       );
     },
   );
