@@ -1,6 +1,7 @@
 ---
 layout: default
 title: iPad Air 4 Playback Soak Test Report
+permalink: /release/IPAD_AIR_4_SOAK_TEST.html
 ---
 
 # Airo TV Playback Soak Test Report (iPad Air 4)
