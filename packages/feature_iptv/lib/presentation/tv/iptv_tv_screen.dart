@@ -666,60 +666,64 @@ class _TvLiteReceiverShellHeader extends StatelessWidget {
       ),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(18, 14, 18, 14),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(Icons.tv, color: colorScheme.primary, size: 32),
-            const SizedBox(width: 14),
-            SizedBox(
-              width: 260,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    productProfile.displayName,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w800,
-                    ),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Icon(Icons.tv, color: colorScheme.primary, size: 32),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        productProfile.displayName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '${productProfile.supportLevel.tvLabel} profile',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '${productProfile.supportLevel.tvLabel} profile',
+                ),
+                const SizedBox(width: 18),
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 260),
+                  child: Text(
+                    unavailable.isEmpty
+                        ? 'All profile capabilities available'
+                        : 'Profile-limited: ${unavailable.join(', ')}',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodyMedium?.copyWith(
+                    textAlign: TextAlign.end,
+                    style: theme.textTheme.bodySmall?.copyWith(
                       color: colorScheme.onSurfaceVariant,
                     ),
                   ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 18),
-            Expanded(
-              child: Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: productProfile.navigation
-                    .map((entry) => _ProfileSectionChip(entry: entry))
-                    .toList(growable: false),
-              ),
-            ),
-            const SizedBox(width: 18),
-            SizedBox(
-              width: 300,
-              child: Text(
-                unavailable.isEmpty
-                    ? 'All profile capabilities available'
-                    : 'Profile-limited: ${unavailable.join(', ')}',
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.end,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
                 ),
-              ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Divider(height: 1, color: colorScheme.outlineVariant),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: productProfile.navigation
+                  .map((entry) => _ProfileSectionChip(entry: entry))
+                  .toList(growable: false),
             ),
           ],
         ),
