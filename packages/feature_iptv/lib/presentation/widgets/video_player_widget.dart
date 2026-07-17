@@ -41,7 +41,6 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
   bool _isCinemaMode = false;
   Timer? _hideControlsTimer;
   static const _controlsHideDelay = Duration(seconds: 4);
-  static const _volumeStep = 0.1;
   bool _wakelockEnabled = false;
   final _wakelockDebouncer = WakelockDebouncer();
 
@@ -587,30 +586,16 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      // Mute button
-                      _PlayerControlButton(
-                        icon: state.isMuted
-                            ? Icons.volume_off
-                            : Icons.volume_up,
-                        onPressed: () => service.toggleMute(),
-                      ),
-                      // Volume down
-                      _PlayerControlButton(
-                        key: const ValueKey('iptv-player-volume-down-button'),
-                        icon: Icons.remove_circle_outline,
-                        tooltip: 'Volume down',
-                        onPressed: () => service.setVolume(
-                          (state.volume - _volumeStep).clamp(0.0, 1.0),
-                        ),
-                      ),
-                      // Volume up
-                      _PlayerControlButton(
-                        key: const ValueKey('iptv-player-volume-up-button'),
-                        icon: Icons.add_circle_outline,
-                        tooltip: 'Volume up',
-                        onPressed: () => service.setVolume(
-                          (state.volume + _volumeStep).clamp(0.0, 1.0),
-                        ),
+                      // Mute button + YouTube-style volume slider
+                      _VolumeControl(
+                        key: const ValueKey('iptv-player-volume-control'),
+                        volume: state.volume,
+                        isMuted: state.isMuted,
+                        onToggleMute: () => service.toggleMute(),
+                        onVolumeChanged: (value) {
+                          if (state.isMuted) service.toggleMute();
+                          service.setVolume(value);
+                        },
                       ),
                       const Spacer(),
                       // Aspect ratio toggle
@@ -801,6 +786,87 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
       case AiroPlaybackViewFit.stretch:
         return BoxFit.fill;
     }
+  }
+}
+
+/// YouTube-style volume control: a mute icon that reveals a horizontal
+/// slider on hover/focus instead of taking up permanent control-bar width.
+class _VolumeControl extends StatefulWidget {
+  const _VolumeControl({
+    super.key,
+    required this.volume,
+    required this.isMuted,
+    required this.onToggleMute,
+    required this.onVolumeChanged,
+  });
+
+  final double volume;
+  final bool isMuted;
+  final VoidCallback onToggleMute;
+  final ValueChanged<double> onVolumeChanged;
+
+  @override
+  State<_VolumeControl> createState() => _VolumeControlState();
+}
+
+class _VolumeControlState extends State<_VolumeControl> {
+  static const _sliderWidth = 72.0;
+
+  bool _expanded = false;
+
+  void _setExpanded(bool expanded) {
+    if (_expanded == expanded) return;
+    setState(() => _expanded = expanded);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final effectiveVolume = widget.isMuted ? 0.0 : widget.volume;
+    return MouseRegion(
+      onEnter: (_) => _setExpanded(true),
+      onExit: (_) => _setExpanded(false),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _PlayerControlButton(
+            icon: effectiveVolume == 0
+                ? Icons.volume_off
+                : effectiveVolume < 0.5
+                ? Icons.volume_down
+                : Icons.volume_up,
+            tooltip: widget.isMuted ? 'Unmute' : 'Mute',
+            onPressed: widget.onToggleMute,
+          ),
+          ClipRect(
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeOut,
+              width: _expanded ? _sliderWidth : 0,
+              child: SliderTheme(
+                data: SliderTheme.of(context).copyWith(
+                  trackHeight: 3,
+                  activeTrackColor: Colors.white,
+                  inactiveTrackColor: Colors.white24,
+                  thumbColor: Colors.white,
+                  overlayColor: Colors.white24,
+                  thumbShape: const RoundSliderThumbShape(
+                    enabledThumbRadius: 6,
+                  ),
+                  overlayShape: const RoundSliderOverlayShape(
+                    overlayRadius: 12,
+                  ),
+                ),
+                child: Slider(
+                  key: const ValueKey('iptv-player-volume-slider'),
+                  value: effectiveVolume,
+                  onChanged: widget.onVolumeChanged,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

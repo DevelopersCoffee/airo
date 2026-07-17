@@ -1,5 +1,6 @@
 import 'package:feature_iptv/feature_iptv.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
@@ -270,9 +271,7 @@ void main() {
     await tester.pump();
   });
 
-  testWidgets('volume up/down buttons are present and tappable', (
-    tester,
-  ) async {
+  testWidgets('volume slider is present and adjustable', (tester) async {
     await pumpScreen(
       tester,
       streamingState: StreamingState(
@@ -284,22 +283,24 @@ void main() {
       settle: false,
     );
 
-    expect(
-      find.byKey(const ValueKey('iptv-player-volume-down-button')),
-      findsOneWidget,
+    final volumeControl = find.byKey(
+      const ValueKey('iptv-player-volume-control'),
     );
-    expect(
-      find.byKey(const ValueKey('iptv-player-volume-up-button')),
-      findsOneWidget,
-    );
+    expect(volumeControl, findsOneWidget);
 
-    await tester.tap(
-      find.byKey(const ValueKey('iptv-player-volume-up-button')),
-    );
-    await tester.pump();
-    await tester.tap(
-      find.byKey(const ValueKey('iptv-player-volume-down-button')),
-    );
+    // Hover to expand the collapsed slider before interacting with it.
+    final gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    addTearDown(gesture.removePointer);
+    await gesture.addPointer(location: tester.getCenter(volumeControl));
+    await tester.pump(const Duration(milliseconds: 250));
+
+    final slider = find.byKey(const ValueKey('iptv-player-volume-slider'));
+    expect(slider, findsOneWidget);
+
+    // Invoke the callback directly rather than a pixel-offset drag: the
+    // slider sits inside a hovered, animated, nested overlay stack where
+    // real hit-testing is flaky, but the wiring itself is what matters here.
+    tester.widget<Slider>(slider).onChanged!(0.5);
     await tester.pump();
 
     await tester.pumpWidget(const SizedBox.shrink());
