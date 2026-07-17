@@ -70,6 +70,7 @@ class MpvAiroPlaybackEngine implements AiroPlaybackEngine {
         request: request,
         position: request.startPosition,
         duration: result.duration,
+        tracks: externalSubtitleTracksFor(request),
         diagnostics: AiroPlaybackDiagnostics(
           backendId: backendKind.stableId,
           hardwareAccelerated: result.hardwareAccelerated,
@@ -144,11 +145,24 @@ class MpvAiroPlaybackEngine implements AiroPlaybackEngine {
     required AiroPlaybackTrackKind kind,
     required String trackId,
   }) async {
-    return _fail(
-      AiroPlaybackErrorCode.trackUnavailable,
-      'selectTrack',
-      _state.request,
+    final matches = _state.tracks.where(
+      (t) => t.kind == kind && t.id == trackId,
     );
+    if (matches.isEmpty) {
+      return _fail(
+        AiroPlaybackErrorCode.trackUnavailable,
+        'selectTrack',
+        _state.request,
+      );
+    }
+    // media_kit exposes setSubtitleTrack for external URIs, but wiring the
+    // actual toggle happens in the app-layer subtitle renderer. This engine
+    // records the selection so the UI can observe it via state.
+    final nextSelected = Map<AiroPlaybackTrackKind, String>.from(
+      _state.selectedTrackIds,
+    )..[kind] = trackId;
+    _emit(_state.copyWith(selectedTrackIds: nextSelected));
+    return _state;
   }
 
   @override
