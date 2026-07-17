@@ -1,13 +1,25 @@
 import 'package:airo_app/features/settings/presentation/tv/tv_settings_screen.dart';
+import 'package:core_data/core_data.dart';
+import 'package:feature_iptv/feature_iptv.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+  });
+
   Future<void> pumpScreen(WidgetTester tester) async {
+    final prefs = await SharedPreferences.getInstance();
     await tester.pumpWidget(
-      const ProviderScope(
-        child: MaterialApp(home: TvSettingsScreen()),
+      ProviderScope(
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          secureStoreProvider.overrideWithValue(InMemorySecureStore()),
+        ],
+        child: const MaterialApp(home: TvSettingsScreen()),
       ),
     );
     await tester.pump();

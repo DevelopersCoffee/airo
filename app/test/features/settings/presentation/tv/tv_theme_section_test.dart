@@ -28,7 +28,11 @@ void main() {
   testWidgets('selecting a theme persists it via appThemeProvider', (
     tester,
   ) async {
-    final container = ProviderContainer();
+    final prefs = await SharedPreferences.getInstance();
+    final notifier = AppThemeNotifier.withPreferences(prefs);
+    final container = ProviderContainer(
+      overrides: [appThemeProvider.overrideWith((ref) => notifier)],
+    );
     addTearDown(container.dispose);
 
     await tester.pumpWidget(
@@ -47,5 +51,6 @@ void main() {
     await tester.pump();
 
     expect(container.read(appThemeProvider), targetId);
+    expect(prefs.getString(AppThemeNotifier.storageKey), targetId.storageValue);
   });
 }
