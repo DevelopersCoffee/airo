@@ -53,7 +53,7 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.textContaining('Current source:'), findsOneWidget);
+    expect(find.text('Current source: https://example.com/guide.xml'), findsOneWidget);
   });
 
   testWidgets('shows the last error when refresh failed', (tester) async {

@@ -36,10 +36,13 @@ class _XmltvSourceSheetState extends ConsumerState<XmltvSourceSheet> {
 
     try {
       await ref.read(xmltvSourceRefreshServiceProvider).refresh(url);
+      if (!mounted) return;
       setState(() => _refreshFeedback = 'Guide refreshed.');
     } catch (e) {
+      if (!mounted) return;
       setState(() => _refreshFeedback = 'Refresh failed: $e');
     } finally {
+      if (!mounted) return;
       setState(() => _isRefreshing = false);
       ref.invalidate(xmltvSourceConfigProvider);
     }
@@ -47,6 +50,7 @@ class _XmltvSourceSheetState extends ConsumerState<XmltvSourceSheet> {
 
   Future<void> _removeSource() async {
     await ref.read(xmltvSourceStoreProvider).clear();
+    if (!mounted) return;
     ref.invalidate(xmltvSourceConfigProvider);
   }
 
