@@ -36,7 +36,7 @@ assignees: ''
 **Owning agent:** Framework Agent.
 **Reviewing agents:** Security and Privacy Agent, Media Agent, QA Automation Agent, Release and DevEx Agent.
 **Impacted modules/files:** `packages/core_pairing`, `packages/core_auth`, `packages/core_entitlements`, `packages/core_cloud_orchestration`, `packages/feature_iptv`.
-**Base branch/worktree:** Must be reconfirmed from latest `origin/v2` when reopened.
+**Base branch/worktree:** Must be reconfirmed from latest `origin/main` when reopened.
 **Open questions:** Pairing transport, token lifetime, transfer payload fields, credential exclusion, entitlement policy, canonical channel match strategy for provider replacement.
 **Decision:** Blocked until identity and entitlement contracts are approved.
 

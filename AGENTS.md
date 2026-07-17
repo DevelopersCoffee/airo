@@ -76,14 +76,14 @@ local branch or an older worktree snapshot.
 
 Release-line bases:
 
-- v1 monolith / full APK / 1.x work starts from `origin/main`.
-- v2 modular APK / 2.x work starts from `origin/v2`.
-- If the issue does not explicitly say v2, use `origin/main`.
+- Active development and current modular/release-profile work starts from `origin/main`.
+- The legacy pre-swap monolith line is preserved at `origin/v1_bkp` for reference or recovery only.
+- If an issue explicitly targets an older v1 artifact or historical branch state, name that base branch in the issue instead of assuming it.
 
 Minimum requirement:
 
-1. `git fetch origin main v2`
-2. choose `origin/main` for v1 work or `origin/v2` for v2 work
+1. `git fetch origin main v1_bkp`
+2. choose `origin/main` for active work, or `origin/v1_bkp` only when the issue explicitly requires the legacy line
 3. create the branch or worktree from that chosen remote base
 4. verify the task branch/worktree is based on the fetched remote base
 
@@ -106,7 +106,7 @@ Minimum requirement:
 2. Add `[skip ci]` to iterative issue commits and merge commits unless the user
    explicitly requests a CI run or the change is a release verification step.
 3. Prefer pushing issue branches and the `codex/next-v2.0.0.0` integration
-   branch for v2 development. Do not push directly to `v2` just to validate a
+   branch for current mainline development. Do not push directly to `main` just to validate a
    work-in-progress change, because release-line pushes can trigger additional
    workflows such as Pages builds.
 4. Avoid empty commits, no-op pushes, repeated metadata-only pushes, or branch
