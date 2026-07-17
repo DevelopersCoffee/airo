@@ -96,15 +96,15 @@ void main() {
     await tester.tap(find.text('Xtream Codes').last);
     await tester.pumpAndSettle();
 
-    await tester.enterText(find.widgetWithText(TextField, 'Label'), 'My Xtream');
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Label'),
+      'My Xtream',
+    );
     await tester.enterText(
       find.widgetWithText(TextField, 'Server URL'),
       'https://xtream.example.com',
     );
-    await tester.enterText(
-      find.widgetWithText(TextField, 'Username'),
-      'user1',
-    );
+    await tester.enterText(find.widgetWithText(TextField, 'Username'), 'user1');
     await tester.enterText(
       find.widgetWithText(TextField, 'Password'),
       'secret',
@@ -115,7 +115,9 @@ void main() {
 
     expect(find.text('My Xtream'), findsOneWidget);
 
-    final sources = await container.read(configuredContentSourcesProvider.future);
+    final sources = await container.read(
+      configuredContentSourcesProvider.future,
+    );
     expect(sources.single.kind, ContentSourceKind.xtream);
     final credential = await container
         .read(contentSourceCredentialStoreProvider)
@@ -124,7 +126,9 @@ void main() {
     expect(credential?.password, 'secret');
   });
 
-  testWidgets('adding a Stalker source persists the MAC address', (tester) async {
+  testWidgets('adding a Stalker source persists the MAC address', (
+    tester,
+  ) async {
     final container = await buildContainer();
     addTearDown(container.dispose);
 
@@ -159,7 +163,9 @@ void main() {
     await tester.pump();
     await tester.pump();
 
-    final sources = await container.read(configuredContentSourcesProvider.future);
+    final sources = await container.read(
+      configuredContentSourcesProvider.future,
+    );
     expect(sources.single.kind, ContentSourceKind.stalker);
     expect(sources.single.macAddress, 'AA:BB:CC:DD:EE:FF');
   });
