@@ -30,5 +30,9 @@ abstract class AiroPlaybackEngine {
 
   Future<AiroPlaybackDiagnostics> diagnostics();
 
+  Future<AiroPlaybackState> enterPictureInPicture();
+
+  Future<AiroPlaybackState> exitPictureInPicture();
+
   Future<void> dispose();
 }

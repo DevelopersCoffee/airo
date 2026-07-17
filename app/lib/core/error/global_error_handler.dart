@@ -58,6 +58,16 @@ class GlobalErrorHandler {
 
     // In debug mode, use the default handler to show the red error screen
     if (kDebugMode) {
+      // Flutter's console throttles repeat errors within the same frame to
+      // a one-line summary, hiding the stack trace for every exception
+      // after the first. Dump it in full here so it's actually visible in
+      // `flutter run` console output during local debugging.
+      debugPrint(
+        '=== FULL ERROR DUMP ===\n'
+        '${details.exceptionAsString()}\n'
+        '${details.stack}\n'
+        '=== END FULL ERROR DUMP ===',
+      );
       FlutterError.presentError(details);
       return;
     }

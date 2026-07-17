@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import "package:platform_favorites/platform_favorites.dart";
 import "package:platform_history/platform_history.dart";
 import "package:platform_channels/platform_channels.dart";
 import "package:platform_epg/platform_epg.dart";
@@ -429,4 +430,55 @@ final addToRecentlyWatchedProvider = FutureProvider.family<void, IPTVChannel>((
   final storage = ref.watch(recentlyWatchedStorageProvider);
   await storage.addToRecent(channel);
   ref.invalidate(recentlyWatchedChannelsProvider);
+});
+
+// =============================================================================
+// Favorite Channels Providers
+// =============================================================================
+
+/// Favorite channels storage provider
+final favoriteChannelsStorageProvider = Provider<FavoriteChannelsStorage>((
+  ref,
+) {
+  final prefs = ref.watch(sharedPreferencesProvider);
+  return FavoriteChannelsStorage(prefs);
+});
+
+/// The set of favorited channel ids.
+final favoriteChannelIdsProvider = FutureProvider<Set<String>>((ref) async {
+  final storage = ref.watch(favoriteChannelsStorageProvider);
+  return storage.getFavoriteChannelIds();
+});
+
+/// Whether a specific channel is favorited.
+final isChannelFavoriteProvider = Provider.family<bool, String>((
+  ref,
+  channelId,
+) {
+  final favoriteIds = ref.watch(favoriteChannelIdsProvider);
+  return favoriteIds.value?.contains(channelId) ?? false;
+});
+
+/// The list of favorited channels, most-recently-added first.
+final favoriteChannelsProvider = FutureProvider<List<IPTVChannel>>((
+  ref,
+) async {
+  final favoriteIds = await ref.watch(favoriteChannelIdsProvider.future);
+  if (favoriteIds.isEmpty) return const [];
+
+  final allChannels = await ref.watch(iptvChannelsProvider.future);
+  return allChannels
+      .where((channel) => favoriteIds.contains(channel.id))
+      .toList(growable: false);
+});
+
+/// Toggle a channel's favorite state. Returns the new state.
+final toggleChannelFavoriteProvider = FutureProvider.family<bool, String>((
+  ref,
+  channelId,
+) async {
+  final storage = ref.watch(favoriteChannelsStorageProvider);
+  final isNowFavorite = await storage.toggleFavorite(channelId);
+  ref.invalidate(favoriteChannelIdsProvider);
+  return isNowFavorite;
 });

@@ -93,4 +93,18 @@ void main() {
     expect(find.text('Add your playlist'), findsOneWidget);
     expect(find.text('Welcome to Airo'), findsNothing);
   });
+
+  testWidgets('favorites route renders the real favorites screen', (
+    tester,
+  ) async {
+    await pumpTvRouter(
+      tester,
+      initialLocation: TvRouteNames.favorites,
+      surfaceSize: const Size(1280, 720),
+    );
+
+    expect(find.text('Favorites'), findsOneWidget);
+    expect(find.text('Coming soon'), findsNothing);
+    expect(find.text('No favorite channels yet'), findsOneWidget);
+  });
 }

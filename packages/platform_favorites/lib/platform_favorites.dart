@@ -1,5 +1,4 @@
-/// A Calculator.
-class Calculator {
-  /// Returns [value] plus 1.
-  int addOne(int value) => value + 1;
-}
+/// Favorite channels and hidden categories storage for Airo.
+library;
+
+export 'src/favorite_channels_storage.dart';

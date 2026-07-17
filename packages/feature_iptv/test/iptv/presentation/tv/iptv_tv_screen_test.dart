@@ -270,6 +270,42 @@ void main() {
     await tester.pump();
   });
 
+  testWidgets('volume up/down buttons are present and tappable', (
+    tester,
+  ) async {
+    await pumpScreen(
+      tester,
+      streamingState: StreamingState(
+        currentChannel: channels[2],
+        playbackState: PlaybackState.playing,
+        isLiveStream: true,
+      ),
+      surfaceSize: const Size(1440, 900),
+      settle: false,
+    );
+
+    expect(
+      find.byKey(const ValueKey('iptv-player-volume-down-button')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('iptv-player-volume-up-button')),
+      findsOneWidget,
+    );
+
+    await tester.tap(
+      find.byKey(const ValueKey('iptv-player-volume-up-button')),
+    );
+    await tester.pump();
+    await tester.tap(
+      find.byKey(const ValueKey('iptv-player-volume-down-button')),
+    );
+    await tester.pump();
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump();
+  });
+
   testWidgets('native fullscreen exit restores TV screen without blanking', (
     tester,
   ) async {

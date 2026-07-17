@@ -4,7 +4,8 @@ reviewers:
   - Chief Architect
   - Platform Architect
   - Chief QA Officer
-allowed_dependencies: []
+allowed_dependencies:
+  - core_data
 forbidden_dependencies:
   - app
 quality_gates: {}
