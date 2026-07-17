@@ -16,6 +16,7 @@ library;
 import 'dart:io';
 import 'dart:isolate';
 
+import 'package:core_data/core_data.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:dio/dio.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -71,7 +72,10 @@ void main() async {
   // Initialize SharedPreferences for IPTV caching
   final prefs = await SharedPreferences.getInstance();
   final shouldWarmDebugPlaylist = await seedTvDebugDefaultPlaylist(prefs);
-  final compactEpgRepository = createTvCompactEpgRepository();
+  final mutableXmltvRepository = MutableXmltvCompactEpgRepository();
+  final compactEpgRepository = createTvCompactEpgRepository(
+    fallback: mutableXmltvRepository,
+  );
 
   // Initialize feature registry with TV-specific features
   FeatureRegistry.register(IptvFeatureModule());
@@ -98,6 +102,7 @@ void main() async {
     scheduleTvDebugDefaultPlaylistWarmup(prefs);
   }
   scheduleTvDebugDefaultEpgWarmup(prefs, repository: compactEpgRepository);
+  scheduleTvXmltvSourceRefresh(prefs, repository: mutableXmltvRepository);
 }
 
 @visibleForTesting
@@ -262,6 +267,7 @@ Future<void> warmTvDebugDefaultPlaylistCache(
 @visibleForTesting
 SnapshotBackedCompactEpgRepository createTvCompactEpgRepository({
   Future<Directory> Function()? supportDirectoryProvider,
+  CompactEpgRepository? fallback,
 }) {
   final directoryProvider =
       supportDirectoryProvider ?? getApplicationSupportDirectory;
@@ -272,6 +278,7 @@ SnapshotBackedCompactEpgRepository createTvCompactEpgRepository({
         return File('${supportDir.path}/epg/compact_epg_snapshot.json');
       },
     ),
+    fallback: fallback ?? const EmptyCompactEpgRepository(),
   );
 }
 
@@ -377,6 +384,55 @@ Future<Duration?> warmTvDebugDefaultEpgCache(
       await guideFile.delete();
     }
   }
+}
+
+/// Refreshes whatever XMLTV source the user has previously configured (a
+/// no-op if none has been), updating [repository] in place — the
+/// auto-refresh-on-launch counterpart to the guide screen's manual
+/// "Save & Refresh" action.
+@visibleForTesting
+Future<void> refreshTvConfiguredXmltvSource(
+  SharedPreferences prefs, {
+  required MutableXmltvCompactEpgRepository repository,
+  Dio? dio,
+  XmltvSourceStore? sourceStore,
+  Future<Directory> Function()? downloadDirectoryProvider,
+}) async {
+  final refreshService = XmltvSourceRefreshService(
+    dio: dio ?? Dio(),
+    sourceStore: sourceStore ?? XmltvSourceStore(PreferencesStore(prefs)),
+    repository: repository,
+    downloadDirectoryProvider:
+        downloadDirectoryProvider ?? getTemporaryDirectory,
+  );
+  await refreshService.refreshConfiguredSource();
+}
+
+@visibleForTesting
+void scheduleTvXmltvSourceRefresh(
+  SharedPreferences prefs, {
+  required MutableXmltvCompactEpgRepository repository,
+  String debugName = 'xmltv_configured_source_refresh',
+  Dio? dio,
+  XmltvSourceStore? sourceStore,
+  Future<Directory> Function()? downloadDirectoryProvider,
+  WidgetsBinding? binding,
+  void Function(DeferredStartupFrameCallback callback)? addPostFrameCallback,
+  void Function(String message)? log,
+}) {
+  scheduleDeferredStartupTask(
+    debugName: debugName,
+    binding: binding,
+    addPostFrameCallback: addPostFrameCallback,
+    log: log,
+    task: () => refreshTvConfiguredXmltvSource(
+      prefs,
+      repository: repository,
+      dio: dio,
+      sourceStore: sourceStore,
+      downloadDirectoryProvider: downloadDirectoryProvider,
+    ),
+  );
 }
 
 Future<CompactEpgSlice> _buildTvCompactEpgSnapshot({

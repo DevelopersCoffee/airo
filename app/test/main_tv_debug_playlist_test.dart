@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:airo_app/core/platform/device_form_factor.dart';
 import 'package:airo_app/main_tv.dart';
+import 'package:core_data/core_data.dart';
 import 'package:dio/dio.dart';
 import 'package:feature_iptv/feature_iptv.dart';
 import 'package:flutter/services.dart';
@@ -168,6 +169,36 @@ https://cdn.example.com/live/news.m3u8
     },
   );
 
+  test(
+    'createTvCompactEpgRepository delegates to the provided fallback when '
+    'no snapshot is cached',
+    () async {
+      final supportDir = await Directory.systemTemp.createTemp(
+        'airo_tv_epg_fallback_',
+      );
+      addTearDown(() async {
+        if (await supportDir.exists()) {
+          await supportDir.delete(recursive: true);
+        }
+      });
+      final repository = createTvCompactEpgRepository(
+        supportDirectoryProvider: () async => supportDir,
+        fallback: _FakeFallbackCompactEpgRepository(),
+      );
+      final now = DateTime.utc(2026, 7, 15, 9, 30);
+
+      final result = await repository.loadCurrentNext(
+        channelIds: const ['news-1'],
+        now: now,
+      );
+
+      expect(
+        result.entryForChannel('news-1')?.current?.title,
+        'Fallback Bulletin',
+      );
+    },
+  );
+
   test('warms compact EPG snapshot from XMLTV using channel aliases', () async {
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
@@ -316,6 +347,149 @@ https://cdn.example.com/live/news.m3u8
     }
   });
 
+  test(
+    'refreshTvConfiguredXmltvSource is a no-op when nothing is configured',
+    () async {
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      final repository = MutableXmltvCompactEpgRepository();
+
+      await refreshTvConfiguredXmltvSource(prefs, repository: repository);
+
+      final now = DateTime.utc(2026, 7, 17, 12);
+      final slice = await repository.loadCurrentNext(
+        channelIds: const ['chan-1'],
+        now: now,
+      );
+      expect(slice.availabilityAt(now), CompactEpgAvailability.unavailable);
+    },
+  );
+
+  test(
+    'refreshTvConfiguredXmltvSource refreshes an already-configured XMLTV '
+    'source',
+    () async {
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      final repository = MutableXmltvCompactEpgRepository();
+      final sourceStore = XmltvSourceStore(PreferencesStore(prefs));
+      final server = await _xmltvServer('''
+<tv>
+  <channel id="chan-1"><display-name>Channel 1</display-name></channel>
+  <programme channel="chan-1" start="20260715090000 +0000" stop="20260715100000 +0000">
+    <title>Morning Bulletin</title>
+  </programme>
+</tv>
+''');
+      final downloadDir = await Directory.systemTemp.createTemp(
+        'airo-tv-xmltv-source-refresh-',
+      );
+      addTearDown(() async {
+        if (await downloadDir.exists()) {
+          await downloadDir.delete(recursive: true);
+        }
+      });
+      await sourceStore.save(
+        XmltvSourceConfig(url: _serverUrl(server, '/guide.xml')),
+      );
+
+      try {
+        await refreshTvConfiguredXmltvSource(
+          prefs,
+          repository: repository,
+          downloadDirectoryProvider: () async => downloadDir,
+        );
+
+        final now = DateTime.utc(2026, 7, 15, 9, 30);
+        final slice = await repository.loadCurrentNext(
+          channelIds: const ['chan-1'],
+          now: now,
+        );
+        expect(slice.entryForChannel('chan-1')?.current?.title, 'Morning Bulletin');
+
+        final config = await sourceStore.load();
+        expect(config?.lastRefreshedAt, isNotNull);
+      } finally {
+        await server.close(force: true);
+      }
+    },
+  );
+
+  test('schedules configured XMLTV source refresh after frame', () async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    final repository = MutableXmltvCompactEpgRepository();
+    final sourceStore = XmltvSourceStore(PreferencesStore(prefs));
+    final server = await _xmltvServer('''
+<tv>
+  <channel id="chan-1"><display-name>Channel 1</display-name></channel>
+  <programme channel="chan-1" start="20260715090000 +0000" stop="20260715100000 +0000">
+    <title>Morning Bulletin</title>
+  </programme>
+</tv>
+''');
+    final downloadDir = await Directory.systemTemp.createTemp(
+      'airo-tv-xmltv-source-deferred-',
+    );
+    addTearDown(() async {
+      if (await downloadDir.exists()) {
+        await downloadDir.delete(recursive: true);
+      }
+    });
+    await sourceStore.save(
+      XmltvSourceConfig(url: _serverUrl(server, '/guide.xml')),
+    );
+    final logs = <String>[];
+    void Function(Duration timestamp)? frameCallback;
+
+    scheduleTvXmltvSourceRefresh(
+      prefs,
+      repository: repository,
+      downloadDirectoryProvider: () async => downloadDir,
+      addPostFrameCallback: (callback) {
+        frameCallback = callback;
+      },
+      log: logs.add,
+    );
+
+    expect(
+      logs,
+      isNot(
+        contains(
+          '✅ Deferred startup task completed: xmltv_configured_source_refresh',
+        ),
+      ),
+    );
+
+    try {
+      frameCallback!(Duration.zero);
+      for (var attempt = 0; attempt < 20; attempt++) {
+        if (logs.contains(
+          '✅ Deferred startup task completed: xmltv_configured_source_refresh',
+        )) {
+          break;
+        }
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+      }
+
+      expect(
+        logs,
+        contains(
+          '✅ Deferred startup task completed: xmltv_configured_source_refresh',
+        ),
+      );
+      expect(
+        (await repository.loadCurrentNext(
+          channelIds: const ['chan-1'],
+          now: DateTime.utc(2026, 7, 15, 9, 30),
+        )).entryForChannel('chan-1')?.current?.title,
+        'Morning Bulletin',
+      );
+    } finally {
+      await server.close(force: true);
+    }
+  });
+
   test('schedules DEBUG_IPTV_PLAYLIST_URL warmup after frame', () async {
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
@@ -443,6 +617,37 @@ https://cdn.example.com/live/news.m3u8
     expect(systemUiMode, SystemUiMode.immersiveSticky);
     expect(systemUiOverlays, isEmpty);
   });
+}
+
+class _FakeFallbackCompactEpgRepository implements CompactEpgRepository {
+  @override
+  Future<CompactEpgSlice> loadCurrentNext({
+    required Iterable<String> channelIds,
+    required DateTime now,
+  }) async {
+    return CompactEpgSlice(
+      entries: [
+        CompactEpgEntry(
+          channelId: 'news-1',
+          channelName: 'Fallback News',
+          current: CompactEpgProgram(
+            programId: 'fallback-current',
+            title: 'Fallback Bulletin',
+            startsAt: now.subtract(const Duration(minutes: 5)),
+            endsAt: now.add(const Duration(minutes: 25)),
+          ),
+        ),
+      ],
+      generatedAt: now,
+      expiresAt: now.add(const Duration(minutes: 30)),
+      source: CompactEpgSliceSource.localCache,
+    );
+  }
+
+  @override
+  Future<CompactEpgWindow> loadWindow(GuideWindowQuery query) {
+    throw UnimplementedError();
+  }
 }
 
 class _RecordingM3UParserService extends M3UParserService {
