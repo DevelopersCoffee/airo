@@ -36,25 +36,16 @@ class XmltvSourceRefreshService {
         uri.host.isEmpty ||
         (uri.scheme != 'https' && uri.scheme != 'http')) {
       const message = 'Enter a valid HTTP(S) XMLTV URL.';
-      // The store's recordRefreshError() is an update-only no-op when no
-      // config has been saved yet, so an invalid first-ever URL needs to be
-      // persisted directly (with the error attached) rather than relying on
-      // recordRefreshError to create it.
-      final existing = await sourceStore.load();
-      if (existing == null) {
-        await sourceStore.save(
-          XmltvSourceConfig(url: trimmedUrl, lastError: message),
-        );
-      } else {
-        await sourceStore.recordRefreshError(message);
-      }
+      await _recordFailureKeepingExistingUrl(trimmedUrl, message);
       throw ArgumentError.value(url, 'url', message);
     }
 
-    final existing = await sourceStore.load();
-    if (existing == null || existing.url != trimmedUrl) {
-      await sourceStore.save(XmltvSourceConfig(url: trimmedUrl));
-    }
+    // Note: the new URL is intentionally NOT persisted here. Persisting it
+    // before the download succeeds would overwrite a previously-working
+    // source's config (wiping its lastRefreshedAt) with an unconfirmed one —
+    // if the download below then fails, the working URL would be lost with
+    // no way to recover it. The URL only becomes the saved source on success
+    // (below) or, in the failure path, if nothing was configured before.
 
     final downloadDirectory = await downloadDirectoryProvider();
     await downloadDirectory.create(recursive: true);
@@ -84,14 +75,37 @@ class XmltvSourceRefreshService {
       );
 
       repository.updateSource(parsed);
-      await sourceStore.recordRefreshSuccess(DateTime.now().toUtc());
+      // Only now, after a successful download and parse, does the new URL
+      // become the saved source.
+      await sourceStore.save(
+        XmltvSourceConfig(url: trimmedUrl, lastRefreshedAt: DateTime.now().toUtc()),
+      );
     } catch (e) {
-      await sourceStore.recordRefreshError(e.toString());
+      await _recordFailureKeepingExistingUrl(trimmedUrl, e.toString());
       rethrow;
     } finally {
       if (await guideFile.exists()) {
         await guideFile.delete();
       }
+    }
+  }
+
+  /// Records a failed refresh attempt without discarding a previously
+  /// working source. If a source was already configured, its URL and
+  /// [XmltvSourceConfig.lastRefreshedAt] are preserved and only [error] is
+  /// attached. If nothing was configured yet, [attemptedUrl] is saved
+  /// alongside [error] so the UI can show what was tried.
+  Future<void> _recordFailureKeepingExistingUrl(
+    String attemptedUrl,
+    String error,
+  ) async {
+    final existing = await sourceStore.load();
+    if (existing != null) {
+      await sourceStore.recordRefreshError(error);
+    } else {
+      await sourceStore.save(
+        XmltvSourceConfig(url: attemptedUrl, lastError: error),
+      );
     }
   }
 

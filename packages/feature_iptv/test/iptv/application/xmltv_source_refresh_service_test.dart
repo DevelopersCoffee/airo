@@ -148,6 +148,37 @@ void main() {
       expect(config?.lastError, isNotNull);
     },
   );
+
+  test(
+    'refresh with a failing download preserves a previously-working source',
+    () async {
+      // Establish a working, previously-refreshed source.
+      await service.refresh('https://example.com/guide.xml');
+      final workingConfig = await sourceStore.load();
+      expect(workingConfig?.url, 'https://example.com/guide.xml');
+      expect(workingConfig?.lastRefreshedAt, isNotNull);
+
+      // Now attempt to refresh with a different, unreachable URL.
+      final failingDio = Dio();
+      failingDio.httpClientAdapter = _FailingAdapter();
+      final failingService = XmltvSourceRefreshService(
+        dio: failingDio,
+        sourceStore: sourceStore,
+        repository: repository,
+        downloadDirectoryProvider: () async => tempDir,
+      );
+
+      await expectLater(
+        () => failingService.refresh('https://wrong-domain.example/guide.xml'),
+        throwsA(anything),
+      );
+
+      final config = await sourceStore.load();
+      expect(config?.url, 'https://example.com/guide.xml');
+      expect(config?.lastRefreshedAt, workingConfig?.lastRefreshedAt);
+      expect(config?.lastError, isNotNull);
+    },
+  );
 }
 
 class _FakeXmltvAdapter implements HttpClientAdapter {
