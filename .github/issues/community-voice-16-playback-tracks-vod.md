@@ -68,7 +68,7 @@ Expose existing playback-engine capabilities for audio tracks, subtitle tracks, 
 **Owning agent:** Media Agent.
 **Reviewing agents:** Mobile UI Agent, Framework Agent, Security and Privacy Agent, QA Automation Agent, Release and DevEx Agent.
 **Impacted modules/files:** `packages/platform_player`, `packages/platform_streams`, `packages/feature_iptv`.
-**Base branch/worktree:** confirmed from latest `origin/v2`: yes.
+**Base branch/worktree:** confirmed from latest `origin/main`: yes.
 **Open questions:** Which current playback adapter can report track metadata and seekability on each platform.
 **Decision:** Ready for bounded controls and fake-engine tests.
 

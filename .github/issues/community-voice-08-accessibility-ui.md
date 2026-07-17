@@ -63,7 +63,7 @@ IPTV users complain about small text, awkward remote navigation, and captions th
 **Owning agent:** Mobile UI Agent.
 **Reviewing agents:** Media Agent, Framework Agent, QA Automation Agent, Security and Privacy Agent.
 **Impacted modules/files:** `packages/core_ui`, `packages/feature_iptv`, `packages/platform_player`.
-**Base branch/worktree:** confirmed from latest `origin/v2`: yes.
+**Base branch/worktree:** confirmed from latest `origin/main`: yes.
 **Open questions:** Whether caption preference already has an app settings store to reuse.
 **Decision:** Ready.
 

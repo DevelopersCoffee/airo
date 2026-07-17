@@ -165,6 +165,25 @@ android {
                     "**/libLiteRtClGlAccelerator.so"
                 )
             }
+            // CV-030: mpv/media_kit is bundled only for Android mobile, not
+            // Android TV. TV boxes are storage-starved (often 8GB total) and
+            // cannot absorb the per-arch libmpv + FFmpeg native libs.
+            // videoPlayer is the sole engine on the TV flavor per the design's
+            // shipping matrix; a codec failure there yields a clean typed
+            // error, not a fallback attempt.
+            if (isTvVariant) {
+                excludes += setOf(
+                    "**/libmpv.so",
+                    "**/libplayer.so",
+                    "**/libavcodec.so",
+                    "**/libavformat.so",
+                    "**/libavutil.so",
+                    "**/libavdevice.so",
+                    "**/libavfilter.so",
+                    "**/libswresample.so",
+                    "**/libswscale.so"
+                )
+            }
         }
     }
 

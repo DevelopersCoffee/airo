@@ -35,7 +35,7 @@ assignees: ''
 **Owning agent:** Mobile UI Agent.
 **Reviewing agents:** Framework Agent, Security and Privacy Agent, Media Agent, QA Automation Agent.
 **Impacted modules/files:** `packages/core_auth`, `packages/platform_favorites`, `packages/platform_history`, `packages/feature_iptv`.
-**Base branch/worktree:** Must be reconfirmed from latest `origin/v2` when reopened.
+**Base branch/worktree:** Must be reconfirmed from latest `origin/main` when reopened.
 **Open questions:** Profile schema owner, PIN storage/recovery, content-tag source, data migration, sync interaction.
 **Decision:** Blocked until profile and restriction contracts are approved.
 

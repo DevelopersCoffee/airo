@@ -8,9 +8,9 @@ name: Continuous Integration
 
 on:
   push:
-    branches: [ main, v2, master, develop ]
+    branches: [ main, master, develop ]
   pull_request:
-    branches: [ main, v2, master, develop ]
+    branches: [ main, master, develop ]
   workflow_dispatch:
     inputs:
       build_full_android:
@@ -481,6 +481,33 @@ jobs:
           mv build/app/outputs/flutter-apk/app-release.apk \
             build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
           echo "✅ Build complete"
+
+      # ===========================================
+      # CV-030: Assert TV APK excludes libmpv + FFmpeg native libs
+      # ===========================================
+      # media_kit is bundled on mobile flavors (as the codec/decoder fallback)
+      # but must NOT ship on the TV flavor — storage-starved TV boxes cannot
+      # absorb the per-arch libmpv + FFmpeg libs, and videoPlayer is the sole
+      # engine there per the CV-030 shipping matrix. The exclusion is wired in
+      # app/android/app/build.gradle.kts packaging.jniLibs.excludes; this step
+      # enforces it stays wired.
+      - name: Assert TV APK excludes mpv native libs
+        if: steps.android_scope.outputs.should_build == 'true' && matrix.platform.variant == 'tv'
+        run: |
+          apk="app/build/app/outputs/flutter-apk/app-arm64-v8a-release.apk"
+          if [ ! -f "$apk" ]; then
+            echo "::error::TV APK not found at $apk"
+            exit 1
+          fi
+          echo "🔎 Scanning $apk for mpv/FFmpeg .so entries..."
+          forbidden='(libmpv|libplayer|libavcodec|libavformat|libavutil|libavdevice|libavfilter|libswresample|libswscale)\.so$'
+          leaks=$(unzip -l "$apk" | awk '{print $4}' | grep -E "$forbidden" || true)
+          if [ -n "$leaks" ]; then
+            echo "::error::TV APK leaks mpv/FFmpeg native libs (CV-030 exclusion regression):"
+            echo "$leaks"
+            exit 1
+          fi
+          echo "✅ TV APK contains no libmpv/FFmpeg .so entries"
 
       # ===========================================
       # Verify APK Size Targets

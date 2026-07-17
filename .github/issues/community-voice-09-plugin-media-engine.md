@@ -34,7 +34,7 @@ assignees: ''
 **Owning agent:** Framework Agent.
 **Reviewing agents:** Security and Privacy Agent, Media Agent, QA Automation Agent, Release and DevEx Agent.
 **Impacted modules/files:** `packages/platform_media`, `packages/platform_player`, `packages/platform_playlist_import`, plugin governance packages.
-**Base branch/worktree:** Must be reconfirmed from latest `origin/v2` when reopened.
+**Base branch/worktree:** Must be reconfirmed from latest `origin/main` when reopened.
 **Open questions:** Runtime format, sandbox, signing, permissions, review policy, update/kill-switch.
 **Decision:** Blocked until plugin security architecture is accepted.
 

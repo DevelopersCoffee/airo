@@ -72,7 +72,7 @@ Users complain that channel logos, EPG rows, and zapping metadata load slowly or
 **Owning agent:** Media Agent.
 **Reviewing agents:** Framework Agent, Security and Privacy Agent, QA Automation Agent, Release and DevEx Agent, Mobile UI Agent.
 **Impacted modules/files:** `packages/platform_epg`, `packages/platform_streams`, `packages/platform_player`, `packages/core_media_routing`, `packages/feature_iptv`.
-**Base branch/worktree:** confirmed from latest `origin/v2`: yes.
+**Base branch/worktree:** confirmed from latest `origin/main`: yes.
 **Open questions:** Exact cache quota defaults for low-storage Android TV devices; which stream timing metrics are available from the current playback adapter.
 **Decision:** Ready.
 

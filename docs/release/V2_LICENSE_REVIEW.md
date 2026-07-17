@@ -3,7 +3,7 @@
 This document records the current license-readiness baseline for the v2 Android
 publishing wave.
 
-Implementation work for this release line must start from latest `origin/v2`.
+Implementation work for this release line must start from latest `origin/main`.
 
 ## Current Status
 
