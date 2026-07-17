@@ -888,7 +888,7 @@ class _TvCategoryRail extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text('Browse', style: theme.textTheme.titleLarge),
-        const SizedBox(height: 12),
+        const SizedBox(height: 20),
         Expanded(
           child: GridView.builder(
             padding: EdgeInsets.zero,
@@ -950,7 +950,7 @@ class _TvCategoryTile extends StatelessWidget {
           borderRadius: BorderRadius.circular(8),
         ),
         child: Padding(
-          padding: const EdgeInsets.all(14),
+          padding: const EdgeInsets.all(20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
