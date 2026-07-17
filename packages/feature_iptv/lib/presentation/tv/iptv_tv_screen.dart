@@ -321,7 +321,7 @@ class _TvBrowseLayout extends ConsumerWidget {
                         onClearFilters: onClearFilters,
                         onViewModeChanged: onViewModeChanged,
                       ),
-                      SizedBox(height: compactTv ? 10 : 16),
+                      SizedBox(height: compactTv ? 10 : 20),
                       Expanded(
                         child: DecoratedBox(
                           decoration: BoxDecoration(
@@ -1289,7 +1289,7 @@ class _TvChannelGridViewState extends State<_TvChannelGridView> {
       thumbVisibility: true,
       child: GridView.builder(
         controller: _scrollController,
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(16, 16, 24, 16),
         gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
           maxCrossAxisExtent: widget.compact ? 180 : 220,
           childAspectRatio: widget.compact ? 1.2 : 1.03,
@@ -1357,7 +1357,7 @@ class _TvChannelListViewState extends State<_TvChannelListView> {
       thumbVisibility: true,
       child: ListView.separated(
         controller: _scrollController,
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(16, 16, 24, 16),
         itemCount: widget.channels.length,
         separatorBuilder: (_, _) => const SizedBox(height: 10),
         itemBuilder: (context, index) {
