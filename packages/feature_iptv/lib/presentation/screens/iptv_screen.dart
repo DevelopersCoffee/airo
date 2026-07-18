@@ -16,6 +16,7 @@ import '../widgets/iptv_navigation_drawer.dart';
 import '../widgets/phone_media_play_on_tv_sheet.dart';
 import '../widgets/video_player_widget.dart';
 import '../tv/iptv_guide_screen.dart';
+import 'mobile_favorites_screen.dart';
 
 /// IPTV Screen with YouTube-like streaming experience
 class IPTVScreen extends ConsumerStatefulWidget {
@@ -318,6 +319,16 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen> {
     );
   }
 
+  Future<void> _openFavorites() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => MobileFavoritesScreen(
+          onChannelSelected: () => Navigator.of(context).pop(),
+        ),
+      ),
+    );
+  }
+
   void _syncLocalPlaybackWithCast(bool? wasCasting, bool isCasting) {
     final streaming = ref.read(iptvStreamingServiceProvider);
     if (isCasting) {
@@ -353,6 +364,7 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen> {
         onHome: () {},
         onGuide: _openGuide,
         onMovies: () => widget.onOpenVod?.call(),
+        onFavorites: _openFavorites,
         onPlayLocalFileOnTv: widget.onPickLocalMediaForTv == null
             ? null
             : _playLocalFileOnTv,
