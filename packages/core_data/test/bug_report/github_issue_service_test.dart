@@ -207,6 +207,9 @@ void main() {
         final result = await service.submitBugReport(testReport);
 
         expect(result.isFailure, isTrue);
+        expect(result.failure.message, contains('prefilled issue draft'));
+        expect(result.failure.message.toLowerCase(), isNot(contains('token')));
+        expect(result.failure.message, isNot(contains('GITHUB_ISSUE_TOKEN')));
       });
 
       test('calls direct GitHub API with correct headers', () async {
