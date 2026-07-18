@@ -61,6 +61,15 @@ class FakeAiroPlaybackEngine implements AiroPlaybackEngine {
         position: request.startPosition,
       ),
     );
+    // Mirror VideoPlayerAiroPlaybackEngine/MpvAiroPlaybackEngine: both
+    // concrete engines project request.externalSubtitles into the track
+    // catalog via externalSubtitleTracksFor() on open(). The fake previously
+    // ignored the request's externalSubtitles and only ever surfaced the
+    // tracks passed to its constructor, which meant tests exercising
+    // VideoPlayerStreamingService.attachExternalSubtitle() through the fake
+    // engine couldn't observe the resulting track the way they can with a
+    // real engine.
+    final tracks = [..._tracks, ...externalSubtitleTracksFor(request)];
     _emit(
       _state.copyWith(
         phase: AiroPlaybackEnginePhase.open,
@@ -69,8 +78,8 @@ class FakeAiroPlaybackEngine implements AiroPlaybackEngine {
         qualityOptions: _qualityOptions,
         selectedQualityId:
             request.preferredQualityId ?? _qualityOptions.firstOrNull?.id,
-        tracks: _tracks,
-        selectedTrackIds: _initialTrackSelection(_tracks),
+        tracks: tracks,
+        selectedTrackIds: _initialTrackSelection(tracks),
         diagnostics: _diagnostics,
       ),
     );
