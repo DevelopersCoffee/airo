@@ -7,6 +7,28 @@
   - **Template**: `app/android/app/google-services.json.template`
   - **Action**: Use template to create local copy
 
+- [x] `app/lib/firebase_options.dart` - Dart-side FlutterFire config (web/android/iOS/macOS/windows)
+  - **Status**: Excluded from git tracking (2026-07-19)
+  - **Template**: `app/lib/firebase_options.dart.template`
+  - **Action**: Copy the template to `app/lib/firebase_options.dart` and fill in real
+    `web`/`android`/`androidTv` values from the Firebase Console. Leave the
+    `androidStreaming`/`ios`/`macos`/`windows` entries as placeholders until those
+    apps are registered -- `DefaultFirebaseOptions.isCurrentPlatformConfigured`
+    already skips Firebase init for any placeholder appId.
+  - **CI**: `airo-tv-release.yml`, `airo-mobile-tablet-release.yml`, and
+    `build-and-release.yml` write the real file from a base64-encoded
+    `FIREBASE_OPTIONS_DART_B64` repository secret, falling back to the
+    checked-in placeholder template when the secret isn't set (same pattern as
+    `GOOGLE_SERVICES_JSON`).
+  - **Note**: Firebase client API keys are not secret by Google's own design --
+    the actual security boundary is Firebase Security Rules, App Check, and
+    API key restrictions in the GCP Console, not repo secrecy. This change is
+    about git hygiene and matching the existing `google-services.json`
+    pattern, not closing an exploitable hole.
+  - **Follow-up**: `FIREBASE_OPTIONS_DART_B64` repo secret still needs to be
+    provisioned (org-admin action) -- until then, CI/release builds fall back
+    to the placeholder template and Firebase init is skipped at runtime.
+
 ## ✅ Gitignore Updated
 
 - [x] Added `google-services.json` to `.gitignore`

@@ -7,7 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../agent_chat/application/assistant_model_preferences.dart';
 import '../../agent_chat/domain/models/assistant_model_selection.dart';
-import "package:feature_iptv/feature_iptv.dart" show sharedPreferencesProvider;
+import 'package:feature_iptv/feature_iptv.dart' show sharedPreferencesProvider;
 
 /// Provider for the model registry singleton.
 final modelRegistryProvider = Provider<ModelRegistry>((ref) {

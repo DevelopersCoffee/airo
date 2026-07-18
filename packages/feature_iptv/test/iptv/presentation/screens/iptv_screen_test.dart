@@ -169,6 +169,24 @@ void main() {
     expect(find.text('Done'), findsOneWidget);
   });
 
+  testWidgets(
+    'playlist source sheet action row renders without overflow at phone '
+    'width',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(390, 844));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      await tester.pumpWidget(createWidget());
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byTooltip('Playlist source'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Playlist source'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   testWidgets('fresh install shows bring-your-own playlist state', (
     tester,
   ) async {

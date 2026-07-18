@@ -368,4 +368,119 @@ void main() {
       await service.stop();
     },
   );
+
+  testWidgets(
+    'auto-applies the preferred caption language once tracks are available (CV-008 handoff)',
+    (tester) async {
+      SharedPreferences.setMockInitialValues({
+        captionPreferenceEnabledStorageKey: true,
+        captionPreferenceLanguageStorageKey: 'fr',
+      });
+      final prefs = await SharedPreferences.getInstance();
+
+      final engine = FakeAiroPlaybackEngine(
+        tracks: const [
+          AiroPlaybackTrackOption(
+            id: 'external_sub_0',
+            kind: AiroPlaybackTrackKind.subtitle,
+            label: 'English',
+            languageCode: 'en',
+            isExternal: true,
+          ),
+          AiroPlaybackTrackOption(
+            id: 'external_sub_1',
+            kind: AiroPlaybackTrackKind.subtitle,
+            label: 'French',
+            languageCode: 'fr',
+            isExternal: true,
+          ),
+        ],
+      );
+      final service = VideoPlayerStreamingService(engine: engine);
+      addTearDown(service.dispose);
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            iptvStreamingServiceProvider.overrideWithValue(service),
+          ],
+          child: const MaterialApp(home: Scaffold(body: VideoPlayerWidget())),
+        ),
+      );
+      await tester.pump();
+
+      await service.playChannel(
+        IPTVChannel(id: 'c1', name: 'Chan', streamUrl: 'https://x/y.m3u8'),
+      );
+      await tester.pump();
+      // The engine auto-selects the first track ('en') on open; the widget
+      // then needs a frame to read the caption preference and re-select.
+      await tester.pump();
+
+      expect(
+        service.currentState.selectedTrackIds[AiroPlaybackTrackKind.subtitle],
+        'external_sub_1',
+      );
+
+      await service.stop();
+    },
+  );
+
+  testWidgets('does not override the user caption preference when disabled', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({
+      captionPreferenceEnabledStorageKey: false,
+      captionPreferenceLanguageStorageKey: 'fr',
+    });
+    final prefs = await SharedPreferences.getInstance();
+
+    final engine = FakeAiroPlaybackEngine(
+      tracks: const [
+        AiroPlaybackTrackOption(
+          id: 'external_sub_0',
+          kind: AiroPlaybackTrackKind.subtitle,
+          label: 'English',
+          languageCode: 'en',
+          isExternal: true,
+        ),
+        AiroPlaybackTrackOption(
+          id: 'external_sub_1',
+          kind: AiroPlaybackTrackKind.subtitle,
+          label: 'French',
+          languageCode: 'fr',
+          isExternal: true,
+        ),
+      ],
+    );
+    final service = VideoPlayerStreamingService(engine: engine);
+    addTearDown(service.dispose);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          iptvStreamingServiceProvider.overrideWithValue(service),
+        ],
+        child: const MaterialApp(home: Scaffold(body: VideoPlayerWidget())),
+      ),
+    );
+    await tester.pump();
+
+    await service.playChannel(
+      IPTVChannel(id: 'c1', name: 'Chan', streamUrl: 'https://x/y.m3u8'),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    // Preference disabled -- the engine's own default (first track, 'en')
+    // must stand; the widget must not force a selection.
+    expect(
+      service.currentState.selectedTrackIds[AiroPlaybackTrackKind.subtitle],
+      'external_sub_0',
+    );
+
+    await service.stop();
+  });
 }

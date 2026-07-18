@@ -281,12 +281,10 @@ class LifeTrackStatusFormatter {
 
 class LifeTrackStatusConnector implements AgentConnector {
   LifeTrackStatusConnector({
-    required LifeTrackRepository repository,
-    LifeTrackStatusFormatter formatter = const LifeTrackStatusFormatter(),
-    Future<void> Function()? ensureInitialized,
-  }) : _repository = repository,
-       _formatter = formatter,
-       _ensureInitialized = ensureInitialized;
+    required this._repository,
+    this._formatter = const LifeTrackStatusFormatter(),
+    this._ensureInitialized,
+  });
 
   final LifeTrackRepository _repository;
   final LifeTrackStatusFormatter _formatter;

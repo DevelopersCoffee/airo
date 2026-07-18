@@ -32,9 +32,9 @@ class IntelligentModelManagerScreen extends ConsumerWidget {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              Theme.of(context).colorScheme.primaryContainer.withOpacity(0.2),
+              Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.2),
               Theme.of(context).colorScheme.surface,
-              Theme.of(context).colorScheme.secondaryContainer.withOpacity(0.1),
+              Theme.of(context).colorScheme.secondaryContainer.withValues(alpha: 0.1),
             ],
           ),
         ),
@@ -97,11 +97,11 @@ class IntelligentModelManagerScreen extends ConsumerWidget {
   }) {
     final theme = Theme.of(context);
     final cardColor = theme.brightness == Brightness.dark
-        ? Colors.black.withOpacity(0.25)
-        : Colors.white.withOpacity(0.45);
+        ? Colors.black.withValues(alpha: 0.25)
+        : Colors.white.withValues(alpha: 0.45);
     final borderColor = theme.brightness == Brightness.dark
-        ? Colors.white.withOpacity(0.08)
-        : Colors.black.withOpacity(0.08);
+        ? Colors.white.withValues(alpha: 0.08)
+        : Colors.black.withValues(alpha: 0.08);
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(20),
@@ -114,14 +114,14 @@ class IntelligentModelManagerScreen extends ConsumerWidget {
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
               color: isActive
-                  ? theme.colorScheme.primary.withOpacity(0.5)
+                  ? theme.colorScheme.primary.withValues(alpha: 0.5)
                   : borderColor,
               width: isActive ? 2.0 : 1.0,
             ),
             boxShadow: isActive
                 ? [
                     BoxShadow(
-                      color: theme.colorScheme.primary.withOpacity(0.15),
+                      color: theme.colorScheme.primary.withValues(alpha: 0.15),
                       blurRadius: 16,
                       spreadRadius: 2,
                     ),
@@ -158,8 +158,8 @@ class IntelligentModelManagerScreen extends ConsumerWidget {
                                 ? 'By ${modelInfo.author}'
                                 : 'Local Model',
                             style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.colorScheme.onSurface.withOpacity(
-                                0.6,
+                              color: theme.colorScheme.onSurface.withValues(
+                                alpha: 0.6,
                               ),
                             ),
                           ),
@@ -186,7 +186,7 @@ class IntelligentModelManagerScreen extends ConsumerWidget {
                 Text(
                   model.description,
                   style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.colorScheme.onSurface.withOpacity(0.85),
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.85),
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -238,7 +238,7 @@ class IntelligentModelManagerScreen extends ConsumerWidget {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: theme.colorScheme.primary.withOpacity(0.3),
+            color: theme.colorScheme.primary.withValues(alpha: 0.3),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -272,7 +272,7 @@ class IntelligentModelManagerScreen extends ConsumerWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: theme.colorScheme.onSurface.withOpacity(0.03),
+        color: theme.colorScheme.onSurface.withValues(alpha: 0.03),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -316,7 +316,7 @@ class IntelligentModelManagerScreen extends ConsumerWidget {
               Text(
                 label,
                 style: theme.textTheme.labelSmall?.copyWith(
-                  color: theme.colorScheme.onSurface.withOpacity(0.5),
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
                 ),
               ),
             ],
@@ -376,7 +376,7 @@ class IntelligentModelManagerScreen extends ConsumerWidget {
             Text(
               '${progress.speedDisplay} • ETA: ${progress.etaDisplay}',
               style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurface.withOpacity(0.6),
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
               ),
             ),
             TextButton.icon(
