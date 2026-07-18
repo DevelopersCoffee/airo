@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
 import 'package:platform_channels/platform_channels.dart';
+import 'playback_engine_models.dart';
 
 /// Network quality indicator
 enum NetworkQuality {
@@ -166,7 +167,11 @@ class StreamingState extends Equatable {
   /// Timestamp of last live edge update
   final DateTime? lastLiveEdgeUpdate;
 
-  const StreamingState({
+  // === Track catalog (CV-016/CV-031 — engine-projected tracks) ===
+  final List<AiroPlaybackTrackOption> tracks;
+  final Map<AiroPlaybackTrackKind, String> selectedTrackIds;
+
+  StreamingState({
     this.currentChannel,
     this.playbackState = PlaybackState.idle,
     this.currentQuality = VideoQuality.auto,
@@ -189,7 +194,10 @@ class StreamingState extends Equatable {
     this.liveStreamState = LiveStreamState.unknown,
     this.hasDvrSupport = false,
     this.lastLiveEdgeUpdate,
-  });
+    List<AiroPlaybackTrackOption> tracks = const [],
+    Map<AiroPlaybackTrackKind, String> selectedTrackIds = const {},
+  }) : tracks = List.unmodifiable(tracks),
+       selectedTrackIds = Map.unmodifiable(selectedTrackIds);
 
   // === Existing Getters ===
 
@@ -265,6 +273,8 @@ class StreamingState extends Equatable {
     LiveStreamState? liveStreamState,
     bool? hasDvrSupport,
     DateTime? lastLiveEdgeUpdate,
+    List<AiroPlaybackTrackOption>? tracks,
+    Map<AiroPlaybackTrackKind, String>? selectedTrackIds,
   }) {
     return StreamingState(
       currentChannel: currentChannel ?? this.currentChannel,
@@ -289,6 +299,8 @@ class StreamingState extends Equatable {
       liveStreamState: liveStreamState ?? this.liveStreamState,
       hasDvrSupport: hasDvrSupport ?? this.hasDvrSupport,
       lastLiveEdgeUpdate: lastLiveEdgeUpdate ?? this.lastLiveEdgeUpdate,
+      tracks: tracks ?? this.tracks,
+      selectedTrackIds: selectedTrackIds ?? this.selectedTrackIds,
     );
   }
 
@@ -307,5 +319,7 @@ class StreamingState extends Equatable {
     liveEdge,
     liveDelay,
     liveStreamState,
+    tracks,
+    selectedTrackIds,
   ];
 }

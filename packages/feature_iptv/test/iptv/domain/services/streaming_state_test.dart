@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import "package:feature_iptv/feature_iptv.dart";
+import 'package:platform_player/platform_player.dart';
 
 void main() {
   group('VideoQuality', () {
@@ -90,7 +91,7 @@ void main() {
 
   group('StreamingState', () {
     test('should have correct initial state', () {
-      const state = StreamingState();
+      final state = StreamingState();
 
       expect(state.currentChannel, isNull);
       expect(state.playbackState, equals(PlaybackState.idle));
@@ -101,10 +102,10 @@ void main() {
     });
 
     test('isPlaying should return true only when playing', () {
-      final playingState = const StreamingState().copyWith(
+      final playingState = StreamingState().copyWith(
         playbackState: PlaybackState.playing,
       );
-      final pausedState = const StreamingState().copyWith(
+      final pausedState = StreamingState().copyWith(
         playbackState: PlaybackState.paused,
       );
 
@@ -113,10 +114,10 @@ void main() {
     });
 
     test('isBuffering should return true only when buffering', () {
-      final bufferingState = const StreamingState().copyWith(
+      final bufferingState = StreamingState().copyWith(
         playbackState: PlaybackState.buffering,
       );
-      final loadingState = const StreamingState().copyWith(
+      final loadingState = StreamingState().copyWith(
         playbackState: PlaybackState.loading,
       );
 
@@ -153,6 +154,31 @@ void main() {
 
       expect(optimalBuffer.isOptimal, isTrue);
       expect(subOptimalBuffer.isOptimal, isFalse);
+    });
+  });
+
+  group('StreamingState.tracks / selectedTrackIds', () {
+    test('default to empty', () {
+      final state = StreamingState();
+      expect(state.tracks, isEmpty);
+      expect(state.selectedTrackIds, isEmpty);
+    });
+
+    test('copyWith overrides tracks and selectedTrackIds', () {
+      final state = StreamingState();
+      final next = state.copyWith(
+        tracks: const [
+          AiroPlaybackTrackOption(
+            id: 'external_sub_0',
+            kind: AiroPlaybackTrackKind.subtitle,
+            label: 'English',
+            isExternal: true,
+          ),
+        ],
+        selectedTrackIds: const {AiroPlaybackTrackKind.subtitle: 'external_sub_0'},
+      );
+      expect(next.tracks, hasLength(1));
+      expect(next.selectedTrackIds[AiroPlaybackTrackKind.subtitle], 'external_sub_0');
     });
   });
 }

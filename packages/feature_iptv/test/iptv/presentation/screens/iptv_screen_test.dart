@@ -53,7 +53,7 @@ void main() {
             streamingStateProvider.overrideWith(
               (ref) => Stream.value(
                 streamingState ??
-                    const StreamingState(
+                    StreamingState(
                       playbackState: PlaybackState.idle,
                       isLiveStream: true,
                       liveDelay: Duration(seconds: 1),
@@ -87,7 +87,7 @@ void main() {
             ),
             streamingStateProvider.overrideWith(
               (ref) => Stream.value(
-                const StreamingState(
+                StreamingState(
                   playbackState: PlaybackState.idle,
                   isLiveStream: true,
                   liveDelay: Duration(seconds: 1),

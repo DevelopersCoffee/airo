@@ -29,7 +29,7 @@ void main() {
           recentlyWatchedChannelsProvider.overrideWith((ref) async => const []),
           streamingStateProvider.overrideWith(
             (ref) => Stream.value(
-              const StreamingState(
+              StreamingState(
                 playbackState: PlaybackState.idle,
                 isLiveStream: true,
               ),
