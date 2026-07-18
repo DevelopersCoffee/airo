@@ -111,6 +111,17 @@ class AiroPlaybackSourceHandle extends Equatable {
     return AiroPlaybackSourceHandle._(value.trim());
   }
 
+  /// Accepts a trusted, internally-resolved playable URL (a channel or VOD
+  /// stream URL from our own provider adapters) that `.redacted()` would
+  /// reject — `.redacted()`'s URL-rejection check exists to catch raw user
+  /// input passed by mistake, not legitimate stream URLs, which are always
+  /// http/https and sometimes carry Xtream/Stalker credentials in the path.
+  /// `toString()` still redacts: the safety invariant (never log/print the
+  /// raw value) is unchanged, only the acceptance check is skipped.
+  factory AiroPlaybackSourceHandle.direct(String url) {
+    return AiroPlaybackSourceHandle._(url.trim());
+  }
+
   final String value;
 
   static AiroPlaybackSourceHandleRejectionCode? validate(String value) {

@@ -239,6 +239,39 @@ void main() {
         AiroPlaybackSourceHandleRejectionCode.urlValue,
       );
     });
+
+    test('direct() accepts a raw https URL that redacted() would reject', () {
+      final handle = AiroPlaybackSourceHandle.direct(
+        'https://example.com/stream.m3u8?token=abc123',
+      );
+      expect(handle.value, 'https://example.com/stream.m3u8?token=abc123');
+    });
+
+    test('direct() accepts an Xtream-style credential-bearing URL', () {
+      final handle = AiroPlaybackSourceHandle.direct(
+        'http://provider.example.com/user123/pass456/789.m3u8',
+      );
+      expect(
+        handle.value,
+        'http://provider.example.com/user123/pass456/789.m3u8',
+      );
+    });
+
+    test('direct() still redacts in toString()', () {
+      final handle = AiroPlaybackSourceHandle.direct(
+        'https://example.com/secret.m3u8?token=abc123',
+      );
+      expect(handle.toString(), 'AiroPlaybackSourceHandle(redacted)');
+      expect(handle.toString(), isNot(contains('secret')));
+      expect(handle.toString(), isNot(contains('abc123')));
+    });
+
+    test('redacted() still rejects raw URLs after direct() is added', () {
+      expect(
+        () => AiroPlaybackSourceHandle.redacted('https://example.com/x.m3u8'),
+        throwsArgumentError,
+      );
+    });
   });
 
   group('externalSubtitleTracksFor', () {
