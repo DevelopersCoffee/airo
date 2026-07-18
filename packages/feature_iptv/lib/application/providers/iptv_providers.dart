@@ -192,14 +192,26 @@ final filteredChannelsProvider = Provider<List<IPTVChannel>>((ref) {
   final flavor = ref.watch(selectedFlavorProvider);
   final searchQuery = ref.watch(channelSearchQueryProvider);
   final preferences = ref.watch(preferenceKeywordsProvider);
+  // CV-021: hidden groups are excluded from browse by default, not just
+  // visually skipped. `.value` is null while the async read is still in
+  // flight, which is treated the same as "nothing hidden yet" rather than
+  // blocking the whole browse list on it.
+  final hiddenGroupIds =
+      ref.watch(hiddenGroupIdsProvider).value ?? const <String>{};
 
-  return searchIndex?.filterAndSort(
+  final channels =
+      searchIndex?.filterAndSort(
         category: category,
         flavor: flavor,
         query: searchQuery,
         preferenceKeywords: preferences,
       ) ??
       const [];
+
+  if (hiddenGroupIds.isEmpty) return channels;
+  return channels
+      .where((channel) => !hiddenGroupIds.contains(channel.group))
+      .toList(growable: false);
 });
 
 /// Channels filtered by specific flavor
