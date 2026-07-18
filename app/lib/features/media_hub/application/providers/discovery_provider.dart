@@ -2,8 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import "package:feature_iptv/feature_iptv.dart";
-import "package:platform_channels/platform_channels.dart";
+import 'package:feature_iptv/feature_iptv.dart';
 import '../../../music/application/providers/music_tracks_provider.dart';
 import '../../domain/models/discovery_state.dart';
 import '../../domain/models/media_category.dart';

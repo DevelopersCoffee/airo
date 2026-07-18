@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_riverpod/legacy.dart';
 import 'package:airo_app/features/music/presentation/widgets/beats_search_results.dart';
 import 'package:airo_app/features/music/application/providers/beats_provider.dart';
 import 'package:airo_app/features/music/application/providers/music_provider.dart';
