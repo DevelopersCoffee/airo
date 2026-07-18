@@ -11,6 +11,7 @@ export 'src/provider_health.dart';
 export 'src/provider_health_recorder.dart';
 export 'src/m3u_content_source.dart';
 export 'src/m3u_vod_adapter.dart';
+export 'src/smart_playlist_evaluator.dart';
 export 'src/xtream/xtream_client.dart';
 export 'src/xtream/xtream_content_source.dart';
 export 'src/xtream/xtream_epg_repository.dart';
