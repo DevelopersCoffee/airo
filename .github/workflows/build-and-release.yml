@@ -145,12 +145,7 @@ jobs:
           done
           if [ "$missing" -eq 0 ]; then
             echo "$ANDROID_RELEASE_KEYSTORE_BASE64" | base64 -d > release.keystore
-            cat > key.properties <<EOF
-storeFile=release.keystore
-storePassword=$KEYSTORE_PASSWORD
-keyAlias=$KEY_ALIAS
-keyPassword=$KEY_PASSWORD
-EOF
+            printf "storeFile=release.keystore\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n" "$KEYSTORE_PASSWORD" "$KEY_ALIAS" "$KEY_PASSWORD" > key.properties
             chmod 600 release.keystore key.properties
           else
             echo "::warning::Skipping release keystore configuration due to missing secrets. Build will fall back to debug signing."
@@ -281,12 +276,7 @@ EOF
           done
           if [ "$missing" -eq 0 ]; then
             echo "$ANDROID_RELEASE_KEYSTORE_BASE64" | base64 -d > release.keystore
-            cat > key.properties <<EOF
-storeFile=release.keystore
-storePassword=$KEYSTORE_PASSWORD
-keyAlias=$KEY_ALIAS
-keyPassword=$KEY_PASSWORD
-EOF
+            printf "storeFile=release.keystore\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n" "$KEYSTORE_PASSWORD" "$KEY_ALIAS" "$KEY_PASSWORD" > key.properties
             chmod 600 release.keystore key.properties
           else
             echo "::warning::Skipping release keystore configuration due to missing secrets. Build will fall back to debug signing."
@@ -399,12 +389,7 @@ EOF
           done
           if [ "$missing" -eq 0 ]; then
             echo "$ANDROID_RELEASE_KEYSTORE_BASE64" | base64 -d > release.keystore
-            cat > key.properties <<EOF
-storeFile=release.keystore
-storePassword=$KEYSTORE_PASSWORD
-keyAlias=$KEY_ALIAS
-keyPassword=$KEY_PASSWORD
-EOF
+            printf "storeFile=release.keystore\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n" "$KEYSTORE_PASSWORD" "$KEY_ALIAS" "$KEY_PASSWORD" > key.properties
             chmod 600 release.keystore key.properties
           else
             echo "::warning::Skipping release keystore configuration due to missing secrets. Build will fall back to debug signing."
