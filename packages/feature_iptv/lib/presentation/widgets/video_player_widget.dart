@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
+import '../../application/providers/caption_preference_provider.dart';
 import '../../application/providers/iptv_providers.dart';
 import '../../application/providers/video_aspect_ratio_provider.dart';
 import '../../domain/wakelock_debouncer.dart';
@@ -301,6 +302,7 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
     // This is called on every build when state changes
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _updateWakelockForPlayback(state);
+      _applyCaptionPreferenceIfNeeded(service, state);
     });
 
     final videoView = service.buildVideoView();
@@ -840,6 +842,31 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
         ),
       ],
     );
+  }
+
+  /// CV-008 handoff: when captions are enabled and a subtitle track matches
+  /// the user's preferred language, select it automatically once the engine
+  /// exposes tracks. A no-op when the preference is disabled (the engine's
+  /// own default selection stands) or no track matches -- captions stay off
+  /// rather than falling back to a language the user didn't ask for.
+  void _applyCaptionPreferenceIfNeeded(
+    VideoPlayerStreamingService service,
+    StreamingState state,
+  ) {
+    final preference = ref.read(captionPreferenceProvider);
+    if (!preference.enabled || preference.languageCode == null) return;
+
+    final alreadySelected =
+        state.selectedTrackIds[AiroPlaybackTrackKind.subtitle];
+    for (final track in state.tracks) {
+      if (track.kind == AiroPlaybackTrackKind.subtitle &&
+          track.languageCode == preference.languageCode) {
+        if (alreadySelected != track.id) {
+          service.selectTrack(kind: track.kind, trackId: track.id);
+        }
+        return;
+      }
+    }
   }
 
   void _showTrackSelector(
