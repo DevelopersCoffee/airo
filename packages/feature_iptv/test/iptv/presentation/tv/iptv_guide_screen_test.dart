@@ -46,7 +46,7 @@ void main() {
           iptvChannelsProvider.overrideWith((ref) async => channels),
           streamingStateProvider.overrideWith(
             (ref) => Stream.value(
-              const StreamingState(
+              StreamingState(
                 playbackState: PlaybackState.idle,
                 isLiveStream: true,
               ),

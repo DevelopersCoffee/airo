@@ -4,7 +4,6 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
-import 'package:video_player/video_player.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 import '../../application/providers/iptv_providers.dart';
 import '../../application/providers/video_aspect_ratio_provider.dart';
@@ -286,7 +285,7 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
       _updateWakelockForPlayback(state);
     });
 
-    final controller = service.controller;
+    final videoView = service.buildVideoView();
 
     return MouseRegion(
       onHover: (_) => _showControls(),
@@ -300,7 +299,10 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
             children: [
               // Video display + Netflix-style brightness/volume drag
               // gestures. Left half of the video area adjusts brightness,
-              // right half adjusts volume; disabled while locked.
+              // right half adjusts volume; disabled while locked. The video
+              // surface itself is the engine-driven view (CV-016 migration);
+              // when it's null we fall through to loading/diagnostic/
+              // placeholder inside the same gesture-enabled stack.
               PlayerGestureOverlay(
                 locked: _isLocked,
                 brightness: _brightness,
@@ -313,15 +315,12 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                 child: Stack(
                   alignment: Alignment.center,
                   children: [
-                    if (controller != null && controller.value.isInitialized)
+                    // Video display (engine-driven view surface).
+                    if (videoView != null)
                       SizedBox.expand(
                         child: FittedBox(
                           fit: _boxFitFor(aspectRatioFit),
-                          child: SizedBox(
-                            width: controller.value.size.width,
-                            height: controller.value.size.height,
-                            child: VideoPlayer(controller),
-                          ),
+                          child: videoView,
                         ),
                       )
                     else if (state.playbackState == PlaybackState.loading)
@@ -783,6 +782,20 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                           setState(() => _isCinemaMode = !_isCinemaMode);
                         },
                       ),
+                      // Subtitle/track selector — hidden entirely when
+                      // there's nothing to show (mirrors the CV-pro-17
+                      // PiP-toggle visibility pattern).
+                      if (state.tracks.isNotEmpty)
+                        _PlayerControlButton(
+                          key: const ValueKey('iptv-player-subtitle-button'),
+                          icon: Icons.subtitles,
+                          tooltip: 'Subtitles & Tracks',
+                          onPressed: () => _showTrackSelector(
+                            context,
+                            service,
+                            state,
+                          ),
+                        ),
                       // Fullscreen button
                       _PlayerControlButton(
                         key: const ValueKey('iptv-player-fullscreen-button'),
@@ -799,6 +812,38 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
           ),
         ),
       ],
+    );
+  }
+
+  void _showTrackSelector(
+    BuildContext context,
+    VideoPlayerStreamingService service,
+    StreamingState state,
+  ) {
+    showModalBottomSheet<void>(
+      context: context,
+      builder: (context) {
+        return SafeArea(
+          child: ListView(
+            shrinkWrap: true,
+            children: [
+              for (final track in state.tracks)
+                ListTile(
+                  title: Text(track.label),
+                  subtitle: track.isExternal ? const Text('External') : null,
+                  trailing:
+                      state.selectedTrackIds[track.kind] == track.id
+                          ? const Icon(Icons.check)
+                          : null,
+                  onTap: () {
+                    service.selectTrack(kind: track.kind, trackId: track.id);
+                    Navigator.of(context).pop();
+                  },
+                ),
+            ],
+          ),
+        );
+      },
     );
   }
 

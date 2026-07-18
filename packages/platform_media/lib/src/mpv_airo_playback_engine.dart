@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/widgets.dart';
 import 'package:platform_player/platform_player.dart';
 
 import 'mpv/media_kit_mpv_player_facade.dart';
@@ -187,6 +188,14 @@ class MpvAiroPlaybackEngine implements AiroPlaybackEngine {
       'exitPictureInPicture',
       _state.request,
     );
+  }
+
+  @override
+  Widget? buildView() {
+    // No media_kit_video dependency in this slice — mpv isn't consumed by
+    // feature_iptv yet (CV-030's Non-Goals). Wiring real mpv rendering is a
+    // follow-up slice alongside the mpv-fallback-coordinator wiring.
+    return null;
   }
 
   @override
