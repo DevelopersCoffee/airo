@@ -30,6 +30,7 @@ class _TvSourceManagementSectionState
   String? _labelError;
   String? _urlError;
   String? _submitError;
+  String? _removeError;
 
   @override
   void dispose() {
@@ -198,7 +199,14 @@ class _TvSourceManagementSectionState
       ),
     );
     if (confirmed != true) return;
-    await ref.read(removeContentSourceProvider(config.id).future);
+    try {
+      await ref.read(removeContentSourceProvider(config.id).future);
+      if (!mounted) return;
+      setState(() => _removeError = null);
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _removeError = 'Could not remove source: $error');
+    }
   }
 
   String _urlFieldLabel() {
@@ -226,13 +234,14 @@ class _TvSourceManagementSectionState
     }
   }
 
-  Widget _capabilityBadges(ContentSourceCapabilities caps) {
+  Widget _capabilityBadges(BuildContext context, ContentSourceCapabilities caps) {
     final flags = <String>[
       if (caps.hasEpg) 'EPG',
       if (caps.hasVod) 'VOD',
       if (caps.hasCatchup) 'Catch-up',
     ];
     if (flags.isEmpty) return const SizedBox.shrink();
+    final colorScheme = Theme.of(context).colorScheme;
     return Wrap(
       spacing: 6,
       runSpacing: 4,
@@ -241,12 +250,12 @@ class _TvSourceManagementSectionState
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
             decoration: BoxDecoration(
-              color: Colors.white12,
+              color: colorScheme.surfaceContainerHighest,
               borderRadius: BorderRadius.circular(10),
             ),
             child: Text(
               flag,
-              style: const TextStyle(color: Colors.white70, fontSize: 12),
+              style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 12),
             ),
           ),
       ],
@@ -256,6 +265,7 @@ class _TvSourceManagementSectionState
   @override
   Widget build(BuildContext context) {
     final sourcesAsync = ref.watch(configuredContentSourcesProvider);
+    final colorScheme = Theme.of(context).colorScheme;
 
     return SingleChildScrollView(
       child: Column(
@@ -265,7 +275,7 @@ class _TvSourceManagementSectionState
             'Content Sources',
             style: Theme.of(
               context,
-            ).textTheme.titleMedium?.copyWith(color: Colors.white),
+            ).textTheme.titleMedium?.copyWith(color: colorScheme.onSurface),
           ),
           const SizedBox(height: 12),
           sourcesAsync.when(
@@ -273,45 +283,43 @@ class _TvSourceManagementSectionState
             error: (error, _) => Text('Could not load sources: $error'),
             data: (sources) {
               if (sources.isEmpty) {
-                return const Text(
+                return Text(
                   'No sources configured yet.',
-                  style: TextStyle(color: Colors.white70),
+                  style: TextStyle(color: colorScheme.onSurfaceVariant),
                 );
               }
               return Column(
                 children: [
                   for (final config in sources)
-                    TvFocusable(
-                      semanticLabel: config.label,
-                      child: ListTile(
-                        title: Text(
-                          config.label,
-                          style: const TextStyle(color: Colors.white),
-                        ),
-                        subtitle: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              _kindLabel(config.kind),
-                              style: const TextStyle(color: Colors.white70),
-                            ),
-                            const SizedBox(height: 4),
-                            _capabilityBadges(
-                              config.toContentSource().capabilities,
-                            ),
-                          ],
-                        ),
-                        trailing: TvFocusable(
-                          onSelect: () => _confirmRemove(config),
-                          semanticLabel: 'Remove ${config.label}',
-                          semanticButton: true,
-                          child: IconButton(
-                            icon: const Icon(
-                              Icons.delete_outline,
-                              color: Colors.white,
-                            ),
-                            onPressed: () => _confirmRemove(config),
+                    ListTile(
+                      title: Text(
+                        config.label,
+                        style: TextStyle(color: colorScheme.onSurface),
+                      ),
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _kindLabel(config.kind),
+                            style: TextStyle(color: colorScheme.onSurfaceVariant),
                           ),
+                          const SizedBox(height: 4),
+                          _capabilityBadges(
+                            context,
+                            config.toContentSource().capabilities,
+                          ),
+                        ],
+                      ),
+                      trailing: TvFocusable(
+                        onSelect: () => _confirmRemove(config),
+                        semanticLabel: 'Remove ${config.label}',
+                        semanticButton: true,
+                        child: IconButton(
+                          icon: Icon(
+                            Icons.delete_outline,
+                            color: colorScheme.onSurface,
+                          ),
+                          onPressed: () => _confirmRemove(config),
                         ),
                       ),
                     ),
@@ -319,6 +327,13 @@ class _TvSourceManagementSectionState
               );
             },
           ),
+          if (_removeError != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              _removeError!,
+              style: TextStyle(color: colorScheme.error),
+            ),
+          ],
           const SizedBox(height: 16),
           if (!_showAddForm)
             TvFocusable(
@@ -337,8 +352,8 @@ class _TvSourceManagementSectionState
                 DropdownButton<ContentSourceKind>(
                   key: const Key('source-kind-picker'),
                   value: _kind,
-                  dropdownColor: Colors.black87,
-                  style: const TextStyle(color: Colors.white),
+                  dropdownColor: colorScheme.surfaceContainerHigh,
+                  style: TextStyle(color: colorScheme.onSurface),
                   onChanged: (kind) {
                     if (kind == null) return;
                     setState(() => _kind = kind);
@@ -352,70 +367,55 @@ class _TvSourceManagementSectionState
                   ],
                 ),
                 const SizedBox(height: 8),
-                TvFocusable(
-                  semanticLabel: 'Label',
-                  child: TextField(
-                    controller: _labelController,
-                    style: const TextStyle(color: Colors.white),
-                    decoration: InputDecoration(
-                      labelText: 'Label',
-                      border: const OutlineInputBorder(),
-                      errorText: _labelError,
-                    ),
+                TextField(
+                  controller: _labelController,
+                  style: TextStyle(color: colorScheme.onSurface),
+                  decoration: InputDecoration(
+                    labelText: 'Label',
+                    border: const OutlineInputBorder(),
+                    errorText: _labelError,
                   ),
                 ),
                 const SizedBox(height: 8),
-                TvFocusable(
-                  semanticLabel: _urlFieldLabel(),
-                  child: TextField(
-                    controller: _urlController,
-                    style: const TextStyle(color: Colors.white),
-                    decoration: InputDecoration(
-                      labelText: _urlFieldLabel(),
-                      border: const OutlineInputBorder(),
-                      errorText: _urlError,
-                    ),
+                TextField(
+                  controller: _urlController,
+                  style: TextStyle(color: colorScheme.onSurface),
+                  decoration: InputDecoration(
+                    labelText: _urlFieldLabel(),
+                    border: const OutlineInputBorder(),
+                    errorText: _urlError,
                   ),
                 ),
                 if (_kind == ContentSourceKind.xtream ||
                     _kind == ContentSourceKind.jellyfin) ...[
                   const SizedBox(height: 8),
-                  TvFocusable(
-                    semanticLabel: 'Username',
-                    child: TextField(
-                      controller: _usernameController,
-                      style: const TextStyle(color: Colors.white),
-                      decoration: const InputDecoration(
-                        labelText: 'Username',
-                        border: OutlineInputBorder(),
-                      ),
+                  TextField(
+                    controller: _usernameController,
+                    style: TextStyle(color: colorScheme.onSurface),
+                    decoration: const InputDecoration(
+                      labelText: 'Username',
+                      border: OutlineInputBorder(),
                     ),
                   ),
                   const SizedBox(height: 8),
-                  TvFocusable(
-                    semanticLabel: 'Password',
-                    child: TextField(
-                      controller: _passwordController,
-                      style: const TextStyle(color: Colors.white),
-                      obscureText: true,
-                      decoration: const InputDecoration(
-                        labelText: 'Password',
-                        border: OutlineInputBorder(),
-                      ),
+                  TextField(
+                    controller: _passwordController,
+                    style: TextStyle(color: colorScheme.onSurface),
+                    obscureText: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Password',
+                      border: OutlineInputBorder(),
                     ),
                   ),
                 ],
                 if (_kind == ContentSourceKind.stalker) ...[
                   const SizedBox(height: 8),
-                  TvFocusable(
-                    semanticLabel: 'MAC Address',
-                    child: TextField(
-                      controller: _macController,
-                      style: const TextStyle(color: Colors.white),
-                      decoration: const InputDecoration(
-                        labelText: 'MAC Address',
-                        border: OutlineInputBorder(),
-                      ),
+                  TextField(
+                    controller: _macController,
+                    style: TextStyle(color: colorScheme.onSurface),
+                    decoration: const InputDecoration(
+                      labelText: 'MAC Address',
+                      border: OutlineInputBorder(),
                     ),
                   ),
                 ],
@@ -423,7 +423,7 @@ class _TvSourceManagementSectionState
                   const SizedBox(height: 8),
                   Text(
                     _submitError!,
-                    style: const TextStyle(color: Colors.redAccent),
+                    style: TextStyle(color: colorScheme.error),
                   ),
                 ],
                 const SizedBox(height: 8),
