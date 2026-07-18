@@ -296,7 +296,7 @@ void main() {
       await tester.pump();
       await tester.pump();
 
-      await tester.tap(find.text('Add M3U Source'));
+      await tester.tap(find.text('Add Source'));
       await tester.pump();
       await tester.enterText(
         find.widgetWithText(TextField, 'Label'),
@@ -331,7 +331,7 @@ void main() {
       await tester.pump();
       await tester.pump();
 
-      await tester.tap(find.text('Add M3U Source'));
+      await tester.tap(find.text('Add Source'));
       await tester.pump();
       await tester.enterText(
         find.widgetWithText(TextField, 'Label'),
