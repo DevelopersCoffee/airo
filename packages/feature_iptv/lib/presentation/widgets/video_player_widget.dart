@@ -614,6 +614,20 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                           setState(() => _isCinemaMode = !_isCinemaMode);
                         },
                       ),
+                      // Subtitle/track selector — hidden entirely when
+                      // there's nothing to show (mirrors the CV-pro-17
+                      // PiP-toggle visibility pattern).
+                      if (state.tracks.isNotEmpty)
+                        _PlayerControlButton(
+                          key: const ValueKey('iptv-player-subtitle-button'),
+                          icon: Icons.subtitles,
+                          tooltip: 'Subtitles & Tracks',
+                          onPressed: () => _showTrackSelector(
+                            context,
+                            service,
+                            state,
+                          ),
+                        ),
                       // Fullscreen button
                       _PlayerControlButton(
                         key: const ValueKey('iptv-player-fullscreen-button'),
@@ -630,6 +644,38 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
           ),
         ),
       ],
+    );
+  }
+
+  void _showTrackSelector(
+    BuildContext context,
+    VideoPlayerStreamingService service,
+    StreamingState state,
+  ) {
+    showModalBottomSheet<void>(
+      context: context,
+      builder: (context) {
+        return SafeArea(
+          child: ListView(
+            shrinkWrap: true,
+            children: [
+              for (final track in state.tracks)
+                ListTile(
+                  title: Text(track.label),
+                  subtitle: track.isExternal ? const Text('External') : null,
+                  trailing:
+                      state.selectedTrackIds[track.kind] == track.id
+                          ? const Icon(Icons.check)
+                          : null,
+                  onTap: () {
+                    service.selectTrack(kind: track.kind, trackId: track.id);
+                    Navigator.of(context).pop();
+                  },
+                ),
+            ],
+          ),
+        );
+      },
     );
   }
 

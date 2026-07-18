@@ -31,4 +31,116 @@ void main() {
       expect(find.byType(VideoPlayerWidget), findsOneWidget);
     },
   );
+
+  testWidgets(
+    'subtitle button is hidden when there are no tracks',
+    (tester) async {
+      final engine = FakeAiroPlaybackEngine(tracks: const []);
+      final service = VideoPlayerStreamingService(engine: engine);
+      addTearDown(service.dispose);
+
+      // Pump the widget (and subscribe to service.stateStream via
+      // streamingStateProvider) BEFORE calling playChannel(). The service's
+      // state stream is a plain broadcast stream with no replay, so a
+      // listener that subscribes after playChannel() has already emitted
+      // would miss those events entirely and stay stuck in the loading
+      // branch — which would make this assertion trivially true regardless
+      // of tracks. Wrapping in a Scaffold matches how VideoPlayerWidget is
+      // actually embedded in production (see AiroResponsiveScaffold usage
+      // in iptv_screen.dart) — the control bar's volume Slider needs a
+      // Material ancestor once the widget reaches its "player" state.
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [iptvStreamingServiceProvider.overrideWithValue(service)],
+          child: const MaterialApp(
+            home: Scaffold(body: VideoPlayerWidget()),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      await service.playChannel(
+        IPTVChannel(id: 'c1', name: 'Chan', streamUrl: 'https://x/y.m3u8'),
+      );
+      await tester.pump();
+
+      expect(
+        find.byKey(const ValueKey('iptv-player-subtitle-button')),
+        findsNothing,
+      );
+
+      // playChannel() starts periodic timers (buffer monitor, live-edge
+      // detector). testWidgets' pending-timer invariant check runs before
+      // addTearDown callbacks fire, so those timers must be stopped inside
+      // the test body itself — addTearDown(service.dispose) alone isn't
+      // enough here (see VideoPlayerStreamingService.stop()).
+      await service.stop();
+    },
+  );
+
+  testWidgets(
+    'subtitle button is visible and calls selectTrack when tracks exist',
+    (tester) async {
+      final engine = FakeAiroPlaybackEngine(
+        tracks: const [
+          AiroPlaybackTrackOption(
+            id: 'external_sub_0',
+            kind: AiroPlaybackTrackKind.subtitle,
+            label: 'English',
+            isExternal: true,
+          ),
+        ],
+      );
+      final service = VideoPlayerStreamingService(engine: engine);
+      addTearDown(service.dispose);
+
+      // See comment in the test above — pump before playChannel() so the
+      // widget's stream subscription is live in time to observe the
+      // tracks-populated state, and wrap in a Scaffold for the Material
+      // ancestor the control bar's volume Slider requires.
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [iptvStreamingServiceProvider.overrideWithValue(service)],
+          child: const MaterialApp(
+            home: Scaffold(body: VideoPlayerWidget()),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      await service.playChannel(
+        IPTVChannel(id: 'c1', name: 'Chan', streamUrl: 'https://x/y.m3u8'),
+      );
+      await tester.pump();
+
+      expect(
+        find.byKey(const ValueKey('iptv-player-subtitle-button')),
+        findsOneWidget,
+      );
+
+      // A fixed-duration pump — not pumpAndSettle() — because playChannel()
+      // leaves a 1s periodic buffer-monitor timer running, which would
+      // otherwise keep scheduling frames forever and make pumpAndSettle()
+      // time out. This is enough to let the bottom-sheet's route transition
+      // animation finish.
+      await tester.tap(find.byKey(const ValueKey('iptv-player-subtitle-button')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(find.text('English'), findsOneWidget);
+
+      await tester.tap(find.text('English'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(
+        service.currentState.selectedTrackIds[AiroPlaybackTrackKind.subtitle],
+        'external_sub_0',
+      );
+
+      // See comment in the test above — stop the periodic timers before
+      // the test body returns so the pending-timer invariant check passes.
+      await service.stop();
+    },
+  );
 }
