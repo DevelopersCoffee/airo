@@ -35,7 +35,7 @@ assignees: ''
 **Owning agent:** Media Agent.
 **Reviewing agents:** Framework Agent, QA Automation Agent, Release and DevEx Agent, Security and Privacy Agent.
 **Impacted modules/files:** `packages/platform_player`, native platform code, possibly `rust/airo_core`.
-**Base branch/worktree:** Must be reconfirmed from latest `origin/v2` or a dedicated native architecture branch when reopened.
+**Base branch/worktree:** Must be reconfirmed from latest `origin/main` or a dedicated native architecture branch when reopened.
 **Open questions:** Engine choices, native dependency licensing, build matrix, texture ownership, memory safety, fallback policy.
 **Decision:** Blocked until native architecture spike is approved.
 

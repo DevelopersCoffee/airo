@@ -8,7 +8,7 @@
 **Owning agent:** Release and DevEx Agent.
 **Reviewing agents:** Framework Agent, QA Automation Agent.
 **Impacted modules/files:** `app/pubspec.yaml`, `app/pubspec_streaming.yaml`, `app/pubspec_tv.yaml`, `app/pubspec_ios_spm.yaml`, `packages/feature_iptv/pubspec.yaml`, `packages/platform_media/pubspec.yaml`, `packages/platform_streams/pubspec.yaml`, `app/pubspec.lock`.
-**Base branch/worktree:** confirmed from latest `origin/v2`: yes (`22eab8a2a44b9354f2571e339b673e86c6b33eef`).
+**Base branch/worktree:** confirmed from latest `origin/main`: yes (`22eab8a2a44b9354f2571e339b673e86c6b33eef`).
 **Open questions:** Major dependency lines still blocked by current toolchain or migration scope (`riverpod` 3.x, `drift` 2.34.x, `custom_lint` 0.8.x). This slice intentionally limits itself to resolvable stable updates with no feature rewrites.
 **Decision:** Ready
 

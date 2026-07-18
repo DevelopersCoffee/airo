@@ -22,6 +22,21 @@
 
 ---
 
+## Open-core tier classification
+
+Per the Airo open-core strategy (public `airo` + private `airo-pro` overlay), CV-022's surface splits across three tiers:
+
+| Tier | Component | Location | Rationale |
+|------|-----------|----------|-----------|
+| **platform** | `ContentSource`, `ContentSourceKind`, `ContentSourceCapabilities`, `ContentSourceCredentialStore` | `packages/platform_playlist/` (pre-existing, consumed as-is) | Foundational contracts shared by every Airo experience; not user-visible. |
+| **airo tv** | `ContentSourceConfig`, `ContentSourceStore`, management providers (`configuredContentSourcesProvider`, `addM3uContentSourceProvider`, `removeContentSourceProvider`) | `packages/feature_iptv/lib/application/` | Persistence layer for the TV consumer app. Public tier. |
+| **airo tv** | `TvSettingsScreen`, `TvThemeSection`, `TvPlaybackSection`, `TvSourceManagementSection`, `secureStoreProvider` production wiring | `app/lib/features/settings/presentation/tv/`, `app/lib/main_tv.dart` | Airo TV branded settings surface. Public tier. |
+| **airo-pro** | Xtream / Stalker / Jellyfin credential-collection add-flows (deferred to CV-032) | future overlay on `TvSourceManagementSection` | Advanced source types = premium overlay: Xtream is commercial-subscription IPTV, Stalker is portal-based provider integration, Jellyfin is power-user self-hosted media — matches the airo-pro billing-via-Entitlements pattern. |
+
+CV-022 (this plan) is entirely **platform + airo tv**. CV-032 layers **airo-pro** on top.
+
+---
+
 ## File Structure
 
 ```
@@ -647,7 +662,7 @@ Expected: `00:00 +2: All tests passed!`
 
 - [ ] **Step 5: Wire into `app/lib/core/app/tv_router.dart`**
 
-Read the file first (it's actively evolving on `origin/v2` per this session's other concurrent work — re-derive the exact current Settings `GoRoute` and `_TvSettingsPlaceholder` class before editing, don't assume line numbers). Replace:
+Read the file first (it's actively evolving on `origin/main` per this session's other concurrent work — re-derive the exact current Settings `GoRoute` and `_TvSettingsPlaceholder` class before editing, don't assume line numbers). Replace:
 
 ```dart
 GoRoute(

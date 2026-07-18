@@ -14,7 +14,7 @@
 **Owning agent:** Media Agent.
 **Reviewing agents:** Framework Agent for playlist loading contracts, Security and Privacy Agent for network and content posture, QA Automation Agent for deterministic checks, Release and DevEx Agent for Android release readiness, Mobile UI Agent for BYOC entry UX.
 **Impacted modules/files:** `packages/platform_channels`, `packages/platform_playlist_import`, `packages/feature_iptv`, `app/android`, app pubspec variants, release documentation.
-**Base branch/worktree:** confirmed from latest `origin/v2`: yes. V2 work belongs on the modular base branch `origin/v2`, not `origin/main`.
+**Base branch/worktree:** confirmed from latest `origin/main`: yes. V2 work belongs on the modular base branch `origin/main`, not `origin/main`.
 **Open questions:** Final Google Play app access credentials and store screenshots remain a release-console task.
 **Decision:** Ready.
 

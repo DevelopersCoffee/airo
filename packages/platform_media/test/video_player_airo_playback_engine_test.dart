@@ -67,7 +67,7 @@ void main() {
     );
 
     test(
-      'selectTrack is unsupported: no track catalog in this adapter',
+      'selectTrack fails typed when no matching track exists',
       () async {
         final engine = VideoPlayerAiroPlaybackEngine();
         await engine.open(request());
@@ -77,6 +77,63 @@ void main() {
           trackId: 'audio-1',
         );
         expect(state.error?.code, AiroPlaybackErrorCode.trackUnavailable);
+        await engine.dispose();
+      },
+    );
+
+    test(
+      'external subtitles from open request appear in state.tracks',
+      () async {
+        final engine = VideoPlayerAiroPlaybackEngine();
+        await engine.open(
+          AiroMediaOpenRequest(
+            requestId: 'open-sub',
+            sourceHandle: AiroPlaybackSourceHandle.redacted('opaque-1'),
+            mediaKind: AiroPlaybackMediaKind.hls,
+            externalSubtitles: [
+              AiroPlaybackExternalSubtitle(
+                handle: AiroPlaybackSourceHandle.redacted('sub-en'),
+                languageCode: 'en',
+                label: 'English',
+              ),
+            ],
+          ),
+        );
+        expect(engine.currentState.tracks, hasLength(1));
+        expect(engine.currentState.tracks.single.isExternal, isTrue);
+        expect(engine.currentState.tracks.single.id, 'external_sub_0');
+        await engine.dispose();
+      },
+    );
+
+    test(
+      'selectTrack picks a projected external subtitle and records it',
+      () async {
+        final engine = VideoPlayerAiroPlaybackEngine();
+        await engine.open(
+          AiroMediaOpenRequest(
+            requestId: 'open-sub',
+            sourceHandle: AiroPlaybackSourceHandle.redacted('opaque-1'),
+            mediaKind: AiroPlaybackMediaKind.hls,
+            externalSubtitles: [
+              AiroPlaybackExternalSubtitle(
+                handle: AiroPlaybackSourceHandle.redacted('sub-en'),
+                languageCode: 'en',
+              ),
+            ],
+          ),
+        );
+
+        final state = await engine.selectTrack(
+          kind: AiroPlaybackTrackKind.subtitle,
+          trackId: 'external_sub_0',
+        );
+
+        expect(state.error, isNull);
+        expect(
+          state.selectedTrackIds[AiroPlaybackTrackKind.subtitle],
+          'external_sub_0',
+        );
         await engine.dispose();
       },
     );

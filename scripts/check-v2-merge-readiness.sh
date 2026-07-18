@@ -3,7 +3,7 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
-base_ref="origin/v2"
+base_ref="origin/main"
 next_ref="origin/codex/next-v2.0.0.0"
 skip_fetch=false
 keep_worktree=false
@@ -13,12 +13,12 @@ usage() {
   cat <<'EOF'
 Usage: check-v2-merge-readiness.sh [options]
 
-Locally dry-merge the rolling v2 development branch into the v2 base line,
+Locally dry-merge the rolling next development branch into the main base line,
 then run cheap structural checks. This command does not push, commit, dispatch
 workflows, publish releases, or upload artifacts.
 
 Options:
-  --base <ref>          Base ref to dry-merge into. Default: origin/v2
+  --base <ref>          Base ref to dry-merge into. Default: origin/main
   --next <ref>          Rolling next ref to dry-merge. Default: origin/codex/next-v2.0.0.0
   --worktree <path>     Use this worktree path instead of a temporary directory
   --skip-fetch          Do not fetch origin before checking refs
@@ -69,7 +69,7 @@ fi
 cd "$ROOT_DIR"
 
 if [[ "$skip_fetch" == "false" ]]; then
-  git fetch origin main v2 codex/next-v2.0.0.0
+  git fetch origin main v1_bkp codex/next-v2.0.0.0
 fi
 
 if ! git rev-parse --verify "$base_ref" >/dev/null 2>&1; then
@@ -86,7 +86,7 @@ base_oid="$(git rev-parse "$base_ref")"
 next_oid="$(git rev-parse "$next_ref")"
 
 if [[ -z "$worktree_dir" ]]; then
-  worktree_dir="$(mktemp -d "${TMPDIR:-/tmp}/airo-v2-merge-readiness.XXXXXX")"
+  worktree_dir="$(mktemp -d "${TMPDIR:-/tmp}/airo-main-merge-readiness.XXXXXX")"
   rmdir "$worktree_dir"
 else
   mkdir -p "$(dirname "$worktree_dir")"
@@ -116,7 +116,7 @@ created_worktree=true
 base_sha="$(git rev-parse --short "$base_oid")"
 next_sha="$(git rev-parse --short "$next_oid")"
 
-echo "Airo v2 merge-readiness dry run"
+echo "Airo mainline merge-readiness dry run"
 echo "Base: $base_ref ($base_sha)"
 echo "Next: $next_ref ($next_sha)"
 echo "Worktree: $worktree_dir"
@@ -124,7 +124,7 @@ echo "Worktree: $worktree_dir"
 cd "$worktree_dir"
 
 if ! git merge --no-commit --no-ff "$next_oid"; then
-  echo "Dry merge failed. Resolve conflicts before merging rolling next into v2." >&2
+  echo "Dry merge failed. Resolve conflicts before merging rolling next into main." >&2
   git status --short >&2 || true
   exit 1
 fi

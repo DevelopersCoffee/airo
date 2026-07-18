@@ -71,7 +71,9 @@ class _TvSettingsScreenState extends ConsumerState<TvSettingsScreen> {
                                   child: Text(
                                     label,
                                     overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(color: colorScheme.onSurface),
+                                    style: TextStyle(
+                                      color: colorScheme.onSurface,
+                                    ),
                                   ),
                                 ),
                               ],

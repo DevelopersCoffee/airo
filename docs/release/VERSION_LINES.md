@@ -130,21 +130,21 @@ device class, or store listing.
 Use two long-lived base branches:
 
 ```text
-origin/v1
-  V1 monolith base branch; tags v1.x.y
+origin/v1_bkp
+  Archived pre-swap monolith reference branch; tags and historical state only
 
-origin/v2
-  V2 modular base branch; tags v2.x.y
+origin/main
+  Current modular base branch; tags v2.x.y
 
 origin/codex/v1-<task> or origin/hotfix/v1-<task>
-  scoped V1 work branched from origin/v1
+  scoped legacy work branched from origin/v1_bkp
 
 origin/codex/v2-<task> or origin/feat/v2-<task>
-  scoped V2 modular work branched from origin/v2
+  scoped V2 modular work branched from origin/main
 ```
 
-Do not use `main` as a product base after the split. Keep `v1` and `v2` as the
-explicit bases for all implementation, release, and hotfix work. Branches still
+Use `main` as the active product base. Keep `origin/v1_bkp` only as a legacy
+reference line when an issue explicitly requires pre-swap history. Branches still
 represent code-line ownership; APK names, app IDs, flavors, and release
 artifacts represent product SKUs.
 
@@ -193,14 +193,14 @@ requires APK size checks, smoke tests, and platform-specific release validation.
 
 **Trigger:** A hotfix is requested.
 
-**Happy path:** Work starts from `v1`, ships as `v1.x.y`, and produces
+**Happy path:** Work starts from `v1_bkp`, ships as `v1.x.y`, and produces
 `airo-v1-full*` artifacts.
 
 **Alternate paths:** If the fix requires V2 module boundaries, split the work:
 minimal V1 fix plus separate V2 implementation.
 
-**Failure paths:** If work starts from `main`, a stale branch, or a V2 branch,
-stop and recreate the branch from `v1`.
+**Failure paths:** If work starts from the wrong base branch or a stale branch,
+stop and recreate the branch from `v1_bkp`.
 
 **Data created/updated/deleted:** Release notes, tag, and APK artifacts only.
 
@@ -215,8 +215,8 @@ explicitly security-related.
 
 **Trigger:** V2 modular implementation starts.
 
-**Happy path:** Work starts from latest `origin/v2` or an approved V2
-integration branch based on `v2`, declares framework/application contracts, and
+**Happy path:** Work starts from latest `origin/main` or an approved V2
+integration branch based on `main`, declares framework/application contracts, and
 ships under `v2.x.y`.
 
 **Alternate paths:** If the module can ship inside V1 without architecture

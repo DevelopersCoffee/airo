@@ -37,7 +37,6 @@ void main() {
     });
   });
 
-
   group('AiroPlaybackEngineResolver', () {
     const resolver = AiroPlaybackEngineResolver();
 
@@ -70,6 +69,115 @@ void main() {
 
     test('every platform value is covered by the resolver table', () {
       expect(table.keys.toSet(), AiroPlaybackPlatform.values.toSet());
+    });
+  });
+
+  group('AiroPlaybackEngineResolver.resolveFallback', () {
+    const resolver = AiroPlaybackEngineResolver();
+
+    AiroPlaybackDeviceProfile profileFor(AiroPlaybackPlatform platform) =>
+        AiroPlaybackDeviceProfile(platform: platform);
+
+    test('androidTv: no fallback (mpv not bundled — storage-starved)', () {
+      expect(
+        resolver.resolveFallback(profileFor(AiroPlaybackPlatform.androidTv)),
+        isNull,
+      );
+    });
+
+    test('web: no fallback (media_kit web is weak)', () {
+      expect(
+        resolver.resolveFallback(profileFor(AiroPlaybackPlatform.web)),
+        isNull,
+      );
+    });
+
+    test('windows: no fallback (mpv is already primary)', () {
+      expect(
+        resolver.resolveFallback(profileFor(AiroPlaybackPlatform.windows)),
+        isNull,
+      );
+    });
+
+    test('linux: no fallback (mpv is already primary)', () {
+      expect(
+        resolver.resolveFallback(profileFor(AiroPlaybackPlatform.linux)),
+        isNull,
+      );
+    });
+
+    test('unknown: no fallback (platform unrecognized)', () {
+      expect(
+        resolver.resolveFallback(profileFor(AiroPlaybackPlatform.unknown)),
+        isNull,
+      );
+    });
+
+    test('androidMobile: mpv is the fallback when hints are empty', () {
+      expect(
+        resolver.resolveFallback(
+          profileFor(AiroPlaybackPlatform.androidMobile),
+        ),
+        AiroPlaybackBackendKind.mpv,
+      );
+    });
+
+    test('ios: mpv is the fallback when hints are empty', () {
+      expect(
+        resolver.resolveFallback(profileFor(AiroPlaybackPlatform.ios)),
+        AiroPlaybackBackendKind.mpv,
+      );
+    });
+
+    test('macos: mpv is the fallback when hints are empty', () {
+      expect(
+        resolver.resolveFallback(profileFor(AiroPlaybackPlatform.macos)),
+        AiroPlaybackBackendKind.mpv,
+      );
+    });
+
+    test('android mobile with sub-2GB RAM: fallback disabled', () {
+      expect(
+        resolver.resolveFallback(
+          profileFor(AiroPlaybackPlatform.androidMobile),
+          hints: const AiroPlaybackFallbackDeviceHints(totalRamMb: 1024),
+        ),
+        isNull,
+      );
+    });
+
+    test('android mobile at exactly 2GB RAM: fallback enabled (boundary)', () {
+      expect(
+        resolver.resolveFallback(
+          profileFor(AiroPlaybackPlatform.androidMobile),
+          hints: const AiroPlaybackFallbackDeviceHints(
+            totalRamMb: kMpvFallbackMinRamMb,
+          ),
+        ),
+        AiroPlaybackBackendKind.mpv,
+      );
+    });
+
+    test('missing hardware H.264 decoder: fallback disabled', () {
+      expect(
+        resolver.resolveFallback(
+          profileFor(AiroPlaybackPlatform.androidMobile),
+          hints: const AiroPlaybackFallbackDeviceHints(
+            hasHardwareH264Decoder: false,
+          ),
+        ),
+        isNull,
+      );
+    });
+
+    test('unknown RAM does not punish the device (fallback allowed)', () {
+      expect(
+        resolver.resolveFallback(
+          profileFor(AiroPlaybackPlatform.androidMobile),
+          hints: const AiroPlaybackFallbackDeviceHints(totalRamMb: null),
+        ),
+        AiroPlaybackBackendKind.mpv,
+      );
     });
   });
 }

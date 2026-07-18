@@ -240,6 +240,7 @@ class AiroPlaybackTrackOption extends Equatable {
     required this.kind,
     required this.label,
     this.languageCode,
+    this.isExternal = false,
   });
 
   final String id;
@@ -247,8 +248,44 @@ class AiroPlaybackTrackOption extends Equatable {
   final String label;
   final String? languageCode;
 
+  /// True when the track was supplied by the caller via
+  /// [AiroMediaOpenRequest.externalSubtitles] rather than probed from the
+  /// media container itself. Lets the UI badge it distinctly.
+  final bool isExternal;
+
   @override
-  List<Object?> get props => [id, kind, label, languageCode];
+  List<Object?> get props => [id, kind, label, languageCode, isExternal];
+}
+
+/// Stable id prefix for tracks projected from
+/// [AiroMediaOpenRequest.externalSubtitles]. Engines use this so a
+/// `selectTrack(subtitle, "external_sub_0")` call resolves deterministically
+/// regardless of which engine is active — the mpv fallback swap must not
+/// change track ids for the same open request.
+const String kAiroExternalSubtitleTrackIdPrefix = 'external_sub_';
+
+/// Projects the [AiroMediaOpenRequest.externalSubtitles] into a track catalog
+/// entries list. Both concrete engine adapters call this on `open()` so an
+/// external subtitle file passes through as a selectable track without any
+/// engine-specific probing.
+List<AiroPlaybackTrackOption> externalSubtitleTracksFor(
+  AiroMediaOpenRequest request,
+) {
+  final entries = request.externalSubtitles;
+  return List.unmodifiable(
+    List<AiroPlaybackTrackOption>.generate(entries.length, (i) {
+      final sub = entries[i];
+      return AiroPlaybackTrackOption(
+        id: '$kAiroExternalSubtitleTrackIdPrefix$i',
+        kind: AiroPlaybackTrackKind.subtitle,
+        label: sub.label ??
+            sub.languageCode ??
+            'External subtitle ${i + 1}',
+        languageCode: sub.languageCode,
+        isExternal: true,
+      );
+    }),
+  );
 }
 
 class AiroPlaybackDiagnostics extends Equatable {

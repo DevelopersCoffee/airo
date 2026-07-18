@@ -7,6 +7,7 @@ reviewers:
 allowed_dependencies:
   - platform_channels
   - flutter_chrome_cast
+  - core_media_routing
 forbidden_dependencies:
   - app
 quality_gates: {}

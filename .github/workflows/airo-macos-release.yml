@@ -27,7 +27,7 @@ on:
         required: true
         type: string
       release_ref:
-        description: 'Git ref to release; must contain latest origin/v2'
+        description: 'Git ref to release; must contain latest origin/main'
         required: true
         type: string
       release_branch:
@@ -60,9 +60,9 @@ on:
         required: true
         default: '2'
       release_ref:
-        description: 'Git ref to release; must contain latest origin/v2'
+        description: 'Git ref to release; must contain latest origin/main'
         required: true
-        default: v2
+        default: main
       release_branch:
         description: 'Release branch to create/update from release_ref before building'
         required: true
@@ -100,13 +100,13 @@ jobs:
           fetch-depth: 0
           ref: ${{ inputs.release_ref || github.event.inputs.release_ref || github.ref }}
 
-      - name: Resolve and validate v2 ref
+      - name: Resolve and validate mainline release ref
         id: release_ref
         env:
           RELEASE_REF: ${{ inputs.release_ref || github.event.inputs.release_ref || github.ref }}
           RELEASE_BRANCH: ${{ inputs.release_branch || github.event.inputs.release_branch }}
         run: |
-          git fetch origin main v2 --tags
+          git fetch origin main v1_bkp --tags
 
           if git rev-parse --verify "origin/$RELEASE_REF^{commit}" >/dev/null 2>&1; then
             release_commit="$(git rev-parse "origin/$RELEASE_REF^{commit}")"
@@ -117,8 +117,8 @@ jobs:
             exit 1
           fi
 
-          if ! git merge-base --is-ancestor origin/v2 "$release_commit"; then
-            echo "::error::Release ref $RELEASE_REF does not contain latest origin/v2."
+          if ! git merge-base --is-ancestor origin/main "$release_commit"; then
+            echo "::error::Release ref $RELEASE_REF does not contain latest origin/main."
             exit 1
           fi
 

@@ -9,7 +9,7 @@ permalink: /release/V2_RELEASE_QUALIFICATION.html
 This document defines the release qualification evidence required before v2
 Android APK/AAB artifacts can be published broadly.
 
-Implementation work for this release line must start from latest `origin/v2`.
+Implementation work for this release line must start from latest `origin/main`.
 
 ## Evidence Policy
 
