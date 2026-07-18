@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 import 'package:platform_epg/platform_epg.dart';
 
 import '../../domain/local_iptv_search.dart';
@@ -38,3 +39,18 @@ final localIptvSearchIndexProvider = FutureProvider<LocalIptvSearchIndex>((
     recentChannelIds: [for (final channel in recentChannels) channel.id],
   );
 });
+
+/// The search screen's query text. Independent of [channelSearchQueryProvider]
+/// (the Live TV grid's quick-filter) -- opening search must not perturb the
+/// grid, matching [guideSearchQueryProvider]'s existing independence pattern.
+final localIptvSearchQueryProvider = StateProvider<String>((ref) => '');
+
+/// Ranked results for the current [localIptvSearchQueryProvider] value.
+final localIptvSearchResultsProvider =
+    FutureProvider<List<LocalIptvSearchResult>>((ref) async {
+      final query = ref.watch(localIptvSearchQueryProvider);
+      if (query.trim().isEmpty) return const [];
+
+      final index = await ref.watch(localIptvSearchIndexProvider.future);
+      return index.search(query);
+    });
