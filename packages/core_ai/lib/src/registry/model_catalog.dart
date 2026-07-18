@@ -96,6 +96,39 @@ class ModelCatalog {
           'https://storage.googleapis.com/mediapipe-models/llm_inference/gemma-4-e4b-it/float16/latest/gemma-4-e4b-it.task',
     ),
     const OfflineModelInfo(
+      id: 'qwen2.5-1.5b-it-litert',
+      name: 'Qwen2.5-1.5B-Instruct',
+      family: ModelFamily.qwen,
+      fileSizeBytes: 1597913616,
+      downloadUrl:
+          'https://huggingface.co/litert-community/Qwen2.5-1.5B-Instruct/resolve/main/Qwen2.5-1.5B-Instruct_multi-prefill-seq_q8_ekv1280.task',
+      quantization: ModelQuantization.q8,
+      parameterCount: 1500000000,
+      contextLength: 1280,
+      credibility: ModelCredibility.official,
+      provider: AIProvider.gguf,
+      description:
+          'LiteRT-community Qwen2.5-1.5B package with a confirmed MediaPipe '
+          '.task bundle for on-device chat.',
+      author: 'Alibaba / LiteRT Community',
+      license: 'Apache-2.0',
+      huggingFaceId: 'litert-community/Qwen2.5-1.5B-Instruct',
+      languages: ['en', 'zh'],
+      modalities: [ModelModality.text],
+      capabilities: [
+        ModelCapability.chat,
+        ModelCapability.reasoning,
+        ModelCapability.promptLab,
+      ],
+      backendPreference: ModelBackendPreference.cpu,
+      tags: ['litert', 'chat', 'multilingual', 'web-capable'],
+      minMemoryBytes: 2200000000,
+      recommendedMemoryBytes: 3000000000,
+      supportsWebRuntime: true,
+      webAssetUrl:
+          'https://huggingface.co/litert-community/Qwen2.5-1.5B-Instruct/resolve/main/Qwen2.5-1.5B-Instruct_multi-prefill-seq_q8_ekv1280.task',
+    ),
+    const OfflineModelInfo(
       id: 'gemma-3n-e2b-it-litertlm',
       name: 'Gemma-3n-E2B-it',
       family: ModelFamily.gemma,
@@ -317,6 +350,11 @@ class ModelCatalog {
       minMemoryBytes: 5000000000,
       recommendedMemoryBytes: 6000000000,
     ),
+
+    // SmolLM2 web (.task) bundle: litert-community publishes SmolLM2-135M
+    // and SmolLM2-360M as .litertlm only (no .task file), and does not
+    // publish a 1.7B variant at all, as of 2026-07-19. Re-check before
+    // adding a web catalog entry for SmolLM2.
   ];
 
   /// Gets recommended models for mobile devices (< 3GB).

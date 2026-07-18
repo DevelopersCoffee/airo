@@ -23,6 +23,16 @@ void main() {
       expect(model.webAssetUrl, endsWith('.task'));
     });
 
+    test('Qwen2.5-1.5B is flagged web-capable with a .task asset URL', () {
+      final model = ModelCatalog.bundledModels.firstWhere(
+        (m) => m.id == 'qwen2.5-1.5b-it-litert',
+      );
+
+      expect(model.supportsWebRuntime, isTrue);
+      expect(model.webAssetUrl, isNotNull);
+      expect(model.webAssetUrl, endsWith('.task'));
+    });
+
     test('non-Gemma models default to web-unsupported', () {
       final model = ModelCatalog.bundledModels.firstWhere(
         (m) => m.id == 'mistral-7b-q4',
