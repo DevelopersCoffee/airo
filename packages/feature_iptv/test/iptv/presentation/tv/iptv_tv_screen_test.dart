@@ -51,13 +51,13 @@ void main() {
     List<IPTVChannel>? visibleChannels,
     CompactEpgRepository? compactEpgRepository,
     DateTime? compactEpgNow,
-    StreamingState streamingState = const StreamingState(
-      playbackState: PlaybackState.idle,
-      isLiveStream: true,
-    ),
+    StreamingState? streamingState,
     Size surfaceSize = const Size(1280, 720),
     bool settle = true,
   }) async {
+    final effectiveStreamingState =
+        streamingState ??
+        StreamingState(playbackState: PlaybackState.idle, isLiveStream: true);
     tester.view.devicePixelRatio = 1.0;
     tester.view.physicalSize = surfaceSize;
     addTearDown(() {
@@ -82,7 +82,7 @@ void main() {
           if (compactEpgNow != null)
             compactEpgReferenceTimeProvider.overrideWithValue(compactEpgNow),
           streamingStateProvider.overrideWith(
-            (ref) => Stream.value(streamingState),
+            (ref) => Stream.value(effectiveStreamingState),
           ),
         ],
         child: const MaterialApp(home: IptvTvScreen()),
