@@ -19,6 +19,7 @@ class VideoPlayerAiroPlaybackEngine implements AiroPlaybackEngine {
   AiroPlaybackState _state = AiroPlaybackState.idle(
     backendKind: AiroPlaybackBackendKind.videoPlayer,
   );
+  AiroPlaybackEnginePhase? _prebufferPhase;
   final StreamController<AiroPlaybackState> _stateController =
       StreamController<AiroPlaybackState>.broadcast();
 
@@ -101,11 +102,18 @@ class VideoPlayerAiroPlaybackEngine implements AiroPlaybackEngine {
       return;
     }
 
-    final nextPhase = value.isBuffering
-        ? AiroPlaybackEnginePhase.buffering
-        : (_state.phase == AiroPlaybackEnginePhase.buffering
-              ? AiroPlaybackEnginePhase.playing
-              : _state.phase);
+    AiroPlaybackEnginePhase nextPhase;
+    if (value.isBuffering) {
+      if (_state.phase != AiroPlaybackEnginePhase.buffering) {
+        _prebufferPhase = _state.phase;
+      }
+      nextPhase = AiroPlaybackEnginePhase.buffering;
+    } else if (_state.phase == AiroPlaybackEnginePhase.buffering) {
+      nextPhase = _prebufferPhase ?? AiroPlaybackEnginePhase.playing;
+      _prebufferPhase = null;
+    } else {
+      nextPhase = _state.phase;
+    }
 
     _emit(
       _state.copyWith(

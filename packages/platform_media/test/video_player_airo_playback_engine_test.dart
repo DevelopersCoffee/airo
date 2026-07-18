@@ -188,6 +188,26 @@ void main() {
     );
 
     test(
+      'buffering while paused restores to paused, not playing, once buffering clears',
+      () async {
+        final engine = VideoPlayerAiroPlaybackEngine();
+        await engine.open(request());
+        await engine.play();
+        await engine.pause();
+
+        fakePlatform.emitBufferingStart();
+        await Future<void>.delayed(Duration.zero);
+        expect(engine.currentState.phase, AiroPlaybackEnginePhase.buffering);
+
+        fakePlatform.emitBufferingEnd();
+        await Future<void>.delayed(Duration.zero);
+        expect(engine.currentState.phase, AiroPlaybackEnginePhase.paused);
+
+        await engine.dispose();
+      },
+    );
+
+    test(
       'engine state carries bufferedRanges reflecting the controller value',
       () async {
         final engine = VideoPlayerAiroPlaybackEngine();
