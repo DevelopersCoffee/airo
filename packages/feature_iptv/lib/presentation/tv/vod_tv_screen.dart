@@ -101,7 +101,9 @@ class _ContinueWatchingTile extends StatelessWidget {
       child: Container(
         decoration: BoxDecoration(
           color: Colors.grey[850],
-          borderRadius: BorderRadius.circular(TvFocusConstants.focusBorderRadius),
+          borderRadius: BorderRadius.circular(
+            TvFocusConstants.focusBorderRadius,
+          ),
         ),
         child: Center(
           child: Text(

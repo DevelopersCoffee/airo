@@ -123,7 +123,7 @@ void main() {
 
   group('StreamingState Live DVR Properties', () {
     test('default state should be non-live', () {
-      const state = StreamingState();
+      final state = StreamingState();
 
       expect(state.isLiveStream, isFalse);
       expect(state.liveEdge, isNull);
@@ -132,7 +132,7 @@ void main() {
     });
 
     test('isAtLiveEdge should return true when delay <= 3 seconds', () {
-      final atEdgeState = const StreamingState().copyWith(
+      final atEdgeState = StreamingState().copyWith(
         isLiveStream: true,
         liveDelay: const Duration(seconds: 2),
       );
@@ -141,7 +141,7 @@ void main() {
     });
 
     test('isAtLiveEdge should return false when delay > 3 seconds', () {
-      final behindState = const StreamingState().copyWith(
+      final behindState = StreamingState().copyWith(
         isLiveStream: true,
         liveDelay: const Duration(seconds: 10),
       );
@@ -150,7 +150,7 @@ void main() {
     });
 
     test('isBehindLive should return true when delay > 3 seconds', () {
-      final behindState = const StreamingState().copyWith(
+      final behindState = StreamingState().copyWith(
         isLiveStream: true,
         liveDelay: const Duration(seconds: 10),
       );
@@ -159,7 +159,7 @@ void main() {
     });
 
     test('isBehindLive should return false when at live edge', () {
-      final atEdgeState = const StreamingState().copyWith(
+      final atEdgeState = StreamingState().copyWith(
         isLiveStream: true,
         liveDelay: const Duration(seconds: 2),
       );
@@ -168,7 +168,7 @@ void main() {
     });
 
     test('shouldShowGoLive should return true when behind live', () {
-      final behindState = const StreamingState().copyWith(
+      final behindState = StreamingState().copyWith(
         isLiveStream: true,
         liveDelay: const Duration(seconds: 15),
         playbackState: PlaybackState.playing,
@@ -178,7 +178,7 @@ void main() {
     });
 
     test('shouldShowGoLive should return true when paused', () {
-      final pausedState = const StreamingState().copyWith(
+      final pausedState = StreamingState().copyWith(
         isLiveStream: true,
         liveDelay: const Duration(seconds: 2),
         playbackState: PlaybackState.paused,
@@ -188,7 +188,7 @@ void main() {
     });
 
     test('shouldShowGoLive should return false when at live and playing', () {
-      final liveState = const StreamingState().copyWith(
+      final liveState = StreamingState().copyWith(
         isLiveStream: true,
         liveDelay: const Duration(seconds: 1),
         playbackState: PlaybackState.playing,
@@ -198,7 +198,7 @@ void main() {
     });
 
     test('shouldAutoResync should return true when delay > 30 seconds', () {
-      final driftedState = const StreamingState().copyWith(
+      final driftedState = StreamingState().copyWith(
         isLiveStream: true,
         liveDelay: const Duration(seconds: 45),
       );
@@ -207,7 +207,7 @@ void main() {
     });
 
     test('shouldAutoResync should return false when delay <= 30 seconds', () {
-      final normalState = const StreamingState().copyWith(
+      final normalState = StreamingState().copyWith(
         isLiveStream: true,
         liveDelay: const Duration(seconds: 20),
       );
@@ -216,7 +216,7 @@ void main() {
     });
 
     test('formattedDelay should return seconds format for < 60 seconds', () {
-      final state = const StreamingState().copyWith(
+      final state = StreamingState().copyWith(
         isLiveStream: true,
         liveDelay: const Duration(seconds: 45),
       );
@@ -225,7 +225,7 @@ void main() {
     });
 
     test('formattedDelay should return minutes format for >= 60 seconds', () {
-      final state = const StreamingState().copyWith(
+      final state = StreamingState().copyWith(
         isLiveStream: true,
         liveDelay: const Duration(minutes: 2, seconds: 30),
       );
@@ -234,7 +234,7 @@ void main() {
     });
 
     test('canSeekBack should return true with DVR support', () {
-      final dvrState = const StreamingState().copyWith(
+      final dvrState = StreamingState().copyWith(
         isLiveStream: true,
         hasDvrSupport: true,
         dvrWindowDuration: const Duration(minutes: 30),
@@ -244,7 +244,7 @@ void main() {
     });
 
     test('canSeekBack should return false without DVR support', () {
-      final noDvrState = const StreamingState().copyWith(
+      final noDvrState = StreamingState().copyWith(
         isLiveStream: true,
         hasDvrSupport: false,
       );

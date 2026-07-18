@@ -32,61 +32,64 @@ void main() {
     );
   }
 
-  testWidgets('renders a row per channel with a program block for each programme', (tester) async {
-    final now = DateTime.utc(2026, 7, 17, 12);
-    final window = CompactEpgWindow(
-      entries: [
-        CompactEpgWindowEntry(
-          channelId: 'channel-1',
-          channelName: 'Example Channel',
-          programs: [
-            CompactEpgProgram(
-              programId: 'p1',
-              title: 'Morning Show',
-              startsAt: now,
-              endsAt: now.add(const Duration(hours: 1)),
-            ),
-          ],
-        ),
-      ],
-      windowStart: now,
-      windowEnd: now.add(const Duration(hours: 3)),
-      generatedAt: now,
-      expiresAt: now.add(const Duration(hours: 1)),
-      source: CompactEpgSliceSource.localCache,
-    );
-    final container = await buildContainer(window);
-    addTearDown(container.dispose);
+  testWidgets(
+    'renders a row per channel with a program block for each programme',
+    (tester) async {
+      final now = DateTime.utc(2026, 7, 17, 12);
+      final window = CompactEpgWindow(
+        entries: [
+          CompactEpgWindowEntry(
+            channelId: 'channel-1',
+            channelName: 'Example Channel',
+            programs: [
+              CompactEpgProgram(
+                programId: 'p1',
+                title: 'Morning Show',
+                startsAt: now,
+                endsAt: now.add(const Duration(hours: 1)),
+              ),
+            ],
+          ),
+        ],
+        windowStart: now,
+        windowEnd: now.add(const Duration(hours: 3)),
+        generatedAt: now,
+        expiresAt: now.add(const Duration(hours: 1)),
+        source: CompactEpgSliceSource.localCache,
+      );
+      final container = await buildContainer(window);
+      addTearDown(container.dispose);
 
-    IPTVChannel? selected;
-    await tester.pumpWidget(
-      UncontrolledProviderScope(
-        container: container,
-        child: MaterialApp(
-          home: MediaQuery(
-            data: const MediaQueryData(
-              size: Size(1280, 720),
-              navigationMode: NavigationMode.directional,
-            ),
-            child: Scaffold(
-              body: SizedBox(
-                width: 1280,
-                height: 720,
-                child: EpgTimelineGrid(onChannelSelect: (c) => selected = c),
+      IPTVChannel? selected;
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(
+            home: MediaQuery(
+              data: const MediaQueryData(
+                size: Size(1280, 720),
+                navigationMode: NavigationMode.directional,
+              ),
+              child: Scaffold(
+                body: SizedBox(
+                  width: 1280,
+                  height: 720,
+                  child: EpgTimelineGrid(onChannelSelect: (c) => selected = c),
+                ),
               ),
             ),
           ),
         ),
-      ),
-    );
-    await tester.pump();
+      );
+      await tester.pump();
 
-    expect(find.text('Example Channel'), findsOneWidget);
-    expect(find.text('Morning Show'), findsOneWidget);
-    // Nothing was tapped/selected in this test — confirms onChannelSelect
-    // isn't called spuriously on render.
-    expect(selected, isNull);
-  });
+      expect(find.text('Example Channel'), findsOneWidget);
+      expect(find.text('Morning Show'), findsOneWidget);
+      // Nothing was tapped/selected in this test — confirms onChannelSelect
+      // isn't called spuriously on render.
+      expect(selected, isNull);
+    },
+  );
 
   testWidgets('shows empty state when there are no channels', (tester) async {
     final now = DateTime.utc(2026, 7, 17, 12);
@@ -113,9 +116,16 @@ void main() {
         container: container,
         child: const MaterialApp(
           home: MediaQuery(
-            data: MediaQueryData(size: Size(1280, 720), navigationMode: NavigationMode.directional),
+            data: MediaQueryData(
+              size: Size(1280, 720),
+              navigationMode: NavigationMode.directional,
+            ),
             child: Scaffold(
-              body: SizedBox(width: 1280, height: 720, child: EpgTimelineGrid()),
+              body: SizedBox(
+                width: 1280,
+                height: 720,
+                child: EpgTimelineGrid(),
+              ),
             ),
           ),
         ),
@@ -126,82 +136,87 @@ void main() {
     expect(find.text('No channels to show yet.'), findsOneWidget);
   });
 
-  testWidgets('virtualizes channel rows: 500 channels render far fewer row widgets', (tester) async {
-    final now = DateTime.utc(2026, 7, 17, 12);
-    final manyChannels = [
-      for (var i = 0; i < 500; i++)
-        IPTVChannel(
-          id: 'channel-$i',
-          name: 'Channel $i',
-          streamUrl: 'https://example.com/stream-$i.m3u8',
-          group: 'News',
-        ),
-    ];
-    final window = CompactEpgWindow(
-      entries: [
+  testWidgets(
+    'virtualizes channel rows: 500 channels render far fewer row widgets',
+    (tester) async {
+      final now = DateTime.utc(2026, 7, 17, 12);
+      final manyChannels = [
         for (var i = 0; i < 500; i++)
-          CompactEpgWindowEntry(
-            channelId: 'channel-$i',
-            channelName: 'Channel $i',
-            programs: [
-              CompactEpgProgram(
-                programId: 'p-$i',
-                title: 'Show $i',
-                startsAt: now,
-                endsAt: now.add(const Duration(hours: 1)),
-              ),
-            ],
+          IPTVChannel(
+            id: 'channel-$i',
+            name: 'Channel $i',
+            streamUrl: 'https://example.com/stream-$i.m3u8',
+            group: 'News',
           ),
-      ],
-      windowStart: now,
-      windowEnd: now.add(const Duration(hours: 3)),
-      generatedAt: now,
-      expiresAt: now.add(const Duration(hours: 1)),
-      source: CompactEpgSliceSource.localCache,
-    );
-    final prefs = await SharedPreferences.getInstance();
-    final container = ProviderContainer(
-      overrides: [
-        sharedPreferencesProvider.overrideWithValue(prefs),
-        iptvChannelsProvider.overrideWith((ref) async => manyChannels),
-        guideEpgWindowProvider.overrideWith((ref) async => window),
-      ],
-    );
-    addTearDown(container.dispose);
-
-    await tester.pumpWidget(
-      UncontrolledProviderScope(
-        container: container,
-        child: MaterialApp(
-          home: MediaQuery(
-            data: const MediaQueryData(
-              size: Size(1280, 720),
-              navigationMode: NavigationMode.directional,
+      ];
+      final window = CompactEpgWindow(
+        entries: [
+          for (var i = 0; i < 500; i++)
+            CompactEpgWindowEntry(
+              channelId: 'channel-$i',
+              channelName: 'Channel $i',
+              programs: [
+                CompactEpgProgram(
+                  programId: 'p-$i',
+                  title: 'Show $i',
+                  startsAt: now,
+                  endsAt: now.add(const Duration(hours: 1)),
+                ),
+              ],
             ),
-            child: Scaffold(
-              body: SizedBox(
-                width: 1280,
-                height: 720,
-                child: EpgTimelineGrid(onChannelSelect: (_) {}),
+        ],
+        windowStart: now,
+        windowEnd: now.add(const Duration(hours: 3)),
+        generatedAt: now,
+        expiresAt: now.add(const Duration(hours: 1)),
+        source: CompactEpgSliceSource.localCache,
+      );
+      final prefs = await SharedPreferences.getInstance();
+      final container = ProviderContainer(
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          iptvChannelsProvider.overrideWith((ref) async => manyChannels),
+          guideEpgWindowProvider.overrideWith((ref) async => window),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(
+            home: MediaQuery(
+              data: const MediaQueryData(
+                size: Size(1280, 720),
+                navigationMode: NavigationMode.directional,
+              ),
+              child: Scaffold(
+                body: SizedBox(
+                  width: 1280,
+                  height: 720,
+                  child: EpgTimelineGrid(onChannelSelect: (_) {}),
+                ),
               ),
             ),
           ),
         ),
-      ),
-    );
-    await tester.pump();
+      );
+      await tester.pump();
 
-    // ValueKey<String>.toString() quotes string values (e.g.
-    // "[<'epg_row_channel-0'>]"), so the prefix check must include the
-    // leading quote.
-    final builtRowCount = find
-        .byWidgetPredicate((widget) => widget.key.toString().startsWith("[<'epg_row_"))
-        .evaluate()
-        .length;
+      // ValueKey<String>.toString() quotes string values (e.g.
+      // "[<'epg_row_channel-0'>]"), so the prefix check must include the
+      // leading quote.
+      final builtRowCount = find
+          .byWidgetPredicate(
+            (widget) => widget.key.toString().startsWith("[<'epg_row_"),
+          )
+          .evaluate()
+          .length;
 
-    expect(builtRowCount, greaterThan(0));
-    expect(builtRowCount, lessThan(30));
-  });
+      expect(builtRowCount, greaterThan(0));
+      expect(builtRowCount, lessThan(30));
+    },
+  );
 
   testWidgets(
     'moving D-pad focus onto a program block does not crash the shared '
@@ -253,7 +268,9 @@ void main() {
       final container = ProviderContainer(
         overrides: [
           sharedPreferencesProvider.overrideWithValue(prefs),
-          iptvChannelsProvider.overrideWith((ref) async => [channel, channelTwo]),
+          iptvChannelsProvider.overrideWith(
+            (ref) async => [channel, channelTwo],
+          ),
           guideEpgWindowProvider.overrideWith((ref) async => window),
         ],
       );

@@ -152,9 +152,7 @@ void main() {
         AiroReleaseSupportStatus.deferred,
       );
       expect(
-        matrix
-            .profileById('tv')
-            .supportStatuses[AiroReleaseDeviceClass.macos],
+        matrix.profileById('tv').supportStatuses[AiroReleaseDeviceClass.macos],
         AiroReleaseSupportStatus.supported,
       );
       expect(

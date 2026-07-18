@@ -22,6 +22,7 @@ final localIptvSearchIndexProvider = FutureProvider<LocalIptvSearchIndex>((
   final recentChannels = await ref.watch(
     recentlyWatchedChannelsProvider.future,
   );
+  final hiddenGroupIds = await ref.watch(hiddenGroupIdsProvider.future);
 
   // No EPG source configured falls back to EmptyCompactEpgRepository
   // (compactEpgRepositoryProvider's default), which resolves an empty
@@ -37,6 +38,7 @@ final localIptvSearchIndexProvider = FutureProvider<LocalIptvSearchIndex>((
     programsByChannelId: programsByChannelId,
     favoriteChannelIds: favoriteIds,
     recentChannelIds: [for (final channel in recentChannels) channel.id],
+    hiddenGroupIds: hiddenGroupIds,
   );
 });
 

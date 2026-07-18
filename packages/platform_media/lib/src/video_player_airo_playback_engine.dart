@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart';
 import 'package:platform_player/platform_player.dart';
 import 'package:video_player/video_player.dart';
 
@@ -18,11 +19,13 @@ class VideoPlayerAiroPlaybackEngine implements AiroPlaybackEngine {
   AiroPlaybackState _state = AiroPlaybackState.idle(
     backendKind: AiroPlaybackBackendKind.videoPlayer,
   );
+  AiroPlaybackEnginePhase? _prebufferPhase;
   final StreamController<AiroPlaybackState> _stateController =
       StreamController<AiroPlaybackState>.broadcast();
 
   @override
-  AiroPlaybackBackendKind get backendKind => AiroPlaybackBackendKind.videoPlayer;
+  AiroPlaybackBackendKind get backendKind =>
+      AiroPlaybackBackendKind.videoPlayer;
 
   @override
   Stream<AiroPlaybackState> get states => _stateController.stream;
@@ -44,17 +47,17 @@ class VideoPlayerAiroPlaybackEngine implements AiroPlaybackEngine {
 
     final controller = VideoPlayerController.networkUrl(
       Uri.parse(request.sourceHandle.value),
+      videoPlayerOptions: VideoPlayerOptions(
+        mixWithOthers: request.mixWithOthers,
+        allowBackgroundPlayback: request.allowBackgroundPlayback,
+      ),
     );
     _controller = controller;
 
     try {
       await controller.initialize();
     } on TimeoutException {
-      return _fail(
-        AiroPlaybackErrorCode.networkUnavailable,
-        'open',
-        request,
-      );
+      return _fail(AiroPlaybackErrorCode.networkUnavailable, 'open', request);
     } on PlatformException {
       return _fail(AiroPlaybackErrorCode.decoderFailed, 'open', request);
     } on Object {
@@ -66,6 +69,7 @@ class VideoPlayerAiroPlaybackEngine implements AiroPlaybackEngine {
     }
     await controller.setVolume(_state.volume);
     await controller.setPlaybackSpeed(_state.playbackSpeed);
+    controller.addListener(_onControllerValueChanged);
 
     _emit(
       _state.copyWith(
@@ -81,6 +85,49 @@ class VideoPlayerAiroPlaybackEngine implements AiroPlaybackEngine {
       ),
     );
     return _state;
+  }
+
+  /// Continuously mirrors `VideoPlayerController.value` into
+  /// [AiroPlaybackState], fired on every native player update (position
+  /// ticks, buffering transitions, errors) — not just on explicit method
+  /// calls. This is what lets [AiroPlaybackEngine] consumers (progress bars,
+  /// buffer-health monitors, live-edge detectors) observe playback without
+  /// holding a reference to the raw controller.
+  void _onControllerValueChanged() {
+    final controller = _controller;
+    if (controller == null) return;
+    final value = controller.value;
+
+    if (value.hasError) {
+      _fail(AiroPlaybackErrorCode.decoderFailed, 'playback', _state.request);
+      return;
+    }
+
+    AiroPlaybackEnginePhase nextPhase;
+    if (value.isBuffering) {
+      if (_state.phase != AiroPlaybackEnginePhase.buffering) {
+        _prebufferPhase = _state.phase;
+      }
+      nextPhase = AiroPlaybackEnginePhase.buffering;
+    } else if (_state.phase == AiroPlaybackEnginePhase.buffering) {
+      nextPhase = _prebufferPhase ?? AiroPlaybackEnginePhase.playing;
+      _prebufferPhase = null;
+    } else {
+      nextPhase = _state.phase;
+    }
+
+    _emit(
+      _state.copyWith(
+        phase: nextPhase,
+        position: value.position,
+        duration: value.duration,
+        bufferedRanges: value.buffered
+            .map(
+              (r) => AiroPlaybackBufferedRange(start: r.start, end: r.end),
+            )
+            .toList(),
+      ),
+    );
   }
 
   @override
@@ -110,10 +157,20 @@ class VideoPlayerAiroPlaybackEngine implements AiroPlaybackEngine {
 
   @override
   Future<AiroPlaybackState> seek(Duration position) async {
+    // Preserve whether playback was actively playing (or buffering while
+    // playing) before the seek, rather than unconditionally dropping to
+    // `paused`. A seek must not silently regress `isPlaying` to false for
+    // callers mid-playback (center play/pause button, wakelock, the Go-Live
+    // button, and drift auto-resync all key off this phase). A seek that
+    // genuinely happens while paused should still result in `paused`.
+    final wasPlaying = _state.phase == AiroPlaybackEnginePhase.playing ||
+        _state.phase == AiroPlaybackEnginePhase.buffering;
     await _controller?.seekTo(position);
     _emit(
       _state.copyWith(
-        phase: AiroPlaybackEnginePhase.paused,
+        phase: wasPlaying
+            ? AiroPlaybackEnginePhase.playing
+            : AiroPlaybackEnginePhase.paused,
         position: position,
       ),
     );
@@ -194,6 +251,17 @@ class VideoPlayerAiroPlaybackEngine implements AiroPlaybackEngine {
   }
 
   @override
+  Widget? buildView() {
+    final controller = _controller;
+    if (controller == null || !controller.value.isInitialized) return null;
+    return SizedBox(
+      width: controller.value.size.width,
+      height: controller.value.size.height,
+      child: VideoPlayer(controller),
+    );
+  }
+
+  @override
   Future<void> dispose() async {
     await _disposeController();
     await _stateController.close();
@@ -202,6 +270,7 @@ class VideoPlayerAiroPlaybackEngine implements AiroPlaybackEngine {
   Future<void> _disposeController() async {
     final controller = _controller;
     _controller = null;
+    controller?.removeListener(_onControllerValueChanged);
     await controller?.dispose();
   }
 

@@ -20,22 +20,22 @@ class ModelEntry {
 
   // Convert to/from JSON for storage or API communication
   factory ModelEntry.fromJson(Map<String, dynamic> json) => ModelEntry(
-        id: json['id'] as String,
-        name: json['name'] as String,
-        version: json['version'] as String,
-        description: json['description'] as String,
-        sizeBytes: json['sizeBytes'] as int,
-        localPath: json['localPath'] as String?,
-        isDownloaded: json['isDownloaded'] as bool? ?? false,
-      );
+    id: json['id'] as String,
+    name: json['name'] as String,
+    version: json['version'] as String,
+    description: json['description'] as String,
+    sizeBytes: json['sizeBytes'] as int,
+    localPath: json['localPath'] as String?,
+    isDownloaded: json['isDownloaded'] as bool? ?? false,
+  );
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'name': name,
-        'version': version,
-        'description': description,
-        'sizeBytes': sizeBytes,
-        'localPath': localPath,
-        'isDownloaded': isDownloaded,
-      };
+    'id': id,
+    'name': name,
+    'version': version,
+    'description': description,
+    'sizeBytes': sizeBytes,
+    'localPath': localPath,
+    'isDownloaded': isDownloaded,
+  };
 }

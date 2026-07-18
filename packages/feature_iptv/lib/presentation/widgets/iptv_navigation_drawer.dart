@@ -13,12 +13,18 @@ class IptvNavigationDrawer extends StatelessWidget {
     required this.onGuide,
     required this.onMovies,
     this.showMovies = true,
+    this.onPlayLocalFileOnTv,
   });
 
   final VoidCallback onHome;
   final VoidCallback onGuide;
   final VoidCallback onMovies;
   final bool showMovies;
+
+  /// CV-033 debug entry point: streams a phone-local file to a receiver.
+  /// Left unwired (null) unless the app build supplies a picker, since the
+  /// end-user surface for this flow is still undecided.
+  final VoidCallback? onPlayLocalFileOnTv;
 
   @override
   Widget build(BuildContext context) {
@@ -51,6 +57,13 @@ class IptvNavigationDrawer extends StatelessWidget {
                 leading: const Icon(Icons.movie_outlined),
                 title: const Text('Movies & Shows'),
                 onTap: () => _select(context, onMovies),
+              ),
+            if (onPlayLocalFileOnTv case final onPlayLocalFileOnTv?)
+              ListTile(
+                key: const ValueKey('iptv-drawer-play-on-tv'),
+                leading: const Icon(Icons.cast_outlined),
+                title: const Text('Play file on TV (debug)'),
+                onTap: () => _select(context, onPlayLocalFileOnTv),
               ),
           ],
         ),

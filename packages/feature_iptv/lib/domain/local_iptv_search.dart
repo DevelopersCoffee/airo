@@ -62,12 +62,20 @@ class LocalIptvSearchIndex {
     required Map<String, List<CompactEpgProgram>> programsByChannelId,
     required Set<String> favoriteChannelIds,
     required List<String> recentChannelIds,
+    Set<String> hiddenGroupIds = const {},
   }) {
     final recentRank = <String, int>{
       for (var i = 0; i < recentChannelIds.length; i++) recentChannelIds[i]: i,
     };
+    // CV-021: hidden groups are excluded from the index entirely, not just
+    // visually skipped, so they never surface as search results.
+    final visibleChannels = hiddenGroupIds.isEmpty
+        ? channels
+        : channels
+              .where((channel) => !hiddenGroupIds.contains(channel.group))
+              .toList(growable: false);
     return LocalIptvSearchIndex._(
-      List.unmodifiable(channels),
+      List.unmodifiable(visibleChannels),
       Map.unmodifiable(programsByChannelId),
       Set.unmodifiable(favoriteChannelIds),
       Map.unmodifiable(recentRank),

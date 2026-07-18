@@ -80,7 +80,10 @@ class XmltvSourceStore {
     final current = await load();
     if (current == null) return;
     await save(
-      current.copyWith(lastRefreshedAt: () => refreshedAt, lastError: () => null),
+      current.copyWith(
+        lastRefreshedAt: () => refreshedAt,
+        lastError: () => null,
+      ),
     );
   }
 

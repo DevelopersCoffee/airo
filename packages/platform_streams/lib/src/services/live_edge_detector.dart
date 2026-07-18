@@ -1,10 +1,9 @@
 import 'dart:async';
 import 'package:platform_player/platform_player.dart';
-import 'package:video_player/video_player.dart';
 
 /// Live Edge Detection Service (P0-1, P0-2, P0-3)
 ///
-/// Monitors video player to detect:
+/// Monitors an [AiroPlaybackEngine] to detect:
 /// - Whether stream is live vs VOD
 /// - Current live edge position
 /// - Delay from live edge
@@ -13,7 +12,8 @@ import 'package:video_player/video_player.dart';
 class LiveEdgeDetector {
   final LiveEdgeConfig _config;
   Timer? _updateTimer;
-  VideoPlayerController? _controller;
+  StreamSubscription<AiroPlaybackState>? _engineSubscription;
+  AiroPlaybackState? _lastState;
 
   // Callbacks
   void Function(LiveEdgeState)? onStateUpdate;
@@ -35,16 +35,25 @@ class LiveEdgeDetector {
   LiveEdgeDetector({LiveEdgeConfig? config})
     : _config = config ?? LiveEdgeConfig.defaultConfig;
 
-  /// Attach to a video player controller
-  void attach(VideoPlayerController controller) {
-    _controller = controller;
+  /// Attach to an [AiroPlaybackEngine]. Subscribes to its `states` stream and
+  /// caches the latest value; the periodic timer reads that cache instead of
+  /// polling a controller directly, so this works identically regardless of
+  /// which concrete engine (videoPlayer, mpv, ...) is active.
+  void attachToEngine(AiroPlaybackEngine engine) {
+    _lastState = engine.currentState;
+    _engineSubscription?.cancel();
+    _engineSubscription = engine.states.listen((state) {
+      _lastState = state;
+    });
     _startMonitoring();
   }
 
-  /// Detach from current controller
+  /// Detach from the current engine
   void detach() {
     _stopMonitoring();
-    _controller = null;
+    _engineSubscription?.cancel();
+    _engineSubscription = null;
+    _lastState = null;
   }
 
   void _startMonitoring() {
@@ -61,11 +70,11 @@ class LiveEdgeDetector {
 
   /// Calculate current live edge state
   void _updateLiveEdgeState() {
-    if (_controller == null || !_controller!.value.isInitialized) return;
+    final state = _lastState;
+    if (state == null) return;
 
-    final value = _controller!.value;
-    final position = value.position;
-    final duration = value.duration;
+    final position = state.position;
+    final duration = state.duration ?? Duration.zero;
 
     // Detect if this is a live stream (P0-1)
     final isLive = _detectLiveStream(duration, position);
@@ -77,19 +86,20 @@ class LiveEdgeDetector {
     }
 
     // Calculate live edge (P0-2)
-    final liveEdge = _calculateLiveEdge(duration, value.buffered);
+    final liveEdge = _calculateLiveEdge(duration, state.bufferedRanges);
 
     // Calculate delay from live (P0-3)
     final delay = liveEdge - position;
 
     // Determine live stream state (P0-4)
-    final liveState = _determineLiveState(delay, value.isPlaying);
+    final isPlaying = state.phase == AiroPlaybackEnginePhase.playing;
+    final liveState = _determineLiveState(delay, isPlaying);
 
     // Check for drift (auto-resync trigger)
     _checkForDrift(delay);
 
     // Detect DVR window
-    final dvrWindow = _detectDvrWindow(value.buffered, position);
+    final dvrWindow = _detectDvrWindow(state.bufferedRanges, position);
 
     onStateUpdate?.call(
       LiveEdgeState(
@@ -130,7 +140,10 @@ class LiveEdgeDetector {
   }
 
   /// Calculate live edge position (P0-2)
-  Duration _calculateLiveEdge(Duration duration, List<DurationRange> buffered) {
+  Duration _calculateLiveEdge(
+    Duration duration,
+    List<AiroPlaybackBufferedRange> buffered,
+  ) {
     // For live streams, live edge is typically the end of buffered range
     // or the reported duration (whichever is greater)
     Duration maxBuffered = Duration.zero;
@@ -206,7 +219,10 @@ class LiveEdgeDetector {
   }
 
   /// Detect DVR window boundaries
-  _DvrWindow _detectDvrWindow(List<DurationRange> buffered, Duration position) {
+  _DvrWindow _detectDvrWindow(
+    List<AiroPlaybackBufferedRange> buffered,
+    Duration position,
+  ) {
     if (buffered.isEmpty) {
       return _DvrWindow(hasDvr: false);
     }
@@ -241,7 +257,9 @@ class LiveEdgeDetector {
   /// Dispose resources
   void dispose() {
     _stopMonitoring();
-    _controller = null;
+    _engineSubscription?.cancel();
+    _engineSubscription = null;
+    _lastState = null;
     onStateUpdate = null;
     onDriftDetected = null;
   }

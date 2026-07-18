@@ -120,6 +120,8 @@ class _TvChannelGridState extends ConsumerState<TvChannelGrid> {
             isPlaying: isPlaying,
             autofocus: isInitialFocus,
             onSelect: () => widget.onChannelSelect(channel),
+            onHideGroup: () =>
+                ref.read(toggleGroupHiddenProvider(channel.group)),
             onFocus: () {
               _currentFocusedIndex = index;
               if (widget.config.preloadThumbnails) {
@@ -242,6 +244,7 @@ class _TvChannelCard extends StatelessWidget {
   final bool autofocus;
   final VoidCallback onSelect;
   final VoidCallback? onFocus;
+  final VoidCallback? onHideGroup;
 
   const _TvChannelCard({
     super.key,
@@ -251,6 +254,7 @@ class _TvChannelCard extends StatelessWidget {
     required this.autofocus,
     required this.onSelect,
     this.onFocus,
+    this.onHideGroup,
   });
 
   @override
@@ -261,12 +265,14 @@ class _TvChannelCard extends StatelessWidget {
         : channel.name;
     final semanticHint = isPlaying
         ? 'Press OK to view controls'
-        : 'Press OK to play channel';
+        : 'Press OK to play channel. Press menu or long-press to hide this '
+              'channel\'s group.';
 
     return RepaintBoundary(
       key: ValueKey('tv_channel_card_boundary_${channel.id}'),
       child: TvFocusable(
         onSelect: onSelect,
+        onSecondaryAction: onHideGroup,
         onFocus: onFocus,
         autofocus: autofocus,
         focusColor: isPlaying ? Colors.green : null,

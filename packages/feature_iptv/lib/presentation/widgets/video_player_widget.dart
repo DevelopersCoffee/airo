@@ -4,7 +4,6 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
-import 'package:video_player/video_player.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 import '../../application/providers/iptv_providers.dart';
 import '../../application/providers/video_aspect_ratio_provider.dart';
@@ -58,6 +57,10 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
   bool _isLocked = false;
   double _brightness = 0.5;
   late final PlayerBrightnessController _brightnessController;
+
+  // VOD seek bar drag state — null when the user isn't actively dragging,
+  // so the slider tracks live playback position between drags.
+  Duration? _vodSeekDragPosition;
 
   @override
   void initState() {
@@ -282,7 +285,7 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
       _updateWakelockForPlayback(state);
     });
 
-    final controller = service.controller;
+    final videoView = service.buildVideoView();
 
     return MouseRegion(
       onHover: (_) => _showControls(),
@@ -296,7 +299,10 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
             children: [
               // Video display + Netflix-style brightness/volume drag
               // gestures. Left half of the video area adjusts brightness,
-              // right half adjusts volume; disabled while locked.
+              // right half adjusts volume; disabled while locked. The video
+              // surface itself is the engine-driven view (CV-016 migration);
+              // when it's null we fall through to loading/diagnostic/
+              // placeholder inside the same gesture-enabled stack.
               PlayerGestureOverlay(
                 locked: _isLocked,
                 brightness: _brightness,
@@ -309,15 +315,12 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                 child: Stack(
                   alignment: Alignment.center,
                   children: [
-                    if (controller != null && controller.value.isInitialized)
+                    // Video display (engine-driven view surface).
+                    if (videoView != null)
                       SizedBox.expand(
                         child: FittedBox(
                           fit: _boxFitFor(aspectRatioFit),
-                          child: SizedBox(
-                            width: controller.value.size.width,
-                            height: controller.value.size.height,
-                            child: VideoPlayer(controller),
-                          ),
+                          child: videoView,
                         ),
                       )
                     else if (state.playbackState == PlaybackState.loading)
@@ -738,6 +741,8 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  if (!state.isLiveStream && state.duration > Duration.zero)
+                    _buildVodSeekBar(service, state),
                   _buildBufferIndicator(state),
                   const SizedBox(height: 8),
                   Row(
@@ -777,6 +782,20 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                           setState(() => _isCinemaMode = !_isCinemaMode);
                         },
                       ),
+                      // Subtitle/track selector — hidden entirely when
+                      // there's nothing to show (mirrors the CV-pro-17
+                      // PiP-toggle visibility pattern).
+                      if (state.tracks.isNotEmpty)
+                        _PlayerControlButton(
+                          key: const ValueKey('iptv-player-subtitle-button'),
+                          icon: Icons.subtitles,
+                          tooltip: 'Subtitles & Tracks',
+                          onPressed: () => _showTrackSelector(
+                            context,
+                            service,
+                            state,
+                          ),
+                        ),
                       // Fullscreen button
                       _PlayerControlButton(
                         key: const ValueKey('iptv-player-fullscreen-button'),
@@ -793,6 +812,38 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
           ),
         ),
       ],
+    );
+  }
+
+  void _showTrackSelector(
+    BuildContext context,
+    VideoPlayerStreamingService service,
+    StreamingState state,
+  ) {
+    showModalBottomSheet<void>(
+      context: context,
+      builder: (context) {
+        return SafeArea(
+          child: ListView(
+            shrinkWrap: true,
+            children: [
+              for (final track in state.tracks)
+                ListTile(
+                  title: Text(track.label),
+                  subtitle: track.isExternal ? const Text('External') : null,
+                  trailing:
+                      state.selectedTrackIds[track.kind] == track.id
+                          ? const Icon(Icons.check)
+                          : null,
+                  onTap: () {
+                    service.selectTrack(kind: track.kind, trackId: track.id);
+                    Navigator.of(context).pop();
+                  },
+                ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -878,6 +929,73 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
         ),
       ),
     );
+  }
+
+  /// VOD-only seek bar (CV-016). Live streams use the live-edge/DVR
+  /// controls instead — this never renders when [StreamingState.isLiveStream]
+  /// is true or the stream has no known duration.
+  Widget _buildVodSeekBar(
+    VideoPlayerStreamingService service,
+    StreamingState state,
+  ) {
+    final durationSeconds = state.duration.inSeconds.toDouble();
+    final displayPosition = (_vodSeekDragPosition ?? state.position).inSeconds
+        .toDouble()
+        .clamp(0.0, durationSeconds);
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Row(
+        children: [
+          Text(
+            _formatDuration(_vodSeekDragPosition ?? state.position),
+            style: const TextStyle(color: Colors.white70, fontSize: 12),
+          ),
+          Expanded(
+            child: Material(
+              type: MaterialType.transparency,
+              child: SliderTheme(
+                data: SliderTheme.of(context).copyWith(
+                  trackHeight: 3,
+                  thumbShape: const RoundSliderThumbShape(
+                    enabledThumbRadius: 6,
+                  ),
+                ),
+                child: Slider(
+                  key: const ValueKey('iptv-player-vod-seek-bar'),
+                  value: displayPosition,
+                  min: 0,
+                  max: durationSeconds,
+                  activeColor: Colors.white,
+                  inactiveColor: Colors.white24,
+                  onChanged: (value) {
+                    setState(() {
+                      _vodSeekDragPosition = Duration(seconds: value.round());
+                    });
+                  },
+                  onChangeEnd: (value) {
+                    final target = Duration(seconds: value.round());
+                    service.seek(target);
+                    setState(() => _vodSeekDragPosition = null);
+                  },
+                ),
+              ),
+            ),
+          ),
+          Text(
+            _formatDuration(state.duration),
+            style: const TextStyle(color: Colors.white70, fontSize: 12),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatDuration(Duration d) {
+    final minutes = d.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final hours = d.inHours;
+    final seconds = d.inSeconds.remainder(60).toString().padLeft(2, '0');
+    return hours > 0 ? '$hours:$minutes:$seconds' : '$minutes:$seconds';
   }
 
   Widget _buildBufferIndicator(StreamingState state) {

@@ -19,7 +19,9 @@ void main() {
     category: ChannelCategory.movies,
   );
 
-  testWidgets('shows VOD grid content when the source has VOD entries', (tester) async {
+  testWidgets('shows VOD grid content when the source has VOD entries', (
+    tester,
+  ) async {
     final prefs = await SharedPreferences.getInstance();
 
     await tester.pumpWidget(
@@ -37,7 +39,9 @@ void main() {
     expect(find.text('Example Movie'), findsOneWidget);
   });
 
-  testWidgets('shows empty state when the source has no VOD entries', (tester) async {
+  testWidgets('shows empty state when the source has no VOD entries', (
+    tester,
+  ) async {
     final prefs = await SharedPreferences.getInstance();
     const liveOnly = IPTVChannel(
       id: 'm3u-2',
@@ -97,7 +101,8 @@ void main() {
       expect(
         errors,
         isEmpty,
-        reason: 'VodGrid mount triggered a Flutter error: ${errors.map((e) => e.exception).join(', ')}',
+        reason:
+            'VodGrid mount triggered a Flutter error: ${errors.map((e) => e.exception).join(', ')}',
       );
       expect(find.text('Example Movie'), findsOneWidget);
     },

@@ -20,7 +20,10 @@ void main() {
   });
 
   test('setOverride then resolveEpgChannelId returns the mapped id', () async {
-    await overrideStore.setOverride(channelId: 'channel-1', epgChannelId: 'epg.example.tv');
+    await overrideStore.setOverride(
+      channelId: 'channel-1',
+      epgChannelId: 'epg.example.tv',
+    );
 
     final result = await overrideStore.resolveEpgChannelId('channel-1');
 
@@ -28,16 +31,28 @@ void main() {
   });
 
   test('setOverride for one channel does not affect another', () async {
-    await overrideStore.setOverride(channelId: 'channel-1', epgChannelId: 'epg-a');
-    await overrideStore.setOverride(channelId: 'channel-2', epgChannelId: 'epg-b');
+    await overrideStore.setOverride(
+      channelId: 'channel-1',
+      epgChannelId: 'epg-a',
+    );
+    await overrideStore.setOverride(
+      channelId: 'channel-2',
+      epgChannelId: 'epg-b',
+    );
 
     expect(await overrideStore.resolveEpgChannelId('channel-1'), 'epg-a');
     expect(await overrideStore.resolveEpgChannelId('channel-2'), 'epg-b');
   });
 
   test('clearOverride removes only the targeted channel', () async {
-    await overrideStore.setOverride(channelId: 'channel-1', epgChannelId: 'epg-a');
-    await overrideStore.setOverride(channelId: 'channel-2', epgChannelId: 'epg-b');
+    await overrideStore.setOverride(
+      channelId: 'channel-1',
+      epgChannelId: 'epg-a',
+    );
+    await overrideStore.setOverride(
+      channelId: 'channel-2',
+      epgChannelId: 'epg-b',
+    );
 
     await overrideStore.clearOverride('channel-1');
 
@@ -46,18 +61,36 @@ void main() {
   });
 
   test('getOverrides returns the full map', () async {
-    await overrideStore.setOverride(channelId: 'channel-1', epgChannelId: 'epg-a');
-    await overrideStore.setOverride(channelId: 'channel-2', epgChannelId: 'epg-b');
+    await overrideStore.setOverride(
+      channelId: 'channel-1',
+      epgChannelId: 'epg-a',
+    );
+    await overrideStore.setOverride(
+      channelId: 'channel-2',
+      epgChannelId: 'epg-b',
+    );
 
     final overrides = await overrideStore.getOverrides();
 
     expect(overrides, {'channel-1': 'epg-a', 'channel-2': 'epg-b'});
   });
 
-  test('re-setting an override for the same channel replaces the old value', () async {
-    await overrideStore.setOverride(channelId: 'channel-1', epgChannelId: 'epg-a');
-    await overrideStore.setOverride(channelId: 'channel-1', epgChannelId: 'epg-a-corrected');
+  test(
+    're-setting an override for the same channel replaces the old value',
+    () async {
+      await overrideStore.setOverride(
+        channelId: 'channel-1',
+        epgChannelId: 'epg-a',
+      );
+      await overrideStore.setOverride(
+        channelId: 'channel-1',
+        epgChannelId: 'epg-a-corrected',
+      );
 
-    expect(await overrideStore.resolveEpgChannelId('channel-1'), 'epg-a-corrected');
-  });
+      expect(
+        await overrideStore.resolveEpgChannelId('channel-1'),
+        'epg-a-corrected',
+      );
+    },
+  );
 }

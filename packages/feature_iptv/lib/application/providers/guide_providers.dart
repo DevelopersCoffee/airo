@@ -12,21 +12,29 @@ import '../xmltv_source_refresh_service.dart';
 import '../xmltv_source_store.dart';
 import 'iptv_providers.dart';
 
-final epgChannelMatchOverrideStoreProvider = Provider<EpgChannelMatchOverrideStore>((ref) {
-  return EpgChannelMatchOverrideStore(PreferencesStore(ref.watch(sharedPreferencesProvider)));
-});
+final epgChannelMatchOverrideStoreProvider =
+    Provider<EpgChannelMatchOverrideStore>((ref) {
+      return EpgChannelMatchOverrideStore(
+        PreferencesStore(ref.watch(sharedPreferencesProvider)),
+      );
+    });
 
 final xmltvSourceStoreProvider = Provider<XmltvSourceStore>((ref) {
-  return XmltvSourceStore(PreferencesStore(ref.watch(sharedPreferencesProvider)));
+  return XmltvSourceStore(
+    PreferencesStore(ref.watch(sharedPreferencesProvider)),
+  );
 });
 
 /// One app-lifetime instance — [XmltvSourceRefreshService] mutates it via
 /// [MutableXmltvCompactEpgRepository.updateSource]; nothing re-creates it.
-final mutableXmltvCompactEpgRepositoryProvider = Provider<MutableXmltvCompactEpgRepository>((ref) {
-  return MutableXmltvCompactEpgRepository();
-});
+final mutableXmltvCompactEpgRepositoryProvider =
+    Provider<MutableXmltvCompactEpgRepository>((ref) {
+      return MutableXmltvCompactEpgRepository();
+    });
 
-final xmltvSourceRefreshServiceProvider = Provider<XmltvSourceRefreshService>((ref) {
+final xmltvSourceRefreshServiceProvider = Provider<XmltvSourceRefreshService>((
+  ref,
+) {
   return XmltvSourceRefreshService(
     dio: ref.watch(dioProvider),
     sourceStore: ref.watch(xmltvSourceStoreProvider),
@@ -35,11 +43,15 @@ final xmltvSourceRefreshServiceProvider = Provider<XmltvSourceRefreshService>((r
   );
 });
 
-final xmltvSourceConfigProvider = FutureProvider<XmltvSourceConfig?>((ref) async {
+final xmltvSourceConfigProvider = FutureProvider<XmltvSourceConfig?>((
+  ref,
+) async {
   return ref.watch(xmltvSourceStoreProvider).load();
 });
 
-final guideWindowDurationProvider = StateProvider<Duration>((ref) => const Duration(hours: 3));
+final guideWindowDurationProvider = StateProvider<Duration>(
+  (ref) => const Duration(hours: 3),
+);
 
 /// "Now," floored to the nearest 30 minutes, so the window doesn't shift on
 /// every rebuild — matches the fixed-window UX competitive guides use.
@@ -49,7 +61,9 @@ final guideWindowStartProvider = Provider<DateTime>((ref) {
   return DateTime.utc(now.year, now.month, now.day, now.hour, flooredMinute);
 });
 
-final guideEpgOverridesProvider = FutureProvider<Map<String, String>>((ref) async {
+final guideEpgOverridesProvider = FutureProvider<Map<String, String>>((
+  ref,
+) async {
   return ref.watch(epgChannelMatchOverrideStoreProvider).getOverrides();
 });
 
@@ -60,13 +74,17 @@ final guideEpgOverridesProvider = FutureProvider<Map<String, String>>((ref) asyn
 final guideEpgWindowProvider = FutureProvider<CompactEpgWindow>((ref) async {
   final channels = await ref.watch(iptvChannelsProvider.future);
   final overrides = await ref.watch(guideEpgOverridesProvider.future);
+  final hiddenGroupIds = await ref.watch(hiddenGroupIdsProvider.future);
   final windowStart = ref.watch(guideWindowStartProvider);
   final windowDuration = ref.watch(guideWindowDurationProvider);
   final now = DateTime.now().toUtc();
 
+  // CV-021: hidden groups never surface in the guide, so don't spend an EPG
+  // query on them either.
   final epgIdToChannelId = <String, String>{};
   final queryIds = <String>[];
   for (final channel in channels) {
+    if (hiddenGroupIds.contains(channel.group)) continue;
     final epgId = overrides[channel.id] ?? channel.id;
     epgIdToChannelId[epgId] = channel.id;
     queryIds.add(epgId);
@@ -114,6 +132,13 @@ final guideSearchQueryProvider = StateProvider<String>((ref) => '');
 final guideFilteredChannelsProvider = Provider<List<IPTVChannel>>((ref) {
   final index = ref.watch(channelSearchIndexProvider);
   final query = ref.watch(guideSearchQueryProvider);
+  final hiddenGroupIds =
+      ref.watch(hiddenGroupIdsProvider).value ?? const <String>{};
   if (index == null) return const [];
-  return index.filterAndSort(query: query);
+
+  final channels = index.filterAndSort(query: query);
+  if (hiddenGroupIds.isEmpty) return channels;
+  return channels
+      .where((channel) => !hiddenGroupIds.contains(channel.group))
+      .toList(growable: false);
 });
