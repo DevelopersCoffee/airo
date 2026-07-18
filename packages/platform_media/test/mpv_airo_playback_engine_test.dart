@@ -135,50 +135,56 @@ void main() {
       },
     );
 
-    test('selectTrack succeeds for a projected external subtitle', () async {
-      final engine = MpvAiroPlaybackEngine(
-        playerFactory: FakeMpvPlayerFacade.new,
-      );
-      await engine.open(
-        AiroMediaOpenRequest(
-          requestId: 'open-sub',
-          sourceHandle: AiroPlaybackSourceHandle.redacted('opaque-1'),
-          mediaKind: AiroPlaybackMediaKind.hls,
-          externalSubtitles: [
-            AiroPlaybackExternalSubtitle(
-              handle: AiroPlaybackSourceHandle.redacted('sub-fr'),
-              languageCode: 'fr',
-            ),
-          ],
-        ),
-      );
+    test(
+      'selectTrack succeeds for a projected external subtitle',
+      () async {
+        final engine = MpvAiroPlaybackEngine(
+          playerFactory: FakeMpvPlayerFacade.new,
+        );
+        await engine.open(
+          AiroMediaOpenRequest(
+            requestId: 'open-sub',
+            sourceHandle: AiroPlaybackSourceHandle.redacted('opaque-1'),
+            mediaKind: AiroPlaybackMediaKind.hls,
+            externalSubtitles: [
+              AiroPlaybackExternalSubtitle(
+                handle: AiroPlaybackSourceHandle.redacted('sub-fr'),
+                languageCode: 'fr',
+              ),
+            ],
+          ),
+        );
 
-      final state = await engine.selectTrack(
-        kind: AiroPlaybackTrackKind.subtitle,
-        trackId: 'external_sub_0',
-      );
+        final state = await engine.selectTrack(
+          kind: AiroPlaybackTrackKind.subtitle,
+          trackId: 'external_sub_0',
+        );
 
-      expect(state.error, isNull);
-      expect(
-        state.selectedTrackIds[AiroPlaybackTrackKind.subtitle],
-        'external_sub_0',
-      );
-      await engine.dispose();
-    });
+        expect(state.error, isNull);
+        expect(
+          state.selectedTrackIds[AiroPlaybackTrackKind.subtitle],
+          'external_sub_0',
+        );
+        await engine.dispose();
+      },
+    );
 
-    test('selectTrack fails typed for an unknown track id', () async {
-      final engine = MpvAiroPlaybackEngine(
-        playerFactory: FakeMpvPlayerFacade.new,
-      );
-      await engine.open(request());
+    test(
+      'selectTrack fails typed for an unknown track id',
+      () async {
+        final engine = MpvAiroPlaybackEngine(
+          playerFactory: FakeMpvPlayerFacade.new,
+        );
+        await engine.open(request());
 
-      final state = await engine.selectTrack(
-        kind: AiroPlaybackTrackKind.audio,
-        trackId: 'nope',
-      );
-      expect(state.error?.code, AiroPlaybackErrorCode.trackUnavailable);
-      await engine.dispose();
-    });
+        final state = await engine.selectTrack(
+          kind: AiroPlaybackTrackKind.audio,
+          trackId: 'nope',
+        );
+        expect(state.error?.code, AiroPlaybackErrorCode.trackUnavailable);
+        await engine.dispose();
+      },
+    );
     test('dispose releases the facade', () async {
       FakeMpvPlayerFacade? capturedFake;
       final engine = MpvAiroPlaybackEngine(
@@ -191,6 +197,18 @@ void main() {
       await engine.open(request());
       await engine.dispose();
       expect(capturedFake!.disposed, isTrue);
+    });
+
+    test('buildView always returns null (no media_kit_video dependency yet)', () async {
+      final engine = MpvAiroPlaybackEngine(
+        playerFactory: FakeMpvPlayerFacade.new,
+      );
+      expect(engine.buildView(), isNull);
+
+      await engine.open(request());
+      expect(engine.buildView(), isNull);
+
+      await engine.dispose();
     });
   });
 }
