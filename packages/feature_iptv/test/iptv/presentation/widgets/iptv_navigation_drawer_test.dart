@@ -9,6 +9,7 @@ void main() {
     VoidCallback? onHome,
     VoidCallback? onGuide,
     VoidCallback? onMovies,
+    VoidCallback? onPlayLocalFileOnTv,
   }) {
     return tester.pumpWidget(
       MaterialApp(
@@ -18,6 +19,7 @@ void main() {
             onHome: onHome ?? () {},
             onGuide: onGuide ?? () {},
             onMovies: onMovies ?? () {},
+            onPlayLocalFileOnTv: onPlayLocalFileOnTv,
           ),
           body: Builder(
             builder: (context) => IconButton(
@@ -80,4 +82,37 @@ void main() {
 
     expect(find.text('Movies & Shows'), findsNothing);
   });
+
+  testWidgets('hides Play file on TV when onPlayLocalFileOnTv is null', (
+    tester,
+  ) async {
+    await pumpDrawer(tester);
+
+    await tester.tap(find.byIcon(Icons.menu));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Play file on TV (debug)'), findsNothing);
+  });
+
+  testWidgets(
+    'tapping Play file on TV closes the drawer and invokes the callback',
+    (tester) async {
+      var tapped = false;
+      await pumpDrawer(
+        tester,
+        onPlayLocalFileOnTv: () => tapped = true,
+      );
+
+      await tester.tap(find.byIcon(Icons.menu));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Play file on TV (debug)'), findsOneWidget);
+
+      await tester.tap(find.text('Play file on TV (debug)'));
+      await tester.pumpAndSettle();
+
+      expect(tapped, isTrue);
+      expect(find.text('Play file on TV (debug)'), findsNothing);
+    },
+  );
 }

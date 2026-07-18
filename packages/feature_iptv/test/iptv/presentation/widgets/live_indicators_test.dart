@@ -5,7 +5,7 @@ import "package:feature_iptv/feature_iptv.dart";
 void main() {
   group('LiveBadge', () {
     testWidgets('should not render when not a live stream', (tester) async {
-      const state = StreamingState(); // Default is not live
+      final state = StreamingState(); // Default is not live
 
       await tester.pumpWidget(
         MaterialApp(
@@ -17,7 +17,7 @@ void main() {
     });
 
     testWidgets('should render LIVE text when at live edge', (tester) async {
-      final state = const StreamingState().copyWith(
+      final state = StreamingState().copyWith(
         isLiveStream: true,
         liveDelay: const Duration(seconds: 1),
       );
@@ -34,7 +34,7 @@ void main() {
     testWidgets('should render when behind live with showWhenNotLive=true', (
       tester,
     ) async {
-      final state = const StreamingState().copyWith(
+      final state = StreamingState().copyWith(
         isLiveStream: true,
         liveDelay: const Duration(seconds: 30),
       );
@@ -51,7 +51,7 @@ void main() {
     testWidgets(
       'should not render when behind live with showWhenNotLive=false',
       (tester) async {
-        final state = const StreamingState().copyWith(
+        final state = StreamingState().copyWith(
           isLiveStream: true,
           liveDelay: const Duration(seconds: 30),
         );
@@ -71,7 +71,7 @@ void main() {
 
   group('DelayIndicator', () {
     testWidgets('should not render when not behind live', (tester) async {
-      final state = const StreamingState().copyWith(
+      final state = StreamingState().copyWith(
         isLiveStream: true,
         liveDelay: const Duration(seconds: 2),
       );
@@ -86,7 +86,7 @@ void main() {
     });
 
     testWidgets('should render delay when behind live', (tester) async {
-      final state = const StreamingState().copyWith(
+      final state = StreamingState().copyWith(
         isLiveStream: true,
         liveDelay: const Duration(seconds: 45),
       );
@@ -103,7 +103,7 @@ void main() {
     testWidgets('should render minutes format for large delays', (
       tester,
     ) async {
-      final state = const StreamingState().copyWith(
+      final state = StreamingState().copyWith(
         isLiveStream: true,
         liveDelay: const Duration(minutes: 2, seconds: 15),
       );
@@ -118,7 +118,7 @@ void main() {
     });
 
     testWidgets('should apply custom text style', (tester) async {
-      final state = const StreamingState().copyWith(
+      final state = StreamingState().copyWith(
         isLiveStream: true,
         liveDelay: const Duration(seconds: 30),
       );

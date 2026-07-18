@@ -1,12 +1,13 @@
 import 'dart:async';
+import 'package:flutter/widgets.dart';
 import 'package:platform_channels/platform_channels.dart';
 import 'package:platform_player/platform_player.dart';
 import 'package:platform_streams/platform_streams.dart';
-import 'package:video_player/video_player.dart';
 
 import 'audio_context.dart';
 import 'platform_media_logger.dart';
 import 'streaming_error_diagnostic_mapping.dart';
+import 'video_player_airo_playback_engine.dart';
 
 /// Video Player implementation of IPTV Streaming Service
 ///
@@ -19,12 +20,12 @@ import 'streaming_error_diagnostic_mapping.dart';
 /// 6. Background audio mode
 /// 7. Audio context integration (pauses music during video)
 class VideoPlayerStreamingService implements IPTVStreamingService {
-  VideoPlayerController? _controller;
+  final AiroPlaybackEngine _engine;
   final StreamingConfig _config;
   final AudioContextManager _audioContext;
   final _stateController = StreamController<StreamingState>.broadcast();
 
-  StreamingState _state = const StreamingState();
+  StreamingState _state = StreamingState();
   Timer? _bufferMonitor;
   Timer? _metricsTimer;
   DateTime? _loadStartTime;
@@ -33,13 +34,24 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
   // Live edge detection (P0-1 through P0-4)
   final LiveEdgeDetector _liveEdgeDetector;
 
+  StreamSubscription<AiroPlaybackState>? _engineSubscription;
+  // Scoped to the channel/item id it was attached for so it doesn't leak
+  // onto unrelated subsequent playChannel() calls (see
+  // attachExternalSubtitle() and playChannel()).
+  String? _pendingExternalSubtitleChannelId;
+  AiroPlaybackExternalSubtitle? _pendingExternalSubtitle;
+  int _requestCounter = 0;
+
   VideoPlayerStreamingService({
+    AiroPlaybackEngine? engine,
     this._config = StreamingConfig.youtube,
     AudioContextManager? audioContext,
     LiveEdgeConfig? liveEdgeConfig,
-  }) : _audioContext = audioContext ?? AudioContextManager(),
+  }) : _engine = engine ?? VideoPlayerAiroPlaybackEngine(),
+       _audioContext = audioContext ?? AudioContextManager(),
        _liveEdgeDetector = LiveEdgeDetector(config: liveEdgeConfig) {
     _setupLiveEdgeCallbacks();
+    _engineSubscription = _engine.states.listen(_onEngineStateUpdate);
   }
 
   void _setupLiveEdgeCallbacks() {
@@ -105,6 +117,10 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
     _startMetricsCollection();
   }
 
+  /// Returns a widget rendering the current video surface, or null when
+  /// nothing is open yet. See [AiroPlaybackEngine.buildView].
+  Widget? buildVideoView() => _engine.buildView();
+
   @override
   Future<void> playChannel(IPTVChannel channel) async {
     _loadStartTime = DateTime.now();
@@ -119,32 +135,40 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
     );
 
     try {
-      await _disposeController();
-
       // Request video audio focus (pauses background music)
       _audioContext.requestFocus(AudioFocusType.video);
 
       final url = channel.getStreamUrl(_state.selectedQuality);
-      _controller = VideoPlayerController.networkUrl(
-        Uri.parse(url),
-        videoPlayerOptions: VideoPlayerOptions(
+      final externalSubtitles = <AiroPlaybackExternalSubtitle>[
+        if (_pendingExternalSubtitle != null &&
+            _pendingExternalSubtitleChannelId == channel.id)
+          _pendingExternalSubtitle!,
+      ];
+
+      final result = await _engine.open(
+        AiroMediaOpenRequest(
+          requestId: '${channel.id}-${_requestCounter++}',
+          sourceHandle: AiroPlaybackSourceHandle.direct(url),
+          // Engines don't currently branch on mediaKind — hls is the
+          // dominant IPTV format in this codebase and there's no reliable
+          // pre-open live/VOD signal on IPTVChannel to infer from (live vs
+          // VOD detection is a post-open runtime heuristic, see
+          // LiveEdgeDetector._detectLiveStream).
+          mediaKind: AiroPlaybackMediaKind.hls,
+          externalSubtitles: externalSubtitles,
           mixWithOthers: _isBackgroundAudioMode,
           allowBackgroundPlayback:
               _isBackgroundAudioMode || channel.isAudioOnly,
         ),
       );
 
-      // Initialize with timeout for fast load
-      await _controller!.initialize().timeout(
-        const Duration(seconds: 5),
-        onTimeout: () => throw TimeoutException('Load timeout'),
-      );
+      if (result.error != null) {
+        throw _EngineOpenError(result.error!.code);
+      }
 
-      // Set volume
-      await _controller!.setVolume(_state.isMuted ? 0 : _state.volume);
-
-      // Start playback
-      await _controller!.play();
+      await _engine.setVolume(_state.isMuted ? 0 : _state.volume);
+      await _engine.setPlaybackSpeed(1.0);
+      await _engine.play();
 
       // Calculate load time
       final loadTime = DateTime.now().difference(_loadStartTime!);
@@ -152,7 +176,9 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
       _updateState(
         _state.copyWith(
           playbackState: PlaybackState.playing,
-          duration: _controller!.value.duration,
+          duration: result.duration ?? Duration.zero,
+          tracks: result.tracks,
+          selectedTrackIds: result.selectedTrackIds,
           metrics: StreamingMetrics(
             latency: loadTime,
             networkQuality: _estimateNetworkQuality(loadTime),
@@ -162,55 +188,73 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
       );
 
       _startBufferMonitoring();
-      _setupControllerListeners();
 
       // Attach live edge detector for live stream monitoring
-      _liveEdgeDetector.attach(_controller!);
+      _liveEdgeDetector.attachToEngine(_engine);
     } catch (e) {
       // Release focus on error
       _audioContext.releaseFocus(AudioFocusType.video);
-      await _handleError(e.toString());
+      await _handleError(
+        e.toString(),
+        engineErrorCode: e is _EngineOpenError ? e.engineCode : null,
+      );
     }
   }
 
-  void _setupControllerListeners() {
-    _controller?.addListener(_onControllerUpdate);
-  }
+  /// Folds every state emitted by the engine (continuous position/duration/
+  /// buffering/error updates — see VideoPlayerAiroPlaybackEngine's
+  /// controller listener) into [StreamingState]. Runs for the lifetime of
+  /// this service, not just during playChannel — the engine instance itself
+  /// doesn't change across channel switches, only what it has open.
+  void _onEngineStateUpdate(AiroPlaybackState engineState) {
+    if (engineState.error != null) {
+      _handleError(
+        engineState.error!.code.stableId,
+        engineErrorCode: engineState.error!.code,
+      );
+      return;
+    }
 
-  void _onControllerUpdate() {
-    if (_controller == null) return;
-
-    final value = _controller!.value;
-
-    // Update position
     _updateState(
-      _state.copyWith(position: value.position, duration: value.duration),
+      _state.copyWith(
+        position: engineState.position,
+        duration: engineState.duration ?? _state.duration,
+        tracks: engineState.tracks,
+        selectedTrackIds: engineState.selectedTrackIds,
+        playbackState: _mapEnginePhase(engineState.phase) ?? _state.playbackState,
+      ),
     );
+  }
 
-    // Check for buffering
-    if (value.isBuffering && _state.playbackState == PlaybackState.playing) {
-      _updateState(_state.copyWith(playbackState: PlaybackState.buffering));
-    } else if (!value.isBuffering &&
-        _state.playbackState == PlaybackState.buffering) {
-      _updateState(_state.copyWith(playbackState: PlaybackState.playing));
-    }
-
-    // Check for errors
-    if (value.hasError) {
-      _handleError(value.errorDescription ?? 'Playback error');
+  PlaybackState? _mapEnginePhase(AiroPlaybackEnginePhase phase) {
+    switch (phase) {
+      case AiroPlaybackEnginePhase.playing:
+        return PlaybackState.playing;
+      case AiroPlaybackEnginePhase.paused:
+        return PlaybackState.paused;
+      case AiroPlaybackEnginePhase.buffering:
+        return PlaybackState.buffering;
+      case AiroPlaybackEnginePhase.stopped:
+        return PlaybackState.idle;
+      case AiroPlaybackEnginePhase.idle:
+      case AiroPlaybackEnginePhase.opening:
+      case AiroPlaybackEnginePhase.open:
+      case AiroPlaybackEnginePhase.seeking:
+      case AiroPlaybackEnginePhase.ended:
+      case AiroPlaybackEnginePhase.failed:
+      case AiroPlaybackEnginePhase.unavailable:
+        return null;
     }
   }
 
   void _startBufferMonitoring() {
     _bufferMonitor?.cancel();
     _bufferMonitor = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (_controller == null) return;
-
-      final buffered = _controller!.value.buffered;
-      final position = _controller!.value.position;
+      final engineState = _engine.currentState;
+      final position = engineState.position;
 
       Duration bufferedAhead = Duration.zero;
-      for (final range in buffered) {
+      for (final range in engineState.bufferedRanges) {
         if (range.start <= position && range.end > position) {
           bufferedAhead = range.end - position;
           break;
@@ -229,7 +273,7 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
           bufferStatus: BufferStatus(
             bufferedAhead: bufferedAhead,
             bufferHealth: bufferHealth,
-            isBuffering: _controller!.value.isBuffering,
+            isBuffering: engineState.phase == AiroPlaybackEnginePhase.buffering,
           ),
         ),
       );
@@ -239,8 +283,7 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
   void _startMetricsCollection() {
     _metricsTimer?.cancel();
     _metricsTimer = Timer.periodic(const Duration(seconds: 5), (_) {
-      // Collect and update streaming metrics
-      if (_controller != null && _state.isPlaying) {
+      if (_state.isPlaying) {
         _updateState(
           _state.copyWith(
             metrics: StreamingMetrics(
@@ -256,7 +299,6 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
   }
 
   int _estimateBitrate() {
-    // Estimate based on quality
     switch (_state.currentQuality) {
       case VideoQuality.ultraHd:
         return 15000;
@@ -283,8 +325,10 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
   /// Flag to prevent duplicate error handling
   bool _isHandlingError = false;
 
-  Future<void> _handleError(String message) async {
-    // Prevent duplicate error handling that causes flickering
+  Future<void> _handleError(
+    String message, {
+    AiroPlaybackErrorCode? engineErrorCode,
+  }) async {
     if (_isHandlingError || _state.playbackState == PlaybackState.error) {
       return;
     }
@@ -292,7 +336,6 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
 
     final newRetryCount = _state.retryCount + 1;
 
-    // Determine user-friendly error message
     String userMessage;
     if (newRetryCount > _config.maxRetries) {
       userMessage = 'Unable to play this channel. Please try again later.';
@@ -303,7 +346,24 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
     // CV-001: structured, user-safe diagnostic alongside the legacy
     // errorMessage. UI prefers this when present; retry stays manual here
     // (see comment below) — this call is additive, not a behavior change.
-    final diagnostic = mapStreamingErrorToDiagnostic(message);
+    //
+    // CV-016: failures that originate from the airo-playback-engine carry a
+    // typed AiroPlaybackErrorCode. Map that directly via
+    // AiroPlaybackDiagnosticMapper (already exhaustive over every engine
+    // error code — see playback_recovery_models.dart) instead of
+    // round-tripping its stableId through mapStreamingErrorToDiagnostic,
+    // which was built to pattern-match raw `video_player` exception
+    // strings and only recognizes a handful of substrings/regexes. Without
+    // this, every engine code except codec_unsupported (which happens to
+    // match the 'codec' substring check) fell through to a generic
+    // `unknown` diagnostic.
+    final diagnostic = engineErrorCode != null
+        ? const AiroPlaybackDiagnosticMapper().map(
+            AiroPlaybackFailureEvent(
+              engineError: AiroPlaybackError(code: engineErrorCode),
+            ),
+          )
+        : mapStreamingErrorToDiagnostic(message);
 
     _updateState(
       _state.copyWith(
@@ -315,57 +375,44 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
       ),
     );
 
-    // Stop buffer monitoring to prevent state updates
     _bufferMonitor?.cancel();
-
-    // Release audio focus
     _audioContext.releaseFocus(AudioFocusType.video);
-
-    // Dispose controller to stop any retries from the video player
-    await _disposeController();
+    _liveEdgeDetector.detach();
 
     _isHandlingError = false;
-
-    // NO auto-retry - user must manually retry via the Retry button
-    // This prevents flickering from continuous retry loops
   }
 
   @override
   Future<void> pause() async {
-    await _controller?.pause();
-    // Release video focus when paused so music can resume
+    await _engine.pause();
     _audioContext.releaseFocus(AudioFocusType.video);
     _updateState(_state.copyWith(playbackState: PlaybackState.paused));
   }
 
   @override
   Future<void> resume() async {
-    // Request video focus again when resuming
     _audioContext.requestFocus(AudioFocusType.video);
-    await _controller?.play();
+    await _engine.play();
     _updateState(_state.copyWith(playbackState: PlaybackState.playing));
   }
 
   @override
   Future<void> stop() async {
     _bufferMonitor?.cancel();
-    // Release video audio focus so music can resume
     _audioContext.releaseFocus(AudioFocusType.video);
-    await _disposeController();
-    _updateState(const StreamingState());
+    _liveEdgeDetector.detach();
+    await _engine.stop();
+    _updateState(StreamingState());
   }
 
   @override
   Future<void> seek(Duration position) async {
-    // Notify live edge detector of manual seek
     _liveEdgeDetector.notifyUserSeek();
 
-    // M2: DVR boundary enforcement - clamp seek position to valid range
     var clampedPosition = position;
     if (_state.isLiveStream && _state.hasDvrSupport) {
       final dvrStart = _state.dvrWindowStart ?? Duration.zero;
-      final liveEdge =
-          _state.liveEdge ?? _controller?.value.duration ?? Duration.zero;
+      final liveEdge = _state.liveEdge ?? _engine.currentState.duration ?? Duration.zero;
 
       if (position < dvrStart) {
         clampedPosition = dvrStart;
@@ -382,10 +429,9 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
       }
     }
 
-    await _controller?.seekTo(clampedPosition);
+    await _engine.seek(clampedPosition);
     _updateState(_state.copyWith(position: clampedPosition));
 
-    // M2: Analytics - log seek event for live streams
     if (_state.isLiveStream) {
       AppLogger.analytics(
         'live_stream_seek',
@@ -401,23 +447,20 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
 
   @override
   Future<void> goLive() async {
-    // P0-6: Seek to live edge
     if (!_state.isLiveStream) return;
 
-    // M2: Reset drift state since user explicitly went to live
     _liveEdgeDetector.resetDriftState();
 
     final liveEdge = _state.liveEdge;
     if (liveEdge == null || liveEdge == Duration.zero) {
-      // Fallback: use controller duration as live edge estimate
-      final duration = _controller?.value.duration;
+      final duration = _engine.currentState.duration;
       if (duration != null && duration > Duration.zero) {
-        await _controller?.seekTo(duration);
+        await _engine.seek(duration);
       }
       return;
     }
 
-    await _controller?.seekTo(liveEdge);
+    await _engine.seek(liveEdge);
     _updateState(
       _state.copyWith(
         liveStreamState: LiveStreamState.live,
@@ -425,7 +468,6 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
       ),
     );
 
-    // M2: Analytics - log Go Live button tap
     AppLogger.analytics(
       'go_live_tapped',
       params: {
@@ -438,14 +480,14 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
   @override
   Future<void> setVolume(double volume) async {
     final clampedVolume = volume.clamp(0.0, 1.0);
-    await _controller?.setVolume(_state.isMuted ? 0 : clampedVolume);
+    await _engine.setVolume(_state.isMuted ? 0 : clampedVolume);
     _updateState(_state.copyWith(volume: clampedVolume));
   }
 
   @override
   Future<void> toggleMute() async {
     final newMuted = !_state.isMuted;
-    await _controller?.setVolume(newMuted ? 0 : _state.volume);
+    await _engine.setVolume(newMuted ? 0 : _state.volume);
     _updateState(_state.copyWith(isMuted: newMuted));
   }
 
@@ -455,7 +497,6 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
 
     _updateState(_state.copyWith(selectedQuality: quality));
 
-    // Reload stream with new quality if playing
     if (_state.currentChannel != null && _state.isPlaying) {
       final position = _state.position;
       await playChannel(_state.currentChannel!);
@@ -466,9 +507,7 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
   @override
   Future<void> retry() async {
     if (_state.currentChannel != null) {
-      // Reset error handling flag and retry count for manual retry
       _isHandlingError = false;
-      // Note: playChannel() already resets retryCount to 0
       await playChannel(_state.currentChannel!);
     }
   }
@@ -476,21 +515,42 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
   @override
   Future<void> setBackgroundAudioMode(bool enabled) async {
     _isBackgroundAudioMode = enabled;
-    // Reload if currently playing to apply new setting
     if (_state.currentChannel != null && _state.isPlaying) {
       await playChannel(_state.currentChannel!);
     }
   }
 
-  Future<void> _disposeController() async {
-    // Detach live edge detector
-    _liveEdgeDetector.detach();
-    final oldController = _controller;
-    _controller = null;
-    if (oldController != null) {
-      oldController.removeListener(_onControllerUpdate);
-      await oldController.dispose();
-    }
+  /// Selects a track (audio, subtitle, or video) by id. No-op if the id
+  /// isn't in the current [StreamingState.tracks] catalog — matches
+  /// [AiroPlaybackEngine.selectTrack]'s typed-failure contract, silently
+  /// absorbed here since there's nothing actionable for the caller to do
+  /// with a typed error at this layer (the UI only offers ids that are
+  /// already in the catalog).
+  Future<void> selectTrack({
+    required AiroPlaybackTrackKind kind,
+    required String trackId,
+  }) async {
+    final result = await _engine.selectTrack(kind: kind, trackId: trackId);
+    if (result.error != null) return;
+    _updateState(_state.copyWith(selectedTrackIds: result.selectedTrackIds));
+  }
+
+  /// Stores an external subtitle to include on the next [playChannel] open
+  /// request *for [channelId]*. Engines don't support attaching a subtitle
+  /// to an already-open source, so this doesn't take effect until the next
+  /// open — callers should re-trigger playback (e.g. call [playChannel]
+  /// again) if they want it to apply immediately.
+  ///
+  /// Scoped by [channelId] so the subtitle only projects onto the item it
+  /// was attached for: a subsequent [playChannel] call for a *different*
+  /// channel/item id won't pick it up. A same-id re-open (e.g. [setQuality]
+  /// re-invoking [playChannel] for the same channel) still re-applies it.
+  void attachExternalSubtitle(
+    String channelId,
+    AiroPlaybackExternalSubtitle subtitle,
+  ) {
+    _pendingExternalSubtitleChannelId = channelId;
+    _pendingExternalSubtitle = subtitle;
   }
 
   void _updateState(StreamingState newState) {
@@ -502,14 +562,23 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
   Future<void> dispose() async {
     _bufferMonitor?.cancel();
     _metricsTimer?.cancel();
-    // Dispose live edge detector
     _liveEdgeDetector.dispose();
-    // Release video audio focus
     _audioContext.releaseFocus(AudioFocusType.video);
-    await _disposeController();
+    await _engineSubscription?.cancel();
+    await _engine.dispose();
     await _stateController.close();
   }
+}
 
-  /// Get the video player controller for UI rendering
-  VideoPlayerController? get controller => _controller;
+class _EngineOpenError implements Exception {
+  _EngineOpenError(this.engineCode) : code = engineCode.stableId;
+  final String code;
+
+  /// The typed engine error this was raised from, kept alongside [code] so
+  /// the catch site in [VideoPlayerStreamingService.playChannel] can map it
+  /// precisely instead of re-parsing [toString()] (see CV-016 diagnostic
+  /// fidelity fix in `_handleError`).
+  final AiroPlaybackErrorCode engineCode;
+  @override
+  String toString() => code;
 }

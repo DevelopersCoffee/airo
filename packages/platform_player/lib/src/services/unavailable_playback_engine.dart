@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:flutter/widgets.dart';
+
 import '../models/playback_engine_models.dart';
 import 'airo_playback_engine.dart';
 
@@ -86,6 +88,9 @@ class UnavailableAiroPlaybackEngine implements AiroPlaybackEngine {
   Future<AiroPlaybackState> exitPictureInPicture() async {
     return _unsupported('exitPictureInPicture');
   }
+
+  @override
+  Widget? buildView() => null;
 
   @override
   Future<void> dispose() async {

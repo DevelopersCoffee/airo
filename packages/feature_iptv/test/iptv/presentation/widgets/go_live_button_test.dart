@@ -8,7 +8,7 @@ void main() {
       tester,
     ) async {
       // State at live edge, playing - should not show button
-      final state = const StreamingState().copyWith(
+      final state = StreamingState().copyWith(
         isLiveStream: true,
         liveDelay: const Duration(seconds: 1),
         playbackState: PlaybackState.playing,
@@ -27,7 +27,7 @@ void main() {
     });
 
     testWidgets('should render when behind live', (tester) async {
-      final state = const StreamingState().copyWith(
+      final state = StreamingState().copyWith(
         isLiveStream: true,
         liveDelay: const Duration(seconds: 15),
         playbackState: PlaybackState.playing,
@@ -45,7 +45,7 @@ void main() {
     });
 
     testWidgets('should render when paused', (tester) async {
-      final state = const StreamingState().copyWith(
+      final state = StreamingState().copyWith(
         isLiveStream: true,
         liveDelay: const Duration(seconds: 2),
         playbackState: PlaybackState.paused,
@@ -64,7 +64,7 @@ void main() {
 
     testWidgets('should trigger onGoLive callback when tapped', (tester) async {
       bool callbackTriggered = false;
-      final state = const StreamingState().copyWith(
+      final state = StreamingState().copyWith(
         isLiveStream: true,
         liveDelay: const Duration(seconds: 15),
         playbackState: PlaybackState.playing,
@@ -91,7 +91,7 @@ void main() {
 
     testWidgets('should not trigger callback when disabled', (tester) async {
       bool callbackTriggered = false;
-      final state = const StreamingState().copyWith(
+      final state = StreamingState().copyWith(
         isLiveStream: true,
         liveDelay: const Duration(seconds: 15),
         playbackState: PlaybackState.playing,
@@ -118,7 +118,7 @@ void main() {
     });
 
     testWidgets('compact variant should render smaller', (tester) async {
-      final state = const StreamingState().copyWith(
+      final state = StreamingState().copyWith(
         isLiveStream: true,
         liveDelay: const Duration(seconds: 15),
         playbackState: PlaybackState.playing,

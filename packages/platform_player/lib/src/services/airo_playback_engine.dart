@@ -1,3 +1,5 @@
+import 'package:flutter/widgets.dart';
+
 import '../models/playback_engine_models.dart';
 
 abstract class AiroPlaybackEngine {
@@ -33,6 +35,13 @@ abstract class AiroPlaybackEngine {
   Future<AiroPlaybackState> enterPictureInPicture();
 
   Future<AiroPlaybackState> exitPictureInPicture();
+
+  /// Returns a widget rendering this engine's video surface, sized to the
+  /// video's intrinsic dimensions (ready to be wrapped in a FittedBox by the
+  /// caller for aspect-ratio fitting). Returns null when there is nothing
+  /// local to render: not yet opened, no local video surface for this
+  /// backend (e.g. cast), or the backend doesn't support rendering yet.
+  Widget? buildView();
 
   Future<void> dispose();
 }

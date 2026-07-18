@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';
 import '../../features/auth/screens/login_screen.dart';
 import '../../features/auth/screens/register_screen.dart';
@@ -8,6 +9,7 @@ import '../../features/agent_chat/presentation/screens/model_library_screen.dart
 import '../../features/agent_chat/presentation/screens/notifications_screen.dart';
 import '../../features/agent_chat/presentation/screens/profile_screen.dart';
 import 'package:feature_iptv/feature_iptv.dart';
+import '../../features/iptv/phone_media_local_picker.dart';
 import '../../features/games/presentation/screens/games_hub_screen.dart';
 import '../../features/mind/presentation/screens/mind_screen.dart';
 import '../../features/music/presentation/screens/music_screen.dart';
@@ -228,8 +230,12 @@ class AppRouter {
               GoRoute(
                 path: '/iptv',
                 name: 'Stream',
-                builder: (context, state) =>
-                    IPTVScreen(onOpenVod: () => context.go('/vod')),
+                builder: (context, state) => IPTVScreen(
+                  onOpenVod: () => context.go('/vod'),
+                  onPickLocalMediaForTv: kDebugMode
+                      ? pickPhoneLocalMediaForTv
+                      : null,
+                ),
               ),
               GoRoute(
                 path: '/vod',
