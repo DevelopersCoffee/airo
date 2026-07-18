@@ -66,11 +66,13 @@ List<_RawEntry> _buildFixture(int count) {
     // Every third entry is a duplicate of an earlier channel (with variation).
     final isDup = i >= 3 && i % 3 == 0;
     final baseName = isDup ? 'Channel ${i - 3}' : 'Channel $i';
-    entries.add(_RawEntry(
-      name: baseName,
-      url: 'https://stream.example.com/live/$i.m3u8',
-      logo: isDup ? 'https://example.com/logo_$i.png' : null,
-    ));
+    entries.add(
+      _RawEntry(
+        name: baseName,
+        url: 'https://stream.example.com/live/$i.m3u8',
+        logo: isDup ? 'https://example.com/logo_$i.png' : null,
+      ),
+    );
   }
   return entries;
 }

@@ -16,15 +16,15 @@ class AiroBadge extends StatefulWidget {
   });
 
   const AiroBadge.live({super.key, this.pulse = true})
-      : label = 'LIVE',
-        variant = AiroBadgeVariant.live,
-        size = AiroBadgeSize.md;
+    : label = 'LIVE',
+      variant = AiroBadgeVariant.live,
+      size = AiroBadgeSize.md;
 
   const AiroBadge.pro({super.key})
-      : label = 'PRO',
-        variant = AiroBadgeVariant.pro,
-        size = AiroBadgeSize.sm,
-        pulse = false;
+    : label = 'PRO',
+      variant = AiroBadgeVariant.pro,
+      size = AiroBadgeSize.sm,
+      pulse = false;
 
   final String label;
   final AiroBadgeVariant variant;

@@ -78,7 +78,10 @@ class XmltvSourceRefreshService {
       // Only now, after a successful download and parse, does the new URL
       // become the saved source.
       await sourceStore.save(
-        XmltvSourceConfig(url: trimmedUrl, lastRefreshedAt: DateTime.now().toUtc()),
+        XmltvSourceConfig(
+          url: trimmedUrl,
+          lastRefreshedAt: DateTime.now().toUtc(),
+        ),
       );
     } catch (e) {
       await _recordFailureKeepingExistingUrl(trimmedUrl, e.toString());

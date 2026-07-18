@@ -13,8 +13,7 @@ class _FakeXtreamClient implements XtreamClient {
       'https://xtream.example.com/live/u/p/$streamId.$extension';
 
   @override
-  dynamic noSuchMethod(Invocation invocation) =>
-      super.noSuchMethod(invocation);
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 void main() {
@@ -31,24 +30,30 @@ void main() {
     expect(source.capabilities.hasVod, isTrue);
   });
 
-  test('adapter maps XtreamLiveStream into IPTVChannel via live stream URL', () async {
-    final fakeClient = _FakeXtreamClient([
-      const XtreamLiveStream(
-        streamId: 101,
-        name: 'News HD',
-        streamIcon: 'https://xtream.example.com/logo.png',
-        categoryId: '5',
-        epgChannelId: 'news.hd',
-      ),
-    ]);
-    final adapter = XtreamContentSourceAdapter(fakeClient);
+  test(
+    'adapter maps XtreamLiveStream into IPTVChannel via live stream URL',
+    () async {
+      final fakeClient = _FakeXtreamClient([
+        const XtreamLiveStream(
+          streamId: 101,
+          name: 'News HD',
+          streamIcon: 'https://xtream.example.com/logo.png',
+          categoryId: '5',
+          epgChannelId: 'news.hd',
+        ),
+      ]);
+      final adapter = XtreamContentSourceAdapter(fakeClient);
 
-    final channels = await adapter.loadChannels();
+      final channels = await adapter.loadChannels();
 
-    expect(channels, hasLength(1));
-    expect(channels.single.name, 'News HD');
-    expect(channels.single.streamUrl, 'https://xtream.example.com/live/u/p/101.m3u8');
-    expect(channels.single.logoUrl, 'https://xtream.example.com/logo.png');
-    expect(channels.single.id, 'xtream-101');
-  });
+      expect(channels, hasLength(1));
+      expect(channels.single.name, 'News HD');
+      expect(
+        channels.single.streamUrl,
+        'https://xtream.example.com/live/u/p/101.m3u8',
+      );
+      expect(channels.single.logoUrl, 'https://xtream.example.com/logo.png');
+      expect(channels.single.id, 'xtream-101');
+    },
+  );
 }

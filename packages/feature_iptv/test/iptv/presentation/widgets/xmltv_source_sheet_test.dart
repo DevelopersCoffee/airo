@@ -19,7 +19,9 @@ void main() {
     );
   }
 
-  testWidgets('shows "no source configured" when nothing is saved', (tester) async {
+  testWidgets('shows "no source configured" when nothing is saved', (
+    tester,
+  ) async {
     final container = await buildContainer();
     addTearDown(container.dispose);
 
@@ -34,15 +36,19 @@ void main() {
     expect(find.textContaining('No XMLTV source configured'), findsOneWidget);
   });
 
-  testWidgets('shows the saved source URL and last-refreshed state', (tester) async {
+  testWidgets('shows the saved source URL and last-refreshed state', (
+    tester,
+  ) async {
     final container = await buildContainer();
     addTearDown(container.dispose);
-    await container.read(xmltvSourceStoreProvider).save(
-      XmltvSourceConfig(
-        url: 'https://example.com/guide.xml',
-        lastRefreshedAt: DateTime.utc(2026, 7, 17, 10),
-      ),
-    );
+    await container
+        .read(xmltvSourceStoreProvider)
+        .save(
+          XmltvSourceConfig(
+            url: 'https://example.com/guide.xml',
+            lastRefreshedAt: DateTime.utc(2026, 7, 17, 10),
+          ),
+        );
     container.invalidate(xmltvSourceConfigProvider);
 
     await tester.pumpWidget(
@@ -53,15 +59,23 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.text('Current source: https://example.com/guide.xml'), findsOneWidget);
+    expect(
+      find.text('Current source: https://example.com/guide.xml'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('shows the last error when refresh failed', (tester) async {
     final container = await buildContainer();
     addTearDown(container.dispose);
-    await container.read(xmltvSourceStoreProvider).save(
-      const XmltvSourceConfig(url: 'https://example.com/guide.xml', lastError: 'Connection timed out'),
-    );
+    await container
+        .read(xmltvSourceStoreProvider)
+        .save(
+          const XmltvSourceConfig(
+            url: 'https://example.com/guide.xml',
+            lastError: 'Connection timed out',
+          ),
+        );
     container.invalidate(xmltvSourceConfigProvider);
 
     await tester.pumpWidget(
@@ -78,9 +92,9 @@ void main() {
   testWidgets('Remove source button clears the saved config', (tester) async {
     final container = await buildContainer();
     addTearDown(container.dispose);
-    await container.read(xmltvSourceStoreProvider).save(
-      const XmltvSourceConfig(url: 'https://example.com/guide.xml'),
-    );
+    await container
+        .read(xmltvSourceStoreProvider)
+        .save(const XmltvSourceConfig(url: 'https://example.com/guide.xml'));
     container.invalidate(xmltvSourceConfigProvider);
 
     await tester.pumpWidget(

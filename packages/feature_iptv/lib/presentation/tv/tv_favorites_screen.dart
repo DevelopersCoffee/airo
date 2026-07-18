@@ -29,17 +29,16 @@ class TvFavoritesScreen extends ConsumerWidget {
           Text(
             'Press the menu/context key on a channel to add or remove it '
             'from favorites.',
-            style: Theme.of(
-              context,
-            ).textTheme.bodyMedium?.copyWith(color: colorScheme.onSurfaceVariant),
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: colorScheme.onSurfaceVariant,
+            ),
           ),
           const SizedBox(height: 20),
           Expanded(
             child: favoritesAsync.when(
               loading: () => const Center(child: CircularProgressIndicator()),
-              error: (error, _) => Center(
-                child: Text('Could not load favorites: $error'),
-              ),
+              error: (error, _) =>
+                  Center(child: Text('Could not load favorites: $error')),
               data: (channels) {
                 if (channels.isEmpty) {
                   return Center(
@@ -65,13 +64,12 @@ class TvFavoritesScreen extends ConsumerWidget {
                 // favorites layout (same card language as the browse rails).
                 return GridView.builder(
                   padding: EdgeInsets.zero,
-                  gridDelegate:
-                      const SliverGridDelegateWithMaxCrossAxisExtent(
-                        maxCrossAxisExtent: 220,
-                        mainAxisSpacing: 14,
-                        crossAxisSpacing: 14,
-                        childAspectRatio: 200 / 158,
-                      ),
+                  gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                    maxCrossAxisExtent: 220,
+                    mainAxisSpacing: 14,
+                    crossAxisSpacing: 14,
+                    childAspectRatio: 200 / 158,
+                  ),
                   itemCount: channels.length,
                   itemBuilder: (context, index) {
                     final channel = channels[index];
@@ -131,9 +129,7 @@ class TvFavoritesScreen extends ConsumerWidget {
                                       Icons.favorite,
                                       color: colorScheme.error,
                                       size: 18,
-                                      shadows: const [
-                                        Shadow(blurRadius: 6),
-                                      ],
+                                      shadows: const [Shadow(blurRadius: 6)],
                                     ),
                                   ),
                                   if (isPlaying)

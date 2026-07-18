@@ -76,15 +76,19 @@ List<_ParsedChannel> parseM3U(String content) {
             currentTvgName = value;
         }
       }
-    } else if (line.isNotEmpty && !line.startsWith('#') && currentName != null) {
-      channels.add(_ParsedChannel(
-        name: currentName,
-        url: line,
-        logo: currentLogo,
-        group: currentGroup,
-        tvgId: currentTvgId,
-        tvgName: currentTvgName,
-      ));
+    } else if (line.isNotEmpty &&
+        !line.startsWith('#') &&
+        currentName != null) {
+      channels.add(
+        _ParsedChannel(
+          name: currentName,
+          url: line,
+          logo: currentLogo,
+          group: currentGroup,
+          tvgId: currentTvgId,
+          tvgName: currentTvgName,
+        ),
+      );
       currentName = null;
       currentLogo = null;
       currentGroup = null;

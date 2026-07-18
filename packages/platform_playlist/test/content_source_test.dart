@@ -45,7 +45,10 @@ void main() {
 
     test('toString identifies kind/id/label without leaking secrets', () {
       const source = _FakeContentSource(id: 'src-1', label: 'My Provider');
-      expect(source.toString(), 'ContentSource(kind: xtream, id: src-1, label: My Provider)');
+      expect(
+        source.toString(),
+        'ContentSource(kind: xtream, id: src-1, label: My Provider)',
+      );
     });
   });
 }

@@ -48,7 +48,10 @@ void main() {
       prefs.getString(videoAspectRatioStorageKey),
       AiroPlaybackViewFit.stretch.stableId,
     );
-    expect(container.read(videoAspectRatioProvider), AiroPlaybackViewFit.stretch);
+    expect(
+      container.read(videoAspectRatioProvider),
+      AiroPlaybackViewFit.stretch,
+    );
   });
 
   test('cycleToNext advances through all fits and wraps around', () async {
@@ -60,7 +63,9 @@ void main() {
     addTearDown(container.dispose);
 
     final notifier = container.read(videoAspectRatioProvider.notifier);
-    final seen = <AiroPlaybackViewFit>[container.read(videoAspectRatioProvider)];
+    final seen = <AiroPlaybackViewFit>[
+      container.read(videoAspectRatioProvider),
+    ];
     for (var i = 0; i < AiroPlaybackViewFit.values.length; i++) {
       notifier.cycleToNext();
       seen.add(container.read(videoAspectRatioProvider));
@@ -88,9 +93,6 @@ void main() {
     );
     addTearDown(restarted.dispose);
 
-    expect(
-      restarted.read(videoAspectRatioProvider),
-      AiroPlaybackViewFit.fill,
-    );
+    expect(restarted.read(videoAspectRatioProvider), AiroPlaybackViewFit.fill);
   });
 }
