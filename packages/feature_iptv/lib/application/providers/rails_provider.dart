@@ -1,0 +1,19 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:platform_channels/platform_channels.dart';
+
+import 'iptv_providers.dart';
+
+/// The generated browse rails. UI renders this list verbatim — rail
+/// content, ordering, and visibility are decided by the Media Engine
+/// (and later the Edge Intelligence SDK), never by widgets.
+final railsProvider = FutureProvider<List<RailResult>>((ref) async {
+  final channels = await ref.watch(iptvChannelsProvider.future);
+  final favorites = await ref.watch(favoriteChannelsProvider.future);
+  final provider = DefaultRailProvider(
+    channels: channels,
+    favoriteIds: favorites.map((ch) => ch.id).toSet(),
+    // Watch counts arrive when core_watch_progress wiring lands
+    // (spec §9 — Continue Watching reserved).
+  );
+  return provider.buildAll(DefaultRailCatalog.definitions());
+});
