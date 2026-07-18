@@ -348,4 +348,78 @@ void main() {
       );
     });
   });
+
+  group('AiroPlaybackBufferedRange', () {
+    test('equality by start/end', () {
+      const a = AiroPlaybackBufferedRange(
+        start: Duration.zero,
+        end: Duration(seconds: 10),
+      );
+      const b = AiroPlaybackBufferedRange(
+        start: Duration.zero,
+        end: Duration(seconds: 10),
+      );
+      expect(a, b);
+    });
+  });
+
+  group('AiroPlaybackState.bufferedRanges', () {
+    test('defaults to empty', () {
+      final state = AiroPlaybackState(
+        backendKind: AiroPlaybackBackendKind.fake,
+        phase: AiroPlaybackEnginePhase.idle,
+      );
+      expect(state.bufferedRanges, isEmpty);
+    });
+
+    test('copyWith overrides bufferedRanges', () {
+      final state = AiroPlaybackState(
+        backendKind: AiroPlaybackBackendKind.fake,
+        phase: AiroPlaybackEnginePhase.idle,
+      );
+      final next = state.copyWith(
+        bufferedRanges: const [
+          AiroPlaybackBufferedRange(
+            start: Duration.zero,
+            end: Duration(seconds: 5),
+          ),
+        ],
+      );
+      expect(next.bufferedRanges, hasLength(1));
+      expect(next.bufferedRanges.single.end, const Duration(seconds: 5));
+    });
+
+    test('copyWith without bufferedRanges preserves existing value', () {
+      final state = AiroPlaybackState(
+        backendKind: AiroPlaybackBackendKind.fake,
+        phase: AiroPlaybackEnginePhase.idle,
+        bufferedRanges: const [
+          AiroPlaybackBufferedRange(
+            start: Duration.zero,
+            end: Duration(seconds: 5),
+          ),
+        ],
+      );
+      final next = state.copyWith(phase: AiroPlaybackEnginePhase.playing);
+      expect(next.bufferedRanges, hasLength(1));
+    });
+
+    test('bufferedRanges participates in equality', () {
+      final a = AiroPlaybackState(
+        backendKind: AiroPlaybackBackendKind.fake,
+        phase: AiroPlaybackEnginePhase.idle,
+        bufferedRanges: const [
+          AiroPlaybackBufferedRange(
+            start: Duration.zero,
+            end: Duration(seconds: 5),
+          ),
+        ],
+      );
+      final b = AiroPlaybackState(
+        backendKind: AiroPlaybackBackendKind.fake,
+        phase: AiroPlaybackEnginePhase.idle,
+      );
+      expect(a, isNot(b));
+    });
+  });
 }
