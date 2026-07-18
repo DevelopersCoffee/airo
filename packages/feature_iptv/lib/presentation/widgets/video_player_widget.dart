@@ -245,6 +245,24 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
     }
   }
 
+  // CV-008 UC-002: D-pad surf mode. Up/Down changes channel while playback
+  // stays primary; boundary channels are a no-op via
+  // nextChannelProvider/previousChannelProvider already returning null there.
+  // Gated on !_isLocked, matching every other in-player interaction.
+  TvInputResult _handleSurfInput(TvInputKey key) {
+    if (_isLocked) return TvInputResult.notHandled;
+    switch (key) {
+      case TvInputKey.up:
+        _goToPreviousChannel();
+        return TvInputResult.handled;
+      case TvInputKey.down:
+        _goToNextChannel();
+        return TvInputResult.handled;
+      default:
+        return TvInputResult.notHandled;
+    }
+  }
+
   void _showChannelChangeOverlay(String text) {
     _channelChangeOverlayTimer?.cancel();
     setState(() {
@@ -287,201 +305,213 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
 
     final videoView = service.buildVideoView();
 
-    return MouseRegion(
-      onHover: (_) => _showControls(),
-      onEnter: (_) => _showControls(),
-      child: GestureDetector(
-        onTap: _showControls,
-        child: Container(
-          color: Colors.black,
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              // Video display + Netflix-style brightness/volume drag
-              // gestures. Left half of the video area adjusts brightness,
-              // right half adjusts volume; disabled while locked. The video
-              // surface itself is the engine-driven view (CV-016 migration);
-              // when it's null we fall through to loading/diagnostic/
-              // placeholder inside the same gesture-enabled stack.
-              PlayerGestureOverlay(
-                locked: _isLocked,
-                brightness: _brightness,
-                volume: state.isMuted ? 0.0 : state.volume,
-                onBrightnessChanged: _onBrightnessGestureChanged,
-                onVolumeChanged: (value) {
-                  if (state.isMuted) service.toggleMute();
-                  service.setVolume(value);
-                },
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    // Video display (engine-driven view surface).
-                    if (videoView != null)
-                      SizedBox.expand(
-                        child: FittedBox(
-                          fit: _boxFitFor(aspectRatioFit),
-                          child: videoView,
-                        ),
-                      )
-                    else if (state.playbackState == PlaybackState.loading)
-                      _buildLoading()
-                    else if (state.hasError && state.diagnostic != null)
-                      _buildDiagnosticError(state)
-                    else
-                      _buildPlaceholder(state),
+    return TvInputHandler(
+      onInput: _handleSurfInput,
+      // Focus.onKeyEvent always ignores so the event bubbles up to
+      // TvInputHandler's own listener above -- this node exists purely to
+      // hold primary focus by default, since nothing else in the player
+      // (controls auto-hide) reliably claims it otherwise.
+      child: Focus(
+        autofocus: true,
+        skipTraversal: true,
+        onKeyEvent: (node, event) => KeyEventResult.ignored,
+        child: MouseRegion(
+          onHover: (_) => _showControls(),
+          onEnter: (_) => _showControls(),
+          child: GestureDetector(
+            onTap: _showControls,
+            child: Container(
+              color: Colors.black,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  // Video display + Netflix-style brightness/volume drag
+                  // gestures. Left half of the video area adjusts brightness,
+                  // right half adjusts volume; disabled while locked. The video
+                  // surface itself is the engine-driven view (CV-016 migration);
+                  // when it's null we fall through to loading/diagnostic/
+                  // placeholder inside the same gesture-enabled stack.
+                  PlayerGestureOverlay(
+                    locked: _isLocked,
+                    brightness: _brightness,
+                    volume: state.isMuted ? 0.0 : state.volume,
+                    onBrightnessChanged: _onBrightnessGestureChanged,
+                    onVolumeChanged: (value) {
+                      if (state.isMuted) service.toggleMute();
+                      service.setVolume(value);
+                    },
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        // Video display (engine-driven view surface).
+                        if (videoView != null)
+                          SizedBox.expand(
+                            child: FittedBox(
+                              fit: _boxFitFor(aspectRatioFit),
+                              child: videoView,
+                            ),
+                          )
+                        else if (state.playbackState == PlaybackState.loading)
+                          _buildLoading()
+                        else if (state.hasError && state.diagnostic != null)
+                          _buildDiagnosticError(state)
+                        else
+                          _buildPlaceholder(state),
 
-                    // Cinema mode vignette overlay
-                    if (_isCinemaMode)
-                      Positioned.fill(
-                        child: IgnorePointer(
-                          child: Container(
-                            decoration: BoxDecoration(
-                              gradient: RadialGradient(
-                                center: Alignment.center,
-                                radius: 1.15,
-                                colors: [
-                                  Colors.transparent,
-                                  Colors.black.withValues(alpha: 0.6),
-                                ],
-                                stops: const [0.6, 1.0],
+                        // Cinema mode vignette overlay
+                        if (_isCinemaMode)
+                          Positioned.fill(
+                            child: IgnorePointer(
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  gradient: RadialGradient(
+                                    center: Alignment.center,
+                                    radius: 1.15,
+                                    colors: [
+                                      Colors.transparent,
+                                      Colors.black.withValues(alpha: 0.6),
+                                    ],
+                                    stops: const [0.6, 1.0],
+                                  ),
+                                ),
                               ),
+                            ),
+                          ),
+
+                        // Buffering indicator
+                        if (state.isBuffering)
+                          Container(
+                            color: Colors.black45,
+                            child: const CircularProgressIndicator(
+                              color: Colors.white,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+
+                  // Controls overlay with fade animation — hidden entirely while
+                  // locked so only the lock button remains interactive.
+                  if (!_isLocked)
+                    AnimatedOpacity(
+                      opacity: (widget.showControls && _showControlsOverlay)
+                          ? 1.0
+                          : 0.0,
+                      duration: const Duration(milliseconds: 300),
+                      child: IgnorePointer(
+                        ignoring: !_showControlsOverlay,
+                        child: _buildControlsOverlay(context, service, state),
+                      ),
+                    ),
+
+                  // Network quality badge
+                  if (!_isLocked && state.metrics != null)
+                    Positioned(
+                      top: 8,
+                      right: 8,
+                      child: _buildNetworkBadge(state.metrics!.networkQuality),
+                    ),
+
+                  // Quality indicator and Live badge
+                  if (!_isLocked)
+                    Positioned(
+                      top: 8,
+                      left: 8,
+                      child: Row(
+                        children: [
+                          _buildQualityBadge(state.currentQuality),
+                          const SizedBox(width: 8),
+                          // Live badge - shows "LIVE" when at live edge
+                          LiveBadge(state: state, showWhenNotLive: true),
+                          // Note: DelayIndicator removed for cleaner UI per design spec
+                        ],
+                      ),
+                    ),
+
+                  // Previous/Next channel buttons (for fullscreen mode)
+                  if (!_isLocked &&
+                      widget.enableSwipeChannelChange &&
+                      _showControlsOverlay)
+                    Positioned(
+                      left: 16,
+                      top: 0,
+                      bottom: 0,
+                      child: Center(
+                        child: IconButton(
+                          icon: const Icon(Icons.skip_previous, size: 40),
+                          color: Colors.white,
+                          onPressed: _goToPreviousChannel,
+                        ),
+                      ),
+                    ),
+                  if (!_isLocked &&
+                      widget.enableSwipeChannelChange &&
+                      _showControlsOverlay)
+                    Positioned(
+                      right: 16,
+                      top: 0,
+                      bottom: 0,
+                      child: Center(
+                        child: IconButton(
+                          icon: const Icon(Icons.skip_next, size: 40),
+                          color: Colors.white,
+                          onPressed: _goToNextChannel,
+                        ),
+                      ),
+                    ),
+
+                  // Lock button: visible whenever the normal controls would be
+                  // (fades with them), but stays visible when locked regardless
+                  // of the hide timer — it's the only way back to unlocked.
+                  Positioned(
+                    top: 8,
+                    right: 56,
+                    child: AnimatedOpacity(
+                      opacity: (_isLocked || _showControlsOverlay) ? 1.0 : 0.0,
+                      duration: const Duration(milliseconds: 300),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.black45,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: PlayerLockButton(
+                          key: const ValueKey('iptv-player-lock-button'),
+                          locked: _isLocked,
+                          onToggle: _toggleLocked,
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  // Channel change overlay
+                  if (_channelChangeOverlayText != null)
+                    Positioned(
+                      child: AnimatedOpacity(
+                        opacity: _channelChangeOverlayText != null ? 1.0 : 0.0,
+                        duration: const Duration(milliseconds: 200),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 24,
+                            vertical: 12,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.8),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            _channelChangeOverlayText!,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
                         ),
                       ),
-
-                    // Buffering indicator
-                    if (state.isBuffering)
-                      Container(
-                        color: Colors.black45,
-                        child: const CircularProgressIndicator(
-                          color: Colors.white,
-                        ),
-                      ),
-                  ],
-                ),
+                    ),
+                ],
               ),
-
-              // Controls overlay with fade animation — hidden entirely while
-              // locked so only the lock button remains interactive.
-              if (!_isLocked)
-                AnimatedOpacity(
-                  opacity: (widget.showControls && _showControlsOverlay)
-                      ? 1.0
-                      : 0.0,
-                  duration: const Duration(milliseconds: 300),
-                  child: IgnorePointer(
-                    ignoring: !_showControlsOverlay,
-                    child: _buildControlsOverlay(context, service, state),
-                  ),
-                ),
-
-              // Network quality badge
-              if (!_isLocked && state.metrics != null)
-                Positioned(
-                  top: 8,
-                  right: 8,
-                  child: _buildNetworkBadge(state.metrics!.networkQuality),
-                ),
-
-              // Quality indicator and Live badge
-              if (!_isLocked)
-                Positioned(
-                  top: 8,
-                  left: 8,
-                  child: Row(
-                    children: [
-                      _buildQualityBadge(state.currentQuality),
-                      const SizedBox(width: 8),
-                      // Live badge - shows "LIVE" when at live edge
-                      LiveBadge(state: state, showWhenNotLive: true),
-                      // Note: DelayIndicator removed for cleaner UI per design spec
-                    ],
-                  ),
-                ),
-
-              // Previous/Next channel buttons (for fullscreen mode)
-              if (!_isLocked &&
-                  widget.enableSwipeChannelChange &&
-                  _showControlsOverlay)
-                Positioned(
-                  left: 16,
-                  top: 0,
-                  bottom: 0,
-                  child: Center(
-                    child: IconButton(
-                      icon: const Icon(Icons.skip_previous, size: 40),
-                      color: Colors.white,
-                      onPressed: _goToPreviousChannel,
-                    ),
-                  ),
-                ),
-              if (!_isLocked &&
-                  widget.enableSwipeChannelChange &&
-                  _showControlsOverlay)
-                Positioned(
-                  right: 16,
-                  top: 0,
-                  bottom: 0,
-                  child: Center(
-                    child: IconButton(
-                      icon: const Icon(Icons.skip_next, size: 40),
-                      color: Colors.white,
-                      onPressed: _goToNextChannel,
-                    ),
-                  ),
-                ),
-
-              // Lock button: visible whenever the normal controls would be
-              // (fades with them), but stays visible when locked regardless
-              // of the hide timer — it's the only way back to unlocked.
-              Positioned(
-                top: 8,
-                right: 56,
-                child: AnimatedOpacity(
-                  opacity: (_isLocked || _showControlsOverlay) ? 1.0 : 0.0,
-                  duration: const Duration(milliseconds: 300),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.black45,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: PlayerLockButton(
-                      key: const ValueKey('iptv-player-lock-button'),
-                      locked: _isLocked,
-                      onToggle: _toggleLocked,
-                    ),
-                  ),
-                ),
-              ),
-
-              // Channel change overlay
-              if (_channelChangeOverlayText != null)
-                Positioned(
-                  child: AnimatedOpacity(
-                    opacity: _channelChangeOverlayText != null ? 1.0 : 0.0,
-                    duration: const Duration(milliseconds: 200),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 24,
-                        vertical: 12,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.8),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        _channelChangeOverlayText!,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-            ],
+            ),
           ),
         ),
       ),
@@ -790,11 +820,8 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                           key: const ValueKey('iptv-player-subtitle-button'),
                           icon: Icons.subtitles,
                           tooltip: 'Subtitles & Tracks',
-                          onPressed: () => _showTrackSelector(
-                            context,
-                            service,
-                            state,
-                          ),
+                          onPressed: () =>
+                              _showTrackSelector(context, service, state),
                         ),
                       // Fullscreen button
                       _PlayerControlButton(
@@ -831,10 +858,9 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                 ListTile(
                   title: Text(track.label),
                   subtitle: track.isExternal ? const Text('External') : null,
-                  trailing:
-                      state.selectedTrackIds[track.kind] == track.id
-                          ? const Icon(Icons.check)
-                          : null,
+                  trailing: state.selectedTrackIds[track.kind] == track.id
+                      ? const Icon(Icons.check)
+                      : null,
                   onTap: () {
                     service.selectTrack(kind: track.kind, trackId: track.id);
                     Navigator.of(context).pop();
