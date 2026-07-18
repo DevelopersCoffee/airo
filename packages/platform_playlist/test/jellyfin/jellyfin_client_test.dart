@@ -52,11 +52,8 @@ void main() {
     () async {
       final dio = Dio(BaseOptions(baseUrl: 'https://jellyfin.example.com'));
       dio.httpClientAdapter = FakeHttpClientAdapter({
-        authUrl: (options) => Response(
-          requestOptions: options,
-          statusCode: 401,
-          data: {},
-        ),
+        authUrl: (options) =>
+            Response(requestOptions: options, statusCode: 401, data: {}),
       });
       final client = JellyfinClient(
         dio: dio,
@@ -144,6 +141,85 @@ void main() {
       expect(programs.single.endDate, DateTime.utc(2026, 7, 16, 18, 30, 0));
     },
   );
+
+  group('health tracking (CV-012 slice-2b)', () {
+    test('successful authenticate() records fetchSuccess sample', () async {
+      final dio = Dio();
+      dio.httpClientAdapter = FakeHttpClientAdapter({
+        authUrl: (options) => Response(
+          requestOptions: options,
+          statusCode: 200,
+          data: {
+            'AccessToken': 'jf-token',
+            'User': {'Id': 'user-1'},
+          },
+        ),
+      });
+      final tracker = ProviderHealthTracker();
+      final client = JellyfinClient(
+        dio: dio,
+        serverUrl: 'https://jellyfin.example.com',
+        username: 'alice',
+        password: 'hunter2',
+        healthTracker: tracker,
+        sourceId: 'jellyfin-1',
+      );
+
+      await client.authenticate();
+
+      final snap = tracker.snapshotFor('jellyfin-1');
+      expect(snap.totalSamples, 1);
+      expect(snap.healthClass, ProviderHealthClass.green);
+    });
+
+    test(
+      '401 on authenticate() records fetchFailure(auth) and rethrows',
+      () async {
+        final dio = Dio();
+        dio.httpClientAdapter = FakeHttpClientAdapter({
+          authUrl: (options) =>
+              Response(requestOptions: options, statusCode: 401),
+        });
+        final tracker = ProviderHealthTracker();
+        final client = JellyfinClient(
+          dio: dio,
+          serverUrl: 'https://jellyfin.example.com',
+          username: 'alice',
+          password: 'hunter2',
+          healthTracker: tracker,
+          sourceId: 'jellyfin-1',
+        );
+
+        await expectLater(client.authenticate(), throwsA(isA<DioException>()));
+
+        final snap = tracker.snapshotFor('jellyfin-1');
+        expect(snap.recentFailureCategory, ProviderHealthFailureCategory.auth);
+        expect(snap.failureRate, 1.0);
+      },
+    );
+
+    test('no tracker → no recording, existing behavior preserved', () async {
+      final dio = Dio();
+      dio.httpClientAdapter = FakeHttpClientAdapter({
+        authUrl: (options) => Response(
+          requestOptions: options,
+          statusCode: 200,
+          data: {
+            'AccessToken': 'jf-token',
+            'User': {'Id': 'user-1'},
+          },
+        ),
+      });
+      final client = JellyfinClient(
+        dio: dio,
+        serverUrl: 'https://jellyfin.example.com',
+        username: 'alice',
+        password: 'hunter2',
+      );
+      final result = await client.authenticate();
+      expect(result.accessToken, 'jf-token');
+    });
+  });
 
   test('streamUrl builds /Videos/{itemId}/stream with api_key', () {
     final client = JellyfinClient(
