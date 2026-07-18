@@ -234,6 +234,30 @@ void main() {
       },
     );
 
+    test(
+      'AiroMediaOpenRequest defaults mixWithOthers and allowBackgroundPlayback to false',
+      () {
+        final mediaRequest = request();
+        expect(mediaRequest.mixWithOthers, isFalse);
+        expect(mediaRequest.allowBackgroundPlayback, isFalse);
+      },
+    );
+
+    test(
+      'AiroMediaOpenRequest accepts mixWithOthers and allowBackgroundPlayback',
+      () {
+        final mediaRequest = AiroMediaOpenRequest(
+          requestId: 'open-bg-1',
+          sourceHandle: AiroPlaybackSourceHandle.redacted('source-handle-1'),
+          mediaKind: AiroPlaybackMediaKind.hls,
+          mixWithOthers: true,
+          allowBackgroundPlayback: true,
+        );
+        expect(mediaRequest.mixWithOthers, isTrue);
+        expect(mediaRequest.allowBackgroundPlayback, isTrue);
+      },
+    );
+
     test('external subtitle handle rejects raw urls like source handles', () {
       expect(
         AiroPlaybackSourceHandle.validate('https://example.com/en.vtt'),

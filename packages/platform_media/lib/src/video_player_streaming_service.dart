@@ -148,6 +148,9 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
           // LiveEdgeDetector._detectLiveStream).
           mediaKind: AiroPlaybackMediaKind.hls,
           externalSubtitles: externalSubtitles,
+          mixWithOthers: _isBackgroundAudioMode,
+          allowBackgroundPlayback:
+              _isBackgroundAudioMode || channel.isAudioOnly,
         ),
       );
 

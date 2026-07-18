@@ -191,6 +191,8 @@ class AiroMediaOpenRequest extends Equatable {
     this.startPosition = Duration.zero,
     this.preferredQualityId,
     List<AiroPlaybackExternalSubtitle> externalSubtitles = const [],
+    this.mixWithOthers = false,
+    this.allowBackgroundPlayback = false,
     this.schemaVersion = kAiroPlaybackEngineSchemaVersion,
   }) : externalSubtitles = List.unmodifiable(externalSubtitles);
 
@@ -202,6 +204,17 @@ class AiroMediaOpenRequest extends Equatable {
   final String? preferredQualityId;
   final List<AiroPlaybackExternalSubtitle> externalSubtitles;
 
+  /// Whether this source should mix audio with other apps/media sessions
+  /// instead of interrupting them. Maps to `video_player`'s
+  /// `VideoPlayerOptions.mixWithOthers` on the videoPlayer engine.
+  final bool mixWithOthers;
+
+  /// Whether playback should continue when the app is backgrounded (e.g.
+  /// screen locked). Maps to `video_player`'s
+  /// `VideoPlayerOptions.allowBackgroundPlayback` on the videoPlayer engine.
+  /// Typically true for audio-only/radio-style content.
+  final bool allowBackgroundPlayback;
+
   @override
   String toString() {
     return 'AiroMediaOpenRequest('
@@ -210,6 +223,8 @@ class AiroMediaOpenRequest extends Equatable {
         'startPosition: $startPosition, '
         'preferredQualityId: $preferredQualityId, '
         'externalSubtitleCount: ${externalSubtitles.length}, '
+        'mixWithOthers: $mixWithOthers, '
+        'allowBackgroundPlayback: $allowBackgroundPlayback, '
         'sourceHandle: redacted'
         ')';
   }
@@ -223,6 +238,8 @@ class AiroMediaOpenRequest extends Equatable {
     startPosition,
     preferredQualityId,
     externalSubtitles,
+    mixWithOthers,
+    allowBackgroundPlayback,
   ];
 }
 

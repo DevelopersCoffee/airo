@@ -11,22 +11,26 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   late FakeVideoPlayerPlatform fakePlatform;
+  late VideoPlayerAiroPlaybackEngine engine;
   late VideoPlayerStreamingService service;
 
-  IPTVChannel channel({String streamUrl = 'https://example.com/live.m3u8'}) {
+  IPTVChannel channel({
+    String streamUrl = 'https://example.com/live.m3u8',
+    bool isAudioOnly = false,
+  }) {
     return IPTVChannel(
       id: 'chan-1',
       name: 'Test Channel',
       streamUrl: streamUrl,
+      isAudioOnly: isAudioOnly,
     );
   }
 
   setUp(() {
     fakePlatform = FakeVideoPlayerPlatform();
     VideoPlayerPlatform.instance = fakePlatform;
-    service = VideoPlayerStreamingService(
-      engine: VideoPlayerAiroPlaybackEngine(),
-    );
+    engine = VideoPlayerAiroPlaybackEngine();
+    service = VideoPlayerStreamingService(engine: engine);
   });
 
   tearDown(() async {
@@ -58,6 +62,47 @@ void main() {
     test('buildVideoView returns null before any channel is played', () {
       expect(service.buildVideoView(), isNull);
     });
+
+    test(
+      'an audio-only channel opens with allowBackgroundPlayback true',
+      () async {
+        await service.playChannel(channel(isAudioOnly: true));
+
+        // The service doesn't expose the engine or the raw controller, but
+        // the engine retains the last-opened AiroMediaOpenRequest on its own
+        // state (see VideoPlayerAiroPlaybackEngine.open()'s
+        // `_emit(_state.copyWith(request: request, ...))`), so we can
+        // observe the request that reached VideoPlayerController via the
+        // injected engine instance from setUp.
+        final openedRequest = engine.currentState.request;
+        expect(openedRequest, isNotNull);
+        expect(openedRequest!.allowBackgroundPlayback, isTrue);
+      },
+    );
+
+    test(
+      'a non-audio-only channel opens with allowBackgroundPlayback false by default',
+      () async {
+        await service.playChannel(channel());
+
+        final openedRequest = engine.currentState.request;
+        expect(openedRequest, isNotNull);
+        expect(openedRequest!.allowBackgroundPlayback, isFalse);
+      },
+    );
+
+    test(
+      'enabling background audio mode sets mixWithOthers and allowBackgroundPlayback',
+      () async {
+        await service.playChannel(channel());
+        await service.setBackgroundAudioMode(true);
+
+        final openedRequest = engine.currentState.request;
+        expect(openedRequest, isNotNull);
+        expect(openedRequest!.mixWithOthers, isTrue);
+        expect(openedRequest.allowBackgroundPlayback, isTrue);
+      },
+    );
   });
 
   group('VideoPlayerStreamingService selectTrack', () {
