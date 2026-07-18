@@ -756,6 +756,27 @@ test-device-android: ## Run Patrol tests on Android
 test-device-ios: ## Run Patrol tests on iOS
 	@cd $(APP_DIR) && patrol test -t integration_test/patrol_test.dart --target ios
 
+.PHONY: test-release-artifacts
+test-release-artifacts: ## Run static smoke checks against release artifacts; set AIRO_RELEASE_ARTIFACT_DIR=...
+	@scripts/release-artifact-smoke.sh
+
+.PHONY: test-release-artifacts-required
+test-release-artifacts-required: ## Run release-blocking artifact smoke checks
+	@AIRO_REQUIRE_RELEASE_ARTIFACTS=true scripts/release-artifact-smoke.sh --require-artifacts
+
+.PHONY: test-release-artifacts-device
+test-release-artifacts-device: ## Install/launch APK artifacts on a connected physical Android device
+	@AIRO_REQUIRE_RELEASE_ARTIFACTS=true AIRO_RUN_DEVICE_SMOKE=true scripts/release-artifact-smoke.sh --require-artifacts
+
+.PHONY: test-release-artifacts-web
+test-release-artifacts-web: ## Serve web artifact and run Playwright smoke checks
+	@AIRO_REQUIRE_RELEASE_ARTIFACTS=true AIRO_RUN_WEB_SMOKE=true scripts/release-artifact-smoke.sh --require-artifacts
+
+.PHONY: test-release-patrol-android-build
+test-release-patrol-android-build: ## Build Android Patrol provider APKs for device-farm execution
+	@cd $(APP_DIR) && patrol build android \
+		-t integration_test/patrol_test.dart
+
 .PHONY: test-agent-skills-journey
 test-agent-skills-journey: ## Run the Agent Skills calendar journey on the default iOS simulator
 	@./scripts/run_agent_skills_journey.sh

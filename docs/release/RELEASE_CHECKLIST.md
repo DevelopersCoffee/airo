@@ -22,6 +22,8 @@ Pre-release verification checklist for Airo Super App releases.
 - [ ] Unit tests passing (>80% coverage target)
 - [ ] Integration tests passing
 - [ ] E2E smoke tests passing
+- [ ] Release device qualification report created (`artifacts/release-qualification/...`)
+- [ ] Exact release artifact smoke checks passing (`make test-release-artifacts-required`)
 - [ ] Shared UI responsiveness suite passing (`make test-ui-responsive`)
 - [ ] Database reliability validation suite passing (`make test-database-reliability`)
 - [ ] Background processing validation suite passing (`make test-background-processing`)
@@ -78,6 +80,8 @@ Pre-release verification checklist for Airo Super App releases.
 ### Platform-Specific
 - [ ] Android: Back button works correctly
 - [ ] iOS: Gestures work (swipe back)
+- [ ] iPad/tablet: Wide layouts remain readable and primary actions are reachable
+- [ ] Android TV / Fire TV: Leanback launch and D-pad focus work without touch
 - [ ] Web: Browser navigation works
 
 ### Google Cast V1
@@ -132,6 +136,8 @@ asset names and visibility rules in
 - [ ] `app-release.ipa` - iOS (if applicable)
 - [ ] `airo-web-release.zip` - Web deployment
 - [ ] `RELEASE_NOTES.md` - Release description
+- [ ] `artifact-smoke-report.md` - Exact artifact smoke result
+- [ ] Release device qualification report with device metadata, checksums, logs, and waivers
 
 ### Documentation
 - [ ] Changelog entry added
@@ -144,6 +150,7 @@ asset names and visibility rules in
 - [ ] [Notification validation runbook](./NOTIFICATION_VALIDATION.md) followed
 - [ ] [UI responsiveness validation runbook](./UI_RESPONSIVENESS_VALIDATION.md) followed
 - [ ] [Performance benchmark runbook](./PERFORMANCE_BENCHMARKS.md) followed
+- [ ] [Release device qualification runbook](./RELEASE_DEVICE_QUALIFICATION.md) followed
 
 ---
 
@@ -172,6 +179,7 @@ Date: ____-__-__
 - [Smoke Tests Workflow](/.github/workflows/smoke-tests.yml)
 - [Build & Release Workflow](/.github/workflows/build-and-release.yml)
 - [V2 Distribution Matrix](./V2_DISTRIBUTION_MATRIX.md)
+- [Release Device Qualification Workflow](/.github/workflows/release-device-qualification.yml)
 - [Rollback Procedure](./ROLLBACK_PROCEDURE.md)
 - [Store Compliance](./STORE_COMPLIANCE.md)
 - [Database Reliability Validation](./DATABASE_RELIABILITY_VALIDATION.md)
@@ -180,3 +188,4 @@ Date: ____-__-__
 - [Notification Validation](./NOTIFICATION_VALIDATION.md)
 - [UI Responsiveness Validation](./UI_RESPONSIVENESS_VALIDATION.md)
 - [Performance Benchmarks](./PERFORMANCE_BENCHMARKS.md)
+- [Release Device Qualification](./RELEASE_DEVICE_QUALIFICATION.md)
