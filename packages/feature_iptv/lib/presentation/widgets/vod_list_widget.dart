@@ -9,9 +9,14 @@ import '../../application/providers/vod_providers.dart';
 /// and series groups, mirroring `ChannelListWidget`'s layout pattern for
 /// live channels.
 class VodListWidget extends ConsumerWidget {
-  const VodListWidget({super.key, this.onItemTap});
+  const VodListWidget({super.key, this.onItemTap, this.onAddSubtitleTap});
 
   final void Function(VodItem item)? onItemTap;
+
+  /// Optional "add external subtitle" action, rendered as a trailing icon
+  /// button on each tile when provided. VOD-only per CV-031's scope — live
+  /// channels never pass this callback.
+  final void Function(VodItem item)? onAddSubtitleTap;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -68,6 +73,12 @@ class VodListWidget extends ConsumerWidget {
                     posterUrl: movie.posterUrl,
                     fallbackIcon: Icons.movie,
                     onTap: () => onItemTap?.call(movie),
+                    onAddSubtitleTap: onAddSubtitleTap == null
+                        ? null
+                        : () => onAddSubtitleTap!(movie),
+                    addSubtitleKey: ValueKey(
+                      'vod-add-subtitle-button-${movie.id}',
+                    ),
                   ),
                 for (final group in seriesGroups)
                   _VodListTile(
@@ -77,6 +88,12 @@ class VodListWidget extends ConsumerWidget {
                     posterUrl: group.episodes.first.posterUrl,
                     fallbackIcon: Icons.video_library,
                     onTap: () => onItemTap?.call(group.episodes.first),
+                    onAddSubtitleTap: onAddSubtitleTap == null
+                        ? null
+                        : () => onAddSubtitleTap!(group.episodes.first),
+                    addSubtitleKey: ValueKey(
+                      'vod-add-subtitle-button-${group.episodes.first.id}',
+                    ),
                   ),
               ],
             ),
@@ -112,6 +129,8 @@ class _VodListTile extends StatelessWidget {
     required this.posterUrl,
     required this.fallbackIcon,
     required this.onTap,
+    this.onAddSubtitleTap,
+    this.addSubtitleKey,
   });
 
   final String title;
@@ -119,6 +138,8 @@ class _VodListTile extends StatelessWidget {
   final String? posterUrl;
   final IconData fallbackIcon;
   final VoidCallback onTap;
+  final VoidCallback? onAddSubtitleTap;
+  final Key? addSubtitleKey;
 
   @override
   Widget build(BuildContext context) {
@@ -186,6 +207,13 @@ class _VodListTile extends StatelessWidget {
                       ],
                     ),
                   ),
+                  if (onAddSubtitleTap != null)
+                    IconButton(
+                      key: addSubtitleKey,
+                      icon: const Icon(Icons.subtitles_outlined),
+                      tooltip: 'Add subtitle URL',
+                      onPressed: onAddSubtitleTap,
+                    ),
                 ],
               ),
             ),

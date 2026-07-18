@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:platform_channels/platform_channels.dart';
+import 'package:platform_player/platform_player.dart';
 
 import '../../application/providers/iptv_providers.dart';
 import '../../application/providers/vod_providers.dart';
@@ -56,7 +57,10 @@ class VodScreen extends ConsumerWidget {
             const SizedBox(height: 8),
           ],
           Expanded(
-            child: VodListWidget(onItemTap: (item) => _selectItem(ref, item)),
+            child: VodListWidget(
+              onItemTap: (item) => _selectItem(ref, item),
+              onAddSubtitleTap: (item) => _attachSubtitle(context, ref, item),
+            ),
           ),
         ],
       ),
@@ -77,6 +81,53 @@ class VodScreen extends ConsumerWidget {
     );
     ref.read(iptvStreamingServiceProvider).playChannel(syntheticChannel);
     ref.read(addToVodWatchHistoryProvider(item).future);
+  }
+
+  Future<void> _attachSubtitle(
+    BuildContext context,
+    WidgetRef ref,
+    VodItem item,
+  ) async {
+    final controller = TextEditingController();
+    final url = await showDialog<String>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Add subtitle URL (optional)'),
+          content: TextField(
+            key: const ValueKey('vod-subtitle-url-field'),
+            controller: controller,
+            decoration: const InputDecoration(
+              hintText: 'https://example.com/subtitles.vtt',
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(controller.text),
+              child: const Text('Attach'),
+            ),
+          ],
+        );
+      },
+    );
+    if (url == null || url.isEmpty) return;
+
+    // Reload-to-apply per the engine contract: attaching a subtitle to an
+    // already-open source isn't supported (see AiroPlaybackEngine.open()),
+    // so this is stored for the *next* open — Task 7's playChannel() reads
+    // it. If the item is already playing, the user needs to tap it again
+    // for the subtitle to take effect; the dialog copy makes this explicit
+    // rather than implying an instant attach.
+    ref.read(iptvStreamingServiceProvider).attachExternalSubtitle(
+      AiroPlaybackExternalSubtitle(
+        handle: AiroPlaybackSourceHandle.direct(url),
+        label: 'Custom subtitle',
+      ),
+    );
   }
 }
 
