@@ -15,7 +15,7 @@ grep -q "Locally dry-merge" "$TMP_DIR/help.out"
   --worktree "$TMP_DIR/self-merge" \
   >"$TMP_DIR/self-merge.out"
 
-grep -q "Airo v2 merge-readiness dry run" "$TMP_DIR/self-merge.out"
+grep -q "Airo mainline merge-readiness dry run" "$TMP_DIR/self-merge.out"
 grep -q "YAML parse: ok" "$TMP_DIR/self-merge.out"
 grep -q "Whitespace check: ok" "$TMP_DIR/self-merge.out"
 grep -Eq "V2 readiness preflight: (publicReady=true|unresolved gates remain)" \
