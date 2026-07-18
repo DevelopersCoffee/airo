@@ -10,6 +10,7 @@ export "src/models/playback_engine_resolver_models.dart";
 export "src/models/streaming_state.dart";
 export "src/services/airo_cast_controller.dart";
 export "src/services/airo_playback_engine.dart";
+export "src/services/cast_log_redaction.dart";
 export "src/services/fake_airo_cast_controller.dart";
 export "src/services/fake_playback_engine.dart";
 export "src/services/flutter_chrome_cast_controller.dart";

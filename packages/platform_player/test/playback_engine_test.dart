@@ -178,7 +178,10 @@ void main() {
         final engine = UnavailableAiroPlaybackEngine();
 
         final enterState = await engine.enterPictureInPicture();
-        expect(enterState.error?.code, AiroPlaybackErrorCode.backendUnavailable);
+        expect(
+          enterState.error?.code,
+          AiroPlaybackErrorCode.backendUnavailable,
+        );
         expect(enterState.error?.operation, 'enterPictureInPicture');
 
         final exitState = await engine.exitPictureInPicture();
@@ -195,43 +198,33 @@ void main() {
         AiroPlaybackViewFit.fill: 'fill',
         AiroPlaybackViewFit.stretch: 'stretch',
       };
-      expect(
-        {for (final v in AiroPlaybackViewFit.values) v: v.stableId},
-        expected,
-      );
+      expect({
+        for (final v in AiroPlaybackViewFit.values) v: v.stableId,
+      }, expected);
     });
 
-    test(
-      'AiroMediaOpenRequest defaults to empty external subtitles',
-      () {
-        final mediaRequest = request();
-        expect(mediaRequest.externalSubtitles, isEmpty);
-      },
-    );
+    test('AiroMediaOpenRequest defaults to empty external subtitles', () {
+      final mediaRequest = request();
+      expect(mediaRequest.externalSubtitles, isEmpty);
+    });
 
-    test(
-      'AiroMediaOpenRequest accepts optional external subtitle handles',
-      () {
-        final mediaRequest = AiroMediaOpenRequest(
-          requestId: 'open-2',
-          sourceHandle: AiroPlaybackSourceHandle.redacted('source-handle-1'),
-          mediaKind: AiroPlaybackMediaKind.hls,
-          externalSubtitles: [
-            AiroPlaybackExternalSubtitle(
-              handle: AiroPlaybackSourceHandle.redacted('sub-handle-en'),
-              languageCode: 'en',
-              label: 'English',
-            ),
-          ],
-        );
+    test('AiroMediaOpenRequest accepts optional external subtitle handles', () {
+      final mediaRequest = AiroMediaOpenRequest(
+        requestId: 'open-2',
+        sourceHandle: AiroPlaybackSourceHandle.redacted('source-handle-1'),
+        mediaKind: AiroPlaybackMediaKind.hls,
+        externalSubtitles: [
+          AiroPlaybackExternalSubtitle(
+            handle: AiroPlaybackSourceHandle.redacted('sub-handle-en'),
+            languageCode: 'en',
+            label: 'English',
+          ),
+        ],
+      );
 
-        expect(mediaRequest.externalSubtitles, hasLength(1));
-        expect(
-          mediaRequest.externalSubtitles.single.languageCode,
-          'en',
-        );
-      },
-    );
+      expect(mediaRequest.externalSubtitles, hasLength(1));
+      expect(mediaRequest.externalSubtitles.single.languageCode, 'en');
+    });
 
     test('external subtitle handle rejects raw urls like source handles', () {
       expect(

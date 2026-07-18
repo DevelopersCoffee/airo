@@ -97,25 +97,27 @@ void main() {
     expect(url.path, '/m/test-session-token/media');
   });
 
-  test('serves the full entity as 206 bytes=0- when no range is requested',
-      () async {
-    // The temporary-mobile-server contract is range-first: rangeless GETs are
-    // served as a synthesized full-entity range so thin receivers still play.
-    final server = serverFor();
-    final url = await server.start();
-    addTearDown(server.stopServer);
+  test(
+    'serves the full entity as 206 bytes=0- when no range is requested',
+    () async {
+      // The temporary-mobile-server contract is range-first: rangeless GETs are
+      // served as a synthesized full-entity range so thin receivers still play.
+      final server = serverFor();
+      final url = await server.start();
+      addTearDown(server.stopServer);
 
-    final response = await request(url);
-    expect(response.statusCode, HttpStatus.partialContent);
-    expect(
-      response.headers.value(HttpHeaders.contentRangeHeader),
-      'bytes 0-4095/4096',
-    );
-    expect(response.headers.value(HttpHeaders.acceptRangesHeader), 'bytes');
-    expect(response.headers.contentType?.mimeType, 'video/mp4');
-    final body = await response.fold<List<int>>([], (a, b) => a..addAll(b));
-    expect(body, mediaBytes);
-  });
+      final response = await request(url);
+      expect(response.statusCode, HttpStatus.partialContent);
+      expect(
+        response.headers.value(HttpHeaders.contentRangeHeader),
+        'bytes 0-4095/4096',
+      );
+      expect(response.headers.value(HttpHeaders.acceptRangesHeader), 'bytes');
+      expect(response.headers.contentType?.mimeType, 'video/mp4');
+      final body = await response.fold<List<int>>([], (a, b) => a..addAll(b));
+      expect(body, mediaBytes);
+    },
+  );
 
   test('serves 206 partial content with correct Content-Range for a bounded '
       'range', () async {
@@ -241,17 +243,19 @@ void main() {
     expect(server.isRunning, isFalse);
   });
 
-  test('controller shutdown stops the server for the matching serverId',
-      () async {
-    final server = serverFor();
-    await server.start();
+  test(
+    'controller shutdown stops the server for the matching serverId',
+    () async {
+      final server = serverFor();
+      await server.start();
 
-    await server.shutdown('other-server');
-    expect(server.isRunning, isTrue);
+      await server.shutdown('other-server');
+      expect(server.isRunning, isTrue);
 
-    await server.shutdown('server-1');
-    expect(server.isRunning, isFalse);
-  });
+      await server.shutdown('server-1');
+      expect(server.isRunning, isFalse);
+    },
+  );
 
   test('currentSnapshot exposes the active session while running', () async {
     final server = serverFor();
@@ -324,6 +328,133 @@ void main() {
         reason: '$ip should be rejected',
       );
     }
+  });
+
+  group('diagnostics hardening', () {
+    test('caps request_rejected events per window so a LAN flooder cannot '
+        'spam the diagnostics pipeline', () async {
+      final events = <(String, Map<String, Object?>)>[];
+      final server = PhoneMediaFileServer(
+        snapshot: snapshotFor(),
+        filePath: mediaFile.path,
+        contentType: 'video/mp4',
+        bindAddress: InternetAddress.loopbackIPv4,
+        sessionToken: 'test-session-token',
+        onSessionEvent: (event, data) => events.add((event, data)),
+      );
+      final url = await server.start();
+      addTearDown(server.stopServer);
+
+      const attempts = PhoneMediaFileServer.maxRejectedEventsPerWindow + 5;
+      for (var i = 0; i < attempts; i++) {
+        final response = await request(
+          url.replace(path: '/m/wrong-token/media'),
+        );
+        expect(response.statusCode, HttpStatus.notFound);
+      }
+
+      final rejected = events.where((e) => e.$1 == 'request_rejected').toList();
+      expect(
+        rejected.length,
+        PhoneMediaFileServer.maxRejectedEventsPerWindow,
+        reason: 'rejections beyond the window cap must be suppressed',
+      );
+
+      await server.stopServer();
+      final suppressed = events
+          .where((e) => e.$1 == 'request_rejected_suppressed')
+          .toList();
+      expect(suppressed, hasLength(1));
+      expect(suppressed.single.$2['suppressedCount'], 5);
+    });
+
+    test('suppression counter resets when the window rolls over', () async {
+      final events = <(String, Map<String, Object?>)>[];
+      // Anchored to real time: the snapshot's expiry/idle checks compare
+      // against this fake clock, so it must stay inside the grant window.
+      var now = DateTime.now();
+      final server = PhoneMediaFileServer(
+        snapshot: snapshotFor(),
+        filePath: mediaFile.path,
+        contentType: 'video/mp4',
+        bindAddress: InternetAddress.loopbackIPv4,
+        sessionToken: 'test-session-token',
+        now: () => now,
+        onSessionEvent: (event, data) => events.add((event, data)),
+      );
+      final url = await server.start();
+      addTearDown(server.stopServer);
+
+      const cap = PhoneMediaFileServer.maxRejectedEventsPerWindow;
+      for (var i = 0; i < cap + 3; i++) {
+        await request(url.replace(path: '/m/wrong-token/media'));
+      }
+      expect(events.where((e) => e.$1 == 'request_rejected').length, cap);
+
+      now = now.add(
+        PhoneMediaFileServer.rejectedEventWindow + const Duration(seconds: 1),
+      );
+      await request(url.replace(path: '/m/wrong-token/media'));
+
+      final suppressed = events
+          .where((e) => e.$1 == 'request_rejected_suppressed')
+          .toList();
+      expect(suppressed, hasLength(1));
+      expect(suppressed.single.$2['suppressedCount'], 3);
+      expect(
+        events.where((e) => e.$1 == 'request_rejected').length,
+        cap + 1,
+        reason: 'new window admits fresh request_rejected events',
+      );
+    });
+  });
+
+  group('entity tag', () {
+    test('does not embed the file modification time', () async {
+      final server = serverFor();
+      final url = await server.start();
+      addTearDown(server.stopServer);
+
+      final response = await request(url, method: 'HEAD');
+      final etag = response.headers.value(HttpHeaders.etagHeader);
+      expect(etag, isNotNull);
+      final stat = await mediaFile.stat();
+      expect(
+        etag,
+        isNot(contains('${stat.modified.millisecondsSinceEpoch}')),
+        reason: 'ETag must not leak the file mtime',
+      );
+    });
+
+    test('is stable across requests within one session', () async {
+      final server = serverFor();
+      final url = await server.start();
+      addTearDown(server.stopServer);
+
+      final first = await request(url, method: 'HEAD');
+      final second = await request(url, method: 'HEAD');
+      expect(
+        first.headers.value(HttpHeaders.etagHeader),
+        second.headers.value(HttpHeaders.etagHeader),
+      );
+    });
+
+    test('differs across server instances for the same file', () async {
+      final serverA = serverFor();
+      final serverB = serverFor();
+      final urlA = await serverA.start();
+      final urlB = await serverB.start();
+      addTearDown(serverA.stopServer);
+      addTearDown(serverB.stopServer);
+
+      final a = await request(urlA, method: 'HEAD');
+      final b = await request(urlB, method: 'HEAD');
+      expect(
+        a.headers.value(HttpHeaders.etagHeader),
+        isNot(b.headers.value(HttpHeaders.etagHeader)),
+        reason: 'per-session nonce keeps the ETag unlinkable to file state',
+      );
+    });
   });
 
   test('mediaUrl never appears in diagnostic toString output', () async {
