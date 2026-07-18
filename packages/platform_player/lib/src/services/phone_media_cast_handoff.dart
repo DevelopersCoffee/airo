@@ -109,6 +109,7 @@ class PhoneMediaCastHandoff {
     this.onSessionEvent,
     this._sessionTtl = const Duration(hours: 6),
     this._idleTimeout = const Duration(minutes: 2),
+    this._pauseKeepAliveInterval = const Duration(seconds: 30),
   });
 
   final AiroCastController _castController;
@@ -116,10 +117,16 @@ class PhoneMediaCastHandoff {
   final InternetAddress? _bindAddress;
   final Duration _sessionTtl;
   final Duration _idleTimeout;
+
+  /// How often to ping the file server's idle clock while the receiver is
+  /// paused. Must stay comfortably under [_idleTimeout], since a paused
+  /// receiver generates no HTTP traffic of its own.
+  final Duration _pauseKeepAliveInterval;
   final void Function(String event, Map<String, Object?> data)? onSessionEvent;
 
   PhoneMediaFileServer? _server;
   StreamSubscription<AiroCastSessionSnapshot>? _sessionSubscription;
+  Timer? _pauseKeepAliveTimer;
 
   bool get isServing => _server?.isRunning ?? false;
 
@@ -132,6 +139,7 @@ class PhoneMediaCastHandoff {
       return PhoneMediaHandoffUnsupported(reason: unsupportedReason);
     }
 
+    _cancelPauseKeepAlive();
     await _teardownServer();
 
     // Synchronous check: widget tests run in a fake-async zone where real
@@ -181,6 +189,7 @@ class PhoneMediaCastHandoff {
   Future<void> dispose() async {
     final subscription = _sessionSubscription;
     _sessionSubscription = null;
+    _cancelPauseKeepAlive();
     // Tear the server down first: stopServer cancels its lifecycle timer
     // synchronously, so no timer outlives a disposed widget tree.
     final teardown = _teardownServer();
@@ -194,14 +203,31 @@ class PhoneMediaCastHandoff {
       case AiroCastSessionPhase.disconnected:
       case AiroCastSessionPhase.failed:
       case AiroCastSessionPhase.idle:
+        _cancelPauseKeepAlive();
         unawaited(_teardownServer());
+      case AiroCastSessionPhase.paused:
+        _startPauseKeepAlive();
       case AiroCastSessionPhase.connecting:
       case AiroCastSessionPhase.connected:
       case AiroCastSessionPhase.loadingMedia:
       case AiroCastSessionPhase.playing:
-      case AiroCastSessionPhase.paused:
-        break;
+        _cancelPauseKeepAlive();
     }
+  }
+
+  // A paused receiver holds the session but sends no HTTP requests, so the
+  // file server's own idle-shutdown timer (driven by request traffic) would
+  // otherwise mistake "paused" for "abandoned" and kill the socket mid-pause.
+  void _startPauseKeepAlive() {
+    _pauseKeepAliveTimer ??= Timer.periodic(
+      _pauseKeepAliveInterval,
+      (_) => _server?.keepAlive(),
+    );
+  }
+
+  void _cancelPauseKeepAlive() {
+    _pauseKeepAliveTimer?.cancel();
+    _pauseKeepAliveTimer = null;
   }
 
   Future<void> _teardownServer() async {

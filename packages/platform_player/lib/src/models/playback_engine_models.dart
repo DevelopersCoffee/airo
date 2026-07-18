@@ -278,9 +278,7 @@ List<AiroPlaybackTrackOption> externalSubtitleTracksFor(
       return AiroPlaybackTrackOption(
         id: '$kAiroExternalSubtitleTrackIdPrefix$i',
         kind: AiroPlaybackTrackKind.subtitle,
-        label: sub.label ??
-            sub.languageCode ??
-            'External subtitle ${i + 1}',
+        label: sub.label ?? sub.languageCode ?? 'External subtitle ${i + 1}',
         languageCode: sub.languageCode,
         isExternal: true,
       );

@@ -70,6 +70,15 @@ class PhoneMediaFileServer implements AiroTemporaryMobileServerController {
 
   bool get isRunning => _server != null;
 
+  /// Resets the idle clock without an HTTP request. A paused-but-connected
+  /// receiver generates no traffic, so [PhoneMediaCastHandoff] calls this on
+  /// a timer while paused; otherwise the idle-shutdown timer (CV-033) would
+  /// mistake "paused" for "abandoned" and tear the socket down mid-session.
+  void keepAlive() {
+    if (!isRunning) return;
+    _lastActivityAt = _now();
+  }
+
   /// True only for RFC1918 private ranges and loopback. Carrier-grade NAT
   /// (100.64/10), link-local, and public addresses are all rejected so the
   /// server can never bind or accept traffic outside the local network.

@@ -145,6 +145,51 @@ void main() {
     expect(handoff.isServing, isFalse);
   });
 
+  test(
+    'pausing on the receiver keeps the server alive past the idle timeout',
+    () async {
+      final handoff = PhoneMediaCastHandoff(
+        castController: castController,
+        bindAddress: InternetAddress.loopbackIPv4,
+        idleTimeout: const Duration(milliseconds: 150),
+        pauseKeepAliveInterval: const Duration(milliseconds: 40),
+      );
+      await handoff.start(itemFor());
+      expect(handoff.isServing, isTrue);
+
+      await castController.pause();
+      // A paused receiver sends no HTTP traffic; without a keep-alive the
+      // file server's own idle timer would treat this as abandonment.
+      await Future<void>.delayed(const Duration(milliseconds: 400));
+      expect(handoff.isServing, isTrue);
+
+      await handoff.stopHandoff();
+    },
+  );
+
+  test(
+    'keep-alive stops once the receiver resumes playing or the session ends',
+    () async {
+      final handoff = PhoneMediaCastHandoff(
+        castController: castController,
+        bindAddress: InternetAddress.loopbackIPv4,
+        idleTimeout: const Duration(milliseconds: 150),
+        pauseKeepAliveInterval: const Duration(milliseconds: 40),
+      );
+      await handoff.start(itemFor());
+
+      await castController.pause();
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+      await castController.play();
+      // Resuming stops the keep-alive timer; without further HTTP traffic
+      // the file server's idle timer resumes counting from here.
+      await Future<void>.delayed(const Duration(milliseconds: 400));
+      expect(handoff.isServing, isFalse);
+
+      await handoff.dispose();
+    },
+  );
+
   test('server stops when the receiver disconnects', () async {
     final handoff = handoffFor();
     await handoff.start(itemFor());
