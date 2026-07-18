@@ -148,6 +148,8 @@ class OfflineModelInfo {
     this.tags = const [],
     this.minMemoryBytes,
     this.recommendedMemoryBytes,
+    this.supportsWebRuntime = false,
+    this.webAssetUrl,
   });
 
   /// Unique identifier for this model.
@@ -233,6 +235,15 @@ class OfflineModelInfo {
 
   /// Recommended memory for optimal performance (bytes).
   final int? recommendedMemoryBytes;
+
+  /// Whether this package has a confirmed MediaPipe LLM Inference API
+  /// (`.task`) bundle for browser/WASM/WebGPU execution.
+  final bool supportsWebRuntime;
+
+  /// URL to the MediaPipe web `.task` bundle, distinct from [downloadUrl]
+  /// (which points at the native `.litertlm`/GGUF artifact). Null unless
+  /// [supportsWebRuntime] is true.
+  final String? webAssetUrl;
 
   /// Whether the model is downloaded and available locally.
   bool get isDownloaded => filePath != null;
@@ -325,6 +336,8 @@ class OfflineModelInfo {
     List<String>? tags,
     int? minMemoryBytes,
     int? recommendedMemoryBytes,
+    bool? supportsWebRuntime,
+    String? webAssetUrl,
   }) {
     return OfflineModelInfo(
       id: id ?? this.id,
@@ -357,6 +370,8 @@ class OfflineModelInfo {
       minMemoryBytes: minMemoryBytes ?? this.minMemoryBytes,
       recommendedMemoryBytes:
           recommendedMemoryBytes ?? this.recommendedMemoryBytes,
+      supportsWebRuntime: supportsWebRuntime ?? this.supportsWebRuntime,
+      webAssetUrl: webAssetUrl ?? this.webAssetUrl,
     );
   }
 
@@ -390,6 +405,8 @@ class OfflineModelInfo {
     'tags': tags,
     'minMemoryBytes': minMemoryBytes,
     'recommendedMemoryBytes': recommendedMemoryBytes,
+    'supportsWebRuntime': supportsWebRuntime,
+    'webAssetUrl': webAssetUrl,
   };
 
   /// Creates from JSON map.
@@ -460,6 +477,8 @@ class OfflineModelInfo {
       tags: List<String>.from(json['tags'] ?? []),
       minMemoryBytes: json['minMemoryBytes'] as int?,
       recommendedMemoryBytes: json['recommendedMemoryBytes'] as int?,
+      supportsWebRuntime: json['supportsWebRuntime'] as bool? ?? false,
+      webAssetUrl: json['webAssetUrl'] as String?,
     );
   }
 

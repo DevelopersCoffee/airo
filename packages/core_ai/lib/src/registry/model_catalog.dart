@@ -50,6 +50,9 @@ class ModelCatalog {
       tags: ['gallery', 'litert-lm', 'chat', 'reasoning', 'prompt-lab'],
       minMemoryBytes: 3500000000,
       recommendedMemoryBytes: 4500000000,
+      supportsWebRuntime: true,
+      webAssetUrl:
+          'https://storage.googleapis.com/mediapipe-models/llm_inference/gemma-4-e2b-it/float16/latest/gemma-4-e2b-it.task',
     ),
     const OfflineModelInfo(
       id: 'gemma-4-e4b-it-litertlm',
@@ -88,6 +91,9 @@ class ModelCatalog {
       tags: ['gallery', 'litert-lm', 'high-capability', 'thinking'],
       minMemoryBytes: 5500000000,
       recommendedMemoryBytes: 7000000000,
+      supportsWebRuntime: true,
+      webAssetUrl:
+          'https://storage.googleapis.com/mediapipe-models/llm_inference/gemma-4-e4b-it/float16/latest/gemma-4-e4b-it.task',
     ),
     const OfflineModelInfo(
       id: 'gemma-3n-e2b-it-litertlm',
@@ -336,5 +342,10 @@ class ModelCatalog {
   /// Gets only official models.
   static List<OfflineModelInfo> get officialModels => bundledModels
       .where((m) => m.credibility == ModelCredibility.official)
+      .toList();
+
+  /// Gets only models with a confirmed MediaPipe web (.task) bundle.
+  static List<OfflineModelInfo> get webRuntimeSupported => bundledModels
+      .where((m) => m.supportsWebRuntime)
       .toList();
 }
