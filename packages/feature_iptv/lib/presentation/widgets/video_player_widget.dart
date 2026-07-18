@@ -16,6 +16,9 @@ import "package:platform_media/platform_media.dart";
 import '../utils/web_fullscreen.dart' as web_fullscreen;
 import 'iptv_icon_placeholder.dart';
 import 'live_indicators.dart';
+import 'player_brightness_controller.dart';
+import 'player_gesture_overlay.dart';
+import 'player_lock_button.dart';
 
 /// Video player widget with YouTube-like controls
 class VideoPlayerWidget extends ConsumerStatefulWidget {
@@ -23,6 +26,7 @@ class VideoPlayerWidget extends ConsumerStatefulWidget {
   final VoidCallback? onFullscreenToggle;
   final bool enableSwipeChannelChange;
   final bool initiallyFullscreen;
+  final PlayerBrightnessController? brightnessController;
 
   const VideoPlayerWidget({
     super.key,
@@ -30,6 +34,7 @@ class VideoPlayerWidget extends ConsumerStatefulWidget {
     this.onFullscreenToggle,
     this.enableSwipeChannelChange = false,
     this.initiallyFullscreen = false,
+    this.brightnessController,
   });
 
   @override
@@ -49,13 +54,31 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
   String? _channelChangeOverlayText;
   Timer? _channelChangeOverlayTimer;
 
+  // Netflix-style gesture controls (CV-PLAYER-GESTURES) + lock button.
+  bool _isLocked = false;
+  double _brightness = 0.5;
+  late final PlayerBrightnessController _brightnessController;
+
   @override
   void initState() {
     super.initState();
     _isFullscreen = widget.initiallyFullscreen;
+    _brightnessController =
+        widget.brightnessController ?? SystemPlayerBrightnessController();
+    _loadInitialBrightness();
     _startHideControlsTimer();
     // Note: Wakelock is now managed by _updateWakelockForPlayback
     // based on actual playback state, not just widget mount
+  }
+
+  Future<void> _loadInitialBrightness() async {
+    try {
+      final value = await _brightnessController.currentBrightness();
+      if (!mounted) return;
+      setState(() => _brightness = value);
+    } catch (e) {
+      debugPrint('Failed to read initial brightness: $e');
+    }
   }
 
   @override
@@ -64,7 +87,27 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
     _channelChangeOverlayTimer?.cancel();
     _wakelockDebouncer.cancel();
     _disableWakelock();
+    unawaited(_resetBrightnessSafely());
     super.dispose();
+  }
+
+  // screen_brightness has no Linux implementation and limited web support;
+  // platforms without it throw on every call, so failures here are expected
+  // on some desktop/web targets and must never crash the widget.
+  Future<void> _resetBrightnessSafely() async {
+    try {
+      await _brightnessController.resetBrightness();
+    } catch (e) {
+      debugPrint('Failed to reset brightness: $e');
+    }
+  }
+
+  Future<void> _setBrightnessSafely(double value) async {
+    try {
+      await _brightnessController.setBrightness(value);
+    } catch (e) {
+      debugPrint('Failed to set brightness: $e');
+    }
   }
 
   /// Update wakelock based on playback state
@@ -135,9 +178,29 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
     _hideControlsTimer = null;
   }
 
+  // No-op while locked: the controls layer is unrendered in that state (see
+  // `_buildPlayer`), so revealing it would be dead code with no visible
+  // effect today — but tap/hover should never behave as an interactive
+  // surface while locked, regardless of how the render-gating evolves.
   void _showControls() {
+    if (_isLocked) return;
     setState(() => _showControlsOverlay = true);
     _startHideControlsTimer();
+  }
+
+  void _toggleLocked() {
+    setState(() {
+      _isLocked = !_isLocked;
+      _showControlsOverlay = true;
+    });
+    // Keep controls visible right after toggling so the lock/unlock state
+    // change itself is visible, then resume the normal auto-hide behavior.
+    _startHideControlsTimer();
+  }
+
+  void _onBrightnessGestureChanged(double value) {
+    setState(() => _brightness = value);
+    unawaited(_setBrightnessSafely(value));
   }
 
   void _toggleFullscreen() {
@@ -231,66 +294,87 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
           child: Stack(
             alignment: Alignment.center,
             children: [
-              // Video display
-              if (controller != null && controller.value.isInitialized)
-                SizedBox.expand(
-                  child: FittedBox(
-                    fit: _boxFitFor(aspectRatioFit),
-                    child: SizedBox(
-                      width: controller.value.size.width,
-                      height: controller.value.size.height,
-                      child: VideoPlayer(controller),
-                    ),
-                  ),
-                )
-              else if (state.playbackState == PlaybackState.loading)
-                _buildLoading()
-              else if (state.hasError && state.diagnostic != null)
-                _buildDiagnosticError(state)
-              else
-                _buildPlaceholder(state),
+              // Video display + Netflix-style brightness/volume drag
+              // gestures. Left half of the video area adjusts brightness,
+              // right half adjusts volume; disabled while locked.
+              PlayerGestureOverlay(
+                locked: _isLocked,
+                brightness: _brightness,
+                volume: state.isMuted ? 0.0 : state.volume,
+                onBrightnessChanged: _onBrightnessGestureChanged,
+                onVolumeChanged: (value) {
+                  if (state.isMuted) service.toggleMute();
+                  service.setVolume(value);
+                },
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    if (controller != null && controller.value.isInitialized)
+                      SizedBox.expand(
+                        child: FittedBox(
+                          fit: _boxFitFor(aspectRatioFit),
+                          child: SizedBox(
+                            width: controller.value.size.width,
+                            height: controller.value.size.height,
+                            child: VideoPlayer(controller),
+                          ),
+                        ),
+                      )
+                    else if (state.playbackState == PlaybackState.loading)
+                      _buildLoading()
+                    else if (state.hasError && state.diagnostic != null)
+                      _buildDiagnosticError(state)
+                    else
+                      _buildPlaceholder(state),
 
-              // Cinema mode vignette overlay
-              if (_isCinemaMode)
-                Positioned.fill(
-                  child: IgnorePointer(
-                    child: Container(
-                      decoration: BoxDecoration(
-                        gradient: RadialGradient(
-                          center: Alignment.center,
-                          radius: 1.15,
-                          colors: [
-                            Colors.transparent,
-                            Colors.black.withValues(alpha: 0.6),
-                          ],
-                          stops: const [0.6, 1.0],
+                    // Cinema mode vignette overlay
+                    if (_isCinemaMode)
+                      Positioned.fill(
+                        child: IgnorePointer(
+                          child: Container(
+                            decoration: BoxDecoration(
+                              gradient: RadialGradient(
+                                center: Alignment.center,
+                                radius: 1.15,
+                                colors: [
+                                  Colors.transparent,
+                                  Colors.black.withValues(alpha: 0.6),
+                                ],
+                                stops: const [0.6, 1.0],
+                              ),
+                            ),
+                          ),
                         ),
                       ),
-                    ),
-                  ),
-                ),
 
-              // Buffering indicator
-              if (state.isBuffering)
-                Container(
-                  color: Colors.black45,
-                  child: const CircularProgressIndicator(color: Colors.white),
-                ),
-
-              // Controls overlay with fade animation
-              AnimatedOpacity(
-                opacity: (widget.showControls && _showControlsOverlay)
-                    ? 1.0
-                    : 0.0,
-                duration: const Duration(milliseconds: 300),
-                child: IgnorePointer(
-                  ignoring: !_showControlsOverlay,
-                  child: _buildControlsOverlay(context, service, state),
+                    // Buffering indicator
+                    if (state.isBuffering)
+                      Container(
+                        color: Colors.black45,
+                        child: const CircularProgressIndicator(
+                          color: Colors.white,
+                        ),
+                      ),
+                  ],
                 ),
               ),
 
+              // Controls overlay with fade animation — hidden entirely while
+              // locked so only the lock button remains interactive.
+              if (!_isLocked)
+                AnimatedOpacity(
+                  opacity: (widget.showControls && _showControlsOverlay)
+                      ? 1.0
+                      : 0.0,
+                  duration: const Duration(milliseconds: 300),
+                  child: IgnorePointer(
+                    ignoring: !_showControlsOverlay,
+                    child: _buildControlsOverlay(context, service, state),
+                  ),
+                ),
+
               // Network quality badge
-              if (state.metrics != null)
+              if (!_isLocked && state.metrics != null)
                 Positioned(
                   top: 8,
                   right: 8,
@@ -298,22 +382,25 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                 ),
 
               // Quality indicator and Live badge
-              Positioned(
-                top: 8,
-                left: 8,
-                child: Row(
-                  children: [
-                    _buildQualityBadge(state.currentQuality),
-                    const SizedBox(width: 8),
-                    // Live badge - shows "LIVE" when at live edge
-                    LiveBadge(state: state, showWhenNotLive: true),
-                    // Note: DelayIndicator removed for cleaner UI per design spec
-                  ],
+              if (!_isLocked)
+                Positioned(
+                  top: 8,
+                  left: 8,
+                  child: Row(
+                    children: [
+                      _buildQualityBadge(state.currentQuality),
+                      const SizedBox(width: 8),
+                      // Live badge - shows "LIVE" when at live edge
+                      LiveBadge(state: state, showWhenNotLive: true),
+                      // Note: DelayIndicator removed for cleaner UI per design spec
+                    ],
+                  ),
                 ),
-              ),
 
               // Previous/Next channel buttons (for fullscreen mode)
-              if (widget.enableSwipeChannelChange && _showControlsOverlay)
+              if (!_isLocked &&
+                  widget.enableSwipeChannelChange &&
+                  _showControlsOverlay)
                 Positioned(
                   left: 16,
                   top: 0,
@@ -326,7 +413,9 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                     ),
                   ),
                 ),
-              if (widget.enableSwipeChannelChange && _showControlsOverlay)
+              if (!_isLocked &&
+                  widget.enableSwipeChannelChange &&
+                  _showControlsOverlay)
                 Positioned(
                   right: 16,
                   top: 0,
@@ -339,6 +428,29 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                     ),
                   ),
                 ),
+
+              // Lock button: visible whenever the normal controls would be
+              // (fades with them), but stays visible when locked regardless
+              // of the hide timer — it's the only way back to unlocked.
+              Positioned(
+                top: 8,
+                right: 56,
+                child: AnimatedOpacity(
+                  opacity: (_isLocked || _showControlsOverlay) ? 1.0 : 0.0,
+                  duration: const Duration(milliseconds: 300),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.black45,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: PlayerLockButton(
+                      key: const ValueKey('iptv-player-lock-button'),
+                      locked: _isLocked,
+                      onToggle: _toggleLocked,
+                    ),
+                  ),
+                ),
+              ),
 
               // Channel change overlay
               if (_channelChangeOverlayText != null)
@@ -631,16 +743,18 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      // Mute button + YouTube-style volume slider
-                      _VolumeControl(
-                        key: const ValueKey('iptv-player-volume-control'),
-                        volume: state.volume,
-                        isMuted: state.isMuted,
-                        onToggleMute: () => service.toggleMute(),
-                        onVolumeChanged: (value) {
-                          if (state.isMuted) service.toggleMute();
-                          service.setVolume(value);
-                        },
+                      // Mute toggle. Fine volume control is the right-half
+                      // drag gesture (PlayerGestureOverlay) — the old
+                      // hover-to-reveal slider never worked on touch devices.
+                      _PlayerControlButton(
+                        key: const ValueKey('iptv-player-mute-button'),
+                        icon: state.isMuted || state.volume == 0
+                            ? Icons.volume_off
+                            : state.volume < 0.5
+                            ? Icons.volume_down
+                            : Icons.volume_up,
+                        tooltip: state.isMuted ? 'Unmute' : 'Mute',
+                        onPressed: () => service.toggleMute(),
                       ),
                       const Spacer(),
                       // Aspect ratio toggle
@@ -846,87 +960,6 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
       case AiroPlaybackViewFit.stretch:
         return BoxFit.fill;
     }
-  }
-}
-
-/// YouTube-style volume control: a mute icon that reveals a horizontal
-/// slider on hover/focus instead of taking up permanent control-bar width.
-class _VolumeControl extends StatefulWidget {
-  const _VolumeControl({
-    super.key,
-    required this.volume,
-    required this.isMuted,
-    required this.onToggleMute,
-    required this.onVolumeChanged,
-  });
-
-  final double volume;
-  final bool isMuted;
-  final VoidCallback onToggleMute;
-  final ValueChanged<double> onVolumeChanged;
-
-  @override
-  State<_VolumeControl> createState() => _VolumeControlState();
-}
-
-class _VolumeControlState extends State<_VolumeControl> {
-  static const _sliderWidth = 72.0;
-
-  bool _expanded = false;
-
-  void _setExpanded(bool expanded) {
-    if (_expanded == expanded) return;
-    setState(() => _expanded = expanded);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final effectiveVolume = widget.isMuted ? 0.0 : widget.volume;
-    return MouseRegion(
-      onEnter: (_) => _setExpanded(true),
-      onExit: (_) => _setExpanded(false),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _PlayerControlButton(
-            icon: effectiveVolume == 0
-                ? Icons.volume_off
-                : effectiveVolume < 0.5
-                ? Icons.volume_down
-                : Icons.volume_up,
-            tooltip: widget.isMuted ? 'Unmute' : 'Mute',
-            onPressed: widget.onToggleMute,
-          ),
-          ClipRect(
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              curve: Curves.easeOut,
-              width: _expanded ? _sliderWidth : 0,
-              child: SliderTheme(
-                data: SliderTheme.of(context).copyWith(
-                  trackHeight: 3,
-                  activeTrackColor: Colors.white,
-                  inactiveTrackColor: Colors.white24,
-                  thumbColor: Colors.white,
-                  overlayColor: Colors.white24,
-                  thumbShape: const RoundSliderThumbShape(
-                    enabledThumbRadius: 6,
-                  ),
-                  overlayShape: const RoundSliderOverlayShape(
-                    overlayRadius: 12,
-                  ),
-                ),
-                child: Slider(
-                  key: const ValueKey('iptv-player-volume-slider'),
-                  value: effectiveVolume,
-                  onChanged: widget.onVolumeChanged,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
   }
 }
 
