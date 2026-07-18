@@ -116,6 +116,24 @@ class VodScreen extends ConsumerWidget {
     );
     if (url == null || url.isEmpty) return;
 
+    // Unlike the other .direct() call sites in this codebase (channel/VOD
+    // stream URLs resolved internally by provider adapters), this URL is
+    // raw user-typed text. .direct() deliberately skips .redacted()'s
+    // validation, so nothing else stops a user from pointing this at a
+    // local file path or an internal IP — reject anything that isn't a
+    // plain http/https URL before it ever reaches the subtitle renderer.
+    final uri = Uri.tryParse(url);
+    if (uri == null || (uri.scheme != 'http' && uri.scheme != 'https')) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Enter a valid http:// or https:// subtitle URL.'),
+          ),
+        );
+      }
+      return;
+    }
+
     // Reload-to-apply per the engine contract: attaching a subtitle to an
     // already-open source isn't supported (see AiroPlaybackEngine.open()),
     // so this is stored for the *next* open — Task 7's playChannel() reads
