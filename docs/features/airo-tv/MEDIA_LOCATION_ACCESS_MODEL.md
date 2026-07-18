@@ -10,7 +10,7 @@ Implementation contract:
 - Schema: `kAiroMediaLocationSchemaVersion`
 - Location model: `AiroMediaLocation`
 - Access model: `AiroRouteAccessGrant`
-- Release-line base: `origin/v2`
+- Release-line base: `origin/main`
 
 ## Location Kinds
 

@@ -34,7 +34,7 @@ assignees: ''
 **Owning agent:** Mobile UI Agent.
 **Reviewing agents:** Media Agent, QA Automation Agent, Security and Privacy Agent.
 **Impacted modules/files:** `packages/feature_iptv`, `packages/platform_history`, `packages/platform_favorites`, `packages/platform_epg`, possibly app home.
-**Base branch/worktree:** Must be reconfirmed from latest `origin/v2` when reopened.
+**Base branch/worktree:** Must be reconfirmed from latest `origin/main` when reopened.
 **Open questions:** Whether this belongs inside IPTV tab only or app-wide home.
 **Decision:** Blocked until product surface and navigation owner approve.
 

@@ -195,13 +195,13 @@ local branch tip, a stale worktree, or an unverified checkout.
 
 Release-line bases:
 
-- v1 monolith / full APK / 1.x work starts from `origin/main`.
-- v2 modular APK / 2.x work starts from `origin/v2`.
-- If the issue does not explicitly say v2, use `origin/main`.
+- Active development and current modular/release-profile work starts from `origin/main`.
+- The legacy pre-swap monolith line is preserved at `origin/v1_bkp` for reference or recovery only.
+- If an issue explicitly targets an older v1 artifact or historical branch state, name that base branch in the issue instead of assuming it.
 
 Required bootstrap sequence:
-- `git fetch origin main v2`
-- choose `origin/main` for v1 work or `origin/v2` for v2 work
+- `git fetch origin main v1_bkp`
+- choose `origin/main` for active work, or `origin/v1_bkp` only when the issue explicitly requires the legacy line
 - create the task branch or worktree from that chosen remote base
 - verify the task branch/worktree base matches the fetched remote base
 
@@ -250,7 +250,7 @@ Before coding, add a comment or issue section:
 **Owning agent:** ...
 **Reviewing agents:** ...
 **Impacted modules/files:** ...
-**Base branch/worktree:** <confirmed from latest origin/main or origin/v2: yes/no>
+**Base branch/worktree:** <confirmed from latest origin/main or origin/v1_bkp or another explicitly named base: yes/no>
 **Open questions:** ...
 **Decision:** Ready / Blocked
 ```

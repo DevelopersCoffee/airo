@@ -35,7 +35,7 @@ assignees: ''
 **Owning agent:** Media Agent.
 **Reviewing agents:** Framework Agent, Security and Privacy Agent, QA Automation Agent, Release and DevEx Agent.
 **Impacted modules/files:** `packages/platform_worker_jobs`, `packages/platform_player`, `packages/platform_streams`, `packages/platform_playlist_export`, `packages/feature_iptv`.
-**Base branch/worktree:** Must be reconfirmed from latest `origin/v2` when reopened.
+**Base branch/worktree:** Must be reconfirmed from latest `origin/main` when reopened.
 **Open questions:** Legal/product posture, Android background limits, storage location, file format, network-share support.
 **Decision:** Blocked until recording policy and permission design are approved.
 

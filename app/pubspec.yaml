@@ -112,6 +112,8 @@ dependencies:
   pdfx: ^2.9.2
   feature_iptv:
     path: ../packages/feature_iptv
+  platform_playlist:
+    path: ../packages/platform_playlist
   platform_device_qualification:
     path: ../packages/platform_device_qualification
   platform_channels:

@@ -28,7 +28,7 @@ This roadmap converts community requests into a v2 milestone plan that fits the 
 **Owning agent:** Media Agent.
 **Reviewing agents:** Framework Agent for reusable parsing/cache/player contracts, Security and Privacy Agent for playlist URL and network behavior, QA Automation Agent for deterministic evidence, Mobile UI Agent for TV UX, Release and DevEx Agent for cost-aware validation.
 **Impacted modules/files:** `rust/airo_core`, `packages/platform_playlist_import`, `packages/platform_playlist`, `packages/platform_epg`, `packages/platform_player`, `packages/platform_streams`, `packages/platform_history`, `packages/platform_favorites`, `packages/feature_iptv`, benchmark tooling.
-**Base branch/worktree:** confirmed from latest `origin/v2`: yes. Current workspace is on `v2`.
+**Base branch/worktree:** confirmed from latest `origin/main`: yes. Current workspace is on `main`.
 **Open questions:** Final device evidence and Play Console artifacts remain release tasks. External provider, cloud account, and server mode decisions are explicitly outside this milestone.
 **Decision:** Ready for the adopted bounded issues below. Deferred issues must not be implemented until re-triaged.
 
