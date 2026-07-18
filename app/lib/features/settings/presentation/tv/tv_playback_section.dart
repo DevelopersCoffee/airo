@@ -40,11 +40,13 @@ class TvPlaybackSection extends ConsumerWidget {
                 children: [
                   Text(
                     label,
-                    style: TextStyle(color: colorScheme.onSurface, fontSize: 16),
+                    style: TextStyle(
+                      color: colorScheme.onSurface,
+                      fontSize: 16,
+                    ),
                   ),
                   const Spacer(),
-                  if (isSelected)
-                    Icon(Icons.check, color: colorScheme.primary),
+                  if (isSelected) Icon(Icons.check, color: colorScheme.primary),
                 ],
               ),
             ),

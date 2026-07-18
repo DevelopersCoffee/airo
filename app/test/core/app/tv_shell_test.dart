@@ -18,9 +18,7 @@ void main() {
 
       SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
-      final router = TvRouter.createRouter(
-        initialLocation: TvRouteNames.live,
-      );
+      final router = TvRouter.createRouter(initialLocation: TvRouteNames.live);
 
       await tester.pumpWidget(
         ProviderScope(
