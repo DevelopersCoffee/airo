@@ -3,6 +3,9 @@ import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:equatable/equatable.dart';
 
+import '../provider_health.dart';
+import '../provider_health_recorder.dart';
+
 /// Result of Xtream Codes `player_api.php` auth (no `action` param).
 class XtreamAuthResult extends Equatable {
   const XtreamAuthResult({required this.isAuthenticated, required this.status});
@@ -30,7 +33,13 @@ class XtreamLiveStream extends Equatable {
   final String? epgChannelId;
 
   @override
-  List<Object?> get props => [streamId, name, streamIcon, categoryId, epgChannelId];
+  List<Object?> get props => [
+    streamId,
+    name,
+    streamIcon,
+    categoryId,
+    epgChannelId,
+  ];
 }
 
 class XtreamVodStream extends Equatable {
@@ -49,7 +58,13 @@ class XtreamVodStream extends Equatable {
   final String? containerExtension;
 
   @override
-  List<Object?> get props => [streamId, name, streamIcon, categoryId, containerExtension];
+  List<Object?> get props => [
+    streamId,
+    name,
+    streamIcon,
+    categoryId,
+    containerExtension,
+  ];
 }
 
 class XtreamEpgListing extends Equatable {
@@ -87,17 +102,31 @@ class XtreamClient {
     required String serverUrl,
     required String username,
     required String password,
+    ProviderHealthTracker? healthTracker,
+    String? sourceId,
   }) : _dio = dio,
        _serverUrl = serverUrl.endsWith('/')
            ? serverUrl.substring(0, serverUrl.length - 1)
            : serverUrl,
        _username = username,
-       _password = password;
+       _password = password,
+       _healthTracker = healthTracker,
+       _sourceId = sourceId;
 
   final Dio _dio;
   final String _serverUrl;
   final String _username;
   final String _password;
+
+  /// When both [_healthTracker] and [_sourceId] are non-null, every HTTP
+  /// call this client makes records a [ProviderHealthSample] on the
+  /// tracker (CV-012). Left null in call sites that predate CV-012
+  /// slice-2 or don't need health tracking.
+  final ProviderHealthTracker? _healthTracker;
+  final String? _sourceId;
+
+  Future<T> _recorded<T>(Future<T> Function() body) =>
+      recordFetch<T>(body: body, tracker: _healthTracker, sourceId: _sourceId);
 
   Map<String, dynamic> _baseParams([Map<String, dynamic>? extra]) => {
     'username': _username,
@@ -105,7 +134,7 @@ class XtreamClient {
     ...?extra,
   };
 
-  Future<XtreamAuthResult> authenticate() async {
+  Future<XtreamAuthResult> authenticate() => _recorded(() async {
     final response = await _dio.get<Map<String, dynamic>>(
       '$_serverUrl/player_api.php',
       queryParameters: _baseParams(),
@@ -117,9 +146,9 @@ class XtreamClient {
       isAuthenticated: auth == 1 || auth == '1',
       status: status,
     );
-  }
+  });
 
-  Future<List<XtreamLiveStream>> getLiveStreams() async {
+  Future<List<XtreamLiveStream>> getLiveStreams() => _recorded(() async {
     final response = await _dio.get<List<dynamic>>(
       '$_serverUrl/player_api.php',
       queryParameters: _baseParams({'action': 'get_live_streams'}),
@@ -136,9 +165,9 @@ class XtreamClient {
           ),
         )
         .toList();
-  }
+  });
 
-  Future<List<XtreamVodStream>> getVodStreams() async {
+  Future<List<XtreamVodStream>> getVodStreams() => _recorded(() async {
     final response = await _dio.get<List<dynamic>>(
       '$_serverUrl/player_api.php',
       queryParameters: _baseParams({'action': 'get_vod_streams'}),
@@ -155,12 +184,12 @@ class XtreamClient {
           ),
         )
         .toList();
-  }
+  });
 
   Future<List<XtreamEpgListing>> getShortEpg({
     required int streamId,
     int limit = 4,
-  }) async {
+  }) => _recorded(() async {
     final response = await _dio.get<Map<String, dynamic>>(
       '$_serverUrl/player_api.php',
       queryParameters: _baseParams({
@@ -169,18 +198,23 @@ class XtreamClient {
         'limit': limit,
       }),
     );
-    final listings = response.data?['epg_listings'] as List<dynamic>? ?? const [];
+    final listings =
+        response.data?['epg_listings'] as List<dynamic>? ?? const [];
     return listings.cast<Map<String, dynamic>>().map((json) {
       return XtreamEpgListing(
         id: json['id'] as String,
         title: utf8.decode(base64.decode(json['title'] as String)),
         description: utf8.decode(base64.decode(json['description'] as String)),
-        start: DateTime.parse('${(json['start'] as String).replaceFirst(' ', 'T')}Z'),
-        end: DateTime.parse('${(json['end'] as String).replaceFirst(' ', 'T')}Z'),
+        start: DateTime.parse(
+          '${(json['start'] as String).replaceFirst(' ', 'T')}Z',
+        ),
+        end: DateTime.parse(
+          '${(json['end'] as String).replaceFirst(' ', 'T')}Z',
+        ),
         streamId: int.parse(json['stream_id'] as String),
       );
     }).toList();
-  }
+  });
 
   String liveStreamUrl(int streamId, {String extension = 'm3u8'}) =>
       '$_serverUrl/live/$_username/$_password/$streamId.$extension';
