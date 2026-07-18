@@ -107,7 +107,7 @@ void main() {
     await tester.pumpWidget(createWidget());
     await tester.pumpAndSettle();
 
-    expect(find.text('Stream'), findsOneWidget);
+    expect(find.text('Airo TV'), findsOneWidget);
     expect(find.byTooltip('Search channels'), findsOneWidget);
     expect(find.byTooltip('Cast'), findsOneWidget);
     expect(find.text('All (3)'), findsOneWidget);
@@ -125,6 +125,27 @@ void main() {
     expect(find.text('City News Live'), findsOneWidget);
     expect(find.text('LIVE'), findsWidgets);
   });
+
+  testWidgets(
+    'hamburger menu opens the drawer and Guide pushes the guide screen',
+    (tester) async {
+      await tester.pumpWidget(createWidget());
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byIcon(Icons.menu));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Home'), findsOneWidget);
+      expect(find.text('Guide'), findsOneWidget);
+
+      await tester.tap(find.text('Guide'));
+      await tester.pumpAndSettle();
+
+      // The pushed guide screen owns its own search field, distinct from the
+      // Stream screen's playlist search sheet.
+      expect(find.text('Search the guide'), findsOneWidget);
+    },
+  );
 
   testWidgets('opens search sheet from app bar action', (tester) async {
     await tester.pumpWidget(createWidget());
@@ -148,7 +169,7 @@ void main() {
     await tester.pumpWidget(createEmptyWidget());
     await tester.pumpAndSettle();
 
-    expect(find.text('Stream'), findsOneWidget);
+    expect(find.text('Airo TV'), findsOneWidget);
     expect(find.byTooltip('Playlist source'), findsOneWidget);
     expect(find.text('Add your playlist'), findsOneWidget);
     expect(
