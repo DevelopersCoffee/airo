@@ -12,7 +12,6 @@ import 'package:platform_player/platform_player.dart';
 class LiveEdgeDetector {
   final LiveEdgeConfig _config;
   Timer? _updateTimer;
-  AiroPlaybackEngine? _engine;
   StreamSubscription<AiroPlaybackState>? _engineSubscription;
   AiroPlaybackState? _lastState;
 
@@ -41,7 +40,6 @@ class LiveEdgeDetector {
   /// polling a controller directly, so this works identically regardless of
   /// which concrete engine (videoPlayer, mpv, ...) is active.
   void attachToEngine(AiroPlaybackEngine engine) {
-    _engine = engine;
     _lastState = engine.currentState;
     _engineSubscription?.cancel();
     _engineSubscription = engine.states.listen((state) {
@@ -55,7 +53,6 @@ class LiveEdgeDetector {
     _stopMonitoring();
     _engineSubscription?.cancel();
     _engineSubscription = null;
-    _engine = null;
     _lastState = null;
   }
 
@@ -262,7 +259,6 @@ class LiveEdgeDetector {
     _stopMonitoring();
     _engineSubscription?.cancel();
     _engineSubscription = null;
-    _engine = null;
     _lastState = null;
     onStateUpdate = null;
     onDriftDetected = null;
