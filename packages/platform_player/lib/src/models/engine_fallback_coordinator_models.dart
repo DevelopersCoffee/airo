@@ -55,7 +55,8 @@ class AiroEngineFallbackCoordinator {
 
   final AiroPlaybackEngine? fallbackEngine;
   final Set<AiroPlaybackBackendKind> triedEngines = {};
-  final StreamController<AiroEngineFallbackDecision> _runtimeDecisionsController =
+  final StreamController<AiroEngineFallbackDecision>
+  _runtimeDecisionsController =
       StreamController<AiroEngineFallbackDecision>.broadcast();
 
   AiroPlaybackEngine _activeEngine;

@@ -71,21 +71,23 @@ void main() {
     expect(handoff.isServing, isFalse);
   });
 
-  test('custom receiver capabilities can allow additional containers',
-      () async {
-    final handoff = handoffFor(
-      capabilities: const PhoneMediaReceiverCapabilities(
-        supportedContainers: {'mkv'},
-        supportedVideoCodecs: {'hevc'},
-      ),
-    );
-    final result = await handoff.start(
-      itemFor(container: 'mkv', videoCodec: 'hevc'),
-    );
+  test(
+    'custom receiver capabilities can allow additional containers',
+    () async {
+      final handoff = handoffFor(
+        capabilities: const PhoneMediaReceiverCapabilities(
+          supportedContainers: {'mkv'},
+          supportedVideoCodecs: {'hevc'},
+        ),
+      );
+      final result = await handoff.start(
+        itemFor(container: 'mkv', videoCodec: 'hevc'),
+      );
 
-    expect(result, isA<PhoneMediaHandoffStarted>());
-    await handoff.stopHandoff();
-  });
+      expect(result, isA<PhoneMediaHandoffStarted>());
+      await handoff.stopHandoff();
+    },
+  );
 
   test('starts the LAN server and loads a buffered cast request', () async {
     final handoff = handoffFor();
@@ -178,8 +180,7 @@ class _LoadThrowingController implements AiroCastController {
       _inner.currentDiscoveryState;
 
   @override
-  AiroCastSessionSnapshot get currentSessionState =>
-      _inner.currentSessionState;
+  AiroCastSessionSnapshot get currentSessionState => _inner.currentSessionState;
 
   @override
   Future<void> initialize() => _inner.initialize();
