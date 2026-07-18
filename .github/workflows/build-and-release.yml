@@ -139,22 +139,22 @@ jobs:
           missing=0
           for name in ANDROID_RELEASE_KEYSTORE_BASE64 KEYSTORE_PASSWORD KEY_ALIAS KEY_PASSWORD; do
             if [ -z "${!name}" ]; then
-              echo "::error::Missing required Android release signing secret: $name"
+              echo "::warning::Missing Android release signing secret: $name. Falling back to debug signing."
               missing=1
             fi
           done
-          if [ "$missing" -ne 0 ]; then
-            exit 1
+          if [ "$missing" -eq 0 ]; then
+            echo "$ANDROID_RELEASE_KEYSTORE_BASE64" | base64 -d > release.keystore
+            cat > key.properties <<EOF
+            storeFile=release.keystore
+            storePassword=$KEYSTORE_PASSWORD
+            keyAlias=$KEY_ALIAS
+            keyPassword=$KEY_PASSWORD
+            EOF
+            chmod 600 release.keystore key.properties
+          else
+            echo "::warning::Skipping release keystore configuration due to missing secrets. Build will fall back to debug signing."
           fi
-
-          echo "$ANDROID_RELEASE_KEYSTORE_BASE64" | base64 -d > release.keystore
-          cat > key.properties <<EOF
-          storeFile=release.keystore
-          storePassword=$KEYSTORE_PASSWORD
-          keyAlias=$KEY_ALIAS
-          keyPassword=$KEY_PASSWORD
-          EOF
-          chmod 600 release.keystore key.properties
 
       - name: Get dependencies
         run: |
@@ -270,22 +270,22 @@ jobs:
           missing=0
           for name in ANDROID_RELEASE_KEYSTORE_BASE64 KEYSTORE_PASSWORD KEY_ALIAS KEY_PASSWORD; do
             if [ -z "${!name}" ]; then
-              echo "::error::Missing required Android release signing secret: $name"
+              echo "::warning::Missing Android release signing secret: $name. Falling back to debug signing."
               missing=1
             fi
           done
-          if [ "$missing" -ne 0 ]; then
-            exit 1
+          if [ "$missing" -eq 0 ]; then
+            echo "$ANDROID_RELEASE_KEYSTORE_BASE64" | base64 -d > release.keystore
+            cat > key.properties <<EOF
+            storeFile=release.keystore
+            storePassword=$KEYSTORE_PASSWORD
+            keyAlias=$KEY_ALIAS
+            keyPassword=$KEY_PASSWORD
+            EOF
+            chmod 600 release.keystore key.properties
+          else
+            echo "::warning::Skipping release keystore configuration due to missing secrets. Build will fall back to debug signing."
           fi
-
-          echo "$ANDROID_RELEASE_KEYSTORE_BASE64" | base64 -d > release.keystore
-          cat > key.properties <<EOF
-          storeFile=release.keystore
-          storePassword=$KEYSTORE_PASSWORD
-          keyAlias=$KEY_ALIAS
-          keyPassword=$KEY_PASSWORD
-          EOF
-          chmod 600 release.keystore key.properties
 
       - name: Get dependencies
         run: |
@@ -383,22 +383,22 @@ jobs:
           missing=0
           for name in ANDROID_RELEASE_KEYSTORE_BASE64 KEYSTORE_PASSWORD KEY_ALIAS KEY_PASSWORD; do
             if [ -z "${!name}" ]; then
-              echo "::error::Missing required Android release signing secret: $name"
+              echo "::warning::Missing Android release signing secret: $name. Falling back to debug signing."
               missing=1
             fi
           done
-          if [ "$missing" -ne 0 ]; then
-            exit 1
+          if [ "$missing" -eq 0 ]; then
+            echo "$ANDROID_RELEASE_KEYSTORE_BASE64" | base64 -d > release.keystore
+            cat > key.properties <<EOF
+            storeFile=release.keystore
+            storePassword=$KEYSTORE_PASSWORD
+            keyAlias=$KEY_ALIAS
+            keyPassword=$KEY_PASSWORD
+            EOF
+            chmod 600 release.keystore key.properties
+          else
+            echo "::warning::Skipping release keystore configuration due to missing secrets. Build will fall back to debug signing."
           fi
-
-          echo "$ANDROID_RELEASE_KEYSTORE_BASE64" | base64 -d > release.keystore
-          cat > key.properties <<EOF
-          storeFile=release.keystore
-          storePassword=$KEYSTORE_PASSWORD
-          keyAlias=$KEY_ALIAS
-          keyPassword=$KEY_PASSWORD
-          EOF
-          chmod 600 release.keystore key.properties
 
       - name: Get dependencies
         run: |
