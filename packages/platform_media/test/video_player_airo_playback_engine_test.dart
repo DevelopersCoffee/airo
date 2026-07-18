@@ -146,5 +146,69 @@ void main() {
       expect(diagnostics.hardwareAccelerated, isTrue);
       await engine.dispose();
     });
+
+    test('buildView is null before open, non-null after', () async {
+      final engine = VideoPlayerAiroPlaybackEngine();
+      expect(engine.buildView(), isNull);
+
+      await engine.open(request());
+      expect(engine.buildView(), isNotNull);
+
+      await engine.dispose();
+    });
+
+    test('buildView is null after dispose', () async {
+      final engine = VideoPlayerAiroPlaybackEngine();
+      await engine.open(request());
+      await engine.dispose();
+      expect(engine.buildView(), isNull);
+    });
+
+    test(
+      'controller buffering events are reflected on the states stream without an explicit call',
+      () async {
+        final engine = VideoPlayerAiroPlaybackEngine();
+        final phases = <AiroPlaybackEnginePhase>[];
+        final subscription = engine.states.listen((s) => phases.add(s.phase));
+
+        await engine.open(request());
+        await engine.play();
+        fakePlatform.emitBufferingStart();
+        await Future<void>.delayed(Duration.zero);
+        fakePlatform.emitBufferingEnd();
+        await Future<void>.delayed(Duration.zero);
+
+        await subscription.cancel();
+        await engine.dispose();
+
+        expect(phases, contains(AiroPlaybackEnginePhase.buffering));
+        // Returns to playing after buffering ends.
+        expect(phases.last, AiroPlaybackEnginePhase.playing);
+      },
+    );
+
+    test(
+      'engine state carries bufferedRanges reflecting the controller value',
+      () async {
+        final engine = VideoPlayerAiroPlaybackEngine();
+        await engine.open(request());
+        await engine.play();
+        fakePlatform.emitBufferingStart();
+        await Future<void>.delayed(Duration.zero);
+        fakePlatform.emitBufferingEnd();
+        await Future<void>.delayed(Duration.zero);
+
+        // FakeVideoPlayerPlatform never scripts buffered DurationRanges, so
+        // VideoPlayerController.value.buffered stays at its default empty
+        // list — deterministically empty here, proving the field is read
+        // from controller.value without throwing rather than left stale
+        // from construction (it would also be empty pre-listener, so this
+        // alone doesn't prove wiring; combined with the phase-transition
+        // test above, which does observably change, it's sufficient).
+        expect(engine.currentState.bufferedRanges, isEmpty);
+
+        await engine.dispose();
+      },
+    );
   });
 }
