@@ -321,6 +321,19 @@ jobs:
             write_placeholder_config
           fi
 
+      - name: Configure firebase_options.dart
+        env:
+          FIREBASE_OPTIONS_DART_B64: ${{ secrets.FIREBASE_OPTIONS_DART_B64 }}
+        run: |
+          cd app
+          if [[ -n "$FIREBASE_OPTIONS_DART_B64" ]]; then
+            echo "$FIREBASE_OPTIONS_DART_B64" | base64 -d > lib/firebase_options.dart
+            echo "Using FIREBASE_OPTIONS_DART_B64."
+          else
+            cp lib/firebase_options.dart.template lib/firebase_options.dart
+            echo "::warning::FIREBASE_OPTIONS_DART_B64 is not set; using placeholder firebase_options.dart (Firebase init will be skipped at runtime)."
+          fi
+
       - name: Configure Android signing
         env:
           ANDROID_RELEASE_KEYSTORE_BASE64: ${{ secrets.ANDROID_RELEASE_KEYSTORE_BASE64 }}

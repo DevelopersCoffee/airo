@@ -11,6 +11,7 @@ app/android/*.keystore
 google-services.json
 firebase-adminsdk*.json
 GoogleService-Info.plist
+app/lib/firebase_options.dart
 
 # E2E Test Authentication Sessions (sensitive - contains OAuth tokens)
 e2e/googleAuth.json
