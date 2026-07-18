@@ -59,6 +59,10 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
   double _brightness = 0.5;
   late final PlayerBrightnessController _brightnessController;
 
+  // VOD seek bar drag state — null when the user isn't actively dragging,
+  // so the slider tracks live playback position between drags.
+  Duration? _vodSeekDragPosition;
+
   @override
   void initState() {
     super.initState();
@@ -738,6 +742,8 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  if (!state.isLiveStream && state.duration > Duration.zero)
+                    _buildVodSeekBar(service, state),
                   _buildBufferIndicator(state),
                   const SizedBox(height: 8),
                   Row(
@@ -878,6 +884,73 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
         ),
       ),
     );
+  }
+
+  /// VOD-only seek bar (CV-016). Live streams use the live-edge/DVR
+  /// controls instead — this never renders when [StreamingState.isLiveStream]
+  /// is true or the stream has no known duration.
+  Widget _buildVodSeekBar(
+    VideoPlayerStreamingService service,
+    StreamingState state,
+  ) {
+    final durationSeconds = state.duration.inSeconds.toDouble();
+    final displayPosition = (_vodSeekDragPosition ?? state.position).inSeconds
+        .toDouble()
+        .clamp(0.0, durationSeconds);
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Row(
+        children: [
+          Text(
+            _formatDuration(_vodSeekDragPosition ?? state.position),
+            style: const TextStyle(color: Colors.white70, fontSize: 12),
+          ),
+          Expanded(
+            child: Material(
+              type: MaterialType.transparency,
+              child: SliderTheme(
+                data: SliderTheme.of(context).copyWith(
+                  trackHeight: 3,
+                  thumbShape: const RoundSliderThumbShape(
+                    enabledThumbRadius: 6,
+                  ),
+                ),
+                child: Slider(
+                  key: const ValueKey('iptv-player-vod-seek-bar'),
+                  value: displayPosition,
+                  min: 0,
+                  max: durationSeconds,
+                  activeColor: Colors.white,
+                  inactiveColor: Colors.white24,
+                  onChanged: (value) {
+                    setState(() {
+                      _vodSeekDragPosition = Duration(seconds: value.round());
+                    });
+                  },
+                  onChangeEnd: (value) {
+                    final target = Duration(seconds: value.round());
+                    service.seek(target);
+                    setState(() => _vodSeekDragPosition = null);
+                  },
+                ),
+              ),
+            ),
+          ),
+          Text(
+            _formatDuration(state.duration),
+            style: const TextStyle(color: Colors.white70, fontSize: 12),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatDuration(Duration d) {
+    final minutes = d.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final hours = d.inHours;
+    final seconds = d.inSeconds.remainder(60).toString().padLeft(2, '0');
+    return hours > 0 ? '$hours:$minutes:$seconds' : '$minutes:$seconds';
   }
 
   Widget _buildBufferIndicator(StreamingState state) {
