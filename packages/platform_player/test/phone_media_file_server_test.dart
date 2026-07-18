@@ -243,6 +243,32 @@ void main() {
     expect(server.isRunning, isFalse);
   });
 
+  test('keepAlive prevents idle shutdown when the receiver is paused (no HTTP '
+      'traffic) rather than disconnected', () async {
+    final server = serverFor(idleTimeout: const Duration(milliseconds: 150));
+    await server.start();
+    addTearDown(server.stopServer);
+
+    // Simulate a paused receiver: no requests land, but the handoff pings
+    // keepAlive faster than the idle window elapses.
+    for (var i = 0; i < 4; i++) {
+      await Future<void>.delayed(const Duration(milliseconds: 80));
+      server.keepAlive();
+    }
+    expect(
+      server.isRunning,
+      isTrue,
+      reason: 'keepAlive must reset the idle clock, not just extend it once',
+    );
+
+    await Future<void>.delayed(const Duration(milliseconds: 400));
+    expect(
+      server.isRunning,
+      isFalse,
+      reason: 'once keepAlive stops arriving, idle shutdown still applies',
+    );
+  });
+
   test(
     'controller shutdown stops the server for the matching serverId',
     () async {
