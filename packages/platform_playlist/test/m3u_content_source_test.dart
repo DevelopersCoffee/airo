@@ -16,8 +16,7 @@ class _FakeM3UParserService implements M3UParserService {
   }
 
   @override
-  dynamic noSuchMethod(Invocation invocation) =>
-      super.noSuchMethod(invocation);
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 void main() {
@@ -33,21 +32,27 @@ void main() {
     expect(source.capabilities.hasCatchup, isFalse);
   });
 
-  test('adapter delegates straight to M3UParserService.fetchPlaylist', () async {
-    final channel = IPTVChannel.fromM3U(name: 'Test', url: 'https://x/stream.m3u8');
-    final fakeParser = _FakeM3UParserService([channel]);
-    const source = M3uContentSource(
-      id: 'm3u-1',
-      label: 'My Playlist',
-      playlistUrl: 'https://example.com/playlist.m3u',
-    );
-    final adapter = M3uContentSourceAdapter(source, fakeParser);
+  test(
+    'adapter delegates straight to M3UParserService.fetchPlaylist',
+    () async {
+      final channel = IPTVChannel.fromM3U(
+        name: 'Test',
+        url: 'https://x/stream.m3u8',
+      );
+      final fakeParser = _FakeM3UParserService([channel]);
+      const source = M3uContentSource(
+        id: 'm3u-1',
+        label: 'My Playlist',
+        playlistUrl: 'https://example.com/playlist.m3u',
+      );
+      final adapter = M3uContentSourceAdapter(source, fakeParser);
 
-    final result = await adapter.loadChannels();
+      final result = await adapter.loadChannels();
 
-    expect(result, [channel]);
-    expect(fakeParser.fetchCallCount, 1);
-  });
+      expect(result, [channel]);
+      expect(fakeParser.fetchCallCount, 1);
+    },
+  );
 
   test('adapter forwards forceRefresh unchanged', () async {
     final fakeParser = _FakeM3UParserService(const []);

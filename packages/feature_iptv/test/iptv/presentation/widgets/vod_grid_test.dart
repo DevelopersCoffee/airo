@@ -53,7 +53,9 @@ void main() {
     expect(find.text('Example Movie'), findsOneWidget);
   });
 
-  testWidgets('shows empty state when there are no VOD entries', (tester) async {
+  testWidgets('shows empty state when there are no VOD entries', (
+    tester,
+  ) async {
     final prefs = await SharedPreferences.getInstance();
     const liveOnly = IPTVChannel(
       id: 'm3u-2',

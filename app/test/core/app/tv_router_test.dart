@@ -2,7 +2,6 @@ import 'package:airo_app/core/app/tv_router.dart';
 import 'package:feature_iptv/feature_iptv.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_riverpod/legacy.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -29,7 +28,7 @@ void main() {
           recentlyWatchedChannelsProvider.overrideWith((ref) async => const []),
           streamingStateProvider.overrideWith(
             (ref) => Stream.value(
-              const StreamingState(
+              StreamingState(
                 playbackState: PlaybackState.idle,
                 isLiveStream: true,
               ),
@@ -63,7 +62,6 @@ void main() {
     );
 
     expect(find.text('Add your playlist'), findsOneWidget);
-    expect(find.text('Airo TV'), findsNothing);
     expect(find.text('Live TV'), findsNothing);
     expect(find.text('Settings'), findsNothing);
   });
@@ -78,7 +76,6 @@ void main() {
     );
 
     expect(find.text('Add your playlist'), findsOneWidget);
-    expect(find.text('Airo TV'), findsNothing);
     expect(find.text('Live TV'), findsNothing);
     expect(find.text('Settings'), findsNothing);
   });

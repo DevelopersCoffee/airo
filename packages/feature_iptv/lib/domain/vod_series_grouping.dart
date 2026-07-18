@@ -87,11 +87,13 @@ List<VodSeriesGroup> groupVodItemsBySeries(List<VodItem> items) {
         seriesTitle: seriesTitleById[entry.key]!,
         episodes: entry.value
           ..sort((a, b) {
-            final seasonCompare = (a.seriesRef!.seasonNumber ?? 0)
-                .compareTo(b.seriesRef!.seasonNumber ?? 0);
+            final seasonCompare = (a.seriesRef!.seasonNumber ?? 0).compareTo(
+              b.seriesRef!.seasonNumber ?? 0,
+            );
             if (seasonCompare != 0) return seasonCompare;
-            return (a.seriesRef!.episodeNumber ?? 0)
-                .compareTo(b.seriesRef!.episodeNumber ?? 0);
+            return (a.seriesRef!.episodeNumber ?? 0).compareTo(
+              b.seriesRef!.episodeNumber ?? 0,
+            );
           }),
       ),
   ];

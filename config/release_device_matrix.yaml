@@ -1,0 +1,194 @@
+# Release artifact qualification matrix.
+#
+# This file is intentionally provider-neutral. Scripts and CI jobs map each
+# entry to BrowserStack, Firebase Test Lab, or local physical devices.
+#
+# tier:
+#   tier1 - release-blocking smoke coverage
+#   tier2 - expanded regression coverage
+#   tier3 - long-tail/manual coverage
+version: 1
+default_provider: browserstack
+release_blocking_tier: tier1
+
+patrol_suites:
+  - name: release_smoke
+    tags: [release_smoke]
+    blocking: true
+  - name: permissions
+    tags: [permissions]
+    blocking: true
+  - name: responsive
+    tags: [responsive]
+    blocking: true
+  - name: offline_lifecycle
+    tags: [offline_lifecycle]
+    blocking: true
+  - name: media_tv
+    tags: [media_tv]
+    blocking: true
+  - name: finance_agent
+    tags: [finance_agent]
+    blocking: true
+
+devices:
+  android_phone:
+    - id: android-api26-low-arm
+      tier: tier1
+      provider: browserstack
+      browserstack: "Google Pixel-8.0"
+      os: android
+      os_version: "8.0"
+      form_factor: phone
+      abi: armeabi-v7a
+      resolution: small
+      checks: [launch, navigation, permissions, offline_lifecycle]
+    - id: android-modern-samsung-arm64
+      tier: tier1
+      provider: browserstack
+      browserstack: "Samsung Galaxy S23-13.0"
+      os: android
+      os_version: "13.0"
+      form_factor: phone
+      abi: arm64-v8a
+      resolution: standard
+      checks: [launch, navigation, permissions, finance_agent]
+    - id: android-latest-pixel-arm64
+      tier: tier1
+      provider: browserstack
+      browserstack: "Google Pixel 9-15.0"
+      os: android
+      os_version: "15.0"
+      form_factor: phone
+      abi: arm64-v8a
+      resolution: large
+      checks: [launch, navigation, permissions, offline_lifecycle]
+
+  android_tablet_foldable:
+    - id: android-small-tablet
+      tier: tier1
+      provider: browserstack
+      browserstack: "Samsung Galaxy Tab S8-12.0"
+      os: android
+      os_version: "12.0"
+      form_factor: tablet
+      resolution: "8in"
+      checks: [launch, responsive, navigation]
+    - id: android-large-tablet
+      tier: tier2
+      provider: browserstack
+      browserstack: "Samsung Galaxy Tab S9-13.0"
+      os: android
+      os_version: "13.0"
+      form_factor: tablet
+      resolution: "11in"
+      checks: [launch, responsive, navigation, split_screen]
+    - id: android-foldable
+      tier: tier2
+      provider: browserstack
+      browserstack: "Samsung Galaxy Z Fold5-13.0"
+      os: android
+      os_version: "13.0"
+      form_factor: foldable
+      resolution: posture_change
+      checks: [launch, responsive, navigation]
+
+  android_tv:
+    - id: android-tv-1080p
+      tier: tier1
+      provider: local_physical_or_lab
+      os: android_tv
+      os_version: "12+"
+      form_factor: tv
+      resolution: "1920x1080"
+      checks: [leanback_launch, dpad_focus, back_menu, media_tv]
+    - id: fire-tv-4k
+      tier: tier2
+      provider: local_physical_or_lab
+      os: fire_tv
+      os_version: "8+"
+      form_factor: tv
+      resolution: "3840x2160"
+      checks: [leanback_launch, dpad_focus, back_menu, media_tv]
+
+  ios_ipados:
+    - id: ios-small-iphone
+      tier: tier1
+      provider: browserstack
+      browserstack: "iPhone SE 2022-16"
+      os: ios
+      os_version: "16"
+      form_factor: phone
+      resolution: small
+      checks: [launch, navigation, permissions, responsive]
+    - id: ios-standard-iphone
+      tier: tier1
+      provider: browserstack
+      browserstack: "iPhone 15-17"
+      os: ios
+      os_version: "17"
+      form_factor: phone
+      resolution: standard
+      checks: [launch, navigation, permissions, offline_lifecycle]
+    - id: ios-pro-max
+      tier: tier1
+      provider: browserstack
+      browserstack: "iPhone 16 Pro Max-18"
+      os: ios
+      os_version: "18"
+      form_factor: phone
+      resolution: large
+      checks: [launch, navigation, permissions, responsive]
+    - id: ipad-11
+      tier: tier1
+      provider: browserstack
+      browserstack: "iPad Pro 11 2022-17"
+      os: ipados
+      os_version: "17"
+      form_factor: tablet
+      resolution: "11in"
+      checks: [launch, navigation, responsive]
+    - id: ipad-13
+      tier: tier2
+      provider: browserstack
+      browserstack: "iPad Pro 12.9 2022-17"
+      os: ipados
+      os_version: "17"
+      form_factor: tablet
+      resolution: "13in"
+      checks: [launch, navigation, responsive, large_text]
+
+  web_desktop:
+    - id: web-mobile
+      tier: tier1
+      provider: playwright
+      os: web
+      form_factor: phone
+      viewport: "390x844"
+      checks: [launch, navigation, responsive]
+    - id: web-tablet
+      tier: tier1
+      provider: playwright
+      os: web
+      form_factor: tablet
+      viewport: "834x1194"
+      checks: [launch, navigation, responsive]
+    - id: web-desktop
+      tier: tier1
+      provider: playwright
+      os: web
+      form_factor: desktop
+      viewport: "1440x900"
+      checks: [launch, navigation, responsive]
+    - id: windows-x64
+      tier: tier2
+      provider: host_launch
+      os: windows
+      form_factor: desktop
+      checks: [archive_integrity, launch]
+    - id: linux-x64
+      tier: tier2
+      provider: host_launch
+      os: linux
+      form_factor: desktop
+      checks: [archive_integrity, launch]

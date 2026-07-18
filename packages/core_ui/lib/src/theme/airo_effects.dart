@@ -218,8 +218,7 @@ class AiroEffects extends ThemeExtension<AiroEffects> {
       shadowMd: t < 0.5 ? shadowMd : other.shadowMd,
       shadowLg: t < 0.5 ? shadowLg : other.shadowLg,
       shadowGlow: t < 0.5 ? shadowGlow : other.shadowGlow,
-      shadowGlowPrimary:
-          t < 0.5 ? shadowGlowPrimary : other.shadowGlowPrimary,
+      shadowGlowPrimary: t < 0.5 ? shadowGlowPrimary : other.shadowGlowPrimary,
       shadowLive: t < 0.5 ? shadowLive : other.shadowLive,
       shadowFocus: t < 0.5 ? shadowFocus : other.shadowFocus,
       shadowFocusTv: t < 0.5 ? shadowFocusTv : other.shadowFocusTv,
@@ -228,10 +227,16 @@ class AiroEffects extends ThemeExtension<AiroEffects> {
       borderGrid: BorderSide.lerp(borderGrid, other.borderGrid, t),
       borderOutline: BorderSide.lerp(borderOutline, other.borderOutline, t),
       borderPrimary: BorderSide.lerp(borderPrimary, other.borderPrimary, t),
-      gradientPlayer:
-          LinearGradient.lerp(gradientPlayer, other.gradientPlayer, t)!,
-      gradientBackground:
-          LinearGradient.lerp(gradientBackground, other.gradientBackground, t)!,
+      gradientPlayer: LinearGradient.lerp(
+        gradientPlayer,
+        other.gradientPlayer,
+        t,
+      )!,
+      gradientBackground: LinearGradient.lerp(
+        gradientBackground,
+        other.gradientBackground,
+        t,
+      )!,
       transitionFast: t < 0.5 ? transitionFast : other.transitionFast,
       transitionStd: t < 0.5 ? transitionStd : other.transitionStd,
       transitionSlow: t < 0.5 ? transitionSlow : other.transitionSlow,

@@ -8,26 +8,24 @@ void main() {
     home: Scaffold(body: Center(child: child)),
   );
 
-  testWidgets('matches the design handoff card dimensions (172x104 thumbnail)', (
-    tester,
-  ) async {
-    await tester.pumpWidget(
-      wrap(const AiroRailCard(name: 'Star Sports 1 HD', initials: 'SS1')),
-    );
+  testWidgets(
+    'matches the design handoff card dimensions (172x104 thumbnail)',
+    (tester) async {
+      await tester.pumpWidget(
+        wrap(const AiroRailCard(name: 'Star Sports 1 HD', initials: 'SS1')),
+      );
 
-    final containerFinder = find.byType(Container).first;
-    final container = tester.widget<Container>(containerFinder);
-    expect((container.constraints ?? const BoxConstraints()).maxWidth, 172);
+      final containerFinder = find.byType(Container).first;
+      final container = tester.widget<Container>(containerFinder);
+      expect((container.constraints ?? const BoxConstraints()).maxWidth, 172);
 
-    final sizedBoxFinder = find
-        .ancestor(
-          of: find.text('SS1'),
-          matching: find.byType(SizedBox),
-        )
-        .first;
-    final sizedBox = tester.widget<SizedBox>(sizedBoxFinder);
-    expect(sizedBox.height, 104);
-  });
+      final sizedBoxFinder = find
+          .ancestor(of: find.text('SS1'), matching: find.byType(SizedBox))
+          .first;
+      final sizedBox = tester.widget<SizedBox>(sizedBoxFinder);
+      expect(sizedBox.height, 104);
+    },
+  );
 
   testWidgets('shows LIVE badge only when isLive is true', (tester) async {
     await tester.pumpWidget(

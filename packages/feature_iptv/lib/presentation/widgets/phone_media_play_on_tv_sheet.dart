@@ -81,10 +81,7 @@ class _PhoneMediaPlayOnTvSheetState extends State<PhoneMediaPlayOnTvSheet> {
             ),
           ],
           _HandoffPhase.playing => [
-            Text(
-              'Playing on $deviceName',
-              style: theme.textTheme.titleMedium,
-            ),
+            Text('Playing on $deviceName', style: theme.textTheme.titleMedium),
             const SizedBox(height: 4),
             Text(
               '${widget.item.title} is streaming from your phone. '

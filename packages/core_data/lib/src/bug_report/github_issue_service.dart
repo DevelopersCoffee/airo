@@ -144,14 +144,28 @@ class GitHubIssueService {
   /// Whether the service is using proxy mode.
   bool get isUsingProxy => _config.useProxy;
 
+  /// Builds a prefilled GitHub issue URL for clients that cannot submit
+  /// directly because no token or proxy is configured.
+  Uri buildNewIssueUrl(BugReport report) {
+    return Uri.https(
+      'github.com',
+      '/${_config.owner}/${_config.repo}/issues/new',
+      {
+        'title': '[User Report] ${report.title}',
+        'body': _formatIssueBody(report),
+        'labels': _buildLabels(report).join(','),
+      },
+    );
+  }
+
   /// Submits a bug report as a GitHub issue.
   Future<Result<GitHubIssueResponse>> submitBugReport(BugReport report) async {
     if (!isConfigured) {
       return const Failure(
         ServerFailure(
           message:
-              'GitHub issue reporting is not configured. '
-              'Set GITHUB_ISSUE_TOKEN or GITHUB_ISSUE_PROXY_URL.',
+              'Direct issue submission is unavailable. '
+              'Open a prefilled issue draft instead.',
         ),
       );
     }

@@ -51,7 +51,12 @@ class VodSeriesRef extends Equatable {
   };
 
   @override
-  List<Object?> get props => [seriesId, seriesTitle, seasonNumber, episodeNumber];
+  List<Object?> get props => [
+    seriesId,
+    seriesTitle,
+    seasonNumber,
+    episodeNumber,
+  ];
 }
 
 /// A single on-demand content entry (movie or episode) surfaced from a

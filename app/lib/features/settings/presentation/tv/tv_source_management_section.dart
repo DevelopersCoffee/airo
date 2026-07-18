@@ -53,6 +53,7 @@ class _TvSourceManagementSectionState
     _labelError = null;
     _urlError = null;
     _submitError = null;
+    _removeError = null;
   }
 
   void _openAddForm() {
@@ -61,6 +62,7 @@ class _TvSourceManagementSectionState
       _labelError = null;
       _urlError = null;
       _submitError = null;
+      _removeError = null;
     });
   }
 
@@ -159,8 +161,12 @@ class _TvSourceManagementSectionState
           );
       }
     } catch (error) {
+      debugPrint('TvSourceManagementSection: add source failed: $error');
       if (!mounted) return;
-      setState(() => _submitError = 'Could not add source: $error');
+      setState(
+        () =>
+            _submitError = 'Could not add source. Check the URL and try again.',
+      );
       return;
     }
 
@@ -204,8 +210,9 @@ class _TvSourceManagementSectionState
       if (!mounted) return;
       setState(() => _removeError = null);
     } catch (error) {
+      debugPrint('TvSourceManagementSection: remove source failed: $error');
       if (!mounted) return;
-      setState(() => _removeError = 'Could not remove source: $error');
+      setState(() => _removeError = 'Could not remove source. Try again.');
     }
   }
 

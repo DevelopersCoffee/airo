@@ -65,7 +65,10 @@ class _XmltvSourceSheetState extends ConsumerState<XmltvSourceSheet> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('XMLTV Guide Source', style: Theme.of(context).textTheme.titleMedium),
+          Text(
+            'XMLTV Guide Source',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
           const SizedBox(height: 12),
           configAsync.when(
             loading: () => const CircularProgressIndicator(),
@@ -88,7 +91,9 @@ class _XmltvSourceSheetState extends ConsumerState<XmltvSourceSheet> {
                     const SizedBox(height: 4),
                     Text(
                       config.lastError!,
-                      style: TextStyle(color: Theme.of(context).colorScheme.error),
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.error,
+                      ),
                     ),
                   ],
                   TvFocusable(
@@ -121,7 +126,11 @@ class _XmltvSourceSheetState extends ConsumerState<XmltvSourceSheet> {
             child: FilledButton(
               onPressed: _isRefreshing ? null : _saveAndRefresh,
               child: _isRefreshing
-                  ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
                   : const Text('Save & Refresh'),
             ),
           ),

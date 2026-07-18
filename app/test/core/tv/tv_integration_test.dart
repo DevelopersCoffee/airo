@@ -6,7 +6,6 @@ import 'package:airo_app/core/services/voice_search_service.dart';
 import 'package:airo_app/core/tv/tv_focus_manager.dart';
 import 'package:airo_app/core/tv/tv_focusable.dart';
 import 'package:airo_app/core/tv/tv_input_handler.dart';
-import 'package:airo_app/core/tv/tv_providers.dart';
 
 /// Integration tests for TV navigation flows
 ///

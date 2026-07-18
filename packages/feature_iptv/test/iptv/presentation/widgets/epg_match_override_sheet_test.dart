@@ -26,29 +26,38 @@ void main() {
     );
   }
 
-  testWidgets('shows the channel id as the default match when no override is set', (tester) async {
+  testWidgets(
+    'shows the channel id as the default match when no override is set',
+    (tester) async {
+      final container = await buildContainer();
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: const MaterialApp(
+            home: Scaffold(body: EpgMatchOverrideSheet(channel: channel)),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      expect(find.textContaining('channel-1'), findsWidgets);
+    },
+  );
+
+  testWidgets('entering an id and tapping Save persists the override', (
+    tester,
+  ) async {
     final container = await buildContainer();
     addTearDown(container.dispose);
 
     await tester.pumpWidget(
       UncontrolledProviderScope(
         container: container,
-        child: const MaterialApp(home: Scaffold(body: EpgMatchOverrideSheet(channel: channel))),
-      ),
-    );
-    await tester.pump();
-
-    expect(find.textContaining('channel-1'), findsWidgets);
-  });
-
-  testWidgets('entering an id and tapping Save persists the override', (tester) async {
-    final container = await buildContainer();
-    addTearDown(container.dispose);
-
-    await tester.pumpWidget(
-      UncontrolledProviderScope(
-        container: container,
-        child: const MaterialApp(home: Scaffold(body: EpgMatchOverrideSheet(channel: channel))),
+        child: const MaterialApp(
+          home: Scaffold(body: EpgMatchOverrideSheet(channel: channel)),
+        ),
       ),
     );
     await tester.pump();
@@ -66,15 +75,16 @@ void main() {
   testWidgets('tapping Clear removes an existing override', (tester) async {
     final container = await buildContainer();
     addTearDown(container.dispose);
-    await container.read(epgChannelMatchOverrideStoreProvider).setOverride(
-      channelId: 'channel-1',
-      epgChannelId: 'manual.epg.id',
-    );
+    await container
+        .read(epgChannelMatchOverrideStoreProvider)
+        .setOverride(channelId: 'channel-1', epgChannelId: 'manual.epg.id');
 
     await tester.pumpWidget(
       UncontrolledProviderScope(
         container: container,
-        child: const MaterialApp(home: Scaffold(body: EpgMatchOverrideSheet(channel: channel))),
+        child: const MaterialApp(
+          home: Scaffold(body: EpgMatchOverrideSheet(channel: channel)),
+        ),
       ),
     );
     await tester.pump();

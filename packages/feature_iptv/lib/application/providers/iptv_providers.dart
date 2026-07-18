@@ -192,14 +192,26 @@ final filteredChannelsProvider = Provider<List<IPTVChannel>>((ref) {
   final flavor = ref.watch(selectedFlavorProvider);
   final searchQuery = ref.watch(channelSearchQueryProvider);
   final preferences = ref.watch(preferenceKeywordsProvider);
+  // CV-021: hidden groups are excluded from browse by default, not just
+  // visually skipped. `.value` is null while the async read is still in
+  // flight, which is treated the same as "nothing hidden yet" rather than
+  // blocking the whole browse list on it.
+  final hiddenGroupIds =
+      ref.watch(hiddenGroupIdsProvider).value ?? const <String>{};
 
-  return searchIndex?.filterAndSort(
+  final channels =
+      searchIndex?.filterAndSort(
         category: category,
         flavor: flavor,
         query: searchQuery,
         preferenceKeywords: preferences,
       ) ??
       const [];
+
+  if (hiddenGroupIds.isEmpty) return channels;
+  return channels
+      .where((channel) => !hiddenGroupIds.contains(channel.group))
+      .toList(growable: false);
 });
 
 /// Channels filtered by specific flavor
@@ -460,9 +472,7 @@ final isChannelFavoriteProvider = Provider.family<bool, String>((
 });
 
 /// The list of favorited channels, most-recently-added first.
-final favoriteChannelsProvider = FutureProvider<List<IPTVChannel>>((
-  ref,
-) async {
+final favoriteChannelsProvider = FutureProvider<List<IPTVChannel>>((ref) async {
   final favoriteIds = await ref.watch(favoriteChannelIdsProvider.future);
   if (favoriteIds.isEmpty) return const [];
 
@@ -481,4 +491,33 @@ final toggleChannelFavoriteProvider = FutureProvider.family<bool, String>((
   final isNowFavorite = await storage.toggleFavorite(channelId);
   ref.invalidate(favoriteChannelIdsProvider);
   return isNowFavorite;
+});
+
+// =============================================================================
+// Hidden Groups Providers (CV-021, #826)
+// =============================================================================
+
+/// Hidden groups storage provider.
+final hiddenGroupsStorageProvider = Provider<HiddenGroupsStorage>((ref) {
+  final prefs = ref.watch(sharedPreferencesProvider);
+  return HiddenGroupsStorage(prefs);
+});
+
+/// The set of hidden group/category ids. Consumed by search (CV-006) and,
+/// once it exists, the smart-playlist rule engine (CV-017) so hidden
+/// channels are excluded by default rather than just visually skipped.
+final hiddenGroupIdsProvider = FutureProvider<Set<String>>((ref) async {
+  final storage = ref.watch(hiddenGroupsStorageProvider);
+  return storage.getHiddenGroupIds();
+});
+
+/// Toggle a group's hidden state. Returns the new state.
+final toggleGroupHiddenProvider = FutureProvider.family<bool, String>((
+  ref,
+  groupId,
+) async {
+  final storage = ref.watch(hiddenGroupsStorageProvider);
+  final nowHidden = await storage.toggleHidden(groupId);
+  ref.invalidate(hiddenGroupIdsProvider);
+  return nowHidden;
 });

@@ -1,5 +1,4 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_riverpod/legacy.dart';
 import '../../domain/services/music_service.dart';
 import '../../domain/services/just_audio_music_service.dart';
 

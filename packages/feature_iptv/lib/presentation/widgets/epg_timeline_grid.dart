@@ -80,7 +80,8 @@ class _EpgTimelineGridState extends ConsumerState<EpgTimelineGrid> {
       for (final entry in window?.entries ?? const <CompactEpgWindowEntry>[])
         entry.channelId: entry,
     };
-    final timelineWidth = windowDuration.inMinutes * EpgTimelineGrid.pxPerMinute;
+    final timelineWidth =
+        windowDuration.inMinutes * EpgTimelineGrid.pxPerMinute;
 
     return Padding(
       padding: dimensions.safeZone,
@@ -170,7 +171,9 @@ class _TimeAxis extends StatelessWidget {
           Positioned(
             left: i * 60 * pxPerMinute,
             child: Text(
-              TimeOfDay.fromDateTime(windowStart.add(Duration(hours: i))).format(context),
+              TimeOfDay.fromDateTime(
+                windowStart.add(Duration(hours: i)),
+              ).format(context),
               style: baseStyle?.copyWith(
                 fontSize: (baseStyle.fontSize ?? 11) * textScaleFactor,
               ),
@@ -243,7 +246,9 @@ class _EpgChannelRow extends StatelessWidget {
                   children: [
                     for (final program in programs)
                       _ProgramBlock(
-                        key: ValueKey('epg_program_${channel.id}_${program.programId}'),
+                        key: ValueKey(
+                          'epg_program_${channel.id}_${program.programId}',
+                        ),
                         program: program,
                         windowStart: windowStart,
                         windowDuration: windowDuration,
@@ -289,8 +294,9 @@ class _ProgramBlock extends StatelessWidget {
         .inMinutes
         .clamp(0, windowMinutes);
     final left = startOffsetMinutes * EpgTimelineGrid.pxPerMinute;
-    final width = ((endOffsetMinutes - startOffsetMinutes) * EpgTimelineGrid.pxPerMinute)
-        .clamp(24.0, double.infinity);
+    final width =
+        ((endOffsetMinutes - startOffsetMinutes) * EpgTimelineGrid.pxPerMinute)
+            .clamp(24.0, double.infinity);
 
     return Positioned(
       left: left,
@@ -370,7 +376,8 @@ class _CurrentTimeIndicatorState extends State<_CurrentTimeIndicator> {
   @override
   Widget build(BuildContext context) {
     final minutesFromStart = _now.difference(widget.windowStart).inMinutes;
-    if (minutesFromStart < 0 || minutesFromStart > widget.windowDuration.inMinutes) {
+    if (minutesFromStart < 0 ||
+        minutesFromStart > widget.windowDuration.inMinutes) {
       return const SizedBox.shrink();
     }
     return Positioned(

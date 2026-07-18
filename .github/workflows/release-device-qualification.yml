@@ -1,0 +1,294 @@
+name: Release Device Qualification
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      release_version:
+        description: 'Release version label, for example v1.2.0'
+        required: true
+      artifact_run_id:
+        description: 'Workflow run id that produced release artifacts'
+        required: true
+      provider:
+        description: 'Real-device execution provider'
+        required: true
+        default: browserstack
+        type: choice
+        options:
+          - browserstack
+          - firebase
+          - local
+          - host-only
+      tier:
+        description: 'Device matrix tier'
+        required: true
+        default: tier1
+        type: choice
+        options:
+          - tier1
+          - full
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: release-device-qualification-${{ github.ref }}-${{ github.event.inputs.artifact_run_id || github.run_id }}
+  cancel-in-progress: false
+
+env:
+  FLUTTER_VERSION: '3.44.4'
+  RELEASE_VERSION: ${{ github.event.inputs.release_version || github.ref_name }}
+  ARTIFACT_RUN_ID: ${{ github.event.inputs.artifact_run_id || '' }}
+  DEVICE_PROVIDER: ${{ github.event.inputs.provider || 'host-only' }}
+  QUALIFICATION_TIER: ${{ github.event.inputs.tier || 'tier1' }}
+
+jobs:
+  host-gates:
+    name: Host release gates
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Verify release-line base context
+        run: |
+          git fetch origin main v2
+          git merge-base --is-ancestor origin/main HEAD || {
+            echo "::warning::This qualification run is not based on origin/main. Use origin/v2 only for explicit v2 releases."
+          }
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Cache pub dependencies
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.pub-cache
+            app/.dart_tool
+            packages/*/.dart_tool
+          key: release-qualification-pub-${{ runner.os }}-${{ hashFiles('**/pubspec.lock') }}
+          restore-keys: release-qualification-pub-${{ runner.os }}-
+
+      - name: Get dependencies
+        run: |
+          (cd packages/core_domain && flutter pub get) &
+          (cd packages/core_ui && flutter pub get) &
+          (cd packages/core_data && flutter pub get) &
+          (cd packages/core_ai && flutter pub get) &
+          (cd packages/core_auth && flutter pub get) &
+          wait
+          cd app && flutter pub get
+
+      - name: Analyze app
+        run: |
+          cd app
+          flutter analyze --no-fatal-infos --no-fatal-warnings
+
+      - name: Run release responsiveness gate
+        run: make test-ui-responsive
+
+      - name: Validate Patrol test sources
+        run: |
+          cd app
+          dart analyze integration_test patrol_test
+
+  artifact-smoke:
+    name: Exact artifact smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: host-gates
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Download release artifacts
+        if: env.ARTIFACT_RUN_ID != ''
+        uses: actions/download-artifact@v8
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ env.ARTIFACT_RUN_ID }}
+          path: release-artifacts
+          merge-multiple: true
+
+      - name: Prepare empty artifact directory
+        if: env.ARTIFACT_RUN_ID == ''
+        run: |
+          mkdir -p release-artifacts
+          echo "::warning::No artifact_run_id supplied; artifact smoke will fail because release artifacts are required."
+
+      - name: Run exact artifact smoke checks
+        env:
+          AIRO_RELEASE_ARTIFACT_DIR: release-artifacts
+          AIRO_RELEASE_QUALIFICATION_DIR: artifacts/release-qualification/${{ env.RELEASE_VERSION }}
+          AIRO_REQUIRE_RELEASE_ARTIFACTS: 'true'
+          AIRO_DEVICE_PROVIDER: ${{ env.DEVICE_PROVIDER }}
+          AIRO_QUALIFICATION_TIER: ${{ env.QUALIFICATION_TIER }}
+        run: scripts/release-artifact-smoke.sh --require-artifacts
+
+      - name: Upload artifact smoke report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-artifact-smoke-${{ env.RELEASE_VERSION }}
+          path: artifacts/release-qualification/
+          retention-days: 90
+
+  patrol-android-artifacts:
+    name: Build Patrol Android provider artifacts
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    needs: host-gates
+    if: ${{ (github.event.inputs.provider || 'host-only') == 'browserstack' || (github.event.inputs.provider || 'host-only') == 'firebase' }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          java-version: '17'
+          distribution: temurin
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Get dependencies
+        run: |
+          cd app
+          flutter pub get
+
+      - name: Install Patrol CLI
+        run: dart pub global activate patrol_cli
+
+      - name: Build tagged Patrol Android app and test APKs
+        run: |
+          cd app
+          export PATH="$PATH:$HOME/.pub-cache/bin"
+          patrol build android \
+            -t integration_test/patrol_test.dart
+
+      - name: Collect Patrol APKs
+        run: |
+          mkdir -p patrol-provider-artifacts
+          app_apk="$(find app/build -type f -name "*.apk" ! -name "*androidTest*" | sort | tail -1)"
+          test_apk="$(find app/build -type f \( -name "*androidTest*.apk" -o -name "*test*.apk" \) | sort | tail -1)"
+          if [ -z "$app_apk" ] || [ -z "$test_apk" ]; then
+            echo "::error::Unable to locate Patrol app/test APK outputs."
+            find app/build -type f -name "*.apk" -print
+            exit 1
+          fi
+          cp "$app_apk" patrol-provider-artifacts/airo-patrol-app.apk
+          cp "$test_apk" patrol-provider-artifacts/airo-patrol-test.apk
+          ls -lh patrol-provider-artifacts
+
+      - name: Upload Patrol provider artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: patrol-android-provider-artifacts-${{ env.RELEASE_VERSION }}
+          path: patrol-provider-artifacts/
+          retention-days: 14
+
+  browserstack-patrol:
+    name: BrowserStack Patrol Android tier
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs:
+      - artifact-smoke
+      - patrol-android-artifacts
+    if: ${{ (github.event.inputs.provider || 'host-only') == 'browserstack' }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Download Patrol provider artifacts
+        uses: actions/download-artifact@v8
+        with:
+          name: patrol-android-provider-artifacts-${{ env.RELEASE_VERSION }}
+          path: patrol-provider-artifacts
+
+      - name: Schedule BrowserStack Patrol run
+        env:
+          BROWSERSTACK_USERNAME: ${{ secrets.BROWSERSTACK_USERNAME }}
+          BROWSERSTACK_ACCESS_KEY: ${{ secrets.BROWSERSTACK_ACCESS_KEY }}
+          AIRO_QUALIFICATION_TIER: ${{ env.QUALIFICATION_TIER }}
+          AIRO_RELEASE_QUALIFICATION_DIR: artifacts/release-qualification/${{ env.RELEASE_VERSION }}/browserstack
+        run: |
+          scripts/run-browserstack-patrol.sh \
+            --app patrol-provider-artifacts/airo-patrol-app.apk \
+            --test-suite patrol-provider-artifacts/airo-patrol-test.apk \
+            --tier "$AIRO_QUALIFICATION_TIER"
+
+      - name: Upload BrowserStack scheduling report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: browserstack-patrol-${{ env.RELEASE_VERSION }}
+          path: artifacts/release-qualification/
+          retention-days: 90
+
+  firebase-patrol:
+    name: Firebase Test Lab Patrol Android tier
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    needs:
+      - artifact-smoke
+      - patrol-android-artifacts
+    if: ${{ (github.event.inputs.provider || 'host-only') == 'firebase' }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Download Patrol provider artifacts
+        uses: actions/download-artifact@v8
+        with:
+          name: patrol-android-provider-artifacts-${{ env.RELEASE_VERSION }}
+          path: patrol-provider-artifacts
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v3
+        with:
+          credentials_json: ${{ secrets.GCP_FIREBASE_TEST_LAB_SERVICE_ACCOUNT }}
+
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@v3
+
+      - name: Run Firebase Test Lab Patrol smoke
+        env:
+          AIRO_RELEASE_QUALIFICATION_DIR: artifacts/release-qualification/${{ env.RELEASE_VERSION }}/firebase
+          AIRO_FIREBASE_RESULTS_BUCKET: ${{ secrets.AIRO_FIREBASE_RESULTS_BUCKET }}
+        run: |
+          scripts/run-firebase-patrol.sh \
+            --app patrol-provider-artifacts/airo-patrol-app.apk \
+            --test-suite patrol-provider-artifacts/airo-patrol-test.apk
+
+      - name: Upload Firebase report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: firebase-patrol-${{ env.RELEASE_VERSION }}
+          path: artifacts/release-qualification/
+          retention-days: 90
+
+  local-provider-note:
+    name: Local physical device note
+    runs-on: ubuntu-latest
+    needs: artifact-smoke
+    if: ${{ (github.event.inputs.provider || 'host-only') == 'local' }}
+    steps:
+      - name: Explain local provider execution
+        run: |
+          echo "Local provider selected."
+          echo "Download the artifact-smoke report and run scripts/release-artifact-smoke.sh with:"
+          echo "  AIRO_RUN_DEVICE_SMOKE=true AIRO_RELEASE_ARTIFACT_DIR=<artifact-dir> scripts/release-artifact-smoke.sh --require-artifacts"
+          echo "Attach the generated artifacts/release-qualification report to the release issue."

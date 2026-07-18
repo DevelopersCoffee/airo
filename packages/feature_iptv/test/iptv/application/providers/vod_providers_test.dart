@@ -42,16 +42,23 @@ void main() {
     );
   }
 
-  test('vodItemsProvider extracts and groups VOD entries from iptvChannelsProvider', () async {
-    final container = await buildContainer([movieChannel, seriesChannel, liveChannel]);
-    addTearDown(container.dispose);
+  test(
+    'vodItemsProvider extracts and groups VOD entries from iptvChannelsProvider',
+    () async {
+      final container = await buildContainer([
+        movieChannel,
+        seriesChannel,
+        liveChannel,
+      ]);
+      addTearDown(container.dispose);
 
-    await container.read(rawVodItemsProvider.future);
-    final items = container.read(vodItemsProvider);
+      await container.read(rawVodItemsProvider.future);
+      final items = container.read(vodItemsProvider);
 
-    expect(items.map((i) => i.id), containsAll(['m3u-1', 'm3u-2']));
-    expect(items.any((i) => i.id == 'm3u-3'), isFalse);
-  });
+      expect(items.map((i) => i.id), containsAll(['m3u-1', 'm3u-2']));
+      expect(items.any((i) => i.id == 'm3u-3'), isFalse);
+    },
+  );
 
   test('vodStandaloneMoviesProvider excludes grouped episodes', () async {
     final container = await buildContainer([movieChannel, seriesChannel]);
@@ -74,44 +81,53 @@ void main() {
     expect(groups.single.seriesTitle, 'Example Show');
   });
 
-  test('empty source yields empty vodItemsProvider (empty-state case)', () async {
-    final container = await buildContainer([liveChannel]);
-    addTearDown(container.dispose);
+  test(
+    'empty source yields empty vodItemsProvider (empty-state case)',
+    () async {
+      final container = await buildContainer([liveChannel]);
+      addTearDown(container.dispose);
 
-    await container.read(rawVodItemsProvider.future);
-    final items = container.read(vodItemsProvider);
+      await container.read(rawVodItemsProvider.future);
+      final items = container.read(vodItemsProvider);
 
-    expect(items, isEmpty);
-  });
+      expect(items, isEmpty);
+    },
+  );
 
-  test('filteredVodMoviesProvider filters standalone movies by search query', () async {
-    const anotherMovie = IPTVChannel(
-      id: 'm3u-4',
-      name: 'Second Feature',
-      streamUrl: 'https://example.com/second.mp4',
-      group: 'Movies',
-      category: ChannelCategory.movies,
-    );
-    final container = await buildContainer([movieChannel, anotherMovie]);
-    addTearDown(container.dispose);
+  test(
+    'filteredVodMoviesProvider filters standalone movies by search query',
+    () async {
+      const anotherMovie = IPTVChannel(
+        id: 'm3u-4',
+        name: 'Second Feature',
+        streamUrl: 'https://example.com/second.mp4',
+        group: 'Movies',
+        category: ChannelCategory.movies,
+      );
+      final container = await buildContainer([movieChannel, anotherMovie]);
+      addTearDown(container.dispose);
 
-    await container.read(rawVodItemsProvider.future);
-    container.read(vodSearchQueryProvider.notifier).state = 'second';
-    final filtered = container.read(filteredVodMoviesProvider);
+      await container.read(rawVodItemsProvider.future);
+      container.read(vodSearchQueryProvider.notifier).state = 'second';
+      final filtered = container.read(filteredVodMoviesProvider);
 
-    expect(filtered.map((i) => i.id), ['m3u-4']);
-  });
+      expect(filtered.map((i) => i.id), ['m3u-4']);
+    },
+  );
 
-  test('addToVodWatchHistoryProvider then vodContinueWatchingProvider round-trips', () async {
-    final container = await buildContainer([movieChannel]);
-    addTearDown(container.dispose);
+  test(
+    'addToVodWatchHistoryProvider then vodContinueWatchingProvider round-trips',
+    () async {
+      final container = await buildContainer([movieChannel]);
+      addTearDown(container.dispose);
 
-    await container.read(rawVodItemsProvider.future);
-    final item = container.read(vodItemsProvider).single;
+      await container.read(rawVodItemsProvider.future);
+      final item = container.read(vodItemsProvider).single;
 
-    await container.read(addToVodWatchHistoryProvider(item).future);
-    final history = await container.read(vodContinueWatchingProvider.future);
+      await container.read(addToVodWatchHistoryProvider(item).future);
+      final history = await container.read(vodContinueWatchingProvider.future);
 
-    expect(history.map((i) => i.id), [item.id]);
-  });
+      expect(history.map((i) => i.id), [item.id]);
+    },
+  );
 }

@@ -89,8 +89,11 @@ void main() {
 
     test('contains per-module init failures', () async {
       final registry = ProModuleRegistry(const LaunchPromoEntitlements());
-      final broken =
-          _FakeModule('broken', ProFeature.sportsDesk, failOnInit: true);
+      final broken = _FakeModule(
+        'broken',
+        ProFeature.sportsDesk,
+        failOnInit: true,
+      );
       final healthy = _FakeModule('healthy', ProFeature.epgReminders);
       registry
         ..register(broken)

@@ -13,7 +13,8 @@ class EpgMatchOverrideSheet extends ConsumerStatefulWidget {
   final IPTVChannel channel;
 
   @override
-  ConsumerState<EpgMatchOverrideSheet> createState() => _EpgMatchOverrideSheetState();
+  ConsumerState<EpgMatchOverrideSheet> createState() =>
+      _EpgMatchOverrideSheetState();
 }
 
 class _EpgMatchOverrideSheetState extends ConsumerState<EpgMatchOverrideSheet> {
@@ -44,16 +45,17 @@ class _EpgMatchOverrideSheetState extends ConsumerState<EpgMatchOverrideSheet> {
   Future<void> _save() async {
     final id = _idController.text.trim();
     if (id.isEmpty) return;
-    await ref.read(epgChannelMatchOverrideStoreProvider).setOverride(
-      channelId: widget.channel.id,
-      epgChannelId: id,
-    );
+    await ref
+        .read(epgChannelMatchOverrideStoreProvider)
+        .setOverride(channelId: widget.channel.id, epgChannelId: id);
     if (!mounted) return;
     ref.invalidate(guideEpgOverridesProvider);
   }
 
   Future<void> _clear() async {
-    await ref.read(epgChannelMatchOverrideStoreProvider).clearOverride(widget.channel.id);
+    await ref
+        .read(epgChannelMatchOverrideStoreProvider)
+        .clearOverride(widget.channel.id);
     if (!mounted) return;
     _idController.text = widget.channel.id;
     ref.invalidate(guideEpgOverridesProvider);
@@ -67,20 +69,32 @@ class _EpgMatchOverrideSheetState extends ConsumerState<EpgMatchOverrideSheet> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Match "${widget.channel.name}" to EPG channel', style: Theme.of(context).textTheme.titleMedium),
+          Text(
+            'Match "${widget.channel.name}" to EPG channel',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
           const SizedBox(height: 4),
-          Text('Default (no override): ${widget.channel.id}', style: Theme.of(context).textTheme.bodySmall),
+          Text(
+            'Default (no override): ${widget.channel.id}',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
           const SizedBox(height: 12),
           TextField(
             controller: _idController,
-            decoration: const InputDecoration(labelText: 'EPG channel id', border: OutlineInputBorder()),
+            decoration: const InputDecoration(
+              labelText: 'EPG channel id',
+              border: OutlineInputBorder(),
+            ),
           ),
           const SizedBox(height: 8),
           Row(
             children: [
               FilledButton(onPressed: _save, child: const Text('Save')),
               const SizedBox(width: 8),
-              TextButton(onPressed: _clear, child: const Text('Clear override')),
+              TextButton(
+                onPressed: _clear,
+                child: const Text('Clear override'),
+              ),
             ],
           ),
         ],

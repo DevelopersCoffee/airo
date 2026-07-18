@@ -165,7 +165,10 @@ jobs:
           RELEASE_BRANCH: ${{ inputs.release_branch || github.event.inputs.release_branch || 'release/airo-tv-v0.0.2' }}
           RELEASE_REF: ${{ inputs.release_ref || github.event.inputs.release_ref || 'v2' }}
         run: |
-          git fetch origin main v2
+          git fetch origin main
+          if [ "$RELEASE_REF" != "main" ]; then
+            git fetch origin "$RELEASE_REF" || true
+          fi
           if git rev-parse --verify "origin/$RELEASE_REF^{commit}" >/dev/null 2>&1; then
             base_ref="origin/$RELEASE_REF"
           else
