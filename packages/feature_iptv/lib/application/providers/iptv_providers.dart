@@ -480,3 +480,32 @@ final toggleChannelFavoriteProvider = FutureProvider.family<bool, String>((
   ref.invalidate(favoriteChannelIdsProvider);
   return isNowFavorite;
 });
+
+// =============================================================================
+// Hidden Groups Providers (CV-021, #826)
+// =============================================================================
+
+/// Hidden groups storage provider.
+final hiddenGroupsStorageProvider = Provider<HiddenGroupsStorage>((ref) {
+  final prefs = ref.watch(sharedPreferencesProvider);
+  return HiddenGroupsStorage(prefs);
+});
+
+/// The set of hidden group/category ids. Consumed by search (CV-006) and,
+/// once it exists, the smart-playlist rule engine (CV-017) so hidden
+/// channels are excluded by default rather than just visually skipped.
+final hiddenGroupIdsProvider = FutureProvider<Set<String>>((ref) async {
+  final storage = ref.watch(hiddenGroupsStorageProvider);
+  return storage.getHiddenGroupIds();
+});
+
+/// Toggle a group's hidden state. Returns the new state.
+final toggleGroupHiddenProvider = FutureProvider.family<bool, String>((
+  ref,
+  groupId,
+) async {
+  final storage = ref.watch(hiddenGroupsStorageProvider);
+  final nowHidden = await storage.toggleHidden(groupId);
+  ref.invalidate(hiddenGroupIdsProvider);
+  return nowHidden;
+});

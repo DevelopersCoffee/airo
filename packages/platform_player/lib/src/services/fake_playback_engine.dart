@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:flutter/widgets.dart';
+
 import '../models/playback_engine_models.dart';
 import 'airo_playback_engine.dart';
 
@@ -59,6 +61,15 @@ class FakeAiroPlaybackEngine implements AiroPlaybackEngine {
         position: request.startPosition,
       ),
     );
+    // Mirror VideoPlayerAiroPlaybackEngine/MpvAiroPlaybackEngine: both
+    // concrete engines project request.externalSubtitles into the track
+    // catalog via externalSubtitleTracksFor() on open(). The fake previously
+    // ignored the request's externalSubtitles and only ever surfaced the
+    // tracks passed to its constructor, which meant tests exercising
+    // VideoPlayerStreamingService.attachExternalSubtitle() through the fake
+    // engine couldn't observe the resulting track the way they can with a
+    // real engine.
+    final tracks = [..._tracks, ...externalSubtitleTracksFor(request)];
     _emit(
       _state.copyWith(
         phase: AiroPlaybackEnginePhase.open,
@@ -67,8 +78,8 @@ class FakeAiroPlaybackEngine implements AiroPlaybackEngine {
         qualityOptions: _qualityOptions,
         selectedQualityId:
             request.preferredQualityId ?? _qualityOptions.firstOrNull?.id,
-        tracks: _tracks,
-        selectedTrackIds: _initialTrackSelection(_tracks),
+        tracks: tracks,
+        selectedTrackIds: _initialTrackSelection(tracks),
         diagnostics: _diagnostics,
       ),
     );
@@ -98,10 +109,18 @@ class FakeAiroPlaybackEngine implements AiroPlaybackEngine {
 
   @override
   Future<AiroPlaybackState> seek(Duration position) async {
+    // Mirror VideoPlayerAiroPlaybackEngine.seek(): preserve whether playback
+    // was actively playing (or buffering while playing) before the seek
+    // instead of unconditionally dropping to `paused`, so the fake matches
+    // production behavior for consumers keyed off `isPlaying`.
+    final wasPlaying = _state.phase == AiroPlaybackEnginePhase.playing ||
+        _state.phase == AiroPlaybackEnginePhase.buffering;
     _emit(_state.copyWith(phase: AiroPlaybackEnginePhase.seeking));
     _emit(
       _state.copyWith(
-        phase: AiroPlaybackEnginePhase.paused,
+        phase: wasPlaying
+            ? AiroPlaybackEnginePhase.playing
+            : AiroPlaybackEnginePhase.paused,
         position: position,
       ),
     );
@@ -140,7 +159,14 @@ class FakeAiroPlaybackEngine implements AiroPlaybackEngine {
     required AiroPlaybackTrackKind kind,
     required String trackId,
   }) async {
-    if (!_tracks.any((track) => track.kind == kind && track.id == trackId)) {
+    // Validate against _state.tracks (constructor-seeded tracks plus any
+    // external-subtitle tracks projected during open()), matching
+    // VideoPlayerAiroPlaybackEngine.selectTrack. Validating against _tracks
+    // alone would incorrectly reject a projected external subtitle that the
+    // real engine accepts.
+    if (!_state.tracks.any(
+      (track) => track.kind == kind && track.id == trackId,
+    )) {
       return _fail(
         AiroPlaybackError(
           code: AiroPlaybackErrorCode.trackUnavailable,
@@ -177,6 +203,17 @@ class FakeAiroPlaybackEngine implements AiroPlaybackEngine {
         operation: 'exitPictureInPicture',
       ),
     );
+  }
+
+  @override
+  Widget? buildView() {
+    if (_state.phase != AiroPlaybackEnginePhase.open &&
+        _state.phase != AiroPlaybackEnginePhase.playing &&
+        _state.phase != AiroPlaybackEnginePhase.paused &&
+        _state.phase != AiroPlaybackEnginePhase.buffering) {
+      return null;
+    }
+    return const SizedBox(key: ValueKey('fake-engine-view'));
   }
 
   @override
