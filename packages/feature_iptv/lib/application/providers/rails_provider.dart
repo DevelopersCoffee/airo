@@ -8,7 +8,15 @@ import 'iptv_providers.dart';
 /// (and later the Edge Intelligence SDK), never by widgets.
 final railsProvider = FutureProvider<List<RailResult>>((ref) async {
   final channels = await ref.watch(iptvChannelsProvider.future);
-  final favorites = await ref.watch(favoriteChannelsProvider.future);
+
+  List<IPTVChannel> favorites;
+  try {
+    favorites = await ref.watch(favoriteChannelsProvider.future);
+  } catch (_) {
+    // Favorites are an enhancement signal; rails must render without them.
+    favorites = const <IPTVChannel>[];
+  }
+
   final provider = DefaultRailProvider(
     channels: channels,
     favoriteIds: favorites.map((ch) => ch.id).toSet(),

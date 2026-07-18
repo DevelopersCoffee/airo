@@ -20,4 +20,19 @@ void main() {
     expect(rails.first.definition.id, 'top-india');
     expect(rails.first.channels, contains(ch));
   });
+
+  test('rails still build when favorites provider throws', () async {
+    const ch = IPTVChannel(id: 'x', name: 'X', streamUrl: 'u');
+    final container = ProviderContainer(
+      overrides: [
+        iptvChannelsProvider.overrideWith((ref) async => [ch]),
+        favoriteChannelsProvider.overrideWith(
+          (ref) async => throw StateError('storage corrupt'),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+    final rails = await container.read(railsProvider.future);
+    expect(rails, isNotEmpty);
+  });
 }
