@@ -98,7 +98,9 @@ void main() async {
         mutableXmltvCompactEpgRepositoryProvider.overrideWithValue(
           mutableXmltvRepository,
         ),
-        secureStoreProvider.overrideWithValue(SecureStoreFactory.createSecure()),
+        secureStoreProvider.overrideWithValue(
+          SecureStoreFactory.createSecure(),
+        ),
         realIptvCastControllerOverride(),
         ...FeatureRegistry.allProviderOverrides,
       ],

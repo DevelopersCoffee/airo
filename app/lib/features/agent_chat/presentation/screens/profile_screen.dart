@@ -424,7 +424,8 @@ class _AIPreferencesSection extends ConsumerWidget {
                 onTap: () {
                   Navigator.of(context).push(
                     MaterialPageRoute(
-                      builder: (context) => const IntelligentModelManagerScreen(),
+                      builder: (context) =>
+                          const IntelligentModelManagerScreen(),
                     ),
                   );
                 },

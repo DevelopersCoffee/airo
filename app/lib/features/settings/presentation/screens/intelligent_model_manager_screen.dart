@@ -124,7 +124,7 @@ class IntelligentModelManagerScreen extends ConsumerWidget {
                       color: theme.colorScheme.primary.withOpacity(0.15),
                       blurRadius: 16,
                       spreadRadius: 2,
-                    )
+                    ),
                   ]
                 : [],
           ),
@@ -158,7 +158,9 @@ class IntelligentModelManagerScreen extends ConsumerWidget {
                                 ? 'By ${modelInfo.author}'
                                 : 'Local Model',
                             style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.colorScheme.onSurface.withOpacity(0.6),
+                              color: theme.colorScheme.onSurface.withOpacity(
+                                0.6,
+                              ),
                             ),
                           ),
                         ],
@@ -171,7 +173,12 @@ class IntelligentModelManagerScreen extends ConsumerWidget {
                         icon: const Icon(Icons.delete_outline),
                         color: theme.colorScheme.error,
                         tooltip: 'Delete Model',
-                        onPressed: () => _showDeleteConfirmation(context, ref, model, modelInfo),
+                        onPressed: () => _showDeleteConfirmation(
+                          context,
+                          ref,
+                          model,
+                          modelInfo,
+                        ),
                       ),
                   ],
                 ),
@@ -186,7 +193,12 @@ class IntelligentModelManagerScreen extends ConsumerWidget {
                 _buildModelMetrics(context, modelInfo),
                 const SizedBox(height: 16),
                 if (isDownloading && downloadProgress != null)
-                  _buildDownloadProgress(context, ref, modelInfo, downloadProgress)
+                  _buildDownloadProgress(
+                    context,
+                    ref,
+                    modelInfo,
+                    downloadProgress,
+                  )
                 else
                   _buildActionRow(context, ref, model, modelInfo, isActive),
               ],
@@ -369,7 +381,9 @@ class IntelligentModelManagerScreen extends ConsumerWidget {
             ),
             TextButton.icon(
               onPressed: () {
-                ref.read(activeDownloadsProvider.notifier).cancelDownload(model.id);
+                ref
+                    .read(activeDownloadsProvider.notifier)
+                    .cancelDownload(model.id);
               },
               icon: const Icon(Icons.cancel_outlined, size: 16),
               label: const Text('Cancel'),
@@ -444,7 +458,9 @@ class IntelligentModelManagerScreen extends ConsumerWidget {
             onPressed: () async {
               Navigator.of(context).pop();
               // Delete model
-              await ref.read(intelligentModelManagerProvider).deleteModel(model.id);
+              await ref
+                  .read(intelligentModelManagerProvider)
+                  .deleteModel(model.id);
               // Clear selections if deleted model was active
               await clearOfflineModelSelections(ref, modelInfo);
               // Refresh model list

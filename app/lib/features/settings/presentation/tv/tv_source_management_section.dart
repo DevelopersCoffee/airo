@@ -97,7 +97,8 @@ class _TvSourceManagementSectionState
       return;
     }
 
-    if (_kind == ContentSourceKind.xtream || _kind == ContentSourceKind.jellyfin) {
+    if (_kind == ContentSourceKind.xtream ||
+        _kind == ContentSourceKind.jellyfin) {
       final username = _usernameController.text.trim();
       final password = _passwordController.text;
       if (username.isEmpty || password.isEmpty) {
