@@ -163,7 +163,7 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
       );
 
       if (result.error != null) {
-        throw _EngineOpenError(result.error!.code.stableId);
+        throw _EngineOpenError(result.error!.code);
       }
 
       await _engine.setVolume(_state.isMuted ? 0 : _state.volume);
@@ -194,7 +194,10 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
     } catch (e) {
       // Release focus on error
       _audioContext.releaseFocus(AudioFocusType.video);
-      await _handleError(e.toString());
+      await _handleError(
+        e.toString(),
+        engineErrorCode: e is _EngineOpenError ? e.engineCode : null,
+      );
     }
   }
 
@@ -205,7 +208,10 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
   /// doesn't change across channel switches, only what it has open.
   void _onEngineStateUpdate(AiroPlaybackState engineState) {
     if (engineState.error != null) {
-      _handleError(engineState.error!.code.stableId);
+      _handleError(
+        engineState.error!.code.stableId,
+        engineErrorCode: engineState.error!.code,
+      );
       return;
     }
 
@@ -319,7 +325,10 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
   /// Flag to prevent duplicate error handling
   bool _isHandlingError = false;
 
-  Future<void> _handleError(String message) async {
+  Future<void> _handleError(
+    String message, {
+    AiroPlaybackErrorCode? engineErrorCode,
+  }) async {
     if (_isHandlingError || _state.playbackState == PlaybackState.error) {
       return;
     }
@@ -337,7 +346,24 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
     // CV-001: structured, user-safe diagnostic alongside the legacy
     // errorMessage. UI prefers this when present; retry stays manual here
     // (see comment below) — this call is additive, not a behavior change.
-    final diagnostic = mapStreamingErrorToDiagnostic(message);
+    //
+    // CV-016: failures that originate from the airo-playback-engine carry a
+    // typed AiroPlaybackErrorCode. Map that directly via
+    // AiroPlaybackDiagnosticMapper (already exhaustive over every engine
+    // error code — see playback_recovery_models.dart) instead of
+    // round-tripping its stableId through mapStreamingErrorToDiagnostic,
+    // which was built to pattern-match raw `video_player` exception
+    // strings and only recognizes a handful of substrings/regexes. Without
+    // this, every engine code except codec_unsupported (which happens to
+    // match the 'codec' substring check) fell through to a generic
+    // `unknown` diagnostic.
+    final diagnostic = engineErrorCode != null
+        ? const AiroPlaybackDiagnosticMapper().map(
+            AiroPlaybackFailureEvent(
+              engineError: AiroPlaybackError(code: engineErrorCode),
+            ),
+          )
+        : mapStreamingErrorToDiagnostic(message);
 
     _updateState(
       _state.copyWith(
@@ -545,8 +571,14 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
 }
 
 class _EngineOpenError implements Exception {
-  _EngineOpenError(this.code);
+  _EngineOpenError(this.engineCode) : code = engineCode.stableId;
   final String code;
+
+  /// The typed engine error this was raised from, kept alongside [code] so
+  /// the catch site in [VideoPlayerStreamingService.playChannel] can map it
+  /// precisely instead of re-parsing [toString()] (see CV-016 diagnostic
+  /// fidelity fix in `_handleError`).
+  final AiroPlaybackErrorCode engineCode;
   @override
   String toString() => code;
 }

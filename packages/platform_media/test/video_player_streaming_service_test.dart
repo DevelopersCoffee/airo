@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:platform_channels/platform_channels.dart';
 import 'package:platform_media/platform_media.dart';
@@ -52,7 +55,54 @@ void main() {
       await service.playChannel(channel());
       expect(service.currentState.playbackState, PlaybackState.error);
       expect(service.currentState.retryCount, 1);
+      // CV-016 diagnostic-mapping fix: the engine's typed decoderFailed
+      // code must be mapped directly (-> playerInitFailed), not
+      // round-tripped through the CV-001 string-pattern matcher, which
+      // would have no substring/regex match for "decoder_failed" and fall
+      // through to the generic `unknown` diagnostic.
+      expect(
+        service.currentState.diagnostic?.code,
+        AiroPlaybackDiagnosticCode.playerInitFailed,
+      );
     });
+
+    test(
+      'network-unavailable engine failure maps to a precise network '
+      'diagnostic, not the generic unknown fallback',
+      () async {
+        // VideoPlayerAiroPlaybackEngine can only be driven to
+        // decoderFailed/backendUnavailable through FakeVideoPlayerPlatform
+        // (video_player hard-casts init-stream errors to
+        // PlatformException, so a TimeoutException can't reach it — see
+        // FakeVideoPlayerPlatform.scriptedInitError). A directly-injected
+        // engine double is used instead so this test can drive the
+        // networkUnavailable code specifically.
+        final networkFailureEngine = _ScriptedOpenFailureEngine(
+          AiroPlaybackErrorCode.networkUnavailable,
+        );
+        final networkService = VideoPlayerStreamingService(
+          engine: networkFailureEngine,
+        );
+        addTearDown(networkService.dispose);
+
+        await networkService.playChannel(channel());
+
+        expect(networkService.currentState.playbackState, PlaybackState.error);
+        // CV-016 diagnostic-mapping fix: this is the headline regression —
+        // before the fix, the engine's typed networkUnavailable code was
+        // stringified and round-tripped through the CV-001 string-pattern
+        // mapper, which has no match for "network_unavailable" and fell
+        // through to the generic unknown diagnostic.
+        expect(
+          networkService.currentState.diagnostic?.code,
+          AiroPlaybackDiagnosticCode.networkUnavailable,
+        );
+        expect(
+          networkService.currentState.diagnostic?.code,
+          isNot(AiroPlaybackDiagnosticCode.unknown),
+        );
+      },
+    );
 
     test('buildVideoView returns non-null after a successful open', () async {
       await service.playChannel(channel());
@@ -281,4 +331,85 @@ void main() {
       timeout: const Timeout(Duration(seconds: 5)),
     );
   });
+}
+
+/// Minimal [AiroPlaybackEngine] double whose [open] always fails with a
+/// caller-chosen [AiroPlaybackErrorCode] (see the network-unavailable
+/// diagnostic-mapping test above). Deliberately not a
+/// `FakeAiroPlaybackEngine` subclass: that fake's failure hooks
+/// (`selectQuality`/`selectTrack`) only cover
+/// `qualityUnavailable`/`trackUnavailable`, and its `_fail`/`_emit` helpers
+/// are private to `platform_player`, so an arbitrary open()-time error code
+/// isn't reachable through it from another package's test.
+class _ScriptedOpenFailureEngine implements AiroPlaybackEngine {
+  _ScriptedOpenFailureEngine(this._errorCode);
+
+  final AiroPlaybackErrorCode _errorCode;
+  final _controller = StreamController<AiroPlaybackState>.broadcast();
+  AiroPlaybackState _state = AiroPlaybackState.idle(
+    backendKind: AiroPlaybackBackendKind.fake,
+  );
+
+  @override
+  AiroPlaybackBackendKind get backendKind => AiroPlaybackBackendKind.fake;
+
+  @override
+  Stream<AiroPlaybackState> get states => _controller.stream;
+
+  @override
+  AiroPlaybackState get currentState => _state;
+
+  @override
+  Future<AiroPlaybackState> open(AiroMediaOpenRequest request) async {
+    _state = _state.copyWith(
+      phase: AiroPlaybackEnginePhase.failed,
+      request: request,
+      error: AiroPlaybackError(code: _errorCode, operation: 'open'),
+    );
+    _controller.add(_state);
+    return _state;
+  }
+
+  @override
+  Future<AiroPlaybackState> play() async => _state;
+
+  @override
+  Future<AiroPlaybackState> pause() async => _state;
+
+  @override
+  Future<AiroPlaybackState> stop() async => _state;
+
+  @override
+  Future<AiroPlaybackState> seek(Duration position) async => _state;
+
+  @override
+  Future<AiroPlaybackState> setVolume(double volume) async => _state;
+
+  @override
+  Future<AiroPlaybackState> setPlaybackSpeed(double speed) async => _state;
+
+  @override
+  Future<AiroPlaybackState> selectQuality(String qualityId) async => _state;
+
+  @override
+  Future<AiroPlaybackState> selectTrack({
+    required AiroPlaybackTrackKind kind,
+    required String trackId,
+  }) async => _state;
+
+  @override
+  Future<AiroPlaybackDiagnostics> diagnostics() async =>
+      AiroPlaybackDiagnostics(backendId: backendKind.stableId);
+
+  @override
+  Future<AiroPlaybackState> enterPictureInPicture() async => _state;
+
+  @override
+  Future<AiroPlaybackState> exitPictureInPicture() async => _state;
+
+  @override
+  Widget? buildView() => null;
+
+  @override
+  Future<void> dispose() async => _controller.close();
 }

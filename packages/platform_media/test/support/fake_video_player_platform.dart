@@ -22,6 +22,12 @@ class FakeVideoPlayerPlatform extends VideoPlayerPlatform {
 
   /// Set before calling controller.initialize() to simulate a platform
   /// failure (e.g. codec/decoder rejection) instead of a clean init.
+  ///
+  /// Must stay a [PlatformException]: `video_player`'s own
+  /// `VideoPlayerController.initialize()` error listener does a hard
+  /// `error as PlatformException` cast on whatever this stream delivers, so
+  /// any other exception type surfaces as an unrelated cast failure instead
+  /// of the error path under test.
   PlatformException? scriptedInitError;
 
   final Map<int, StreamController<VideoEvent>> _eventControllers = {};
