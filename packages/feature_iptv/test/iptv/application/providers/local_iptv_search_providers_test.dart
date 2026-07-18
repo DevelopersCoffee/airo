@@ -81,6 +81,28 @@ void main() {
     expect(result.isFavorite, isTrue);
   });
 
+  test('excludes channels in a hidden group from search (CV-021)', () async {
+    final container = buildContainer(
+      epgRepository: InMemoryCompactEpgRepository(
+        seed: CompactEpgSlice(
+          entries: const [],
+          generatedAt: DateTime.now().toUtc(),
+          expiresAt: DateTime.now().toUtc().add(const Duration(hours: 1)),
+          source: CompactEpgSliceSource.unavailable,
+        ),
+      ),
+    );
+    addTearDown(container.dispose);
+
+    await container.read(hiddenGroupsStorageProvider).hideGroup('News');
+    container.invalidate(hiddenGroupIdsProvider);
+
+    final index = await container.read(localIptvSearchIndexProvider.future);
+
+    expect(index.search('BBC'), isEmpty);
+    expect(index.search('CNN'), isEmpty);
+  });
+
   test('rebuilds when the underlying channel list changes', () async {
     final container = buildContainer(channels: const [bbcNews]);
     addTearDown(container.dispose);

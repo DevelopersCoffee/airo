@@ -35,7 +35,8 @@ class MediaKitMpvPlayerFacade implements MpvPlayerFacade {
     }
     return MpvOpenResult(
       duration: duration,
-      hardwareAccelerated: true, // mpv defaults to hardware-accel on all shipped platforms
+      hardwareAccelerated:
+          true, // mpv defaults to hardware-accel on all shipped platforms
     );
   }
 

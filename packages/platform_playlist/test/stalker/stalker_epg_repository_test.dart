@@ -19,60 +19,67 @@ void main() {
 
   Future<List<CompactEpgProgram>> Function(String) fetch(
     Map<String, List<CompactEpgProgram>> byChannel,
-  ) => (String channelId) async => byChannel[channelId] ?? const [];
+  ) =>
+      (String channelId) async => byChannel[channelId] ?? const [];
 
-  test('loadCurrentNext maps fetched programmes into current/next per channel', () async {
-    final repo = StalkerEpgRepository(
-      fetch({
-        'stalker-1': [currentProgram, nextProgram],
-      }),
-    );
+  test(
+    'loadCurrentNext maps fetched programmes into current/next per channel',
+    () async {
+      final repo = StalkerEpgRepository(
+        fetch({
+          'stalker-1': [currentProgram, nextProgram],
+        }),
+      );
 
-    final slice = await repo.loadCurrentNext(
-      channelIds: ['stalker-1'],
-      now: now,
-    );
+      final slice = await repo.loadCurrentNext(
+        channelIds: ['stalker-1'],
+        now: now,
+      );
 
-    expect(slice.entries, hasLength(1));
-    final entry = slice.entries.single;
-    expect(entry.channelId, 'stalker-1');
-    expect(entry.current?.title, 'Evening News');
-    expect(entry.next?.title, 'Late Show');
-  });
+      expect(slice.entries, hasLength(1));
+      final entry = slice.entries.single;
+      expect(entry.channelId, 'stalker-1');
+      expect(entry.current?.title, 'Evening News');
+      expect(entry.next?.title, 'Late Show');
+    },
+  );
 
-  test('loadCurrentNext returns an empty entry when the fetch callback finds nothing', () async {
-    final repo = StalkerEpgRepository(fetch({}));
+  test(
+    'loadCurrentNext returns an empty entry when the fetch callback finds nothing',
+    () async {
+      final repo = StalkerEpgRepository(fetch({}));
 
-    final slice = await repo.loadCurrentNext(
-      channelIds: ['stalker-unknown'],
-      now: now,
-    );
+      final slice = await repo.loadCurrentNext(
+        channelIds: ['stalker-unknown'],
+        now: now,
+      );
 
-    expect(slice.entries, hasLength(1));
-    expect(slice.entries.single.hasPrograms, isFalse);
-  });
+      expect(slice.entries, hasLength(1));
+      expect(slice.entries.single.hasPrograms, isFalse);
+    },
+  );
 
-  test('loadWindow returns only programmes intersecting the query window', () async {
-    final repo = StalkerEpgRepository(
-      fetch({
-        'stalker-1': [currentProgram, nextProgram],
-      }),
-    );
-    final query = GuideWindowQuery(
-      channelIds: ['stalker-1'],
-      windowStart: DateTime.utc(2026, 7, 16, 18, 0),
-      windowEnd: DateTime.utc(2026, 7, 16, 18, 35),
-      now: now,
-    );
+  test(
+    'loadWindow returns only programmes intersecting the query window',
+    () async {
+      final repo = StalkerEpgRepository(
+        fetch({
+          'stalker-1': [currentProgram, nextProgram],
+        }),
+      );
+      final query = GuideWindowQuery(
+        channelIds: ['stalker-1'],
+        windowStart: DateTime.utc(2026, 7, 16, 18, 0),
+        windowEnd: DateTime.utc(2026, 7, 16, 18, 35),
+        now: now,
+      );
 
-    final window = await repo.loadWindow(query);
+      final window = await repo.loadWindow(query);
 
-    expect(window.entries, hasLength(1));
-    final entry = window.entries.single;
-    expect(entry.programs, hasLength(2));
-    expect(entry.programs.map((p) => p.title), [
-      'Evening News',
-      'Late Show',
-    ]);
-  });
+      expect(window.entries, hasLength(1));
+      final entry = window.entries.single;
+      expect(entry.programs, hasLength(2));
+      expect(entry.programs.map((p) => p.title), ['Evening News', 'Late Show']);
+    },
+  );
 }

@@ -57,9 +57,7 @@ class ContentSourceCredentialStore {
     );
   }
 
-  Future<ContentSourceCredentials?> read(
-    ContentSourceCredentialRef ref,
-  ) async {
+  Future<ContentSourceCredentials?> read(ContentSourceCredentialRef ref) async {
     final username = await _secureStore.read(key: _usernameKey(ref));
     final password = await _secureStore.read(key: _passwordKey(ref));
     if (username == null || password == null) {

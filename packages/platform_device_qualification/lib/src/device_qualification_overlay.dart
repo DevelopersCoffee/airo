@@ -9,7 +9,8 @@ import 'dpad_remote_controller.dart';
 // In a real modular codebase, we can use platform channels or direct import if the app is compiled together.
 // Let's dynamically resolve the device form factor override or use reflection/import if we can.
 // In main_qualification.dart we will import both. In this package, we can define a callback or invoke a method dynamically.
-typedef FormFactorOverrideCallback = void Function(String formFactor, String? tvPlatform);
+typedef FormFactorOverrideCallback =
+    void Function(String formFactor, String? tvPlatform);
 
 const String deviceQualificationPlaylistUrlKey = 'user_playlist_url';
 
@@ -32,10 +33,12 @@ class DeviceQualificationOverlay extends StatefulWidget {
   });
 
   @override
-  State<DeviceQualificationOverlay> createState() => _DeviceQualificationOverlayState();
+  State<DeviceQualificationOverlay> createState() =>
+      _DeviceQualificationOverlayState();
 }
 
-class _DeviceQualificationOverlayState extends State<DeviceQualificationOverlay> {
+class _DeviceQualificationOverlayState
+    extends State<DeviceQualificationOverlay> {
   bool _showPanel = false;
   bool _showRemote = false;
   SimulatedDevice _simulatedDevice = SimulatedDevice.native;
@@ -117,7 +120,8 @@ class _DeviceQualificationOverlayState extends State<DeviceQualificationOverlay>
         final instantFps = 1000000.0 / difference;
         setState(() {
           _fps = _fps * 0.95 + instantFps * 0.05; // smoothed FPS
-          if (difference > 20000) { // Frame dropped (took >20ms instead of 16ms)
+          if (difference > 20000) {
+            // Frame dropped (took >20ms instead of 16ms)
             _droppedFrames++;
           }
         });
@@ -141,7 +145,8 @@ class _DeviceQualificationOverlayState extends State<DeviceQualificationOverlay>
   }
 
   void _copyDefectReport() {
-    final markdown = '''
+    final markdown =
+        '''
 # [Airo TV Defect Report] ${_titleController.text}
 
 **Severity:** $_severity
@@ -207,7 +212,10 @@ ${_descriptionController.text}
             child: GestureDetector(
               onTap: () => setState(() => _showPanel = !_showPanel),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 10,
+                ),
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
                     colors: [Color(0xFF6C63FF), Color(0xFF3F3D56)],
@@ -366,15 +374,29 @@ ${_descriptionController.text}
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _buildMetric('FPS', '${_fps.toStringAsFixed(1)} FPS', _fps > 55 ? Colors.green : Colors.orange),
-              _buildMetric('Dropped Frames', '$_droppedFrames', _droppedFrames == 0 ? Colors.green : Colors.redAccent),
+              _buildMetric(
+                'FPS',
+                '${_fps.toStringAsFixed(1)} FPS',
+                _fps > 55 ? Colors.green : Colors.orange,
+              ),
+              _buildMetric(
+                'Dropped Frames',
+                '$_droppedFrames',
+                _droppedFrames == 0 ? Colors.green : Colors.redAccent,
+              ),
             ],
           ),
           const SizedBox(height: 8),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _buildMetric('Active Resolution', _simulatedDevice.isNative ? 'Native' : '${_simulatedDevice.width.toInt()}x${_simulatedDevice.height.toInt()}', Colors.white70),
+              _buildMetric(
+                'Active Resolution',
+                _simulatedDevice.isNative
+                    ? 'Native'
+                    : '${_simulatedDevice.width.toInt()}x${_simulatedDevice.height.toInt()}',
+                Colors.white70,
+              ),
               _buildMetric('Input Playlist', 'seeded', Colors.green),
             ],
           ),
@@ -387,8 +409,18 @@ ${_descriptionController.text}
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(color: Colors.white54, fontSize: 10)),
-        Text(value, style: TextStyle(color: valueColor, fontSize: 14, fontWeight: FontWeight.bold)),
+        Text(
+          label,
+          style: const TextStyle(color: Colors.white54, fontSize: 10),
+        ),
+        Text(
+          value,
+          style: TextStyle(
+            color: valueColor,
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
       ],
     );
   }
@@ -419,10 +451,7 @@ ${_descriptionController.text}
           style: const TextStyle(color: Colors.white, fontSize: 14),
           icon: const Icon(Icons.arrow_drop_down, color: Colors.white70),
           items: SimulatedDevice.values.map((device) {
-            return DropdownMenuItem(
-              value: device,
-              child: Text(device.name),
-            );
+            return DropdownMenuItem(value: device, child: Text(device.name));
           }).toList(),
           onChanged: (device) {
             if (device != null) {
@@ -444,7 +473,10 @@ ${_descriptionController.text}
     required ValueChanged<bool> onChanged,
   }) {
     return SwitchListTile(
-      title: Text(title, style: const TextStyle(color: Colors.white, fontSize: 13)),
+      title: Text(
+        title,
+        style: const TextStyle(color: Colors.white, fontSize: 13),
+      ),
       value: value,
       onChanged: onChanged,
       contentPadding: EdgeInsets.zero,
@@ -454,7 +486,13 @@ ${_descriptionController.text}
   }
 
   Widget _buildNetworkSelector() {
-    final profiles = ['Excellent WiFi', '5 Mbps', '2 Mbps', '1 Mbps', 'Offline'];
+    final profiles = [
+      'Excellent WiFi',
+      '5 Mbps',
+      '2 Mbps',
+      '1 Mbps',
+      'Offline',
+    ];
     return Column(
       children: profiles.map((p) {
         final isSelected = _networkProfile == p;
@@ -482,7 +520,7 @@ ${_descriptionController.text}
                   '2 Mbps' => 120.0,
                   '1 Mbps' => 250.0,
                   'Offline' => double.infinity,
-                  _ => 0.0
+                  _ => 0.0,
                 };
               });
             }
@@ -513,7 +551,10 @@ ${_descriptionController.text}
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text('Severity: ', style: TextStyle(color: Colors.white, fontSize: 13)),
+            const Text(
+              'Severity: ',
+              style: TextStyle(color: Colors.white, fontSize: 13),
+            ),
             DropdownButton<String>(
               value: _severity,
               dropdownColor: Colors.grey[900],
@@ -523,15 +564,26 @@ ${_descriptionController.text}
               }).toList(),
               onChanged: (val) => setState(() => _severity = val ?? 'P2'),
             ),
-            const Text('Category: ', style: TextStyle(color: Colors.white, fontSize: 13)),
+            const Text(
+              'Category: ',
+              style: TextStyle(color: Colors.white, fontSize: 13),
+            ),
             DropdownButton<String>(
               value: _category,
               dropdownColor: Colors.grey[900],
               style: const TextStyle(color: Colors.white, fontSize: 13),
-              items: ['UI / Spacing', 'Navigation / Focus', 'Streaming Quality', 'EPG Timeline', 'Search/Inputs'].map((c) {
-                return DropdownMenuItem(value: c, child: Text(c));
-              }).toList(),
-              onChanged: (val) => setState(() => _category = val ?? 'UI / Spacing'),
+              items:
+                  [
+                    'UI / Spacing',
+                    'Navigation / Focus',
+                    'Streaming Quality',
+                    'EPG Timeline',
+                    'Search/Inputs',
+                  ].map((c) {
+                    return DropdownMenuItem(value: c, child: Text(c));
+                  }).toList(),
+              onChanged: (val) =>
+                  setState(() => _category = val ?? 'UI / Spacing'),
             ),
           ],
         ),
@@ -563,7 +615,9 @@ ${_descriptionController.text}
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF6C63FF),
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
             ),
           ),
         ),

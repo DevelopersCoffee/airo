@@ -7,9 +7,7 @@ import 'package:platform_playlist/platform_playlist.dart';
 void main() {
   test('contentSourceCredentialStoreProvider builds a working store', () async {
     final container = ProviderContainer(
-      overrides: [
-        secureStoreProvider.overrideWithValue(InMemorySecureStore()),
-      ],
+      overrides: [secureStoreProvider.overrideWithValue(InMemorySecureStore())],
     );
     addTearDown(container.dispose);
 

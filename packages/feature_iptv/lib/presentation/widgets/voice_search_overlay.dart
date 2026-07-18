@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 
 import '../../application/providers/iptv_providers.dart';
-import '../voice/voice_search_service.dart';
 
 /// Voice search overlay that appears when voice search is triggered on Fire TV
 class VoiceSearchOverlay extends ConsumerStatefulWidget {

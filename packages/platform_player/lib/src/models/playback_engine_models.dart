@@ -111,6 +111,17 @@ class AiroPlaybackSourceHandle extends Equatable {
     return AiroPlaybackSourceHandle._(value.trim());
   }
 
+  /// Accepts a trusted, internally-resolved playable URL (a channel or VOD
+  /// stream URL from our own provider adapters) that `.redacted()` would
+  /// reject — `.redacted()`'s URL-rejection check exists to catch raw user
+  /// input passed by mistake, not legitimate stream URLs, which are always
+  /// http/https and sometimes carry Xtream/Stalker credentials in the path.
+  /// `toString()` still redacts: the safety invariant (never log/print the
+  /// raw value) is unchanged, only the acceptance check is skipped.
+  factory AiroPlaybackSourceHandle.direct(String url) {
+    return AiroPlaybackSourceHandle._(url.trim());
+  }
+
   final String value;
 
   static AiroPlaybackSourceHandleRejectionCode? validate(String value) {
@@ -180,6 +191,8 @@ class AiroMediaOpenRequest extends Equatable {
     this.startPosition = Duration.zero,
     this.preferredQualityId,
     List<AiroPlaybackExternalSubtitle> externalSubtitles = const [],
+    this.mixWithOthers = false,
+    this.allowBackgroundPlayback = false,
     this.schemaVersion = kAiroPlaybackEngineSchemaVersion,
   }) : externalSubtitles = List.unmodifiable(externalSubtitles);
 
@@ -191,6 +204,17 @@ class AiroMediaOpenRequest extends Equatable {
   final String? preferredQualityId;
   final List<AiroPlaybackExternalSubtitle> externalSubtitles;
 
+  /// Whether this source should mix audio with other apps/media sessions
+  /// instead of interrupting them. Maps to `video_player`'s
+  /// `VideoPlayerOptions.mixWithOthers` on the videoPlayer engine.
+  final bool mixWithOthers;
+
+  /// Whether playback should continue when the app is backgrounded (e.g.
+  /// screen locked). Maps to `video_player`'s
+  /// `VideoPlayerOptions.allowBackgroundPlayback` on the videoPlayer engine.
+  /// Typically true for audio-only/radio-style content.
+  final bool allowBackgroundPlayback;
+
   @override
   String toString() {
     return 'AiroMediaOpenRequest('
@@ -199,6 +223,8 @@ class AiroMediaOpenRequest extends Equatable {
         'startPosition: $startPosition, '
         'preferredQualityId: $preferredQualityId, '
         'externalSubtitleCount: ${externalSubtitles.length}, '
+        'mixWithOthers: $mixWithOthers, '
+        'allowBackgroundPlayback: $allowBackgroundPlayback, '
         'sourceHandle: redacted'
         ')';
   }
@@ -212,6 +238,8 @@ class AiroMediaOpenRequest extends Equatable {
     startPosition,
     preferredQualityId,
     externalSubtitles,
+    mixWithOthers,
+    allowBackgroundPlayback,
   ];
 }
 
@@ -255,6 +283,16 @@ class AiroPlaybackTrackOption extends Equatable {
 
   @override
   List<Object?> get props => [id, kind, label, languageCode, isExternal];
+}
+
+class AiroPlaybackBufferedRange extends Equatable {
+  const AiroPlaybackBufferedRange({required this.start, required this.end});
+
+  final Duration start;
+  final Duration end;
+
+  @override
+  List<Object?> get props => [start, end];
 }
 
 /// Stable id prefix for tracks projected from
@@ -353,12 +391,14 @@ class AiroPlaybackState extends Equatable {
     this.selectedQualityId,
     List<AiroPlaybackTrackOption> tracks = const [],
     Map<AiroPlaybackTrackKind, String> selectedTrackIds = const {},
+    List<AiroPlaybackBufferedRange> bufferedRanges = const [],
     this.diagnostics,
     this.error,
     this.schemaVersion = kAiroPlaybackEngineSchemaVersion,
   }) : qualityOptions = List.unmodifiable(qualityOptions),
        tracks = List.unmodifiable(tracks),
-       selectedTrackIds = Map.unmodifiable(selectedTrackIds);
+       selectedTrackIds = Map.unmodifiable(selectedTrackIds),
+       bufferedRanges = List.unmodifiable(bufferedRanges);
 
   factory AiroPlaybackState.idle({
     AiroPlaybackBackendKind backendKind = AiroPlaybackBackendKind.unavailable,
@@ -381,6 +421,7 @@ class AiroPlaybackState extends Equatable {
   final String? selectedQualityId;
   final List<AiroPlaybackTrackOption> tracks;
   final Map<AiroPlaybackTrackKind, String> selectedTrackIds;
+  final List<AiroPlaybackBufferedRange> bufferedRanges;
   final AiroPlaybackDiagnostics? diagnostics;
   final AiroPlaybackError? error;
 
@@ -395,6 +436,7 @@ class AiroPlaybackState extends Equatable {
     String? selectedQualityId,
     List<AiroPlaybackTrackOption>? tracks,
     Map<AiroPlaybackTrackKind, String>? selectedTrackIds,
+    List<AiroPlaybackBufferedRange>? bufferedRanges,
     AiroPlaybackDiagnostics? diagnostics,
     AiroPlaybackError? error,
   }) {
@@ -411,6 +453,7 @@ class AiroPlaybackState extends Equatable {
       selectedQualityId: selectedQualityId ?? this.selectedQualityId,
       tracks: tracks ?? this.tracks,
       selectedTrackIds: selectedTrackIds ?? this.selectedTrackIds,
+      bufferedRanges: bufferedRanges ?? this.bufferedRanges,
       diagnostics: diagnostics ?? this.diagnostics,
       error: error,
     );
@@ -447,6 +490,7 @@ class AiroPlaybackState extends Equatable {
     selectedQualityId,
     tracks,
     selectedTrackIds,
+    bufferedRanges,
     diagnostics,
     error,
   ];

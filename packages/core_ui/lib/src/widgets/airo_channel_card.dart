@@ -41,8 +41,8 @@ class _AiroChannelCardState extends State<AiroChannelCard> {
     final borderColor = widget.isPlaying
         ? AppColors.cyberTertiary
         : _focused
-            ? AppColors.cyberPrimary
-            : AppColors.cyberGridLine;
+        ? AppColors.cyberPrimary
+        : AppColors.cyberGridLine;
     final borderWidth = (widget.isPlaying || _focused) ? 2.0 : 1.0;
 
     return Focus(
@@ -66,10 +66,7 @@ class _AiroChannelCardState extends State<AiroChannelCard> {
             borderRadius: AppSpacing.borderRadiusSm,
             boxShadow: _focused
                 ? const [
-                    BoxShadow(
-                      spreadRadius: 3,
-                      color: AppColors.cyberPrimary,
-                    ),
+                    BoxShadow(spreadRadius: 3, color: AppColors.cyberPrimary),
                     BoxShadow(blurRadius: 16, color: AppColors.cyberGlow),
                   ]
                 : null,

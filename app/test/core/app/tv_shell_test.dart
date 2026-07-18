@@ -30,7 +30,7 @@ void main() {
             ),
             streamingStateProvider.overrideWith(
               (ref) => Stream.value(
-                const StreamingState(
+                StreamingState(
                   playbackState: PlaybackState.idle,
                   isLiveStream: true,
                 ),

@@ -98,7 +98,9 @@ class ContentSourceStore {
     if (json == null) return [];
     final decoded = jsonDecode(json) as List;
     return decoded
-        .map((item) => ContentSourceConfig.fromJson(item as Map<String, dynamic>))
+        .map(
+          (item) => ContentSourceConfig.fromJson(item as Map<String, dynamic>),
+        )
         .toList();
   }
 

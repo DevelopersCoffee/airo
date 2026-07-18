@@ -11,7 +11,7 @@ void main() {
     );
 
     test('defaults to null and carries through copyWith', () {
-      const initial = StreamingState();
+      final initial = StreamingState();
       expect(initial.diagnostic, isNull);
 
       final withDiagnostic = initial.copyWith(diagnostic: diagnostic);
@@ -22,7 +22,7 @@ void main() {
     });
 
     test('clearDiagnostic removes a stale diagnostic', () {
-      final withDiagnostic = const StreamingState().copyWith(
+      final withDiagnostic = StreamingState().copyWith(
         diagnostic: diagnostic,
       );
 
@@ -32,9 +32,9 @@ void main() {
     });
 
     test('participates in equality', () {
-      final a = const StreamingState().copyWith(diagnostic: diagnostic);
-      final b = const StreamingState().copyWith(diagnostic: diagnostic);
-      const c = StreamingState();
+      final a = StreamingState().copyWith(diagnostic: diagnostic);
+      final b = StreamingState().copyWith(diagnostic: diagnostic);
+      final c = StreamingState();
 
       expect(a, b);
       expect(a, isNot(c));

@@ -42,8 +42,10 @@ void main() {
       for (final dc in DeviceClass.values) {
         if (dc == DeviceClass.desktop) continue;
         final other = MemoryBudget.forDevice(dc);
-        expect(desktop.maxChannelListSize,
-            greaterThanOrEqualTo(other.maxChannelListSize));
+        expect(
+          desktop.maxChannelListSize,
+          greaterThanOrEqualTo(other.maxChannelListSize),
+        );
       }
     });
 
