@@ -7,5 +7,4 @@ import 'dart:isolate';
 /// sites, but the isolate boundary remains as rollback safety and web fallback.
 ///
 /// Throws the original exception on failure (isolate errors are re-thrown).
-Future<T> runOffMain<T>(T Function() computation) =>
-    Isolate.run(computation);
+Future<T> runOffMain<T>(T Function() computation) => Isolate.run(computation);

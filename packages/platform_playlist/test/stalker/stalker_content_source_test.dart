@@ -16,12 +16,13 @@ class _FakeStalkerClient implements StalkerClient {
   }
 
   @override
-  Future<String> createLink({required String token, required String cmd}) async =>
-      'https://stalker.example.com/resolved/$cmd';
+  Future<String> createLink({
+    required String token,
+    required String cmd,
+  }) async => 'https://stalker.example.com/resolved/$cmd';
 
   @override
-  dynamic noSuchMethod(Invocation invocation) =>
-      super.noSuchMethod(invocation);
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 void main() {

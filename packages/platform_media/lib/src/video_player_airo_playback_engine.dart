@@ -22,7 +22,8 @@ class VideoPlayerAiroPlaybackEngine implements AiroPlaybackEngine {
       StreamController<AiroPlaybackState>.broadcast();
 
   @override
-  AiroPlaybackBackendKind get backendKind => AiroPlaybackBackendKind.videoPlayer;
+  AiroPlaybackBackendKind get backendKind =>
+      AiroPlaybackBackendKind.videoPlayer;
 
   @override
   Stream<AiroPlaybackState> get states => _stateController.stream;
@@ -50,11 +51,7 @@ class VideoPlayerAiroPlaybackEngine implements AiroPlaybackEngine {
     try {
       await controller.initialize();
     } on TimeoutException {
-      return _fail(
-        AiroPlaybackErrorCode.networkUnavailable,
-        'open',
-        request,
-      );
+      return _fail(AiroPlaybackErrorCode.networkUnavailable, 'open', request);
     } on PlatformException {
       return _fail(AiroPlaybackErrorCode.decoderFailed, 'open', request);
     } on Object {

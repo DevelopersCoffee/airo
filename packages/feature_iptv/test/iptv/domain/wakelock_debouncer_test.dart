@@ -32,11 +32,7 @@ void main() {
     addTearDown(debouncer.cancel);
     final settled = <bool>[];
 
-    debouncer.update(
-      current: false,
-      target: true,
-      onSettled: settled.add,
-    );
+    debouncer.update(current: false, target: true, onSettled: settled.add);
 
     await Future<void>.delayed(const Duration(milliseconds: 40));
 

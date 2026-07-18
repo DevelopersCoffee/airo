@@ -66,20 +66,17 @@ void main() {
       },
     );
 
-    test(
-      'selectTrack fails typed when no matching track exists',
-      () async {
-        final engine = VideoPlayerAiroPlaybackEngine();
-        await engine.open(request());
+    test('selectTrack fails typed when no matching track exists', () async {
+      final engine = VideoPlayerAiroPlaybackEngine();
+      await engine.open(request());
 
-        final state = await engine.selectTrack(
-          kind: AiroPlaybackTrackKind.audio,
-          trackId: 'audio-1',
-        );
-        expect(state.error?.code, AiroPlaybackErrorCode.trackUnavailable);
-        await engine.dispose();
-      },
-    );
+      final state = await engine.selectTrack(
+        kind: AiroPlaybackTrackKind.audio,
+        trackId: 'audio-1',
+      );
+      expect(state.error?.code, AiroPlaybackErrorCode.trackUnavailable);
+      await engine.dispose();
+    });
 
     test(
       'external subtitles from open request appear in state.tracks',
@@ -138,13 +135,16 @@ void main() {
       },
     );
 
-    test('diagnostics reports hardware-accelerated after a successful open', () async {
-      final engine = VideoPlayerAiroPlaybackEngine();
-      await engine.open(request());
+    test(
+      'diagnostics reports hardware-accelerated after a successful open',
+      () async {
+        final engine = VideoPlayerAiroPlaybackEngine();
+        await engine.open(request());
 
-      final diagnostics = await engine.diagnostics();
-      expect(diagnostics.hardwareAccelerated, isTrue);
-      await engine.dispose();
-    });
+        final diagnostics = await engine.diagnostics();
+        expect(diagnostics.hardwareAccelerated, isTrue);
+        await engine.dispose();
+      },
+    );
   });
 }

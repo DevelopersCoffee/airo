@@ -231,6 +231,7 @@ class _TvBrowseLayout extends ConsumerWidget {
     void toggleFavorite(IPTVChannel channel) {
       ref.read(toggleChannelFavoriteProvider(channel.id));
     }
+
     final viewport = MediaQuery.sizeOf(context);
     final compactTv = viewport.height < 760 || viewport.width < 1200;
     final denseTv = viewport.height < 650;
@@ -244,9 +245,7 @@ class _TvBrowseLayout extends ConsumerWidget {
         ),
       ),
     );
-    final compactEpgEntries = _compactEpgEntriesByChannel(
-      compactEpg.value,
-    );
+    final compactEpgEntries = _compactEpgEntriesByChannel(compactEpg.value);
 
     return Padding(
       padding: EdgeInsets.fromLTRB(
@@ -1486,11 +1485,8 @@ class _TvChannelCard extends StatelessWidget {
                           channel.group,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: Theme.of(
-                            context,
-                          ).textTheme.bodySmall?.copyWith(
-                            color: colorScheme.onSurfaceVariant,
-                          ),
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(color: colorScheme.onSurfaceVariant),
                         ),
                       ),
                       if (isPlaying)
@@ -1512,11 +1508,7 @@ class _TvChannelCard extends StatelessWidget {
               Positioned(
                 top: 6,
                 right: 6,
-                child: Icon(
-                  Icons.star,
-                  color: colorScheme.primary,
-                  size: 18,
-                ),
+                child: Icon(Icons.star, color: colorScheme.primary, size: 18),
               ),
           ],
         ),
@@ -1611,11 +1603,7 @@ class _TvChannelRow extends StatelessWidget {
               if (isFavorite)
                 Padding(
                   padding: const EdgeInsets.only(right: 8),
-                  child: Icon(
-                    Icons.star,
-                    color: colorScheme.primary,
-                    size: 18,
-                  ),
+                  child: Icon(Icons.star, color: colorScheme.primary, size: 18),
                 ),
               if (!channel.isAudioOnly) const _LivePill(),
               if (isPlaying) ...[
@@ -2090,9 +2078,9 @@ class _EmptyStateChecklistItem extends StatelessWidget {
         const SizedBox(width: 5),
         Text(
           label,
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: colorScheme.onSurfaceVariant,
-          ),
+          style: Theme.of(
+            context,
+          ).textTheme.bodySmall?.copyWith(color: colorScheme.onSurfaceVariant),
         ),
       ],
     );

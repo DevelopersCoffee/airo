@@ -50,8 +50,9 @@ void main() {
     );
   }
 
-  testWidgets('offers Play on TV naming the connected receiver',
-      (tester) async {
+  testWidgets('offers Play on TV naming the connected receiver', (
+    tester,
+  ) async {
     await tester.pumpWidget(hostFor(itemFor()));
 
     expect(find.text('Play on TV'), findsOneWidget);
@@ -59,8 +60,9 @@ void main() {
     expect(find.textContaining('Movie Night'), findsOneWidget);
   });
 
-  testWidgets('successful handoff shows Playing on receiver with stop action',
-      (tester) async {
+  testWidgets('successful handoff shows Playing on receiver with stop action', (
+    tester,
+  ) async {
     await tester.pumpWidget(hostFor(itemFor()));
 
     await tester.tap(find.text('Play on TV'));
@@ -70,22 +72,21 @@ void main() {
     expect(find.text('Stop casting'), findsOneWidget);
   });
 
-  testWidgets('unsupported container shows format-not-supported state',
-      (tester) async {
+  testWidgets('unsupported container shows format-not-supported state', (
+    tester,
+  ) async {
     await tester.pumpWidget(hostFor(itemFor(container: 'avi')));
 
     await tester.tap(find.text('Play on TV'));
     await tester.pumpAndSettle();
 
-    expect(
-      find.text("This format isn't supported by your TV"),
-      findsOneWidget,
-    );
+    expect(find.text("This format isn't supported by your TV"), findsOneWidget);
     expect(find.text('Playing on Fire Stick'), findsNothing);
   });
 
-  testWidgets('failed handoff shows an error state and offers retry',
-      (tester) async {
+  testWidgets('failed handoff shows an error state and offers retry', (
+    tester,
+  ) async {
     final missingFile = PhoneLocalMediaItem(
       filePath: '${tempDir.path}/does_not_exist.mp4',
       title: 'Movie Night',

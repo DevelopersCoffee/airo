@@ -97,7 +97,10 @@ class _EmptyState extends StatelessWidget {
         children: [
           Icon(Icons.movie_filter, size: 64, color: Colors.grey),
           SizedBox(height: 16),
-          Text('No movies or shows found', style: TextStyle(color: Colors.grey)),
+          Text(
+            'No movies or shows found',
+            style: TextStyle(color: Colors.grey),
+          ),
         ],
       ),
     );

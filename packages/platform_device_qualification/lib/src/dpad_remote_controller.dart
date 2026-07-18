@@ -4,15 +4,14 @@ import 'package:flutter/services.dart';
 class DpadRemoteController extends StatelessWidget {
   final VoidCallback? onBackPress;
 
-  const DpadRemoteController({
-    super.key,
-    this.onBackPress,
-  });
+  const DpadRemoteController({super.key, this.onBackPress});
 
   void _sendKey(LogicalKeyboardKey logicalKey) {
     final physicalKey = _mapLogicalToPhysical(logicalKey);
     if (physicalKey == null) return;
-    final timeStamp = Duration(milliseconds: DateTime.now().millisecondsSinceEpoch);
+    final timeStamp = Duration(
+      milliseconds: DateTime.now().millisecondsSinceEpoch,
+    );
 
     // Modern Flutter key event simulation
     // Send KeyDownEvent
@@ -38,9 +37,12 @@ class DpadRemoteController extends StatelessWidget {
 
   PhysicalKeyboardKey? _mapLogicalToPhysical(LogicalKeyboardKey key) {
     if (key == LogicalKeyboardKey.arrowUp) return PhysicalKeyboardKey.arrowUp;
-    if (key == LogicalKeyboardKey.arrowDown) return PhysicalKeyboardKey.arrowDown;
-    if (key == LogicalKeyboardKey.arrowLeft) return PhysicalKeyboardKey.arrowLeft;
-    if (key == LogicalKeyboardKey.arrowRight) return PhysicalKeyboardKey.arrowRight;
+    if (key == LogicalKeyboardKey.arrowDown)
+      return PhysicalKeyboardKey.arrowDown;
+    if (key == LogicalKeyboardKey.arrowLeft)
+      return PhysicalKeyboardKey.arrowLeft;
+    if (key == LogicalKeyboardKey.arrowRight)
+      return PhysicalKeyboardKey.arrowRight;
     if (key == LogicalKeyboardKey.enter) return PhysicalKeyboardKey.enter;
     if (key == LogicalKeyboardKey.escape) return PhysicalKeyboardKey.escape;
     if (key == LogicalKeyboardKey.space) return PhysicalKeyboardKey.space;
@@ -58,11 +60,7 @@ class DpadRemoteController extends StatelessWidget {
         borderRadius: BorderRadius.circular(24),
         border: Border.all(color: Colors.grey[800]!, width: 2),
         boxShadow: const [
-          BoxShadow(
-            color: Colors.black45,
-            blurRadius: 10,
-            spreadRadius: 2,
-          ),
+          BoxShadow(color: Colors.black45, blurRadius: 10, spreadRadius: 2),
         ],
       ),
       child: Material(
@@ -243,11 +241,7 @@ class _IconButton extends StatelessWidget {
         borderRadius: BorderRadius.circular(100),
         child: Container(
           padding: const EdgeInsets.all(8),
-          child: Icon(
-            icon,
-            color: color ?? Colors.white,
-            size: 20,
-          ),
+          child: Icon(icon, color: color ?? Colors.white, size: 20),
         ),
       ),
     );
@@ -258,10 +252,7 @@ class _TextButton extends StatelessWidget {
   final String text;
   final VoidCallback onTap;
 
-  const _TextButton({
-    required this.text,
-    required this.onTap,
-  });
+  const _TextButton({required this.text, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -291,10 +282,7 @@ class _DpadButton extends StatelessWidget {
   final IconData icon;
   final VoidCallback onTap;
 
-  const _DpadButton({
-    required this.icon,
-    required this.onTap,
-  });
+  const _DpadButton({required this.icon, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -304,11 +292,7 @@ class _DpadButton extends StatelessWidget {
       child: Container(
         width: 44,
         height: 44,
-        child: Icon(
-          icon,
-          color: Colors.white,
-          size: 32,
-        ),
+        child: Icon(icon, color: Colors.white, size: 32),
       ),
     );
   }

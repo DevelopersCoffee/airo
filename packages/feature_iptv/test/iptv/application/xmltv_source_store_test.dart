@@ -27,39 +27,60 @@ void main() {
     expect(loaded?.lastError, isNull);
   });
 
-  test('recordRefreshSuccess sets lastRefreshedAt and clears lastError', () async {
-    await store.save(const XmltvSourceConfig(url: 'https://example.com/guide.xml', lastError: 'timed out'));
-    final refreshedAt = DateTime.utc(2026, 7, 17, 12);
+  test(
+    'recordRefreshSuccess sets lastRefreshedAt and clears lastError',
+    () async {
+      await store.save(
+        const XmltvSourceConfig(
+          url: 'https://example.com/guide.xml',
+          lastError: 'timed out',
+        ),
+      );
+      final refreshedAt = DateTime.utc(2026, 7, 17, 12);
 
-    await store.recordRefreshSuccess(refreshedAt);
-    final loaded = await store.load();
+      await store.recordRefreshSuccess(refreshedAt);
+      final loaded = await store.load();
 
-    expect(loaded?.lastRefreshedAt, refreshedAt);
-    expect(loaded?.lastError, isNull);
-  });
+      expect(loaded?.lastRefreshedAt, refreshedAt);
+      expect(loaded?.lastError, isNull);
+    },
+  );
 
-  test('recordRefreshError sets lastError, keeps prior lastRefreshedAt', () async {
-    final refreshedAt = DateTime.utc(2026, 7, 17, 12);
-    await store.save(XmltvSourceConfig(url: 'https://example.com/guide.xml', lastRefreshedAt: refreshedAt));
+  test(
+    'recordRefreshError sets lastError, keeps prior lastRefreshedAt',
+    () async {
+      final refreshedAt = DateTime.utc(2026, 7, 17, 12);
+      await store.save(
+        XmltvSourceConfig(
+          url: 'https://example.com/guide.xml',
+          lastRefreshedAt: refreshedAt,
+        ),
+      );
 
-    await store.recordRefreshError('connection reset');
-    final loaded = await store.load();
+      await store.recordRefreshError('connection reset');
+      final loaded = await store.load();
 
-    expect(loaded?.lastError, 'connection reset');
-    expect(loaded?.lastRefreshedAt, refreshedAt);
-  });
+      expect(loaded?.lastError, 'connection reset');
+      expect(loaded?.lastRefreshedAt, refreshedAt);
+    },
+  );
 
   test('clear removes the configured source', () async {
-    await store.save(const XmltvSourceConfig(url: 'https://example.com/guide.xml'));
+    await store.save(
+      const XmltvSourceConfig(url: 'https://example.com/guide.xml'),
+    );
 
     await store.clear();
 
     expect(await store.load(), isNull);
   });
 
-  test('recordRefreshSuccess/Error is a no-op when no source is configured', () async {
-    await store.recordRefreshSuccess(DateTime.utc(2026, 7, 17));
+  test(
+    'recordRefreshSuccess/Error is a no-op when no source is configured',
+    () async {
+      await store.recordRefreshSuccess(DateTime.utc(2026, 7, 17));
 
-    expect(await store.load(), isNull);
-  });
+      expect(await store.load(), isNull);
+    },
+  );
 }

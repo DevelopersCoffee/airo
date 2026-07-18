@@ -15,9 +15,7 @@ void main() {
     const extra = SizedBox(key: ValueKey('pip-toggle'));
     final container = ProviderContainer(
       overrides: [
-        playbackSettingsExtraSectionsProvider.overrideWithValue(const [
-          extra,
-        ]),
+        playbackSettingsExtraSectionsProvider.overrideWithValue(const [extra]),
       ],
     );
     addTearDown(container.dispose);

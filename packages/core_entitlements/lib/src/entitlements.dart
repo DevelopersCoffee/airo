@@ -54,10 +54,9 @@ class LaunchPromoEntitlements implements Entitlements {
   bool isEnabled(ProFeature feature) => true;
 
   @override
-  Stream<Set<ProFeature>> get changes =>
-      Stream<Set<ProFeature>>.value(Set<ProFeature>.unmodifiable(
-        ProFeature.values.toSet(),
-      ));
+  Stream<Set<ProFeature>> get changes => Stream<Set<ProFeature>>.value(
+    Set<ProFeature>.unmodifiable(ProFeature.values.toSet()),
+  );
 }
 
 /// Deny-all implementation for tests and lite builds.

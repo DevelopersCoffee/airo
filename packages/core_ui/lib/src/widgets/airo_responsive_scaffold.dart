@@ -158,8 +158,7 @@ class AiroResponsiveScaffold extends StatelessWidget {
       content = loadingWidget ?? const Center(child: LoadingIndicator());
     } else if (errorMessage != null) {
       content =
-          errorWidget ??
-          ErrorView(message: errorMessage!, onRetry: onRetry);
+          errorWidget ?? ErrorView(message: errorMessage!, onRetry: onRetry);
     } else if (isEmpty) {
       content =
           emptyWidget ??

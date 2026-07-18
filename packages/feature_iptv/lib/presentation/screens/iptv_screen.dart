@@ -329,7 +329,7 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen> {
         onMovies: () => widget.onOpenVod?.call(),
       ),
       appBar: AppBar(
-        title: const Text('Airo TV'),
+        title: const Text('Stream'),
         actions: [
           IconButton(
             icon: const Icon(Icons.search),
@@ -826,9 +826,7 @@ class _PlaylistSourceInfoCallout extends StatelessWidget {
     return DecoratedBox(
       decoration: BoxDecoration(
         color: colorScheme.primaryContainer.withValues(alpha: 0.28),
-        border: Border.all(
-          color: colorScheme.primary.withValues(alpha: 0.35),
-        ),
+        border: Border.all(color: colorScheme.primary.withValues(alpha: 0.35)),
         borderRadius: BorderRadius.circular(11),
       ),
       child: Padding(

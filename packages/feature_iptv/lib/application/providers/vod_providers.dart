@@ -10,7 +10,9 @@ final vodWatchHistoryStorageProvider = Provider<VodWatchHistoryStorage>((ref) {
   return VodWatchHistoryStorage(ref.watch(sharedPreferencesProvider));
 });
 
-final _m3uVodAdapterProvider = Provider<M3uVodAdapter>((ref) => M3uVodAdapter());
+final _m3uVodAdapterProvider = Provider<M3uVodAdapter>(
+  (ref) => M3uVodAdapter(),
+);
 
 /// VOD entries extracted from the M3U channel list `iptvChannelsProvider`
 /// has already fetched — no separate network call. A live Xtream source's

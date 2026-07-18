@@ -3,9 +3,8 @@ import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 
-typedef FakeResponseBuilder = Response<dynamic> Function(
-  RequestOptions options,
-);
+typedef FakeResponseBuilder =
+    Response<dynamic> Function(RequestOptions options);
 
 /// Matches outgoing requests by [RequestOptions.path] (the path argument
 /// passed to `dio.get(...)`, not the full URL) against a handler map, and
