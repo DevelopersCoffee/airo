@@ -81,12 +81,25 @@ void main() {
   testWidgets(
     'subtitle button is visible and calls selectTrack when tracks exist',
     (tester) async {
+      // Two subtitle tracks are configured (not one) so the auto-selected
+      // default (the first track, per FakeAiroPlaybackEngine's
+      // _initialTrackSelection) is provably different from the track the
+      // test taps (the second one). With only one track, the post-tap
+      // assertion would pass identically whether or not the tap actually
+      // drove service.selectTrack() — it would pass even if the sheet's
+      // onTap only called Navigator.pop().
       final engine = FakeAiroPlaybackEngine(
         tracks: const [
           AiroPlaybackTrackOption(
             id: 'external_sub_0',
             kind: AiroPlaybackTrackKind.subtitle,
             label: 'English',
+            isExternal: true,
+          ),
+          AiroPlaybackTrackOption(
+            id: 'external_sub_1',
+            kind: AiroPlaybackTrackKind.subtitle,
+            label: 'French',
             isExternal: true,
           ),
         ],
@@ -118,6 +131,14 @@ void main() {
         findsOneWidget,
       );
 
+      // Make the pre-tap state explicit: the engine auto-selects the first
+      // track of each kind on open, so at this point the subtitle selection
+      // is already 'external_sub_0' — before the test has tapped anything.
+      expect(
+        service.currentState.selectedTrackIds[AiroPlaybackTrackKind.subtitle],
+        'external_sub_0',
+      );
+
       // A fixed-duration pump — not pumpAndSettle() — because playChannel()
       // leaves a 1s periodic buffer-monitor timer running, which would
       // otherwise keep scheduling frames forever and make pumpAndSettle()
@@ -128,14 +149,19 @@ void main() {
       await tester.pump(const Duration(milliseconds: 300));
 
       expect(find.text('English'), findsOneWidget);
+      expect(find.text('French'), findsOneWidget);
 
-      await tester.tap(find.text('English'));
+      // Tap the track that is NOT already auto-selected ('French'). Tapping
+      // the already-selected 'English' track wouldn't prove the tap drove a
+      // real state transition, since selectedTrackIds would already read
+      // 'external_sub_0' regardless of whether the tap did anything.
+      await tester.tap(find.text('French'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
 
       expect(
         service.currentState.selectedTrackIds[AiroPlaybackTrackKind.subtitle],
-        'external_sub_0',
+        'external_sub_1',
       );
 
       // See comment in the test above — stop the periodic timers before
