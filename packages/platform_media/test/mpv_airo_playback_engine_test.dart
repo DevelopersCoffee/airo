@@ -199,5 +199,17 @@ void main() {
       await engine.dispose();
       expect(capturedFake!.disposed, isTrue);
     });
+
+    test('buildView always returns null (no media_kit_video dependency yet)', () async {
+      final engine = MpvAiroPlaybackEngine(
+        playerFactory: FakeMpvPlayerFacade.new,
+      );
+      expect(engine.buildView(), isNull);
+
+      await engine.open(request());
+      expect(engine.buildView(), isNull);
+
+      await engine.dispose();
+    });
   });
 }
