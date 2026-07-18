@@ -669,11 +669,14 @@ Add to `packages/platform_media/test/video_player_airo_playback_engine_test.dart
         fakePlatform.emitBufferingEnd();
         await Future<void>.delayed(Duration.zero);
 
-        // bufferedRanges is always a list (possibly empty in the fake, since
-        // FakeVideoPlayerPlatform doesn't script buffered DurationRanges) —
-        // the assertion proves the field is populated from controller.value
-        // without throwing, not a specific non-empty value.
-        expect(engine.currentState.bufferedRanges, isA<List>());
+        // FakeVideoPlayerPlatform never scripts buffered DurationRanges, so
+        // VideoPlayerController.value.buffered stays at its default empty
+        // list — deterministically empty here, proving the field is read
+        // from controller.value without throwing rather than left stale
+        // from construction (it would also be empty pre-listener, so this
+        // alone doesn't prove wiring; combined with the phase-transition
+        // test above, which does observably change, it's sufficient).
+        expect(engine.currentState.bufferedRanges, isEmpty);
 
         await engine.dispose();
       },
@@ -1110,22 +1113,31 @@ void main() {
       detector.dispose();
     });
 
-    test('vod content (known finite duration) reports isLiveStream false', () async {
-      await engine.open(request());
-      // FakeAiroPlaybackEngine doesn't set a duration by default, so we
-      // simulate a VOD-shaped state directly via a second fake instance
-      // that starts with an explicit finite duration.
-      LiveEdgeState? received;
-      detector.onStateUpdate = (s) => received = s;
-      detector.attachToEngine(engine);
+    test(
+      'engine state with null/zero duration is classified as live',
+      () async {
+        await engine.open(request());
+        // FakeAiroPlaybackEngine never sets a duration on open (stays null),
+        // and _updateLiveEdgeState treats a null duration as Duration.zero —
+        // which _detectLiveStream's heuristic classifies as live. This is
+        // the only duration shape FakeAiroPlaybackEngine can produce without
+        // extending it, so this test covers the live branch; the VOD branch
+        // (finite, non-trivial duration) is exercised end-to-end by Task 7's
+        // VideoPlayerStreamingService characterization tests instead, since
+        // proving it here would need platform_media's
+        // VideoPlayerAiroPlaybackEngine + FakeVideoPlayerPlatform, which
+        // platform_streams cannot depend on without a package-layering cycle
+        // (platform_media already depends on platform_streams).
+        LiveEdgeState? received;
+        detector.onStateUpdate = (s) => received = s;
+        detector.attachToEngine(engine);
 
-      await Future<void>.delayed(const Duration(milliseconds: 100));
+        await Future<void>.delayed(const Duration(milliseconds: 100));
 
-      // Zero duration (FakeAiroPlaybackEngine's default) is treated as live
-      // per the existing _detectLiveStream heuristic — this proves the
-      // detector is reading engine state at all.
-      expect(received, isNotNull);
-    });
+        expect(received, isNotNull);
+        expect(received!.isLiveStream, isTrue);
+      },
+    );
 
     test('detach stops receiving further updates', () async {
       await engine.open(request());
@@ -1842,6 +1854,72 @@ void main() {
       // Not applied yet — still empty until the next playChannel.
       expect(service.currentState.tracks, isEmpty);
     });
+  });
+
+  group('VideoPlayerStreamingService DVR/live-edge/buffer-health regression', () {
+    test(
+      'a stream with a large finite duration is classified as VOD (isLiveStream false)',
+      () async {
+        final vodService = VideoPlayerStreamingService(
+          engine: VideoPlayerAiroPlaybackEngine(),
+          liveEdgeConfig: const LiveEdgeConfig(
+            updateInterval: Duration(milliseconds: 50),
+          ),
+        );
+        addTearDown(vodService.dispose);
+
+        fakePlatform = FakeVideoPlayerPlatform(
+          fakeDuration: const Duration(minutes: 90),
+        );
+        VideoPlayerPlatform.instance = fakePlatform;
+
+        await vodService.playChannel(channel());
+        await Future<void>.delayed(const Duration(milliseconds: 150));
+
+        expect(vodService.currentState.isLiveStream, isFalse);
+      },
+    );
+
+    test(
+      'a stream with zero duration is classified as live (isLiveStream true)',
+      () async {
+        final liveService = VideoPlayerStreamingService(
+          engine: VideoPlayerAiroPlaybackEngine(),
+          liveEdgeConfig: const LiveEdgeConfig(
+            updateInterval: Duration(milliseconds: 50),
+          ),
+        );
+        addTearDown(liveService.dispose);
+
+        fakePlatform = FakeVideoPlayerPlatform(fakeDuration: Duration.zero);
+        VideoPlayerPlatform.instance = fakePlatform;
+
+        await liveService.playChannel(channel());
+        await Future<void>.delayed(const Duration(milliseconds: 150));
+
+        expect(liveService.currentState.isLiveStream, isTrue);
+      },
+    );
+
+    test(
+      'buffer-health monitor recalculates bufferHealth from the default 100',
+      () async {
+        // BufferStatus() defaults bufferHealth to 100 (the pristine,
+        // pre-timer value). FakeVideoPlayerPlatform never scripts buffered
+        // DurationRanges, so bufferedAhead is deterministically zero once
+        // the 1s Timer.periodic in _startBufferMonitoring ticks — driving
+        // bufferHealth to 0 (0 / targetBufferDuration * 100). Seeing 0
+        // instead of the untouched default of 100 is what proves the timer
+        // actually ran, not just that BufferStatus has a value.
+        await service.playChannel(channel());
+        expect(service.currentState.bufferStatus.bufferHealth, 100);
+
+        await Future<void>.delayed(const Duration(milliseconds: 1100));
+
+        expect(service.currentState.bufferStatus.bufferHealth, 0);
+      },
+      timeout: const Timeout(Duration(seconds: 5)),
+    );
   });
 }
 ```
