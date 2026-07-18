@@ -127,6 +127,28 @@ void main() {
         expect(flavors[ChannelFlavor.sports], 1);
       });
 
+      test('excludes channels in a hidden group (CV-021)', () async {
+        final container = ProviderContainer(
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(
+              await SharedPreferences.getInstance(),
+            ),
+            iptvChannelsProvider.overrideWith((ref) async => _channels),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        await container.read(iptvChannelsProvider.future);
+        await container.read(hiddenGroupsStorageProvider).hideGroup('Sports');
+        container.invalidate(hiddenGroupIdsProvider);
+        await container.read(hiddenGroupIdsProvider.future);
+
+        final filtered = container.read(filteredChannelsProvider);
+
+        expect(filtered.any((c) => c.group == 'Sports'), isFalse);
+        expect(filtered.length, _channels.length - 1);
+      });
+
       test(
         'provider retained channel lists fit constrained TV budget',
         () async {

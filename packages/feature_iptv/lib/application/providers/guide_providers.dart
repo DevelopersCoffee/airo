@@ -74,13 +74,17 @@ final guideEpgOverridesProvider = FutureProvider<Map<String, String>>((
 final guideEpgWindowProvider = FutureProvider<CompactEpgWindow>((ref) async {
   final channels = await ref.watch(iptvChannelsProvider.future);
   final overrides = await ref.watch(guideEpgOverridesProvider.future);
+  final hiddenGroupIds = await ref.watch(hiddenGroupIdsProvider.future);
   final windowStart = ref.watch(guideWindowStartProvider);
   final windowDuration = ref.watch(guideWindowDurationProvider);
   final now = DateTime.now().toUtc();
 
+  // CV-021: hidden groups never surface in the guide, so don't spend an EPG
+  // query on them either.
   final epgIdToChannelId = <String, String>{};
   final queryIds = <String>[];
   for (final channel in channels) {
+    if (hiddenGroupIds.contains(channel.group)) continue;
     final epgId = overrides[channel.id] ?? channel.id;
     epgIdToChannelId[epgId] = channel.id;
     queryIds.add(epgId);
@@ -128,6 +132,13 @@ final guideSearchQueryProvider = StateProvider<String>((ref) => '');
 final guideFilteredChannelsProvider = Provider<List<IPTVChannel>>((ref) {
   final index = ref.watch(channelSearchIndexProvider);
   final query = ref.watch(guideSearchQueryProvider);
+  final hiddenGroupIds =
+      ref.watch(hiddenGroupIdsProvider).value ?? const <String>{};
   if (index == null) return const [];
-  return index.filterAndSort(query: query);
+
+  final channels = index.filterAndSort(query: query);
+  if (hiddenGroupIds.isEmpty) return channels;
+  return channels
+      .where((channel) => !hiddenGroupIds.contains(channel.group))
+      .toList(growable: false);
 });

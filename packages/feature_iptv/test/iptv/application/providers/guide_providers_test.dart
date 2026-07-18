@@ -140,6 +140,84 @@ void main() {
     },
   );
 
+  test(
+    'guideFilteredChannelsProvider excludes channels in a hidden group (CV-021)',
+    () async {
+      const other = IPTVChannel(
+        id: 'channel-2',
+        name: 'Second Channel',
+        streamUrl: 'https://example.com/2.m3u8',
+        group: 'Sports',
+      );
+      final container = buildContainer(channels: const [channel, other]);
+      addTearDown(container.dispose);
+
+      await container.read(iptvChannelsProvider.future);
+      await container.read(hiddenGroupsStorageProvider).hideGroup('Sports');
+      container.invalidate(hiddenGroupIdsProvider);
+      await container.read(hiddenGroupIdsProvider.future);
+
+      final filtered = container.read(guideFilteredChannelsProvider);
+
+      expect(filtered.map((c) => c.id), ['channel-1']);
+    },
+  );
+
+  test(
+    'guideEpgWindowProvider does not query EPG for channels in a hidden group (CV-021)',
+    () async {
+      const other = IPTVChannel(
+        id: 'channel-2',
+        name: 'Second Channel',
+        streamUrl: 'https://example.com/2.m3u8',
+        group: 'Sports',
+      );
+      final now = DateTime.now().toUtc();
+      final inner = InMemoryCompactEpgRepository(
+        seed: CompactEpgSlice(
+          entries: [
+            CompactEpgEntry(
+              channelId: 'channel-1',
+              channelName: 'Example Channel',
+              current: CompactEpgProgram(
+                programId: 'p1',
+                title: 'Now Showing',
+                startsAt: now.subtract(const Duration(minutes: 5)),
+                endsAt: now.add(const Duration(minutes: 25)),
+              ),
+            ),
+            CompactEpgEntry(
+              channelId: 'channel-2',
+              channelName: 'Second Channel',
+              current: CompactEpgProgram(
+                programId: 'p2',
+                title: 'Match Highlights',
+                startsAt: now.subtract(const Duration(minutes: 5)),
+                endsAt: now.add(const Duration(minutes: 25)),
+              ),
+            ),
+          ],
+          generatedAt: now,
+          expiresAt: now.add(const Duration(hours: 1)),
+          source: CompactEpgSliceSource.localCache,
+        ),
+      );
+      final container = buildContainer(
+        channels: const [channel, other],
+        epgRepository: inner,
+      );
+      addTearDown(container.dispose);
+
+      await container.read(hiddenGroupsStorageProvider).hideGroup('Sports');
+      container.invalidate(hiddenGroupIdsProvider);
+
+      final window = await container.read(guideEpgWindowProvider.future);
+
+      expect(window.entryForChannel('channel-1')?.programs, isNotEmpty);
+      expect(window.entryForChannel('channel-2'), isNull);
+    },
+  );
+
   test('guideWindowStartProvider floors to the nearest 30 minutes', () {
     final container = buildContainer();
     addTearDown(container.dispose);
