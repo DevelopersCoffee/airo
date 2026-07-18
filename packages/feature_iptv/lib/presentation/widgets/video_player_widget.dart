@@ -218,7 +218,7 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
       _updateWakelockForPlayback(state);
     });
 
-    final controller = service.controller;
+    final videoView = service.buildVideoView();
 
     return MouseRegion(
       onHover: (_) => _showControls(),
@@ -231,15 +231,11 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
             alignment: Alignment.center,
             children: [
               // Video display
-              if (controller != null && controller.value.isInitialized)
+              if (videoView != null)
                 SizedBox.expand(
                   child: FittedBox(
                     fit: _boxFitFor(aspectRatioFit),
-                    child: SizedBox(
-                      width: controller.value.size.width,
-                      height: controller.value.size.height,
-                      child: VideoPlayer(controller),
-                    ),
+                    child: videoView,
                   ),
                 )
               else if (state.playbackState == PlaybackState.loading)
