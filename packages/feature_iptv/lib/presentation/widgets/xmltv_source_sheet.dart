@@ -1,3 +1,4 @@
+import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -90,7 +91,15 @@ class _XmltvSourceSheetState extends ConsumerState<XmltvSourceSheet> {
                       style: TextStyle(color: Theme.of(context).colorScheme.error),
                     ),
                   ],
-                  TextButton(onPressed: _removeSource, child: const Text('Remove source')),
+                  TvFocusable(
+                    onSelect: _removeSource,
+                    semanticLabel: 'Remove source',
+                    semanticButton: true,
+                    child: TextButton(
+                      onPressed: _removeSource,
+                      child: const Text('Remove source'),
+                    ),
+                  ),
                 ],
               );
             },
@@ -105,11 +114,16 @@ class _XmltvSourceSheetState extends ConsumerState<XmltvSourceSheet> {
             ),
           ),
           const SizedBox(height: 8),
-          FilledButton(
-            onPressed: _isRefreshing ? null : _saveAndRefresh,
-            child: _isRefreshing
-                ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                : const Text('Save & Refresh'),
+          TvFocusable(
+            onSelect: _isRefreshing ? null : _saveAndRefresh,
+            semanticLabel: 'Save & Refresh',
+            semanticButton: true,
+            child: FilledButton(
+              onPressed: _isRefreshing ? null : _saveAndRefresh,
+              child: _isRefreshing
+                  ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                  : const Text('Save & Refresh'),
+            ),
           ),
           if (_refreshFeedback != null) ...[
             const SizedBox(height: 8),
