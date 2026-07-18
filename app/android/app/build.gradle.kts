@@ -153,6 +153,18 @@ android {
                 res.srcDir("src/tv/res")
             }
             kotlin.srcDir("src/main/kotlin")
+            // Pick the real LiteRT-LM plugin only when the private Maven
+            // dependency was resolvable (see `app/android/build.gradle.kts`).
+            // Otherwise compile a stub with the same class name that
+            // reports the feature as unavailable so the rest of the
+            // Kotlin source (MainActivity + MethodChannel wiring) still
+            // compiles without the com.google.ai.edge.litertlm.* imports.
+            val liteRtLmAvailable =
+                rootProject.extra.get("liteRtLmAvailable") as Boolean
+            kotlin.srcDir(
+                if (liteRtLmAvailable) "src/withLitertlm/kotlin"
+                else "src/withoutLitertlm/kotlin",
+            )
         }
     }
 
