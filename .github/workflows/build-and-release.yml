@@ -432,68 +432,10 @@ jobs:
 
   # ============================================
   # Build iOS
-  # NOTE: Currently disabled due to stockfish NNUE file issue (see issue #51)
-  # The stockfish package fails to compile on iOS because NNUE files are not embedded
-  # ============================================
-  build-ios:
-    runs-on: macos-latest
-    needs: changelog
-    # Allow iOS build to fail - stockfish has NNUE embedding issues on iOS
-    continue-on-error: true
-    steps:
-      - uses: actions/checkout@v7
-
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: ${{ env.FLUTTER_VERSION }}
-          channel: 'stable'
-          cache: true
-
-      - name: Cache pub dependencies
-        uses: actions/cache@v6
-        with:
-          path: ~/.pub-cache
-          key: pub-${{ runner.os }}-${{ hashFiles('**/pubspec.lock') }}
-          restore-keys: pub-${{ runner.os }}-
-
-      - name: Get dependencies
-        run: |
-          cd packages/core_domain && flutter pub get
-          cd ../core_ui && flutter pub get
-          cd ../core_data && flutter pub get
-          cd ../core_ai && flutter pub get
-          cd ../core_auth && flutter pub get
-          cd ../../app && flutter pub get
-
-      - name: Run code generation
-        run: |
-          cd app
-          dart run build_runner build --delete-conflicting-outputs
-
-      - name: Build iOS
-        run: |
-          flutter config --no-enable-swift-package-manager
-          cd app
-          flutter build ios --release --no-codesign \
-            --dart-define=ENV=prod \
-            --dart-define=DEMO_MODE=false
-
-      - name: Create IPA
-        run: |
-          VERSION="${{ needs.changelog.outputs.version }}"
-          cd app/build/ios/Release-iphoneos
-          mkdir -p Payload
-          mv Runner.app Payload/
-          zip -r -q "airo-${VERSION}-ios.ipa" Payload
-          mv "airo-${VERSION}-ios.ipa" ../../../
-
-      - name: Upload IPA
-        uses: actions/upload-artifact@v7
-        with:
-          name: ios-ipa
-          path: app/airo-*-ios.ipa
-
+  # NOTE: Removed from release pipeline. iOS/iPadOS builds need proper
+  # signing + TestFlight/App Store distribution to be installable/testable —
+  # an unsigned IPA dropped on a GitHub release page isn't usable. Re-add
+  # once a real iOS distribution path exists.
   # ============================================
   # Build Web
   # ============================================
@@ -665,7 +607,7 @@ jobs:
   # Create GitHub Release
   # ============================================
   create-release:
-    needs: [changelog, build-android-arm64, build-android-arm32, build-android-x64, build-ios, build-web, build-windows, build-linux]
+    needs: [changelog, build-android-arm64, build-android-arm32, build-android-x64, build-web, build-windows, build-linux]
     runs-on: ubuntu-latest
     # Always run release creation, even if some builds fail (iOS/Android have known issues)
     if: always() && needs.changelog.result == 'success'
@@ -709,12 +651,9 @@ jobs:
           | Android | `airo-{version}-armeabi-v7a.apk` | For older 32-bit devices |
           | Android | `airo-{version}-x86_64.apk` | For emulators/Chromebooks |
           | Android | `airo-{version}.aab` | For Google Play Store |
-          | iOS | `airo-{version}-ios.ipa` | Requires signing (may be unavailable) |
           | Web | `airo-{version}-web.zip` | Run in browser |
           | Windows | `airo-{version}-windows-x64.zip` | Windows 10/11 |
           | Linux | `airo-{version}-linux-x64.tar.gz` | Linux x64 |
-
-          > **Note**: iOS build may be unavailable due to a known upstream issue with the Stockfish chess engine package.
 
           ## 🚀 Quick Start
 
@@ -775,7 +714,6 @@ jobs:
             "android-apk-arm64/airo-*-arm64-v8a.apk" \
             "android-apk-arm32/airo-*-armeabi-v7a.apk" \
             "android-aab/airo-*.aab" \
-            "ios-ipa/airo-*-ios.ipa" \
             "web-build/airo-*-web.zip" \
             "windows-build/airo-*-windows-x64.zip" \
             "linux-build/airo-*-linux-x64.tar.gz"; do
@@ -802,7 +740,6 @@ jobs:
             android-apk-arm64/airo-*-arm64-v8a.apk
             android-apk-arm32/airo-*-armeabi-v7a.apk
             android-aab/airo-*.aab
-            ios-ipa/airo-*-ios.ipa
             web-build/airo-*-web.zip
             windows-build/airo-*-windows-x64.zip
             linux-build/airo-*-linux-x64.tar.gz
