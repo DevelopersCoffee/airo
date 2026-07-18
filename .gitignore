@@ -120,3 +120,16 @@ iptv-data/output/reports/
 rust/target/
 
 .worktrees/
+
+# Agent skills (installed globally / by plugins — not project source)
+.claude/skills/
+.claude/plugins/
+.agents/skills/
+.augment/skills/
+skills-lock.json
+
+# IDE-generated workspace descriptors
+*.iml
+
+# Release artifacts staging directory
+artifacts/release/

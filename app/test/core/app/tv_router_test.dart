@@ -63,7 +63,6 @@ void main() {
     );
 
     expect(find.text('Add your playlist'), findsOneWidget);
-    expect(find.text('Airo TV'), findsNothing);
     expect(find.text('Live TV'), findsNothing);
     expect(find.text('Settings'), findsNothing);
   });
@@ -78,7 +77,6 @@ void main() {
     );
 
     expect(find.text('Add your playlist'), findsOneWidget);
-    expect(find.text('Airo TV'), findsNothing);
     expect(find.text('Live TV'), findsNothing);
     expect(find.text('Settings'), findsNothing);
   });

@@ -14,8 +14,7 @@ class _FakeXtreamClient implements XtreamClient {
   }) async => _listingsByStreamId[streamId] ?? const [];
 
   @override
-  dynamic noSuchMethod(Invocation invocation) =>
-      super.noSuchMethod(invocation);
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 void main() {
@@ -37,36 +36,36 @@ void main() {
     streamId: 101,
   );
 
-  test('loadCurrentNext maps listings into current/next per mapped channel', () async {
-    final client = _FakeXtreamClient({
-      101: [currentListing, nextListing],
-    });
-    final repo = XtreamEpgRepository(
-      client,
-      channelIdToStreamId: (channelId) =>
-          channelId == 'xtream-101' ? 101 : null,
-    );
+  test(
+    'loadCurrentNext maps listings into current/next per mapped channel',
+    () async {
+      final client = _FakeXtreamClient({
+        101: [currentListing, nextListing],
+      });
+      final repo = XtreamEpgRepository(
+        client,
+        channelIdToStreamId: (channelId) =>
+            channelId == 'xtream-101' ? 101 : null,
+      );
 
-    final slice = await repo.loadCurrentNext(
-      channelIds: ['xtream-101'],
-      now: now,
-    );
+      final slice = await repo.loadCurrentNext(
+        channelIds: ['xtream-101'],
+        now: now,
+      );
 
-    expect(slice.entries, hasLength(1));
-    final entry = slice.entries.single;
-    expect(entry.channelId, 'xtream-101');
-    expect(entry.current?.title, 'Evening News');
-    expect(entry.next?.title, 'Late Show');
-  });
+      expect(slice.entries, hasLength(1));
+      final entry = slice.entries.single;
+      expect(entry.channelId, 'xtream-101');
+      expect(entry.current?.title, 'Evening News');
+      expect(entry.next?.title, 'Late Show');
+    },
+  );
 
   test('loadCurrentNext skips channels with no stream_id mapping', () async {
     final client = _FakeXtreamClient({
       101: [currentListing],
     });
-    final repo = XtreamEpgRepository(
-      client,
-      channelIdToStreamId: (_) => null,
-    );
+    final repo = XtreamEpgRepository(client, channelIdToStreamId: (_) => null);
 
     final slice = await repo.loadCurrentNext(
       channelIds: ['xtream-unknown'],
@@ -76,30 +75,30 @@ void main() {
     expect(slice.entries, isEmpty);
   });
 
-  test('loadWindow returns only programmes intersecting the query window', () async {
-    final client = _FakeXtreamClient({
-      101: [currentListing, nextListing],
-    });
-    final repo = XtreamEpgRepository(
-      client,
-      channelIdToStreamId: (channelId) =>
-          channelId == 'xtream-101' ? 101 : null,
-    );
-    final query = GuideWindowQuery(
-      channelIds: ['xtream-101'],
-      windowStart: DateTime.utc(2026, 7, 16, 18, 0),
-      windowEnd: DateTime.utc(2026, 7, 16, 18, 35),
-      now: now,
-    );
+  test(
+    'loadWindow returns only programmes intersecting the query window',
+    () async {
+      final client = _FakeXtreamClient({
+        101: [currentListing, nextListing],
+      });
+      final repo = XtreamEpgRepository(
+        client,
+        channelIdToStreamId: (channelId) =>
+            channelId == 'xtream-101' ? 101 : null,
+      );
+      final query = GuideWindowQuery(
+        channelIds: ['xtream-101'],
+        windowStart: DateTime.utc(2026, 7, 16, 18, 0),
+        windowEnd: DateTime.utc(2026, 7, 16, 18, 35),
+        now: now,
+      );
 
-    final window = await repo.loadWindow(query);
+      final window = await repo.loadWindow(query);
 
-    expect(window.entries, hasLength(1));
-    final entry = window.entries.single;
-    expect(entry.programs, hasLength(2));
-    expect(entry.programs.map((p) => p.title), [
-      'Evening News',
-      'Late Show',
-    ]);
-  });
+      expect(window.entries, hasLength(1));
+      final entry = window.entries.single;
+      expect(entry.programs, hasLength(2));
+      expect(entry.programs.map((p) => p.title), ['Evening News', 'Late Show']);
+    },
+  );
 }

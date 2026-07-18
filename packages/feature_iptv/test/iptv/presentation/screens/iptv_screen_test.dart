@@ -126,6 +126,27 @@ void main() {
     expect(find.text('LIVE'), findsWidgets);
   });
 
+  testWidgets(
+    'hamburger menu opens the drawer and Guide pushes the guide screen',
+    (tester) async {
+      await tester.pumpWidget(createWidget());
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byIcon(Icons.menu));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Home'), findsOneWidget);
+      expect(find.text('Guide'), findsOneWidget);
+
+      await tester.tap(find.text('Guide'));
+      await tester.pumpAndSettle();
+
+      // The pushed guide screen owns its own search field, distinct from the
+      // Stream screen's playlist search sheet.
+      expect(find.text('Search the guide'), findsOneWidget);
+    },
+  );
+
   testWidgets('opens search sheet from app bar action', (tester) async {
     await tester.pumpWidget(createWidget());
     await tester.pumpAndSettle();

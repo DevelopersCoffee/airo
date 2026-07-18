@@ -2,12 +2,14 @@ import 'package:core_ui/core_ui.dart';
 import 'package:feature_iptv/feature_iptv.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:platform_playlist/platform_playlist.dart';
 
-/// Content-source management section (CV-022): list configured sources,
-/// add an M3U source, remove any source (with confirmation). The XMLTV
-/// guide source (a separate concept — EPG data, not a channel/VOD source)
-/// is managed via the embedded [XmltvSourceSheet], built for exactly this
-/// purpose in CV-015 slice 2.
+/// Content-source management section (CV-022 + CV-032): list configured
+/// sources with their capability flags, add a source of any kind
+/// (M3U / Xtream / Stalker / Jellyfin), remove any source with
+/// confirmation. The XMLTV guide source is managed by the embedded
+/// [XmltvSourceSheet] (a separate concept — EPG data, not a channel/VOD
+/// source).
 class TvSourceManagementSection extends ConsumerStatefulWidget {
   const TvSourceManagementSection({super.key});
 
@@ -19,17 +21,38 @@ class TvSourceManagementSection extends ConsumerStatefulWidget {
 class _TvSourceManagementSectionState
     extends ConsumerState<TvSourceManagementSection> {
   bool _showAddForm = false;
+  ContentSourceKind _kind = ContentSourceKind.m3u;
   final _labelController = TextEditingController();
   final _urlController = TextEditingController();
+  final _usernameController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _macController = TextEditingController();
   String? _labelError;
   String? _urlError;
   String? _submitError;
+  String? _removeError;
 
   @override
   void dispose() {
     _labelController.dispose();
     _urlController.dispose();
+    _usernameController.dispose();
+    _passwordController.dispose();
+    _macController.dispose();
     super.dispose();
+  }
+
+  void _resetForm() {
+    _showAddForm = false;
+    _kind = ContentSourceKind.m3u;
+    _labelController.clear();
+    _urlController.clear();
+    _usernameController.clear();
+    _passwordController.clear();
+    _macController.clear();
+    _labelError = null;
+    _urlError = null;
+    _submitError = null;
   }
 
   void _openAddForm() {
@@ -42,12 +65,7 @@ class _TvSourceManagementSectionState
   }
 
   void _closeAddForm() {
-    setState(() {
-      _showAddForm = false;
-      _labelError = null;
-      _urlError = null;
-      _submitError = null;
-    });
+    setState(_resetForm);
   }
 
   /// Accepts only well-formed http/https URLs — the M3U fetcher can't do
@@ -80,6 +98,22 @@ class _TvSourceManagementSectionState
       return;
     }
 
+    if (_kind == ContentSourceKind.xtream ||
+        _kind == ContentSourceKind.jellyfin) {
+      final username = _usernameController.text.trim();
+      final password = _passwordController.text;
+      if (username.isEmpty || password.isEmpty) {
+        setState(() => _submitError = 'Username and password are required.');
+        return;
+      }
+    } else if (_kind == ContentSourceKind.stalker) {
+      final mac = _macController.text.trim();
+      if (mac.isEmpty) {
+        setState(() => _submitError = 'MAC address is required.');
+        return;
+      }
+    }
+
     setState(() {
       _labelError = null;
       _urlError = null;
@@ -87,9 +121,43 @@ class _TvSourceManagementSectionState
     });
 
     try {
-      await ref.read(
-        addM3uContentSourceProvider((label: label, url: url)).future,
-      );
+      switch (_kind) {
+        case ContentSourceKind.m3u:
+          await ref.read(
+            addM3uContentSourceProvider((label: label, url: url)).future,
+          );
+        case ContentSourceKind.xtream:
+          final username = _usernameController.text;
+          final password = _passwordController.text;
+          await ref.read(
+            addXtreamContentSourceProvider((
+              label: label,
+              url: url,
+              username: username,
+              password: password,
+            )).future,
+          );
+        case ContentSourceKind.stalker:
+          final mac = _macController.text.trim();
+          await ref.read(
+            addStalkerContentSourceProvider((
+              label: label,
+              url: url,
+              macAddress: mac,
+            )).future,
+          );
+        case ContentSourceKind.jellyfin:
+          final username = _usernameController.text;
+          final password = _passwordController.text;
+          await ref.read(
+            addJellyfinContentSourceProvider((
+              label: label,
+              url: url,
+              username: username,
+              password: password,
+            )).future,
+          );
+      }
     } catch (error) {
       if (!mounted) return;
       setState(() => _submitError = 'Could not add source: $error');
@@ -97,11 +165,7 @@ class _TvSourceManagementSectionState
     }
 
     if (!mounted) return;
-    setState(() {
-      _showAddForm = false;
-      _labelController.clear();
-      _urlController.clear();
-    });
+    setState(_resetForm);
   }
 
   Future<void> _confirmRemove(ContentSourceConfig config) async {
@@ -135,12 +199,79 @@ class _TvSourceManagementSectionState
       ),
     );
     if (confirmed != true) return;
-    await ref.read(removeContentSourceProvider(config.id).future);
+    try {
+      await ref.read(removeContentSourceProvider(config.id).future);
+      if (!mounted) return;
+      setState(() => _removeError = null);
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _removeError = 'Could not remove source: $error');
+    }
+  }
+
+  String _urlFieldLabel() {
+    switch (_kind) {
+      case ContentSourceKind.m3u:
+        return 'Playlist URL';
+      case ContentSourceKind.xtream:
+      case ContentSourceKind.jellyfin:
+        return 'Server URL';
+      case ContentSourceKind.stalker:
+        return 'Portal URL';
+    }
+  }
+
+  String _kindLabel(ContentSourceKind kind) {
+    switch (kind) {
+      case ContentSourceKind.m3u:
+        return 'M3U Playlist';
+      case ContentSourceKind.xtream:
+        return 'Xtream Codes';
+      case ContentSourceKind.stalker:
+        return 'Stalker Portal';
+      case ContentSourceKind.jellyfin:
+        return 'Jellyfin';
+    }
+  }
+
+  Widget _capabilityBadges(
+    BuildContext context,
+    ContentSourceCapabilities caps,
+  ) {
+    final flags = <String>[
+      if (caps.hasEpg) 'EPG',
+      if (caps.hasVod) 'VOD',
+      if (caps.hasCatchup) 'Catch-up',
+    ];
+    if (flags.isEmpty) return const SizedBox.shrink();
+    final colorScheme = Theme.of(context).colorScheme;
+    return Wrap(
+      spacing: 6,
+      runSpacing: 4,
+      children: [
+        for (final flag in flags)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            decoration: BoxDecoration(
+              color: colorScheme.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Text(
+              flag,
+              style: TextStyle(
+                color: colorScheme.onSurfaceVariant,
+                fontSize: 12,
+              ),
+            ),
+          ),
+      ],
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final sourcesAsync = ref.watch(configuredContentSourcesProvider);
+    final colorScheme = Theme.of(context).colorScheme;
 
     return SingleChildScrollView(
       child: Column(
@@ -150,7 +281,7 @@ class _TvSourceManagementSectionState
             'Content Sources',
             style: Theme.of(
               context,
-            ).textTheme.titleMedium?.copyWith(color: Colors.white),
+            ).textTheme.titleMedium?.copyWith(color: colorScheme.onSurface),
           ),
           const SizedBox(height: 12),
           sourcesAsync.when(
@@ -158,36 +289,45 @@ class _TvSourceManagementSectionState
             error: (error, _) => Text('Could not load sources: $error'),
             data: (sources) {
               if (sources.isEmpty) {
-                return const Text(
+                return Text(
                   'No sources configured yet.',
-                  style: TextStyle(color: Colors.white70),
+                  style: TextStyle(color: colorScheme.onSurfaceVariant),
                 );
               }
               return Column(
                 children: [
                   for (final config in sources)
-                    TvFocusable(
-                      semanticLabel: config.label,
-                      child: ListTile(
-                        title: Text(
-                          config.label,
-                          style: const TextStyle(color: Colors.white),
-                        ),
-                        subtitle: Text(
-                          config.kind.stableId,
-                          style: const TextStyle(color: Colors.white70),
-                        ),
-                        trailing: TvFocusable(
-                          onSelect: () => _confirmRemove(config),
-                          semanticLabel: 'Remove ${config.label}',
-                          semanticButton: true,
-                          child: IconButton(
-                            icon: const Icon(
-                              Icons.delete_outline,
-                              color: Colors.white,
+                    ListTile(
+                      title: Text(
+                        config.label,
+                        style: TextStyle(color: colorScheme.onSurface),
+                      ),
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _kindLabel(config.kind),
+                            style: TextStyle(
+                              color: colorScheme.onSurfaceVariant,
                             ),
-                            onPressed: () => _confirmRemove(config),
                           ),
+                          const SizedBox(height: 4),
+                          _capabilityBadges(
+                            context,
+                            config.toContentSource().capabilities,
+                          ),
+                        ],
+                      ),
+                      trailing: TvFocusable(
+                        onSelect: () => _confirmRemove(config),
+                        semanticLabel: 'Remove ${config.label}',
+                        semanticButton: true,
+                        child: IconButton(
+                          icon: Icon(
+                            Icons.delete_outline,
+                            color: colorScheme.onSurface,
+                          ),
+                          onPressed: () => _confirmRemove(config),
                         ),
                       ),
                     ),
@@ -195,51 +335,100 @@ class _TvSourceManagementSectionState
               );
             },
           ),
+          if (_removeError != null) ...[
+            const SizedBox(height: 8),
+            Text(_removeError!, style: TextStyle(color: colorScheme.error)),
+          ],
           const SizedBox(height: 16),
           if (!_showAddForm)
             TvFocusable(
               onSelect: _openAddForm,
-              semanticLabel: 'Add M3U Source',
+              semanticLabel: 'Add Source',
               semanticButton: true,
               child: FilledButton(
                 onPressed: _openAddForm,
-                child: const Text('Add M3U Source'),
+                child: const Text('Add Source'),
               ),
             )
           else
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                TvFocusable(
-                  semanticLabel: 'Label',
-                  child: TextField(
-                    controller: _labelController,
-                    style: const TextStyle(color: Colors.white),
-                    decoration: InputDecoration(
-                      labelText: 'Label',
-                      border: const OutlineInputBorder(),
-                      errorText: _labelError,
-                    ),
+                DropdownButton<ContentSourceKind>(
+                  key: const Key('source-kind-picker'),
+                  value: _kind,
+                  dropdownColor: colorScheme.surfaceContainerHigh,
+                  style: TextStyle(color: colorScheme.onSurface),
+                  onChanged: (kind) {
+                    if (kind == null) return;
+                    setState(() => _kind = kind);
+                  },
+                  items: [
+                    for (final kind in ContentSourceKind.values)
+                      DropdownMenuItem(
+                        value: kind,
+                        child: Text(_kindLabel(kind)),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _labelController,
+                  style: TextStyle(color: colorScheme.onSurface),
+                  decoration: InputDecoration(
+                    labelText: 'Label',
+                    border: const OutlineInputBorder(),
+                    errorText: _labelError,
                   ),
                 ),
                 const SizedBox(height: 8),
-                TvFocusable(
-                  semanticLabel: 'Playlist URL',
-                  child: TextField(
-                    controller: _urlController,
-                    style: const TextStyle(color: Colors.white),
-                    decoration: InputDecoration(
-                      labelText: 'Playlist URL',
-                      border: const OutlineInputBorder(),
-                      errorText: _urlError,
-                    ),
+                TextField(
+                  controller: _urlController,
+                  style: TextStyle(color: colorScheme.onSurface),
+                  decoration: InputDecoration(
+                    labelText: _urlFieldLabel(),
+                    border: const OutlineInputBorder(),
+                    errorText: _urlError,
                   ),
                 ),
+                if (_kind == ContentSourceKind.xtream ||
+                    _kind == ContentSourceKind.jellyfin) ...[
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: _usernameController,
+                    style: TextStyle(color: colorScheme.onSurface),
+                    decoration: const InputDecoration(
+                      labelText: 'Username',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: _passwordController,
+                    style: TextStyle(color: colorScheme.onSurface),
+                    obscureText: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Password',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ],
+                if (_kind == ContentSourceKind.stalker) ...[
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: _macController,
+                    style: TextStyle(color: colorScheme.onSurface),
+                    decoration: const InputDecoration(
+                      labelText: 'MAC Address',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ],
                 if (_submitError != null) ...[
                   const SizedBox(height: 8),
                   Text(
                     _submitError!,
-                    style: const TextStyle(color: Colors.redAccent),
+                    style: TextStyle(color: colorScheme.error),
                   ),
                 ],
                 const SizedBox(height: 8),

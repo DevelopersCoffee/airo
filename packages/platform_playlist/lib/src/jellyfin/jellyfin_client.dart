@@ -1,6 +1,9 @@
 import 'package:dio/dio.dart';
 import 'package:equatable/equatable.dart';
 
+import '../provider_health.dart';
+import '../provider_health_recorder.dart';
+
 class JellyfinAuthResult {
   const JellyfinAuthResult({required this.accessToken, required this.userId});
 
@@ -75,23 +78,32 @@ class JellyfinClient {
     required String serverUrl,
     required String username,
     required String password,
+    ProviderHealthTracker? healthTracker,
+    String? sourceId,
   }) : _dio = dio,
        _serverUrl = serverUrl.endsWith('/')
            ? serverUrl.substring(0, serverUrl.length - 1)
            : serverUrl,
        _username = username,
-       _password = password;
+       _password = password,
+       _healthTracker = healthTracker,
+       _sourceId = sourceId;
 
   final Dio _dio;
   final String _serverUrl;
   final String _username;
   final String _password;
+  final ProviderHealthTracker? _healthTracker;
+  final String? _sourceId;
+
+  Future<T> _recorded<T>(Future<T> Function() body) =>
+      recordFetch<T>(body: body, tracker: _healthTracker, sourceId: _sourceId);
 
   static const String _authHeader =
       'MediaBrowser Client="Airo TV", Device="Airo TV Client", '
       'DeviceId="airo-tv", Version="2.0.0"';
 
-  Future<JellyfinAuthResult> authenticate() async {
+  Future<JellyfinAuthResult> authenticate() => _recorded(() async {
     final response = await _dio.post<Map<String, dynamic>>(
       '$_serverUrl/Users/AuthenticateByName',
       data: {'Username': _username, 'Pw': _password},
@@ -107,12 +119,12 @@ class JellyfinClient {
       accessToken: data['AccessToken'] as String,
       userId: (data['User'] as Map<String, dynamic>)['Id'] as String,
     );
-  }
+  });
 
   Future<List<JellyfinChannel>> getLiveTvChannels({
     required String accessToken,
     required String userId,
-  }) async {
+  }) => _recorded(() async {
     final response = await _dio.get<Map<String, dynamic>>(
       '$_serverUrl/LiveTv/Channels',
       queryParameters: {'userId': userId, 'api_key': accessToken},
@@ -125,13 +137,13 @@ class JellyfinClient {
         number: json['Number'] as String?,
       );
     }).toList();
-  }
+  });
 
   Future<List<JellyfinProgram>> getPrograms({
     required String accessToken,
     required String userId,
     required List<String> channelIds,
-  }) async {
+  }) => _recorded(() async {
     final response = await _dio.get<Map<String, dynamic>>(
       '$_serverUrl/LiveTv/Programs',
       queryParameters: {
@@ -151,7 +163,7 @@ class JellyfinClient {
         overview: json['Overview'] as String?,
       );
     }).toList();
-  }
+  });
 
   String streamUrl(String itemId, String accessToken) =>
       '$_serverUrl/Videos/$itemId/stream?api_key=$accessToken&static=true';

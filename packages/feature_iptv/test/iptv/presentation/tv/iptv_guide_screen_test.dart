@@ -46,7 +46,10 @@ void main() {
           iptvChannelsProvider.overrideWith((ref) async => channels),
           streamingStateProvider.overrideWith(
             (ref) => Stream.value(
-              StreamingState(playbackState: PlaybackState.idle, isLiveStream: true),
+              StreamingState(
+                playbackState: PlaybackState.idle,
+                isLiveStream: true,
+              ),
             ),
           ),
           guideEpgWindowProvider.overrideWith(
@@ -69,42 +72,64 @@ void main() {
     await tester.pump();
   }
 
-  testWidgets('lists all channels with name and group', (tester) async {
-    await pumpScreen(tester);
+  testWidgets(
+    'lists all channels with name and group',
+    (tester) async {
+      await pumpScreen(tester);
 
-    expect(find.text('City News Live'), findsOneWidget);
-    expect(find.text('Stadium Sports'), findsOneWidget);
-  }, experimentalLeakTesting: LeakTesting.settings);
+      expect(find.text('City News Live'), findsOneWidget);
+      expect(find.text('Stadium Sports'), findsOneWidget);
+    },
+    experimentalLeakTesting: LeakTesting.settings,
+  );
 
-  testWidgets('shows empty state when there are no channels', (tester) async {
-    await pumpScreen(tester, visibleChannels: const []);
+  testWidgets(
+    'shows empty state when there are no channels',
+    (tester) async {
+      await pumpScreen(tester, visibleChannels: const []);
 
-    expect(find.text('No channels to show yet.'), findsOneWidget);
-  }, experimentalLeakTesting: LeakTesting.settings);
+      expect(find.text('No channels to show yet.'), findsOneWidget);
+    },
+    experimentalLeakTesting: LeakTesting.settings,
+  );
 
-  testWidgets('selecting a channel plays it and calls onChannelSelected', (tester) async {
-    var selected = false;
-    await pumpScreen(tester, onSelectedCallback: () => selected = true);
+  testWidgets(
+    'selecting a channel plays it and calls onChannelSelected',
+    (tester) async {
+      var selected = false;
+      await pumpScreen(tester, onSelectedCallback: () => selected = true);
 
-    await tester.tap(find.text('City News Live'));
-    await tester.pump();
+      await tester.tap(find.text('City News Live'));
+      await tester.pump();
 
-    expect(selected, isTrue);
-  }, experimentalLeakTesting: LeakTesting.settings.withIgnored(notDisposed: {'VideoPlayerController': null}));
+      expect(selected, isTrue);
+    },
+    experimentalLeakTesting: LeakTesting.settings.withIgnored(
+      notDisposed: {'VideoPlayerController': null},
+    ),
+  );
 
-  testWidgets('typing in the search box filters the visible channels', (tester) async {
-    await pumpScreen(tester);
+  testWidgets(
+    'typing in the search box filters the visible channels',
+    (tester) async {
+      await pumpScreen(tester);
 
-    await tester.enterText(find.byType(TextField), 'sports');
-    await tester.pump();
+      await tester.enterText(find.byType(TextField), 'sports');
+      await tester.pump();
 
-    expect(find.text('Stadium Sports'), findsOneWidget);
-    expect(find.text('City News Live'), findsNothing);
-  }, experimentalLeakTesting: LeakTesting.settings);
+      expect(find.text('Stadium Sports'), findsOneWidget);
+      expect(find.text('City News Live'), findsNothing);
+    },
+    experimentalLeakTesting: LeakTesting.settings,
+  );
 
-  testWidgets('shows a stale/unavailable banner when the EPG source is unavailable', (tester) async {
-    await pumpScreen(tester);
+  testWidgets(
+    'shows a stale/unavailable banner when the EPG source is unavailable',
+    (tester) async {
+      await pumpScreen(tester);
 
-    expect(find.textContaining('guide data'), findsOneWidget);
-  }, experimentalLeakTesting: LeakTesting.settings);
+      expect(find.textContaining('guide data'), findsOneWidget);
+    },
+    experimentalLeakTesting: LeakTesting.settings,
+  );
 }

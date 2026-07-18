@@ -3,7 +3,8 @@ import 'package:flutter/material.dart';
 /// A titled, horizontally-scrolling rail of content (e.g. "Top 50 India").
 /// Wraps [children] (typically [AiroRailCard]s) in a horizontal-scroll row
 /// below a title + subtitle header, matching the source design's rail
-/// layout exactly (26px page padding, 10px card gap, 11px header spacing).
+/// layout exactly (26px page padding, 10px card gap, 16px header spacing
+/// by default (configurable via `headerGap`)).
 class AiroRail extends StatelessWidget {
   const AiroRail({
     required this.title,
@@ -12,6 +13,7 @@ class AiroRail extends StatelessWidget {
     this.subtitle,
     this.padding = const EdgeInsets.symmetric(horizontal: 26),
     this.railHeight = 156,
+    this.headerGap = 16,
   });
 
   final String title;
@@ -24,6 +26,11 @@ class AiroRail extends StatelessWidget {
   /// thumbnailHeight (104) plus its two-line text block (~52) — override
   /// if using a different thumbnailHeight or single-line (no subtitle) cards.
   final double railHeight;
+
+  /// Vertical gap between the title/subtitle header and the card row.
+  /// Defaults to 16 (the platform-wide value); callers with a tight vertical
+  /// budget (e.g. a compact TV viewport) may override this to reclaim space.
+  final double headerGap;
 
   @override
   Widget build(BuildContext context) {
@@ -38,7 +45,7 @@ class AiroRail extends StatelessWidget {
             padding: EdgeInsets.only(
               left: padding.left,
               right: padding.right,
-              bottom: 11,
+              bottom: headerGap,
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.baseline,

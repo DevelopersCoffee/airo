@@ -460,9 +460,7 @@ final isChannelFavoriteProvider = Provider.family<bool, String>((
 });
 
 /// The list of favorited channels, most-recently-added first.
-final favoriteChannelsProvider = FutureProvider<List<IPTVChannel>>((
-  ref,
-) async {
+final favoriteChannelsProvider = FutureProvider<List<IPTVChannel>>((ref) async {
   final favoriteIds = await ref.watch(favoriteChannelIdsProvider.future);
   if (favoriteIds.isEmpty) return const [];
 

@@ -23,8 +23,9 @@ Future<void> main() async {
   allResults.addAll(dedupBench.measureResults());
 
   // ---- Output --------------------------------------------------------------
-  final jsonOutput = const JsonEncoder.withIndent('  ')
-      .convert(allResults.map((r) => r.toJson()).toList());
+  final jsonOutput = const JsonEncoder.withIndent(
+    '  ',
+  ).convert(allResults.map((r) => r.toJson()).toList());
 
   // Structured JSON to stdout for CI consumption.
   stdout.writeln(jsonOutput);

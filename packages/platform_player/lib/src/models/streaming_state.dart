@@ -2,6 +2,8 @@ import 'package:equatable/equatable.dart';
 import 'package:platform_channels/platform_channels.dart';
 import 'playback_engine_models.dart';
 
+import 'playback_recovery_models.dart';
+
 /// Network quality indicator
 enum NetworkQuality {
   excellent(4, 'Excellent'),
@@ -141,6 +143,10 @@ class StreamingState extends Equatable {
   final int retryCount;
   final DateTime? lastError;
 
+  /// Structured CV-001 diagnostic for the current failure, when one exists.
+  /// Preferred over [errorMessage] for user-facing copy.
+  final AiroPlaybackDiagnostic? diagnostic;
+
   // === Live DVR Properties (P0-1 to P0-4) ===
 
   /// Whether the current stream is a live stream (vs VOD)
@@ -185,6 +191,7 @@ class StreamingState extends Equatable {
     this.errorMessage,
     this.retryCount = 0,
     this.lastError,
+    this.diagnostic,
     // Live DVR defaults
     this.isLiveStream = false,
     this.liveEdge,
@@ -264,6 +271,8 @@ class StreamingState extends Equatable {
     String? errorMessage,
     int? retryCount,
     DateTime? lastError,
+    AiroPlaybackDiagnostic? diagnostic,
+    bool clearDiagnostic = false,
     // Live DVR properties
     bool? isLiveStream,
     Duration? liveEdge,
@@ -290,6 +299,7 @@ class StreamingState extends Equatable {
       errorMessage: errorMessage,
       retryCount: retryCount ?? this.retryCount,
       lastError: lastError ?? this.lastError,
+      diagnostic: clearDiagnostic ? null : (diagnostic ?? this.diagnostic),
       // Live DVR properties
       isLiveStream: isLiveStream ?? this.isLiveStream,
       liveEdge: liveEdge ?? this.liveEdge,
@@ -314,6 +324,7 @@ class StreamingState extends Equatable {
     volume,
     isMuted,
     errorMessage,
+    diagnostic,
     // Live DVR properties
     isLiveStream,
     liveEdge,

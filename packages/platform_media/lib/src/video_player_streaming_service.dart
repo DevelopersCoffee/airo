@@ -6,6 +6,7 @@ import 'package:platform_streams/platform_streams.dart';
 
 import 'audio_context.dart';
 import 'platform_media_logger.dart';
+import 'streaming_error_diagnostic_mapping.dart';
 import 'video_player_airo_playback_engine.dart';
 
 /// Video Player implementation of IPTV Streaming Service
@@ -128,6 +129,7 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
         currentChannel: channel,
         playbackState: PlaybackState.loading,
         errorMessage: null,
+        clearDiagnostic: true,
         retryCount: 0,
       ),
     );
@@ -332,10 +334,16 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
       userMessage = 'Playback failed: $message';
     }
 
+    // CV-001: structured, user-safe diagnostic alongside the legacy
+    // errorMessage. UI prefers this when present; retry stays manual here
+    // (see comment below) — this call is additive, not a behavior change.
+    final diagnostic = mapStreamingErrorToDiagnostic(message);
+
     _updateState(
       _state.copyWith(
         playbackState: PlaybackState.error,
         errorMessage: userMessage,
+        diagnostic: diagnostic,
         retryCount: newRetryCount,
         lastError: DateTime.now(),
       ),

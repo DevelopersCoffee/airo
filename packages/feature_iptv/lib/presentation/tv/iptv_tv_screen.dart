@@ -231,6 +231,7 @@ class _TvBrowseLayout extends ConsumerWidget {
     void toggleFavorite(IPTVChannel channel) {
       ref.read(toggleChannelFavoriteProvider(channel.id));
     }
+
     final viewport = MediaQuery.sizeOf(context);
     final compactTv = viewport.height < 760 || viewport.width < 1200;
     final denseTv = viewport.height < 650;
@@ -244,9 +245,7 @@ class _TvBrowseLayout extends ConsumerWidget {
         ),
       ),
     );
-    final compactEpgEntries = _compactEpgEntriesByChannel(
-      compactEpg.value,
-    );
+    final compactEpgEntries = _compactEpgEntriesByChannel(compactEpg.value);
 
     return Padding(
       padding: EdgeInsets.fromLTRB(
@@ -258,7 +257,7 @@ class _TvBrowseLayout extends ConsumerWidget {
       child: Column(
         children: [
           _TvLiteReceiverShellHeader(productProfile: productProfile),
-          SizedBox(height: compactTv ? 12 : 18),
+          SizedBox(height: compactTv ? 12 : 16),
           _TvHeader(
             channelCount: allChannels.length,
             visibleCount: visibleChannels.length,
@@ -269,6 +268,7 @@ class _TvBrowseLayout extends ConsumerWidget {
             showUpdateAction: AiroMacosUpdateService.isSupportedPlatform,
             onUpdateTap: onUpdateTap,
             onRefresh: onRefresh,
+            compactTv: compactTv,
           ),
           SizedBox(height: compactTv ? 16 : 24),
           Expanded(
@@ -301,6 +301,7 @@ class _TvBrowseLayout extends ConsumerWidget {
                             favoriteChannelIds: favoriteChannelIds,
                             onChannelSelect: onChannelSelect,
                             onToggleFavorite: toggleFavorite,
+                            compactTv: compactTv,
                           )
                         else
                           _TvPlayerPanel(
@@ -319,7 +320,7 @@ class _TvBrowseLayout extends ConsumerWidget {
                         onClearFilters: onClearFilters,
                         onViewModeChanged: onViewModeChanged,
                       ),
-                      SizedBox(height: compactTv ? 10 : 16),
+                      SizedBox(height: compactTv ? 8 : 20),
                       Expanded(
                         child: DecoratedBox(
                           decoration: BoxDecoration(
@@ -390,6 +391,7 @@ class _TvHeroRailsPanel extends StatelessWidget {
     required this.favoriteChannelIds,
     required this.onChannelSelect,
     required this.onToggleFavorite,
+    required this.compactTv,
   });
 
   final IPTVChannel heroChannel;
@@ -397,6 +399,7 @@ class _TvHeroRailsPanel extends StatelessWidget {
   final Set<String> favoriteChannelIds;
   final ValueChanged<IPTVChannel> onChannelSelect;
   final ValueChanged<IPTVChannel> onToggleFavorite;
+  final bool compactTv;
 
   @override
   Widget build(BuildContext context) {
@@ -418,6 +421,7 @@ class _TvHeroRailsPanel extends StatelessWidget {
           favoriteChannelIds: favoriteChannelIds,
           onChannelSelect: onChannelSelect,
           onToggleFavorite: onToggleFavorite,
+          compactTv: compactTv,
         ),
       ],
     );
@@ -471,10 +475,11 @@ class _TvHeroBanner extends StatelessWidget {
                     begin: Alignment.centerLeft,
                     end: Alignment.centerRight,
                     colors: [
-                      Color(0xB3000000),
+                      Color(0xE6000000),
+                      Color(0xE6000000),
                       Colors.transparent,
                     ],
-                    stops: [0.0, 0.7],
+                    stops: [0.0, 0.38, 0.65],
                   ),
                 ),
               ),
@@ -533,26 +538,44 @@ class _TvHeroBanner extends StatelessWidget {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        FilledButton.icon(
-                          onPressed: () => onWatch(channel),
-                          icon: const Icon(Icons.play_arrow, size: 16),
-                          label: const Text('Watch Now'),
-                          style: FilledButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(horizontal: 14),
-                            textStyle: const TextStyle(fontSize: 12),
+                        TvFocusable(
+                          onSelect: () => onWatch(channel),
+                          semanticLabel: 'Watch Now',
+                          semanticButton: true,
+                          borderRadius: 10,
+                          child: FilledButton.icon(
+                            onPressed: () => onWatch(channel),
+                            icon: const Icon(Icons.play_arrow, size: 16),
+                            label: const Text('Watch Now'),
+                            style: FilledButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                              ),
+                              textStyle: const TextStyle(fontSize: 12),
+                            ),
                           ),
                         ),
                         const SizedBox(width: 8),
-                        OutlinedButton.icon(
-                          onPressed: () => onToggleFavorite(channel),
-                          icon: Icon(
-                            isFavorite ? Icons.favorite : Icons.favorite_border,
-                            size: 14,
-                          ),
-                          label: Text(isFavorite ? 'Favorited' : 'Favorite'),
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(horizontal: 12),
-                            textStyle: const TextStyle(fontSize: 12),
+                        TvFocusable(
+                          onSelect: () => onToggleFavorite(channel),
+                          semanticLabel: isFavorite ? 'Favorited' : 'Favorite',
+                          semanticButton: true,
+                          borderRadius: 10,
+                          child: OutlinedButton.icon(
+                            onPressed: () => onToggleFavorite(channel),
+                            icon: Icon(
+                              isFavorite
+                                  ? Icons.favorite
+                                  : Icons.favorite_border,
+                              size: 14,
+                            ),
+                            label: Text(isFavorite ? 'Favorited' : 'Favorite'),
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                              ),
+                              textStyle: const TextStyle(fontSize: 12),
+                            ),
                           ),
                         ),
                       ],
@@ -579,6 +602,7 @@ class _TvChannelRailsSection extends StatelessWidget {
     required this.favoriteChannelIds,
     required this.onChannelSelect,
     required this.onToggleFavorite,
+    required this.compactTv,
   });
 
   final List<IPTVChannel> allChannels;
@@ -586,6 +610,7 @@ class _TvChannelRailsSection extends StatelessWidget {
   final Set<String> favoriteChannelIds;
   final ValueChanged<IPTVChannel> onChannelSelect;
   final ValueChanged<IPTVChannel> onToggleFavorite;
+  final bool compactTv;
 
   static const _maxPerRail = 14;
 
@@ -616,6 +641,7 @@ class _TvChannelRailsSection extends StatelessWidget {
       title: title,
       padding: EdgeInsets.zero,
       railHeight: 140,
+      headerGap: compactTv ? 11 : 16,
       children: [
         for (final channel in rail)
           AiroRailCard(
@@ -666,60 +692,64 @@ class _TvLiteReceiverShellHeader extends StatelessWidget {
       ),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(18, 14, 18, 14),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(Icons.tv, color: colorScheme.primary, size: 32),
-            const SizedBox(width: 14),
-            SizedBox(
-              width: 260,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    productProfile.displayName,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w800,
-                    ),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Icon(Icons.tv, color: colorScheme.primary, size: 32),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        productProfile.displayName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '${productProfile.supportLevel.tvLabel} profile',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '${productProfile.supportLevel.tvLabel} profile',
+                ),
+                const SizedBox(width: 18),
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 260),
+                  child: Text(
+                    unavailable.isEmpty
+                        ? 'All profile capabilities available'
+                        : 'Profile-limited: ${unavailable.join(', ')}',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodyMedium?.copyWith(
+                    textAlign: TextAlign.end,
+                    style: theme.textTheme.bodySmall?.copyWith(
                       color: colorScheme.onSurfaceVariant,
                     ),
                   ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 18),
-            Expanded(
-              child: Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: productProfile.navigation
-                    .map((entry) => _ProfileSectionChip(entry: entry))
-                    .toList(growable: false),
-              ),
-            ),
-            const SizedBox(width: 18),
-            SizedBox(
-              width: 300,
-              child: Text(
-                unavailable.isEmpty
-                    ? 'All profile capabilities available'
-                    : 'Profile-limited: ${unavailable.join(', ')}',
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.end,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
                 ),
-              ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Divider(height: 1, color: colorScheme.outlineVariant),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: productProfile.navigation
+                  .map((entry) => _ProfileSectionChip(entry: entry))
+                  .toList(growable: false),
             ),
           ],
         ),
@@ -768,6 +798,7 @@ class _TvHeader extends StatelessWidget {
     required this.showUpdateAction,
     required this.onUpdateTap,
     required this.onRefresh,
+    required this.compactTv,
   });
 
   final int channelCount;
@@ -779,6 +810,7 @@ class _TvHeader extends StatelessWidget {
   final bool showUpdateAction;
   final VoidCallback onUpdateTap;
   final VoidCallback onRefresh;
+  final bool compactTv;
 
   @override
   Widget build(BuildContext context) {
@@ -794,8 +826,20 @@ class _TvHeader extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Live channels', style: theme.textTheme.headlineMedium),
-              const SizedBox(height: 6),
+              Text(
+                'Live channels',
+                // Hierarchy comes from weight only. The TV theme already
+                // upscales headlineMedium via fontSizeFactor: 1.2 (see
+                // _buildTvTheme in airo_tv_app.dart) for 10-foot viewing, so
+                // a hardcoded fontSize would bypass that upscale and, in
+                // compactTv, actually shrink the heading. Bold the theme's
+                // real resolved size instead — no size override, no
+                // compactTv line-height risk.
+                style: theme.textTheme.headlineMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              SizedBox(height: compactTv ? 6 : 12),
               Text(
                 subtitle,
                 style: theme.textTheme.titleMedium?.copyWith(
@@ -811,27 +855,27 @@ class _TvHeader extends StatelessWidget {
           onSelect: onSearchTap,
           autofocus: true,
         ),
-        const SizedBox(width: 12),
+        SizedBox(width: compactTv ? 12 : 16),
         _TvActionButton(
           icon: Icons.link,
           label: 'Playlist',
           onSelect: onPlaylistSourceTap,
         ),
-        const SizedBox(width: 12),
+        SizedBox(width: compactTv ? 12 : 16),
         _TvActionButton(
           icon: Icons.help_outline,
           label: 'Help',
           onSelect: onPlaylistHelpTap,
         ),
         if (showUpdateAction) ...[
-          const SizedBox(width: 12),
+          SizedBox(width: compactTv ? 12 : 16),
           _TvActionButton(
             icon: Icons.system_update_alt,
             label: 'Update',
             onSelect: onUpdateTap,
           ),
         ],
-        const SizedBox(width: 12),
+        SizedBox(width: compactTv ? 12 : 16),
         _TvActionButton(
           icon: Icons.refresh,
           label: 'Refresh',
@@ -880,8 +924,16 @@ class _TvCategoryRail extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Browse', style: theme.textTheme.titleLarge),
-        const SizedBox(height: 12),
+        Text(
+          'Browse',
+          // Weight-only for the same reason as "Live channels" — the TV
+          // theme's fontSizeFactor already sizes titleLarge for viewing
+          // distance; a hardcoded fontSize would bypass it.
+          style: theme.textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 20),
         Expanded(
           child: GridView.builder(
             padding: EdgeInsets.zero,
@@ -943,7 +995,7 @@ class _TvCategoryTile extends StatelessWidget {
           borderRadius: BorderRadius.circular(8),
         ),
         child: Padding(
-          padding: const EdgeInsets.all(14),
+          padding: const EdgeInsets.all(20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -1274,7 +1326,7 @@ class _TvChannelGridViewState extends State<_TvChannelGridView> {
       thumbVisibility: true,
       child: GridView.builder(
         controller: _scrollController,
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(16, 16, 24, 16),
         gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
           maxCrossAxisExtent: widget.compact ? 180 : 220,
           childAspectRatio: widget.compact ? 1.2 : 1.03,
@@ -1342,7 +1394,7 @@ class _TvChannelListViewState extends State<_TvChannelListView> {
       thumbVisibility: true,
       child: ListView.separated(
         controller: _scrollController,
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(16, 16, 24, 16),
         itemCount: widget.channels.length,
         separatorBuilder: (_, _) => const SizedBox(height: 10),
         itemBuilder: (context, index) {
@@ -1433,11 +1485,8 @@ class _TvChannelCard extends StatelessWidget {
                           channel.group,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: Theme.of(
-                            context,
-                          ).textTheme.bodySmall?.copyWith(
-                            color: colorScheme.onSurfaceVariant,
-                          ),
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(color: colorScheme.onSurfaceVariant),
                         ),
                       ),
                       if (isPlaying)
@@ -1459,11 +1508,7 @@ class _TvChannelCard extends StatelessWidget {
               Positioned(
                 top: 6,
                 right: 6,
-                child: Icon(
-                  Icons.star,
-                  color: colorScheme.primary,
-                  size: 18,
-                ),
+                child: Icon(Icons.star, color: colorScheme.primary, size: 18),
               ),
           ],
         ),
@@ -1558,11 +1603,7 @@ class _TvChannelRow extends StatelessWidget {
               if (isFavorite)
                 Padding(
                   padding: const EdgeInsets.only(right: 8),
-                  child: Icon(
-                    Icons.star,
-                    color: colorScheme.primary,
-                    size: 18,
-                  ),
+                  child: Icon(Icons.star, color: colorScheme.primary, size: 18),
                 ),
               if (!channel.isAudioOnly) const _LivePill(),
               if (isPlaying) ...[
@@ -2037,9 +2078,9 @@ class _EmptyStateChecklistItem extends StatelessWidget {
         const SizedBox(width: 5),
         Text(
           label,
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: colorScheme.onSurfaceVariant,
-          ),
+          style: Theme.of(
+            context,
+          ).textTheme.bodySmall?.copyWith(color: colorScheme.onSurfaceVariant),
         ),
       ],
     );

@@ -496,7 +496,11 @@ abstract final class AppTheme {
           final color = states.contains(WidgetState.selected)
               ? AppColors.airoTvPrimary
               : AppColors.airoTvMutedText;
-          return TextStyle(color: color, fontSize: 9, fontWeight: FontWeight.w500);
+          return TextStyle(
+            color: color,
+            fontSize: 9,
+            fontWeight: FontWeight.w500,
+          );
         }),
         iconTheme: WidgetStateProperty.resolveWith((states) {
           final color = states.contains(WidgetState.selected)
@@ -514,7 +518,9 @@ abstract final class AppTheme {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(13),
           ),
-          textStyle: textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700),
+          textStyle: textTheme.labelLarge?.copyWith(
+            fontWeight: FontWeight.w700,
+          ),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
@@ -522,9 +528,7 @@ abstract final class AppTheme {
           foregroundColor: AppColors.airoTvMutedText,
           side: const BorderSide(color: AppColors.airoTvBorder),
           padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(9),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(9)),
         ),
       ),
       textButtonTheme: TextButtonThemeData(
@@ -535,11 +539,17 @@ abstract final class AppTheme {
         fillColor: AppColors.airoTvBackground,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(11),
-          borderSide: const BorderSide(color: AppColors.airoTvBorder, width: 1.5),
+          borderSide: const BorderSide(
+            color: AppColors.airoTvBorder,
+            width: 1.5,
+          ),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(11),
-          borderSide: const BorderSide(color: AppColors.airoTvBorder, width: 1.5),
+          borderSide: const BorderSide(
+            color: AppColors.airoTvBorder,
+            width: 1.5,
+          ),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(11),

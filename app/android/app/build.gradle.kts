@@ -19,6 +19,7 @@ fun dartDefine(name: String): String? {
 val appVariant = dartDefine("APP_VARIANT") ?: "full"
 val isLeanVariant = appVariant != "full"
 val isTvVariant = appVariant == "tv"
+val isStreamingVariant = appVariant == "streaming"
 val variantApplicationId = when (appVariant) {
     "iptv" -> "io.airo.app.iptv"
     "streaming" -> "io.airo.app.streaming"
@@ -153,6 +154,18 @@ android {
                 res.srcDir("src/tv/res")
             }
             kotlin.srcDir("src/main/kotlin")
+            // Pick the real LiteRT-LM plugin only when the private Maven
+            // dependency was resolvable (see `app/android/build.gradle.kts`).
+            // Otherwise compile a stub with the same class name that
+            // reports the feature as unavailable so the rest of the
+            // Kotlin source (MainActivity + MethodChannel wiring) still
+            // compiles without the com.google.ai.edge.litertlm.* imports.
+            val liteRtLmAvailable =
+                rootProject.extra.get("liteRtLmAvailable") as Boolean
+            kotlin.srcDir(
+                if (liteRtLmAvailable) "src/withLitertlm/kotlin"
+                else "src/withoutLitertlm/kotlin",
+            )
         }
     }
 
@@ -165,13 +178,15 @@ android {
                     "**/libLiteRtClGlAccelerator.so"
                 )
             }
-            // CV-030: mpv/media_kit is bundled only for Android mobile, not
-            // Android TV. TV boxes are storage-starved (often 8GB total) and
-            // cannot absorb the per-arch libmpv + FFmpeg native libs.
-            // videoPlayer is the sole engine on the TV flavor per the design's
-            // shipping matrix; a codec failure there yields a clean typed
-            // error, not a fallback attempt.
-            if (isTvVariant) {
+            // CV-030: mpv/media_kit native libs are excluded from variants
+            // whose shipping matrix uses video_player as the sole engine.
+            // - TV: storage-starved boxes (~8 GB); videoPlayer only per design.
+            // - streaming: allowedNativePlugins declares video_player only
+            //   (see .github/airo-build-profiles.json); mpv arrives transitively
+            //   but is not intended to run — stripping natives keeps the APK
+            //   inside its 35 MB budget (issue #862).
+            // A codec failure yields a clean typed error, not a fallback.
+            if (isTvVariant || isStreamingVariant) {
                 excludes += setOf(
                     "**/libmpv.so",
                     "**/libplayer.so",
@@ -181,7 +196,8 @@ android {
                     "**/libavdevice.so",
                     "**/libavfilter.so",
                     "**/libswresample.so",
-                    "**/libswscale.so"
+                    "**/libswscale.so",
+                    "**/libmediakitandroidhelper.so"
                 )
             }
         }
@@ -198,8 +214,21 @@ dependencies {
     // ML Kit GenAI Prompt API for on-device Gemini Nano.
     implementation("com.google.mlkit:genai-prompt:1.0.0-beta2")
 
-    // LiteRT-LM for local on-device LLM inference.
-    implementation("com.google.ai.edge.litertlm:litertlm-android:latest.release")
+    // LiteRT-LM for local on-device LLM inference. Only wired when the
+    // root `build.gradle.kts` was able to authenticate against the
+    // private google/generative-ai-android package registry (i.e.
+    // GITHUB_TOKEN is set with `read:packages`). CI validation builds
+    // and unauthenticated clones fall back to the stub loader in
+    // `app/lib/core/services/litert_lm_service.dart`.
+    //
+    // Pinned explicitly — do NOT use `latest.release`. Floating versions
+    // caused issue #860 (silent CI break for ~10 days on a Backend/close API
+    // shift in 0.14.0). LiteRtLmPlugin.kt has been verified against the 0.14.0
+    // Kotlin API surface (Backend.CPU/GPU/NPU factories, engine.close(),
+    // Contents.of, ConversationConfig) per developers.google.com/edge/litert-lm.
+    if (rootProject.extra.get("liteRtLmAvailable") as Boolean) {
+        implementation("com.google.ai.edge.litertlm:litertlm-android:0.14.0")
+    }
 
     // Coroutines and lifecycle dependencies for async operations
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.11.0")

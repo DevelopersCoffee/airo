@@ -142,8 +142,7 @@ class TvNavigationHints {
 
   static const String selectHint = 'Press OK to select';
   static const String navigationHint = 'Use arrows to navigate';
-  static const String combinedHint =
-      'Press OK to select • ← → ↑ ↓ to navigate';
+  static const String combinedHint = 'Press OK to select • ← → ↑ ↓ to navigate';
   static const String backHint = 'Press Back to return';
   static const String mediaHint = 'Press Play/Pause to control playback';
   static const String voiceSearchHint = 'Press mic button for voice search';

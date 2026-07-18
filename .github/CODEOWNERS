@@ -1,0 +1,30 @@
+# Default owner for repository changes.
+* @ucguy4u
+
+# Release readiness and CI/CD governance.
+/.github/ @ucguy4u
+/docs/release/ @ucguy4u
+/packages/core_release/ @ucguy4u
+
+# Security-sensitive surfaces.
+/SECURITY.md @ucguy4u
+/packages/core_auth/ @ucguy4u
+/packages/core_cloud_orchestration/ @ucguy4u
+/packages/core_device_merge/ @ucguy4u
+/packages/core_entitlements/ @ucguy4u
+/packages/core_push_wake/ @ucguy4u
+/packages/core_sessions/ @ucguy4u
+
+# Documentation and governance records.
+/docs/ @ucguy4u
+/AGENTS.md @ucguy4u
+/docs/agents/ @ucguy4u
+
+# V2 platform and app/profile ownership.
+/app/ @ucguy4u
+/packages/airo/ @ucguy4u
+/packages/airo_pro_bootstrap/ @ucguy4u
+/packages/core_ui/ @ucguy4u
+/packages/feature_iptv/ @ucguy4u
+/packages/platform_*/ @ucguy4u
+/packages/product_capabilities/ @ucguy4u

@@ -17,7 +17,7 @@ made, set:
 
 ```bash
 AIRO_REPO_DISCUSSIONS=enabled \
-AIRO_REPO_CODEOWNERS=not_required \
+AIRO_REPO_CODEOWNERS=present \
 AIRO_REPO_FUNDING=intentionally_absent \
 dart pub global run melos run release:repo-health-preflight
 ```
@@ -31,6 +31,7 @@ added. Use `AIRO_REPO_FUNDING=present` when `.github/FUNDING.yml` is added.
 - `SECURITY.md`
 - `CONTRIBUTING.md`
 - `CODE_OF_CONDUCT.md`
+- `.github/CODEOWNERS`
 - `.github/PULL_REQUEST_TEMPLATE.md`
 - `.github/ISSUE_TEMPLATE/user_bug_report.md`
 - `.github/ISSUE_TEMPLATE/feature_request.yml`
@@ -60,9 +61,6 @@ The local preflight verifies that the repository label taxonomy covers:
 ## Remaining Maintainer Decisions
 
 - Decide whether GitHub Discussions should be enabled or intentionally deferred.
-- Add CODEOWNERS entries for release, security, docs, v2 platform, and
-  app/profile ownership, or explicitly mark CODEOWNERS not required for this
-  release wave.
 - Add `.github/FUNDING.yml`, or explicitly confirm funding/sponsor metadata is
   intentionally absent for this release wave.
 

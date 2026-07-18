@@ -37,13 +37,15 @@ class VodGrid extends ConsumerWidget {
     }
 
     final tileCount = movies.length + seriesGroups.length;
-    final padding = EdgeInsets.all(dimensions.gridSpacing) + dimensions.safeZone;
+    final padding =
+        EdgeInsets.all(dimensions.gridSpacing) + dimensions.safeZone;
 
     return GridView.builder(
       padding: padding,
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: _crossAxisCount(context, dimensions),
-        childAspectRatio: dimensions.channelCardWidth / dimensions.channelCardHeight,
+        childAspectRatio:
+            dimensions.channelCardWidth / dimensions.channelCardHeight,
         mainAxisSpacing: dimensions.gridSpacing,
         crossAxisSpacing: dimensions.gridSpacing,
       ),
@@ -109,7 +111,9 @@ class _VodCard extends StatelessWidget {
         child: Container(
           decoration: BoxDecoration(
             color: Colors.grey[850],
-            borderRadius: BorderRadius.circular(TvFocusConstants.focusBorderRadius),
+            borderRadius: BorderRadius.circular(
+              TvFocusConstants.focusBorderRadius,
+            ),
           ),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -125,16 +129,26 @@ class _VodCard extends StatelessWidget {
                             url: posterUrl!,
                             fit: BoxFit.contain,
                             errorBuilder: (context, error, stackTrace) =>
-                                const Icon(Icons.movie, color: Colors.white54, size: 48),
+                                const Icon(
+                                  Icons.movie,
+                                  color: Colors.white54,
+                                  size: 48,
+                                ),
                           ),
                         )
-                      : const Icon(Icons.movie, color: Colors.white54, size: 48),
+                      : const Icon(
+                          Icons.movie,
+                          color: Colors.white54,
+                          size: 48,
+                        ),
                 ),
               ),
               Expanded(
                 flex: 2,
                 child: Padding(
-                  padding: EdgeInsets.symmetric(horizontal: dimensions.cardPadding),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: dimensions.cardPadding,
+                  ),
                   child: Text(
                     title,
                     maxLines: 2,

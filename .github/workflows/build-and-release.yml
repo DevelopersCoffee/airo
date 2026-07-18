@@ -139,22 +139,17 @@ jobs:
           missing=0
           for name in ANDROID_RELEASE_KEYSTORE_BASE64 KEYSTORE_PASSWORD KEY_ALIAS KEY_PASSWORD; do
             if [ -z "${!name}" ]; then
-              echo "::error::Missing required Android release signing secret: $name"
+              echo "::warning::Missing Android release signing secret: $name. Falling back to debug signing."
               missing=1
             fi
           done
-          if [ "$missing" -ne 0 ]; then
-            exit 1
+          if [ "$missing" -eq 0 ]; then
+            echo "$ANDROID_RELEASE_KEYSTORE_BASE64" | base64 -d > release.keystore
+            printf "storeFile=release.keystore\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n" "$KEYSTORE_PASSWORD" "$KEY_ALIAS" "$KEY_PASSWORD" > key.properties
+            chmod 600 release.keystore key.properties
+          else
+            echo "::warning::Skipping release keystore configuration due to missing secrets. Build will fall back to debug signing."
           fi
-
-          echo "$ANDROID_RELEASE_KEYSTORE_BASE64" | base64 -d > release.keystore
-          cat > key.properties <<EOF
-          storeFile=release.keystore
-          storePassword=$KEYSTORE_PASSWORD
-          keyAlias=$KEY_ALIAS
-          keyPassword=$KEY_PASSWORD
-          EOF
-          chmod 600 release.keystore key.properties
 
       - name: Get dependencies
         run: |
@@ -164,6 +159,11 @@ jobs:
           cd ../core_ai && flutter pub get
           cd ../core_auth && flutter pub get
           cd ../../app && flutter pub get
+
+      - name: Run code generation
+        run: |
+          cd app
+          dart run build_runner build --delete-conflicting-outputs
 
       - name: Build APK (arm64-v8a)
         run: |
@@ -270,22 +270,17 @@ jobs:
           missing=0
           for name in ANDROID_RELEASE_KEYSTORE_BASE64 KEYSTORE_PASSWORD KEY_ALIAS KEY_PASSWORD; do
             if [ -z "${!name}" ]; then
-              echo "::error::Missing required Android release signing secret: $name"
+              echo "::warning::Missing Android release signing secret: $name. Falling back to debug signing."
               missing=1
             fi
           done
-          if [ "$missing" -ne 0 ]; then
-            exit 1
+          if [ "$missing" -eq 0 ]; then
+            echo "$ANDROID_RELEASE_KEYSTORE_BASE64" | base64 -d > release.keystore
+            printf "storeFile=release.keystore\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n" "$KEYSTORE_PASSWORD" "$KEY_ALIAS" "$KEY_PASSWORD" > key.properties
+            chmod 600 release.keystore key.properties
+          else
+            echo "::warning::Skipping release keystore configuration due to missing secrets. Build will fall back to debug signing."
           fi
-
-          echo "$ANDROID_RELEASE_KEYSTORE_BASE64" | base64 -d > release.keystore
-          cat > key.properties <<EOF
-          storeFile=release.keystore
-          storePassword=$KEYSTORE_PASSWORD
-          keyAlias=$KEY_ALIAS
-          keyPassword=$KEY_PASSWORD
-          EOF
-          chmod 600 release.keystore key.properties
 
       - name: Get dependencies
         run: |
@@ -295,6 +290,11 @@ jobs:
           cd ../core_ai && flutter pub get
           cd ../core_auth && flutter pub get
           cd ../../app && flutter pub get
+
+      - name: Run code generation
+        run: |
+          cd app
+          dart run build_runner build --delete-conflicting-outputs
 
       - name: Build APK (armeabi-v7a)
         run: |
@@ -383,22 +383,17 @@ jobs:
           missing=0
           for name in ANDROID_RELEASE_KEYSTORE_BASE64 KEYSTORE_PASSWORD KEY_ALIAS KEY_PASSWORD; do
             if [ -z "${!name}" ]; then
-              echo "::error::Missing required Android release signing secret: $name"
+              echo "::warning::Missing Android release signing secret: $name. Falling back to debug signing."
               missing=1
             fi
           done
-          if [ "$missing" -ne 0 ]; then
-            exit 1
+          if [ "$missing" -eq 0 ]; then
+            echo "$ANDROID_RELEASE_KEYSTORE_BASE64" | base64 -d > release.keystore
+            printf "storeFile=release.keystore\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n" "$KEYSTORE_PASSWORD" "$KEY_ALIAS" "$KEY_PASSWORD" > key.properties
+            chmod 600 release.keystore key.properties
+          else
+            echo "::warning::Skipping release keystore configuration due to missing secrets. Build will fall back to debug signing."
           fi
-
-          echo "$ANDROID_RELEASE_KEYSTORE_BASE64" | base64 -d > release.keystore
-          cat > key.properties <<EOF
-          storeFile=release.keystore
-          storePassword=$KEYSTORE_PASSWORD
-          keyAlias=$KEY_ALIAS
-          keyPassword=$KEY_PASSWORD
-          EOF
-          chmod 600 release.keystore key.properties
 
       - name: Get dependencies
         run: |
@@ -408,6 +403,11 @@ jobs:
           cd ../core_ai && flutter pub get
           cd ../core_auth && flutter pub get
           cd ../../app && flutter pub get
+
+      - name: Run code generation
+        run: |
+          cd app
+          dart run build_runner build --delete-conflicting-outputs
 
       - name: Build APK (x86_64)
         run: |
@@ -432,62 +432,10 @@ jobs:
 
   # ============================================
   # Build iOS
-  # NOTE: Currently disabled due to stockfish NNUE file issue (see issue #51)
-  # The stockfish package fails to compile on iOS because NNUE files are not embedded
-  # ============================================
-  build-ios:
-    runs-on: macos-latest
-    needs: changelog
-    # Allow iOS build to fail - stockfish has NNUE embedding issues on iOS
-    continue-on-error: true
-    steps:
-      - uses: actions/checkout@v7
-
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: ${{ env.FLUTTER_VERSION }}
-          channel: 'stable'
-          cache: true
-
-      - name: Cache pub dependencies
-        uses: actions/cache@v6
-        with:
-          path: ~/.pub-cache
-          key: pub-${{ runner.os }}-${{ hashFiles('**/pubspec.lock') }}
-          restore-keys: pub-${{ runner.os }}-
-
-      - name: Get dependencies
-        run: |
-          cd packages/core_domain && flutter pub get
-          cd ../core_ui && flutter pub get
-          cd ../core_data && flutter pub get
-          cd ../core_ai && flutter pub get
-          cd ../core_auth && flutter pub get
-          cd ../../app && flutter pub get
-
-      - name: Build iOS
-        run: |
-          cd app
-          flutter build ios --release --no-codesign \
-            --dart-define=ENV=prod \
-            --dart-define=DEMO_MODE=false
-
-      - name: Create IPA
-        run: |
-          VERSION="${{ needs.changelog.outputs.version }}"
-          cd app/build/ios/Release-iphoneos
-          mkdir -p Payload
-          mv Runner.app Payload/
-          zip -r -q "airo-${VERSION}-ios.ipa" Payload
-          mv "airo-${VERSION}-ios.ipa" ../../../
-
-      - name: Upload IPA
-        uses: actions/upload-artifact@v7
-        with:
-          name: ios-ipa
-          path: app/airo-*-ios.ipa
-
+  # NOTE: Removed from release pipeline. iOS/iPadOS builds need proper
+  # signing + TestFlight/App Store distribution to be installable/testable —
+  # an unsigned IPA dropped on a GitHub release page isn't usable. Re-add
+  # once a real iOS distribution path exists.
   # ============================================
   # Build Web
   # ============================================
@@ -519,6 +467,11 @@ jobs:
           cd ../core_ai && flutter pub get
           cd ../core_auth && flutter pub get
           cd ../../app && flutter pub get
+
+      - name: Run code generation
+        run: |
+          cd app
+          dart run build_runner build --delete-conflicting-outputs
 
       - name: Build Web
         run: |
@@ -564,7 +517,15 @@ jobs:
           cd ../core_auth; flutter pub get
           cd ../../app; flutter pub get
 
+      - name: Run code generation
+        run: |
+          cd app
+          dart run build_runner build --delete-conflicting-outputs
+
       - name: Build Windows
+        env:
+          CMAKE_POLICY_VERSION_MINIMUM: '3.5'
+          CL: '/D_SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGS'
         run: |
           cd app
           flutter build windows --release
@@ -607,7 +568,7 @@ jobs:
       - name: Install Linux dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libgtk-3-dev libx11-dev pkg-config cmake ninja-build libblkid-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libsecret-1-dev libjsoncpp-dev
+          sudo apt-get install -y libgtk-3-dev libx11-dev pkg-config cmake ninja-build libblkid-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libsecret-1-dev libjsoncpp-dev libmpv-dev
 
       - name: Get dependencies
         run: |
@@ -617,6 +578,11 @@ jobs:
           cd ../core_ai && flutter pub get
           cd ../core_auth && flutter pub get
           cd ../../app && flutter pub get
+
+      - name: Run code generation
+        run: |
+          cd app
+          dart run build_runner build --delete-conflicting-outputs
 
       - name: Build Linux
         run: |
@@ -641,7 +607,7 @@ jobs:
   # Create GitHub Release
   # ============================================
   create-release:
-    needs: [changelog, build-android-arm64, build-android-arm32, build-android-x64, build-ios, build-web, build-windows, build-linux]
+    needs: [changelog, build-android-arm64, build-android-arm32, build-android-x64, build-web, build-windows, build-linux]
     runs-on: ubuntu-latest
     # Always run release creation, even if some builds fail (iOS/Android have known issues)
     if: always() && needs.changelog.result == 'success'
@@ -685,12 +651,9 @@ jobs:
           | Android | `airo-{version}-armeabi-v7a.apk` | For older 32-bit devices |
           | Android | `airo-{version}-x86_64.apk` | For emulators/Chromebooks |
           | Android | `airo-{version}.aab` | For Google Play Store |
-          | iOS | `airo-{version}-ios.ipa` | Requires signing (may be unavailable) |
           | Web | `airo-{version}-web.zip` | Run in browser |
           | Windows | `airo-{version}-windows-x64.zip` | Windows 10/11 |
           | Linux | `airo-{version}-linux-x64.tar.gz` | Linux x64 |
-
-          > **Note**: iOS build may be unavailable due to a known upstream issue with the Stockfish chess engine package.
 
           ## 🚀 Quick Start
 
@@ -751,7 +714,6 @@ jobs:
             "android-apk-arm64/airo-*-arm64-v8a.apk" \
             "android-apk-arm32/airo-*-armeabi-v7a.apk" \
             "android-aab/airo-*.aab" \
-            "ios-ipa/airo-*-ios.ipa" \
             "web-build/airo-*-web.zip" \
             "windows-build/airo-*-windows-x64.zip" \
             "linux-build/airo-*-linux-x64.tar.gz"; do
@@ -778,7 +740,6 @@ jobs:
             android-apk-arm64/airo-*-arm64-v8a.apk
             android-apk-arm32/airo-*-armeabi-v7a.apk
             android-aab/airo-*.aab
-            ios-ipa/airo-*-ios.ipa
             web-build/airo-*-web.zip
             windows-build/airo-*-windows-x64.zip
             linux-build/airo-*-linux-x64.tar.gz

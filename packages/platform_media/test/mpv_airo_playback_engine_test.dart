@@ -59,8 +59,7 @@ void main() {
 
     test('diagnostics reflects the facade hardware-accel flag', () async {
       final engine = MpvAiroPlaybackEngine(
-        playerFactory: () =>
-            FakeMpvPlayerFacade(hardwareAccelerated: false),
+        playerFactory: () => FakeMpvPlayerFacade(hardwareAccelerated: false),
       );
       await engine.open(request());
       final diagnostics = await engine.diagnostics();
@@ -75,7 +74,10 @@ void main() {
       await engine.open(request());
 
       final enterState = await engine.enterPictureInPicture();
-      expect(enterState.error?.code, AiroPlaybackErrorCode.unsupportedOperation);
+      expect(
+        enterState.error?.code,
+        AiroPlaybackErrorCode.unsupportedOperation,
+      );
       expect(enterState.error?.operation, 'enterPictureInPicture');
 
       final exitState = await engine.exitPictureInPicture();
@@ -128,10 +130,7 @@ void main() {
         expect(engine.currentState.tracks, hasLength(2));
         expect(engine.currentState.tracks[0].label, 'Français');
         expect(engine.currentState.tracks[1].languageCode, 'de');
-        expect(
-          engine.currentState.tracks.every((t) => t.isExternal),
-          isTrue,
-        );
+        expect(engine.currentState.tracks.every((t) => t.isExternal), isTrue);
         await engine.dispose();
       },
     );
