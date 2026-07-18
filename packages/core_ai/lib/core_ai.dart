@@ -14,6 +14,7 @@ export 'src/residency/model_residency_manager.dart';
 export 'src/preload/model_preloader.dart';
 export 'src/runtime/local_inference_runtime_adapter.dart';
 export 'src/litert/litert_lm_runtime_adapter.dart';
+export 'src/litert/mediapipe_web_runtime_adapter.dart';
 
 // LLM Client
 export 'src/llm/llm_client.dart';
