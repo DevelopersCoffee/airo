@@ -146,11 +146,11 @@ jobs:
           if [ "$missing" -eq 0 ]; then
             echo "$ANDROID_RELEASE_KEYSTORE_BASE64" | base64 -d > release.keystore
             cat > key.properties <<EOF
-            storeFile=release.keystore
-            storePassword=$KEYSTORE_PASSWORD
-            keyAlias=$KEY_ALIAS
-            keyPassword=$KEY_PASSWORD
-            EOF
+storeFile=release.keystore
+storePassword=$KEYSTORE_PASSWORD
+keyAlias=$KEY_ALIAS
+keyPassword=$KEY_PASSWORD
+EOF
             chmod 600 release.keystore key.properties
           else
             echo "::warning::Skipping release keystore configuration due to missing secrets. Build will fall back to debug signing."
@@ -164,6 +164,11 @@ jobs:
           cd ../core_ai && flutter pub get
           cd ../core_auth && flutter pub get
           cd ../../app && flutter pub get
+
+      - name: Run code generation
+        run: |
+          cd app
+          dart run build_runner build --delete-conflicting-outputs
 
       - name: Build APK (arm64-v8a)
         run: |
@@ -277,11 +282,11 @@ jobs:
           if [ "$missing" -eq 0 ]; then
             echo "$ANDROID_RELEASE_KEYSTORE_BASE64" | base64 -d > release.keystore
             cat > key.properties <<EOF
-            storeFile=release.keystore
-            storePassword=$KEYSTORE_PASSWORD
-            keyAlias=$KEY_ALIAS
-            keyPassword=$KEY_PASSWORD
-            EOF
+storeFile=release.keystore
+storePassword=$KEYSTORE_PASSWORD
+keyAlias=$KEY_ALIAS
+keyPassword=$KEY_PASSWORD
+EOF
             chmod 600 release.keystore key.properties
           else
             echo "::warning::Skipping release keystore configuration due to missing secrets. Build will fall back to debug signing."
@@ -295,6 +300,11 @@ jobs:
           cd ../core_ai && flutter pub get
           cd ../core_auth && flutter pub get
           cd ../../app && flutter pub get
+
+      - name: Run code generation
+        run: |
+          cd app
+          dart run build_runner build --delete-conflicting-outputs
 
       - name: Build APK (armeabi-v7a)
         run: |
@@ -390,11 +400,11 @@ jobs:
           if [ "$missing" -eq 0 ]; then
             echo "$ANDROID_RELEASE_KEYSTORE_BASE64" | base64 -d > release.keystore
             cat > key.properties <<EOF
-            storeFile=release.keystore
-            storePassword=$KEYSTORE_PASSWORD
-            keyAlias=$KEY_ALIAS
-            keyPassword=$KEY_PASSWORD
-            EOF
+storeFile=release.keystore
+storePassword=$KEYSTORE_PASSWORD
+keyAlias=$KEY_ALIAS
+keyPassword=$KEY_PASSWORD
+EOF
             chmod 600 release.keystore key.properties
           else
             echo "::warning::Skipping release keystore configuration due to missing secrets. Build will fall back to debug signing."
@@ -408,6 +418,11 @@ jobs:
           cd ../core_ai && flutter pub get
           cd ../core_auth && flutter pub get
           cd ../../app && flutter pub get
+
+      - name: Run code generation
+        run: |
+          cd app
+          dart run build_runner build --delete-conflicting-outputs
 
       - name: Build APK (x86_64)
         run: |
@@ -466,6 +481,11 @@ jobs:
           cd ../core_auth && flutter pub get
           cd ../../app && flutter pub get
 
+      - name: Run code generation
+        run: |
+          cd app
+          dart run build_runner build --delete-conflicting-outputs
+
       - name: Build iOS
         run: |
           cd app
@@ -520,6 +540,11 @@ jobs:
           cd ../core_auth && flutter pub get
           cd ../../app && flutter pub get
 
+      - name: Run code generation
+        run: |
+          cd app
+          dart run build_runner build --delete-conflicting-outputs
+
       - name: Build Web
         run: |
           cd app
@@ -563,6 +588,11 @@ jobs:
           cd ../core_ai; flutter pub get
           cd ../core_auth; flutter pub get
           cd ../../app; flutter pub get
+
+      - name: Run code generation
+        run: |
+          cd app
+          dart run build_runner build --delete-conflicting-outputs
 
       - name: Build Windows
         run: |
@@ -617,6 +647,11 @@ jobs:
           cd ../core_ai && flutter pub get
           cd ../core_auth && flutter pub get
           cd ../../app && flutter pub get
+
+      - name: Run code generation
+        run: |
+          cd app
+          dart run build_runner build --delete-conflicting-outputs
 
       - name: Build Linux
         run: |
