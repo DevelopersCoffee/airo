@@ -366,6 +366,18 @@ jobs:
           fi
           chmod 600 *.keystore key.properties
 
+      - name: Run repo-wide release quality gates
+        run: |
+          ruby -e 'require "yaml"; ARGV.each { |f| YAML.load_file(f); puts "workflow-yaml-ok #{f}" }' \
+            .github/workflows/v2-release-orchestrator.yml \
+            .github/workflows/airo-tv-release.yml \
+            .github/workflows/airo-mobile-tablet-release.yml
+          bash -n scripts/patch-android-plugin-gradle.sh scripts/check-apk-size.sh
+          python3 -m py_compile scripts/generate-release-manifest.py scripts/generate-release-qualification-report.py
+          scripts/check-build-profiles.py
+          scripts/test-generate-release-manifest.sh
+          scripts/test-generate-release-qualification-report.sh
+
       - name: Apply mobile/tablet pubspec
         run: |
           cp app/pubspec.yaml app/pubspec.yaml.backup
@@ -384,17 +396,8 @@ jobs:
       - name: Patch Android plugin Gradle files
         run: scripts/patch-android-plugin-gradle.sh
 
-      - name: Run mobile/tablet release quality gates
+      - name: Run profile-specific quality gates
         run: |
-          ruby -e 'require "yaml"; ARGV.each { |f| YAML.load_file(f); puts "workflow-yaml-ok #{f}" }' \
-            .github/workflows/v2-release-orchestrator.yml \
-            .github/workflows/airo-tv-release.yml \
-            .github/workflows/airo-mobile-tablet-release.yml
-          bash -n scripts/patch-android-plugin-gradle.sh scripts/check-apk-size.sh
-          python3 -m py_compile scripts/generate-release-manifest.py scripts/generate-release-qualification-report.py
-          scripts/check-build-profiles.py
-          scripts/test-generate-release-manifest.sh
-          scripts/test-generate-release-qualification-report.sh
           cd app
           flutter analyze "$TARGET_ENTRYPOINT" --no-fatal-infos --no-fatal-warnings
           cd ..
