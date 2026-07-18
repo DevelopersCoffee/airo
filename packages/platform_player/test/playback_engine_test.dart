@@ -108,6 +108,39 @@ void main() {
       await engine.dispose();
     });
 
+    test(
+      'fake engine projects externalSubtitles from the open request into tracks',
+      () async {
+        final engine = FakeAiroPlaybackEngine();
+        final mediaRequest = AiroMediaOpenRequest(
+          requestId: 'open-ext-sub-1',
+          sourceHandle: AiroPlaybackSourceHandle.redacted('source-handle-1'),
+          mediaKind: AiroPlaybackMediaKind.hls,
+          externalSubtitles: [
+            AiroPlaybackExternalSubtitle(
+              handle: AiroPlaybackSourceHandle.redacted('sub-handle-en'),
+              languageCode: 'en',
+              label: 'English',
+            ),
+          ],
+        );
+
+        await engine.open(mediaRequest);
+
+        expect(engine.currentState.tracks, isNotEmpty);
+        final subtitleTrack = engine.currentState.tracks.firstWhere(
+          (t) => t.kind == AiroPlaybackTrackKind.subtitle,
+        );
+        expect(subtitleTrack.label, 'English');
+        expect(subtitleTrack.isExternal, isTrue);
+        expect(
+          engine.currentState.selectedTrackIds[AiroPlaybackTrackKind.subtitle],
+          subtitleTrack.id,
+        );
+        await engine.dispose();
+      },
+    );
+
     test('fake engine returns typed failure for unavailable options', () async {
       final engine = FakeAiroPlaybackEngine();
 
