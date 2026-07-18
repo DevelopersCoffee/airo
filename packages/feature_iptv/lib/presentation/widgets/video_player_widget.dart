@@ -9,6 +9,7 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 import '../../application/providers/iptv_providers.dart';
 import '../../application/providers/video_aspect_ratio_provider.dart';
 import '../../domain/wakelock_debouncer.dart';
+import 'playback_diagnostic_overlay.dart';
 import "package:platform_channels/platform_channels.dart";
 import "package:platform_player/platform_player.dart";
 import "package:platform_media/platform_media.dart";
@@ -244,6 +245,8 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                 )
               else if (state.playbackState == PlaybackState.loading)
                 _buildLoading()
+              else if (state.hasError && state.diagnostic != null)
+                _buildDiagnosticError(state)
               else
                 _buildPlaceholder(state),
 
@@ -382,6 +385,48 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
             Text('Loading...', style: TextStyle(color: Colors.white)),
           ],
         ),
+      ),
+    );
+  }
+
+  /// CV-001 structured failure state: user-safe copy plus bounded-retry
+  /// progress from [StreamingState.diagnostic], with the legacy retry button.
+  Widget _buildDiagnosticError(StreamingState state) {
+    final diagnostic = state.diagnostic!;
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Colors.blueGrey.shade900, Colors.black87],
+        ),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          PlaybackDiagnosticOverlay(
+            diagnostic: diagnostic,
+            retryAttempt: state.retryCount > 0 ? state.retryCount : null,
+            maxRetryAttempts: 3,
+          ),
+          if (!diagnostic.retryEligible || state.retryCount == 0)
+            ElevatedButton.icon(
+              onPressed: () => ref.read(iptvStreamingServiceProvider).retry(),
+              icon: const Icon(Icons.refresh_rounded),
+              label: const Text('Try Again'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blueGrey.shade700,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 12,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
