@@ -19,7 +19,9 @@ void main() {
         return Response(
           requestOptions: options,
           statusCode: 200,
-          data: {'js': {'token': 'tok-123'}},
+          data: {
+            'js': {'token': 'tok-123'},
+          },
         );
       },
     });
@@ -94,7 +96,9 @@ void main() {
       portalUrl: (options) => Response(
         requestOptions: options,
         statusCode: 200,
-        data: {'js': {'cmd': 'https://stalker.example.com/stream/1.m3u8'}},
+        data: {
+          'js': {'cmd': 'https://stalker.example.com/stream/1.m3u8'},
+        },
       ),
     });
     final client = StalkerClient(
@@ -109,5 +113,78 @@ void main() {
     );
 
     expect(url, 'https://stalker.example.com/stream/1.m3u8');
+  });
+
+  group('health tracking (CV-012 slice-2b)', () {
+    test('successful handshake() records fetchSuccess sample', () async {
+      final dio = Dio();
+      dio.httpClientAdapter = FakeHttpClientAdapter({
+        portalUrl: (options) => Response(
+          requestOptions: options,
+          statusCode: 200,
+          data: {
+            'js': {'token': 'tok-1'},
+          },
+        ),
+      });
+      final tracker = ProviderHealthTracker();
+      final client = StalkerClient(
+        dio: dio,
+        serverUrl: 'https://stalker.example.com',
+        macAddress: 'AA:BB:CC:DD:EE:FF',
+        healthTracker: tracker,
+        sourceId: 'stalker-1',
+      );
+
+      await client.handshake();
+
+      final snap = tracker.snapshotFor('stalker-1');
+      expect(snap.totalSamples, 1);
+      expect(snap.healthClass, ProviderHealthClass.green);
+    });
+
+    test(
+      '401 on handshake() records fetchFailure(auth) and rethrows',
+      () async {
+        final dio = Dio();
+        dio.httpClientAdapter = FakeHttpClientAdapter({
+          portalUrl: (options) =>
+              Response(requestOptions: options, statusCode: 401),
+        });
+        final tracker = ProviderHealthTracker();
+        final client = StalkerClient(
+          dio: dio,
+          serverUrl: 'https://stalker.example.com',
+          macAddress: 'AA:BB:CC:DD:EE:FF',
+          healthTracker: tracker,
+          sourceId: 'stalker-1',
+        );
+
+        await expectLater(client.handshake(), throwsA(isA<DioException>()));
+
+        final snap = tracker.snapshotFor('stalker-1');
+        expect(snap.recentFailureCategory, ProviderHealthFailureCategory.auth);
+        expect(snap.failureRate, 1.0);
+      },
+    );
+
+    test('no tracker → no recording, existing behavior preserved', () async {
+      final dio = Dio();
+      dio.httpClientAdapter = FakeHttpClientAdapter({
+        portalUrl: (options) => Response(
+          requestOptions: options,
+          statusCode: 200,
+          data: {
+            'js': {'token': 'tok-1'},
+          },
+        ),
+      });
+      final client = StalkerClient(
+        dio: dio,
+        serverUrl: 'https://stalker.example.com',
+        macAddress: 'AA:BB:CC:DD:EE:FF',
+      );
+      expect(await client.handshake(), 'tok-1');
+    });
   });
 }
