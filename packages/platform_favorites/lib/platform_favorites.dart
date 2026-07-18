@@ -2,3 +2,4 @@
 library;
 
 export 'src/favorite_channels_storage.dart';
+export 'src/hidden_groups_storage.dart';

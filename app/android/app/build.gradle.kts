@@ -220,8 +220,14 @@ dependencies {
     // GITHUB_TOKEN is set with `read:packages`). CI validation builds
     // and unauthenticated clones fall back to the stub loader in
     // `app/lib/core/services/litert_lm_service.dart`.
+    //
+    // Pinned explicitly — do NOT use `latest.release`. Floating versions
+    // caused issue #860 (silent CI break for ~10 days on a Backend/close API
+    // shift in 0.14.0). LiteRtLmPlugin.kt has been verified against the 0.14.0
+    // Kotlin API surface (Backend.CPU/GPU/NPU factories, engine.close(),
+    // Contents.of, ConversationConfig) per developers.google.com/edge/litert-lm.
     if (rootProject.extra.get("liteRtLmAvailable") as Boolean) {
-        implementation("com.google.ai.edge.litertlm:litertlm-android:latest.release")
+        implementation("com.google.ai.edge.litertlm:litertlm-android:0.14.0")
     }
 
     // Coroutines and lifecycle dependencies for async operations
