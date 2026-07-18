@@ -170,87 +170,79 @@ https://cdn.example.com/live/news.m3u8
     },
   );
 
-  test(
-    'createTvCompactEpgRepository delegates to the provided fallback when '
-    'no snapshot is cached',
-    () async {
-      final supportDir = await Directory.systemTemp.createTemp(
-        'airo_tv_epg_fallback_',
-      );
-      addTearDown(() async {
-        if (await supportDir.exists()) {
-          await supportDir.delete(recursive: true);
-        }
-      });
-      final repository = createTvCompactEpgRepository(
-        supportDirectoryProvider: () async => supportDir,
-        fallback: _FakeFallbackCompactEpgRepository(),
-      );
-      final now = DateTime.utc(2026, 7, 15, 9, 30);
+  test('createTvCompactEpgRepository delegates to the provided fallback when '
+      'no snapshot is cached', () async {
+    final supportDir = await Directory.systemTemp.createTemp(
+      'airo_tv_epg_fallback_',
+    );
+    addTearDown(() async {
+      if (await supportDir.exists()) {
+        await supportDir.delete(recursive: true);
+      }
+    });
+    final repository = createTvCompactEpgRepository(
+      supportDirectoryProvider: () async => supportDir,
+      fallback: _FakeFallbackCompactEpgRepository(),
+    );
+    final now = DateTime.utc(2026, 7, 15, 9, 30);
 
-      final result = await repository.loadCurrentNext(
-        channelIds: const ['news-1'],
-        now: now,
-      );
+    final result = await repository.loadCurrentNext(
+      channelIds: const ['news-1'],
+      now: now,
+    );
 
-      expect(
-        result.entryForChannel('news-1')?.current?.title,
-        'Fallback Bulletin',
-      );
-    },
-  );
+    expect(
+      result.entryForChannel('news-1')?.current?.title,
+      'Fallback Bulletin',
+    );
+  });
 
-  test(
-    'mutableXmltvCompactEpgRepositoryProvider resolves to the same instance '
-    "main() passes as createTvCompactEpgRepository's fallback",
-    () async {
-      // Mirrors the ProviderScope overrides main() wires up: a single
-      // MutableXmltvCompactEpgRepository must back both the guide's EPG
-      // fallback (compactEpgRepositoryProvider) and the manual-refresh path
-      // (mutableXmltvCompactEpgRepositoryProvider), or "Save & Refresh"
-      // silently writes into an orphan instance the guide never reads.
-      final supportDir = await Directory.systemTemp.createTemp(
-        'airo_tv_epg_shared_instance_',
-      );
-      addTearDown(() async {
-        if (await supportDir.exists()) {
-          await supportDir.delete(recursive: true);
-        }
-      });
-      final mutableXmltvRepository = MutableXmltvCompactEpgRepository();
-      final compactEpgRepository = createTvCompactEpgRepository(
-        supportDirectoryProvider: () async => supportDir,
-        fallback: mutableXmltvRepository,
-      );
+  test('mutableXmltvCompactEpgRepositoryProvider resolves to the same instance '
+      "main() passes as createTvCompactEpgRepository's fallback", () async {
+    // Mirrors the ProviderScope overrides main() wires up: a single
+    // MutableXmltvCompactEpgRepository must back both the guide's EPG
+    // fallback (compactEpgRepositoryProvider) and the manual-refresh path
+    // (mutableXmltvCompactEpgRepositoryProvider), or "Save & Refresh"
+    // silently writes into an orphan instance the guide never reads.
+    final supportDir = await Directory.systemTemp.createTemp(
+      'airo_tv_epg_shared_instance_',
+    );
+    addTearDown(() async {
+      if (await supportDir.exists()) {
+        await supportDir.delete(recursive: true);
+      }
+    });
+    final mutableXmltvRepository = MutableXmltvCompactEpgRepository();
+    final compactEpgRepository = createTvCompactEpgRepository(
+      supportDirectoryProvider: () async => supportDir,
+      fallback: mutableXmltvRepository,
+    );
 
-      final container = ProviderContainer(
-        overrides: [
-          compactEpgRepositoryProvider.overrideWithValue(
-            compactEpgRepository,
-          ),
-          mutableXmltvCompactEpgRepositoryProvider.overrideWithValue(
-            mutableXmltvRepository,
-          ),
-        ],
-      );
-      addTearDown(container.dispose);
-
-      expect(
-        identical(
-          container.read(mutableXmltvCompactEpgRepositoryProvider),
+    final container = ProviderContainer(
+      overrides: [
+        compactEpgRepositoryProvider.overrideWithValue(compactEpgRepository),
+        mutableXmltvCompactEpgRepositoryProvider.overrideWithValue(
           mutableXmltvRepository,
         ),
-        isTrue,
-      );
-      expect(
-        identical(
-          container.read(compactEpgRepositoryProvider),
-          compactEpgRepository,
-        ),
-        isTrue,
-      );
-    },
-  );
+      ],
+    );
+    addTearDown(container.dispose);
+
+    expect(
+      identical(
+        container.read(mutableXmltvCompactEpgRepositoryProvider),
+        mutableXmltvRepository,
+      ),
+      isTrue,
+    );
+    expect(
+      identical(
+        container.read(compactEpgRepositoryProvider),
+        compactEpgRepository,
+      ),
+      isTrue,
+    );
+  });
 
   test('warms compact EPG snapshot from XMLTV using channel aliases', () async {
     SharedPreferences.setMockInitialValues({});
@@ -418,15 +410,13 @@ https://cdn.example.com/live/news.m3u8
     },
   );
 
-  test(
-    'refreshTvConfiguredXmltvSource refreshes an already-configured XMLTV '
-    'source',
-    () async {
-      SharedPreferences.setMockInitialValues({});
-      final prefs = await SharedPreferences.getInstance();
-      final repository = MutableXmltvCompactEpgRepository();
-      final sourceStore = XmltvSourceStore(PreferencesStore(prefs));
-      final server = await _xmltvServer('''
+  test('refreshTvConfiguredXmltvSource refreshes an already-configured XMLTV '
+      'source', () async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    final repository = MutableXmltvCompactEpgRepository();
+    final sourceStore = XmltvSourceStore(PreferencesStore(prefs));
+    final server = await _xmltvServer('''
 <tv>
   <channel id="chan-1"><display-name>Channel 1</display-name></channel>
   <programme channel="chan-1" start="20260715090000 +0000" stop="20260715100000 +0000">
@@ -434,39 +424,41 @@ https://cdn.example.com/live/news.m3u8
   </programme>
 </tv>
 ''');
-      final downloadDir = await Directory.systemTemp.createTemp(
-        'airo-tv-xmltv-source-refresh-',
-      );
-      addTearDown(() async {
-        if (await downloadDir.exists()) {
-          await downloadDir.delete(recursive: true);
-        }
-      });
-      await sourceStore.save(
-        XmltvSourceConfig(url: _serverUrl(server, '/guide.xml')),
-      );
-
-      try {
-        await refreshTvConfiguredXmltvSource(
-          prefs,
-          repository: repository,
-          downloadDirectoryProvider: () async => downloadDir,
-        );
-
-        final now = DateTime.utc(2026, 7, 15, 9, 30);
-        final slice = await repository.loadCurrentNext(
-          channelIds: const ['chan-1'],
-          now: now,
-        );
-        expect(slice.entryForChannel('chan-1')?.current?.title, 'Morning Bulletin');
-
-        final config = await sourceStore.load();
-        expect(config?.lastRefreshedAt, isNotNull);
-      } finally {
-        await server.close(force: true);
+    final downloadDir = await Directory.systemTemp.createTemp(
+      'airo-tv-xmltv-source-refresh-',
+    );
+    addTearDown(() async {
+      if (await downloadDir.exists()) {
+        await downloadDir.delete(recursive: true);
       }
-    },
-  );
+    });
+    await sourceStore.save(
+      XmltvSourceConfig(url: _serverUrl(server, '/guide.xml')),
+    );
+
+    try {
+      await refreshTvConfiguredXmltvSource(
+        prefs,
+        repository: repository,
+        downloadDirectoryProvider: () async => downloadDir,
+      );
+
+      final now = DateTime.utc(2026, 7, 15, 9, 30);
+      final slice = await repository.loadCurrentNext(
+        channelIds: const ['chan-1'],
+        now: now,
+      );
+      expect(
+        slice.entryForChannel('chan-1')?.current?.title,
+        'Morning Bulletin',
+      );
+
+      final config = await sourceStore.load();
+      expect(config?.lastRefreshedAt, isNotNull);
+    } finally {
+      await server.close(force: true);
+    }
+  });
 
   test('schedules configured XMLTV source refresh after frame', () async {
     SharedPreferences.setMockInitialValues({});

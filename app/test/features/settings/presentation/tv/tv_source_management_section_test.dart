@@ -236,6 +236,49 @@ void main() {
     expect(sources, isEmpty);
   });
 
+  testWidgets('cancelling the confirmation dialog keeps the source', (
+    tester,
+  ) async {
+    final container = await buildContainer();
+    addTearDown(container.dispose);
+    await container.read(
+      addM3uContentSourceProvider((
+        label: 'My Playlist',
+        url: 'https://example.com/playlist.m3u',
+      )).future,
+    );
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: const MaterialApp(
+          home: Scaffold(body: TvSourceManagementSection()),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    await tester.tap(find.byIcon(Icons.delete_outline));
+    await tester.pump();
+
+    // Confirmation dialog shown, source not yet removed.
+    expect(find.text('My Playlist'), findsOneWidget);
+    expect(find.text('Cancel'), findsWidgets);
+
+    await tester.tap(find.text('Cancel').last);
+    await tester.pump();
+    await tester.pump();
+
+    // Source is still present in the list and in the underlying provider.
+    expect(find.text('My Playlist'), findsOneWidget);
+    final sources = await container.read(
+      configuredContentSourcesProvider.future,
+    );
+    expect(sources, hasLength(1));
+    expect(sources.single.label, 'My Playlist');
+  });
+
   testWidgets(
     'shows a validation error and does not persist when the URL is empty',
     (tester) async {
@@ -253,7 +296,7 @@ void main() {
       await tester.pump();
       await tester.pump();
 
-      await tester.tap(find.text('Add M3U Source'));
+      await tester.tap(find.text('Add Source'));
       await tester.pump();
       await tester.enterText(
         find.widgetWithText(TextField, 'Label'),
@@ -288,7 +331,7 @@ void main() {
       await tester.pump();
       await tester.pump();
 
-      await tester.tap(find.text('Add M3U Source'));
+      await tester.tap(find.text('Add Source'));
       await tester.pump();
       await tester.enterText(
         find.widgetWithText(TextField, 'Label'),
