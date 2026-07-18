@@ -11,6 +11,7 @@ void main() {
     WidgetTester tester, {
     bool enableSwipeChannelChange = false,
     PlayerBrightnessController? brightnessController,
+    StreamingState? state,
   }) async {
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
@@ -21,17 +22,18 @@ void main() {
           sharedPreferencesProvider.overrideWithValue(prefs),
           streamingStateProvider.overrideWith(
             (ref) => Stream.value(
-              const StreamingState(
-                playbackState: PlaybackState.idle,
-                isLiveStream: true,
-                currentChannel: IPTVChannel(
-                  id: 'news-1',
-                  name: 'City News Live',
-                  streamUrl: 'https://example.com/news.m3u8',
-                  group: 'News',
-                  category: ChannelCategory.news,
-                ),
-              ),
+              state ??
+                  const StreamingState(
+                    playbackState: PlaybackState.idle,
+                    isLiveStream: true,
+                    currentChannel: IPTVChannel(
+                      id: 'news-1',
+                      name: 'City News Live',
+                      streamUrl: 'https://example.com/news.m3u8',
+                      group: 'News',
+                      category: ChannelCategory.news,
+                    ),
+                  ),
             ),
           ),
         ],
@@ -91,5 +93,42 @@ void main() {
     await tester.pump();
 
     expect(controller.resetCalls, 1);
+  });
+
+  testWidgets('shows a VOD seek bar with resume position when not live', (
+    tester,
+  ) async {
+    await pumpPlayer(
+      tester,
+      state: const StreamingState(
+        playbackState: PlaybackState.playing,
+        isLiveStream: false,
+        position: Duration(seconds: 30),
+        duration: Duration(seconds: 120),
+        currentChannel: IPTVChannel(
+          id: 'movie-1',
+          name: 'Sample Movie',
+          streamUrl: 'https://example.com/movie.m3u8',
+          group: 'Movies',
+          category: ChannelCategory.movies,
+        ),
+      ),
+    );
+
+    final seekBar = find.byKey(const ValueKey('iptv-player-vod-seek-bar'));
+    expect(seekBar, findsOneWidget);
+
+    final slider = tester.widget<Slider>(seekBar);
+    expect(slider.max, 120.0);
+    expect(slider.value, 30.0);
+  });
+
+  testWidgets('hides the VOD seek bar for live streams', (tester) async {
+    await pumpPlayer(tester);
+
+    expect(
+      find.byKey(const ValueKey('iptv-player-vod-seek-bar')),
+      findsNothing,
+    );
   });
 }
