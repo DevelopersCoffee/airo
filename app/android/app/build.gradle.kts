@@ -19,6 +19,7 @@ fun dartDefine(name: String): String? {
 val appVariant = dartDefine("APP_VARIANT") ?: "full"
 val isLeanVariant = appVariant != "full"
 val isTvVariant = appVariant == "tv"
+val isStreamingVariant = appVariant == "streaming"
 val variantApplicationId = when (appVariant) {
     "iptv" -> "io.airo.app.iptv"
     "streaming" -> "io.airo.app.streaming"
@@ -177,13 +178,15 @@ android {
                     "**/libLiteRtClGlAccelerator.so"
                 )
             }
-            // CV-030: mpv/media_kit is bundled only for Android mobile, not
-            // Android TV. TV boxes are storage-starved (often 8GB total) and
-            // cannot absorb the per-arch libmpv + FFmpeg native libs.
-            // videoPlayer is the sole engine on the TV flavor per the design's
-            // shipping matrix; a codec failure there yields a clean typed
-            // error, not a fallback attempt.
-            if (isTvVariant) {
+            // CV-030: mpv/media_kit native libs are excluded from variants
+            // whose shipping matrix uses video_player as the sole engine.
+            // - TV: storage-starved boxes (~8 GB); videoPlayer only per design.
+            // - streaming: allowedNativePlugins declares video_player only
+            //   (see .github/airo-build-profiles.json); mpv arrives transitively
+            //   but is not intended to run — stripping natives keeps the APK
+            //   inside its 35 MB budget (issue #862).
+            // A codec failure yields a clean typed error, not a fallback.
+            if (isTvVariant || isStreamingVariant) {
                 excludes += setOf(
                     "**/libmpv.so",
                     "**/libplayer.so",
@@ -193,7 +196,8 @@ android {
                     "**/libavdevice.so",
                     "**/libavfilter.so",
                     "**/libswresample.so",
-                    "**/libswscale.so"
+                    "**/libswscale.so",
+                    "**/libmediakitandroidhelper.so"
                 )
             }
         }
