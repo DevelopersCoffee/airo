@@ -12,23 +12,35 @@ import '../widgets/epg_timeline_grid.dart';
 /// invokes [onChannelSelected] so the caller (the app shell, which owns
 /// routing) can navigate to the live/player screen.
 class IptvGuideScreen extends ConsumerWidget {
-  const IptvGuideScreen({required this.onChannelSelected, super.key});
+  const IptvGuideScreen({
+    required this.onChannelSelected,
+    this.overrideFormFactor,
+    super.key,
+  });
 
   final VoidCallback onChannelSelected;
+
+  /// Forces a specific form factor (e.g. [AiroFormFactor.tv] from the TV
+  /// route). Leave null on mobile so the scaffold adapts to the actual
+  /// device width instead of always rendering TV-sized chrome.
+  final AiroFormFactor? overrideFormFactor;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final channelsAsync = ref.watch(iptvChannelsProvider);
 
     return AiroResponsiveScaffold(
-      overrideFormFactor: AiroFormFactor.tv,
+      overrideFormFactor: overrideFormFactor,
       padding: EdgeInsets.zero,
       backgroundColor: Theme.of(context).colorScheme.surface,
       body: SafeArea(
         child: channelsAsync.when(
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (error, _) => Center(
-            child: Text('Could not load the guide: $error', textAlign: TextAlign.center),
+            child: Text(
+              'Could not load the guide: $error',
+              textAlign: TextAlign.center,
+            ),
           ),
           data: (channels) {
             if (channels.isEmpty) {
@@ -45,13 +57,17 @@ class IptvGuideScreen extends ConsumerWidget {
                       prefixIcon: Icon(Icons.search),
                       border: OutlineInputBorder(),
                     ),
-                    onChanged: (value) => ref.read(guideSearchQueryProvider.notifier).state = value,
+                    onChanged: (value) =>
+                        ref.read(guideSearchQueryProvider.notifier).state =
+                            value,
                   ),
                 ),
                 Expanded(
                   child: EpgTimelineGrid(
                     onChannelSelect: (channel) {
-                      ref.read(iptvStreamingServiceProvider).playChannel(channel);
+                      ref
+                          .read(iptvStreamingServiceProvider)
+                          .playChannel(channel);
                       ref.read(addToRecentlyWatchedProvider(channel));
                       onChannelSelected();
                     },

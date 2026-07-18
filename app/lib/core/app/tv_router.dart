@@ -4,6 +4,7 @@
 /// No bottom navigation - uses grid/sidebar navigation patterns.
 library;
 
+import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -76,6 +77,7 @@ class TvRouter {
               path: TvRouteNames.guide,
               name: 'tv_guide',
               builder: (context, state) => IptvGuideScreen(
+                overrideFormFactor: AiroFormFactor.tv,
                 onChannelSelected: () => context.go(TvRouteNames.live),
               ),
             ),

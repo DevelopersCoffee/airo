@@ -12,7 +12,9 @@ import '../widgets/cast_device_picker_sheet.dart';
 import '../widgets/channel_list_widget.dart';
 import '../widgets/iptv_cast_mini_controller.dart';
 import '../widgets/iptv_mini_player.dart';
+import '../widgets/iptv_navigation_drawer.dart';
 import '../widgets/video_player_widget.dart';
+import '../tv/iptv_guide_screen.dart';
 
 /// IPTV Screen with YouTube-like streaming experience
 class IPTVScreen extends ConsumerStatefulWidget {
@@ -280,6 +282,16 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen> {
     await showPlaylistSourceSheet(context, ref);
   }
 
+  Future<void> _openGuide() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => IptvGuideScreen(
+          onChannelSelected: () => Navigator.of(context).pop(),
+        ),
+      ),
+    );
+  }
+
   void _syncLocalPlaybackWithCast(bool? wasCasting, bool isCasting) {
     final streaming = ref.read(iptvStreamingServiceProvider);
     if (isCasting) {
@@ -310,8 +322,14 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen> {
 
     return AiroResponsiveScaffold(
       padding: EdgeInsets.zero,
+      drawer: IptvNavigationDrawer(
+        showMovies: widget.onOpenVod != null,
+        onHome: () {},
+        onGuide: _openGuide,
+        onMovies: () => widget.onOpenVod?.call(),
+      ),
       appBar: AppBar(
-        title: const Text('Stream'),
+        title: const Text('Airo TV'),
         actions: [
           IconButton(
             icon: const Icon(Icons.search),
