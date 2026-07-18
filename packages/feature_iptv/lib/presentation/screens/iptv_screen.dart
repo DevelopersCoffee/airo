@@ -13,12 +13,13 @@ import '../widgets/channel_list_widget.dart';
 import '../widgets/iptv_cast_mini_controller.dart';
 import '../widgets/iptv_mini_player.dart';
 import '../widgets/iptv_navigation_drawer.dart';
+import '../widgets/phone_media_play_on_tv_sheet.dart';
 import '../widgets/video_player_widget.dart';
 import '../tv/iptv_guide_screen.dart';
 
 /// IPTV Screen with YouTube-like streaming experience
 class IPTVScreen extends ConsumerStatefulWidget {
-  const IPTVScreen({this.onOpenVod, super.key});
+  const IPTVScreen({this.onOpenVod, this.onPickLocalMediaForTv, super.key});
 
   /// Invoked when the user taps the "Movies & Shows" action to navigate to
   /// the VOD screen. Left as an optional callback (rather than a direct
@@ -27,6 +28,13 @@ class IPTVScreen extends ConsumerStatefulWidget {
   /// [IPTVScreen] for the `/iptv` route (see [IptvGuideScreen.onChannelSelected]
   /// for the same pattern).
   final VoidCallback? onOpenVod;
+
+  /// CV-033 debug entry point: resolves a phone-local file into a
+  /// [PhoneLocalMediaItem], or null if the user cancelled. Left as an
+  /// optional callback so this package doesn't depend on `file_picker`; the
+  /// app wires this in only for debug builds while the end-user surface for
+  /// "Play on TV" is undecided. Null hides the drawer entry entirely.
+  final Future<PhoneLocalMediaItem?> Function()? onPickLocalMediaForTv;
 
   @override
   ConsumerState<IPTVScreen> createState() => _IPTVScreenState();
@@ -134,6 +142,24 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen> {
     }
 
     return _playNaturalLanguageQuery(trimmed);
+  }
+
+  Future<void> _playLocalFileOnTv() async {
+    final picker = widget.onPickLocalMediaForTv;
+    if (picker == null) return;
+
+    final item = await picker();
+    if (item == null || !mounted) return;
+
+    final handoff = PhoneMediaCastHandoff(
+      castController: ref.read(airoCastControllerProvider),
+    );
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) =>
+          PhoneMediaPlayOnTvSheet(item: item, handoff: handoff),
+    );
   }
 
   Future<void> _showSearchSheet() async {
@@ -327,6 +353,9 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen> {
         onHome: () {},
         onGuide: _openGuide,
         onMovies: () => widget.onOpenVod?.call(),
+        onPlayLocalFileOnTv: widget.onPickLocalMediaForTv == null
+            ? null
+            : _playLocalFileOnTv,
       ),
       appBar: AppBar(
         title: const Text('Stream'),

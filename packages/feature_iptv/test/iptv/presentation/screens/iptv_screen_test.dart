@@ -32,6 +32,7 @@ void main() {
   Widget createWidget({
     StreamingState? streamingState,
     VoidCallback? onOpenVod,
+    Future<PhoneLocalMediaItem?> Function()? onPickLocalMediaForTv,
   }) {
     SharedPreferences.setMockInitialValues({});
     return FutureBuilder<SharedPreferences>(
@@ -61,7 +62,12 @@ void main() {
               ),
             ),
           ],
-          child: MaterialApp(home: IPTVScreen(onOpenVod: onOpenVod)),
+          child: MaterialApp(
+            home: IPTVScreen(
+              onOpenVod: onOpenVod,
+              onPickLocalMediaForTv: onPickLocalMediaForTv,
+            ),
+          ),
         );
       },
     );
@@ -235,4 +241,62 @@ void main() {
 
     expect(openVodCalled, isTrue);
   });
+
+  testWidgets(
+    'hides Play file on TV drawer entry when onPickLocalMediaForTv is not '
+    'provided',
+    (tester) async {
+      await tester.pumpWidget(createWidget());
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byIcon(Icons.menu));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Play file on TV (debug)'), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'Play file on TV drawer entry opens the handoff sheet for the picked '
+    'file',
+    (tester) async {
+      const item = PhoneLocalMediaItem(
+        filePath: '/tmp/movie.mp4',
+        title: 'Movie Night',
+        container: 'mp4',
+      );
+      await tester.pumpWidget(
+        createWidget(onPickLocalMediaForTv: () async => item),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byIcon(Icons.menu));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Play file on TV (debug)'), findsOneWidget);
+
+      await tester.tap(find.text('Play file on TV (debug)'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Movie Night'), findsOneWidget);
+      expect(find.text('Play on TV'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'Play file on TV entry does nothing when the picker is cancelled',
+    (tester) async {
+      await tester.pumpWidget(
+        createWidget(onPickLocalMediaForTv: () async => null),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byIcon(Icons.menu));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Play file on TV (debug)'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Play on TV'), findsNothing);
+    },
+  );
 }
