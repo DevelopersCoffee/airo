@@ -11,7 +11,7 @@
 name: airo_app
 description: "Airo TV - IPTV streaming for Android TV"
 publish_to: 'none'
-version: 0.0.3-rc.1+3
+version: 0.0.3-rc.4+4
 
 environment:
   sdk: ">=3.12.2 <4.0.0"
