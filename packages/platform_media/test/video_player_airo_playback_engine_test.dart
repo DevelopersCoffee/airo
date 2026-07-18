@@ -208,6 +208,38 @@ void main() {
     );
 
     test(
+      'seek during active playback keeps phase == playing, not paused',
+      () async {
+        final engine = VideoPlayerAiroPlaybackEngine();
+        await engine.open(request());
+        await engine.play();
+        expect(engine.currentState.phase, AiroPlaybackEnginePhase.playing);
+
+        final state = await engine.seek(const Duration(seconds: 30));
+
+        expect(state.phase, AiroPlaybackEnginePhase.playing);
+        expect(engine.currentState.phase, AiroPlaybackEnginePhase.playing);
+        await engine.dispose();
+      },
+    );
+
+    test(
+      'seek while genuinely paused still results in phase == paused',
+      () async {
+        final engine = VideoPlayerAiroPlaybackEngine();
+        await engine.open(request());
+        await engine.play();
+        await engine.pause();
+        expect(engine.currentState.phase, AiroPlaybackEnginePhase.paused);
+
+        final state = await engine.seek(const Duration(seconds: 30));
+
+        expect(state.phase, AiroPlaybackEnginePhase.paused);
+        await engine.dispose();
+      },
+    );
+
+    test(
       'engine state carries bufferedRanges reflecting the controller value',
       () async {
         final engine = VideoPlayerAiroPlaybackEngine();

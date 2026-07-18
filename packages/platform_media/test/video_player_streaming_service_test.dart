@@ -105,6 +105,22 @@ void main() {
     );
   });
 
+  group('VideoPlayerStreamingService seek', () {
+    test(
+      'seek during active playback keeps playbackState playing (isPlaying true)',
+      () async {
+        await service.playChannel(channel());
+        expect(service.currentState.playbackState, PlaybackState.playing);
+        expect(service.currentState.isPlaying, isTrue);
+
+        await service.seek(const Duration(seconds: 30));
+
+        expect(service.currentState.playbackState, PlaybackState.playing);
+        expect(service.currentState.isPlaying, isTrue);
+      },
+    );
+  });
+
   group('VideoPlayerStreamingService selectTrack', () {
     test('unknown track id is a no-op that does not throw', () async {
       await service.playChannel(channel());

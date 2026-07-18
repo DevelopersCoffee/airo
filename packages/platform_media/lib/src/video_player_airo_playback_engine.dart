@@ -160,10 +160,20 @@ class VideoPlayerAiroPlaybackEngine implements AiroPlaybackEngine {
 
   @override
   Future<AiroPlaybackState> seek(Duration position) async {
+    // Preserve whether playback was actively playing (or buffering while
+    // playing) before the seek, rather than unconditionally dropping to
+    // `paused`. A seek must not silently regress `isPlaying` to false for
+    // callers mid-playback (center play/pause button, wakelock, the Go-Live
+    // button, and drift auto-resync all key off this phase). A seek that
+    // genuinely happens while paused should still result in `paused`.
+    final wasPlaying = _state.phase == AiroPlaybackEnginePhase.playing ||
+        _state.phase == AiroPlaybackEnginePhase.buffering;
     await _controller?.seekTo(position);
     _emit(
       _state.copyWith(
-        phase: AiroPlaybackEnginePhase.paused,
+        phase: wasPlaying
+            ? AiroPlaybackEnginePhase.playing
+            : AiroPlaybackEnginePhase.paused,
         position: position,
       ),
     );
