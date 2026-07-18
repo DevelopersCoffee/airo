@@ -1,6 +1,6 @@
 import 'package:equatable/equatable.dart';
 
-import "package:platform_channels/platform_channels.dart";
+import 'package:platform_channels/platform_channels.dart';
 import '../../../music/domain/services/music_service.dart';
 import 'media_category.dart';
 import 'media_mode.dart';

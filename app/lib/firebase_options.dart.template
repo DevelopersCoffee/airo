@@ -1,10 +1,16 @@
 // Firebase configuration with multi-platform variant support
 // Supports: Mobile Full (io.airo.app), Mobile Streaming (io.airo.app.streaming), Android TV (io.airo.app.tv)
 //
-// To configure:
-// 1. Register all package IDs in Firebase Console under the same project
-// 2. Download combined google-services.json (contains all package IDs)
-// 3. Update appId values below after registering new apps
+// This is a TEMPLATE. To use:
+// 1. Copy to app/lib/firebase_options.dart (gitignored, never committed with real keys)
+// 2. Fill in the real `web`, `android`, and `androidTv` values from the Firebase
+//    Console (Project settings > Your apps) or from the `GOOGLE_SERVICES_JSON` /
+//    `FIREBASE_OPTIONS_DART` secrets used by the release workflows.
+// 3. Leave the `androidStreaming`, `ios`, `macos`, and `windows` entries as
+//    placeholders until those apps are registered in the Firebase project --
+//    `DefaultFirebaseOptions.isCurrentPlatformConfigured` skips Firebase init
+//    for any entry whose appId still contains `YOUR_` or `TODO`, so shipping
+//    with placeholders there is safe and intentional, not a bug.
 //
 // Build with variant:
 //   flutter build apk --dart-define=APP_VARIANT=tv
@@ -125,12 +131,12 @@ class DefaultFirebaseOptions {
   // Web Configuration
   // ===========================================================================
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyAXwAHFzEmvM0VMq_OVR-J_rm3aemlmq5A',
-    appId: '1:906799550225:web:28533fb091ebbb3d2206b0',
-    messagingSenderId: '906799550225',
-    projectId: 'devscoffee-airo',
-    authDomain: 'devscoffee-airo.firebaseapp.com',
-    storageBucket: 'devscoffee-airo.firebasestorage.app',
+    apiKey: 'YOUR_WEB_API_KEY',
+    appId: 'YOUR_WEB_APP_ID',
+    messagingSenderId: 'YOUR_MESSAGING_SENDER_ID',
+    projectId: 'YOUR_PROJECT_ID',
+    authDomain: 'YOUR_PROJECT_ID.firebaseapp.com',
+    storageBucket: 'YOUR_PROJECT_ID.firebasestorage.app',
   );
 
   // ===========================================================================
@@ -139,44 +145,43 @@ class DefaultFirebaseOptions {
 
   /// Android Mobile Full - io.airo.app (existing)
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyCBhj62CjX9G7-QNbF3e-53BiM3FYcWNxw',
-    appId: '1:906799550225:android:8052938d459ef9832206b0',
-    messagingSenderId: '906799550225',
-    projectId: 'devscoffee-airo',
-    storageBucket: 'devscoffee-airo.firebasestorage.app',
+    apiKey: 'YOUR_ANDROID_API_KEY',
+    appId: 'YOUR_ANDROID_APP_ID',
+    messagingSenderId: 'YOUR_MESSAGING_SENDER_ID',
+    projectId: 'YOUR_PROJECT_ID',
+    storageBucket: 'YOUR_PROJECT_ID.firebasestorage.app',
   );
 
   /// Android TV - io.airo.app.tv
   static const FirebaseOptions androidTv = FirebaseOptions(
-    apiKey: 'AIzaSyCBhj62CjX9G7-QNbF3e-53BiM3FYcWNxw',
-    appId: '1:906799550225:android:dfa957aac3a2fdc62206b0',
-    messagingSenderId: '906799550225',
-    projectId: 'devscoffee-airo',
-    storageBucket: 'devscoffee-airo.firebasestorage.app',
+    apiKey: 'YOUR_ANDROID_TV_API_KEY',
+    appId: 'YOUR_ANDROID_TV_APP_ID',
+    messagingSenderId: 'YOUR_MESSAGING_SENDER_ID',
+    projectId: 'YOUR_PROJECT_ID',
+    storageBucket: 'YOUR_PROJECT_ID.firebasestorage.app',
   );
 
   /// Android Streaming - io.airo.app.streaming
   ///
-  /// Update this after downloading the Firebase client config for the
-  /// registered io.airo.app.streaming Android app.
+  /// Update this after registering the io.airo.app.streaming Android app in
+  /// the Firebase console and downloading its client config.
   static const FirebaseOptions androidStreaming = FirebaseOptions(
-    apiKey: 'AIzaSyCBhj62CjX9G7-QNbF3e-53BiM3FYcWNxw',
+    apiKey: 'YOUR_ANDROID_STREAMING_API_KEY',
     appId: 'TODO_REGISTER_IO_AIRO_APP_STREAMING',
-    messagingSenderId: '906799550225',
-    projectId: 'devscoffee-airo',
-    storageBucket: 'devscoffee-airo.firebasestorage.app',
+    messagingSenderId: 'YOUR_MESSAGING_SENDER_ID',
+    projectId: 'YOUR_PROJECT_ID',
+    storageBucket: 'YOUR_PROJECT_ID.firebasestorage.app',
   );
 
   // ===========================================================================
   // iOS Configuration
   // ===========================================================================
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyCBhj62CjX9G7-QNbF3e-53BiM3FYcWNxw',
-    appId:
-        '1:906799550225:ios:YOUR_IOS_APP_ID', // TODO: Get from Firebase Console
-    messagingSenderId: '906799550225',
-    projectId: 'devscoffee-airo',
-    storageBucket: 'devscoffee-airo.firebasestorage.app',
+    apiKey: 'YOUR_IOS_API_KEY',
+    appId: 'YOUR_IOS_APP_ID', // TODO: Get from Firebase Console
+    messagingSenderId: 'YOUR_MESSAGING_SENDER_ID',
+    projectId: 'YOUR_PROJECT_ID',
+    storageBucket: 'YOUR_PROJECT_ID.firebasestorage.app',
     iosBundleId: 'com.developerscoffee.airo',
   );
 
@@ -184,22 +189,20 @@ class DefaultFirebaseOptions {
   // Desktop Configurations
   // ===========================================================================
   static const FirebaseOptions macos = FirebaseOptions(
-    apiKey: 'AIzaSyCBhj62CjX9G7-QNbF3e-53BiM3FYcWNxw',
-    appId:
-        '1:906799550225:ios:YOUR_MACOS_APP_ID', // TODO: Get from Firebase Console
-    messagingSenderId: '906799550225',
-    projectId: 'devscoffee-airo',
-    storageBucket: 'devscoffee-airo.firebasestorage.app',
+    apiKey: 'YOUR_MACOS_API_KEY',
+    appId: 'YOUR_MACOS_APP_ID', // TODO: Get from Firebase Console
+    messagingSenderId: 'YOUR_MESSAGING_SENDER_ID',
+    projectId: 'YOUR_PROJECT_ID',
+    storageBucket: 'YOUR_PROJECT_ID.firebasestorage.app',
     iosBundleId: 'com.developerscoffee.airo',
   );
 
   static const FirebaseOptions windows = FirebaseOptions(
-    apiKey: 'AIzaSyCBhj62CjX9G7-QNbF3e-53BiM3FYcWNxw',
-    appId:
-        '1:906799550225:web:YOUR_WINDOWS_APP_ID', // TODO: Get from Firebase Console
-    messagingSenderId: '906799550225',
-    projectId: 'devscoffee-airo',
-    authDomain: 'devscoffee-airo.firebaseapp.com',
-    storageBucket: 'devscoffee-airo.firebasestorage.app',
+    apiKey: 'YOUR_WINDOWS_API_KEY',
+    appId: 'YOUR_WINDOWS_APP_ID', // TODO: Get from Firebase Console
+    messagingSenderId: 'YOUR_MESSAGING_SENDER_ID',
+    projectId: 'YOUR_PROJECT_ID',
+    authDomain: 'YOUR_PROJECT_ID.firebaseapp.com',
+    storageBucket: 'YOUR_PROJECT_ID.firebasestorage.app',
   );
 }

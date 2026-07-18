@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:core_ui/core_ui.dart';
 import '../../application/providers/iptv_providers.dart';
+import '../../application/providers/tv_font_mode_provider.dart';
 import "package:platform_channels/platform_channels.dart";
 import '../tv/iptv_tv.dart';
 import 'iptv_icon_placeholder.dart';
@@ -86,6 +87,9 @@ class _TvChannelGridState extends ConsumerState<TvChannelGrid> {
     final channels = ref.watch(filteredChannelsProvider);
     final dimensions = ref.watch(tvDimensionsProvider(context));
     final currentChannel = ref.watch(currentChannelProvider);
+    // CV-008 UC-001: user-selected TV font mode, applied on top of the
+    // device-based textScaleFactor already computed in `dimensions`.
+    final fontScale = ref.watch(tvFontModeProvider).scale;
 
     // Apply safe zone padding for Fire TV
     final padding =
@@ -117,6 +121,7 @@ class _TvChannelGridState extends ConsumerState<TvChannelGrid> {
             key: ValueKey('channel_card_${channel.id}'),
             channel: channel,
             dimensions: dimensions,
+            fontScale: fontScale,
             isPlaying: isPlaying,
             autofocus: isInitialFocus,
             onSelect: () => widget.onChannelSelect(channel),
@@ -240,6 +245,7 @@ class _TvChannelGridState extends ConsumerState<TvChannelGrid> {
 class _TvChannelCard extends StatelessWidget {
   final IPTVChannel channel;
   final TvUiDimensions dimensions;
+  final double fontScale;
   final bool isPlaying;
   final bool autofocus;
   final VoidCallback onSelect;
@@ -250,6 +256,7 @@ class _TvChannelCard extends StatelessWidget {
     super.key,
     required this.channel,
     required this.dimensions,
+    required this.fontScale,
     required this.isPlaying,
     required this.autofocus,
     required this.onSelect,
@@ -285,6 +292,7 @@ class _TvChannelCard extends StatelessWidget {
           child: _TvChannelCardContent(
             channel: channel,
             dimensions: dimensions,
+            fontScale: fontScale,
             isPlaying: isPlaying,
           ),
         ),
@@ -296,11 +304,13 @@ class _TvChannelCard extends StatelessWidget {
 class _TvChannelCardContent extends StatelessWidget {
   final IPTVChannel channel;
   final TvUiDimensions dimensions;
+  final double fontScale;
   final bool isPlaying;
 
   const _TvChannelCardContent({
     required this.channel,
     required this.dimensions,
+    required this.fontScale,
     required this.isPlaying,
   });
 
@@ -330,47 +340,54 @@ class _TvChannelCardContent extends StatelessWidget {
             flex: 2,
             child: Padding(
               padding: EdgeInsets.symmetric(horizontal: dimensions.cardPadding),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    channel.name,
-                    maxLines: isPlaying ? 1 : 2,
-                    textAlign: TextAlign.center,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 14 * dimensions.textScaleFactor,
-                      fontWeight: isPlaying
-                          ? FontWeight.bold
-                          : FontWeight.normal,
-                    ),
-                  ),
-                  if (isPlaying) ...[
-                    const SizedBox(height: 4),
-                    FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.play_circle_filled,
-                            size: 14 * dimensions.textScaleFactor,
-                            color: Colors.green,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            'Now Playing',
-                            style: TextStyle(
-                              color: Colors.green,
-                              fontSize: 11 * dimensions.textScaleFactor,
-                            ),
-                          ),
-                        ],
+              // CV-008 UC-001: the user's TV font mode can scale text up to
+              // 1.5x. FittedBox keeps the fixed-height card free of overflow
+              // at every scale instead of clipping or crashing layout.
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      channel.name,
+                      maxLines: isPlaying ? 1 : 2,
+                      textAlign: TextAlign.center,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 14 * dimensions.textScaleFactor * fontScale,
+                        fontWeight: isPlaying
+                            ? FontWeight.bold
+                            : FontWeight.normal,
                       ),
                     ),
+                    if (isPlaying) ...[
+                      const SizedBox(height: 4),
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.play_circle_filled,
+                              size: 14 * dimensions.textScaleFactor * fontScale,
+                              color: Colors.green,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Now Playing',
+                              style: TextStyle(
+                                color: Colors.green,
+                                fontSize:
+                                    11 * dimensions.textScaleFactor * fontScale,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ],
-                ],
+                ),
               ),
             ),
           ),

@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import "package:feature_iptv/feature_iptv.dart" show sharedPreferencesProvider;
+import 'package:feature_iptv/feature_iptv.dart' show sharedPreferencesProvider;
 import 'ai_model_management.dart';
 
 enum AIAccelerationPreference {

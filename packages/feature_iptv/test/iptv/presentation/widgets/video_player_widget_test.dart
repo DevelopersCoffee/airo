@@ -2,6 +2,7 @@ import 'package:feature_iptv/feature_iptv.dart';
 import 'package:feature_iptv/presentation/widgets/player_brightness_controller.dart';
 import 'package:feature_iptv/presentation/widgets/player_lock_button.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -17,6 +18,7 @@ void main() {
     bool enableSwipeChannelChange = false,
     PlayerBrightnessController? brightnessController,
     StreamingState? state,
+    List<IPTVChannel>? channels,
   }) async {
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
@@ -25,6 +27,8 @@ void main() {
       ProviderScope(
         overrides: [
           sharedPreferencesProvider.overrideWithValue(prefs),
+          if (channels != null)
+            iptvChannelsProvider.overrideWith((ref) async => channels),
           streamingStateProvider.overrideWith(
             (ref) => Stream.value(
               state ??
@@ -53,6 +57,70 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
   }
+
+  testWidgets(
+    'D-pad down surfs to the next channel while playback stays primary (CV-008 UC-002)',
+    (tester) async {
+      const current = IPTVChannel(
+        id: 'news-1',
+        name: 'City News Live',
+        streamUrl: 'https://example.com/news.m3u8',
+        group: 'News',
+        category: ChannelCategory.news,
+      );
+      const next = IPTVChannel(
+        id: 'sports-1',
+        name: 'Stadium Sports',
+        streamUrl: 'https://example.com/sports.m3u8',
+        group: 'Sports',
+        category: ChannelCategory.sports,
+      );
+
+      // Real service backed by a fake engine (not a real VideoPlayerController)
+      // -- same pattern the subtitle-selector tests below use, since a real
+      // controller here would leak (VideoPlayerStreamingService.dispose()
+      // does not resolve promptly once real playback has started).
+      final service = VideoPlayerStreamingService(
+        engine: FakeAiroPlaybackEngine(),
+      );
+      addTearDown(service.dispose);
+
+      final container = ProviderContainer(
+        overrides: [
+          iptvStreamingServiceProvider.overrideWithValue(service),
+          iptvChannelsProvider.overrideWith(
+            (ref) async => const [current, next],
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+      // Pre-warm so nextChannelProvider sees both channels the moment the
+      // key event fires, instead of starting from AsyncLoading (nothing
+      // else reads iptvChannelsProvider until then).
+      await container.read(iptvChannelsProvider.future);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: const MaterialApp(home: Scaffold(body: VideoPlayerWidget())),
+        ),
+      );
+      await tester.pump();
+
+      await service.playChannel(current);
+      await tester.pump();
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+      await tester.pump();
+
+      expect(find.text('Stadium Sports'), findsWidgets);
+
+      // Pending timers (buffer monitor, live-edge detector) must be stopped
+      // inside the test body -- the pending-timer check runs before
+      // addTearDown(service.dispose) fires.
+      await service.stop();
+    },
+  );
 
   testWidgets(
     'locking hides playback controls but keeps the lock button interactive',
@@ -153,9 +221,7 @@ void main() {
 
       await tester.pumpWidget(
         ProviderScope(
-          overrides: [
-            iptvStreamingServiceProvider.overrideWithValue(service),
-          ],
+          overrides: [iptvStreamingServiceProvider.overrideWithValue(service)],
           child: const MaterialApp(home: VideoPlayerWidget()),
         ),
       );
@@ -168,51 +234,48 @@ void main() {
     },
   );
 
-  testWidgets(
-    'subtitle button is hidden when there are no tracks',
-    (tester) async {
-      final engine = FakeAiroPlaybackEngine(tracks: const []);
-      final service = VideoPlayerStreamingService(engine: engine);
-      addTearDown(service.dispose);
+  testWidgets('subtitle button is hidden when there are no tracks', (
+    tester,
+  ) async {
+    final engine = FakeAiroPlaybackEngine(tracks: const []);
+    final service = VideoPlayerStreamingService(engine: engine);
+    addTearDown(service.dispose);
 
-      // Pump the widget (and subscribe to service.stateStream via
-      // streamingStateProvider) BEFORE calling playChannel(). The service's
-      // state stream is a plain broadcast stream with no replay, so a
-      // listener that subscribes after playChannel() has already emitted
-      // would miss those events entirely and stay stuck in the loading
-      // branch — which would make this assertion trivially true regardless
-      // of tracks. Wrapping in a Scaffold matches how VideoPlayerWidget is
-      // actually embedded in production (see AiroResponsiveScaffold usage
-      // in iptv_screen.dart) — the control bar's volume Slider needs a
-      // Material ancestor once the widget reaches its "player" state.
-      await tester.pumpWidget(
-        ProviderScope(
-          overrides: [iptvStreamingServiceProvider.overrideWithValue(service)],
-          child: const MaterialApp(
-            home: Scaffold(body: VideoPlayerWidget()),
-          ),
-        ),
-      );
-      await tester.pump();
+    // Pump the widget (and subscribe to service.stateStream via
+    // streamingStateProvider) BEFORE calling playChannel(). The service's
+    // state stream is a plain broadcast stream with no replay, so a
+    // listener that subscribes after playChannel() has already emitted
+    // would miss those events entirely and stay stuck in the loading
+    // branch — which would make this assertion trivially true regardless
+    // of tracks. Wrapping in a Scaffold matches how VideoPlayerWidget is
+    // actually embedded in production (see AiroResponsiveScaffold usage
+    // in iptv_screen.dart) — the control bar's volume Slider needs a
+    // Material ancestor once the widget reaches its "player" state.
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [iptvStreamingServiceProvider.overrideWithValue(service)],
+        child: const MaterialApp(home: Scaffold(body: VideoPlayerWidget())),
+      ),
+    );
+    await tester.pump();
 
-      await service.playChannel(
-        IPTVChannel(id: 'c1', name: 'Chan', streamUrl: 'https://x/y.m3u8'),
-      );
-      await tester.pump();
+    await service.playChannel(
+      IPTVChannel(id: 'c1', name: 'Chan', streamUrl: 'https://x/y.m3u8'),
+    );
+    await tester.pump();
 
-      expect(
-        find.byKey(const ValueKey('iptv-player-subtitle-button')),
-        findsNothing,
-      );
+    expect(
+      find.byKey(const ValueKey('iptv-player-subtitle-button')),
+      findsNothing,
+    );
 
-      // playChannel() starts periodic timers (buffer monitor, live-edge
-      // detector). testWidgets' pending-timer invariant check runs before
-      // addTearDown callbacks fire, so those timers must be stopped inside
-      // the test body itself — addTearDown(service.dispose) alone isn't
-      // enough here (see VideoPlayerStreamingService.stop()).
-      await service.stop();
-    },
-  );
+    // playChannel() starts periodic timers (buffer monitor, live-edge
+    // detector). testWidgets' pending-timer invariant check runs before
+    // addTearDown callbacks fire, so those timers must be stopped inside
+    // the test body itself — addTearDown(service.dispose) alone isn't
+    // enough here (see VideoPlayerStreamingService.stop()).
+    await service.stop();
+  });
 
   testWidgets(
     'subtitle button is visible and calls selectTrack when tracks exist',
@@ -250,9 +313,7 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [iptvStreamingServiceProvider.overrideWithValue(service)],
-          child: const MaterialApp(
-            home: Scaffold(body: VideoPlayerWidget()),
-          ),
+          child: const MaterialApp(home: Scaffold(body: VideoPlayerWidget())),
         ),
       );
       await tester.pump();
@@ -280,7 +341,9 @@ void main() {
       // otherwise keep scheduling frames forever and make pumpAndSettle()
       // time out. This is enough to let the bottom-sheet's route transition
       // animation finish.
-      await tester.tap(find.byKey(const ValueKey('iptv-player-subtitle-button')));
+      await tester.tap(
+        find.byKey(const ValueKey('iptv-player-subtitle-button')),
+      );
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
 
@@ -305,4 +368,119 @@ void main() {
       await service.stop();
     },
   );
+
+  testWidgets(
+    'auto-applies the preferred caption language once tracks are available (CV-008 handoff)',
+    (tester) async {
+      SharedPreferences.setMockInitialValues({
+        captionPreferenceEnabledStorageKey: true,
+        captionPreferenceLanguageStorageKey: 'fr',
+      });
+      final prefs = await SharedPreferences.getInstance();
+
+      final engine = FakeAiroPlaybackEngine(
+        tracks: const [
+          AiroPlaybackTrackOption(
+            id: 'external_sub_0',
+            kind: AiroPlaybackTrackKind.subtitle,
+            label: 'English',
+            languageCode: 'en',
+            isExternal: true,
+          ),
+          AiroPlaybackTrackOption(
+            id: 'external_sub_1',
+            kind: AiroPlaybackTrackKind.subtitle,
+            label: 'French',
+            languageCode: 'fr',
+            isExternal: true,
+          ),
+        ],
+      );
+      final service = VideoPlayerStreamingService(engine: engine);
+      addTearDown(service.dispose);
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            iptvStreamingServiceProvider.overrideWithValue(service),
+          ],
+          child: const MaterialApp(home: Scaffold(body: VideoPlayerWidget())),
+        ),
+      );
+      await tester.pump();
+
+      await service.playChannel(
+        IPTVChannel(id: 'c1', name: 'Chan', streamUrl: 'https://x/y.m3u8'),
+      );
+      await tester.pump();
+      // The engine auto-selects the first track ('en') on open; the widget
+      // then needs a frame to read the caption preference and re-select.
+      await tester.pump();
+
+      expect(
+        service.currentState.selectedTrackIds[AiroPlaybackTrackKind.subtitle],
+        'external_sub_1',
+      );
+
+      await service.stop();
+    },
+  );
+
+  testWidgets('does not override the user caption preference when disabled', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({
+      captionPreferenceEnabledStorageKey: false,
+      captionPreferenceLanguageStorageKey: 'fr',
+    });
+    final prefs = await SharedPreferences.getInstance();
+
+    final engine = FakeAiroPlaybackEngine(
+      tracks: const [
+        AiroPlaybackTrackOption(
+          id: 'external_sub_0',
+          kind: AiroPlaybackTrackKind.subtitle,
+          label: 'English',
+          languageCode: 'en',
+          isExternal: true,
+        ),
+        AiroPlaybackTrackOption(
+          id: 'external_sub_1',
+          kind: AiroPlaybackTrackKind.subtitle,
+          label: 'French',
+          languageCode: 'fr',
+          isExternal: true,
+        ),
+      ],
+    );
+    final service = VideoPlayerStreamingService(engine: engine);
+    addTearDown(service.dispose);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          iptvStreamingServiceProvider.overrideWithValue(service),
+        ],
+        child: const MaterialApp(home: Scaffold(body: VideoPlayerWidget())),
+      ),
+    );
+    await tester.pump();
+
+    await service.playChannel(
+      IPTVChannel(id: 'c1', name: 'Chan', streamUrl: 'https://x/y.m3u8'),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    // Preference disabled -- the engine's own default (first track, 'en')
+    // must stand; the widget must not force a selection.
+    expect(
+      service.currentState.selectedTrackIds[AiroPlaybackTrackKind.subtitle],
+      'external_sub_0',
+    );
+
+    await service.stop();
+  });
 }
