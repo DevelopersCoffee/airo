@@ -23,7 +23,7 @@ class TvThemeSection extends ConsumerWidget {
         final definition = AppTheme.byId(id);
         final isSelected = id == current;
         return TvFocusable(
-          autofocus: index == 0,
+          autofocus: isSelected,
           onSelect: () => ref.read(appThemeProvider.notifier).setTheme(id),
           semanticLabel: definition.name,
           semanticButton: true,
