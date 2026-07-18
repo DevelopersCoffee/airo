@@ -159,7 +159,14 @@ class FakeAiroPlaybackEngine implements AiroPlaybackEngine {
     required AiroPlaybackTrackKind kind,
     required String trackId,
   }) async {
-    if (!_tracks.any((track) => track.kind == kind && track.id == trackId)) {
+    // Validate against _state.tracks (constructor-seeded tracks plus any
+    // external-subtitle tracks projected during open()), matching
+    // VideoPlayerAiroPlaybackEngine.selectTrack. Validating against _tracks
+    // alone would incorrectly reject a projected external subtitle that the
+    // real engine accepts.
+    if (!_state.tracks.any(
+      (track) => track.kind == kind && track.id == trackId,
+    )) {
       return _fail(
         AiroPlaybackError(
           code: AiroPlaybackErrorCode.trackUnavailable,

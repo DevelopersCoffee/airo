@@ -141,6 +141,40 @@ void main() {
       },
     );
 
+    test(
+      'fake engine selectTrack succeeds for a projected external subtitle '
+      '(validates against _state.tracks, matching VideoPlayerAiroPlaybackEngine)',
+      () async {
+        final engine = FakeAiroPlaybackEngine();
+        final mediaRequest = AiroMediaOpenRequest(
+          requestId: 'open-ext-sub-2',
+          sourceHandle: AiroPlaybackSourceHandle.redacted('source-handle-2'),
+          mediaKind: AiroPlaybackMediaKind.hls,
+          externalSubtitles: [
+            AiroPlaybackExternalSubtitle(
+              handle: AiroPlaybackSourceHandle.redacted('sub-handle-en'),
+              languageCode: 'en',
+              label: 'English',
+            ),
+          ],
+        );
+
+        await engine.open(mediaRequest);
+
+        final state = await engine.selectTrack(
+          kind: AiroPlaybackTrackKind.subtitle,
+          trackId: 'external_sub_0',
+        );
+
+        expect(state.error, isNull);
+        expect(
+          state.selectedTrackIds[AiroPlaybackTrackKind.subtitle],
+          'external_sub_0',
+        );
+        await engine.dispose();
+      },
+    );
+
     test('fake engine returns typed failure for unavailable options', () async {
       final engine = FakeAiroPlaybackEngine();
 
