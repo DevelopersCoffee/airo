@@ -138,6 +138,7 @@ void main() {
   group('VideoPlayerStreamingService attachExternalSubtitle', () {
     test('attached subtitle appears in tracks after the next playChannel', () async {
       service.attachExternalSubtitle(
+        'chan-1',
         AiroPlaybackExternalSubtitle(
           handle: AiroPlaybackSourceHandle.redacted('sub-en'),
           languageCode: 'en',
@@ -154,6 +155,7 @@ void main() {
       expect(service.currentState.tracks, isEmpty);
 
       service.attachExternalSubtitle(
+        'chan-1',
         AiroPlaybackExternalSubtitle(
           handle: AiroPlaybackSourceHandle.redacted('sub-en'),
           languageCode: 'en',
@@ -162,6 +164,56 @@ void main() {
       // Not applied yet — still empty until the next playChannel.
       expect(service.currentState.tracks, isEmpty);
     });
+
+    test(
+      'subtitle attached for one item does not leak onto a different item',
+      () async {
+        // Attach for chan-1 and play chan-1: subtitle should appear.
+        service.attachExternalSubtitle(
+          'chan-1',
+          AiroPlaybackExternalSubtitle(
+            handle: AiroPlaybackSourceHandle.redacted('sub-en'),
+            languageCode: 'en',
+            label: 'English',
+          ),
+        );
+        await service.playChannel(channel());
+        expect(service.currentState.tracks, hasLength(1));
+        expect(service.currentState.tracks.single.isExternal, isTrue);
+
+        // Playing a *different* channel/item must NOT inherit chan-1's
+        // pending subtitle (this is the CV-016 review Finding 2 leak).
+        final otherChannel = IPTVChannel(
+          id: 'chan-2',
+          name: 'Other Channel',
+          streamUrl: 'https://example.com/other.m3u8',
+        );
+        await service.playChannel(otherChannel);
+        expect(service.currentState.tracks, isEmpty);
+      },
+    );
+
+    test(
+      'a quality switch (same channel id) still re-applies the pending subtitle',
+      () async {
+        // setQuality() re-invokes playChannel() for the *same* channel id —
+        // the id-matching scope must not treat that as "a different item".
+        service.attachExternalSubtitle(
+          'chan-1',
+          AiroPlaybackExternalSubtitle(
+            handle: AiroPlaybackSourceHandle.redacted('sub-en'),
+            languageCode: 'en',
+            label: 'English',
+          ),
+        );
+        await service.playChannel(channel());
+        expect(service.currentState.tracks, hasLength(1));
+
+        await service.setQuality(VideoQuality.high);
+        expect(service.currentState.tracks, hasLength(1));
+        expect(service.currentState.tracks.single.isExternal, isTrue);
+      },
+    );
   });
 
   group('VideoPlayerStreamingService DVR/live-edge/buffer-health regression', () {

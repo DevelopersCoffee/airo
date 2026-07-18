@@ -123,6 +123,7 @@ class VodScreen extends ConsumerWidget {
     // for the subtitle to take effect; the dialog copy makes this explicit
     // rather than implying an instant attach.
     ref.read(iptvStreamingServiceProvider).attachExternalSubtitle(
+      item.id,
       AiroPlaybackExternalSubtitle(
         handle: AiroPlaybackSourceHandle.direct(url),
         label: 'Custom subtitle',

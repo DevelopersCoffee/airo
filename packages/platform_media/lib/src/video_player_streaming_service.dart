@@ -34,6 +34,10 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
   final LiveEdgeDetector _liveEdgeDetector;
 
   StreamSubscription<AiroPlaybackState>? _engineSubscription;
+  // Scoped to the channel/item id it was attached for so it doesn't leak
+  // onto unrelated subsequent playChannel() calls (see
+  // attachExternalSubtitle() and playChannel()).
+  String? _pendingExternalSubtitleChannelId;
   AiroPlaybackExternalSubtitle? _pendingExternalSubtitle;
   int _requestCounter = 0;
 
@@ -134,7 +138,9 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
 
       final url = channel.getStreamUrl(_state.selectedQuality);
       final externalSubtitles = <AiroPlaybackExternalSubtitle>[
-        if (_pendingExternalSubtitle != null) _pendingExternalSubtitle!,
+        if (_pendingExternalSubtitle != null &&
+            _pendingExternalSubtitleChannelId == channel.id)
+          _pendingExternalSubtitle!,
       ];
 
       final result = await _engine.open(
@@ -496,11 +502,20 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
   }
 
   /// Stores an external subtitle to include on the next [playChannel] open
-  /// request. Engines don't support attaching a subtitle to an
-  /// already-open source, so this doesn't take effect until the next open —
-  /// callers should re-trigger playback (e.g. call [playChannel] again) if
-  /// they want it to apply immediately.
-  void attachExternalSubtitle(AiroPlaybackExternalSubtitle subtitle) {
+  /// request *for [channelId]*. Engines don't support attaching a subtitle
+  /// to an already-open source, so this doesn't take effect until the next
+  /// open — callers should re-trigger playback (e.g. call [playChannel]
+  /// again) if they want it to apply immediately.
+  ///
+  /// Scoped by [channelId] so the subtitle only projects onto the item it
+  /// was attached for: a subsequent [playChannel] call for a *different*
+  /// channel/item id won't pick it up. A same-id re-open (e.g. [setQuality]
+  /// re-invoking [playChannel] for the same channel) still re-applies it.
+  void attachExternalSubtitle(
+    String channelId,
+    AiroPlaybackExternalSubtitle subtitle,
+  ) {
+    _pendingExternalSubtitleChannelId = channelId;
     _pendingExternalSubtitle = subtitle;
   }
 
