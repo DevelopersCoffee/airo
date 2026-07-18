@@ -819,19 +819,26 @@ class _PlaylistSourceSheetState extends ConsumerState<_PlaylistSourceSheet> {
               _PlaylistSourceInfoCallout(),
             ],
             const SizedBox(height: 12),
-            Row(
+            OverflowBar(
+              alignment: MainAxisAlignment.spaceBetween,
+              overflowAlignment: OverflowBarAlignment.end,
+              spacing: 8,
+              overflowSpacing: 8,
               children: [
                 TextButton(onPressed: _remove, child: const Text('Remove')),
-                const Spacer(),
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('Cancel'),
-                ),
-                const SizedBox(width: 8),
-                FilledButton.icon(
-                  onPressed: _save,
-                  icon: const Icon(Icons.check),
-                  label: const Text('Save'),
+                OverflowBar(
+                  spacing: 8,
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: const Text('Cancel'),
+                    ),
+                    FilledButton.icon(
+                      onPressed: _save,
+                      icon: const Icon(Icons.check),
+                      label: const Text('Save'),
+                    ),
+                  ],
                 ),
               ],
             ),
