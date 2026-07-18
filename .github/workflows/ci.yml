@@ -467,6 +467,15 @@ jobs:
 
       - name: Build APK (Release) - ${{ matrix.platform.description }}
         if: steps.android_scope.outputs.should_build == 'true'
+        env:
+          # LiteRT-LM (Gemini Nano) lives in a private Maven registry on
+          # google/generative-ai-android. The default Actions GITHUB_TOKEN
+          # is scoped to this repo only and can't read it; AIRO_LITERTLM_TOKEN
+          # is a PAT with read:packages on that repo (see issue #854).
+          # app/android/build.gradle.kts reads GITHUB_TOKEN, so we feed it
+          # the PAT here. Falls back to the ambient (scopeless) token when
+          # the secret isn't set, which keeps forks/PRs building via the stub.
+          GITHUB_TOKEN: ${{ secrets.AIRO_LITERTLM_TOKEN || secrets.GITHUB_TOKEN }}
         run: |
           cd app
           echo "🔨 Building ${{ matrix.platform.name }} APK..."
