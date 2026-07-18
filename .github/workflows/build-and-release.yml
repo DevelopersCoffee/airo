@@ -583,6 +583,7 @@ jobs:
       - name: Build Windows
         env:
           CMAKE_POLICY_VERSION_MINIMUM: '3.5'
+          CL: '/D_SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGS'
         run: |
           cd app
           flutter build windows --release
