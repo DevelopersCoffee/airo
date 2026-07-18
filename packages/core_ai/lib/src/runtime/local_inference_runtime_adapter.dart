@@ -3,7 +3,7 @@ import 'package:meta/meta.dart';
 import '../llm/llm_client.dart';
 import '../models/offline_model_info.dart';
 
-enum LocalRuntimeKind { geminiNano, liteRtLm, gguf }
+enum LocalRuntimeKind { geminiNano, liteRtLm, gguf, mediaPipeWeb }
 
 enum RuntimeBackend { cpu, gpu, npu }
 
