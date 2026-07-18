@@ -22,11 +22,7 @@ void main() {
         requestOptions: options,
         statusCode: 200,
         data: {
-          'user_info': {
-            'auth': 1,
-            'status': 'Active',
-            'max_connections': '1',
-          },
+          'user_info': {'auth': 1, 'status': 'Active', 'max_connections': '1'},
           'server_info': {'url': 'xtream.example.com', 'https_port': '443'},
         },
       ),
@@ -44,37 +40,40 @@ void main() {
     expect(result.status, 'Active');
   });
 
-  test('getLiveStreams() maps stream_id/name/stream_icon/category_id', () async {
-    dio = Dio(BaseOptions(baseUrl: 'https://xtream.example.com'));
-    dio.httpClientAdapter = FakeHttpClientAdapter({
-      playerApiUrl: (options) => Response(
-        requestOptions: options,
-        statusCode: 200,
-        data: [
-          {
-            'stream_id': 101,
-            'name': 'News HD',
-            'stream_icon': 'https://xtream.example.com/logo.png',
-            'category_id': '5',
-            'epg_channel_id': 'news.hd',
-          },
-        ],
-      ),
-    });
-    final client = XtreamClient(
-      dio: dio,
-      serverUrl: 'https://xtream.example.com',
-      username: 'user1',
-      password: 'pass1',
-    );
+  test(
+    'getLiveStreams() maps stream_id/name/stream_icon/category_id',
+    () async {
+      dio = Dio(BaseOptions(baseUrl: 'https://xtream.example.com'));
+      dio.httpClientAdapter = FakeHttpClientAdapter({
+        playerApiUrl: (options) => Response(
+          requestOptions: options,
+          statusCode: 200,
+          data: [
+            {
+              'stream_id': 101,
+              'name': 'News HD',
+              'stream_icon': 'https://xtream.example.com/logo.png',
+              'category_id': '5',
+              'epg_channel_id': 'news.hd',
+            },
+          ],
+        ),
+      });
+      final client = XtreamClient(
+        dio: dio,
+        serverUrl: 'https://xtream.example.com',
+        username: 'user1',
+        password: 'pass1',
+      );
 
-    final streams = await client.getLiveStreams();
+      final streams = await client.getLiveStreams();
 
-    expect(streams, hasLength(1));
-    expect(streams.single.streamId, 101);
-    expect(streams.single.name, 'News HD');
-    expect(streams.single.epgChannelId, 'news.hd');
-  });
+      expect(streams, hasLength(1));
+      expect(streams.single.streamId, 101);
+      expect(streams.single.name, 'News HD');
+      expect(streams.single.epgChannelId, 'news.hd');
+    },
+  );
 
   test('getShortEpg() base64-decodes title/description', () async {
     dio = Dio(BaseOptions(baseUrl: 'https://xtream.example.com'));
@@ -144,23 +143,109 @@ void main() {
     expect(listings.single.end, DateTime.utc(2026, 7, 16, 18, 30, 0));
   });
 
-  test('authenticate() throws DioException when the server returns 401', () async {
-    dio = Dio(BaseOptions(baseUrl: 'https://xtream.example.com'));
-    dio.httpClientAdapter = FakeHttpClientAdapter({
-      playerApiUrl: (options) => Response(
-        requestOptions: options,
-        statusCode: 401,
-        data: {'user_info': {'auth': 0, 'status': 'Disabled'}},
-      ),
+  test(
+    'authenticate() throws DioException when the server returns 401',
+    () async {
+      dio = Dio(BaseOptions(baseUrl: 'https://xtream.example.com'));
+      dio.httpClientAdapter = FakeHttpClientAdapter({
+        playerApiUrl: (options) => Response(
+          requestOptions: options,
+          statusCode: 401,
+          data: {
+            'user_info': {'auth': 0, 'status': 'Disabled'},
+          },
+        ),
+      });
+      final client = XtreamClient(
+        dio: dio,
+        serverUrl: 'https://xtream.example.com',
+        username: 'user1',
+        password: 'pass1',
+      );
+
+      await expectLater(client.authenticate(), throwsA(isA<DioException>()));
+    },
+  );
+
+  group('health tracking (CV-012 slice-2)', () {
+    test('successful authenticate() records fetchSuccess sample', () async {
+      dio = Dio();
+      dio.httpClientAdapter = FakeHttpClientAdapter({
+        playerApiUrl: (options) => Response(
+          requestOptions: options,
+          statusCode: 200,
+          data: {
+            'user_info': {'auth': 1, 'status': 'Active'},
+          },
+        ),
+      });
+      final tracker = ProviderHealthTracker();
+      final client = XtreamClient(
+        dio: dio,
+        serverUrl: 'https://xtream.example.com',
+        username: 'user1',
+        password: 'pass1',
+        healthTracker: tracker,
+        sourceId: 'xtream-1',
+      );
+
+      await client.authenticate();
+
+      final snap = tracker.snapshotFor('xtream-1');
+      expect(snap.totalSamples, 1);
+      expect(snap.healthClass, ProviderHealthClass.green);
     });
-    final client = XtreamClient(
-      dio: dio,
-      serverUrl: 'https://xtream.example.com',
-      username: 'user1',
-      password: 'pass1',
+
+    test(
+      '401 on authenticate() records fetchFailure(auth) and rethrows',
+      () async {
+        dio = Dio();
+        dio.httpClientAdapter = FakeHttpClientAdapter({
+          playerApiUrl: (options) => Response(
+            requestOptions: options,
+            statusCode: 401,
+            data: {'error': 'unauthorized'},
+          ),
+        });
+        final tracker = ProviderHealthTracker();
+        final client = XtreamClient(
+          dio: dio,
+          serverUrl: 'https://xtream.example.com',
+          username: 'user1',
+          password: 'pass1',
+          healthTracker: tracker,
+          sourceId: 'xtream-1',
+        );
+
+        await expectLater(client.authenticate(), throwsA(isA<DioException>()));
+
+        final snap = tracker.snapshotFor('xtream-1');
+        expect(snap.recentFailureCategory, ProviderHealthFailureCategory.auth);
+        expect(snap.failureRate, 1.0);
+      },
     );
 
-    await expectLater(client.authenticate(), throwsA(isA<DioException>()));
+    test('no tracker → no recording, existing behavior preserved', () async {
+      dio = Dio();
+      dio.httpClientAdapter = FakeHttpClientAdapter({
+        playerApiUrl: (options) => Response(
+          requestOptions: options,
+          statusCode: 200,
+          data: {
+            'user_info': {'auth': 1, 'status': 'Active'},
+          },
+        ),
+      });
+      final client = XtreamClient(
+        dio: dio,
+        serverUrl: 'https://xtream.example.com',
+        username: 'user1',
+        password: 'pass1',
+      );
+
+      final result = await client.authenticate();
+      expect(result.isAuthenticated, isTrue);
+    });
   });
 
   test('liveStreamUrl builds username/password/stream_id path', () {

@@ -234,7 +234,10 @@ class _TvSourceManagementSectionState
     }
   }
 
-  Widget _capabilityBadges(BuildContext context, ContentSourceCapabilities caps) {
+  Widget _capabilityBadges(
+    BuildContext context,
+    ContentSourceCapabilities caps,
+  ) {
     final flags = <String>[
       if (caps.hasEpg) 'EPG',
       if (caps.hasVod) 'VOD',
@@ -255,7 +258,10 @@ class _TvSourceManagementSectionState
             ),
             child: Text(
               flag,
-              style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 12),
+              style: TextStyle(
+                color: colorScheme.onSurfaceVariant,
+                fontSize: 12,
+              ),
             ),
           ),
       ],
@@ -301,7 +307,9 @@ class _TvSourceManagementSectionState
                         children: [
                           Text(
                             _kindLabel(config.kind),
-                            style: TextStyle(color: colorScheme.onSurfaceVariant),
+                            style: TextStyle(
+                              color: colorScheme.onSurfaceVariant,
+                            ),
                           ),
                           const SizedBox(height: 4),
                           _capabilityBadges(
@@ -329,10 +337,7 @@ class _TvSourceManagementSectionState
           ),
           if (_removeError != null) ...[
             const SizedBox(height: 8),
-            Text(
-              _removeError!,
-              style: TextStyle(color: colorScheme.error),
-            ),
+            Text(_removeError!, style: TextStyle(color: colorScheme.error)),
           ],
           const SizedBox(height: 16),
           if (!_showAddForm)

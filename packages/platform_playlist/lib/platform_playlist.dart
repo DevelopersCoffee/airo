@@ -8,6 +8,7 @@ export 'package:platform_channels/platform_channels.dart'
 export 'src/content_source.dart';
 export 'src/content_source_credential_store.dart';
 export 'src/provider_health.dart';
+export 'src/provider_health_recorder.dart';
 export 'src/m3u_content_source.dart';
 export 'src/m3u_vod_adapter.dart';
 export 'src/xtream/xtream_client.dart';
