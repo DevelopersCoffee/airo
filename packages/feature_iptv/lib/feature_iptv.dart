@@ -1,10 +1,12 @@
 library;
 
 export "src/iptv.dart";
+export "domain/local_iptv_search.dart";
 export "application/providers/iptv_providers.dart";
 export "application/providers/iptv_cast_providers.dart";
 export "application/providers/content_source_management_providers.dart";
 export "application/providers/guide_providers.dart";
+export "application/providers/local_iptv_search_providers.dart";
 export "application/providers/playback_settings_extension_point.dart";
 export "application/providers/video_aspect_ratio_provider.dart";
 export "application/content_source_store.dart";
@@ -21,6 +23,7 @@ export "presentation/tv/vod_tv_screen.dart";
 export "presentation/widgets/cast_device_picker_sheet.dart";
 export "presentation/widgets/iptv_cast_mini_controller.dart";
 export "presentation/widgets/iptv_mini_player.dart";
+export "presentation/widgets/iptv_navigation_drawer.dart";
 export "presentation/widgets/phone_media_play_on_tv_sheet.dart";
 export "presentation/widgets/xmltv_source_sheet.dart";
 export "presentation/widgets/epg_match_override_sheet.dart";
