@@ -473,6 +473,7 @@ jobs:
 
       - name: Build iOS
         run: |
+          flutter config --no-enable-swift-package-manager
           cd app
           flutter build ios --release --no-codesign \
             --dart-define=ENV=prod \
@@ -580,6 +581,8 @@ jobs:
           dart run build_runner build --delete-conflicting-outputs
 
       - name: Build Windows
+        env:
+          CMAKE_POLICY_VERSION_MINIMUM: '3.5'
         run: |
           cd app
           flutter build windows --release
@@ -622,7 +625,7 @@ jobs:
       - name: Install Linux dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libgtk-3-dev libx11-dev pkg-config cmake ninja-build libblkid-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libsecret-1-dev libjsoncpp-dev
+          sudo apt-get install -y libgtk-3-dev libx11-dev pkg-config cmake ninja-build libblkid-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libsecret-1-dev libjsoncpp-dev libmpv-dev
 
       - name: Get dependencies
         run: |
