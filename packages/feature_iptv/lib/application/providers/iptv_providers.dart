@@ -10,6 +10,7 @@ import "package:platform_epg/platform_epg.dart";
 import "package:platform_player/platform_player.dart";
 import "package:platform_media/platform_media.dart";
 import "package:platform_playlist_import/platform_playlist_import.dart";
+import '../../domain/vod_resume_coordinator.dart';
 
 export 'iptv_cast_providers.dart';
 export 'airo_tv_profile_provider.dart';
@@ -520,4 +521,26 @@ final toggleGroupHiddenProvider = FutureProvider.family<bool, String>((
   final nowHidden = await storage.toggleHidden(groupId);
   ref.invalidate(hiddenGroupIdsProvider);
   return nowHidden;
+});
+
+// =============================================================================
+// VOD Resume Position (CV-016)
+// =============================================================================
+
+/// VOD resume-position storage provider.
+final vodResumePositionStorageProvider = Provider<VodResumePositionStorage>((
+  ref,
+) {
+  final prefs = ref.watch(sharedPreferencesProvider);
+  return VodResumePositionStorage(prefs);
+});
+
+/// Drives VOD resume-seek/save decisions for [VideoPlayerWidget]. Kept alive
+/// for the app's lifetime (not per-screen) so [VodResumeCoordinator]'s
+/// per-channel "already checked this session" bookkeeping survives
+/// navigating away from and back to the player.
+final vodResumeCoordinatorProvider = Provider<VodResumeCoordinator>((ref) {
+  return VodResumeCoordinator(
+    storage: ref.watch(vodResumePositionStorageProvider),
+  );
 });

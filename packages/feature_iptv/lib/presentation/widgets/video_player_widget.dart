@@ -3,11 +3,11 @@ import 'package:core_ui/core_ui.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_riverpod/legacy.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 import '../../application/providers/caption_preference_provider.dart';
 import '../../application/providers/iptv_providers.dart';
 import '../../application/providers/video_aspect_ratio_provider.dart';
+import '../../domain/vod_resume_coordinator.dart';
 import '../../domain/wakelock_debouncer.dart';
 import 'playback_diagnostic_overlay.dart';
 import "package:platform_channels/platform_channels.dart";
@@ -302,6 +302,7 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
     // This is called on every build when state changes
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _updateWakelockForPlayback(state);
+      _handleVodResume(service, state);
       _applyCaptionPreferenceIfNeeded(service, state);
     });
 
@@ -842,6 +843,50 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
         ),
       ],
     );
+  }
+
+  /// CV-016: VOD resume. Seeks to a saved position once per channel per
+  /// session (never overriding a later user seek on rebuild), and
+  /// periodically persists the current position so it survives a restart.
+  /// A no-op for live streams -- see [VodResumeCoordinator].
+  void _handleVodResume(
+    VideoPlayerStreamingService service,
+    StreamingState state,
+  ) {
+    final channel = state.currentChannel;
+    if (channel == null) return;
+
+    // Mirrors every other storage-backed provider's load/save pattern in
+    // this package (e.g. VideoAspectRatioNotifier, CaptionPreferenceNotifier):
+    // a storage failure must never crash the scheduler callback that runs
+    // on every frame.
+    try {
+      final coordinator = ref.read(vodResumeCoordinatorProvider);
+      unawaited(
+        coordinator
+            .maybeResumePosition(
+              channelId: channel.id,
+              isLiveStream: state.isLiveStream,
+              duration: state.duration,
+            )
+            .then((resumePosition) {
+              if (resumePosition != null && mounted) {
+                service.seek(resumePosition);
+              }
+            }),
+      );
+      unawaited(
+        coordinator.saveProgressIfDue(
+          channelId: channel.id,
+          isLiveStream: state.isLiveStream,
+          position: state.position,
+          duration: state.duration,
+          now: DateTime.now(),
+        ),
+      );
+    } catch (e) {
+      debugPrint('Failed to check/save VOD resume position: $e');
+    }
   }
 
   /// CV-008 handoff: when captions are enabled and a subtitle track matches
