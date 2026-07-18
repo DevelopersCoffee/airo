@@ -39,14 +39,32 @@ void main() {
     LocalIptvSearchIndex buildIndex({
       Set<String> favoriteChannelIds = const {},
       List<String> recentChannelIds = const [],
+      Set<String> hiddenGroupIds = const {},
     }) {
       return LocalIptvSearchIndex.build(
         channels: channels,
         programsByChannelId: programsByChannel,
         favoriteChannelIds: favoriteChannelIds,
         recentChannelIds: recentChannelIds,
+        hiddenGroupIds: hiddenGroupIds,
       );
     }
+
+    test('excludes channels whose group is hidden (CV-021)', () {
+      final index = buildIndex(hiddenGroupIds: {'Sports'});
+
+      final results = index.search('ESPN');
+
+      expect(results, isEmpty);
+    });
+
+    test('hidden groups do not affect channels in other groups', () {
+      final index = buildIndex(hiddenGroupIds: {'Sports'});
+
+      final results = index.search('BBC News');
+
+      expect(results, isNotEmpty);
+    });
 
     test('returns empty results for a blank query', () {
       final index = buildIndex();
