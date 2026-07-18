@@ -8,6 +8,7 @@ import '../../features/agent_chat/presentation/screens/chat_screen.dart';
 import '../../features/agent_chat/presentation/screens/model_library_screen.dart';
 import '../../features/agent_chat/presentation/screens/notifications_screen.dart';
 import '../../features/agent_chat/presentation/screens/profile_screen.dart';
+import '../../features/settings/presentation/screens/settings_hub_screen.dart';
 import 'package:feature_iptv/feature_iptv.dart';
 import '../../features/iptv/phone_media_local_picker.dart';
 import '../../features/games/presentation/screens/games_hub_screen.dart';
@@ -94,6 +95,11 @@ class AppRouter {
         path: '/airo-explore',
         name: 'airo_explore',
         builder: (context, state) => const AiroExploreScreen(),
+      ),
+      GoRoute(
+        path: RouteNames.settings,
+        name: RouteNames.settings,
+        builder: (context, state) => const SettingsHubScreen(),
       ),
       GoRoute(
         path: RouteNames.login,

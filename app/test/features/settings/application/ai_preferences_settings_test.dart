@@ -1,6 +1,5 @@
 import 'package:airo_app/features/settings/application/ai_preferences_settings.dart';
-import "package:feature_iptv/feature_iptv.dart";
-import "package:platform_channels/platform_channels.dart";
+import 'package:feature_iptv/feature_iptv.dart';
 import 'package:core_ai/core_ai.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';

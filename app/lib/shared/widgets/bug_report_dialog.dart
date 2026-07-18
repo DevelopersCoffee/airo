@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/platform/platform_config.dart';
 import '../../core/utils/logger.dart';
@@ -184,7 +185,7 @@ class _BugReportDialogState extends State<BugReportDialog> {
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              'Bug reporting is not configured. Contact support.',
+              'GitHub API reporting is not configured. Submit will open a prefilled issue draft.',
               style: TextStyle(color: theme.colorScheme.onErrorContainer),
             ),
           ),
@@ -543,6 +544,26 @@ class _BugReportDialogState extends State<BugReportDialog> {
         screenshotBytes: _screenshotBytes,
       );
 
+      if (!_issueService.isConfigured) {
+        final opened = await launchUrl(
+          _issueService.buildNewIssueUrl(report),
+          mode: LaunchMode.externalApplication,
+        );
+        if (!mounted) return;
+        setState(() => _isSubmitting = false);
+        if (opened) {
+          Navigator.of(context).pop();
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Opened GitHub issue draft')),
+          );
+        } else {
+          setState(() {
+            _errorMessage = 'Could not open GitHub issue draft.';
+          });
+        }
+        return;
+      }
+
       final result = await _issueService.submitBugReport(report);
 
       if (result.isSuccess) {
@@ -573,7 +594,10 @@ class _BugReportDialogState extends State<BugReportDialog> {
           label: 'View',
           textColor: Colors.white,
           onPressed: () {
-            // TODO: Open URL in browser using url_launcher
+            launchUrl(
+              Uri.parse(response.htmlUrl),
+              mode: LaunchMode.externalApplication,
+            );
           },
         ),
       ),

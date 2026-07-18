@@ -1,4 +1,4 @@
-import "package:platform_channels/platform_channels.dart";
+import 'package:platform_channels/platform_channels.dart';
 
 enum MediaCategory {
   all,
