@@ -10,6 +10,7 @@ export "application/providers/local_iptv_search_providers.dart";
 export "application/providers/playback_settings_extension_point.dart";
 export "application/providers/video_aspect_ratio_provider.dart";
 export "application/providers/caption_preference_provider.dart";
+export "application/providers/tv_font_mode_provider.dart";
 export "application/content_source_store.dart";
 export "application/epg_channel_match_override_store.dart";
 export "application/mutable_xmltv_compact_epg_repository.dart";
