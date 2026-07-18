@@ -275,18 +275,21 @@ void main() {
       expect(tracks[1].label, 'fr');
     });
 
-    test('falls back to positional label when both label and language null', () {
-      final tracks = externalSubtitleTracksFor(
-        requestWith([
-          AiroPlaybackExternalSubtitle(
-            handle: AiroPlaybackSourceHandle.redacted('sub-0'),
-          ),
-        ]),
-      );
+    test(
+      'falls back to positional label when both label and language null',
+      () {
+        final tracks = externalSubtitleTracksFor(
+          requestWith([
+            AiroPlaybackExternalSubtitle(
+              handle: AiroPlaybackSourceHandle.redacted('sub-0'),
+            ),
+          ]),
+        );
 
-      expect(tracks.single.label, 'External subtitle 1');
-      expect(tracks.single.languageCode, isNull);
-    });
+        expect(tracks.single.label, 'External subtitle 1');
+        expect(tracks.single.languageCode, isNull);
+      },
+    );
 
     test('projected list is unmodifiable', () {
       final tracks = externalSubtitleTracksFor(
