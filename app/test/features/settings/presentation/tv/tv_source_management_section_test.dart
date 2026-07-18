@@ -181,6 +181,7 @@ void main() {
         password: 'p',
       )).future,
     );
+    await tester.pump(const Duration(milliseconds: 1));
 
     await tester.pumpWidget(
       UncontrolledProviderScope(
@@ -247,6 +248,7 @@ void main() {
         url: 'https://example.com/playlist.m3u',
       )).future,
     );
+    await tester.pump(const Duration(milliseconds: 1));
 
     await tester.pumpWidget(
       UncontrolledProviderScope(

@@ -29,11 +29,13 @@ final configuredContentSourcesProvider =
 
 /// Adds a new M3U [ContentSourceConfig] and invalidates
 /// [configuredContentSourcesProvider].
-final addM3uContentSourceProvider =
-    FutureProvider.family<void, ({String label, String url})>((
-      ref,
-      args,
-    ) async {
+final addM3uContentSourceProvider = FutureProvider.autoDispose
+    .family<void, ({String label, String url})>((ref, args) async {
+      // autoDispose has no external listener across this one-shot mutation
+      // (callers only `ref.read(...).future` it once) — keepAlive prevents
+      // the provider from being torn down mid-`await`, which would silently
+      // truncate the write.
+      final keepAlive = ref.keepAlive();
       final id = 'm3u-${DateTime.now().microsecondsSinceEpoch}';
       await ref
           .watch(contentSourceStoreProvider)
@@ -46,17 +48,19 @@ final addM3uContentSourceProvider =
             ),
           );
       ref.invalidate(configuredContentSourcesProvider);
+      keepAlive.close();
     });
 
 /// Adds a new Xtream Codes [ContentSourceConfig] and stores its
 /// credentials via [contentSourceCredentialStoreProvider], keyed on the
 /// generated config id so [removeContentSourceProvider] deletes the same
 /// credential slot.
-final addXtreamContentSourceProvider =
-    FutureProvider.family<
+final addXtreamContentSourceProvider = FutureProvider.autoDispose
+    .family<
       void,
       ({String label, String url, String username, String password})
     >((ref, args) async {
+      final keepAlive = ref.keepAlive();
       final id = 'xtream-${DateTime.now().microsecondsSinceEpoch}';
       await ref
           .watch(contentSourceCredentialStoreProvider)
@@ -78,16 +82,18 @@ final addXtreamContentSourceProvider =
             ),
           );
       ref.invalidate(configuredContentSourcesProvider);
+      keepAlive.close();
     });
 
 /// Adds a new Stalker Portal [ContentSourceConfig]. Stalker auth uses the
 /// device MAC address (persisted in the config itself, not a secret), so
 /// no credential store write is needed.
-final addStalkerContentSourceProvider =
-    FutureProvider.family<
-      void,
-      ({String label, String url, String macAddress})
-    >((ref, args) async {
+final addStalkerContentSourceProvider = FutureProvider.autoDispose
+    .family<void, ({String label, String url, String macAddress})>((
+      ref,
+      args,
+    ) async {
+      final keepAlive = ref.keepAlive();
       final id = 'stalker-${DateTime.now().microsecondsSinceEpoch}';
       await ref
           .watch(contentSourceStoreProvider)
@@ -101,15 +107,17 @@ final addStalkerContentSourceProvider =
             ),
           );
       ref.invalidate(configuredContentSourcesProvider);
+      keepAlive.close();
     });
 
 /// Adds a new Jellyfin [ContentSourceConfig] and stores its credentials
 /// (username + password/api-key) via [contentSourceCredentialStoreProvider].
-final addJellyfinContentSourceProvider =
-    FutureProvider.family<
+final addJellyfinContentSourceProvider = FutureProvider.autoDispose
+    .family<
       void,
       ({String label, String url, String username, String password})
     >((ref, args) async {
+      final keepAlive = ref.keepAlive();
       final id = 'jellyfin-${DateTime.now().microsecondsSinceEpoch}';
       await ref
           .watch(contentSourceCredentialStoreProvider)
@@ -131,19 +139,20 @@ final addJellyfinContentSourceProvider =
             ),
           );
       ref.invalidate(configuredContentSourcesProvider);
+      keepAlive.close();
     });
 
 /// Removes a content source by id and deletes any credential stored for it
 /// via [contentSourceCredentialStoreProvider] — otherwise a removed source
 /// leaves an orphaned secret behind with no owner. Invalidates
 /// [configuredContentSourcesProvider] afterwards.
-final removeContentSourceProvider = FutureProvider.family<void, String>((
-  ref,
-  id,
-) async {
-  await ref.watch(contentSourceStoreProvider).remove(id);
-  await ref
-      .watch(contentSourceCredentialStoreProvider)
-      .delete(ContentSourceCredentialRef(id));
-  ref.invalidate(configuredContentSourcesProvider);
-});
+final removeContentSourceProvider = FutureProvider.autoDispose
+    .family<void, String>((ref, id) async {
+      final keepAlive = ref.keepAlive();
+      await ref.watch(contentSourceStoreProvider).remove(id);
+      await ref
+          .watch(contentSourceCredentialStoreProvider)
+          .delete(ContentSourceCredentialRef(id));
+      ref.invalidate(configuredContentSourcesProvider);
+      keepAlive.close();
+    });
