@@ -40,11 +40,13 @@ class TvThemeSection extends ConsumerWidget {
                 children: [
                   Text(
                     definition.name,
-                    style: TextStyle(color: colorScheme.onSurface, fontSize: 16),
+                    style: TextStyle(
+                      color: colorScheme.onSurface,
+                      fontSize: 16,
+                    ),
                   ),
                   const Spacer(),
-                  if (isSelected)
-                    Icon(Icons.check, color: colorScheme.primary),
+                  if (isSelected) Icon(Icons.check, color: colorScheme.primary),
                 ],
               ),
             ),

@@ -49,7 +49,10 @@ void main() {
     );
     await tester.pump();
 
-    expect(container.read(videoAspectRatioProvider), AiroPlaybackViewFit.contain);
+    expect(
+      container.read(videoAspectRatioProvider),
+      AiroPlaybackViewFit.contain,
+    );
 
     await tester.tap(find.text('Fill screen (cropped)'));
     await tester.pump();

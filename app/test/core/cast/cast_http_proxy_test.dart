@@ -106,45 +106,42 @@ void main() {
   // this typically reports >200 MB/s; on real Cast sessions the upstream
   // fetch is the bottleneck, not the local relay.
   // -----------------------------------------------------------------------
-  test(
-    'throughput benchmark: proxy 10 MB and verify byte counter',
-    () async {
-      final segmentUrl = Uri.parse(
-        'http://${origin.address.address}:${origin.port}/big_segment.ts',
-      );
-      final proxied = proxy.proxiedUrl(segmentUrl);
-      final client = HttpClient();
+  test('throughput benchmark: proxy 10 MB and verify byte counter', () async {
+    final segmentUrl = Uri.parse(
+      'http://${origin.address.address}:${origin.port}/big_segment.ts',
+    );
+    final proxied = proxy.proxiedUrl(segmentUrl);
+    final client = HttpClient();
 
-      const iterations = 10;
-      final stopwatch = Stopwatch()..start();
+    const iterations = 10;
+    final stopwatch = Stopwatch()..start();
 
-      for (var i = 0; i < iterations; i++) {
-        final response = await (await client.getUrl(proxied)).close();
-        // Drain the body to ensure the proxy actually forwards all bytes.
-        await response.drain<void>();
-      }
+    for (var i = 0; i < iterations; i++) {
+      final response = await (await client.getUrl(proxied)).close();
+      // Drain the body to ensure the proxy actually forwards all bytes.
+      await response.drain<void>();
+    }
 
-      stopwatch.stop();
-      final totalBytes = bigPayload.length * iterations;
-      final seconds = stopwatch.elapsedMicroseconds / 1e6;
-      final mbPerSec = totalBytes / (1024 * 1024) / seconds;
+    stopwatch.stop();
+    final totalBytes = bigPayload.length * iterations;
+    final seconds = stopwatch.elapsedMicroseconds / 1e6;
+    final mbPerSec = totalBytes / (1024 * 1024) / seconds;
 
-      // The proxy must have counted every forwarded byte.
-      expect(proxy.totalBytesForwarded, totalBytes);
+    // The proxy must have counted every forwarded byte.
+    expect(proxy.totalBytesForwarded, totalBytes);
 
-      // Sanity: even on slow CI, loopback throughput should exceed 1 MB/s.
-      // On real hardware this is typically >200 MB/s.
-      expect(mbPerSec, greaterThan(1.0));
+    // Sanity: even on slow CI, loopback throughput should exceed 1 MB/s.
+    // On real hardware this is typically >200 MB/s.
+    expect(mbPerSec, greaterThan(1.0));
 
-      // Print for manual inspection in test output.
-      // ignore: avoid_print
-      print(
-        '[CastProxy benchmark] ${(totalBytes / (1024 * 1024)).toStringAsFixed(1)} MB '
-        'in ${seconds.toStringAsFixed(3)}s = '
-        '${mbPerSec.toStringAsFixed(1)} MB/s',
-      );
+    // Print for manual inspection in test output.
+    // ignore: avoid_print
+    print(
+      '[CastProxy benchmark] ${(totalBytes / (1024 * 1024)).toStringAsFixed(1)} MB '
+      'in ${seconds.toStringAsFixed(3)}s = '
+      '${mbPerSec.toStringAsFixed(1)} MB/s',
+    );
 
-      client.close(force: true);
-    },
-  );
+    client.close(force: true);
+  });
 }
