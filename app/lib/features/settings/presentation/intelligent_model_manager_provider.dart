@@ -8,20 +8,20 @@ final modelStorageManagerProvider = Provider<ModelStorageManager>((ref) {
 });
 
 /// Provider for [IntelligentModelManager].
-final intelligentModelManagerProvider = Provider<IntelligentModelManager>((ref) {
+final intelligentModelManagerProvider = Provider<IntelligentModelManager>((
+  ref,
+) {
   final storageManager = ref.watch(modelStorageManagerProvider);
   final registry = ref.watch(modelRegistryProvider);
   final downloadService = ref.watch(modelDownloadServiceProvider);
 
-  return IntelligentModelManager(
-    storageManager,
-    registry,
-    downloadService,
-  );
+  return IntelligentModelManager(storageManager, registry, downloadService);
 });
 
 /// Rebuilding provider of the [ModelEntry] list, reacting to registry and download changes.
-final intelligentModelsListProvider = FutureProvider<List<ModelEntry>>((ref) async {
+final intelligentModelsListProvider = FutureProvider<List<ModelEntry>>((
+  ref,
+) async {
   final manager = ref.watch(intelligentModelManagerProvider);
   // Rebuild the list if the model registry changes.
   ref.watch(modelRegistryEventsProvider);

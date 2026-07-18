@@ -38,9 +38,15 @@ class DiscoveryNotifier extends AsyncNotifier<DiscoveryState> {
 
   @override
   FutureOr<DiscoveryState> build() async {
-    final items = await ref.watch(mediaHubDiscoverySourceProvider(_mode).future);
+    final items = await ref.watch(
+      mediaHubDiscoverySourceProvider(_mode).future,
+    );
     final pageSize = ref.watch(mediaHubDiscoveryPageSizeProvider);
-    return DiscoveryState.initial(mode: _mode, items: items, pageSize: pageSize);
+    return DiscoveryState.initial(
+      mode: _mode,
+      items: items,
+      pageSize: pageSize,
+    );
   }
 
   void setSearchQuery(String query) {
