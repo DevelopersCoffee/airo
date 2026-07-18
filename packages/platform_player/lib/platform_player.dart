@@ -7,6 +7,7 @@ export "src/models/multi_source_failover_models.dart";
 export "src/models/native_media_engine_spike_models.dart";
 export "src/models/playback_engine_models.dart";
 export "src/models/playback_engine_resolver_models.dart";
+export "src/models/playback_recovery_models.dart";
 export "src/models/streaming_state.dart";
 export "src/services/airo_cast_controller.dart";
 export "src/services/airo_playback_engine.dart";
