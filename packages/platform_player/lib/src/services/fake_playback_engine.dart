@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:flutter/widgets.dart';
+
 import '../models/playback_engine_models.dart';
 import 'airo_playback_engine.dart';
 
@@ -177,6 +179,17 @@ class FakeAiroPlaybackEngine implements AiroPlaybackEngine {
         operation: 'exitPictureInPicture',
       ),
     );
+  }
+
+  @override
+  Widget? buildView() {
+    if (_state.phase != AiroPlaybackEnginePhase.open &&
+        _state.phase != AiroPlaybackEnginePhase.playing &&
+        _state.phase != AiroPlaybackEnginePhase.paused &&
+        _state.phase != AiroPlaybackEnginePhase.buffering) {
+      return null;
+    }
+    return const SizedBox(key: ValueKey('fake-engine-view'));
   }
 
   @override

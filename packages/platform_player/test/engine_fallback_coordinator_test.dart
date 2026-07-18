@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:platform_player/platform_player.dart';
 
@@ -85,6 +86,9 @@ class _ScriptedPlaybackEngine implements AiroPlaybackEngine {
 
   @override
   Future<AiroPlaybackState> exitPictureInPicture() async => _state;
+
+  @override
+  Widget? buildView() => null;
 
   @override
   Future<void> dispose() async {

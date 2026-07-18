@@ -1,3 +1,4 @@
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:platform_player/platform_player.dart';
 
@@ -271,6 +272,25 @@ void main() {
         () => AiroPlaybackSourceHandle.redacted('https://example.com/x.m3u8'),
         throwsArgumentError,
       );
+    });
+
+    test('fake engine buildView returns a non-null placeholder after open', () async {
+      final engine = FakeAiroPlaybackEngine();
+      expect(engine.buildView(), isNull);
+
+      await engine.open(request());
+      final view = engine.buildView();
+      expect(view, isNotNull);
+      expect(
+        (view!.key as ValueKey<String>).value,
+        'fake-engine-view',
+      );
+      await engine.dispose();
+    });
+
+    test('unavailable engine buildView always returns null', () {
+      final engine = UnavailableAiroPlaybackEngine();
+      expect(engine.buildView(), isNull);
     });
   });
 
