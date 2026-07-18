@@ -51,8 +51,9 @@ class DefaultRailCatalog {
       ];
 }
 
-/// Popularity-scored rail builder: favorites + watch history + provider
-/// order, degrading to provider order alone when signals are absent.
+/// Popularity-scored rail builder using tiered comparison: favorites strictly
+/// outrank watch history, which strictly outranks provider order. Signals are
+/// independent; watch count cannot boost a non-favorite to outrank a favorite.
 /// Later replaced by regional popularity / trending / AI ranking behind
 /// the same [RailProvider] interface — zero UI change.
 class DefaultRailProvider implements RailProvider {
@@ -66,16 +67,14 @@ class DefaultRailProvider implements RailProvider {
   final Set<String> favoriteIds;
   final Map<String, int> watchCounts;
 
-  static const _favoriteWeight = 1000000;
-  static const _watchWeight = 1000;
-
-  int _score(IPTVChannel ch, int providerIndex) {
-    final favorite = favoriteIds.contains(ch.id) ? _favoriteWeight : 0;
-    final watched = (watchCounts[ch.id] ?? 0) * _watchWeight;
-    // Provider order: earlier = higher. Bounded below _watchWeight so one
-    // watch always outranks any provider position.
-    final order = (_channels.length - providerIndex).clamp(0, _watchWeight - 1);
-    return favorite + watched + order;
+  int _compare(IPTVChannel a, IPTVChannel b, Map<String, int> providerIndex) {
+    final favA = favoriteIds.contains(a.id) ? 1 : 0;
+    final favB = favoriteIds.contains(b.id) ? 1 : 0;
+    if (favA != favB) return favB - favA;
+    final watchA = watchCounts[a.id] ?? 0;
+    final watchB = watchCounts[b.id] ?? 0;
+    if (watchA != watchB) return watchB - watchA;
+    return (providerIndex[a.id] ?? 0).compareTo(providerIndex[b.id] ?? 0);
   }
 
   @override
@@ -91,8 +90,7 @@ class DefaultRailProvider implements RailProvider {
     final providerIndex = <String, int>{
       for (var i = 0; i < _channels.length; i++) _channels[i].id: i,
     };
-    indexed.sort((x, y) => _score(y, providerIndex[y.id] ?? 0)
-        .compareTo(_score(x, providerIndex[x.id] ?? 0)));
+    indexed.sort((x, y) => _compare(x, y, providerIndex));
     return indexed.take(rail.maxItems).toList();
   }
 

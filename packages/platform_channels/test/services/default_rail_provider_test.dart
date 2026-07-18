@@ -1,4 +1,3 @@
-// ignore_for_file: avoid_print
 import 'package:flutter_test/flutter_test.dart';
 import 'package:platform_channels/platform_channels.dart';
 
@@ -28,6 +27,18 @@ void main() {
       ));
       expect(rail.map((ch) => ch.id).toList(), ['a', 'b', 'c']);
     });
+
+    test('heavily watched channel never outranks a favorite', () async {
+      final provider = DefaultRailProvider(
+        channels: const [a, b],
+        favoriteIds: const {'a'},
+        watchCounts: const {'b': 5000},
+      );
+      final rail = await provider.buildRail(const RailDefinition(
+        id: 'top', title: 'Top', query: RailQuery(), priority: 0,
+      ));
+      expect(rail.map((ch) => ch.id).toList(), ['a', 'b']);
+    });
   });
 
   group('buildAll', () {
@@ -50,6 +61,18 @@ void main() {
       ]);
       expect(results.map((r) => r.definition.id).toList(),
           ['first', 'second']);
+    });
+
+    test('favoritesOnly excludes non-favorites', () async {
+      final provider = DefaultRailProvider(
+        channels: const [a, b],
+        favoriteIds: const {'b'},
+      );
+      final rail = await provider.buildRail(const RailDefinition(
+        id: 'fav', title: 'Fav',
+        query: RailQuery(favoritesOnly: true), priority: 0,
+      ));
+      expect(rail.map((ch) => ch.id).toList(), ['b']);
     });
   });
 
