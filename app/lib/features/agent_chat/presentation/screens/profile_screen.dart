@@ -2,24 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:core_ai/core_ai.dart';
-import 'package:core_ui/core_ui.dart';
 import '../../../../core/auth/auth_service.dart';
 import '../../../../core/auth/google_auth_service.dart';
-import '../../../../core/auth/repositories/user_profile_repository.dart';
 import '../../../../core/http/http_dog.dart';
 import '../../../../core/dictionary/dictionary.dart';
-import '../../../../core/providers/app_theme_provider.dart';
 import '../../../../core/routing/route_names.dart';
-import '../../../../core/utils/currency_formatter.dart';
-import '../../../../core/utils/locale_settings.dart';
 import '../../../../shared/widgets/bug_report_dialog.dart';
 import '../../../quotes/presentation/widgets/daily_quote_card.dart';
 import '../../../settings/application/ai_storage_dashboard.dart';
 import '../../../settings/application/ai_preferences_settings.dart';
 import '../../../settings/application/ai_model_management.dart';
 import '../../../settings/presentation/screens/ai_models_screen.dart';
-import '../../../settings/presentation/screens/audio_settings_screen.dart';
-import '../../../settings/presentation/screens/playback_settings_screen.dart';
 import '../../../settings/presentation/screens/intelligent_model_manager_screen.dart';
 
 /// User profile screen
@@ -71,100 +64,15 @@ class ProfileScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 32),
 
-            // Settings section
-            Text('Settings', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 16),
-
-            // Appearance
-            Text('Appearance', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 8),
-            RadioGroup<AppThemeId>(
-              groupValue: ref.watch(appThemeProvider),
-              onChanged: (themeId) {
-                if (themeId != null) {
-                  ref.read(appThemeProvider.notifier).setTheme(themeId);
-                }
-              },
-              child: Column(
-                children: [
-                  for (final theme in AppTheme.themes)
-                    RadioListTile<AppThemeId>(
-                      value: theme.id,
-                      title: Text(theme.name),
-                      subtitle: Text(theme.description),
-                    ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 24),
-
-            // Bedtime mode toggle
+            // Settings
             ListTile(
-              title: const Text('Bedtime Mode'),
-              subtitle: const Text('Auto-enable at 22:30'),
-              trailing: Switch(
-                value: false,
-                onChanged: (value) {
-                  // TODO: Implement bedtime mode toggle
-                },
+              leading: const Icon(Icons.settings_outlined),
+              title: const Text('Settings'),
+              subtitle: const Text(
+                'Appearance, audio, playback, and playlist source',
               ),
-            ),
-
-            // Audio settings
-            ListTile(
-              title: const Text('Background Audio'),
-              subtitle: const Text('Allow music while using other apps'),
-              trailing: Switch(
-                value: true,
-                onChanged: (value) {
-                  // TODO: Implement background audio toggle
-                },
-              ),
-            ),
-
-            // Audio ducking
-            ListTile(
-              title: const Text('Audio Ducking'),
-              subtitle: const Text('Lower music volume during game SFX'),
-              trailing: Switch(
-                value: true,
-                onChanged: (value) {
-                  // TODO: Implement audio ducking toggle
-                },
-              ),
-            ),
-
-            const _CurrencySelector(),
-
-            // Audio Settings (Context-Aware Audio)
-            ListTile(
-              leading: const Icon(Icons.settings_voice),
-              title: const Text('Audio Settings'),
-              subtitle: const Text('Configure context-aware audio behavior'),
               trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-              onTap: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (context) => const AudioSettingsScreen(),
-                  ),
-                );
-              },
-            ),
-
-            // Playback Settings (Aspect Ratio)
-            ListTile(
-              leading: const Icon(Icons.aspect_ratio),
-              title: const Text('Playback Settings'),
-              subtitle: const Text('Configure video aspect ratio'),
-              trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-              onTap: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (context) => const PlaybackSettingsScreen(),
-                  ),
-                );
-              },
+              onTap: () => context.push(RouteNames.settings),
             ),
 
             const SizedBox(height: 24),
@@ -634,49 +542,6 @@ class _AIPreferencesSection extends ConsumerWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-class _CurrencySelector extends ConsumerWidget {
-  const _CurrencySelector();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final settings = ref.watch(localeSettingsProvider);
-    final selectedCurrency = SupportedCurrency.fromCode(settings.currency);
-
-    return ListTile(
-      leading: const Icon(Icons.payments_outlined),
-      title: const Text('Currency'),
-      subtitle: Text('${selectedCurrency.code} (${selectedCurrency.symbol})'),
-      trailing: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          value: selectedCurrency.code,
-          items: SupportedCurrency.values.map((currency) {
-            return DropdownMenuItem<String>(
-              value: currency.code,
-              child: Text('${currency.symbol} ${currency.code}'),
-            );
-          }).toList(),
-          onChanged: (value) async {
-            if (value == null || value == settings.currency) return;
-
-            final updatedSettings = settings.copyWith(currency: value);
-            await ref
-                .read(localeSettingsProvider.notifier)
-                .updateSettings(updatedSettings);
-
-            final repository = ref.read(userProfileRepositoryProvider);
-            final currentProfile = (await repository.getCurrentProfile())
-                .getOrNull();
-            if (currentProfile != null) {
-              await repository.updateProfile(localeSettings: updatedSettings);
-              ref.invalidate(currentUserProfileProvider);
-            }
-          },
-        ),
-      ),
     );
   }
 }
