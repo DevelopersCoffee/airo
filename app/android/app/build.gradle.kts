@@ -198,8 +198,15 @@ dependencies {
     // ML Kit GenAI Prompt API for on-device Gemini Nano.
     implementation("com.google.mlkit:genai-prompt:1.0.0-beta2")
 
-    // LiteRT-LM for local on-device LLM inference.
-    implementation("com.google.ai.edge.litertlm:litertlm-android:latest.release")
+    // LiteRT-LM for local on-device LLM inference. Only wired when the
+    // root `build.gradle.kts` was able to authenticate against the
+    // private google/generative-ai-android package registry (i.e.
+    // GITHUB_TOKEN is set with `read:packages`). CI validation builds
+    // and unauthenticated clones fall back to the stub loader in
+    // `app/lib/core/services/litert_lm_service.dart`.
+    if (rootProject.extra.get("liteRtLmAvailable") as Boolean) {
+        implementation("com.google.ai.edge.litertlm:litertlm-android:latest.release")
+    }
 
     // Coroutines and lifecycle dependencies for async operations
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.11.0")
