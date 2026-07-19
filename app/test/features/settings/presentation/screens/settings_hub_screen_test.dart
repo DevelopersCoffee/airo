@@ -74,7 +74,7 @@ void main() {
     await tester.tap(find.text('Playlist Source'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Playlist source'), findsOneWidget);
+    expect(find.text('Add Playlist Source'), findsOneWidget);
   });
 
   testWidgets('appearance picker saves selected theme', (tester) async {
