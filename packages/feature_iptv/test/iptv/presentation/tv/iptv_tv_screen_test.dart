@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:platform_channels/platform_channels.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -137,6 +138,82 @@ void main() {
       semantics.dispose();
     }
   });
+
+  testWidgets(
+    'TV rail band renders titles and channels from railsProvider, not '
+    'locally-computed favorites/category selection',
+    (tester) async {
+      // Exists only inside the railsProvider override below — never in
+      // iptvChannelsProvider or favorites — so it can only reach the
+      // screen through the new railsProvider-backed band, proving the old
+      // local favorites/category computation no longer drives this UI.
+      const railOnlyChannel = IPTVChannel(
+        id: 'rail-only',
+        name: 'Rail Only Channel',
+        streamUrl: 'https://example.com/rail-only.m3u8',
+        group: 'Test',
+        category: ChannelCategory.general,
+      );
+      final rails = [
+        const RailResult(
+          definition: RailDefinition(
+            id: 'top-india',
+            title: 'Top India',
+            query: RailQuery(),
+            priority: 0,
+          ),
+          channels: [railOnlyChannel],
+        ),
+        const RailResult(
+          definition: RailDefinition(
+            id: 'live-sports',
+            title: 'Live Sports',
+            query: RailQuery(category: ChannelCategory.sports, liveOnly: true),
+            priority: 20,
+          ),
+          channels: [],
+        ),
+      ];
+
+      tester.view.devicePixelRatio = 1.0;
+      tester.view.physicalSize = const Size(1280, 720);
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            iptvChannelsProvider.overrideWith((ref) async => channels),
+            recentlyWatchedChannelsProvider.overrideWith(
+              (ref) async => const [],
+            ),
+            streamingStateProvider.overrideWith(
+              (ref) => Stream.value(
+                StreamingState(
+                  playbackState: PlaybackState.idle,
+                  isLiveStream: true,
+                ),
+              ),
+            ),
+            railsProvider.overrideWith((ref) async => rails),
+          ],
+          child: const MaterialApp(home: IptvTvScreen()),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // "Top India" is the highest-priority rail in the override; the band
+      // renders it (and only it — a single fixed-height rail band).
+      expect(find.text('Top India'), findsOneWidget);
+      expect(find.text('Live Sports'), findsNothing);
+      expect(find.text('Rail Only Channel'), findsWidgets);
+    },
+  );
 
   testWidgets('renders compact current EPG from platform repository', (
     tester,
