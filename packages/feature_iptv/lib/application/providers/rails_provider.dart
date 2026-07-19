@@ -17,9 +17,18 @@ final railsProvider = FutureProvider<List<RailResult>>((ref) async {
     favorites = const <IPTVChannel>[];
   }
 
+  List<IPTVChannel> recents;
+  try {
+    recents = await ref.watch(recentlyWatchedChannelsProvider.future);
+  } catch (_) {
+    // Recents are an enhancement signal; rails must render without them.
+    recents = const <IPTVChannel>[];
+  }
+
   final provider = DefaultRailProvider(
     channels: channels,
     favoriteIds: favorites.map((ch) => ch.id).toSet(),
+    recentIds: [for (final ch in recents) ch.id],
     // Watch counts arrive when core_watch_progress wiring lands
     // (spec §9 — Continue Watching reserved).
   );

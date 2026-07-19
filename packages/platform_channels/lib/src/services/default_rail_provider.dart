@@ -7,42 +7,49 @@ class DefaultRailCatalog {
   const DefaultRailCatalog._();
 
   static List<RailDefinition> definitions() => const [
-        RailDefinition(
-          id: 'top-india',
-          title: 'Top India',
-          subtitle: 'Ranked by popularity',
-          query: RailQuery(),
-          priority: 0,
-        ),
-        RailDefinition(
-          id: 'favorites',
-          title: 'Favorites',
-          subtitle: 'Your saved channels',
-          query: RailQuery(favoritesOnly: true),
-          priority: 10,
-        ),
-        RailDefinition(
-          id: 'live-sports',
-          title: 'Live Sports',
-          subtitle: 'Cricket, football and more',
-          query: RailQuery(category: ChannelCategory.sports, liveOnly: true),
-          priority: 20,
-        ),
-        RailDefinition(
-          id: 'hindi-news',
-          title: 'Hindi News',
-          subtitle: 'Breaking news and analysis',
-          query: RailQuery(category: ChannelCategory.news, language: 'hi'),
-          priority: 30,
-        ),
-        RailDefinition(
-          id: 'movies-on-now',
-          title: 'Movies On Now',
-          subtitle: 'Playing right now',
-          query: RailQuery(category: ChannelCategory.movies),
-          priority: 40,
-        ),
-      ];
+    RailDefinition(
+      id: 'top-india',
+      title: 'Top India',
+      subtitle: 'Ranked by popularity',
+      query: RailQuery(),
+      priority: 0,
+    ),
+    RailDefinition(
+      id: 'recently-watched',
+      title: 'Recently Watched',
+      subtitle: 'Jump back in',
+      query: RailQuery(recentOnly: true),
+      priority: 5,
+    ),
+    RailDefinition(
+      id: 'favorites',
+      title: 'Favorites',
+      subtitle: 'Your saved channels',
+      query: RailQuery(favoritesOnly: true),
+      priority: 10,
+    ),
+    RailDefinition(
+      id: 'live-sports',
+      title: 'Live Sports',
+      subtitle: 'Cricket, football and more',
+      query: RailQuery(category: ChannelCategory.sports, liveOnly: true),
+      priority: 20,
+    ),
+    RailDefinition(
+      id: 'hindi-news',
+      title: 'Hindi News',
+      subtitle: 'Breaking news and analysis',
+      query: RailQuery(category: ChannelCategory.news, language: 'hi'),
+      priority: 30,
+    ),
+    RailDefinition(
+      id: 'movies-on-now',
+      title: 'Movies On Now',
+      subtitle: 'Playing right now',
+      query: RailQuery(category: ChannelCategory.movies),
+      priority: 40,
+    ),
+  ];
 }
 
 /// Popularity-scored rail builder using tiered comparison: favorites strictly
@@ -55,11 +62,15 @@ class DefaultRailProvider implements RailProvider {
     required List<IPTVChannel> channels,
     this.favoriteIds = const {},
     this.watchCounts = const {},
+    this.recentIds = const [],
   }) : _channels = channels;
 
   final List<IPTVChannel> _channels;
   final Set<String> favoriteIds;
   final Map<String, int> watchCounts;
+
+  /// Most-recently-watched first; recentOnly rails preserve this order.
+  final List<String> recentIds;
 
   int _compare(IPTVChannel a, IPTVChannel b, Map<String, int> providerIndex) {
     final favA = favoriteIds.contains(a.id) ? 1 : 0;
@@ -73,6 +84,14 @@ class DefaultRailProvider implements RailProvider {
 
   @override
   Future<List<IPTVChannel>> buildRail(RailDefinition rail) async {
+    if (rail.query.recentOnly) {
+      final byId = {for (final ch in _channels) ch.id: ch};
+      return [
+        for (final id in recentIds)
+          if (byId[id] != null && rail.query.matches(byId[id]!)) byId[id]!,
+      ].take(rail.maxItems).toList();
+    }
+
     Iterable<IPTVChannel> pool = _channels.where(rail.query.matches);
     if (rail.query.favoritesOnly) {
       pool = pool.where((ch) => favoriteIds.contains(ch.id));
