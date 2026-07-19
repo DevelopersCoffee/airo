@@ -12,3 +12,4 @@ export 'src/crypto/field_cipher.dart';
 export 'src/crypto/vault_secure_storage.dart';
 export 'src/crypto/vault_key_manager.dart';
 export 'src/data/vault_database.dart';
+export 'src/data/bank_account_repository.dart';
