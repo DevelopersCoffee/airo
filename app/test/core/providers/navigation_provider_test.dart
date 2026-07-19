@@ -78,30 +78,23 @@ void main() {
       }
     });
 
-    test(
-      'IPTV mini player is visible on both the Live and Home tabs',
-      () {
-        final container = ProviderContainer();
-        addTearDown(container.dispose);
+    test('IPTV mini player is visible on both the Live and Home tabs', () {
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
 
-        expect(
-          container
-              .read(
-                miniPlayerVisibilityProvider(AppNavigationTab.live.index),
-              )
-              .showIptvPlayer,
-          isTrue,
-        );
-        expect(
-          container
-              .read(
-                miniPlayerVisibilityProvider(AppNavigationTab.home.index),
-              )
-              .showIptvPlayer,
-          isTrue,
-        );
-      },
-    );
+      expect(
+        container
+            .read(miniPlayerVisibilityProvider(AppNavigationTab.live.index))
+            .showIptvPlayer,
+        isTrue,
+      );
+      expect(
+        container
+            .read(miniPlayerVisibilityProvider(AppNavigationTab.home.index))
+            .showIptvPlayer,
+        isTrue,
+      );
+    });
 
     test('centralizes shell chrome actions for compact and wide layouts', () {
       final container = ProviderContainer();
@@ -116,61 +109,58 @@ void main() {
       expect(chromeConfig.compactWidthBreakpoint, 600);
     });
 
-    test(
-      'phone bottom nav exposes exactly 5 destinations matching the TV '
-      'sidebar: Home, Live, Guide, Favorites, Settings',
-      () {
-        final container = ProviderContainer();
-        addTearDown(container.dispose);
+    test('phone bottom nav exposes exactly 5 destinations matching the TV '
+        'sidebar: Home, Live, Guide, Favorites, Settings', () {
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
 
-        final policy = container.read(appNavigationPolicyProvider);
-        final phoneLayout = policy.layoutForWidth(390);
-        final phoneTabs = phoneLayout.persistentTabs;
+      final policy = container.read(appNavigationPolicyProvider);
+      final phoneLayout = policy.layoutForWidth(390);
+      final phoneTabs = phoneLayout.persistentTabs;
 
-        expect(
-          phoneTabs.map((t) => t.label).toList(),
-          ['Home', 'Live', 'Guide', 'Favorites', 'Settings'],
-        );
-        expect(phoneLayout.overflowTabs, isEmpty);
-        expect(phoneLayout.usesOverflow, isFalse);
-      },
-    );
+      expect(phoneTabs.map((t) => t.label).toList(), [
+        'Home',
+        'Live',
+        'Guide',
+        'Favorites',
+        'Settings',
+      ]);
+      expect(phoneLayout.overflowTabs, isEmpty);
+      expect(phoneLayout.usesOverflow, isFalse);
+    });
 
-    test(
-      'wide layouts show a curated 8-tab set: the original six domains '
-      'plus Guide and Favorites, excluding the placeholder Home tab',
-      () {
-        final container = ProviderContainer();
-        addTearDown(container.dispose);
+    test('wide layouts show a curated 8-tab set: the original six domains '
+        'plus Guide and Favorites, excluding the placeholder Home tab', () {
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
 
-        final policy = container.read(appNavigationPolicyProvider);
-        final wideLayout = policy.layoutForWidth(900);
+      final policy = container.read(appNavigationPolicyProvider);
+      final wideLayout = policy.layoutForWidth(900);
 
-        expect(policy.compactWidthBreakpoint, 600);
-        expect(wideLayout.persistentTabs.map((t) => t.label).toList(), [
-          'Coins',
-          'Mind',
-          'Beats',
-          'Live',
-          'Arena',
-          'Quest',
-          'Guide',
-          'Favorites',
-        ]);
-        // Home is a phone-only placeholder for the unified browse entry
-        // point; Mind already serves that role on wide layouts, so Home
-        // must not appear here (it would read as a confusing duplicate).
-        expect(wideLayout.persistentTabs, isNot(contains(AppNavigationTab.home)));
-        // Settings has never had a persistent nav slot; it stays reachable
-        // via the profile menu regardless of screen width.
-        expect(
-          wideLayout.persistentTabs,
-          isNot(contains(AppNavigationTab.settings)),
-        );
-        expect(wideLayout.overflowTabs, isEmpty);
-        expect(wideLayout.usesOverflow, isFalse);
-      },
-    );
+      expect(policy.compactWidthBreakpoint, 600);
+      expect(wideLayout.persistentTabs.map((t) => t.label).toList(), [
+        'Coins',
+        'Mind',
+        'Beats',
+        'Live',
+        'Arena',
+        'Quest',
+        'Guide',
+        'Favorites',
+      ]);
+      // Home is a phone-only placeholder for the unified browse entry
+      // point; Mind already serves that role on wide layouts, so Home
+      // must not appear here (it would read as a confusing duplicate).
+      expect(wideLayout.persistentTabs, isNot(contains(AppNavigationTab.home)));
+      // Settings has never had a persistent nav slot; it stays reachable
+      // via the profile menu regardless of screen width.
+      expect(
+        wideLayout.persistentTabs,
+        isNot(contains(AppNavigationTab.settings)),
+      );
+      expect(wideLayout.overflowTabs, isEmpty);
+      expect(wideLayout.usesOverflow, isFalse);
+    });
 
     test('keeps shell-owned headers only on routes without local app bars', () {
       expect(appShellHeaderModeForLocation('/money'), AppShellHeaderMode.shell);
