@@ -49,6 +49,20 @@ class DefaultRailCatalog {
       query: RailQuery(category: ChannelCategory.movies),
       priority: 40,
     ),
+    RailDefinition(
+      id: 'entertainment',
+      title: 'Entertainment',
+      subtitle: 'Shows and variety',
+      query: RailQuery(category: ChannelCategory.entertainment),
+      priority: 50,
+    ),
+    RailDefinition(
+      id: 'music',
+      title: 'Music',
+      subtitle: 'Hits and live performances',
+      query: RailQuery(category: ChannelCategory.music),
+      priority: 60,
+    ),
   ];
 }
 

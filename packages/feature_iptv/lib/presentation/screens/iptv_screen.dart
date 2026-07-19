@@ -627,8 +627,6 @@ class _StreamTabContent extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: 12),
-        const _PrimaryCategoryBar(),
-        const SizedBox(height: 12),
         Expanded(
           child: isWideScreen
               ? Row(
@@ -1179,43 +1177,6 @@ class _BringYourOwnPlaylistView extends StatelessWidget {
           ),
         );
       },
-    );
-  }
-}
-
-class _PrimaryCategoryBar extends ConsumerWidget {
-  const _PrimaryCategoryBar();
-
-  static const _categories = [
-    ChannelCategory.all,
-    ChannelCategory.news,
-    ChannelCategory.sports,
-    ChannelCategory.entertainment,
-    ChannelCategory.music,
-  ];
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final selectedCategory = ref.watch(selectedCategoryProvider);
-    final counts = ref.watch(categoryCounts);
-
-    return SizedBox(
-      height: 42,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        itemCount: _categories.length,
-        separatorBuilder: (_, _) => const SizedBox(width: 8),
-        itemBuilder: (context, index) {
-          final category = _categories[index];
-          return ChoiceChip(
-            label: Text('${category.label} (${counts[category] ?? 0})'),
-            selected: selectedCategory == category,
-            onSelected: (_) =>
-                ref.read(selectedCategoryProvider.notifier).state = category,
-          );
-        },
-      ),
     );
   }
 }
