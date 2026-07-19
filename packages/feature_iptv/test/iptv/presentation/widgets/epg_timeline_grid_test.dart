@@ -347,4 +347,63 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+
+  testWidgets('time ruler shows the window start in local time, not UTC', (
+    tester,
+  ) async {
+    final windowStart = DateTime.utc(2026, 7, 17, 11);
+    final window = CompactEpgWindow(
+      entries: const [],
+      windowStart: windowStart,
+      windowEnd: windowStart.add(const Duration(hours: 3)),
+      generatedAt: windowStart,
+      expiresAt: windowStart.add(const Duration(hours: 1)),
+      source: CompactEpgSliceSource.localCache,
+    );
+    final prefs = await SharedPreferences.getInstance();
+    final container = ProviderContainer(
+      overrides: [
+        sharedPreferencesProvider.overrideWithValue(prefs),
+        iptvChannelsProvider.overrideWith((ref) async => [channel]),
+        guideEpgWindowProvider.overrideWith((ref) async => window),
+        guideWindowStartProvider.overrideWithValue(windowStart),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: const MaterialApp(
+          home: MediaQuery(
+            data: MediaQueryData(
+              size: Size(1280, 720),
+              navigationMode: NavigationMode.directional,
+            ),
+            child: Scaffold(
+              body: SizedBox(
+                width: 1280,
+                height: 720,
+                child: EpgTimelineGrid(),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    final context = tester.element(find.byType(EpgTimelineGrid));
+    final localLabel = TimeOfDay.fromDateTime(
+      windowStart.toLocal(),
+    ).format(context);
+    expect(find.text(localLabel), findsOneWidget);
+
+    // Guard against regressing to raw-UTC labels on machines where local
+    // time differs from UTC (no-op on UTC CI runners).
+    final utcLabel = TimeOfDay.fromDateTime(windowStart).format(context);
+    if (utcLabel != localLabel) {
+      expect(find.text(utcLabel), findsNothing);
+    }
+  });
 }

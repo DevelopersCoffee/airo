@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:feature_iptv/feature_iptv.dart';
+import '../../features/settings/presentation/screens/settings_hub_screen.dart';
 import '../../features/settings/presentation/tv/tv_settings_screen.dart';
 import 'tv_shell.dart';
 
@@ -97,12 +98,28 @@ class TvRouter {
             GoRoute(
               path: TvRouteNames.settings,
               name: 'tv_settings',
-              builder: (context, state) => const TvSettingsScreen(),
+              builder: (context, state) => const AdaptiveTvSettingsScreen(),
             ),
           ],
         ),
       ],
     );
+  }
+}
+
+/// Phones running the TV build get the mobile settings hub (theme picker,
+/// audio/playback links); the two-pane [TvSettingsScreen] needs 10-foot
+/// width and clips on compact portrait layouts.
+class AdaptiveTvSettingsScreen extends StatelessWidget {
+  const AdaptiveTvSettingsScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    if (_usesCompactPhoneLayout(context)) {
+      return const SettingsHubScreen();
+    }
+
+    return const TvSettingsScreen();
   }
 }
 
