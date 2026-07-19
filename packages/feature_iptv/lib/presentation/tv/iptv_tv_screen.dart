@@ -11,6 +11,7 @@ import 'package:platform_player/platform_player.dart';
 import 'package:product_capabilities/product_capabilities.dart';
 
 import '../../application/providers/iptv_providers.dart';
+import '../../application/wakelock_playback_coordinator.dart';
 import '../../application/providers/rails_provider.dart';
 import '../../application/services/airo_macos_update_service.dart';
 import '../screens/iptv_screen.dart';
@@ -37,6 +38,8 @@ class _IptvTvScreenState extends ConsumerState<IptvTvScreen> {
   void initState() {
     super.initState();
     ref.read(iptvStreamingServiceProvider).initialize();
+    // Screen-level wakelock: independent of any player widget's lifetime.
+    ref.read(wakelockPlaybackCoordinatorProvider);
   }
 
   void _playChannel(IPTVChannel channel) {
@@ -231,7 +234,7 @@ class _TvBrowseLayout extends ConsumerWidget {
     final favoriteChannelIds =
         ref.watch(favoriteChannelIdsProvider).value ?? const <String>{};
     void toggleFavorite(IPTVChannel channel) {
-      ref.read(toggleChannelFavoriteProvider(channel.id));
+      ref.read(channelFavoriteTogglerProvider)(channel.id);
     }
 
     final viewport = MediaQuery.sizeOf(context);

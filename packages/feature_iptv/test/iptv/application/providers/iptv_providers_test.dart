@@ -357,6 +357,30 @@ void main() {
       );
     });
   });
+
+  group('channelFavoriteTogglerProvider', () {
+    test(
+      'toggling the same channel twice flips the state both times',
+      () async {
+        SharedPreferences.setMockInitialValues({});
+        final prefs = await SharedPreferences.getInstance();
+        final container = ProviderContainer(
+          overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+        );
+        addTearDown(container.dispose);
+
+        final toggle = container.read(channelFavoriteTogglerProvider);
+
+        expect(await toggle('news-1'), isTrue);
+        // A FutureProvider.family here would return the stale first result
+        // instead of re-running the toggle.
+        expect(await toggle('news-1'), isFalse);
+
+        final ids = await container.read(favoriteChannelIdsProvider.future);
+        expect(ids, isNot(contains('news-1')));
+      },
+    );
+  });
 }
 
 const _channels = [

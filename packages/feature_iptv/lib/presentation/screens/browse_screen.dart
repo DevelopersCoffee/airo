@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:platform_channels/platform_channels.dart';
 
+import '../../application/providers/iptv_providers.dart';
 import '../../application/providers/rails_provider.dart';
 import '../widgets/channel_initials.dart';
 
@@ -21,9 +22,7 @@ class BrowseScreen extends ConsumerWidget {
     final rails = ref.watch(railsProvider);
     return rails.when(
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (error, _) => Center(
-        child: Text('Could not build rails: $error'),
-      ),
+      error: (error, _) => Center(child: Text('Could not build rails: $error')),
       data: (results) => ListView(
         padding: const EdgeInsets.only(top: 12, bottom: 20),
         children: [
@@ -44,6 +43,7 @@ class BrowseScreen extends ConsumerWidget {
                     initials: channelInitials(channel.name),
                     variant: _variantFor(result.definition.layout),
                     onTap: () => onChannelSelected?.call(channel),
+                    onLongPress: () => _toggleFavorite(context, ref, channel),
                   ),
               ],
             ),
@@ -52,10 +52,33 @@ class BrowseScreen extends ConsumerWidget {
     );
   }
 
+  Future<void> _toggleFavorite(
+    BuildContext context,
+    WidgetRef ref,
+    IPTVChannel channel,
+  ) async {
+    final isNowFavorite = await ref.read(channelFavoriteTogglerProvider)(
+      channel.id,
+    );
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(
+            isNowFavorite
+                ? '${channel.name} added to favorites'
+                : '${channel.name} removed from favorites',
+          ),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+  }
+
   /// [MediaCardVariant] for each [RailLayout].
   static MediaCardVariant _variantFor(RailLayout layout) => switch (layout) {
-        RailLayout.compact => MediaCardVariant.compact,
-        RailLayout.standard => MediaCardVariant.standard,
-        RailLayout.hero => MediaCardVariant.hero,
-      };
+    RailLayout.compact => MediaCardVariant.compact,
+    RailLayout.standard => MediaCardVariant.standard,
+    RailLayout.hero => MediaCardVariant.hero,
+  };
 }
