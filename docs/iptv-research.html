@@ -246,7 +246,7 @@ permalink: /iptv-research/
         <p class="eyebrow">Technical and Economic Assessment</p>
         <h1>IPTV Technology &<br>Architecture Research</h1>
         <p class="lede" style="color: var(--muted); font-size: 1.15rem; max-width: 800px; margin-top: 16px;">
-          A synthesized look at modern IPTV/OTT frameworks, multicast streaming protocols, advanced compression standards, and the value proposition of Airo TV.
+          A synthesized look at modern IPTV frameworks, multicast streaming protocols, advanced compression standards, and the value proposition of Airo TV.
         </p>
       </div>
     </section>
@@ -254,49 +254,49 @@ permalink: /iptv-research/
     <section class="band">
       <div class="container">
         <div class="prose-section">
-          <h2>1. IPTV vs. Open-Network Internet TV (OTT)</h2>
+          <h2>1. IPTV Core Fundamentals & Managed Network Delivery</h2>
           <p>
-            Internet Protocol Television (IPTV) and Over-The-Top (OTT) platforms represent two distinct pathways for media transmission over internet protocols. While OTT operates as a "best-effort" service on public networks, IPTV relies on private, managed infrastructure to enforce strict Quality of Service (QoS) guarantees.
+            Internet Protocol Television (IPTV) relies on private, managed network infrastructure to deliver high-quality media streams with strict Quality of Service (QoS) guarantees. By utilizing controlled IP topologies, IPTV operators eliminate routing unpredictability and network-level packet bottlenecks.
           </p>
           <div class="table-responsive">
             <table>
               <thead>
                 <tr>
-                  <th>Parameter</th>
-                  <th>Managed IPTV</th>
-                  <th>Open-Network Internet TV (OTT)</th>
+                  <th>Architectural Parameter</th>
+                  <th>Managed IPTV Specification</th>
+                  <th>Technical Implementation Mechanism</th>
                 </tr>
               </thead>
               <tbody>
                 <tr>
-                  <td><strong>Network Type</strong></td>
-                  <td>Closed, managed private network (Operator-owned)</td>
-                  <td>Open, public internet (Best-effort delivery)</td>
+                  <td><strong>Network Topology</strong></td>
+                  <td>Closed, private managed IP network (Operator-owned)</td>
+                  <td>Traffic is isolated from the public internet using private MPLS paths and dedicated VLANs.</td>
                 </tr>
                 <tr>
-                  <td><strong>Transmission Method</strong></td>
-                  <td>True Multicast (IGMP) & Unicast (RTSP/UDP)</td>
-                  <td>Unicast (HTTP-based over TCP)</td>
+                  <td><strong>Transmission Methods</strong></td>
+                  <td>True Multicast (IGMP) and Session Unicast (RTSP/UDP)</td>
+                  <td>IGMP Group Management duplicates streams at edge routers; RTSP controls unicast VoD playback states.</td>
                 </tr>
                 <tr>
                   <td><strong>Bandwidth Allocation</strong></td>
-                  <td>Dedicated, reserved bandwidth slices</td>
-                  <td>Shared, fluctuating bandwidth</td>
+                  <td>Dedicated, guaranteed bandwidth slices</td>
+                  <td>Resource Reservation Protocol (RSVP) and Admission Control prevent stream starvation.</td>
                 </tr>
                 <tr>
                   <td><strong>Quality of Service (QoS)</strong></td>
-                  <td>Guaranteed QoS with traffic prioritization</td>
-                  <td>Variable, dependent on network congestion</td>
+                  <td>Guaranteed QoS and traffic prioritization</td>
+                  <td>Differentiated Services (DiffServ) flags video packets with high IP precedence (DSCP values).</td>
                 </tr>
                 <tr>
                   <td><strong>Content Security</strong></td>
-                  <td>Deep network-level encryption & hardware-tied DRM</td>
-                  <td>Client-side software/hardware DRM (Widevine, FairPlay)</td>
+                  <td>Network-level encryption and hardware-secured DRM</td>
+                  <td>Conditional Access Systems (CAS) encrypt video payloads at the scrambler level.</td>
                 </tr>
                 <tr>
-                  <td><strong>Latency & Jitter</strong></td>
-                  <td>Minimal and highly predictable</td>
-                  <td>Variable, subject to network routing congestion</td>
+                  <td><strong>Latency & Jitter Control</strong></td>
+                  <td>Minimal, highly predictable propagation delay</td>
+                  <td>Dedicated hardware queues and FEC (Forward Error Correction) rebuild lost UDP packets on-the-fly.</td>
                 </tr>
               </tbody>
             </table>
