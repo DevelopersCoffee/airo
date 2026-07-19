@@ -3,6 +3,7 @@ import 'package:core_ui/core_ui.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../application/player_backgrounding_coordinator.dart';
 import '../../application/providers/caption_preference_provider.dart';
 import '../../application/providers/iptv_providers.dart';
 import '../../application/providers/video_aspect_ratio_provider.dart';
@@ -67,6 +68,11 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
   // so the slider tracks live playback position between drags.
   Duration? _vodSeekDragPosition;
 
+  // Manual audio-only toggle (Task 5): mirrors the native background-audio
+  // mode so the icon reflects state set before this widget mounted (e.g. a
+  // toggle left on from a previous session).
+  bool _isAudioOnly = AiroBackgroundAudioMode.isEnabled;
+
   @override
   void initState() {
     super.initState();
@@ -77,6 +83,9 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
     _startHideControlsTimer();
     // Wakelock is managed by WakelockPlaybackCoordinator at screen scope,
     // not by this widget's lifetime.
+    AiroNativePictureInPicture.setStateChangeHandler((isActive) {
+      if (mounted) setState(() {});
+    });
   }
 
   Future<void> _loadInitialBrightness() async {
@@ -94,6 +103,7 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
     _cancelHideControlsTimer();
     _channelChangeOverlayTimer?.cancel();
     unawaited(_resetBrightnessSafely());
+    AiroNativePictureInPicture.setStateChangeHandler(null);
     super.dispose();
   }
 
@@ -163,6 +173,19 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
     setState(() => _isFullscreen = enteringFullscreen);
     unawaited(AiroNativeFullscreen.setMacosFullscreen(enteringFullscreen));
     widget.onFullscreenToggle?.call();
+  }
+
+  // Manual audio-only toggle (Task 5, spec Goal 5): lets the user opt into
+  // audio-only playback ahead of backgrounding, which
+  // PlayerBackgroundingCoordinator then treats as always-win over the PiP
+  // attempt (see manualAudioOnlyToggled).
+  Future<void> _toggleAudioOnly() async {
+    final next = !_isAudioOnly;
+    setState(() => _isAudioOnly = next);
+    await AiroBackgroundAudioMode.setEnabled(next);
+    ref
+        .read(playerBackgroundingCoordinatorProvider)
+        .manualAudioOnlyToggled(next);
   }
 
   void _toggleWebFullscreen() {
@@ -751,6 +774,18 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                             : Icons.volume_up,
                         tooltip: state.isMuted ? 'Unmute' : 'Mute',
                         onPressed: () => service.toggleMute(),
+                      ),
+                      // Manual audio-only toggle (Task 5, spec Goal 5).
+                      _PlayerControlButton(
+                        key: const ValueKey('audio-only-toggle'),
+                        icon: _isAudioOnly
+                            ? Icons.hearing
+                            : Icons.hearing_disabled,
+                        iconColor: _isAudioOnly ? Colors.amber : Colors.white,
+                        tooltip: _isAudioOnly
+                            ? 'Exit audio-only'
+                            : 'Listen only (audio-only)',
+                        onPressed: _toggleAudioOnly,
                       ),
                       const Spacer(),
                       // Aspect ratio toggle
