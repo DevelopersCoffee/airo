@@ -316,16 +316,18 @@ class AppRouter {
               ),
             ],
           ),
-          // Favorites branch (CV unified-browse Task 5): no mobile-specific
-          // favorites screen exists yet, so this reuses TvFavoritesScreen
-          // (packages/feature_iptv/lib/presentation/tv/tv_favorites_screen.dart)
-          // as directed by the task brief rather than inventing a new one.
+          // Favorites branch (CV unified-browse Task 5): uses the real
+          // mobile favorites screen (packages/feature_iptv/lib/presentation/
+          // screens/mobile_favorites_screen.dart), landed on main after this
+          // task's original TvFavoritesScreen stopgap — picked up on rebase.
           StatefulShellBranch(
             routes: [
               GoRoute(
                 path: '/favorites',
                 name: 'Favorites',
-                builder: (context, state) => const TvFavoritesScreen(),
+                builder: (context, state) => MobileFavoritesScreen(
+                  onChannelSelected: () => context.go('/iptv'),
+                ),
               ),
             ],
           ),
