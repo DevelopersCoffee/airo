@@ -108,18 +108,41 @@ void main() {
       },
     );
 
-    test('wide layouts keep the full information architecture visible', () {
-      final container = ProviderContainer();
-      addTearDown(container.dispose);
+    test(
+      'wide layouts show a curated 8-tab set: the original six domains '
+      'plus Guide and Favorites, excluding the placeholder Home tab',
+      () {
+        final container = ProviderContainer();
+        addTearDown(container.dispose);
 
-      final policy = container.read(appNavigationPolicyProvider);
-      final wideLayout = policy.layoutForWidth(900);
+        final policy = container.read(appNavigationPolicyProvider);
+        final wideLayout = policy.layoutForWidth(900);
 
-      expect(policy.compactWidthBreakpoint, 600);
-      expect(wideLayout.persistentTabs, AppNavigationTab.values);
-      expect(wideLayout.overflowTabs, isEmpty);
-      expect(wideLayout.usesOverflow, isFalse);
-    });
+        expect(policy.compactWidthBreakpoint, 600);
+        expect(wideLayout.persistentTabs.map((t) => t.label).toList(), [
+          'Coins',
+          'Mind',
+          'Beats',
+          'Live',
+          'Arena',
+          'Quest',
+          'Guide',
+          'Favorites',
+        ]);
+        // Home is a phone-only placeholder for the unified browse entry
+        // point; Mind already serves that role on wide layouts, so Home
+        // must not appear here (it would read as a confusing duplicate).
+        expect(wideLayout.persistentTabs, isNot(contains(AppNavigationTab.home)));
+        // Settings has never had a persistent nav slot; it stays reachable
+        // via the profile menu regardless of screen width.
+        expect(
+          wideLayout.persistentTabs,
+          isNot(contains(AppNavigationTab.settings)),
+        );
+        expect(wideLayout.overflowTabs, isEmpty);
+        expect(wideLayout.usesOverflow, isFalse);
+      },
+    );
 
     test('keeps shell-owned headers only on routes without local app bars', () {
       expect(appShellHeaderModeForLocation('/money'), AppShellHeaderMode.shell);

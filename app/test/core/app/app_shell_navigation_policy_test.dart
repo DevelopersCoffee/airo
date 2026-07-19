@@ -167,23 +167,31 @@ void main() {
     expect(find.text('Guide body'), findsOneWidget);
   });
 
-  testWidgets('wider layouts show the full ten-tab information architecture', (
-    tester,
-  ) async {
-    await pumpShell(tester, initialLocation: '/home', width: 900);
+  testWidgets(
+    'wider layouts show a curated 8-tab set, excluding the placeholder '
+    'Home tab and Settings (reachable via the profile menu instead)',
+    (tester) async {
+      // Wide layouts don't have a /home branch in their nav bar, so start
+      // from a destination that is actually part of the wide tab set.
+      await pumpShell(tester, initialLocation: '/mind', width: 900);
 
-    expect(find.byKey(const ValueKey('app_nav_coins')), findsOneWidget);
-    expect(find.byKey(const ValueKey('app_nav_mind')), findsOneWidget);
-    expect(find.byKey(const ValueKey('app_nav_beats')), findsOneWidget);
-    expect(find.byKey(const ValueKey('app_nav_live')), findsOneWidget);
-    expect(find.byKey(const ValueKey('app_nav_arena')), findsOneWidget);
-    expect(find.byKey(const ValueKey('app_nav_quest')), findsOneWidget);
-    expect(find.byKey(const ValueKey('app_nav_home')), findsOneWidget);
-    expect(find.byKey(const ValueKey('app_nav_guide')), findsOneWidget);
-    expect(find.byKey(const ValueKey('app_nav_favorites')), findsOneWidget);
-    expect(find.byKey(const ValueKey('app_nav_settings')), findsOneWidget);
-    expect(find.byKey(const ValueKey('app_nav_overflow')), findsNothing);
-  });
+      expect(find.byKey(const ValueKey('app_nav_coins')), findsOneWidget);
+      expect(find.byKey(const ValueKey('app_nav_mind')), findsOneWidget);
+      expect(find.byKey(const ValueKey('app_nav_beats')), findsOneWidget);
+      expect(find.byKey(const ValueKey('app_nav_live')), findsOneWidget);
+      expect(find.byKey(const ValueKey('app_nav_arena')), findsOneWidget);
+      expect(find.byKey(const ValueKey('app_nav_quest')), findsOneWidget);
+      expect(find.byKey(const ValueKey('app_nav_guide')), findsOneWidget);
+      expect(find.byKey(const ValueKey('app_nav_favorites')), findsOneWidget);
+      expect(find.byKey(const ValueKey('app_nav_overflow')), findsNothing);
+
+      // Home is a phone-only placeholder (Mind already covers this ground
+      // on wide layouts) and Settings stays reachable via the profile
+      // menu, so neither gets a persistent destination on wide layouts.
+      expect(find.byKey(const ValueKey('app_nav_home')), findsNothing);
+      expect(find.byKey(const ValueKey('app_nav_settings')), findsNothing);
+    },
+  );
 }
 
 class _ShellBodyScreen extends StatelessWidget {

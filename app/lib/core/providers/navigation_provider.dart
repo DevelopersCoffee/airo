@@ -133,12 +133,14 @@ class AppNavigationLayoutConfig {
 class AppNavigationPolicy {
   const AppNavigationPolicy({
     required this.compactPrimaryTabs,
+    required this.widePrimaryTabs,
     required this.overflowTabs,
     this.compactWidthBreakpoint = 600,
     this.overflow = const AppNavigationOverflowConfig(),
   });
 
   final List<AppNavigationTab> compactPrimaryTabs;
+  final List<AppNavigationTab> widePrimaryTabs;
   final List<AppNavigationTab> overflowTabs;
   final double compactWidthBreakpoint;
   final AppNavigationOverflowConfig overflow;
@@ -146,7 +148,7 @@ class AppNavigationPolicy {
   AppNavigationLayoutConfig layoutForWidth(double width) {
     if (width >= compactWidthBreakpoint) {
       return AppNavigationLayoutConfig(
-        persistentTabs: AppNavigationTab.values,
+        persistentTabs: widePrimaryTabs,
         overflowTabs: const [],
         overflow: overflow,
       );
@@ -163,6 +165,18 @@ class AppNavigationPolicy {
 /// Phone bottom nav: exactly 5 destinations, matching the TV sidebar
 /// (`tv_shell.dart`) one-for-one — Home, Live, Guide, Favorites, Settings.
 /// All 5 fit persistently, so no overflow is needed on phone.
+///
+/// Wide (tablet/desktop) layouts get a *different* curated set, not the
+/// full ten-tab list: the original six super-app domains (Coins, Mind,
+/// Beats, Live, Arena, Quest) plus the two new IPTV-adjacent destinations
+/// worth persistent nav real estate on larger screens (Guide, Favorites).
+/// `home` is deliberately left out here — it's a phone-only placeholder for
+/// the unified browse entry point (see the enum doc above), and `mind`
+/// already covers that ground on wide layouts, so including both reads as
+/// a confusing duplicate. `settings` is left out too, matching the
+/// pre-unified-browse convention: it has never had a persistent nav slot
+/// and stays reachable via the profile menu (`AppShell.onProfileTap` ->
+/// `ProfileScreen`'s "Settings" entry) regardless of screen width.
 const appNavigationPolicy = AppNavigationPolicy(
   compactPrimaryTabs: [
     AppNavigationTab.home,
@@ -170,6 +184,16 @@ const appNavigationPolicy = AppNavigationPolicy(
     AppNavigationTab.guide,
     AppNavigationTab.favorites,
     AppNavigationTab.settings,
+  ],
+  widePrimaryTabs: [
+    AppNavigationTab.coins,
+    AppNavigationTab.mind,
+    AppNavigationTab.beats,
+    AppNavigationTab.live,
+    AppNavigationTab.arena,
+    AppNavigationTab.quest,
+    AppNavigationTab.guide,
+    AppNavigationTab.favorites,
   ],
   overflowTabs: [],
 );
