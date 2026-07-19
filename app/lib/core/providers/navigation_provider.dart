@@ -13,10 +13,11 @@ import '../routing/route_names.dart';
 /// `home`, `guide`, `favorites`, and `settings` are new: they back the
 /// 5-destination phone bottom nav that mirrors the TV sidebar
 /// (`tv_shell.dart`) — see `appNavigationPolicy.compactPrimaryTabs` below.
-/// `home` is a placeholder that reuses the existing Mind/agent screen until
-/// a later task (unified-browse Task 6, "Mobile BrowseScreen with rails")
-/// delivers the real rail-based Home; see task-5-report.md for the full
-/// route-name decision log.
+/// `home` renders the same IPTVScreen as `live` (unified-browse Task 6):
+/// the source design's sidebar calls the identical `goToBrowse` handler for
+/// its Home and Live TV items, so they're the same destination here too;
+/// see task-5-report.md and task-6-report.md for the full route-name
+/// decision log.
 enum AppNavigationTab {
   coins(
     label: 'Coins',
@@ -241,6 +242,10 @@ AppShellHeaderMode appShellHeaderModeForLocation(String location) {
     '/mind/',
     '/music',
     '/iptv',
+    // Home (CV unified-browse Task 6) renders the same IPTVScreen as Live —
+    // it owns its own AppBar too, so shell chrome must stay hidden here for
+    // the same reason it's hidden on '/iptv'.
+    '/home',
     '/games/',
     '/quest',
     // SettingsHubScreen renders its own Scaffold + AppBar (see

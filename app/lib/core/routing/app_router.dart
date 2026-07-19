@@ -283,16 +283,23 @@ class AppRouter {
               ),
             ],
           ),
-          // Home branch (CV unified-browse Task 5): placeholder reusing the
-          // existing Mind/agent screen until Task 6 ("Mobile BrowseScreen
-          // with rails") delivers the real rail-based Home. Matches
-          // AppNavigationTab.home — see task-5-report.md for the decision.
+          // Home branch (CV unified-browse Task 6): the source design's
+          // sidebar has Home and Live TV both call the same `goToBrowse`
+          // handler — Home and Live are the same destination — so this
+          // mirrors the Stream branch's IPTVScreen wiring exactly rather
+          // than the Task 5 MindScreen placeholder. Matches
+          // AppNavigationTab.home — see task-6-report.md for the decision.
           StatefulShellBranch(
             routes: [
               GoRoute(
                 path: '/home',
                 name: 'Home',
-                builder: (context, state) => const MindScreen(),
+                builder: (context, state) => IPTVScreen(
+                  onOpenVod: () => context.go('/vod'),
+                  onPickLocalMediaForTv: kDebugMode
+                      ? pickPhoneLocalMediaForTv
+                      : null,
+                ),
               ),
             ],
           ),

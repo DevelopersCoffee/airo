@@ -156,7 +156,6 @@ void main() {
         AppShellHeaderMode.shell,
       );
       expect(appShellHeaderModeForLocation('/games'), AppShellHeaderMode.shell);
-      expect(appShellHeaderModeForLocation('/home'), AppShellHeaderMode.shell);
       expect(appShellHeaderModeForLocation('/guide'), AppShellHeaderMode.shell);
       expect(
         appShellHeaderModeForLocation('/favorites'),
@@ -167,6 +166,9 @@ void main() {
     test('switches custom and nested routes to route-owned headers', () {
       expect(appShellHeaderModeForLocation('/music'), AppShellHeaderMode.route);
       expect(appShellHeaderModeForLocation('/iptv'), AppShellHeaderMode.route);
+      // Home (unified-browse Task 6) renders the same IPTVScreen as Live and
+      // owns its own AppBar too, so shell chrome must stay hidden here.
+      expect(appShellHeaderModeForLocation('/home'), AppShellHeaderMode.route);
       expect(appShellHeaderModeForLocation('/quest'), AppShellHeaderMode.route);
       expect(
         appShellHeaderModeForLocation('/quest/new'),
