@@ -4,3 +4,7 @@
 
 export 'src/domain/validators/ifsc_validator.dart';
 export 'src/domain/validators/pan_validator.dart';
+export 'src/domain/entities/bank_account_record.dart';
+export 'src/domain/entities/pan_card_record.dart';
+export 'src/domain/entities/credit_card_record.dart';
+export 'src/domain/entities/secure_document_record.dart';
