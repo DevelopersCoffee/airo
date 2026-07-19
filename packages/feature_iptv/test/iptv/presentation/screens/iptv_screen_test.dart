@@ -143,7 +143,7 @@ void main() {
     );
   }
 
-  testWidgets('renders Airo TV app bar, category filters, and live list', (
+  testWidgets('renders Airo TV app bar and live list without category chips', (
     tester,
   ) async {
     await tester.pumpWidget(createWidget());
@@ -152,11 +152,9 @@ void main() {
     expect(find.text('Airo TV'), findsOneWidget);
     expect(find.byTooltip('Search channels'), findsOneWidget);
     expect(find.byTooltip('Cast'), findsOneWidget);
-    expect(find.text('All (3)'), findsOneWidget);
-    expect(find.text('News (1)'), findsOneWidget);
-    expect(find.text('Sports (1)'), findsOneWidget);
-    expect(find.text('Entertainment (0)'), findsOneWidget);
-    expect(find.text('Music (1)'), findsOneWidget);
+    // Category browsing moved into the rails (Entertainment, Music, ...);
+    // the chip row is gone.
+    expect(find.byType(ChoiceChip), findsNothing);
     expect(find.text('Featured Player'), findsOneWidget);
     expect(find.text('Select a channel to start watching'), findsOneWidget);
 
