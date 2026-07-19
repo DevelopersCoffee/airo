@@ -16,6 +16,7 @@ dependencies:
     path: ../core_domain
   cryptography: ^2.7.0
   local_auth: ^2.3.0
+  flutter_secure_storage: ^10.3.1
   sqflite: ^2.4.3
   equatable: ^2.0.8
   meta: ^1.18.0
