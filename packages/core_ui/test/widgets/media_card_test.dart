@@ -25,19 +25,38 @@ void main() {
     expect(find.text('LIVE'), findsOneWidget);
   });
 
-  testWidgets('hero variant is wider than standard', (tester) async {
-    await tester.pumpWidget(_host(const Row(children: [
-      MediaCard(name: 'A', variant: MediaCardVariant.hero),
-    ])));
-    final size = tester.getSize(find.byType(MediaCard));
-    expect(size.width, greaterThan(172));
+  testWidgets('variant dimensions are pinned', (tester) async {
+    Future<(double, double)> dimensionsOf(MediaCardVariant variant) async {
+      await tester.pumpWidget(_host(Row(children: [
+        MediaCard(name: 'A', variant: variant),
+      ])));
+      final width = tester.getSize(find.byType(MediaCard)).width;
+      final sizedBoxFinder = find
+          .ancestor(of: find.text('A'), matching: find.byType(SizedBox))
+          .first;
+      final sizedBox = tester.widget<SizedBox>(sizedBoxFinder);
+      return (width, sizedBox.height!);
+    }
+
+    final (standardWidth, standardHeight) = await dimensionsOf(MediaCardVariant.standard);
+    expect(standardWidth, 172);
+    expect(standardHeight, 104);
+
+    final (liveWidth, liveHeight) = await dimensionsOf(MediaCardVariant.live);
+    expect(liveWidth, 172);
+    expect(liveHeight, 104);
+
+    final (compactWidth, compactHeight) = await dimensionsOf(MediaCardVariant.compact);
+    expect(compactWidth, 140);
+    expect(compactHeight, 84);
+
+    final (heroWidth, heroHeight) = await dimensionsOf(MediaCardVariant.hero);
+    expect(heroWidth, 320);
+    expect(heroHeight, 180);
   });
 
-  testWidgets('compact variant is narrower than standard', (tester) async {
-    await tester.pumpWidget(_host(const Row(children: [
-      MediaCard(name: 'A', variant: MediaCardVariant.compact),
-    ])));
-    final size = tester.getSize(find.byType(MediaCard));
-    expect(size.width, lessThan(172));
+  testWidgets('isLive shows LIVE badge on any variant', (tester) async {
+    await tester.pumpWidget(_host(const MediaCard(name: 'A', isLive: true)));
+    expect(find.text('LIVE'), findsOneWidget);
   });
 }
