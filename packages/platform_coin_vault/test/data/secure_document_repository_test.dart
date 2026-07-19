@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import 'package:core_domain/core_domain.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:platform_coin_vault/src/crypto/field_cipher.dart';
 import 'package:platform_coin_vault/src/data/secure_document_repository.dart';
@@ -75,5 +76,36 @@ void main() {
     final fetched = await repository.getByNickname('80C Receipt', keyBytes);
 
     expect(fetched.value?.customFields, {'insurer': 'LIC', 'premium': '25000'});
+  });
+
+  test('attachmentBlob roundtrips through encryption, including bytes >= 128', () async {
+    final blob = [0, 127, 128, 200, 255];
+    final record = SecureDocumentRecord(
+      id: null,
+      nickname: 'Scanned Rent Receipt',
+      category: DocumentCategory.hra,
+      attachmentBlob: blob,
+      createdAt: DateTime(2026, 7, 19),
+    );
+
+    await repository.create(record, keyBytes);
+    final fetched = await repository.getByNickname('Scanned Rent Receipt', keyBytes);
+
+    expect(fetched.value?.attachmentBlob, blob);
+  });
+
+  test('creating a second document with the same nickname fails', () async {
+    final record = SecureDocumentRecord(
+      id: null,
+      nickname: 'Shared Doc',
+      category: DocumentCategory.other,
+      createdAt: DateTime(2026, 7, 19),
+    );
+
+    await repository.create(record, keyBytes);
+    final result = await repository.create(record, keyBytes);
+
+    expect(result.isFailure, isTrue);
+    expect(result.failure, isA<ValidationFailure>());
   });
 }

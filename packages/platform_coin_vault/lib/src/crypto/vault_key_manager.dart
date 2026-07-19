@@ -54,7 +54,11 @@ class VaultKeyManager {
 
     final existing = await _secureStorage.read(_wrappedDekKey);
     if (existing case Success(value: final stored?)) {
-      return Success(_decodeKey(stored));
+      try {
+        return Success(_decodeKey(stored));
+      } catch (e) {
+        return Failure(CacheFailure(message: 'Stored vault key is corrupted', cause: e));
+      }
     }
 
     final newKey = _generateKeyBytes();

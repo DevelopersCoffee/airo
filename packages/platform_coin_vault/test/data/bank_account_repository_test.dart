@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import 'package:core_domain/core_domain.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:platform_coin_vault/src/crypto/field_cipher.dart';
 import 'package:platform_coin_vault/src/data/bank_account_repository.dart';
@@ -92,6 +93,7 @@ void main() {
       final secondResult = await repository.create(second, keyBytes);
 
       expect(secondResult.isFailure, isTrue);
+      expect(secondResult.failure, isA<ValidationFailure>());
     });
 
     test('getByNickname returns null for an unknown nickname', () async {

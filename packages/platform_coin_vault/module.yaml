@@ -4,6 +4,7 @@ reviewers:
   - Chief Architect
   - Chief Security Officer
   - Chief QA Officer
+  - Chief Open Source Officer
 allowed_dependencies:
   - core_domain
   - core_data

@@ -1,3 +1,4 @@
+import 'package:core_domain/core_domain.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:platform_coin_vault/src/data/credit_card_repository.dart';
 import 'package:platform_coin_vault/src/data/vault_database.dart';
@@ -59,5 +60,6 @@ void main() {
     final result = await repository.create(record);
 
     expect(result.isFailure, isTrue);
+    expect(result.failure, isA<ValidationFailure>());
   });
 }

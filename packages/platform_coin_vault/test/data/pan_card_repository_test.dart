@@ -50,4 +50,19 @@ void main() {
     expect(rows.single['pan_number_enc'], isNot('ABCDE1234F'));
     expect(createResult.isSuccess, isTrue);
   });
+
+  test('cardImageBlob roundtrips through encryption, including bytes >= 128', () async {
+    final blob = [0, 127, 128, 200, 255];
+    final record = PanCardRecord(
+      id: null,
+      panNumber: 'ABCDE1234F',
+      nameOnCard: 'Jane Doe',
+      cardImageBlob: blob,
+    );
+
+    final createResult = await repository.create(record, keyBytes);
+    final fetched = await repository.getById(createResult.value, keyBytes);
+
+    expect(fetched.value?.cardImageBlob, blob);
+  });
 }

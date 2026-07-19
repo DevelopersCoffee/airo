@@ -18,6 +18,7 @@ class VaultSecureStorage implements VaultKeyStore {
   VaultSecureStorage({FlutterSecureStorage? storage})
     : _storage = storage ?? const FlutterSecureStorage(
         aOptions: AndroidOptions.biometric(
+          enforceBiometrics: true,
           storageNamespace: 'airo_coin_vault',
         ),
         iOptions: IOSOptions(
