@@ -536,4 +536,92 @@ void main() {
       expect(find.text('Play on TV'), findsNothing);
     },
   );
+
+  testWidgets(
+    'searching lists matching channels in the sheet instead of auto-playing '
+    'the single match; tapping a result plays it',
+    (tester) async {
+      final playedChannels = <IPTVChannel>[];
+      final fakeService = _RecordingStreamingService(played: playedChannels);
+
+      await tester.pumpWidget(
+        createWidget(
+          extraOverrides: [
+            // overrideWith (not overrideWithValue) so ref.onDispose cancels
+            // the periodic metrics timer started by initialize() before the
+            // pending-timer invariant check runs.
+            iptvStreamingServiceProvider.overrideWith((ref) {
+              ref.onDispose(() => fakeService.dispose());
+              return fakeService;
+            }),
+          ],
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byTooltip('Search channels'));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byType(TextField).last, 'City News');
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pumpAndSettle();
+
+      // Single name match must NOT auto-play; the sheet stays open and
+      // lists the matching channel instead.
+      expect(playedChannels, isEmpty);
+      expect(find.text('Search channels'), findsOneWidget);
+      expect(find.widgetWithText(ListTile, 'City News Live'), findsOneWidget);
+
+      await tester.tap(find.widgetWithText(ListTile, 'City News Live'));
+      await tester.pumpAndSettle();
+
+      expect(playedChannels, hasLength(1));
+      expect(playedChannels.single.id, 'news-1');
+      expect(find.text('Search channels'), findsNothing);
+    },
+  );
+
+  testWidgets('search sheet Play button still plays the single match', (
+    tester,
+  ) async {
+    final playedChannels = <IPTVChannel>[];
+    final fakeService = _RecordingStreamingService(played: playedChannels);
+
+    await tester.pumpWidget(
+      createWidget(
+        extraOverrides: [
+          iptvStreamingServiceProvider.overrideWith((ref) {
+            ref.onDispose(() => fakeService.dispose());
+            return fakeService;
+          }),
+        ],
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('Search channels'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(TextField).last, 'City News');
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Play'));
+    await tester.pumpAndSettle();
+
+    expect(playedChannels, hasLength(1));
+    expect(playedChannels.single.id, 'news-1');
+  });
+}
+
+/// Streaming service double that records [playChannel] calls without touching
+/// the real playback engine.
+class _RecordingStreamingService extends VideoPlayerStreamingService {
+  _RecordingStreamingService({required this.played})
+    : super(engine: FakeAiroPlaybackEngine());
+
+  final List<IPTVChannel> played;
+
+  @override
+  Future<void> playChannel(IPTVChannel channel) async {
+    played.add(channel);
+  }
 }
