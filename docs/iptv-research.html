@@ -112,6 +112,18 @@ permalink: /iptv-research/
       display: flex;
       justify-content: center;
     }
+    /* Screen reader only utility class */
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
     /* Mermaid dark theme overrides */
     .mermaid svg {
       background: transparent !important;
@@ -262,9 +274,9 @@ permalink: /iptv-research/
             <table>
               <thead>
                 <tr>
-                  <th>Architectural Parameter</th>
-                  <th>Managed IPTV Specification</th>
-                  <th>Technical Implementation Mechanism</th>
+                  <th scope="col">Architectural Parameter</th>
+                  <th scope="col">Managed IPTV Specification</th>
+                  <th scope="col">Technical Implementation Mechanism</th>
                 </tr>
               </thead>
               <tbody>
@@ -309,7 +321,8 @@ permalink: /iptv-research/
             An enterprise IPTV framework leverages a layered, three-tier architecture to securely ingest, transcode, distribute, and display high-definition media streams.
           </p>
           
-          <div class="mermaid">
+          <figure aria-labelledby="architecture-diagram-caption" style="margin: 0;">
+            <div class="mermaid" aria-hidden="true">
 graph LR
     %% Subgraph 1: Control & Middleware
     subgraph Control [Middleware & Subscriber Management]
@@ -361,7 +374,12 @@ graph LR
     class Core,VSO,Multicast,VoDEdge core-node;
     class DSLAM,Loop loop-node;
     class Gateway,STB,Decrypt,Player client-node;
-          </div>
+            </div>
+            <figcaption id="architecture-diagram-caption" class="sr-only">
+              IPTV Network Architecture Diagram showing: Ingestion of live satellite/fiber feeds and VoD assets, transcoding, scrambler CA encryption, control via subscriber DB and Middleware services, distribution via IP/MPLS core and Video Serving Offices, edge access via 5G/MEC/DSLAM, and client playback at home gateways, set-top boxes, and video players.
+            </figcaption>
+          </figure>
+
 
           <h3>Key Architectural Nodes</h3>
           <ul>
@@ -420,7 +438,8 @@ graph LR
             Traditional Client-Side Ad Insertion (CSAI) pauses playback to query ad networks, which results in buffering, black screens, and vulnerability to ad blockers. Airo TV's architecture supports **Server-Side Ad Insertion (SSAI)**, where advertisements are stitched directly into the primary video stream manifest at the network level.
           </p>
 
-          <div class="mermaid">
+          <figure aria-labelledby="ssai-sequence-caption" style="margin: 0;">
+            <div class="mermaid" aria-hidden="true">
 sequenceDiagram
     autonumber
     participant Source as Video Source / Encoder
@@ -435,7 +454,12 @@ sequenceDiagram
     Note over SSAI: Transcode & Align Ad Bitrate Ladder
     SSAI->>Client: Deliver Unified Manifest (.m3u8 / .mpd) with stitched Ad
     Note over Client: Frame-accurate, buffer-free playback
-          </div>
+            </div>
+            <figcaption id="ssai-sequence-caption" class="sr-only">
+              SSAI Sequence Diagram showing the 6-step workflow: Video Source sends SCTE-35 Cue-Out to Manifest Manipulator, which detects the command, requests ads from the Ad Decision Server using VAST/VMAP, receives selected ad pointers, transcodes/aligns the ad bitrate ladder, and delivers a unified manifest to the Client Video Player for buffer-free playback.
+            </figcaption>
+          </figure>
+
 
           <h3>The SSAI Workflow</h3>
           <p>
@@ -512,10 +536,10 @@ sequenceDiagram
             <table>
               <thead>
                 <tr>
-                  <th>Feature / Interface Slice</th>
-                  <th>Airo Mobile & iPad (Touch UI)</th>
-                  <th>Airo TV (10-Foot UI)</th>
-                  <th>Technical Status & Gap Resolution Path</th>
+                  <th scope="col">Feature / Interface Slice</th>
+                  <th scope="col">Airo Mobile & iPad (Touch UI)</th>
+                  <th scope="col">Airo TV (10-Foot UI)</th>
+                  <th scope="col">Technical Status & Gap Resolution Path</th>
                 </tr>
               </thead>
               <tbody>
