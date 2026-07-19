@@ -549,7 +549,9 @@ class AssistantRuntimeService {
                   prompt,
                   systemPrompt: systemPrompt,
                 )),
-            kIsWeb ? litertWebRuntimeInitFailedMessage : litertGemmaUnavailableMessage,
+            kIsWeb
+                ? litertWebRuntimeInitFailedMessage
+                : litertGemmaUnavailableMessage,
           );
           _emitResponseTrace(runtimeId, response, detail: package.id);
           return response;

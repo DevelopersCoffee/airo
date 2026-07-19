@@ -23,15 +23,16 @@ class LiteRtLmService {
     LiteRtLmRuntimeAdapter? adapter,
     MediaPipeWebRuntimeAdapter? webAdapter,
   }) : _isWeb = webAdapter != null || kIsWeb,
-       _webAdapter = webAdapter ?? (kIsWeb ? MediaPipeWebRuntimeAdapter() : null),
+       _webAdapter =
+           webAdapter ?? (kIsWeb ? MediaPipeWebRuntimeAdapter() : null),
        _nativeAdapter = (webAdapter != null || kIsWeb)
            ? null
            : (adapter ??
-               LiteRtLmRuntimeAdapter(
-                 client: client,
-                 runtimeConfig: config,
-                 downloadService: downloadService,
-               ));
+                 LiteRtLmRuntimeAdapter(
+                   client: client,
+                   runtimeConfig: config,
+                   downloadService: downloadService,
+                 ));
 
   final LiteRtLmConfig config;
   final bool _isWeb;
@@ -56,9 +57,8 @@ class LiteRtLmService {
     );
   }
 
-  Future<bool> warmupInstalledModel() => _isWeb
-      ? Future.value(false)
-      : _nativeAdapter!.warmupInstalledModel();
+  Future<bool> warmupInstalledModel() =>
+      _isWeb ? Future.value(false) : _nativeAdapter!.warmupInstalledModel();
 
   Future<bool> warmupModel(OfflineModelInfo model) async {
     if (_isWeb) {

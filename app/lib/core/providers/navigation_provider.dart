@@ -286,7 +286,8 @@ final miniPlayerVisibilityProvider = Provider.family<MiniPlayerVisibility, int>(
       // Home renders the same real browse/player flow as Live (Task 6
       // mirrors the source design's Home==Live routing), so the mini player
       // must show on both tabs, not just Live.
-      showIptvPlayer: currentIndex == AppNavigationTab.live.index ||
+      showIptvPlayer:
+          currentIndex == AppNavigationTab.live.index ||
           currentIndex == AppNavigationTab.home.index,
     );
   },
