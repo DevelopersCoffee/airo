@@ -297,11 +297,7 @@ class _PlayerOverlayState extends State<PlayerOverlay> {
                 const SizedBox(height: 8),
                 Row(
                   children: [
-                    const Icon(
-                      Icons.circle,
-                      color: Colors.red,
-                      size: 8,
-                    ),
+                    const Icon(Icons.circle, color: Colors.red, size: 8),
                     const SizedBox(width: 4),
                     const Text(
                       'LIVE',
