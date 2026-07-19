@@ -1,5 +1,6 @@
 library platform_channels;
 
+export "src/models/import_progress.dart";
 export "src/models/iptv_channel.dart";
 export "src/models/rail_definition.dart";
 export "src/models/vod_item.dart";
