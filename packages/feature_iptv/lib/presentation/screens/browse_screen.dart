@@ -31,11 +31,10 @@ class BrowseScreen extends ConsumerWidget {
             AiroRail(
               title: result.definition.title,
               subtitle: result.definition.subtitle,
-              // AiroRail's own default (156) is sized for a bare thumbnail
-              // plus a two-line label; it doesn't leave room for the
-              // border + padding a real MediaCard renders (measured
-              // overflow otherwise), so size explicitly per variant here.
-              railHeight: _railHeightFor(result.definition.layout),
+              // Height derives from the same variant the cards use below
+              // (AiroRail.cardVariant → MediaCard.railHeightFor), so rail
+              // and card sizing can never drift out of sync.
+              cardVariant: _variantFor(result.definition.layout),
               children: [
                 for (final channel in result.channels)
                   MediaCard(
@@ -53,22 +52,7 @@ class BrowseScreen extends ConsumerWidget {
     );
   }
 
-  /// Rail height (thumbnail + name/subtitle text block + card border/padding
-  /// + the rail's own list-view inset) for each [RailLayout], matching the
-  /// thumbnail sizes [MediaCard] uses per [MediaCardVariant].
-  static double _railHeightFor(RailLayout layout) {
-    final thumbnailHeight = switch (layout) {
-      RailLayout.compact => 84.0,
-      RailLayout.standard => 104.0,
-      RailLayout.hero => 180.0,
-    };
-    return thumbnailHeight + 64;
-  }
-
-  /// [MediaCardVariant] for each [RailLayout], matching [_railHeightFor]
-  /// exactly so a rail's card size always fits the band height it renders
-  /// in — a mismatch here overflows (e.g. a compact-height rail rendering
-  /// standard-sized cards).
+  /// [MediaCardVariant] for each [RailLayout].
   static MediaCardVariant _variantFor(RailLayout layout) => switch (layout) {
         RailLayout.compact => MediaCardVariant.compact,
         RailLayout.standard => MediaCardVariant.standard,
