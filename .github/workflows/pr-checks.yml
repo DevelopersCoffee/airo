@@ -124,6 +124,19 @@ jobs:
           dart run build_runner clean
           dart run build_runner build --delete-conflicting-outputs
 
+      - name: Configure firebase_options.dart
+        env:
+          FIREBASE_OPTIONS_DART_B64: ${{ secrets.FIREBASE_OPTIONS_DART_B64 }}
+        run: |
+          cd app
+          if [[ -n "$FIREBASE_OPTIONS_DART_B64" ]]; then
+            echo "$FIREBASE_OPTIONS_DART_B64" | base64 -d > lib/firebase_options.dart
+            echo "Using FIREBASE_OPTIONS_DART_B64."
+          else
+            cp lib/firebase_options.dart.template lib/firebase_options.dart
+            echo "::warning::FIREBASE_OPTIONS_DART_B64 is not set; using placeholder firebase_options.dart."
+          fi
+
       - name: Run Flutter Analyze
         run: |
           cd app
