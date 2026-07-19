@@ -29,7 +29,51 @@ While both IPTV and Over-The-Top (OTT) platforms deliver video content via Inter
 ## 2. IPTV Network Architecture
 
 A professional IPTV platform depends on a structured, three-tier architecture to ingest, distribute, and display high-definition media. 
-![IPTV Network Architecture Diagram](/airo/assets/airo-tv/iptv_network_architecture.jpg)
+
+<div class="mermaid">
+graph TD
+    %% Node Styling Classes
+    classDef headend fill:#e1f5fe,stroke:#0288d1,stroke-width:2px,color:#01579b;
+    classDef network fill:#e8f5e9,stroke:#388e3c,stroke-width:2px,color:#1b5e20;
+    classDef edge fill:#fff3e0,stroke:#f57c00,stroke-width:2px,color:#e65100;
+    classDef client fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,color:#4a148c;
+    classDef sync fill:#eceff1,stroke:#607d8b,stroke-width:2px,stroke-dasharray: 5 5,color:#263238;
+
+    subgraph Acquisition [1. Content Acquisition Layer]
+        SHE[Super Head End - SHE] -->|Ingests & Transcodes| Trans[Transcoder Cluster]
+        Trans --> EPG[EPG & Metadata Injection]
+        Trans --> ADS[Ad Decision Server - ADS]
+    end
+
+    subgraph Distribution [2. Managed Distribution Network]
+        EPG -->|Core Fiber Backbone| Backbone[High-Speed Core Routers]
+        Backbone -->|IGMP Multicast Stream| IGMP[IGMP Multicast Routers]
+        IGMP -->|Dynamic Packet Duplication| VSO[Video Servicing Office - VSO]
+    end
+
+    subgraph Access [3. Edge & End-User Access]
+        VSO -->|5G / FWA High-Speed Access| MEC[Mobile Edge Computing - MEC Cache]
+        MEC -->|HLS / DASH Playlists| TV[Smart TV - 10-Foot UI]
+        MEC -->|Cellular / Wi-Fi Access| Mobile[Mobile / iPad - Touch UI]
+    end
+
+    subgraph Sync [4. Cross-Device State Sync]
+        TV <-->|Real-time state exchange| StateDB[(Cloud Firestore state DB)]
+        Mobile <-->|Real-time state exchange| StateDB
+    end
+
+    %% Apply Classes
+    class SHE,Trans,EPG,ADS Acquisition;
+    class Backbone,IGMP,VSO Distribution;
+    class MEC,TV,Mobile Access;
+    class StateDB Sync;
+
+    class SHE,Trans,EPG,ADS headend;
+    class Backbone,IGMP,VSO network;
+    class MEC edge;
+    class TV,Mobile client;
+    class StateDB sync;
+</div>
 
 ### Key Architectural Nodes
 *   **Super Head End (SHE):** The central nervous system of the platform. The SHE aggregates live satellite feed, cable channels, and Video-on-Demand (VoD) catalogs. It transcodes incoming video signals into transmission-ready codecs (such as H.264/AVC or H.265/HEVC), injects structural metadata (Electronic Program Guides), and prepares stream segments for advertisement insertion.
@@ -90,21 +134,22 @@ Traditional digital advertising relies on Client-Side Ad Insertion (CSAI). The c
 
 Modern platforms deploy **Server-Side Ad Insertion (SSAI)**, where advertisements are dynamically stitched directly into the primary video stream at the manifest or packager level.
 
-```mermaid
+<div class="mermaid">
 sequenceDiagram
+    autonumber
     participant Source as Video Source / Encoder
     participant SSAI as Manifest Manipulator (SSAI)
     participant ADS as Ad Decision Server (ADS)
     participant Client as End-User Video Player
 
-    Source->>SSAI: Stream + SCTE-35 Splice Marker
-    Note over SSAI: Detects Cue-Out splice command
-    SSAI->>ADS: VAST / VMAP Request (User Profile + Ad Duration)
-    ADS-->>SSAI: Selected Ad Pointers (VAST XML)
-    Note over SSAI: Transcodes ad to match primary stream profile
-    SSAI->>Client: Unified Manifest (.m3u8 / .mpd) with stitched Ad
+    Source->>SSAI: Stream + SCTE-35 Splice Marker (Cue-Out)
+    Note over SSAI: Detects Splice Command
+    SSAI->>ADS: VAST/VMAP Request (User Profile & Ad Duration)
+    ADS-->>SSAI: Return Selected Ad Pointers (VAST XML)
+    Note over SSAI: Transcode & Align Ad Bitrate Ladder
+    SSAI->>Client: Deliver Unified Manifest (.m3u8 / .mpd) with stitched Ad
     Note over Client: Frame-accurate, buffer-free playback
-```
+</div>
 
 ### The SSAI Workflow
 1.  **SCTE-35 Signaling:** Raw video streams contain embedded digital cue markers (SCTE-35) signaling upcoming ad breaks (cue-out), duration, and program return (cue-in).
@@ -142,3 +187,9 @@ Unlike commercial streaming apps where access is instantly revoked the moment a 
 
 ### E. Protecting Your Digital Privacy
 Commercial streaming platforms generate massive revenue by tracking, packaging, and selling your viewing habits, search history, and geographic data to advertising brokers. Airo TV enforces a strict local-first privacy boundary. By processing data on-device and eliminating background telemetry tracking, Airo TV is an investment in your personal data sovereignty. Your viewing profile is never commodified, preserving your digital privacy asset.
+
+<!-- Load and Initialize Mermaid.js Natively -->
+<script type="module">
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+  mermaid.initialize({ startOnLoad: true, theme: 'neutral' });
+</script>
