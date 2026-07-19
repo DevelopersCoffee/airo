@@ -36,7 +36,6 @@ import 'core/platform/device_form_factor.dart';
 import 'core/providers/app_theme_provider.dart';
 import 'core/startup/deferred_startup_task.dart';
 import 'package:feature_iptv/feature_iptv.dart';
-import 'features/iptv/iptv_cast_provider_override.dart';
 import 'features/iptv/iptv_feature_module.dart';
 import 'firebase_options.dart';
 
@@ -101,7 +100,6 @@ void main() async {
         secureStoreProvider.overrideWithValue(
           SecureStoreFactory.createSecure(),
         ),
-        realIptvCastControllerOverride(),
         ...FeatureRegistry.allProviderOverrides,
       ],
       child: const AiroTvApp(),
