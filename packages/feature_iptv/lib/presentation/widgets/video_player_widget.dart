@@ -3,12 +3,10 @@ import 'package:core_ui/core_ui.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:wakelock_plus/wakelock_plus.dart';
 import '../../application/providers/caption_preference_provider.dart';
 import '../../application/providers/iptv_providers.dart';
 import '../../application/providers/video_aspect_ratio_provider.dart';
 import '../../domain/vod_resume_coordinator.dart';
-import '../../domain/wakelock_debouncer.dart';
 import 'playback_diagnostic_overlay.dart';
 import "package:platform_player/platform_player.dart";
 import "package:platform_media/platform_media.dart";
@@ -55,8 +53,6 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
   bool _isCinemaMode = false;
   Timer? _hideControlsTimer;
   static const _controlsHideDelay = Duration(seconds: 4);
-  bool _wakelockEnabled = false;
-  final _wakelockDebouncer = WakelockDebouncer();
 
   // Channel change overlay state
   String? _channelChangeOverlayText;
@@ -79,8 +75,8 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
         widget.brightnessController ?? SystemPlayerBrightnessController();
     _loadInitialBrightness();
     _startHideControlsTimer();
-    // Note: Wakelock is now managed by _updateWakelockForPlayback
-    // based on actual playback state, not just widget mount
+    // Wakelock is managed by WakelockPlaybackCoordinator at screen scope,
+    // not by this widget's lifetime.
   }
 
   Future<void> _loadInitialBrightness() async {
@@ -97,8 +93,6 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
   void dispose() {
     _cancelHideControlsTimer();
     _channelChangeOverlayTimer?.cancel();
-    _wakelockDebouncer.cancel();
-    _disableWakelock();
     unawaited(_resetBrightnessSafely());
     super.dispose();
   }
@@ -119,60 +113,6 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
       await _brightnessController.setBrightness(value);
     } catch (e) {
       debugPrint('Failed to set brightness: $e');
-    }
-  }
-
-  /// Update wakelock based on playback state
-  /// Enable only when video is actively playing (not audio-only)
-  ///
-  /// Debounced via [WakelockDebouncer]: a single buffering tick shouldn't
-  /// flip the OS wakelock, only a target that holds steady does.
-  void _updateWakelockForPlayback(StreamingState state) {
-    if (!mounted) return;
-    final isVideoPlaying =
-        state.isPlaying &&
-        state.currentChannel != null &&
-        !state.currentChannel!.isAudioOnly;
-
-    _wakelockDebouncer.update(
-      current: _wakelockEnabled,
-      target: isVideoPlaying,
-      onSettled: (target) {
-        if (!mounted) return;
-        if (target) {
-          _enableWakelock();
-        } else {
-          _disableWakelock();
-        }
-      },
-    );
-  }
-
-  /// Enable screen wake lock to prevent screen from going off during video playback
-  Future<void> _enableWakelock() async {
-    if (!_wakelockEnabled) {
-      try {
-        await WakelockPlus.enable();
-        _wakelockEnabled = true;
-        debugPrint(
-          'Wakelock enabled - screen will stay on during video playback',
-        );
-      } catch (e) {
-        debugPrint('Failed to enable wakelock: $e');
-      }
-    }
-  }
-
-  /// Disable screen wake lock when video is stopped or widget is disposed
-  Future<void> _disableWakelock() async {
-    if (_wakelockEnabled) {
-      try {
-        await WakelockPlus.disable();
-        _wakelockEnabled = false;
-        debugPrint('Wakelock disabled - screen can now sleep');
-      } catch (e) {
-        debugPrint('Failed to disable wakelock: $e');
-      }
     }
   }
 
@@ -309,7 +249,6 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
     // Update wakelock based on current playback state
     // This is called on every build when state changes
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _updateWakelockForPlayback(state);
       _handleVodResume(service, state);
       _applyCaptionPreferenceIfNeeded(service, state);
     });
@@ -324,10 +263,7 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
         // Video display (engine-driven view surface).
         if (videoView != null)
           SizedBox.expand(
-            child: FittedBox(
-              fit: _boxFitFor(aspectRatioFit),
-              child: videoView,
-            ),
+            child: FittedBox(fit: _boxFitFor(aspectRatioFit), child: videoView),
           )
         else if (state.playbackState == PlaybackState.loading)
           _buildLoading()
@@ -360,9 +296,7 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
         if (state.isBuffering)
           Container(
             color: Colors.black45,
-            child: const CircularProgressIndicator(
-              color: Colors.white,
-            ),
+            child: const CircularProgressIndicator(color: Colors.white),
           ),
       ],
     );
@@ -509,7 +443,9 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                       top: 8,
                       right: 56,
                       child: AnimatedOpacity(
-                        opacity: (_isLocked || _showControlsOverlay) ? 1.0 : 0.0,
+                        opacity: (_isLocked || _showControlsOverlay)
+                            ? 1.0
+                            : 0.0,
                         duration: const Duration(milliseconds: 300),
                         child: Container(
                           decoration: BoxDecoration(
