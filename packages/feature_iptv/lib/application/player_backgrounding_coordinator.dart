@@ -23,19 +23,40 @@ class PlayerBackgroundingCoordinator {
 
   bool _manualAudioOnly = false;
   bool _autoAudioOnlyActive = false;
+  Future<void> _pending = Future<void>.value();
 
   /// Called by the manual audio-only toggle in the player controls.
   void manualAudioOnlyToggled(bool enabled) {
     _manualAudioOnly = enabled;
   }
 
+  /// Serializes lifecycle decisions so overlapping calls (e.g. a rapid
+  /// paused -> resumed flicker) never run concurrently. Without this, a
+  /// `resumed` call could observe `_autoAudioOnlyActive == false` and no-op
+  /// while an earlier, still in-flight `paused` call later sets it to
+  /// `true`, stranding the app in audio-only after it's already back in the
+  /// foreground.
   Future<void> onLifecycleStateChanged(
     AppLifecycleState state,
     StreamingState streaming,
-  ) async {
-    if (!streaming.isPlaying) return;
+  ) {
+    final result = _pending.then((_) => _process(state, streaming));
+    // Keep the chain alive even if a call throws, without swallowing the
+    // error for the original caller (who awaits `result`, not `_pending`).
+    _pending = result.catchError((_) {});
+    return result;
+  }
 
+  Future<void> _process(
+    AppLifecycleState state,
+    StreamingState streaming,
+  ) async {
     if (state == AppLifecycleState.paused) {
+      // Only entering the background requires active playback; resuming
+      // must always run so a stuck auto audio-only state can be cleared
+      // even if playback stopped (error, lock-screen pause, buffering
+      // timeout, playlist end) while backgrounded.
+      if (!streaming.isPlaying) return;
       await _handleBackgrounding();
     } else if (state == AppLifecycleState.resumed) {
       await _handleResume();

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:platform_channels/platform_channels.dart';
@@ -152,6 +154,73 @@ void main() {
         );
 
         expect(audioOnlyCalls, [true]);
+      },
+    );
+
+    test(
+      'resume clears stuck auto audio-only even if playback stopped while '
+      'backgrounded',
+      () async {
+        final audioOnlyCalls = <bool>[];
+        final coordinator = PlayerBackgroundingCoordinator(
+          isSupported: () async => false,
+          requestEnter: () async => false,
+          setAudioOnly: (enabled) async => audioOnlyCalls.add(enabled),
+        );
+
+        // Backgrounding while playing triggers the auto audio-only
+        // fallback (PiP unsupported).
+        await coordinator.onLifecycleStateChanged(
+          AppLifecycleState.paused,
+          _playingState(),
+        );
+        expect(audioOnlyCalls, [true]);
+
+        // Playback stopped while backgrounded (stream error, lock-screen
+        // pause, buffering timeout, playlist end) before the app resumed.
+        await coordinator.onLifecycleStateChanged(
+          AppLifecycleState.resumed,
+          StreamingState(playbackState: PlaybackState.idle),
+        );
+
+        expect(audioOnlyCalls, [true, false]);
+      },
+    );
+
+    test(
+      'rapid paused-then-resumed does not strand the app in audio-only',
+      () async {
+        final audioOnlyCalls = <bool>[];
+        final decisionResolved = Completer<void>();
+        final coordinator = PlayerBackgroundingCoordinator(
+          isSupported: () async => true,
+          requestEnter: () async {
+            // Simulate the backgrounding decision not yet having resolved
+            // when the resume event fires.
+            await decisionResolved.future;
+            return false;
+          },
+          setAudioOnly: (enabled) async => audioOnlyCalls.add(enabled),
+        );
+
+        // Issue both calls without awaiting the first, so they overlap.
+        final backgroundingFuture = coordinator.onLifecycleStateChanged(
+          AppLifecycleState.paused,
+          _playingState(),
+        );
+        final resumeFuture = coordinator.onLifecycleStateChanged(
+          AppLifecycleState.resumed,
+          _playingState(),
+        );
+
+        // Now let the in-flight backgrounding decision resolve.
+        decisionResolved.complete();
+        await backgroundingFuture;
+        await resumeFuture;
+
+        // Serialized execution means backgrounding must fully apply (and
+        // set audio-only) before resume runs and clears it again.
+        expect(audioOnlyCalls, [true, false]);
       },
     );
   });
