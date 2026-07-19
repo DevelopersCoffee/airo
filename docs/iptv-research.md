@@ -29,20 +29,7 @@ While both IPTV and Over-The-Top (OTT) platforms deliver video content via Inter
 ## 2. IPTV Network Architecture
 
 A professional IPTV platform depends on a structured, three-tier architecture to ingest, distribute, and display high-definition media. 
-
-```mermaid
-graph TD
-    subgraph Content Acquisition
-        SHE[Super Head End - SHE] -->|Ingests & Transcodes| Packager[Packager / Encrypter]
-    end
-    subgraph Distribution Network
-        Packager -->|RTP / UDP Multicast| VSO[Video Servicing Office - VSO]
-        VSO -->|Core & Access Network| Edge[Mobile Edge Computing - MEC / FWA]
-    end
-    subgraph End-User Access
-        Edge -->|HLS / DASH Playlists| Client[Smart TV / Mobile / iPad]
-    end
-```
+![IPTV Network Architecture Diagram](/airo/assets/airo-tv/iptv_network_architecture.jpg)
 
 ### Key Architectural Nodes
 *   **Super Head End (SHE):** The central nervous system of the platform. The SHE aggregates live satellite feed, cable channels, and Video-on-Demand (VoD) catalogs. It transcodes incoming video signals into transmission-ready codecs (such as H.264/AVC or H.265/HEVC), injects structural metadata (Electronic Program Guides), and prepares stream segments for advertisement insertion.
