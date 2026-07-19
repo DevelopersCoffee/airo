@@ -207,6 +207,8 @@ class _PulsingDot extends StatefulWidget {
 class _PulsingDotState extends State<_PulsingDot>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
+  late final CurvedAnimation _curve;
+  late final Animation<double> _opacity;
 
   @override
   void initState() {
@@ -215,10 +217,16 @@ class _PulsingDotState extends State<_PulsingDot>
       vsync: this,
       duration: const Duration(milliseconds: 1600),
     )..repeat(reverse: true);
+    // Built once here (not per-build) so there's exactly one CurvedAnimation
+    // to dispose below — creating it inline in build() would leak a fresh
+    // instance on every rebuild.
+    _curve = CurvedAnimation(parent: _controller, curve: Curves.easeInOut);
+    _opacity = Tween<double>(begin: 1, end: 0.25).animate(_curve);
   }
 
   @override
   void dispose() {
+    _curve.dispose();
     _controller.dispose();
     super.dispose();
   }
@@ -226,10 +234,7 @@ class _PulsingDotState extends State<_PulsingDot>
   @override
   Widget build(BuildContext context) {
     return FadeTransition(
-      opacity: Tween<double>(
-        begin: 1,
-        end: 0.25,
-      ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut)),
+      opacity: _opacity,
       child: Container(
         width: 5,
         height: 5,

@@ -54,4 +54,14 @@ void main() {
     );
     expect(a, equals(b));
   });
+
+  test('RailDefinition defaults are whenNonEmpty/standard/20', () {
+    const d = RailDefinition(
+      id: 'x', title: 'X', query: RailQuery(), priority: 0,
+    );
+    expect(d.visibility, RailVisibility.whenNonEmpty);
+    expect(d.layout, RailLayout.standard);
+    expect(d.maxItems, 20);
+    expect(d.subtitle, isNull);
+  });
 }

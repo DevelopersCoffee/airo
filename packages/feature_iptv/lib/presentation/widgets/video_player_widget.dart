@@ -10,15 +10,14 @@ import '../../application/providers/video_aspect_ratio_provider.dart';
 import '../../domain/vod_resume_coordinator.dart';
 import '../../domain/wakelock_debouncer.dart';
 import 'playback_diagnostic_overlay.dart';
-import "package:platform_channels/platform_channels.dart";
 import "package:platform_player/platform_player.dart";
 import "package:platform_media/platform_media.dart";
 import '../utils/web_fullscreen.dart' as web_fullscreen;
 import 'iptv_icon_placeholder.dart';
-import 'live_indicators.dart';
 import 'player_brightness_controller.dart';
 import 'player_gesture_overlay.dart';
 import 'player_lock_button.dart';
+import 'player_overlay.dart';
 
 /// Video player widget with YouTube-like controls
 class VideoPlayerWidget extends ConsumerStatefulWidget {
@@ -28,6 +27,12 @@ class VideoPlayerWidget extends ConsumerStatefulWidget {
   final bool initiallyFullscreen;
   final PlayerBrightnessController? brightnessController;
 
+  /// Invoked when the new [PlayerOverlay] chrome's back button is tapped.
+  /// Defaults to [onFullscreenToggle] when not supplied, since today's only
+  /// callers mount this widget full-screen and treat "back" as "exit
+  /// fullscreen."
+  final VoidCallback? onBack;
+
   const VideoPlayerWidget({
     super.key,
     this.showControls = true,
@@ -35,6 +40,7 @@ class VideoPlayerWidget extends ConsumerStatefulWidget {
     this.enableSwipeChannelChange = false,
     this.initiallyFullscreen = false,
     this.brightnessController,
+    this.onBack,
   });
 
   @override
@@ -393,6 +399,55 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                     ),
                   ),
 
+                  // Renderer-agnostic top chrome (back button, title/
+                  // subtitle, quality + LIVE pills) and failover toast, built
+                  // from PlayerViewState (Task 8/9). Supersedes the old
+                  // network/quality/live badge row and the old channel-name
+                  // row inside `_buildControlsOverlay` below. Center
+                  // transport and the bottom bar are left to that richer
+                  // control bar — which still owns mute, aspect ratio,
+                  // cinema mode, subtitle selection, VOD seek, and Go Live —
+                  // since PlayerOverlay's current fixed contract has no
+                  // equivalent hooks for those yet (see task-9-report.md for
+                  // the follow-up).
+                  //
+                  // Painted (and therefore hit-tested) BEFORE
+                  // `_buildControlsOverlay` below on purpose: PlayerOverlay's
+                  // own tap-to-reveal surface is full-bleed (StackFit.expand)
+                  // so it can catch a tap anywhere on the video, but that
+                  // must not win the gesture arena over the buttons in the
+                  // richer overlay (mute/subtitle/fullscreen/etc) that sit at
+                  // the same screen coordinates — putting it first in paint
+                  // order means those buttons hit-test in front of it and
+                  // claim the tap first.
+                  //
+                  // This only works because `_buildControlsOverlay`'s own
+                  // decorative gradient background is wrapped in
+                  // `IgnorePointer` (see below): `Decoration.hitTest()`
+                  // reports a hit across a `Container`'s ENTIRE bounding box
+                  // regardless of the gradient's alpha, and that container is
+                  // full-bleed over the whole stack. Left un-ignored, it
+                  // would swallow every tap in its bounds — including
+                  // PlayerOverlay's back button up top, which has no legacy
+                  // content behind it since the old channel-name row moved
+                  // into PlayerOverlay — before PlayerOverlay's own
+                  // GestureDetector ever saw the tap.
+                  if (!_isLocked)
+                    PlayerOverlay(
+                      state: _toPlayerViewState(state),
+                      onBack:
+                          widget.onBack ?? widget.onFullscreenToggle ?? () {},
+                      onPlayPause: () {
+                        if (state.isPlaying) {
+                          service.pause();
+                        } else {
+                          service.resume();
+                        }
+                      },
+                      showCenterControls: false,
+                      showBottomBar: false,
+                    ),
+
                   // Controls overlay with fade animation — hidden entirely while
                   // locked so only the lock button remains interactive.
                   if (!_isLocked)
@@ -404,30 +459,6 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                       child: IgnorePointer(
                         ignoring: !_showControlsOverlay,
                         child: _buildControlsOverlay(context, service, state),
-                      ),
-                    ),
-
-                  // Network quality badge
-                  if (!_isLocked && state.metrics != null)
-                    Positioned(
-                      top: 8,
-                      right: 8,
-                      child: _buildNetworkBadge(state.metrics!.networkQuality),
-                    ),
-
-                  // Quality indicator and Live badge
-                  if (!_isLocked)
-                    Positioned(
-                      top: 8,
-                      left: 8,
-                      child: Row(
-                        children: [
-                          _buildQualityBadge(state.currentQuality),
-                          const SizedBox(width: 8),
-                          // Live badge - shows "LIVE" when at live edge
-                          LiveBadge(state: state, showWhenNotLive: true),
-                          // Note: DelayIndicator removed for cleaner UI per design spec
-                        ],
                       ),
                     ),
 
@@ -699,20 +730,38 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
     VideoPlayerStreamingService service,
     StreamingState state,
   ) {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            Colors.black54,
-            Colors.transparent,
-            Colors.transparent,
-            Colors.black54,
-          ],
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        // Decorative gradient backdrop only — wrapped in IgnorePointer so it
+        // never hit-tests. Without this, `Decoration.hitTest()` claims every
+        // tap across this Container's full bounding box (opaque hit area,
+        // not per-pixel alpha), and since this whole overlay paints in front
+        // of PlayerOverlay above, that would swallow taps meant for
+        // PlayerOverlay's back button before its GestureDetector ever saw
+        // them — even though the gradient's top band has nothing visually
+        // interactive under it anymore (the old channel-name row moved to
+        // PlayerOverlay). The real buttons live in `_buildControlButtons`
+        // below as separate hit-testable siblings, so they're unaffected by
+        // this IgnorePointer and keep working exactly as before.
+        IgnorePointer(
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Colors.black54,
+                  Colors.transparent,
+                  Colors.transparent,
+                  Colors.black54,
+                ],
+              ),
+            ),
+          ),
         ),
-      ),
-      child: _buildControlButtons(service, state),
+        _buildControlButtons(service, state),
+      ],
     );
   }
 
@@ -723,45 +772,10 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
     return Stack(
       fit: StackFit.expand,
       children: [
-        if (state.currentChannel != null)
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            child: SafeArea(
-              bottom: false,
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  children: [
-                    if (state.currentChannel!.logoUrl != null)
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(4),
-                        child: AiroNetworkImage(
-                          url: state.currentChannel!.logoUrl!,
-                          width: 32,
-                          height: 32,
-                          errorBuilder: (context, error, stackTrace) =>
-                              const SizedBox.shrink(),
-                        ),
-                      ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        state.currentChannel!.name,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
+        // Channel logo/name row removed (CV-017 PlayerOverlay migration):
+        // the PlayerOverlay layer mounted above this one now owns the
+        // title/subtitle chrome, built from the same StreamingState via
+        // _toPlayerViewState.
         Center(child: _buildCenterButton(service, state)),
         Positioned(
           left: 0,
@@ -1119,45 +1133,24 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
     );
   }
 
-  Widget _buildNetworkBadge(NetworkQuality quality) {
-    final colors = {
-      NetworkQuality.excellent: Colors.green,
-      NetworkQuality.good: Colors.lightGreen,
-      NetworkQuality.fair: Colors.orange,
-      NetworkQuality.poor: Colors.red,
-      NetworkQuality.offline: Colors.grey,
-    };
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: colors[quality],
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.signal_cellular_alt, color: Colors.white, size: 14),
-          const SizedBox(width: 4),
-          Text(
-            quality.label,
-            style: const TextStyle(color: Colors.white, fontSize: 12),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildQualityBadge(VideoQuality quality) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: Colors.black54,
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Text(
-        quality.label,
-        style: const TextStyle(color: Colors.white, fontSize: 12),
-      ),
+  /// Builds the renderer-agnostic [PlayerViewState] the new [PlayerOverlay]
+  /// chrome renders from — the only bridge between engine-facing
+  /// [StreamingState] and the overlay, which must never see engine types.
+  PlayerViewState _toPlayerViewState(StreamingState state) {
+    return PlayerViewState(
+      playback: state.playbackState,
+      liveState: state.liveStreamState,
+      networkQuality: state.metrics?.networkQuality ?? NetworkQuality.good,
+      bufferSeconds: state.bufferStatus.bufferedAhead.inSeconds,
+      qualityLabel: state.currentQuality.label,
+      title: state.currentChannel?.name ?? '',
+      subtitle: state.currentChannel?.group ?? '',
+      // Not wired yet: no provider in iptv_providers.dart currently exposes
+      // AiroFailoverSessionState, so there is nothing to map here today. See
+      // task-9-report.md for the follow-up (map
+      // AiroFailoverSessionState.currentSourceNumber/.sourceCount on
+      // AiroFailoverDecisionCode.switched, per the Task 8/9 handoff notes).
+      failover: null,
     );
   }
 

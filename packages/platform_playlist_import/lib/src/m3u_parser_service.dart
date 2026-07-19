@@ -108,8 +108,11 @@ class M3UParserService {
     await clearCache();
   }
 
-  /// Fetch and parse M3U from URL.
-  Future<_PlaylistFetchResult> _fetchAndParse(String url) async {
+  /// Perform the raw HTTP GET for [url], attaching cache validators. Shared
+  /// by [_fetchAndParse] (used by [fetchPlaylist]) and
+  /// [fetchPlaylistWithProgress] so both observe identical request behavior;
+  /// neither the request semantics nor [fetchPlaylist]'s callers change.
+  Future<Response<String>> _requestPlaylist(String url) async {
     final headers = <String, String>{'Accept-Encoding': 'gzip, deflate'};
     final etag = await _store.getString(_cacheEtagKey);
     final lastModified = await _store.getString(_cacheLastModifiedKey);
@@ -120,7 +123,7 @@ class M3UParserService {
       headers[HttpHeaders.ifModifiedSinceHeader] = lastModified;
     }
 
-    final response = await _dio.get<String>(
+    return _dio.get<String>(
       url,
       options: Options(
         headers: headers,
@@ -132,6 +135,11 @@ class M3UParserService {
                 status == HttpStatus.notModified),
       ),
     );
+  }
+
+  /// Fetch and parse M3U from URL.
+  Future<_PlaylistFetchResult> _fetchAndParse(String url) async {
+    final response = await _requestPlaylist(url);
 
     if (response.statusCode == HttpStatus.notModified) {
       final cached = await _loadFromCache(ignoreExpiry: true);
@@ -148,6 +156,120 @@ class M3UParserService {
     final channels = await parseM3UOffMain(response.data!);
     await _saveHttpValidators(response.headers);
     return _PlaylistFetchResult(channels: channels);
+  }
+
+  /// Stream-based staged import of the user-supplied playlist, wrapping this
+  /// service's real cache/HTTP/parse flow with one [ImportProgress] per
+  /// [ImportStage] transition so long-running imports can be surfaced in the
+  /// UI (spec §4.4). Terminal emission is either `ImportStage.ready` (channel
+  /// count in [ImportProgress.message]) or `ImportStage.failed` (non-null
+  /// [ImportProgress.error], `ready` never emitted). Does not change
+  /// [fetchPlaylist]'s behavior or its existing callers.
+  Stream<ImportProgress> fetchPlaylistWithProgress({
+    bool forceRefresh = false,
+  }) async* {
+    yield const ImportProgress(
+      stage: ImportStage.import_,
+      message: 'Starting playlist import',
+    );
+
+    final playlistUrl = getPlaylistUrl();
+    if (playlistUrl == null) {
+      yield ImportProgress(
+        stage: ImportStage.failed,
+        error: StateError('No user playlist URL is configured.'),
+      );
+      return;
+    }
+    yield const ImportProgress(
+      stage: ImportStage.validate,
+      fraction: 1,
+      message: 'Playlist URL validated',
+    );
+
+    try {
+      if (!forceRefresh) {
+        final cached = await _loadFromCache();
+        if (cached != null && cached.isNotEmpty) {
+          yield* _emitCacheHitThroughReady(cached);
+          return;
+        }
+      }
+
+      yield const ImportProgress(
+        stage: ImportStage.download,
+        message: 'Downloading playlist',
+      );
+      final response = await _requestPlaylist(playlistUrl);
+
+      if (response.statusCode == HttpStatus.notModified) {
+        final cached = await _loadFromCache(ignoreExpiry: true);
+        if (cached == null || cached.isEmpty) {
+          throw Exception('Playlist not modified but no cache is available');
+        }
+        yield* _emitCacheHitThroughReady(cached);
+        return;
+      }
+
+      if (response.data == null || response.data!.isEmpty) {
+        throw Exception('Empty playlist response');
+      }
+
+      yield const ImportProgress(
+        stage: ImportStage.parse,
+        message: 'Parsing playlist',
+      );
+      final channels = await parseM3UOffMain(response.data!);
+      await _saveHttpValidators(response.headers);
+
+      // parseM3UOffMain (via parseM3UChannels) already normalizes and
+      // deduplicates internally, so v1 can't observe those as separate sub
+      // steps; they're emitted back-to-back per the staged-import spec's
+      // explicit allowance for adjacent near-zero-duration stages.
+      yield ImportProgress(
+        stage: ImportStage.normalize,
+        fraction: 1,
+        message: '${channels.length} channels parsed',
+      );
+      yield const ImportProgress(stage: ImportStage.deduplicate, fraction: 1);
+      yield const ImportProgress(stage: ImportStage.indexing, fraction: 1);
+
+      // Rail generation is Riverpod-driven elsewhere via railsProvider
+      // invalidation; this stage is a placeholder for future real hooking.
+      yield const ImportProgress(stage: ImportStage.generateRails, fraction: 1);
+
+      await _saveToCache(channels);
+      yield const ImportProgress(stage: ImportStage.persist, fraction: 1);
+
+      yield ImportProgress(
+        stage: ImportStage.ready,
+        fraction: 1,
+        message: 'Imported ${channels.length} channels',
+      );
+    } catch (error) {
+      yield ImportProgress(stage: ImportStage.failed, error: error);
+    }
+  }
+
+  /// Emit the collapsed download→parse→normalize→deduplicate→indexing stages
+  /// as one fast pass for a cache hit, then generateRails/persist/ready.
+  /// Real parsing already happened on a prior import, so v1 collapses these
+  /// per the staged-import spec's near-zero-duration allowance.
+  Stream<ImportProgress> _emitCacheHitThroughReady(
+    List<IPTVChannel> channels,
+  ) async* {
+    yield ImportProgress(
+      stage: ImportStage.indexing,
+      fraction: 1,
+      message: '${channels.length} channels loaded from cache',
+    );
+    yield const ImportProgress(stage: ImportStage.generateRails, fraction: 1);
+    yield const ImportProgress(stage: ImportStage.persist, fraction: 1);
+    yield ImportProgress(
+      stage: ImportStage.ready,
+      fraction: 1,
+      message: 'Imported ${channels.length} channels',
+    );
   }
 
   /// Parse M3U content into channels with deduplication.

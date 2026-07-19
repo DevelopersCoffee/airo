@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -5,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:core_ui/core_ui.dart';
 import '../../application/providers/iptv_providers.dart';
+import '../../application/providers/rails_provider.dart';
 import "package:platform_channels/platform_channels.dart";
 import "package:platform_player/platform_player.dart";
 import '../widgets/adaptive_iptv_sheet.dart';
@@ -16,6 +19,7 @@ import '../widgets/iptv_navigation_drawer.dart';
 import '../widgets/phone_media_play_on_tv_sheet.dart';
 import '../widgets/video_player_widget.dart';
 import '../tv/iptv_guide_screen.dart';
+import 'browse_screen.dart';
 import 'mobile_favorites_screen.dart';
 
 /// IPTV Screen with YouTube-like streaming experience
@@ -625,14 +629,8 @@ class _StreamTabContent extends ConsumerWidget {
                           const SliverToBoxAdapter(child: SizedBox(height: 12)),
                           SliverFillRemaining(
                             hasScrollBody: true,
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                              ),
-                              child: _ChannelPanel(
-                                channels: channels,
-                                onChannelTap: onChannelTap,
-                              ),
+                            child: BrowseScreen(
+                              onChannelSelected: onChannelTap,
                             ),
                           ),
                         ],
@@ -740,6 +738,8 @@ class _PlaylistSourceSheet extends ConsumerStatefulWidget {
 class _PlaylistSourceSheetState extends ConsumerState<_PlaylistSourceSheet> {
   late final TextEditingController _controller;
   String? _errorText;
+  StreamSubscription<ImportProgress>? _importSubscription;
+  ImportProgress? _importProgress;
 
   @override
   void initState() {
@@ -750,22 +750,65 @@ class _PlaylistSourceSheetState extends ConsumerState<_PlaylistSourceSheet> {
 
   @override
   void dispose() {
+    _importSubscription?.cancel();
     _controller.dispose();
     super.dispose();
   }
+
+  /// True while a staged import is running (i.e. we're between the initial
+  /// `import_` emission and either `ready` — which closes the sheet — or
+  /// `failed`, which surfaces the retry panel and re-enables the form).
+  bool get _isImporting =>
+      _importProgress != null && _importProgress!.stage != ImportStage.failed;
 
   Future<void> _save() async {
     final parser = ref.read(m3uParserProvider);
     try {
       await parser.setPlaylistUrl(_controller.text);
-      ref.invalidate(userPlaylistUrlProvider);
-      ref.invalidate(iptvChannelsProvider);
-      if (mounted) {
-        Navigator.of(context).pop();
-      }
     } on ArgumentError catch (error) {
       setState(() => _errorText = error.message.toString());
+      return;
     }
+    setState(() => _errorText = null);
+    ref.invalidate(userPlaylistUrlProvider);
+    _startImport();
+  }
+
+  /// Kicks off (or retries) the real production import — Task 11's
+  /// [M3UParserService.fetchPlaylistWithProgress] — and renders each staged
+  /// [ImportProgress] emission as it arrives (spec §4.4/§8).
+  void _startImport() {
+    _importSubscription?.cancel();
+    final parser = ref.read(m3uParserProvider);
+    setState(() {
+      _importProgress = const ImportProgress(
+        stage: ImportStage.import_,
+        message: 'Starting playlist import',
+      );
+    });
+    _importSubscription = parser
+        .fetchPlaylistWithProgress(forceRefresh: true)
+        .listen(_onImportProgress, onError: _onImportError);
+  }
+
+  void _onImportProgress(ImportProgress progress) {
+    if (!mounted) return;
+    setState(() => _importProgress = progress);
+    if (progress.stage == ImportStage.ready) {
+      // The staged import already persisted the new channels; refresh both
+      // the channel list and the derived rails so BrowseScreen picks them
+      // up immediately instead of waiting for the next cold read.
+      ref.invalidate(iptvChannelsProvider);
+      ref.invalidate(railsProvider);
+      Navigator.of(context).pop();
+    }
+  }
+
+  void _onImportError(Object error, StackTrace stackTrace) {
+    if (!mounted) return;
+    setState(() {
+      _importProgress = ImportProgress(stage: ImportStage.failed, error: error);
+    });
   }
 
   Future<void> _remove() async {
@@ -785,6 +828,7 @@ class _PlaylistSourceSheetState extends ConsumerState<_PlaylistSourceSheet> {
     final isDialogSheet = size.width >= 720;
     final keyboardVisible = viewInsets.bottom > 0;
     final keyboardInset = isDialogSheet ? 0.0 : viewInsets.bottom;
+    final importing = _isImporting;
 
     return SafeArea(
       child: SingleChildScrollView(
@@ -799,7 +843,7 @@ class _PlaylistSourceSheetState extends ConsumerState<_PlaylistSourceSheet> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Playlist source',
+              'Add Playlist Source',
               style: Theme.of(context).textTheme.titleLarge,
             ),
             if (!keyboardVisible) ...[
@@ -814,6 +858,7 @@ class _PlaylistSourceSheetState extends ConsumerState<_PlaylistSourceSheet> {
               textField: true,
               child: TextField(
                 controller: _controller,
+                enabled: !importing,
                 autofocus: true,
                 keyboardType: TextInputType.url,
                 textInputAction: TextInputAction.done,
@@ -830,6 +875,13 @@ class _PlaylistSourceSheetState extends ConsumerState<_PlaylistSourceSheet> {
               const SizedBox(height: 12),
               _PlaylistSourceInfoCallout(),
             ],
+            if (_importProgress != null) ...[
+              const SizedBox(height: 12),
+              _ImportProgressPanel(
+                progress: _importProgress!,
+                onRetry: _startImport,
+              ),
+            ],
             const SizedBox(height: 12),
             OverflowBar(
               alignment: MainAxisAlignment.spaceBetween,
@@ -837,7 +889,10 @@ class _PlaylistSourceSheetState extends ConsumerState<_PlaylistSourceSheet> {
               spacing: 8,
               overflowSpacing: 8,
               children: [
-                TextButton(onPressed: _remove, child: const Text('Remove')),
+                TextButton(
+                  onPressed: importing ? null : _remove,
+                  child: const Text('Remove'),
+                ),
                 OverflowBar(
                   spacing: 8,
                   children: [
@@ -846,7 +901,7 @@ class _PlaylistSourceSheetState extends ConsumerState<_PlaylistSourceSheet> {
                       child: const Text('Cancel'),
                     ),
                     FilledButton.icon(
-                      onPressed: _save,
+                      onPressed: importing ? null : _save,
                       icon: const Icon(Icons.check),
                       label: const Text('Save'),
                     ),
@@ -858,6 +913,127 @@ class _PlaylistSourceSheetState extends ConsumerState<_PlaylistSourceSheet> {
         ),
       ),
     );
+  }
+}
+
+/// Staged-import progress (Task 11's [ImportProgress] stream) rendered
+/// inside the playlist-source sheet: a stage label + progress bar while
+/// importing, or a stage-specific error with a Retry action once the
+/// pipeline reports [ImportStage.failed] (spec §8).
+///
+/// [ImportProgress.fraction] is emitted as a binary 0/1 per-stage signal
+/// by [M3UParserService.fetchPlaylistWithProgress] (each stage is either
+/// "not started" at its default `0.0` or "done" at `1`), not a continuous
+/// value — so this renders an indeterminate bar rather than
+/// `LinearProgressIndicator(value: progress.fraction)`, which would jump
+/// between empty and full on every stage transition instead of animating
+/// smoothly.
+class _ImportProgressPanel extends StatelessWidget {
+  const _ImportProgressPanel({required this.progress, required this.onRetry});
+
+  final ImportProgress progress;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    if (progress.stage == ImportStage.failed) {
+      final error = progress.error;
+      return DecoratedBox(
+        decoration: BoxDecoration(
+          color: colorScheme.errorContainer.withValues(alpha: 0.28),
+          border: Border.all(color: colorScheme.error.withValues(alpha: 0.4)),
+          borderRadius: BorderRadius.circular(11),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.error_outline, size: 16, color: colorScheme.error),
+                  const SizedBox(width: 9),
+                  Expanded(
+                    child: Text(
+                      error == null ? 'Import failed' : 'Import failed: $error',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: colorScheme.onErrorContainer,
+                        height: 1.4,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: OutlinedButton.icon(
+                  onPressed: onRetry,
+                  icon: const Icon(Icons.refresh),
+                  label: const Text('Retry'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          _importStageLabel(progress),
+          style: Theme.of(
+            context,
+          ).textTheme.bodySmall?.copyWith(color: colorScheme.onSurfaceVariant),
+        ),
+        const SizedBox(height: 8),
+        const ClipRRect(
+          borderRadius: BorderRadius.all(Radius.circular(4)),
+          child: LinearProgressIndicator(minHeight: 4),
+        ),
+      ],
+    );
+  }
+}
+
+/// Human-readable label for an in-flight [ImportProgress] emission. Prefers
+/// the stage's own [ImportProgress.message] (several stages already report
+/// friendly copy, e.g. "Downloading playlist"); falls back to a per-stage
+/// label for the stages that emit no message (deduplicate/indexing/
+/// generateRails/persist — see `fetchPlaylistWithProgress`).
+String _importStageLabel(ImportProgress progress) {
+  final message = progress.message;
+  if (message != null && message.isNotEmpty) {
+    return message;
+  }
+  switch (progress.stage) {
+    case ImportStage.import_:
+      return 'Starting import…';
+    case ImportStage.validate:
+      return 'Validating playlist URL…';
+    case ImportStage.download:
+      return 'Downloading playlist…';
+    case ImportStage.parse:
+      return 'Parsing playlist…';
+    case ImportStage.normalize:
+      return 'Normalizing channels…';
+    case ImportStage.deduplicate:
+      return 'Removing duplicate channels…';
+    case ImportStage.indexing:
+      return 'Indexing channels…';
+    case ImportStage.generateRails:
+      return 'Building smart rails…';
+    case ImportStage.persist:
+      return 'Saving…';
+    case ImportStage.ready:
+      return 'Ready';
+    case ImportStage.failed:
+      return 'Import failed';
   }
 }
 

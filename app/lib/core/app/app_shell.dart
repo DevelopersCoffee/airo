@@ -12,7 +12,12 @@ import 'app_shell_chrome.dart';
 import '../../features/music/presentation/widgets/mini_player.dart';
 import 'package:feature_iptv/feature_iptv.dart';
 
-/// App shell with bottom navigation for the six primary feature tabs.
+/// App shell with bottom navigation whose destinations vary by layout
+/// width: phone shows exactly 5 destinations (Home, Live, Guide, Favorites,
+/// Settings) matching the TV sidebar, while tablet/desktop shows a curated
+/// 8-destination set (the original six super-app domains plus Guide and
+/// Favorites) — see `AppNavigationPolicy` in `navigation_provider.dart` for
+/// the exact lists per width.
 class AppShell extends ConsumerWidget {
   const AppShell({
     super.key,
@@ -60,8 +65,9 @@ class AppShell extends ConsumerWidget {
                 user: user,
                 config: chromeConfig,
                 onHomeTap: () {
-                  ref.read(currentNavigationTabProvider.notifier).state = 0;
-                  navigationShell.goBranch(0);
+                  ref.read(currentNavigationTabProvider.notifier).state =
+                      AppNavigationTab.home.index;
+                  navigationShell.goBranch(AppNavigationTab.home.index);
                 },
                 onNotificationsTap: () => context.push('/mind/notifications'),
                 onProfileTap: () => context.push('/mind/profile'),

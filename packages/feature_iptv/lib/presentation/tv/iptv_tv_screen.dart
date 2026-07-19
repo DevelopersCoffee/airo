@@ -11,8 +11,10 @@ import 'package:platform_player/platform_player.dart';
 import 'package:product_capabilities/product_capabilities.dart';
 
 import '../../application/providers/iptv_providers.dart';
+import '../../application/providers/rails_provider.dart';
 import '../../application/services/airo_macos_update_service.dart';
 import '../screens/iptv_screen.dart';
+import '../widgets/channel_initials.dart';
 import '../widgets/iptv_icon_placeholder.dart';
 import '../widgets/iptv_mini_player.dart';
 import '../widgets/video_player_widget.dart';
@@ -297,7 +299,6 @@ class _TvBrowseLayout extends ConsumerWidget {
                             visibleChannels.isNotEmpty)
                           _TvHeroRailsPanel(
                             heroChannel: visibleChannels.first,
-                            allChannels: allChannels,
                             favoriteChannelIds: favoriteChannelIds,
                             onChannelSelect: onChannelSelect,
                             onToggleFavorite: toggleFavorite,
@@ -387,7 +388,6 @@ Map<String, CompactEpgEntry> _compactEpgEntriesByChannel(
 class _TvHeroRailsPanel extends StatelessWidget {
   const _TvHeroRailsPanel({
     required this.heroChannel,
-    required this.allChannels,
     required this.favoriteChannelIds,
     required this.onChannelSelect,
     required this.onToggleFavorite,
@@ -395,7 +395,6 @@ class _TvHeroRailsPanel extends StatelessWidget {
   });
 
   final IPTVChannel heroChannel;
-  final List<IPTVChannel> allChannels;
   final Set<String> favoriteChannelIds;
   final ValueChanged<IPTVChannel> onChannelSelect;
   final ValueChanged<IPTVChannel> onToggleFavorite;
@@ -414,11 +413,6 @@ class _TvHeroRailsPanel extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         _TvChannelRailsSection(
-          allChannels: allChannels,
-          favoriteChannels: allChannels
-              .where((c) => favoriteChannelIds.contains(c.id))
-              .toList(),
-          favoriteChannelIds: favoriteChannelIds,
           onChannelSelect: onChannelSelect,
           onToggleFavorite: onToggleFavorite,
           compactTv: compactTv,
@@ -591,73 +585,73 @@ class _TvHeroBanner extends StatelessWidget {
   }
 }
 
-/// Horizontal, Netflix-style channel rails grouped by category — the
-/// design handoff's signature browse pattern ("Top 50 India", "Live
-/// Sports", etc). Sits above the filterable category-rail/grid layout so
-/// existing filtering, search, and view-mode toggling stay untouched.
-class _TvChannelRailsSection extends StatelessWidget {
+/// Horizontal, Netflix-style channel rail — the design handoff's signature
+/// browse pattern ("Top India", "Live Sports", etc). Sits above the
+/// filterable category-rail/grid layout so existing filtering, search, and
+/// view-mode toggling stay untouched.
+///
+/// Rail content and ordering come from [railsProvider] — the same Media
+/// Engine-produced rail list the mobile `BrowseScreen` renders (see
+/// `presentation/screens/browse_screen.dart`) — never from ad-hoc local
+/// favorites/category computation. This keeps a single source of rails
+/// across form factors (spec §1).
+class _TvChannelRailsSection extends ConsumerWidget {
   const _TvChannelRailsSection({
-    required this.allChannels,
-    required this.favoriteChannels,
-    required this.favoriteChannelIds,
     required this.onChannelSelect,
     required this.onToggleFavorite,
     required this.compactTv,
   });
 
-  final List<IPTVChannel> allChannels;
-  final List<IPTVChannel> favoriteChannels;
-  final Set<String> favoriteChannelIds;
   final ValueChanged<IPTVChannel> onChannelSelect;
   final ValueChanged<IPTVChannel> onToggleFavorite;
   final bool compactTv;
 
-  static const _maxPerRail = 14;
-
   @override
-  Widget build(BuildContext context) {
-    // Prefer a "Favorites" rail; otherwise the single largest category —
-    // kept to one rail so the fixed-height band above the filterable
-    // category/grid layout never crowds it out on smaller TV viewports.
-    final List<IPTVChannel> rail;
-    final String title;
-    if (favoriteChannels.isNotEmpty) {
-      rail = favoriteChannels.take(_maxPerRail).toList();
-      title = 'Favorites';
-    } else {
-      final byCategory = <ChannelCategory, List<IPTVChannel>>{};
-      for (final channel in allChannels) {
-        byCategory.putIfAbsent(channel.category, () => []).add(channel);
-      }
-      if (byCategory.isEmpty) return const SizedBox.shrink();
-      final topCategory = byCategory.entries.reduce(
-        (a, b) => b.value.length > a.value.length ? b : a,
-      );
-      rail = topCategory.value.take(_maxPerRail).toList();
-      title = topCategory.key.label;
-    }
+  Widget build(BuildContext context, WidgetRef ref) {
+    final rails = ref.watch(railsProvider);
+    return rails.when(
+      // Loading/error: the band simply doesn't render rather than
+      // disturbing the hero banner above it — the filterable
+      // category/grid layout below still works either way.
+      loading: () => const SizedBox.shrink(),
+      error: (_, _) => const SizedBox.shrink(),
+      data: (results) {
+        if (results.isEmpty) return const SizedBox.shrink();
+        // Only the highest-priority rail (railsProvider sorts by priority,
+        // lower first): this band occupies the fixed-height hero-panel slot
+        // above the filterable category/grid layout, so showing more than
+        // one rail would crowd it out on smaller TV viewports.
+        final rail = results.first;
 
-    return AiroRail(
-      title: title,
-      padding: EdgeInsets.zero,
-      railHeight: 140,
-      headerGap: compactTv ? 11 : 16,
-      children: [
-        for (final channel in rail)
-          AiroRailCard(
-            name: channel.name,
-            subtitle: channel.category.label,
-            logoUrl: channel.logoUrl,
-            // Not isLive: AiroRailCard's LIVE badge runs an infinite pulse
-            // animation, which would hang every pumpAndSettle() in this
-            // screen's existing widget tests.
-            isLive: false,
-            width: 140,
-            thumbnailHeight: 78,
-            onTap: () => onChannelSelect(channel),
-            onLongPress: () => onToggleFavorite(channel),
-          ),
-      ],
+        return AiroRail(
+          title: rail.definition.title,
+          padding: EdgeInsets.zero,
+          // MediaCardVariant.compact's thumbnail is 84 (not the previous
+          // AiroRailCard-direct call's custom 78), so the card needs a few
+          // more px than the old hand-tuned 140 to avoid overflowing —
+          // matched empirically to the smallest bump that clears it, to
+          // avoid needlessly starving the grid/list area below on compact
+          // TV viewports.
+          railHeight: 144,
+          headerGap: compactTv ? 11 : 16,
+          children: [
+            for (final channel in rail.channels)
+              MediaCard(
+                name: channel.name,
+                subtitle: channel.category.label,
+                logoUrl: channel.logoUrl,
+                initials: channelInitials(channel.name),
+                variant: MediaCardVariant.compact,
+                // Channels are live video unless flagged audio-only (the
+                // same convention _TvChannelRow/_TvChannelCard below use for
+                // their own LIVE pill) — never a hardcoded false.
+                isLive: !channel.isAudioOnly,
+                onTap: () => onChannelSelect(channel),
+                onLongPress: () => onToggleFavorite(channel),
+              ),
+          ],
+        );
+      },
     );
   }
 }

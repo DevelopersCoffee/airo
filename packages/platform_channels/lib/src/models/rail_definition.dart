@@ -85,7 +85,6 @@ class RailResult extends Equatable {
 /// Media Engine implements this from playlist metadata, EPG, watch history,
 /// and provider data; the Edge Intelligence SDK later personalizes and
 /// reorders. The UI never implements this.
-// ignore: one_member_abstracts
 abstract class RailProvider {
   Future<List<IPTVChannel>> buildRail(RailDefinition rail);
 }

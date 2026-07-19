@@ -96,11 +96,9 @@ class AppRouter {
         name: 'airo_explore',
         builder: (context, state) => const AiroExploreScreen(),
       ),
-      GoRoute(
-        path: RouteNames.settings,
-        name: RouteNames.settings,
-        builder: (context, state) => const SettingsHubScreen(),
-      ),
+      // Settings moved into the StatefulShellRoute below (CV unified-browse
+      // Task 5) so it's a persistent bottom-nav tab, matching the TV
+      // sidebar's Settings destination, instead of a one-off pushed route.
       GoRoute(
         path: RouteNames.login,
         name: RouteNames.login,
@@ -282,6 +280,66 @@ class AppRouter {
                     },
                   ),
                 ],
+              ),
+            ],
+          ),
+          // Home branch (CV unified-browse Task 6): the source design's
+          // sidebar has Home and Live TV both call the same `goToBrowse`
+          // handler — Home and Live are the same destination — so this
+          // mirrors the Stream branch's IPTVScreen wiring exactly rather
+          // than the Task 5 MindScreen placeholder. Matches
+          // AppNavigationTab.home — see task-6-report.md for the decision.
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/home',
+                name: 'Home',
+                builder: (context, state) => IPTVScreen(
+                  onOpenVod: () => context.go('/vod'),
+                  onPickLocalMediaForTv: kDebugMode
+                      ? pickPhoneLocalMediaForTv
+                      : null,
+                ),
+              ),
+            ],
+          ),
+          // Guide branch (CV unified-browse Task 5): reuses the existing
+          // IptvGuideScreen (previously only reachable via an in-screen
+          // Navigator.push from IPTVScreen) as its own persistent tab.
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/guide',
+                name: 'Guide',
+                builder: (context, state) =>
+                    IptvGuideScreen(onChannelSelected: () => context.go('/iptv')),
+              ),
+            ],
+          ),
+          // Favorites branch (CV unified-browse Task 5): uses the real
+          // mobile favorites screen (packages/feature_iptv/lib/presentation/
+          // screens/mobile_favorites_screen.dart), landed on main after this
+          // task's original TvFavoritesScreen stopgap — picked up on rebase.
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/favorites',
+                name: 'Favorites',
+                builder: (context, state) => MobileFavoritesScreen(
+                  onChannelSelected: () => context.go('/iptv'),
+                ),
+              ),
+            ],
+          ),
+          // Settings branch (CV unified-browse Task 5): moved from a
+          // standalone pushed route (above) into the shell so it behaves as
+          // a persistent tab, matching the TV sidebar's Settings destination.
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: RouteNames.settings,
+                name: RouteNames.settings,
+                builder: (context, state) => const SettingsHubScreen(),
               ),
             ],
           ),
