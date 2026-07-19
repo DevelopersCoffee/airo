@@ -4,6 +4,34 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html) for public release tags.
 
+## [Airo TV v0.0.4-rc.3] - 2026-07-19
+
+### Added
+
+- Favorite marking: long-press any browse card to add/remove a favorite, with snackbar feedback (#935).
+- "Recently Watched" browse rail, recency-ordered, hidden until there is watch history (#934).
+- "Entertainment" and "Music" browse rails so every former category chip is represented as a card rail (#936).
+- Search sheet now lists matching channels live as you type; tapping a result plays it. Keyboard submit applies the filter instead of auto-playing the single match (#928).
+
+### Changed
+
+- Top category chip row (All/News/Sports/Entertainment/Music) removed from the mobile IPTV screen; category browsing lives in the rails (#936).
+- Mobile IPTV app bar title rebranded from "Stream" to "Airo TV" (#931).
+- Phone-sized TV builds now open the mobile settings hub (theme picker, audio/playback links) instead of the clipped two-pane TV settings screen (#933).
+
+### Fixed
+
+- Casting regression on phones running the TV build: `realIptvCastControllerOverride()` restored in the TV entrypoint — compact layouts render the mobile IPTV screen whose cast UI silently no-oped against the unavailable-controller fallback (#926).
+- EPG guide timeline always appeared to start at 11 AM in IST: the time ruler formatted UTC directly; ticks now convert to local time (#929).
+- Display slept during playback: wakelock ownership moved from `VideoPlayerWidget` (disposed when the featured player scrolls off-screen or playback continues under the mini player) to a screen-scoped, debounced `WakelockPlaybackCoordinator` (#930).
+- Favorite toggle silently no-oped on every second toggle of the same channel: cached `FutureProvider.family` replaced with a plain callable provider (#935).
+
+### Known issues
+
+- Deferred to next cycle: portrait/landscape floating player-control inconsistency, idle featured-player placeholder (should use full asset area), picture-in-picture, playlist management.
+- Casting and wakelock fixes are test-verified; on-device Pixel 9 dogfood pending this RC.
+- Two pre-existing `firebase_options_test.dart` failures in `test-app` remain tracked from rc.2 (the settings hub sheet-title failure was fixed in #932).
+
 ## [Airo TV v0.0.4-rc.2] - 2026-07-19
 
 ### Added
