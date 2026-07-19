@@ -421,7 +421,7 @@ class ModelDetailScreen extends ConsumerWidget {
         if (!context.mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to delete: $e'),
+            content: Text(AiroVoice.errorGeneric.pickWith(detail: '$e')),
             backgroundColor: Colors.red,
           ),
         );
