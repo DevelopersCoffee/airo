@@ -316,8 +316,8 @@ graph LR
         DB[("👤 Subscriber DB & AAA")]
         MW(["🖥️ IPTV Middleware Services"])
         ADS(["🎯 Ad Decision Server - ADS"])
-        DB <--> MW
-        MW <--> ADS
+        DB --- MW
+        MW --- ADS
     end
 
     %% Subgraph 2: Ingestion & Headend
@@ -325,8 +325,8 @@ graph LR
         Feeds(["📡 Satellite & Fiber Feeds"]) --> Trans(["⚙️ Transcoder & Compressor"])
         VoD(["💽 VoD Server Assets"]) --> Trans
         Trans --> Scrambler(["🔒 CA Scrambler & Encryptor"])
-        MW -.->|Service API| Trans
-        MW -.->|DRM Key Rotation| Scrambler
+        MW -->|Service API| Trans
+        MW -->|DRM Key Rotation| Scrambler
     end
 
     %% Subgraph 3: Core & Distribution Network
@@ -341,7 +341,7 @@ graph LR
     subgraph LastMile [3. Last-Mile & Edge Access]
         Multicast --> DSLAM(["⚡ DSLAM / 5G Edge - MEC"])
         VoDEdge --> DSLAM
-        DSLAM --> Loop{{"〰️ Digital Subscriber Line / 5G Air"}}
+        DSLAM --> Loop(["〰️ Digital Subscriber Line / 5G Air"])
     end
 
     %% Subgraph 5: End-User Premise
@@ -353,7 +353,7 @@ graph LR
     end
 
     %% Connect Middleware to client
-    MW -.->|User Authentication| STB
+    MW -->|User Authentication| STB
 
     %% CSS class assignments
     class DB,MW,ADS control-node;
