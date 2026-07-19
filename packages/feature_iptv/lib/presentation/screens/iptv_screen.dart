@@ -1,11 +1,13 @@
 import 'dart:async';
 
+import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:core_ui/core_ui.dart';
+import '../../application/player_backgrounding_coordinator.dart';
 import '../../application/providers/iptv_providers.dart';
 import '../../application/wakelock_playback_coordinator.dart';
 import '../../application/providers/rails_provider.dart';
@@ -25,7 +27,12 @@ import 'mobile_favorites_screen.dart';
 
 /// IPTV Screen with YouTube-like streaming experience
 class IPTVScreen extends ConsumerStatefulWidget {
-  const IPTVScreen({this.onOpenVod, this.onPickLocalMediaForTv, super.key});
+  const IPTVScreen({
+    this.onOpenVod,
+    this.onPickLocalMediaForTv,
+    this.deepLinkChannelId,
+    super.key,
+  });
 
   /// Invoked when the user taps the "Movies & Shows" action to navigate to
   /// the VOD screen. Left as an optional callback (rather than a direct
@@ -42,11 +49,24 @@ class IPTVScreen extends ConsumerStatefulWidget {
   /// "Play on TV" is undecided. Null hides the drawer entry entirely.
   final Future<PhoneLocalMediaItem?> Function()? onPickLocalMediaForTv;
 
+  /// Channel id resolved from a deep link (universal link, home-screen
+  /// widget, or "continue watching" notification tap) or the app's
+  /// resume-last-channel affordance. When set, playback starts immediately
+  /// in [initState] instead of waiting for a tap on the browse grid, and
+  /// the browse grid is not the first frame rendered.
+  final String? deepLinkChannelId;
+
   @override
   ConsumerState<IPTVScreen> createState() => _IPTVScreenState();
 }
 
 class _IPTVScreenState extends ConsumerState<IPTVScreen> {
+  /// True while a [IPTVScreen.deepLinkChannelId] is set and its resolution
+  /// (in the post-frame callback below) hasn't yet either started playback
+  /// or determined the channel doesn't exist. Gates the first frame so the
+  /// browse grid never flashes before deep-linked playback begins.
+  late bool _deepLinkPending = widget.deepLinkChannelId != null;
+
   @override
   void initState() {
     super.initState();
@@ -55,6 +75,37 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen> {
     // Screen-level wakelock: survives the featured player widget being
     // scrolled out of the viewport or playback moving to the mini player.
     ref.read(wakelockPlaybackCoordinatorProvider);
+    // Decides PiP vs. audio-only when the app backgrounds during playback.
+    ref.read(playerBackgroundingCoordinatorProvider);
+
+    final deepLinkId = widget.deepLinkChannelId;
+    if (deepLinkId != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        if (!mounted) return;
+        // Await the channel list rather than reading its current `.value`:
+        // the list is almost never loaded yet by the very next frame (it's
+        // usually still an in-flight fetch), so a synchronous read would
+        // treat every deep link as "channel not found" and immediately fall
+        // through to the browse grid -- defeating the point of this gate.
+        IPTVChannel? channel;
+        try {
+          final channels = await ref.read(iptvChannelsProvider.future);
+          channel = channels.firstWhereOrNull((c) => c.id == deepLinkId);
+        } catch (_) {
+          channel = null;
+        }
+        if (!mounted) return;
+        if (channel != null) {
+          _playChannel(channel);
+        } else {
+          // Missing (or unresolvable) channel: fall through to the normal
+          // browse-grid landing (spec Error Handling) — no snackbar wiring
+          // needed here since the grid is the existing default UI, not a
+          // special error state.
+          setState(() => _deepLinkPending = false);
+        }
+      });
+    }
   }
 
   @override
@@ -396,8 +447,28 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen> {
       _syncLocalPlaybackWithCast,
     );
     final isFullscreen = ref.watch(isFullscreenModeProvider);
+    final isPlaying =
+        ref.watch(streamingStateProvider).value?.isPlaying == true;
 
-    if (isFullscreen) {
+    // A deep link is "pending" until its resolution (in initState's
+    // post-frame callback) either starts playback or determines the
+    // channel doesn't exist (which clears _deepLinkPending). While
+    // pending, the browse grid must never be the first frame rendered.
+    final isWaitingForDeepLink =
+        widget.deepLinkChannelId != null && _deepLinkPending && !isPlaying;
+
+    if (isWaitingForDeepLink) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
+    // Deep-linked entry: once the channel starts playing, land directly on
+    // fullscreen playback instead of the browse grid (spec Goal: tapping a
+    // channel — or a deep link into one — must never route through an
+    // interstitial browse screen).
+    final showFullscreenPlayer =
+        isFullscreen || (widget.deepLinkChannelId != null && isPlaying);
+
+    if (showFullscreenPlayer) {
       return AiroResponsiveScaffold(
         padding: EdgeInsets.zero,
         backgroundColor: Colors.black,
@@ -451,6 +522,7 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen> {
         children: [
           Expanded(
             child: _StreamTabContent(
+              key: const ValueKey('iptv-browse-grid'),
               onChannelTap: _playChannel,
               onFullscreenToggle: _toggleFullscreen,
               onPlaylistSourceTap: _showPlaylistSheet,
@@ -587,6 +659,7 @@ class _IPTVScreenBodyState extends ConsumerState<IPTVScreenBody> {
 
 class _StreamTabContent extends ConsumerWidget {
   const _StreamTabContent({
+    super.key,
     required this.onChannelTap,
     required this.onFullscreenToggle,
     required this.onPlaylistSourceTap,
