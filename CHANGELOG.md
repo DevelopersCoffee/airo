@@ -22,11 +22,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - `sqlite3_flutter_libs` version conflict between `airo_app` and `platform_playlist` that broke `pub get` repo-wide (lint/analyze/snyk/variant-dependencies CI jobs). App no longer pins its own version; `platform_playlist` owns the constraint and its `sqlite3` core-package range was widened to admit the 3.x line `drift_dev` needs.
 - Five files committed with incorrect `dart format` output, failing the CI format-check step.
+- `feature_iptv` EPG compact-view test (`renders compact current EPG from platform repository`) failed at the default test viewport because the hero+rails layout left the EPG-aware channel grid/list no room to lazily build any items — not a rendering bug, just insufficient test viewport height. Fixed by giving that test a taller surface.
 
 ### Known issues
 
-- One pre-existing `feature_iptv` EPG compact-view test failure (missing "Now: " prefix render), previously masked entirely by the pub-resolution break above — needs a follow-up fix, not release-blocking.
-- Three pre-existing `test-app` failures, also unmasked by the same pub-resolution fix (this job was `skipped` on every recent CI run because earlier jobs failed first, so these were never actually exercised until now): `firebase_options_test.dart` (`marks real Firebase app ids as configured`, `uses the registered Android TV Firebase app id`) and `settings_hub_screen_test.dart` (`tapping Playlist Source opens the playlist source sheet`). Not caused by this release's changes — tracked for follow-up.
+- Three pre-existing `test-app` failures, unmasked by the sqlite3 dependency fix above (this job was `skipped` on every recent CI run because earlier jobs failed first, so these were never actually exercised until now): `firebase_options_test.dart` (`marks real Firebase app ids as configured`, `uses the registered Android TV Firebase app id`) and `settings_hub_screen_test.dart` (`tapping Playlist Source opens the playlist source sheet`). Not caused by this release's changes — tracked for follow-up.
 
 ## [Airo TV v0.0.4-rc.1] - 2026-07-19
 
