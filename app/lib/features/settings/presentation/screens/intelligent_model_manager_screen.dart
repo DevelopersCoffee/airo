@@ -81,7 +81,7 @@ class IntelligentModelManagerScreen extends ConsumerWidget {
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (err, stack) => Center(
             child: ErrorView(
-              message: 'Failed to load models: $err',
+              message: AiroVoice.errorGeneric.pickWith(detail: '$err'),
               onRetry: () => ref.refresh(intelligentModelsListProvider),
             ),
           ),

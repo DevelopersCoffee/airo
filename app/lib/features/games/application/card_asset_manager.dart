@@ -1,3 +1,4 @@
+import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -286,7 +287,7 @@ class _CardImagePreloaderState extends ConsumerState<CardImagePreloader> {
               const CircularProgressIndicator(),
               const SizedBox(height: 24),
               Text(
-                'Loading cards...',
+                AiroVoice.loading.pick(),
                 style: Theme.of(context).textTheme.titleMedium,
               ),
             ],
