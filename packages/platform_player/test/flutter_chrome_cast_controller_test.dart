@@ -106,6 +106,57 @@ void main() {
     expect(controller.currentSessionState.volume, 0.7);
   });
 
+  test(
+    'stale generation-1 receiver status does not overwrite generation-2 session state',
+    () {
+      const tv = AiroCastDevice(id: 'tv-1', name: 'Sony Bravia');
+      final channelA = AiroCastMediaRequest(
+        url: Uri.parse('https://example.com/channelA.m3u8'),
+        contentType: 'application/vnd.apple.mpegurl',
+        title: 'Channel A',
+        streamKind: AiroCastMediaStreamKind.live,
+      );
+      final channelB = AiroCastMediaRequest(
+        url: Uri.parse('https://example.com/channelB.m3u8'),
+        contentType: 'application/vnd.apple.mpegurl',
+        title: 'Channel B',
+        streamKind: AiroCastMediaStreamKind.live,
+      );
+      final controller = FlutterChromeCastController();
+
+      // Generation 1: load channel A onto the receiver.
+      controller.debugSetConnectedSession(
+        device: tv,
+        media: channelA,
+        phase: AiroCastSessionPhase.playing,
+      );
+
+      // Generation 2 starts (user switches to channel B) before generation
+      // 1's receiver status arrives.
+      controller.debugSetConnectedSession(
+        device: tv,
+        media: channelB,
+        phase: AiroCastSessionPhase.playing,
+      );
+
+      // Stale generation-1 status for channel A arrives after generation 2
+      // has already taken over.
+      controller.debugApplyMediaStatus(
+        _status(
+          CastMediaPlayerState.idle,
+          contentId: channelA.url.toString(),
+          idleReason: GoogleCastMediaIdleReason.error,
+        ),
+      );
+
+      expect(controller.currentSessionState.media, channelB);
+      expect(
+        controller.currentSessionState.phase,
+        isNot(AiroCastSessionPhase.failed),
+      );
+    },
+  );
+
   test('surfaces receiver idle error while a new media load is active', () {
     const tv = AiroCastDevice(id: 'tv-1', name: 'Sony Bravia');
     final current = AiroCastMediaRequest(
