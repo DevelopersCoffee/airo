@@ -4,14 +4,18 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('AppNavigationTab', () {
-    test('uses the six-tab information architecture order', () {
+    test('uses the ten-tab information architecture order', () {
       expect(AppNavigationTab.values.map((tab) => tab.label), [
         'Coins',
         'Mind',
         'Beats',
-        'Stream',
+        'Live',
         'Arena',
         'Quest',
+        'Home',
+        'Guide',
+        'Favorites',
+        'Settings',
       ]);
     });
 
@@ -33,15 +37,19 @@ void main() {
         '/iptv',
         '/games',
         '/quest',
+        '/home',
+        '/guide',
+        '/favorites',
+        '/settings',
       ]);
     });
 
-    test('separates beats and stream into distinct primary tabs', () {
+    test('separates beats and live into distinct primary tabs', () {
       final rootLabels = AppNavigationTab.values.map((tab) => tab.label);
       final rootPaths = AppNavigationTab.values.map((tab) => tab.path);
 
-      expect(AppNavigationTab.values.length, 6);
-      expect(rootLabels, containsAll(['Beats', 'Stream']));
+      expect(AppNavigationTab.values.length, 10);
+      expect(rootLabels, containsAll(['Beats', 'Live']));
       expect(rootPaths, containsAll(['/music', '/iptv']));
     });
 
@@ -61,7 +69,7 @@ void main() {
         );
         expect(
           visibility.showIptvPlayer,
-          tab == AppNavigationTab.stream,
+          tab == AppNavigationTab.live,
           reason: '${tab.label} IPTV mini player visibility',
         );
       }
@@ -80,27 +88,34 @@ void main() {
       expect(chromeConfig.compactWidthBreakpoint, 600);
     });
 
-    test('uses one shared compact navigation overflow policy', () {
+    test(
+      'phone bottom nav exposes exactly 5 destinations matching the TV '
+      'sidebar: Home, Live, Guide, Favorites, Settings',
+      () {
+        final container = ProviderContainer();
+        addTearDown(container.dispose);
+
+        final policy = container.read(appNavigationPolicyProvider);
+        final phoneLayout = policy.layoutForWidth(390);
+        final phoneTabs = phoneLayout.persistentTabs;
+
+        expect(
+          phoneTabs.map((t) => t.label).toList(),
+          ['Home', 'Live', 'Guide', 'Favorites', 'Settings'],
+        );
+        expect(phoneLayout.overflowTabs, isEmpty);
+        expect(phoneLayout.usesOverflow, isFalse);
+      },
+    );
+
+    test('wide layouts keep the full information architecture visible', () {
       final container = ProviderContainer();
       addTearDown(container.dispose);
 
       final policy = container.read(appNavigationPolicyProvider);
-      final compactLayout = policy.layoutForWidth(420);
       final wideLayout = policy.layoutForWidth(900);
 
       expect(policy.compactWidthBreakpoint, 600);
-      expect(compactLayout.persistentTabs, const [
-        AppNavigationTab.coins,
-        AppNavigationTab.mind,
-        AppNavigationTab.beats,
-        AppNavigationTab.stream,
-      ]);
-      expect(compactLayout.overflowTabs, const [
-        AppNavigationTab.arena,
-        AppNavigationTab.quest,
-      ]);
-      expect(compactLayout.usesOverflow, isTrue);
-      expect(compactLayout.overflow.label, 'More');
       expect(wideLayout.persistentTabs, AppNavigationTab.values);
       expect(wideLayout.overflowTabs, isEmpty);
       expect(wideLayout.usesOverflow, isFalse);
@@ -118,6 +133,12 @@ void main() {
         AppShellHeaderMode.shell,
       );
       expect(appShellHeaderModeForLocation('/games'), AppShellHeaderMode.shell);
+      expect(appShellHeaderModeForLocation('/home'), AppShellHeaderMode.shell);
+      expect(appShellHeaderModeForLocation('/guide'), AppShellHeaderMode.shell);
+      expect(
+        appShellHeaderModeForLocation('/favorites'),
+        AppShellHeaderMode.shell,
+      );
     });
 
     test('switches custom and nested routes to route-owned headers', () {
@@ -142,6 +163,12 @@ void main() {
       );
       expect(
         appShellHeaderModeForLocation('/mind/notifications'),
+        AppShellHeaderMode.route,
+      );
+      // SettingsHubScreen owns its own Scaffold + AppBar (see
+      // settings_hub_screen.dart) so shell chrome must stay hidden here.
+      expect(
+        appShellHeaderModeForLocation('/settings'),
         AppShellHeaderMode.route,
       );
     });

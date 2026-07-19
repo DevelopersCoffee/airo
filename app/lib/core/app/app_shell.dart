@@ -60,8 +60,9 @@ class AppShell extends ConsumerWidget {
                 user: user,
                 config: chromeConfig,
                 onHomeTap: () {
-                  ref.read(currentNavigationTabProvider.notifier).state = 0;
-                  navigationShell.goBranch(0);
+                  ref.read(currentNavigationTabProvider.notifier).state =
+                      AppNavigationTab.home.index;
+                  navigationShell.goBranch(AppNavigationTab.home.index);
                 },
                 onNotificationsTap: () => context.push('/mind/notifications'),
                 onProfileTap: () => context.push('/mind/profile'),

@@ -1,7 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
+import '../routing/route_names.dart';
 
+/// NOTE (CV unified-browse Task 5): the first six members below (`coins`
+/// through `quest`) are the pre-existing super-app domains and are
+/// UNCHANGED — same labels (`stream`'s rename to `live` aside), same paths,
+/// same ordinal position, so every existing branch in `app_router.dart` and
+/// every index-based reference (`AppNavigationTab.beats.index`, etc.) keeps
+/// working exactly as before.
+///
+/// `home`, `guide`, `favorites`, and `settings` are new: they back the
+/// 5-destination phone bottom nav that mirrors the TV sidebar
+/// (`tv_shell.dart`) — see `appNavigationPolicy.compactPrimaryTabs` below.
+/// `home` is a placeholder that reuses the existing Mind/agent screen until
+/// a later task (unified-browse Task 6, "Mobile BrowseScreen with rails")
+/// delivers the real rail-based Home; see task-5-report.md for the full
+/// route-name decision log.
 enum AppNavigationTab {
   coins(
     label: 'Coins',
@@ -21,8 +36,8 @@ enum AppNavigationTab {
     icon: Icons.subscriptions_outlined,
     selectedIcon: Icons.subscriptions,
   ),
-  stream(
-    label: 'Stream',
+  live(
+    label: 'Live',
     path: '/iptv',
     icon: Icons.live_tv_outlined,
     selectedIcon: Icons.live_tv,
@@ -38,6 +53,30 @@ enum AppNavigationTab {
     path: '/quest',
     icon: Icons.workspace_premium_outlined,
     selectedIcon: Icons.workspace_premium,
+  ),
+  home(
+    label: 'Home',
+    path: '/home',
+    icon: Icons.home_outlined,
+    selectedIcon: Icons.home,
+  ),
+  guide(
+    label: 'Guide',
+    path: '/guide',
+    icon: Icons.grid_view_outlined,
+    selectedIcon: Icons.grid_view,
+  ),
+  favorites(
+    label: 'Favorites',
+    path: '/favorites',
+    icon: Icons.favorite_border,
+    selectedIcon: Icons.favorite,
+  ),
+  settings(
+    label: 'Settings',
+    path: RouteNames.settings,
+    icon: Icons.settings_outlined,
+    selectedIcon: Icons.settings,
   );
 
   const AppNavigationTab({
@@ -55,7 +94,8 @@ enum AppNavigationTab {
 
 /// Current navigation tab index.
 ///
-/// Order: Coins | Mind | Beats | Stream | Arena | Quest
+/// Declaration/branch order: Coins | Mind | Beats | Live | Arena | Quest |
+/// Home | Guide | Favorites | Settings
 final currentNavigationTabProvider = StateProvider<int>(
   (ref) => AppNavigationTab.coins.index,
 );
@@ -120,14 +160,18 @@ class AppNavigationPolicy {
   }
 }
 
+/// Phone bottom nav: exactly 5 destinations, matching the TV sidebar
+/// (`tv_shell.dart`) one-for-one — Home, Live, Guide, Favorites, Settings.
+/// All 5 fit persistently, so no overflow is needed on phone.
 const appNavigationPolicy = AppNavigationPolicy(
   compactPrimaryTabs: [
-    AppNavigationTab.coins,
-    AppNavigationTab.mind,
-    AppNavigationTab.beats,
-    AppNavigationTab.stream,
+    AppNavigationTab.home,
+    AppNavigationTab.live,
+    AppNavigationTab.guide,
+    AppNavigationTab.favorites,
+    AppNavigationTab.settings,
   ],
-  overflowTabs: [AppNavigationTab.arena, AppNavigationTab.quest],
+  overflowTabs: [],
 );
 
 final appNavigationPolicyProvider = Provider<AppNavigationPolicy>(
@@ -175,6 +219,10 @@ AppShellHeaderMode appShellHeaderModeForLocation(String location) {
     '/iptv',
     '/games/',
     '/quest',
+    // SettingsHubScreen renders its own Scaffold + AppBar (see
+    // settings_hub_screen.dart) — shell chrome must stay hidden here or the
+    // "Settings" title renders twice.
+    '/settings',
   ];
   for (final prefix in routeOwnedPrefixes) {
     if (normalizedLocation == prefix || normalizedLocation.startsWith(prefix)) {
@@ -206,7 +254,7 @@ final miniPlayerVisibilityProvider = Provider.family<MiniPlayerVisibility, int>(
   (ref, currentIndex) {
     return MiniPlayerVisibility(
       showMusicPlayer: currentIndex == AppNavigationTab.beats.index,
-      showIptvPlayer: currentIndex == AppNavigationTab.stream.index,
+      showIptvPlayer: currentIndex == AppNavigationTab.live.index,
     );
   },
 );
