@@ -18,12 +18,16 @@ class RailQuery extends Equatable {
     this.language,
     this.liveOnly = false,
     this.favoritesOnly = false,
+    this.recentOnly = false,
   });
 
   final ChannelCategory? category;
   final String? language;
   final bool liveOnly;
   final bool favoritesOnly;
+
+  /// Restrict to recently watched channels, ordered by recency.
+  final bool recentOnly;
 
   bool matches(IPTVChannel channel) {
     if (category != null && channel.category != category) return false;
@@ -34,7 +38,13 @@ class RailQuery extends Equatable {
   }
 
   @override
-  List<Object?> get props => [category, language, liveOnly, favoritesOnly];
+  List<Object?> get props => [
+    category,
+    language,
+    liveOnly,
+    favoritesOnly,
+    recentOnly,
+  ];
 }
 
 /// A generated rail: what it's called, what it contains, where it sits.
@@ -65,8 +75,16 @@ class RailDefinition extends Equatable {
   final int maxItems;
 
   @override
-  List<Object?> get props =>
-      [id, title, subtitle, query, priority, visibility, layout, maxItems];
+  List<Object?> get props => [
+    id,
+    title,
+    subtitle,
+    query,
+    priority,
+    visibility,
+    layout,
+    maxItems,
+  ];
 }
 
 /// A built rail ready for rendering.

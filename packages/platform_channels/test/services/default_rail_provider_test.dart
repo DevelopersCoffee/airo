@@ -7,24 +7,36 @@ void main() {
   const c = IPTVChannel(id: 'c', name: 'C', streamUrl: 'u');
 
   group('popularity ordering', () {
-    test('favorites outrank watch history, which outranks provider order',
-        () async {
-      final provider = DefaultRailProvider(
-        channels: const [a, b, c],
-        favoriteIds: const {'c'},
-        watchCounts: const {'b': 3},
-      );
-      final rail = await provider.buildRail(const RailDefinition(
-        id: 'top', title: 'Top', query: RailQuery(), priority: 0,
-      ));
-      expect(rail.map((ch) => ch.id).toList(), ['c', 'b', 'a']);
-    });
+    test(
+      'favorites outrank watch history, which outranks provider order',
+      () async {
+        final provider = DefaultRailProvider(
+          channels: const [a, b, c],
+          favoriteIds: const {'c'},
+          watchCounts: const {'b': 3},
+        );
+        final rail = await provider.buildRail(
+          const RailDefinition(
+            id: 'top',
+            title: 'Top',
+            query: RailQuery(),
+            priority: 0,
+          ),
+        );
+        expect(rail.map((ch) => ch.id).toList(), ['c', 'b', 'a']);
+      },
+    );
 
     test('falls back to provider order when no signals', () async {
       final provider = DefaultRailProvider(channels: const [a, b, c]);
-      final rail = await provider.buildRail(const RailDefinition(
-        id: 'top', title: 'Top', query: RailQuery(), priority: 0,
-      ));
+      final rail = await provider.buildRail(
+        const RailDefinition(
+          id: 'top',
+          title: 'Top',
+          query: RailQuery(),
+          priority: 0,
+        ),
+      );
       expect(rail.map((ch) => ch.id).toList(), ['a', 'b', 'c']);
     });
 
@@ -34,9 +46,14 @@ void main() {
         favoriteIds: const {'a'},
         watchCounts: const {'b': 5000},
       );
-      final rail = await provider.buildRail(const RailDefinition(
-        id: 'top', title: 'Top', query: RailQuery(), priority: 0,
-      ));
+      final rail = await provider.buildRail(
+        const RailDefinition(
+          id: 'top',
+          title: 'Top',
+          query: RailQuery(),
+          priority: 0,
+        ),
+      );
       expect(rail.map((ch) => ch.id).toList(), ['a', 'b']);
     });
   });
@@ -46,10 +63,16 @@ void main() {
       final provider = DefaultRailProvider(channels: const [a]);
       final results = await provider.buildAll(const [
         RailDefinition(
-          id: 'second', title: 'Second', query: RailQuery(), priority: 20,
+          id: 'second',
+          title: 'Second',
+          query: RailQuery(),
+          priority: 20,
         ),
         RailDefinition(
-          id: 'first', title: 'First', query: RailQuery(), priority: 10,
+          id: 'first',
+          title: 'First',
+          query: RailQuery(),
+          priority: 10,
         ),
         RailDefinition(
           id: 'empty',
@@ -59,8 +82,7 @@ void main() {
           priority: 0,
         ),
       ]);
-      expect(results.map((r) => r.definition.id).toList(),
-          ['first', 'second']);
+      expect(results.map((r) => r.definition.id).toList(), ['first', 'second']);
     });
 
     test('favoritesOnly excludes non-favorites', () async {
@@ -68,11 +90,54 @@ void main() {
         channels: const [a, b],
         favoriteIds: const {'b'},
       );
-      final rail = await provider.buildRail(const RailDefinition(
-        id: 'fav', title: 'Fav',
-        query: RailQuery(favoritesOnly: true), priority: 0,
-      ));
+      final rail = await provider.buildRail(
+        const RailDefinition(
+          id: 'fav',
+          title: 'Fav',
+          query: RailQuery(favoritesOnly: true),
+          priority: 0,
+        ),
+      );
       expect(rail.map((ch) => ch.id).toList(), ['b']);
+    });
+  });
+
+  group('recentOnly rails', () {
+    test('lists recently watched channels in recency order', () async {
+      final provider = DefaultRailProvider(
+        channels: const [a, b, c],
+        recentIds: const ['b', 'c'],
+      );
+      final rail = await provider.buildRail(
+        const RailDefinition(
+          id: 'recent',
+          title: 'Recently Watched',
+          query: RailQuery(recentOnly: true),
+          priority: 5,
+        ),
+      );
+      expect(rail.map((ch) => ch.id).toList(), ['b', 'c']);
+    });
+
+    test('recent rail is empty with no watch history', () async {
+      final provider = DefaultRailProvider(channels: const [a, b, c]);
+      final rail = await provider.buildRail(
+        const RailDefinition(
+          id: 'recent',
+          title: 'Recently Watched',
+          query: RailQuery(recentOnly: true),
+          priority: 5,
+        ),
+      );
+      expect(rail, isEmpty);
+    });
+
+    test('catalog includes a recently-watched rail dropped when empty', () {
+      final recent = DefaultRailCatalog.definitions()
+          .where((d) => d.query.recentOnly)
+          .toList();
+      expect(recent, hasLength(1));
+      expect(recent.single.visibility, RailVisibility.whenNonEmpty);
     });
   });
 
@@ -81,8 +146,11 @@ void main() {
     expect(
       ids,
       containsAll(<String>[
-        'top-india', 'live-sports', 'movies-on-now',
-        'hindi-news', 'favorites',
+        'top-india',
+        'live-sports',
+        'movies-on-now',
+        'hindi-news',
+        'favorites',
       ]),
     );
     // No 'recently-added' rail: IPTVChannel carries no "added at" signal, so
