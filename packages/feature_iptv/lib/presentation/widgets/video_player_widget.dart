@@ -316,6 +316,57 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
 
     final videoView = service.buildVideoView();
 
+    // Shared player surface: video view + cinema-mode vignette + buffering indicator
+    // Built once and reused in both enableTouchGestures branches to reduce duplication.
+    final playerSurface = Stack(
+      alignment: Alignment.center,
+      children: [
+        // Video display (engine-driven view surface).
+        if (videoView != null)
+          SizedBox.expand(
+            child: FittedBox(
+              fit: _boxFitFor(aspectRatioFit),
+              child: videoView,
+            ),
+          )
+        else if (state.playbackState == PlaybackState.loading)
+          _buildLoading()
+        else if (state.hasError && state.diagnostic != null)
+          _buildDiagnosticError(state)
+        else
+          _buildPlaceholder(state),
+
+        // Cinema mode vignette overlay
+        if (_isCinemaMode)
+          Positioned.fill(
+            child: IgnorePointer(
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: RadialGradient(
+                    center: Alignment.center,
+                    radius: 1.15,
+                    colors: [
+                      Colors.transparent,
+                      Colors.black.withValues(alpha: 0.6),
+                    ],
+                    stops: const [0.6, 1.0],
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+        // Buffering indicator
+        if (state.isBuffering)
+          Container(
+            color: Colors.black45,
+            child: const CircularProgressIndicator(
+              color: Colors.white,
+            ),
+          ),
+      ],
+    );
+
     return TvInputHandler(
       onInput: _handleSurfInput,
       // Focus.onKeyEvent always ignores so the event bubbles up to
@@ -352,98 +403,9 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                             if (state.isMuted) service.toggleMute();
                             service.setVolume(value);
                           },
-                          child: Stack(
-                            alignment: Alignment.center,
-                            children: [
-                              // Video display (engine-driven view surface).
-                              if (videoView != null)
-                                SizedBox.expand(
-                                  child: FittedBox(
-                                    fit: _boxFitFor(aspectRatioFit),
-                                    child: videoView,
-                                  ),
-                                )
-                              else if (state.playbackState == PlaybackState.loading)
-                                _buildLoading()
-                              else if (state.hasError && state.diagnostic != null)
-                                _buildDiagnosticError(state)
-                              else
-                                _buildPlaceholder(state),
-
-                              // Cinema mode vignette overlay
-                              if (_isCinemaMode)
-                                Positioned.fill(
-                                  child: IgnorePointer(
-                                    child: Container(
-                                      decoration: BoxDecoration(
-                                        gradient: RadialGradient(
-                                          center: Alignment.center,
-                                          radius: 1.15,
-                                          colors: [
-                                            Colors.transparent,
-                                            Colors.black.withValues(alpha: 0.6),
-                                          ],
-                                          stops: const [0.6, 1.0],
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-
-                              // Buffering indicator
-                              if (state.isBuffering)
-                                Container(
-                                  color: Colors.black45,
-                                  child: const CircularProgressIndicator(
-                                    color: Colors.white,
-                                  ),
-                                ),
-                            ],
-                          ),
+                          child: playerSurface,
                         )
-                      : Stack(
-                          alignment: Alignment.center,
-                          children: [
-                            if (videoView != null)
-                              SizedBox.expand(
-                                child: FittedBox(
-                                  fit: _boxFitFor(aspectRatioFit),
-                                  child: videoView,
-                                ),
-                              )
-                            else if (state.playbackState == PlaybackState.loading)
-                              _buildLoading()
-                            else if (state.hasError && state.diagnostic != null)
-                              _buildDiagnosticError(state)
-                            else
-                              _buildPlaceholder(state),
-                            if (_isCinemaMode)
-                              Positioned.fill(
-                                child: IgnorePointer(
-                                  child: Container(
-                                    decoration: BoxDecoration(
-                                      gradient: RadialGradient(
-                                        center: Alignment.center,
-                                        radius: 1.15,
-                                        colors: [
-                                          Colors.transparent,
-                                          Colors.black.withValues(alpha: 0.6),
-                                        ],
-                                        stops: const [0.6, 1.0],
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            if (state.isBuffering)
-                              Container(
-                                color: Colors.black45,
-                                child: const CircularProgressIndicator(
-                                  color: Colors.white,
-                                ),
-                              ),
-                          ],
-                        ),
+                      : playerSurface,
 
                   // Renderer-agnostic top chrome (back button, title/
                   // subtitle, quality + LIVE pills) and failover toast, built
