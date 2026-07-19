@@ -54,13 +54,25 @@ class MediaCard extends StatelessWidget {
   final VoidCallback? onLongPress;
   final bool autofocus;
 
+  /// (width, thumbnailHeight) for each [MediaCardVariant].
+  static (double, double) _dimensionsFor(MediaCardVariant variant) =>
+      switch (variant) {
+        MediaCardVariant.compact => (140.0, 84.0),
+        MediaCardVariant.standard || MediaCardVariant.live => (172.0, 104.0),
+        MediaCardVariant.hero => (320.0, 180.0),
+      };
+
+  /// The [AiroRail.railHeight] a rail hosting this variant needs to avoid
+  /// overflow: thumbnail height plus the name/subtitle text block, card
+  /// border/padding, and the rail's own list-view inset (+64, matched
+  /// empirically against real card content — see git history for the
+  /// overflow this was tuned against).
+  static double railHeightFor(MediaCardVariant variant) =>
+      _dimensionsFor(variant).$2 + 64;
+
   @override
   Widget build(BuildContext context) {
-    final (width, thumbnailHeight) = switch (variant) {
-      MediaCardVariant.compact => (140.0, 84.0),
-      MediaCardVariant.standard || MediaCardVariant.live => (172.0, 104.0),
-      MediaCardVariant.hero => (320.0, 180.0),
-    };
+    final (width, thumbnailHeight) = _dimensionsFor(variant);
     return AiroRailCard(
       name: name,
       subtitle: subtitle,
