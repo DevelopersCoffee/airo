@@ -1,3 +1,4 @@
+import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:platform_player/platform_player.dart';
@@ -94,13 +95,13 @@ class _DiscoveryBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return switch (discovery.phase) {
-      AiroCastDiscoveryPhase.discovering => const ListTile(
-        leading: SizedBox(
+      AiroCastDiscoveryPhase.discovering => ListTile(
+        leading: const SizedBox(
           height: 24,
           width: 24,
           child: CircularProgressIndicator(strokeWidth: 2),
         ),
-        title: Text('Searching for TVs...'),
+        title: Text(AiroVoice.searching.pick()),
       ),
       AiroCastDiscoveryPhase.permissionRequired => ListTile(
         leading: const Icon(Icons.wifi_tethering_error),

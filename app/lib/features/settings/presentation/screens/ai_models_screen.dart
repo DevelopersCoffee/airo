@@ -375,7 +375,7 @@ class _AIModelsScreenState extends ConsumerState<AIModelsScreen>
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Failed to delete: $e'),
+              content: Text(AiroVoice.errorGeneric.pickWith(detail: '$e')),
               backgroundColor: Colors.red,
             ),
           );
