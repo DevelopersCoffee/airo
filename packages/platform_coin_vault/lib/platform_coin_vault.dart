@@ -11,3 +11,4 @@ export 'src/domain/entities/secure_document_record.dart';
 export 'src/crypto/field_cipher.dart';
 export 'src/crypto/vault_secure_storage.dart';
 export 'src/crypto/vault_key_manager.dart';
+export 'src/data/vault_database.dart';
