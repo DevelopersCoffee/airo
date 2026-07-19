@@ -11,6 +11,9 @@ const String geminiNanoInitializationFailedMessage =
     'Gemini Nano did not initialize on this device. Open Model Library and choose another model.';
 const String litertGemmaUnavailableMessage =
     'LiteRT-LM is not configured. Install a local model or set LITERT_LM_MODEL_PATH/LITERT_LM_MODEL_URL.';
+const String litertWebRuntimeInitFailedMessage =
+    'The browser local model runtime failed to start (WebGPU and WASM both unavailable). '
+    'Try a different browser or use Gemini Cloud for this session.';
 const String geminiCloudUnavailableMessage =
     'Gemini Cloud is not configured. Launch with --dart-define=GEMINI_API_KEY=... to use this real API path.';
 const String geminiCloudEmptyResponseMessage = 'Gemini Cloud returned no text.';
