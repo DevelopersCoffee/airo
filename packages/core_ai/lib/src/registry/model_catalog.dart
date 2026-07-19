@@ -50,9 +50,12 @@ class ModelCatalog {
       tags: ['gallery', 'litert-lm', 'chat', 'reasoning', 'prompt-lab'],
       minMemoryBytes: 3500000000,
       recommendedMemoryBytes: 4500000000,
+      // Web hard limit: 2 GiB (2^30 bytes) on the actual .task bundle size,
+      // to keep browser downloads/memory pressure bounded. Verified live
+      // 2026-07-19: this bundle is 2,003,697,664 bytes (1.866 GiB) - passes.
       supportsWebRuntime: true,
       webAssetUrl:
-          'https://storage.googleapis.com/mediapipe-models/llm_inference/gemma-4-e2b-it/float16/latest/gemma-4-e2b-it.task',
+          'https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm/resolve/main/gemma-4-E2B-it-web.task',
     ),
     const OfflineModelInfo(
       id: 'gemma-4-e4b-it-litertlm',
@@ -91,9 +94,10 @@ class ModelCatalog {
       tags: ['gallery', 'litert-lm', 'high-capability', 'thinking'],
       minMemoryBytes: 5500000000,
       recommendedMemoryBytes: 7000000000,
-      supportsWebRuntime: true,
-      webAssetUrl:
-          'https://storage.googleapis.com/mediapipe-models/llm_inference/gemma-4-e4b-it/float16/latest/gemma-4-e4b-it.task',
+      // Web hard limit: 2 GiB (2^30 bytes) on the actual .task bundle size.
+      // Verified live 2026-07-19: litert-community's gemma-4-E4B-it-web.task
+      // is 2,964,324,352 bytes (2.76 GiB) - exceeds the limit, so this model
+      // stays native-only (supportsWebRuntime left at its default false).
     ),
     const OfflineModelInfo(
       id: 'qwen2.5-1.5b-it-litert',

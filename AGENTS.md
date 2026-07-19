@@ -144,3 +144,33 @@ final channels = await runOffMain(() => parseM3U(content));
 `jsonDecode` of large network responses on the widget/provider layer is a lint
 violation. The Rust FFI core (`packages/core_native`) will eventually replace
 these call sites, but the isolate boundary must be preserved as web fallback.
+
+## Agent Skills — Mandatory Skill Routing
+
+In addition to the Airo agent lifecycle above, route implementation work
+through the addyosmani/agent-skills pack (globally installed). This governs
+*how* code gets written once step 7 ("Only then start implementation") of the
+Required Before Implementation checklist is reached — it does not replace the
+Airo-specific gates above it.
+
+| Work type | Skill sequence |
+|---|---|
+| New feature / significant change | `spec-driven-development` → `planning-and-task-breakdown` → `incremental-implementation` + `test-driven-development` → `code-review-and-quality` → `git-workflow-and-versioning` |
+| Bug fix | `debugging-and-error-recovery` (root-cause, not guess-fix) → `test-driven-development` → `code-review-and-quality` → `git-workflow-and-versioning` |
+| Cross-module contract change (framework/application boundary) | `api-and-interface-design` before implementation |
+| Platform-conditional / TV-mobile adaptive UI work | `frontend-ui-engineering` |
+| Refactor / cleanup only | `code-simplification` |
+| Any commit, branch, merge | `git-workflow-and-versioning` — atomic commits, ~100-line change sizing |
+| Before merge | `code-review-and-quality` five-axis gate (Correctness → Clarity → Consistency → Duplication → Tests → Performance); block on correctness/clarity failure |
+| Perf work | `performance-optimization` — measure before optimize |
+
+Gates:
+
+1. Spec/plan before code for anything non-trivial — no jumping straight to
+   edits on a vague ask.
+2. Tests are proof: `test-driven-development` red-green-refactor for all
+   logic/bugfix work. No fix ships without a failing test that now passes.
+3. If a skill is skipped, state why explicitly before proceeding.
+
+Invoke via the `Skill` tool by name. This file is standing authorization —
+announce "Using [skill] to [purpose]" and proceed without asking.

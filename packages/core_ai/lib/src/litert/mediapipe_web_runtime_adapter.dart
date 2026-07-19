@@ -30,6 +30,7 @@ abstract class MediaPipeWebClient {
     required String modelUrl,
     required MediaPipeWebBackend backend,
     required int maxTokens,
+    void Function(String stage)? onProgress,
   });
 
   Future<String> generate({
@@ -84,10 +85,13 @@ class MediaPipeWebRuntimeAdapter implements LocalInferenceRuntimeAdapter {
   }
 
   @override
-  Future<void> prepareModel({OfflineModelInfo? model}) async {
+  Future<void> prepareModel({
+    OfflineModelInfo? model,
+    void Function(String stage)? onProgress,
+  }) async {
     _webGpuSupported ??= await _client.isWebGpuSupported();
     if (model == null) return;
-    await _ensureModelLoaded(model);
+    await _ensureModelLoaded(model, onProgress: onProgress);
   }
 
   @override
@@ -140,7 +144,10 @@ class MediaPipeWebRuntimeAdapter implements LocalInferenceRuntimeAdapter {
   Future<bool> supportsModel(OfflineModelInfo model) async =>
       model.supportsWebRuntime && model.webAssetUrl != null;
 
-  Future<void> _ensureModelLoaded(OfflineModelInfo model) async {
+  Future<void> _ensureModelLoaded(
+    OfflineModelInfo model, {
+    void Function(String stage)? onProgress,
+  }) async {
     final assetUrl = model.webAssetUrl!;
     _webGpuSupported ??= await _client.isWebGpuSupported();
     if (_loadedModelUrl == assetUrl) return;
@@ -152,6 +159,7 @@ class MediaPipeWebRuntimeAdapter implements LocalInferenceRuntimeAdapter {
       modelUrl: assetUrl,
       backend: backend,
       maxTokens: runtimeConfig.maxTokens,
+      onProgress: onProgress,
     );
     _loadedModelUrl = assetUrl;
   }

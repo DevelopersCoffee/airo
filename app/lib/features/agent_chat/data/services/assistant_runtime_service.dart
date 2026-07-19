@@ -451,7 +451,17 @@ class AssistantRuntimeService {
                   _liteRtLm.warmupModel(downloadedPackage))
             : package != null
             ? await (_warmupLiteRtModelOverride?.call(package) ??
-                  _liteRtLm.warmupModel(package))
+                  _liteRtLm.warmupModel(
+                    package,
+                    onProgress: kIsWeb
+                        ? (stage) => emit(
+                            AssistantRuntimePreparationPhase.load,
+                            0.55,
+                            'Load runtime',
+                            stage,
+                          )
+                        : null,
+                  ))
             : await (_warmupLiteRtInstalledModelOverride?.call() ??
                   _liteRtLm.warmupInstalledModel());
         if (!warmed) {
@@ -535,7 +545,9 @@ class AssistantRuntimeService {
         return response;
 
       case litertGemmaAssistantModelId:
-        final package = await _resolveDownloadedLiteRtPackage(runtimeId);
+        final package = kIsWeb
+            ? await _resolveWebLiteRtPackage(runtimeId)
+            : await _resolveDownloadedLiteRtPackage(runtimeId);
         if (package != null) {
           final response = _nonEmptyOrUnavailable(
             runtimeId,
@@ -749,6 +761,17 @@ class AssistantRuntimeService {
     final package =
         preferredPackage ?? await _resolveOfflinePackageOrNull(runtimeId);
     if (package == null || !package.isDownloaded) {
+      return null;
+    }
+    return package;
+  }
+
+  /// Web has no separate "download" step — the browser runtime fetches the
+  /// model asset itself when it runs, so a web-capable package is usable as
+  /// soon as it's resolved, without checking [OfflineModelInfo.isDownloaded].
+  Future<OfflineModelInfo?> _resolveWebLiteRtPackage(String runtimeId) async {
+    final package = await _resolveOfflinePackageOrNull(runtimeId);
+    if (package == null || !package.supportsWebRuntime) {
       return null;
     }
     return package;

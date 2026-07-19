@@ -60,10 +60,13 @@ class LiteRtLmService {
       ? Future.value(false)
       : _nativeAdapter!.warmupInstalledModel();
 
-  Future<bool> warmupModel(OfflineModelInfo model) async {
+  Future<bool> warmupModel(
+    OfflineModelInfo model, {
+    void Function(String stage)? onProgress,
+  }) async {
     if (_isWeb) {
       if (!model.supportsWebRuntime) return false;
-      await _webAdapter!.prepareModel(model: model);
+      await _webAdapter!.prepareModel(model: model, onProgress: onProgress);
       return true;
     }
     return _nativeAdapter!.warmupModel(model);

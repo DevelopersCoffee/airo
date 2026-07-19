@@ -13,15 +13,17 @@ void main() {
       expect(model.webAssetUrl, endsWith('.task'));
     });
 
-    test('Gemma-4-E4B is flagged web-capable with a .task asset URL', () {
-      final model = ModelCatalog.bundledModels.firstWhere(
-        (m) => m.id == 'gemma-4-e4b-it-litertlm',
-      );
+    test(
+      'Gemma-4-E4B is excluded from web runtime (exceeds 2 GiB hard limit)',
+      () {
+        final model = ModelCatalog.bundledModels.firstWhere(
+          (m) => m.id == 'gemma-4-e4b-it-litertlm',
+        );
 
-      expect(model.supportsWebRuntime, isTrue);
-      expect(model.webAssetUrl, isNotNull);
-      expect(model.webAssetUrl, endsWith('.task'));
-    });
+        expect(model.supportsWebRuntime, isFalse);
+        expect(model.webAssetUrl, isNull);
+      },
+    );
 
     test('Qwen2.5-1.5B is flagged web-capable with a .task asset URL', () {
       final model = ModelCatalog.bundledModels.firstWhere(

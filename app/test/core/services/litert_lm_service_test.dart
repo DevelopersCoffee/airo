@@ -207,6 +207,7 @@ class _NoopMediaPipeWebClient implements MediaPipeWebClient {
     required String modelUrl,
     required MediaPipeWebBackend backend,
     required int maxTokens,
+    void Function(String stage)? onProgress,
   }) async {}
   @override
   Future<String> generate({

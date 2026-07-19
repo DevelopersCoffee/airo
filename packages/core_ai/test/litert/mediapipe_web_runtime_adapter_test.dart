@@ -25,6 +25,7 @@ class _FakeMediaPipeWebClient implements MediaPipeWebClient {
     required String modelUrl,
     required MediaPipeWebBackend backend,
     required int maxTokens,
+    void Function(String stage)? onProgress,
   }) async {
     loadModelCalled = true;
     lastBackend = backend;
