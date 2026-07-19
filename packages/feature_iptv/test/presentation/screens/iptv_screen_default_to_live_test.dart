@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart';
@@ -132,6 +134,71 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byKey(const ValueKey('iptv-browse-grid')), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'tapping Cancel then a late-arriving matching channel does not '
+    'yank the user into fullscreen playback',
+    (tester) async {
+      // Regression test: `_cancelDeepLinkWait` used to only flip
+      // `_deepLinkPending` to false, leaving the post-frame callback's
+      // pending `await ref.read(iptvChannelsProvider.future)` free to
+      // resolve afterwards and still act on a match — silently switching
+      // the user (now looking at the browse grid) into fullscreen playback
+      // with no interaction. The fix makes Cancel sticky via
+      // `_deepLinkCancelled`, so a channel resolving *after* Cancel must be
+      // ignored even when it matches the deep-linked id.
+      final channelsCompleter = Completer<List<IPTVChannel>>();
+      final played = <IPTVChannel>[];
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            iptvChannelsProvider.overrideWith(
+              (ref) => channelsCompleter.future,
+            ),
+            recentlyWatchedChannelsProvider.overrideWith((ref) async => const []),
+            streamingStateProvider.overrideWith(
+              (ref) => Stream.value(
+                StreamingState(
+                  playbackState: PlaybackState.idle,
+                  isLiveStream: true,
+                  liveDelay: const Duration(seconds: 1),
+                ),
+              ),
+            ),
+            iptvStreamingServiceProvider.overrideWith((ref) {
+              final service = _RecordingStreamingService(played: played);
+              ref.onDispose(service.dispose);
+              return service;
+            }),
+          ],
+          child: const MaterialApp(home: IPTVScreen(deepLinkChannelId: 'c1')),
+        ),
+      );
+      await tester.pump();
+
+      // Still on the deep-link loading screen — the channel future hasn't
+      // resolved yet.
+      expect(find.text('Cancel'), findsOneWidget);
+      expect(find.byKey(const ValueKey('iptv-browse-grid')), findsNothing);
+
+      // User backs out before the channel list resolves.
+      await tester.tap(find.text('Cancel'));
+      await tester.pump();
+
+      expect(find.byKey(const ValueKey('iptv-browse-grid')), findsOneWidget);
+
+      // The channel list now resolves with a match for the deep-linked id,
+      // arriving after Cancel was tapped.
+      channelsCompleter.complete(_channels);
+      await tester.pumpAndSettle();
+
+      // The cancel must hold: still the browse grid, no fullscreen
+      // playback, and no channel was ever handed to the streaming service.
+      expect(find.byKey(const ValueKey('iptv-browse-grid')), findsOneWidget);
+      expect(played, isEmpty);
     },
   );
 }

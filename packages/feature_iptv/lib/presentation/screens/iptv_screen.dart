@@ -67,6 +67,14 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen> {
   /// browse grid never flashes before deep-linked playback begins.
   late bool _deepLinkPending = widget.deepLinkChannelId != null;
 
+  /// True once the user has tapped Cancel on the deep-link loading screen.
+  /// Sticky for the lifetime of this deep-link attempt: unlike
+  /// [_deepLinkPending] (a transient UI flag), this must not be undone by a
+  /// later event, so the in-flight resolution in [initState]'s post-frame
+  /// callback can check it after its `await` resolves and refuse to act on
+  /// a channel that arrives after the user already backed out.
+  bool _deepLinkCancelled = false;
+
   @override
   void initState() {
     super.initState();
@@ -104,6 +112,12 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen> {
           channel = null;
         }
         if (!mounted) return;
+        // The user may have tapped Cancel while the await above was still
+        // pending — that must be a permanent decision for this deep-link
+        // attempt, not just a transient UI state a late-arriving match can
+        // override. Without this check, a channel resolving after Cancel
+        // would still flip into fullscreen playback on the next rebuild.
+        if (_deepLinkCancelled) return;
         if (channel != null) {
           // Pre-seed fullscreen mode for this one-shot transition into
           // playback; after this, showFullscreenPlayer only tracks
@@ -127,6 +141,7 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen> {
   /// grid immediately — the escape hatch shown on the loading screen so a
   /// user is never stuck waiting on a slow/hung channel-list fetch.
   void _cancelDeepLinkWait() {
+    _deepLinkCancelled = true;
     setState(() => _deepLinkPending = false);
   }
 
