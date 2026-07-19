@@ -142,7 +142,7 @@ class IPTVChannel extends Equatable {
       name: json['name'] as String,
       streamUrl: json['streamUrl'] as String,
       logoUrl: json['logoUrl'] as String?,
-      group: json['group'] as String? ?? 'Uncategorized',
+      group: _normalizeGroup(json['group'] as String?),
       category: ChannelCategory.fromString(
         json['category'] as String? ?? 'general',
       ),
@@ -224,13 +224,27 @@ class IPTVChannel extends Equatable {
       name: name,
       streamUrl: url,
       logoUrl: logo,
-      group: group ?? 'Uncategorized',
+      group: _normalizeGroup(group),
       category: _inferCategory(group ?? '', name),
       isAudioOnly: _isAudioStream(url, group, name),
       languages: language != null ? [language] : const ['en'],
       tvgId: tvgId != null ? int.tryParse(tvgId) : null,
       tvgName: tvgName,
     );
+  }
+
+  /// Sentinel group-title values some providers send for unsorted streams
+  /// (e.g. Xtream category_id 0 → "Undefined"). Displaying these verbatim
+  /// leaks provider-internal placeholders to the UI, so map to our own
+  /// fallback label.
+  static const _junkGroupValues = {'undefined', 'n/a', 'none', 'null'};
+
+  static String _normalizeGroup(String? raw) {
+    final trimmed = raw?.trim() ?? '';
+    if (trimmed.isEmpty || _junkGroupValues.contains(trimmed.toLowerCase())) {
+      return 'Uncategorized';
+    }
+    return trimmed;
   }
 
   static ChannelCategory _inferCategory(String group, [String? name]) {
