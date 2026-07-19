@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../application/providers/iptv_providers.dart';
+import '../widgets/favorite_reimport_review_banner.dart';
 import '../widgets/iptv_icon_placeholder.dart';
 
 /// Lists channels the user has favorited on TV, with a way to unfavorite
@@ -26,6 +27,7 @@ class TvFavoritesScreen extends ConsumerWidget {
         children: [
           Text('Favorites', style: Theme.of(context).textTheme.headlineSmall),
           const SizedBox(height: 8),
+          const FavoriteReimportReviewBanner(),
           Text(
             'Press the menu/context key on a channel to add or remove it '
             'from favorites.',
