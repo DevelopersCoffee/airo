@@ -19,6 +19,7 @@ export "application/epg_channel_match_override_store.dart";
 export "application/mutable_xmltv_compact_epg_repository.dart";
 export "application/xmltv_source_refresh_service.dart";
 export "application/xmltv_source_store.dart";
+export "presentation/screens/browse_screen.dart";
 export "presentation/screens/iptv_screen.dart";
 export "presentation/screens/mobile_favorites_screen.dart";
 export "presentation/screens/vod_screen.dart";

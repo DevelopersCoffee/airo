@@ -16,6 +16,7 @@ import '../widgets/iptv_navigation_drawer.dart';
 import '../widgets/phone_media_play_on_tv_sheet.dart';
 import '../widgets/video_player_widget.dart';
 import '../tv/iptv_guide_screen.dart';
+import 'browse_screen.dart';
 import 'mobile_favorites_screen.dart';
 
 /// IPTV Screen with YouTube-like streaming experience
@@ -625,14 +626,8 @@ class _StreamTabContent extends ConsumerWidget {
                           const SliverToBoxAdapter(child: SizedBox(height: 12)),
                           SliverFillRemaining(
                             hasScrollBody: true,
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                              ),
-                              child: _ChannelPanel(
-                                channels: channels,
-                                onChannelTap: onChannelTap,
-                              ),
+                            child: BrowseScreen(
+                              onChannelSelected: onChannelTap,
                             ),
                           ),
                         ],

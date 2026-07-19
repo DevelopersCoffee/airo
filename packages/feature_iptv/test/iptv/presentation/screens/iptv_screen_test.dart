@@ -127,9 +127,13 @@ void main() {
     await tester.drag(find.byType(CustomScrollView), const Offset(0, -320));
     await tester.pumpAndSettle();
 
-    expect(find.text('Playlist Channels'), findsOneWidget);
-    expect(find.text('City News Live'), findsOneWidget);
-    expect(find.text('LIVE'), findsWidgets);
+    // The old flat "Playlist Channels" list panel is replaced by the
+    // unified, rail-based BrowseScreen (Task 6): rails from the default
+    // catalog render the matching channels as MediaCards. Only the first
+    // rail is guaranteed to be mounted without further scrolling the
+    // BrowseScreen's own (nested) list.
+    expect(find.text('Top India'), findsOneWidget);
+    expect(find.text('City News Live'), findsWidgets);
   });
 
   testWidgets(
