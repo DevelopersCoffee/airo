@@ -1,5 +1,6 @@
 import 'package:feature_iptv/feature_iptv.dart';
 import 'package:feature_iptv/presentation/widgets/player_brightness_controller.dart';
+import 'package:feature_iptv/presentation/widgets/player_gesture_overlay.dart';
 import 'package:feature_iptv/presentation/widgets/player_lock_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -16,6 +17,7 @@ void main() {
   Future<void> pumpPlayer(
     WidgetTester tester, {
     bool enableSwipeChannelChange = false,
+    bool enableTouchGestures = true,
     PlayerBrightnessController? brightnessController,
     StreamingState? state,
     List<IPTVChannel>? channels,
@@ -49,6 +51,7 @@ void main() {
         child: MaterialApp(
           home: VideoPlayerWidget(
             enableSwipeChannelChange: enableSwipeChannelChange,
+            enableTouchGestures: enableTouchGestures,
             brightnessController: brightnessController,
           ),
         ),
@@ -544,4 +547,24 @@ void main() {
 
     await service.stop();
   });
+
+  testWidgets(
+    'enableTouchGestures: false hides the lock button and brightness/volume gesture surface',
+    (tester) async {
+      await pumpPlayer(tester, enableTouchGestures: false);
+
+      expect(find.byKey(const ValueKey('iptv-player-lock-button')), findsNothing);
+      expect(find.byType(PlayerGestureOverlay), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'enableTouchGestures defaults to true, preserving lock button and gesture surface',
+    (tester) async {
+      await pumpPlayer(tester);
+
+      expect(find.byKey(const ValueKey('iptv-player-lock-button')), findsOneWidget);
+      expect(find.byType(PlayerGestureOverlay), findsOneWidget);
+    },
+  );
 }

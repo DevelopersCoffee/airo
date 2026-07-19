@@ -25,6 +25,7 @@ class VideoPlayerWidget extends ConsumerStatefulWidget {
   final VoidCallback? onFullscreenToggle;
   final bool enableSwipeChannelChange;
   final bool initiallyFullscreen;
+  final bool enableTouchGestures;
   final PlayerBrightnessController? brightnessController;
 
   /// Invoked when the new [PlayerOverlay] chrome's back button is tapped.
@@ -39,6 +40,7 @@ class VideoPlayerWidget extends ConsumerStatefulWidget {
     this.onFullscreenToggle,
     this.enableSwipeChannelChange = false,
     this.initiallyFullscreen = false,
+    this.enableTouchGestures = true,
     this.brightnessController,
     this.onBack,
   });
@@ -314,6 +316,57 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
 
     final videoView = service.buildVideoView();
 
+    // Shared player surface: video view + cinema-mode vignette + buffering indicator
+    // Built once and reused in both enableTouchGestures branches to reduce duplication.
+    final playerSurface = Stack(
+      alignment: Alignment.center,
+      children: [
+        // Video display (engine-driven view surface).
+        if (videoView != null)
+          SizedBox.expand(
+            child: FittedBox(
+              fit: _boxFitFor(aspectRatioFit),
+              child: videoView,
+            ),
+          )
+        else if (state.playbackState == PlaybackState.loading)
+          _buildLoading()
+        else if (state.hasError && state.diagnostic != null)
+          _buildDiagnosticError(state)
+        else
+          _buildPlaceholder(state),
+
+        // Cinema mode vignette overlay
+        if (_isCinemaMode)
+          Positioned.fill(
+            child: IgnorePointer(
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: RadialGradient(
+                    center: Alignment.center,
+                    radius: 1.15,
+                    colors: [
+                      Colors.transparent,
+                      Colors.black.withValues(alpha: 0.6),
+                    ],
+                    stops: const [0.6, 1.0],
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+        // Buffering indicator
+        if (state.isBuffering)
+          Container(
+            color: Colors.black45,
+            child: const CircularProgressIndicator(
+              color: Colors.white,
+            ),
+          ),
+      ],
+    );
+
     return TvInputHandler(
       onInput: _handleSurfInput,
       // Focus.onKeyEvent always ignores so the event bubbles up to
@@ -340,64 +393,19 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                   // surface itself is the engine-driven view (CV-016 migration);
                   // when it's null we fall through to loading/diagnostic/
                   // placeholder inside the same gesture-enabled stack.
-                  PlayerGestureOverlay(
-                    locked: _isLocked,
-                    brightness: _brightness,
-                    volume: state.isMuted ? 0.0 : state.volume,
-                    onBrightnessChanged: _onBrightnessGestureChanged,
-                    onVolumeChanged: (value) {
-                      if (state.isMuted) service.toggleMute();
-                      service.setVolume(value);
-                    },
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        // Video display (engine-driven view surface).
-                        if (videoView != null)
-                          SizedBox.expand(
-                            child: FittedBox(
-                              fit: _boxFitFor(aspectRatioFit),
-                              child: videoView,
-                            ),
-                          )
-                        else if (state.playbackState == PlaybackState.loading)
-                          _buildLoading()
-                        else if (state.hasError && state.diagnostic != null)
-                          _buildDiagnosticError(state)
-                        else
-                          _buildPlaceholder(state),
-
-                        // Cinema mode vignette overlay
-                        if (_isCinemaMode)
-                          Positioned.fill(
-                            child: IgnorePointer(
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  gradient: RadialGradient(
-                                    center: Alignment.center,
-                                    radius: 1.15,
-                                    colors: [
-                                      Colors.transparent,
-                                      Colors.black.withValues(alpha: 0.6),
-                                    ],
-                                    stops: const [0.6, 1.0],
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-
-                        // Buffering indicator
-                        if (state.isBuffering)
-                          Container(
-                            color: Colors.black45,
-                            child: const CircularProgressIndicator(
-                              color: Colors.white,
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
+                  widget.enableTouchGestures
+                      ? PlayerGestureOverlay(
+                          locked: _isLocked,
+                          brightness: _brightness,
+                          volume: state.isMuted ? 0.0 : state.volume,
+                          onBrightnessChanged: _onBrightnessGestureChanged,
+                          onVolumeChanged: (value) {
+                            if (state.isMuted) service.toggleMute();
+                            service.setVolume(value);
+                          },
+                          child: playerSurface,
+                        )
+                      : playerSurface,
 
                   // Renderer-agnostic top chrome (back button, title/
                   // subtitle, quality + LIVE pills) and failover toast, built
@@ -494,28 +502,28 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                       ),
                     ),
 
-                  // Lock button: visible whenever the normal controls would be
-                  // (fades with them), but stays visible when locked regardless
-                  // of the hide timer — it's the only way back to unlocked.
-                  Positioned(
-                    top: 8,
-                    right: 56,
-                    child: AnimatedOpacity(
-                      opacity: (_isLocked || _showControlsOverlay) ? 1.0 : 0.0,
-                      duration: const Duration(milliseconds: 300),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: Colors.black45,
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: PlayerLockButton(
-                          key: const ValueKey('iptv-player-lock-button'),
-                          locked: _isLocked,
-                          onToggle: _toggleLocked,
+                  // Lock button: touch-only concept, hidden entirely when
+                  // enableTouchGestures is false (e.g. TV/remote input).
+                  if (widget.enableTouchGestures)
+                    Positioned(
+                      top: 8,
+                      right: 56,
+                      child: AnimatedOpacity(
+                        opacity: (_isLocked || _showControlsOverlay) ? 1.0 : 0.0,
+                        duration: const Duration(milliseconds: 300),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Colors.black45,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: PlayerLockButton(
+                            key: const ValueKey('iptv-player-lock-button'),
+                            locked: _isLocked,
+                            onToggle: _toggleLocked,
+                          ),
                         ),
                       ),
                     ),
-                  ),
 
                   // Channel change overlay
                   if (_channelChangeOverlayText != null)

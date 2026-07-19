@@ -519,11 +519,10 @@ layout: null
             <div class="legend-card">
               <h3>Status Legend</h3>
               <div class="legend-items">
-                <span class="legend-item"><span class="marker marker-supported"></span> Supported</span>
-                <span class="legend-item"><span class="marker marker-partial"></span> Partial / Optional</span>
+                <span class="legend-item"><span class="marker marker-supported"></span> Active / Supported</span>
+                <span class="legend-item"><span class="marker marker-partial"></span> Non-TV Apps Only</span>
+                <span class="legend-item"><span class="marker marker-keyboard"></span> TV Apps Only</span>
                 <span class="legend-item"><span class="marker marker-planned"></span> Planned</span>
-                <span class="legend-item"><span class="marker marker-not"></span> Not Supported</span>
-                <span class="legend-item"><span class="marker marker-keyboard"></span> Keyboard Only</span>
               </div>
             </div>
 
@@ -564,43 +563,36 @@ layout: null
 
     <script type="module">
       const features = [
-        { id: 'iptv', name: 'IPTV', desc: 'Stream live television channels from M3U or Xtream Codes playlists.', icon: '📺',
-          support: { tv: 'supported', mobile: 'supported', tablet: 'supported', desktop: 'supported' } },
-        { id: 'jellyfin', name: 'Jellyfin', desc: 'Connect to self-hosted Jellyfin servers for complete catalog integration.', icon: '📁',
-          support: { tv: 'supported', mobile: 'supported', tablet: 'supported', desktop: 'supported' } },
-        { id: 'plex', name: 'Plex', desc: 'Aggregate Plex cloud server assets with layout templates.', icon: '📼',
-          support: { tv: 'supported', mobile: 'supported', tablet: 'supported', desktop: 'supported' } },
-        { id: 'emby', name: 'Emby', desc: 'Integrate Emby network streams directly inside player lists.', icon: '📀',
-          support: { tv: 'supported', mobile: 'supported', tablet: 'supported', desktop: 'supported' } },
-        { id: 'local', name: 'Local Media', desc: 'Play files directly from local storage, NAS networks, and SMB nodes.', icon: '💾',
-          support: { tv: 'supported', mobile: 'supported', tablet: 'supported', desktop: 'supported' } },
-        { id: 'remote', name: 'Remote Navigation', desc: 'Interface navigation controlled entirely by standard TV remote D-pads.', icon: '🎮',
-          support: { tv: 'supported', mobile: 'not-supported', tablet: 'not-supported', desktop: 'keyboard' } },
-        { id: 'touch', name: 'Touch Gestures', desc: 'Channel changing swipes and seek controls designed for screens.', icon: '👆',
-          support: { tv: 'not-supported', mobile: 'supported', tablet: 'supported', desktop: 'not-supported' } },
-        { id: 'voice', name: 'Voice Search', desc: 'Search channels and commands via dynamic microphone APIs.', icon: '🎙️',
-          support: { tv: 'supported', mobile: 'supported', tablet: 'planned', desktop: 'planned' } },
-        { id: 'pip', name: 'Picture-in-Picture', desc: 'Float video stream overlay containers while navigating backgrounds.', icon: '🖼️',
-          support: { tv: 'supported', mobile: 'supported', tablet: 'supported', desktop: 'supported' } },
-        { id: 'multiview', name: 'Multi View', desc: 'Run up to 4 concurrent live streams inside a split viewport.', icon: '🔲',
-          support: { tv: 'planned', mobile: 'planned', tablet: 'planned', desktop: 'planned' } },
-        { id: 'recording', name: 'Recording', desc: 'Schedule and save live streams directly to device libraries.', icon: '🔴',
-          support: { tv: 'planned', mobile: 'planned', tablet: 'planned', desktop: 'planned' } }
+        { id: 'iptv', name: 'IPTV Streaming', desc: 'Core live television player, playlist engines, and virtualized lists.', icon: '📺',
+          support: { core: 'supported', component: 'supported', device: 'all' } },
+        { id: 'cast', name: 'Casting (Chromecast)', desc: 'Sender discovery controls and media playback session cast controls.', icon: '📡',
+          support: { core: 'supported', component: 'supported', device: 'nontv' } },
+        { id: 'epg', name: 'EPG Listings', desc: 'XMLTV/M3U guide cache parser and program listings grid.', icon: '📅',
+          support: { core: 'supported', component: 'supported', device: 'all' } },
+        { id: 'ai', name: 'On-Device AI (Gemini)', desc: 'Gemini Nano local models for smart assistance and translation.', icon: '🤖',
+          support: { core: 'supported', component: 'supported', device: 'nontv' } },
+        { id: 'finance', name: 'AiroMoney (Finance)', desc: 'Expense splitting group balances, budgeting tools, and camera OCR.', icon: '💵',
+          support: { core: 'supported', component: 'supported', device: 'nontv' } },
+        { id: 'games', name: 'Games (Stockfish)', desc: 'Real Chess engine integrations running on local device binaries.', icon: '♟️',
+          support: { core: 'supported', component: 'supported', device: 'nontv' } },
+        { id: 'reader', name: 'Reader & OCR', desc: 'Image text OCR scanner and article reading view interface.', icon: '📖',
+          support: { core: 'supported', component: 'supported', device: 'nontv' } },
+        { id: 'music', name: 'Music Player', desc: 'Background audio streaming playback engine and audio ducking.', icon: '🎵',
+          support: { core: 'supported', component: 'supported', device: 'nontv' } },
+        { id: 'remote', name: 'Remote Navigation', desc: 'Directional D-pad focus nodes mapping key events for 10-foot UIs.', icon: '🎮',
+          support: { core: 'supported', component: 'supported', device: 'tv' } },
+        { id: 'touch', name: 'Touch Gestures', desc: 'Touch-first player overlays, swipe-to-change volume, and channel change.', icon: '👆',
+          support: { core: 'supported', component: 'supported', device: 'nontv' } },
+        { id: 'voice', name: 'Voice Search', desc: 'Voice search capabilities using native system microphone feeds.', icon: '🎙️',
+          support: { core: 'supported', component: 'supported', device: 'all' } }
       ];
-
-      const deviceLabels = {
-        tv: 'Android TV',
-        mobile: 'Mobile',
-        tablet: 'Tablet',
-        desktop: 'Desktop'
-      };
 
       const statusIcons = {
         supported: '<circle cx="{x}" cy="{y}" r="6" fill="var(--green)"/>',
-        partial: '<circle cx="{x}" cy="{y}" r="6" fill="none" stroke="#2196f3" stroke-width="2"/>',
-        planned: '<circle cx="{x}" cy="{y}" r="6" fill="none" stroke="#9c27b0" stroke-width="2"/>',
-        'not-supported': '<circle cx="{x}" cy="{y}" r="4" fill="#f44336"/>',
-        keyboard: '<rect x="{x-5}" y="{y-5}" width="10" height="10" rx="2" fill="#ffeb3b"/>'
+        all: '<circle cx="{x}" cy="{y}" r="6" fill="var(--green)"/>',
+        nontv: '<circle cx="{x}" cy="{y}" r="6" fill="none" stroke="#2196f3" stroke-width="2.5"/>',
+        tv: '<rect x="{x-6}" y="{y-6}" width="12" height="12" rx="2.5" fill="#ffeb3b"/>',
+        planned: '<circle cx="{x}" cy="{y}" r="6" fill="none" stroke="#9c27b0" stroke-width="2"/>'
       };
 
       function initMatrix() {
@@ -622,13 +614,12 @@ layout: null
         svg.appendChild(defs);
 
         const deviceNodes = [
-          { key: 'tv', label: 'Android TV', x: 180, y: 60, rx: 175, ry: 130 },
-          { key: 'mobile', label: 'Mobile', x: 300, y: 40, rx: 300, ry: 130 },
-          { key: 'tablet', label: 'Tablet', x: 420, y: 60, rx: 425, ry: 130 },
-          { key: 'desktop', label: 'Desktop', x: 500, y: 130, rx: 395, ry: 265 }
+          { key: 'core', label: 'Internal Platform Core', x: 180, y: 60, rx: 240, ry: 216, emoji: '🧠' },
+          { key: 'component', label: 'Airo Component', x: 300, y: 40, rx: 300, ry: 140, emoji: '🧩' },
+          { key: 'device', label: 'Device App Slice', x: 420, y: 60, rx: 420, ry: 112, emoji: '📱' }
         ];
 
-        const radii = [110, 150, 190, 230];
+        const radii = [120, 180, 240];
         radii.forEach((r, idx) => {
           const ring = document.createElementNS(svgNS, 'circle');
           ring.setAttribute('cx', cx.toString());
@@ -651,7 +642,7 @@ layout: null
           const g = document.createElementNS(svgNS, 'g');
           g.setAttribute('class', 'svg-device-node');
           g.innerHTML = `<circle cx="${node.x}" cy="${node.y}" r="14" fill="var(--surface)" stroke="var(--border)" stroke-width="1"/>
-          <text x="${node.x}" y="${node.y + 4}" text-anchor="middle" fill="var(--text)" font-size="10" font-family="sans-serif">${node.key === 'tv' ? '📺' : node.key === 'mobile' ? '📱' : node.key === 'tablet' ? '📟' : '💻'}</text>
+          <text x="${node.x}" y="${node.y + 4}" text-anchor="middle" fill="var(--text)" font-size="10" font-family="sans-serif">${node.emoji}</text>
           <text x="${node.x}" y="${node.y - 18}" text-anchor="middle" fill="var(--muted)" font-size="11" font-weight="700" font-family="'DM Sans', sans-serif">${node.label}</text>`;
           svg.appendChild(g);
         });
@@ -664,10 +655,10 @@ layout: null
           const rad1 = t1 * Math.PI / 180;
           const rad2 = t2 * Math.PI / 180;
           
-          const x1 = cx + 240 * Math.cos(rad1);
-          const y1 = cy + 240 * Math.sin(rad1);
-          const x2 = cx + 240 * Math.cos(rad2);
-          const y2 = cy + 240 * Math.sin(rad2);
+          const x1 = cx + 260 * Math.cos(rad1);
+          const y1 = cy + 260 * Math.sin(rad1);
+          const x2 = cx + 260 * Math.cos(rad2);
+          const y2 = cy + 260 * Math.sin(rad2);
           const x3 = cx + 70 * Math.cos(rad2);
           const y3 = cy + 70 * Math.sin(rad2);
           const x4 = cx + 70 * Math.cos(rad1);
@@ -676,7 +667,7 @@ layout: null
           const sector = document.createElementNS(svgNS, 'path');
           sector.setAttribute('class', 'feature-sector');
           sector.setAttribute('data-feature', f.id);
-          sector.setAttribute('d', `M ${x1} ${y1} A 240 240 0 0 1 ${x2} ${y2} L ${x3} ${y3} A 70 70 0 0 0 ${x4} ${y4} Z`);
+          sector.setAttribute('d', `M ${x1} ${y1} A 260 260 0 0 1 ${x2} ${y2} L ${x3} ${y3} A 70 70 0 0 0 ${x4} ${y4} Z`);
           sector.addEventListener('mouseenter', () => selectFeature(f.id));
           svg.appendChild(sector);
         });
@@ -686,8 +677,8 @@ layout: null
           const rad = angle * Math.PI / 180;
           const x1 = cx + 70 * Math.cos(rad);
           const y1 = cy + 70 * Math.sin(rad);
-          const x2 = cx + 240 * Math.cos(rad);
-          const y2 = cy + 240 * Math.sin(rad);
+          const x2 = cx + 260 * Math.cos(rad);
+          const y2 = cy + 260 * Math.sin(rad);
           
           const line = document.createElementNS(svgNS, 'line');
           line.setAttribute('x1', x1.toString());
@@ -705,7 +696,7 @@ layout: null
         <text x="${cx}" y="${cy + 18}" text-anchor="middle" fill="var(--text)" font-weight="700" font-size="16" font-family="'DM Sans', sans-serif">TV</text>`;
         svg.appendChild(coreGroup);
 
-        const deviceKeys = ['desktop', 'tablet', 'mobile', 'tv'];
+        const deviceKeys = ['core', 'component', 'device'];
         features.forEach((f, fIdx) => {
           const t1 = -90 + fIdx * (360 / count);
           const t2 = t1 + (360 / count);
@@ -727,7 +718,9 @@ layout: null
               .replace('{x}', x.toFixed(1))
               .replace('{y}', y.toFixed(1))
               .replace('{x-5}', (x - 5).toFixed(1))
-              .replace('{y-5}', (y - 5).toFixed(1));
+              .replace('{y-5}', (y - 5).toFixed(1))
+              .replace('{x-6}', (x - 6).toFixed(1))
+              .replace('{y-6}', (y - 6).toFixed(1));
               
             cellG.innerHTML = `${iconSvg}
             <circle cx="${x}" cy="${y}" r="15" fill="transparent" style="cursor:pointer;"/>`;
@@ -781,25 +774,42 @@ layout: null
         if(!feature) return;
 
         const detailsCard = document.getElementById('matrix-details-card');
-        const deviceKeys = ['tv', 'mobile', 'tablet', 'desktop'];
         
-        let deviceRowsHtml = '';
-        deviceKeys.forEach(dev => {
-          const status = feature.support[dev];
-          const statusLabel = status === 'supported' ? 'Supported' : status === 'partial' ? 'Partial' : status === 'planned' ? 'Planned' : status === 'keyboard' ? 'Keyboard Only' : 'Not Supported';
-          deviceRowsHtml += `
-            <div class="details-device-row">
-              <span>${deviceLabels[dev]}</span>
-              <span class="status-badge ${status}">${statusLabel}</span>
-            </div>
-          `;
-        });
+        const coreLabel = feature.support.core === 'supported' ? 'Supported' : 'Planned';
+        const componentLabel = feature.support.component === 'supported' ? 'Supported' : 'Planned';
+        
+        let deviceLabelText = '';
+        let deviceStatusClass = '';
+        if (feature.support.device === 'all') {
+          deviceLabelText = 'TV & Non-TV Apps';
+          deviceStatusClass = 'supported';
+        } else if (feature.support.device === 'nontv') {
+          deviceLabelText = 'Non-TV Apps Only';
+          deviceStatusClass = 'partial';
+        } else if (feature.support.device === 'tv') {
+          deviceLabelText = 'TV Apps Only';
+          deviceStatusClass = 'keyboard';
+        } else {
+          deviceLabelText = 'Planned';
+          deviceStatusClass = 'planned';
+        }
 
         detailsCard.innerHTML = `
           <h3>${feature.icon} &nbsp; ${feature.name}</h3>
           <p>${feature.desc}</p>
           <div class="details-device-list">
-            ${deviceRowsHtml}
+            <div class="details-device-row">
+              <span>🧠 Internal Platform Core</span>
+              <span class="status-badge supported">${coreLabel}</span>
+            </div>
+            <div class="details-device-row">
+              <span>🧩 Airo Shared Component</span>
+              <span class="status-badge supported">${componentLabel}</span>
+            </div>
+            <div class="details-device-row">
+              <span>📱 Device App Slice</span>
+              <span class="status-badge ${deviceStatusClass}">${deviceLabelText}</span>
+            </div>
           </div>
         `;
       }
