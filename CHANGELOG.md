@@ -4,6 +4,30 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html) for public release tags.
 
+## [Airo TV v0.0.4-rc.2] - 2026-07-19
+
+### Added
+
+- Unified Netflix-style browse experience across phone/tablet/TV/desktop.
+- CV-017 canonical channel identity matching (Drift/SQLite) plus favorite reimport review banners (mobile + TV).
+- TV player gesture gating: touch-only affordances (swipe-channel, tap gestures) now hidden on TV builds.
+
+### Changed
+
+- Removed dead cast controller override from TV entrypoint; unused `AdaptiveIptvUI` and `ImportPipeline` deleted (zero consumers).
+- `AiroRail.railHeight` now derives from `MediaCardVariant` instead of a hardcoded value.
+- Airo TV pubspec bumped to `0.0.4-rc.2+5`.
+
+### Fixed
+
+- `sqlite3_flutter_libs` version conflict between `airo_app` and `platform_playlist` that broke `pub get` repo-wide (lint/analyze/snyk/variant-dependencies CI jobs). App no longer pins its own version; `platform_playlist` owns the constraint and its `sqlite3` core-package range was widened to admit the 3.x line `drift_dev` needs.
+- Five files committed with incorrect `dart format` output, failing the CI format-check step.
+
+### Known issues
+
+- One pre-existing `feature_iptv` EPG compact-view test failure (missing "Now: " prefix render), previously masked entirely by the pub-resolution break above — needs a follow-up fix, not release-blocking.
+- Three pre-existing `test-app` failures, also unmasked by the same pub-resolution fix (this job was `skipped` on every recent CI run because earlier jobs failed first, so these were never actually exercised until now): `firebase_options_test.dart` (`marks real Firebase app ids as configured`, `uses the registered Android TV Firebase app id`) and `settings_hub_screen_test.dart` (`tapping Playlist Source opens the playlist source sheet`). Not caused by this release's changes — tracked for follow-up.
+
 ## [Airo TV v0.0.4-rc.1] - 2026-07-19
 
 ### Added
