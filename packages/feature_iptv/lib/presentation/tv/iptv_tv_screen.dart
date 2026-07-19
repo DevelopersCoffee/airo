@@ -626,13 +626,10 @@ class _TvChannelRailsSection extends ConsumerWidget {
         return AiroRail(
           title: rail.definition.title,
           padding: EdgeInsets.zero,
-          // MediaCardVariant.compact's thumbnail is 84 (not the previous
-          // AiroRailCard-direct call's custom 78), so the card needs a few
-          // more px than the old hand-tuned 140 to avoid overflowing —
-          // matched empirically to the smallest bump that clears it, to
-          // avoid needlessly starving the grid/list area below on compact
-          // TV viewports.
-          railHeight: 144,
+          // Height derives from the same variant the cards below use
+          // (AiroRail.cardVariant → MediaCard.railHeightFor) instead of a
+          // hand-tuned constant that can drift out of sync with them.
+          cardVariant: MediaCardVariant.compact,
           headerGap: compactTv ? 11 : 16,
           children: [
             for (final channel in rail.channels)

@@ -59,4 +59,11 @@ void main() {
     await tester.pumpWidget(_host(const MediaCard(name: 'A', isLive: true)));
     expect(find.text('LIVE'), findsOneWidget);
   });
+
+  test('railHeightFor derives from each variant\'s thumbnail height', () {
+    expect(MediaCard.railHeightFor(MediaCardVariant.compact), 84 + 64);
+    expect(MediaCard.railHeightFor(MediaCardVariant.standard), 104 + 64);
+    expect(MediaCard.railHeightFor(MediaCardVariant.live), 104 + 64);
+    expect(MediaCard.railHeightFor(MediaCardVariant.hero), 180 + 64);
+  });
 }
