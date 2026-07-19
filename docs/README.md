@@ -50,6 +50,10 @@ System design and technical decisions:
 - **TECHNICAL_ARCHITECTURE.md** - System architecture
 - **GEMINI_NANO_FIX_SUMMARY.md** - AI integration details
 
+### 🔬 [Research & Strategy](./iptv-research.md)
+IPTV industry research, protocols, and investment case:
+- **[iptv-research.md](./iptv-research.md)** - Comprehensive review of IPTV architecture, multicast, video compression, SSAI, and business positioning
+
 ### ✨ [Features](./features/)
 Feature documentation and guides:
 - **MONEY_FEATURE_COMPLETE.md** - Money/Coins feature
@@ -100,6 +104,7 @@ API documentation:
 ```
 docs/
 ├── README.md (this file)
+├── iptv-research.md (IPTV technical research & investment positioning)
 ├── wiki/
 │   ├── Home.md
 │   ├── 1.-Overview.md

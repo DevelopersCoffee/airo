@@ -73,6 +73,7 @@ An advanced Flutter super app that brings powerful AI capabilities to your devic
 ### Architecture
 - [Technical Architecture](./architecture/TECHNICAL_ARCHITECTURE.md) - System design
 - [AI Integration](./architecture/GEMINI_NANO_FIX_SUMMARY.md) - Gemini Nano setup
+- [IPTV Technology & Architecture](./iptv-research.md) - Comprehensive review of IPTV architecture, protocols, and investment case
 
 ### Features
 - [Money Feature](./features/MONEY_FEATURE_COMPLETE.md) - Transaction tracking
