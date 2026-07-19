@@ -1,8 +1,42 @@
+import "dart:async";
+import "dart:io";
+
+import "package:dio/dio.dart";
 import "package:feature_iptv/feature_iptv.dart";
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+/// Test double for [M3UParserService] that lets tests drive
+/// `fetchPlaylistWithProgress` via a fixture [ImportProgress] stream instead
+/// of hitting real HTTP. Every call opens a fresh [StreamController] (Save
+/// and Retry both re-invoke the import) so tests can push emissions onto
+/// whichever controller `streamControllers.last` refers to after each call.
+class _FixtureM3UParserService extends M3UParserService {
+  _FixtureM3UParserService({required super.dio, required super.prefs})
+    : super(
+        // `setPlaylistUrl`/`clearCache` touch the real cache directory via
+        // path_provider, which has no platform-channel mock under
+        // `flutter_test` and would otherwise hang forever awaiting a reply
+        // that never arrives. Point it at the test's temp dir instead.
+        cacheDirectoryProvider: () async => Directory.systemTemp,
+      );
+
+  final List<StreamController<ImportProgress>> streamControllers = [];
+  int fetchWithProgressCallCount = 0;
+
+  @override
+  Stream<ImportProgress> fetchPlaylistWithProgress({
+    bool forceRefresh = false,
+  }) {
+    fetchWithProgressCallCount++;
+    final controller = StreamController<ImportProgress>();
+    streamControllers.add(controller);
+    return controller.stream;
+  }
+}
 
 void main() {
   final channels = [
@@ -33,6 +67,7 @@ void main() {
     StreamingState? streamingState,
     VoidCallback? onOpenVod,
     Future<PhoneLocalMediaItem?> Function()? onPickLocalMediaForTv,
+    List<Override> extraOverrides = const [],
   }) {
     SharedPreferences.setMockInitialValues({});
     return FutureBuilder<SharedPreferences>(
@@ -61,6 +96,7 @@ void main() {
                     ),
               ),
             ),
+            ...extraOverrides,
           ],
           child: MaterialApp(
             home: IPTVScreen(
@@ -204,8 +240,169 @@ void main() {
       await tester.tap(find.byTooltip('Playlist source'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Playlist source'), findsOneWidget);
+      expect(find.text('Add Playlist Source'), findsOneWidget);
       expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'Add Playlist sheet shows a progress indicator and stage label while '
+    'the import stream emits',
+    (tester) async {
+      late _FixtureM3UParserService parser;
+      await tester.pumpWidget(
+        createWidget(
+          extraOverrides: [
+            m3uParserProvider.overrideWith((ref) {
+              parser = _FixtureM3UParserService(
+                dio: Dio(),
+                prefs: ref.watch(sharedPreferencesProvider),
+              );
+              return parser;
+            }),
+          ],
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byTooltip('Playlist source'));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(
+        find.byType(TextField),
+        'https://example.com/playlist.m3u',
+      );
+      await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+      // Not pumpAndSettle: the indeterminate LinearProgressIndicator
+      // schedules frames continuously while importing, so settling never
+      // completes until the stream reaches a terminal stage.
+      await tester.pump();
+      await tester.pump();
+
+      expect(parser.fetchWithProgressCallCount, 1);
+      expect(find.byType(LinearProgressIndicator), findsOneWidget);
+      expect(find.text('Starting playlist import'), findsOneWidget);
+
+      parser.streamControllers.last.add(
+        const ImportProgress(
+          stage: ImportStage.download,
+          message: 'Downloading playlist',
+        ),
+      );
+      await tester.pump();
+
+      expect(find.text('Downloading playlist'), findsOneWidget);
+      expect(find.byType(LinearProgressIndicator), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'Add Playlist sheet shows an error and Retry on a failed import, and '
+    'Retry re-invokes the import',
+    (tester) async {
+      late _FixtureM3UParserService parser;
+      await tester.pumpWidget(
+        createWidget(
+          extraOverrides: [
+            m3uParserProvider.overrideWith((ref) {
+              parser = _FixtureM3UParserService(
+                dio: Dio(),
+                prefs: ref.watch(sharedPreferencesProvider),
+              );
+              return parser;
+            }),
+          ],
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byTooltip('Playlist source'));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byType(TextField),
+        'https://example.com/playlist.m3u',
+      );
+      await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+      // Not pumpAndSettle: see note in the progress-indicator test above.
+      await tester.pump();
+      await tester.pump();
+
+      expect(parser.fetchWithProgressCallCount, 1);
+
+      parser.streamControllers.last.add(
+        ImportProgress(stage: ImportStage.failed, error: StateError('boom')),
+      );
+      await tester.pump();
+      // The failed panel has no animating widgets, so it's safe to settle.
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Import failed'), findsWidgets);
+      expect(find.widgetWithText(OutlinedButton, 'Retry'), findsOneWidget);
+      // The sheet stays open on failure so the user can retry or edit the URL.
+      expect(find.text('Add Playlist Source'), findsOneWidget);
+
+      await tester.tap(find.widgetWithText(OutlinedButton, 'Retry'));
+      await tester.pump();
+      await tester.pump();
+
+      expect(parser.fetchWithProgressCallCount, 2);
+      expect(find.text('Starting playlist import'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'Add Playlist sheet closes and invalidates railsProvider when the '
+    'import reaches ImportStage.ready',
+    (tester) async {
+      late _FixtureM3UParserService parser;
+      var railsBuildCount = 0;
+      await tester.pumpWidget(
+        createWidget(
+          extraOverrides: [
+            m3uParserProvider.overrideWith((ref) {
+              parser = _FixtureM3UParserService(
+                dio: Dio(),
+                prefs: ref.watch(sharedPreferencesProvider),
+              );
+              return parser;
+            }),
+            railsProvider.overrideWith((ref) async {
+              railsBuildCount++;
+              return [];
+            }),
+          ],
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(railsBuildCount, 1);
+
+      await tester.tap(find.byTooltip('Playlist source'));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byType(TextField),
+        'https://example.com/playlist.m3u',
+      );
+      await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+      // Not pumpAndSettle: see note in the progress-indicator test above.
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.text('Add Playlist Source'), findsOneWidget);
+
+      parser.streamControllers.last.add(
+        const ImportProgress(
+          stage: ImportStage.ready,
+          fraction: 1,
+          message: 'Imported 3 channels',
+        ),
+      );
+      // Sheet pops in response to `ready`; the indeterminate bar is gone
+      // once it's off the tree, so settling is safe again.
+      await tester.pumpAndSettle();
+
+      expect(find.text('Add Playlist Source'), findsNothing);
+      expect(railsBuildCount, 2);
     },
   );
 
