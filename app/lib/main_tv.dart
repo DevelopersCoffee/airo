@@ -25,6 +25,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -36,6 +37,7 @@ import 'core/platform/device_form_factor.dart';
 import 'core/providers/app_theme_provider.dart';
 import 'core/startup/deferred_startup_task.dart';
 import 'package:feature_iptv/feature_iptv.dart';
+import 'features/iptv/iptv_cast_provider_override.dart';
 import 'features/iptv/iptv_feature_module.dart';
 import 'firebase_options.dart';
 
@@ -86,22 +88,11 @@ void main() async {
 
   runApp(
     ProviderScope(
-      overrides: [
-        sharedPreferencesProvider.overrideWithValue(prefs),
-        // Airo TV defaults to the design handoff's dedicated theme unless
-        // the user has explicitly picked a different one in Settings.
-        appThemeProvider.overrideWith(
-          (ref) => AppThemeNotifier(defaultThemeId: AppThemeId.airoTv),
-        ),
-        compactEpgRepositoryProvider.overrideWithValue(compactEpgRepository),
-        mutableXmltvCompactEpgRepositoryProvider.overrideWithValue(
-          mutableXmltvRepository,
-        ),
-        secureStoreProvider.overrideWithValue(
-          SecureStoreFactory.createSecure(),
-        ),
-        ...FeatureRegistry.allProviderOverrides,
-      ],
+      overrides: buildTvProviderOverrides(
+        prefs: prefs,
+        compactEpgRepository: compactEpgRepository,
+        mutableXmltvRepository: mutableXmltvRepository,
+      ),
       child: const AiroTvApp(),
     ),
   );
@@ -113,6 +104,32 @@ void main() async {
   }
   scheduleTvDebugDefaultEpgWarmup(prefs, repository: compactEpgRepository);
   scheduleTvXmltvSourceRefresh(prefs, repository: mutableXmltvRepository);
+}
+
+@visibleForTesting
+List<Override> buildTvProviderOverrides({
+  required SharedPreferences prefs,
+  required CompactEpgRepository compactEpgRepository,
+  required MutableXmltvCompactEpgRepository mutableXmltvRepository,
+}) {
+  return [
+    sharedPreferencesProvider.overrideWithValue(prefs),
+    // Airo TV defaults to the design handoff's dedicated theme unless
+    // the user has explicitly picked a different one in Settings.
+    appThemeProvider.overrideWith(
+      (ref) => AppThemeNotifier(defaultThemeId: AppThemeId.airoTv),
+    ),
+    compactEpgRepositoryProvider.overrideWithValue(compactEpgRepository),
+    mutableXmltvCompactEpgRepositoryProvider.overrideWithValue(
+      mutableXmltvRepository,
+    ),
+    secureStoreProvider.overrideWithValue(SecureStoreFactory.createSecure()),
+    // Phones running the TV build fall back to the mobile IPTV screen
+    // (tv_router.dart compact layout), whose cast UI needs the real
+    // controller — without this override casting silently no-ops.
+    realIptvCastControllerOverride(),
+    ...FeatureRegistry.allProviderOverrides,
+  ];
 }
 
 @visibleForTesting
