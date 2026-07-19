@@ -66,10 +66,6 @@ void main() {
     AiroNativePictureInPicture.setStateChangeHandler((isActive) {
       received = isActive;
     });
-    final handler = TestDefaultBinaryMessengerBinding.instance
-        .defaultBinaryMessenger
-        // Simulate the platform invoking the Dart-side handler.
-        ;
     await TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .handlePlatformMessage(
           channel.name,

@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart' show VoidCallback, debugPrint, visibleForTesting;
+import 'package:flutter/foundation.dart' show debugPrint, visibleForTesting;
 import 'package:flutter/services.dart';
 
 /// System-level Picture-in-Picture for the live player.
@@ -66,5 +66,10 @@ class AiroNativePictureInPicture {
   static void debugSetMethodChannel(MethodChannel channel) {
     _channel = channel;
     _isHandlerConfigured = false;
+  }
+
+  @visibleForTesting
+  static void debugNotifyStateChanged(bool isActive) {
+    _stateChangeHandler?.call(isActive);
   }
 }
