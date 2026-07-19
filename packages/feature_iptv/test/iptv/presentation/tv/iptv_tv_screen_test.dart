@@ -259,6 +259,11 @@ void main() {
       tester,
       compactEpgRepository: repository,
       compactEpgNow: now,
+      // Default 1280x720 leaves the EPG-aware channel grid/list below the
+      // hero rail almost no height, so GridView.builder never lazily
+      // builds any items to assert against. Taller viewport gives that
+      // section room to actually render.
+      surfaceSize: const Size(1280, 2000),
       // Non-audio-only rail channels render a real, infinitely-repeating
       // pulsing LIVE badge now — pumpAndSettle would never settle.
       settle: false,
