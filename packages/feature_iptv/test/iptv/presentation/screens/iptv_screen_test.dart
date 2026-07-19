@@ -153,6 +153,24 @@ void main() {
     },
   );
 
+  testWidgets(
+    'hamburger menu Favorites entry pushes the mobile favorites screen',
+    (tester) async {
+      await tester.pumpWidget(createWidget());
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byIcon(Icons.menu));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Favorites'), findsOneWidget);
+
+      await tester.tap(find.text('Favorites'));
+      await tester.pumpAndSettle();
+
+      expect(find.widgetWithText(AppBar, 'Favorites'), findsOneWidget);
+    },
+  );
+
   testWidgets('opens search sheet from app bar action', (tester) async {
     await tester.pumpWidget(createWidget());
     await tester.pumpAndSettle();
