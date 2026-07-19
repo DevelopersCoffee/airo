@@ -10,6 +10,7 @@ import "package:platform_epg/platform_epg.dart";
 import "package:platform_player/platform_player.dart";
 import "package:platform_media/platform_media.dart";
 import "package:platform_playlist_import/platform_playlist_import.dart";
+import '../../domain/favorite_reimport_coordinator.dart';
 import '../../domain/vod_resume_coordinator.dart';
 
 export 'iptv_cast_providers.dart';
@@ -131,23 +132,45 @@ final refreshChannelsProvider = FutureProvider.family<List<IPTVChannel>, bool>((
   ref,
   forceRefresh,
 ) async {
+  // Snapshot before the refresh so CV-017's favorite remap has an "old"
+  // list to diff the freshly re-imported one against. Reads whatever is
+  // already cached without forcing a fetch -- null/absent on the very
+  // first import, which applyFavoriteRemapOnReimport treats as a no-op.
+  final oldChannels = ref.read(iptvChannelsProvider).value ?? const [];
+
+  List<IPTVChannel> newChannels;
   final channelDataService = ref.watch(channelDataServiceProvider);
   try {
     final channels = await channelDataService.fetchChannels(
       forceRefresh: forceRefresh,
     );
-    if (channels.isNotEmpty) {
-      return channels;
-    }
+    newChannels = channels.isNotEmpty
+        ? channels
+        : await ref
+              .watch(m3uParserProvider)
+              .fetchPlaylist(forceRefresh: forceRefresh);
   } catch (e) {
     debugPrint(
       '[Provider] ChannelDataService refresh failed, falling back to M3U: $e',
     );
+    newChannels = await ref
+        .watch(m3uParserProvider)
+        .fetchPlaylist(forceRefresh: forceRefresh);
   }
 
-  // Fallback to legacy M3U parser
-  final parser = ref.watch(m3uParserProvider);
-  return parser.fetchPlaylist(forceRefresh: forceRefresh);
+  final needsReview = await applyFavoriteRemapOnReimport(
+    favoriteStorage: ref.read(favoriteChannelsStorageProvider),
+    coordinator: ref.read(favoriteReimportCoordinatorProvider),
+    oldChannels: oldChannels,
+    newChannels: newChannels,
+  );
+  if (needsReview.isNotEmpty) {
+    ref.read(favoriteReimportReviewCandidatesProvider.notifier).state =
+        needsReview;
+  }
+  ref.invalidate(favoriteChannelIdsProvider);
+
+  return newChannels;
 });
 
 /// Current category filter
@@ -493,6 +516,60 @@ final toggleChannelFavoriteProvider = FutureProvider.family<bool, String>((
   ref.invalidate(favoriteChannelIdsProvider);
   return isNowFavorite;
 });
+
+/// Coordinator for CV-017's favorites-survive-reimport behavior.
+final favoriteReimportCoordinatorProvider =
+    Provider<FavoriteReimportCoordinator>(
+      (ref) => FavoriteReimportCoordinator(),
+    );
+
+/// Applies [FavoriteReimportCoordinator]'s decisions to real storage: writes
+/// high-confidence remaps directly, drops favorites with no match at all,
+/// and leaves name-only matches untouched in storage -- returning them so
+/// the caller can surface a review prompt (CV-017, #821).
+///
+/// A no-op when there's nothing to compare against (first import, before
+/// any channel list has ever been loaded) or no favorites exist yet.
+Future<List<FavoriteReviewCandidate>> applyFavoriteRemapOnReimport({
+  required FavoriteChannelsStorage favoriteStorage,
+  required FavoriteReimportCoordinator coordinator,
+  required List<IPTVChannel> oldChannels,
+  required List<IPTVChannel> newChannels,
+}) async {
+  if (oldChannels.isEmpty) return const [];
+
+  final favoriteIds = await favoriteStorage.getFavoriteChannelIds();
+  if (favoriteIds.isEmpty) return const [];
+
+  final result = coordinator.remapFavorites(
+    favoriteChannelIds: favoriteIds,
+    oldChannels: oldChannels,
+    newChannels: newChannels,
+  );
+
+  // Ids pending review must stay in storage untouched -- only a true
+  // no-match (neither remapped nor flagged for review) gets dropped.
+  final reviewIds = result.needsReview
+      .map((candidate) => candidate.oldChannel.id)
+      .toSet();
+  final toDrop = favoriteIds
+      .difference(result.remappedFavoriteIds)
+      .difference(reviewIds);
+  for (final droppedId in toDrop) {
+    await favoriteStorage.removeFavorite(droppedId);
+  }
+  for (final newId in result.remappedFavoriteIds.difference(favoriteIds)) {
+    await favoriteStorage.addFavorite(newId);
+  }
+
+  return result.needsReview;
+}
+
+/// Favorite matches from the most recent re-import that need explicit user
+/// confirmation before being applied (CV-017). Cleared by whatever UI
+/// eventually consumes and resolves them; empty until then.
+final favoriteReimportReviewCandidatesProvider =
+    StateProvider<List<FavoriteReviewCandidate>>((ref) => const []);
 
 // =============================================================================
 // Hidden Groups Providers (CV-021, #826)
