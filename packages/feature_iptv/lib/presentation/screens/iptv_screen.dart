@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:core_ui/core_ui.dart';
 import '../../application/providers/iptv_providers.dart';
+import '../../application/wakelock_playback_coordinator.dart';
 import '../../application/providers/rails_provider.dart';
 import "package:platform_channels/platform_channels.dart";
 import "package:platform_player/platform_player.dart";
@@ -51,6 +52,9 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen> {
     super.initState();
     // Initialize streaming service
     ref.read(iptvStreamingServiceProvider).initialize();
+    // Screen-level wakelock: survives the featured player widget being
+    // scrolled out of the viewport or playback moving to the mini player.
+    ref.read(wakelockPlaybackCoordinatorProvider);
   }
 
   @override
@@ -473,6 +477,9 @@ class _IPTVScreenBodyState extends ConsumerState<IPTVScreenBody> {
     super.initState();
     // Initialize streaming service
     ref.read(iptvStreamingServiceProvider).initialize();
+    // Screen-level wakelock: survives the featured player widget being
+    // scrolled out of the viewport or playback moving to the mini player.
+    ref.read(wakelockPlaybackCoordinatorProvider);
   }
 
   @override
