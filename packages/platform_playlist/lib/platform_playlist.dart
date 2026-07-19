@@ -15,6 +15,8 @@ export 'src/smart_playlist_evaluator.dart';
 export 'src/channel_name_normalizer.dart';
 export 'src/canonical_channel_matcher.dart';
 export 'src/favorite_channel_remapper.dart';
+export 'src/persistence/canonical_channel_database.dart';
+export 'src/persistence/canonical_channel_repository.dart';
 export 'src/xtream/xtream_client.dart';
 export 'src/xtream/xtream_content_source.dart';
 export 'src/xtream/xtream_epg_repository.dart';
