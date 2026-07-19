@@ -32,9 +32,13 @@ class IntelligentModelManagerScreen extends ConsumerWidget {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.2),
+              Theme.of(
+                context,
+              ).colorScheme.primaryContainer.withValues(alpha: 0.2),
               Theme.of(context).colorScheme.surface,
-              Theme.of(context).colorScheme.secondaryContainer.withValues(alpha: 0.1),
+              Theme.of(
+                context,
+              ).colorScheme.secondaryContainer.withValues(alpha: 0.1),
             ],
           ),
         ),

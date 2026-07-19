@@ -311,8 +311,9 @@ class AppRouter {
               GoRoute(
                 path: '/guide',
                 name: 'Guide',
-                builder: (context, state) =>
-                    IptvGuideScreen(onChannelSelected: () => context.go('/iptv')),
+                builder: (context, state) => IptvGuideScreen(
+                  onChannelSelected: () => context.go('/iptv'),
+                ),
               ),
             ],
           ),
