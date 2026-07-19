@@ -420,6 +420,18 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                   // the same screen coordinates — putting it first in paint
                   // order means those buttons hit-test in front of it and
                   // claim the tap first.
+                  //
+                  // This only works because `_buildControlsOverlay`'s own
+                  // decorative gradient background is wrapped in
+                  // `IgnorePointer` (see below): `Decoration.hitTest()`
+                  // reports a hit across a `Container`'s ENTIRE bounding box
+                  // regardless of the gradient's alpha, and that container is
+                  // full-bleed over the whole stack. Left un-ignored, it
+                  // would swallow every tap in its bounds — including
+                  // PlayerOverlay's back button up top, which has no legacy
+                  // content behind it since the old channel-name row moved
+                  // into PlayerOverlay — before PlayerOverlay's own
+                  // GestureDetector ever saw the tap.
                   if (!_isLocked)
                     PlayerOverlay(
                       state: _toPlayerViewState(state),
@@ -718,20 +730,38 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
     VideoPlayerStreamingService service,
     StreamingState state,
   ) {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            Colors.black54,
-            Colors.transparent,
-            Colors.transparent,
-            Colors.black54,
-          ],
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        // Decorative gradient backdrop only — wrapped in IgnorePointer so it
+        // never hit-tests. Without this, `Decoration.hitTest()` claims every
+        // tap across this Container's full bounding box (opaque hit area,
+        // not per-pixel alpha), and since this whole overlay paints in front
+        // of PlayerOverlay above, that would swallow taps meant for
+        // PlayerOverlay's back button before its GestureDetector ever saw
+        // them — even though the gradient's top band has nothing visually
+        // interactive under it anymore (the old channel-name row moved to
+        // PlayerOverlay). The real buttons live in `_buildControlButtons`
+        // below as separate hit-testable siblings, so they're unaffected by
+        // this IgnorePointer and keep working exactly as before.
+        IgnorePointer(
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Colors.black54,
+                  Colors.transparent,
+                  Colors.transparent,
+                  Colors.black54,
+                ],
+              ),
+            ),
+          ),
         ),
-      ),
-      child: _buildControlButtons(service, state),
+        _buildControlButtons(service, state),
+      ],
     );
   }
 

@@ -206,6 +206,67 @@ void main() {
   });
 
   // ===========================================================================
+  // Regression test (task-9 follow-up): PlayerOverlay is mounted behind the
+  // legacy `_buildControlsOverlay` gradient in the Stack so that legacy
+  // control-bar buttons (mute/subtitle/aspect/fullscreen) keep winning the
+  // gesture arena over PlayerOverlay's own full-bleed tap-to-reveal surface.
+  // But `_buildControlsOverlay`'s gradient Container hit-tests as opaque
+  // across its ENTIRE bounding box (Decoration.hitTest() semantics), and it
+  // is full-bleed over the whole stack — so, painted in front, it silently
+  // swallowed every tap meant for PlayerOverlay's back button before this
+  // fix wrapped that gradient in IgnorePointer. This test proves the back
+  // button is reachable by tapping it via finder (never raw coordinates)
+  // and asserting the real onBack callback fired.
+  // ===========================================================================
+  testWidgets(
+    "PlayerOverlay's back button is reachable and invokes onBack",
+    (tester) async {
+      var backTapped = false;
+
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            streamingStateProvider.overrideWith(
+              (ref) => Stream.value(
+                StreamingState(
+                  playbackState: PlaybackState.playing,
+                  isLiveStream: true,
+                  currentChannel: const IPTVChannel(
+                    id: 'news-1',
+                    name: 'City News Live',
+                    streamUrl: 'https://example.com/news.m3u8',
+                    group: 'News',
+                    category: ChannelCategory.news,
+                  ),
+                ),
+              ),
+            ),
+          ],
+          child: MaterialApp(
+            home: Scaffold(
+              body: VideoPlayerWidget(onBack: () => backTapped = true),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      final backButton = find.byKey(const ValueKey('player-overlay-back'));
+      expect(backButton, findsOneWidget);
+
+      await tester.tap(backButton);
+      await tester.pump();
+
+      expect(backTapped, isTrue);
+    },
+  );
+
+  // ===========================================================================
   // Engine-driven playback + subtitle/track selector (CV-016 migration). These
   // drive the widget through a real VideoPlayerStreamingService backed by a
   // FakeAiroPlaybackEngine, so buildVideoView() and the track catalog flow
