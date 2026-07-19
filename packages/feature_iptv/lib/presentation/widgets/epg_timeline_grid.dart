@@ -172,7 +172,8 @@ class _TimeAxis extends StatelessWidget {
             left: i * 60 * pxPerMinute,
             child: Text(
               TimeOfDay.fromDateTime(
-                windowStart.add(Duration(hours: i)),
+                // windowStart is UTC; labels must show the viewer's clock.
+                windowStart.add(Duration(hours: i)).toLocal(),
               ).format(context),
               style: baseStyle?.copyWith(
                 fontSize: (baseStyle.fontSize ?? 11) * textScaleFactor,
