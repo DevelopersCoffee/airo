@@ -67,13 +67,41 @@ void main() {
           tab == AppNavigationTab.beats,
           reason: '${tab.label} music mini player visibility',
         );
+        // Home renders the same real browse/player flow as Live (Task 6
+        // mirrors the source design's Home==Live routing), so the IPTV mini
+        // player must show on both tabs.
         expect(
           visibility.showIptvPlayer,
-          tab == AppNavigationTab.live,
+          tab == AppNavigationTab.live || tab == AppNavigationTab.home,
           reason: '${tab.label} IPTV mini player visibility',
         );
       }
     });
+
+    test(
+      'IPTV mini player is visible on both the Live and Home tabs',
+      () {
+        final container = ProviderContainer();
+        addTearDown(container.dispose);
+
+        expect(
+          container
+              .read(
+                miniPlayerVisibilityProvider(AppNavigationTab.live.index),
+              )
+              .showIptvPlayer,
+          isTrue,
+        );
+        expect(
+          container
+              .read(
+                miniPlayerVisibilityProvider(AppNavigationTab.home.index),
+              )
+              .showIptvPlayer,
+          isTrue,
+        );
+      },
+    );
 
     test('centralizes shell chrome actions for compact and wide layouts', () {
       final container = ProviderContainer();

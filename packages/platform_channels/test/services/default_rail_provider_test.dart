@@ -82,8 +82,12 @@ void main() {
       ids,
       containsAll(<String>[
         'top-india', 'live-sports', 'movies-on-now',
-        'hindi-news', 'favorites', 'recently-added',
+        'hindi-news', 'favorites',
       ]),
     );
+    // No 'recently-added' rail: IPTVChannel carries no "added at" signal, so
+    // a rail claiming that meaning would just be a byte-identical duplicate
+    // of 'top-india' (both use an empty RailQuery + the same comparator).
+    expect(ids, isNot(contains('recently-added')));
   });
 }

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:platform_channels/platform_channels.dart';
 import '../../application/providers/iptv_providers.dart';
+import 'channel_initials.dart';
 
 /// Mini player widget for IPTV background playback
 /// Shows at bottom when:
@@ -181,7 +182,7 @@ class _InitialsTile extends StatelessWidget {
       color: bgColor,
       alignment: Alignment.center,
       child: Text(
-        _initialsFor(name),
+        channelInitials(name),
         style: const TextStyle(
           color: Colors.white,
           fontWeight: FontWeight.w700,
@@ -189,18 +190,6 @@ class _InitialsTile extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  /// First letter of the first two words (e.g. "City News" -> "CN"), or the
-  /// first two characters of a single-word name (e.g. "ESPN" -> "ES").
-  static String _initialsFor(String name) {
-    final trimmed = name.trim();
-    if (trimmed.isEmpty) return '?';
-    final words = trimmed.split(RegExp(r'\s+'));
-    if (words.length >= 2 && words[0].isNotEmpty && words[1].isNotEmpty) {
-      return (words[0][0] + words[1][0]).toUpperCase();
-    }
-    return trimmed.substring(0, trimmed.length >= 2 ? 2 : 1).toUpperCase();
   }
 }
 

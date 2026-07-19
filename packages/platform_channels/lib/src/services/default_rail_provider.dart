@@ -42,12 +42,6 @@ class DefaultRailCatalog {
           query: RailQuery(category: ChannelCategory.movies),
           priority: 40,
         ),
-        RailDefinition(
-          id: 'recently-added',
-          title: 'Recently Added',
-          query: RailQuery(),
-          priority: 50,
-        ),
       ];
 }
 

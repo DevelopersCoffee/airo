@@ -102,7 +102,10 @@ void main() {
   ) async {
     final semantics = tester.ensureSemantics();
     try {
-      await pumpScreen(tester);
+      // settle: false — the hero rail band's channels aren't audio-only, so
+      // their MediaCards render a real (infinitely-repeating) pulsing LIVE
+      // badge; pumpAndSettle never settles against a repeating animation.
+      await pumpScreen(tester, settle: false);
       expect(find.text('Live channels'), findsOneWidget);
       expect(find.text('Airo TV Lite Receiver'), findsOneWidget);
       expect(find.text('Compatible profile'), findsOneWidget);
@@ -205,13 +208,23 @@ void main() {
           child: const MaterialApp(home: IptvTvScreen()),
         ),
       );
-      await tester.pumpAndSettle();
+      // Bounded pump, not pumpAndSettle: railOnlyChannel isn't audio-only,
+      // so its MediaCard renders a real (infinitely-repeating) pulsing LIVE
+      // badge that pumpAndSettle would never consider settled.
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
 
       // "Top India" is the highest-priority rail in the override; the band
       // renders it (and only it — a single fixed-height rail band).
       expect(find.text('Top India'), findsOneWidget);
       expect(find.text('Live Sports'), findsNothing);
       expect(find.text('Rail Only Channel'), findsWidgets);
+
+      // railOnlyChannel's MediaCard runs a real, infinitely-repeating
+      // pulsing LIVE badge animation; tear the tree down explicitly so its
+      // AnimationController disposes instead of leaking past this test.
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump();
     },
   );
 
@@ -246,7 +259,18 @@ void main() {
       tester,
       compactEpgRepository: repository,
       compactEpgNow: now,
+      // Non-audio-only rail channels render a real, infinitely-repeating
+      // pulsing LIVE badge now — pumpAndSettle would never settle.
+      settle: false,
     );
+    // The bounded pump above isn't enough for the async compact-EPG
+    // provider's Future to resolve and rebuild. Bounded pump() calls never
+    // hang on the rail band's repeating pulse animation (only pumpAndSettle
+    // does, by waiting for *no* scheduled frames) so it's safe to just
+    // pump a few more explicit frames here.
+    await tester.pump();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
 
     expect(find.text('Now: Morning Bulletin'), findsOneWidget);
   });
@@ -254,7 +278,11 @@ void main() {
   testWidgets('keeps compact TV viewport browse controls reachable', (
     tester,
   ) async {
-    await pumpScreen(tester, surfaceSize: const Size(1024, 576));
+    await pumpScreen(
+      tester,
+      surfaceSize: const Size(1024, 576),
+      settle: false,
+    );
 
     expect(find.text('Live channels'), findsOneWidget);
     expect(find.text('Search'), findsWidgets);
@@ -270,7 +298,11 @@ void main() {
     final semantics = tester.ensureSemantics();
     debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
     try {
-      await pumpScreen(tester, surfaceSize: const Size(1440, 900));
+      await pumpScreen(
+        tester,
+        surfaceSize: const Size(1440, 900),
+        settle: false,
+      );
 
       expect(find.text('Update'), findsOneWidget);
       expect(find.bySemanticsLabel(RegExp('Update')), findsWidgets);
@@ -283,14 +315,18 @@ void main() {
   testWidgets('shows readable playlist guide with primary dismissal', (
     tester,
   ) async {
-    await pumpScreen(tester);
+    // settle: false, and bounded pumps below instead of pumpAndSettle: the
+    // hero rail band's non-audio-only channels render a real, infinitely
+    // repeating pulsing LIVE badge underneath the dialog.
+    await pumpScreen(tester, settle: false);
 
     await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
     await tester.pump();
     await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
     await tester.pump();
     await tester.sendKeyEvent(LogicalKeyboardKey.enter);
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
 
     expect(find.text('How to add a playlist'), findsOneWidget);
     expect(find.text('Find your playlist URL'), findsOneWidget);

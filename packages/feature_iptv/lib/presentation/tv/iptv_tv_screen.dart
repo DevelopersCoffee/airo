@@ -14,6 +14,7 @@ import '../../application/providers/iptv_providers.dart';
 import '../../application/providers/rails_provider.dart';
 import '../../application/services/airo_macos_update_service.dart';
 import '../screens/iptv_screen.dart';
+import '../widgets/channel_initials.dart';
 import '../widgets/iptv_icon_placeholder.dart';
 import '../widgets/iptv_mini_player.dart';
 import '../widgets/video_player_widget.dart';
@@ -625,20 +626,26 @@ class _TvChannelRailsSection extends ConsumerWidget {
         return AiroRail(
           title: rail.definition.title,
           padding: EdgeInsets.zero,
-          railHeight: 140,
+          // MediaCardVariant.compact's thumbnail is 84 (not the previous
+          // AiroRailCard-direct call's custom 78), so the card needs a few
+          // more px than the old hand-tuned 140 to avoid overflowing —
+          // matched empirically to the smallest bump that clears it, to
+          // avoid needlessly starving the grid/list area below on compact
+          // TV viewports.
+          railHeight: 144,
           headerGap: compactTv ? 11 : 16,
           children: [
             for (final channel in rail.channels)
-              AiroRailCard(
+              MediaCard(
                 name: channel.name,
                 subtitle: channel.category.label,
                 logoUrl: channel.logoUrl,
-                // Not isLive: AiroRailCard's LIVE badge runs an infinite
-                // pulse animation, which would hang every pumpAndSettle()
-                // in this screen's existing widget tests.
-                isLive: false,
-                width: 140,
-                thumbnailHeight: 78,
+                initials: channelInitials(channel.name),
+                variant: MediaCardVariant.compact,
+                // Channels are live video unless flagged audio-only (the
+                // same convention _TvChannelRow/_TvChannelCard below use for
+                // their own LIVE pill) — never a hardcoded false.
+                isLive: !channel.isAudioOnly,
                 onTap: () => onChannelSelect(channel),
                 onLongPress: () => onToggleFavorite(channel),
               ),
