@@ -523,86 +523,250 @@ sequenceDiagram
         </div>
 
         <div class="prose-section">
-          <h2>8. Airo Super-App vs. Airo TV Modular Parity Matrix</h2>
+          <h2>8. Airo Super-App Platform Composition & Capability Gaps</h2>
           <p>
-            Airo is engineered as an extensible, multi-capability <strong>super-app</strong>. Within this framework, <strong>Airo TV</strong> serves as a modular application package tailored specifically for television environments. During development and testing of Airo TV v0.0.3 and the upcoming v0.0.5 milestones, a technical gap analysis was conducted to establish strict boundary control, eliminate legacy code overhead, and align user interfaces.
+            Airo is engineered as an extensible, multi-capability <strong>super-app platform</strong>. Within this framework, <strong>Airo TV</strong> is a specialized modular application package designed specifically for 10-foot television environments. A detailed codebase gap analysis across Airo and Airo Pro repositories reveals how features are gated, platform-conditional limitations, settings design differences, and UI alignment targets.
           </p>
 
-          <h3>8.1 UI & Capability Parity (Mobile/iPad vs. TV)</h3>
+          <h3>8.1 Core Feature Gating Mechanism</h3>
           <p>
-            The table below outlines functional variations between touch-driven platforms (Airo Mobile/iPad) and remote-driven platforms (Airo TV).
+            Airo gates functional availability at compilation level via <code>app/lib/core/config/platform_features.dart</code>. The codebase partitions logic across four principal target profiles: <code>mobileFull</code>, <code>mobileStreaming</code>, <code>androidTv</code>, and <code>iPad</code>.
           </p>
           <div class="table-responsive">
             <table>
               <thead>
                 <tr>
-                  <th scope="col">Feature / Interface Slice</th>
-                  <th scope="col">Airo Mobile & iPad (Touch UI)</th>
-                  <th scope="col">Airo TV (10-Foot UI)</th>
-                  <th scope="col">Technical Status & Gap Resolution Path</th>
+                  <th scope="col">Feature Block</th>
+                  <th scope="col">mobileFull (Mobile)</th>
+                  <th scope="col">mobileStreaming</th>
+                  <th scope="col">androidTv (TV)</th>
+                  <th scope="col">iPad</th>
                 </tr>
               </thead>
               <tbody>
                 <tr>
-                  <td><strong>Now/Next EPG Metadata</strong></td>
-                  <td>Present. Renders current and upcoming listings.</td>
-                  <td>Absent (UI Gap).</td>
-                  <td>Data is available via <code>iptvNowNextProvider</code> (read at <code>channel_list_widget.dart:590</code>). The TV channel card UI needs to be wired to consume this provider.</td>
+                  <td><strong>Finance (Coins / AiroMoney)</strong></td>
+                  <td>✅</td>
+                  <td>❌</td>
+                  <td>❌</td>
+                  <td>❌</td>
                 </tr>
                 <tr>
-                  <td><strong>Cast (Chromecast Controls)</strong></td>
-                  <td>Present. Cast picker is active in player views.</td>
-                  <td>Absent (Intended).</td>
-                  <td>Implemented in <code>iptv_screen.dart:238-267</code>. Intentionally absent on TV screen layers, as TV devices act as media receivers rather than senders.</td>
+                  <td><strong>AI Chat Agent</strong></td>
+                  <td>✅</td>
+                  <td>❌</td>
+                  <td>❌</td>
+                  <td>❌</td>
                 </tr>
                 <tr>
-                  <td><strong>Channel Swipe Gestures</strong></td>
-                  <td>Present (Swipe-to-change active).</td>
-                  <td>Erroneously Present.</td>
-                  <td>Swipe/touch gesture logic in <code>video_player_widget.dart</code> is active on TV builds without input gating. TV player builds must be gated to ignore swipe events on non-touch remote-only devices.</td>
+                  <td><strong>Games (Chess etc.)</strong></td>
+                  <td>✅</td>
+                  <td>❌</td>
+                  <td>❌</td>
+                  <td>❌</td>
                 </tr>
                 <tr>
-                  <td><strong>Stream Quality Selector</strong></td>
-                  <td>Present. Inline dropdown selection in player controls.</td>
-                  <td>Absent.</td>
-                  <td>Quality selection details (<code>iptv_screen.dart:570-621</code>) need to be adapted for D-pad navigation on TV screens.</td>
+                  <td><strong>Reader</strong></td>
+                  <td>✅</td>
+                  <td>❌</td>
+                  <td>❌</td>
+                  <td>✅</td>
                 </tr>
                 <tr>
-                  <td><strong>Natural-Language Search</strong></td>
-                  <td>Present. AI-driven assistant search enabled.</td>
-                  <td>Absent.</td>
-                  <td>Mobile reads <code>edgeIptvAssistantProvider</code>. TV features a blocking <code>AlertDialog</code> with a standard text field; voice/AI input integration is planned.</td>
+                  <td><strong>OCR</strong></td>
+                  <td>✅</td>
+                  <td>❌</td>
+                  <td>❌</td>
+                  <td>❌</td>
                 </tr>
                 <tr>
-                  <td><strong>D-Pad Focus Navigation</strong></td>
-                  <td>Absent (Touch-first input, by design).</td>
-                  <td>Present (Focus-first).</td>
-                  <td>Controlled via <code>TvFocusable</code> focus nodes to handle remote key events.</td>
+                  <td><strong>Music</strong></td>
+                  <td>✅</td>
+                  <td>✅</td>
+                  <td>❌</td>
+                  <td>✅</td>
                 </tr>
                 <tr>
-                  <td><strong>Dedicated iPad Layout</strong></td>
-                  <td>None (Runs phone widget tree).</td>
-                  <td>N/A.</td>
-                  <td>Uses simple screen-width bounds split in <code>iptv_screen.dart:485-486</code>. A future <code>AppPlatform.iPad</code> specific branch is under review.</td>
+                  <td><strong>IPTV</strong></td>
+                  <td>✅</td>
+                  <td>✅</td>
+                  <td>✅</td>
+                  <td>✅</td>
                 </tr>
               </tbody>
             </table>
           </div>
 
-          <h3>8.2 Legacy & Dead Code Removal Path</h3>
+          <h3>8.2 Platform-Conditional Capability Gaps</h3>
           <p>
-            To prevent codebase rot and maintain modular package clarity in Airo TV, several orphaned segments have been marked for deletion or integration:
+            Due to hardware dependencies, platform API limits, and pending storage backends, several capabilities remain conditional or restricted to certain runtime targets:
+          </p>
+          <div class="table-responsive">
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col">Feature / Service Slice</th>
+                  <th scope="col">Working Platforms</th>
+                  <th scope="col">Missing / Restricted Platforms</th>
+                  <th scope="col">Codebase Evidence</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>On-Device AI (Gemini Nano)</strong></td>
+                  <td>Android</td>
+                  <td>iOS, Web, macOS, Windows, Linux</td>
+                  <td><code>gemini_nano_service.dart:20,35,246</code></td>
+                </tr>
+                <tr>
+                  <td><strong>Stockfish Chess Engine</strong></td>
+                  <td>Android, Desktop</td>
+                  <td>iOS (Stub engine fallback due to NNUE bug)</td>
+                  <td><code>chess_engine_factory_native.dart:12-21</code></td>
+                </tr>
+                <tr>
+                  <td><strong>Chromecast Sender Controls</strong></td>
+                  <td>Android, iOS</td>
+                  <td>macOS, Windows, Linux, Web</td>
+                  <td><code>flutter_chrome_cast_controller.dart:561</code></td>
+                </tr>
+                <tr>
+                  <td><strong>Native Fullscreen Windowing</strong></td>
+                  <td>macOS</td>
+                  <td>Windows, Linux, Web, Mobile</td>
+                  <td><code>native_fullscreen.dart:39</code></td>
+                </tr>
+                <tr>
+                  <td><strong>In-App Auto-Update Checks</strong></td>
+                  <td>macOS</td>
+                  <td>All other platforms</td>
+                  <td><code>airo_macos_update_service.dart:46-56</code></td>
+                </tr>
+                <tr>
+                  <td><strong>Coins "Groups" (Expense Splitting)</strong></td>
+                  <td>Non-Web Platforms</td>
+                  <td>Web</td>
+                  <td><code>coins_platform_support.dart:6</code></td>
+                </tr>
+                <tr>
+                  <td><strong>Coins Budgets</strong></td>
+                  <td>Mobile, Desktop</td>
+                  <td>Web ("Storage Backend Pending")</td>
+                  <td><code>budget_management_screen.dart:28-124</code></td>
+                </tr>
+                <tr>
+                  <td><strong>Contacts Sync (Bill Splitting)</strong></td>
+                  <td>Non-Web Platforms</td>
+                  <td>Web (Fakes contact provider data stub)</td>
+                  <td><code>contact_service.dart:30-43</code></td>
+                </tr>
+                <tr>
+                  <td><strong>Receipt Camera Capture</strong></td>
+                  <td>Non-Web Platforms</td>
+                  <td>Web</td>
+                  <td><code>add_expense_screen.dart:472-473</code></td>
+                </tr>
+                <tr>
+                  <td><strong>Agent Chat Push Notifications</strong></td>
+                  <td>Android, iOS, macOS</td>
+                  <td>Web, Linux, Windows</td>
+                  <td><code>agent_notification_scheduler.dart:371-448</code></td>
+                </tr>
+                <tr>
+                  <td><strong>XMLTV / M3U Parser</strong></td>
+                  <td>Native (Rust FFI Core)</td>
+                  <td>Web (Dart execution fallback, slower performance)</td>
+                  <td><code>core_native/xmltv.dart</code>, <code>m3u.dart</code></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3>8.3 Settings Screen Fragmentation</h3>
+          <p>
+            Platform settings are handled by completely separate implementations rather than a shared UI core:
           </p>
           <ul>
-            <li><strong>Adaptive UI Wrappers:</strong> <code>AdaptiveIptvUI</code> and <code>AdaptivePlayerControls</code> are declared but never instantiated. They will be integrated to manage layout switching.</li>
-            <li><strong>Voice-Search Grids:</strong> <code>TvChannelGridWithVoiceSearch</code> is unreachable, imported only in a dead barrel file (<code>core/tv/tv.dart</code>) that is not referenced by any active main target.</li>
-            <li><strong>Orphaned Packages:</strong> <code>platform_favorites</code>, <code>platform_network_discovery</code>, <code>platform_receiver_modes</code>, and <code>platform_playlist_export</code> have zero consumers and will be pruned from the workspace.</li>
-            <li><strong>Pro EPG Reminders:</strong> The <code>pro_epg</code> package's <code>ProEpgReminderScheduler</code> is declared in pubspec but remains unused. The only active Pro feature is the EPG CDN override, which is already applied globally.</li>
+            <li><strong>Mobile Settings Hub (<code>settings_hub_screen.dart</code>):</strong> Configures Bedtime mode, background audio, audio ducking, currencies, playlists, and full AI preferences/model management screens (<code>ai_models_screen.dart</code>, <code>ai_preferences_settings.dart</code>).</li>
+            <li><strong>TV Settings Screen (<code>tv_settings_screen.dart</code>):</strong> Tailored to 10-foot D-pad layout. Restricts config to themes, playback, sources, and a dedicated <strong>Accessibility</strong> section (absent on mobile). In Airo Pro, the TV settings layer is gutted to legal TMDB attribution screens only.</li>
+            <li><strong>Apple TV / tvOS Support:</strong> Explicitly marked as <strong>Blocked</strong> (not built or supported) in <code>docs/features/airo-tv/CROSS_PLATFORM_VALIDATION_MATRIX.md</code>.</li>
           </ul>
 
-          <h3>8.3 Manifest vs. Runtime Alignment</h3>
+          <h3>8.4 IPTV-Specific Feature Gaps (TV vs. Mobile/iPad)</h3>
           <p>
-            The TV product profile (<code>AiroTvProductProfiles.liteReceiver()</code>) currently lists <code>favorites</code> as an active capability in its manifest, but the corresponding user interface controls are absent in the actual code. Gaps like these are being addressed by removing dead capabilities from the runtime profiles until their UI elements are actively wired.
+            Analysis of the IPTV streaming packages highlights specific UI variations and routing bugs between device form factors:
+          </p>
+          <div class="table-responsive">
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col">Feature Slice</th>
+                  <th scope="col">Present on</th>
+                  <th scope="col">Absent / Incorrect on</th>
+                  <th scope="col">Technical Evidence / Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>Now/Next EPG Display</strong></td>
+                  <td>Mobile & iPad</td>
+                  <td>TV (UI Gap)</td>
+                  <td>Data is ready at <code>iptvNowNextProvider</code> (consumed at <code>channel_list_widget.dart:590</code>). TV cards must be wired to render it.</td>
+                </tr>
+                <tr>
+                  <td><strong>Chromecast Picker</strong></td>
+                  <td>Mobile</td>
+                  <td>TV (Intended)</td>
+                  <td>Implemented at <code>iptv_screen.dart:238-267</code>. Excluded from TV screen targets as TVs act as receiver hubs.</td>
+                </tr>
+                <tr>
+                  <td><strong>Swipe-to-Change Channel</strong></td>
+                  <td>Mobile</td>
+                  <td>TV (Incorrectly Shipped)</td>
+                  <td>Touch swipe listeners at <code>video_player_widget.dart:19,25,317,330</code> run on TV builds. Must gate them out for D-pad remote compliance.</td>
+                </tr>
+                <tr>
+                  <td><strong>Stream Quality Selector</strong></td>
+                  <td>Mobile</td>
+                  <td>TV (UI Gap)</td>
+                  <td>Mobile controls dropdown (<code>iptv_screen.dart:570-621</code>) is missing on TV. Needs adaptation for D-pad interactions.</td>
+                </tr>
+                <tr>
+                  <td><strong>Natural-Language Search</strong></td>
+                  <td>Mobile</td>
+                  <td>TV (UI Gap)</td>
+                  <td>Mobile utilizes <code>edgeIptvAssistantProvider</code>. TV currently falls back to a blocking text field dialog box.</td>
+                </tr>
+                <tr>
+                  <td><strong>D-Pad Remote Focus</strong></td>
+                  <td>TV</td>
+                  <td>Mobile / iPad (None, by design)</td>
+                  <td>Utilizes <code>TvFocusable</code> tree traversal elements to map remote keys.</td>
+                </tr>
+                <tr>
+                  <td><strong>Dedicated iPad Layout</strong></td>
+                  <td>N/A</td>
+                  <td>iPad (UI Gap)</td>
+                  <td>iPad compiles the phone widget hierarchy, switching only on screen width bounds in <code>iptv_screen.dart:485-486</code>. No dedicated <code>iPad</code> branch exists.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3>8.5 Unwired & Dead Code in IPTV Modules</h3>
+          <p>
+            Several platform capabilities listed in product manifests remain unreachable or entirely unwired in the current codebase:
+          </p>
+          <ul>
+            <li><strong>Adaptive UI components:</strong> <code>AdaptiveIptvUI</code> and <code>AdaptivePlayerControls</code> are declared in source files but never instantiated by client applications.</li>
+            <li><strong>Voice-Search Overlay:</strong> <code>TvChannelGridWithVoiceSearch</code> is declared in the dead barrel file <code>core/tv/tv.dart</code> but never imported in active execution targets.</li>
+            <li><strong>Orphaned Packages:</strong> <code>platform_favorites</code>, <code>platform_network_discovery</code>, <code>platform_receiver_modes</code>, and <code>platform_playlist_export</code> are compiled but have zero imports across either repository. Features like the Favorites button remain unrendered despite manifest claims.</li>
+            <li><strong>Pro EPG Reminders:</strong> The <code>pro_epg</code> reminder scheduler is declared in Airo Pro but is not imported. The only active Pro feature is EPG CDN overrides, applied globally on both TV and Mobile targets.</li>
+          </ul>
+
+          <h3>8.6 Product Profile Mismatches</h3>
+          <p>
+            The TV configuration profiles (like <code>AiroTvProductProfiles.liteReceiver()</code>) hardcode capability flags globally without dynamically assessing hardware limits (e.g. Fire TV stick vs. premium smart TV). It claims <code>favorites</code> capabilities that do not render. Active features like Recording, Downloads, Multi-View, and Local AI are correctly omitted on TV targets as they are not implemented on any client platform.
           </p>
         </div>
       </div>
