@@ -79,7 +79,7 @@ Homebrew metadata.
 
 ### UC-003: V2 orchestrated Airo TV release
 
-**Given:** The `V2 Release Orchestrator` is run with `macos_profile=tv`.
+**Given:** The `Release Orchestrator` is run with `macos_profile=tv`.
 **Trigger:** The orchestrator builds Android TV assets and the macOS Airo TV
 assets from the same v2 release inputs.
 **Happy path:** GitHub Release assets include Android TV APK/AAB plus macOS

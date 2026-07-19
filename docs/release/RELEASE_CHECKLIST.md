@@ -123,7 +123,7 @@ Pre-release verification checklist for Airo Super App releases.
 - [ ] Store-only AABs and private debug symbols are not published as public direct-download assets unless explicitly approved
 - [ ] Fire TV and legacy Android TV support labels match qualification evidence
 - [ ] [V2 Release Qualification](./V2_RELEASE_QUALIFICATION.md) report generated and attached or explicitly waived
-- [ ] [V2 Release Orchestrator](./V2_RELEASE_ORCHESTRATOR.md) dry-run completed from the release ref
+- [ ] [Release Orchestrator](./V2_RELEASE_ORCHESTRATOR.md) dry-run completed from the release ref
 
 ### Legacy / General Required Artifacts
 

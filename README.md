@@ -64,7 +64,7 @@ Airo TV is the Android TV variant of Airo, built from the current `main` release
 ## V2 Release Health
 
 The current mainline Airo TV release line is coordinated through
-[`.github/workflows/v2-release-orchestrator.yml`](.github/workflows/v2-release-orchestrator.yml)
+[`.github/workflows/release-orchestrator.yml`](.github/workflows/release-orchestrator.yml)
 and documented in
 [`docs/release/V2_RELEASE_ORCHESTRATOR.md`](docs/release/V2_RELEASE_ORCHESTRATOR.md).
 Public-release setup, maintainer decisions, and local evidence gates are tracked

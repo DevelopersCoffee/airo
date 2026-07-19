@@ -276,7 +276,7 @@ class AiroRepositoryHealthPreflightRunner {
   const AiroRepositoryHealthPreflightRunner();
 
   static const List<String> requiredReadmeText = [
-    '.github/workflows/v2-release-orchestrator.yml',
+    '.github/workflows/release-orchestrator.yml',
     'docs/release/V2_RELEASE_ORCHESTRATOR.md',
     'docs/release/V2_PUBLISHING_HUMAN_SETUP.md',
     'docs/release/RELEASE_CHECKLIST.md',
