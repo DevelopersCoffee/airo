@@ -143,13 +143,13 @@ void main() {
     );
   }
 
-  testWidgets('renders Stream app bar, category filters, and live list', (
+  testWidgets('renders Airo TV app bar, category filters, and live list', (
     tester,
   ) async {
     await tester.pumpWidget(createWidget());
     await tester.pumpAndSettle();
 
-    expect(find.text('Stream'), findsOneWidget);
+    expect(find.text('Airo TV'), findsOneWidget);
     expect(find.byTooltip('Search channels'), findsOneWidget);
     expect(find.byTooltip('Cast'), findsOneWidget);
     expect(find.text('All (3)'), findsOneWidget);
@@ -412,7 +412,7 @@ void main() {
     await tester.pumpWidget(createEmptyWidget());
     await tester.pumpAndSettle();
 
-    expect(find.text('Stream'), findsOneWidget);
+    expect(find.text('Airo TV'), findsOneWidget);
     expect(find.byTooltip('Playlist source'), findsOneWidget);
     expect(find.text('Add your playlist'), findsOneWidget);
     expect(
