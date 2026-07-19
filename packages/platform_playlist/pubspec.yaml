@@ -23,7 +23,7 @@ dependencies:
     path: ../platform_epg
   platform_playlist_import:
     path: ../platform_playlist_import
-  sqlite3: ^2.7.6
+  sqlite3: ">=2.7.6 <4.0.0"
   sqlite3_flutter_libs: ^0.5.32
 
 dev_dependencies:
