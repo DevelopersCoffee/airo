@@ -374,7 +374,7 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen> {
             : _playLocalFileOnTv,
       ),
       appBar: AppBar(
-        title: const Text('Stream'),
+        title: const Text('Airo TV'),
         actions: [
           IconButton(
             icon: const Icon(Icons.search),
