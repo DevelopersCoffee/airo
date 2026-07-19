@@ -126,5 +126,47 @@ void main() {
       expect(result.isFailure, isTrue);
       expect(result.failure, isA<AuthFailure>());
     });
+
+    test('getDatabaseKey fails closed when local_auth throws (e.g. no biometrics enrolled)', () async {
+      final manager = VaultKeyManager.forTesting(
+        secureStorage: secureStorage,
+        authenticate: () async => throw Exception('platform unavailable'),
+      );
+
+      final result = await manager.getDatabaseKey();
+
+      expect(result.isFailure, isTrue);
+      expect(result.failure, isA<AuthFailure>());
+    });
+
+    test('rotateKey fails closed when local_auth throws (e.g. no biometrics enrolled)', () async {
+      final manager = VaultKeyManager.forTesting(
+        secureStorage: secureStorage,
+        authenticate: () async => throw Exception('platform unavailable'),
+      );
+
+      final result = await manager.rotateKey();
+
+      expect(result.isFailure, isTrue);
+      expect(result.failure, isA<AuthFailure>());
+    });
+
+    test('isEncryptionAvailable uses the injected isAvailable seam when provided', () async {
+      final manager = VaultKeyManager.forTesting(
+        secureStorage: secureStorage,
+        authenticate: () async => true,
+        isAvailable: () async => false,
+      );
+
+      final available = await manager.isEncryptionAvailable();
+      // isEncryptionAvailable() and getDatabaseKey() are separate contracts:
+      // the former is the pre-check callers use before offering vault
+      // creation, the latter is the crypto-level fail-closed backstop. They
+      // must be independently correct — assert both here.
+      final keyResult = await manager.getDatabaseKey();
+
+      expect(available, isFalse);
+      expect(keyResult.isSuccess, isTrue);
+    });
   });
 }

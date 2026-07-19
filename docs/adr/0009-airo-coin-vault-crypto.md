@@ -71,6 +71,11 @@ implemented in `platform_coin_vault` and the threat model it targets.
   offering vault creation and must surface `AuthFailure` as a hard stop, not
   a retry-silently path. If a future contributor bypasses this, sensitive
   data could be created without a working biometric gate.
+- **Known limitation**: `VaultKeyManager.rotateKey()` overwrites the stored
+  DEK without re-encrypting existing vault data — every record encrypted
+  under the old DEK becomes permanently undecryptable. No re-encryption
+  migration exists yet; `rotateKey()` must not be called in production until
+  one is built (tracked as future work, not this ADR's scope).
 - **Out of scope, accepted**: hardware/chip-off attacks against the Secure
   Enclave/StrongBox themselves; nation-state-level adversaries; cloud
   sync/backup compromise (no cloud sync exists in v1 — no attack surface to
