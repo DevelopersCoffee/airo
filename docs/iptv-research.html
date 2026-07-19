@@ -154,31 +154,25 @@ permalink: /iptv-research/
       font-size: 13px !important;
     }
     /* Custom node class highlights matching our brand colors */
-    .mermaid .node.she rect, .mermaid .node.she path,
-    .mermaid .node.transcoder rect, .mermaid .node.transcoder path,
-    .mermaid .node.metadata rect, .mermaid .node.metadata path,
-    .mermaid .node.adserver rect, .mermaid .node.adserver path {
+    .mermaid .node.control-node rect, .mermaid .node.control-node path, .mermaid .node.control-node polygon {
+      stroke: #607d8b !important;
+      fill: oklch(0.16 0.02 250) !important;
+    }
+    .mermaid .node.headend-node rect, .mermaid .node.headend-node path, .mermaid .node.headend-node polygon {
       stroke: #0288d1 !important;
       fill: oklch(0.16 0.03 230) !important;
     }
-    .mermaid .node.backbone rect, .mermaid .node.backbone path,
-    .mermaid .node.multicast rect, .mermaid .node.multicast path,
-    .mermaid .node.vso rect, .mermaid .node.vso path {
+    .mermaid .node.core-node rect, .mermaid .node.core-node path, .mermaid .node.core-node polygon {
       stroke: var(--green) !important;
       fill: oklch(0.16 0.04 140) !important;
     }
-    .mermaid .node.edge rect, .mermaid .node.edge path {
+    .mermaid .node.loop-node rect, .mermaid .node.loop-node path, .mermaid .node.loop-node polygon {
       stroke: #f57c00 !important;
       fill: oklch(0.16 0.04 40) !important;
     }
-    .mermaid .node.tv rect, .mermaid .node.tv path,
-    .mermaid .node.mobile rect, .mermaid .node.mobile path {
+    .mermaid .node.client-node rect, .mermaid .node.client-node path, .mermaid .node.client-node polygon {
       stroke: #7b1fa2 !important;
       fill: oklch(0.16 0.04 300) !important;
-    }
-    .mermaid .node.db rect, .mermaid .node.db path {
-      stroke: #607d8b !important;
-      fill: oklch(0.16 0.02 250) !important;
     }
     .math-block {
       background: var(--surface);
@@ -316,42 +310,57 @@ permalink: /iptv-research/
           </p>
           
           <div class="mermaid">
-graph TD
-    subgraph Acquisition [1. Content Acquisition Layer]
-        SHE([Super Head End - SHE]) -->|Ingests & Transcodes| Trans([Transcoder Cluster])
-        Trans --> EPG([EPG & Metadata Injection])
-        Trans --> ADS([Ad Decision Server - ADS])
+graph LR
+    %% Subgraph 1: Control & Middleware
+    subgraph Control [Middleware & Subscriber Management]
+        DB[("👤 Subscriber DB & AAA")]
+        MW(["🖥️ IPTV Middleware Services"])
+        ADS(["🎯 Ad Decision Server - ADS"])
+        DB <--> MW
+        MW <--> ADS
     end
 
-    subgraph Distribution [2. Managed Distribution Network]
-        EPG -->|Core Fiber Backbone| Backbone([High-Speed Core Routers])
-        Backbone -->|IGMP Multicast Stream| IGMP([IGMP Multicast Routers])
-        IGMP -->|Dynamic Packet Duplication| VSO([Video Servicing Office - VSO])
+    %% Subgraph 2: Ingestion & Headend
+    subgraph Headend [1. Ingest & Super Headend - SHE]
+        Feeds(["📡 Satellite & Fiber Feeds"]) --> Trans(["⚙️ Transcoder & Compressor"])
+        VoD(["💽 VoD Server Assets"]) --> Trans
+        Trans --> Scrambler(["🔒 CA Scrambler & Encryptor"])
+        MW -.->|Service API| Trans
+        MW -.->|DRM Key Rotation| Scrambler
     end
 
-    subgraph Access [3. Edge & End-User Access]
-        VSO -->|5G / FWA High-Speed Access| MEC([Mobile Edge Computing - MEC Cache])
-        MEC -->|HLS / DASH Playlists| TV([Smart TV - 10-Foot UI])
-        MEC -->|Cellular / Wi-Fi Access| Mobile([Mobile / iPad - Touch UI])
+    %% Subgraph 3: Core & Distribution Network
+    subgraph CoreNet [2. Core & Metro Distribution]
+        Scrambler --> Core(["🌐 IP/MPLS Core Backbone"])
+        Core --> VSO(["🏢 Video Serving Office - VSO"])
+        VSO --> Multicast(["🔀 IGMP Multicast Routers"])
+        VSO --> VoDEdge(["💿 Regional VOD & MW Cache"])
     end
 
-    subgraph Sync [4. Cross-Device State Sync]
-        TV <-->|Real-time state exchange| StateDB[(Cloud Firestore State DB)]
-        Mobile <-->|Real-time state exchange| StateDB
+    %% Subgraph 4: Last-Mile Access
+    subgraph LastMile [3. Last-Mile & Edge Access]
+        Multicast --> DSLAM(["⚡ DSLAM / 5G Edge - MEC"])
+        VoDEdge --> DSLAM
+        DSLAM --> Loop{{"〰️ Digital Subscriber Line / 5G Air"}}
     end
 
-    %% Apply custom CSS classes to nodes for dynamic styling
-    class SHE she;
-    class Trans transcoder;
-    class EPG metadata;
-    class ADS adserver;
-    class Backbone backbone;
-    class IGMP multicast;
-    class VSO vso;
-    class MEC edge;
-    class TV tv;
-    class Mobile mobile;
-    class StateDB db;
+    %% Subgraph 5: End-User Premise
+    subgraph Client [4. Client Premise & Playback]
+        Loop --> Gateway(["🏠 Home Gateway & Modem"])
+        Gateway --> STB(["📺 Set-Top Box / Smart TV"])
+        STB --> Decrypt(["🗝️ DRM Decryption Client"])
+        Decrypt --> Player(["🎬 Video Player & 10-Foot UI"])
+    end
+
+    %% Connect Middleware to client
+    MW -.->|User Authentication| STB
+
+    %% CSS class assignments
+    class DB,MW,ADS control-node;
+    class Feeds,VoD,Trans,Scrambler headend-node;
+    class Core,VSO,Multicast,VoDEdge core-node;
+    class DSLAM,Loop loop-node;
+    class Gateway,STB,Decrypt,Player client-node;
           </div>
 
           <h3>Key Architectural Nodes</h3>
