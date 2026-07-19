@@ -1066,6 +1066,7 @@ class _TvPlayerPanel extends StatelessWidget {
                       ? const _TvPlayerPlaceholder()
                       : VideoPlayerWidget(
                           showControls: true,
+                          enableTouchGestures: false,
                           onFullscreenToggle: () =>
                               _openFullscreenPlayer(context),
                         ),
@@ -1200,7 +1201,8 @@ class _TvFullscreenPlayerPageState extends State<_TvFullscreenPlayerPage> {
           child: VideoPlayerWidget(
             key: const ValueKey('airo-tv-fullscreen-video-player'),
             showControls: true,
-            enableSwipeChannelChange: true,
+            enableSwipeChannelChange: false,
+            enableTouchGestures: false,
             initiallyFullscreen: true,
             onFullscreenToggle: _close,
           ),
