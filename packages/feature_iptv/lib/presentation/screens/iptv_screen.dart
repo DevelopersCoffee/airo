@@ -231,14 +231,57 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen> {
                     onChanged: (value) =>
                         ref.read(channelSearchQueryProvider.notifier).state =
                             value,
-                    onSubmitted: (value) async {
-                      final played = await _playSearchAction(value);
-                      if (!context.mounted) return;
-                      if (played) {
-                        Navigator.of(context).pop();
-                      }
+                    onSubmitted: (value) {
+                      // Submitting applies the filter and keeps the results
+                      // list visible — playback stays behind an explicit
+                      // result tap or the Play button so users can browse
+                      // matches first.
+                      ref.read(channelSearchQueryProvider.notifier).state =
+                          value.trim();
                     },
                   ),
+                ),
+                Consumer(
+                  builder: (context, ref, _) {
+                    final query = ref.watch(channelSearchQueryProvider);
+                    if (query.trim().isEmpty) {
+                      return const SizedBox.shrink();
+                    }
+                    final matches = ref.watch(filteredChannelsProvider);
+                    if (matches.isEmpty) {
+                      return Padding(
+                        padding: const EdgeInsets.only(top: 12),
+                        child: Text('No channels match "$query"'),
+                      );
+                    }
+                    return ConstrainedBox(
+                      constraints: const BoxConstraints(maxHeight: 280),
+                      child: ListView.builder(
+                        shrinkWrap: true,
+                        itemCount: matches.length,
+                        itemBuilder: (context, index) {
+                          final channel = matches[index];
+                          return ListTile(
+                            leading: const Icon(Icons.live_tv),
+                            title: Text(
+                              channel.name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            subtitle: Text(
+                              channel.group,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            onTap: () {
+                              _playChannel(channel);
+                              Navigator.of(context).pop();
+                            },
+                          );
+                        },
+                      ),
+                    );
+                  },
                 ),
                 const SizedBox(height: 12),
                 Row(
