@@ -114,4 +114,24 @@ void main() {
     // when a deep link is present.
     expect(find.byKey(const ValueKey('iptv-browse-grid')), findsNothing);
   });
+
+  testWidgets(
+    'deepLinkChannelId for a missing channel falls back to the browse grid',
+    (tester) async {
+      // spec Error Handling: a deep link that resolves to a channel ID no
+      // longer in the playlist must fall back to the normal browse-grid
+      // landing rather than stranding the user on the loading screen.
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: _providerOverrides(played: <IPTVChannel>[]),
+          child: const MaterialApp(
+            home: IPTVScreen(deepLinkChannelId: 'does-not-exist'),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('iptv-browse-grid')), findsOneWidget);
+    },
+  );
 }

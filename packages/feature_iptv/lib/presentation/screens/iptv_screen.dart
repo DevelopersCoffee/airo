@@ -87,16 +87,31 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen> {
         // usually still an in-flight fetch), so a synchronous read would
         // treat every deep link as "channel not found" and immediately fall
         // through to the browse grid -- defeating the point of this gate.
+        // A timeout guards against the future hanging forever (e.g. a
+        // stalled playlist fetch), which would otherwise strand the user on
+        // the bare loading screen with no way to reach the grid.
         IPTVChannel? channel;
         try {
-          final channels = await ref.read(iptvChannelsProvider.future);
+          final channels = await ref
+              .read(iptvChannelsProvider.future)
+              .timeout(const Duration(seconds: 10));
           channel = channels.firstWhereOrNull((c) => c.id == deepLinkId);
-        } catch (_) {
+        } catch (e) {
+          // Covers both a genuine provider error and a timeout — either
+          // way this falls through to "channel not found" below. Logged so
+          // a real provider failure is distinguishable from a normal miss.
+          debugPrint('[IPTVScreen] deep-link channel resolution failed: $e');
           channel = null;
         }
         if (!mounted) return;
         if (channel != null) {
+          // Pre-seed fullscreen mode for this one-shot transition into
+          // playback; after this, showFullscreenPlayer only tracks
+          // isFullscreenModeProvider like any other playback, so the
+          // player's own minimize/fullscreen toggle works normally.
+          ref.read(isFullscreenModeProvider.notifier).state = true;
           _playChannel(channel);
+          setState(() => _deepLinkPending = false);
         } else {
           // Missing (or unresolvable) channel: fall through to the normal
           // browse-grid landing (spec Error Handling) — no snackbar wiring
@@ -106,6 +121,13 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen> {
         }
       });
     }
+  }
+
+  /// Cancels a pending deep-link resolution and falls back to the browse
+  /// grid immediately — the escape hatch shown on the loading screen so a
+  /// user is never stuck waiting on a slow/hung channel-list fetch.
+  void _cancelDeepLinkWait() {
+    setState(() => _deepLinkPending = false);
   }
 
   @override
@@ -458,15 +480,33 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen> {
         widget.deepLinkChannelId != null && _deepLinkPending && !isPlaying;
 
     if (isWaitingForDeepLink) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const CircularProgressIndicator(),
+              const SizedBox(height: 16),
+              // Escape hatch: the user must never be stuck here indefinitely
+              // even before the 10s timeout in initState fires.
+              TextButton.icon(
+                onPressed: _cancelDeepLinkWait,
+                icon: const Icon(Icons.close),
+                label: const Text('Cancel'),
+              ),
+            ],
+          ),
+        ),
+      );
     }
 
-    // Deep-linked entry: once the channel starts playing, land directly on
-    // fullscreen playback instead of the browse grid (spec Goal: tapping a
-    // channel — or a deep link into one — must never route through an
-    // interstitial browse screen).
-    final showFullscreenPlayer =
-        isFullscreen || (widget.deepLinkChannelId != null && isPlaying);
+    // showFullscreenPlayer just tracks isFullscreenModeProvider like any
+    // other playback. The deep-link path pre-seeds that provider to `true`
+    // the moment playback starts (see initState's post-frame callback)
+    // instead of overriding this calculation permanently — otherwise the
+    // player's own minimize/fullscreen-toggle button would never be able
+    // to take a deep-linked channel back to the browse grid.
+    final showFullscreenPlayer = isFullscreen;
 
     if (showFullscreenPlayer) {
       return AiroResponsiveScaffold(
