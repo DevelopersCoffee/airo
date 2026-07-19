@@ -506,15 +506,20 @@ final favoriteChannelsProvider = FutureProvider<List<IPTVChannel>>((ref) async {
       .toList(growable: false);
 });
 
-/// Toggle a channel's favorite state. Returns the new state.
-final toggleChannelFavoriteProvider = FutureProvider.family<bool, String>((
+/// Toggles a channel's favorite state and returns the new state.
+///
+/// A plain callable rather than a FutureProvider.family: a family instance
+/// caches its first result, so a second toggle of the same channel would
+/// silently no-op.
+final channelFavoriteTogglerProvider = Provider<Future<bool> Function(String)>((
   ref,
-  channelId,
-) async {
-  final storage = ref.watch(favoriteChannelsStorageProvider);
-  final isNowFavorite = await storage.toggleFavorite(channelId);
-  ref.invalidate(favoriteChannelIdsProvider);
-  return isNowFavorite;
+) {
+  return (channelId) async {
+    final storage = ref.read(favoriteChannelsStorageProvider);
+    final isNowFavorite = await storage.toggleFavorite(channelId);
+    ref.invalidate(favoriteChannelIdsProvider);
+    return isNowFavorite;
+  };
 });
 
 /// Coordinator for CV-017's favorites-survive-reimport behavior.

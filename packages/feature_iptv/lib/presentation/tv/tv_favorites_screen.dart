@@ -86,7 +86,7 @@ class TvFavoritesScreen extends ConsumerWidget {
                         ref.read(addToRecentlyWatchedProvider(channel));
                       },
                       onSecondaryAction: () {
-                        ref.read(toggleChannelFavoriteProvider(channel.id));
+                        ref.read(channelFavoriteTogglerProvider)(channel.id);
                       },
                       semanticLabel: channel.name,
                       semanticHint:
