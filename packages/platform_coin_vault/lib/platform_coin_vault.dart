@@ -8,3 +8,4 @@ export 'src/domain/entities/bank_account_record.dart';
 export 'src/domain/entities/pan_card_record.dart';
 export 'src/domain/entities/credit_card_record.dart';
 export 'src/domain/entities/secure_document_record.dart';
+export 'src/crypto/field_cipher.dart';
