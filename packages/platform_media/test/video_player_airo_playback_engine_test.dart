@@ -1,4 +1,5 @@
 import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:platform_media/platform_media.dart';
 import 'package:platform_player/platform_player.dart';
@@ -81,13 +82,40 @@ void main() {
       },
     );
 
-    test('diagnostics reports hardware-accelerated after a successful open', () async {
+    test(
+      'diagnostics reports hardware-accelerated after a successful open',
+      () async {
+        final engine = VideoPlayerAiroPlaybackEngine();
+        await engine.open(request());
+
+        final diagnostics = await engine.diagnostics();
+        expect(diagnostics.hardwareAccelerated, isTrue);
+        await engine.dispose();
+      },
+    );
+
+    test('buildView is null before open', () {
+      final engine = VideoPlayerAiroPlaybackEngine();
+      expect(engine.buildView(), isNull);
+    });
+
+    test('buildView returns a sized video surface after open', () async {
       final engine = VideoPlayerAiroPlaybackEngine();
       await engine.open(request());
 
-      final diagnostics = await engine.diagnostics();
-      expect(diagnostics.hardwareAccelerated, isTrue);
+      final view = engine.buildView();
+      expect(view, isA<SizedBox>());
+      expect((view as SizedBox).width, 1920);
+      expect(view.height, 1080);
       await engine.dispose();
+    });
+
+    test('buildView is null again after dispose', () async {
+      final engine = VideoPlayerAiroPlaybackEngine();
+      await engine.open(request());
+      await engine.dispose();
+
+      expect(engine.buildView(), isNull);
     });
   });
 }

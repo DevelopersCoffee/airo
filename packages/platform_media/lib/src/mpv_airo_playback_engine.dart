@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/widgets.dart';
 import 'package:platform_player/platform_player.dart';
 
 import 'mpv/media_kit_mpv_player_facade.dart';
@@ -174,6 +175,14 @@ class MpvAiroPlaybackEngine implements AiroPlaybackEngine {
       _state.request,
     );
   }
+
+  // media_kit's headless Player has no widget surface of its own — a video
+  // view needs media_kit_video's VideoController/Video, which isn't a
+  // dependency yet (adding it needs its own open-source-council review, same
+  // as the exact-pinned media_kit/media_kit_libs_video versions above).
+  // Tracked as CV-030 follow-up rather than added here.
+  @override
+  Widget? buildView() => null;
 
   @override
   Future<void> dispose() async {

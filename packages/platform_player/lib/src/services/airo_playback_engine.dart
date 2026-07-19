@@ -1,3 +1,5 @@
+import 'package:flutter/widgets.dart';
+
 import '../models/playback_engine_models.dart';
 
 abstract class AiroPlaybackEngine {
@@ -33,6 +35,13 @@ abstract class AiroPlaybackEngine {
   Future<AiroPlaybackState> enterPictureInPicture();
 
   Future<AiroPlaybackState> exitPictureInPicture();
+
+  /// Returns the backend's native video-rendering widget, unscaled, or
+  /// `null` when no frame surface is available yet (not opened, or a
+  /// backend that has no visual surface of its own, e.g. [unavailable] or
+  /// [fake]). Callers apply their own fit/aspect-ratio wrapper around the
+  /// result rather than this method handling it.
+  Widget? buildView();
 
   Future<void> dispose();
 }

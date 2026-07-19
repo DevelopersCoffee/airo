@@ -251,6 +251,17 @@ class AiroPlaybackTrackOption extends Equatable {
   List<Object?> get props => [id, kind, label, languageCode];
 }
 
+/// A single contiguous downloaded/decoded range of the media timeline.
+class AiroPlaybackBufferedRange extends Equatable {
+  const AiroPlaybackBufferedRange({required this.start, required this.end});
+
+  final Duration start;
+  final Duration end;
+
+  @override
+  List<Object?> get props => [start, end];
+}
+
 class AiroPlaybackDiagnostics extends Equatable {
   AiroPlaybackDiagnostics({
     required this.backendId,
@@ -318,12 +329,14 @@ class AiroPlaybackState extends Equatable {
     this.selectedQualityId,
     List<AiroPlaybackTrackOption> tracks = const [],
     Map<AiroPlaybackTrackKind, String> selectedTrackIds = const {},
+    List<AiroPlaybackBufferedRange> bufferedRanges = const [],
     this.diagnostics,
     this.error,
     this.schemaVersion = kAiroPlaybackEngineSchemaVersion,
   }) : qualityOptions = List.unmodifiable(qualityOptions),
        tracks = List.unmodifiable(tracks),
-       selectedTrackIds = Map.unmodifiable(selectedTrackIds);
+       selectedTrackIds = Map.unmodifiable(selectedTrackIds),
+       bufferedRanges = List.unmodifiable(bufferedRanges);
 
   factory AiroPlaybackState.idle({
     AiroPlaybackBackendKind backendKind = AiroPlaybackBackendKind.unavailable,
@@ -346,6 +359,7 @@ class AiroPlaybackState extends Equatable {
   final String? selectedQualityId;
   final List<AiroPlaybackTrackOption> tracks;
   final Map<AiroPlaybackTrackKind, String> selectedTrackIds;
+  final List<AiroPlaybackBufferedRange> bufferedRanges;
   final AiroPlaybackDiagnostics? diagnostics;
   final AiroPlaybackError? error;
 
@@ -360,6 +374,7 @@ class AiroPlaybackState extends Equatable {
     String? selectedQualityId,
     List<AiroPlaybackTrackOption>? tracks,
     Map<AiroPlaybackTrackKind, String>? selectedTrackIds,
+    List<AiroPlaybackBufferedRange>? bufferedRanges,
     AiroPlaybackDiagnostics? diagnostics,
     AiroPlaybackError? error,
   }) {
@@ -376,6 +391,7 @@ class AiroPlaybackState extends Equatable {
       selectedQualityId: selectedQualityId ?? this.selectedQualityId,
       tracks: tracks ?? this.tracks,
       selectedTrackIds: selectedTrackIds ?? this.selectedTrackIds,
+      bufferedRanges: bufferedRanges ?? this.bufferedRanges,
       diagnostics: diagnostics ?? this.diagnostics,
       error: error,
     );
@@ -393,6 +409,7 @@ class AiroPlaybackState extends Equatable {
         'playbackSpeed: $playbackSpeed, '
         'selectedQualityId: $selectedQualityId, '
         'selectedTrackIds: $selectedTrackIds, '
+        'bufferedRanges: $bufferedRanges, '
         'diagnostics: $diagnostics, '
         'error: $error'
         ')';
@@ -412,6 +429,7 @@ class AiroPlaybackState extends Equatable {
     selectedQualityId,
     tracks,
     selectedTrackIds,
+    bufferedRanges,
     diagnostics,
     error,
   ];

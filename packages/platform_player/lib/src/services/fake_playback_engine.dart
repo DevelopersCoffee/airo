@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:flutter/widgets.dart';
+
 import '../models/playback_engine_models.dart';
 import 'airo_playback_engine.dart';
 
@@ -178,6 +180,9 @@ class FakeAiroPlaybackEngine implements AiroPlaybackEngine {
       ),
     );
   }
+
+  @override
+  Widget? buildView() => null;
 
   @override
   Future<void> dispose() async {

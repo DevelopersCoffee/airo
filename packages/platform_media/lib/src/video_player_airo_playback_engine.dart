@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart';
 import 'package:platform_player/platform_player.dart';
 import 'package:video_player/video_player.dart';
 
@@ -66,6 +67,7 @@ class VideoPlayerAiroPlaybackEngine implements AiroPlaybackEngine {
     }
     await controller.setVolume(_state.volume);
     await controller.setPlaybackSpeed(_state.playbackSpeed);
+    controller.addListener(_onControllerValueChanged);
 
     _emit(
       _state.copyWith(
@@ -80,6 +82,42 @@ class VideoPlayerAiroPlaybackEngine implements AiroPlaybackEngine {
       ),
     );
     return _state;
+  }
+
+  /// Continuously mirrors `VideoPlayerController.value` into
+  /// [AiroPlaybackState], fired on every native player update (position
+  /// ticks, buffering transitions, errors) — not just on explicit method
+  /// calls. This is what lets [AiroPlaybackEngine] consumers (progress bars,
+  /// buffer-health monitors, live-edge detectors) observe playback without
+  /// holding a reference to the raw controller.
+  void _onControllerValueChanged() {
+    final controller = _controller;
+    if (controller == null) return;
+    final value = controller.value;
+
+    if (value.hasError) {
+      _fail(AiroPlaybackErrorCode.decoderFailed, 'playback', _state.request);
+      return;
+    }
+
+    final nextPhase = value.isBuffering
+        ? AiroPlaybackEnginePhase.buffering
+        : (_state.phase == AiroPlaybackEnginePhase.buffering
+              ? AiroPlaybackEnginePhase.playing
+              : _state.phase);
+
+    _emit(
+      _state.copyWith(
+        phase: nextPhase,
+        position: value.position,
+        duration: value.duration,
+        bufferedRanges: value.buffered
+            .map(
+              (r) => AiroPlaybackBufferedRange(start: r.start, end: r.end),
+            )
+            .toList(),
+      ),
+    );
   }
 
   @override
@@ -180,6 +218,17 @@ class VideoPlayerAiroPlaybackEngine implements AiroPlaybackEngine {
   }
 
   @override
+  Widget? buildView() {
+    final controller = _controller;
+    if (controller == null || !controller.value.isInitialized) return null;
+    return SizedBox(
+      width: controller.value.size.width,
+      height: controller.value.size.height,
+      child: VideoPlayer(controller),
+    );
+  }
+
+  @override
   Future<void> dispose() async {
     await _disposeController();
     await _stateController.close();
@@ -188,6 +237,7 @@ class VideoPlayerAiroPlaybackEngine implements AiroPlaybackEngine {
   Future<void> _disposeController() async {
     final controller = _controller;
     _controller = null;
+    controller?.removeListener(_onControllerValueChanged);
     await controller?.dispose();
   }
 
