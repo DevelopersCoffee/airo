@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:core_ui/core_ui.dart';
 import '../../application/providers/iptv_providers.dart';
+import '../../application/wakelock_playback_coordinator.dart';
 import '../../application/providers/rails_provider.dart';
 import "package:platform_channels/platform_channels.dart";
 import "package:platform_player/platform_player.dart";
@@ -51,6 +52,9 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen> {
     super.initState();
     // Initialize streaming service
     ref.read(iptvStreamingServiceProvider).initialize();
+    // Screen-level wakelock: survives the featured player widget being
+    // scrolled out of the viewport or playback moving to the mini player.
+    ref.read(wakelockPlaybackCoordinatorProvider);
   }
 
   @override
@@ -231,14 +235,57 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen> {
                     onChanged: (value) =>
                         ref.read(channelSearchQueryProvider.notifier).state =
                             value,
-                    onSubmitted: (value) async {
-                      final played = await _playSearchAction(value);
-                      if (!context.mounted) return;
-                      if (played) {
-                        Navigator.of(context).pop();
-                      }
+                    onSubmitted: (value) {
+                      // Submitting applies the filter and keeps the results
+                      // list visible — playback stays behind an explicit
+                      // result tap or the Play button so users can browse
+                      // matches first.
+                      ref.read(channelSearchQueryProvider.notifier).state =
+                          value.trim();
                     },
                   ),
+                ),
+                Consumer(
+                  builder: (context, ref, _) {
+                    final query = ref.watch(channelSearchQueryProvider);
+                    if (query.trim().isEmpty) {
+                      return const SizedBox.shrink();
+                    }
+                    final matches = ref.watch(filteredChannelsProvider);
+                    if (matches.isEmpty) {
+                      return Padding(
+                        padding: const EdgeInsets.only(top: 12),
+                        child: Text('No channels match "$query"'),
+                      );
+                    }
+                    return ConstrainedBox(
+                      constraints: const BoxConstraints(maxHeight: 280),
+                      child: ListView.builder(
+                        shrinkWrap: true,
+                        itemCount: matches.length,
+                        itemBuilder: (context, index) {
+                          final channel = matches[index];
+                          return ListTile(
+                            leading: const Icon(Icons.live_tv),
+                            title: Text(
+                              channel.name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            subtitle: Text(
+                              channel.group,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            onTap: () {
+                              _playChannel(channel);
+                              Navigator.of(context).pop();
+                            },
+                          );
+                        },
+                      ),
+                    );
+                  },
                 ),
                 const SizedBox(height: 12),
                 Row(
@@ -430,6 +477,9 @@ class _IPTVScreenBodyState extends ConsumerState<IPTVScreenBody> {
     super.initState();
     // Initialize streaming service
     ref.read(iptvStreamingServiceProvider).initialize();
+    // Screen-level wakelock: survives the featured player widget being
+    // scrolled out of the viewport or playback moving to the mini player.
+    ref.read(wakelockPlaybackCoordinatorProvider);
   }
 
   @override
