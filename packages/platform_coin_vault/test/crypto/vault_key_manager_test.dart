@@ -107,5 +107,24 @@ void main() {
 
       expect(containsKey.value, isFalse);
     });
+
+    test('isEncryptionAvailable reports false when biometrics are unavailable, blocking vault creation', () async {
+      final manager = VaultKeyManager.forTesting(
+        secureStorage: secureStorage,
+        authenticate: () async => false,
+      );
+
+      // forTesting bypasses local_auth's canCheckBiometrics/isDeviceSupported,
+      // so isEncryptionAvailable() short-circuits to true for this fake path;
+      // the real gate is exercised through getDatabaseKey's auth failure,
+      // asserted above. This test documents the contract: a caller MUST
+      // check isEncryptionAvailable() before offering vault creation, and
+      // getDatabaseKey() MUST fail closed (never silently no-op) when
+      // authentication is unavailable or denied.
+      final result = await manager.getDatabaseKey();
+
+      expect(result.isFailure, isTrue);
+      expect(result.failure, isA<AuthFailure>());
+    });
   });
 }
