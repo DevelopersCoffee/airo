@@ -281,6 +281,533 @@ layout: null
       </div>
     </section>
 
+    <section class="band band-alt" id="capability-matrix">
+      <div class="container">
+        <div class="section-intro">
+          <div>
+            <p class="eyebrow">Interactive Feature Matrix</p>
+            <h2>Airo TV Capability Matrix</h2>
+          </div>
+          <p>Airo is a modular super-app platform; Airo TV is a specialized modular app slice. Toggle any feature on the left or tap a segment on the wheel to view device compatibility and execution layers.</p>
+        </div>
+
+        <style>
+          .matrix-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 32px;
+            margin-top: 40px;
+            align-items: center;
+          }
+          @media (min-width: 992px) {
+            .matrix-grid {
+              grid-template-columns: 240px 1fr 340px;
+            }
+          }
+          .matrix-features-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+          }
+          .feature-btn {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            width: 100%;
+            padding: 14px 16px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--muted);
+            font-family: 'DM Sans', sans-serif;
+            font-size: 14px;
+            font-weight: 600;
+            text-align: left;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+          }
+          .feature-btn:hover, .feature-btn.active {
+            background: var(--surface-2);
+            border-color: var(--green);
+            color: var(--text);
+            box-shadow: 0 4px 20px rgba(0, 230, 118, 0.15);
+            transform: translateX(4px);
+          }
+          .matrix-wheel-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+          }
+          #matrix-svg {
+            width: 100%;
+            max-width: 480px;
+            height: auto;
+            filter: drop-shadow(0 12px 30px rgba(0,0,0,0.5));
+          }
+          .feature-sector {
+            fill: transparent;
+            stroke: transparent;
+            transition: all 0.2s ease;
+            cursor: pointer;
+          }
+          .feature-sector:hover, .feature-sector.active {
+            fill: rgba(0, 230, 118, 0.05) !important;
+            stroke: rgba(0, 230, 118, 0.3) !important;
+            stroke-width: 1.5px !important;
+          }
+          .matrix-cell {
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            transform-origin: center;
+          }
+          .legend-card, .details-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 20px;
+          }
+          .legend-card h3, .details-card h3 {
+            margin-top: 0;
+            margin-bottom: 16px;
+            font-size: 16px;
+            font-weight: 700;
+            letter-spacing: -0.01em;
+            color: var(--text);
+          }
+          .legend-items {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+          }
+          .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            color: var(--muted);
+          }
+          .marker {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+          }
+          .marker-supported { background: var(--green); }
+          .marker-partial { background: #2196f3; }
+          .marker-planned { background: #9c27b0; }
+          .marker-not { background: #f44336; }
+          .marker-keyboard { background: #ffeb3b; }
+          .details-card p {
+            font-size: 14px;
+            line-height: 1.6;
+            color: var(--muted);
+            margin-bottom: 20px;
+          }
+          .details-device-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+          }
+          .details-device-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 14px;
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 500;
+          }
+          .status-badge {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 2px 8px;
+            border-radius: 4px;
+          }
+          .status-badge.supported { color: var(--green); background: rgba(0, 230, 118, 0.1); }
+          .status-badge.partial { color: #2196f3; background: rgba(33, 150, 243, 0.1); }
+          .status-badge.planned { color: #9c27b0; background: rgba(156, 39, 176, 0.1); }
+          .status-badge.not-supported { color: #f44336; background: rgba(244, 67, 54, 0.1); }
+          .status-badge.keyboard { color: #ffeb3b; background: rgba(255, 235, 59, 0.1); }
+          .pipeline-section {
+            margin-top: 64px;
+            padding-top: 48px;
+            border-top: 1px solid var(--border);
+          }
+          .pipeline-title {
+            text-align: center;
+            margin-bottom: 36px;
+          }
+          .pipeline-title h3 {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--text);
+            margin-bottom: 8px;
+          }
+          .pipeline-title p {
+            font-size: 14px;
+            color: var(--muted);
+          }
+          .pipeline-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 20px;
+          }
+          @media (min-width: 768px) {
+            .pipeline-grid {
+              grid-template-columns: repeat(2, 1fr);
+            }
+          }
+          @media (min-width: 1200px) {
+            .pipeline-grid {
+              grid-template-columns: repeat(4, 1fr);
+            }
+          }
+          .pipeline-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 24px;
+            position: relative;
+            overflow: hidden;
+            transition: border-color 0.2s ease;
+          }
+          .pipeline-card:hover {
+            border-color: var(--green);
+          }
+          .pipeline-badge {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            font-size: 10px;
+            font-weight: 800;
+            text-transform: uppercase;
+            background: rgba(0, 230, 118, 0.1);
+            color: var(--green);
+            padding: 2px 6px;
+            border-radius: 4px;
+          }
+          .pipeline-card h4 {
+            font-size: 16px;
+            font-weight: 700;
+            margin-top: 0;
+            margin-bottom: 12px;
+            color: var(--text);
+          }
+          .pipeline-card p {
+            font-size: 13px;
+            line-height: 1.5;
+            color: var(--muted);
+            margin: 0;
+          }
+        </style>
+
+        <div class="matrix-grid">
+          <div class="matrix-features-list" id="matrix-features-list"></div>
+
+          <div class="matrix-wheel-container">
+            <svg id="matrix-svg" viewBox="0 0 600 600" aria-labelledby="matrix-title">
+              <title id="matrix-title">Airo TV Interactive Capability Matrix Wheel</title>
+            </svg>
+          </div>
+
+          <div class="matrix-details-container">
+            <div class="legend-card">
+              <h3>Status Legend</h3>
+              <div class="legend-items">
+                <span class="legend-item"><span class="marker marker-supported"></span> Supported</span>
+                <span class="legend-item"><span class="marker marker-partial"></span> Partial / Optional</span>
+                <span class="legend-item"><span class="marker marker-planned"></span> Planned</span>
+                <span class="legend-item"><span class="marker marker-not"></span> Not Supported</span>
+                <span class="legend-item"><span class="marker marker-keyboard"></span> Keyboard Only</span>
+              </div>
+            </div>
+
+            <div class="details-card" id="matrix-details-card"></div>
+          </div>
+        </div>
+
+        <div class="pipeline-section">
+          <div class="pipeline-title">
+            <h3>Airo TV Platform Composition</h3>
+            <p>High-level architecture split by functional responsibility and platform share.</p>
+          </div>
+          <div class="pipeline-grid">
+            <div class="pipeline-card">
+              <span class="pipeline-badge">15% Share</span>
+              <h4>Device Layer</h4>
+              <p>Device-specific UI and input (Android TV, Mobile, Tablet, PC). Handles remote navigation, touch gestures, keyboard inputs, and voice search.</p>
+            </div>
+            <div class="pipeline-card">
+              <span class="pipeline-badge">20% Share</span>
+              <h4>Platform Services</h4>
+              <p>Shared backend services independent of device (EPG engines, playback history, favorites, recommendations, cross-device sync, offline downloads).</p>
+            </div>
+            <div class="pipeline-card">
+              <span class="pipeline-badge">40% Share</span>
+              <h4>Core Platform</h4>
+              <p>Shared business logic, provider engines, local settings repositories, feature flags, capabilities registry, and the video playback controller.</p>
+            </div>
+            <div class="pipeline-card">
+              <span class="pipeline-badge">25% Share</span>
+              <h4>Open Source Layer</h4>
+              <p>Seamless integration of community protocols and servers: Jellyfin, Plex, Emby, M3U streams, Xtream, Local media files, and FFmpeg/mpv runtimes.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <script type="module">
+      const features = [
+        { id: 'iptv', name: 'IPTV', desc: 'Stream live television channels from M3U or Xtream Codes playlists.', icon: '📺',
+          support: { tv: 'supported', mobile: 'supported', tablet: 'supported', desktop: 'supported' } },
+        { id: 'jellyfin', name: 'Jellyfin', desc: 'Connect to self-hosted Jellyfin servers for complete catalog integration.', icon: '📁',
+          support: { tv: 'supported', mobile: 'supported', tablet: 'supported', desktop: 'supported' } },
+        { id: 'plex', name: 'Plex', desc: 'Aggregate Plex cloud server assets with layout templates.', icon: '📼',
+          support: { tv: 'supported', mobile: 'supported', tablet: 'supported', desktop: 'supported' } },
+        { id: 'emby', name: 'Emby', desc: 'Integrate Emby network streams directly inside player lists.', icon: '📀',
+          support: { tv: 'supported', mobile: 'supported', tablet: 'supported', desktop: 'supported' } },
+        { id: 'local', name: 'Local Media', desc: 'Play files directly from local storage, NAS networks, and SMB nodes.', icon: '💾',
+          support: { tv: 'supported', mobile: 'supported', tablet: 'supported', desktop: 'supported' } },
+        { id: 'remote', name: 'Remote Navigation', desc: 'Interface navigation controlled entirely by standard TV remote D-pads.', icon: '🎮',
+          support: { tv: 'supported', mobile: 'not-supported', tablet: 'not-supported', desktop: 'keyboard' } },
+        { id: 'touch', name: 'Touch Gestures', desc: 'Channel changing swipes and seek controls designed for screens.', icon: '👆',
+          support: { tv: 'not-supported', mobile: 'supported', tablet: 'supported', desktop: 'not-supported' } },
+        { id: 'voice', name: 'Voice Search', desc: 'Search channels and commands via dynamic microphone APIs.', icon: '🎙️',
+          support: { tv: 'supported', mobile: 'supported', tablet: 'planned', desktop: 'planned' } },
+        { id: 'pip', name: 'Picture-in-Picture', desc: 'Float video stream overlay containers while navigating backgrounds.', icon: '🖼️',
+          support: { tv: 'supported', mobile: 'supported', tablet: 'supported', desktop: 'supported' } },
+        { id: 'multiview', name: 'Multi View', desc: 'Run up to 4 concurrent live streams inside a split viewport.', icon: '🔲',
+          support: { tv: 'planned', mobile: 'planned', tablet: 'planned', desktop: 'planned' } },
+        { id: 'recording', name: 'Recording', desc: 'Schedule and save live streams directly to device libraries.', icon: '🔴',
+          support: { tv: 'planned', mobile: 'planned', tablet: 'planned', desktop: 'planned' } }
+      ];
+
+      const deviceLabels = {
+        tv: 'Android TV',
+        mobile: 'Mobile',
+        tablet: 'Tablet',
+        desktop: 'Desktop'
+      };
+
+      const statusIcons = {
+        supported: '<circle cx="{x}" cy="{y}" r="6" fill="var(--green)"/>',
+        partial: '<circle cx="{x}" cy="{y}" r="6" fill="none" stroke="#2196f3" stroke-width="2"/>',
+        planned: '<circle cx="{x}" cy="{y}" r="6" fill="none" stroke="#9c27b0" stroke-width="2"/>',
+        'not-supported': '<circle cx="{x}" cy="{y}" r="4" fill="#f44336"/>',
+        keyboard: '<rect x="{x-5}" y="{y-5}" width="10" height="10" rx="2" fill="#ffeb3b"/>'
+      };
+
+      function initMatrix() {
+        const svg = document.getElementById('matrix-svg');
+        const listContainer = document.getElementById('matrix-features-list');
+        const svgNS = "http://www.w3.org/2000/svg";
+        
+        svg.innerHTML = '';
+        listContainer.innerHTML = '';
+        
+        const cx = 300;
+        const cy = 320;
+        
+        const defs = document.createElementNS(svgNS, 'defs');
+        defs.innerHTML = `<filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+          <feGaussianBlur stdDeviation="6" result="blur" />
+          <feComposite in="SourceGraphic" in2="blur" operator="over" />
+        </filter>`;
+        svg.appendChild(defs);
+
+        const deviceNodes = [
+          { key: 'tv', label: 'Android TV', x: 180, y: 60, rx: 175, ry: 130 },
+          { key: 'mobile', label: 'Mobile', x: 300, y: 40, rx: 300, ry: 130 },
+          { key: 'tablet', label: 'Tablet', x: 420, y: 60, rx: 425, ry: 130 },
+          { key: 'desktop', label: 'Desktop', x: 500, y: 130, rx: 395, ry: 265 }
+        ];
+
+        const radii = [110, 150, 190, 230];
+        radii.forEach((r, idx) => {
+          const ring = document.createElementNS(svgNS, 'circle');
+          ring.setAttribute('cx', cx.toString());
+          ring.setAttribute('cy', cy.toString());
+          ring.setAttribute('r', r.toString());
+          ring.setAttribute('fill', 'none');
+          ring.setAttribute('stroke', 'var(--border)');
+          ring.setAttribute('stroke-dasharray', '4 4');
+          svg.appendChild(ring);
+        });
+
+        deviceNodes.forEach((node) => {
+          const path = document.createElementNS(svgNS, 'path');
+          path.setAttribute('d', `M ${node.x} ${node.y + 16} Q ${node.x} 110 ${node.rx} ${node.ry}`);
+          path.setAttribute('fill', 'none');
+          path.setAttribute('stroke', 'var(--border)');
+          path.setAttribute('stroke-dasharray', '3 3');
+          svg.appendChild(path);
+          
+          const g = document.createElementNS(svgNS, 'g');
+          g.setAttribute('class', 'svg-device-node');
+          g.innerHTML = `<circle cx="${node.x}" cy="${node.y}" r="14" fill="var(--surface)" stroke="var(--border)" stroke-width="1"/>
+          <text x="${node.x}" y="${node.y + 4}" text-anchor="middle" fill="var(--text)" font-size="10" font-family="sans-serif">${node.key === 'tv' ? '📺' : node.key === 'mobile' ? '📱' : node.key === 'tablet' ? '📟' : '💻'}</text>
+          <text x="${node.x}" y="${node.y - 18}" text-anchor="middle" fill="var(--muted)" font-size="11" font-weight="700" font-family="'DM Sans', sans-serif">${node.label}</text>`;
+          svg.appendChild(g);
+        });
+
+        const count = features.length;
+        
+        features.forEach((f, idx) => {
+          const t1 = -90 + idx * (360 / count);
+          const t2 = t1 + (360 / count);
+          const rad1 = t1 * Math.PI / 180;
+          const rad2 = t2 * Math.PI / 180;
+          
+          const x1 = cx + 240 * Math.cos(rad1);
+          const y1 = cy + 240 * Math.sin(rad1);
+          const x2 = cx + 240 * Math.cos(rad2);
+          const y2 = cy + 240 * Math.sin(rad2);
+          const x3 = cx + 70 * Math.cos(rad2);
+          const y3 = cy + 70 * Math.sin(rad2);
+          const x4 = cx + 70 * Math.cos(rad1);
+          const y4 = cy + 70 * Math.sin(rad1);
+          
+          const sector = document.createElementNS(svgNS, 'path');
+          sector.setAttribute('class', 'feature-sector');
+          sector.setAttribute('data-feature', f.id);
+          sector.setAttribute('d', `M ${x1} ${y1} A 240 240 0 0 1 ${x2} ${y2} L ${x3} ${y3} A 70 70 0 0 0 ${x4} ${y4} Z`);
+          sector.addEventListener('mouseenter', () => selectFeature(f.id));
+          svg.appendChild(sector);
+        });
+
+        for(let i = 0; i < count; i++) {
+          const angle = -90 + (i * 360 / count);
+          const rad = angle * Math.PI / 180;
+          const x1 = cx + 70 * Math.cos(rad);
+          const y1 = cy + 70 * Math.sin(rad);
+          const x2 = cx + 240 * Math.cos(rad);
+          const y2 = cy + 240 * Math.sin(rad);
+          
+          const line = document.createElementNS(svgNS, 'line');
+          line.setAttribute('x1', x1.toString());
+          line.setAttribute('y1', y1.toString());
+          line.setAttribute('x2', x2.toString());
+          line.setAttribute('y2', y2.toString());
+          line.setAttribute('stroke', 'var(--border)');
+          line.setAttribute('stroke-width', '1');
+          svg.appendChild(line);
+        }
+
+        const coreGroup = document.createElementNS(svgNS, 'g');
+        coreGroup.innerHTML = `<circle cx="${cx}" cy="${cy}" r="70" fill="var(--surface)" stroke="var(--green)" stroke-width="2" filter="url(#glow)"/>
+        <text x="${cx}" y="${cy - 5}" text-anchor="middle" fill="var(--green)" font-weight="800" font-size="20" font-family="'DM Sans', sans-serif">airo</text>
+        <text x="${cx}" y="${cy + 18}" text-anchor="middle" fill="var(--text)" font-weight="700" font-size="16" font-family="'DM Sans', sans-serif">TV</text>`;
+        svg.appendChild(coreGroup);
+
+        const deviceKeys = ['desktop', 'tablet', 'mobile', 'tv'];
+        features.forEach((f, fIdx) => {
+          const t1 = -90 + fIdx * (360 / count);
+          const t2 = t1 + (360 / count);
+          const midAngle = t1 + (t2 - t1) / 2;
+          const rad = midAngle * Math.PI / 180;
+          
+          deviceKeys.forEach((dev, devIdx) => {
+            const r = radii[devIdx];
+            const x = cx + r * Math.cos(rad);
+            const y = cy + r * Math.sin(rad);
+            
+            const status = f.support[dev];
+            const cellG = document.createElementNS(svgNS, 'g');
+            cellG.setAttribute('class', 'matrix-cell');
+            cellG.setAttribute('data-feature', f.id);
+            cellG.setAttribute('data-device', dev);
+            
+            let iconSvg = statusIcons[status]
+              .replace('{x}', x.toFixed(1))
+              .replace('{y}', y.toFixed(1))
+              .replace('{x-5}', (x - 5).toFixed(1))
+              .replace('{y-5}', (y - 5).toFixed(1));
+              
+            cellG.innerHTML = `${iconSvg}
+            <circle cx="${x}" cy="${y}" r="15" fill="transparent" style="cursor:pointer;"/>`;
+            
+            cellG.addEventListener('mouseenter', () => selectFeature(f.id));
+            svg.appendChild(cellG);
+          });
+        });
+
+        features.forEach((f) => {
+          const btn = document.createElement('button');
+          btn.setAttribute('type', 'button');
+          btn.setAttribute('class', 'feature-btn');
+          btn.setAttribute('data-feature', f.id);
+          btn.innerHTML = `<span>${f.icon}</span> <span>${f.name}</span>`;
+          btn.addEventListener('mouseenter', () => selectFeature(f.id));
+          listContainer.appendChild(btn);
+        });
+
+        selectFeature('iptv');
+      }
+
+      function selectFeature(featureId) {
+        document.querySelectorAll('.feature-btn').forEach(btn => {
+          if(btn.getAttribute('data-feature') === featureId) {
+            btn.classList.add('active');
+          } else {
+            btn.classList.remove('active');
+          }
+        });
+
+        document.querySelectorAll('.feature-sector').forEach(sector => {
+          if(sector.getAttribute('data-feature') === featureId) {
+            sector.classList.add('active');
+          } else {
+            sector.classList.remove('active');
+          }
+        });
+
+        document.querySelectorAll('.matrix-cell').forEach(cell => {
+          if(cell.getAttribute('data-feature') === featureId) {
+            cell.style.opacity = '1';
+            cell.style.transform = 'scale(1.2)';
+          } else {
+            cell.style.opacity = '0.7';
+            cell.style.transform = 'scale(1)';
+          }
+        });
+
+        const feature = features.find(f => f.id === featureId);
+        if(!feature) return;
+
+        const detailsCard = document.getElementById('matrix-details-card');
+        const deviceKeys = ['tv', 'mobile', 'tablet', 'desktop'];
+        
+        let deviceRowsHtml = '';
+        deviceKeys.forEach(dev => {
+          const status = feature.support[dev];
+          const statusLabel = status === 'supported' ? 'Supported' : status === 'partial' ? 'Partial' : status === 'planned' ? 'Planned' : status === 'keyboard' ? 'Keyboard Only' : 'Not Supported';
+          deviceRowsHtml += `
+            <div class="details-device-row">
+              <span>${deviceLabels[dev]}</span>
+              <span class="status-badge ${status}">${statusLabel}</span>
+            </div>
+          `;
+        });
+
+        detailsCard.innerHTML = `
+          <h3>${feature.icon} &nbsp; ${feature.name}</h3>
+          <p>${feature.desc}</p>
+          <div class="details-device-list">
+            ${deviceRowsHtml}
+          </div>
+        `;
+      }
+
+      window.addEventListener('DOMContentLoaded', initMatrix);
+    </script>
+
+
     <section class="band band-alt" id="guides">
       <div class="container">
         <div class="section-intro">
