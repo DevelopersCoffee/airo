@@ -59,6 +59,58 @@ void main() {
     expect(find.text('No favorite channels yet'), findsOneWidget);
   });
 
+  testWidgets(
+    'shows the favorite-reimport review banner when a candidate is pending (CV-017)',
+    (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      final engine = FakeAiroPlaybackEngine(tracks: const []);
+      final service = VideoPlayerStreamingService(engine: engine);
+      addTearDown(service.dispose);
+
+      const oldChannel = IPTVChannel(
+        id: 'a1',
+        name: 'BBC One HD',
+        streamUrl: 'https://example.com/a1.m3u8',
+      );
+      const candidateChannel = IPTVChannel(
+        id: 'b9',
+        name: 'bbc-one',
+        streamUrl: 'https://example.com/b9.m3u8',
+      );
+
+      final container = ProviderContainer(
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          iptvChannelsProvider.overrideWith((ref) async => const []),
+          iptvStreamingServiceProvider.overrideWithValue(service),
+        ],
+      );
+      addTearDown(container.dispose);
+      container
+          .read(favoriteReimportReviewCandidatesProvider.notifier)
+          .state = [
+        const FavoriteReviewCandidate(
+          oldChannel: oldChannel,
+          candidate: candidateChannel,
+        ),
+      ];
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(
+            home: MobileFavoritesScreen(onChannelSelected: () {}),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('looks like'), findsOneWidget);
+      await service.stop();
+    },
+  );
+
   testWidgets('renders favorited channels with name and group', (tester) async {
     await pumpScreen(tester, favoriteIds: {'news-1', 'sports-1'});
 
