@@ -112,6 +112,74 @@ permalink: /iptv-research/
       display: flex;
       justify-content: center;
     }
+    /* Mermaid dark theme overrides */
+    .mermaid svg {
+      background: transparent !important;
+      max-width: 100% !important;
+      height: auto !important;
+    }
+    .mermaid .subgraph, .mermaid .cluster {
+      fill: #0b1313 !important;
+      stroke: var(--border) !important;
+      stroke-width: 1.5px !important;
+      rx: 12px !important;
+      ry: 12px !important;
+    }
+    .mermaid .cluster-label text, .mermaid .subgraph-title {
+      fill: var(--text) !important;
+      font-weight: 700 !important;
+      font-family: 'DM Sans', sans-serif !important;
+      letter-spacing: -0.02em;
+    }
+    .mermaid .node rect, .mermaid .node circle, .mermaid .node polygon, .mermaid .node path {
+      fill: var(--surface-2) !important;
+      stroke: var(--border) !important;
+      stroke-width: 1.5px !important;
+    }
+    .mermaid .node .label {
+      color: var(--text) !important;
+      font-family: 'DM Sans', sans-serif !important;
+      font-weight: 500 !important;
+    }
+    .mermaid .edgePath .path {
+      stroke: var(--green) !important;
+      stroke-width: 2px !important;
+    }
+    .mermaid .edgeLabel rect {
+      fill: var(--surface) !important;
+    }
+    .mermaid .edgeLabel text {
+      fill: var(--muted) !important;
+      font-family: 'DM Sans', sans-serif !important;
+      font-size: 13px !important;
+    }
+    /* Custom node class highlights matching our brand colors */
+    .mermaid .node.she rect, .mermaid .node.she path,
+    .mermaid .node.transcoder rect, .mermaid .node.transcoder path,
+    .mermaid .node.metadata rect, .mermaid .node.metadata path,
+    .mermaid .node.adserver rect, .mermaid .node.adserver path {
+      stroke: #0288d1 !important;
+      fill: oklch(0.16 0.03 230) !important;
+    }
+    .mermaid .node.backbone rect, .mermaid .node.backbone path,
+    .mermaid .node.multicast rect, .mermaid .node.multicast path,
+    .mermaid .node.vso rect, .mermaid .node.vso path {
+      stroke: var(--green) !important;
+      fill: oklch(0.16 0.04 140) !important;
+    }
+    .mermaid .node.edge rect, .mermaid .node.edge path {
+      stroke: #f57c00 !important;
+      fill: oklch(0.16 0.04 40) !important;
+    }
+    .mermaid .node.tv rect, .mermaid .node.tv path,
+    .mermaid .node.mobile rect, .mermaid .node.mobile path {
+      stroke: #7b1fa2 !important;
+      fill: oklch(0.16 0.04 300) !important;
+    }
+    .mermaid .node.db rect, .mermaid .node.db path {
+      stroke: #607d8b !important;
+      fill: oklch(0.16 0.02 250) !important;
+    }
     .math-block {
       background: var(--surface);
       border-left: 4px solid var(--green);
@@ -249,47 +317,41 @@ permalink: /iptv-research/
           
           <div class="mermaid">
 graph TD
-    %% Node Styling Classes
-    classDef headend fill:#e1f5fe,stroke:#0288d1,stroke-width:2px,color:#01579b;
-    classDef network fill:#e8f5e9,stroke:#388e3c,stroke-width:2px,color:#1b5e20;
-    classDef edge fill:#fff3e0,stroke:#f57c00,stroke-width:2px,color:#e65100;
-    classDef client fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,color:#4a148c;
-    classDef sync fill:#eceff1,stroke:#607d8b,stroke-width:2px,stroke-dasharray: 5 5,color:#263238;
-
     subgraph Acquisition [1. Content Acquisition Layer]
-        SHE[Super Head End - SHE] -->|Ingests & Transcodes| Trans[Transcoder Cluster]
-        Trans --> EPG[EPG & Metadata Injection]
-        Trans --> ADS[Ad Decision Server - ADS]
+        SHE([Super Head End - SHE]) -->|Ingests & Transcodes| Trans([Transcoder Cluster])
+        Trans --> EPG([EPG & Metadata Injection])
+        Trans --> ADS([Ad Decision Server - ADS])
     end
 
     subgraph Distribution [2. Managed Distribution Network]
-        EPG -->|Core Fiber Backbone| Backbone[High-Speed Core Routers]
-        Backbone -->|IGMP Multicast Stream| IGMP[IGMP Multicast Routers]
-        IGMP -->|Dynamic Packet Duplication| VSO[Video Servicing Office - VSO]
+        EPG -->|Core Fiber Backbone| Backbone([High-Speed Core Routers])
+        Backbone -->|IGMP Multicast Stream| IGMP([IGMP Multicast Routers])
+        IGMP -->|Dynamic Packet Duplication| VSO([Video Servicing Office - VSO])
     end
 
     subgraph Access [3. Edge & End-User Access]
-        VSO -->|5G / FWA High-Speed Access| MEC[Mobile Edge Computing - MEC Cache]
-        MEC -->|HLS / DASH Playlists| TV[Smart TV - 10-Foot UI]
-        MEC -->|Cellular / Wi-Fi Access| Mobile[Mobile / iPad - Touch UI]
+        VSO -->|5G / FWA High-Speed Access| MEC([Mobile Edge Computing - MEC Cache])
+        MEC -->|HLS / DASH Playlists| TV([Smart TV - 10-Foot UI])
+        MEC -->|Cellular / Wi-Fi Access| Mobile([Mobile / iPad - Touch UI])
     end
 
     subgraph Sync [4. Cross-Device State Sync]
-        TV <-->|Real-time state exchange| StateDB[(Cloud Firestore state DB)]
+        TV <-->|Real-time state exchange| StateDB[(Cloud Firestore State DB)]
         Mobile <-->|Real-time state exchange| StateDB
     end
 
-    %% Apply Classes
-    class SHE,Trans,EPG,ADS Acquisition;
-    class Backbone,IGMP,VSO Distribution;
-    class MEC,TV,Mobile Access;
-    class StateDB Sync;
-
-    class SHE,Trans,EPG,ADS headend;
-    class Backbone,IGMP,VSO network;
+    %% Apply custom CSS classes to nodes for dynamic styling
+    class SHE she;
+    class Trans transcoder;
+    class EPG metadata;
+    class ADS adserver;
+    class Backbone backbone;
+    class IGMP multicast;
+    class VSO vso;
     class MEC edge;
-    class TV,Mobile client;
-    class StateDB sync;
+    class TV tv;
+    class Mobile mobile;
+    class StateDB db;
           </div>
 
           <h3>Key Architectural Nodes</h3>
