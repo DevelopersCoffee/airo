@@ -12,6 +12,7 @@ export "src/models/player_view_state.dart";
 export "src/models/streaming_state.dart";
 export "src/services/airo_cast_controller.dart";
 export "src/services/airo_playback_engine.dart";
+export "src/services/background_audio_mode.dart";
 export "src/services/cast_log_redaction.dart";
 export "src/services/fake_airo_cast_controller.dart";
 export "src/services/fake_playback_engine.dart";
