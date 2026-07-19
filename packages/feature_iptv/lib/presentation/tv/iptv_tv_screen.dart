@@ -234,7 +234,7 @@ class _TvBrowseLayout extends ConsumerWidget {
     final favoriteChannelIds =
         ref.watch(favoriteChannelIdsProvider).value ?? const <String>{};
     void toggleFavorite(IPTVChannel channel) {
-      ref.read(toggleChannelFavoriteProvider(channel.id));
+      ref.read(channelFavoriteTogglerProvider)(channel.id);
     }
 
     final viewport = MediaQuery.sizeOf(context);

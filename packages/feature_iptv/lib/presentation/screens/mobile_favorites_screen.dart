@@ -87,8 +87,9 @@ class MobileFavoritesScreen extends ConsumerWidget {
                       trailing: IconButton(
                         icon: Icon(Icons.favorite, color: colorScheme.error),
                         tooltip: 'Remove from favorites',
-                        onPressed: () =>
-                            ref.read(toggleChannelFavoriteProvider(channel.id)),
+                        onPressed: () => ref.read(
+                          channelFavoriteTogglerProvider,
+                        )(channel.id),
                       ),
                       onTap: () {
                         ref
