@@ -1,3 +1,4 @@
+import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:audioplayers/audioplayers.dart';
 import '../models/dictionary_entry.dart';
@@ -126,7 +127,7 @@ class _DictionaryPopupState extends State<DictionaryPopup> {
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(const SnackBar(content: Text('Failed to play audio')));
+        ).showSnackBar(SnackBar(content: Text(AiroVoice.errorGeneric.pick())));
       }
     }
   }
