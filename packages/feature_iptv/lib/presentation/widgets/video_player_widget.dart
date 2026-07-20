@@ -181,8 +181,17 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
   // attempt (see manualAudioOnlyToggled).
   Future<void> _toggleAudioOnly() async {
     final next = !_isAudioOnly;
+    final previous = _isAudioOnly;
     setState(() => _isAudioOnly = next);
-    await AiroBackgroundAudioMode.setEnabled(next);
+    try {
+      await AiroBackgroundAudioMode.setEnabled(next);
+    } catch (e) {
+      debugPrint('Failed to set audio-only mode: $e');
+      if (!mounted) return;
+      setState(() => _isAudioOnly = previous);
+      return;
+    }
+    if (!mounted) return;
     ref
         .read(playerBackgroundingCoordinatorProvider)
         .manualAudioOnlyToggled(next);
