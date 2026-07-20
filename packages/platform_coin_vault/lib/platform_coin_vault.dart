@@ -16,3 +16,4 @@ export 'src/data/bank_account_repository.dart';
 export 'src/data/pan_card_repository.dart';
 export 'src/data/credit_card_repository.dart';
 export 'src/data/secure_document_repository.dart';
+export 'src/data/vault_key_rotation_service.dart';

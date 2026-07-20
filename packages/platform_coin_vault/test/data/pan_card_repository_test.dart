@@ -65,4 +65,42 @@ void main() {
 
     expect(fetched.value?.cardImageBlob, blob);
   });
+
+  test(
+    'create leaves no placeholder row behind when encryption throws mid-create',
+    () async {
+      final throwingRepository = PanCardRepository(
+        database: vaultDb,
+        fieldCipher: _ThrowingFieldCipher(),
+      );
+      final record = PanCardRecord(id: null, panNumber: 'ABCDE1234F', nameOnCard: 'Jane Doe');
+
+      final result = await throwingRepository.create(record, keyBytes);
+      expect(result.isFailure, isTrue);
+
+      final rows = await vaultDb.db.query(VaultTables.panCards);
+      expect(
+        rows,
+        isEmpty,
+        reason:
+            'the insert-then-update sequence is now wrapped in a transaction, so '
+            'an exception thrown by encryptField() must roll back the placeholder '
+            'insert too, not leave a zombie row with empty-string ciphertext',
+      );
+    },
+  );
+}
+
+/// Throws from [encryptField] to simulate an exception occurring between the
+/// placeholder insert and the ciphertext update inside `create()`, proving
+/// the surrounding transaction rolls back the placeholder insert too.
+class _ThrowingFieldCipher extends FieldCipher {
+  @override
+  Future<String> encryptField(
+    String plaintext,
+    List<int> keyBytes, {
+    required String context,
+  }) {
+    throw StateError('simulated encryption failure for atomicity test');
+  }
 }
