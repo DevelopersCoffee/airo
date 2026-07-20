@@ -9,6 +9,8 @@ import UIKit
   private let agentConnectorsChannel = "com.airo.agent_connectors"
   private let eventStore = EKEventStore()
   private var pendingCreateEventResult: FlutterResult?
+  private let pictureInPicturePlugin = AiroPictureInPicturePlugin()
+  private let backgroundAudioPlugin = AiroBackgroundAudioPlugin()
 
   override func application(
     _ application: UIApplication,
@@ -24,6 +26,9 @@ import UIKit
       channel.setMethodCallHandler { [weak self] call, result in
         self?.handleAgentConnectorCall(call, result: result)
       }
+
+      pictureInPicturePlugin.register(with: controller.binaryMessenger)
+      backgroundAudioPlugin.register(with: controller.binaryMessenger)
     }
 
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
