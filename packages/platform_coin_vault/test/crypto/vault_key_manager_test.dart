@@ -123,5 +123,44 @@ void main() {
       expect(available, isFalse);
       expect(keyResult.isSuccess, isTrue);
     });
+
+    test('generateCandidateKey returns a 32-byte key without persisting it', () async {
+      final manager = VaultKeyManager.forTesting(
+        secureStorage: secureStorage,
+        authenticate: () async => true,
+      );
+
+      final candidate = manager.generateCandidateKey();
+      final stored = await secureStorage.containsKey('airo_coin_wrapped_dek');
+
+      expect(candidate, hasLength(32));
+      expect(stored.value, isFalse);
+    });
+
+    test('commitRotatedKey persists the given key as the active DEK', () async {
+      final manager = VaultKeyManager.forTesting(
+        secureStorage: secureStorage,
+        authenticate: () async => true,
+      );
+
+      final candidate = manager.generateCandidateKey();
+      final commitResult = await manager.commitRotatedKey(candidate);
+      final active = await manager.getDatabaseKey();
+
+      expect(commitResult.isSuccess, isTrue);
+      expect(active.value, equals(candidate));
+    });
+
+    test('commitRotatedKey fails closed when authentication is denied', () async {
+      final manager = VaultKeyManager.forTesting(
+        secureStorage: secureStorage,
+        authenticate: () async => false,
+      );
+
+      final result = await manager.commitRotatedKey(List<int>.filled(32, 1));
+
+      expect(result.isFailure, isTrue);
+      expect(result.failure, isA<AuthFailure>());
+    });
   });
 }

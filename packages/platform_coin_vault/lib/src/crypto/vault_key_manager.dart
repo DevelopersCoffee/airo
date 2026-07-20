@@ -100,6 +100,28 @@ class VaultKeyManager implements EncryptionKeyManager {
     return _secureStorage.write(_wrappedDekKey, _encodeKey(newKey));
   }
 
+  /// Generates a new candidate DEK without persisting it. Pair with
+  /// [commitRotatedKey] via `VaultKeyRotationService.rotateKeyWithReencryption()`
+  /// — never call [commitRotatedKey] with a candidate key before all vault
+  /// data has been re-encrypted under it.
+  List<int> generateCandidateKey() => _generateKeyBytes();
+
+  /// Persists [newKeyBytes] as the active DEK. Only call this after all
+  /// vault data has been re-encrypted under [newKeyBytes] — see
+  /// `VaultKeyRotationService.rotateKeyWithReencryption()`.
+  Future<Result<void>> commitRotatedKey(List<int> newKeyBytes) async {
+    final bool authenticated;
+    try {
+      authenticated = await _authenticate();
+    } catch (e) {
+      return Failure(AuthFailure(message: 'Biometric authentication failed', cause: e));
+    }
+    if (!authenticated) {
+      return const Failure(AuthFailure(message: 'Biometric authentication failed'));
+    }
+    return _secureStorage.write(_wrappedDekKey, _encodeKey(newKeyBytes));
+  }
+
   @override
   Future<bool> isEncryptionAvailable() async {
     if (_localAuth == null) return _isAvailable?.call() ?? true;
