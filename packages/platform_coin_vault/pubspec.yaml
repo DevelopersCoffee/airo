@@ -12,6 +12,8 @@ dependencies:
     sdk: flutter
   core_domain:
     path: ../core_domain
+  core_data:
+    path: ../core_data
   cryptography: ^2.7.0
   local_auth: ^2.3.0
   flutter_secure_storage: ^10.3.1

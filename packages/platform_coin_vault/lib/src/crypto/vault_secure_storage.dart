@@ -1,20 +1,10 @@
+import 'package:core_data/core_data.dart';
 import 'package:core_domain/core_domain.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
-import 'vault_key_manager.dart';
-
-/// [VaultKeyStore] backed by `flutter_secure_storage` — Android Keystore /
-/// iOS Keychain, same options pattern as core_data's `FlutterSecureStore`.
-///
-/// Not implemented against core_data's `SecureStorage`/`EncryptionKeyManager`
-/// interfaces (`package:core_data/src/secure/secure_storage.dart`): that file
-/// is not exported from `core_data.dart` and is not the pattern any other
-/// package in the repo actually implements — `core_data`'s own
-/// `FlutterSecureStore` implements the exported `SecureStore` interface
-/// (`src/storage/secure_store.dart`) instead. `VaultKeyStore` is this
-/// package's own minimal, `Result`-returning contract, defined locally so no
-/// dependency on unexported `core_data` internals is needed.
-class VaultSecureStorage implements VaultKeyStore {
+/// [SecureStorage] (from `core_data`) backed by `flutter_secure_storage` —
+/// Android Keystore / iOS Keychain, configured for biometric binding.
+class VaultSecureStorage implements SecureStorage {
   VaultSecureStorage({FlutterSecureStorage? storage})
     : _storage = storage ?? const FlutterSecureStorage(
         aOptions: AndroidOptions.biometric(
