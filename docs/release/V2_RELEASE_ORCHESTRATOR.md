@@ -137,6 +137,24 @@ When `dry_run` is `true`, the orchestrator forces GitHub Release publication
 off and sets the TV and mobile/tablet Play tracks plus Firebase distribution to
 `none`.
 
+## RC/Dogfood Signing
+
+`production_signing` is `false` by default and is **always** `false` on the
+`v2*` tag-push trigger (tag pushes carry no `workflow_dispatch` inputs, so the
+default applies unconditionally). Without a stable cert, each RC build would
+get its own freshly generated, throwaway keystore, and installing a new RC
+over an older one fails with `INSTALL_FAILED_UPDATE_INCOMPATIBLE`.
+
+To keep RC installs upgradable, the TV and mobile/tablet release workflows
+sign with a stable `DOGFOOD_KEYSTORE_BASE64` secret (plus
+`DOGFOOD_KEYSTORE_PASSWORD`, `DOGFOOD_KEY_ALIAS`, `DOGFOOD_KEY_PASSWORD`) when
+`production_signing` is not `true`. If that secret is not configured, the
+workflows fall back to the old per-run ephemeral `ci-validation` keystore and
+emit a `::warning::` that the build will not upgrade any prior install. The
+generated GitHub Release notes state which cert signed each artifact
+(`production`, `dogfood-stable`, or `ephemeral-ci-validation`) so this is
+never a guessing game when installing an RC.
+
 ## Human Decisions Still Needed
 
 - Final v2 tag naming policy beyond the current `v2*` automation trigger.

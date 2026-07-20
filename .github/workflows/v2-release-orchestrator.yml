@@ -504,6 +504,8 @@ jobs:
           RELEASE_SHA: ${{ needs.prepare.outputs.release_sha }}
           MOBILE_PROFILE: ${{ needs.prepare.outputs.mobile_profile }}
           MACOS_PROFILE: ${{ needs.prepare.outputs.macos_profile }}
+          TV_SIGNING_CERT: ${{ needs.tv-release.outputs.signing_cert }}
+          MOBILE_SIGNING_CERT: ${{ needs.mobile-tablet-release.outputs.signing_cert }}
         run: |
           rm -rf github-release-assets
           mkdir -p github-release-assets
@@ -562,6 +564,15 @@ jobs:
             --repository "$GITHUB_REPOSITORY"
           mv github-release-assets/Release-Manifest.json "github-release-assets/Airo-${BUILD_NAME}-Release-Manifest.json"
 
+          describe_cert() {
+            case "$1" in
+              production) echo "production keystore (upgrades cleanly over prior production-signed releases)" ;;
+              dogfood-stable) echo "stable dogfood keystore (upgrades cleanly over other dogfood-signed builds, NOT over production-signed releases)" ;;
+              ephemeral-ci-validation|"") echo "ephemeral CI-validation keystore generated for this run only (will NOT install over any other RC/CI build; uninstall the previous build first)" ;;
+              *) echo "$1" ;;
+            esac
+          }
+
           notes="github-release-assets/Airo-${BUILD_NAME}-Release-Notes.md"
           {
             echo "# Airo ${BUILD_NAME}"
@@ -573,6 +584,15 @@ jobs:
             find github-release-assets -maxdepth 1 -type f \
               \( -name '*.apk' -o -name '*.aab' -o -name '*.zip' -o -name '*.dmg' -o -name '*.rb' -o -name '*Release-Manifest.json' -o -name 'SHA256SUMS' \) \
               -printf '- %f\n' | sort
+            echo ""
+            echo "## Signing"
+            echo ""
+            if [ -f "release-artifacts/tv/Airo-TV-${BUILD_NAME}.apk" ]; then
+              echo "- TV APK/AAB: $(describe_cert "$TV_SIGNING_CERT")"
+            fi
+            if [ "$MOBILE_PROFILE" != "none" ]; then
+              echo "- Mobile/tablet APK/AAB: $(describe_cert "$MOBILE_SIGNING_CERT")"
+            fi
             echo ""
             echo "## Verification"
             echo ""
