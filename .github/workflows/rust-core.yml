@@ -82,7 +82,7 @@ jobs:
           distribution: temurin
 
       - name: Set up Android SDK + NDK
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@v4
 
       - name: Install NDK
         run: echo "y" | sdkmanager "ndk;27.2.12479018"
