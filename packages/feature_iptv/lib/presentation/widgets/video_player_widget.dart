@@ -33,6 +33,14 @@ class VideoPlayerWidget extends ConsumerStatefulWidget {
   /// fullscreen."
   final VoidCallback? onBack;
 
+  /// Test seam for the manual audio-only toggle's platform call. Defaults to
+  /// [AiroBackgroundAudioMode.setEnabled], which by design never throws (it
+  /// swallows platform failures so local state always reflects user intent —
+  /// see platform_player's background_audio_mode_test.dart). Injecting a
+  /// throwing function here is the only way to exercise this widget's
+  /// revert-on-failure path in tests.
+  final Future<void> Function(bool enabled)? setAudioOnlyMode;
+
   const VideoPlayerWidget({
     super.key,
     this.showControls = true,
@@ -42,6 +50,7 @@ class VideoPlayerWidget extends ConsumerStatefulWidget {
     this.enableTouchGestures = true,
     this.brightnessController,
     this.onBack,
+    this.setAudioOnlyMode,
   });
 
   @override
@@ -63,6 +72,7 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
   bool _isLocked = false;
   double _brightness = 0.5;
   late final PlayerBrightnessController _brightnessController;
+  late final Future<void> Function(bool enabled) _setAudioOnlyMode;
 
   // VOD seek bar drag state — null when the user isn't actively dragging,
   // so the slider tracks live playback position between drags.
@@ -79,6 +89,8 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
     _isFullscreen = widget.initiallyFullscreen;
     _brightnessController =
         widget.brightnessController ?? SystemPlayerBrightnessController();
+    _setAudioOnlyMode =
+        widget.setAudioOnlyMode ?? AiroBackgroundAudioMode.setEnabled;
     _loadInitialBrightness();
     _startHideControlsTimer();
     // Wakelock is managed by WakelockPlaybackCoordinator at screen scope,
@@ -184,7 +196,7 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
     final previous = _isAudioOnly;
     setState(() => _isAudioOnly = next);
     try {
-      await AiroBackgroundAudioMode.setEnabled(next);
+      await _setAudioOnlyMode(next);
     } catch (e) {
       debugPrint('Failed to set audio-only mode: $e');
       if (!mounted) return;
