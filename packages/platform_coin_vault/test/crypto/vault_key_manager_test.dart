@@ -1,47 +1,13 @@
+import 'package:core_data/core_data.dart';
 import 'package:core_domain/core_domain.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:platform_coin_vault/src/crypto/vault_key_manager.dart';
 
-/// In-memory fake standing in for the real flutter_secure_storage-backed
-/// SecureStorage — mirrors core_data's InMemorySecureStore pattern.
-class _FakeSecureStorage implements VaultKeyStore {
-  final Map<String, String> _store = {};
-
-  @override
-  Future<Result<String?>> read(String key) async => Success(_store[key]);
-
-  @override
-  Future<Result<void>> write(String key, String value) async {
-    _store[key] = value;
-    return const Success(null);
-  }
-
-  @override
-  Future<Result<void>> delete(String key) async {
-    _store.remove(key);
-    return const Success(null);
-  }
-
-  @override
-  Future<Result<void>> deleteAll() async {
-    _store.clear();
-    return const Success(null);
-  }
-
-  @override
-  Future<Result<bool>> containsKey(String key) async =>
-      Success(_store.containsKey(key));
-
-  @override
-  Future<Result<List<String>>> getAllKeys() async =>
-      Success(_store.keys.toList());
-}
-
 void main() {
-  late _FakeSecureStorage secureStorage;
+  late InMemorySecureStorage secureStorage;
 
   setUp(() {
-    secureStorage = _FakeSecureStorage();
+    secureStorage = InMemorySecureStorage();
   });
 
   group('VaultKeyManager', () {
@@ -114,13 +80,6 @@ void main() {
         authenticate: () async => false,
       );
 
-      // forTesting bypasses local_auth's canCheckBiometrics/isDeviceSupported,
-      // so isEncryptionAvailable() short-circuits to true for this fake path;
-      // the real gate is exercised through getDatabaseKey's auth failure,
-      // asserted above. This test documents the contract: a caller MUST
-      // check isEncryptionAvailable() before offering vault creation, and
-      // getDatabaseKey() MUST fail closed (never silently no-op) when
-      // authentication is unavailable or denied.
       final result = await manager.getDatabaseKey();
 
       expect(result.isFailure, isTrue);
@@ -159,14 +118,49 @@ void main() {
       );
 
       final available = await manager.isEncryptionAvailable();
-      // isEncryptionAvailable() and getDatabaseKey() are separate contracts:
-      // the former is the pre-check callers use before offering vault
-      // creation, the latter is the crypto-level fail-closed backstop. They
-      // must be independently correct — assert both here.
       final keyResult = await manager.getDatabaseKey();
 
       expect(available, isFalse);
       expect(keyResult.isSuccess, isTrue);
+    });
+
+    test('generateCandidateKey returns a 32-byte key without persisting it', () async {
+      final manager = VaultKeyManager.forTesting(
+        secureStorage: secureStorage,
+        authenticate: () async => true,
+      );
+
+      final candidate = manager.generateCandidateKey();
+      final stored = await secureStorage.containsKey('airo_coin_wrapped_dek');
+
+      expect(candidate, hasLength(32));
+      expect(stored.value, isFalse);
+    });
+
+    test('commitRotatedKey persists the given key as the active DEK', () async {
+      final manager = VaultKeyManager.forTesting(
+        secureStorage: secureStorage,
+        authenticate: () async => true,
+      );
+
+      final candidate = manager.generateCandidateKey();
+      final commitResult = await manager.commitRotatedKey(candidate);
+      final active = await manager.getDatabaseKey();
+
+      expect(commitResult.isSuccess, isTrue);
+      expect(active.value, equals(candidate));
+    });
+
+    test('commitRotatedKey fails closed when authentication is denied', () async {
+      final manager = VaultKeyManager.forTesting(
+        secureStorage: secureStorage,
+        authenticate: () async => false,
+      );
+
+      final result = await manager.commitRotatedKey(List<int>.filled(32, 1));
+
+      expect(result.isFailure, isTrue);
+      expect(result.failure, isA<AuthFailure>());
     });
   });
 }
