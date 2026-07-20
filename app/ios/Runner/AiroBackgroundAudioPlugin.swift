@@ -24,8 +24,8 @@ final class AiroBackgroundAudioPlugin: NSObject {
 
     do {
       let session = AVAudioSession.sharedInstance()
-      try session.setCategory(enabled ? .playback : .playback, mode: .moviePlayback)
-      try session.setActive(true)
+      try session.setCategory(enabled ? .playback : .soloAmbient, mode: enabled ? .moviePlayback : .default)
+      try session.setActive(enabled)
       result(nil)
     } catch {
       result(FlutterError(
