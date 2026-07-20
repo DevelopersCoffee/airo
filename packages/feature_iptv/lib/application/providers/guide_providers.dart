@@ -7,6 +7,7 @@ import 'package:platform_channels/platform_channels.dart';
 import 'package:platform_epg/platform_epg.dart';
 
 import '../epg_channel_match_override_store.dart';
+import '../guide_window_query.dart';
 import '../mutable_xmltv_compact_epg_repository.dart';
 import '../xmltv_source_refresh_service.dart';
 import '../xmltv_source_store.dart';
@@ -67,58 +68,24 @@ final guideEpgOverridesProvider = FutureProvider<Map<String, String>>((
   return ref.watch(epgChannelMatchOverrideStoreProvider).getOverrides();
 });
 
-/// Bounded guide-window query (CV-015), with match overrides applied:
-/// each channel is queried under its override EPG id if one is set, and
-/// results are remapped back to the original [IPTVChannel.id] so callers
-/// never need to know an override was involved.
+/// Bounded guide-window query (CV-015) — thin wrapper over
+/// [queryGuideWindowWithOverrides] until the paged window provider
+/// (Live Grid Navigation) supersedes it.
 final guideEpgWindowProvider = FutureProvider<CompactEpgWindow>((ref) async {
   final channels = await ref.watch(iptvChannelsProvider.future);
   final overrides = await ref.watch(guideEpgOverridesProvider.future);
   final hiddenGroupIds = await ref.watch(hiddenGroupIdsProvider.future);
   final windowStart = ref.watch(guideWindowStartProvider);
   final windowDuration = ref.watch(guideWindowDurationProvider);
-  final now = DateTime.now().toUtc();
 
-  // CV-021: hidden groups never surface in the guide, so don't spend an EPG
-  // query on them either.
-  final epgIdToChannelId = <String, String>{};
-  final queryIds = <String>[];
-  for (final channel in channels) {
-    if (hiddenGroupIds.contains(channel.group)) continue;
-    final epgId = overrides[channel.id] ?? channel.id;
-    epgIdToChannelId[epgId] = channel.id;
-    queryIds.add(epgId);
-  }
-
-  final repository = ref.watch(compactEpgRepositoryProvider);
-  final rawWindow = await repository.loadWindow(
-    GuideWindowQuery(
-      channelIds: queryIds,
-      windowStart: windowStart,
-      windowEnd: windowStart.add(windowDuration),
-      now: now,
-    ),
-  );
-
-  final remappedEntries = [
-    for (final entry in rawWindow.entries)
-      CompactEpgWindowEntry(
-        channelId: epgIdToChannelId[entry.channelId] ?? entry.channelId,
-        channelName: entry.channelName,
-        channelNumber: entry.channelNumber,
-        programs: entry.programs,
-        sourceRef: entry.sourceRef,
-      ),
-  ];
-
-  return CompactEpgWindow(
-    entries: remappedEntries,
-    windowStart: rawWindow.windowStart,
-    windowEnd: rawWindow.windowEnd,
-    generatedAt: rawWindow.generatedAt,
-    expiresAt: rawWindow.expiresAt,
-    source: rawWindow.source,
-    schemaVersion: rawWindow.schemaVersion,
+  return queryGuideWindowWithOverrides(
+    channels: channels,
+    overrides: overrides,
+    hiddenGroupIds: hiddenGroupIds,
+    repository: ref.watch(compactEpgRepositoryProvider),
+    windowStart: windowStart,
+    windowEnd: windowStart.add(windowDuration),
+    now: DateTime.now().toUtc(),
   );
 });
 
