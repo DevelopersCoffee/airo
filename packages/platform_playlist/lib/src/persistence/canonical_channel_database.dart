@@ -1,9 +1,7 @@
-import 'dart:io';
-
 import 'package:drift/drift.dart';
-import 'package:drift/native.dart';
-import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
+
+import 'canonical_channel_database_stub.dart'
+    if (dart.library.io) 'canonical_channel_database_io.dart' as backend;
 
 part 'canonical_channel_database.g.dart';
 
@@ -59,18 +57,12 @@ class CanonicalChannelDatabase extends _$CanonicalChannelDatabase {
   /// Opens the real on-device database file. Not used in tests -- see
   /// [CanonicalChannelDatabase.forTesting] for an in-memory instance.
   factory CanonicalChannelDatabase.open() {
-    return CanonicalChannelDatabase(
-      LazyDatabase(() async {
-        final dir = await getApplicationSupportDirectory();
-        final file = File(p.join(dir.path, 'canonical_channels.sqlite'));
-        return NativeDatabase.createInBackground(file);
-      }),
-    );
+    return CanonicalChannelDatabase(backend.openFileExecutor());
   }
 
   /// An in-memory database for tests -- never touches disk.
   factory CanonicalChannelDatabase.forTesting() {
-    return CanonicalChannelDatabase(NativeDatabase.memory());
+    return CanonicalChannelDatabase(backend.memoryExecutor());
   }
 
   @override
