@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:platform_media/platform_media.dart';
 
 /// TV Audio Handler for background playback on Android TV/Fire TV
 ///
@@ -11,6 +12,18 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 /// - Notification controls (play/pause, stop)
 /// - Audio focus management for phone calls/alarms
 /// - Media session integration with Android TV
+///
+/// It connects to playback in two directions (#980):
+/// - **Reporting:** it implements [StreamingMediaSessionDelegate], so
+///   `VideoPlayerStreamingService` tells it what the player did
+///   (`onChannelStarted`/`onPlaybackPaused`/`onPlaybackResumed`/
+///   `onPlaybackStopped`). These paths only update media-session state —
+///   they never fire user-intent callbacks.
+/// - **Control:** the `audio_service` overrides ([play]/[pause]/[stop])
+///   fire [onUserPlayRequested]/[onUserPauseRequested]/
+///   [onUserStopRequested] so notification buttons round-trip back into the
+///   streaming service. Transition guards (e.g. [pause] while already
+///   paused is a no-op) keep the two directions from recursing.
 ///
 /// Usage:
 /// ```dart
@@ -25,7 +38,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 /// await handler.play();
 /// await handler.stop();
 /// ```
-class TvAudioHandler extends BaseAudioHandler with SeekHandler {
+class TvAudioHandler extends BaseAudioHandler
+    with SeekHandler
+    implements StreamingMediaSessionDelegate {
   /// Current channel name
   String? _currentChannelName;
 
@@ -43,6 +58,15 @@ class TvAudioHandler extends BaseAudioHandler with SeekHandler {
 
   /// Audio focus regained callback
   VoidCallback? onAudioFocusGained;
+
+  /// User-intent callbacks, wired by the app shell to the streaming service
+  /// so notification / lock-screen buttons actually control playback.
+  /// Fired only from the `audio_service` control overrides on genuine
+  /// state transitions — never from the [StreamingMediaSessionDelegate]
+  /// reporting path, which is what keeps the two directions loop-free.
+  VoidCallback? onUserPlayRequested;
+  VoidCallback? onUserPauseRequested;
+  VoidCallback? onUserStopRequested;
 
   TvAudioHandler() {
     _init();
@@ -84,18 +108,66 @@ class TvAudioHandler extends BaseAudioHandler with SeekHandler {
 
   @override
   Future<void> play() async {
-    _isPlaying = true;
-    _updatePlaybackState(playing: true);
+    // Guard: resuming an already-playing session is a no-op. Without this,
+    // the reporting path (delegate.onPlaybackResumed -> play()) and the
+    // control path (notification play -> onUserPlayRequested ->
+    // service.resume() -> delegate) would keep re-triggering each other.
+    if (_isPlaying) return;
+    _applyPlayState();
+    onUserPlayRequested?.call();
   }
 
   @override
   Future<void> pause() async {
-    _isPlaying = false;
-    _updatePlaybackState(playing: false);
+    // Guard: see play().
+    if (!_isPlaying) return;
+    _applyPauseState();
+    onUserPauseRequested?.call();
   }
 
   @override
   Future<void> stop() async {
+    // Guard: stopping an already-idle session is a no-op (see play()).
+    if (!_isPlaying && _currentStreamUrl == null) return;
+    await _applyStopState();
+    onUserStopRequested?.call();
+  }
+
+  // -----------------------------------------------------------------------
+  // StreamingMediaSessionDelegate — reporting path.
+  //
+  // These are called by VideoPlayerStreamingService when *it* transitions.
+  // They update media-session state only and deliberately do NOT fire the
+  // onUser* callbacks: the player is the source of truth here, calling back
+  // into it would be redundant (and, without the guards above, recursive).
+  // -----------------------------------------------------------------------
+
+  @override
+  Future<void> onChannelStarted({
+    required String channelName,
+    required String streamUrl,
+  }) => playChannel(channelName, streamUrl);
+
+  @override
+  Future<void> onPlaybackPaused() async => _applyPauseState();
+
+  @override
+  Future<void> onPlaybackResumed() async => _applyPlayState();
+
+  @override
+  Future<void> onPlaybackStopped() => _applyStopState();
+
+  void _applyPlayState() {
+    _isPlaying = true;
+    _updatePlaybackState(playing: true);
+  }
+
+  void _applyPauseState() {
+    _isPlaying = false;
+    _updatePlaybackState(playing: false);
+  }
+
+  Future<void> _applyStopState() async {
     _isPlaying = false;
     _currentChannelName = null;
     _currentStreamUrl = null;
