@@ -18,9 +18,107 @@ StreamingState _playingState({bool audioOnlyChannel = false}) => StreamingState(
 
 void main() {
   group('PlayerBackgroundingCoordinator', () {
+    test('backgrounding with PiP already active does nothing', () async {
+      var requestEnterCalled = false;
+      final coordinator = PlayerBackgroundingCoordinator(
+        isActive: () async => true,
+        isSupported: () async => true,
+        requestEnter: () async {
+          requestEnterCalled = true;
+          return true;
+        },
+        setAudioOnly: (_) async => fail('audio-only should not be set'),
+      );
+
+      await coordinator.onLifecycleStateChanged(
+        AppLifecycleState.paused,
+        _playingState(),
+      );
+
+      expect(requestEnterCalled, isFalse);
+    });
+
+    test('playing arms native auto-enter PiP', () async {
+      final autoEnterCalls = <bool>[];
+      final coordinator = PlayerBackgroundingCoordinator(
+        isActive: () async => false,
+        isSupported: () async => true,
+        requestEnter: () async => true,
+        setAutoEnter: (enabled) async => autoEnterCalls.add(enabled),
+        setAudioOnly: (_) async {},
+      );
+
+      coordinator.onStreamingStateChanged(_playingState());
+      // Arming is async (checks isSupported first).
+      await Future<void>.delayed(Duration.zero);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(autoEnterCalls, [true]);
+    });
+
+    test('playback stopping disarms native auto-enter PiP', () async {
+      final autoEnterCalls = <bool>[];
+      final coordinator = PlayerBackgroundingCoordinator(
+        isActive: () async => false,
+        isSupported: () async => true,
+        requestEnter: () async => true,
+        setAutoEnter: (enabled) async => autoEnterCalls.add(enabled),
+        setAudioOnly: (_) async {},
+      );
+
+      coordinator.onStreamingStateChanged(_playingState());
+      await Future<void>.delayed(Duration.zero);
+      await Future<void>.delayed(Duration.zero);
+      coordinator.onStreamingStateChanged(
+        StreamingState(playbackState: PlaybackState.idle),
+      );
+      await Future<void>.delayed(Duration.zero);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(autoEnterCalls, [true, false]);
+    });
+
+    test('manual audio-only toggle disarms native auto-enter PiP', () async {
+      final autoEnterCalls = <bool>[];
+      final coordinator = PlayerBackgroundingCoordinator(
+        isActive: () async => false,
+        isSupported: () async => true,
+        requestEnter: () async => true,
+        setAutoEnter: (enabled) async => autoEnterCalls.add(enabled),
+        setAudioOnly: (_) async {},
+      );
+
+      coordinator.onStreamingStateChanged(_playingState());
+      await Future<void>.delayed(Duration.zero);
+      await Future<void>.delayed(Duration.zero);
+      coordinator.manualAudioOnlyToggled(true);
+      await Future<void>.delayed(Duration.zero);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(autoEnterCalls, [true, false]);
+    });
+
+    test('PiP unsupported never arms native auto-enter', () async {
+      final autoEnterCalls = <bool>[];
+      final coordinator = PlayerBackgroundingCoordinator(
+        isActive: () async => false,
+        isSupported: () async => false,
+        requestEnter: () async => false,
+        setAutoEnter: (enabled) async => autoEnterCalls.add(enabled),
+        setAudioOnly: (_) async {},
+      );
+
+      coordinator.onStreamingStateChanged(_playingState());
+      await Future<void>.delayed(Duration.zero);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(autoEnterCalls, isEmpty);
+    });
+
     test('backgrounding with no prior manual toggle tries PiP first', () async {
       var requestEnterCalled = false;
       final coordinator = PlayerBackgroundingCoordinator(
+        isActive: () async => false,
         isSupported: () async => true,
         requestEnter: () async {
           requestEnterCalled = true;
@@ -40,6 +138,7 @@ void main() {
     test('PiP unsupported falls back to audio-only', () async {
       bool? audioOnlySet;
       final coordinator = PlayerBackgroundingCoordinator(
+        isActive: () async => false,
         isSupported: () async => false,
         requestEnter: () async => fail('requestEnter should not be called'),
         setAudioOnly: (enabled) async => audioOnlySet = enabled,
@@ -56,6 +155,7 @@ void main() {
     test('PiP denied at request time falls back to audio-only', () async {
       bool? audioOnlySet;
       final coordinator = PlayerBackgroundingCoordinator(
+        isActive: () async => false,
         isSupported: () async => true,
         requestEnter: () async => false,
         setAudioOnly: (enabled) async => audioOnlySet = enabled,
@@ -73,6 +173,7 @@ void main() {
       var requestEnterCalled = false;
       bool? audioOnlySet;
       final coordinator = PlayerBackgroundingCoordinator(
+        isActive: () async => false,
         isSupported: () async => true,
         requestEnter: () async {
           requestEnterCalled = true;
@@ -94,6 +195,7 @@ void main() {
     test('not playing: backgrounding does nothing', () async {
       var called = false;
       final coordinator = PlayerBackgroundingCoordinator(
+        isActive: () async => false,
         isSupported: () async {
           called = true;
           return true;
@@ -115,6 +217,7 @@ void main() {
       () async {
         final audioOnlyCalls = <bool>[];
         final coordinator = PlayerBackgroundingCoordinator(
+          isActive: () async => false,
           isSupported: () async => false,
           requestEnter: () async => false,
           setAudioOnly: (enabled) async => audioOnlyCalls.add(enabled),
@@ -138,6 +241,7 @@ void main() {
       () async {
         final audioOnlyCalls = <bool>[];
         final coordinator = PlayerBackgroundingCoordinator(
+          isActive: () async => false,
           isSupported: () async => true,
           requestEnter: () async => true,
           setAudioOnly: (enabled) async => audioOnlyCalls.add(enabled),
@@ -161,6 +265,7 @@ void main() {
         'backgrounded', () async {
       final audioOnlyCalls = <bool>[];
       final coordinator = PlayerBackgroundingCoordinator(
+        isActive: () async => false,
         isSupported: () async => false,
         requestEnter: () async => false,
         setAudioOnly: (enabled) async => audioOnlyCalls.add(enabled),
@@ -190,6 +295,7 @@ void main() {
         final audioOnlyCalls = <bool>[];
         final decisionResolved = Completer<void>();
         final coordinator = PlayerBackgroundingCoordinator(
+          isActive: () async => false,
           isSupported: () async => true,
           requestEnter: () async {
             // Simulate the backgrounding decision not yet having resolved
