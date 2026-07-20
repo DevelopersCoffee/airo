@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -346,6 +347,13 @@ final streamingStateProvider = StreamProvider<StreamingState>((ref) {
   final service = ref.watch(iptvStreamingServiceProvider);
   return service.stateStream;
 });
+
+/// Current app lifecycle state, updated by a `WidgetsBindingObserver` in
+/// `IPTVScreen`. Drives [PlayerBackgroundingCoordinator]'s PiP / audio-only
+/// backgrounding decision.
+final appLifecycleStateProvider = StateProvider<AppLifecycleState>(
+  (ref) => AppLifecycleState.resumed,
+);
 
 /// Current channel provider
 final currentChannelProvider = Provider<IPTVChannel?>((ref) {

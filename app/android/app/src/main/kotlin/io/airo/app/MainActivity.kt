@@ -35,6 +35,9 @@ class MainActivity : AudioServiceActivity() {
     private var pendingCalendarCreateResult: MethodChannel.Result? = null
     private var pendingCalendarCreateArguments: Map<String, Any?>? = null
 
+    private lateinit var pictureInPicturePlugin: AiroPictureInPicturePlugin
+    private lateinit var backgroundAudioPlugin: AiroBackgroundAudioPlugin
+
     override fun shouldDestroyEngineWithHost(): Boolean {
         return false
     }
@@ -101,6 +104,20 @@ class MainActivity : AudioServiceActivity() {
                     else -> result.notImplemented()
                 }
             }
+
+        pictureInPicturePlugin = AiroPictureInPicturePlugin(this)
+        pictureInPicturePlugin.register(flutterEngine.dartExecutor.binaryMessenger)
+
+        backgroundAudioPlugin = AiroBackgroundAudioPlugin(this)
+        backgroundAudioPlugin.register(flutterEngine.dartExecutor.binaryMessenger)
+    }
+
+    override fun onPictureInPictureModeChanged(
+        isInPictureInPictureMode: Boolean,
+        newConfig: Configuration
+    ) {
+        super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
+        pictureInPicturePlugin.notifyModeChanged(isInPictureInPictureMode)
     }
 
     private fun isTvDevice(): Boolean {

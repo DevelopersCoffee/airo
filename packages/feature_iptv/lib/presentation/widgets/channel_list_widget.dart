@@ -217,7 +217,7 @@ class _ChannelListWithRecentState
           final channelIndex = widget.showRecentlyWatched ? index - 1 : index;
           final channel = widget.channels[channelIndex];
           return _ChannelListTile(
-            key: ValueKey('channel-${channel.id}'),
+            key: ValueKey('channel-card-$channelIndex'),
             channel: channel,
             onTap: () => widget.onChannelTap(channel),
           );

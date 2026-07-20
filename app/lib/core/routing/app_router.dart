@@ -239,6 +239,7 @@ class AppRouter {
                   onPickLocalMediaForTv: kDebugMode
                       ? pickPhoneLocalMediaForTv
                       : null,
+                  deepLinkChannelId: state.uri.queryParameters['channel'],
                 ),
               ),
               GoRoute(
