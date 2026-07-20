@@ -122,6 +122,17 @@ class VaultKeyManager implements EncryptionKeyManager {
     return _secureStorage.write(_wrappedDekKey, _encodeKey(newKeyBytes));
   }
 
+  /// Persists [newKeyBytes] as the active DEK WITHOUT re-authenticating.
+  ///
+  /// **Internal/trusted-caller primitive — do not call this directly.** It
+  /// intentionally skips biometric re-authentication because it must only be
+  /// called by `VaultKeyRotationService.rotateKeyWithReencryption()`
+  /// immediately after a single upstream [getDatabaseKey] auth has already
+  /// gated the whole rotation operation. Calling this independently of that
+  /// flow would persist a new DEK with no authentication check at all.
+  Future<Result<void>> persistRotatedKeyUnauthenticated(List<int> newKeyBytes) =>
+      _secureStorage.write(_wrappedDekKey, _encodeKey(newKeyBytes));
+
   @override
   Future<bool> isEncryptionAvailable() async {
     if (_localAuth == null) return _isAvailable?.call() ?? true;

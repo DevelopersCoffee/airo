@@ -1,4 +1,5 @@
 import 'package:core_domain/core_domain.dart';
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:sqflite/sqflite.dart';
 
 import '../crypto/field_cipher.dart';
@@ -13,11 +14,37 @@ const Map<String, List<String>> _encryptedColumnsByTable = {
   VaultTables.secureDocuments: ['custom_fields_enc', 'attachment_blob_enc', 'notes_enc'],
 };
 
+/// Test-only visibility into [_encryptedColumnsByTable]. Exists so tests can
+/// assert this registry stays in sync with the actual `_enc` columns present
+/// in the schema — see `vault_key_rotation_service_test.dart`'s drift-guard
+/// test. Never use this outside tests.
+@visibleForTesting
+const Map<String, List<String>> encryptedColumnsByTableForTesting = _encryptedColumnsByTable;
+
 /// Safely rotates the vault's DEK by re-encrypting every field-encrypted
 /// column, across every table, under the new key before the new key ever
 /// becomes active. If re-encryption fails partway through, the whole
 /// operation rolls back inside one sqflite transaction and the old DEK
 /// remains active — there is no partially-rotated state.
+///
+/// The entire operation requires exactly ONE biometric authentication (via
+/// the initial `getDatabaseKey()` call), not two. Earlier revisions of this
+/// service re-authenticated a second time before persisting the new key;
+/// that meant a user who passed the first prompt but denied/cancelled the
+/// second one ended up with data already re-encrypted under the new key in
+/// sqlite while secure storage still held the old key — permanently
+/// bricking the vault. That second auth was redundant (the caller is
+/// already inside one continuous, already-authenticated logical operation),
+/// so it has been removed: the new key is now persisted via
+/// `VaultKeyManager.persistRotatedKeyUnauthenticated()`, an internal
+/// trusted-caller primitive that must only ever be invoked from here.
+///
+/// **Residual, accepted limitation:** there is still no protection against
+/// a process crash in the narrow window between the sqlite transaction
+/// commit and the secure-storage write completing. Coordinating two
+/// independent storage engines (sqlite + platform keystore) atomically would
+/// require a distributed transaction protocol, which is a larger redesign
+/// out of scope for this fix. This window is documented, not solved.
 ///
 /// This is the only supported way to rotate the vault's DEK.
 /// `VaultKeyManager.rotateKey()` is a raw, destructive primitive that exists
@@ -57,7 +84,7 @@ class VaultKeyRotationService {
       ));
     }
 
-    return _keyManager.commitRotatedKey(newKey);
+    return _keyManager.persistRotatedKeyUnauthenticated(newKey);
   }
 
   Future<void> _reencryptTable(

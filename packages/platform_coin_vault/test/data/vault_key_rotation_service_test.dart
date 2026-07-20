@@ -118,4 +118,88 @@ void main() {
 
     expect(fetchedWithOldKey.isFailure, isTrue);
   });
+
+  test(
+    'rotateKeyWithReencryption requires exactly one successful authenticate() call, '
+    'not two, so a denied second prompt can never brick the vault',
+    () async {
+      var authCallCount = 0;
+      final countingKeyManager = VaultKeyManager.forTesting(
+        secureStorage: secureStorage,
+        authenticate: () async {
+          authCallCount++;
+          return true;
+        },
+      );
+      final countingRotationService = VaultKeyRotationService(
+        database: vaultDb,
+        keyManager: countingKeyManager,
+        fieldCipher: fieldCipher,
+      );
+
+      final oldKey = (await countingKeyManager.getDatabaseKey()).value;
+      authCallCount = 0; // reset after the setup auth above
+
+      await bankAccounts.create(
+        BankAccountRecord(
+          id: null,
+          nickname: 'HDFC Salary',
+          bankName: 'HDFC Bank',
+          accountHolderName: 'Jane Doe',
+          accountNumber: '1234567890',
+          ifscCode: 'HDFC0001234',
+          accountType: 'savings',
+        ),
+        oldKey,
+      );
+
+      final rotateResult = await countingRotationService.rotateKeyWithReencryption();
+
+      expect(rotateResult.isSuccess, isTrue);
+      expect(
+        authCallCount,
+        1,
+        reason:
+            'rotation must authenticate exactly once for the whole operation — a '
+            'second re-auth before persisting the new key is what previously let a '
+            'denied prompt brick the vault after data was already re-encrypted',
+      );
+    },
+  );
+
+  test(
+    '_encryptedColumnsByTable stays in sync with every actual *_enc column in the schema',
+    () async {
+      // Drift guard: if a future encrypted column is added to a repository
+      // but not registered here, rotateKeyWithReencryption() would silently
+      // skip re-encrypting it, permanently orphaning that column once the new
+      // key is committed. This enumerates the real schema (following the
+      // sqlite_master introspection pattern used in vault_database_test.dart)
+      // and asserts it exactly matches the rotation service's registry.
+      final actualEncColumnsByTable = <String, Set<String>>{};
+      for (final table in [
+        VaultTables.bankAccounts,
+        VaultTables.panCards,
+        VaultTables.secureDocuments,
+      ]) {
+        final columns = await vaultDb.db.rawQuery('PRAGMA table_info($table)');
+        actualEncColumnsByTable[table] = columns
+            .map((row) => row['name'] as String)
+            .where((name) => name.endsWith('_enc'))
+            .toSet();
+      }
+
+      final registeredEncColumnsByTable = encryptedColumnsByTableForTesting.map(
+        (table, columns) => MapEntry(table, columns.toSet()),
+      );
+
+      expect(
+        registeredEncColumnsByTable,
+        actualEncColumnsByTable,
+        reason:
+            'every *_enc column in the schema must be registered in '
+            '_encryptedColumnsByTable or key rotation will silently skip it',
+      );
+    },
+  );
 }

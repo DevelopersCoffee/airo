@@ -88,10 +88,30 @@ implemented in `platform_coin_vault` and the threat model it targets.
   permanently orphaning every previously-encrypted record.
   `VaultKeyRotationService.rotateKeyWithReencryption()` now re-encrypts every
   field-encrypted column across all tables inside one sqflite transaction
-  before committing the new key — the old key remains active if
-  re-encryption fails partway through. `rotateKey()` itself remains present
-  (required by `EncryptionKeyManager`'s interface) but is documented as an
-  unsafe raw primitive; callers must use `VaultKeyRotationService` instead.
+  before committing the new key. This guarantee — the old key remains active
+  if re-encryption fails — holds specifically for failures *during*
+  re-encryption, since the sqflite transaction rolls back cleanly in that
+  case. `rotateKey()` itself remains present (required by
+  `EncryptionKeyManager`'s interface) but is documented as an unsafe raw
+  primitive; callers must use `VaultKeyRotationService` instead.
+- **Resolved (2026-07-20 fast-follow):** rotation originally required two
+  independent biometric authentications — one via `getDatabaseKey()` to read
+  the old key, a second via `commitRotatedKey()` to persist the new one.
+  Because the sqlite re-encryption transaction committed *before* the second
+  prompt, a user who passed the first auth but denied/cancelled the second
+  ended up with data re-encrypted under the new key on disk while secure
+  storage still held the old key — a routine, everyday trigger (users deny
+  prompts) that permanently bricked the vault. Rotation now performs exactly
+  one authentication for the whole operation: the new key is persisted via
+  `VaultKeyManager.persistRotatedKeyUnauthenticated()`, an internal
+  trusted-caller primitive that skips re-auth because the single upstream
+  `getDatabaseKey()` call already gates the entire rotation. **Accepted,
+  documented limitation:** this does not eliminate the narrow window between
+  the sqlite transaction commit and the secure-storage write completing — a
+  process crash in that window can still leave sqlite and secure storage out
+  of sync. Closing that gap fully would require a distributed transaction
+  protocol across two independent storage engines (sqlite + platform
+  keystore), which is a larger redesign out of scope for this fix.
 - **Out of scope, accepted**: hardware/chip-off attacks against the Secure
   Enclave/StrongBox themselves; nation-state-level adversaries; cloud
   sync/backup compromise (no cloud sync exists in v1 — no attack surface to

@@ -14,34 +14,37 @@ class PanCardRepository {
 
   Future<Result<int>> create(PanCardRecord record, List<int> keyBytes) async {
     try {
-      final id = await _database.db.insert(VaultTables.panCards, {
-        'pan_number_enc': '',
-        'name_on_card': record.nameOnCard,
-        'fathers_name': record.fathersName,
-        'date_of_birth': record.dateOfBirth?.millisecondsSinceEpoch,
-        'card_image_blob_enc': null,
-        'created_at': record.createdAt.millisecondsSinceEpoch,
+      late int id;
+      await _database.db.transaction((txn) async {
+        id = await txn.insert(VaultTables.panCards, {
+          'pan_number_enc': '',
+          'name_on_card': record.nameOnCard,
+          'fathers_name': record.fathersName,
+          'date_of_birth': record.dateOfBirth?.millisecondsSinceEpoch,
+          'card_image_blob_enc': null,
+          'created_at': record.createdAt.millisecondsSinceEpoch,
+        });
+
+        final panNumberEnc = await _fieldCipher.encryptField(
+          record.panNumber,
+          keyBytes,
+          context: '${VaultTables.panCards}:pan_number_enc:$id',
+        );
+        final cardImageBlobEnc = record.cardImageBlob == null
+            ? null
+            : await _fieldCipher.encryptField(
+                String.fromCharCodes(record.cardImageBlob!),
+                keyBytes,
+                context: '${VaultTables.panCards}:card_image_blob_enc:$id',
+              );
+
+        await txn.update(
+          VaultTables.panCards,
+          {'pan_number_enc': panNumberEnc, 'card_image_blob_enc': cardImageBlobEnc},
+          where: 'id = ?',
+          whereArgs: [id],
+        );
       });
-
-      final panNumberEnc = await _fieldCipher.encryptField(
-        record.panNumber,
-        keyBytes,
-        context: '${VaultTables.panCards}:pan_number_enc:$id',
-      );
-      final cardImageBlobEnc = record.cardImageBlob == null
-          ? null
-          : await _fieldCipher.encryptField(
-              String.fromCharCodes(record.cardImageBlob!),
-              keyBytes,
-              context: '${VaultTables.panCards}:card_image_blob_enc:$id',
-            );
-
-      await _database.db.update(
-        VaultTables.panCards,
-        {'pan_number_enc': panNumberEnc, 'card_image_blob_enc': cardImageBlobEnc},
-        where: 'id = ?',
-        whereArgs: [id],
-      );
 
       return Success(id);
     } catch (e) {

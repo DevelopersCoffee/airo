@@ -23,46 +23,49 @@ class BankAccountRepository {
 
   Future<Result<int>> create(BankAccountRecord record, List<int> keyBytes) async {
     try {
-      final id = await _database.db.insert(VaultTables.bankAccounts, {
-        'nickname': record.nickname,
-        'bank_name': record.bankName,
-        'account_holder_name': record.accountHolderName,
-        'account_number_enc': '',
-        'ifsc_code': record.ifscCode,
-        'account_type': record.accountType,
-        'branch_name': record.branchName,
-        'micr_code': record.micrCode,
-        'swift_iban': record.swiftIban,
-        'customer_id': record.customerId,
-        'upi_ids': record.upiIds,
-        'linked_mobile': record.linkedMobile,
-        'linked_email': record.linkedEmail,
-        'nominee_name': record.nomineeName,
-        'debit_card_last4': record.debitCardLast4,
-        'debit_card_expiry': record.debitCardExpiry,
-        'notes_enc': null,
-        'created_at': record.createdAt.millisecondsSinceEpoch,
+      late int id;
+      await _database.db.transaction((txn) async {
+        id = await txn.insert(VaultTables.bankAccounts, {
+          'nickname': record.nickname,
+          'bank_name': record.bankName,
+          'account_holder_name': record.accountHolderName,
+          'account_number_enc': '',
+          'ifsc_code': record.ifscCode,
+          'account_type': record.accountType,
+          'branch_name': record.branchName,
+          'micr_code': record.micrCode,
+          'swift_iban': record.swiftIban,
+          'customer_id': record.customerId,
+          'upi_ids': record.upiIds,
+          'linked_mobile': record.linkedMobile,
+          'linked_email': record.linkedEmail,
+          'nominee_name': record.nomineeName,
+          'debit_card_last4': record.debitCardLast4,
+          'debit_card_expiry': record.debitCardExpiry,
+          'notes_enc': null,
+          'created_at': record.createdAt.millisecondsSinceEpoch,
+        });
+
+        final accountNumberEnc = await _fieldCipher.encryptField(
+          record.accountNumber,
+          keyBytes,
+          context: '${VaultTables.bankAccounts}:account_number_enc:$id',
+        );
+        final notesEnc = record.notes == null
+            ? null
+            : await _fieldCipher.encryptField(
+                record.notes!,
+                keyBytes,
+                context: '${VaultTables.bankAccounts}:notes_enc:$id',
+              );
+
+        await txn.update(
+          VaultTables.bankAccounts,
+          {'account_number_enc': accountNumberEnc, 'notes_enc': notesEnc},
+          where: 'id = ?',
+          whereArgs: [id],
+        );
       });
-
-      final accountNumberEnc = await _fieldCipher.encryptField(
-        record.accountNumber,
-        keyBytes,
-        context: '${VaultTables.bankAccounts}:account_number_enc:$id',
-      );
-      final notesEnc = record.notes == null
-          ? null
-          : await _fieldCipher.encryptField(
-              record.notes!,
-              keyBytes,
-              context: '${VaultTables.bankAccounts}:notes_enc:$id',
-            );
-
-      await _database.db.update(
-        VaultTables.bankAccounts,
-        {'account_number_enc': accountNumberEnc, 'notes_enc': notesEnc},
-        where: 'id = ?',
-        whereArgs: [id],
-      );
 
       return Success(id);
     } on DatabaseException catch (e) {
