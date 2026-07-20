@@ -280,4 +280,7 @@ class SpyPlayerBackgroundingCoordinator
     AppLifecycleState state,
     StreamingState streaming,
   ) async {}
+
+  @override
+  void onStreamingStateChanged(StreamingState streaming) {}
 }
