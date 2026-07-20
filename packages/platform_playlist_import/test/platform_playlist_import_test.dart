@@ -204,67 +204,66 @@ https://cdn.example.com/live.m3u8
       await expectLater(parser.fetchPlaylist(), completion(isEmpty));
     });
 
-    test(
-      'parses async fetch and 304 cache paths through worker executor',
-      () async {
-        final workerExecutor = _RecordingWorkerExecutor();
-        parser = M3UParserService(
-          dio: Dio(),
-          prefs: prefs,
-          cacheDirectoryProvider: () async => cacheDir,
-          workerExecutor: workerExecutor,
-        );
+    test('parses async fetch via native-preferred path and routes cache '
+        'through worker executor', () async {
+      final workerExecutor = _RecordingWorkerExecutor();
+      parser = M3UParserService(
+        dio: Dio(),
+        prefs: prefs,
+        cacheDirectoryProvider: () async => cacheDir,
+        workerExecutor: workerExecutor,
+      );
 
-        final requests = <HttpHeaders>[];
-        final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
-        addTearDown(() => server.close(force: true));
+      final requests = <HttpHeaders>[];
+      final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+      addTearDown(() => server.close(force: true));
 
-        server.listen((request) async {
-          requests.add(request.headers);
-          request.response.headers
-            ..set(HttpHeaders.etagHeader, '"worker-playlist-v1"')
-            ..set(
-              HttpHeaders.lastModifiedHeader,
-              'Wed, 21 Oct 2015 07:28:00 GMT',
-            );
+      server.listen((request) async {
+        requests.add(request.headers);
+        request.response.headers
+          ..set(HttpHeaders.etagHeader, '"worker-playlist-v1"')
+          ..set(
+            HttpHeaders.lastModifiedHeader,
+            'Wed, 21 Oct 2015 07:28:00 GMT',
+          );
 
-          if (requests.length == 1) {
-            request.response.write('''
+        if (requests.length == 1) {
+          request.response.write('''
 #EXTM3U
 #EXTINF:-1 group-title="News",Worker News
 https://cdn.example.com/worker-news.m3u8
 ''');
-          } else {
-            request.response.statusCode = HttpStatus.notModified;
-          }
-          await request.response.close();
-        });
+        } else {
+          request.response.statusCode = HttpStatus.notModified;
+        }
+        await request.response.close();
+      });
 
-        await parser.setPlaylistUrl(
-          'http://${server.address.address}:${server.port}/playlist.m3u',
-        );
+      await parser.setPlaylistUrl(
+        'http://${server.address.address}:${server.port}/playlist.m3u',
+      );
 
-        final initial = await parser.fetchPlaylist(forceRefresh: true);
-        final cached = await parser.fetchPlaylist(forceRefresh: true);
+      final initial = await parser.fetchPlaylist(forceRefresh: true);
+      final cached = await parser.fetchPlaylist(forceRefresh: true);
 
-        expect(initial.single.name, 'Worker News');
-        expect(
-          cached.single.streamUrl,
-          'https://cdn.example.com/worker-news.m3u8',
-        );
-        expect(workerExecutor.calls, 3);
-        expect(workerExecutor.kinds, [
-          AiroWorkerJobKind.playlistImport,
-          AiroWorkerJobKind.playlistImport,
-          AiroWorkerJobKind.playlistImport,
-        ]);
-        expect(workerExecutor.debugNames, [
-          'm3u_playlist_parse',
-          'm3u_playlist_cache_encode',
-          'm3u_playlist_cache_decode',
-        ]);
-      },
-    );
+      expect(initial.single.name, 'Worker News');
+      expect(
+        cached.single.streamUrl,
+        'https://cdn.example.com/worker-news.m3u8',
+      );
+      // M3U parsing runs through the Rust core (Dart fallback here, since
+      // the test host has no compiled bridge); only cache encode/decode
+      // still crosses the worker boundary.
+      expect(workerExecutor.calls, 2);
+      expect(workerExecutor.kinds, [
+        AiroWorkerJobKind.playlistImport,
+        AiroWorkerJobKind.playlistImport,
+      ]);
+      expect(workerExecutor.debugNames, [
+        'm3u_playlist_cache_encode',
+        'm3u_playlist_cache_decode',
+      ]);
+    });
 
     test('stores structured cache and reads it without M3U reparse', () async {
       final workerExecutor = _RecordingWorkerExecutor();
@@ -307,7 +306,6 @@ https://cdn.example.com/structured-news.m3u8
       expect(payload, isA<Map<String, dynamic>>());
       expect(payload['channels'], isA<List<dynamic>>());
       expect(workerExecutor.debugNames, [
-        'm3u_playlist_parse',
         'm3u_playlist_cache_encode',
         'm3u_playlist_cache_decode',
       ]);
