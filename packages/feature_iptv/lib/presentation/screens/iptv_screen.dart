@@ -60,7 +60,8 @@ class IPTVScreen extends ConsumerStatefulWidget {
   ConsumerState<IPTVScreen> createState() => _IPTVScreenState();
 }
 
-class _IPTVScreenState extends ConsumerState<IPTVScreen> {
+class _IPTVScreenState extends ConsumerState<IPTVScreen>
+    with WidgetsBindingObserver {
   /// True while a [IPTVScreen.deepLinkChannelId] is set and its resolution
   /// (in the post-frame callback below) hasn't yet either started playback
   /// or determined the channel doesn't exist. Gates the first frame so the
@@ -85,6 +86,9 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen> {
     ref.read(wakelockPlaybackCoordinatorProvider);
     // Decides PiP vs. audio-only when the app backgrounds during playback.
     ref.read(playerBackgroundingCoordinatorProvider);
+    // Feeds real app lifecycle transitions into appLifecycleStateProvider,
+    // which playerBackgroundingCoordinatorProvider listens to above.
+    WidgetsBinding.instance.addObserver(this);
 
     final deepLinkId = widget.deepLinkChannelId;
     if (deepLinkId != null) {
@@ -151,7 +155,13 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen> {
     // Orientation is reset in:
     // 1. _toggleFullscreen() when user explicitly exits fullscreen
     // 2. AppShell when navigating to a different tab
+    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    ref.read(appLifecycleStateProvider.notifier).state = state;
   }
 
   void _toggleFullscreen() {
