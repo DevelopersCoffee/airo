@@ -543,13 +543,16 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
   Widget _buildLoading() {
     return Container(
       color: Colors.black,
-      child: const Center(
+      child: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            CircularProgressIndicator(color: Colors.white),
-            SizedBox(height: 16),
-            Text('Loading...', style: TextStyle(color: Colors.white)),
+            const CircularProgressIndicator(color: Colors.white),
+            const SizedBox(height: 16),
+            Text(
+              AiroVoice.buffering.pick(),
+              style: const TextStyle(color: Colors.white),
+            ),
           ],
         ),
       ),

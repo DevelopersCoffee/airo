@@ -1,0 +1,23 @@
+{
+  "schemaVersion": "1.0.0",
+  "reportId": "cv590-pixel9-bravia-20260720",
+  "senderProfile": "Pixel 9 (Android 15)",
+  "receiverProfile": "Sony BRAVIA (Chromecast built-in)",
+  "playlistProfile": "iptv-org public m3u",
+  "measuredAt": "2026-07-19T20:23:22.966678Z",
+  "accepted": true,
+  "violations": [
+    "accepted"
+  ],
+  "sample": {
+    "attemptedSwitchCount": 2,
+    "successfulSwitchCount": 2,
+    "minSwitchCount": 2,
+    "receiverReconnectCount": 0,
+    "stalePreviousStatusCount": 0,
+    "previousChannelErrorCount": 0,
+    "latestErrorMatchedSelectedChannel": true,
+    "localPlaybackRestartCount": 0,
+    "recoveryActionCount": 0
+  }
+}

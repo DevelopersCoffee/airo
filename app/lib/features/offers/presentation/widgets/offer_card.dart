@@ -1,3 +1,4 @@
+import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../domain/models/offer_models.dart';
@@ -255,7 +256,11 @@ class _OfferCardState extends State<OfferCard> {
         ScaffoldMessenger.of(
           // ignore: use_build_context_synchronously
           context,
-        ).showSnackBar(SnackBar(content: Text('Error: $e')));
+        ).showSnackBar(
+          SnackBar(
+            content: Text(AiroVoice.errorGeneric.pickWith(detail: '$e')),
+          ),
+        );
       }
     }
   }

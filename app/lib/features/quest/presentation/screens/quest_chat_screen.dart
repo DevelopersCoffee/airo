@@ -1,3 +1,4 @@
+import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../quest/domain/models/quest_models.dart';
@@ -287,7 +288,7 @@ class _QuestChatScreenState extends ConsumerState<QuestChatScreen> {
       appBar: AppBar(
         title: questAsync.when(
           data: (quest) => Text(quest?.title ?? 'Quest'),
-          loading: () => const Text('Loading...'),
+          loading: () => Text(AiroVoice.loading.pick()),
           error: (_, _) => const Text('Quest'),
         ),
         centerTitle: true,
