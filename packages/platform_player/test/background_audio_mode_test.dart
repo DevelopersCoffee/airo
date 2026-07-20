@@ -13,9 +13,9 @@ void main() {
     AiroBackgroundAudioMode.debugSetMethodChannel(channel);
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(channel, (call) async {
-      calls.add(call);
-      return null;
-    });
+          calls.add(call);
+          return null;
+        });
   });
 
   tearDown(() {
@@ -40,8 +40,8 @@ void main() {
   test('setEnabled swallows MissingPluginException', () async {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(channel, (call) async {
-      throw MissingPluginException();
-    });
+          throw MissingPluginException();
+        });
     await AiroBackgroundAudioMode.setEnabled(true);
     // Local state still reflects intent even if the platform call failed,
     // so UI toggles remain consistent with what the user asked for.

@@ -16,16 +16,16 @@ void main() {
     requestEnterResult = true;
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(channel, (call) async {
-      calls.add(call);
-      switch (call.method) {
-        case 'isSupported':
-          return isSupportedResult == 'true';
-        case 'requestEnter':
-          return requestEnterResult;
-        default:
-          return null;
-      }
-    });
+          calls.add(call);
+          switch (call.method) {
+            case 'isSupported':
+              return isSupportedResult == 'true';
+            case 'requestEnter':
+              return requestEnterResult;
+            default:
+              return null;
+          }
+        });
   });
 
   tearDown(() {
@@ -42,8 +42,8 @@ void main() {
   test('isSupported returns false when platform impl is missing', () async {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(channel, (call) async {
-      throw MissingPluginException();
-    });
+          throw MissingPluginException();
+        });
     expect(await AiroNativePictureInPicture.isSupported(), isFalse);
   });
 
@@ -56,8 +56,8 @@ void main() {
   test('requestEnter returns false when platform impl is missing', () async {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(channel, (call) async {
-      throw MissingPluginException();
-    });
+          throw MissingPluginException();
+        });
     expect(await AiroNativePictureInPicture.requestEnter(), isFalse);
   });
 

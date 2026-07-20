@@ -127,14 +127,22 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('audio-only-toggle')));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
-      expect(successfulToggles, equals(1), reason: 'First toggle should succeed');
+      expect(
+        successfulToggles,
+        equals(1),
+        reason: 'First toggle should succeed',
+      );
       expect(AiroBackgroundAudioMode.isEnabled, isTrue);
 
       // Now toggle back off, which should also succeed
       await tester.tap(find.byKey(const ValueKey('audio-only-toggle')));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
-      expect(successfulToggles, equals(2), reason: 'Second toggle should succeed');
+      expect(
+        successfulToggles,
+        equals(2),
+        reason: 'Second toggle should succeed',
+      );
       expect(AiroBackgroundAudioMode.isEnabled, isFalse);
     },
   );
@@ -256,7 +264,8 @@ void main() {
 }
 
 // Spy implementation for testing - tracks calls to coordinator methods
-class SpyPlayerBackgroundingCoordinator implements PlayerBackgroundingCoordinator {
+class SpyPlayerBackgroundingCoordinator
+    implements PlayerBackgroundingCoordinator {
   final VoidCallback? onManualAudioOnlyToggled;
 
   SpyPlayerBackgroundingCoordinator({this.onManualAudioOnlyToggled});
@@ -267,5 +276,8 @@ class SpyPlayerBackgroundingCoordinator implements PlayerBackgroundingCoordinato
   }
 
   @override
-  Future<void> onLifecycleStateChanged(AppLifecycleState state, StreamingState streaming) async {}
+  Future<void> onLifecycleStateChanged(
+    AppLifecycleState state,
+    StreamingState streaming,
+  ) async {}
 }

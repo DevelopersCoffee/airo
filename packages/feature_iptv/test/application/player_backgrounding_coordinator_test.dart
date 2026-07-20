@@ -157,35 +157,32 @@ void main() {
       },
     );
 
-    test(
-      'resume clears stuck auto audio-only even if playback stopped while '
-      'backgrounded',
-      () async {
-        final audioOnlyCalls = <bool>[];
-        final coordinator = PlayerBackgroundingCoordinator(
-          isSupported: () async => false,
-          requestEnter: () async => false,
-          setAudioOnly: (enabled) async => audioOnlyCalls.add(enabled),
-        );
+    test('resume clears stuck auto audio-only even if playback stopped while '
+        'backgrounded', () async {
+      final audioOnlyCalls = <bool>[];
+      final coordinator = PlayerBackgroundingCoordinator(
+        isSupported: () async => false,
+        requestEnter: () async => false,
+        setAudioOnly: (enabled) async => audioOnlyCalls.add(enabled),
+      );
 
-        // Backgrounding while playing triggers the auto audio-only
-        // fallback (PiP unsupported).
-        await coordinator.onLifecycleStateChanged(
-          AppLifecycleState.paused,
-          _playingState(),
-        );
-        expect(audioOnlyCalls, [true]);
+      // Backgrounding while playing triggers the auto audio-only
+      // fallback (PiP unsupported).
+      await coordinator.onLifecycleStateChanged(
+        AppLifecycleState.paused,
+        _playingState(),
+      );
+      expect(audioOnlyCalls, [true]);
 
-        // Playback stopped while backgrounded (stream error, lock-screen
-        // pause, buffering timeout, playlist end) before the app resumed.
-        await coordinator.onLifecycleStateChanged(
-          AppLifecycleState.resumed,
-          StreamingState(playbackState: PlaybackState.idle),
-        );
+      // Playback stopped while backgrounded (stream error, lock-screen
+      // pause, buffering timeout, playlist end) before the app resumed.
+      await coordinator.onLifecycleStateChanged(
+        AppLifecycleState.resumed,
+        StreamingState(playbackState: PlaybackState.idle),
+      );
 
-        expect(audioOnlyCalls, [true, false]);
-      },
-    );
+      expect(audioOnlyCalls, [true, false]);
+    });
 
     test(
       'rapid paused-then-resumed does not strand the app in audio-only',
