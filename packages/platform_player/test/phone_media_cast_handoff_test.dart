@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'dart:io';
 
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:platform_player/platform_player.dart';
 
@@ -47,6 +49,9 @@ void main() {
       castController: castController,
       capabilities: capabilities,
       bindAddress: InternetAddress.loopbackIPv4,
+      // Tests that aren't exercising connectivity teardown shouldn't reach
+      // the real platform channel, which has no plugin registered here.
+      debugConnectivityStream: const Stream.empty(),
     );
   }
 
@@ -138,6 +143,7 @@ void main() {
     final handoff = PhoneMediaCastHandoff(
       castController: throwingController,
       bindAddress: InternetAddress.loopbackIPv4,
+      debugConnectivityStream: const Stream.empty(),
     );
 
     final result = await handoff.start(itemFor());
@@ -153,6 +159,7 @@ void main() {
         bindAddress: InternetAddress.loopbackIPv4,
         idleTimeout: const Duration(milliseconds: 150),
         pauseKeepAliveInterval: const Duration(milliseconds: 40),
+        debugConnectivityStream: const Stream.empty(),
       );
       await handoff.start(itemFor());
       expect(handoff.isServing, isTrue);
@@ -175,6 +182,7 @@ void main() {
         bindAddress: InternetAddress.loopbackIPv4,
         idleTimeout: const Duration(milliseconds: 150),
         pauseKeepAliveInterval: const Duration(milliseconds: 40),
+        debugConnectivityStream: const Stream.empty(),
       );
       await handoff.start(itemFor());
 
@@ -198,6 +206,26 @@ void main() {
     await castController.disconnect();
     await Future<void>.delayed(const Duration(milliseconds: 50));
     expect(handoff.isServing, isFalse);
+  });
+
+  test('stops the server when connectivity reports disconnected', () async {
+    final connectivityController =
+        StreamController<List<ConnectivityResult>>();
+    addTearDown(connectivityController.close);
+    final handoff = PhoneMediaCastHandoff(
+      castController: castController,
+      bindAddress: InternetAddress.loopbackIPv4,
+      debugConnectivityStream: connectivityController.stream,
+    );
+    await handoff.start(itemFor());
+    expect(handoff.isServing, isTrue);
+
+    connectivityController.add([ConnectivityResult.none]);
+    await Future<void>.delayed(Duration.zero);
+
+    expect(handoff.isServing, isFalse);
+
+    await handoff.dispose();
   });
 }
 
