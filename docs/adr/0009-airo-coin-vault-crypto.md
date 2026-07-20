@@ -20,9 +20,13 @@ implemented in `platform_coin_vault` and the threat model it targets.
 - **Field-level AES-256-GCM encryption** (via the `cryptography` package),
   not full-disk/SQLCipher encryption. Sensitive columns (account number, PAN
   number, notes, custom fields, attachment blobs) are individually encrypted
-  before insert. This avoids introducing a second native sqlite runtime
-  alongside `platform_playlist`'s existing `drift` + `sqlite3_flutter_libs`
-  stack (see PR #925, which fixed a dual-runtime bug from a related cause).
+  before insert, each bound to a `"table:column:id"` associated-data (AAD)
+  context — so ciphertext from one row/column can never be swapped into
+  another row/column and still decrypt (`FieldCipher`, `platform_coin_vault`
+  fast-follow plan, 2026-07-20). This avoids introducing a second native
+  sqlite runtime alongside `platform_playlist`'s existing `drift` +
+  `sqlite3_flutter_libs` stack (see PR #925, which fixed a dual-runtime bug
+  from a related cause).
 - **KEK boundary**: `flutter_secure_storage`, backed by Android Keystore /
   iOS Keychain, configured for biometric binding —
   `AndroidOptions.biometric(enforceBiometrics: true)` (KeyStore key generated
@@ -71,11 +75,23 @@ implemented in `platform_coin_vault` and the threat model it targets.
   offering vault creation and must surface `AuthFailure` as a hard stop, not
   a retry-silently path. If a future contributor bypasses this, sensitive
   data could be created without a working biometric gate.
-- **Known limitation**: `VaultKeyManager.rotateKey()` overwrites the stored
-  DEK without re-encrypting existing vault data — every record encrypted
-  under the old DEK becomes permanently undecryptable. No re-encryption
-  migration exists yet; `rotateKey()` must not be called in production until
-  one is built (tracked as future work, not this ADR's scope).
+- **Resolved (2026-07-20 fast-follow):** ciphertext previously had no
+  binding to its row/column context, so an attacker with raw write access
+  to the sqlite file could swap `account_number_enc` (or any encrypted
+  column) between two rows of the same table/column and it would decrypt
+  successfully. `FieldCipher` now requires an AAD `context` string
+  (`"table:column:id"`) on every encrypt/decrypt call, and repositories bind
+  it to each row's own `id`. A swapped ciphertext now fails authentication
+  and `decryptField` throws, closing this gap.
+- **Resolved (2026-07-20 fast-follow):** `VaultKeyManager.rotateKey()`
+  overwrote the stored DEK without re-encrypting existing vault data,
+  permanently orphaning every previously-encrypted record.
+  `VaultKeyRotationService.rotateKeyWithReencryption()` now re-encrypts every
+  field-encrypted column across all tables inside one sqflite transaction
+  before committing the new key — the old key remains active if
+  re-encryption fails partway through. `rotateKey()` itself remains present
+  (required by `EncryptionKeyManager`'s interface) but is documented as an
+  unsafe raw primitive; callers must use `VaultKeyRotationService` instead.
 - **Out of scope, accepted**: hardware/chip-off attacks against the Secure
   Enclave/StrongBox themselves; nation-state-level adversaries; cloud
   sync/backup compromise (no cloud sync exists in v1 — no attack surface to
@@ -110,6 +126,9 @@ options. No security benefit, meaningfully more code to audit.
 - Tracking issue: #927 (DevelopersCoffee/airo)
 - PR #925 — dual sqlite runtime bug fix (precedent for the "no second native
   DB runtime" constraint)
+- PR #944/#947 — Phase 0 vault crypto & storage layer
+- PR #946 — fail-closed `local_auth` exception handling fast-follow
 - `packages/platform_coin_vault/lib/src/crypto/field_cipher.dart`
 - `packages/platform_coin_vault/lib/src/crypto/vault_key_manager.dart`
 - `packages/platform_coin_vault/lib/src/crypto/vault_secure_storage.dart`
+- `packages/platform_coin_vault/lib/src/data/vault_key_rotation_service.dart`
