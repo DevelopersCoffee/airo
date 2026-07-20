@@ -1,3 +1,4 @@
+import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../application/providers/music_provider.dart';
@@ -71,7 +72,9 @@ class MusicScreen extends ConsumerWidget {
             data: (state) =>
                 _buildPlayerUI(context, ref, state, tracks, musicController),
             loading: () => const Center(child: CircularProgressIndicator()),
-            error: (err, st) => Center(child: Text('Error: $err')),
+            error: (err, st) => Center(
+              child: Text(AiroVoice.errorGeneric.pickWith(detail: '$err')),
+            ),
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),
@@ -659,7 +662,9 @@ class MusicScreenBody extends ConsumerWidget {
             musicController: musicController,
           ),
           loading: () => const Center(child: CircularProgressIndicator()),
-          error: (err, st) => Center(child: Text('Error: $err')),
+          error: (err, st) => Center(
+            child: Text(AiroVoice.errorGeneric.pickWith(detail: '$err')),
+          ),
         );
       },
       loading: () => const Center(child: CircularProgressIndicator()),

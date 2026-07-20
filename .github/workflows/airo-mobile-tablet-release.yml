@@ -9,6 +9,9 @@ on:
       firebase_distribution_url:
         description: 'Firebase App Distribution console URL when available'
         value: ${{ jobs.firebase-distribution.outputs.url }}
+      signing_cert:
+        description: 'Which cert signed the mobile/tablet APK/AAB: production, dogfood-stable, or ephemeral-ci-validation'
+        value: ${{ jobs.build-mobile-tablet.outputs.signing_cert }}
     inputs:
       profile:
         description: 'Mobile/tablet v2 profile to build'
@@ -191,6 +194,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     needs: [prepare-release-ref]
+    outputs:
+      signing_cert: ${{ steps.android_signing.outputs.signing_cert }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -335,11 +340,16 @@ jobs:
           fi
 
       - name: Configure Android signing
+        id: android_signing
         env:
           ANDROID_RELEASE_KEYSTORE_BASE64: ${{ secrets.ANDROID_RELEASE_KEYSTORE_BASE64 }}
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          DOGFOOD_KEYSTORE_BASE64: ${{ secrets.DOGFOOD_KEYSTORE_BASE64 }}
+          DOGFOOD_KEYSTORE_PASSWORD: ${{ secrets.DOGFOOD_KEYSTORE_PASSWORD }}
+          DOGFOOD_KEY_ALIAS: ${{ secrets.DOGFOOD_KEY_ALIAS }}
+          DOGFOOD_KEY_PASSWORD: ${{ secrets.DOGFOOD_KEY_PASSWORD }}
           PRODUCTION_SIGNING: ${{ inputs.production_signing || github.event.inputs.production_signing || 'false' }}
         run: |
           cd app/android
@@ -359,7 +369,30 @@ jobs:
               echo "keyAlias=$KEY_ALIAS"
               echo "keyPassword=$KEY_PASSWORD"
             } > key.properties
+            echo "signing_cert=production" >> "$GITHUB_OUTPUT"
+          elif [[ -n "$DOGFOOD_KEYSTORE_BASE64" ]]; then
+            missing=0
+            for name in DOGFOOD_KEYSTORE_BASE64 DOGFOOD_KEYSTORE_PASSWORD DOGFOOD_KEY_ALIAS DOGFOOD_KEY_PASSWORD; do
+              if [[ -z "${!name}" ]]; then
+                echo "::error::Missing required dogfood signing secret: $name"
+                missing=1
+              fi
+            done
+            [[ "$missing" -eq 0 ]] || exit 1
+            echo "$DOGFOOD_KEYSTORE_BASE64" | base64 -d > dogfood.keystore
+            {
+              echo "storeFile=dogfood.keystore"
+              echo "storePassword=$DOGFOOD_KEYSTORE_PASSWORD"
+              echo "keyAlias=$DOGFOOD_KEY_ALIAS"
+              echo "keyPassword=$DOGFOOD_KEY_PASSWORD"
+            } > key.properties
+            echo "signing_cert=dogfood-stable" >> "$GITHUB_OUTPUT"
           else
+            # Ephemeral CI-validation cert: a fresh keystore is generated every run, so
+            # each build has a different cert. Installing this build over any previous
+            # RC/CI build fails with INSTALL_FAILED_UPDATE_INCOMPATIBLE. Configure the
+            # DOGFOOD_KEYSTORE_BASE64 secret for RC installs that upgrade cleanly.
+            echo "::warning::Signing with an ephemeral CI-validation keystore (regenerated every run). Installing this build over a previous RC/CI build will fail with INSTALL_FAILED_UPDATE_INCOMPATIBLE. Configure DOGFOOD_KEYSTORE_BASE64 for a stable dogfood signing cert."
             keytool -genkeypair \
               -v \
               -keystore ci-validation.keystore \
@@ -376,6 +409,7 @@ jobs:
               echo "keyAlias=ci-validation"
               echo "keyPassword=ci-validation-password"
             } > key.properties
+            echo "signing_cert=ephemeral-ci-validation" >> "$GITHUB_OUTPUT"
           fi
           chmod 600 *.keystore key.properties
 

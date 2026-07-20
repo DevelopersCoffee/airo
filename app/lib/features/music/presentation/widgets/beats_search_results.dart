@@ -1,3 +1,4 @@
+import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../application/providers/beats_provider.dart';
@@ -101,7 +102,7 @@ class BeatsSearchResults extends ConsumerWidget {
           ),
           const SizedBox(height: 16),
           Text(
-            state.errorMessage ?? 'An error occurred',
+            state.errorMessage ?? AiroVoice.errorGeneric.pick(),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 16),

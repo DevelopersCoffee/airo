@@ -33,3 +33,6 @@ export 'src/widgets/tv_focusable.dart';
 
 // Adaptive UI
 export 'src/adaptive/adaptive_ui_models.dart';
+
+// Voice
+export 'src/voice/airo_voice.dart';
