@@ -44,6 +44,41 @@ class AiroNativePictureInPicture {
     }
   }
 
+  /// Arms/disarms system-driven PiP entry for the next user backgrounding
+  /// (Home press). Android-driven entry must be armed *before* the user
+  /// leaves: by the time Flutter reports `AppLifecycleState.paused`, the
+  /// Activity is no longer resumed and `enterPictureInPictureMode()` throws
+  /// `IllegalStateException`. On API 31+ the native side sets
+  /// `PictureInPictureParams.setAutoEnterEnabled`; on API 26–30 it enters
+  /// from `onUserLeaveHint` instead. No-op on hosts without the channel.
+  static Future<void> setAutoEnterEnabled(bool enabled) async {
+    _configureMethodCallHandler();
+    try {
+      await _channel.invokeMethod<void>('setAutoEnterEnabled', {
+        'enabled': enabled,
+      });
+    } on MissingPluginException {
+      debugPrint('PiP channel is unavailable on this host');
+    } catch (error) {
+      debugPrint('PiP setAutoEnterEnabled error: $error');
+    }
+  }
+
+  /// Whether the app is currently in system PiP mode. Used by the
+  /// backgrounding coordinator to distinguish "native auto-enter already
+  /// handled it" from "PiP failed, fall back to audio-only".
+  static Future<bool> isActive() async {
+    _configureMethodCallHandler();
+    try {
+      return await _channel.invokeMethod<bool>('isActive') ?? false;
+    } on MissingPluginException {
+      return false;
+    } catch (error) {
+      debugPrint('PiP isActive error: $error');
+      return false;
+    }
+  }
+
   static void setStateChangeHandler(void Function(bool isActive)? handler) {
     _stateChangeHandler = handler;
     _configureMethodCallHandler();
