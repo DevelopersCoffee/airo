@@ -92,9 +92,19 @@ void main() async {
   // keeps live audio alive — and controllable — after a Home press (#980).
   // Skipped elsewhere: web has no audio_service host, and desktop dev
   // builds don't run the Android foreground service.
+  //
+  // Bounded: a misbehaving OS media service must never block app startup —
+  // on a timeout/failure the app boots normally without media-session
+  // controls (the pre-#980 behavior).
   TvAudioHandler? tvAudioHandler;
   if (!kIsWeb && Platform.isAndroid) {
-    tvAudioHandler = await initTvAudioService();
+    try {
+      tvAudioHandler = await initTvAudioService().timeout(
+        const Duration(seconds: 5),
+      );
+    } catch (e) {
+      debugPrint('📺 TV audio service init skipped: $e');
+    }
   }
 
   runApp(

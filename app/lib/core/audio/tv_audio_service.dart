@@ -267,12 +267,15 @@ Future<TvAudioHandler> initTvAudioService() async {
     config: AudioServiceConfig(
       androidNotificationChannelId: 'com.airo.app.tv.audio',
       androidNotificationChannelName: 'Airo TV',
-      androidNotificationOngoing: true,
-      androidStopForegroundOnPause: false, // Keep notification on pause for TV
+      // Keep the foreground service (and its notification) alive on pause —
+      // live-TV users pause for long stretches and must keep lock-screen
+      // controls. androidNotificationOngoing stays false: audio_service
+      // asserts it can't be true while stopForegroundOnPause is false.
+      androidStopForegroundOnPause: false,
       androidNotificationIcon: 'mipmap/ic_launcher',
-      // No fast forward/rewind for live TV
-      fastForwardInterval: Duration.zero,
-      rewindInterval: Duration.zero,
+      // fastForwardInterval/rewindInterval keep audio_service's defaults
+      // (must be > Duration.zero per its asserts); the intervals are
+      // inert because live TV exposes no fast-forward/rewind controls.
     ),
   );
 
