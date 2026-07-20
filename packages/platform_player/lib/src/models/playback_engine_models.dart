@@ -369,13 +369,24 @@ class AiroPlaybackDiagnostics extends Equatable {
 }
 
 class AiroPlaybackError extends Equatable {
-  const AiroPlaybackError({required this.code, this.operation});
+  const AiroPlaybackError({
+    required this.code,
+    this.operation,
+    this.httpStatusCode,
+  });
 
   final AiroPlaybackErrorCode code;
   final String? operation;
 
+  /// HTTP status extracted from the underlying platform/player error when
+  /// the failure came from an HTTP response (e.g. ExoPlayer's
+  /// `InvalidResponseCodeException: Response code: 403`). Lets the
+  /// diagnostic mapper blame the actual cause (geo-block, auth, rate
+  /// limit) instead of the device.
+  final int? httpStatusCode;
+
   @override
-  List<Object?> get props => [code, operation];
+  List<Object?> get props => [code, operation, httpStatusCode];
 }
 
 class AiroPlaybackState extends Equatable {

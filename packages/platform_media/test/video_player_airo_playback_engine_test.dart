@@ -54,6 +54,41 @@ void main() {
       },
     );
 
+    test('HTTP-status-bearing platform failure extracts httpStatusCode '
+        '(geo-blocked 403 must not be blamed on the device)', () async {
+      fakePlatform.scriptedInitError = PlatformException(
+        code: 'VideoError',
+        message:
+            'Video player had error com.google.android.exoplayer2.'
+            'ExoPlaybackException: Source error, caused by '
+            'HttpDataSource\$InvalidResponseCodeException: '
+            'Response code: 403',
+      );
+      final engine = VideoPlayerAiroPlaybackEngine();
+
+      final state = await engine.open(request());
+
+      expect(state.phase, AiroPlaybackEnginePhase.failed);
+      expect(state.error?.httpStatusCode, 403);
+      await engine.dispose();
+    });
+
+    test(
+      'platform failure without an HTTP status leaves httpStatusCode null',
+      () async {
+        fakePlatform.scriptedInitError = PlatformException(
+          code: 'VideoError',
+          message: 'decoder rejected format',
+        );
+        final engine = VideoPlayerAiroPlaybackEngine();
+
+        final state = await engine.open(request());
+
+        expect(state.error?.httpStatusCode, isNull);
+        await engine.dispose();
+      },
+    );
+
     test(
       'selectQuality is unsupported: no quality catalog in this adapter',
       () async {
@@ -66,20 +101,17 @@ void main() {
       },
     );
 
-    test(
-      'selectTrack fails typed when no matching track exists',
-      () async {
-        final engine = VideoPlayerAiroPlaybackEngine();
-        await engine.open(request());
+    test('selectTrack fails typed when no matching track exists', () async {
+      final engine = VideoPlayerAiroPlaybackEngine();
+      await engine.open(request());
 
-        final state = await engine.selectTrack(
-          kind: AiroPlaybackTrackKind.audio,
-          trackId: 'audio-1',
-        );
-        expect(state.error?.code, AiroPlaybackErrorCode.trackUnavailable);
-        await engine.dispose();
-      },
-    );
+      final state = await engine.selectTrack(
+        kind: AiroPlaybackTrackKind.audio,
+        trackId: 'audio-1',
+      );
+      expect(state.error?.code, AiroPlaybackErrorCode.trackUnavailable);
+      await engine.dispose();
+    });
 
     test(
       'external subtitles from open request appear in state.tracks',
@@ -138,14 +170,17 @@ void main() {
       },
     );
 
-    test('diagnostics reports hardware-accelerated after a successful open', () async {
-      final engine = VideoPlayerAiroPlaybackEngine();
-      await engine.open(request());
+    test(
+      'diagnostics reports hardware-accelerated after a successful open',
+      () async {
+        final engine = VideoPlayerAiroPlaybackEngine();
+        await engine.open(request());
 
-      final diagnostics = await engine.diagnostics();
-      expect(diagnostics.hardwareAccelerated, isTrue);
-      await engine.dispose();
-    });
+        final diagnostics = await engine.diagnostics();
+        expect(diagnostics.hardwareAccelerated, isTrue);
+        await engine.dispose();
+      },
+    );
 
     test('buildView is null before open, non-null after', () async {
       final engine = VideoPlayerAiroPlaybackEngine();

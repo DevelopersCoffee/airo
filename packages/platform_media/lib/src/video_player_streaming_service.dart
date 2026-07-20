@@ -163,7 +163,7 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
       );
 
       if (result.error != null) {
-        throw _EngineOpenError(result.error!.code);
+        throw _EngineOpenError(result.error!);
       }
 
       await _engine.setVolume(_state.isMuted ? 0 : _state.volume);
@@ -196,7 +196,7 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
       _audioContext.releaseFocus(AudioFocusType.video);
       await _handleError(
         e.toString(),
-        engineErrorCode: e is _EngineOpenError ? e.engineCode : null,
+        engineError: e is _EngineOpenError ? e.engineError : null,
       );
     }
   }
@@ -210,7 +210,7 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
     if (engineState.error != null) {
       _handleError(
         engineState.error!.code.stableId,
-        engineErrorCode: engineState.error!.code,
+        engineError: engineState.error,
       );
       return;
     }
@@ -221,7 +221,8 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
         duration: engineState.duration ?? _state.duration,
         tracks: engineState.tracks,
         selectedTrackIds: engineState.selectedTrackIds,
-        playbackState: _mapEnginePhase(engineState.phase) ?? _state.playbackState,
+        playbackState:
+            _mapEnginePhase(engineState.phase) ?? _state.playbackState,
       ),
     );
   }
@@ -327,7 +328,7 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
 
   Future<void> _handleError(
     String message, {
-    AiroPlaybackErrorCode? engineErrorCode,
+    AiroPlaybackError? engineError,
   }) async {
     if (_isHandlingError || _state.playbackState == PlaybackState.error) {
       return;
@@ -357,10 +358,11 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
     // this, every engine code except codec_unsupported (which happens to
     // match the 'codec' substring check) fell through to a generic
     // `unknown` diagnostic.
-    final diagnostic = engineErrorCode != null
+    final diagnostic = engineError != null
         ? const AiroPlaybackDiagnosticMapper().map(
             AiroPlaybackFailureEvent(
-              engineError: AiroPlaybackError(code: engineErrorCode),
+              engineError: engineError,
+              httpStatusCode: engineError.httpStatusCode,
             ),
           )
         : mapStreamingErrorToDiagnostic(message);
@@ -412,7 +414,8 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
     var clampedPosition = position;
     if (_state.isLiveStream && _state.hasDvrSupport) {
       final dvrStart = _state.dvrWindowStart ?? Duration.zero;
-      final liveEdge = _state.liveEdge ?? _engine.currentState.duration ?? Duration.zero;
+      final liveEdge =
+          _state.liveEdge ?? _engine.currentState.duration ?? Duration.zero;
 
       if (position < dvrStart) {
         clampedPosition = dvrStart;
@@ -571,14 +574,15 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
 }
 
 class _EngineOpenError implements Exception {
-  _EngineOpenError(this.engineCode) : code = engineCode.stableId;
+  _EngineOpenError(this.engineError) : code = engineError.code.stableId;
   final String code;
 
   /// The typed engine error this was raised from, kept alongside [code] so
   /// the catch site in [VideoPlayerStreamingService.playChannel] can map it
   /// precisely instead of re-parsing [toString()] (see CV-016 diagnostic
-  /// fidelity fix in `_handleError`).
-  final AiroPlaybackErrorCode engineCode;
+  /// fidelity fix in `_handleError`). Carries any HTTP status the engine
+  /// extracted so the diagnostic mapper can blame the real cause.
+  final AiroPlaybackError engineError;
   @override
   String toString() => code;
 }

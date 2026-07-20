@@ -47,62 +47,89 @@ void main() {
       expect(service.currentState.currentChannel?.id, 'chan-1');
     });
 
-    test('decoder failure surfaces as a typed error and retry count increments', () async {
-      fakePlatform.scriptedInitError = PlatformException(
-        code: 'VideoError',
-        message: 'decoder rejected format',
-      );
-      await service.playChannel(channel());
-      expect(service.currentState.playbackState, PlaybackState.error);
-      expect(service.currentState.retryCount, 1);
-      // CV-016 diagnostic-mapping fix: the engine's typed decoderFailed
-      // code must be mapped directly (-> playerInitFailed), not
-      // round-tripped through the CV-001 string-pattern matcher, which
-      // would have no substring/regex match for "decoder_failed" and fall
-      // through to the generic `unknown` diagnostic.
-      expect(
-        service.currentState.diagnostic?.code,
-        AiroPlaybackDiagnosticCode.playerInitFailed,
-      );
-    });
-
     test(
-      'network-unavailable engine failure maps to a precise network '
-      'diagnostic, not the generic unknown fallback',
+      'decoder failure surfaces as a typed error and retry count increments',
       () async {
-        // VideoPlayerAiroPlaybackEngine can only be driven to
-        // decoderFailed/backendUnavailable through FakeVideoPlayerPlatform
-        // (video_player hard-casts init-stream errors to
-        // PlatformException, so a TimeoutException can't reach it — see
-        // FakeVideoPlayerPlatform.scriptedInitError). A directly-injected
-        // engine double is used instead so this test can drive the
-        // networkUnavailable code specifically.
-        final networkFailureEngine = _ScriptedOpenFailureEngine(
-          AiroPlaybackErrorCode.networkUnavailable,
+        fakePlatform.scriptedInitError = PlatformException(
+          code: 'VideoError',
+          message: 'decoder rejected format',
         );
-        final networkService = VideoPlayerStreamingService(
-          engine: networkFailureEngine,
-        );
-        addTearDown(networkService.dispose);
-
-        await networkService.playChannel(channel());
-
-        expect(networkService.currentState.playbackState, PlaybackState.error);
-        // CV-016 diagnostic-mapping fix: this is the headline regression —
-        // before the fix, the engine's typed networkUnavailable code was
-        // stringified and round-tripped through the CV-001 string-pattern
-        // mapper, which has no match for "network_unavailable" and fell
-        // through to the generic unknown diagnostic.
+        await service.playChannel(channel());
+        expect(service.currentState.playbackState, PlaybackState.error);
+        expect(service.currentState.retryCount, 1);
+        // CV-016 diagnostic-mapping fix: the engine's typed decoderFailed
+        // code must be mapped directly (-> playerInitFailed), not
+        // round-tripped through the CV-001 string-pattern matcher, which
+        // would have no substring/regex match for "decoder_failed" and fall
+        // through to the generic `unknown` diagnostic.
         expect(
-          networkService.currentState.diagnostic?.code,
-          AiroPlaybackDiagnosticCode.networkUnavailable,
-        );
-        expect(
-          networkService.currentState.diagnostic?.code,
-          isNot(AiroPlaybackDiagnosticCode.unknown),
+          service.currentState.diagnostic?.code,
+          AiroPlaybackDiagnosticCode.playerInitFailed,
         );
       },
     );
+
+    test('network-unavailable engine failure maps to a precise network '
+        'diagnostic, not the generic unknown fallback', () async {
+      // VideoPlayerAiroPlaybackEngine can only be driven to
+      // decoderFailed/backendUnavailable through FakeVideoPlayerPlatform
+      // (video_player hard-casts init-stream errors to
+      // PlatformException, so a TimeoutException can't reach it — see
+      // FakeVideoPlayerPlatform.scriptedInitError). A directly-injected
+      // engine double is used instead so this test can drive the
+      // networkUnavailable code specifically.
+      final networkFailureEngine = _ScriptedOpenFailureEngine(
+        AiroPlaybackErrorCode.networkUnavailable,
+      );
+      final networkService = VideoPlayerStreamingService(
+        engine: networkFailureEngine,
+      );
+      addTearDown(networkService.dispose);
+
+      await networkService.playChannel(channel());
+
+      expect(networkService.currentState.playbackState, PlaybackState.error);
+      // CV-016 diagnostic-mapping fix: this is the headline regression —
+      // before the fix, the engine's typed networkUnavailable code was
+      // stringified and round-tripped through the CV-001 string-pattern
+      // mapper, which has no match for "network_unavailable" and fell
+      // through to the generic unknown diagnostic.
+      expect(
+        networkService.currentState.diagnostic?.code,
+        AiroPlaybackDiagnosticCode.networkUnavailable,
+      );
+      expect(
+        networkService.currentState.diagnostic?.code,
+        isNot(AiroPlaybackDiagnosticCode.unknown),
+      );
+    });
+
+    test('HTTP 403 open failure maps to providerAuthDenied (honest blame), '
+        'not playerInitFailed', () async {
+      // rc.3 device-pass regression: a geo-blocked/403 channel surfaced
+      // as "Playback could not start on this device" because the HTTP
+      // status never reached the diagnostic mapper. The engine now
+      // extracts it onto AiroPlaybackError.httpStatusCode and the
+      // service threads it into AiroPlaybackFailureEvent, whose mapper
+      // prioritizes httpStatusCode over the engine error code.
+      final geoBlockedEngine = _ScriptedOpenFailureEngine(
+        AiroPlaybackErrorCode.decoderFailed,
+        httpStatusCode: 403,
+      );
+      final geoBlockedService = VideoPlayerStreamingService(
+        engine: geoBlockedEngine,
+      );
+      addTearDown(geoBlockedService.dispose);
+
+      await geoBlockedService.playChannel(channel());
+
+      expect(geoBlockedService.currentState.playbackState, PlaybackState.error);
+      final diagnostic = geoBlockedService.currentState.diagnostic;
+      expect(diagnostic?.code, AiroPlaybackDiagnosticCode.providerAuthDenied);
+      expect(diagnostic?.retryEligible, isFalse);
+      expect(diagnostic?.userMessage, contains('provider'));
+      expect(diagnostic?.technicalDetail, contains('http=403'));
+    });
 
     test('buildVideoView returns non-null after a successful open', () async {
       await service.playChannel(channel());
@@ -186,19 +213,22 @@ void main() {
   });
 
   group('VideoPlayerStreamingService attachExternalSubtitle', () {
-    test('attached subtitle appears in tracks after the next playChannel', () async {
-      service.attachExternalSubtitle(
-        'chan-1',
-        AiroPlaybackExternalSubtitle(
-          handle: AiroPlaybackSourceHandle.redacted('sub-en'),
-          languageCode: 'en',
-          label: 'English',
-        ),
-      );
-      await service.playChannel(channel());
-      expect(service.currentState.tracks, hasLength(1));
-      expect(service.currentState.tracks.single.isExternal, isTrue);
-    });
+    test(
+      'attached subtitle appears in tracks after the next playChannel',
+      () async {
+        service.attachExternalSubtitle(
+          'chan-1',
+          AiroPlaybackExternalSubtitle(
+            handle: AiroPlaybackSourceHandle.redacted('sub-en'),
+            languageCode: 'en',
+            label: 'English',
+          ),
+        );
+        await service.playChannel(channel());
+        expect(service.currentState.tracks, hasLength(1));
+        expect(service.currentState.tracks.single.isExternal, isTrue);
+      },
+    );
 
     test('subtitle does not appear before the next playChannel', () async {
       await service.playChannel(channel());
@@ -342,9 +372,10 @@ void main() {
 /// are private to `platform_player`, so an arbitrary open()-time error code
 /// isn't reachable through it from another package's test.
 class _ScriptedOpenFailureEngine implements AiroPlaybackEngine {
-  _ScriptedOpenFailureEngine(this._errorCode);
+  _ScriptedOpenFailureEngine(this._errorCode, {this.httpStatusCode});
 
   final AiroPlaybackErrorCode _errorCode;
+  final int? httpStatusCode;
   final _controller = StreamController<AiroPlaybackState>.broadcast();
   AiroPlaybackState _state = AiroPlaybackState.idle(
     backendKind: AiroPlaybackBackendKind.fake,
@@ -364,7 +395,11 @@ class _ScriptedOpenFailureEngine implements AiroPlaybackEngine {
     _state = _state.copyWith(
       phase: AiroPlaybackEnginePhase.failed,
       request: request,
-      error: AiroPlaybackError(code: _errorCode, operation: 'open'),
+      error: AiroPlaybackError(
+        code: _errorCode,
+        operation: 'open',
+        httpStatusCode: httpStatusCode,
+      ),
     );
     _controller.add(_state);
     return _state;
