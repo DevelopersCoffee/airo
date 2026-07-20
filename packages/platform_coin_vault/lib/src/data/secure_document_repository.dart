@@ -17,28 +17,52 @@ class SecureDocumentRepository {
 
   Future<Result<int>> create(SecureDocumentRecord record, List<int> keyBytes) async {
     try {
-      final customFieldsEnc = record.customFields.isEmpty
-          ? null
-          : await _fieldCipher.encryptField(jsonEncode(record.customFields), keyBytes);
-      final notesEnc = record.notes == null
-          ? null
-          : await _fieldCipher.encryptField(record.notes!, keyBytes);
-      final attachmentEnc = record.attachmentBlob == null
-          ? null
-          : await _fieldCipher.encryptField(
-              String.fromCharCodes(record.attachmentBlob!),
-              keyBytes,
-            );
+      late int id;
+      await _database.db.transaction((txn) async {
+        id = await txn.insert(VaultTables.secureDocuments, {
+          'nickname': record.nickname,
+          'category': record.category.name,
+          'linked_account_nickname': record.linkedAccountNickname,
+          'custom_fields_enc': null,
+          'attachment_blob_enc': null,
+          'notes_enc': null,
+          'created_at': record.createdAt.millisecondsSinceEpoch,
+        });
 
-      final id = await _database.db.insert(VaultTables.secureDocuments, {
-        'nickname': record.nickname,
-        'category': record.category.name,
-        'linked_account_nickname': record.linkedAccountNickname,
-        'custom_fields_enc': customFieldsEnc,
-        'attachment_blob_enc': attachmentEnc,
-        'notes_enc': notesEnc,
-        'created_at': record.createdAt.millisecondsSinceEpoch,
+        final customFieldsEnc = record.customFields.isEmpty
+            ? null
+            : await _fieldCipher.encryptField(
+                jsonEncode(record.customFields),
+                keyBytes,
+                context: '${VaultTables.secureDocuments}:custom_fields_enc:$id',
+              );
+        final notesEnc = record.notes == null
+            ? null
+            : await _fieldCipher.encryptField(
+                record.notes!,
+                keyBytes,
+                context: '${VaultTables.secureDocuments}:notes_enc:$id',
+              );
+        final attachmentEnc = record.attachmentBlob == null
+            ? null
+            : await _fieldCipher.encryptField(
+                String.fromCharCodes(record.attachmentBlob!),
+                keyBytes,
+                context: '${VaultTables.secureDocuments}:attachment_blob_enc:$id',
+              );
+
+        await txn.update(
+          VaultTables.secureDocuments,
+          {
+            'custom_fields_enc': customFieldsEnc,
+            'attachment_blob_enc': attachmentEnc,
+            'notes_enc': notesEnc,
+          },
+          where: 'id = ?',
+          whereArgs: [id],
+        );
       });
+
       return Success(id);
     } on DatabaseException catch (e) {
       return Failure(ValidationFailure(
@@ -65,6 +89,7 @@ class SecureDocumentRepository {
       if (rows.isEmpty) return const Success(null);
 
       final row = rows.single;
+      final id = row['id'] as int;
       final customFieldsEnc = row['custom_fields_enc'] as String?;
       final notesEnc = row['notes_enc'] as String?;
       final attachmentEnc = row['attachment_blob_enc'] as String?;
@@ -72,19 +97,33 @@ class SecureDocumentRepository {
       final customFields = customFieldsEnc == null
           ? <String, String>{}
           : Map<String, String>.from(
-              jsonDecode(await _fieldCipher.decryptField(customFieldsEnc, keyBytes)) as Map,
+              jsonDecode(await _fieldCipher.decryptField(
+                customFieldsEnc,
+                keyBytes,
+                context: '${VaultTables.secureDocuments}:custom_fields_enc:$id',
+              )) as Map,
             );
 
       return Success(SecureDocumentRecord(
-        id: row['id'] as int,
+        id: id,
         nickname: row['nickname'] as String,
         category: DocumentCategory.values.byName(row['category'] as String),
         linkedAccountNickname: row['linked_account_nickname'] as String?,
         customFields: customFields,
         attachmentBlob: attachmentEnc == null
             ? null
-            : (await _fieldCipher.decryptField(attachmentEnc, keyBytes)).codeUnits,
-        notes: notesEnc == null ? null : await _fieldCipher.decryptField(notesEnc, keyBytes),
+            : (await _fieldCipher.decryptField(
+                attachmentEnc,
+                keyBytes,
+                context: '${VaultTables.secureDocuments}:attachment_blob_enc:$id',
+              )).codeUnits,
+        notes: notesEnc == null
+            ? null
+            : await _fieldCipher.decryptField(
+                notesEnc,
+                keyBytes,
+                context: '${VaultTables.secureDocuments}:notes_enc:$id',
+              ),
         createdAt: DateTime.fromMillisecondsSinceEpoch(row['created_at'] as int),
       ));
     } catch (e) {

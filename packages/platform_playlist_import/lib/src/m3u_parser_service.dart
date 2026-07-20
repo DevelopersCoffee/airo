@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:core_data/core_data.dart';
 import 'package:core_native/core_native.dart';
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:path_provider/path_provider.dart';
 import 'package:platform_channels/platform_channels.dart';
 import 'package:platform_worker_jobs/platform_worker_jobs.dart';
@@ -276,7 +277,18 @@ class M3UParserService {
   List<IPTVChannel> parseM3U(String content) => parseM3UChannels(content);
 
   /// Parse M3U content in the platform worker boundary used by async flows.
+  ///
+  /// On native platforms this parses in the Rust core via flutter_rust_bridge:
+  /// the FFI call dispatches to Rust worker threads, so the Dart UI isolate is
+  /// never blocked (and `RustLib` per-isolate statics cannot be reused inside
+  /// a spawned `Isolate.run`, so the worker boundary cannot host FFI calls).
+  /// The Dart fallback parser behind the worker executor remains the web path
+  /// per the repo isolate policy; `parseM3uEntriesNative` also falls back to
+  /// it automatically when the native bridge is unavailable.
   Future<List<IPTVChannel>> parseM3UOffMain(String content) {
+    if (!kIsWeb) {
+      return parseM3UChannelsNative(content);
+    }
     return workerExecutor.run<List<IPTVChannel>>(
       debugName: 'm3u_playlist_parse',
       kind: AiroWorkerJobKind.playlistImport,
@@ -413,13 +425,28 @@ Future<List<IPTVChannel>> _readChannelCacheFile(String path) async {
       .toList();
 }
 
-/// Parse M3U content into normalized, deduplicated IPTV channels.
-List<IPTVChannel> parseM3UChannels(String content) {
+/// Parse M3U content into normalized, deduplicated IPTV channels using the
+/// synchronous Dart fallback parser from core_native. Kept for deterministic
+/// tests and the web fallback; native production paths use
+/// [parseM3UChannelsNative].
+List<IPTVChannel> parseM3UChannels(String content) =>
+    _channelsFromM3uEntries(parseM3uEntries(content));
+
+/// Parse M3U content through the single Rust core parser, falling back to the
+/// Dart parser when the native bridge is unavailable (e.g. host-only test
+/// runs without the compiled library).
+Future<List<IPTVChannel>> parseM3UChannelsNative(String content) async =>
+    _channelsFromM3uEntries(await parseM3uEntriesNative(content));
+
+/// Normalize, validate, and deduplicate parsed M3U entries into channels.
+/// Shared by the Rust-backed and Dart-fallback parse paths so both produce
+/// identical output.
+List<IPTVChannel> _channelsFromM3uEntries(Iterable<NativeM3uEntry> entries) {
   final channels = <IPTVChannel>[];
   // Track seen channels by normalized name to deduplicate.
   final seenChannels = <String, IPTVChannel>{};
 
-  for (final entry in parseM3uEntries(content)) {
+  for (final entry in entries) {
     final streamUri = AiroPlaylistUrlPolicy.normalizeStreamUrl(entry.url);
     if (streamUri == null) {
       continue;

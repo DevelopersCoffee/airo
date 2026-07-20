@@ -7,23 +7,28 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
 import '../frb_generated.dart';
 
-// These functions are ignored because they are not marked as `pub`: `is_attr_key_byte`, `new`, `parse_extinf`, `parse_line`, `parse_m3u_entries_str`
+// These functions are ignored because they are not marked as `pub`: `is_attr_key_byte`, `new`, `parse_extinf`, `parse_line`, `parse_m3u_playlist_str`
 // These types are ignored because they are neither used by any `pub` functions nor (for structs and enums) marked `#[frb(unignore)]`: `AttributeIter`, `PendingExtInf`
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_fields_are_eq`, `assert_fields_are_eq`, `clone`, `clone`, `eq`, `eq`, `fmt`, `fmt`, `next`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `clone`, `clone`, `clone`, `eq`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `next`
 // These functions are ignored (category: IgnoreBecauseOwnerTyShouldIgnore): `default`
 
 Future<List<M3uEntry>> parseM3UEntries({required String content}) =>
     RustLib.instance.api.crateApiM3UParseM3UEntries(content: content);
 
+Future<M3uPlaylist> parseM3UPlaylist({required String content}) =>
+    RustLib.instance.api.crateApiM3UParseM3UPlaylist(content: content);
+
 class M3uEntry {
   const M3uEntry({
     required this.name,
     required this.url,
+    required this.extras,
     this.logo,
     this.group,
     this.tvgId,
     this.tvgName,
     this.language,
+    this.duration,
   });
   final String name;
   final String url;
@@ -33,6 +38,14 @@ class M3uEntry {
   final String? tvgName;
   final String? language;
 
+  /// EXTINF duration in seconds. `-1` means live/unknown; a positive value
+  /// indicates VOD. `None` when absent or unparseable.
+  final PlatformInt64? duration;
+
+  /// EXTINF attributes outside the known set (e.g. `tvg-chno`,
+  /// `catchup-days`, `radio`), preserved instead of dropped.
+  final Map<String, String> extras;
+
   @override
   int get hashCode =>
       name.hashCode ^
@@ -41,7 +54,9 @@ class M3uEntry {
       group.hashCode ^
       tvgId.hashCode ^
       tvgName.hashCode ^
-      language.hashCode;
+      language.hashCode ^
+      duration.hashCode ^
+      extras.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -54,5 +69,29 @@ class M3uEntry {
           group == other.group &&
           tvgId == other.tvgId &&
           tvgName == other.tvgName &&
-          language == other.language;
+          language == other.language &&
+          duration == other.duration &&
+          extras == other.extras;
+}
+
+/// Full parse result: channel entries plus attributes from the `#EXTM3U`
+/// header line (e.g. `x-tvg-url` / `url-tvg` EPG source URLs).
+class M3uPlaylist {
+  const M3uPlaylist({required this.entries, required this.headers});
+  final List<M3uEntry> entries;
+  final Map<String, String> headers;
+
+  static Future<M3uPlaylist> default_() =>
+      RustLib.instance.api.crateApiM3UM3UPlaylistDefault();
+
+  @override
+  int get hashCode => entries.hashCode ^ headers.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is M3uPlaylist &&
+          runtimeType == other.runtimeType &&
+          entries == other.entries &&
+          headers == other.headers;
 }

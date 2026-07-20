@@ -96,11 +96,133 @@ void main() {
       expect(secondResult.failure, isA<ValidationFailure>());
     });
 
+    test('ciphertext swapped between two rows of the same column fails to decrypt', () async {
+      final first = BankAccountRecord(
+        id: null,
+        nickname: 'Row One',
+        bankName: 'HDFC Bank',
+        accountHolderName: 'Jane Doe',
+        accountNumber: '1111111111',
+        ifscCode: 'HDFC0001234',
+        accountType: 'savings',
+      );
+      final second = BankAccountRecord(
+        id: null,
+        nickname: 'Row Two',
+        bankName: 'HDFC Bank',
+        accountHolderName: 'Jane Doe',
+        accountNumber: '2222222222',
+        ifscCode: 'HDFC0001234',
+        accountType: 'savings',
+      );
+
+      await repository.create(first, keyBytes);
+      await repository.create(second, keyBytes);
+
+      final firstRow = (await vaultDb.db.query(
+        VaultTables.bankAccounts,
+        where: 'nickname = ?',
+        whereArgs: ['Row One'],
+      )).single;
+      final stolenCiphertext = firstRow['account_number_enc'];
+
+      await vaultDb.db.update(
+        VaultTables.bankAccounts,
+        {'account_number_enc': stolenCiphertext},
+        where: 'nickname = ?',
+        whereArgs: ['Row Two'],
+      );
+
+      final tampered = await repository.getByNickname('Row Two', keyBytes);
+
+      expect(tampered.isFailure, isTrue);
+    });
+
     test('getByNickname returns null for an unknown nickname', () async {
       final result = await repository.getByNickname('Nobody', keyBytes);
 
       expect(result.isSuccess, isTrue);
       expect(result.value, isNull);
     });
+
+    test(
+      'create leaves no placeholder row behind when encryption throws mid-create',
+      () async {
+        final throwingRepository = BankAccountRepository(
+          database: vaultDb,
+          fieldCipher: _ThrowingFieldCipher(),
+        );
+        final record = BankAccountRecord(
+          id: null,
+          nickname: 'Doomed Account',
+          bankName: 'HDFC Bank',
+          accountHolderName: 'Jane Doe',
+          accountNumber: '1234567890',
+          ifscCode: 'HDFC0001234',
+          accountType: 'savings',
+        );
+
+        final result = await throwingRepository.create(record, keyBytes);
+        expect(result.isFailure, isTrue);
+
+        final rows = await vaultDb.db.query(VaultTables.bankAccounts);
+        expect(
+          rows,
+          isEmpty,
+          reason:
+              'the insert-then-update sequence is now wrapped in a transaction, so '
+              'an exception thrown by encryptField() must roll back the placeholder '
+              'insert too, not leave a zombie row with empty-string ciphertext',
+        );
+      },
+    );
+
+    test(
+      'creating a second account with a colliding nickname leaves row count at 1, not 2',
+      () async {
+        final first = BankAccountRecord(
+          id: null,
+          nickname: 'Collision Nick',
+          bankName: 'HDFC Bank',
+          accountHolderName: 'Jane Doe',
+          accountNumber: '1111111111',
+          ifscCode: 'HDFC0001234',
+          accountType: 'savings',
+        );
+        final second = BankAccountRecord(
+          id: null,
+          nickname: 'Collision Nick',
+          bankName: 'ICICI Bank',
+          accountHolderName: 'Jane Doe',
+          accountNumber: '2222222222',
+          ifscCode: 'ICIC0005678',
+          accountType: 'current',
+        );
+
+        await repository.create(first, keyBytes);
+        await repository.create(second, keyBytes);
+
+        final rows = await vaultDb.db.query(
+          VaultTables.bankAccounts,
+          where: 'nickname = ?',
+          whereArgs: ['Collision Nick'],
+        );
+        expect(rows, hasLength(1));
+      },
+    );
   });
+}
+
+/// Throws from [encryptField] to simulate an exception occurring between the
+/// placeholder insert and the ciphertext update inside `create()`, proving
+/// the surrounding transaction rolls back the placeholder insert too.
+class _ThrowingFieldCipher extends FieldCipher {
+  @override
+  Future<String> encryptField(
+    String plaintext,
+    List<int> keyBytes, {
+    required String context,
+  }) {
+    throw StateError('simulated encryption failure for atomicity test');
+  }
 }

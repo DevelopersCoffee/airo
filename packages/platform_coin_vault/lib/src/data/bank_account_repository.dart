@@ -7,6 +7,12 @@ import 'vault_database.dart';
 
 /// Repository for [BankAccountRecord]. Encrypts [BankAccountRecord.accountNumber]
 /// and [BankAccountRecord.notes] before persisting; decrypts them on read.
+///
+/// [create] inserts a placeholder row first to obtain the row's `id`, then
+/// encrypts sensitive fields bound to that `id` via [FieldCipher]'s AAD
+/// context, then updates the row with the real ciphertext. This binds each
+/// ciphertext to its own row so ciphertext from one row can never be
+/// swapped into another row of the same table/column and still decrypt.
 class BankAccountRepository {
   BankAccountRepository({required VaultDatabase database, required FieldCipher fieldCipher})
     : _database = database,
@@ -17,34 +23,50 @@ class BankAccountRepository {
 
   Future<Result<int>> create(BankAccountRecord record, List<int> keyBytes) async {
     try {
-      final accountNumberEnc = await _fieldCipher.encryptField(
-        record.accountNumber,
-        keyBytes,
-      );
-      final notesEnc = record.notes == null
-          ? null
-          : await _fieldCipher.encryptField(record.notes!, keyBytes);
+      late int id;
+      await _database.db.transaction((txn) async {
+        id = await txn.insert(VaultTables.bankAccounts, {
+          'nickname': record.nickname,
+          'bank_name': record.bankName,
+          'account_holder_name': record.accountHolderName,
+          'account_number_enc': '',
+          'ifsc_code': record.ifscCode,
+          'account_type': record.accountType,
+          'branch_name': record.branchName,
+          'micr_code': record.micrCode,
+          'swift_iban': record.swiftIban,
+          'customer_id': record.customerId,
+          'upi_ids': record.upiIds,
+          'linked_mobile': record.linkedMobile,
+          'linked_email': record.linkedEmail,
+          'nominee_name': record.nomineeName,
+          'debit_card_last4': record.debitCardLast4,
+          'debit_card_expiry': record.debitCardExpiry,
+          'notes_enc': null,
+          'created_at': record.createdAt.millisecondsSinceEpoch,
+        });
 
-      final id = await _database.db.insert(VaultTables.bankAccounts, {
-        'nickname': record.nickname,
-        'bank_name': record.bankName,
-        'account_holder_name': record.accountHolderName,
-        'account_number_enc': accountNumberEnc,
-        'ifsc_code': record.ifscCode,
-        'account_type': record.accountType,
-        'branch_name': record.branchName,
-        'micr_code': record.micrCode,
-        'swift_iban': record.swiftIban,
-        'customer_id': record.customerId,
-        'upi_ids': record.upiIds,
-        'linked_mobile': record.linkedMobile,
-        'linked_email': record.linkedEmail,
-        'nominee_name': record.nomineeName,
-        'debit_card_last4': record.debitCardLast4,
-        'debit_card_expiry': record.debitCardExpiry,
-        'notes_enc': notesEnc,
-        'created_at': record.createdAt.millisecondsSinceEpoch,
+        final accountNumberEnc = await _fieldCipher.encryptField(
+          record.accountNumber,
+          keyBytes,
+          context: '${VaultTables.bankAccounts}:account_number_enc:$id',
+        );
+        final notesEnc = record.notes == null
+            ? null
+            : await _fieldCipher.encryptField(
+                record.notes!,
+                keyBytes,
+                context: '${VaultTables.bankAccounts}:notes_enc:$id',
+              );
+
+        await txn.update(
+          VaultTables.bankAccounts,
+          {'account_number_enc': accountNumberEnc, 'notes_enc': notesEnc},
+          where: 'id = ?',
+          whereArgs: [id],
+        );
       });
+
       return Success(id);
     } on DatabaseException catch (e) {
       return Failure(ValidationFailure(
@@ -71,17 +93,23 @@ class BankAccountRepository {
       if (rows.isEmpty) return const Success(null);
 
       final row = rows.single;
+      final id = row['id'] as int;
       final accountNumber = await _fieldCipher.decryptField(
         row['account_number_enc'] as String,
         keyBytes,
+        context: '${VaultTables.bankAccounts}:account_number_enc:$id',
       );
       final notesEnc = row['notes_enc'] as String?;
       final notes = notesEnc == null
           ? null
-          : await _fieldCipher.decryptField(notesEnc, keyBytes);
+          : await _fieldCipher.decryptField(
+              notesEnc,
+              keyBytes,
+              context: '${VaultTables.bankAccounts}:notes_enc:$id',
+            );
 
       return Success(BankAccountRecord(
-        id: row['id'] as int,
+        id: id,
         nickname: row['nickname'] as String,
         bankName: row['bank_name'] as String,
         accountHolderName: row['account_holder_name'] as String,
