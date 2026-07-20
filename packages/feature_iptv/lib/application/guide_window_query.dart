@@ -60,6 +60,10 @@ Future<CompactEpgWindow> queryGuideWindowWithOverrides({
 /// are concatenated per channel, deduped by `programId` (pages can straddle
 /// a program), and sorted by `startsAt`. The merged window spans
 /// `[base.windowStart, page.windowEnd)`.
+///
+/// Precondition: pages merge in forward chronological order (each [page]
+/// starts where [base] ended) — the paged window notifier only appends
+/// forward pages.
 CompactEpgWindow mergeGuideWindowPage(
   CompactEpgWindow? base,
   CompactEpgWindow page,
