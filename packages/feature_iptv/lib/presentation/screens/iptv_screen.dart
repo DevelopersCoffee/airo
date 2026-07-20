@@ -86,6 +86,9 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
     ref.read(wakelockPlaybackCoordinatorProvider);
     // Decides PiP vs. audio-only when the app backgrounds during playback.
     ref.read(playerBackgroundingCoordinatorProvider);
+    // Publishes playback state to the OS media session (media notification
+    // + lock-screen controls) when the host supplies a delegate (#980).
+    ref.read(tvIptvIntegrationProvider);
     // Feeds real app lifecycle transitions into appLifecycleStateProvider,
     // which playerBackgroundingCoordinatorProvider listens to above.
     WidgetsBinding.instance.addObserver(this);
