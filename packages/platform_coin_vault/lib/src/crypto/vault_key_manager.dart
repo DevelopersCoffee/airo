@@ -30,7 +30,8 @@ class VaultKeyManager {
         options: const AuthenticationOptions(biometricOnly: false),
       )),
       _localAuth = localAuth,
-      _secureStorage = secureStorage;
+      _secureStorage = secureStorage,
+      _isAvailable = null;
 
   /// Test-only constructor: bypasses the real `local_auth` plugin and
   /// `flutter_secure_storage` platform channel, both of which are
@@ -38,16 +39,30 @@ class VaultKeyManager {
   VaultKeyManager.forTesting({
     required VaultKeyStore secureStorage,
     required Future<bool> Function() authenticate,
+    Future<bool> Function()? isAvailable,
   }) : _secureStorage = secureStorage,
        _authenticate = authenticate,
-       _localAuth = null;
+       _localAuth = null,
+       _isAvailable = isAvailable;
 
   final VaultKeyStore _secureStorage;
   final Future<bool> Function() _authenticate;
   final LocalAuthentication? _localAuth;
 
+  /// Test-only seam for [isEncryptionAvailable]. `null` (the default under
+  /// the production constructor and under [forTesting] when not supplied)
+  /// means "no fake configured" — [forTesting] callers get `true` to keep
+  /// existing tests passing unchanged, while the production constructor
+  /// always exercises the real `local_auth` checks below.
+  final Future<bool> Function()? _isAvailable;
+
   Future<Result<List<int>>> getDatabaseKey() async {
-    final authenticated = await _authenticate();
+    final bool authenticated;
+    try {
+      authenticated = await _authenticate();
+    } catch (e) {
+      return Failure(AuthFailure(message: 'Biometric authentication failed', cause: e));
+    }
     if (!authenticated) {
       return const Failure(AuthFailure(message: 'Biometric authentication failed'));
     }
@@ -69,8 +84,24 @@ class VaultKeyManager {
     return Success(newKey);
   }
 
+  /// Rotates the stored DEK to a newly generated 32-byte key.
+  ///
+  /// **DESTRUCTIVE — DO NOT CALL IN PRODUCTION YET.** This overwrites the
+  /// stored DEK without re-encrypting any existing vault data. Every record
+  /// previously encrypted under the old DEK becomes permanently
+  /// undecryptable the moment this returns success — there is no recovery
+  /// path. No re-encryption migration exists in this package today; building
+  /// one (decrypt all field-encrypted records under the old DEK, then
+  /// re-encrypt under the new DEK, atomically) is a separate, larger effort
+  /// tracked outside this fix pass. Callers must not invoke this in
+  /// production until that migration exists.
   Future<Result<void>> rotateKey() async {
-    final authenticated = await _authenticate();
+    final bool authenticated;
+    try {
+      authenticated = await _authenticate();
+    } catch (e) {
+      return Failure(AuthFailure(message: 'Biometric authentication failed', cause: e));
+    }
     if (!authenticated) {
       return const Failure(AuthFailure(message: 'Biometric authentication failed'));
     }
@@ -80,7 +111,7 @@ class VaultKeyManager {
   }
 
   Future<bool> isEncryptionAvailable() async {
-    if (_localAuth == null) return true;
+    if (_localAuth == null) return _isAvailable?.call() ?? true;
     final canCheck = await _localAuth.canCheckBiometrics;
     final deviceSupported = await _localAuth.isDeviceSupported();
     return canCheck && deviceSupported;
