@@ -16,6 +16,7 @@ exports, playlist URLs, local IP addresses, or private device logs.
 | --- | --- | --- |
 | #756 | Firebase Android clients for mobile/tablet profiles | TV is verified separately under #574. Add or confirm Firebase Android clients for the remaining v2 `io.airo.app.*` mobile/tablet profiles, then regenerate the production Firebase config/secret. |
 | #576 | Android release signing | Confirm keystore owner, upload key strategy, key backup/rotation owner, and GitHub Actions signing secrets. |
+| — | Stable dogfood keystore | Without `DOGFOOD_KEYSTORE_BASE64` set, every non-production-signed RC build gets a fresh throwaway cert and RCs cannot upgrade over each other (`INSTALL_FAILED_UPDATE_INCOMPATIBLE`). Generate a stable keystore reserved for dogfood/RC builds (separate from the production release keystore) and add it as a secret. |
 | #585 | Store automation credentials | Create/confirm Play Console service account, app access, upload permissions, first tracks, and App Store Connect credentials only if iOS/iPadOS enters scope. |
 | #682 | Firebase App Distribution | Create/confirm Firebase apps, app IDs, tester groups, and service account/token for internal QA uploads. |
 
@@ -38,6 +39,10 @@ release or distribution run is intentionally started.
 | Android keystore password | Secret: `KEYSTORE_PASSWORD` | #576 |
 | Android key alias | Secret: `KEY_ALIAS` | #576 |
 | Android key password | Secret: `KEY_PASSWORD` | #576 |
+| Dogfood/RC Android keystore | Secret: `DOGFOOD_KEYSTORE_BASE64` (base64-encoded `.keystore`/`.jks`, separate from the production keystore) | — |
+| Dogfood/RC keystore password | Secret: `DOGFOOD_KEYSTORE_PASSWORD` | — |
+| Dogfood/RC key alias | Secret: `DOGFOOD_KEY_ALIAS` | — |
+| Dogfood/RC key password | Secret: `DOGFOOD_KEY_PASSWORD` | — |
 | Google Play upload service account | Secret: `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON` | #585 |
 | Play package selection | Fastlane/env value: `SUPPLY_PACKAGE_NAME`; use `io.airo.app.tv`, `io.airo.app.iptv`, or `io.airo.app.streaming` | #585 |
 | Firebase App Distribution service account | Secret: `FIREBASE_SERVICE_ACCOUNT_JSON` | #682 |
