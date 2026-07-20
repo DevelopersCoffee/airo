@@ -14,20 +14,35 @@ class PanCardRepository {
 
   Future<Result<int>> create(PanCardRecord record, List<int> keyBytes) async {
     try {
-      final panNumberEnc = await _fieldCipher.encryptField(record.panNumber, keyBytes);
       final id = await _database.db.insert(VaultTables.panCards, {
-        'pan_number_enc': panNumberEnc,
+        'pan_number_enc': '',
         'name_on_card': record.nameOnCard,
         'fathers_name': record.fathersName,
         'date_of_birth': record.dateOfBirth?.millisecondsSinceEpoch,
-        'card_image_blob_enc': record.cardImageBlob == null
-            ? null
-            : await _fieldCipher.encryptField(
-                String.fromCharCodes(record.cardImageBlob!),
-                keyBytes,
-              ),
+        'card_image_blob_enc': null,
         'created_at': record.createdAt.millisecondsSinceEpoch,
       });
+
+      final panNumberEnc = await _fieldCipher.encryptField(
+        record.panNumber,
+        keyBytes,
+        context: '${VaultTables.panCards}:pan_number_enc:$id',
+      );
+      final cardImageBlobEnc = record.cardImageBlob == null
+          ? null
+          : await _fieldCipher.encryptField(
+              String.fromCharCodes(record.cardImageBlob!),
+              keyBytes,
+              context: '${VaultTables.panCards}:card_image_blob_enc:$id',
+            );
+
+      await _database.db.update(
+        VaultTables.panCards,
+        {'pan_number_enc': panNumberEnc, 'card_image_blob_enc': cardImageBlobEnc},
+        where: 'id = ?',
+        whereArgs: [id],
+      );
+
       return Success(id);
     } catch (e) {
       return Failure(DatabaseFailure(message: 'Failed to create PAN card', cause: e));
@@ -48,6 +63,7 @@ class PanCardRepository {
       final panNumber = await _fieldCipher.decryptField(
         row['pan_number_enc'] as String,
         keyBytes,
+        context: '${VaultTables.panCards}:pan_number_enc:$id',
       );
       final dob = row['date_of_birth'] as int?;
       final blobEnc = row['card_image_blob_enc'] as String?;
@@ -60,7 +76,11 @@ class PanCardRepository {
         dateOfBirth: dob == null ? null : DateTime.fromMillisecondsSinceEpoch(dob),
         cardImageBlob: blobEnc == null
             ? null
-            : (await _fieldCipher.decryptField(blobEnc, keyBytes)).codeUnits,
+            : (await _fieldCipher.decryptField(
+                blobEnc,
+                keyBytes,
+                context: '${VaultTables.panCards}:card_image_blob_enc:$id',
+              )).codeUnits,
         createdAt: DateTime.fromMillisecondsSinceEpoch(row['created_at'] as int),
       ));
     } catch (e) {

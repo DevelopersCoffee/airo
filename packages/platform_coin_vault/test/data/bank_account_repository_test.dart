@@ -96,6 +96,48 @@ void main() {
       expect(secondResult.failure, isA<ValidationFailure>());
     });
 
+    test('ciphertext swapped between two rows of the same column fails to decrypt', () async {
+      final first = BankAccountRecord(
+        id: null,
+        nickname: 'Row One',
+        bankName: 'HDFC Bank',
+        accountHolderName: 'Jane Doe',
+        accountNumber: '1111111111',
+        ifscCode: 'HDFC0001234',
+        accountType: 'savings',
+      );
+      final second = BankAccountRecord(
+        id: null,
+        nickname: 'Row Two',
+        bankName: 'HDFC Bank',
+        accountHolderName: 'Jane Doe',
+        accountNumber: '2222222222',
+        ifscCode: 'HDFC0001234',
+        accountType: 'savings',
+      );
+
+      await repository.create(first, keyBytes);
+      await repository.create(second, keyBytes);
+
+      final firstRow = (await vaultDb.db.query(
+        VaultTables.bankAccounts,
+        where: 'nickname = ?',
+        whereArgs: ['Row One'],
+      )).single;
+      final stolenCiphertext = firstRow['account_number_enc'];
+
+      await vaultDb.db.update(
+        VaultTables.bankAccounts,
+        {'account_number_enc': stolenCiphertext},
+        where: 'nickname = ?',
+        whereArgs: ['Row Two'],
+      );
+
+      final tampered = await repository.getByNickname('Row Two', keyBytes);
+
+      expect(tampered.isFailure, isTrue);
+    });
+
     test('getByNickname returns null for an unknown nickname', () async {
       final result = await repository.getByNickname('Nobody', keyBytes);
 
