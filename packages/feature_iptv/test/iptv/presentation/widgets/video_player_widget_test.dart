@@ -221,53 +221,52 @@ void main() {
   // button is reachable by tapping it via finder (never raw coordinates)
   // and asserting the real onBack callback fired.
   // ===========================================================================
-  testWidgets(
-    "PlayerOverlay's back button is reachable and invokes onBack",
-    (tester) async {
-      var backTapped = false;
+  testWidgets("PlayerOverlay's back button is reachable and invokes onBack", (
+    tester,
+  ) async {
+    var backTapped = false;
 
-      SharedPreferences.setMockInitialValues({});
-      final prefs = await SharedPreferences.getInstance();
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
 
-      await tester.pumpWidget(
-        ProviderScope(
-          overrides: [
-            sharedPreferencesProvider.overrideWithValue(prefs),
-            streamingStateProvider.overrideWith(
-              (ref) => Stream.value(
-                StreamingState(
-                  playbackState: PlaybackState.playing,
-                  isLiveStream: true,
-                  currentChannel: const IPTVChannel(
-                    id: 'news-1',
-                    name: 'City News Live',
-                    streamUrl: 'https://example.com/news.m3u8',
-                    group: 'News',
-                    category: ChannelCategory.news,
-                  ),
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          streamingStateProvider.overrideWith(
+            (ref) => Stream.value(
+              StreamingState(
+                playbackState: PlaybackState.playing,
+                isLiveStream: true,
+                currentChannel: const IPTVChannel(
+                  id: 'news-1',
+                  name: 'City News Live',
+                  streamUrl: 'https://example.com/news.m3u8',
+                  group: 'News',
+                  category: ChannelCategory.news,
                 ),
               ),
             ),
-          ],
-          child: MaterialApp(
-            home: Scaffold(
-              body: VideoPlayerWidget(onBack: () => backTapped = true),
-            ),
+          ),
+        ],
+        child: MaterialApp(
+          home: Scaffold(
+            body: VideoPlayerWidget(onBack: () => backTapped = true),
           ),
         ),
-      );
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 100));
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
 
-      final backButton = find.byKey(const ValueKey('player-overlay-back'));
-      expect(backButton, findsOneWidget);
+    final backButton = find.byKey(const ValueKey('player-overlay-back'));
+    expect(backButton, findsOneWidget);
 
-      await tester.tap(backButton);
-      await tester.pump();
+    await tester.tap(backButton);
+    await tester.pump();
 
-      expect(backTapped, isTrue);
-    },
-  );
+    expect(backTapped, isTrue);
+  });
 
   // ===========================================================================
   // Engine-driven playback + subtitle/track selector (CV-016 migration). These
@@ -553,7 +552,10 @@ void main() {
     (tester) async {
       await pumpPlayer(tester, enableTouchGestures: false);
 
-      expect(find.byKey(const ValueKey('iptv-player-lock-button')), findsNothing);
+      expect(
+        find.byKey(const ValueKey('iptv-player-lock-button')),
+        findsNothing,
+      );
       expect(find.byType(PlayerGestureOverlay), findsNothing);
     },
   );
@@ -563,8 +565,37 @@ void main() {
     (tester) async {
       await pumpPlayer(tester);
 
-      expect(find.byKey(const ValueKey('iptv-player-lock-button')), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('iptv-player-lock-button')),
+        findsOneWidget,
+      );
       expect(find.byType(PlayerGestureOverlay), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'failover in StreamingState surfaces the overlay failover toast',
+    (tester) async {
+      // rc.3 dead-stream UX: _toPlayerViewState used to hardcode
+      // failover: null, so PlayerOverlay._buildFailoverToast was dead code
+      // even while the streaming service mid-switch.
+      await pumpPlayer(
+        tester,
+        state: StreamingState(
+          playbackState: PlaybackState.loading,
+          isLiveStream: true,
+          failover: const FailoverProgress(currentSource: 2, totalSources: 2),
+          currentChannel: const IPTVChannel(
+            id: 'news-1',
+            name: 'City News Live',
+            streamUrl: 'https://example.com/news.m3u8',
+            group: 'News',
+            category: ChannelCategory.news,
+          ),
+        ),
+      );
+
+      expect(find.text('Switching to source 2 of 2'), findsOneWidget);
     },
   );
 }
