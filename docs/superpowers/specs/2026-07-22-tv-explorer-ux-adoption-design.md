@@ -115,12 +115,47 @@ channel, not a timeshift position.
 1. **Resume last channel** — `lastChannelProvider`, splash mosaic, auto-play
    ~3 s, skip-on-input.
 2. **Filter row + dialogs + channel table** — responsive shell introduced
-   here; existing screens route into `TvExplorerShell`.
-3. **Remote overlay** — touch controls + TV key mapping.
+   here; existing screens route into `TvExplorerShell`. Includes (gap
+   analysis round 2): column sorting (tap header to sort, tap again to
+   reverse), saved filters (heart panel stores current filter combo; heart
+   tints when any saved state active — key `iptv_saved_filters`), and hotbar
+   bookmarks that store channel + filter combos, not just channels.
+3. **Remote overlay** — touch controls + TV key mapping. Includes random
+   channel (dice) button drawing from the currently filtered set.
 4. **Ways to Watch** — fit/full/PiP/cast dialog.
-5. **Settings control-row toggles** — visibility prefs + settings UI.
+5. **Settings control-row toggles + stats bar + help** — visibility prefs +
+   settings UI. Stats row reskins the existing playback diagnostics overlay
+   as a toggleable shell row (codec, resolution, bitrate — real data only,
+   no fake stats per Epic #950). Contextual `?` help entries and a
+   "What's New" dialog fed from the changelog.
+6. **Multiview** — TV icon per channel row adds the channel to a multi-player
+   stage; 3+ channels render one featured player plus a thumbnail strip.
+   Player-pool cap (4 streams) and per-platform decoder budget enforced;
+   thumbnails may drop to keyframe-only refresh on constrained devices.
+7. **Deep links + screenshot share** — share button copies a link that
+   auto-plays the channel on open (channel-only and channel+filter combo
+   forms); screenshot of current frame to clipboard / share sheet where the
+   platform allows.
 
-Phase 2 is the structural one; 3–5 slot into shell sections.
+Phase 2 is the structural one; 3–5 slot into shell sections; 6–7 build on
+the stabilized shell.
+
+## Backlog (explicitly out of this spec — file as issues)
+
+- Sync favorites/hotbar across devices (wire into existing core_cloud/auth).
+- Phone-as-remote for cast sessions (extends CV-033 groundwork).
+- World map country explorer.
+- Split view (cast one channel, watch another locally).
+- Mirror mode (same channel phone + TV).
+- DVR (record live stream to file, channel switch mid-record).
+
+## Metadata enrichment note
+
+TV Explorer's channel database is public iptv-org
+(https://github.com/iptv-org/iptv). Airo can enrich user playlists with
+iptv-org country/language/category metadata (match by stream URL or channel
+id) — directly mitigates the sparse-metadata risk on Country/Language
+filters. Enrichment lands with Phase 2.
 
 ## Risks
 
