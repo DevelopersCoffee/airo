@@ -5,6 +5,7 @@ import 'package:platform_channels/platform_channels.dart';
 import 'package:platform_player/platform_player.dart';
 
 import '../../application/providers/iptv_providers.dart';
+import '../../application/providers/recently_watched_recorder.dart';
 import '../../application/providers/vod_providers.dart';
 import '../widgets/vod_list_widget.dart';
 
@@ -79,8 +80,8 @@ class VodScreen extends ConsumerWidget {
       logoUrl: item.posterUrl,
       group: item.group,
     );
+    ref.read(pendingVodHistoryItemProvider.notifier).state = item;
     ref.read(iptvStreamingServiceProvider).playChannel(syntheticChannel);
-    ref.read(addToVodWatchHistoryProvider(item).future);
   }
 
   Future<void> _attachSubtitle(
@@ -140,13 +141,15 @@ class VodScreen extends ConsumerWidget {
     // it. If the item is already playing, the user needs to tap it again
     // for the subtitle to take effect; the dialog copy makes this explicit
     // rather than implying an instant attach.
-    ref.read(iptvStreamingServiceProvider).attachExternalSubtitle(
-      item.id,
-      AiroPlaybackExternalSubtitle(
-        handle: AiroPlaybackSourceHandle.direct(url),
-        label: 'Custom subtitle',
-      ),
-    );
+    ref
+        .read(iptvStreamingServiceProvider)
+        .attachExternalSubtitle(
+          item.id,
+          AiroPlaybackExternalSubtitle(
+            handle: AiroPlaybackSourceHandle.direct(url),
+            label: 'Custom subtitle',
+          ),
+        );
   }
 }
 

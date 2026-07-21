@@ -339,10 +339,15 @@ final compactEpgWindowProvider =
       return repository.loadWindow(query);
     });
 
-/// Streaming state provider
-final streamingStateProvider = StreamProvider<StreamingState>((ref) {
+/// Raw streaming state events from the player service.
+final streamingStateStreamProvider = Provider<Stream<StreamingState>>((ref) {
   final service = ref.watch(iptvStreamingServiceProvider);
   return service.stateStream;
+});
+
+/// Streaming state provider
+final streamingStateProvider = StreamProvider<StreamingState>((ref) {
+  return ref.watch(streamingStateStreamProvider);
 });
 
 /// Current app lifecycle state, updated by a `WidgetsBindingObserver` in
