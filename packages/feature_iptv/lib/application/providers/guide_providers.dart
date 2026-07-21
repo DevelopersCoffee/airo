@@ -1,12 +1,15 @@
 import 'dart:io';
 
 import 'package:core_data/core_data.dart';
+import 'package:equatable/equatable.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:platform_channels/platform_channels.dart';
 import 'package:platform_epg/platform_epg.dart';
 
 import '../epg_channel_match_override_store.dart';
+import '../guide_window_query.dart';
 import '../mutable_xmltv_compact_epg_repository.dart';
 import '../xmltv_source_refresh_service.dart';
 import '../xmltv_source_store.dart';
@@ -67,58 +70,231 @@ final guideEpgOverridesProvider = FutureProvider<Map<String, String>>((
   return ref.watch(epgChannelMatchOverrideStoreProvider).getOverrides();
 });
 
-/// Bounded guide-window query (CV-015), with match overrides applied:
-/// each channel is queried under its override EPG id if one is set, and
-/// results are remapped back to the original [IPTVChannel.id] so callers
-/// never need to know an override was involved.
-final guideEpgWindowProvider = FutureProvider<CompactEpgWindow>((ref) async {
-  final channels = await ref.watch(iptvChannelsProvider.future);
-  final overrides = await ref.watch(guideEpgOverridesProvider.future);
-  final hiddenGroupIds = await ref.watch(hiddenGroupIdsProvider.future);
-  final windowStart = ref.watch(guideWindowStartProvider);
-  final windowDuration = ref.watch(guideWindowDurationProvider);
-  final now = DateTime.now().toUtc();
+/// How far ahead one guide page spans.
+const Duration guidePageDuration = Duration(hours: 3);
 
-  // CV-021: hidden groups never surface in the guide, so don't spend an EPG
-  // query on them either.
-  final epgIdToChannelId = <String, String>{};
-  final queryIds = <String>[];
-  for (final channel in channels) {
-    if (hiddenGroupIds.contains(channel.group)) continue;
-    final epgId = overrides[channel.id] ?? channel.id;
-    epgIdToChannelId[epgId] = channel.id;
-    queryIds.add(epgId);
+/// How far ahead the initial load covers.
+const Duration guideInitialForward = Duration(hours: 6);
+
+/// Hard cap on forward paging.
+const Duration guideMaxForward = Duration(hours: 24);
+
+/// How far into the past the timeline reaches (past blocks render dimmed).
+const Duration guideBackward = Duration(minutes: 30);
+
+/// Accumulated state for the paged guide window (Live Grid Navigation): a
+/// merged [window] spanning `[earliestStart, loadedThrough)`, grown in
+/// [guidePageDuration] pages toward the [guideMaxForward] cap as the user
+/// scrolls forward.
+class GuidePagedWindowState extends Equatable {
+  const GuidePagedWindowState({
+    required this.earliestStart,
+    required this.loadedThrough,
+    this.window,
+    this.isLoadingForward = false,
+    this.forwardLoadFailed = false,
+  });
+
+  /// Fixed lower bound of the timeline: now minus [guideBackward], floored
+  /// to the nearest 30 minutes so it doesn't shift on rebuilds.
+  final DateTime earliestStart;
+
+  /// Forward edge of loaded guide data; grows via `extendForward()`.
+  final DateTime loadedThrough;
+
+  /// Merged window across all loaded pages; null until the first page lands.
+  final CompactEpgWindow? window;
+
+  final bool isLoadingForward;
+  final bool forwardLoadFailed;
+
+  GuidePagedWindowState copyWith({
+    DateTime? earliestStart,
+    DateTime? loadedThrough,
+    CompactEpgWindow? Function()? window,
+    bool? isLoadingForward,
+    bool? forwardLoadFailed,
+  }) {
+    return GuidePagedWindowState(
+      earliestStart: earliestStart ?? this.earliestStart,
+      loadedThrough: loadedThrough ?? this.loadedThrough,
+      window: window != null ? window() : this.window,
+      isLoadingForward: isLoadingForward ?? this.isLoadingForward,
+      forwardLoadFailed: forwardLoadFailed ?? this.forwardLoadFailed,
+    );
   }
 
-  final repository = ref.watch(compactEpgRepositoryProvider);
-  final rawWindow = await repository.loadWindow(
-    GuideWindowQuery(
-      channelIds: queryIds,
-      windowStart: windowStart,
-      windowEnd: windowStart.add(windowDuration),
-      now: now,
-    ),
-  );
-
-  final remappedEntries = [
-    for (final entry in rawWindow.entries)
-      CompactEpgWindowEntry(
-        channelId: epgIdToChannelId[entry.channelId] ?? entry.channelId,
-        channelName: entry.channelName,
-        channelNumber: entry.channelNumber,
-        programs: entry.programs,
-        sourceRef: entry.sourceRef,
-      ),
+  @override
+  List<Object?> get props => [
+    earliestStart,
+    loadedThrough,
+    window,
+    isLoadingForward,
+    forwardLoadFailed,
   ];
+}
 
-  return CompactEpgWindow(
-    entries: remappedEntries,
-    windowStart: rawWindow.windowStart,
-    windowEnd: rawWindow.windowEnd,
-    generatedAt: rawWindow.generatedAt,
-    expiresAt: rawWindow.expiresAt,
-    source: rawWindow.source,
-    schemaVersion: rawWindow.schemaVersion,
+/// Paged guide-window provider backing both guide grids (Live Grid
+/// Navigation). The phone grid drives [extendForward] from its scroll-edge
+/// listener; the TV grid renders its fixed 3h viewport from the initially
+/// loaded pages and never pages.
+class GuidePagedWindowNotifier extends Notifier<GuidePagedWindowState> {
+  DateTime Function()? _nowOverride;
+  var _loadGeneration = 0;
+  Future<void>? _inFlight;
+  DateTime? _anchorNow;
+
+  DateTime _now() => _nowOverride?.call() ?? DateTime.now().toUtc();
+  DateTime _capNow() => _anchorNow ?? _now();
+
+  bool _isActive(int generation) =>
+      ref.mounted && generation == _loadGeneration;
+
+  @visibleForTesting
+  void debugSetNow(DateTime Function() now) => _nowOverride = now;
+
+  static DateTime _floorToThirtyMinutes(DateTime value) {
+    final flooredMinute = value.minute < 30 ? 0 : 30;
+    return DateTime.utc(
+      value.year,
+      value.month,
+      value.day,
+      value.hour,
+      flooredMinute,
+    );
+  }
+
+  @override
+  GuidePagedWindowState build() {
+    ref.watch(iptvChannelsProvider.future);
+    ref.watch(guideEpgOverridesProvider.future);
+    ref.watch(hiddenGroupIdsProvider.future);
+    ref.watch(compactEpgRepositoryProvider);
+
+    final generation = ++_loadGeneration;
+    _inFlight = null;
+    _anchorNow = null;
+    Future.microtask(() => _loadInitialPages(generation));
+    final earliest = _floorToThirtyMinutes(_now().subtract(guideBackward));
+    return GuidePagedWindowState(
+      earliestStart: earliest,
+      loadedThrough: earliest,
+      isLoadingForward: true,
+    );
+  }
+
+  Future<void> _loadPage({
+    required int generation,
+    required DateTime windowStart,
+    required DateTime windowEnd,
+  }) async {
+    final channels = await ref.read(iptvChannelsProvider.future);
+    if (!_isActive(generation)) return;
+    final overrides = await ref.read(guideEpgOverridesProvider.future);
+    if (!_isActive(generation)) return;
+    final hiddenGroupIds = await ref.read(hiddenGroupIdsProvider.future);
+    if (!_isActive(generation)) return;
+    final repository = ref.read(compactEpgRepositoryProvider);
+    final page = await queryGuideWindowWithOverrides(
+      channels: channels,
+      overrides: overrides,
+      hiddenGroupIds: hiddenGroupIds,
+      repository: repository,
+      windowStart: windowStart,
+      windowEnd: windowEnd,
+      now: _now(),
+    );
+    if (!_isActive(generation)) return;
+    state = state.copyWith(
+      window: () => mergeGuideWindowPage(state.window, page),
+      loadedThrough: windowEnd,
+    );
+  }
+
+  Future<void> _loadInitialPages(int generation) async {
+    // Re-anchor here (not only in build) so tests can inject the clock via
+    // [debugSetNow] after reading `.notifier` — that read already runs
+    // build(), but this microtask only runs afterwards.
+    final anchorNow = _now();
+    _anchorNow = anchorNow;
+    final earliest = _floorToThirtyMinutes(anchorNow.subtract(guideBackward));
+    if (!_isActive(generation)) return;
+    state = state.copyWith(earliestStart: earliest, loadedThrough: earliest);
+
+    final target = anchorNow.add(guideInitialForward);
+    try {
+      while (state.loadedThrough.isBefore(target)) {
+        await _loadPage(
+          generation: generation,
+          windowStart: state.loadedThrough,
+          windowEnd: state.loadedThrough.add(guidePageDuration),
+        );
+        if (!_isActive(generation)) return;
+      }
+      if (!_isActive(generation)) return;
+      state = state.copyWith(isLoadingForward: false);
+    } catch (_) {
+      if (!_isActive(generation)) return;
+      state = state.copyWith(isLoadingForward: false, forwardLoadFailed: true);
+    }
+  }
+
+  /// Loads the next forward page, unless the [guideMaxForward] cap is
+  /// reached or a load is already in flight. No-op while
+  /// [GuidePagedWindowState.forwardLoadFailed] is set — the UI must call
+  /// [retryForward] explicitly so a flaky source isn't hammered on every
+  /// scroll event.
+  Future<void> extendForward() {
+    if (state.forwardLoadFailed) return Future.value();
+    final generation = _loadGeneration;
+    return _inFlight ??= _extendForwardOnce().whenComplete(() {
+      if (_isActive(generation)) _inFlight = null;
+    });
+  }
+
+  Future<void> _extendForwardOnce() async {
+    final generation = _loadGeneration;
+    if (state.isLoadingForward) return;
+    final cap = _capNow().add(guideMaxForward);
+    if (!state.loadedThrough.isBefore(cap)) return;
+
+    state = state.copyWith(isLoadingForward: true);
+    try {
+      final pageEnd = state.loadedThrough.add(guidePageDuration);
+      await _loadPage(
+        generation: generation,
+        windowStart: state.loadedThrough,
+        windowEnd: pageEnd.isAfter(cap) ? cap : pageEnd,
+      );
+      if (!_isActive(generation)) return;
+      state = state.copyWith(isLoadingForward: false);
+    } catch (_) {
+      if (!_isActive(generation)) return;
+      state = state.copyWith(isLoadingForward: false, forwardLoadFailed: true);
+    }
+  }
+
+  /// Retries the forward page after a failure (inline retry cell).
+  Future<void> retryForward() async {
+    if (!state.forwardLoadFailed) return;
+    state = state.copyWith(forwardLoadFailed: false);
+    await extendForward();
+  }
+}
+
+final guidePagedWindowProvider =
+    NotifierProvider<GuidePagedWindowNotifier, GuidePagedWindowState>(
+      GuidePagedWindowNotifier.new,
+    );
+
+/// Shared 30s UTC clock for the now-line, progress fills, and "N min left"
+/// labels on both guide grids (Live Grid Navigation). Emits the current
+/// instant immediately, then every 30 seconds.
+final nowTickerProvider = StreamProvider<DateTime>((ref) async* {
+  yield DateTime.now().toUtc();
+  yield* Stream.periodic(
+    const Duration(seconds: 30),
+    (_) => DateTime.now().toUtc(),
   );
 });
 

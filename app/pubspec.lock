@@ -24,13 +24,6 @@ packages:
       relative: true
     source: path
     version: "0.0.1"
-  airomoney:
-    dependency: "direct main"
-    description:
-      path: "../packages/airomoney"
-      relative: true
-    source: path
-    version: "0.0.1"
   alchemist:
     dependency: "direct dev"
     description:

@@ -1,10 +1,13 @@
-import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_test/flutter_test.dart';
 import 'package:leak_tracker_flutter_testing/leak_tracker_flutter_testing.dart';
+import 'package:core_ui/core_ui.dart';
 import 'package:feature_iptv/application/providers/guide_providers.dart';
 import 'package:feature_iptv/application/providers/iptv_providers.dart';
 import 'package:feature_iptv/presentation/tv/iptv_guide_screen.dart';
+import 'package:feature_iptv/presentation/widgets/epg_timeline_grid.dart';
+import 'package:feature_iptv/presentation/widgets/epg_touch_timeline_grid.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
 import 'package:platform_channels/platform_channels.dart';
 import 'package:platform_epg/platform_epg.dart';
 import 'package:platform_player/platform_player.dart';
@@ -34,6 +37,7 @@ void main() {
     WidgetTester tester, {
     List<IPTVChannel>? visibleChannels,
     void Function()? onSelectedCallback,
+    AiroFormFactor? overrideFormFactor,
   }) async {
     final prefs = await SharedPreferences.getInstance();
     final channels = visibleChannels ?? [newsChannel, sportsChannel];
@@ -52,19 +56,28 @@ void main() {
               ),
             ),
           ),
-          guideEpgWindowProvider.overrideWith(
-            (ref) async => CompactEpgWindow(
-              entries: const [],
-              windowStart: now,
-              windowEnd: now.add(const Duration(hours: 3)),
-              generatedAt: now,
-              expiresAt: now.add(const Duration(hours: 1)),
-              source: CompactEpgSliceSource.unavailable,
+          guidePagedWindowProvider.overrideWith(
+            () => _FakePagedNotifier(
+              GuidePagedWindowState(
+                earliestStart: now,
+                loadedThrough: now.add(const Duration(hours: 3)),
+                window: CompactEpgWindow(
+                  entries: const [],
+                  windowStart: now,
+                  windowEnd: now.add(const Duration(hours: 3)),
+                  generatedAt: now,
+                  expiresAt: now.add(const Duration(hours: 1)),
+                  source: CompactEpgSliceSource.unavailable,
+                ),
+              ),
             ),
           ),
         ],
         child: MaterialApp(
-          home: IptvGuideScreen(onChannelSelected: onSelectedCallback ?? () {}),
+          home: IptvGuideScreen(
+            onChannelSelected: onSelectedCallback ?? () {},
+            overrideFormFactor: overrideFormFactor,
+          ),
         ),
       ),
     );
@@ -79,6 +92,28 @@ void main() {
 
       expect(find.text('City News Live'), findsOneWidget);
       expect(find.text('Stadium Sports'), findsOneWidget);
+    },
+    experimentalLeakTesting: LeakTesting.settings,
+  );
+
+  testWidgets(
+    'renders the touch timeline grid by default',
+    (tester) async {
+      await pumpScreen(tester);
+
+      expect(find.byType(EpgTouchTimelineGrid), findsOneWidget);
+      expect(find.byType(EpgTimelineGrid), findsNothing);
+    },
+    experimentalLeakTesting: LeakTesting.settings,
+  );
+
+  testWidgets(
+    'renders the TV timeline grid when the form factor is TV',
+    (tester) async {
+      await pumpScreen(tester, overrideFormFactor: AiroFormFactor.tv);
+
+      expect(find.byType(EpgTimelineGrid), findsOneWidget);
+      expect(find.byType(EpgTouchTimelineGrid), findsNothing);
     },
     experimentalLeakTesting: LeakTesting.settings,
   );
@@ -132,4 +167,13 @@ void main() {
     },
     experimentalLeakTesting: LeakTesting.settings,
   );
+}
+
+class _FakePagedNotifier extends GuidePagedWindowNotifier {
+  _FakePagedNotifier(this._state);
+
+  final GuidePagedWindowState _state;
+
+  @override
+  GuidePagedWindowState build() => _state;
 }

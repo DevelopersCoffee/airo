@@ -4,8 +4,8 @@ import 'package:go_router/go_router.dart';
 import '../../../core/auth/auth_service.dart';
 import '../../../core/auth/google_auth_service.dart';
 import '../../../core/config/app_config.dart';
+import '../../../core/config/firebase_status.dart';
 import '../../../core/routing/route_names.dart';
-import '../../../main.dart' show isFirebaseInitialized;
 import '../../../shared/widgets/custom_text_field.dart';
 import '../../../shared/widgets/responsive_center.dart';
 
