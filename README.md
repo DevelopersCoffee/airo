@@ -1,207 +1,116 @@
+<div align="center">
+
 # Airo
 
-[![Download Airo TV](https://img.shields.io/badge/Download-Airo%20TV-success)](https://github.com/DevelopersCoffee/airo/releases/download/airo-tv-v0.0.2/Airo-TV-v0.0.2.apk)
+**The open-source super app — AI chat, personal finance, TV & music, games, and reading in one local-first Flutter codebase.**
+
+🌐 **[developerscoffee.github.io/airo](https://developerscoffee.github.io/airo/)** — live showcase, guides, and roadmap
+
 [![GitHub Release](https://img.shields.io/github/v/release/DevelopersCoffee/airo)](https://github.com/DevelopersCoffee/airo/releases)
-[![Flutter](https://img.shields.io/badge/Flutter-3.44.4+-blue.svg)](https://flutter.dev/)
+[![Downloads](https://img.shields.io/github/downloads/DevelopersCoffee/airo/total)](https://github.com/DevelopersCoffee/airo/releases)
+[![CI](https://github.com/DevelopersCoffee/airo/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/DevelopersCoffee/airo/actions/workflows/ci.yml)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=DevelopersCoffee_airo&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=DevelopersCoffee_airo)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
-[![Security Policy](https://img.shields.io/badge/security-policy-brightgreen)](SECURITY.md)
-[![Trust](https://img.shields.io/badge/trust-transparent-brightgreen)](TRUST.md)
-[![Versioning](https://img.shields.io/badge/versioning-semver-blue)](CHANGELOG.md)
-[![Android TV](https://img.shields.io/badge/Android%20TV-compatible-green)](docs/release/AIRO_TV_v0.0.2.md)
+[![Last Commit](https://img.shields.io/github/last-commit/DevelopersCoffee/airo)](https://github.com/DevelopersCoffee/airo/commits/main)
+[![GitHub Stars](https://img.shields.io/github/stars/DevelopersCoffee/airo?style=social)](https://github.com/DevelopersCoffee/airo/stargazers)
 
-Airo is a Flutter super app for local-first AI workflows: chat, model management,
-routine packs, media surfaces, and personal finance modules in one modular mobile
-codebase.
+![Airo super app](docs/assets/images/airo_superapp_mockup.jpg)
 
-The project is being shaped as an open-source playground for developers who care
-about on-device AI, agent skills, privacy-aware product design, and cross-platform
-Flutter architecture.
+[Download](#download) · [Modules](#modules) · [Quick Start](#quick-start) · [Contributing](#contributing) · [Docs](#documentation)
 
-## Why Star Or Fork This Repo
+</div>
 
-- **Build local-first AI UX**: help make model routing, offline fallback, and
-  privacy-forward AI interactions usable in a real app.
-- **Work across the stack**: Flutter UI, Android/iOS platform bridges, package
-  boundaries, CI, docs, release automation, and QA flows all live here.
-- **Contribute in small slices**: docs fixes, onboarding polish, tests, issue
-  reproduction, UI states, model metadata, and DevEx improvements are all useful.
-- **Learn agent-driven engineering**: every non-trivial change follows the
-  ownership, contract, and deterministic automation flow in
-  [`docs/agents/AGENT_POLICY.md`](docs/agents/AGENT_POLICY.md).
+---
 
-If this direction is useful to you, star the repo to follow the work. Fork it
-when you want to run experiments or send a PR.
+**Airo is the home.** A modular super app built with Flutter — Airo TV is its
+first focused product, available now. Every module is local-first: your data,
+playlists, and conversations stay on your device by default. On-device AI
+drives the experience — model routing, offline fallback, and privacy-forward
+interactions in a real shipping app, not a demo.
 
-## What You Can Work On
+## Modules
 
-Good open-source entry points:
+| Module | What it does | Status |
+|---|---|---|
+| 📺 **Airo TV** | Bring-your-own-playlist IPTV player for Android TV | **Available — [v0.0.3](https://github.com/DevelopersCoffee/airo/releases/tag/airo-tv-v0.0.3)** |
+| ⭐ **Airo TV Pro** | Import intelligence, resilient playback, guide intelligence | In testing |
+| 🤖 **Airo AI** | On-device AI chat (Gemini Nano), model management, agent skills | In development |
+| 💰 **AiroMoney** | Personal finance tracking and money workflows | In development |
+| 🎵 **Airo Music** | Music playback surfaces | In development |
+| ♟️ **Airo Games** | Chess and casual games (Stockfish engine) | In development |
+| 📖 **Airo Reader** | Reading surfaces with OCR | In development |
 
-- Improve first-run setup and troubleshooting docs.
-- Add or harden host-only tests for existing features.
-- Reproduce and minimize open bugs.
-- Improve accessibility, empty states, and responsive layout behavior.
-- Document model support, privacy behavior, and release checks.
-- Turn repeated setup or review steps into scripts.
+All modules live in one monorepo with strict package boundaries — see the
+[Repository Map](#repository-map).
 
-Start with:
+## 📺 Airo TV — Available Now
 
-- [Issues labeled `good first issue`](https://github.com/DevelopersCoffee/airo/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22)
-- [Issues labeled `help wanted`](https://github.com/DevelopersCoffee/airo/issues?q=is%3Aissue+is%3Aopen+label%3A%22help+wanted%22)
-- [Contributor guide](CONTRIBUTING.md)
-- [Open-source growth playbook](docs/community/GITHUB_GROWTH_PLAYBOOK.md)
+[![Download Airo TV](https://img.shields.io/badge/Download-Airo%20TV%20APK-success?style=for-the-badge)](https://github.com/DevelopersCoffee/airo/releases/download/airo-tv-v0.0.3/Airo-TV-v0.0.3.apk)
+[![Live Showcase](https://img.shields.io/badge/▶-Live%20Showcase-blue?style=for-the-badge)](https://developerscoffee.github.io/airo/)
 
+![Airo TV channel grid](docs/store-assets/airo-tv/01-tv-home-channel-grid.png)
 
-## Airo TV v0.0.2
+Airo TV is the focused Android TV build of Airo's media module
+(`io.airo.app.tv`). TV-first channel grid, search, and playback for your own
+M3U/M3U8 playlists.
 
-Airo TV is the Android TV variant of Airo, built from the current `main` release line (formerly `v2`) with package name `io.airo.app.tv`. The v0.0.2 release focuses on release trust, documentation, checksums, clean artifact names, and Play Store readiness.
-
-- Bring your own authorized M3U playlist URL; Airo TV does not provide IPTV content.
-- Release assets include APK, Play Store AAB, and SHA256 checksums.
-- Documentation covers privacy, security, threat model, roadmap, architecture, feature matrix, and reproducible builds.
-- Google Cast requires receiver discovery over `_googlecast._tcp` and port `8009` reachability on the local network.
-- Release artifacts are published at https://github.com/DevelopersCoffee/airo/releases/tag/airo-tv-v0.0.2.
-
-## V2 Release Health
-
-The current mainline Airo TV release line is coordinated through
-[`.github/workflows/v2-release-orchestrator.yml`](.github/workflows/v2-release-orchestrator.yml)
-and documented in
-[`docs/release/V2_RELEASE_ORCHESTRATOR.md`](docs/release/V2_RELEASE_ORCHESTRATOR.md).
-Public-release setup, maintainer decisions, and local evidence gates are tracked
-in
-[`docs/release/V2_PUBLISHING_HUMAN_SETUP.md`](docs/release/V2_PUBLISHING_HUMAN_SETUP.md),
-[`docs/release/V2_HUMAN_IN_LOOP_BLOCKERS.md`](docs/release/V2_HUMAN_IN_LOOP_BLOCKERS.md),
-[`docs/release/REPOSITORY_HEALTH_STATUS.md`](docs/release/REPOSITORY_HEALTH_STATUS.md),
-and [`docs/release/RELEASE_CHECKLIST.md`](docs/release/RELEASE_CHECKLIST.md).
-Security and community process files live in [`SECURITY.md`](SECURITY.md),
-[`CONTRIBUTING.md`](CONTRIBUTING.md), and
-[`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md).
-
-## Why Trust Airo?
-
-- Open source codebase with public issue tracking.
-- No bundled IPTV channels or copyrighted content.
-- User playlists remain on the device unless users load a remote playlist URL directly.
-- Release APK and AAB assets publish SHA256 checksums.
-- Transparent roadmap, changelog, security policy, privacy policy, and threat model.
-- No hidden subscriptions or mandatory accounts for the Airo TV player flow.
+- **Bring your own playlist** — Airo TV ships no IPTV content and no bundled channels.
+- **Google Cast support** — requires `_googlecast._tcp` discovery and port `8009` on the local network.
+- **Verifiable releases** — APK, Play Store AAB, macOS preview, and SHA256 checksums on every release.
+- **Honest device support** — Android TV available, Fire TV experimental, mobile partial, macOS preview, iPad verified; see [device paths](https://developerscoffee.github.io/airo/).
+- **Documented** — [architecture](docs/architecture/AIRO_TV_ARCHITECTURE.md), [threat model](docs/security/AIRO_TV_THREAT_MODEL.md), [release docs](docs/release/README.md).
 
 ## Download
 
-### Android
+| Platform | Link |
+|---|---|
+| 📺 Android TV | [Airo TV v0.0.3 APK](https://github.com/DevelopersCoffee/airo/releases/download/airo-tv-v0.0.3/Airo-TV-v0.0.3.apk) |
+| 🖥️ macOS (preview) | [Airo TV DMG](https://github.com/DevelopersCoffee/airo/releases/download/airo-tv-v0.0.3/Airo-TV-0.0.3-macOS.dmg) |
+| 🤖 Android | [Android releases](https://github.com/DevelopersCoffee/airo/releases) |
+| 🍎 iOS | [Latest IPA](https://github.com/DevelopersCoffee/airo/releases/latest/download/app-release.ipa) |
+| 🌐 Web | [Web build](https://github.com/DevelopersCoffee/airo/releases/latest/download/airo-web-release.zip) |
+| 📦 All | [All releases](https://github.com/DevelopersCoffee/airo/releases) |
 
-[View Android releases](https://github.com/DevelopersCoffee/airo/releases)
-
-### Airo TV
-
-[Download Airo TV APK](https://github.com/DevelopersCoffee/airo/releases/download/airo-tv-v0.0.2/Airo-TV-v0.0.2.apk)
-
-### iOS
-
-[Download latest IPA](https://github.com/DevelopersCoffee/airo/releases/latest/download/app-release.ipa)
-
-### Web
-
-[Download web build](https://github.com/DevelopersCoffee/airo/releases/latest/download/airo-web-release.zip)
-
-### All Platforms
-
-[View all releases](https://github.com/DevelopersCoffee/airo/releases)
-
-Before installing a direct-download APK, verify it with
+Before installing a direct-download APK, verify it against
 [`SHA256SUMS`](VERIFY_DOWNLOAD.md).
 
-## Quick Start
+## Why Trust Airo?
 
-### First-Time Setup
+- Open-source codebase with public issue tracking and a transparent [roadmap](ROADMAP.md).
+- Local-first: playlists and data stay on the device unless you load a remote URL directly.
+- No bundled IPTV channels or copyrighted content.
+- SHA256 checksums published for every release APK and AAB.
+- Public [security policy](SECURITY.md), [privacy policy](PRIVACY.md), [threat model](docs/security/AIRO_TV_THREAT_MODEL.md), and [trust report](TRUST.md).
+- No hidden subscriptions and no mandatory accounts for the Airo TV player flow.
+
+## Quick Start
 
 ```bash
 git clone git@github.com:DevelopersCoffee/airo.git
 cd airo
-make setup
+make setup        # or: make setup-android / setup-ios / setup-web
 ```
 
-Platform-specific setup:
+Run the app:
 
 ```bash
-make setup-android
-make setup-ios
-make setup-web
+make run-android  # or: run-ios / run-web / run-chrome
 ```
 
-### Run The App
+Verify changes:
 
 ```bash
-make run-android
-make run-ios
-make run-web
-make run-chrome
+make format && make analyze && make test
 ```
 
-Device-targeted helpers:
+Run `make help` for the full command list, including device-targeted helpers
+(`run-pixel9`, `run-iphone13`). For the Airo TV Edge Intelligence runtime
+(Rust FFI, media packs), see
+[docs/features](docs/features/README.md).
 
-```bash
-make run-pixel9
-make run-iphone13
-```
+### Platform Support
 
-### Airo TV Edge Intelligence
-
-The IPTV feature consumes `slm_edge_intelligence` from the public
-`DevelopersCoffee/barista-tuning` Git package. By default it uses the public
-rule backend:
-
-```bash
-flutter run -t lib/main_airo_iptv.dart
-```
-
-To use the Rust FFI pack-backed runtime, bundle the native `edge-ffi` artifact
-with the app and pass the media pack path by configuration:
-
-```bash
-flutter run -t lib/main_airo_iptv.dart \
-  --dart-define=AIRO_EDGE_INTELLIGENCE_BACKEND=native \
-  --dart-define=AIRO_MEDIA_PACK=/absolute/path/to/media.pack
-```
-
-For device builds where the pack is bundled as a Flutter asset, place it under
-`app/assets/packs/` and pass the asset key instead:
-
-```bash
-flutter run -t lib/main_airo_iptv.dart \
-  --dart-define=AIRO_EDGE_INTELLIGENCE_BACKEND=native \
-  --dart-define=AIRO_MEDIA_PACK_ASSET=assets/packs/media.pack
-```
-
-The Flutter screen still only submits natural-language media requests and plays
-the returned stream URI; pack installation and backend selection stay behind the
-feature package provider layer.
-
-Android TV builds must include `libedge_ffi.so` under
-`app/android/app/src/main/jniLibs/<abi>/`. From the Edge Intelligence repo:
-
-```bash
-slm package-edge-ffi-android \
-  --airo-app /absolute/path/to/airo/app \
-  --build \
-  --abi arm64-v8a
-```
-
-### Verify Changes
-
-```bash
-make format
-make analyze
-make test
-```
-
-Run `make help` to see the full command list.
-
-## Platform Support
-
-- **Android**: API 24+ with Pixel 9 helper targets.
-- **iOS**: iOS 12.0+ with iPhone 13 Pro Max helper targets.
-- **Web**: modern browsers, with Chrome as the preferred development target.
+- **Android**: API 24+ · **iOS**: 12.0+ · **Web**: modern browsers (Chrome preferred for development).
 
 Android release builds require private signing material. Never commit
 `app/android/key.properties`, keystores, tokens, API keys, or local credentials.
@@ -225,53 +134,39 @@ Android release builds require private signing material. Never commit
 └── .github/              # CI, issue templates, PR template
 ```
 
-## Contributor Workflow
+## Contributing
+
+Airo is an open-source playground for developers who care about on-device AI,
+agent-driven engineering, and cross-platform Flutter architecture. Star the
+repo to follow the work; fork it to experiment or send a PR.
+
+Good entry points:
+
+- Docs fixes, onboarding polish, and troubleshooting guides.
+- Host-only tests, bug reproduction, and accessibility improvements.
+- [`good first issue`](https://github.com/DevelopersCoffee/airo/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22) · [`help wanted`](https://github.com/DevelopersCoffee/airo/issues?q=is%3Aissue+is%3Aopen+label%3A%22help+wanted%22)
+
+Workflow:
 
 1. Read [`CONTRIBUTING.md`](CONTRIBUTING.md).
 2. Pick or create a GitHub issue.
-3. Add the Critical Agent gate and Feature Packet required by
-   [`docs/agents/AGENT_POLICY.md`](docs/agents/AGENT_POLICY.md).
-4. Create a short-lived branch or worktree from the correct release-line base.
-   Use `origin/main` for current work. Only use `origin/v1_bkp` when the
-   linked issue explicitly targets the legacy pre-swap branch state.
-5. Keep the PR scoped, run the relevant checks, and document any test gaps.
-
-For parallel work, prefer a worktree:
-
-```bash
-git fetch origin main v1_bkp
-git worktree add -b codex/my-task ../airo-my-task origin/main
-cd ../airo-my-task
-```
+3. Follow the agent gate and Feature Packet flow in [`docs/agents/AGENT_POLICY.md`](docs/agents/AGENT_POLICY.md).
+4. Branch from `origin/main`, keep the PR scoped, run the relevant checks.
 
 ## Documentation
 
-- [GitHub wiki source](docs/wiki/README.md)
-- [Architecture docs](docs/architecture/README.md)
-- [Feature docs](docs/features/README.md)
-- [Security and code quality docs](docs/security/README.md)
-- [Release docs](docs/release/README.md)
-- [Troubleshooting docs](docs/troubleshooting/README.md)
+- [Architecture](docs/architecture/README.md) · [Features](docs/features/README.md) · [Security](docs/security/README.md) · [Release](docs/release/README.md) · [Troubleshooting](docs/troubleshooting/README.md) · [Wiki source](docs/wiki/README.md)
+- Release engineering: [V2 orchestrator](docs/release/V2_RELEASE_ORCHESTRATOR.md) · [release checklist](docs/release/RELEASE_CHECKLIST.md) · [repository health](docs/release/REPOSITORY_HEALTH_STATUS.md)
 
 ## Community Standards
 
-- [Contributing guide](CONTRIBUTING.md)
-- [Code of conduct](CODE_OF_CONDUCT.md)
-- [Security policy](SECURITY.md)
-- [Trust and transparency](TRUST.md)
-- [Download verification](VERIFY_DOWNLOAD.md)
-- [Privacy policy](PRIVACY.md)
-- [Roadmap](ROADMAP.md)
-- [Changelog](CHANGELOG.md)
-- [Airo TV threat model](docs/security/AIRO_TV_THREAT_MODEL.md)
-- [Airo TV architecture](docs/architecture/AIRO_TV_ARCHITECTURE.md)
-- [Agent policy](docs/agents/AGENT_POLICY.md)
+[Contributing](CONTRIBUTING.md) · [Code of Conduct](CODE_OF_CONDUCT.md) · [Security Policy](SECURITY.md) · [Trust](TRUST.md) · [Privacy](PRIVACY.md) · [Roadmap](ROADMAP.md) · [Changelog](CHANGELOG.md) · [Download Verification](VERIFY_DOWNLOAD.md)
 
 ## License
 
 Airo is licensed under the [MIT License](LICENSE).
 
-V2 release profiles also include third-party dependencies with their own
-licenses. See [V2 Third-Party Notices](docs/release/V2_THIRD_PARTY_NOTICES.md)
-and [V2 License Review](docs/release/V2_LICENSE_REVIEW.md) before public
+Release profiles include third-party dependencies with their own licenses. See
+[Third-Party Notices](docs/release/V2_THIRD_PARTY_NOTICES.md) and the
+[License Review](docs/release/V2_LICENSE_REVIEW.md) before public
 redistribution.

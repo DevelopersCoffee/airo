@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_riverpod/legacy.dart';
 import 'package:flutter/services.dart';
 import 'package:platform_channels/platform_channels.dart';
 import 'package:platform_epg/platform_epg.dart';
@@ -44,7 +43,6 @@ class _IptvTvScreenState extends ConsumerState<IptvTvScreen> {
 
   void _playChannel(IPTVChannel channel) {
     ref.read(iptvStreamingServiceProvider).playChannel(channel);
-    ref.read(addToRecentlyWatchedProvider(channel));
   }
 
   Future<void> _showSearchDialog() async {

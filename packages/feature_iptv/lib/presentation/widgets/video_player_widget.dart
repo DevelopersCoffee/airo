@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../application/player_backgrounding_coordinator.dart';
 import '../../application/providers/caption_preference_provider.dart';
 import '../../application/providers/iptv_providers.dart';
+import '../../application/providers/recently_watched_recorder.dart';
 import '../../application/providers/video_aspect_ratio_provider.dart';
 import '../../domain/vod_resume_coordinator.dart';
 import 'playback_diagnostic_overlay.dart';
@@ -272,6 +273,7 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
 
   @override
   Widget build(BuildContext context) {
+    ref.watch(recentlyWatchedRecorderProvider);
     final streamingService = ref.watch(iptvStreamingServiceProvider);
     final streamingState = ref.watch(streamingStateProvider);
     final aspectRatioFit = ref.watch(videoAspectRatioProvider);

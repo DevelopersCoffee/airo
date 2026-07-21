@@ -20,7 +20,7 @@ layout: null
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700;9..40,800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="./assets/airo-tv/site.css">
-  <script defer src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
+  <script defer src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js" integrity="sha384-uTYyvsSSUZeaPhb5RbKlQa0zY/WpX/QHfvg2mczXyBQOpkWPEDy9lczyp+w7SKXu" crossorigin="anonymous"></script>
   <script defer src="./assets/airo-tv/third-party/hls.js-1.6.16/hls.min.js"></script>
   <script defer src="./assets/airo-tv/site.js"></script>
 </head>
@@ -125,7 +125,7 @@ layout: null
             <button class="button button-secondary channel-showcase-audio" type="button" aria-pressed="false" data-live-demo-audio hidden>
               <i data-lucide="volume-x" aria-hidden="true"></i><span>Unmute</span>
             </button>
-            <p class="live-demo-status channel-showcase-status" role="status" aria-live="polite" data-live-demo-status>Muted preview starts on screen.</p>
+            <output class="live-demo-status channel-showcase-status" aria-live="polite" data-live-demo-status>Muted preview starts on screen.</output>
           </div>
         </div>
         <div class="channel-showcase-pitch">
@@ -243,7 +243,7 @@ layout: null
                   <i data-lucide="play" aria-hidden="true"></i> Play YRF Music sample
                 </button>
               </div>
-              <p class="live-demo-status live-demo-player-status" role="status" aria-live="polite" data-live-demo-status>Ready. No stream connection has been made.</p>
+              <output class="live-demo-status live-demo-player-status" aria-live="polite" data-live-demo-status>Ready. No stream connection has been made.</output>
             </div>
             <details class="channel-showcase-details live-demo-disclosure">
               <summary><i data-lucide="info" aria-hidden="true"></i> Third-party stream details</summary>
@@ -429,10 +429,10 @@ layout: null
             border-radius: 4px;
           }
           .status-badge.supported { color: var(--green); background: rgba(0, 230, 118, 0.1); }
-          .status-badge.partial { color: #2196f3; background: rgba(33, 150, 243, 0.1); }
-          .status-badge.planned { color: #9c27b0; background: rgba(156, 39, 176, 0.1); }
-          .status-badge.not-supported { color: #f44336; background: rgba(244, 67, 54, 0.1); }
-          .status-badge.keyboard { color: #ffeb3b; background: rgba(255, 235, 59, 0.1); }
+          .status-badge.partial { color: #ffffff; background: #1565c0; }
+          .status-badge.planned { color: #ffffff; background: #9c27b0; }
+          .status-badge.not-supported { color: #ffffff; background: #c62828; }
+          .status-badge.keyboard { color: #1a1a1a; background: #ffeb3b; }
           .pipeline-section {
             margin-top: 64px;
             padding-top: 48px;
@@ -666,7 +666,7 @@ layout: null
           
           const sector = document.createElementNS(svgNS, 'path');
           sector.setAttribute('class', 'feature-sector');
-          sector.setAttribute('data-feature', f.id);
+          sector.dataset.feature = f.id;
           sector.setAttribute('d', `M ${x1} ${y1} A 260 260 0 0 1 ${x2} ${y2} L ${x3} ${y3} A 70 70 0 0 0 ${x4} ${y4} Z`);
           sector.addEventListener('mouseenter', () => selectFeature(f.id));
           svg.appendChild(sector);
@@ -711,8 +711,8 @@ layout: null
             const status = f.support[dev];
             const cellG = document.createElementNS(svgNS, 'g');
             cellG.setAttribute('class', 'matrix-cell');
-            cellG.setAttribute('data-feature', f.id);
-            cellG.setAttribute('data-device', dev);
+            cellG.dataset.feature = f.id;
+            cellG.dataset.device = dev;
             
             let iconSvg = statusIcons[status]
               .replace('{x}', x.toFixed(1))
@@ -734,7 +734,7 @@ layout: null
           const btn = document.createElement('button');
           btn.setAttribute('type', 'button');
           btn.setAttribute('class', 'feature-btn');
-          btn.setAttribute('data-feature', f.id);
+          btn.dataset.feature = f.id;
           btn.innerHTML = `<span>${f.icon}</span> <span>${f.name}</span>`;
           btn.addEventListener('mouseenter', () => selectFeature(f.id));
           listContainer.appendChild(btn);
@@ -745,7 +745,7 @@ layout: null
 
       function selectFeature(featureId) {
         document.querySelectorAll('.feature-btn').forEach(btn => {
-          if(btn.getAttribute('data-feature') === featureId) {
+          if(btn.dataset.feature === featureId) {
             btn.classList.add('active');
           } else {
             btn.classList.remove('active');
@@ -753,7 +753,7 @@ layout: null
         });
 
         document.querySelectorAll('.feature-sector').forEach(sector => {
-          if(sector.getAttribute('data-feature') === featureId) {
+          if(sector.dataset.feature === featureId) {
             sector.classList.add('active');
           } else {
             sector.classList.remove('active');
@@ -761,7 +761,7 @@ layout: null
         });
 
         document.querySelectorAll('.matrix-cell').forEach(cell => {
-          if(cell.getAttribute('data-feature') === featureId) {
+          if(cell.dataset.feature === featureId) {
             cell.style.opacity = '1';
             cell.style.transform = 'scale(1.2)';
           } else {

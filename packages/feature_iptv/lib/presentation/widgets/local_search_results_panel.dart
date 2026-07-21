@@ -118,7 +118,6 @@ class _ResultRow extends ConsumerWidget {
           for (final channel in channels) {
             if (channel.id == result.channelId) {
               ref.read(iptvStreamingServiceProvider).playChannel(channel);
-              ref.read(addToRecentlyWatchedProvider(channel));
               break;
             }
           }

@@ -44,9 +44,10 @@ class _XmltvSourceSheetState extends ConsumerState<XmltvSourceSheet> {
       if (!mounted) return;
       setState(() => _refreshFeedback = 'Refresh failed: $e');
     } finally {
-      if (!mounted) return;
-      setState(() => _isRefreshing = false);
-      ref.invalidate(xmltvSourceConfigProvider);
+      if (mounted) {
+        setState(() => _isRefreshing = false);
+        ref.invalidate(xmltvSourceConfigProvider);
+      }
     }
   }
 

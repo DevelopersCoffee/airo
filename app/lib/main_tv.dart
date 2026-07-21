@@ -30,6 +30,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'core/app/airo_tv_app.dart';
+import 'core/audio/tv_audio_service.dart';
 import 'core/config/platform_features.dart';
 import 'core/error/global_error_handler.dart';
 import 'core/features/feature_registry.dart';
@@ -86,12 +87,33 @@ void main() async {
     '📦 Registered features: ${FeatureRegistry.featureNames.join(', ')}',
   );
 
+  // Initialize the OS media session (media notification + lock-screen
+  // controls) on Android, where audio_service's foreground service is what
+  // keeps live audio alive — and controllable — after a Home press (#980).
+  // Skipped elsewhere: web has no audio_service host, and desktop dev
+  // builds don't run the Android foreground service.
+  //
+  // Bounded: a misbehaving OS media service must never block app startup —
+  // on a timeout/failure the app boots normally without media-session
+  // controls (the pre-#980 behavior).
+  TvAudioHandler? tvAudioHandler;
+  if (!kIsWeb && Platform.isAndroid) {
+    try {
+      tvAudioHandler = await initTvAudioService().timeout(
+        const Duration(seconds: 5),
+      );
+    } catch (e) {
+      debugPrint('📺 TV audio service init skipped: $e');
+    }
+  }
+
   runApp(
     ProviderScope(
       overrides: buildTvProviderOverrides(
         prefs: prefs,
         compactEpgRepository: compactEpgRepository,
         mutableXmltvRepository: mutableXmltvRepository,
+        tvAudioHandler: tvAudioHandler,
       ),
       child: const AiroTvApp(),
     ),
@@ -111,7 +133,9 @@ List<Override> buildTvProviderOverrides({
   required SharedPreferences prefs,
   required CompactEpgRepository compactEpgRepository,
   required MutableXmltvCompactEpgRepository mutableXmltvRepository,
+  TvAudioHandler? tvAudioHandler,
 }) {
+  final handler = tvAudioHandler;
   return [
     sharedPreferencesProvider.overrideWithValue(prefs),
     // Airo TV defaults to the design handoff's dedicated theme unless
@@ -128,6 +152,20 @@ List<Override> buildTvProviderOverrides({
     // (tv_router.dart compact layout), whose cast UI needs the real
     // controller — without this override casting silently no-ops.
     realIptvCastControllerOverride(),
+    // #980: publish playback state to the OS media session and route
+    // notification buttons back into the streaming service. The delegate
+    // reporting direction flows through tvIptvIntegrationProvider; the
+    // user-intent callbacks below are the control direction.
+    if (handler != null)
+      tvMediaSessionDelegateProvider.overrideWith((ref) {
+        handler.onUserPauseRequested = () =>
+            ref.read(iptvStreamingServiceProvider).pause();
+        handler.onUserPlayRequested = () =>
+            ref.read(iptvStreamingServiceProvider).resume();
+        handler.onUserStopRequested = () =>
+            ref.read(iptvStreamingServiceProvider).stop();
+        return handler;
+      }),
     ...FeatureRegistry.allProviderOverrides,
   ];
 }
