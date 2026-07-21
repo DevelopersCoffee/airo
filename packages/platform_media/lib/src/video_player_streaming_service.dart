@@ -7,6 +7,7 @@ import 'package:platform_streams/platform_streams.dart';
 import 'audio_context.dart';
 import 'platform_media_logger.dart';
 import 'streaming_error_diagnostic_mapping.dart';
+import 'streaming_media_session_delegate.dart';
 import 'video_player_airo_playback_engine.dart';
 
 /// Video Player implementation of IPTV Streaming Service
@@ -52,11 +53,34 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
     this._config = StreamingConfig.youtube,
     AudioContextManager? audioContext,
     LiveEdgeConfig? liveEdgeConfig,
+    this.mediaSessionDelegate,
   }) : _engine = engine ?? VideoPlayerAiroPlaybackEngine(),
        _audioContext = audioContext ?? AudioContextManager(),
        _liveEdgeDetector = LiveEdgeDetector(config: liveEdgeConfig) {
     _setupLiveEdgeCallbacks();
     _engineSubscription = _engine.states.listen(_onEngineStateUpdate);
+  }
+
+  /// Optional OS media-session reporter (e.g. Android TV's `audio_service`
+  /// handler). Settable after construction because the host-side handler is
+  /// initialized asynchronously at app startup, while this service may
+  /// already exist. Null (the default) means "no media session host" —
+  /// playback behavior is unchanged.
+  StreamingMediaSessionDelegate? mediaSessionDelegate;
+
+  /// Notifies the media-session delegate without ever letting a host-side
+  /// failure affect playback. Reporting is best-effort by design: a broken
+  /// notification must not break the stream.
+  Future<void> _notifyMediaSession(
+    Future<void> Function(StreamingMediaSessionDelegate delegate) call,
+  ) async {
+    final delegate = mediaSessionDelegate;
+    if (delegate == null) return;
+    try {
+      await call(delegate);
+    } catch (e) {
+      AppLogger.info('Media session delegate error: $e', tag: 'MEDIA_SESSION');
+    }
   }
 
   void _setupLiveEdgeCallbacks() {
@@ -212,6 +236,16 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
         );
 
         _startBufferMonitoring();
+
+        // Report the now-playing channel to the OS media session only after
+        // the engine genuinely reached playing — never on the loading state
+        // or the error path below.
+        _notifyMediaSession(
+          (delegate) => delegate.onChannelStarted(
+            channelName: channel.name,
+            streamUrl: source.sourceHandle.value,
+          ),
+        );
 
         // Attach live edge detector for live stream monitoring
         _liveEdgeDetector.attachToEngine(_engine);
@@ -503,6 +537,7 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
     await _engine.pause();
     _audioContext.releaseFocus(AudioFocusType.video);
     _updateState(_state.copyWith(playbackState: PlaybackState.paused));
+    _notifyMediaSession((delegate) => delegate.onPlaybackPaused());
   }
 
   @override
@@ -510,6 +545,7 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
     _audioContext.requestFocus(AudioFocusType.video);
     await _engine.play();
     _updateState(_state.copyWith(playbackState: PlaybackState.playing));
+    _notifyMediaSession((delegate) => delegate.onPlaybackResumed());
   }
 
   @override
@@ -519,6 +555,7 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
     _liveEdgeDetector.detach();
     await _engine.stop();
     _updateState(StreamingState());
+    _notifyMediaSession((delegate) => delegate.onPlaybackStopped());
   }
 
   @override

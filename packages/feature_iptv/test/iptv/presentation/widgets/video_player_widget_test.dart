@@ -87,9 +87,12 @@ void main() {
         engine: FakeAiroPlaybackEngine(),
       );
       addTearDown(service.dispose);
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
 
       final container = ProviderContainer(
         overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
           iptvStreamingServiceProvider.overrideWithValue(service),
           iptvChannelsProvider.overrideWith(
             (ref) async => const [current, next],
@@ -281,10 +284,15 @@ void main() {
         engine: FakeAiroPlaybackEngine(),
       );
       addTearDown(service.dispose);
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
 
       await tester.pumpWidget(
         ProviderScope(
-          overrides: [iptvStreamingServiceProvider.overrideWithValue(service)],
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            iptvStreamingServiceProvider.overrideWithValue(service),
+          ],
           child: const MaterialApp(home: VideoPlayerWidget()),
         ),
       );
@@ -303,6 +311,8 @@ void main() {
     final engine = FakeAiroPlaybackEngine(tracks: const []);
     final service = VideoPlayerStreamingService(engine: engine);
     addTearDown(service.dispose);
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
 
     // Pump the widget (and subscribe to service.stateStream via
     // streamingStateProvider) BEFORE calling playChannel(). The service's
@@ -316,7 +326,10 @@ void main() {
     // Material ancestor once the widget reaches its "player" state.
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [iptvStreamingServiceProvider.overrideWithValue(service)],
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          iptvStreamingServiceProvider.overrideWithValue(service),
+        ],
         child: const MaterialApp(home: Scaffold(body: VideoPlayerWidget())),
       ),
     );
@@ -368,6 +381,8 @@ void main() {
       );
       final service = VideoPlayerStreamingService(engine: engine);
       addTearDown(service.dispose);
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
 
       // See comment in the test above — pump before playChannel() so the
       // widget's stream subscription is live in time to observe the
@@ -375,7 +390,10 @@ void main() {
       // ancestor the control bar's volume Slider requires.
       await tester.pumpWidget(
         ProviderScope(
-          overrides: [iptvStreamingServiceProvider.overrideWithValue(service)],
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            iptvStreamingServiceProvider.overrideWithValue(service),
+          ],
           child: const MaterialApp(home: Scaffold(body: VideoPlayerWidget())),
         ),
       );

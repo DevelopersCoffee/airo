@@ -70,14 +70,28 @@ final iptvStreamingServiceProvider = Provider<VideoPlayerStreamingService>((
   return service;
 });
 
+/// OS media-session delegate supplied by the host application (e.g. the
+/// Airo TV shell overrides this with its `audio_service`-backed
+/// `TvAudioHandler`). Null on hosts without a media session (web, mobile,
+/// tests) — the streaming service treats that as "nothing to report to".
+final tvMediaSessionDelegateProvider = Provider<StreamingMediaSessionDelegate?>(
+  (ref) => null,
+);
+
 /// TV IPTV Streaming service integration provider
 ///
-/// This provider integrates the IPTV streaming service with TvAudioHandler
-/// for background playback on Android TV/Fire TV platforms.
+/// This provider integrates the IPTV streaming service with the host app's
+/// media-session delegate (see [tvMediaSessionDelegateProvider]) for
+/// background playback on Android TV/Fire TV platforms.
 ///
 /// Aligns with acceptance test [AND-PB-004]: Background Audio Foreground Service
 /// - When user switches to another app (home button), audio continues
 /// - Notification controls available for play/pause/stop
+///
+/// The delegate is attached via the service's setter (not a constructor
+/// rebuild) so overriding [tvMediaSessionDelegateProvider] never tears down
+/// in-flight playback. Something in the widget tree must watch this provider
+/// for the wiring to stay live (`IPTVScreen` does).
 ///
 /// Usage:
 /// ```dart
@@ -89,25 +103,8 @@ final iptvStreamingServiceProvider = Provider<VideoPlayerStreamingService>((
 /// await streamingService.playChannel(channel);
 /// ```
 final tvIptvIntegrationProvider = Provider<void>((ref) {
-  // Import TvAudioHandler from core/audio/tv_audio_service.dart
-  // and connect it with VideoPlayerStreamingService
-  //
-  // The TvAudioHandler should be notified when:
-  // - playChannel() is called -> handler.playChannel(name, url)
-  // - pause() is called -> handler.pause()
-  // - resume() is called -> handler.play()
-  // - stop() is called -> handler.stop()
-  //
-  // This enables:
-  // - Media session integration on Android TV
-  // - Background audio when home button is pressed
-  // - Notification controls (play/pause/stop)
-  // - Audio focus handling (auto-pause on phone calls)
-  //
-  // Implementation note:
-  // The actual integration requires modifying VideoPlayerStreamingService
-  // to accept an optional TvAudioHandler and call its methods when
-  // playback state changes. For now, the provider documents the pattern.
+  final delegate = ref.watch(tvMediaSessionDelegateProvider);
+  ref.watch(iptvStreamingServiceProvider).mediaSessionDelegate = delegate;
 });
 
 /// All channels provider - fetches preprocessed channels from IPTV Sanity Agent
@@ -342,10 +339,15 @@ final compactEpgWindowProvider =
       return repository.loadWindow(query);
     });
 
-/// Streaming state provider
-final streamingStateProvider = StreamProvider<StreamingState>((ref) {
+/// Raw streaming state events from the player service.
+final streamingStateStreamProvider = Provider<Stream<StreamingState>>((ref) {
   final service = ref.watch(iptvStreamingServiceProvider);
   return service.stateStream;
+});
+
+/// Streaming state provider
+final streamingStateProvider = StreamProvider<StreamingState>((ref) {
+  return ref.watch(streamingStateStreamProvider);
 });
 
 /// Current app lifecycle state, updated by a `WidgetsBindingObserver` in
