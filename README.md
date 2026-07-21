@@ -14,7 +14,7 @@
 [![Last Commit](https://img.shields.io/github/last-commit/DevelopersCoffee/airo)](https://github.com/DevelopersCoffee/airo/commits/main)
 [![GitHub Stars](https://img.shields.io/github/stars/DevelopersCoffee/airo?style=social)](https://github.com/DevelopersCoffee/airo/stargazers)
 
-![Airo super app](docs/assets/images/airo_superapp_mockup.jpg)
+![Airo TV running on macOS — live channel browser and playback](docs/assets/images/airo-tv-macos-live.png)
 
 [Download](#download) · [Modules](#modules) · [Quick Start](#quick-start) · [Contributing](#contributing) · [Docs](#documentation)
 
