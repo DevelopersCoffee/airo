@@ -1079,6 +1079,21 @@ button,
   color: var(--text);
 }
 
+.hero-tv-board .live-demo-status[data-state="ready"],
+.hero-tv-board .live-demo-status[data-state="loading"],
+.hero-tv-board .live-demo-status[data-state="playing"],
+.hero-tv-board .live-demo-status[data-state="paused"] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .live-demo-status[data-state="recovering"] {
   border-color: var(--gold);
   color: var(--text);
