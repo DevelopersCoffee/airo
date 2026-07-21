@@ -8,6 +8,7 @@ import '../../application/vault_providers.dart';
 import '../../application/vault_record_ref.dart';
 import '../../application/vault_session.dart';
 import '../../application/vault_summaries_provider.dart';
+import '../../domain/vault_record_type.dart';
 
 class VaultRecordFormScreen extends ConsumerStatefulWidget {
   const VaultRecordFormScreen({

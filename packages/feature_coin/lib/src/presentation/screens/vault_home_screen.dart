@@ -6,6 +6,7 @@ import 'package:platform_coin_vault/platform_coin_vault.dart';
 import '../../application/vault_record_ref.dart';
 import '../../application/vault_session.dart';
 import '../../application/vault_summaries_provider.dart';
+import '../../domain/vault_record_type.dart';
 import '../widgets/record_detail_sheet.dart';
 import 'vault_record_form_screen.dart';
 
