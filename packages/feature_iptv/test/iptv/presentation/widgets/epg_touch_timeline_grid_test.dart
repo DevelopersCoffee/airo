@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:core_data/core_data.dart';
 import 'package:feature_iptv/application/epg_reminder_scheduler.dart';
 import 'package:feature_iptv/application/epg_reminder_store.dart';
@@ -79,6 +81,7 @@ void main() {
     List<EpgReminder> reminders = const [],
     EpgReminderNotificationGateway? gateway,
     List<IPTVChannel>? channels,
+    Stream<DateTime>? nowStream,
   }) async {
     final prefs = await resetPrefs();
     final effectiveChannels = channels ?? const [channel];
@@ -94,7 +97,9 @@ void main() {
           guidePagedWindowProvider.overrideWith(
             () => _FakePagedNotifier(state),
           ),
-          nowTickerProvider.overrideWith((ref) => Stream.value(fixedNow)),
+          nowTickerProvider.overrideWith(
+            (ref) => nowStream ?? Stream.value(fixedNow),
+          ),
           epgRemindersProvider.overrideWith((ref) async => reminders),
           if (gateway != null)
             epgReminderNotificationGatewayProvider.overrideWithValue(gateway),
@@ -282,6 +287,49 @@ void main() {
       expect(find.text('Now Show'), findsOneWidget);
     },
   );
+
+  testWidgets('Jump to Present appears when now ticks outside the viewport', (
+    tester,
+  ) async {
+    final nowController = StreamController<DateTime>();
+    addTearDown(nowController.close);
+    nowController.add(fixedNow);
+
+    await pumpGrid(
+      tester,
+      nowStream: nowController.stream,
+      state: fixedState([
+        program(
+          'now',
+          'Now Show',
+          DateTime.utc(2026, 7, 20, 12),
+          DateTime.utc(2026, 7, 20, 13),
+        ),
+        program(
+          'late-current',
+          'Late Current Show',
+          DateTime.utc(2026, 7, 20, 17),
+          DateTime.utc(2026, 7, 20, 18),
+        ),
+      ]),
+    );
+
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('epg_touch_jump_to_present')),
+      findsNothing,
+    );
+
+    nowController.add(DateTime.utc(2026, 7, 20, 17, 10));
+    await tester.pump();
+    await tester.pump();
+    await tester.pump();
+
+    expect(
+      find.byKey(const ValueKey('epg_touch_jump_to_present')),
+      findsOneWidget,
+    );
+  });
 
   testWidgets('newly materialized rows inherit the horizontal time offset', (
     tester,

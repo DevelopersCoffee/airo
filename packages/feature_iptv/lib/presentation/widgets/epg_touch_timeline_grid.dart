@@ -110,17 +110,23 @@ class _EpgTouchTimelineGridState extends ConsumerState<EpgTouchTimelineGrid> {
         EpgTouchTimelineGrid.pxPerMinute;
   }
 
-  void _updateNowVisibility() {
-    if (!_headerController.hasClients) return;
+  void _updateNowVisibility({GuidePagedWindowState? paged, DateTime? now}) {
+    if (!mounted || !_headerController.hasClients) return;
 
-    final paged = ref.read(guidePagedWindowProvider);
-    final now = ref.read(nowTickerProvider).value ?? DateTime.now().toUtc();
-    final nowOffset = _nowOffsetPx(paged.earliestStart, now);
+    final GuidePagedWindowState currentPaged;
+    if (paged == null) {
+      currentPaged = ref.read(guidePagedWindowProvider);
+    } else {
+      currentPaged = paged;
+    }
+    final currentNow =
+        now ?? ref.read(nowTickerProvider).value ?? DateTime.now().toUtc();
+    final nowOffset = _nowOffsetPx(currentPaged.earliestStart, currentNow);
     final viewStart = _headerController.offset;
     final viewEnd = viewStart + _headerController.position.viewportDimension;
     final offViewport = nowOffset < viewStart || nowOffset > viewEnd;
 
-    if (offViewport != _nowOffViewport && mounted) {
+    if (offViewport != _nowOffViewport) {
       setState(() => _nowOffViewport = offViewport);
     }
   }
@@ -171,6 +177,9 @@ class _EpgTouchTimelineGridState extends ConsumerState<EpgTouchTimelineGrid> {
         if (mounted) _jumpToNow(paged, now);
       });
     }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _updateNowVisibility(paged: paged, now: now);
+    });
 
     return Column(
       children: [
