@@ -1,39 +1,45 @@
-<!--
-This README describes the package. If you publish this package to pub.dev,
-this README's contents appear on the landing page for your package.
+# platform_playlist_export
 
-For information about how to write a good package README, see the guide for
-[writing package pages](https://dart.dev/tools/pub/writing-package-pages).
+`platform_playlist_export` defines the small typed contract that Airo uses when
+turning an in-memory playlist into a downloadable or shareable export artifact.
 
-For general information about developing packages, see the Dart guide for
-[creating packages](https://dart.dev/guides/libraries/create-packages)
-and the Flutter guide for
-[developing packages and plugins](https://flutter.dev/to/develop-packages).
--->
+The package intentionally stays implementation-free. It does not choose where
+exports are stored, how files are shared, or how playlist rows are rendered.
+Those decisions belong to application code or a higher-level platform adapter.
 
-TODO: Put a short description of the package here that helps potential users
-know whether this package might be useful for them.
+## What It Provides
 
-## Features
-
-TODO: List what your package can do. Maybe include images, gifs, or videos.
-
-## Getting started
-
-TODO: List prerequisites and provide or point to information on how to
-start using the package.
+- `PlaylistExportFormat` for supported output formats and their MIME metadata.
+- `PlaylistExportRequest` for immutable export inputs and filename generation.
+- `PlaylistExportResult` for passing serialized export content to storage,
+  sharing, or download flows.
 
 ## Usage
 
-TODO: Include short and useful examples for package users. Add longer examples
-to `/example` folder.
-
 ```dart
-const like = 'sample';
+import 'package:platform_playlist_export/platform_playlist_export.dart';
+
+const request = PlaylistExportRequest(
+  format: PlaylistExportFormat.m3u,
+  playlistId: 'favorites',
+  playlistTitle: 'Favorites',
+);
+
+final result = PlaylistExportResult(
+  request: request,
+  contents: '#EXTM3U\n#EXTINF:-1,Channel 1\nhttps://example.com/live.m3u8',
+);
 ```
 
-## Additional information
+The caller can then persist `result.contents`, attach `result.mediaType`, and
+use `result.suggestedFileName` when presenting a save or share action.
 
-TODO: Tell users more about the package: where to find more information, how to
-contribute to the package, how to file issues, what response they can expect
-from the package authors, and more.
+## Validation
+
+Run the package-local checks:
+
+```bash
+cd packages/platform_playlist_export
+flutter analyze
+flutter test
+```
