@@ -39,9 +39,10 @@ class EpgTouchTimelineGrid extends ConsumerStatefulWidget {
 
 class _EpgTouchTimelineGridState extends ConsumerState<EpgTouchTimelineGrid> {
   final ScrollController _headerController = ScrollController();
-  final Map<String, ScrollController> _rowControllers = {};
+  final Set<ScrollController> _rowControllers = {};
   bool _isSyncing = false;
   bool _didInitialJump = false;
+  double _horizontalOffset = 0;
 
   @override
   void initState() {
@@ -49,34 +50,32 @@ class _EpgTouchTimelineGridState extends ConsumerState<EpgTouchTimelineGrid> {
     _headerController.addListener(() => _syncFrom(_headerController));
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      unawaited(
-        ref
-            .read(epgReminderSchedulerProvider)
-            .pruneElapsed()
-            .catchError(
-              (Object error, StackTrace stackTrace) => debugPrint(
-                '[EpgTouchTimelineGrid] pruneElapsed failed: $error',
-              ),
-            ),
-      );
+      unawaited(_pruneElapsedReminders());
     });
+  }
+
+  Future<void> _pruneElapsedReminders() async {
+    try {
+      await ref.read(epgReminderSchedulerProvider).pruneElapsed();
+      if (mounted) ref.invalidate(epgRemindersProvider);
+    } catch (error) {
+      debugPrint('[EpgTouchTimelineGrid] pruneElapsed failed: $error');
+    }
   }
 
   @override
   void dispose() {
     _headerController.dispose();
-    for (final controller in _rowControllers.values) {
-      controller.dispose();
-    }
+    _rowControllers.clear();
     super.dispose();
   }
 
-  ScrollController _rowControllerFor(String channelId) {
-    return _rowControllers.putIfAbsent(channelId, () {
-      final controller = ScrollController();
-      controller.addListener(() => _syncFrom(controller));
-      return controller;
-    });
+  void _registerRowController(ScrollController controller) {
+    _rowControllers.add(controller);
+  }
+
+  void _unregisterRowController(ScrollController controller) {
+    _rowControllers.remove(controller);
   }
 
   void _syncFrom(ScrollController source) {
@@ -84,7 +83,8 @@ class _EpgTouchTimelineGridState extends ConsumerState<EpgTouchTimelineGrid> {
 
     _isSyncing = true;
     final offset = source.offset;
-    for (final controller in [_headerController, ..._rowControllers.values]) {
+    _horizontalOffset = offset;
+    for (final controller in [_headerController, ..._rowControllers]) {
       if (identical(controller, source) || !controller.hasClients) continue;
       final target = offset.clamp(0.0, controller.position.maxScrollExtent);
       if ((controller.offset - target).abs() > 0.5) {
@@ -113,7 +113,8 @@ class _EpgTouchTimelineGridState extends ConsumerState<EpgTouchTimelineGrid> {
       0.0,
       double.infinity,
     );
-    for (final controller in [_headerController, ..._rowControllers.values]) {
+    _horizontalOffset = target;
+    for (final controller in [_headerController, ..._rowControllers]) {
       if (!controller.hasClients) continue;
       controller.jumpTo(target.clamp(0.0, controller.position.maxScrollExtent));
     }
@@ -189,8 +190,11 @@ class _EpgTouchTimelineGridState extends ConsumerState<EpgTouchTimelineGrid> {
                 entry: entriesByChannel[channel.id],
                 windowStart: paged.earliestStart,
                 windowDuration: timelineDuration,
-                scrollController: _rowControllerFor(channel.id),
                 timelineWidth: timelineWidth,
+                initialScrollOffset: _horizontalOffset,
+                onRegisterScrollController: _registerRowController,
+                onUnregisterScrollController: _unregisterRowController,
+                onHorizontalScroll: _syncFrom,
                 remindedIds: remindedIds,
                 remindersAvailable: remindersAvailable,
                 onChannelSelect: widget.onChannelSelect,
@@ -274,8 +278,11 @@ class _TouchChannelRow extends StatefulWidget {
     required this.entry,
     required this.windowStart,
     required this.windowDuration,
-    required this.scrollController,
     required this.timelineWidth,
+    required this.initialScrollOffset,
+    required this.onRegisterScrollController,
+    required this.onUnregisterScrollController,
+    required this.onHorizontalScroll,
     required this.remindedIds,
     required this.remindersAvailable,
     required this.onChannelSelect,
@@ -286,8 +293,11 @@ class _TouchChannelRow extends StatefulWidget {
   final CompactEpgWindowEntry? entry;
   final DateTime windowStart;
   final Duration windowDuration;
-  final ScrollController scrollController;
   final double timelineWidth;
+  final double initialScrollOffset;
+  final void Function(ScrollController controller) onRegisterScrollController;
+  final void Function(ScrollController controller) onUnregisterScrollController;
+  final void Function(ScrollController controller) onHorizontalScroll;
   final Set<String> remindedIds;
   final bool remindersAvailable;
   final void Function(IPTVChannel channel)? onChannelSelect;
@@ -299,36 +309,37 @@ class _TouchChannelRow extends StatefulWidget {
 }
 
 class _TouchChannelRowState extends State<_TouchChannelRow> {
+  late final ScrollController _scrollController;
   double _scrollOffset = 0;
 
   @override
   void initState() {
     super.initState();
-    widget.scrollController.addListener(_handleScroll);
-  }
-
-  @override
-  void didUpdateWidget(_TouchChannelRow oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.scrollController == widget.scrollController) return;
-    oldWidget.scrollController.removeListener(_handleScroll);
-    widget.scrollController.addListener(_handleScroll);
-    _scrollOffset = widget.scrollController.hasClients
-        ? widget.scrollController.offset
-        : 0;
+    _scrollOffset = widget.initialScrollOffset;
+    _scrollController = ScrollController(initialScrollOffset: _scrollOffset);
+    _scrollController.addListener(_handleScroll);
+    _scrollController.addListener(_handleHorizontalScroll);
+    widget.onRegisterScrollController(_scrollController);
   }
 
   @override
   void dispose() {
-    widget.scrollController.removeListener(_handleScroll);
+    widget.onUnregisterScrollController(_scrollController);
+    _scrollController.removeListener(_handleHorizontalScroll);
+    _scrollController.removeListener(_handleScroll);
+    _scrollController.dispose();
     super.dispose();
   }
 
   void _handleScroll() {
-    if (!mounted || !widget.scrollController.hasClients) return;
-    final next = widget.scrollController.offset;
+    if (!mounted || !_scrollController.hasClients) return;
+    final next = _scrollController.offset;
     if ((next - _scrollOffset).abs() < 1) return;
     setState(() => _scrollOffset = next);
+  }
+
+  void _handleHorizontalScroll() {
+    widget.onHorizontalScroll(_scrollController);
   }
 
   @override
@@ -362,16 +373,12 @@ class _TouchChannelRowState extends State<_TouchChannelRow> {
                 final viewportStart = _scrollOffset - 48;
                 final viewportEnd = _scrollOffset + constraints.maxWidth + 48;
                 return SingleChildScrollView(
-                  controller: widget.scrollController,
+                  controller: _scrollController,
                   scrollDirection: Axis.horizontal,
                   child: SizedBox(
                     width: widget.timelineWidth,
                     child: Stack(
                       children: [
-                        _TouchNowLine(
-                          windowStart: widget.windowStart,
-                          windowDuration: widget.windowDuration,
-                        ),
                         for (final program in programs)
                           if (_programIntersectsViewport(
                             program,
@@ -401,6 +408,10 @@ class _TouchChannelRowState extends State<_TouchChannelRow> {
                                       program,
                                     ),
                             ),
+                        _TouchNowLine(
+                          windowStart: widget.windowStart,
+                          windowDuration: widget.windowDuration,
+                        ),
                       ],
                     ),
                   ),
@@ -431,7 +442,7 @@ class _TouchChannelRowState extends State<_TouchChannelRow> {
     final width =
         ((endOffsetMinutes - startOffsetMinutes) *
                 EpgTouchTimelineGrid.pxPerMinute)
-            .clamp(40.0, double.infinity);
+            .clamp(48.0, double.infinity);
     return left + width >= viewportStart && left <= viewportEnd;
   }
 }
@@ -500,7 +511,7 @@ class _TouchProgramBlock extends ConsumerWidget {
     final width =
         ((endOffsetMinutes - startOffsetMinutes) *
                 EpgTouchTimelineGrid.pxPerMinute)
-            .clamp(40.0, double.infinity);
+            .clamp(48.0, double.infinity);
 
     final isAiring = epgProgramIsAiring(
       startsAt: program.startsAt,

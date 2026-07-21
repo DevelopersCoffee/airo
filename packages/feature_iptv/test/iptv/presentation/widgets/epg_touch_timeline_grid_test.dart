@@ -37,20 +37,16 @@ void main() {
     );
   }
 
-  GuidePagedWindowState fixedState(List<CompactEpgProgram> programs) {
+  GuidePagedWindowState fixedStateWithEntries(
+    List<CompactEpgWindowEntry> entries,
+  ) {
     final earliest = DateTime.utc(2026, 7, 20, 11, 30);
     final through = DateTime.utc(2026, 7, 20, 18, 30);
     return GuidePagedWindowState(
       earliestStart: earliest,
       loadedThrough: through,
       window: CompactEpgWindow(
-        entries: [
-          CompactEpgWindowEntry(
-            channelId: 'channel-1',
-            channelName: 'Example Channel',
-            programs: programs,
-          ),
-        ],
+        entries: entries,
         windowStart: earliest,
         windowEnd: through,
         generatedAt: fixedNow,
@@ -58,6 +54,16 @@ void main() {
         source: CompactEpgSliceSource.localCache,
       ),
     );
+  }
+
+  GuidePagedWindowState fixedState(List<CompactEpgProgram> programs) {
+    return fixedStateWithEntries([
+      CompactEpgWindowEntry(
+        channelId: 'channel-1',
+        channelName: 'Example Channel',
+        programs: programs,
+      ),
+    ]);
   }
 
   Future<SharedPreferences> resetPrefs() async {
@@ -72,8 +78,10 @@ void main() {
     void Function(IPTVChannel, CompactEpgProgram)? onReminderToggle,
     List<EpgReminder> reminders = const [],
     EpgReminderNotificationGateway? gateway,
+    List<IPTVChannel>? channels,
   }) async {
     final prefs = await resetPrefs();
+    final effectiveChannels = channels ?? const [channel];
     tester.view.physicalSize = const Size(800, 1200);
     tester.view.devicePixelRatio = 2.0;
     addTearDown(tester.view.reset);
@@ -81,7 +89,7 @@ void main() {
       ProviderScope(
         overrides: [
           sharedPreferencesProvider.overrideWithValue(prefs),
-          iptvChannelsProvider.overrideWith((ref) async => [channel]),
+          iptvChannelsProvider.overrideWith((ref) async => effectiveChannels),
           hiddenGroupIdsProvider.overrideWith((ref) async => const <String>{}),
           guidePagedWindowProvider.overrideWith(
             () => _FakePagedNotifier(state),
@@ -226,6 +234,60 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Late Show'), findsOneWidget);
+  });
+
+  testWidgets('newly materialized rows inherit the horizontal time offset', (
+    tester,
+  ) async {
+    final channels = [
+      channel,
+      for (var i = 2; i <= 30; i++)
+        IPTVChannel(
+          id: 'channel-$i',
+          name: 'Channel $i',
+          streamUrl: 'https://example.com/stream-$i.m3u8',
+          group: 'News',
+        ),
+    ];
+    final targetProgram = program(
+      'late-25',
+      'Late Show 25',
+      DateTime.utc(2026, 7, 20, 17),
+      DateTime.utc(2026, 7, 20, 18),
+    );
+
+    await pumpGrid(
+      tester,
+      channels: channels,
+      state: fixedStateWithEntries([
+        CompactEpgWindowEntry(
+          channelId: 'channel-25',
+          channelName: 'Channel 25',
+          programs: [targetProgram],
+        ),
+      ]),
+    );
+
+    final visibleTouchRow = find.byWidgetPredicate(
+      (widget) => widget.key.toString().startsWith("[<'epg_touch_row_"),
+    );
+    expect(visibleTouchRow, findsWidgets);
+    await tester.drag(visibleTouchRow.first, const Offset(-2200, 0));
+    await tester.pumpAndSettle();
+
+    final verticalScrollable = find.byWidgetPredicate(
+      (widget) =>
+          widget is Scrollable && widget.axisDirection == AxisDirection.down,
+    );
+    await tester.scrollUntilVisible(
+      find.text('Channel 25'),
+      500,
+      scrollable: verticalScrollable,
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Channel 25'), findsOneWidget);
+    expect(find.text('Late Show 25'), findsOneWidget);
   });
 
   testWidgets('tapping the airing block selects the channel', (tester) async {
@@ -432,6 +494,7 @@ void main() {
   testWidgets('guide open prunes elapsed reminders', (tester) async {
     final prefs = await resetPrefs();
     final store = EpgReminderStore(PreferencesStore(prefs));
+    var reminderReadCount = 0;
     await store.save(
       EpgReminder(
         channelId: 'channel-1',
@@ -457,7 +520,10 @@ void main() {
           epgReminderNotificationGatewayProvider.overrideWithValue(
             _AvailableGateway(),
           ),
-          epgRemindersProvider.overrideWith((ref) => store.list()),
+          epgRemindersProvider.overrideWith((ref) {
+            reminderReadCount++;
+            return store.list();
+          }),
         ],
         child: const MaterialApp(home: Scaffold(body: EpgTouchTimelineGrid())),
       ),
@@ -466,6 +532,7 @@ void main() {
     await tester.pump();
 
     expect(await store.contains('elapsed'), isFalse);
+    expect(reminderReadCount, greaterThan(1));
   });
 }
 
