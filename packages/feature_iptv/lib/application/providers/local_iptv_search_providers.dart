@@ -15,7 +15,7 @@ import 'iptv_providers.dart';
 final localIptvSearchIndexProvider = FutureProvider<LocalIptvSearchIndex>((
   ref,
 ) async {
-  final epgWindow = ref.watch(
+  final epgWindow = ref.read(
     guidePagedWindowProvider.select((state) => state.window),
   );
   final channels = await ref.watch(iptvChannelsProvider.future);

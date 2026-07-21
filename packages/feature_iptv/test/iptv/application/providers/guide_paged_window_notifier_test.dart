@@ -110,6 +110,56 @@ void main() {
     expect(state.window!.entryForChannel('channel-1')?.programs, isNotEmpty);
   });
 
+  test('reloads when guide EPG overrides are invalidated', () async {
+    CompactEpgProgram titled(String id, String title) {
+      return CompactEpgProgram(
+        programId: id,
+        title: title,
+        startsAt: fixedNow.subtract(const Duration(minutes: 5)),
+        endsAt: fixedNow.add(const Duration(minutes: 25)),
+      );
+    }
+
+    final repository = InMemoryCompactEpgRepository(
+      seed: CompactEpgSlice(
+        entries: [
+          CompactEpgEntry(
+            channelId: 'channel-1',
+            channelName: 'Example Channel',
+            current: titled('raw', 'Raw Match Show'),
+          ),
+          CompactEpgEntry(
+            channelId: 'overridden.epg.id',
+            channelName: 'Example Channel EPG',
+            current: titled('override', 'Override Match Show'),
+          ),
+        ],
+        generatedAt: fixedNow,
+        expiresAt: fixedNow.add(const Duration(hours: 24)),
+        source: CompactEpgSliceSource.localCache,
+      ),
+    );
+    final container = await buildContainer(repository: repository);
+
+    final before = await settleInitial(container);
+    expect(
+      before.window!.entryForChannel('channel-1')!.programs.single.title,
+      'Raw Match Show',
+    );
+
+    await container
+        .read(epgChannelMatchOverrideStoreProvider)
+        .setOverride(channelId: 'channel-1', epgChannelId: 'overridden.epg.id');
+    container.invalidate(guideEpgOverridesProvider);
+
+    final after = await settleInitial(container);
+    expect(
+      after.window!.entryForChannel('channel-1')!.programs.single.title,
+      'Override Match Show',
+    );
+    expect(after.window!.entryForChannel('overridden.epg.id'), isNull);
+  });
+
   test('extendForward advances loadedThrough by one 3h page', () async {
     final container = await buildContainer();
     final before = await settleInitial(container);

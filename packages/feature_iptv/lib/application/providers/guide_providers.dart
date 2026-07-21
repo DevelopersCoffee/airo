@@ -166,6 +166,11 @@ class GuidePagedWindowNotifier extends Notifier<GuidePagedWindowState> {
 
   @override
   GuidePagedWindowState build() {
+    ref.watch(iptvChannelsProvider.future);
+    ref.watch(guideEpgOverridesProvider.future);
+    ref.watch(hiddenGroupIdsProvider.future);
+    ref.watch(compactEpgRepositoryProvider);
+
     final generation = ++_loadGeneration;
     _inFlight = null;
     _anchorNow = null;

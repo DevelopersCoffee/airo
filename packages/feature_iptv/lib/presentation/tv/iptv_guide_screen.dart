@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -15,7 +17,7 @@ import '../widgets/epg_timeline_grid.dart';
 /// sourced from [guidePagedWindowProvider]. Selecting a channel plays it and
 /// invokes [onChannelSelected] so the caller (the app shell, which owns
 /// routing) can navigate to the live/player screen.
-class IptvGuideScreen extends ConsumerWidget {
+class IptvGuideScreen extends ConsumerStatefulWidget {
   const IptvGuideScreen({
     required this.onChannelSelected,
     this.overrideFormFactor,
@@ -30,11 +32,20 @@ class IptvGuideScreen extends ConsumerWidget {
   final AiroFormFactor? overrideFormFactor;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<IptvGuideScreen> createState() => _IptvGuideScreenState();
+}
+
+class _IptvGuideScreenState extends ConsumerState<IptvGuideScreen> {
+  final Set<String> _reminderOperationsInFlight = {};
+  final Map<String, int> _reminderOperationTokens = {};
+  var _nextReminderOperationToken = 0;
+
+  @override
+  Widget build(BuildContext context) {
     final channelsAsync = ref.watch(iptvChannelsProvider);
 
     return AiroResponsiveScaffold(
-      overrideFormFactor: overrideFormFactor,
+      overrideFormFactor: widget.overrideFormFactor,
       padding: EdgeInsets.zero,
       backgroundColor: Theme.of(context).colorScheme.surface,
       body: SafeArea(
@@ -53,7 +64,7 @@ class IptvGuideScreen extends ConsumerWidget {
             void selectChannel(IPTVChannel channel) {
               ref.read(iptvStreamingServiceProvider).playChannel(channel);
               ref.read(addToRecentlyWatchedProvider(channel));
-              onChannelSelected();
+              widget.onChannelSelected();
             }
 
             return Column(
@@ -73,12 +84,13 @@ class IptvGuideScreen extends ConsumerWidget {
                   ),
                 ),
                 Expanded(
-                  child: overrideFormFactor == AiroFormFactor.tv
+                  child: widget.overrideFormFactor == AiroFormFactor.tv
                       ? EpgTimelineGrid(onChannelSelect: selectChannel)
                       : EpgTouchTimelineGrid(
                           onChannelSelect: selectChannel,
-                          onReminderToggle: (channel, program) =>
-                              _toggleReminder(context, ref, channel, program),
+                          onReminderToggle: (channel, program) {
+                            unawaited(_toggleReminder(channel, program));
+                          },
                         ),
                 ),
               ],
@@ -89,55 +101,86 @@ class IptvGuideScreen extends ConsumerWidget {
     );
   }
 
-  static Future<void> _toggleReminder(
-    BuildContext context,
-    WidgetRef ref,
+  Future<void> _toggleReminder(
     IPTVChannel channel,
     CompactEpgProgram program,
   ) async {
+    final programId = program.programId;
+    if (!_reminderOperationsInFlight.add(programId)) return;
+
     final scheduler = ref.read(epgReminderSchedulerProvider);
-    final messenger = ScaffoldMessenger.of(context);
+    try {
+      if (await scheduler.isReminded(programId)) {
+        _advanceReminderToken(programId);
+        await scheduler.cancelReminder(programId);
+        if (!mounted) return;
+        ref.invalidate(epgRemindersProvider);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Reminder canceled for ${program.title}')),
+        );
+        return;
+      }
 
-    if (await scheduler.isReminded(program.programId)) {
-      await scheduler.cancelReminder(program.programId);
-      ref.invalidate(epgRemindersProvider);
-      messenger.showSnackBar(
-        SnackBar(content: Text('Reminder canceled for ${program.title}')),
+      final token = _advanceReminderToken(programId);
+      final outcome = await scheduler.scheduleReminder(
+        channel: channel,
+        program: program,
       );
-      return;
-    }
+      if (!mounted) return;
+      ref.invalidate(epgRemindersProvider);
 
-    final outcome = await scheduler.scheduleReminder(
-      channel: channel,
-      program: program,
-    );
-    ref.invalidate(epgRemindersProvider);
-
-    switch (outcome) {
-      case EpgReminderOutcome.scheduled:
-        messenger.showSnackBar(
-          SnackBar(
-            content: Text('Reminder set for ${program.title}'),
-            action: SnackBarAction(
-              label: 'Undo',
-              onPressed: () async {
-                await scheduler.cancelReminder(program.programId);
-                ref.invalidate(epgRemindersProvider);
-              },
+      switch (outcome) {
+        case EpgReminderOutcome.scheduled:
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Reminder set for ${program.title}'),
+              action: SnackBarAction(
+                label: 'Undo',
+                onPressed: () {
+                  unawaited(_undoReminder(programId, token));
+                },
+              ),
             ),
-          ),
-        );
-      case EpgReminderOutcome.scheduledInAppOnly:
-        messenger.showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Notifications are off — reminder will only show in-app.',
+          );
+        case EpgReminderOutcome.scheduledInAppOnly:
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Notifications are off — reminder will only show in-app.',
+              ),
             ),
-          ),
-        );
-      case EpgReminderOutcome.unavailable:
-        break;
+          );
+        case EpgReminderOutcome.unavailable:
+          break;
+      }
+    } finally {
+      _reminderOperationsInFlight.remove(programId);
     }
+  }
+
+  int _advanceReminderToken(String programId) {
+    final token = _nextReminderOperationToken++;
+    _reminderOperationTokens[programId] = token;
+    return token;
+  }
+
+  Future<void> _undoReminder(String programId, int token) async {
+    if (!_reminderOperationIsCurrent(programId, token)) return;
+    if (!_reminderOperationsInFlight.add(programId)) return;
+    try {
+      if (!_reminderOperationIsCurrent(programId, token) || !mounted) return;
+      final scheduler = ref.read(epgReminderSchedulerProvider);
+      await scheduler.cancelReminder(programId);
+      if (!_reminderOperationIsCurrent(programId, token) || !mounted) return;
+      ref.invalidate(epgRemindersProvider);
+      _reminderOperationTokens.remove(programId);
+    } finally {
+      _reminderOperationsInFlight.remove(programId);
+    }
+  }
+
+  bool _reminderOperationIsCurrent(String programId, int token) {
+    return _reminderOperationTokens[programId] == token;
   }
 }
 
