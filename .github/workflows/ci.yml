@@ -191,13 +191,16 @@ jobs:
           scripts/test-generate-release-qualification-report.sh
 
   # ============================================
-  # App Tests with Coverage (runs on push to main only)
-  # This is the expensive job - skip on PRs
+  # App Tests with Coverage
+  # Runs on every push to main, and on PRs targeting main/v2 so
+  # SonarCloud can compute coverage on new code for the quality gate.
   # ============================================
   test-app:
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    if: github.event_name == 'push'
+    if: >
+      github.event_name == 'push' ||
+      (github.event_name == 'pull_request' && (github.base_ref == 'main' || github.base_ref == 'v2'))
     needs: [analyze, test-core]
     steps:
       - uses: actions/checkout@v7
@@ -259,6 +262,13 @@ jobs:
           files: ./app/coverage/lcov.info
           flags: flutter
           name: flutter-coverage
+
+      - name: Upload coverage artifact for SonarCloud
+        uses: actions/upload-artifact@v7
+        with:
+          name: lcov-coverage
+          path: app/coverage/lcov.info
+          retention-days: 1
 
   # ============================================
   # Build Android - Multi-Platform Matrix
@@ -893,10 +903,42 @@ jobs:
           flutter pub run custom_lint
         continue-on-error: true
 
+  # ============================================
+  # SonarCloud CI-based Analysis
+  # Runs the scanner directly instead of relying on SonarCloud's
+  # automatic analysis, so lcov coverage from test-app is ingested
+  # and quality-gate coverage conditions become meaningful.
+  # Requires: repo secret SONAR_TOKEN, and Automatic Analysis turned
+  # off in SonarCloud project Administration > Analysis Method.
+  # ============================================
+  sonarcloud-scan:
+    runs-on: ubuntu-latest
+    needs: [test-app]
+    if: >
+      always() && needs.test-app.result == 'success' &&
+      (github.event_name == 'push' ||
+       (github.event_name == 'pull_request' && (github.base_ref == 'main' || github.base_ref == 'v2')))
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Download coverage artifact
+        uses: actions/download-artifact@v6
+        with:
+          name: lcov-coverage
+          path: app/coverage
+
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarqube-scan-action@v5
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
   sonarqube:
     runs-on: ubuntu-latest
-    needs: [analyze, test-core]
+    needs: [analyze, test-core, sonarcloud-scan]
     if: >
+      always() &&
       github.event_name == 'pull_request' && (github.base_ref == 'main' || github.base_ref == 'v2')
     permissions:
       contents: read
