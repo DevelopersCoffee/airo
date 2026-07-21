@@ -5,7 +5,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_riverpod/legacy.dart';
 import 'package:core_ui/core_ui.dart';
 import '../../application/player_backgrounding_coordinator.dart';
 import '../../application/providers/iptv_providers.dart';
@@ -202,8 +201,6 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
     }
 
     ref.read(iptvStreamingServiceProvider).playChannel(channel);
-    // Track recently watched for easy access
-    ref.read(addToRecentlyWatchedProvider(channel));
   }
 
   Future<bool> _playNaturalLanguageQuery(String query) async {
