@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../application/providers/guide_providers.dart';
+import 'adaptive_iptv_sheet.dart';
 
 /// Lets the user add, refresh, or remove the single configured XMLTV
 /// guide source. A ready-to-use widget — CV-022 (TV settings screen, not
@@ -43,9 +44,10 @@ class _XmltvSourceSheetState extends ConsumerState<XmltvSourceSheet> {
       if (!mounted) return;
       setState(() => _refreshFeedback = 'Refresh failed: $e');
     } finally {
-      if (!mounted) return;
-      setState(() => _isRefreshing = false);
-      ref.invalidate(xmltvSourceConfigProvider);
+      if (mounted) {
+        setState(() => _isRefreshing = false);
+        ref.invalidate(xmltvSourceConfigProvider);
+      }
     }
   }
 
@@ -142,4 +144,15 @@ class _XmltvSourceSheetState extends ConsumerState<XmltvSourceSheet> {
       ),
     );
   }
+}
+
+/// Presents [XmltvSourceSheet] as an adaptive sheet — the phone Settings
+/// hub entry point ("EPG Guide Source") uses this; the TV variant embeds
+/// the sheet widget directly.
+Future<void> showXmltvSourceSheet(BuildContext context) async {
+  await showAdaptiveIptvSheet<void>(
+    context: context,
+    maxWidth: 640,
+    builder: (_) => const XmltvSourceSheet(),
+  );
 }

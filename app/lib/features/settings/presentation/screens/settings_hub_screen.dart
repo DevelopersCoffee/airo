@@ -118,6 +118,14 @@ class SettingsHubScreen extends ConsumerWidget {
             trailing: const Icon(Icons.arrow_forward_ios, size: 16),
             onTap: () => showPlaylistSourceSheet(context, ref),
           ),
+
+          ListTile(
+            leading: const Icon(Icons.calendar_month_outlined),
+            title: const Text('EPG Guide Source'),
+            subtitle: const Text('Add or refresh your XMLTV guide URL'),
+            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+            onTap: () => showXmltvSourceSheet(context),
+          ),
         ],
       ),
     );

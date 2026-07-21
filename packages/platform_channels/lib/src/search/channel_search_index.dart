@@ -96,12 +96,22 @@ class AiroChannelSearchIndex {
       if (a.preferenceScore != b.preferenceScore) {
         return b.preferenceScore.compareTo(a.preferenceScore);
       }
-      return a.channel.name.compareTo(b.channel.name);
+      return _naturalSortKey(
+        a.channel.name,
+      ).compareTo(_naturalSortKey(b.channel.name));
     });
 
     return List<IPTVChannel>.unmodifiable(
       matched.map((match) => match.channel),
     );
+  }
+
+  /// Human-natural sort key for display ordering: lowercase and stripped
+  /// of leading non-alphanumeric characters, so provider names like `&TV`
+  /// or `.black` sort by their first letter instead of jumping ahead of
+  /// the alphabet (raw-ASCII `compareTo` order).
+  static String _naturalSortKey(String name) {
+    return name.toLowerCase().replaceFirst(RegExp(r'^[^a-z0-9]+'), '');
   }
 
   List<IPTVChannel> channelsByFlavor(ChannelFlavor flavor) {
