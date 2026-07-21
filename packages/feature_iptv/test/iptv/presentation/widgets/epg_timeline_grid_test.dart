@@ -30,7 +30,9 @@ void main() {
       overrides: [
         sharedPreferencesProvider.overrideWithValue(prefs),
         iptvChannelsProvider.overrideWith((ref) async => [channel]),
-        guideEpgWindowProvider.overrideWith((ref) async => window),
+        guidePagedWindowProvider.overrideWith(
+          () => _FakePagedNotifier(_pagedStateFor(window)),
+        ),
         guideWindowStartProvider.overrideWithValue(window.windowStart),
         guideWindowDurationProvider.overrideWith(
           (ref) => window.windowEnd.difference(window.windowStart),
@@ -115,7 +117,13 @@ void main() {
       overrides: [
         sharedPreferencesProvider.overrideWithValue(prefs),
         iptvChannelsProvider.overrideWith((ref) async => const []),
-        guideEpgWindowProvider.overrideWith((ref) async => window),
+        guidePagedWindowProvider.overrideWith(
+          () => _FakePagedNotifier(_pagedStateFor(window)),
+        ),
+        guideWindowStartProvider.overrideWithValue(window.windowStart),
+        guideWindowDurationProvider.overrideWith(
+          (ref) => window.windowEnd.difference(window.windowStart),
+        ),
       ],
     );
     addTearDown(container.dispose);
@@ -185,7 +193,13 @@ void main() {
         overrides: [
           sharedPreferencesProvider.overrideWithValue(prefs),
           iptvChannelsProvider.overrideWith((ref) async => manyChannels),
-          guideEpgWindowProvider.overrideWith((ref) async => window),
+          guidePagedWindowProvider.overrideWith(
+            () => _FakePagedNotifier(_pagedStateFor(window)),
+          ),
+          guideWindowStartProvider.overrideWithValue(window.windowStart),
+          guideWindowDurationProvider.overrideWith(
+            (ref) => window.windowEnd.difference(window.windowStart),
+          ),
         ],
       );
       addTearDown(container.dispose);
@@ -280,7 +294,13 @@ void main() {
           iptvChannelsProvider.overrideWith(
             (ref) async => [channel, channelTwo],
           ),
-          guideEpgWindowProvider.overrideWith((ref) async => window),
+          guidePagedWindowProvider.overrideWith(
+            () => _FakePagedNotifier(_pagedStateFor(window)),
+          ),
+          guideWindowStartProvider.overrideWithValue(window.windowStart),
+          guideWindowDurationProvider.overrideWith(
+            (ref) => window.windowEnd.difference(window.windowStart),
+          ),
         ],
       );
       addTearDown(container.dispose);
@@ -512,8 +532,13 @@ void main() {
       overrides: [
         sharedPreferencesProvider.overrideWithValue(prefs),
         iptvChannelsProvider.overrideWith((ref) async => [channel]),
-        guideEpgWindowProvider.overrideWith((ref) async => window),
+        guidePagedWindowProvider.overrideWith(
+          () => _FakePagedNotifier(_pagedStateFor(window)),
+        ),
         guideWindowStartProvider.overrideWithValue(windowStart),
+        guideWindowDurationProvider.overrideWith(
+          (ref) => window.windowEnd.difference(window.windowStart),
+        ),
       ],
     );
     addTearDown(container.dispose);
@@ -553,4 +578,21 @@ void main() {
       expect(find.text(utcLabel), findsNothing);
     }
   });
+}
+
+GuidePagedWindowState _pagedStateFor(CompactEpgWindow window) {
+  return GuidePagedWindowState(
+    earliestStart: window.windowStart,
+    loadedThrough: window.windowEnd,
+    window: window,
+  );
+}
+
+class _FakePagedNotifier extends GuidePagedWindowNotifier {
+  _FakePagedNotifier(this._state);
+
+  final GuidePagedWindowState _state;
+
+  @override
+  GuidePagedWindowState build() => _state;
 }

@@ -5,8 +5,8 @@ import 'package:platform_epg/platform_epg.dart';
 /// each channel is queried under its override EPG id if one is set, hidden
 /// groups are excluded (CV-021), and results are remapped back to the
 /// original [IPTVChannel.id] so callers never need to know an override was
-/// involved. Extracted from the former `guideEpgWindowProvider` body so the
-/// paged guide window (Live Grid Navigation) shares one query path.
+/// involved. Shared by the paged guide window (Live Grid Navigation) so all
+/// guide surfaces use one query path.
 Future<CompactEpgWindow> queryGuideWindowWithOverrides({
   required List<IPTVChannel> channels,
   required Map<String, String> overrides,

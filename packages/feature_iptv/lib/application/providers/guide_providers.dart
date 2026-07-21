@@ -70,27 +70,6 @@ final guideEpgOverridesProvider = FutureProvider<Map<String, String>>((
   return ref.watch(epgChannelMatchOverrideStoreProvider).getOverrides();
 });
 
-/// Bounded guide-window query (CV-015) — thin wrapper over
-/// [queryGuideWindowWithOverrides] until the paged window provider
-/// (Live Grid Navigation) supersedes it.
-final guideEpgWindowProvider = FutureProvider<CompactEpgWindow>((ref) async {
-  final channels = await ref.watch(iptvChannelsProvider.future);
-  final overrides = await ref.watch(guideEpgOverridesProvider.future);
-  final hiddenGroupIds = await ref.watch(hiddenGroupIdsProvider.future);
-  final windowStart = ref.watch(guideWindowStartProvider);
-  final windowDuration = ref.watch(guideWindowDurationProvider);
-
-  return queryGuideWindowWithOverrides(
-    channels: channels,
-    overrides: overrides,
-    hiddenGroupIds: hiddenGroupIds,
-    repository: ref.watch(compactEpgRepositoryProvider),
-    windowStart: windowStart,
-    windowEnd: windowStart.add(windowDuration),
-    now: DateTime.now().toUtc(),
-  );
-});
-
 /// How far ahead one guide page spans.
 const Duration guidePageDuration = Duration(hours: 3);
 

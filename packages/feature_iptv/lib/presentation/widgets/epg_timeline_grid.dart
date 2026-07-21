@@ -65,7 +65,9 @@ class _EpgTimelineGridState extends ConsumerState<EpgTimelineGrid> {
   @override
   Widget build(BuildContext context) {
     final channels = ref.watch(guideFilteredChannelsProvider);
-    final windowAsync = ref.watch(guideEpgWindowProvider);
+    final window = ref.watch(
+      guidePagedWindowProvider.select((state) => state.window),
+    );
     final windowStart = ref.watch(guideWindowStartProvider);
     final windowDuration = ref.watch(guideWindowDurationProvider);
     final dimensions = ref.watch(tvDimensionsProvider(context));
@@ -74,7 +76,6 @@ class _EpgTimelineGridState extends ConsumerState<EpgTimelineGrid> {
       return const Center(child: Text('No channels to show yet.'));
     }
 
-    final window = windowAsync.value;
     final entriesByChannel = <String, CompactEpgWindowEntry>{
       for (final entry in window?.entries ?? const <CompactEpgWindowEntry>[])
         entry.channelId: entry,
