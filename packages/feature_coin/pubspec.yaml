@@ -1,0 +1,35 @@
+name: feature_coin
+description: "Airo Coin vault presentation layer — biometric-gated secure record vault (bank accounts, PAN, cards, documents)."
+version: 0.0.1
+publish_to: none
+
+environment:
+  sdk: ">=3.12.2 <4.0.0"
+  flutter: ">=3.44.4"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  core_domain:
+    path: ../core_domain
+  core_ui:
+    path: ../core_ui
+  platform_coin_vault:
+    path: ../platform_coin_vault
+  equatable: ^2.0.8
+  flutter_riverpod: 3.3.2
+  go_router: ^17.3.0
+  local_auth: ^2.3.0
+  path: 1.9.1
+  path_provider: ^2.1.6
+  screen_protector: ^1.4.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: 6.0.0
+  mocktail: ^1.0.5
+  sqflite_common_ffi: ^2.3.6
+
+flutter:
+  uses-material-design: true
