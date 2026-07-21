@@ -113,7 +113,7 @@ def main() -> int:
     if missing_platform_sections:
         errors.append("missing platform page sections: " + ", ".join(missing_platform_sections))
 
-    required_tv_sections = {"product", "difference", "devices", "capability-matrix", "guides", "community", "pro-vision", "roadmap", "trust"}
+    required_tv_sections = {"product", "browse", "difference", "devices", "capability-matrix", "guides", "community", "pro-vision", "roadmap", "trust"}
     missing_tv_sections = sorted(required_tv_sections - tv.ids)
     if missing_tv_sections:
         errors.append("missing Airo TV page sections: " + ", ".join(missing_tv_sections))
@@ -134,6 +134,8 @@ def main() -> int:
         release_tag: "published Airo TV release tag",
         '<h1 id="hero-title">Airo TV</h1>': "Airo TV product hero identity",
         "Airo TV includes no channels": "application content boundary",
+        "Make your own playlist feel smaller.": "browse-and-organization product story",
+        "Saved browse views": "planned saved-view disclosure",
         "community-voice": "Community Voice link",
         "/milestone/5": "product milestone link",
         "/milestone/6": "performance milestone link",
