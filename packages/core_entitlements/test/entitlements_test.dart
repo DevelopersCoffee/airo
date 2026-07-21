@@ -1,6 +1,8 @@
 import 'package:core_entitlements/core_entitlements.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'goldens/pro_feature_stable_ids.dart';
+
 class _FakeModule implements ProModule {
   _FakeModule(this.id, this.feature, {this.failOnInit = false});
 
@@ -51,6 +53,11 @@ void main() {
     test('stable ids are unique', () {
       final ids = ProFeature.values.map((f) => f.stableId).toSet();
       expect(ids.length, ProFeature.values.length);
+    });
+
+    test('stable ids match the frozen golden fixture', () {
+      final ids = ProFeature.values.map((f) => f.stableId).toList();
+      expect(ids, expectedProFeatureStableIds);
     });
   });
 
