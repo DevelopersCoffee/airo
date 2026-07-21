@@ -81,7 +81,7 @@ void main() async {
   final prefs = await SharedPreferences.getInstance();
   final epgReminderGateway = FlutterLocalNotificationsEpgReminderGateway(
     onReminderTap: (channelId) =>
-        AppRouter.router.go('/iptv?channel=$channelId'),
+        AppRouter.router.go(epgReminderDeepLinkForChannel(channelId)),
   );
   await epgReminderGateway.initialize();
 
@@ -99,10 +99,14 @@ void main() async {
 
   AppLifecycleListener(
     onResume: () async {
-      await EpgReminderScheduler(
-        store: EpgReminderStore(PreferencesStore(prefs)),
-        gateway: epgReminderGateway,
-      ).pruneElapsed();
+      try {
+        await EpgReminderScheduler(
+          store: EpgReminderStore(PreferencesStore(prefs)),
+          gateway: epgReminderGateway,
+        ).pruneElapsed();
+      } catch (error) {
+        debugPrint('[EpgReminderGateway] pruneElapsed failed: $error');
+      }
     },
   );
 

@@ -1,9 +1,12 @@
-import 'dart:io';
-
 import 'package:feature_iptv/feature_iptv.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:timezone/data/latest.dart' as tz_data;
 import 'package:timezone/timezone.dart' as tz;
+
+String epgReminderDeepLinkForChannel(String channelId) {
+  return Uri(path: '/iptv', queryParameters: {'channel': channelId}).toString();
+}
 
 /// App-level local notification gateway for EPG reminders.
 class FlutterLocalNotificationsEpgReminderGateway
@@ -16,16 +19,27 @@ class FlutterLocalNotificationsEpgReminderGateway
       FlutterLocalNotificationsPlugin();
   final void Function(String channelId)? onReminderTap;
   bool _initialized = false;
+  bool _timeZoneInitialized = false;
 
   @override
-  bool get isAvailable => !kIsWeb && (Platform.isIOS || Platform.isAndroid);
+  bool get isAvailable =>
+      !kIsWeb &&
+      (defaultTargetPlatform == TargetPlatform.iOS ||
+          defaultTargetPlatform == TargetPlatform.android);
+
+  @visibleForTesting
+  bool get debugIsTimeZoneInitialized => _timeZoneInitialized;
 
   Future<void> initialize() async {
     if (_initialized || !isAvailable) return;
 
     const settings = InitializationSettings(
       android: AndroidInitializationSettings('@mipmap/ic_launcher'),
-      iOS: DarwinInitializationSettings(),
+      iOS: DarwinInitializationSettings(
+        requestAlertPermission: false,
+        requestSoundPermission: false,
+        requestBadgePermission: false,
+      ),
     );
     await _plugin.initialize(
       settings: settings,
@@ -44,6 +58,7 @@ class FlutterLocalNotificationsEpgReminderGateway
 
   @override
   Future<bool> requestPermission() async {
+    if (!isAvailable) return false;
     await initialize();
 
     final android = _plugin
@@ -79,6 +94,7 @@ class FlutterLocalNotificationsEpgReminderGateway
     required String payloadChannelId,
   }) async {
     await initialize();
+    _configureLocalTimeZone();
     await _plugin.zonedSchedule(
       id: notificationId,
       title: title,
@@ -102,5 +118,22 @@ class FlutterLocalNotificationsEpgReminderGateway
   @override
   Future<void> cancel(int notificationId) {
     return _plugin.cancel(id: notificationId);
+  }
+
+  void _configureLocalTimeZone() {
+    if (_timeZoneInitialized) return;
+    tz_data.initializeTimeZones();
+    final now = DateTime.now();
+    final abbreviation = now.timeZoneName.isEmpty ? 'LOCAL' : now.timeZoneName;
+    tz.setLocalLocation(
+      tz.Location('local', [tz.minTime], [0], [
+        tz.TimeZone(
+          now.timeZoneOffset,
+          isDst: abbreviation.toUpperCase().contains('DT'),
+          abbreviation: abbreviation,
+        ),
+      ]),
+    );
+    _timeZoneInitialized = true;
   }
 }
