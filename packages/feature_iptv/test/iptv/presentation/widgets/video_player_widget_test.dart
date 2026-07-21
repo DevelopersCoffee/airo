@@ -590,4 +590,30 @@ void main() {
       expect(find.byType(PlayerGestureOverlay), findsOneWidget);
     },
   );
+
+  testWidgets(
+    'failover in StreamingState surfaces the overlay failover toast',
+    (tester) async {
+      // rc.3 dead-stream UX: _toPlayerViewState used to hardcode
+      // failover: null, so PlayerOverlay._buildFailoverToast was dead code
+      // even while the streaming service mid-switch.
+      await pumpPlayer(
+        tester,
+        state: StreamingState(
+          playbackState: PlaybackState.loading,
+          isLiveStream: true,
+          failover: const FailoverProgress(currentSource: 2, totalSources: 2),
+          currentChannel: const IPTVChannel(
+            id: 'news-1',
+            name: 'City News Live',
+            streamUrl: 'https://example.com/news.m3u8',
+            group: 'News',
+            category: ChannelCategory.news,
+          ),
+        ),
+      );
+
+      expect(find.text('Switching to source 2 of 2'), findsOneWidget);
+    },
+  );
 }

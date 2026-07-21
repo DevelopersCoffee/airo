@@ -147,6 +147,11 @@ class StreamingState extends Equatable {
   /// Preferred over [errorMessage] for user-facing copy.
   final AiroPlaybackDiagnostic? diagnostic;
 
+  /// Non-null while a multi-source failover switch is in flight → the
+  /// overlay renders it as a toast (e.g. "Switching source 2/4"). Cleared
+  /// on successful play and when a brand-new channel is selected.
+  final FailoverProgress? failover;
+
   // === Live DVR Properties (P0-1 to P0-4) ===
 
   /// Whether the current stream is a live stream (vs VOD)
@@ -192,6 +197,7 @@ class StreamingState extends Equatable {
     this.retryCount = 0,
     this.lastError,
     this.diagnostic,
+    this.failover,
     // Live DVR defaults
     this.isLiveStream = false,
     this.liveEdge,
@@ -272,7 +278,9 @@ class StreamingState extends Equatable {
     int? retryCount,
     DateTime? lastError,
     AiroPlaybackDiagnostic? diagnostic,
+    FailoverProgress? failover,
     bool clearDiagnostic = false,
+    bool clearFailover = false,
     // Live DVR properties
     bool? isLiveStream,
     Duration? liveEdge,
@@ -300,6 +308,7 @@ class StreamingState extends Equatable {
       retryCount: retryCount ?? this.retryCount,
       lastError: lastError ?? this.lastError,
       diagnostic: clearDiagnostic ? null : (diagnostic ?? this.diagnostic),
+      failover: clearFailover ? null : (failover ?? this.failover),
       // Live DVR properties
       isLiveStream: isLiveStream ?? this.isLiveStream,
       liveEdge: liveEdge ?? this.liveEdge,
@@ -325,6 +334,7 @@ class StreamingState extends Equatable {
     isMuted,
     errorMessage,
     diagnostic,
+    failover,
     // Live DVR properties
     isLiveStream,
     liveEdge,
@@ -333,4 +343,20 @@ class StreamingState extends Equatable {
     tracks,
     selectedTrackIds,
   ];
+}
+
+/// Progress marker for an in-flight multi-source failover switch, surfaced
+/// by the overlay as a toast (e.g. "Switching source 2/4").
+class FailoverProgress extends Equatable {
+  const FailoverProgress({
+    required this.currentSource,
+    required this.totalSources,
+  });
+
+  /// 1-based index of the source currently being attempted.
+  final int currentSource;
+  final int totalSources;
+
+  @override
+  List<Object?> get props => [currentSource, totalSources];
 }

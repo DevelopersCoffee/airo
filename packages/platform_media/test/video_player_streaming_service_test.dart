@@ -47,62 +47,89 @@ void main() {
       expect(service.currentState.currentChannel?.id, 'chan-1');
     });
 
-    test('decoder failure surfaces as a typed error and retry count increments', () async {
-      fakePlatform.scriptedInitError = PlatformException(
-        code: 'VideoError',
-        message: 'decoder rejected format',
-      );
-      await service.playChannel(channel());
-      expect(service.currentState.playbackState, PlaybackState.error);
-      expect(service.currentState.retryCount, 1);
-      // CV-016 diagnostic-mapping fix: the engine's typed decoderFailed
-      // code must be mapped directly (-> playerInitFailed), not
-      // round-tripped through the CV-001 string-pattern matcher, which
-      // would have no substring/regex match for "decoder_failed" and fall
-      // through to the generic `unknown` diagnostic.
-      expect(
-        service.currentState.diagnostic?.code,
-        AiroPlaybackDiagnosticCode.playerInitFailed,
-      );
-    });
-
     test(
-      'network-unavailable engine failure maps to a precise network '
-      'diagnostic, not the generic unknown fallback',
+      'decoder failure surfaces as a typed error and retry count increments',
       () async {
-        // VideoPlayerAiroPlaybackEngine can only be driven to
-        // decoderFailed/backendUnavailable through FakeVideoPlayerPlatform
-        // (video_player hard-casts init-stream errors to
-        // PlatformException, so a TimeoutException can't reach it — see
-        // FakeVideoPlayerPlatform.scriptedInitError). A directly-injected
-        // engine double is used instead so this test can drive the
-        // networkUnavailable code specifically.
-        final networkFailureEngine = _ScriptedOpenFailureEngine(
-          AiroPlaybackErrorCode.networkUnavailable,
+        fakePlatform.scriptedInitError = PlatformException(
+          code: 'VideoError',
+          message: 'decoder rejected format',
         );
-        final networkService = VideoPlayerStreamingService(
-          engine: networkFailureEngine,
-        );
-        addTearDown(networkService.dispose);
-
-        await networkService.playChannel(channel());
-
-        expect(networkService.currentState.playbackState, PlaybackState.error);
-        // CV-016 diagnostic-mapping fix: this is the headline regression —
-        // before the fix, the engine's typed networkUnavailable code was
-        // stringified and round-tripped through the CV-001 string-pattern
-        // mapper, which has no match for "network_unavailable" and fell
-        // through to the generic unknown diagnostic.
+        await service.playChannel(channel());
+        expect(service.currentState.playbackState, PlaybackState.error);
+        expect(service.currentState.retryCount, 1);
+        // CV-016 diagnostic-mapping fix: the engine's typed decoderFailed
+        // code must be mapped directly (-> playerInitFailed), not
+        // round-tripped through the CV-001 string-pattern matcher, which
+        // would have no substring/regex match for "decoder_failed" and fall
+        // through to the generic `unknown` diagnostic.
         expect(
-          networkService.currentState.diagnostic?.code,
-          AiroPlaybackDiagnosticCode.networkUnavailable,
-        );
-        expect(
-          networkService.currentState.diagnostic?.code,
-          isNot(AiroPlaybackDiagnosticCode.unknown),
+          service.currentState.diagnostic?.code,
+          AiroPlaybackDiagnosticCode.playerInitFailed,
         );
       },
     );
+
+    test('network-unavailable engine failure maps to a precise network '
+        'diagnostic, not the generic unknown fallback', () async {
+      // VideoPlayerAiroPlaybackEngine can only be driven to
+      // decoderFailed/backendUnavailable through FakeVideoPlayerPlatform
+      // (video_player hard-casts init-stream errors to
+      // PlatformException, so a TimeoutException can't reach it — see
+      // FakeVideoPlayerPlatform.scriptedInitError). A directly-injected
+      // engine double is used instead so this test can drive the
+      // networkUnavailable code specifically.
+      final networkFailureEngine = _ScriptedOpenFailureEngine(
+        AiroPlaybackErrorCode.networkUnavailable,
+      );
+      final networkService = VideoPlayerStreamingService(
+        engine: networkFailureEngine,
+      );
+      addTearDown(networkService.dispose);
+
+      await networkService.playChannel(channel());
+
+      expect(networkService.currentState.playbackState, PlaybackState.error);
+      // CV-016 diagnostic-mapping fix: this is the headline regression —
+      // before the fix, the engine's typed networkUnavailable code was
+      // stringified and round-tripped through the CV-001 string-pattern
+      // mapper, which has no match for "network_unavailable" and fell
+      // through to the generic unknown diagnostic.
+      expect(
+        networkService.currentState.diagnostic?.code,
+        AiroPlaybackDiagnosticCode.networkUnavailable,
+      );
+      expect(
+        networkService.currentState.diagnostic?.code,
+        isNot(AiroPlaybackDiagnosticCode.unknown),
+      );
+    });
+
+    test('HTTP 403 open failure maps to providerAuthDenied (honest blame), '
+        'not playerInitFailed', () async {
+      // rc.3 device-pass regression: a geo-blocked/403 channel surfaced
+      // as "Playback could not start on this device" because the HTTP
+      // status never reached the diagnostic mapper. The engine now
+      // extracts it onto AiroPlaybackError.httpStatusCode and the
+      // service threads it into AiroPlaybackFailureEvent, whose mapper
+      // prioritizes httpStatusCode over the engine error code.
+      final geoBlockedEngine = _ScriptedOpenFailureEngine(
+        AiroPlaybackErrorCode.decoderFailed,
+        httpStatusCode: 403,
+      );
+      final geoBlockedService = VideoPlayerStreamingService(
+        engine: geoBlockedEngine,
+      );
+      addTearDown(geoBlockedService.dispose);
+
+      await geoBlockedService.playChannel(channel());
+
+      expect(geoBlockedService.currentState.playbackState, PlaybackState.error);
+      final diagnostic = geoBlockedService.currentState.diagnostic;
+      expect(diagnostic?.code, AiroPlaybackDiagnosticCode.providerAuthDenied);
+      expect(diagnostic?.retryEligible, isFalse);
+      expect(diagnostic?.userMessage, contains('provider'));
+      expect(diagnostic?.technicalDetail, contains('http=403'));
+    });
 
     test('buildVideoView returns non-null after a successful open', () async {
       await service.playChannel(channel());
@@ -155,6 +182,159 @@ void main() {
     );
   });
 
+  group('VideoPlayerStreamingService multi-source failover', () {
+    const urlA = 'https://a.example.com/live.m3u8';
+    const urlB = 'https://b.example.com/live.m3u8';
+
+    IPTVChannel multiSourceChannel() {
+      return IPTVChannel(
+        id: 'chan-multi',
+        name: 'Multi Source Channel',
+        streamUrl: urlA,
+        qualityUrls: const {'high': urlB},
+      );
+    }
+
+    VideoPlayerStreamingService serviceWith(
+      _ScriptedMultiSourceEngine scripted,
+    ) {
+      final svc = VideoPlayerStreamingService(engine: scripted);
+      addTearDown(svc.dispose);
+      return svc;
+    }
+
+    test(
+      'fatal 403 on the primary source auto-fails over to the next source',
+      () async {
+        final scripted = _ScriptedMultiSourceEngine({
+          urlA: const AiroPlaybackError(
+            code: AiroPlaybackErrorCode.decoderFailed,
+            operation: 'open',
+            httpStatusCode: 403,
+          ),
+        });
+        final svc = serviceWith(scripted);
+        final states = <StreamingState>[];
+        final sub = svc.stateStream.listen(states.add);
+        addTearDown(sub.cancel);
+
+        await svc.playChannel(multiSourceChannel());
+
+        expect(svc.currentState.playbackState, PlaybackState.playing);
+        expect(scripted.openedUrls, [urlA, urlB]);
+        // Failover progress was surfaced while the switch was in flight,
+        // then cleared on success.
+        expect(
+          states.any(
+            (s) =>
+                s.failover ==
+                const FailoverProgress(currentSource: 2, totalSources: 2),
+          ),
+          isTrue,
+        );
+        expect(svc.currentState.failover, isNull);
+        expect(svc.currentState.diagnostic, isNull);
+      },
+    );
+
+    test(
+      'recoverable failure on the primary does NOT auto-fail over',
+      () async {
+        final scripted = _ScriptedMultiSourceEngine({
+          urlA: const AiroPlaybackError(
+            code: AiroPlaybackErrorCode.networkUnavailable,
+            operation: 'open',
+          ),
+        });
+        final svc = serviceWith(scripted);
+
+        await svc.playChannel(multiSourceChannel());
+
+        expect(svc.currentState.playbackState, PlaybackState.error);
+        expect(scripted.openedUrls, [urlA]);
+        expect(
+          svc.currentState.diagnostic?.code,
+          AiroPlaybackDiagnosticCode.networkUnavailable,
+        );
+        expect(svc.currentState.failover, isNull);
+      },
+    );
+
+    test(
+      'exhausted failover surfaces the final source diagnostic error',
+      () async {
+        final scripted = _ScriptedMultiSourceEngine({
+          urlA: const AiroPlaybackError(
+            code: AiroPlaybackErrorCode.decoderFailed,
+            operation: 'open',
+            httpStatusCode: 403,
+          ),
+          urlB: const AiroPlaybackError(
+            code: AiroPlaybackErrorCode.decoderFailed,
+            operation: 'open',
+            httpStatusCode: 404,
+          ),
+        });
+        final svc = serviceWith(scripted);
+
+        await svc.playChannel(multiSourceChannel());
+
+        expect(svc.currentState.playbackState, PlaybackState.error);
+        expect(scripted.openedUrls, [urlA, urlB]);
+        expect(
+          svc.currentState.diagnostic?.code,
+          AiroPlaybackDiagnosticCode.providerNotFound,
+        );
+        expect(svc.currentState.failover, isNull);
+      },
+    );
+
+    test('retry attempts failover before resubmitting the dead URL', () async {
+      final scripted = _ScriptedMultiSourceEngine({
+        urlA: const AiroPlaybackError(
+          code: AiroPlaybackErrorCode.networkUnavailable,
+          operation: 'open',
+        ),
+      });
+      final svc = serviceWith(scripted);
+
+      await svc.playChannel(multiSourceChannel());
+      expect(svc.currentState.playbackState, PlaybackState.error);
+      expect(scripted.openedUrls, [urlA]);
+
+      await svc.retry();
+
+      // urlB never fails — retry must land on it instead of replaying
+      // the dead primary.
+      expect(scripted.openedUrls, [urlA, urlB]);
+      expect(svc.currentState.playbackState, PlaybackState.playing);
+    });
+
+    test(
+      'single-source channel retry keeps the legacy re-open behavior',
+      () async {
+        final scripted = _ScriptedMultiSourceEngine({
+          'https://example.com/live.m3u8': const AiroPlaybackError(
+            code: AiroPlaybackErrorCode.networkUnavailable,
+            operation: 'open',
+          ),
+        });
+        final svc = serviceWith(scripted);
+
+        await svc.playChannel(channel());
+        expect(svc.currentState.playbackState, PlaybackState.error);
+
+        await svc.retry();
+
+        expect(scripted.openedUrls, [
+          'https://example.com/live.m3u8',
+          'https://example.com/live.m3u8',
+        ]);
+        expect(svc.currentState.playbackState, PlaybackState.error);
+      },
+    );
+  });
+
   group('VideoPlayerStreamingService seek', () {
     test(
       'seek during active playback keeps playbackState playing (isPlaying true)',
@@ -186,19 +366,22 @@ void main() {
   });
 
   group('VideoPlayerStreamingService attachExternalSubtitle', () {
-    test('attached subtitle appears in tracks after the next playChannel', () async {
-      service.attachExternalSubtitle(
-        'chan-1',
-        AiroPlaybackExternalSubtitle(
-          handle: AiroPlaybackSourceHandle.redacted('sub-en'),
-          languageCode: 'en',
-          label: 'English',
-        ),
-      );
-      await service.playChannel(channel());
-      expect(service.currentState.tracks, hasLength(1));
-      expect(service.currentState.tracks.single.isExternal, isTrue);
-    });
+    test(
+      'attached subtitle appears in tracks after the next playChannel',
+      () async {
+        service.attachExternalSubtitle(
+          'chan-1',
+          AiroPlaybackExternalSubtitle(
+            handle: AiroPlaybackSourceHandle.redacted('sub-en'),
+            languageCode: 'en',
+            label: 'English',
+          ),
+        );
+        await service.playChannel(channel());
+        expect(service.currentState.tracks, hasLength(1));
+        expect(service.currentState.tracks.single.isExternal, isTrue);
+      },
+    );
 
     test('subtitle does not appear before the next playChannel', () async {
       await service.playChannel(channel());
@@ -342,9 +525,10 @@ void main() {
 /// are private to `platform_player`, so an arbitrary open()-time error code
 /// isn't reachable through it from another package's test.
 class _ScriptedOpenFailureEngine implements AiroPlaybackEngine {
-  _ScriptedOpenFailureEngine(this._errorCode);
+  _ScriptedOpenFailureEngine(this._errorCode, {this.httpStatusCode});
 
   final AiroPlaybackErrorCode _errorCode;
+  final int? httpStatusCode;
   final _controller = StreamController<AiroPlaybackState>.broadcast();
   AiroPlaybackState _state = AiroPlaybackState.idle(
     backendKind: AiroPlaybackBackendKind.fake,
@@ -364,8 +548,100 @@ class _ScriptedOpenFailureEngine implements AiroPlaybackEngine {
     _state = _state.copyWith(
       phase: AiroPlaybackEnginePhase.failed,
       request: request,
-      error: AiroPlaybackError(code: _errorCode, operation: 'open'),
+      error: AiroPlaybackError(
+        code: _errorCode,
+        operation: 'open',
+        httpStatusCode: httpStatusCode,
+      ),
     );
+    _controller.add(_state);
+    return _state;
+  }
+
+  @override
+  Future<AiroPlaybackState> play() async => _state;
+
+  @override
+  Future<AiroPlaybackState> pause() async => _state;
+
+  @override
+  Future<AiroPlaybackState> stop() async => _state;
+
+  @override
+  Future<AiroPlaybackState> seek(Duration position) async => _state;
+
+  @override
+  Future<AiroPlaybackState> setVolume(double volume) async => _state;
+
+  @override
+  Future<AiroPlaybackState> setPlaybackSpeed(double speed) async => _state;
+
+  @override
+  Future<AiroPlaybackState> selectQuality(String qualityId) async => _state;
+
+  @override
+  Future<AiroPlaybackState> selectTrack({
+    required AiroPlaybackTrackKind kind,
+    required String trackId,
+  }) async => _state;
+
+  @override
+  Future<AiroPlaybackDiagnostics> diagnostics() async =>
+      AiroPlaybackDiagnostics(backendId: backendKind.stableId);
+
+  @override
+  Future<AiroPlaybackState> enterPictureInPicture() async => _state;
+
+  @override
+  Future<AiroPlaybackState> exitPictureInPicture() async => _state;
+
+  @override
+  Widget? buildView() => null;
+
+  @override
+  Future<void> dispose() async => _controller.close();
+}
+
+/// Handle-aware engine double for the multi-source failover tests: fails
+/// [open] with the scripted [AiroPlaybackError] for URLs present in
+/// [_failuresByUrl], succeeds otherwise, and records every opened URL in
+/// [openedUrls] so tests can assert exactly which sources were attempted.
+class _ScriptedMultiSourceEngine implements AiroPlaybackEngine {
+  _ScriptedMultiSourceEngine(this._failuresByUrl);
+
+  final Map<String, AiroPlaybackError> _failuresByUrl;
+  final openedUrls = <String>[];
+  final _controller = StreamController<AiroPlaybackState>.broadcast();
+  AiroPlaybackState _state = AiroPlaybackState.idle(
+    backendKind: AiroPlaybackBackendKind.fake,
+  );
+
+  @override
+  AiroPlaybackBackendKind get backendKind => AiroPlaybackBackendKind.fake;
+
+  @override
+  Stream<AiroPlaybackState> get states => _controller.stream;
+
+  @override
+  AiroPlaybackState get currentState => _state;
+
+  @override
+  Future<AiroPlaybackState> open(AiroMediaOpenRequest request) async {
+    openedUrls.add(request.sourceHandle.value);
+    final failure = _failuresByUrl[request.sourceHandle.value];
+    if (failure != null) {
+      _state = _state.copyWith(
+        phase: AiroPlaybackEnginePhase.failed,
+        request: request,
+        error: failure,
+      );
+    } else {
+      _state = _state.copyWith(
+        phase: AiroPlaybackEnginePhase.open,
+        request: request,
+        duration: const Duration(minutes: 30),
+      );
+    }
     _controller.add(_state);
     return _state;
   }

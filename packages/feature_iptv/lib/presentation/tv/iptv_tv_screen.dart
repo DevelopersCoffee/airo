@@ -46,49 +46,10 @@ class _IptvTvScreenState extends ConsumerState<IptvTvScreen> {
   }
 
   Future<void> _showSearchDialog() async {
-    final controller = TextEditingController(
-      text: ref.read(channelSearchQueryProvider),
-    );
-
     await showDialog<void>(
       context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Search channels'),
-          content: SizedBox(
-            width: 520,
-            child: TextField(
-              controller: controller,
-              autofocus: true,
-              decoration: const InputDecoration(
-                prefixIcon: Icon(Icons.search),
-                labelText: 'Channel name or group',
-                hintText: 'Music India, Hindi news, sports...',
-              ),
-              textInputAction: TextInputAction.search,
-              onChanged: (value) =>
-                  ref.read(channelSearchQueryProvider.notifier).state = value,
-              onSubmitted: (_) => Navigator.of(context).pop(),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                controller.clear();
-                ref.read(channelSearchQueryProvider.notifier).state = '';
-              },
-              child: const Text('Clear'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Done'),
-            ),
-          ],
-        );
-      },
+      builder: (_) => _TvSearchDialog(onChannelSelect: _playChannel),
     );
-
-    controller.dispose();
   }
 
   Future<void> _showMacosUpdateDialog() async {
@@ -180,6 +141,134 @@ class _IptvTvScreenState extends ConsumerState<IptvTvScreen> {
           },
         ),
       ),
+    );
+  }
+}
+
+/// Search dialog with live results. The [TextEditingController] is owned by
+/// this widget's State so it is disposed only after the dialog route has
+/// fully unmounted — disposing it right after `await showDialog(...)` (the
+/// previous shape) races the pop animation, which still rebuilds the
+/// TextField and crashes with "used after being disposed".
+class _TvSearchDialog extends ConsumerStatefulWidget {
+  const _TvSearchDialog({required this.onChannelSelect});
+
+  final ValueChanged<IPTVChannel> onChannelSelect;
+
+  @override
+  ConsumerState<_TvSearchDialog> createState() => _TvSearchDialogState();
+}
+
+class _TvSearchDialogState extends ConsumerState<_TvSearchDialog> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(
+      text: ref.read(channelSearchQueryProvider),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _selectChannel(IPTVChannel channel) {
+    Navigator.of(context).pop();
+    widget.onChannelSelect(channel);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final query = ref.watch(channelSearchQueryProvider);
+    // Same list the browse grid renders, so the dialog and the grid behind
+    // it always agree on what matches.
+    final results = ref.watch(filteredChannelsProvider);
+
+    return AlertDialog(
+      title: const Text('Search channels'),
+      content: SizedBox(
+        width: 520,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: _controller,
+              autofocus: true,
+              decoration: const InputDecoration(
+                prefixIcon: Icon(Icons.search),
+                labelText: 'Channel name or group',
+                hintText: 'Music India, Hindi news, sports...',
+              ),
+              textInputAction: TextInputAction.search,
+              onChanged: (value) =>
+                  ref.read(channelSearchQueryProvider.notifier).state = value,
+              onSubmitted: (_) => Navigator.of(context).pop(),
+            ),
+            if (query.trim().isNotEmpty) ...[
+              const SizedBox(height: 12),
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 320),
+                child: results.isEmpty
+                    ? Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        child: Text(
+                          'No channels match "$query".',
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurfaceVariant,
+                              ),
+                        ),
+                      )
+                    : ListView.builder(
+                        shrinkWrap: true,
+                        itemCount: results.length,
+                        itemBuilder: (context, index) {
+                          final channel = results[index];
+                          return ListTile(
+                            key: ValueKey('tv-search-result-${channel.id}'),
+                            leading: SizedBox(
+                              width: 44,
+                              height: 44,
+                              child: _ChannelLogo(channel: channel),
+                            ),
+                            title: Text(
+                              channel.name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            subtitle: Text(
+                              channel.group,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            onTap: () => _selectChannel(channel),
+                          );
+                        },
+                      ),
+              ),
+            ],
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () {
+            _controller.clear();
+            ref.read(channelSearchQueryProvider.notifier).state = '';
+          },
+          child: const Text('Clear'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Done'),
+        ),
+      ],
     );
   }
 }
