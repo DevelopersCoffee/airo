@@ -1,8 +1,8 @@
 (function () {
   "use strict";
 
-  var menuButton = document.querySelector("[data-menu-button]");
-  var navigation = document.querySelector("[data-navigation]");
+  const menuButton = document.querySelector("[data-menu-button]");
+  const navigation = document.querySelector("[data-navigation]");
 
   function closeMenu() {
     if (!menuButton || !navigation) return;
@@ -13,7 +13,7 @@
 
   if (menuButton && navigation) {
     menuButton.addEventListener("click", function () {
-      var isOpen = menuButton.getAttribute("aria-expanded") === "true";
+      const isOpen = menuButton.getAttribute("aria-expanded") === "true";
       menuButton.setAttribute("aria-expanded", String(!isOpen));
       navigation.classList.toggle("open", !isOpen);
       document.body.classList.toggle("menu-open", !isOpen);
@@ -28,18 +28,18 @@
     });
   }
 
-  var sectionLinks = document.querySelectorAll('.site-nav > a[href^="#"]:not(.button)');
-  var sectionLinkMap = new Map();
+  const sectionLinks = document.querySelectorAll('.site-nav > a[href^="#"]:not(.button)');
+  const sectionLinkMap = new Map();
 
   sectionLinks.forEach(function (link) {
-    var section = document.querySelector(link.getAttribute("href"));
+    const section = document.querySelector(link.getAttribute("href"));
     if (section) sectionLinkMap.set(section, link);
   });
 
   if (typeof window.IntersectionObserver === "function" && sectionLinkMap.size) {
-    var sectionObserver = new IntersectionObserver(
+    const sectionObserver = new IntersectionObserver(
       function (entries) {
-        var current = entries
+        const current = entries
           .filter(function (entry) {
             return entry.isIntersecting;
           })
@@ -61,38 +61,38 @@
     });
   }
 
-  var filters = document.querySelectorAll("[data-guide-filter]");
-  var guides = document.querySelectorAll("[data-guide-device]");
+  const filters = document.querySelectorAll("[data-guide-filter]");
+  const guides = document.querySelectorAll("[data-guide-device]");
 
   filters.forEach(function (button) {
     button.addEventListener("click", function () {
-      var selected = button.getAttribute("data-guide-filter") || "all";
+      const selected = button.dataset.guideFilter || "all";
       filters.forEach(function (candidate) {
         candidate.setAttribute("aria-selected", String(candidate === button));
       });
       guides.forEach(function (guide) {
-        var devices = (guide.getAttribute("data-guide-device") || "").split(" ");
+        const devices = (guide.dataset.guideDevice || "").split(" ");
         guide.hidden = selected !== "all" && !devices.includes(selected);
       });
     });
   });
 
-  var year = document.querySelector("[data-current-year]");
+  const year = document.querySelector("[data-current-year]");
   if (year) year.textContent = String(new Date().getFullYear());
 
-  var reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   if (!reducedMotion) {
-    var scrollProgress = document.createElement("div");
+    const scrollProgress = document.createElement("div");
     scrollProgress.className = "scroll-progress";
     scrollProgress.setAttribute("aria-hidden", "true");
     document.body.appendChild(scrollProgress);
 
-    var progressFrameRequested = false;
+    let progressFrameRequested = false;
 
     function updateScrollProgress() {
-      var scrollRange = document.documentElement.scrollHeight - window.innerHeight;
-      var progress = scrollRange > 0 ? window.scrollY / scrollRange : 0;
+      const scrollRange = document.documentElement.scrollHeight - window.innerHeight;
+      const progress = scrollRange > 0 ? window.scrollY / scrollRange : 0;
       scrollProgress.style.transform = "scaleX(" + Math.min(1, Math.max(0, progress)) + ")";
       progressFrameRequested = false;
     }
@@ -107,7 +107,7 @@
     window.addEventListener("resize", requestProgressUpdate);
     requestProgressUpdate();
 
-    var revealSelectors = [
+    const revealSelectors = [
       ".section-intro",
       ".screen-step",
       ".channel-showcase-content",
@@ -119,7 +119,7 @@
       ".vision-step",
       ".trust-grid > *",
     ];
-    var revealTargets = [];
+    const revealTargets = [];
 
     revealSelectors.forEach(function (selector) {
       document.querySelectorAll(selector).forEach(function (element, index) {
@@ -130,7 +130,7 @@
     });
 
     if (typeof window.IntersectionObserver === "function") {
-      var revealObserver = new IntersectionObserver(
+      const revealObserver = new IntersectionObserver(
         function (entries) {
           entries.forEach(function (entry) {
             if (!entry.isIntersecting) return;
@@ -150,45 +150,45 @@
     }
   }
 
-  var liveDemoInstances = [];
+  const liveDemoInstances = [];
 
   function initializeLiveDemo(root) {
-    var demoVideo = root.querySelector("[data-live-demo-video]");
-    var demoStart = root.querySelector("[data-live-demo-start]");
-    var demoButton = root.querySelector("[data-live-demo-button]");
-    var demoAudio = root.querySelector("[data-live-demo-audio]");
-    var demoStatus = root.querySelector("[data-live-demo-status]");
+    const demoVideo = root.querySelector("[data-live-demo-video]");
+    const demoStart = root.querySelector("[data-live-demo-start]");
+    const demoButton = root.querySelector("[data-live-demo-button]");
+    const demoAudio = root.querySelector("[data-live-demo-audio]");
+    const demoStatus = root.querySelector("[data-live-demo-status]");
     if (!demoVideo || !demoStart || !demoButton || !demoStatus) return null;
 
-    var channelName = root.getAttribute("data-live-channel") || "live sample";
-    var retryLabel = root.getAttribute("data-live-retry-label") || "Try live sample again";
-    var autoplayMuted = root.hasAttribute("data-live-autoplay-muted");
-    var initialButtonMarkup = demoButton.innerHTML;
-    var idleStatus = demoStatus.textContent;
-    var demoHls = null;
-    var demoStarted = false;
-    var demoRecovering = false;
-    var demoRecoveryAttempts = 0;
-    var demoRecoveryTimer = null;
-    var demoSource = "";
-    var demoUsesNativeHls = false;
-    var demoAutomaticStart = false;
-    var demoAutoplayAttempted = false;
-    var autoplayBlockedByInitialHash =
+    const channelName = root.dataset.liveChannel || "live sample";
+    const retryLabel = root.dataset.liveRetryLabel || "Try live sample again";
+    const autoplayMuted = "liveAutoplayMuted" in root.dataset;
+    const initialButtonMarkup = demoButton.innerHTML;
+    const idleStatus = demoStatus.textContent;
+    let demoHls = null;
+    let demoStarted = false;
+    let demoRecovering = false;
+    let demoRecoveryAttempts = 0;
+    let demoRecoveryTimer = null;
+    let demoSource = "";
+    let demoUsesNativeHls = false;
+    let demoAutomaticStart = false;
+    let demoAutoplayAttempted = false;
+    let autoplayBlockedByInitialHash =
       autoplayMuted && Boolean(window.location.hash) && window.location.hash !== "#vevo-showcase";
-    var demoPausedByViewport = false;
-    var demoViewportObserver = null;
-    var demoViewportTimer = null;
+    let demoPausedByViewport = false;
+    let demoViewportObserver = null;
+    let demoViewportTimer = null;
 
     function setDemoStatus(message, state) {
       demoStatus.textContent = message;
-      demoStatus.setAttribute("data-state", state || "ready");
-      root.setAttribute("data-live-state", state || "ready");
+      demoStatus.dataset.state = state || "ready";
+      root.dataset.liveState = state || "ready";
     }
 
     function updateDemoAudioControl() {
       if (!demoAudio) return;
-      var soundEnabled = !demoVideo.muted;
+      const soundEnabled = !demoVideo.muted;
       demoAudio.setAttribute("aria-pressed", String(soundEnabled));
       demoAudio.innerHTML = soundEnabled
         ? '<i data-lucide="volume-2" aria-hidden="true"></i><span>Mute</span>'
@@ -215,7 +215,7 @@
 
     function requestDemoPlayback() {
       if (!demoStarted) return;
-      var playRequest = demoVideo.play();
+      const playRequest = demoVideo.play();
       if (!playRequest) return;
       playRequest
         .then(function () {
@@ -223,7 +223,7 @@
         })
         .catch(function (error) {
           if (!demoStarted) return;
-          if (demoAutomaticStart && error && error.name === "NotAllowedError") {
+          if (demoAutomaticStart && error?.name === "NotAllowedError") {
             clearDemoRecoveryTimer();
             demoAutomaticStart = false;
             demoButton.disabled = false;
@@ -284,7 +284,7 @@
 
     function retryNativeDemo() {
       if (!demoSource) return;
-      var separator = demoSource.includes("?") ? "&" : "?";
+      const separator = demoSource.includes("?") ? "&" : "?";
       demoVideo.pause();
       demoVideo.removeAttribute("src");
       demoVideo.load();
@@ -316,7 +316,8 @@
             demoHls.recoverMediaError();
           }
           requestDemoPlayback();
-        } catch (_error) {
+        } catch (error) {
+          console.warn("Airo TV live demo: automatic recovery failed.", error);
           failDemo("The live sample could not recover automatically.");
         }
         return true;
@@ -331,7 +332,7 @@
     }
 
     function startDemoPlayback(isAutomatic) {
-      var source = demoButton.getAttribute("data-live-source");
+      const source = demoButton.dataset.liveSource;
       if (!source) return;
       if (demoStarted) {
         if (!demoVideo.paused) return;
@@ -374,7 +375,7 @@
         return;
       }
 
-      if (window.Hls && window.Hls.isSupported()) {
+      if (window.Hls?.isSupported()) {
         demoHls = new window.Hls({
           capLevelToPlayerSize: true,
           backBufferLength: 20,
@@ -383,7 +384,7 @@
         });
         demoHls.on(window.Hls.Events.ERROR, function (_event, data) {
           if (!data.fatal || demoRecovering) return;
-          var kind = data.type === window.Hls.ErrorTypes.NETWORK_ERROR ? "network" : "media";
+          const kind = data.type === window.Hls.ErrorTypes.NETWORK_ERROR ? "network" : "media";
           if (!recoverDemo(kind)) {
             failDemo("The live sample is unavailable or blocked in this region.");
           }
@@ -404,7 +405,7 @@
     if (demoAudio) {
       demoAudio.addEventListener("click", function () {
         if (!demoStarted) return;
-        var enableSound = demoVideo.muted;
+        const enableSound = demoVideo.muted;
         demoVideo.defaultMuted = !enableSound;
         demoVideo.muted = !enableSound;
         demoVideo.volume = 1;
@@ -442,43 +443,49 @@
       }
     });
 
+    function resumeMutedPreview() {
+      if (!demoAutoplayAttempted && !demoStarted) {
+        demoAutoplayAttempted = true;
+        if (autoplayBlockedByInitialHash) return;
+        const anotherDemoActive = liveDemoInstances.some(function (instance) {
+          return instance.root !== root && instance.isActive();
+        });
+        if (anotherDemoActive) return;
+        startDemoPlayback(true);
+        return;
+      }
+      if (demoPausedByViewport && demoStarted) {
+        demoPausedByViewport = false;
+        demoVideo.defaultMuted = true;
+        demoVideo.muted = true;
+        updateDemoAudioControl();
+        if (demoHls) demoHls.startLoad(-1);
+        setDemoStatus("Resuming the muted live preview...", "loading");
+        requestDemoPlayback();
+      }
+    }
+
+    function pauseMutedPreview() {
+      if (!demoStarted || demoPausedByViewport) return;
+      demoPausedByViewport = true;
+      demoVideo.defaultMuted = true;
+      demoVideo.muted = true;
+      updateDemoAudioControl();
+      demoVideo.pause();
+      if (demoHls) demoHls.stopLoad();
+      setDemoStatus("Muted preview paused off screen.", "paused");
+    }
+
     if (autoplayMuted && "IntersectionObserver" in window) {
       demoViewportObserver = new IntersectionObserver(
         function (entries) {
-          var entry = entries[0];
-          var visibleEnough = entry.isIntersecting && entry.intersectionRatio >= 0.35;
-
+          const entry = entries[0];
+          const visibleEnough = entry.isIntersecting && entry.intersectionRatio >= 0.35;
           if (visibleEnough) {
-            if (!demoAutoplayAttempted && !demoStarted) {
-              demoAutoplayAttempted = true;
-              if (autoplayBlockedByInitialHash) return;
-              var anotherDemoActive = liveDemoInstances.some(function (instance) {
-                return instance.root !== root && instance.isActive();
-              });
-              if (anotherDemoActive) return;
-              startDemoPlayback(true);
-              return;
-            }
-            if (demoPausedByViewport && demoStarted) {
-              demoPausedByViewport = false;
-              demoVideo.defaultMuted = true;
-              demoVideo.muted = true;
-              updateDemoAudioControl();
-              if (demoHls) demoHls.startLoad(-1);
-              setDemoStatus("Resuming the muted live preview...", "loading");
-              requestDemoPlayback();
-            }
-            return;
+            resumeMutedPreview();
+          } else {
+            pauseMutedPreview();
           }
-
-          if (!demoStarted || demoPausedByViewport) return;
-          demoPausedByViewport = true;
-          demoVideo.defaultMuted = true;
-          demoVideo.muted = true;
-          updateDemoAudioControl();
-          demoVideo.pause();
-          if (demoHls) demoHls.stopLoad();
-          setDemoStatus("Muted preview paused off screen.", "paused");
         },
         { threshold: [0, 0.35] }
       );
@@ -536,7 +543,7 @@
   }
 
   document.querySelectorAll("[data-live-demo]").forEach(function (root) {
-    var instance = initializeLiveDemo(root);
+    const instance = initializeLiveDemo(root);
     if (instance) liveDemoInstances.push(instance);
   });
 
