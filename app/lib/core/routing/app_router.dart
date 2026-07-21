@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:feature_coin/feature_coin.dart';
 import 'package:go_router/go_router.dart';
 import '../../features/auth/screens/login_screen.dart';
 import '../../features/auth/screens/register_screen.dart';
@@ -145,6 +146,11 @@ class AppRouter {
                     path: 'budgets',
                     name: RouteNames.coinsBudgets,
                     builder: (context, state) => const BudgetManagementScreen(),
+                  ),
+                  GoRoute(
+                    path: 'vault',
+                    name: RouteNames.coinVault,
+                    builder: (context, state) => const VaultGateScreen(),
                   ),
                   GoRoute(
                     path: 'groups',

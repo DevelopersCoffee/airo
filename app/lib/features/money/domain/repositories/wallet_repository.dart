@@ -1,7 +1,7 @@
 import '../../../../core/domain/repository.dart';
 import '../../../../core/utils/result.dart';
 
-/// Wallet type enum matching airomoney package
+/// Wallet type enum for the Money feature.
 enum WalletType { cash, bank, credit, investment, crypto }
 
 /// Wallet model for the money feature

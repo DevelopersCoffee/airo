@@ -5,7 +5,6 @@ class RouteNames {
   // Route paths
   static const String home = '/';
   static const String airo = '/airo';
-  static const String airomoney = '/airomoney';
   static const String login = '/login';
   static const String register = '/register';
   static const String profile = '/profile';
@@ -21,10 +20,12 @@ class RouteNames {
   static const String coinsGroups = 'coins_groups';
   static const String coinsGroupDetail = 'coins_group_detail';
   static const String coinsAddSplit = 'coins_add_split';
+  static const String coinVault = 'coin_vault';
 
   // Coins Full Paths (for direct navigation)
   static const String coinsDashboardPath = '/money/dashboard';
   static const String coinsAddExpensePath = '/money/add-expense';
   static const String coinsBudgetsPath = '/money/budgets';
   static const String coinsGroupsPath = '/money/groups';
+  static const String coinVaultPath = '/money/vault';
 }
