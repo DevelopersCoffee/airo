@@ -4916,7 +4916,3 @@ gh pr create --title "feat(app): wire feature_coin vault into Coins tab" --body 
 - **Barrel order:** Tasks 14–15 create two form stubs before the real forms so `vault_record_form_screen.dart` always compiles; stubs are replaced in Task 15.
 - **No placeholders:** every code step contains complete, runnable code. The only runtime-dependent check left to a human is the Step-5 dogfood checklist (biometrics/FLAG_SECURE cannot run in CI).
 - **Golden tests deferred (deviation from spec):** the spec mentions alchemist goldens for LockScreen/VaultHomeScreen/RecordDetailSheet. The plan relies on state-level widget tests instead — goldens during active UI iteration produce churn without catching behavior regressions. Add goldens as a follow-up once the vault UI stabilizes; `alchemist` is already in the app's dev deps to mirror.
-
-
-
-
