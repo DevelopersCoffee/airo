@@ -1150,12 +1150,9 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
       qualityLabel: state.currentQuality.label,
       title: state.currentChannel?.name ?? '',
       subtitle: state.currentChannel?.group ?? '',
-      // Not wired yet: no provider in iptv_providers.dart currently exposes
-      // AiroFailoverSessionState, so there is nothing to map here today. See
-      // task-9-report.md for the follow-up (map
-      // AiroFailoverSessionState.currentSourceNumber/.sourceCount on
-      // AiroFailoverDecisionCode.switched, per the Task 8/9 handoff notes).
-      failover: null,
+      // Live while a multi-source failover switch is in flight (see
+      // VideoPlayerStreamingService's failover loop); null otherwise.
+      failover: state.failover,
     );
   }
 

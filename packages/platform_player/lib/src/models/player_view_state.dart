@@ -70,16 +70,3 @@ class PlayerViewState extends Equatable {
     failover,
   ];
 }
-
-/// Progress marker for an in-flight multi-source failover switch, surfaced
-/// by the overlay as a toast (e.g. "Switching source 2/4").
-class FailoverProgress extends Equatable {
-  const FailoverProgress({required this.currentSource, required this.totalSources});
-
-  /// 1-based index of the source currently being attempted.
-  final int currentSource;
-  final int totalSources;
-
-  @override
-  List<Object?> get props => [currentSource, totalSources];
-}
