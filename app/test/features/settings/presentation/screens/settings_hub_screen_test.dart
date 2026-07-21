@@ -43,6 +43,7 @@ void main() {
     expect(find.text('Audio Settings'), findsOneWidget);
     expect(find.text('Playback Settings'), findsOneWidget);
     expect(find.text('Playlist Source'), findsOneWidget);
+    expect(find.text('EPG Guide Source'), findsOneWidget);
   });
 
   testWidgets('tapping Audio Settings pushes the audio settings screen', (
@@ -75,6 +76,20 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Add Playlist Source'), findsOneWidget);
+  });
+
+  testWidgets('tapping EPG Guide Source opens the XMLTV source sheet', (
+    tester,
+  ) async {
+    // rc.3 phone parity fix: the Guide banner tells users to add an XMLTV
+    // source "in Settings", but the phone settings hub had no entry point
+    // for it (only the TV variant composed XmltvSourceSheet).
+    await pumpScreen(tester);
+
+    await tester.tap(find.text('EPG Guide Source'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('XMLTV Guide Source'), findsOneWidget);
   });
 
   testWidgets('appearance picker saves selected theme', (tester) async {
