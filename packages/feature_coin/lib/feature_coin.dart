@@ -5,6 +5,7 @@
 library;
 
 export 'src/application/vault_config.dart';
+export 'src/application/clipboard_service.dart';
 export 'src/application/vault_providers.dart';
 export 'src/application/vault_session.dart';
 export 'src/presentation/widgets/vault_lifecycle_observer.dart';
