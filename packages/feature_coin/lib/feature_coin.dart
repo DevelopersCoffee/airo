@@ -6,3 +6,4 @@ library;
 
 export 'src/application/vault_config.dart';
 export 'src/application/vault_providers.dart';
+export 'src/application/vault_session.dart';
