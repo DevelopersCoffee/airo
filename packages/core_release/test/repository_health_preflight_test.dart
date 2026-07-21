@@ -15,7 +15,7 @@ void main() {
         ),
       ],
       Iterable<String> readmeTextChecks = const [
-        'present:.github/workflows/v2-release-orchestrator.yml',
+        'present:.github/workflows/release-orchestrator.yml',
         'present:docs/release/V2_RELEASE_ORCHESTRATOR.md',
       ],
       Iterable<String> labels =

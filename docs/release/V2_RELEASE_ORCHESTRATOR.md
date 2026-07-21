@@ -1,7 +1,7 @@
 # V2 Release Orchestrator
 
 This document defines the top-level v2 release orchestration workflow in
-`.github/workflows/v2-release-orchestrator.yml`.
+`.github/workflows/release-orchestrator.yml` (workflow name: "Release Orchestrator").
 
 Implementation work for this release line must start from latest `origin/main`.
 
