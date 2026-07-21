@@ -59,6 +59,44 @@ void main() {
       expect(index.retainedFullChannelListCopies, 0);
       expect(index.channels.map((channel) => channel.id), ['1', '2', '3', '4']);
     });
+
+    test('alphabetical fallback is human-natural: case-insensitive and '
+        'ignores leading punctuation (Guide raw-ASCII ordering fix)', () {
+      final index = AiroChannelSearchIndex(const [
+        IPTVChannel(
+          id: 'punct-amp',
+          name: '&TV',
+          streamUrl: 'https://example.com/a.m3u8',
+        ),
+        IPTVChannel(
+          id: 'alpha-bbc',
+          name: 'BBC One',
+          streamUrl: 'https://example.com/b.m3u8',
+        ),
+        IPTVChannel(
+          id: 'punct-dot',
+          name: '.black',
+          streamUrl: 'https://example.com/c.m3u8',
+        ),
+        IPTVChannel(
+          id: 'alpha-cnn',
+          name: 'cnn',
+          streamUrl: 'https://example.com/d.m3u8',
+        ),
+      ]);
+
+      final sorted = index.filterAndSort();
+
+      // Raw ASCII order would put '&TV' and '.black' first and 'cnn'
+      // after 'BBC One'; natural order compares by normalized key
+      // ('bbc one' < 'black' < 'cnn' < 'tv').
+      expect(sorted.map((channel) => channel.id), [
+        'alpha-bbc',
+        'punct-dot',
+        'alpha-cnn',
+        'punct-amp',
+      ]);
+    });
   });
 }
 
