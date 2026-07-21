@@ -2,9 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:feature_iptv/feature_iptv.dart';
-import 'package:feature_iptv/application/providers/guide_providers.dart';
-import 'package:feature_iptv/application/xmltv_source_store.dart';
-import 'package:feature_iptv/presentation/widgets/xmltv_source_sheet.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
