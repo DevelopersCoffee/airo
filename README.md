@@ -48,7 +48,11 @@ All modules live in one monorepo with strict package boundaries — see the
 [![Download Airo TV](https://img.shields.io/badge/Download-Airo%20TV%20APK-success?style=for-the-badge)](https://github.com/DevelopersCoffee/airo/releases/download/airo-tv-v0.0.3/Airo-TV-v0.0.3.apk)
 [![Live Showcase](https://img.shields.io/badge/▶-Live%20Showcase-blue?style=for-the-badge)](https://developerscoffee.github.io/airo/)
 
-![Airo TV channel grid](docs/store-assets/airo-tv/01-tv-home-channel-grid.png)
+### See it in action
+
+| macOS (desktop) | Pixel 9 (mobile) |
+|---|---|
+| ![Airo TV on macOS — browsing categories with live playback](docs/assets/images/airo-tv-macos-demo.gif) | ![Airo TV on Pixel 9 — channel switch and live playback](docs/assets/images/airo-tv-pixel-demo.gif) |
 
 Airo TV is the focused Android TV build of Airo's media module
 (`io.airo.app.tv`). TV-first channel grid, search, and playback for your own
