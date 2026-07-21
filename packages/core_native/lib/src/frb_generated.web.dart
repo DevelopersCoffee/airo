@@ -6,15 +6,13 @@
 // Static analysis wrongly picks the IO variant, thus ignore this
 // ignore_for_file: argument_type_not_assignable
 
-import 'dart:async';
-import 'dart:convert';
-
-import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated_web.dart';
-
 import 'api/m3u.dart';
 import 'api/text.dart';
 import 'api/xmltv.dart';
+import 'dart:async';
+import 'dart:convert';
 import 'frb_generated.dart';
+import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated_web.dart';
 
 abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   RustLibApiImplPlatform({
@@ -350,7 +348,7 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 // Section: wire_class
 
 class RustLibWire implements BaseWire {
-  RustLibWire.fromExternalLibrary();
+  RustLibWire.fromExternalLibrary(ExternalLibrary lib);
 }
 
 @JS('wasm_bindgen')
