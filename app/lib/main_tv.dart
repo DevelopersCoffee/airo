@@ -124,7 +124,11 @@ void main() async {
   if (shouldWarmDebugPlaylist) {
     scheduleTvDebugDefaultPlaylistWarmup(prefs);
   }
-  scheduleTvDebugDefaultEpgWarmup(prefs, repository: compactEpgRepository);
+  scheduleTvDebugDefaultEpgWarmup(
+    prefs,
+    repository: compactEpgRepository,
+    windowRepository: mutableXmltvRepository,
+  );
   scheduleTvXmltvSourceRefresh(prefs, repository: mutableXmltvRepository);
 }
 
@@ -351,6 +355,7 @@ SnapshotBackedCompactEpgRepository createTvCompactEpgRepository({
 void scheduleTvDebugDefaultEpgWarmup(
   SharedPreferences prefs, {
   required SnapshotBackedCompactEpgRepository repository,
+  MutableXmltvCompactEpgRepository? windowRepository,
   String debugName = 'tv_debug_epg_warmup',
   String epgUrl = _debugDefaultEpgUrl,
   M3UParserService? parser,
@@ -371,6 +376,7 @@ void scheduleTvDebugDefaultEpgWarmup(
     task: () => warmTvDebugDefaultEpgCache(
       prefs,
       repository: repository,
+      windowRepository: windowRepository,
       epgUrl: epgUrl,
       parser: parser,
       dio: dio,
@@ -384,6 +390,7 @@ void scheduleTvDebugDefaultEpgWarmup(
 Future<Duration?> warmTvDebugDefaultEpgCache(
   SharedPreferences prefs, {
   required SnapshotBackedCompactEpgRepository repository,
+  MutableXmltvCompactEpgRepository? windowRepository,
   String epgUrl = _debugDefaultEpgUrl,
   M3UParserService? parser,
   Dio? dio,
@@ -442,6 +449,7 @@ Future<Duration?> warmTvDebugDefaultEpgCache(
       debugName: 'tv_debug_epg_warmup',
     );
     await repository.saveSnapshot(snapshot);
+    windowRepository?.updateSource(InMemoryCompactEpgRepository(seed: snapshot));
     stopwatch.stop();
     return stopwatch.elapsed;
   } finally {

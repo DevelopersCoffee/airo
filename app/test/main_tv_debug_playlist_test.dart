@@ -261,6 +261,7 @@ https://cdn.example.com/live/news.m3u8
     final repository = SnapshotBackedCompactEpgRepository(
       store: InMemoryCompactEpgSnapshotStore(),
     );
+    final windowRepository = MutableXmltvCompactEpgRepository();
     final downloadDir = await Directory.systemTemp.createTemp(
       'airo-tv-epg-download-',
     );
@@ -288,6 +289,7 @@ https://cdn.example.com/live/news.m3u8
       final elapsed = await warmTvDebugDefaultEpgCache(
         prefs,
         repository: repository,
+        windowRepository: windowRepository,
         epgUrl: _serverUrl(server, '/guide.xml'),
         parser: parser,
         epgDownloadDirectoryProvider: () async => downloadDir,
@@ -310,6 +312,24 @@ https://cdn.example.com/live/news.m3u8
         'Live Sports',
       );
       expect(snapshot.entryForChannel('news.local'), isNull);
+
+      final window = await windowRepository.loadWindow(
+        GuideWindowQuery(
+          channelIds: const ['stream-news', 'stream-sports'],
+          windowStart: DateTime.utc(2026, 7, 15, 9),
+          windowEnd: DateTime.utc(2026, 7, 15, 10, 30),
+          now: now,
+        ),
+      );
+      expect(window.availabilityAt(now), CompactEpgAvailability.available);
+      expect(
+        window.entryForChannel('stream-news')?.programs.single.title,
+        'Morning Bulletin',
+      );
+      expect(
+        window.entryForChannel('stream-sports')?.programs.single.title,
+        'Live Sports',
+      );
       expect(await downloadDir.list().isEmpty, isTrue);
     } finally {
       await server.close(force: true);
