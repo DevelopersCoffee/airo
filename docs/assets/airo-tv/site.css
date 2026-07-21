@@ -973,6 +973,7 @@ button,
   color: var(--text);
 }
 
+.guide-item:hover h2,
 .guide-item:hover h3 {
   color: var(--green);
 }
@@ -981,6 +982,7 @@ button,
   display: none;
 }
 
+.guide-item h2,
 .guide-item h3,
 .guide-item p {
   margin: 0;
@@ -1734,5 +1736,216 @@ button,
   .scroll-reveal {
     opacity: 1 !important;
     transform: none !important;
+  }
+}
+
+/* Airo platform home */
+.platform-hero {
+  align-items: center;
+  min-height: min(700px, 76svh);
+  background:
+    radial-gradient(circle at 78% 26%, color-mix(in oklch, var(--green), transparent 82%) 0 8%, transparent 32%),
+    linear-gradient(120deg, var(--bg) 12%, color-mix(in oklch, var(--surface), var(--bg) 54%) 100%);
+}
+
+.platform-hero::before {
+  background:
+    linear-gradient(90deg, color-mix(in oklch, var(--bg), transparent 4%) 0%, transparent 64%),
+    repeating-linear-gradient(90deg, transparent 0 78px, color-mix(in oklch, var(--border), transparent 72%) 78px 79px);
+}
+
+.architecture-stack {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--border);
+  list-style: none;
+}
+
+.architecture-stack li {
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr);
+  gap: 22px;
+  align-items: start;
+  padding: 24px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.architecture-stack span {
+  color: var(--green);
+  font-size: 13px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.architecture-stack strong,
+.architecture-stack p {
+  display: block;
+  margin: 0;
+}
+
+.architecture-stack strong {
+  font-size: 22px;
+}
+
+.architecture-stack p {
+  max-width: 58ch;
+  margin-top: 5px;
+  color: var(--muted);
+}
+
+.foundation-grid,
+.capability-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  border-top: 1px solid var(--border);
+  border-left: 1px solid var(--border);
+}
+
+.foundation-item,
+.capability-item {
+  min-height: 220px;
+  padding: 26px;
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
+.foundation-item > svg {
+  width: 24px;
+  height: 24px;
+  color: var(--green);
+}
+
+.foundation-item h3,
+.capability-item h3 {
+  margin: 18px 0 8px;
+  font-size: 21px;
+}
+
+.foundation-item p,
+.capability-item p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.module-groups {
+  display: grid;
+  gap: 42px;
+}
+
+.module-group > h3 {
+  margin: 0 0 14px;
+  color: var(--gold);
+  font-size: 14px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.module-list {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  border-top: 1px solid var(--border);
+  border-left: 1px solid var(--border);
+}
+
+.module-item {
+  min-height: 200px;
+  padding: 24px;
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
+.module-item-featured {
+  background: color-mix(in oklch, var(--green-soft), var(--surface) 56%);
+}
+
+.module-item h4 {
+  margin: 16px 0 8px;
+  font-size: 23px;
+}
+
+.module-item p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.module-item .text-link {
+  margin-top: 12px;
+}
+
+.platform-community-grid .community-item > svg {
+  width: 24px;
+  height: 24px;
+  color: var(--green);
+}
+
+.platform-roadmap {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.tv-reference {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 48px;
+}
+
+.tv-reference > div {
+  max-width: 650px;
+}
+
+.tv-reference h2 {
+  max-width: 12ch;
+  margin: 0;
+  font-size: 48px;
+  line-height: 1.06;
+}
+
+.tv-reference p:not(.eyebrow) {
+  margin: 16px 0 0;
+  color: var(--muted);
+  font-size: 17px;
+}
+
+.capability-item .status {
+  margin-bottom: 2px;
+}
+
+@media (max-width: 1040px) {
+  .foundation-grid,
+  .module-list,
+  .platform-roadmap {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 780px) {
+  .platform-hero {
+    min-height: 620px;
+  }
+
+  .architecture-stack li {
+    grid-template-columns: 46px minmax(0, 1fr);
+    gap: 14px;
+  }
+
+  .foundation-grid,
+  .capability-grid,
+  .module-list,
+  .platform-roadmap {
+    grid-template-columns: 1fr;
+  }
+
+  .foundation-item,
+  .capability-item,
+  .module-item {
+    min-height: auto;
+  }
+
+  .tv-reference {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 24px;
   }
 }

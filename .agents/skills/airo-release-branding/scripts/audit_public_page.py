@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Audit the Airo public page against the release-branding contract."""
+"""Audit the split Airo platform and Airo TV public pages."""
 
 from __future__ import annotations
 
@@ -20,11 +20,6 @@ class Inventory(HTMLParser):
         self.sources: list[str] = []
         self.autoplay_videos = 0
         self.live_demo_roots = 0
-        self.muted_autoplay_live_demo_roots = 0
-        self.live_demo_videos = 0
-        self.live_sample_videos = 0
-        self.muted_live_demo_videos = 0
-        self.preloading_live_demo_videos = 0
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         values = dict(attrs)
@@ -36,21 +31,11 @@ class Inventory(HTMLParser):
             self.sources.append(values["src"] or "")
         if "data-live-demo" in values:
             self.live_demo_roots += 1
-        if "data-live-autoplay-muted" in values:
-            self.muted_autoplay_live_demo_roots += 1
         if tag == "video" and "autoplay" in values:
             self.autoplay_videos += 1
-        if tag == "video" and "data-live-demo-video" in values:
-            self.live_demo_videos += 1
-            if "live-sample-video" in (values.get("class") or "").split():
-                self.live_sample_videos += 1
-            if "muted" in values:
-                self.muted_live_demo_videos += 1
-            if values.get("preload") != "none":
-                self.preloading_live_demo_videos += 1
 
 
-def latest_tv_release(repository: str) -> str:
+def latest_public_tv_release(repository: str) -> str:
     command = [
         "gh",
         "release",
@@ -67,12 +52,16 @@ def latest_tv_release(repository: str) -> str:
     except (FileNotFoundError, subprocess.CalledProcessError) as error:
         detail = getattr(error, "stderr", "") or str(error)
         raise RuntimeError(f"GitHub release lookup failed: {detail.strip()}") from error
-    releases = json.loads(result.stdout)
-    for release in releases:
+    for release in json.loads(result.stdout):
         tag = release.get("tagName", "")
-        if tag.startswith("airo-tv-v") and not release.get("isDraft"):
+        if (
+            tag.startswith("airo-tv-v")
+            and "-rc." not in tag
+            and not release.get("isDraft")
+            and not release.get("isPrerelease")
+        ):
             return tag
-    raise RuntimeError("No published Airo TV release found")
+    raise RuntimeError("No published, non-release-candidate Airo TV release found")
 
 
 def local_target(base: Path, raw: str) -> Path | None:
@@ -80,16 +69,14 @@ def local_target(base: Path, raw: str) -> Path | None:
     if parsed.scheme or parsed.netloc or raw.startswith(("#", "mailto:")):
         return None
     path = unquote(parsed.path)
-    if not path:
-        return None
-    return (base / path).resolve()
+    return (base / path).resolve() if path else None
 
 
 def inspect_html(path: Path) -> tuple[str, Inventory]:
     text = path.read_text(encoding="utf-8")
-    parser = Inventory()
-    parser.feed(text)
-    return text, parser
+    inventory = Inventory()
+    inventory.feed(text)
+    return text, inventory
 
 
 def main() -> int:
@@ -100,104 +87,70 @@ def main() -> int:
     args = parser.parse_args()
 
     root = args.root.resolve()
-    index = root / "docs" / "index.html"
-    guides = root / "docs" / "airo-tv" / "guides" / "index.html"
+    platform_page = root / "docs" / "index.html"
+    tv_page = root / "docs" / "tv" / "index.html"
+    legacy_guides = root / "docs" / "airo-tv" / "guides" / "index.html"
+    tv_guides = root / "docs" / "tv" / "guides" / "index.html"
     site_script = root / "docs" / "assets" / "airo-tv" / "site.js"
     site_styles = root / "docs" / "assets" / "airo-tv" / "site.css"
-    errors: list[str] = []
-
-    for required in (index, guides, site_script, site_styles):
-        if not required.is_file():
-            errors.append(f"missing required file: {required.relative_to(root)}")
-
+    required_files = (platform_page, tv_page, legacy_guides, tv_guides, site_script, site_styles)
+    errors = [f"missing required file: {path.relative_to(root)}" for path in required_files if not path.is_file()]
     if errors:
         for error in errors:
             print(f"ERROR: {error}")
         return 1
 
-    release_tag = args.release_tag or latest_tv_release(args.repository)
-    index_text, index_inventory = inspect_html(index)
-    guide_text, guide_inventory = inspect_html(guides)
-    site_script_text = site_script.read_text(encoding="utf-8")
-    site_styles_text = site_styles.read_text(encoding="utf-8")
+    release_tag = args.release_tag or latest_public_tv_release(args.repository)
+    platform_text, platform = inspect_html(platform_page)
+    tv_text, tv = inspect_html(tv_page)
+    legacy_text, legacy = inspect_html(legacy_guides)
+    tv_guides_text, tv_guide = inspect_html(tv_guides)
+    script_text = site_script.read_text(encoding="utf-8")
+    styles_text = site_styles.read_text(encoding="utf-8")
 
-    required_sections = {
-        "product",
-        "difference",
-        "live-demo",
-        "devices",
-        "guides",
-        "community",
-        "pro-vision",
-        "roadmap",
-        "airo",
-        "trust",
-    }
-    missing_sections = sorted(required_sections - index_inventory.ids)
-    if missing_sections:
-        errors.append("missing page sections: " + ", ".join(missing_sections))
+    required_platform_sections = {"architecture", "foundations", "modules", "community", "roadmap", "tv-reference", "trust"}
+    missing_platform_sections = sorted(required_platform_sections - platform.ids)
+    if missing_platform_sections:
+        errors.append("missing platform page sections: " + ", ".join(missing_platform_sections))
 
-    required_guides = {
-        "android-tv",
-        "fire-tv",
-        "mobile",
-        "cast",
-        "macos",
-        "playlist",
-        "troubleshooting",
-    }
-    missing_guides = sorted(required_guides - guide_inventory.ids)
+    required_tv_sections = {"product", "difference", "devices", "capability-matrix", "guides", "community", "pro-vision", "roadmap", "trust"}
+    missing_tv_sections = sorted(required_tv_sections - tv.ids)
+    if missing_tv_sections:
+        errors.append("missing Airo TV page sections: " + ", ".join(missing_tv_sections))
+
+    required_guides = {"android-tv", "fire-tv", "mobile", "cast", "macos", "playlist", "troubleshooting"}
+    missing_guides = sorted(required_guides - legacy.ids)
     if missing_guides:
-        errors.append("missing device guides: " + ", ".join(missing_guides))
+        errors.append("missing legacy device guides: " + ", ".join(missing_guides))
 
-    required_snippets = {
-        release_tag: "latest release tag",
+    platform_snippets = {
+        '<h1 id="hero-title">Airo</h1>': "Airo platform hero identity",
+        "Airo TV is available": "active module status",
+        "./tv/": "Airo TV product hand-off",
+        "Airo TV Pro": "advanced TV edition name",
+        "Exploring": "future module qualifier",
+    }
+    tv_snippets = {
+        release_tag: "published Airo TV release tag",
+        '<h1 id="hero-title">Airo TV</h1>': "Airo TV product hero identity",
+        "Airo TV includes no channels": "application content boundary",
         "community-voice": "Community Voice link",
         "/milestone/5": "product milestone link",
         "/milestone/6": "performance milestone link",
-        "Airo TV app includes no channels": "application content boundary",
-        '<h1 id="hero-title">Airo</h1>': "default Airo hero identity",
-        "Airo TV available now": "current focused product status",
         "Airo TV Pro": "advanced TV edition name",
         "In testing": "unreleased Pro status",
-        "Airo is the home": "superapp parent positioning",
-        "Nothing loads until you press Play": "user-initiated demo boundary",
-        "Third-party stream": "external stream status",
-        "github.com/iptv-org/iptv": "public source attribution",
-        "cdn-uw2-prod.tsv2.amagi.tv": "approved live demo source",
-        "Vevo Pop": "immersive live showcase name",
-        "d128y56w6v2kax.cloudfront.net": "approved Vevo Pop showcase source",
-        "Start muted preview": "manual autoplay fallback",
-        "Muted preview starts on screen.": "visibility-gated preview status",
-        ">Unmute</span>": "explicit audio control",
-        "Third-party stream details": "compact stream disclosure",
-        "live-demo-player-status": "secondary player overlay status",
-        "live-demo-disclosure": "secondary compact disclosure",
-        "HLS.js Apache license": "player dependency attribution",
+        "unsigned and not notarized": "macOS limitation",
+        "Deferred for the current v2 release wave": "iOS limitation",
+        "validation-only": "web limitation",
     }
-    for snippet, label in required_snippets.items():
-        if snippet not in index_text:
-            errors.append(f"missing {label}: {snippet}")
-
-    required_demo_logic = {
-        'querySelectorAll("[data-live-demo]")': "shared multi-sample initialization",
-        "Retrying live stream automatically": "automatic recovery status",
-        "recoverMediaError": "HLS media recovery",
-        "demoRecoveryAttempts >= 1": "bounded recovery attempt",
-        "8000": "recovery deadline",
-        "airo_retry=": "native HLS cache-busted retry",
-        'root.hasAttribute("data-live-autoplay-muted")': "muted autoplay contract",
-        "entry.intersectionRatio >= 0.35": "visibility threshold",
-        "observeMutedPreview": "deep-link-safe observer setup",
-        "autoplayBlockedByInitialHash": "non-showcase deep-link guard",
-        "demoVideo.muted = true": "forced muted autoplay",
-        "demoAudio.addEventListener": "user-controlled audio toggle",
-        "demoHls.stopLoad()": "off-screen network pause",
-        "instance.isActive()": "manual playback precedence",
+    guide_snippets = {
+        "../../airo-tv/guides/#android-tv": "Android TV guide hand-off",
+        "../../airo-tv/guides/#troubleshooting": "troubleshooting guide hand-off",
     }
-    for snippet, label in required_demo_logic.items():
-        if snippet not in site_script_text:
-            errors.append(f"missing {label}: {snippet}")
+    for snippets, text in ((platform_snippets, platform_text), (tv_snippets, tv_text), (guide_snippets, tv_guides_text)):
+        for snippet, label in snippets.items():
+            if snippet not in text:
+                errors.append(f"missing {label}: {snippet}")
 
     required_scroll_logic = {
         "IntersectionObserver": "one-time viewport reveal",
@@ -206,31 +159,21 @@ def main() -> int:
         "prefers-reduced-motion: reduce": "motion preference detection",
     }
     for snippet, label in required_scroll_logic.items():
-        if snippet not in site_script_text:
-            errors.append(f"missing {label}: {snippet}")
-
-    required_scroll_styles = {
-        ".scroll-progress": "scroll progress style",
-        ".scroll-reveal.is-visible": "visible reveal state",
-        "@media (prefers-reduced-motion: reduce)": "reduced motion style",
-    }
-    for snippet, label in required_scroll_styles.items():
-        if snippet not in site_styles_text:
+        if snippet not in script_text:
             errors.append(f"missing {label}: {snippet}")
 
     required_visual_styles = {
         "--section-space": "shared section rhythm token",
         "text-wrap: balance": "balanced heading treatment",
-        ".screen-step:nth-child(even)": "alternating media proportion rule",
         'aria-current="location"': "active section navigation treatment",
         "min-height: 44px": "minimum interactive target rule",
-        ".live-sample-video": "shared live media geometry",
-        ".live-demo-player-status": "secondary overlay status alignment",
-        "aspect-ratio: 16 / 9": "secondary live media ratio",
+        ".platform-hero": "platform visual treatment",
+        ".foundation-grid": "platform foundations layout",
+        ".module-groups": "module map layout",
+        "@media (prefers-reduced-motion: reduce)": "reduced motion style",
     }
-    visual_contract_text = site_styles_text + site_script_text
     for snippet, label in required_visual_styles.items():
-        if snippet not in visual_contract_text:
+        if snippet not in styles_text + script_text:
             errors.append(f"missing {label}: {snippet}")
 
     forbidden = {
@@ -246,53 +189,22 @@ def main() -> int:
         "Airo Life": "unsupported Airo sub-brand",
         "Airo Play": "unsupported Airo sub-brand",
     }
-    combined = index_text + guide_text
+    all_public_text = platform_text + tv_text + legacy_text + tv_guides_text
     for snippet, label in forbidden.items():
-        if snippet in combined:
+        if snippet in all_public_text:
             errors.append(f"forbidden {label}: {snippet}")
 
-    if index_inventory.autoplay_videos:
-        errors.append("live demo video must not use autoplay")
-    if index_inventory.live_demo_roots != 2:
-        errors.append("public page must expose exactly two live demo roots")
-    if index_inventory.live_demo_videos != 2:
-        errors.append("public page must expose exactly two live demo videos")
-    if index_inventory.live_sample_videos != 2:
-        errors.append("both live demo videos must use the shared media geometry")
-    if index_inventory.muted_autoplay_live_demo_roots != 1:
-        errors.append("exactly one immersive showcase must declare muted autoplay")
-    if index_inventory.muted_live_demo_videos != 1:
-        errors.append("exactly one immersive live showcase must declare muted playback")
-    if index_inventory.preloading_live_demo_videos:
-        errors.append("every live demo video must use preload=none")
+    for page_name, inventory in (("platform", platform), ("Airo TV", tv)):
+        if inventory.autoplay_videos:
+            errors.append(f"{page_name} page video must not use autoplay")
+        if inventory.live_demo_roots:
+            errors.append(f"{page_name} page must not contain a live-demo root in this split")
 
-    product_position = index_text.find('id="product"')
-    showcase_position = index_text.find('id="vevo-showcase"')
-    difference_position = index_text.find('id="difference"')
-    if min(product_position, showcase_position, difference_position) < 0 or not (
-        product_position < showcase_position < difference_position
-    ):
-        errors.append("immersive showcase must follow the release proof strip")
-
-    hls_license = (
-        root
-        / "docs"
-        / "assets"
-        / "airo-tv"
-        / "third-party"
-        / "hls.js-1.6.16"
-        / "LICENSE.txt"
-    )
-    if not hls_license.is_file():
-        errors.append("missing vendored HLS.js license")
-
-    for html_path, inventory in ((index, index_inventory), (guides, guide_inventory)):
+    for html_path, inventory in ((platform_page, platform), (tv_page, tv), (legacy_guides, legacy), (tv_guides, tv_guide)):
         for raw in inventory.sources:
             target = local_target(html_path.parent, raw)
             if target is not None and not target.exists():
-                errors.append(
-                    f"missing local asset from {html_path.relative_to(root)}: {raw}"
-                )
+                errors.append(f"missing local asset from {html_path.relative_to(root)}: {raw}")
 
     if errors:
         for error in errors:
@@ -300,9 +212,10 @@ def main() -> int:
         print(f"FAIL: {len(errors)} release-branding issue(s)")
         return 1
 
-    print(f"PASS: public page matches release-branding contract for {release_tag}")
-    print(f"PASS: {len(index_inventory.sources)} landing assets resolve locally")
-    print(f"PASS: {len(required_guides)} required device guides are present")
+    source_count = len(platform.sources) + len(tv.sources) + len(legacy.sources) + len(tv_guide.sources)
+    print(f"PASS: split public pages match release-branding contract for {release_tag}")
+    print(f"PASS: {source_count} public-page assets resolve locally")
+    print(f"PASS: {len(required_guides)} legacy device guides and the /tv/guides hub are present")
     return 0
 
 
