@@ -87,22 +87,21 @@ void main() {
 
     // Unlock first so seed data is encrypted under the session's real DEK.
     await container.read(vaultSessionProvider.notifier).unlock();
-    final dek = await container
-        .read(vaultSessionProvider.notifier)
-        .withKey((key) async => key);
-    await repos.bankAccounts.create(
-      BankAccountRecord(
-        id: null,
-        nickname: 'HDFC Salary',
-        bankName: 'HDFC Bank',
-        accountHolderName: 'Jane Doe',
-        accountNumber: '1234567890',
-        ifscCode: 'HDFC0001234',
-        accountType: 'savings',
-        notes: 'salary credit',
-      ),
-      dek!,
-    );
+    await container.read(vaultSessionProvider.notifier).withKey((key) async {
+      await repos.bankAccounts.create(
+        BankAccountRecord(
+          id: null,
+          nickname: 'HDFC Salary',
+          bankName: 'HDFC Bank',
+          accountHolderName: 'Jane Doe',
+          accountNumber: '1234567890',
+          ifscCode: 'HDFC0001234',
+          accountType: 'savings',
+          notes: 'salary credit',
+        ),
+        key,
+      );
+    });
   });
 
   Future<void> pumpSheet(WidgetTester tester) async {

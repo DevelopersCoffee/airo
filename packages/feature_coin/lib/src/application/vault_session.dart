@@ -45,6 +45,7 @@ final class VaultAuthError extends VaultSessionState {
 class VaultSessionNotifier extends Notifier<VaultSessionState> {
   Timer? _idleTimer;
   List<int>? _dek;
+  final Set<List<int>> _activeOperationKeys = {};
   var _disposed = false;
   var _unlockGeneration = 0;
 
@@ -54,6 +55,7 @@ class VaultSessionNotifier extends Notifier<VaultSessionState> {
       _disposed = true;
       _invalidateUnlock();
       _idleTimer?.cancel();
+      _revokeOperationKeys();
       _zeroDek();
     });
     return const VaultLocked();
@@ -117,14 +119,27 @@ class VaultSessionNotifier extends Notifier<VaultSessionState> {
   ) async {
     final dek = _dek;
     if (dek == null || state is! VaultUnlocked) return null;
+    final generation = _unlockGeneration;
+    final operationKey = List<int>.of(dek);
+    _activeOperationKeys.add(operationKey);
     _resetIdleTimer();
-    return operation(dek);
+    try {
+      final result = await operation(operationKey);
+      if (!_isCurrentUnlock(generation) || state is! VaultUnlocked) {
+        return null;
+      }
+      return result;
+    } finally {
+      _activeOperationKeys.remove(operationKey);
+      _revokeKey(operationKey);
+    }
   }
 
   /// Immediately locks the vault and zeroes the DEK.
   void lock() {
     _invalidateUnlock();
     _idleTimer?.cancel();
+    _revokeOperationKeys();
     _zeroDek();
     if (!_disposed) {
       state = const VaultLocked();
@@ -162,6 +177,18 @@ class VaultSessionNotifier extends Notifier<VaultSessionState> {
     for (var i = 0; i < bytes.length; i++) {
       bytes[i] = 0;
     }
+  }
+
+  void _revokeOperationKeys() {
+    for (final key in _activeOperationKeys.toList(growable: false)) {
+      _revokeKey(key);
+    }
+    _activeOperationKeys.clear();
+  }
+
+  void _revokeKey(List<int> bytes) {
+    _zeroBytes(bytes);
+    bytes.clear();
   }
 }
 
