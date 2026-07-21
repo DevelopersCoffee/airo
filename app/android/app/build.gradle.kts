@@ -212,7 +212,7 @@ dependencies {
     testImplementation("junit:junit:4.13.2")
 
     // ML Kit GenAI Prompt API for on-device Gemini Nano.
-    implementation("com.google.mlkit:genai-prompt:1.0.0-beta2")
+    implementation("com.google.mlkit:genai-prompt:1.0.0-beta3")
 
     // LiteRT-LM for local on-device LLM inference. Only wired when the
     // root `build.gradle.kts` was able to authenticate against the
