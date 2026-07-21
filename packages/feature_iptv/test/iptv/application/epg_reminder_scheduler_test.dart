@@ -105,6 +105,38 @@ void main() {
     },
   );
 
+  test('schedule failure rolls back a new persisted reminder', () async {
+    gateway.throwOnSchedule = true;
+
+    await expectLater(
+      scheduler.scheduleReminder(channel: channel, program: futureProgram()),
+      throwsStateError,
+    );
+
+    expect(await store.contains('p1'), isFalse);
+  });
+
+  test('schedule failure restores a replaced reminder', () async {
+    final previous = EpgReminder(
+      channelId: 'channel-1',
+      channelName: 'Example Channel',
+      programId: 'p1',
+      programTitle: 'Previous Show',
+      startsAt: now.add(const Duration(hours: 1)),
+      endsAt: now.add(const Duration(hours: 2)),
+      notificationId: 42,
+    );
+    await store.save(previous);
+    gateway.throwOnSchedule = true;
+
+    await expectLater(
+      scheduler.scheduleReminder(channel: channel, program: futureProgram()),
+      throwsStateError,
+    );
+
+    expect(await store.list(), [previous]);
+  });
+
   test('unavailable gateway does nothing and reports unavailable', () async {
     gateway.isAvailableValue = false;
 
@@ -168,6 +200,19 @@ void main() {
     expect(await store.contains('past'), isFalse);
   });
 
+  test('pruneElapsed keeps the record when OS cancellation fails', () async {
+    final elapsed = reminder(
+      'cancel-fails',
+      now.subtract(const Duration(hours: 2)),
+    );
+    await store.save(elapsed);
+    gateway.throwOnCancel = true;
+
+    await expectLater(scheduler.pruneElapsed(), throwsStateError);
+
+    expect(await store.contains('cancel-fails'), isTrue);
+  });
+
   test('pruneElapsed uses the injected current time', () async {
     var nowWasRead = false;
     final schedulerWithClock = EpgReminderScheduler(
@@ -187,6 +232,50 @@ void main() {
     expect(nowWasRead, isTrue);
     expect(gateway.canceled, contains(elapsed.notificationId));
     expect(await store.contains('elapsed-at-injected-now'), isFalse);
+  });
+
+  test(
+    'scheduleReminder reuses an existing notification id for replacement',
+    () async {
+      await store.save(
+        EpgReminder(
+          channelId: 'channel-1',
+          channelName: 'Example Channel',
+          programId: 'p1',
+          programTitle: 'Existing Show',
+          startsAt: now.add(const Duration(hours: 1)),
+          endsAt: now.add(const Duration(hours: 2)),
+          notificationId: 42,
+        ),
+      );
+
+      await scheduler.scheduleReminder(
+        channel: channel,
+        program: futureProgram(),
+      );
+
+      expect(gateway.scheduled.single.notificationId, 42);
+    },
+  );
+
+  test('scheduleReminder avoids notification id collisions', () async {
+    final program = futureProgram('colliding-program');
+    final hashId = program.programId.hashCode & 0x7fffffff;
+    await store.save(
+      EpgReminder(
+        channelId: 'other-channel',
+        channelName: 'Other Channel',
+        programId: 'other-program',
+        programTitle: 'Other Show',
+        startsAt: now.add(const Duration(hours: 1)),
+        endsAt: now.add(const Duration(hours: 2)),
+        notificationId: hashId,
+      ),
+    );
+
+    await scheduler.scheduleReminder(channel: channel, program: program);
+
+    expect(gateway.scheduled.single.notificationId, isNot(hashId));
   });
 
   test('UnavailableEpgReminderNotificationGateway is never available', () {
@@ -238,6 +327,8 @@ class _ScheduledCall {
 class _FakeGateway implements EpgReminderNotificationGateway {
   bool isAvailableValue = true;
   bool permissionGranted = true;
+  bool throwOnSchedule = false;
+  bool throwOnCancel = false;
   Future<bool> Function()? onRequestPermission;
   var permissionRequests = 0;
   final scheduled = <_ScheduledCall>[];
@@ -260,6 +351,7 @@ class _FakeGateway implements EpgReminderNotificationGateway {
     required DateTime at,
     required String payloadChannelId,
   }) async {
+    if (throwOnSchedule) throw StateError('schedule failed');
     scheduled.add(
       _ScheduledCall(
         notificationId: notificationId,
@@ -273,6 +365,7 @@ class _FakeGateway implements EpgReminderNotificationGateway {
 
   @override
   Future<void> cancel(int notificationId) async {
+    if (throwOnCancel) throw StateError('cancel failed');
     canceled.add(notificationId);
   }
 }

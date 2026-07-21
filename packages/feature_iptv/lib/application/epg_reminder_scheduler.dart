@@ -73,6 +73,10 @@ class EpgReminderScheduler {
       return EpgReminderOutcome.unavailable;
     }
 
+    final existingReminders = await _store.list();
+    final previousReminder = existingReminders
+        .where((item) => item.programId == program.programId)
+        .firstOrNull;
     final reminder = EpgReminder(
       channelId: channel.id,
       channelName: channel.name,
@@ -80,7 +84,7 @@ class EpgReminderScheduler {
       programTitle: program.title,
       startsAt: program.startsAt,
       endsAt: program.endsAt,
-      notificationId: program.programId.hashCode & 0x7fffffff,
+      notificationId: _notificationIdFor(program, existingReminders),
     );
     await _store.save(reminder);
 
@@ -89,13 +93,22 @@ class EpgReminderScheduler {
       return EpgReminderOutcome.scheduledInAppOnly;
     }
 
-    await _gateway.schedule(
-      notificationId: reminder.notificationId,
-      title: program.title,
-      body: 'Starting now on ${channel.name}',
-      at: program.startsAt,
-      payloadChannelId: channel.id,
-    );
+    try {
+      await _gateway.schedule(
+        notificationId: reminder.notificationId,
+        title: program.title,
+        body: 'Starting now on ${channel.name}',
+        at: program.startsAt,
+        payloadChannelId: channel.id,
+      );
+    } catch (_) {
+      if (previousReminder != null) {
+        await _store.save(previousReminder);
+      } else {
+        await _store.remove(program.programId);
+      }
+      rethrow;
+    }
     return EpgReminderOutcome.scheduled;
   }
 
@@ -114,9 +127,32 @@ class EpgReminderScheduler {
   }
 
   Future<void> pruneElapsed() async {
-    final removed = await _store.pruneElapsed(_now().toUtc());
-    for (final reminder in removed) {
+    final now = _now().toUtc();
+    final elapsed = (await _store.list())
+        .where((item) => !item.endsAt.isAfter(now))
+        .toList();
+    for (final reminder in elapsed) {
       await _gateway.cancel(reminder.notificationId);
     }
+    await _store.pruneElapsed(now);
+  }
+
+  int _notificationIdFor(
+    CompactEpgProgram program,
+    List<EpgReminder> existingReminders,
+  ) {
+    final existingForProgram = existingReminders
+        .where((item) => item.programId == program.programId)
+        .firstOrNull;
+    if (existingForProgram != null) return existingForProgram.notificationId;
+
+    final usedIds = {
+      for (final reminder in existingReminders) reminder.notificationId,
+    };
+    var candidate = program.programId.hashCode & 0x7fffffff;
+    while (usedIds.contains(candidate)) {
+      candidate = (candidate + 1) & 0x7fffffff;
+    }
+    return candidate;
   }
 }
