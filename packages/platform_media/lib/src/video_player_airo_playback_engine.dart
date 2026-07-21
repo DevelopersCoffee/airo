@@ -14,6 +14,21 @@ import 'package:video_player/video_player.dart';
 /// directly-openable URI by the time it reaches this engine. Resolving an
 /// opaque handle token into a real URL (e.g. via a proxy/token layer) is out
 /// of scope here — this engine only consumes the handle's value as-is.
+
+/// Extracts an HTTP status code from a raw platform player error string
+/// (ExoPlayer's `InvalidResponseCodeException: Response code: 403`, or an
+/// `HTTP 403` style message). Returns null when no status is present —
+/// conservative on purpose: a bare 3-digit number in an arbitrary error
+/// string is not necessarily an HTTP status, so only explicit markers are
+/// recognized.
+int? httpStatusFromPlayerError(String errorText) {
+  final match =
+      RegExp(r'Response code:\s*(\d{3})').firstMatch(errorText) ??
+      RegExp(r'HTTP[/\s](\d{3})').firstMatch(errorText);
+  if (match == null) return null;
+  return int.tryParse(match.group(1)!);
+}
+
 class VideoPlayerAiroPlaybackEngine implements AiroPlaybackEngine {
   VideoPlayerController? _controller;
   AiroPlaybackState _state = AiroPlaybackState.idle(
@@ -58,8 +73,15 @@ class VideoPlayerAiroPlaybackEngine implements AiroPlaybackEngine {
       await controller.initialize();
     } on TimeoutException {
       return _fail(AiroPlaybackErrorCode.networkUnavailable, 'open', request);
-    } on PlatformException {
-      return _fail(AiroPlaybackErrorCode.decoderFailed, 'open', request);
+    } on PlatformException catch (e) {
+      return _fail(
+        AiroPlaybackErrorCode.decoderFailed,
+        'open',
+        request,
+        httpStatusCode: httpStatusFromPlayerError(
+          '${e.message ?? ''} ${e.details ?? ''}',
+        ),
+      );
     } on Object {
       return _fail(AiroPlaybackErrorCode.backendUnavailable, 'open', request);
     }
@@ -99,7 +121,12 @@ class VideoPlayerAiroPlaybackEngine implements AiroPlaybackEngine {
     final value = controller.value;
 
     if (value.hasError) {
-      _fail(AiroPlaybackErrorCode.decoderFailed, 'playback', _state.request);
+      _fail(
+        AiroPlaybackErrorCode.decoderFailed,
+        'playback',
+        _state.request,
+        httpStatusCode: httpStatusFromPlayerError(value.errorDescription ?? ''),
+      );
       return;
     }
 
@@ -122,9 +149,7 @@ class VideoPlayerAiroPlaybackEngine implements AiroPlaybackEngine {
         position: value.position,
         duration: value.duration,
         bufferedRanges: value.buffered
-            .map(
-              (r) => AiroPlaybackBufferedRange(start: r.start, end: r.end),
-            )
+            .map((r) => AiroPlaybackBufferedRange(start: r.start, end: r.end))
             .toList(),
       ),
     );
@@ -163,7 +188,8 @@ class VideoPlayerAiroPlaybackEngine implements AiroPlaybackEngine {
     // callers mid-playback (center play/pause button, wakelock, the Go-Live
     // button, and drift auto-resync all key off this phase). A seek that
     // genuinely happens while paused should still result in `paused`.
-    final wasPlaying = _state.phase == AiroPlaybackEnginePhase.playing ||
+    final wasPlaying =
+        _state.phase == AiroPlaybackEnginePhase.playing ||
         _state.phase == AiroPlaybackEnginePhase.buffering;
     await _controller?.seekTo(position);
     _emit(
@@ -282,13 +308,18 @@ class VideoPlayerAiroPlaybackEngine implements AiroPlaybackEngine {
   AiroPlaybackState _fail(
     AiroPlaybackErrorCode code,
     String operation,
-    AiroMediaOpenRequest? request,
-  ) {
+    AiroMediaOpenRequest? request, {
+    int? httpStatusCode,
+  }) {
     _emit(
       _state.copyWith(
         phase: AiroPlaybackEnginePhase.failed,
         request: request,
-        error: AiroPlaybackError(code: code, operation: operation),
+        error: AiroPlaybackError(
+          code: code,
+          operation: operation,
+          httpStatusCode: httpStatusCode,
+        ),
       ),
     );
     return _state;

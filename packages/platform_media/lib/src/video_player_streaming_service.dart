@@ -43,6 +43,11 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
   AiroPlaybackExternalSubtitle? _pendingExternalSubtitle;
   int _requestCounter = 0;
 
+  /// Per-channel multi-source failover session, rebuilt on every fresh
+  /// [playChannel] and preserved across [retry] so "Try Again" advances
+  /// to an untried source instead of resubmitting a dead URL.
+  AiroMultiSourceFailoverController? _failoverController;
+
   VideoPlayerStreamingService({
     AiroPlaybackEngine? engine,
     this._config = StreamingConfig.youtube,
@@ -146,7 +151,13 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
   Widget? buildVideoView() => _engine.buildView();
 
   @override
-  Future<void> playChannel(IPTVChannel channel) async {
+  Future<void> playChannel(IPTVChannel channel) =>
+      _playChannel(channel, preserveFailover: false);
+
+  Future<void> _playChannel(
+    IPTVChannel channel, {
+    required bool preserveFailover,
+  }) async {
     _loadStartTime = DateTime.now();
     _updateState(
       _state.copyWith(
@@ -154,85 +165,178 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
         playbackState: PlaybackState.loading,
         errorMessage: null,
         clearDiagnostic: true,
+        clearFailover: !preserveFailover,
         retryCount: 0,
       ),
     );
 
-    try {
-      // Request video audio focus (pauses background music)
-      _audioContext.requestFocus(AudioFocusType.video);
-
-      final url = channel.getStreamUrl(_state.selectedQuality);
-      final externalSubtitles = <AiroPlaybackExternalSubtitle>[
-        if (_pendingExternalSubtitle != null &&
-            _pendingExternalSubtitleChannelId == channel.id)
-          _pendingExternalSubtitle!,
-      ];
-
-      final result = await _engine.open(
-        AiroMediaOpenRequest(
-          requestId: '${channel.id}-${_requestCounter++}',
-          sourceHandle: AiroPlaybackSourceHandle.direct(url),
-          // Engines don't currently branch on mediaKind — hls is the
-          // dominant IPTV format in this codebase and there's no reliable
-          // pre-open live/VOD signal on IPTVChannel to infer from (live vs
-          // VOD detection is a post-open runtime heuristic, see
-          // LiveEdgeDetector._detectLiveStream).
-          mediaKind: AiroPlaybackMediaKind.hls,
-          externalSubtitles: externalSubtitles,
-          mixWithOthers: _isBackgroundAudioMode,
-          allowBackgroundPlayback:
-              _isBackgroundAudioMode || channel.isAudioOnly,
-        ),
-      );
-
-      if (result.error != null) {
-        throw _EngineOpenError(result.error!.code);
-      }
-
-      await _engine.setVolume(_state.isMuted ? 0 : _state.volume);
-      await _engine.setPlaybackSpeed(1.0);
-      await _engine.play();
-
-      // Calculate load time
-      final loadTime = DateTime.now().difference(_loadStartTime!);
-
-      _updateState(
-        _state.copyWith(
-          playbackState: PlaybackState.playing,
-          duration: result.duration ?? Duration.zero,
-          tracks: result.tracks,
-          selectedTrackIds: result.selectedTrackIds,
-          metrics: StreamingMetrics(
-            latency: loadTime,
-            networkQuality: _estimateNetworkQuality(loadTime),
-            timestamp: DateTime.now(),
-          ),
-        ),
-      );
-
-      _startBufferMonitoring();
-
-      // Report the now-playing channel to the OS media session only after
-      // the engine genuinely reached playing — never on the loading state
-      // or the error path below.
-      _notifyMediaSession(
-        (delegate) => delegate.onChannelStarted(
-          channelName: channel.name,
-          streamUrl: url,
-        ),
-      );
-
-      // Attach live edge detector for live stream monitoring
-      _liveEdgeDetector.attachToEngine(_engine);
-    } catch (e) {
-      // Release focus on error
-      _audioContext.releaseFocus(AudioFocusType.video);
-      await _handleError(
-        e.toString(),
-        engineErrorCode: e is _EngineOpenError ? e.engineCode : null,
-      );
+    if (!preserveFailover || _failoverController == null) {
+      _failoverController = AiroMultiSourceFailoverController(
+        sources: _failoverSourcesFor(channel),
+      )..start(preferredSourceId: _preferredSourceId(channel));
     }
+
+    // Failover loop: a fatal (non-retry-eligible) open failure advances to
+    // the channel's next source instead of landing on the error screen
+    // immediately; recoverable failures keep the existing manual-retry
+    // behavior (the retry button itself fails over first — see retry()).
+    while (true) {
+      final source = _failoverController!.state.currentSource!;
+      try {
+        // Request video audio focus (pauses background music)
+        _audioContext.requestFocus(AudioFocusType.video);
+
+        final externalSubtitles = <AiroPlaybackExternalSubtitle>[
+          if (_pendingExternalSubtitle != null &&
+              _pendingExternalSubtitleChannelId == channel.id)
+            _pendingExternalSubtitle!,
+        ];
+
+        final result = await _engine.open(
+          AiroMediaOpenRequest(
+            requestId: '${channel.id}-${_requestCounter++}',
+            sourceHandle: source.sourceHandle,
+            // Engines don't currently branch on mediaKind — hls is the
+            // dominant IPTV format in this codebase and there's no reliable
+            // pre-open live/VOD signal on IPTVChannel to infer from (live vs
+            // VOD detection is a post-open runtime heuristic, see
+            // LiveEdgeDetector._detectLiveStream).
+            mediaKind: AiroPlaybackMediaKind.hls,
+            externalSubtitles: externalSubtitles,
+            mixWithOthers: _isBackgroundAudioMode,
+            allowBackgroundPlayback:
+                _isBackgroundAudioMode || channel.isAudioOnly,
+          ),
+        );
+
+        if (result.error != null) {
+          throw _EngineOpenError(result.error!);
+        }
+
+        await _engine.setVolume(_state.isMuted ? 0 : _state.volume);
+        await _engine.setPlaybackSpeed(1.0);
+        await _engine.play();
+
+        // Calculate load time
+        final loadTime = DateTime.now().difference(_loadStartTime!);
+
+        _updateState(
+          _state.copyWith(
+            playbackState: PlaybackState.playing,
+            duration: result.duration ?? Duration.zero,
+            tracks: result.tracks,
+            selectedTrackIds: result.selectedTrackIds,
+            clearFailover: true,
+            metrics: StreamingMetrics(
+              latency: loadTime,
+              networkQuality: _estimateNetworkQuality(loadTime),
+              timestamp: DateTime.now(),
+            ),
+          ),
+        );
+
+        _startBufferMonitoring();
+
+        // Report the now-playing channel to the OS media session only after
+        // the engine genuinely reached playing — never on the loading state
+        // or the error path below.
+        _notifyMediaSession(
+          (delegate) => delegate.onChannelStarted(
+            channelName: channel.name,
+            streamUrl: source.sourceHandle.value,
+          ),
+        );
+
+        // Attach live edge detector for live stream monitoring
+        _liveEdgeDetector.attachToEngine(_engine);
+        return;
+      } catch (e) {
+        // Release focus on error
+        _audioContext.releaseFocus(AudioFocusType.video);
+        final engineError = e is _EngineOpenError ? e.engineError : null;
+        final diagnostic = _diagnosticFor(e.toString(), engineError);
+        if (!diagnostic.retryEligible) {
+          final decision = _failoverController!.recordPlaybackError(
+            source.sourceId,
+          );
+          if (decision.shouldSwitch) {
+            _updateState(
+              _state.copyWith(
+                playbackState: PlaybackState.loading,
+                errorMessage: null,
+                clearDiagnostic: true,
+                failover: _failoverProgressFor(decision.state),
+              ),
+            );
+            continue;
+          }
+        }
+        await _handleError(e.toString(), engineError: engineError);
+        return;
+      }
+    }
+  }
+
+  /// Builds the failover source list for [channel]: the base stream URL
+  /// plus every distinct per-quality URL variant. Single-source channels
+  /// yield a one-entry list, which the controller treats as
+  /// immediately-exhausted on failure (legacy behavior preserved).
+  List<AiroFailoverSource> _failoverSourcesFor(IPTVChannel channel) {
+    final sources = <AiroFailoverSource>[
+      AiroFailoverSource(
+        sourceId: 'default',
+        sourceHandle: AiroPlaybackSourceHandle.direct(channel.streamUrl),
+        canonicalChannelId: channel.id,
+      ),
+    ];
+    final qualityUrls = channel.qualityUrls;
+    if (qualityUrls != null) {
+      var rank = 1;
+      for (final entry in qualityUrls.entries) {
+        if (entry.value == channel.streamUrl) continue;
+        sources.add(
+          AiroFailoverSource(
+            sourceId: entry.key,
+            sourceHandle: AiroPlaybackSourceHandle.direct(entry.value),
+            canonicalChannelId: channel.id,
+            rank: rank++,
+            resolutionHeight: VideoQuality.values
+                .asNameMap()[entry.key]
+                ?.height,
+          ),
+        );
+      }
+    }
+    return sources;
+  }
+
+  /// The source [playChannel] should try first: the URL the current quality
+  /// preference already resolves to (preserving pre-failover behavior).
+  String _preferredSourceId(IPTVChannel channel) {
+    final quality = _state.selectedQuality;
+    final qualityUrls = channel.qualityUrls;
+    if (quality != VideoQuality.auto &&
+        qualityUrls != null &&
+        qualityUrls.containsKey(quality.name) &&
+        qualityUrls[quality.name] != channel.streamUrl) {
+      return quality.name;
+    }
+    return 'default';
+  }
+
+  /// 1-based attempt ordinal for the failover toast ("Switching source
+  /// 2/3") — derived from how many sources have failed rather than the
+  /// controller's internal ranked ordering, so the number matches the
+  /// user's mental model of attempts made.
+  FailoverProgress _failoverProgressFor(AiroFailoverSessionState state) {
+    final attempt = (state.failedSourceIds.length + 1).clamp(
+      1,
+      state.sourceCount,
+    );
+    return FailoverProgress(
+      currentSource: attempt,
+      totalSources: state.sourceCount,
+    );
   }
 
   /// Folds every state emitted by the engine (continuous position/duration/
@@ -244,7 +348,7 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
     if (engineState.error != null) {
       _handleError(
         engineState.error!.code.stableId,
-        engineErrorCode: engineState.error!.code,
+        engineError: engineState.error,
       );
       return;
     }
@@ -360,9 +464,26 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
   /// Flag to prevent duplicate error handling
   bool _isHandlingError = false;
 
+  /// Maps a failure to its structured diagnostic. Shared by the playChannel
+  /// failover loop (which needs `retryEligible` to decide whether to
+  /// advance to the next source) and [_handleError] (which renders it).
+  AiroPlaybackDiagnostic _diagnosticFor(
+    String message,
+    AiroPlaybackError? engineError,
+  ) {
+    return engineError != null
+        ? const AiroPlaybackDiagnosticMapper().map(
+            AiroPlaybackFailureEvent(
+              engineError: engineError,
+              httpStatusCode: engineError.httpStatusCode,
+            ),
+          )
+        : mapStreamingErrorToDiagnostic(message);
+  }
+
   Future<void> _handleError(
     String message, {
-    AiroPlaybackErrorCode? engineErrorCode,
+    AiroPlaybackError? engineError,
   }) async {
     if (_isHandlingError || _state.playbackState == PlaybackState.error) {
       return;
@@ -392,19 +513,13 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
     // this, every engine code except codec_unsupported (which happens to
     // match the 'codec' substring check) fell through to a generic
     // `unknown` diagnostic.
-    final diagnostic = engineErrorCode != null
-        ? const AiroPlaybackDiagnosticMapper().map(
-            AiroPlaybackFailureEvent(
-              engineError: AiroPlaybackError(code: engineErrorCode),
-            ),
-          )
-        : mapStreamingErrorToDiagnostic(message);
-
+    final diagnostic = _diagnosticFor(message, engineError);
     _updateState(
       _state.copyWith(
         playbackState: PlaybackState.error,
         errorMessage: userMessage,
         diagnostic: diagnostic,
+        clearFailover: true,
         retryCount: newRetryCount,
         lastError: DateTime.now(),
       ),
@@ -545,10 +660,29 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
 
   @override
   Future<void> retry() async {
-    if (_state.currentChannel != null) {
-      _isHandlingError = false;
-      await playChannel(_state.currentChannel!);
+    final channel = _state.currentChannel;
+    if (channel == null) return;
+    _isHandlingError = false;
+
+    // Fail over before resubmitting: if the failed channel has an untried
+    // alternate source, "Try Again" advances to it rather than replaying
+    /// the URL that just failed (rc.3 dead-stream UX).
+    final controller = _failoverController;
+    final currentSourceId = controller?.state.currentSourceId;
+    if (controller != null &&
+        currentSourceId != null &&
+        controller.state.sourceCount > 1) {
+      final decision = controller.recordPlaybackError(currentSourceId);
+      if (decision.shouldSwitch) {
+        _updateState(
+          _state.copyWith(failover: _failoverProgressFor(decision.state)),
+        );
+        await _playChannel(channel, preserveFailover: true);
+        return;
+      }
     }
+
+    await _playChannel(channel, preserveFailover: false);
   }
 
   @override
@@ -610,14 +744,15 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
 }
 
 class _EngineOpenError implements Exception {
-  _EngineOpenError(this.engineCode) : code = engineCode.stableId;
+  _EngineOpenError(this.engineError) : code = engineError.code.stableId;
   final String code;
 
   /// The typed engine error this was raised from, kept alongside [code] so
   /// the catch site in [VideoPlayerStreamingService.playChannel] can map it
   /// precisely instead of re-parsing [toString()] (see CV-016 diagnostic
-  /// fidelity fix in `_handleError`).
-  final AiroPlaybackErrorCode engineCode;
+  /// fidelity fix in `_handleError`). Carries any HTTP status the engine
+  /// extracted so the diagnostic mapper can blame the real cause.
+  final AiroPlaybackError engineError;
   @override
   String toString() => code;
 }
