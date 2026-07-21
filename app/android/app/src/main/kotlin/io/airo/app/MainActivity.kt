@@ -112,6 +112,13 @@ class MainActivity : AudioServiceActivity() {
         backgroundAudioPlugin.register(flutterEngine.dartExecutor.binaryMessenger)
     }
 
+    override fun onUserLeaveHint() {
+        super.onUserLeaveHint()
+        // Home press fires this while the Activity is still resumed — the only
+        // safe point to enter PiP on API 26–30 (see AiroPictureInPicturePlugin).
+        pictureInPicturePlugin.onUserLeaveHint()
+    }
+
     override fun onPictureInPictureModeChanged(
         isInPictureInPictureMode: Boolean,
         newConfig: Configuration

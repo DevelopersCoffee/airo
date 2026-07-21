@@ -5,6 +5,7 @@
 [![Flutter](https://img.shields.io/badge/Flutter-3.44.4+-blue.svg)](https://flutter.dev/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Security Policy](https://img.shields.io/badge/security-policy-brightgreen)](SECURITY.md)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=DevelopersCoffee_airo&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=DevelopersCoffee_airo)
 [![Trust](https://img.shields.io/badge/trust-transparent-brightgreen)](TRUST.md)
 [![Versioning](https://img.shields.io/badge/versioning-semver-blue)](CHANGELOG.md)
 [![Android TV](https://img.shields.io/badge/Android%20TV-compatible-green)](docs/release/AIRO_TV_v0.0.2.md)

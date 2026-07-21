@@ -9,11 +9,13 @@ void main() {
   final calls = <MethodCall>[];
   String isSupportedResult = 'true';
   bool requestEnterResult = true;
+  bool isActiveResult = false;
 
   setUp(() {
     calls.clear();
     isSupportedResult = 'true';
     requestEnterResult = true;
+    isActiveResult = false;
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(channel, (call) async {
           calls.add(call);
@@ -22,6 +24,8 @@ void main() {
               return isSupportedResult == 'true';
             case 'requestEnter':
               return requestEnterResult;
+            case 'isActive':
+              return isActiveResult;
             default:
               return null;
           }
@@ -59,6 +63,41 @@ void main() {
           throw MissingPluginException();
         });
     expect(await AiroNativePictureInPicture.requestEnter(), isFalse);
+  });
+
+  test('setAutoEnterEnabled forwards the enabled flag to the platform',
+      () async {
+    await AiroNativePictureInPicture.setAutoEnterEnabled(true);
+    expect(calls.single.method, 'setAutoEnterEnabled');
+    expect(calls.single.arguments, {'enabled': true});
+
+    calls.clear();
+    await AiroNativePictureInPicture.setAutoEnterEnabled(false);
+    expect(calls.single.arguments, {'enabled': false});
+  });
+
+  test('setAutoEnterEnabled no-ops when platform impl is missing', () async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (call) async {
+          throw MissingPluginException();
+        });
+    // Must not throw.
+    await AiroNativePictureInPicture.setAutoEnterEnabled(true);
+  });
+
+  test('isActive returns platform value', () async {
+    expect(await AiroNativePictureInPicture.isActive(), isFalse);
+    isActiveResult = true;
+    expect(await AiroNativePictureInPicture.isActive(), isTrue);
+    expect(calls.map((c) => c.method), ['isActive', 'isActive']);
+  });
+
+  test('isActive returns false when platform impl is missing', () async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (call) async {
+          throw MissingPluginException();
+        });
+    expect(await AiroNativePictureInPicture.isActive(), isFalse);
   });
 
   test('state change handler receives native callbacks', () async {
