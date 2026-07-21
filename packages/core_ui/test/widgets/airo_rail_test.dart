@@ -79,6 +79,26 @@ void main() {
     );
   });
 
+  testWidgets('fits a standard channel card without a layout exception', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: AiroRail(
+            title: 'Live now',
+            cardVariant: MediaCardVariant.standard,
+            children: const [
+              MediaCard(name: 'City News Live', subtitle: 'News'),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('explicit railHeight overrides cardVariant', (tester) async {
     expect(
       await _railBandHeight(

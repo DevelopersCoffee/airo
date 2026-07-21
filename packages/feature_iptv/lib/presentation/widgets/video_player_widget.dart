@@ -94,11 +94,6 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
         widget.setAudioOnlyMode ?? AiroBackgroundAudioMode.setEnabled;
     _loadInitialBrightness();
     _startHideControlsTimer();
-    // Wakelock is managed by WakelockPlaybackCoordinator at screen scope,
-    // not by this widget's lifetime.
-    AiroNativePictureInPicture.setStateChangeHandler((isActive) {
-      if (mounted) setState(() {});
-    });
   }
 
   Future<void> _loadInitialBrightness() async {
@@ -116,7 +111,6 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
     _cancelHideControlsTimer();
     _channelChangeOverlayTimer?.cancel();
     unawaited(_resetBrightnessSafely());
-    AiroNativePictureInPicture.setStateChangeHandler(null);
     super.dispose();
   }
 
