@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:core_data/core_data.dart';
@@ -64,8 +65,13 @@ class EpgReminderStore {
   static const String _storageKey = 'epg_program_reminders';
 
   final KeyValueStore _store;
+  Future<void> _mutationQueue = Future.value();
 
   Future<List<EpgReminder>> list() async {
+    return _listUnlocked();
+  }
+
+  Future<List<EpgReminder>> _listUnlocked() async {
     final json = await _store.getString(_storageKey);
     if (json == null) return [];
     final decoded = jsonDecode(json) as List<dynamic>;
@@ -75,16 +81,20 @@ class EpgReminderStore {
   }
 
   Future<void> save(EpgReminder reminder) async {
-    final reminders = await list();
-    reminders.removeWhere((item) => item.programId == reminder.programId);
-    reminders.add(reminder);
-    await _saveAll(reminders);
+    await _runMutation(() async {
+      final reminders = await _listUnlocked();
+      reminders.removeWhere((item) => item.programId == reminder.programId);
+      reminders.add(reminder);
+      await _saveAll(reminders);
+    });
   }
 
   Future<void> remove(String programId) async {
-    final reminders = await list();
-    reminders.removeWhere((item) => item.programId == programId);
-    await _saveAll(reminders);
+    await _runMutation(() async {
+      final reminders = await _listUnlocked();
+      reminders.removeWhere((item) => item.programId == programId);
+      await _saveAll(reminders);
+    });
   }
 
   Future<bool> contains(String programId) async {
@@ -93,15 +103,28 @@ class EpgReminderStore {
   }
 
   Future<List<EpgReminder>> pruneElapsed(DateTime now) async {
-    final reminders = await list();
-    final elapsed = reminders
-        .where((item) => !item.endsAt.isAfter(now))
-        .toList();
-    if (elapsed.isEmpty) return const [];
+    return _runMutation(() async {
+      final reminders = await _listUnlocked();
+      final elapsed = reminders
+          .where((item) => !item.endsAt.isAfter(now))
+          .toList();
+      if (elapsed.isEmpty) return const <EpgReminder>[];
 
-    reminders.removeWhere((item) => !item.endsAt.isAfter(now));
-    await _saveAll(reminders);
-    return elapsed;
+      reminders.removeWhere((item) => !item.endsAt.isAfter(now));
+      await _saveAll(reminders);
+      return elapsed;
+    });
+  }
+
+  Future<T> _runMutation<T>(Future<T> Function() action) {
+    final previous = _mutationQueue;
+    final completer = Completer<void>();
+    _mutationQueue = completer.future;
+
+    return previous
+        .catchError((_) {})
+        .then((_) => action())
+        .whenComplete(completer.complete);
   }
 
   Future<void> _saveAll(List<EpgReminder> reminders) async {

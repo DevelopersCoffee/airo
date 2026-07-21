@@ -1,4 +1,5 @@
 import 'package:airo_app/features/iptv/epg_reminder_notification_gateway.dart';
+import 'package:feature_iptv/feature_iptv.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -41,14 +42,14 @@ void main() {
   test('notification tap payload routes to the handler', () {
     final routed = <String>[];
     final gateway = FlutterLocalNotificationsEpgReminderGateway(
-      onReminderTap: routed.add,
+      onNotificationRoute: routed.add,
     );
 
-    gateway.handleNotificationPayload('channel-1');
+    gateway.handleNotificationPayload('/iptv?channel=channel-1');
     gateway.handleNotificationPayload(null);
     gateway.handleNotificationPayload('');
 
-    expect(routed, ['channel-1']);
+    expect(routed, ['/iptv?channel=channel-1']);
   });
 
   test('deep link builder encodes channel ids as query parameters', () {
@@ -103,6 +104,32 @@ void main() {
       (call) => call.method == 'zonedSchedule',
     );
     expect(zonedScheduleCall.arguments, containsPair('id', 7));
-    expect(zonedScheduleCall.arguments, containsPair('payload', 'channel-1'));
+    expect(
+      Uri.parse(
+        zonedScheduleCall.arguments['payload'] as String,
+      ).queryParameters['channel'],
+      'channel-1',
+    );
+  });
+
+  test('missing plugin marks gateway unavailable', () async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.android;
+    AndroidFlutterLocalNotificationsPlugin.registerWith();
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(notificationsChannel, null);
+    final gateway = FlutterLocalNotificationsEpgReminderGateway();
+
+    await expectLater(
+      gateway.schedule(
+        notificationId: 7,
+        title: 'Evening Show',
+        body: 'Starting now',
+        at: DateTime.now().toUtc().add(const Duration(hours: 1)),
+        payloadChannelId: 'channel-1',
+      ),
+      throwsA(isA<EpgReminderGatewayUnavailableException>()),
+    );
+
+    expect(gateway.isAvailable, isFalse);
   });
 }

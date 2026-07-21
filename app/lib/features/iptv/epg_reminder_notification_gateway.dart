@@ -1,5 +1,6 @@
 import 'package:feature_iptv/feature_iptv.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest.dart' as tz_data;
 import 'package:timezone/timezone.dart' as tz;
@@ -11,19 +12,21 @@ String epgReminderDeepLinkForChannel(String channelId) {
 /// App-level local notification gateway for EPG reminders.
 class FlutterLocalNotificationsEpgReminderGateway
     implements EpgReminderNotificationGateway {
-  FlutterLocalNotificationsEpgReminderGateway({this.onReminderTap});
+  FlutterLocalNotificationsEpgReminderGateway({this.onNotificationRoute});
 
   static const String _notificationChannelId = 'epg_reminders';
 
   final FlutterLocalNotificationsPlugin _plugin =
       FlutterLocalNotificationsPlugin();
-  final void Function(String channelId)? onReminderTap;
+  final void Function(String location)? onNotificationRoute;
   bool _initialized = false;
   bool _timeZoneInitialized = false;
+  bool _pluginUnavailable = false;
 
   @override
   bool get isAvailable =>
       !kIsWeb &&
+      !_pluginUnavailable &&
       (defaultTargetPlatform == TargetPlatform.iOS ||
           defaultTargetPlatform == TargetPlatform.android);
 
@@ -41,25 +44,31 @@ class FlutterLocalNotificationsEpgReminderGateway
         requestBadgePermission: false,
       ),
     );
-    await _plugin.initialize(
-      settings: settings,
-      onDidReceiveNotificationResponse: (response) {
-        handleNotificationPayload(response.payload);
-      },
-    );
+    try {
+      await _plugin.initialize(
+        settings: settings,
+        onDidReceiveNotificationResponse: (response) {
+          handleNotificationPayload(response.payload);
+        },
+      );
+    } on MissingPluginException {
+      _pluginUnavailable = true;
+      return;
+    }
     _initialized = true;
   }
 
   @visibleForTesting
   void handleNotificationPayload(String? payload) {
     if (payload == null || payload.isEmpty) return;
-    onReminderTap?.call(payload);
+    onNotificationRoute?.call(payload);
   }
 
   @override
   Future<bool> requestPermission() async {
     if (!isAvailable) return false;
     await initialize();
+    if (!isAvailable) throw const EpgReminderGatewayUnavailableException();
 
     final android = _plugin
         .resolvePlatformSpecificImplementation<
@@ -94,25 +103,31 @@ class FlutterLocalNotificationsEpgReminderGateway
     required String payloadChannelId,
   }) async {
     await initialize();
+    if (!isAvailable) throw const EpgReminderGatewayUnavailableException();
     _configureLocalTimeZone();
-    await _plugin.zonedSchedule(
-      id: notificationId,
-      title: title,
-      body: body,
-      scheduledDate: tz.TZDateTime.from(at, tz.local),
-      notificationDetails: const NotificationDetails(
-        android: AndroidNotificationDetails(
-          _notificationChannelId,
-          'Program Reminders',
-          channelDescription: 'Reminders for upcoming live programs',
-          importance: Importance.high,
-          priority: Priority.high,
+    try {
+      await _plugin.zonedSchedule(
+        id: notificationId,
+        title: title,
+        body: body,
+        scheduledDate: tz.TZDateTime.from(at, tz.local),
+        notificationDetails: const NotificationDetails(
+          android: AndroidNotificationDetails(
+            _notificationChannelId,
+            'Program Reminders',
+            channelDescription: 'Reminders for upcoming live programs',
+            importance: Importance.high,
+            priority: Priority.high,
+          ),
+          iOS: DarwinNotificationDetails(),
         ),
-        iOS: DarwinNotificationDetails(),
-      ),
-      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
-      payload: payloadChannelId,
-    );
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        payload: epgReminderDeepLinkForChannel(payloadChannelId),
+      );
+    } on MissingPluginException {
+      _pluginUnavailable = true;
+      throw const EpgReminderGatewayUnavailableException();
+    }
   }
 
   @override

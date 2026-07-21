@@ -23,6 +23,10 @@ abstract interface class EpgReminderNotificationGateway {
   Future<void> cancel(int notificationId);
 }
 
+class EpgReminderGatewayUnavailableException implements Exception {
+  const EpgReminderGatewayUnavailableException();
+}
+
 class UnavailableEpgReminderNotificationGateway
     implements EpgReminderNotificationGateway {
   const UnavailableEpgReminderNotificationGateway();
@@ -88,12 +92,12 @@ class EpgReminderScheduler {
     );
     await _store.save(reminder);
 
-    final granted = await _gateway.requestPermission();
-    if (!granted) {
-      return EpgReminderOutcome.scheduledInAppOnly;
-    }
-
     try {
+      final granted = await _gateway.requestPermission();
+      if (!granted) {
+        return EpgReminderOutcome.scheduledInAppOnly;
+      }
+
       await _gateway.schedule(
         notificationId: reminder.notificationId,
         title: program.title,
@@ -101,6 +105,13 @@ class EpgReminderScheduler {
         at: program.startsAt,
         payloadChannelId: channel.id,
       );
+    } on EpgReminderGatewayUnavailableException {
+      if (previousReminder != null) {
+        await _store.save(previousReminder);
+      } else {
+        await _store.remove(program.programId);
+      }
+      return EpgReminderOutcome.unavailable;
     } catch (_) {
       if (previousReminder != null) {
         await _store.save(previousReminder);

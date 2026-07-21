@@ -116,6 +116,36 @@ void main() {
     expect(await store.contains('p1'), isFalse);
   });
 
+  test(
+    'gateway unavailable during schedule rolls back and reports unavailable',
+    () async {
+      gateway.throwUnavailableOnSchedule = true;
+
+      final outcome = await scheduler.scheduleReminder(
+        channel: channel,
+        program: futureProgram(),
+      );
+
+      expect(outcome, EpgReminderOutcome.unavailable);
+      expect(await store.contains('p1'), isFalse);
+    },
+  );
+
+  test(
+    'gateway unavailable during permission rolls back and reports unavailable',
+    () async {
+      gateway.throwUnavailableOnPermission = true;
+
+      final outcome = await scheduler.scheduleReminder(
+        channel: channel,
+        program: futureProgram(),
+      );
+
+      expect(outcome, EpgReminderOutcome.unavailable);
+      expect(await store.contains('p1'), isFalse);
+    },
+  );
+
   test('schedule failure restores a replaced reminder', () async {
     final previous = EpgReminder(
       channelId: 'channel-1',
@@ -278,6 +308,20 @@ void main() {
     expect(gateway.scheduled.single.notificationId, isNot(hashId));
   });
 
+  test('concurrent reminder saves preserve different programs', () async {
+    final delayedStore = EpgReminderStore(_DelayedStringStore());
+    final first = reminder('first', now.add(const Duration(hours: 1)));
+    final second = reminder('second', now.add(const Duration(hours: 2)));
+
+    await Future.wait([delayedStore.save(first), delayedStore.save(second)]);
+
+    final reminders = await delayedStore.list();
+    expect(
+      reminders.map((item) => item.programId),
+      containsAll(['first', 'second']),
+    );
+  });
+
   test('UnavailableEpgReminderNotificationGateway is never available', () {
     const gateway = UnavailableEpgReminderNotificationGateway();
     expect(gateway.isAvailable, isFalse);
@@ -328,6 +372,8 @@ class _FakeGateway implements EpgReminderNotificationGateway {
   bool isAvailableValue = true;
   bool permissionGranted = true;
   bool throwOnSchedule = false;
+  bool throwUnavailableOnSchedule = false;
+  bool throwUnavailableOnPermission = false;
   bool throwOnCancel = false;
   Future<bool> Function()? onRequestPermission;
   var permissionRequests = 0;
@@ -340,6 +386,9 @@ class _FakeGateway implements EpgReminderNotificationGateway {
   @override
   Future<bool> requestPermission() async {
     permissionRequests++;
+    if (throwUnavailableOnPermission) {
+      throw const EpgReminderGatewayUnavailableException();
+    }
     return onRequestPermission?.call() ?? permissionGranted;
   }
 
@@ -351,6 +400,9 @@ class _FakeGateway implements EpgReminderNotificationGateway {
     required DateTime at,
     required String payloadChannelId,
   }) async {
+    if (throwUnavailableOnSchedule) {
+      throw const EpgReminderGatewayUnavailableException();
+    }
     if (throwOnSchedule) throw StateError('schedule failed');
     scheduled.add(
       _ScheduledCall(
@@ -368,4 +420,63 @@ class _FakeGateway implements EpgReminderNotificationGateway {
     if (throwOnCancel) throw StateError('cancel failed');
     canceled.add(notificationId);
   }
+}
+
+class _DelayedStringStore implements KeyValueStore {
+  final _values = <String, String>{};
+
+  @override
+  Future<String?> getString(String key) async {
+    await Future<void>.delayed(const Duration(milliseconds: 1));
+    return _values[key];
+  }
+
+  @override
+  Future<bool> setString(String key, String value) async {
+    await Future<void>.delayed(const Duration(milliseconds: 1));
+    _values[key] = value;
+    return true;
+  }
+
+  @override
+  Future<bool> clear() async {
+    _values.clear();
+    return true;
+  }
+
+  @override
+  Future<bool> containsKey(String key) async => _values.containsKey(key);
+
+  @override
+  Future<bool> remove(String key) async {
+    _values.remove(key);
+    return true;
+  }
+
+  @override
+  Future<bool?> getBool(String key) => throw UnimplementedError();
+
+  @override
+  Future<double?> getDouble(String key) => throw UnimplementedError();
+
+  @override
+  Future<int?> getInt(String key) => throw UnimplementedError();
+
+  @override
+  Future<List<String>?> getStringList(String key) => throw UnimplementedError();
+
+  @override
+  Future<bool> setBool(String key, {required bool value}) =>
+      throw UnimplementedError();
+
+  @override
+  Future<bool> setDouble(String key, double value) =>
+      throw UnimplementedError();
+
+  @override
+  Future<bool> setInt(String key, int value) => throw UnimplementedError();
+
+  @override
+  Future<bool> setStringList(String key, List<String> value) =>
+      throw UnimplementedError();
 }
