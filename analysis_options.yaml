@@ -27,6 +27,7 @@ analyzer:
     - "**/generated/**"
     - "**/build/**"
     - ".dart_tool/**"
+    - "**/frb_generated*.dart"
 
 linter:
   rules:

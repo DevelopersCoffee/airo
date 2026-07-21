@@ -3,23 +3,22 @@
 
 // ignore_for_file: unused_import, unused_element, unnecessary_import, duplicate_ignore, invalid_use_of_internal_member, annotate_overrides, non_constant_identifier_names, curly_braces_in_flow_control_structures, prefer_const_literals_to_create_immutables, unused_field
 
-import 'dart:async';
-import 'dart:convert';
-
-import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
-
 import 'api/m3u.dart';
 import 'api/text.dart';
 import 'api/xmltv.dart';
+import 'dart:async';
+import 'dart:convert';
 import 'frb_generated.dart';
 import 'frb_generated.io.dart'
     if (dart.library.js_interop) 'frb_generated.web.dart';
+import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
 /// Main entrypoint of the Rust API
 class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
-  RustLib._();
   @internal
   static final instance = RustLib._();
+
+  RustLib._();
 
   /// Initialize flutter_rust_bridge
   static Future<void> init({
@@ -145,7 +144,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   TaskConstMeta get kCrateApiM3Um3UPlaylistDefaultConstMeta =>
-      const TaskConstMeta(debugName: 'm_3_u_playlist_default', argNames: []);
+      const TaskConstMeta(debugName: "m_3_u_playlist_default", argNames: []);
 
   @override
   Future<String> crateApiTextNormalizeChannelName({required String name}) {
@@ -174,8 +173,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   TaskConstMeta get kCrateApiTextNormalizeChannelNameConstMeta =>
       const TaskConstMeta(
-        debugName: 'normalize_channel_name',
-        argNames: ['name'],
+        debugName: "normalize_channel_name",
+        argNames: ["name"],
       );
 
   @override
@@ -204,8 +203,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   TaskConstMeta get kCrateApiM3UParseM3UEntriesConstMeta => const TaskConstMeta(
-    debugName: 'parse_m3u_entries',
-    argNames: ['content'],
+    debugName: "parse_m3u_entries",
+    argNames: ["content"],
   );
 
   @override
@@ -235,8 +234,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   TaskConstMeta get kCrateApiM3UParseM3UPlaylistConstMeta =>
       const TaskConstMeta(
-        debugName: 'parse_m3u_playlist',
-        argNames: ['content'],
+        debugName: "parse_m3u_playlist",
+        argNames: ["content"],
       );
 
   @override
@@ -274,12 +273,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   TaskConstMeta get kCrateApiXmltvParseXmltvCurrentNextFileConstMeta =>
       const TaskConstMeta(
-        debugName: 'parse_xmltv_current_next_file',
+        debugName: "parse_xmltv_current_next_file",
         argNames: [
-          'path',
-          'channelIds',
-          'nowEpochSeconds',
-          'defaultDurationSeconds',
+          "path",
+          "channelIds",
+          "nowEpochSeconds",
+          "defaultDurationSeconds",
         ],
       );
 
@@ -314,8 +313,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   TaskConstMeta get kCrateApiXmltvParseXmltvProgrammesConstMeta =>
       const TaskConstMeta(
-        debugName: 'parse_xmltv_programmes',
-        argNames: ['content', 'maxProgrammes'],
+        debugName: "parse_xmltv_programmes",
+        argNames: ["content", "maxProgrammes"],
       );
 
   @override
@@ -349,8 +348,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   TaskConstMeta get kCrateApiXmltvParseXmltvProgrammesFileConstMeta =>
       const TaskConstMeta(
-        debugName: 'parse_xmltv_programmes_file',
-        argNames: ['path', 'maxProgrammes'],
+        debugName: "parse_xmltv_programmes_file",
+        argNames: ["path", "maxProgrammes"],
       );
 
   @override
@@ -379,7 +378,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   TaskConstMeta get kCrateApiXmltvXmltvCurrentNextResultDefaultConstMeta =>
       const TaskConstMeta(
-        debugName: 'xmltv_current_next_result_default',
+        debugName: "xmltv_current_next_result_default",
         argNames: [],
       );
 
@@ -409,7 +408,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   TaskConstMeta get kCrateApiXmltvXmltvCurrentNextStatsDefaultConstMeta =>
       const TaskConstMeta(
-        debugName: 'xmltv_current_next_stats_default',
+        debugName: "xmltv_current_next_stats_default",
         argNames: [],
       );
 
@@ -439,7 +438,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   TaskConstMeta get kCrateApiXmltvXmltvParseResultDefaultConstMeta =>
       const TaskConstMeta(
-        debugName: 'xmltv_parse_result_default',
+        debugName: "xmltv_parse_result_default",
         argNames: [],
       );
 
@@ -468,7 +467,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   TaskConstMeta get kCrateApiXmltvXmltvParseStatsDefaultConstMeta =>
-      const TaskConstMeta(debugName: 'xmltv_parse_stats_default', argNames: []);
+      const TaskConstMeta(debugName: "xmltv_parse_stats_default", argNames: []);
 
   @protected
   Map<String, String> dco_decode_Map_String_String_None(dynamic raw) {
@@ -711,14 +710,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     SseDeserializer deserializer,
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
-    final inner = sse_decode_list_record_string_string(deserializer);
+    var inner = sse_decode_list_record_string_string(deserializer);
     return Map.fromEntries(inner.map((e) => MapEntry(e.$1, e.$2)));
   }
 
   @protected
   String sse_decode_String(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
-    final inner = sse_decode_list_prim_u_8_strict(deserializer);
+    var inner = sse_decode_list_prim_u_8_strict(deserializer);
     return utf8.decoder.convert(inner);
   }
 
@@ -731,7 +730,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   @protected
   PlatformInt64 sse_decode_box_autoadd_i_64(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
-    return sse_decode_i_64(deserializer);
+    return (sse_decode_i_64(deserializer));
   }
 
   @protected
@@ -739,7 +738,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     SseDeserializer deserializer,
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
-    return sse_decode_xmltv_programme(deserializer);
+    return (sse_decode_xmltv_programme(deserializer));
   }
 
   @protected
@@ -752,8 +751,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   List<String> sse_decode_list_String(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
 
-    final len_ = sse_decode_i_32(deserializer);
-    final ans_ = <String>[];
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <String>[];
     for (var idx_ = 0; idx_ < len_; ++idx_) {
       ans_.add(sse_decode_String(deserializer));
     }
@@ -764,8 +763,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   List<M3uEntry> sse_decode_list_m_3_u_entry(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
 
-    final len_ = sse_decode_i_32(deserializer);
-    final ans_ = <M3uEntry>[];
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <M3uEntry>[];
     for (var idx_ = 0; idx_ < len_; ++idx_) {
       ans_.add(sse_decode_m_3_u_entry(deserializer));
     }
@@ -775,7 +774,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   @protected
   Uint8List sse_decode_list_prim_u_8_strict(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
-    final len_ = sse_decode_i_32(deserializer);
+    var len_ = sse_decode_i_32(deserializer);
     return deserializer.buffer.getUint8List(len_);
   }
 
@@ -785,8 +784,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
 
-    final len_ = sse_decode_i_32(deserializer);
-    final ans_ = <(String, String)>[];
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <(String, String)>[];
     for (var idx_ = 0; idx_ < len_; ++idx_) {
       ans_.add(sse_decode_record_string_string(deserializer));
     }
@@ -799,8 +798,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
 
-    final len_ = sse_decode_i_32(deserializer);
-    final ans_ = <XmltvCurrentNextEntry>[];
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <XmltvCurrentNextEntry>[];
     for (var idx_ = 0; idx_ < len_; ++idx_) {
       ans_.add(sse_decode_xmltv_current_next_entry(deserializer));
     }
@@ -813,8 +812,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
 
-    final len_ = sse_decode_i_32(deserializer);
-    final ans_ = <XmltvProgramme>[];
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <XmltvProgramme>[];
     for (var idx_ = 0; idx_ < len_; ++idx_) {
       ans_.add(sse_decode_xmltv_programme(deserializer));
     }
@@ -824,15 +823,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   @protected
   M3uEntry sse_decode_m_3_u_entry(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
-    final var_name = sse_decode_String(deserializer);
-    final var_url = sse_decode_String(deserializer);
-    final var_logo = sse_decode_opt_String(deserializer);
-    final var_group = sse_decode_opt_String(deserializer);
-    final var_tvgId = sse_decode_opt_String(deserializer);
-    final var_tvgName = sse_decode_opt_String(deserializer);
-    final var_language = sse_decode_opt_String(deserializer);
-    final var_duration = sse_decode_opt_box_autoadd_i_64(deserializer);
-    final var_extras = sse_decode_Map_String_String_None(deserializer);
+    var var_name = sse_decode_String(deserializer);
+    var var_url = sse_decode_String(deserializer);
+    var var_logo = sse_decode_opt_String(deserializer);
+    var var_group = sse_decode_opt_String(deserializer);
+    var var_tvgId = sse_decode_opt_String(deserializer);
+    var var_tvgName = sse_decode_opt_String(deserializer);
+    var var_language = sse_decode_opt_String(deserializer);
+    var var_duration = sse_decode_opt_box_autoadd_i_64(deserializer);
+    var var_extras = sse_decode_Map_String_String_None(deserializer);
     return M3uEntry(
       name: var_name,
       url: var_url,
@@ -849,8 +848,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   @protected
   M3uPlaylist sse_decode_m_3_u_playlist(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
-    final var_entries = sse_decode_list_m_3_u_entry(deserializer);
-    final var_headers = sse_decode_Map_String_String_None(deserializer);
+    var var_entries = sse_decode_list_m_3_u_entry(deserializer);
+    var var_headers = sse_decode_Map_String_String_None(deserializer);
     return M3uPlaylist(entries: var_entries, headers: var_headers);
   }
 
@@ -859,7 +858,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
 
     if (sse_decode_bool(deserializer)) {
-      return sse_decode_String(deserializer);
+      return (sse_decode_String(deserializer));
     } else {
       return null;
     }
@@ -870,7 +869,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
 
     if (sse_decode_bool(deserializer)) {
-      return sse_decode_box_autoadd_i_64(deserializer);
+      return (sse_decode_box_autoadd_i_64(deserializer));
     } else {
       return null;
     }
@@ -883,7 +882,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
 
     if (sse_decode_bool(deserializer)) {
-      return sse_decode_box_autoadd_xmltv_programme(deserializer);
+      return (sse_decode_box_autoadd_xmltv_programme(deserializer));
     } else {
       return null;
     }
@@ -894,8 +893,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     SseDeserializer deserializer,
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
-    final var_field0 = sse_decode_String(deserializer);
-    final var_field1 = sse_decode_String(deserializer);
+    var var_field0 = sse_decode_String(deserializer);
+    var var_field1 = sse_decode_String(deserializer);
     return (var_field0, var_field1);
   }
 
@@ -921,11 +920,9 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     SseDeserializer deserializer,
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
-    final var_channelId = sse_decode_String(deserializer);
-    final var_current = sse_decode_opt_box_autoadd_xmltv_programme(
-      deserializer,
-    );
-    final var_next = sse_decode_opt_box_autoadd_xmltv_programme(deserializer);
+    var var_channelId = sse_decode_String(deserializer);
+    var var_current = sse_decode_opt_box_autoadd_xmltv_programme(deserializer);
+    var var_next = sse_decode_opt_box_autoadd_xmltv_programme(deserializer);
     return XmltvCurrentNextEntry(
       channelId: var_channelId,
       current: var_current,
@@ -938,8 +935,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     SseDeserializer deserializer,
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
-    final var_entries = sse_decode_list_xmltv_current_next_entry(deserializer);
-    final var_stats = sse_decode_xmltv_current_next_stats(deserializer);
+    var var_entries = sse_decode_list_xmltv_current_next_entry(deserializer);
+    var var_stats = sse_decode_xmltv_current_next_stats(deserializer);
     return XmltvCurrentNextResult(entries: var_entries, stats: var_stats);
   }
 
@@ -948,11 +945,11 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     SseDeserializer deserializer,
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
-    final var_programmeCount = sse_decode_u_32(deserializer);
-    final var_skippedProgrammeCount = sse_decode_u_32(deserializer);
-    final var_invalidTimestampCount = sse_decode_u_32(deserializer);
-    final var_matchedProgrammeCount = sse_decode_u_32(deserializer);
-    final var_requestedChannelCount = sse_decode_u_32(deserializer);
+    var var_programmeCount = sse_decode_u_32(deserializer);
+    var var_skippedProgrammeCount = sse_decode_u_32(deserializer);
+    var var_invalidTimestampCount = sse_decode_u_32(deserializer);
+    var var_matchedProgrammeCount = sse_decode_u_32(deserializer);
+    var var_requestedChannelCount = sse_decode_u_32(deserializer);
     return XmltvCurrentNextStats(
       programmeCount: var_programmeCount,
       skippedProgrammeCount: var_skippedProgrammeCount,
@@ -965,17 +962,17 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   @protected
   XmltvParseResult sse_decode_xmltv_parse_result(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
-    final var_programmes = sse_decode_list_xmltv_programme(deserializer);
-    final var_stats = sse_decode_xmltv_parse_stats(deserializer);
+    var var_programmes = sse_decode_list_xmltv_programme(deserializer);
+    var var_stats = sse_decode_xmltv_parse_stats(deserializer);
     return XmltvParseResult(programmes: var_programmes, stats: var_stats);
   }
 
   @protected
   XmltvParseStats sse_decode_xmltv_parse_stats(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
-    final var_programmeCount = sse_decode_u_32(deserializer);
-    final var_skippedProgrammeCount = sse_decode_u_32(deserializer);
-    final var_truncated = sse_decode_bool(deserializer);
+    var var_programmeCount = sse_decode_u_32(deserializer);
+    var var_skippedProgrammeCount = sse_decode_u_32(deserializer);
+    var var_truncated = sse_decode_bool(deserializer);
     return XmltvParseStats(
       programmeCount: var_programmeCount,
       skippedProgrammeCount: var_skippedProgrammeCount,
@@ -986,10 +983,10 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   @protected
   XmltvProgramme sse_decode_xmltv_programme(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
-    final var_channelId = sse_decode_String(deserializer);
-    final var_start = sse_decode_String(deserializer);
-    final var_stop = sse_decode_opt_String(deserializer);
-    final var_title = sse_decode_opt_String(deserializer);
+    var var_channelId = sse_decode_String(deserializer);
+    var var_start = sse_decode_String(deserializer);
+    var var_stop = sse_decode_opt_String(deserializer);
+    var var_title = sse_decode_opt_String(deserializer);
     return XmltvProgramme(
       channelId: var_channelId,
       start: var_start,
