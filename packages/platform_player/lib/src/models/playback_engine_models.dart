@@ -324,17 +324,6 @@ List<AiroPlaybackTrackOption> externalSubtitleTracksFor(
   );
 }
 
-/// A single contiguous downloaded/decoded range of the media timeline.
-class AiroPlaybackBufferedRange extends Equatable {
-  const AiroPlaybackBufferedRange({required this.start, required this.end});
-
-  final Duration start;
-  final Duration end;
-
-  @override
-  List<Object?> get props => [start, end];
-}
-
 class AiroPlaybackDiagnostics extends Equatable {
   AiroPlaybackDiagnostics({
     required this.backendId,

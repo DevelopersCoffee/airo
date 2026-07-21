@@ -1,6 +1,6 @@
 import 'package:equatable/equatable.dart';
 
-enum VaultRecordType { bankAccount, panCard, creditCard, secureDocument }
+import '../domain/vault_record_type.dart';
 
 final class VaultRecordRef extends Equatable {
   const VaultRecordRef._({required this.type, this.nickname, this.id});
