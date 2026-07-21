@@ -236,6 +236,53 @@ void main() {
     expect(find.text('Late Show'), findsOneWidget);
   });
 
+  testWidgets(
+    'Jump to Present appears only when now is off-viewport and snaps back',
+    (tester) async {
+      await pumpGrid(
+        tester,
+        state: fixedState([
+          program(
+            'now',
+            'Now Show',
+            DateTime.utc(2026, 7, 20, 12),
+            DateTime.utc(2026, 7, 20, 13),
+          ),
+          program(
+            'late',
+            'Late Show',
+            DateTime.utc(2026, 7, 20, 17),
+            DateTime.utc(2026, 7, 20, 18),
+          ),
+        ]),
+      );
+
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const ValueKey('epg_touch_jump_to_present')),
+        findsNothing,
+      );
+
+      await tester.drag(
+        find.byKey(const ValueKey('epg_touch_row_channel-1')),
+        const Offset(-1500, 0),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const ValueKey('epg_touch_jump_to_present')),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.byKey(const ValueKey('epg_touch_jump_to_present')));
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const ValueKey('epg_touch_jump_to_present')),
+        findsNothing,
+      );
+      expect(find.text('Now Show'), findsOneWidget);
+    },
+  );
+
   testWidgets('newly materialized rows inherit the horizontal time offset', (
     tester,
   ) async {

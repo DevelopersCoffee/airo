@@ -42,6 +42,7 @@ class _EpgTouchTimelineGridState extends ConsumerState<EpgTouchTimelineGrid> {
   final Set<ScrollController> _rowControllers = {};
   bool _isSyncing = false;
   bool _didInitialJump = false;
+  bool _nowOffViewport = false;
   double _horizontalOffset = 0;
 
   @override
@@ -94,6 +95,7 @@ class _EpgTouchTimelineGridState extends ConsumerState<EpgTouchTimelineGrid> {
     _isSyncing = false;
 
     _maybeExtendForward(source);
+    _updateNowVisibility();
   }
 
   void _maybeExtendForward(ScrollController source) {
@@ -108,6 +110,21 @@ class _EpgTouchTimelineGridState extends ConsumerState<EpgTouchTimelineGrid> {
         EpgTouchTimelineGrid.pxPerMinute;
   }
 
+  void _updateNowVisibility() {
+    if (!_headerController.hasClients) return;
+
+    final paged = ref.read(guidePagedWindowProvider);
+    final now = ref.read(nowTickerProvider).value ?? DateTime.now().toUtc();
+    final nowOffset = _nowOffsetPx(paged.earliestStart, now);
+    final viewStart = _headerController.offset;
+    final viewEnd = viewStart + _headerController.position.viewportDimension;
+    final offViewport = nowOffset < viewStart || nowOffset > viewEnd;
+
+    if (offViewport != _nowOffViewport && mounted) {
+      setState(() => _nowOffViewport = offViewport);
+    }
+  }
+
   void _jumpToNow(GuidePagedWindowState paged, DateTime now) {
     final target = (_nowOffsetPx(paged.earliestStart, now) - 40).clamp(
       0.0,
@@ -118,6 +135,7 @@ class _EpgTouchTimelineGridState extends ConsumerState<EpgTouchTimelineGrid> {
       if (!controller.hasClients) continue;
       controller.jumpTo(target.clamp(0.0, controller.position.maxScrollExtent));
     }
+    _updateNowVisibility();
   }
 
   @override
@@ -179,28 +197,47 @@ class _EpgTouchTimelineGridState extends ConsumerState<EpgTouchTimelineGrid> {
           ),
         ),
         Expanded(
-          child: ListView.builder(
-            itemExtent: EpgTouchTimelineGrid.rowHeight,
-            itemCount: channels.length,
-            itemBuilder: (context, index) {
-              final channel = channels[index];
-              return _TouchChannelRow(
-                key: ValueKey('epg_touch_row_${channel.id}'),
-                channel: channel,
-                entry: entriesByChannel[channel.id],
-                windowStart: paged.earliestStart,
-                windowDuration: timelineDuration,
-                timelineWidth: timelineWidth,
-                initialScrollOffset: _horizontalOffset,
-                onRegisterScrollController: _registerRowController,
-                onUnregisterScrollController: _unregisterRowController,
-                onHorizontalScroll: _syncFrom,
-                remindedIds: remindedIds,
-                remindersAvailable: remindersAvailable,
-                onChannelSelect: widget.onChannelSelect,
-                onReminderToggle: widget.onReminderToggle,
-              );
-            },
+          child: Stack(
+            children: [
+              ListView.builder(
+                itemExtent: EpgTouchTimelineGrid.rowHeight,
+                itemCount: channels.length,
+                itemBuilder: (context, index) {
+                  final channel = channels[index];
+                  return _TouchChannelRow(
+                    key: ValueKey('epg_touch_row_${channel.id}'),
+                    channel: channel,
+                    entry: entriesByChannel[channel.id],
+                    windowStart: paged.earliestStart,
+                    windowDuration: timelineDuration,
+                    timelineWidth: timelineWidth,
+                    initialScrollOffset: _horizontalOffset,
+                    onRegisterScrollController: _registerRowController,
+                    onUnregisterScrollController: _unregisterRowController,
+                    onHorizontalScroll: _syncFrom,
+                    remindedIds: remindedIds,
+                    remindersAvailable: remindersAvailable,
+                    onChannelSelect: widget.onChannelSelect,
+                    onReminderToggle: widget.onReminderToggle,
+                  );
+                },
+              ),
+              if (_nowOffViewport)
+                Positioned(
+                  right: 12,
+                  bottom: 12,
+                  child: FloatingActionButton.extended(
+                    key: const ValueKey('epg_touch_jump_to_present'),
+                    onPressed: () => _jumpToNow(paged, now),
+                    icon: const Icon(Icons.schedule),
+                    label: const Text(
+                      'Jump to Present',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ),
+            ],
           ),
         ),
         if (paged.forwardLoadFailed)
