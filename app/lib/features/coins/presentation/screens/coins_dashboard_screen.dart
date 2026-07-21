@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:feature_coin/feature_coin.dart';
 import '../../../../core/utils/locale_settings.dart';
 import '../../application/providers/android_import_permission_provider.dart';
 import '../../application/providers/dashboard_providers.dart';
@@ -745,7 +746,13 @@ class _QuickActionsRow extends StatelessWidget {
             MaterialPageRoute(builder: (_) => const BudgetManagementScreen()),
           ),
         ),
-        const _QuickActionButton(icon: Icons.camera_alt, label: 'Scan Receipt'),
+        _QuickActionButton(
+          icon: Icons.lock_outline,
+          label: 'Secure Vault',
+          onTap: () => Navigator.of(
+            context,
+          ).push(MaterialPageRoute(builder: (_) => const VaultGateScreen())),
+        ),
       ],
     );
   }

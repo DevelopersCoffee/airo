@@ -243,3 +243,14 @@ Deterministic checks for the implementation issue:
    detail in Architecture.
 5. Confirm which channels the community should use (GitHub Issues/Discussions,
    Discord, etc.) before adding social/support CTAs.
+
+---
+
+## Completed worktree: feature_coin UI Phase 0
+
+Canonical spec: `docs/superpowers/specs/2026-07-22-feature-coin-ui-phase0.md`
+
+Canonical plan: `docs/superpowers/plans/2026-07-22-feature-coin-ui-phase0.md`
+
+The standalone package UI is wired through the tested vault gate at
+`/money/vault`.

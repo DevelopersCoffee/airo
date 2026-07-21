@@ -121,7 +121,7 @@ dependencies:
   # - screenshot: (screenshots - not needed)
   # - flutter_image_compress: (image compression - not needed)
   # - flutter_local_notifications: (notifications - TV uses different approach)
-  # - airomoney: (finance features - not on TV)
+  # - feature_coin: (finance vault features - not on TV)
 
 dev_dependencies:
   flutter_test:

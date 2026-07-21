@@ -30,6 +30,17 @@ all public copy.
 
 **Estimated scope:** Medium
 
+---
+
+## Completed worktree: feature_coin UI Phase 0
+
+- [x] Add typed UI refs, summary aggregation, and screen-security service.
+- [x] Add lock gate and grouped home list widgets.
+- [x] Add masked detail sheet with reveal/copy.
+- [x] Add add/edit forms with validation and duplicate handling.
+- [x] Export the UI surface and clean stale key-manager documentation.
+- [x] Wire `/money/vault` and run the recorded focused validation.
+
 ## Task 2: Approve the public content contract
 
 **Description:** Lock the root-vs-TV information architecture, approved module

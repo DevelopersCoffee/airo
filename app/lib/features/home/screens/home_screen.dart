@@ -117,11 +117,11 @@ class HomeScreen extends StatelessWidget {
                     onTap: () => context.go(RouteNames.airo),
                   ),
                   AppCard(
-                    title: 'AiroMoney',
+                    title: 'Coins',
                     description: 'Financial management',
                     icon: Icons.account_balance_wallet,
                     color: Colors.green,
-                    onTap: () => context.go(RouteNames.airomoney),
+                    onTap: () => context.go('/money'),
                   ),
                 ],
               ),
