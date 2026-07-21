@@ -83,7 +83,6 @@ class TvFavoritesScreen extends ConsumerWidget {
                         ref
                             .read(iptvStreamingServiceProvider)
                             .playChannel(channel);
-                        ref.read(addToRecentlyWatchedProvider(channel));
                       },
                       onSecondaryAction: () {
                         ref.read(channelFavoriteTogglerProvider)(channel.id);
