@@ -12,6 +12,12 @@ void main() {
       expect(route, '/mind/notifications?category=downloads');
     });
 
+    test('routes raw app paths directly', () {
+      final route = routeFromNotificationPayload('/iptv?channel=channel-1');
+
+      expect(route, '/iptv?channel=channel-1');
+    });
+
     test('falls back to category route when no explicit deep link exists', () {
       final route = routeFromNotificationPayload(
         '{"category":"recording","notification_id":42}',

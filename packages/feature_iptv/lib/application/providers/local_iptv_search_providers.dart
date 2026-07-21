@@ -9,14 +9,15 @@ import 'iptv_providers.dart';
 /// Combines channels, EPG program titles, favorites, and recents into a
 /// searchable [LocalIptvSearchIndex] (CV-006, #810).
 ///
-/// EPG coverage is bounded to the currently-loaded guide window
-/// ([guideEpgWindowProvider]), not the full XMLTV timetable -- no repository
-/// currently exposes the full per-channel program list, and expanding EPG
-/// coverage beyond the guide window is tracked as a follow-up rather than
-/// growing this slice's scope.
+/// EPG coverage uses the currently-loaded paged guide window, not the full
+/// XMLTV timetable. If no guide page has loaded yet, search falls back to
+/// channels, favorites, and recents only.
 final localIptvSearchIndexProvider = FutureProvider<LocalIptvSearchIndex>((
   ref,
 ) async {
+  final epgWindow = ref.read(
+    guidePagedWindowProvider.select((state) => state.window),
+  );
   final channels = await ref.watch(iptvChannelsProvider.future);
   final favoriteIds = await ref.watch(favoriteChannelIdsProvider.future);
   final recentChannels = await ref.watch(
@@ -24,13 +25,9 @@ final localIptvSearchIndexProvider = FutureProvider<LocalIptvSearchIndex>((
   );
   final hiddenGroupIds = await ref.watch(hiddenGroupIdsProvider.future);
 
-  // No EPG source configured falls back to EmptyCompactEpgRepository
-  // (compactEpgRepositoryProvider's default), which resolves an empty
-  // window rather than throwing -- search still works over channels alone.
-  final epgWindow = await ref.watch(guideEpgWindowProvider.future);
-
   final programsByChannelId = <String, List<CompactEpgProgram>>{
-    for (final entry in epgWindow.entries) entry.channelId: entry.programs,
+    for (final entry in epgWindow?.entries ?? const <CompactEpgWindowEntry>[])
+      entry.channelId: entry.programs,
   };
 
   return LocalIptvSearchIndex.build(

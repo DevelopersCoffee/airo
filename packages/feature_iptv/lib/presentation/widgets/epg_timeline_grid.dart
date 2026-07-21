@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,6 +6,7 @@ import 'package:platform_epg/platform_epg.dart';
 
 import '../../application/providers/guide_providers.dart';
 import '../tv/iptv_tv.dart';
+import 'epg_program_progress.dart';
 
 /// Horizontal-timeline EPG grid (CV-015 slice 2): a vertically-virtualized
 /// list of channel rows, each showing its programmes for the current guide
@@ -66,7 +65,9 @@ class _EpgTimelineGridState extends ConsumerState<EpgTimelineGrid> {
   @override
   Widget build(BuildContext context) {
     final channels = ref.watch(guideFilteredChannelsProvider);
-    final windowAsync = ref.watch(guideEpgWindowProvider);
+    final window = ref.watch(
+      guidePagedWindowProvider.select((state) => state.window),
+    );
     final windowStart = ref.watch(guideWindowStartProvider);
     final windowDuration = ref.watch(guideWindowDurationProvider);
     final dimensions = ref.watch(tvDimensionsProvider(context));
@@ -75,7 +76,6 @@ class _EpgTimelineGridState extends ConsumerState<EpgTimelineGrid> {
       return const Center(child: Text('No channels to show yet.'));
     }
 
-    final window = windowAsync.value;
     final entriesByChannel = <String, CompactEpgWindowEntry>{
       for (final entry in window?.entries ?? const <CompactEpgWindowEntry>[])
         entry.channelId: entry,
@@ -91,7 +91,32 @@ class _EpgTimelineGridState extends ConsumerState<EpgTimelineGrid> {
             height: EpgTimelineGrid.timeAxisHeight,
             child: Row(
               children: [
-                const SizedBox(width: EpgTimelineGrid.channelLabelWidth),
+                SizedBox(
+                  width: EpgTimelineGrid.channelLabelWidth,
+                  child: TvFocusable(
+                    key: const ValueKey('epg_jump_to_present'),
+                    onSelect: () {
+                      final now =
+                          ref.read(nowTickerProvider).value ??
+                          DateTime.now().toUtc();
+                      final offset =
+                          now.difference(windowStart).inMinutes *
+                              EpgTimelineGrid.pxPerMinute -
+                          60;
+                      _scrollTimelineTo(offset < 0 ? 0 : offset);
+                    },
+                    semanticLabel: 'Jump to Present',
+                    semanticHint: 'Press OK to jump the guide to now',
+                    semanticButton: true,
+                    showScaleEffect: false,
+                    child: Center(
+                      child: Text(
+                        'Jump to Present',
+                        style: Theme.of(context).textTheme.labelMedium,
+                      ),
+                    ),
+                  ),
+                ),
                 Expanded(
                   child: SingleChildScrollView(
                     controller: _timelineController,
@@ -267,7 +292,7 @@ class _EpgChannelRow extends StatelessWidget {
   }
 }
 
-class _ProgramBlock extends StatelessWidget {
+class _ProgramBlock extends ConsumerWidget {
   const _ProgramBlock({
     super.key,
     required this.program,
@@ -284,7 +309,8 @@ class _ProgramBlock extends StatelessWidget {
   final VoidCallback onSelect;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final now = ref.watch(nowTickerProvider).value ?? DateTime.now().toUtc();
     final windowMinutes = windowDuration.inMinutes;
     final startOffsetMinutes = program.startsAt
         .difference(windowStart)
@@ -298,6 +324,11 @@ class _ProgramBlock extends StatelessWidget {
     final width =
         ((endOffsetMinutes - startOffsetMinutes) * EpgTimelineGrid.pxPerMinute)
             .clamp(24.0, double.infinity);
+    final isAiring = epgProgramIsAiring(
+      startsAt: program.startsAt,
+      endsAt: program.endsAt,
+      now: now,
+    );
 
     return Positioned(
       left: left,
@@ -316,11 +347,36 @@ class _ProgramBlock extends StatelessWidget {
           ),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-            child: Text(
-              program.title,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.bodySmall,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Text(
+                    program.title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ),
+                if (isAiring) ...[
+                  Text(
+                    '${epgProgramMinutesLeft(endsAt: program.endsAt, now: now)} min left',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.labelSmall,
+                  ),
+                  SizedBox(
+                    height: 3,
+                    child: LinearProgressIndicator(
+                      value: epgProgramProgress(
+                        startsAt: program.startsAt,
+                        endsAt: program.endsAt,
+                        now: now,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
             ),
           ),
         ),
@@ -329,16 +385,14 @@ class _ProgramBlock extends StatelessWidget {
   }
 }
 
-/// Repaints its own position on a periodic timer — does NOT trigger a
-/// rebuild of [_EpgChannelRow]/[_ProgramBlock] (CV-015 slice 2's explicit
-/// "current-time indicator updates without full-row rebuilds" criterion).
+/// Repaints its own position from [nowTickerProvider].
 ///
 /// Note: this does not account for the shared [ScrollController]'s live
 /// horizontal scroll offset — it is positioned against the un-scrolled row
 /// start (only [leftInset] is applied). That is a disclosed v1 limitation;
 /// the acceptance criterion this satisfies is "updates without full-row
 /// rebuilds," not "stays visually aligned while scrolled."
-class _CurrentTimeIndicator extends StatefulWidget {
+class _CurrentTimeIndicator extends ConsumerWidget {
   const _CurrentTimeIndicator({
     required this.windowStart,
     required this.windowDuration,
@@ -352,37 +406,14 @@ class _CurrentTimeIndicator extends StatefulWidget {
   final double leftInset;
 
   @override
-  State<_CurrentTimeIndicator> createState() => _CurrentTimeIndicatorState();
-}
-
-class _CurrentTimeIndicatorState extends State<_CurrentTimeIndicator> {
-  Timer? _timer;
-  DateTime _now = DateTime.now().toUtc();
-
-  @override
-  void initState() {
-    super.initState();
-    _timer = Timer.periodic(const Duration(seconds: 30), (_) {
-      setState(() => _now = DateTime.now().toUtc());
-    });
-  }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    _timer = null;
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final minutesFromStart = _now.difference(widget.windowStart).inMinutes;
-    if (minutesFromStart < 0 ||
-        minutesFromStart > widget.windowDuration.inMinutes) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final now = ref.watch(nowTickerProvider).value ?? DateTime.now().toUtc();
+    final minutesFromStart = now.difference(windowStart).inMinutes;
+    if (minutesFromStart < 0 || minutesFromStart > windowDuration.inMinutes) {
       return const SizedBox.shrink();
     }
     return Positioned(
-      left: widget.leftInset + minutesFromStart * widget.pxPerMinute,
+      left: leftInset + minutesFromStart * pxPerMinute,
       top: 0,
       bottom: 0,
       child: IgnorePointer(
