@@ -4,6 +4,7 @@ import 'package:core_ui/core_ui.dart';
 import 'package:platform_channels/platform_channels.dart';
 
 import '../../application/providers/iptv_providers.dart';
+import '../../application/providers/recently_watched_recorder.dart';
 import '../../application/providers/vod_providers.dart';
 import '../widgets/vod_grid.dart';
 
@@ -80,8 +81,8 @@ class VodTvScreen extends ConsumerWidget {
       logoUrl: item.posterUrl,
       group: item.group,
     );
+    ref.read(pendingVodHistoryItemProvider.notifier).state = item;
     ref.read(iptvStreamingServiceProvider).playChannel(syntheticChannel);
-    ref.read(addToVodWatchHistoryProvider(item).future);
   }
 }
 

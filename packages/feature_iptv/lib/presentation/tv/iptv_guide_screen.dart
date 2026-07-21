@@ -68,7 +68,6 @@ class IptvGuideScreen extends ConsumerWidget {
                       ref
                           .read(iptvStreamingServiceProvider)
                           .playChannel(channel);
-                      ref.read(addToRecentlyWatchedProvider(channel));
                       onChannelSelected();
                     },
                   ),
