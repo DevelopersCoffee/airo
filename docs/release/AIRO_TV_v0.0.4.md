@@ -37,6 +37,10 @@ bundled media.
 - Airo TV does not provide playlists, channels, subscriptions, or media.
   Users must provide content they are authorized to access.
 - No accounts, cloud sync, recording/DVR, or bundled catalog are included.
+- The production Android signing and Firebase runtime secrets are not
+  configured in this repository. The release manifest records the resulting
+  non-production signing profile; an `ephemeral-ci-validation` artifact cannot
+  upgrade a previously installed build with a different certificate.
 - Phone-hosted media streaming and the real phone-to-receiver dogfood matrix
   remain under qualification.
 - Web is validation-only and iOS/iPadOS are not part of this TV release.

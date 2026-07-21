@@ -30,6 +30,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Android TV/Google TV artifact verification is recorded with the release; Fire TV remains compatible/experimental pending dedicated device evidence.
 - Phone-hosted media streaming and its real-device receiver matrix remain under qualification.
 - macOS artifacts are unsigned and not notarized; they are release evidence, not a notarized macOS distribution.
+- Production Android signing and Firebase runtime secrets are not configured;
+  the release manifest discloses the non-production signing profile for each
+  direct-install artifact.
 
 ## [Airo TV v0.0.4-rc.3] - 2026-07-19
 
