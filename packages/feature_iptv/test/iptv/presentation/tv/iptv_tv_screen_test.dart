@@ -499,4 +499,92 @@ void main() {
     expect(find.text('Add Playlist URL'), findsOneWidget);
     expect(find.text('How to add'), findsOneWidget);
   });
+
+  testWidgets('search dialog shows live channel results while typing', (
+    tester,
+  ) async {
+    final semantics = tester.ensureSemantics();
+    try {
+      await pumpScreen(tester, settle: false);
+
+      await tester.tap(find.byIcon(Icons.search).first);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 200));
+
+      expect(find.text('Search channels'), findsOneWidget);
+
+      await tester.enterText(find.byType(TextField), 'music');
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      // The matching channel surfaces inside the dialog itself — the user
+      // does not have to press Done and hunt through the grid behind it.
+      expect(
+        find.byKey(const ValueKey('tv-search-result-music-1')),
+        findsOneWidget,
+      );
+      expect(find.text('No channels match "music".'), findsNothing);
+    } finally {
+      semantics.dispose();
+    }
+  });
+
+  testWidgets('search dialog shows empty state for a query with no matches', (
+    tester,
+  ) async {
+    final semantics = tester.ensureSemantics();
+    try {
+      await pumpScreen(tester, settle: false);
+
+      await tester.tap(find.byIcon(Icons.search).first);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 200));
+
+      await tester.enterText(find.byType(TextField), 'zzz-no-such-channel');
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      expect(
+        find.text('No channels match "zzz-no-such-channel".'),
+        findsOneWidget,
+      );
+    } finally {
+      semantics.dispose();
+    }
+  });
+
+  testWidgets(
+    'closing the search dialog after typing does not crash during the pop '
+    'animation (regression: TextEditingController used after dispose)',
+    (tester) async {
+      final semantics = tester.ensureSemantics();
+      try {
+        await pumpScreen(tester, settle: false);
+
+        await tester.tap(find.byIcon(Icons.search).first);
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 200));
+
+        await tester.enterText(find.byType(TextField), 'news');
+        await tester.pump();
+
+        await tester.tap(find.text('Done'));
+        // Pump through the dialog's pop animation frame by frame — the old
+        // code disposed the controller as soon as showDialog's future
+        // resolved, so these exact frames rebuilt a TextField bound to a
+        // disposed controller and threw.
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 50));
+        await tester.pump(const Duration(milliseconds: 100));
+        await tester.pump(const Duration(milliseconds: 200));
+
+        expect(tester.takeException(), isNull);
+        expect(find.text('Search channels'), findsNothing);
+        // The query survives the dialog: the grid stays filtered.
+        expect(find.text('2 results for "news"'), findsOneWidget);
+      } finally {
+        semantics.dispose();
+      }
+    },
+  );
 }
