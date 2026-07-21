@@ -533,6 +533,19 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
     // to take a deep-linked channel back to the browse grid.
     final showFullscreenPlayer = isFullscreen;
 
+    // System PiP: the floating window IS the whole app window, so render
+    // only the video surface — no app bar, drawer, headers, or controls —
+    // like YouTube/Netflix PiP (#1002). Playback continues uninterrupted:
+    // the streaming service is provider-scoped, not widget-scoped, and the
+    // bare widget re-attaches to the same engine's video view (same swap
+    // the fullscreen toggle already does).
+    if (ref.watch(pictureInPictureActiveProvider)) {
+      return const Scaffold(
+        backgroundColor: Colors.black,
+        body: SizedBox.expand(child: VideoPlayerWidget(showControls: false)),
+      );
+    }
+
     if (showFullscreenPlayer) {
       return AiroResponsiveScaffold(
         padding: EdgeInsets.zero,

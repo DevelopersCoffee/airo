@@ -357,6 +357,12 @@ final appLifecycleStateProvider = StateProvider<AppLifecycleState>(
   (ref) => AppLifecycleState.resumed,
 );
 
+/// Whether the app is currently in system Picture-in-Picture mode (#1002).
+/// Mirrored from the single native state-change subscription owned by
+/// [playerBackgroundingCoordinatorProvider] — widgets watch this to switch
+/// to a video-only layout while the PiP window is up.
+final pictureInPictureActiveProvider = StateProvider<bool>((ref) => false);
+
 /// Current channel provider
 final currentChannelProvider = Provider<IPTVChannel?>((ref) {
   final state = ref.watch(streamingStateProvider);
