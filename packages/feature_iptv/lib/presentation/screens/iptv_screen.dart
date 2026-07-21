@@ -75,6 +75,11 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
   /// a channel that arrives after the user already backed out.
   bool _deepLinkCancelled = false;
 
+  /// Android PiP shrinks the whole activity by default. Keep this screen's
+  /// presentation state in sync with the native callback so the PiP window
+  /// contains only the active video rather than the app bar and browse UI.
+  bool _isPictureInPicture = false;
+
   @override
   void initState() {
     super.initState();
@@ -91,6 +96,9 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
     // Feeds real app lifecycle transitions into appLifecycleStateProvider,
     // which playerBackgroundingCoordinatorProvider listens to above.
     WidgetsBinding.instance.addObserver(this);
+    AiroNativePictureInPicture.setStateChangeHandler((isActive) {
+      if (mounted) setState(() => _isPictureInPicture = isActive);
+    });
 
     final deepLinkId = widget.deepLinkChannelId;
     if (deepLinkId != null) {
@@ -158,6 +166,7 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
     // 1. _toggleFullscreen() when user explicitly exits fullscreen
     // 2. AppShell when navigating to a different tab
     WidgetsBinding.instance.removeObserver(this);
+    AiroNativePictureInPicture.setStateChangeHandler(null);
     super.dispose();
   }
 
@@ -496,6 +505,17 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
     final isFullscreen = ref.watch(isFullscreenModeProvider);
     final isPlaying =
         ref.watch(streamingStateProvider).value?.isPlaying == true;
+
+    if (_isPictureInPicture) {
+      return AiroResponsiveScaffold(
+        padding: EdgeInsets.zero,
+        backgroundColor: Colors.black,
+        body: VideoPlayerWidget(
+          showControls: true,
+          onFullscreenToggle: _toggleFullscreen,
+        ),
+      );
+    }
 
     // A deep link is "pending" until its resolution (in initState's
     // post-frame callback) either starts playback or determines the
@@ -1374,13 +1394,6 @@ class _FeaturedPlayerPanel extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Featured Player', style: theme.textTheme.titleLarge),
-              const SizedBox(height: 4),
-              Text(
-                'Play media from your saved playlist.',
-                style: theme.textTheme.bodyMedium,
-              ),
-              const SizedBox(height: 16),
               if (boundedHeight) Flexible(fit: FlexFit.loose, child: player),
               if (!boundedHeight) player,
               const SizedBox(height: 12),

@@ -155,7 +155,8 @@ void main() {
     // Category browsing moved into the rails (Entertainment, Music, ...);
     // the chip row is gone.
     expect(find.byType(ChoiceChip), findsNothing);
-    expect(find.text('Featured Player'), findsOneWidget);
+    expect(find.text('Featured Player'), findsNothing);
+    expect(find.text('Play media from your saved playlist.'), findsNothing);
     expect(find.text('Select a channel to start watching'), findsOneWidget);
 
     await tester.drag(find.byType(CustomScrollView), const Offset(0, -320));
@@ -168,6 +169,25 @@ void main() {
     // BrowseScreen's own (nested) list.
     expect(find.text('Top India'), findsOneWidget);
     expect(find.text('City News Live'), findsWidgets);
+  });
+
+  testWidgets('shows only the video surface while Android PiP is active', (
+    tester,
+  ) async {
+    await tester.pumpWidget(createWidget());
+    await tester.pumpAndSettle();
+
+    AiroNativePictureInPicture.debugNotifyStateChanged(true);
+    await tester.pump();
+
+    expect(find.byType(AppBar), findsNothing);
+    expect(find.text('Airo TV'), findsNothing);
+    expect(find.byType(VideoPlayerWidget), findsOneWidget);
+
+    AiroNativePictureInPicture.debugNotifyStateChanged(false);
+    await tester.pump();
+
+    expect(find.byType(AppBar), findsOneWidget);
   });
 
   testWidgets(
