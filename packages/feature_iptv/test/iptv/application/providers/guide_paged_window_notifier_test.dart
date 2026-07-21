@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:feature_iptv/application/providers/guide_providers.dart';
 import 'package:feature_iptv/application/providers/iptv_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -60,15 +62,28 @@ void main() {
     return container;
   }
 
-  Future<GuidePagedWindowState> settleInitial(ProviderContainer container) async {
+  Future<GuidePagedWindowState> settleInitial(
+    ProviderContainer container,
+  ) async {
     container
         .read(guidePagedWindowProvider.notifier)
         .debugSetNow(() => fixedNow);
-    // Read the provider to trigger build, then let the microtask chain run.
-    container.read(guidePagedWindowProvider);
-    await Future<void>.delayed(Duration.zero);
-    await Future<void>.delayed(Duration.zero);
-    return container.read(guidePagedWindowProvider);
+    final initial = container.read(guidePagedWindowProvider);
+    if (!initial.isLoadingForward || initial.forwardLoadFailed) return initial;
+
+    final completer = Completer<GuidePagedWindowState>();
+    final subscription = container.listen<GuidePagedWindowState>(
+      guidePagedWindowProvider,
+      (_, next) {
+        if ((!next.isLoadingForward || next.forwardLoadFailed) &&
+            !completer.isCompleted) {
+          completer.complete(next);
+        }
+      },
+      fireImmediately: true,
+    );
+    addTearDown(subscription.close);
+    return completer.future.timeout(const Duration(seconds: 5));
   }
 
   test('initial load covers [now-30min floored, at least now+6h)', () async {
@@ -92,10 +107,7 @@ void main() {
 
     final state = await settleInitial(container);
 
-    expect(
-      state.window!.entryForChannel('channel-1')?.programs,
-      isNotEmpty,
-    );
+    expect(state.window!.entryForChannel('channel-1')?.programs, isNotEmpty);
   });
 
   test('extendForward advances loadedThrough by one 3h page', () async {
@@ -128,19 +140,22 @@ void main() {
     );
   });
 
-  test('a failing page keeps loaded pages and sets forwardLoadFailed', () async {
-    final container = await buildContainer(
-      repository: _FailAfterInitialLoadRepository(buildRepo()),
-    );
-    await settleInitial(container);
-    final loadedWindow = container.read(guidePagedWindowProvider).window;
+  test(
+    'a failing page keeps loaded pages and sets forwardLoadFailed',
+    () async {
+      final container = await buildContainer(
+        repository: _FailAfterInitialLoadRepository(buildRepo()),
+      );
+      await settleInitial(container);
+      final loadedWindow = container.read(guidePagedWindowProvider).window;
 
-    await container.read(guidePagedWindowProvider.notifier).extendForward();
-    final state = container.read(guidePagedWindowProvider);
+      await container.read(guidePagedWindowProvider.notifier).extendForward();
+      final state = container.read(guidePagedWindowProvider);
 
-    expect(state.forwardLoadFailed, isTrue);
-    expect(state.window, same(loadedWindow));
-  });
+      expect(state.forwardLoadFailed, isTrue);
+      expect(state.window, same(loadedWindow));
+    },
+  );
 
   test('retryForward clears the failure and loads the page', () async {
     final failing = _FailAfterInitialLoadRepository(buildRepo());
@@ -154,6 +169,20 @@ void main() {
     final state = container.read(guidePagedWindowProvider);
 
     expect(state.forwardLoadFailed, isFalse);
+  });
+
+  test('invalidation schedules a fresh initial load', () async {
+    final repo = _CountingRepository(buildRepo());
+    final container = await buildContainer(repository: repo);
+
+    await settleInitial(container);
+    expect(repo.loadWindowCalls, 3);
+
+    container.invalidate(guidePagedWindowProvider);
+    await settleInitial(container);
+
+    expect(repo.loadWindowCalls, 6);
+    expect(container.read(guidePagedWindowProvider).window, isNotNull);
   });
 
   test('nowTickerProvider emits UTC instants', () async {
@@ -185,8 +214,7 @@ class _FailAfterInitialLoadRepository implements CompactEpgRepository {
   Future<CompactEpgSlice> loadCurrentNext({
     required Iterable<String> channelIds,
     required DateTime now,
-  }) =>
-      _inner.loadCurrentNext(channelIds: channelIds, now: now);
+  }) => _inner.loadCurrentNext(channelIds: channelIds, now: now);
 
   @override
   Future<CompactEpgWindow> loadWindow(GuideWindowQuery query) async {
@@ -194,6 +222,25 @@ class _FailAfterInitialLoadRepository implements CompactEpgRepository {
     if (failNext && _calls > 3) {
       throw StateError('simulated page load failure');
     }
+    return _inner.loadWindow(query);
+  }
+}
+
+class _CountingRepository implements CompactEpgRepository {
+  _CountingRepository(this._inner);
+
+  final CompactEpgRepository _inner;
+  var loadWindowCalls = 0;
+
+  @override
+  Future<CompactEpgSlice> loadCurrentNext({
+    required Iterable<String> channelIds,
+    required DateTime now,
+  }) => _inner.loadCurrentNext(channelIds: channelIds, now: now);
+
+  @override
+  Future<CompactEpgWindow> loadWindow(GuideWindowQuery query) {
+    loadWindowCalls++;
     return _inner.loadWindow(query);
   }
 }

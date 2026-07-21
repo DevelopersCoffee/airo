@@ -161,10 +161,15 @@ class GuidePagedWindowState extends Equatable {
 /// loaded pages and never pages.
 class GuidePagedWindowNotifier extends Notifier<GuidePagedWindowState> {
   DateTime Function()? _nowOverride;
-  bool _initialLoadScheduled = false;
+  var _loadGeneration = 0;
   Future<void>? _inFlight;
+  DateTime? _anchorNow;
 
   DateTime _now() => _nowOverride?.call() ?? DateTime.now().toUtc();
+  DateTime _capNow() => _anchorNow ?? _now();
+
+  bool _isActive(int generation) =>
+      ref.mounted && generation == _loadGeneration;
 
   @visibleForTesting
   void debugSetNow(DateTime Function() now) => _nowOverride = now;
@@ -182,10 +187,10 @@ class GuidePagedWindowNotifier extends Notifier<GuidePagedWindowState> {
 
   @override
   GuidePagedWindowState build() {
-    if (!_initialLoadScheduled) {
-      _initialLoadScheduled = true;
-      Future.microtask(_loadInitialPages);
-    }
+    final generation = ++_loadGeneration;
+    _inFlight = null;
+    _anchorNow = null;
+    Future.microtask(() => _loadInitialPages(generation));
     final earliest = _floorToThirtyMinutes(_now().subtract(guideBackward));
     return GuidePagedWindowState(
       earliestStart: earliest,
@@ -195,12 +200,16 @@ class GuidePagedWindowNotifier extends Notifier<GuidePagedWindowState> {
   }
 
   Future<void> _loadPage({
+    required int generation,
     required DateTime windowStart,
     required DateTime windowEnd,
   }) async {
     final channels = await ref.read(iptvChannelsProvider.future);
+    if (!_isActive(generation)) return;
     final overrides = await ref.read(guideEpgOverridesProvider.future);
+    if (!_isActive(generation)) return;
     final hiddenGroupIds = await ref.read(hiddenGroupIdsProvider.future);
+    if (!_isActive(generation)) return;
     final repository = ref.read(compactEpgRepositoryProvider);
     final page = await queryGuideWindowWithOverrides(
       channels: channels,
@@ -211,29 +220,37 @@ class GuidePagedWindowNotifier extends Notifier<GuidePagedWindowState> {
       windowEnd: windowEnd,
       now: _now(),
     );
+    if (!_isActive(generation)) return;
     state = state.copyWith(
       window: () => mergeGuideWindowPage(state.window, page),
       loadedThrough: windowEnd,
     );
   }
 
-  Future<void> _loadInitialPages() async {
+  Future<void> _loadInitialPages(int generation) async {
     // Re-anchor here (not only in build) so tests can inject the clock via
     // [debugSetNow] after reading `.notifier` — that read already runs
     // build(), but this microtask only runs afterwards.
-    final earliest = _floorToThirtyMinutes(_now().subtract(guideBackward));
+    final anchorNow = _now();
+    _anchorNow = anchorNow;
+    final earliest = _floorToThirtyMinutes(anchorNow.subtract(guideBackward));
+    if (!_isActive(generation)) return;
     state = state.copyWith(earliestStart: earliest, loadedThrough: earliest);
 
-    final target = _now().add(guideInitialForward);
+    final target = anchorNow.add(guideInitialForward);
     try {
       while (state.loadedThrough.isBefore(target)) {
         await _loadPage(
+          generation: generation,
           windowStart: state.loadedThrough,
           windowEnd: state.loadedThrough.add(guidePageDuration),
         );
+        if (!_isActive(generation)) return;
       }
+      if (!_isActive(generation)) return;
       state = state.copyWith(isLoadingForward: false);
     } catch (_) {
+      if (!_isActive(generation)) return;
       state = state.copyWith(isLoadingForward: false, forwardLoadFailed: true);
     }
   }
@@ -245,25 +262,30 @@ class GuidePagedWindowNotifier extends Notifier<GuidePagedWindowState> {
   /// scroll event.
   Future<void> extendForward() {
     if (state.forwardLoadFailed) return Future.value();
-    return _inFlight ??= _extendForwardOnce().whenComplete(
-      () => _inFlight = null,
-    );
+    final generation = _loadGeneration;
+    return _inFlight ??= _extendForwardOnce().whenComplete(() {
+      if (_isActive(generation)) _inFlight = null;
+    });
   }
 
   Future<void> _extendForwardOnce() async {
+    final generation = _loadGeneration;
     if (state.isLoadingForward) return;
-    final cap = _now().add(guideMaxForward);
+    final cap = _capNow().add(guideMaxForward);
     if (!state.loadedThrough.isBefore(cap)) return;
 
     state = state.copyWith(isLoadingForward: true);
     try {
       final pageEnd = state.loadedThrough.add(guidePageDuration);
       await _loadPage(
+        generation: generation,
         windowStart: state.loadedThrough,
         windowEnd: pageEnd.isAfter(cap) ? cap : pageEnd,
       );
+      if (!_isActive(generation)) return;
       state = state.copyWith(isLoadingForward: false);
     } catch (_) {
+      if (!_isActive(generation)) return;
       state = state.copyWith(isLoadingForward: false, forwardLoadFailed: true);
     }
   }
