@@ -4,6 +4,33 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html) for public release tags.
 
+## [Airo TV v0.0.4] - 2026-07-22
+
+### Added
+
+- Local, deterministic search across imported channels and available guide data, including live TV search results.
+- Smart-playlist rules and persistent canonical channel identities to keep personal lists resilient across re-imports.
+- A bring-your-own XMLTV source flow, guide timeline improvements, favorites, captions, VOD resume/seek, and provider add-flows for Xtream, Stalker, and Jellyfin.
+- Aggregate M3U import counters for parsed, skipped, malformed, and elapsed values, processed through the existing Rust/worker parser boundary.
+
+### Changed
+
+- Airo TV uses a virtualized, paged playlist path for large user-provided playlists and a unified browse experience across TV and compact layouts.
+- Playback diagnostics and bounded retries now explain unavailable streams more clearly while keeping playlist credentials out of diagnostics.
+
+### Fixed
+
+- A channel is added to Recently Watched only after playback starts.
+- Favorites are discoverable from browse cards and the player, and the Guide's source action leads to a working XMLTV setup flow.
+- System picture-in-picture renders a video-only surface and restores the full interface when it closes.
+
+### Known limitations
+
+- Airo TV remains BYOC: it does not bundle playlists, channels, subscriptions, or media content.
+- Android TV/Google TV artifact verification is recorded with the release; Fire TV remains compatible/experimental pending dedicated device evidence.
+- Phone-hosted media streaming and its real-device receiver matrix remain under qualification.
+- macOS artifacts are unsigned and not notarized; they are release evidence, not a notarized macOS distribution.
+
 ## [Airo TV v0.0.4-rc.3] - 2026-07-19
 
 ### Added
@@ -109,5 +136,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - IPTV playlist import, search, playback, Cast controls, and Play Store readiness notes.
 
 [Airo TV v0.0.4-rc.1]: https://github.com/DevelopersCoffee/airo/compare/airo-tv-v0.0.3...airo-tv-v0.0.4-rc.1
+[Airo TV v0.0.4]: https://github.com/DevelopersCoffee/airo/compare/airo-tv-v0.0.3...airo-tv-v0.0.4
 [Airo TV v0.0.2]: https://github.com/DevelopersCoffee/airo/compare/airo-tv-v0.0.1...airo-tv-v0.0.2
 [Airo TV v0.0.1]: https://github.com/DevelopersCoffee/airo/releases/tag/airo-tv-v0.0.1

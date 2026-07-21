@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::time::Instant;
 
 use memchr::memchr;
 
@@ -27,6 +28,23 @@ pub struct M3uPlaylist {
     pub headers: HashMap<String, String>,
 }
 
+/// Aggregate-only results for a playlist parse. These counters deliberately
+/// contain no source URL, channel name, or other user playlist content so they
+/// can safely be used in import progress and release diagnostics.
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct M3uParseStats {
+    pub parsed_count: u32,
+    pub skipped_count: u32,
+    pub malformed_count: u32,
+    pub elapsed_millis: i64,
+}
+
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct M3uParseResult {
+    pub playlist: M3uPlaylist,
+    pub stats: M3uParseStats,
+}
+
 #[flutter_rust_bridge::frb(ignore)]
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 struct PendingExtInf {
@@ -48,16 +66,28 @@ pub fn parse_m3u_playlist(content: String) -> M3uPlaylist {
     parse_m3u_playlist_str(&content)
 }
 
+/// Parse through the same Rust parser while retaining only safe aggregate
+/// counters for large-playlist import progress reporting.
+pub fn parse_m3u_with_stats(content: String) -> M3uParseResult {
+    parse_m3u_playlist_str_with_stats(&content)
+}
+
 fn parse_m3u_playlist_str(content: &str) -> M3uPlaylist {
+    parse_m3u_playlist_str_with_stats(content).playlist
+}
+
+fn parse_m3u_playlist_str_with_stats(content: &str) -> M3uParseResult {
+    let started_at = Instant::now();
     let bytes = content.as_bytes();
     let mut playlist = M3uPlaylist::default();
     let mut pending: Option<PendingExtInf> = None;
+    let mut stats = M3uParseStats::default();
     let mut offset = 0;
 
     while offset <= bytes.len() {
         let remaining = &bytes[offset..];
         let Some(newline_index) = memchr(b'\n', remaining) else {
-            parse_line(&content[offset..], &mut pending, &mut playlist);
+            parse_line(&content[offset..], &mut pending, &mut playlist, &mut stats);
             break;
         };
 
@@ -65,17 +95,42 @@ fn parse_m3u_playlist_str(content: &str) -> M3uPlaylist {
             &content[offset..offset + newline_index],
             &mut pending,
             &mut playlist,
+            &mut stats,
         );
         offset += newline_index + 1;
     }
 
-    playlist
+    if pending.is_some() {
+        stats.skipped_count += 1;
+    }
+    stats.parsed_count = playlist.entries.len().try_into().unwrap_or(u32::MAX);
+    stats.elapsed_millis = started_at
+        .elapsed()
+        .as_millis()
+        .try_into()
+        .unwrap_or(i64::MAX);
+
+    M3uParseResult { playlist, stats }
 }
 
-fn parse_line(line: &str, pending: &mut Option<PendingExtInf>, playlist: &mut M3uPlaylist) {
+fn parse_line(
+    line: &str,
+    pending: &mut Option<PendingExtInf>,
+    playlist: &mut M3uPlaylist,
+    stats: &mut M3uParseStats,
+) {
     let line = line.trim();
     if line.starts_with("#EXTINF:") {
-        *pending = parse_extinf(line);
+        if pending.is_some() {
+            stats.skipped_count += 1;
+        }
+        match parse_extinf(line) {
+            Some(entry) => *pending = Some(entry),
+            None => {
+                stats.malformed_count += 1;
+                *pending = None;
+            }
+        }
         return;
     }
 
@@ -333,5 +388,25 @@ https://example.com/news.m3u8
 
         assert_eq!(playlist.entries.len(), 1);
         assert!(playlist.headers.is_empty());
+    }
+
+    #[test]
+    fn reports_safe_parse_stats_for_malformed_and_skipped_rows() {
+        let result = parse_m3u_playlist_str_with_stats(
+            r#"#EXTM3U
+#EXTINF:-1 This row has no comma
+#EXTINF:-1,Skipped without URL
+# a comment does not consume the pending row
+#EXTINF:-1,Parsed channel
+https://example.com/parsed.m3u8
+#EXTINF:-1,Trailing without URL
+"#,
+        );
+
+        assert_eq!(result.playlist.entries.len(), 1);
+        assert_eq!(result.stats.parsed_count, 1);
+        assert_eq!(result.stats.skipped_count, 2);
+        assert_eq!(result.stats.malformed_count, 1);
+        assert!(result.stats.elapsed_millis >= 0);
     }
 }

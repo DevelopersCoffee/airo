@@ -42,6 +42,29 @@ class NativeM3uPlaylist {
   final Map<String, String> headers;
 }
 
+/// Redacted aggregate parser telemetry for playlist import progress. It never
+/// contains a user-supplied source URL or individual channel data.
+class NativeM3uParseStats {
+  const NativeM3uParseStats({
+    required this.parsedCount,
+    required this.skippedCount,
+    required this.malformedCount,
+    required this.elapsedMillis,
+  });
+
+  final int parsedCount;
+  final int skippedCount;
+  final int malformedCount;
+  final int elapsedMillis;
+}
+
+class NativeM3uParseResult {
+  const NativeM3uParseResult({required this.playlist, required this.stats});
+
+  final NativeM3uPlaylist playlist;
+  final NativeM3uParseStats stats;
+}
+
 /// Parse M3U channel entries with the synchronous Dart fallback parser.
 ///
 /// This is the web fallback and the deterministic-test path; native
@@ -58,23 +81,47 @@ Future<List<NativeM3uEntry>> parseM3uEntriesNative(String content) async =>
 /// synchronous Dart fallback parser. Web fallback / deterministic-test path;
 /// prefer [parseM3uPlaylistNative] on native platforms.
 NativeM3uPlaylist parseM3uPlaylist(String content) =>
-    _dartParseM3uPlaylist(content);
+    parseM3uPlaylistWithStats(content).playlist;
+
+/// Synchronous Dart fallback with redacted aggregate counters. Production
+/// native callers should use [parseM3uPlaylistWithStatsNative].
+NativeM3uParseResult parseM3uPlaylistWithStats(String content) =>
+    _dartParseM3uPlaylistWithStats(content);
 
 /// Parse M3U content (entries + `#EXTM3U` header attributes) through the
 /// Rust core parser, falling back to the Dart parser on web or when the
 /// native bridge is unavailable.
 Future<NativeM3uPlaylist> parseM3uPlaylistNative(String content) async {
+  return (await parseM3uPlaylistWithStatsNative(content)).playlist;
+}
+
+/// Parse M3U content and safe aggregate parser telemetry through Rust,
+/// falling back to the deterministic Dart parser when unavailable.
+Future<NativeM3uParseResult> parseM3uPlaylistWithStatsNative(
+  String content,
+) async {
   if (kIsWeb) {
-    return _dartParseM3uPlaylist(content);
+    return _dartParseM3uPlaylistWithStats(content);
   }
   if (!await initializeCoreNativeBridge()) {
-    return _dartParseM3uPlaylist(content);
+    return _dartParseM3uPlaylistWithStats(content);
   }
   try {
-    final result = await native_m3u.parseM3UPlaylist(content: content);
-    return _fromNativeM3uPlaylist(result);
+    final result = await native_m3u.parseM3UWithStats(content: content);
+    return NativeM3uParseResult(
+      playlist: _fromNativeM3uPlaylist(result.playlist),
+      stats: NativeM3uParseStats(
+        parsedCount: result.stats.parsedCount,
+        skippedCount: result.stats.skippedCount,
+        malformedCount: result.stats.malformedCount,
+        // PlatformInt64 is int on IO and BigInt on web. Native execution is
+        // the only path here, but the conversion keeps web builds compiling.
+        // ignore: noop_primitive_operations
+        elapsedMillis: result.stats.elapsedMillis.toInt(),
+      ),
+    );
   } on Object {
-    return _dartParseM3uPlaylist(content);
+    return _dartParseM3uPlaylistWithStats(content);
   }
 }
 
@@ -102,15 +149,25 @@ NativeM3uEntry _fromNativeM3uEntry(native_m3u.M3uEntry entry) {
   );
 }
 
-NativeM3uPlaylist _dartParseM3uPlaylist(String content) {
+NativeM3uParseResult _dartParseM3uPlaylistWithStats(String content) {
+  final stopwatch = Stopwatch()..start();
   final entries = <NativeM3uEntry>[];
   final headers = <String, String>{};
   _PendingM3uEntry? pending;
+  var skippedCount = 0;
+  var malformedCount = 0;
 
   for (final rawLine in content.split('\n')) {
     final line = rawLine.trim();
     if (line.startsWith('#EXTINF:')) {
-      pending = _parseExtInf(line);
+      if (pending != null) {
+        skippedCount++;
+      }
+      final parsed = _parseExtInf(line);
+      if (parsed == null) {
+        malformedCount++;
+      }
+      pending = parsed;
       continue;
     }
 
@@ -142,7 +199,19 @@ NativeM3uPlaylist _dartParseM3uPlaylist(String content) {
     pending = null;
   }
 
-  return NativeM3uPlaylist(entries: entries, headers: headers);
+  if (pending != null) {
+    skippedCount++;
+  }
+  stopwatch.stop();
+  return NativeM3uParseResult(
+    playlist: NativeM3uPlaylist(entries: entries, headers: headers),
+    stats: NativeM3uParseStats(
+      parsedCount: entries.length,
+      skippedCount: skippedCount,
+      malformedCount: malformedCount,
+      elapsedMillis: stopwatch.elapsedMilliseconds,
+    ),
+  );
 }
 
 _PendingM3uEntry? _parseExtInf(String line) {
