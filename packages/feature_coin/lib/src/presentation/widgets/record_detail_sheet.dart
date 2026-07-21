@@ -4,6 +4,7 @@ import 'package:core_domain/core_domain.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
 import 'package:platform_coin_vault/platform_coin_vault.dart';
 
 import '../../application/clipboard_service.dart';
@@ -250,6 +251,11 @@ class _RecordDetailSheetState extends ConsumerState<RecordDetailSheet> {
     }
   }
 
+  void _edit() {
+    final encodedKey = Uri.encodeComponent(widget.recordKey);
+    context.push('/money/vault/edit/${widget.recordType.name}/$encodedKey');
+  }
+
   void _showSnack(String message) {
     ScaffoldMessenger.of(
       context,
@@ -288,6 +294,11 @@ class _RecordDetailSheetState extends ConsumerState<RecordDetailSheet> {
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
+                IconButton(
+                  tooltip: 'Edit record',
+                  icon: const Icon(Icons.edit_outlined),
+                  onPressed: _deleting ? null : _edit,
+                ),
                 IconButton(
                   tooltip: 'Delete record',
                   icon: const Icon(Icons.delete_outline),

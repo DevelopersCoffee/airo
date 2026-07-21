@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import '../../../../core/routing/route_names.dart';
 import '../../../../core/utils/locale_settings.dart';
 import '../../application/providers/android_import_permission_provider.dart';
 import '../../application/providers/dashboard_providers.dart';
@@ -87,6 +89,20 @@ class CoinsDashboardScreen extends ConsumerWidget {
                   const SizedBox(height: 16),
 
                   const _QuickAddExpenseCard(),
+                  const SizedBox(height: 16),
+
+                  // Secure Vault entry (feature_coin)
+                  Card(
+                    child: ListTile(
+                      leading: const Icon(Icons.lock_outline),
+                      title: const Text('Secure Vault'),
+                      subtitle: const Text(
+                        'Bank accounts, PAN, cards & documents',
+                      ),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => context.push(RouteNames.coinVaultPath),
+                    ),
+                  ),
                   const SizedBox(height: 16),
 
                   const _AndroidImportPermissionCard(),

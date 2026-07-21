@@ -1,3 +1,5 @@
+// ignore_for_file: prefer_initializing_formals
+
 import 'package:core_domain/core_domain.dart';
 
 import '../crypto/field_cipher.dart';
@@ -43,7 +45,10 @@ class PanCardRepository {
 
         await txn.update(
           VaultTables.panCards,
-          {'pan_number_enc': panNumberEnc, 'card_image_blob_enc': cardImageBlobEnc},
+          {
+            'pan_number_enc': panNumberEnc,
+            'card_image_blob_enc': cardImageBlobEnc,
+          },
           where: 'id = ?',
           whereArgs: [id],
         );
