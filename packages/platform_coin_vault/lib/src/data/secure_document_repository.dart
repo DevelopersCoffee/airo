@@ -5,21 +5,30 @@ import 'package:sqflite/sqflite.dart';
 
 import '../crypto/field_cipher.dart';
 import '../domain/entities/secure_document_record.dart';
+import '../domain/entities/vault_entry_summary.dart';
 import 'vault_database.dart';
 
 class SecureDocumentRepository {
-  SecureDocumentRepository({required VaultDatabase database, required FieldCipher fieldCipher})
-    : _database = database,
-      _fieldCipher = fieldCipher;
+  SecureDocumentRepository({
+    required VaultDatabase database,
+    required FieldCipher fieldCipher,
+  }) : _database = database,
+       _fieldCipher = fieldCipher;
 
   final VaultDatabase _database;
   final FieldCipher _fieldCipher;
 
-  Future<Result<int>> create(SecureDocumentRecord record, List<int> keyBytes) async {
+  Future<Result<int>> create(
+    SecureDocumentRecord record,
+    List<int> keyBytes,
+  ) async {
     try {
       final customFieldsEnc = record.customFields.isEmpty
           ? null
-          : await _fieldCipher.encryptField(jsonEncode(record.customFields), keyBytes);
+          : await _fieldCipher.encryptField(
+              jsonEncode(record.customFields),
+              keyBytes,
+            );
       final notesEnc = record.notes == null
           ? null
           : await _fieldCipher.encryptField(record.notes!, keyBytes);
@@ -41,13 +50,18 @@ class SecureDocumentRepository {
       });
       return Success(id);
     } on DatabaseException catch (e) {
-      return Failure(ValidationFailure(
-        message: 'A document with nickname "${record.nickname}" already exists',
-        field: 'nickname',
-        cause: e,
-      ));
+      return Failure(
+        ValidationFailure(
+          message:
+              'A document with nickname "${record.nickname}" already exists',
+          field: 'nickname',
+          cause: e,
+        ),
+      );
     } catch (e) {
-      return Failure(DatabaseFailure(message: 'Failed to create secure document', cause: e));
+      return Failure(
+        DatabaseFailure(message: 'Failed to create secure document', cause: e),
+      );
     }
   }
 
@@ -72,23 +86,137 @@ class SecureDocumentRepository {
       final customFields = customFieldsEnc == null
           ? <String, String>{}
           : Map<String, String>.from(
-              jsonDecode(await _fieldCipher.decryptField(customFieldsEnc, keyBytes)) as Map,
+              jsonDecode(
+                    await _fieldCipher.decryptField(customFieldsEnc, keyBytes),
+                  )
+                  as Map,
             );
 
-      return Success(SecureDocumentRecord(
-        id: row['id'] as int,
-        nickname: row['nickname'] as String,
-        category: DocumentCategory.values.byName(row['category'] as String),
-        linkedAccountNickname: row['linked_account_nickname'] as String?,
-        customFields: customFields,
-        attachmentBlob: attachmentEnc == null
-            ? null
-            : (await _fieldCipher.decryptField(attachmentEnc, keyBytes)).codeUnits,
-        notes: notesEnc == null ? null : await _fieldCipher.decryptField(notesEnc, keyBytes),
-        createdAt: DateTime.fromMillisecondsSinceEpoch(row['created_at'] as int),
-      ));
+      return Success(
+        SecureDocumentRecord(
+          id: row['id'] as int,
+          nickname: row['nickname'] as String,
+          category: DocumentCategory.values.byName(row['category'] as String),
+          linkedAccountNickname: row['linked_account_nickname'] as String?,
+          customFields: customFields,
+          attachmentBlob: attachmentEnc == null
+              ? null
+              : (await _fieldCipher.decryptField(
+                  attachmentEnc,
+                  keyBytes,
+                )).codeUnits,
+          notes: notesEnc == null
+              ? null
+              : await _fieldCipher.decryptField(notesEnc, keyBytes),
+          createdAt: DateTime.fromMillisecondsSinceEpoch(
+            row['created_at'] as int,
+          ),
+        ),
+      );
     } catch (e) {
-      return Failure(DatabaseFailure(message: 'Failed to read secure document', cause: e));
+      return Failure(
+        DatabaseFailure(message: 'Failed to read secure document', cause: e),
+      );
+    }
+  }
+
+  /// Lists all documents as key-free summaries using plain columns plus
+  /// attachment ciphertext presence.
+  Future<Result<List<SecureDocumentSummary>>> listAllSummaries() async {
+    try {
+      final rows = await _database.db.query(
+        VaultTables.secureDocuments,
+        columns: const [
+          'nickname',
+          'category',
+          'linked_account_nickname',
+          'attachment_blob_enc',
+        ],
+        orderBy: 'nickname ASC',
+      );
+      return Success([
+        for (final row in rows)
+          SecureDocumentSummary(
+            nickname: row['nickname'] as String,
+            category: DocumentCategory.values.byName(row['category'] as String),
+            linkedAccountNickname: row['linked_account_nickname'] as String?,
+            hasAttachment: row['attachment_blob_enc'] != null,
+          ),
+      ]);
+    } catch (e) {
+      return Failure(
+        DatabaseFailure(message: 'Failed to list secure documents', cause: e),
+      );
+    }
+  }
+
+  /// Updates the row identified by [SecureDocumentRecord.nickname].
+  /// `attachment_blob_enc` and `created_at` are left untouched -- an edit
+  /// must never wipe a stored attachment.
+  Future<Result<void>> update(
+    SecureDocumentRecord record,
+    List<int> keyBytes,
+  ) async {
+    try {
+      final customFieldsEnc = record.customFields.isEmpty
+          ? null
+          : await _fieldCipher.encryptField(
+              jsonEncode(record.customFields),
+              keyBytes,
+            );
+      final notesEnc = record.notes == null
+          ? null
+          : await _fieldCipher.encryptField(record.notes!, keyBytes);
+
+      final count = await _database.db.update(
+        VaultTables.secureDocuments,
+        {
+          'category': record.category.name,
+          'linked_account_nickname': record.linkedAccountNickname,
+          'custom_fields_enc': customFieldsEnc,
+          'notes_enc': notesEnc,
+        },
+        where: 'nickname = ?',
+        whereArgs: [record.nickname],
+      );
+      if (count == 0) {
+        return Failure(
+          NotFoundFailure(
+            message: 'No document with nickname "${record.nickname}"',
+            resourceType: 'SecureDocumentRecord',
+            resourceId: record.nickname,
+          ),
+        );
+      }
+      return const Success<void>(null);
+    } catch (e) {
+      return Failure(
+        DatabaseFailure(message: 'Failed to update secure document', cause: e),
+      );
+    }
+  }
+
+  Future<Result<void>> deleteByNickname(String nickname) async {
+    try {
+      final count = await _database.db.delete(
+        VaultTables.secureDocuments,
+        where: 'nickname = ?',
+        whereArgs: [nickname],
+      );
+      if (count == 0) {
+        return Failure(
+          NotFoundFailure(
+            message: 'No document with nickname "$nickname"',
+            resourceType: 'SecureDocumentRecord',
+            resourceId: nickname,
+          ),
+        );
+      }
+      return const Success<void>(null);
+    } catch (e) {
+      return Failure(
+        DatabaseFailure(message: 'Failed to delete secure document', cause: e),
+      );
     }
   }
 }
