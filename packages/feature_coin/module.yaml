@@ -1,9 +1,13 @@
-name: airomoney
+name: feature_coin
 owner: Coins / Finance Agent
 reviewers:
+  - Chief Architect
   - Chief Security Officer
   - Chief QA Officer
-allowed_dependencies: []
+allowed_dependencies:
+  - core_domain
+  - core_ui
+  - platform_coin_vault
 forbidden_dependencies:
   - app
 quality_gates: {}
