@@ -16,6 +16,7 @@ import '../widgets/adaptive_iptv_sheet.dart';
 import '../widgets/cast_device_picker_sheet.dart';
 import '../widgets/channel_list_widget.dart';
 import '../widgets/iptv_cast_mini_controller.dart';
+import '../widgets/iptv_cast_prompt_card.dart';
 import '../widgets/iptv_mini_player.dart';
 import '../widgets/iptv_navigation_drawer.dart';
 import '../widgets/phone_media_play_on_tv_sheet.dart';
@@ -624,6 +625,7 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
               onChannelTap: _playChannel,
               onFullscreenToggle: _toggleFullscreen,
               onPlaylistSourceTap: _showPlaylistSheet,
+              onCastTap: kIsWeb ? null : _showCastSheet,
             ),
           ),
           const IptvCastMiniController(),
@@ -701,6 +703,37 @@ class _IPTVScreenBodyState extends ConsumerState<IPTVScreenBody> {
     await showPlaylistSourceSheet(context, ref);
   }
 
+  Future<void> _showCastSheet() async {
+    if (kIsWeb) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Cast is available in the mobile app.')),
+      );
+      return;
+    }
+
+    final streamingService = ref.read(iptvStreamingServiceProvider);
+    final channel = streamingService.currentState.currentChannel;
+    if (channel == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Choose a channel before casting.')),
+      );
+      return;
+    }
+
+    await showIptvCastDevicePicker(
+      context: context,
+      onDeviceSelected: (device) {
+        ref
+            .read(iptvCastProvider.notifier)
+            .castChannelToDevice(
+              channel: channel,
+              device: device,
+              selectedQuality: streamingService.currentState.selectedQuality,
+            );
+      },
+    );
+  }
+
   void _syncLocalPlaybackWithCast(bool? wasCasting, bool isCasting) {
     final streaming = ref.read(iptvStreamingServiceProvider);
     if (isCasting) {
@@ -745,6 +778,7 @@ class _IPTVScreenBodyState extends ConsumerState<IPTVScreenBody> {
                       onChannelTap: _playChannel,
                       onFullscreenToggle: _toggleFullscreen,
                       onPlaylistSourceTap: _showPlaylistSheet,
+                      onCastTap: kIsWeb ? null : _showCastSheet,
                     ),
                   ),
                   const IptvCastMiniController(),
@@ -761,11 +795,13 @@ class _StreamTabContent extends ConsumerWidget {
     required this.onChannelTap,
     required this.onFullscreenToggle,
     required this.onPlaylistSourceTap,
+    this.onCastTap,
   });
 
   final ValueChanged<IPTVChannel> onChannelTap;
   final VoidCallback onFullscreenToggle;
   final VoidCallback onPlaylistSourceTap;
+  final VoidCallback? onCastTap;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -812,6 +848,7 @@ class _StreamTabContent extends ConsumerWidget {
                           onFullscreenToggle: onFullscreenToggle,
                           buildQualityDropdown: (state) =>
                               _buildQualityDropdown(context, ref, state),
+                          onCastTap: onCastTap,
                         ),
                       ),
                     ),
@@ -842,6 +879,7 @@ class _StreamTabContent extends ConsumerWidget {
                                 onFullscreenToggle: onFullscreenToggle,
                                 buildQualityDropdown: (state) =>
                                     _buildQualityDropdown(context, ref, state),
+                                onCastTap: onCastTap,
                               ),
                             ),
                           ),
@@ -1357,11 +1395,13 @@ class _FeaturedPlayerPanel extends StatelessWidget {
     required this.streamingState,
     required this.onFullscreenToggle,
     required this.buildQualityDropdown,
+    this.onCastTap,
   });
 
   final AsyncValue<StreamingState> streamingState;
   final VoidCallback onFullscreenToggle;
   final Widget Function(StreamingState state) buildQualityDropdown;
+  final VoidCallback? onCastTap;
 
   @override
   Widget build(BuildContext context) {
@@ -1427,6 +1467,13 @@ class _FeaturedPlayerPanel extends StatelessWidget {
                         state.currentChannel!.group,
                         style: theme.textTheme.bodyMedium,
                       ),
+                      if (!kIsWeb && onCastTap != null) ...[
+                        const SizedBox(height: 8),
+                        IptvCastPromptCard(
+                          channel: state.currentChannel!,
+                          onChooseTv: onCastTap,
+                        ),
+                      ],
                       const SizedBox(height: 12),
                       const IPTVMiniPlayer(forceVisible: true),
                     ],

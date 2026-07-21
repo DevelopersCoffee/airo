@@ -3,13 +3,70 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:platform_player/platform_player.dart';
 
 import '../../application/providers/iptv_cast_providers.dart';
-import "package:platform_player/platform_player.dart";
 
-class IptvCastMiniController extends ConsumerWidget {
+/// CV-028 "After connection" surface: a one-time "Playing on {deviceName}"
+/// confirmation the first time this widget observes a live transition into
+/// an active Cast session, settling into the persistent compact controller
+/// afterward (or immediately, for a session that was already connected when
+/// this widget mounted -- e.g. a recovered/hydrated session at app start,
+/// which is not a "new" handoff and must not show the confirmation).
+class IptvCastMiniController extends ConsumerStatefulWidget {
   const IptvCastMiniController({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<IptvCastMiniController> createState() =>
+      _IptvCastMiniControllerState();
+}
+
+class _IptvCastMiniControllerState
+    extends ConsumerState<IptvCastMiniController> {
+  String? _confirmedDeviceId;
+  bool _expanded = false;
+  bool _initialized = false;
+
+  void _confirm({required bool expand}) {
+    final device = ref.read(iptvCastProvider).session.device;
+    setState(() {
+      _confirmedDeviceId = device?.id;
+      _expanded = expand;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_initialized) {
+      // A session that's already connected the first time this widget
+      // builds was hydrated/recovered, not just handed off by the user in
+      // this app session -- suppress the one-time banner for it.
+      final initialSession = ref.read(iptvCastProvider).session;
+      if (initialSession.isConnected) {
+        _confirmedDeviceId = initialSession.device?.id;
+      }
+      _initialized = true;
+    }
+
+    ref.listen<AiroCastSessionSnapshot>(
+      iptvCastProvider.select((state) => state.session),
+      (previous, next) {
+        if (!next.isConnected) {
+          if (_confirmedDeviceId != null || _expanded) {
+            setState(() {
+              _confirmedDeviceId = null;
+              _expanded = false;
+            });
+          }
+          return;
+        }
+        final wasConnectedToSameDevice =
+            previous != null &&
+            previous.isConnected &&
+            previous.device?.id == next.device?.id;
+        if (!wasConnectedToSameDevice && next.device?.id != _confirmedDeviceId) {
+          setState(() {}); // rebuild to evaluate the banner below
+        }
+      },
+    );
+
     final castState = ref.watch(iptvCastProvider);
     final session = castState.session;
     final device = session.device;
@@ -21,6 +78,108 @@ class IptvCastMiniController extends ConsumerWidget {
       return const SizedBox.shrink();
     }
 
+    if (session.isConnected && device.id != _confirmedDeviceId) {
+      return _ConnectionConfirmationBanner(
+        device: device,
+        media: media,
+        onBrowseChannels: () => _confirm(expand: false),
+        onOpenControls: () => _confirm(expand: true),
+      );
+    }
+
+    return _CompactCastController(
+      session: session,
+      device: device,
+      media: media,
+      expanded: _expanded,
+      onToggleExpanded: () => setState(() => _expanded = !_expanded),
+    );
+  }
+}
+
+class _ConnectionConfirmationBanner extends ConsumerWidget {
+  const _ConnectionConfirmationBanner({
+    required this.device,
+    required this.media,
+    required this.onBrowseChannels,
+    required this.onOpenControls,
+  });
+
+  final AiroCastDevice device;
+  final AiroCastMediaRequest? media;
+  final VoidCallback onBrowseChannels;
+  final VoidCallback onOpenControls;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    final channelName = media?.title ?? 'This channel';
+
+    return Material(
+      color: colorScheme.primaryContainer,
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Playing on ${device.name}',
+                style: textTheme.titleSmall?.copyWith(
+                  color: colorScheme.onPrimaryContainer,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                '$channelName is playing on your TV. Keep browsing here or '
+                'use this device as the remote.',
+                style: textTheme.bodyMedium?.copyWith(
+                  color: colorScheme.onPrimaryContainer,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 8,
+                runSpacing: 4,
+                children: [
+                  FilledButton(
+                    onPressed: onBrowseChannels,
+                    child: const Text('Browse channels'),
+                  ),
+                  OutlinedButton(
+                    onPressed: onOpenControls,
+                    child: const Text('Open controls'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CompactCastController extends ConsumerWidget {
+  const _CompactCastController({
+    required this.session,
+    required this.device,
+    required this.media,
+    required this.expanded,
+    required this.onToggleExpanded,
+  });
+
+  final AiroCastSessionSnapshot session;
+  final AiroCastDevice device;
+  final AiroCastMediaRequest? media;
+  final bool expanded;
+  final VoidCallback onToggleExpanded;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
     final isPaused = session.phase == AiroCastSessionPhase.paused;
     final isLoading = session.phase == AiroCastSessionPhase.loadingMedia;
     final isStopped = session.phase == AiroCastSessionPhase.stopped;
@@ -74,6 +233,11 @@ class IptvCastMiniController extends ConsumerWidget {
                       ],
                     ),
                   ),
+                  IconButton(
+                    tooltip: expanded ? 'Fewer controls' : 'More controls',
+                    icon: Icon(expanded ? Icons.expand_less : Icons.expand_more),
+                    onPressed: onToggleExpanded,
+                  ),
                 ],
               ),
               const SizedBox(height: 10),
@@ -82,7 +246,7 @@ class IptvCastMiniController extends ConsumerWidget {
                 runSpacing: 6,
                 crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
-                  if (hasMedia) ...[
+                  if (hasMedia)
                     _CastControlButton(
                       tooltip: isPaused || isStopped
                           ? 'Start playback'
@@ -104,25 +268,6 @@ class IptvCastMiniController extends ConsumerWidget {
                               }
                             },
                     ),
-                    _CastControlButton(
-                      tooltip: 'Reload current stream',
-                      icon: Icons.refresh,
-                      label: 'Reload',
-                      onPressed: isLoading
-                          ? null
-                          : () => ref
-                                .read(iptvCastProvider.notifier)
-                                .reloadActiveMedia(),
-                    ),
-                    _CastControlButton(
-                      tooltip: 'Start a new Cast session',
-                      icon: Icons.restart_alt,
-                      label: 'New session',
-                      onPressed: () => ref
-                          .read(iptvCastProvider.notifier)
-                          .restartActiveSession(),
-                    ),
-                  ],
                   _CastControlButton(
                     tooltip: 'Stop receiver media',
                     icon: Icons.stop,
@@ -131,13 +276,35 @@ class IptvCastMiniController extends ConsumerWidget {
                         ? null
                         : () => ref.read(iptvCastProvider.notifier).stop(),
                   ),
-                  _CastControlButton(
-                    tooltip: 'Disconnect from ${device.name}',
-                    icon: Icons.cast_connected,
-                    label: 'Disconnect',
-                    onPressed: () =>
-                        ref.read(iptvCastProvider.notifier).disconnect(),
-                  ),
+                  if (expanded) ...[
+                    if (hasMedia) ...[
+                      _CastControlButton(
+                        tooltip: 'Reload current stream',
+                        icon: Icons.refresh,
+                        label: 'Reload',
+                        onPressed: isLoading
+                            ? null
+                            : () => ref
+                                  .read(iptvCastProvider.notifier)
+                                  .reloadActiveMedia(),
+                      ),
+                      _CastControlButton(
+                        tooltip: 'Start a new Cast session',
+                        icon: Icons.restart_alt,
+                        label: 'New session',
+                        onPressed: () => ref
+                            .read(iptvCastProvider.notifier)
+                            .restartActiveSession(),
+                      ),
+                    ],
+                    _CastControlButton(
+                      tooltip: 'Disconnect from ${device.name}',
+                      icon: Icons.cast_connected,
+                      label: 'Disconnect',
+                      onPressed: () =>
+                          ref.read(iptvCastProvider.notifier).disconnect(),
+                    ),
+                  ],
                 ],
               ),
               const SizedBox(height: 6),
