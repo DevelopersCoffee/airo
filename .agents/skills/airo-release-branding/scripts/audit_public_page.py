@@ -20,6 +20,9 @@ class Inventory(HTMLParser):
         self.sources: list[str] = []
         self.autoplay_videos = 0
         self.live_demo_roots = 0
+        self.live_demo_videos = 0
+        self.muted_live_demo_videos = 0
+        self.preloading_live_demo_videos = 0
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         values = dict(attrs)
@@ -33,6 +36,12 @@ class Inventory(HTMLParser):
             self.live_demo_roots += 1
         if tag == "video" and "autoplay" in values:
             self.autoplay_videos += 1
+        if tag == "video" and "data-live-demo-video" in values:
+            self.live_demo_videos += 1
+            if "muted" in values:
+                self.muted_live_demo_videos += 1
+            if values.get("preload") != "none":
+                self.preloading_live_demo_videos += 1
 
 
 def latest_public_tv_release(repository: str) -> str:
@@ -136,6 +145,10 @@ def main() -> int:
         "Airo TV includes no channels": "application content boundary",
         "Make your own playlist feel smaller.": "browse-and-organization product story",
         "Saved browse views": "planned saved-view disclosure",
+        'data-live-channel="Vevo Pop"': "approved hero preview identity",
+        "d128y56w6v2kax.cloudfront.net": "approved direct HLS source",
+        "Third-party stream details": "third-party stream disclosure",
+        "Start muted preview": "manual preview fallback",
         "community-voice": "Community Voice link",
         "/milestone/5": "product milestone link",
         "/milestone/6": "performance milestone link",
@@ -161,6 +174,21 @@ def main() -> int:
         "prefers-reduced-motion: reduce": "motion preference detection",
     }
     for snippet, label in required_scroll_logic.items():
+        if snippet not in script_text:
+            errors.append(f"missing {label}: {snippet}")
+
+    required_preview_logic = {
+        'querySelectorAll("[data-live-demo]")': "preview initialization",
+        '"liveAutoplayMuted" in root.dataset': "muted preview contract",
+        "entry.intersectionRatio >= 0.35": "preview visibility threshold",
+        "autoplayBlockedByInitialHash": "non-hero deep-link guard",
+        "demoVideo.muted = true": "forced muted preview",
+        "demoAudio.addEventListener": "user-controlled audio toggle",
+        "demoHls.stopLoad()": "off-screen network pause",
+        "reducedMotion": "reduced-motion preview guard",
+        "demoRecoveryAttempts >= 1": "bounded preview recovery",
+    }
+    for snippet, label in required_preview_logic.items():
         if snippet not in script_text:
             errors.append(f"missing {label}: {snippet}")
 
@@ -199,8 +227,17 @@ def main() -> int:
     for page_name, inventory in (("platform", platform), ("Airo TV", tv)):
         if inventory.autoplay_videos:
             errors.append(f"{page_name} page video must not use autoplay")
-        if inventory.live_demo_roots:
-            errors.append(f"{page_name} page must not contain a live-demo root in this split")
+
+    if platform.live_demo_roots:
+        errors.append("platform page must not contain a live-demo root")
+    if tv.live_demo_roots != 1:
+        errors.append("Airo TV page must contain exactly one hero preview root")
+    if tv.live_demo_videos != 1:
+        errors.append("Airo TV page must contain exactly one hero preview video")
+    if tv.muted_live_demo_videos != 1:
+        errors.append("Airo TV hero preview must begin muted")
+    if tv.preloading_live_demo_videos:
+        errors.append("Airo TV hero preview must use preload=none")
 
     for html_path, inventory in ((platform_page, platform), (tv_page, tv), (legacy_guides, legacy), (tv_guides, tv_guide)):
         for raw in inventory.sources:

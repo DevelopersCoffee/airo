@@ -163,6 +163,7 @@
     const channelName = root.dataset.liveChannel || "live sample";
     const retryLabel = root.dataset.liveRetryLabel || "Try live sample again";
     const autoplayMuted = "liveAutoplayMuted" in root.dataset;
+    const autoplayAnchor = root.id ? "#" + root.id : "";
     const initialButtonMarkup = demoButton.innerHTML;
     const idleStatus = demoStatus.textContent;
     let demoHls = null;
@@ -175,7 +176,7 @@
     let demoAutomaticStart = false;
     let demoAutoplayAttempted = false;
     let autoplayBlockedByInitialHash =
-      autoplayMuted && Boolean(window.location.hash) && window.location.hash !== "#vevo-showcase";
+      autoplayMuted && Boolean(window.location.hash) && window.location.hash !== autoplayAnchor;
     let demoPausedByViewport = false;
     let demoViewportObserver = null;
     let demoViewportTimer = null;
@@ -476,7 +477,7 @@
       setDemoStatus("Muted preview paused off screen.", "paused");
     }
 
-    if (autoplayMuted && "IntersectionObserver" in window) {
+    if (autoplayMuted && !reducedMotion && "IntersectionObserver" in window) {
       demoViewportObserver = new IntersectionObserver(
         function (entries) {
           const entry = entries[0];
@@ -504,9 +505,10 @@
     }
 
     function handleDemoHashChange() {
-      if (!autoplayMuted || demoStarted || window.location.hash !== "#vevo-showcase") return;
+      if (!autoplayMuted || demoStarted || window.location.hash !== autoplayAnchor) return;
       autoplayBlockedByInitialHash = false;
       demoAutoplayAttempted = false;
+      if (!reducedMotion) resumeMutedPreview();
     }
 
     if (autoplayMuted) window.addEventListener("hashchange", handleDemoHashChange);
