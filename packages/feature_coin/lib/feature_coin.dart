@@ -3,3 +3,6 @@
 /// Built on `platform_coin_vault` (crypto/storage). Design spec:
 /// docs/superpowers/specs/2026-07-20-feature-coin-design.md
 library;
+
+export 'src/application/vault_config.dart';
+export 'src/application/vault_providers.dart';
