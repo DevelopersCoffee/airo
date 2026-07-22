@@ -1322,34 +1322,45 @@ class _BringYourOwnPlaylistView extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        children: [
-          Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              'Add your playlist',
-              style: theme.textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.w700,
+    return Semantics(
+      container: true,
+      explicitChildNodes: true,
+      label: 'Playlist setup',
+      hint: 'Add a playlist URL to browse your channels.',
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'Add your playlist',
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Airo is a media player. It does not provide channels, playlists, or program guide data. Add an M3U URL for media you own or are authorized to watch.',
-            style: theme.textTheme.bodyMedium,
-          ),
-          const SizedBox(height: 16),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: FilledButton.icon(
-              onPressed: onPlaylistSourceTap,
-              icon: const Icon(Icons.link),
-              label: const Text('Add playlist URL'),
+            const SizedBox(height: 8),
+            Text(
+              'Airo is a media player. It does not provide channels, playlists, or program guide data. Add an M3U URL for media you own or are authorized to watch.',
+              style: theme.textTheme.bodyMedium,
             ),
-          ),
-        ],
+            const SizedBox(height: 16),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Semantics(
+                button: true,
+                label: 'Add a playlist URL',
+                hint: 'Opens playlist source setup.',
+                child: FilledButton.icon(
+                  onPressed: onPlaylistSourceTap,
+                  icon: const Icon(Icons.link),
+                  label: const Text('Add playlist URL'),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

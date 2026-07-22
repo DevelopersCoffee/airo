@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
 import "package:feature_iptv/feature_iptv.dart";
-import 'package:platform_player/platform_player.dart';
 
 void main() {
   group('VideoQuality', () {
@@ -175,10 +174,15 @@ void main() {
             isExternal: true,
           ),
         ],
-        selectedTrackIds: const {AiroPlaybackTrackKind.subtitle: 'external_sub_0'},
+        selectedTrackIds: const {
+          AiroPlaybackTrackKind.subtitle: 'external_sub_0',
+        },
       );
       expect(next.tracks, hasLength(1));
-      expect(next.selectedTrackIds[AiroPlaybackTrackKind.subtitle], 'external_sub_0');
+      expect(
+        next.selectedTrackIds[AiroPlaybackTrackKind.subtitle],
+        'external_sub_0',
+      );
     });
   });
 }

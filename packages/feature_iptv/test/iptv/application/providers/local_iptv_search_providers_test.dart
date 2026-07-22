@@ -1,4 +1,3 @@
-import 'package:feature_iptv/application/providers/local_iptv_search_providers.dart';
 import 'package:feature_iptv/feature_iptv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';

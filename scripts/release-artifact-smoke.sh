@@ -200,6 +200,40 @@ validate_ipa() {
   fi
 }
 
+validate_macos_zip() {
+  local zip="$1"
+  local sha
+  sha="$(sha256 "$zip")"
+  archive_test_zip "$zip" || { mark_fail "macos_zip" "$zip" "macOS ZIP integrity failed." "$sha"; return; }
+
+  if unzip -Z1 "$zip" | awk '
+    /^[^\/]+\.app\/Contents\/Info\.plist$/ { has_info = 1 }
+    /^[^\/]+\.app\/Contents\/MacOS\/[^\/]+$/ { has_executable = 1 }
+    END { exit !(has_info && has_executable) }
+  '; then
+    mark_pass "macos_zip" "$zip" "macOS ZIP integrity and app bundle presence verified." "$sha"
+  else
+    mark_fail "macos_zip" "$zip" "macOS ZIP is missing an app bundle Info.plist or executable." "$sha"
+  fi
+}
+
+validate_macos_dmg() {
+  local dmg="$1"
+  local sha
+  sha="$(sha256 "$dmg")"
+
+  if ! command -v hdiutil >/dev/null 2>&1; then
+    mark_warn "macos_dmg" "$dmg" "Skipped DMG verification because hdiutil is unavailable on this host." "$sha"
+    return
+  fi
+
+  if hdiutil verify "$dmg" >/dev/null; then
+    mark_pass "macos_dmg" "$dmg" "macOS DMG integrity verified." "$sha"
+  else
+    mark_fail "macos_dmg" "$dmg" "macOS DMG integrity failed." "$sha"
+  fi
+}
+
 validate_web_zip() {
   local zip="$1"
   local sha
@@ -255,6 +289,8 @@ done < <(find "$ARTIFACT_DIR" -type f \( \
   -name "*.apk" -o \
   -name "*.aab" -o \
   -name "*.ipa" -o \
+  -name "*macOS.zip" -o \
+  -name "*macOS.dmg" -o \
   -name "*web*.zip" -o \
   -name "*windows*.zip" -o \
   -name "*linux*.tar.gz" \
@@ -274,6 +310,8 @@ if [[ "${#artifacts[@]}" -gt 0 ]]; then
       *.apk) validate_apk "$artifact" ;;
       *.aab) validate_aab "$artifact" ;;
       *.ipa) validate_ipa "$artifact" ;;
+      *macOS.zip) validate_macos_zip "$artifact" ;;
+      *macOS.dmg) validate_macos_dmg "$artifact" ;;
       *web*.zip) validate_web_zip "$artifact" ;;
       *windows*.zip) validate_windows_zip "$artifact" ;;
       *linux*.tar.gz) validate_linux_tar "$artifact" ;;
@@ -282,11 +320,29 @@ if [[ "${#artifacts[@]}" -gt 0 ]]; then
   done
 fi
 
-python3 "$ROOT_DIR/scripts/generate-release-qualification-report.py" \
-  --inventory "$JSONL" \
-  --output "$REPORT" \
-  --artifact-dir "$ARTIFACT_DIR" \
-  --matrix "$ROOT_DIR/config/release_device_matrix.yaml"
+python3 - "$JSONL" "$REPORT" <<'PY'
+import json
+import sys
+
+inventory_path, report_path = sys.argv[1:]
+with open(inventory_path, encoding='utf-8') as inventory:
+    records = [json.loads(line) for line in inventory if line.strip()]
+
+lines = [
+    '# Release Artifact Smoke Report',
+    '',
+    '| Status | Kind | Artifact | Result |',
+    '| --- | --- | --- | --- |',
+]
+for record in records:
+    message = record['message'].replace('|', '\\|')
+    lines.append(
+        f"| {record['status']} | {record['kind']} | {record['file']} | {message} |"
+    )
+lines.append('')
+with open(report_path, 'w', encoding='utf-8') as report:
+    report.write('\n'.join(lines))
+PY
 
 echo "Release artifact smoke report: $REPORT"
 

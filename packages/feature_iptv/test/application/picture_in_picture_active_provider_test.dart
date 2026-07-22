@@ -2,7 +2,6 @@ import 'package:feature_iptv/application/player_backgrounding_coordinator.dart';
 import 'package:feature_iptv/feature_iptv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:platform_player/platform_player.dart';
 
 // #1002: the session-scoped coordinator provider owns the single native PiP
 // state-change subscription and mirrors it into
@@ -15,22 +14,24 @@ void main() {
     AiroNativePictureInPicture.setStateChangeHandler(null);
   });
 
-  test('native PiP state changes mirror into pictureInPictureActiveProvider',
-      () {
-    final container = ProviderContainer();
-    addTearDown(container.dispose);
+  test(
+    'native PiP state changes mirror into pictureInPictureActiveProvider',
+    () {
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
 
-    // Reading the provider activates the subscription.
-    container.read(playerBackgroundingCoordinatorProvider);
+      // Reading the provider activates the subscription.
+      container.read(playerBackgroundingCoordinatorProvider);
 
-    expect(container.read(pictureInPictureActiveProvider), isFalse);
+      expect(container.read(pictureInPictureActiveProvider), isFalse);
 
-    AiroNativePictureInPicture.debugNotifyStateChanged(true);
-    expect(container.read(pictureInPictureActiveProvider), isTrue);
+      AiroNativePictureInPicture.debugNotifyStateChanged(true);
+      expect(container.read(pictureInPictureActiveProvider), isTrue);
 
-    AiroNativePictureInPicture.debugNotifyStateChanged(false);
-    expect(container.read(pictureInPictureActiveProvider), isFalse);
-  });
+      AiroNativePictureInPicture.debugNotifyStateChanged(false);
+      expect(container.read(pictureInPictureActiveProvider), isFalse);
+    },
+  );
 
   test('disposing the coordinator provider clears the native handler', () {
     final container = ProviderContainer();
