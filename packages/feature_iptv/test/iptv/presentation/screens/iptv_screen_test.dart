@@ -3,6 +3,7 @@ import "dart:io";
 
 import "package:dio/dio.dart";
 import "package:feature_iptv/feature_iptv.dart";
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart';
@@ -146,33 +147,51 @@ void main() {
   testWidgets('renders Airo TV app bar and live list without category chips', (
     tester,
   ) async {
-    await tester.pumpWidget(createWidget());
-    await tester.pumpAndSettle();
+    debugDefaultTargetPlatformOverride = TargetPlatform.android;
+    try {
+      await tester.pumpWidget(createWidget());
+      await tester.pumpAndSettle();
 
-    expect(find.text('Airo TV'), findsOneWidget);
-    expect(find.byTooltip('Search channels'), findsOneWidget);
-    expect(find.byTooltip('Cast'), findsOneWidget);
-    // Category browsing moved into the rails (Entertainment, Music, ...);
-    // the chip row is gone.
-    expect(find.byType(ChoiceChip), findsNothing);
-    expect(find.text('Featured Player'), findsNothing);
-    expect(find.text('Play media from your saved playlist.'), findsNothing);
-    expect(find.text('Select a channel to start watching'), findsNothing);
-    expect(
-      find.text('Choose a channel from your playlist to begin streaming.'),
-      findsNothing,
-    );
+      expect(find.text('Airo TV'), findsOneWidget);
+      expect(find.byTooltip('Search channels'), findsOneWidget);
+      expect(find.byTooltip('Cast'), findsOneWidget);
+      // Category browsing moved into the rails (Entertainment, Music, ...);
+      // the chip row is gone.
+      expect(find.byType(ChoiceChip), findsNothing);
+      expect(find.text('Featured Player'), findsNothing);
+      expect(find.text('Play media from your saved playlist.'), findsNothing);
+      expect(find.text('Select a channel to start watching'), findsNothing);
+      expect(
+        find.text('Choose a channel from your playlist to begin streaming.'),
+        findsNothing,
+      );
 
-    await tester.drag(find.byType(CustomScrollView), const Offset(0, -320));
-    await tester.pumpAndSettle();
+      await tester.drag(find.byType(CustomScrollView), const Offset(0, -320));
+      await tester.pumpAndSettle();
 
-    // The old flat "Playlist Channels" list panel is replaced by the
-    // unified, rail-based BrowseScreen (Task 6): rails from the default
-    // catalog render the matching channels as MediaCards. Only the first
-    // rail is guaranteed to be mounted without further scrolling the
-    // BrowseScreen's own (nested) list.
-    expect(find.text('Top India'), findsOneWidget);
-    expect(find.text('City News Live'), findsWidgets);
+      // The old flat "Playlist Channels" list panel is replaced by the
+      // unified, rail-based BrowseScreen (Task 6): rails from the default
+      // catalog render the matching channels as MediaCards. Only the first
+      // rail is guaranteed to be mounted without further scrolling the
+      // BrowseScreen's own (nested) list.
+      expect(find.text('Top India'), findsOneWidget);
+      expect(find.text('City News Live'), findsWidgets);
+    } finally {
+      debugDefaultTargetPlatformOverride = null;
+    }
+  });
+
+  testWidgets('hides Cast action on macOS', (tester) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+    try {
+      await tester.pumpWidget(createWidget());
+      await tester.pumpAndSettle();
+
+      expect(find.text('Airo TV'), findsOneWidget);
+      expect(find.byTooltip('Cast'), findsNothing);
+    } finally {
+      debugDefaultTargetPlatformOverride = null;
+    }
   });
 
   testWidgets('shows only the video surface while Android PiP is active', (

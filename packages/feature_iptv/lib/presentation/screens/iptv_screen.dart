@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:collection/collection.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -434,7 +433,7 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
   }
 
   Future<void> _showCastSheet() async {
-    if (kIsWeb) {
+    if (!isGoogleCastSenderPlatform) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Cast is available in the mobile app.')),
       );
@@ -609,7 +608,7 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
             tooltip: 'Playlist source',
             onPressed: _showPlaylistSheet,
           ),
-          if (!kIsWeb)
+          if (isGoogleCastSenderPlatform)
             IconButton(
               icon: const Icon(Icons.cast_connected),
               tooltip: 'Cast',
