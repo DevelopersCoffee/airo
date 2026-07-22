@@ -1,12 +1,12 @@
-# TV Explorer UX Adoption — Design
+# Airo TV UX Revamp — Design
 
 **Date:** 2026-07-22
 **Status:** Approved (approach + phasing confirmed by Uday)
-**Reference:** https://tvexplorer.live (Watson TV Explorer v4.20) — screenshots captured 2026-07-22
+**Reference:** competitive analysis of web-based live-TV players, 2026-07-22
 
 ## Goal
 
-Adopt TV Explorer's responsive live-TV UX in Airo across all surfaces (phone,
+Adopt a responsive explorer-style live-TV UX in Airo across all surfaces (phone,
 tablet, desktop, web, TV/D-pad), keep the big video area as the anchor, and
 auto-resume the last-watched live channel after a short branded splash.
 
@@ -19,7 +19,7 @@ auto-resume the last-watched live channel after a short branded splash.
 
 ## Approach (chosen: Adaptive shell)
 
-One `TvExplorerShell` layout in `feature_iptv`, breakpoint-driven:
+One `AiroTvShell` layout in `feature_iptv`, breakpoint-driven:
 
 | Breakpoint | Layout |
 |---|---|
@@ -30,15 +30,15 @@ One `TvExplorerShell` layout in `feature_iptv`, breakpoint-driven:
 Rejected alternatives:
 - Patching `iptv_screen.dart` and `iptv_tv_screen.dart` separately — duplicates
   layout logic, drifts over time.
-- New `feature_tv_explorer` package — module churn without benefit; IPTV state
+- New `feature_tv_ux` package — module churn without benefit; IPTV state
   already lives in `feature_iptv`.
 
 ## Components
 
 Each section is its own file under
-`packages/feature_iptv/lib/presentation/tv_explorer/`:
+`packages/feature_iptv/lib/presentation/tv_ux/`:
 
-- `tv_explorer_shell.dart` — LayoutBuilder breakpoint switch; composes sections.
+- `airo_tv_shell.dart` — LayoutBuilder breakpoint switch; composes sections.
 - `sections/video_stage.dart` — big video area (wraps existing
   `video_player_widget`), splash mosaic overlay, remote overlay host.
 - `sections/channel_info_bar.dart` — logo, name, country flag, LIVE badge,
@@ -68,7 +68,7 @@ Pattern: `sharedPreferencesProvider` + StateNotifier (mirrors
   every successful tune. Key: `iptv_last_channel`.
 - `channelFiltersProvider` — in-session filter state (search text, category,
   country, language). Persisted keys: `iptv_filter_*` so filters survive
-  restart (TV Explorer keeps them).
+  restart.
 - `controlRowVisibilityProvider` — settings toggles for Channel / Stats /
   Filter / Hotbar / Playlist rows. Keys: `iptv_row_<name>_visible`.
 - `hotbarChannelsProvider` — ordered pinned channel ids. Key: `iptv_hotbar`.
@@ -99,7 +99,7 @@ channel, not a timeshift position.
   surface; never loop retries behind splash (bounded failover rule).
 - Filter dialog with zero results → empty-state row "No channels match",
   clear-filter affordance.
-- Cast unavailable → "No cast devices available" disabled row (as TV Explorer).
+- Cast unavailable → "No cast devices available" disabled row.
 
 ## Testing
 
@@ -115,7 +115,7 @@ channel, not a timeshift position.
 1. **Resume last channel** — `lastChannelProvider`, splash mosaic, auto-play
    ~3 s, skip-on-input.
 2. **Filter row + dialogs + channel table** — responsive shell introduced
-   here; existing screens route into `TvExplorerShell`. Includes (gap
+   here; existing screens route into `AiroTvShell`. Includes (gap
    analysis round 2): column sorting (tap header to sort, tap again to
    reverse), saved filters (heart panel stores current filter combo; heart
    tints when any saved state active — key `iptv_saved_filters`), and hotbar
@@ -151,7 +151,7 @@ the stabilized shell.
 
 ## Metadata enrichment note
 
-TV Explorer's channel database is public iptv-org
+The public iptv-org channel database
 (https://github.com/iptv-org/iptv). Airo can enrich user playlists with
 iptv-org country/language/category metadata (match by stream URL or channel
 id) — directly mitigates the sparse-metadata risk on Country/Language

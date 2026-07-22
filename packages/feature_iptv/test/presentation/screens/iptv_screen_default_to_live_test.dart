@@ -117,6 +117,29 @@ void main() {
     expect(find.byKey(const ValueKey('iptv-browse-grid')), findsNothing);
   });
 
+  testWidgets('deep link does not start the stored-channel resume flow', (
+    tester,
+  ) async {
+    final deepLinkPlayed = <IPTVChannel>[];
+    final resumePlayed = <IPTVChannel>[];
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          ..._providerOverrides(played: deepLinkPlayed),
+          resumeChannelProvider.overrideWith((ref) async => _channels.first),
+          playChannelDelegateProvider.overrideWithValue((channel) async {
+            resumePlayed.add(channel);
+          }),
+        ],
+        child: const MaterialApp(home: IPTVScreen(deepLinkChannelId: 'c1')),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(deepLinkPlayed.map((channel) => channel.id), ['c1']);
+    expect(resumePlayed, isEmpty);
+  });
+
   testWidgets(
     'deepLinkChannelId for a missing channel falls back to the browse grid',
     (tester) async {

@@ -17,6 +17,7 @@ import '../../application/wakelock_playback_coordinator.dart';
 import '../../application/providers/rails_provider.dart';
 import '../../application/services/airo_macos_update_service.dart';
 import '../screens/iptv_screen.dart';
+import '../tv_ux/iptv_resume_gate.dart';
 import '../widgets/channel_initials.dart';
 import '../widgets/iptv_icon_placeholder.dart';
 import '../widgets/iptv_mini_player.dart';
@@ -98,88 +99,90 @@ class _IptvTvScreenState extends ConsumerState<IptvTvScreen> {
       overrideFormFactor: AiroFormFactor.tv,
       padding: EdgeInsets.zero,
       backgroundColor: Theme.of(context).colorScheme.surface,
-      body: SafeArea(
-        child: channelsAsync.when(
-          loading: () => const _TvLoadingState(),
-          error: (error, _) => _TvErrorState(
-            message: error.toString(),
-            onRetry: () => ref.invalidate(iptvChannelsProvider),
-          ),
-          data: (allChannels) {
-            final scanCandidates = _recentOnly
-                ? recentAsync.value ?? const <IPTVChannel>[]
-                : filteredChannels;
-            final autoScanScope = _tvAutoScanScopeId(
-              baseScope: autoScanBaseScope,
-              recentOnly: _recentOnly,
-              channels: scanCandidates,
-            );
-            final visibleChannels = ref
-                .read(channelAutoScanProvider.notifier)
-                .channelsForScope(
-                  scopeId: autoScanScope,
-                  channels: scanCandidates,
-                );
-
-            if (allChannels.isEmpty) {
-              return _TvEmptyPlaylistLayout(
-                productProfile: productProfile,
-                child: _TvEmptyPlaylistState(
-                  onPlaylistSourceTap: _showPlaylistSheet,
-                  onPlaylistHelpTap: _showPlaylistGuideDialog,
-                ),
+      body: IptvResumeGate(
+        child: SafeArea(
+          child: channelsAsync.when(
+            loading: () => const _TvLoadingState(),
+            error: (error, _) => _TvErrorState(
+              message: error.toString(),
+              onRetry: () => ref.invalidate(iptvChannelsProvider),
+            ),
+            data: (allChannels) {
+              final scanCandidates = _recentOnly
+                  ? recentAsync.value ?? const <IPTVChannel>[]
+                  : filteredChannels;
+              final autoScanScope = _tvAutoScanScopeId(
+                baseScope: autoScanBaseScope,
+                recentOnly: _recentOnly,
+                channels: scanCandidates,
               );
-            }
-
-            return _TvBrowseLayout(
-              productProfile: productProfile,
-              allChannels: allChannels,
-              visibleChannels: visibleChannels,
-              streamingState: streamingState,
-              recentChannels: recentAsync.value ?? const [],
-              viewMode: _viewMode,
-              recentOnly: _recentOnly,
-              hasActiveFilter: hasActiveFilter || _recentOnly,
-              autoScanState: autoScanState,
-              onChannelSelect: _playChannel,
-              onPlaylistSourceTap: _showPlaylistSheet,
-              onPlaylistHelpTap: _showPlaylistGuideDialog,
-              onSearchTap: _showSearchDialog,
-              onUpdateTap: _showMacosUpdateDialog,
-              onRefresh: () {
-                ref.invalidate(iptvChannelsProvider);
-                ref.invalidate(recentlyWatchedChannelsProvider);
-              },
-              onClearFilters: _clearFilters,
-              onAutoScan: () {
-                unawaited(
-                  ref
-                      .read(channelAutoScanProvider.notifier)
-                      .start(
-                        scopeId: autoScanScope,
-                        channels: scanCandidates,
-                        currentPlayingChannelId: ref
-                            .read(currentChannelProvider)
-                            ?.id,
-                        maxConcurrentRequests: autoScanConcurrency,
-                      ),
-                );
-              },
-              onCancelAutoScan: () =>
-                  ref.read(channelAutoScanProvider.notifier).cancel(),
-              onRemoveUnavailable: () => ref
+              final visibleChannels = ref
                   .read(channelAutoScanProvider.notifier)
-                  .removeUnavailable(),
-              onRestoreUnavailable: () =>
-                  ref.read(channelAutoScanProvider.notifier).restore(),
-              onRecentOnlyChanged: (value) {
-                setState(() => _recentOnly = value);
-              },
-              onViewModeChanged: (mode) {
-                setState(() => _viewMode = mode);
-              },
-            );
-          },
+                  .channelsForScope(
+                    scopeId: autoScanScope,
+                    channels: scanCandidates,
+                  );
+
+              if (allChannels.isEmpty) {
+                return _TvEmptyPlaylistLayout(
+                  productProfile: productProfile,
+                  child: _TvEmptyPlaylistState(
+                    onPlaylistSourceTap: _showPlaylistSheet,
+                    onPlaylistHelpTap: _showPlaylistGuideDialog,
+                  ),
+                );
+              }
+
+              return _TvBrowseLayout(
+                productProfile: productProfile,
+                allChannels: allChannels,
+                visibleChannels: visibleChannels,
+                streamingState: streamingState,
+                recentChannels: recentAsync.value ?? const [],
+                viewMode: _viewMode,
+                recentOnly: _recentOnly,
+                hasActiveFilter: hasActiveFilter || _recentOnly,
+                autoScanState: autoScanState,
+                onChannelSelect: _playChannel,
+                onPlaylistSourceTap: _showPlaylistSheet,
+                onPlaylistHelpTap: _showPlaylistGuideDialog,
+                onSearchTap: _showSearchDialog,
+                onUpdateTap: _showMacosUpdateDialog,
+                onRefresh: () {
+                  ref.invalidate(iptvChannelsProvider);
+                  ref.invalidate(recentlyWatchedChannelsProvider);
+                },
+                onClearFilters: _clearFilters,
+                onAutoScan: () {
+                  unawaited(
+                    ref
+                        .read(channelAutoScanProvider.notifier)
+                        .start(
+                          scopeId: autoScanScope,
+                          channels: scanCandidates,
+                          currentPlayingChannelId: ref
+                              .read(currentChannelProvider)
+                              ?.id,
+                          maxConcurrentRequests: autoScanConcurrency,
+                        ),
+                  );
+                },
+                onCancelAutoScan: () =>
+                    ref.read(channelAutoScanProvider.notifier).cancel(),
+                onRemoveUnavailable: () => ref
+                    .read(channelAutoScanProvider.notifier)
+                    .removeUnavailable(),
+                onRestoreUnavailable: () =>
+                    ref.read(channelAutoScanProvider.notifier).restore(),
+                onRecentOnlyChanged: (value) {
+                  setState(() => _recentOnly = value);
+                },
+                onViewModeChanged: (mode) {
+                  setState(() => _viewMode = mode);
+                },
+              );
+            },
+          ),
         ),
       ),
     );

@@ -21,6 +21,7 @@ import '../widgets/iptv_navigation_drawer.dart';
 import '../widgets/phone_media_play_on_tv_sheet.dart';
 import '../widgets/video_player_widget.dart';
 import '../tv/iptv_guide_screen.dart';
+import '../tv_ux/iptv_resume_gate.dart';
 import 'browse_screen.dart';
 import 'mobile_favorites_screen.dart';
 
@@ -616,18 +617,21 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
             ),
         ],
       ),
-      body: Column(
-        children: [
-          Expanded(
-            child: _StreamTabContent(
-              key: const ValueKey('iptv-browse-grid'),
-              onChannelTap: _playChannel,
-              onFullscreenToggle: _toggleFullscreen,
-              onPlaylistSourceTap: _showPlaylistSheet,
+      body: IptvResumeGate(
+        enabled: widget.deepLinkChannelId == null,
+        child: Column(
+          children: [
+            Expanded(
+              child: _StreamTabContent(
+                key: const ValueKey('iptv-browse-grid'),
+                onChannelTap: _playChannel,
+                onFullscreenToggle: _toggleFullscreen,
+                onPlaylistSourceTap: _showPlaylistSheet,
+              ),
             ),
-          ),
-          const IptvCastMiniController(),
-        ],
+            const IptvCastMiniController(),
+          ],
+        ),
       ),
     );
   }
