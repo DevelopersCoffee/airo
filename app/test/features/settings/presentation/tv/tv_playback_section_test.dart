@@ -2,6 +2,7 @@ import 'package:airo_app/features/settings/presentation/tv/tv_playback_section.d
 import 'package:feature_iptv/feature_iptv.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -10,10 +11,15 @@ void main() {
     SharedPreferences.setMockInitialValues({});
   });
 
-  Future<ProviderContainer> buildContainer() async {
+  Future<ProviderContainer> buildContainer({
+    List<Override> extraOverrides = const [],
+  }) async {
     final prefs = await SharedPreferences.getInstance();
     return ProviderContainer(
-      overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+      overrides: [
+        sharedPreferencesProvider.overrideWithValue(prefs),
+        ...extraOverrides,
+      ],
     );
   }
 
@@ -58,5 +64,27 @@ void main() {
     await tester.pump();
 
     expect(container.read(videoAspectRatioProvider), AiroPlaybackViewFit.cover);
+  });
+
+  testWidgets('renders playback settings extension sections', (tester) async {
+    final container = await buildContainer(
+      extraOverrides: [
+        playbackSettingsExtraSectionsProvider.overrideWithValue(const [
+          ListTile(title: Text('Injected playback setting')),
+        ]),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: const MaterialApp(home: Scaffold(body: TvPlaybackSection())),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('Injected playback setting'), findsOneWidget);
+    expect(find.text('Fit (letterboxed)'), findsOneWidget);
   });
 }
