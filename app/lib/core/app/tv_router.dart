@@ -147,6 +147,9 @@ class _AdaptiveLiveTvScreen extends StatelessWidget {
       return const IPTVScreen();
     }
 
+    if (const bool.fromEnvironment('AIRO_TV_UX_SHELL')) {
+      return const IPTVScreen();
+    }
     return const IptvTvScreen();
   }
 }

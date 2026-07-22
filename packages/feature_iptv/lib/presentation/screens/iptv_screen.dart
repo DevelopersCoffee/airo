@@ -13,15 +13,13 @@ import "package:platform_channels/platform_channels.dart";
 import "package:platform_player/platform_player.dart";
 import '../widgets/adaptive_iptv_sheet.dart';
 import '../widgets/cast_device_picker_sheet.dart';
-import '../widgets/channel_list_widget.dart';
 import '../widgets/iptv_cast_mini_controller.dart';
-import '../widgets/iptv_mini_player.dart';
 import '../widgets/iptv_navigation_drawer.dart';
 import '../widgets/phone_media_play_on_tv_sheet.dart';
 import '../widgets/video_player_widget.dart';
 import '../tv/iptv_guide_screen.dart';
+import '../tv_ux/airo_tv_shell.dart';
 import '../tv_ux/iptv_resume_gate.dart';
-import 'browse_screen.dart';
 import 'mobile_favorites_screen.dart';
 
 /// IPTV Screen with YouTube-like streaming experience
@@ -774,6 +772,7 @@ class _StreamTabContent extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final channelsAsync = ref.watch(iptvChannelsProvider);
     final streamingState = ref.watch(streamingStateProvider);
+    ref.watch(railsProvider);
 
     return channelsAsync.when(
       data: (channels) => _buildContent(context, ref, channels, streamingState),
@@ -788,10 +787,7 @@ class _StreamTabContent extends ConsumerWidget {
     List<IPTVChannel> channels,
     AsyncValue<StreamingState> streamingState,
   ) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isWideScreen = screenWidth > 800;
-    final hasActiveChannel =
-        streamingState.asData?.value.currentChannel != null;
+    final activeChannel = streamingState.asData?.value.currentChannel;
 
     if (channels.isEmpty) {
       return _BringYourOwnPlaylistView(
@@ -799,135 +795,19 @@ class _StreamTabContent extends ConsumerWidget {
       );
     }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const SizedBox(height: 12),
-        Expanded(
-          child: isWideScreen
-              ? Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (hasActiveChannel)
-                      Expanded(
-                        flex: 3,
-                        child: Padding(
-                          padding: const EdgeInsets.only(left: 16, right: 8),
-                          child: _FeaturedPlayerPanel(
-                            streamingState: streamingState,
-                            onFullscreenToggle: onFullscreenToggle,
-                            buildQualityDropdown: (state) =>
-                                _buildQualityDropdown(context, ref, state),
-                          ),
-                        ),
-                      ),
-                    Expanded(
-                      flex: hasActiveChannel ? 2 : 1,
-                      child: Padding(
-                        padding: EdgeInsets.only(
-                          left: hasActiveChannel ? 8 : 16,
-                          right: 16,
-                        ),
-                        child: _ChannelPanel(
-                          channels: channels,
-                          onChannelTap: onChannelTap,
-                        ),
-                      ),
-                    ),
-                  ],
-                )
-              : Column(
-                  children: [
-                    Expanded(
-                      child: CustomScrollView(
-                        slivers: [
-                          if (hasActiveChannel) ...[
-                            SliverToBoxAdapter(
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                ),
-                                child: _FeaturedPlayerPanel(
-                                  streamingState: streamingState,
-                                  onFullscreenToggle: onFullscreenToggle,
-                                  buildQualityDropdown: (state) =>
-                                      _buildQualityDropdown(
-                                        context,
-                                        ref,
-                                        state,
-                                      ),
-                                ),
-                              ),
-                            ),
-                            const SliverToBoxAdapter(
-                              child: SizedBox(height: 12),
-                            ),
-                          ],
-                          SliverFillRemaining(
-                            hasScrollBody: true,
-                            child: BrowseScreen(
-                              onChannelSelected: onChannelTap,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildQualityDropdown(
-    BuildContext context,
-    WidgetRef ref,
-    StreamingState state,
-  ) {
-    return PopupMenuButton<VideoQuality>(
-      tooltip: 'Playback quality',
-      initialValue: state.selectedQuality,
-      onSelected: (quality) {
-        ref.read(iptvStreamingServiceProvider).setQuality(quality);
-      },
-      itemBuilder: (context) => VideoQuality.values
-          .map(
-            (q) => PopupMenuItem(
-              value: q,
-              child: Row(
-                children: [
-                  if (q == state.selectedQuality)
-                    const Icon(Icons.check, size: 16)
-                  else
-                    const SizedBox(width: 16),
-                  const SizedBox(width: 8),
-                  Text(q.label),
-                ],
+    return AiroTvShell(
+      channels: channels,
+      enrichMetadata: true,
+      currentChannel: activeChannel,
+      onChannelSelected: onChannelTap,
+      videoStage: AspectRatio(
+        aspectRatio: 16 / 9,
+        child: activeChannel == null
+            ? const Center(child: Text('Select a channel to start watching'))
+            : VideoPlayerWidget(
+                showControls: true,
+                onFullscreenToggle: onFullscreenToggle,
               ),
-            ),
-          )
-          .toList(),
-      child: Semantics(
-        button: true,
-        label: 'Playback quality ${state.currentQuality.label}',
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-          decoration: BoxDecoration(
-            color: Colors.grey[300],
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                state.currentQuality.label,
-                style: const TextStyle(fontSize: 12),
-              ),
-              const SizedBox(width: 4),
-              const Icon(Icons.arrow_drop_down, size: 16),
-            ],
-          ),
-        ),
       ),
     );
   }
@@ -1361,139 +1241,6 @@ class _BringYourOwnPlaylistView extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _FeaturedPlayerPanel extends StatelessWidget {
-  const _FeaturedPlayerPanel({
-    required this.streamingState,
-    required this.onFullscreenToggle,
-    required this.buildQualityDropdown,
-  });
-
-  final AsyncValue<StreamingState> streamingState;
-  final VoidCallback onFullscreenToggle;
-  final Widget Function(StreamingState state) buildQualityDropdown;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    if (streamingState.asData?.value.currentChannel == null) {
-      return const SizedBox.shrink();
-    }
-
-    final player = AspectRatio(
-      aspectRatio: 16 / 9,
-      child: VideoPlayerWidget(
-        showControls: true,
-        onFullscreenToggle: onFullscreenToggle,
-      ),
-    );
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final boundedHeight = constraints.hasBoundedHeight;
-
-        return Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: theme.colorScheme.surface.withValues(alpha: 0.6),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: theme.colorScheme.outlineVariant),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (boundedHeight) Flexible(fit: FlexFit.loose, child: player),
-              if (!boundedHeight) player,
-              const SizedBox(height: 12),
-              streamingState.when(
-                data: (state) {
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              state.currentChannel!.name,
-                              style: theme.textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.w700,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          buildQualityDropdown(state),
-                        ],
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        state.currentChannel!.group,
-                        style: theme.textTheme.bodyMedium,
-                      ),
-                      const SizedBox(height: 12),
-                      const IPTVMiniPlayer(forceVisible: true),
-                    ],
-                  );
-                },
-                loading: () => const SizedBox.shrink(),
-                error: (_, _) => const SizedBox.shrink(),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-}
-
-class _ChannelPanel extends ConsumerWidget {
-  const _ChannelPanel({required this.channels, required this.onChannelTap});
-
-  final List<IPTVChannel> channels;
-  final ValueChanged<IPTVChannel> onChannelTap;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final searchQuery = ref.watch(channelSearchQueryProvider);
-
-    return Container(
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.35),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Playlist Channels',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  searchQuery.isEmpty
-                      ? '${channels.length} channels ready'
-                      : 'Showing results for "$searchQuery"',
-                ),
-              ],
-            ),
-          ),
-          Expanded(
-            child: ChannelListWidget(
-              onChannelTap: onChannelTap,
-              showCategories: false,
-              showSearchBar: false,
-            ),
-          ),
-        ],
       ),
     );
   }

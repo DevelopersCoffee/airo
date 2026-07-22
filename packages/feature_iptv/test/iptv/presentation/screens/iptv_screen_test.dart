@@ -2,6 +2,7 @@ import "dart:async";
 import "dart:io";
 
 import "package:dio/dio.dart";
+import "package:feature_iptv/application/channel_metadata_enrichment.dart";
 import "package:feature_iptv/feature_iptv.dart";
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -84,6 +85,9 @@ void main() {
           overrides: [
             sharedPreferencesProvider.overrideWithValue(snapshot.data!),
             iptvChannelsProvider.overrideWith((ref) async => channels),
+            channelBrowseMetadataProvider.overrideWith(
+              (ref) async => const <String, ChannelBrowseMetadata>{},
+            ),
             recentlyWatchedChannelsProvider.overrideWith(
               (ref) async => const [],
             ),
@@ -125,6 +129,9 @@ void main() {
           overrides: [
             sharedPreferencesProvider.overrideWithValue(snapshot.data!),
             iptvChannelsProvider.overrideWith((ref) async => const []),
+            channelBrowseMetadataProvider.overrideWith(
+              (ref) async => const <String, ChannelBrowseMetadata>{},
+            ),
             recentlyWatchedChannelsProvider.overrideWith(
               (ref) async => const [],
             ),
@@ -144,7 +151,7 @@ void main() {
     );
   }
 
-  testWidgets('renders Airo TV app bar and live list without category chips', (
+  testWidgets('renders Airo TV app bar and responsive live list', (
     tester,
   ) async {
     debugDefaultTargetPlatformOverride = TargetPlatform.android;
@@ -155,26 +162,19 @@ void main() {
       expect(find.text('Airo TV'), findsOneWidget);
       expect(find.byTooltip('Search channels'), findsOneWidget);
       expect(find.byTooltip('Cast'), findsOneWidget);
-      // Category browsing moved into the rails (Entertainment, Music, ...);
-      // the chip row is gone.
-      expect(find.byType(ChoiceChip), findsNothing);
+      expect(
+        find.byKey(const ValueKey('filter-chip-category')),
+        findsOneWidget,
+      );
       expect(find.text('Featured Player'), findsNothing);
       expect(find.text('Play media from your saved playlist.'), findsNothing);
-      expect(find.text('Select a channel to start watching'), findsNothing);
+      expect(find.text('Select a channel to start watching'), findsOneWidget);
       expect(
         find.text('Choose a channel from your playlist to begin streaming.'),
         findsNothing,
       );
 
-      await tester.drag(find.byType(CustomScrollView), const Offset(0, -320));
-      await tester.pumpAndSettle();
-
-      // The old flat "Playlist Channels" list panel is replaced by the
-      // unified, rail-based BrowseScreen (Task 6): rails from the default
-      // catalog render the matching channels as MediaCards. Only the first
-      // rail is guaranteed to be mounted without further scrolling the
-      // BrowseScreen's own (nested) list.
-      expect(find.text('Top India'), findsOneWidget);
+      expect(find.text('Name'), findsOneWidget);
       expect(find.text('City News Live'), findsWidgets);
     } finally {
       debugDefaultTargetPlatformOverride = null;
@@ -493,11 +493,11 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 250));
 
-    expect(find.text('Playlist Channels'), findsOneWidget);
+    expect(find.text('Name'), findsOneWidget);
     expect(find.text('City News Live'), findsWidgets);
     expect(find.text('News'), findsWidgets);
     expect(find.text('LIVE'), findsWidgets);
-    expect(find.byIcon(Icons.equalizer), findsOneWidget);
+    expect(find.byIcon(Icons.live_tv), findsWidgets);
     expect(find.text('Play on TV'), findsNothing);
     expect(
       find.text('Send this channel to a Chromecast-enabled TV.'),
