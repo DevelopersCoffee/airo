@@ -800,6 +800,7 @@ class _StreamTabContent extends ConsumerWidget {
 
     return AiroTvShell(
       channels: channels,
+      enrichMetadata: true,
       currentChannel: activeChannel,
       onChannelSelected: onChannelTap,
       videoStage: AspectRatio(

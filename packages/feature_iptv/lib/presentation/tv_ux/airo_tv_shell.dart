@@ -4,6 +4,7 @@ import 'package:platform_channels/platform_channels.dart';
 import 'package:platform_streams/platform_streams.dart';
 
 import '../../application/providers/channel_filters_provider.dart';
+import '../../application/channel_metadata_enrichment.dart';
 import 'sections/channel_info_bar.dart';
 import 'sections/channel_table.dart';
 import 'sections/filter_row.dart';
@@ -18,6 +19,7 @@ class AiroTvShell extends ConsumerWidget {
     this.currentChannel,
     this.metadataByChannelId = const {},
     this.availabilityByChannelId = const {},
+    this.enrichMetadata = false,
   });
 
   final List<IPTVChannel> channels;
@@ -26,28 +28,32 @@ class AiroTvShell extends ConsumerWidget {
   final IPTVChannel? currentChannel;
   final Map<String, ChannelBrowseMetadata> metadataByChannelId;
   final Map<String, StreamAvailability> availabilityByChannelId;
+  final bool enrichMetadata;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final filters = ref.watch(channelFiltersProvider);
+    final metadata = enrichMetadata
+        ? ref.watch(channelBrowseMetadataProvider).value ?? metadataByChannelId
+        : metadataByChannelId;
     final sort = ref.watch(channelSortProvider);
     final dimensions = channelFilterDimensions(
       channels: channels,
-      metadataByChannelId: metadataByChannelId,
+      metadataByChannelId: metadata,
     );
     final visible = sortChannels(
       channels: applyChannelFilters(
         channels: channels,
         filters: filters,
-        metadataByChannelId: metadataByChannelId,
+        metadataByChannelId: metadata,
       ),
-      metadataByChannelId: metadataByChannelId,
+      metadataByChannelId: metadata,
       sort: sort,
     );
     final table = ChannelTable(
       key: const ValueKey('airo-tv-channel-table'),
       channels: visible,
-      metadataByChannelId: metadataByChannelId,
+      metadataByChannelId: metadata,
       availabilityByChannelId: availabilityByChannelId,
       sort: sort,
       onSort: (column) =>
