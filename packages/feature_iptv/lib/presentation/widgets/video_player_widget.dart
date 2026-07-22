@@ -1016,8 +1016,8 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                         ],
                         _PlayerControlButton(
                           key: const ValueKey('iptv-player-more-button'),
-                          icon: Icons.more_horiz,
-                          tooltip: 'More player actions',
+                          icon: Icons.settings_outlined,
+                          tooltip: 'Player settings',
                           onPressed: () =>
                               _showPlayerActionsSheet(context, service, state),
                         ),
@@ -1121,8 +1121,8 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
         const SizedBox(width: 14),
         _PlayerRoundControlButton(
           key: const ValueKey('iptv-player-more-button'),
-          icon: Icons.more_horiz,
-          tooltip: 'More player actions',
+          icon: Icons.settings_outlined,
+          tooltip: 'Player settings',
           onPressed: () => _showPlayerActionsSheet(context, service, state),
           diameter: 44,
           iconSize: 24,

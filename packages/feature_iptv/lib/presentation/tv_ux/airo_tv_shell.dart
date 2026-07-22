@@ -1,12 +1,16 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:platform_channels/platform_channels.dart';
 import 'package:platform_streams/platform_streams.dart';
 
 import '../../application/providers/channel_filters_provider.dart';
+import '../../application/providers/hotbar_channels_provider.dart';
 import '../../application/channel_metadata_enrichment.dart';
 import 'sections/channel_info_bar.dart';
 import 'sections/channel_table.dart';
+import 'sections/filter_dialogs.dart';
 import 'sections/filter_row.dart';
 import 'sections/hotbar.dart';
 
@@ -36,6 +40,7 @@ class AiroTvShell extends ConsumerStatefulWidget {
 
 class _AiroTvShellState extends ConsumerState<AiroTvShell> {
   final _snapshotCache = ChannelBrowserSnapshotCache();
+  bool _countryPromptShowing = false;
 
   @override
   void dispose() {
@@ -51,11 +56,18 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
               widget.metadataByChannelId
         : widget.metadataByChannelId;
     final sort = ref.watch(channelSortProvider);
+    final countryPrompt = ref.watch(channelCountryPromptProvider);
+    final hasHotbar = ref.watch(hotbarChannelsProvider).isNotEmpty;
     final snapshot = _snapshotCache.resolve(
       channels: widget.channels,
       metadataByChannelId: metadata,
       filters: filters,
       sort: sort,
+    );
+    _maybeAskForCountry(
+      filters: filters,
+      dimensions: snapshot.dimensions,
+      countryPrompt: countryPrompt,
     );
     final table = ChannelTable(
       key: const ValueKey('airo-tv-channel-table'),
@@ -67,22 +79,27 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
           ref.read(channelSortProvider.notifier).state = sort.toggle(column),
       onChannelSelected: widget.onChannelSelected,
     );
+    final infoBar = ChannelInfoBar(channel: widget.currentChannel);
+    final hotbar = Hotbar(
+      channels: widget.channels,
+      onChannelSelected: widget.onChannelSelected,
+    );
+    final filterRow = FilterRow(dimensions: snapshot.dimensions);
 
     return LayoutBuilder(
       builder: (context, constraints) {
         final chrome = [
-          ChannelInfoBar(channel: widget.currentChannel),
-          Hotbar(
-            channels: widget.channels,
-            onChannelSelected: widget.onChannelSelected,
-          ),
-          FilterRow(dimensions: snapshot.dimensions),
+          _ExplorerSection(label: 'LIVE', height: 60, child: infoBar),
+          if (hasHotbar)
+            _ExplorerSection(label: 'HOTBAR', height: 56, child: hotbar),
+          _ExplorerSection(label: 'FILTER', height: 48, child: filterRow),
         ];
+        final compactChrome = [infoBar, if (hasHotbar) hotbar, filterRow];
         if (constraints.maxWidth < 600) {
           return Column(
             children: [
               Flexible(flex: 3, child: widget.videoStage),
-              ...chrome,
+              ...compactChrome,
               Expanded(flex: 4, child: table),
             ],
           );
@@ -136,21 +153,7 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
                       ),
                       child: Column(
                         children: [
-                          _ExplorerSection(
-                            label: 'LIVE',
-                            height: 64,
-                            child: chrome[0],
-                          ),
-                          _ExplorerSection(
-                            label: 'HOTBAR',
-                            height: 56,
-                            child: chrome[1],
-                          ),
-                          _ExplorerSection(
-                            label: 'FILTER',
-                            height: 56,
-                            child: chrome[2],
-                          ),
+                          ...chrome,
                           Expanded(child: table),
                         ],
                       ),
@@ -164,6 +167,54 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
       },
     );
   }
+
+  void _maybeAskForCountry({
+    required ChannelFilters filters,
+    required ChannelFilterDimensions dimensions,
+    required AsyncValue<bool> countryPrompt,
+  }) {
+    final completed = _countryPromptCompleted(countryPrompt);
+    if (completed != false || _countryPromptShowing) return;
+    if (filters.country != null) {
+      unawaited(
+        ref.read(channelCountryPromptProvider.notifier).markCompleted(),
+      );
+      return;
+    }
+    if (dimensions.countries.isEmpty) return;
+
+    _countryPromptShowing = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      final latestCompleted = ref
+          .read(channelCountryPromptProvider)
+          .maybeWhen(data: (value) => value, orElse: () => null);
+      final latestFilters = ref.read(channelFiltersProvider);
+      if (latestCompleted != false || latestFilters.country != null) {
+        _countryPromptShowing = false;
+        return;
+      }
+
+      final notifier = ref.read(channelFiltersProvider.notifier);
+      await showFilterOptionDialog(
+        context: context,
+        title: 'Choose your country',
+        options: dimensions.countries.toList(growable: false),
+        selectedValue: latestFilters.country,
+        onSelected: notifier.setCountry,
+        onClear: () => notifier.setCountry(null),
+        optionLabel: countryDisplayLabel,
+      );
+      if (mounted) {
+        await ref.read(channelCountryPromptProvider.notifier).markCompleted();
+        _countryPromptShowing = false;
+      }
+    });
+  }
+}
+
+bool? _countryPromptCompleted(AsyncValue<bool> prompt) {
+  return prompt.maybeWhen(data: (value) => value, orElse: () => null);
 }
 
 class _ExplorerSection extends StatelessWidget {

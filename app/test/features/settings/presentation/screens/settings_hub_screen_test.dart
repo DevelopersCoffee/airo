@@ -9,6 +9,23 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  const channels = [
+    IPTVChannel(
+      id: 'india-news',
+      name: 'India News',
+      streamUrl: 'https://example.test/india.m3u8',
+      country: 'IN',
+      languages: ['en'],
+    ),
+    IPTVChannel(
+      id: 'italia-tv',
+      name: 'Italia TV',
+      streamUrl: 'https://example.test/italy.m3u8',
+      country: 'IT',
+      languages: ['it'],
+    ),
+  ];
+
   setUp(() {
     SharedPreferences.setMockInitialValues({});
   });
@@ -23,6 +40,7 @@ void main() {
         overrides: [
           sharedPreferencesProvider.overrideWithValue(prefs),
           secureStoreProvider.overrideWithValue(InMemorySecureStore()),
+          iptvChannelsProvider.overrideWith((ref) async => channels),
         ],
         child: const MaterialApp(home: SettingsHubScreen()),
       ),
@@ -44,9 +62,32 @@ void main() {
     expect(find.text('Currency'), findsNothing);
     expect(find.text('Audio Settings'), findsOneWidget);
     expect(find.text('Playback Settings'), findsOneWidget);
+    expect(find.text('Country'), findsOneWidget);
+    expect(find.text('Choose your default channel country'), findsOneWidget);
     expect(find.text('Playlist Source'), findsOneWidget);
     expect(find.text('EPG Guide Source'), findsOneWidget);
     expect(find.text('Picture-in-picture'), findsNothing);
+  });
+
+  testWidgets('country settings picker updates the global country filter', (
+    tester,
+  ) async {
+    await pumpScreen(tester);
+
+    await tester.tap(find.text('Country'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('🇮🇹 Italy'));
+    await tester.pumpAndSettle();
+
+    final context = tester.element(find.text('🇮🇹 Italy'));
+    final container = ProviderScope.containerOf(context);
+    expect(container.read(channelFiltersProvider).country, 'IT');
+    expect(
+      container
+          .read(channelCountryPromptProvider)
+          .maybeWhen(data: (value) => value, orElse: () => null),
+      isTrue,
+    );
   });
 
   testWidgets('tapping Audio Settings pushes the audio settings screen', (
@@ -132,6 +173,7 @@ void main() {
           appThemeProvider.overrideWith((ref) => notifier),
           sharedPreferencesProvider.overrideWithValue(prefs),
           secureStoreProvider.overrideWithValue(InMemorySecureStore()),
+          iptvChannelsProvider.overrideWith((ref) async => channels),
         ],
         child: const MaterialApp(home: SettingsHubScreen()),
       ),

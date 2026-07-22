@@ -75,7 +75,7 @@ class FilterRow extends ConsumerWidget {
       builder: (context, constraints) {
         if (constraints.maxWidth >= 760 && chips.length >= 4) {
           return Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
             child: Row(
               children: [
                 Expanded(flex: 12, child: _expandChip(chips[0])),
@@ -92,7 +92,7 @@ class FilterRow extends ConsumerWidget {
 
         return SingleChildScrollView(
           scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
           child: Row(
             children: [
               for (final chip in chips) ...[chip, const SizedBox(width: 8)],
@@ -197,19 +197,19 @@ class _FilterChip extends StatelessWidget {
       onSelect: onSelected,
       child: Material(
         color: background,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(12),
         child: InkWell(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(12),
           onTap: onSelected,
           child: Container(
-            height: 40,
+            height: 36,
             width: expanded ? double.infinity : null,
             constraints: const BoxConstraints(minWidth: 112),
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Row(
               mainAxisSize: expanded ? MainAxisSize.max : MainAxisSize.min,
               children: [
-                Icon(icon, size: 20, color: foreground),
+                Icon(icon, size: 18, color: foreground),
                 const SizedBox(width: 8),
                 if (expanded)
                   Expanded(

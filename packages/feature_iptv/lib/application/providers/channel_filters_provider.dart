@@ -11,6 +11,7 @@ const channelFilterSearchStorageKey = 'iptv_filter_search';
 const channelFilterCategoryStorageKey = 'iptv_filter_category';
 const channelFilterCountryStorageKey = 'iptv_filter_country';
 const channelFilterLanguageStorageKey = 'iptv_filter_language';
+const channelCountryPromptCompletedStorageKey = 'iptv_country_prompt_completed';
 
 /// Metadata eligible for display in the responsive channel browser.
 ///
@@ -170,6 +171,45 @@ class ChannelFiltersNotifier extends StateNotifier<ChannelFilters> {
 final channelFiltersProvider =
     StateNotifierProvider<ChannelFiltersNotifier, ChannelFilters>(
       (ref) => ChannelFiltersNotifier(ref),
+    );
+
+class ChannelCountryPromptNotifier extends StateNotifier<AsyncValue<bool>> {
+  ChannelCountryPromptNotifier(this._ref) : super(const AsyncValue.loading()) {
+    unawaited(_load());
+  }
+
+  final Ref _ref;
+
+  Future<void> markCompleted() async {
+    state = const AsyncValue.data(true);
+    try {
+      await _ref
+          .read(sharedPreferencesProvider)
+          .setBool(channelCountryPromptCompletedStorageKey, true);
+    } catch (_) {
+      // Preference failures must not block the TV browser.
+    }
+  }
+
+  Future<void> _load() async {
+    try {
+      final prefs = _ref.read(sharedPreferencesProvider);
+      final hasSavedCountry = _isPresent(
+        prefs.getString(channelFilterCountryStorageKey),
+      );
+      state = AsyncValue.data(
+        prefs.getBool(channelCountryPromptCompletedStorageKey) == true ||
+            hasSavedCountry,
+      );
+    } catch (error, stackTrace) {
+      state = AsyncValue.error(error, stackTrace);
+    }
+  }
+}
+
+final channelCountryPromptProvider =
+    StateNotifierProvider<ChannelCountryPromptNotifier, AsyncValue<bool>>(
+      (ref) => ChannelCountryPromptNotifier(ref),
     );
 
 enum ChannelSortColumn { name, category, country, language, type }

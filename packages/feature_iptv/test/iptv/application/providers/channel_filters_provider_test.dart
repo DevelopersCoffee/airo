@@ -240,6 +240,51 @@ void main() {
     );
   });
 
+  test('country prompt is complete when country already exists', () async {
+    SharedPreferences.setMockInitialValues({
+      channelFilterCountryStorageKey: 'IN',
+    });
+    final prefs = await SharedPreferences.getInstance();
+    final container = ProviderContainer(
+      overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+    );
+    addTearDown(container.dispose);
+
+    await Future<void>.delayed(Duration.zero);
+
+    expect(
+      container
+          .read(channelCountryPromptProvider)
+          .maybeWhen(data: (value) => value, orElse: () => null),
+      isTrue,
+    );
+  });
+
+  test('country prompt completion persists', () async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    final first = ProviderContainer(
+      overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+    );
+    addTearDown(first.dispose);
+
+    await first.read(channelCountryPromptProvider.notifier).markCompleted();
+
+    final restarted = ProviderContainer(
+      overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+    );
+    addTearDown(restarted.dispose);
+    await Future<void>.delayed(Duration.zero);
+
+    expect(
+      restarted
+          .read(channelCountryPromptProvider)
+          .maybeWhen(data: (value) => value, orElse: () => null),
+      isTrue,
+    );
+    expect(prefs.getBool(channelCountryPromptCompletedStorageKey), isTrue);
+  });
+
   test('changing country clears a previously selected language', () async {
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();

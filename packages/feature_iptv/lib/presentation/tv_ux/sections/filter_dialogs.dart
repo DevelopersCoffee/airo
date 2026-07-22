@@ -177,7 +177,7 @@ Future<void> showFilterOptionDialog({
 String _allLabelFor(String title) {
   final normalized = title.trim().toLowerCase();
   return switch (normalized) {
-    'country' => 'All Countries',
+    'country' || 'choose your country' => 'All Countries',
     'language' => 'All Languages',
     'category' => 'All Categories',
     _ => 'All',
