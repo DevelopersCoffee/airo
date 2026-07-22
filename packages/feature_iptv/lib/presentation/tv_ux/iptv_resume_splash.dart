@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 class IptvResumeSplash extends StatefulWidget {
   const IptvResumeSplash({
@@ -66,7 +65,7 @@ class _IptvResumeSplashState extends State<IptvResumeSplash> {
   Widget build(BuildContext context) {
     return Focus(
       autofocus: true,
-      onKeyEvent: (_, __) {
+      onKeyEvent: (_, event) {
         _finish();
         return KeyEventResult.handled;
       },
