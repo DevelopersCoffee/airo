@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:feature_iptv/application/providers/iptv_providers.dart';
-import 'package:feature_iptv/application/providers/vod_providers.dart';
 import 'package:feature_iptv/presentation/widgets/vod_grid.dart';
 import 'package:platform_channels/platform_channels.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -22,8 +21,6 @@ void main() {
 
   testWidgets('renders a card per standalone VOD movie', (tester) async {
     final prefs = await SharedPreferences.getInstance();
-    VodItem? selected;
-
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
@@ -40,7 +37,7 @@ void main() {
               body: SizedBox(
                 width: 1280,
                 height: 720,
-                child: VodGrid(onItemSelect: (item) => selected = item),
+                child: VodGrid(onItemSelect: (_) {}),
               ),
             ),
           ),

@@ -431,6 +431,8 @@ void main() {
   testWidgets('fresh install shows bring-your-own playlist state', (
     tester,
   ) async {
+    final semantics = tester.ensureSemantics();
+
     await tester.pumpWidget(createEmptyWidget());
     await tester.pumpAndSettle();
 
@@ -444,8 +446,11 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('Add playlist URL'), findsOneWidget);
+    expect(find.bySemanticsLabel('Playlist setup'), findsOneWidget);
+    expect(find.bySemanticsLabel('Add a playlist URL'), findsOneWidget);
     expect(find.text('Add a playlist to start watching'), findsNothing);
     expect(find.text('Live Channels'), findsNothing);
+    semantics.dispose();
   });
 
   testWidgets('keeps selected TV channel row metadata readable', (

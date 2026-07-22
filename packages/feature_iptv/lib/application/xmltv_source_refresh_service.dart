@@ -14,13 +14,13 @@ import 'xmltv_source_store.dart';
 /// current/next-only snapshot.
 class XmltvSourceRefreshService {
   XmltvSourceRefreshService({
-    required Dio dio,
+    required this.dio,
     required this.sourceStore,
     required this.repository,
     required this.downloadDirectoryProvider,
-  }) : _dio = dio;
+  });
 
-  final Dio _dio;
+  final Dio dio;
   final XmltvSourceStore sourceStore;
   final MutableXmltvCompactEpgRepository repository;
   final Future<Directory> Function() downloadDirectoryProvider;
@@ -54,7 +54,7 @@ class XmltvSourceRefreshService {
     );
 
     try {
-      await _dio.download(
+      await dio.download(
         trimmedUrl,
         guideFile.path,
         options: Options(
