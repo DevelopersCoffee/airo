@@ -40,19 +40,20 @@ void main() {
         ),
       ),
     );
-    expect(find.text('Country'), findsOneWidget);
+    expect(find.text('Flag'), findsOneWidget);
     expect(find.text('Language'), findsOneWidget);
     expect(find.byKey(const ValueKey('channel-row-one')), findsOneWidget);
     expect(find.byType(ChannelLogo), findsNWidgets(2));
-    expect(find.text('🇮🇳 India'), findsOneWidget);
-    expect(find.text('🇺🇸 United States'), findsOneWidget);
+    expect(find.text('🇮🇳'), findsOneWidget);
+    expect(find.text('🇺🇸'), findsOneWidget);
+    expect(find.text('🇮🇳 India'), findsNothing);
+    expect(find.text('🇺🇸 United States'), findsNothing);
     expect(find.text('English'), findsNWidgets(2));
 
-    final unitedStatesText = tester.widget<Text>(
-      find.text('🇺🇸 United States'),
+    expect(
+      tester.getCenter(find.text('🇺🇸')).dx,
+      greaterThan(tester.getCenter(find.text('English').last).dx),
     );
-    expect(unitedStatesText.maxLines, 1);
-    expect(unitedStatesText.overflow, TextOverflow.ellipsis);
   });
 
   testWidgets('compact table keeps channel options visible with small logos', (
@@ -82,13 +83,18 @@ void main() {
       ),
     );
 
-    expect(find.text('Country'), findsOneWidget);
+    expect(find.text('Flag'), findsOneWidget);
     expect(find.text('Lang.'), findsOneWidget);
-    expect(find.text('🇮🇹 Italy'), findsOneWidget);
+    expect(find.text('🇮🇹'), findsOneWidget);
+    expect(find.text('🇮🇹 Italy'), findsNothing);
     expect(find.text('English, Italian'), findsOneWidget);
     expect(find.byIcon(Icons.newspaper), findsOneWidget);
     expect(find.byIcon(Icons.live_tv), findsWidgets);
     expect(tester.widget<ChannelLogo>(find.byType(ChannelLogo)).size, 26);
+    expect(
+      tester.getCenter(find.text('🇮🇹')).dx,
+      greaterThan(tester.getCenter(find.text('English, Italian')).dx),
+    );
     expect(tester.takeException(), isNull);
   });
 

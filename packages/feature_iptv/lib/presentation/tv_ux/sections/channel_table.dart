@@ -161,19 +161,19 @@ class _TableHeader extends StatelessWidget {
         child: Row(
           children: [
             SizedBox(width: wide ? 50 : 42),
-            header('Name', ChannelSortColumn.name, flex: wide ? 3 : 4),
+            header('Name', ChannelSortColumn.name, flex: wide ? 4 : 5),
             header(
               wide ? 'Category' : 'Cat.',
               ChannelSortColumn.category,
-              flex: wide ? 2 : 3,
+              flex: wide ? 3 : 4,
             ),
-            header('Country', ChannelSortColumn.country, flex: wide ? 2 : 3),
             header(
               wide ? 'Language' : 'Lang.',
               ChannelSortColumn.language,
               flex: 2,
             ),
             header('Type', ChannelSortColumn.type),
+            header('Flag', ChannelSortColumn.country),
           ],
         ),
       ),
@@ -228,7 +228,7 @@ class _ChannelRow extends StatelessWidget {
             ),
             const SizedBox(width: 7),
             Expanded(
-              flex: wide ? 3 : 4,
+              flex: wide ? 4 : 5,
               child: Text(
                 channel.name,
                 maxLines: 1,
@@ -239,17 +239,10 @@ class _ChannelRow extends StatelessWidget {
               ),
             ),
             Expanded(
-              flex: wide ? 2 : 3,
+              flex: wide ? 3 : 4,
               child: _MetadataCell(
                 icon: _categoryIcon(channel),
                 label: channel.group,
-              ),
-            ),
-            Expanded(
-              flex: wide ? 2 : 3,
-              child: _MetadataCell(
-                label: countryDisplayLabel(country),
-                icon: null,
               ),
             ),
             Expanded(
@@ -267,6 +260,18 @@ class _ChannelRow extends StatelessWidget {
                   channel.isAudioOnly ? Icons.radio : Icons.live_tv,
                   size: 18,
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ),
+            Expanded(
+              child: Tooltip(
+                message: countryDisplayLabel(country),
+                child: Text(
+                  _countryFlagOnly(country),
+                  maxLines: 1,
+                  overflow: TextOverflow.clip,
+                  textAlign: TextAlign.center,
+                  style: textTheme.titleMedium,
                 ),
               ),
             ),
@@ -305,6 +310,13 @@ class _ChannelRow extends StatelessWidget {
         .toList(growable: false);
     if (labels.isEmpty) return null;
     return labels.join(', ');
+  }
+
+  String _countryFlagOnly(String? country) {
+    final label = countryDisplayLabel(country);
+    if (label == 'Country') return '🏳️';
+    final firstSpace = label.indexOf(' ');
+    return firstSpace > 0 ? label.substring(0, firstSpace) : label;
   }
 }
 
