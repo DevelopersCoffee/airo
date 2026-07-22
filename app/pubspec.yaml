@@ -80,6 +80,8 @@ dependencies:
   # Local packages - Features
   airo:
     path: ../packages/airo
+  airo_pro_bootstrap:
+    path: ../packages/airo_pro_bootstrap
   feature_coin:
     path: ../packages/feature_coin
 

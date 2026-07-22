@@ -147,6 +147,71 @@ void main() {
     },
   );
 
+  testWidgets('video tap reveals controls so audio-only can be turned off', (
+    tester,
+  ) async {
+    const channel = MethodChannel('com.airo.player/background_audio_mode');
+    AiroBackgroundAudioMode.debugSetMethodChannel(channel);
+    AiroBackgroundAudioMode.debugReset();
+
+    final calls = <bool>[];
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (call) async {
+          calls.add(
+            (call.arguments as Map<Object?, Object?>)['enabled'] as bool,
+          );
+          return null;
+        });
+    addTearDown(() {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, null);
+    });
+
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          streamingStateProvider.overrideWith(
+            (ref) => Stream.value(
+              StreamingState(
+                playbackState: PlaybackState.playing,
+                isLiveStream: true,
+                currentChannel: IPTVChannel(
+                  id: 'news-1',
+                  name: 'City News Live',
+                  streamUrl: 'https://example.com/news.m3u8',
+                  group: 'News',
+                  category: ChannelCategory.news,
+                ),
+              ),
+            ),
+          ),
+        ],
+        child: const MaterialApp(home: Scaffold(body: VideoPlayerWidget())),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    await tester.tap(find.byKey(const ValueKey('audio-only-toggle')));
+    await tester.pump();
+    expect(calls, [true]);
+
+    await tester.pump(const Duration(seconds: 5));
+
+    await tester.tapAt(tester.getCenter(find.byType(VideoPlayerWidget)));
+    await tester.pump();
+
+    await tester.tap(find.byKey(const ValueKey('audio-only-toggle')));
+    await tester.pump();
+    expect(calls, [true, false]);
+    expect(AiroBackgroundAudioMode.isEnabled, isFalse);
+  });
+
   testWidgets(
     'when the platform call throws, the toggle button state reverts and '
     'manualAudioOnlyToggled is not called',

@@ -20,3 +20,14 @@ Entitlements createEntitlements() => const LaunchPromoEntitlements();
 void registerProModules(ProModuleRegistry registry) {
   // Intentionally empty: the GA build ships no pro modules.
 }
+
+/// Initializes all pro modules contributed by the active bootstrap package.
+///
+/// The public package returns an empty list. The private `airo-pro` overlay can
+/// replace [registerProModules] and [createEntitlements] without changing app
+/// entrypoints.
+Future<List<String>> initializeProModules() async {
+  final registry = ProModuleRegistry(createEntitlements());
+  registerProModules(registry);
+  return registry.initializeEntitled();
+}

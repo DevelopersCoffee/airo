@@ -11,6 +11,7 @@ class IptvNavigationDrawer extends StatelessWidget {
     super.key,
     required this.onHome,
     required this.onGuide,
+    required this.onGuideSource,
     required this.onMovies,
     required this.onFavorites,
     this.showMovies = true,
@@ -19,6 +20,7 @@ class IptvNavigationDrawer extends StatelessWidget {
 
   final VoidCallback onHome;
   final VoidCallback onGuide;
+  final VoidCallback onGuideSource;
   final VoidCallback onMovies;
   final VoidCallback onFavorites;
   final bool showMovies;
@@ -52,6 +54,12 @@ class IptvNavigationDrawer extends StatelessWidget {
               leading: const Icon(Icons.grid_view_outlined),
               title: const Text('Guide'),
               onTap: () => _select(context, onGuide),
+            ),
+            ListTile(
+              key: const ValueKey('iptv-drawer-guide-source'),
+              leading: const Icon(Icons.event_note_outlined),
+              title: const Text('Guide Source'),
+              onTap: () => _select(context, onGuideSource),
             ),
             if (showMovies)
               ListTile(

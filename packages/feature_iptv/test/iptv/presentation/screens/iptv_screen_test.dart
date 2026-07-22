@@ -286,6 +286,23 @@ void main() {
     },
   );
 
+  testWidgets('guide source sheet is reachable from the phone app bar', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(390, 844));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(createWidget());
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('Guide source'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('XMLTV Guide Source'), findsOneWidget);
+    expect(find.textContaining('No XMLTV source configured'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets(
     'Add Playlist sheet shows a progress indicator and stage label while '
     'the import stream emits',

@@ -33,6 +33,8 @@ dependencies:
     path: ../packages/feature_iptv
   core_ui:
     path: ../packages/core_ui
+  airo_pro_bootstrap:
+    path: ../packages/airo_pro_bootstrap
 
   # UI essentials
   cupertino_icons: ^1.0.9

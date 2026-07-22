@@ -75,6 +75,8 @@ dependencies:
   # Local packages - Features (only IPTV-related)
   airo:
     path: ../packages/airo
+  airo_pro_bootstrap:
+    path: ../packages/airo_pro_bootstrap
   feature_iptv:
     path: ../packages/feature_iptv
 

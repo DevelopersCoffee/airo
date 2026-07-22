@@ -16,6 +16,7 @@ allowed_dependencies:
   - platform_playlist
   - platform_playlist_import
   - platform_streams
+  - platform_worker_jobs
   - product_capabilities
 forbidden_dependencies:
   - app

@@ -591,6 +591,37 @@ https://cdn.example.com/live/news.m3u8
     );
   });
 
+  test('schedules TV pro module initialization after frame', () async {
+    final logs = <String>[];
+    var proInitCalls = 0;
+    void Function(Duration timestamp)? frameCallback;
+
+    scheduleTvProModuleInitialization(
+      addPostFrameCallback: (callback) {
+        frameCallback = callback;
+      },
+      log: logs.add,
+      initializeProModules: () async {
+        proInitCalls++;
+        return const ['pro-test'];
+      },
+    );
+
+    expect(proInitCalls, 0);
+
+    frameCallback!(Duration.zero);
+    await Future<void>.delayed(Duration.zero);
+
+    expect(proInitCalls, 1);
+    expect(logs, contains('📦 Initialized pro modules: pro-test'));
+    expect(
+      logs,
+      contains(
+        '✅ Deferred startup task completed: tv_pro_module_initialization',
+      ),
+    );
+  });
+
   test('initializes TV Firebase through deferred startup task', () async {
     isFirebaseInitialized = false;
     var initialized = false;

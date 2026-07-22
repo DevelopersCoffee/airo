@@ -19,6 +19,7 @@ import '../widgets/iptv_mini_player.dart';
 import '../widgets/iptv_navigation_drawer.dart';
 import '../widgets/phone_media_play_on_tv_sheet.dart';
 import '../widgets/video_player_widget.dart';
+import '../widgets/xmltv_source_sheet.dart';
 import '../tv/iptv_guide_screen.dart';
 import '../tv_ux/iptv_resume_gate.dart';
 import 'browse_screen.dart';
@@ -467,6 +468,10 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
     await showPlaylistSourceSheet(context, ref);
   }
 
+  Future<void> _showGuideSourceSheet() async {
+    await showXmltvSourceSheet(context);
+  }
+
   Future<void> _openGuide() async {
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
@@ -583,6 +588,7 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
         showMovies: widget.onOpenVod != null,
         onHome: () {},
         onGuide: _openGuide,
+        onGuideSource: _showGuideSourceSheet,
         onMovies: () => widget.onOpenVod?.call(),
         onFavorites: _openFavorites,
         onPlayLocalFileOnTv: widget.onPickLocalMediaForTv == null
@@ -607,6 +613,11 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
             icon: const Icon(Icons.link),
             tooltip: 'Playlist source',
             onPressed: _showPlaylistSheet,
+          ),
+          IconButton(
+            icon: const Icon(Icons.event_note_outlined),
+            tooltip: 'Guide source',
+            onPressed: _showGuideSourceSheet,
           ),
           if (isGoogleCastSenderPlatform)
             IconButton(

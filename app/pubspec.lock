@@ -24,6 +24,13 @@ packages:
       relative: true
     source: path
     version: "0.0.1"
+  airo_pro_bootstrap:
+    dependency: "direct main"
+    description:
+      path: "../packages/airo_pro_bootstrap"
+      relative: true
+    source: path
+    version: "0.0.1"
   alchemist:
     dependency: "direct dev"
     description:
@@ -408,6 +415,13 @@ packages:
     dependency: "direct main"
     description:
       path: "../packages/core_domain"
+      relative: true
+    source: path
+    version: "0.0.1"
+  core_entitlements:
+    dependency: transitive
+    description:
+      path: "../packages/core_entitlements"
       relative: true
     source: path
     version: "0.0.1"

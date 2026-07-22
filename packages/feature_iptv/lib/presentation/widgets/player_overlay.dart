@@ -19,6 +19,7 @@ class PlayerOverlay extends StatefulWidget {
     this.onNext,
     this.onGuide,
     this.onFullscreen,
+    this.onReveal,
     this.autoHideDelay = const Duration(seconds: 3),
     this.showCenterControls = true,
     this.showBottomBar = true,
@@ -31,6 +32,7 @@ class PlayerOverlay extends StatefulWidget {
   final VoidCallback? onNext;
   final VoidCallback? onGuide;
   final VoidCallback? onFullscreen;
+  final VoidCallback? onReveal;
   final Duration autoHideDelay;
 
   /// Whether to render the center prev/play-pause/next row. Defaults to
@@ -82,6 +84,7 @@ class _PlayerOverlayState extends State<PlayerOverlay> {
   }
 
   void _reveal() {
+    widget.onReveal?.call();
     setState(() => _controlsVisible = true);
     _startHideTimer();
   }

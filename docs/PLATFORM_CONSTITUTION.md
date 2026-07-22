@@ -63,7 +63,38 @@ If a feature is unnecessary on a device class, it **must not ship** there — no
 
 Deviations from this matrix require a stated reason in the PR description.
 
-## 4. Where code goes
+## 4. Focused modules are the source of truth
+
+Focused products such as **Airo TV** are developed in their owning packages
+first, then embedded by Airo app shells. The full Airo app is not the source of
+truth for focused module behavior.
+
+For Airo TV specifically:
+
+- Reusable playback, playlist, EPG, source-management, Cast, reminder,
+  bootstrap, and provider behavior belongs in `feature_iptv` and the
+  relevant `platform_*` / `core_*` packages.
+- `app/lib/main_airo_iptv.dart`, `app/lib/main_tv.dart`, and full
+  `app/lib/main.dart` may only wire providers, entrypoints, routing,
+  platform startup, and product-shell chrome.
+- A focused Airo TV build must not depend on the full Airo Settings hub to
+  reach essential Airo TV workflows. If a workflow is required to operate the
+  standalone module (playlist source, XMLTV guide source, playback settings,
+  diagnostics), expose it from the Airo TV surface or a shared Airo TV widget.
+- When behavior is added to one Airo TV entrypoint, agents must check the
+  parity contract for standalone phone IPTV, TV/Fire TV, full Airo embedding,
+  web validation, and the open-core `airo_pro_bootstrap` seam.
+- Build profiles (`app/pubspec_*.yaml` and `.github/airo-build-profiles.json`)
+  are part of the contract. Any new runtime plugin, native dependency, or
+  optional Pro hook must be reflected there in the same change.
+- Native/bootstrap code that imports `dart:io`, FFI, or platform plugins must
+  be hidden behind conditional imports or a web-safe adapter if the general
+  app or web-validation profile imports the same entrypoint.
+
+If these rules conflict with a short-term implementation convenience, the
+implementation stops and records an ADR or follow-up plan before merging.
+
+## 5. Where code goes
 
 | Kind of code | Home |
 |---|---|
@@ -76,7 +107,7 @@ Deviations from this matrix require a stated reason in the PR description.
 
 Rust admission test: profiler or benchmark evidence of CPU/memory win, or a cross-platform reuse need Dart cannot serve. Otherwise: **Needs profiling** — stay in Dart.
 
-## 5. Airo Coin package-first rule
+## 6. Airo Coin package-first rule
 
 Airo Coin is developed as a focused product module first, then embedded into
 the Airo super app after the standalone module is healthy.
@@ -107,7 +138,7 @@ Every Airo Coin PR must include a parity note stating:
 - what super-app shell wiring changed, if any;
 - whether an `airo-pro` coin contract or overlay is involved.
 
-## 6. Build & size discipline
+## 7. Build & size discipline
 
 - Every new dependency goes through `platform_dependency_governance` scoring (license, maintenance, binary impact, bus factor) and a chief-open-source-officer review.
 - A dependency used by one device class must not link into other device classes' binaries. Mobile-only plugins (games engines, ML kits, contacts, OCR, PDF) must be isolated so TV builds never compile them.
@@ -115,11 +146,11 @@ Every Airo Coin PR must include a parity note stating:
 - Generated code (`*.g.dart`, `frb_generated`) is budgeted: a generated file >200 KB requires schema splitting or justification.
 - CI enforces size budgets per entrypoint. A PR that grows the TV APK needs a stated reason.
 
-## 7. Review order
+## 8. Review order
 
 Correctness → Clarity → Consistency → Duplication → Tests → Performance. (Full checklist in `~/.claude/CLAUDE.md` code-review rules and Council module reviews.) A recommendation without a measurable benefit estimate is marked **Not Worth Migrating** and rejected.
 
-## 8. Enforcement
+## 9. Enforcement
 
 - Council agents (chief-architect, chief-performance-officer, chief-open-source-officer, …) review against this document.
 - CI gates: dependency direction check, package boundary lint, size budgets, benchmark regression.

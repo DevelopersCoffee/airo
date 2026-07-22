@@ -8,6 +8,7 @@ void main() {
     bool showMovies = true,
     VoidCallback? onHome,
     VoidCallback? onGuide,
+    VoidCallback? onGuideSource,
     VoidCallback? onMovies,
     VoidCallback? onFavorites,
     VoidCallback? onPlayLocalFileOnTv,
@@ -19,6 +20,7 @@ void main() {
             showMovies: showMovies,
             onHome: onHome ?? () {},
             onGuide: onGuide ?? () {},
+            onGuideSource: onGuideSource ?? () {},
             onMovies: onMovies ?? () {},
             onFavorites: onFavorites ?? () {},
             onPlayLocalFileOnTv: onPlayLocalFileOnTv,
@@ -34,20 +36,20 @@ void main() {
     );
   }
 
-  testWidgets(
-    'opens from the hamburger icon and lists Home, Guide, Movies, Favorites',
-    (tester) async {
-      await pumpDrawer(tester);
+  testWidgets('opens from the hamburger icon and lists IPTV destinations', (
+    tester,
+  ) async {
+    await pumpDrawer(tester);
 
-      await tester.tap(find.byIcon(Icons.menu));
-      await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.menu));
+    await tester.pumpAndSettle();
 
-      expect(find.text('Home'), findsOneWidget);
-      expect(find.text('Guide'), findsOneWidget);
-      expect(find.text('Movies & Shows'), findsOneWidget);
-      expect(find.text('Favorites'), findsOneWidget);
-    },
-  );
+    expect(find.text('Home'), findsOneWidget);
+    expect(find.text('Guide'), findsOneWidget);
+    expect(find.text('Guide Source'), findsOneWidget);
+    expect(find.text('Movies & Shows'), findsOneWidget);
+    expect(find.text('Favorites'), findsOneWidget);
+  });
 
   testWidgets('tapping Home closes the drawer and invokes onHome', (
     tester,
@@ -77,6 +79,21 @@ void main() {
 
     expect(tapped, isTrue);
   });
+
+  testWidgets(
+    'tapping Guide Source closes the drawer and invokes onGuideSource',
+    (tester) async {
+      var tapped = false;
+      await pumpDrawer(tester, onGuideSource: () => tapped = true);
+
+      await tester.tap(find.byIcon(Icons.menu));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Guide Source'));
+      await tester.pumpAndSettle();
+
+      expect(tapped, isTrue);
+    },
+  );
 
   testWidgets('tapping Favorites closes the drawer and invokes onFavorites', (
     tester,

@@ -386,6 +386,7 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                           locked: _isLocked,
                           brightness: _brightness,
                           volume: state.isMuted ? 0.0 : state.volume,
+                          onTap: _showControls,
                           onBrightnessChanged: _onBrightnessGestureChanged,
                           onVolumeChanged: (value) {
                             if (state.isMuted) service.toggleMute();
@@ -428,7 +429,7 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                   // content behind it since the old channel-name row moved
                   // into PlayerOverlay — before PlayerOverlay's own
                   // GestureDetector ever saw the tap.
-                   if (!_isLocked && !isPipActive)
+                  if (!_isLocked && !isPipActive)
                     PlayerOverlay(
                       state: _toPlayerViewState(state),
                       onBack:
@@ -440,6 +441,7 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                           service.resume();
                         }
                       },
+                      onReveal: _showControls,
                       showCenterControls: false,
                       showBottomBar: false,
                     ),

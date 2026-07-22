@@ -10,6 +10,8 @@ import 'core/config/firebase_status.dart';
 import 'core/error/global_error_handler.dart';
 import 'core/routing/app_router.dart';
 import 'core/startup/app_startup_tasks.dart';
+import 'core/startup/deferred_startup_task.dart';
+import 'package:feature_iptv/application/airo_tv_bootstrap.dart';
 import 'package:feature_iptv/feature_iptv.dart';
 import 'features/iptv/epg_reminder_notification_gateway.dart';
 import 'features/music/application/providers/beats_audio_provider.dart';
@@ -77,6 +79,10 @@ void main() async {
 
   // Initialize SharedPreferences for IPTV caching
   final prefs = await SharedPreferences.getInstance();
+  final mutableXmltvRepository = MutableXmltvCompactEpgRepository();
+  final compactEpgRepository = createAiroTvCompactEpgRepository(
+    fallback: mutableXmltvRepository,
+  );
   final epgReminderGateway = FlutterLocalNotificationsEpgReminderGateway(
     onNotificationRoute: AppRouter.router.go,
   );
@@ -86,6 +92,10 @@ void main() async {
     ProviderScope(
       overrides: [
         sharedPreferencesProvider.overrideWithValue(prefs),
+        compactEpgRepositoryProvider.overrideWithValue(compactEpgRepository),
+        mutableXmltvCompactEpgRepositoryProvider.overrideWithValue(
+          mutableXmltvRepository,
+        ),
         epgReminderNotificationGatewayProvider.overrideWithValue(
           epgReminderGateway,
         ),
@@ -111,5 +121,30 @@ void main() async {
   scheduleDeferredAudioInitialization(
     initializeAudio: initAudioService,
     skipOnWeb: true,
+  );
+  scheduleFullAiroIptvBootstrap(
+    prefs,
+    mutableXmltvRepository: mutableXmltvRepository,
+  );
+}
+
+@visibleForTesting
+void scheduleFullAiroIptvBootstrap(
+  SharedPreferences prefs, {
+  required MutableXmltvCompactEpgRepository mutableXmltvRepository,
+  void Function(DeferredStartupFrameCallback callback)? addPostFrameCallback,
+  void Function(String message)? log,
+  Future<void> Function()? refreshConfiguredSource,
+}) {
+  scheduleDeferredStartupTask(
+    debugName: 'full_airo_iptv_bootstrap',
+    addPostFrameCallback: addPostFrameCallback,
+    log: log,
+    task:
+        refreshConfiguredSource ??
+        () => refreshAiroTvConfiguredXmltvSource(
+          prefs,
+          repository: mutableXmltvRepository,
+        ),
   );
 }
