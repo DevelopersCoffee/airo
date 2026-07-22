@@ -22,6 +22,7 @@ import 'player_brightness_controller.dart';
 import 'player_gesture_overlay.dart';
 import 'player_lock_button.dart';
 import 'player_overlay.dart';
+import '../tv_ux/sections/remote_overlay.dart';
 
 /// Video player widget with YouTube-like controls
 class VideoPlayerWidget extends ConsumerStatefulWidget {
@@ -552,6 +553,28 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                             onToggle: _toggleLocked,
                           ),
                         ),
+                      ),
+                    ),
+
+                  if (!_isLocked && !isPipActive)
+                    Positioned.fill(
+                      child: RemoteOverlay(
+                        isTv: !widget.enableTouchGestures,
+                        onChannelPrevious: _goToPreviousChannel,
+                        onChannelNext: _goToNextChannel,
+                        onMute: () => service.toggleMute(),
+                        onVolumeDown: () => service.setVolume(
+                          (state.volume - 0.1).clamp(0.0, 1.0).toDouble(),
+                        ),
+                        onVolumeUp: () => service.setVolume(
+                          (state.volume + 0.1).clamp(0.0, 1.0).toDouble(),
+                        ),
+                        onRandom: () {
+                          final channel = randomFilteredChannel(
+                            ref.read(filteredChannelsProvider),
+                          );
+                          if (channel != null) service.playChannel(channel);
+                        },
                       ),
                     ),
 
