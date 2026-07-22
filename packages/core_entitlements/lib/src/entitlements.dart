@@ -21,7 +21,10 @@ enum ProFeature {
   sportsDesk('sports_desk'),
 
   /// Automatic failover across duplicate stream sources of one channel.
-  multiSourceFailover('multi_source_failover');
+  multiSourceFailover('multi_source_failover'),
+
+  /// Airo Coin encrypted backup and restore supplied by the pro overlay.
+  coinEncryptedBackupRestore('coin_encrypted_backup_restore');
 
   const ProFeature(this.stableId);
 
