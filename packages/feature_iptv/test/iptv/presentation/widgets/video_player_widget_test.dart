@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:platform_channels/platform_channels.dart';
+import 'package:platform_streams/platform_streams.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -31,6 +32,9 @@ void main() {
       ProviderScope(
         overrides: [
           sharedPreferencesProvider.overrideWithValue(prefs),
+          streamProbeTransportProvider.overrideWithValue(
+            _AlwaysAvailableProbeTransport(),
+          ),
           if (channels != null)
             iptvChannelsProvider.overrideWith((ref) async => channels),
           streamingStateProvider.overrideWith(
@@ -97,6 +101,9 @@ void main() {
         overrides: [
           sharedPreferencesProvider.overrideWithValue(prefs),
           iptvStreamingServiceProvider.overrideWithValue(service),
+          streamProbeTransportProvider.overrideWithValue(
+            _AlwaysAvailableProbeTransport(),
+          ),
           iptvChannelsProvider.overrideWith(
             (ref) async => const [current, next],
           ),
@@ -243,8 +250,9 @@ void main() {
     );
     expect(
       find.byKey(const ValueKey('iptv-player-fullscreen-button')),
-      findsNothing,
+      findsOneWidget,
     );
+    expect(find.byIcon(Icons.fullscreen_exit), findsOneWidget);
     expect(
       find.byKey(const ValueKey('iptv-player-more-button')),
       findsOneWidget,
@@ -654,6 +662,9 @@ void main() {
         overrides: [
           sharedPreferencesProvider.overrideWithValue(prefs),
           iptvStreamingServiceProvider.overrideWithValue(service),
+          streamProbeTransportProvider.overrideWithValue(
+            _AlwaysAvailableProbeTransport(),
+          ),
           iptvChannelsProvider.overrideWith(
             (ref) async => const [current, next],
           ),
@@ -1019,5 +1030,15 @@ class _RecordingSeekStreamingService extends VideoPlayerStreamingService {
   @override
   Future<void> seek(Duration position) async {
     seekedPositions.add(position);
+  }
+}
+
+class _AlwaysAvailableProbeTransport implements StreamProbeTransport {
+  @override
+  Future<StreamProbeHttpResponse> get(
+    StreamProbeRequest request, {
+    required StreamProbeCancellation cancellation,
+  }) async {
+    return const StreamProbeHttpResponse(statusCode: 206);
   }
 }
