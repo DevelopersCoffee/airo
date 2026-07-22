@@ -618,6 +618,7 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
         ],
       ),
       body: IptvResumeGate(
+        enabled: widget.deepLinkChannelId == null,
         child: Column(
           children: [
             Expanded(

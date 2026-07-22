@@ -5,25 +5,26 @@ import 'package:feature_iptv/application/providers/last_channel_provider.dart';
 import 'package:feature_iptv/application/resume_last_channel_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 import 'package:platform_player/platform_player.dart';
 
 import 'iptv_resume_splash.dart';
 
 class IptvResumeGate extends ConsumerStatefulWidget {
-  const IptvResumeGate({super.key, required this.child});
+  const IptvResumeGate({super.key, required this.child, this.enabled = true});
 
   final Widget child;
+  final bool enabled;
 
   @override
   ConsumerState<IptvResumeGate> createState() => _IptvResumeGateState();
 }
 
 class _IptvResumeGateState extends ConsumerState<IptvResumeGate> {
-  var _splashDone = false;
-
   @override
   void initState() {
     super.initState();
+    if (!widget.enabled) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       unawaited(
@@ -35,12 +36,14 @@ class _IptvResumeGateState extends ConsumerState<IptvResumeGate> {
   @override
   Widget build(BuildContext context) {
     ref.watch(lastChannelRecorderProvider);
+    if (!widget.enabled) return widget.child;
 
     final resumeStatus = ref.watch(resumeLastChannelControllerProvider);
+    final splashCompleted = ref.watch(resumeSplashCompletedProvider);
     final playbackReady =
         ref.watch(playbackStateProvider) == PlaybackState.playing;
     final showSplash =
-        !_splashDone &&
+        !splashCompleted &&
         (resumeStatus == ResumeStatus.idle ||
             resumeStatus == ResumeStatus.tuning ||
             resumeStatus == ResumeStatus.done);
@@ -53,11 +56,12 @@ class _IptvResumeGateState extends ConsumerState<IptvResumeGate> {
         widget.child,
         IptvResumeSplash(
           playbackReady: playbackReady,
-          onFinished: () {
-            if (mounted) setState(() => _splashDone = true);
-          },
+          onFinished: () =>
+              ref.read(resumeSplashCompletedProvider.notifier).state = true,
         ),
       ],
     );
   }
 }
+
+final resumeSplashCompletedProvider = StateProvider<bool>((ref) => false);

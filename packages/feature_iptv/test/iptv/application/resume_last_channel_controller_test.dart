@@ -1,14 +1,13 @@
+import 'dart:async';
+
 import 'package:feature_iptv/application/providers/last_channel_provider.dart';
 import 'package:feature_iptv/application/resume_last_channel_controller.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:platform_channels/platform_channels.dart';
 
-IPTVChannel channel(String id) => IPTVChannel(
-  id: id,
-  name: id,
-  streamUrl: 'https://example.com/$id.m3u8',
-);
+IPTVChannel channel(String id) =>
+    IPTVChannel(id: id, name: id, streamUrl: 'https://example.com/$id.m3u8');
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -43,7 +42,10 @@ void main() {
         .attemptResume();
 
     expect(played, ['aajtak']);
-    expect(container.read(resumeLastChannelControllerProvider), ResumeStatus.done);
+    expect(
+      container.read(resumeLastChannelControllerProvider),
+      ResumeStatus.done,
+    );
   });
 
   test('no stored target lands in noTarget without tuning', () async {
@@ -94,5 +96,34 @@ void main() {
       container.read(resumeLastChannelControllerProvider),
       ResumeStatus.failed,
     );
+  });
+
+  test('stalled target lookup fails before it can tune later', () async {
+    final played = <String>[];
+    final neverCompletes = Completer<IPTVChannel?>();
+    final container = ProviderContainer(
+      overrides: [
+        resumeChannelProvider.overrideWith((ref) => neverCompletes.future),
+        resumeLookupTimeoutProvider.overrideWithValue(Duration.zero),
+        playChannelDelegateProvider.overrideWithValue((channel) async {
+          played.add(channel.id);
+        }),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    await container
+        .read(resumeLastChannelControllerProvider.notifier)
+        .attemptResume();
+
+    expect(
+      container.read(resumeLastChannelControllerProvider),
+      ResumeStatus.failed,
+    );
+    expect(played, isEmpty);
+
+    neverCompletes.complete(channel('late'));
+    await Future<void>.delayed(Duration.zero);
+    expect(played, isEmpty);
   });
 }

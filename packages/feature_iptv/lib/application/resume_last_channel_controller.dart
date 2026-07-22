@@ -7,11 +7,14 @@ import 'providers/last_channel_provider.dart';
 
 enum ResumeStatus { idle, noTarget, tuning, done, failed }
 
+final resumeLookupTimeoutProvider = Provider<Duration>(
+  (ref) => const Duration(seconds: 10),
+);
+
 final playChannelDelegateProvider =
     Provider<Future<void> Function(IPTVChannel)>((ref) {
-      return (channel) => ref
-          .read(iptvStreamingServiceProvider)
-          .playChannel(channel);
+      return (channel) =>
+          ref.read(iptvStreamingServiceProvider).playChannel(channel);
     });
 
 class ResumeLastChannelController extends StateNotifier<ResumeStatus> {
@@ -25,7 +28,9 @@ class ResumeLastChannelController extends StateNotifier<ResumeStatus> {
     _attempted = true;
 
     try {
-      final target = await _ref.read(resumeChannelProvider.future);
+      final target = await _ref
+          .read(resumeChannelProvider.future)
+          .timeout(_ref.read(resumeLookupTimeoutProvider));
       if (target == null) {
         state = ResumeStatus.noTarget;
         return;

@@ -64,4 +64,64 @@ void main() {
 
     expect(find.byType(IptvResumeSplash), findsNothing);
   });
+
+  testWidgets('does not replay a completed splash after the gate remounts', (
+    tester,
+  ) async {
+    final container = ProviderContainer(
+      overrides: [
+        resumeChannelProvider.overrideWith((ref) async => channel('aajtak')),
+        playChannelDelegateProvider.overrideWithValue((channel) async {}),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: const MaterialApp(home: IptvResumeGate(child: Text('BROWSE'))),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 7));
+    expect(find.byType(IptvResumeSplash), findsNothing);
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: const MaterialApp(home: SizedBox()),
+      ),
+    );
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: const MaterialApp(home: IptvResumeGate(child: Text('BROWSE'))),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.byType(IptvResumeSplash), findsNothing);
+  });
+
+  testWidgets('disabled gate does not start a resume attempt', (tester) async {
+    final played = <String>[];
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          resumeChannelProvider.overrideWith((ref) async => channel('aajtak')),
+          playChannelDelegateProvider.overrideWithValue((channel) async {
+            played.add(channel.id);
+          }),
+        ],
+        child: const MaterialApp(
+          home: IptvResumeGate(enabled: false, child: Text('BROWSE')),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(played, isEmpty);
+    expect(find.byType(IptvResumeSplash), findsNothing);
+    expect(find.text('BROWSE'), findsOneWidget);
+  });
 }
