@@ -878,7 +878,7 @@ jobs:
       - uses: actions/checkout@v7
       
       - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@v0.35.0
         with:
           scan-type: 'fs'
           scan-ref: '.'
@@ -1052,7 +1052,7 @@ jobs:
           flutter pub get
 
       - name: Run Snyk Security Scan
-        uses: snyk/actions@master
+        uses: snyk/actions@0.2.0
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
