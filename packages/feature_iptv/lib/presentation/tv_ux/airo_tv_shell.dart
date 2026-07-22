@@ -11,6 +11,7 @@ import '../../application/providers/channel_auto_scan_providers.dart';
 import '../../application/providers/hotbar_channels_provider.dart';
 import '../../application/providers/iptv_providers.dart';
 import '../../application/channel_metadata_enrichment.dart';
+import '../../application/channel_warmup_policy.dart';
 import 'sections/channel_info_bar.dart';
 import 'sections/channel_table.dart';
 import 'sections/filter_dialogs.dart';
@@ -223,21 +224,27 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
   }
 
   void _scheduleVisibleChannelScan(List<IPTVChannel> channels) {
-    final visible = channels.take(42).toList(growable: false);
+    final autoScanState = ref.read(channelAutoScanProvider);
+    final plan = planChannelWarmup(
+      totalChannelCount: ref.read(filteredChannelsProvider).length,
+      candidateCount: channels.length,
+      cachedChannelCount: autoScanState.availabilityByChannelId.length,
+      playbackState: ref.read(playbackStateProvider),
+    );
+    if (plan.isEmpty) return;
+    final visible = channels.take(plan.limit).toList(growable: false);
     final signature = visible.map((channel) => channel.id).join(',');
     if (signature.isEmpty || signature == _visibleScanSignature) return;
     _visibleScanSignature = signature;
     _visibleScanDebounce?.cancel();
-    _visibleScanDebounce = Timer(const Duration(milliseconds: 350), () {
+    _visibleScanDebounce = Timer(plan.debounce, () {
       if (!mounted) return;
       ref
           .read(channelAutoScanProvider.notifier)
           .start(
             scopeId: 'airo-tv-visible|$signature',
             channels: visible,
-            maxConcurrentRequests: ref.read(
-              channelAutoScanMaxConcurrentRequestsProvider,
-            ),
+            maxConcurrentRequests: plan.maxConcurrentRequests,
             currentPlayingChannelId: ref
                 .read(iptvStreamingServiceProvider)
                 .currentState
