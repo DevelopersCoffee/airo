@@ -2,6 +2,7 @@ import "dart:async";
 import "dart:io";
 
 import "package:dio/dio.dart";
+import "package:feature_iptv/application/channel_metadata_enrichment.dart";
 import "package:feature_iptv/feature_iptv.dart";
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -84,6 +85,9 @@ void main() {
           overrides: [
             sharedPreferencesProvider.overrideWithValue(snapshot.data!),
             iptvChannelsProvider.overrideWith((ref) async => channels),
+            channelBrowseMetadataProvider.overrideWith(
+              (ref) async => const <String, ChannelBrowseMetadata>{},
+            ),
             recentlyWatchedChannelsProvider.overrideWith(
               (ref) async => const [],
             ),
@@ -125,6 +129,9 @@ void main() {
           overrides: [
             sharedPreferencesProvider.overrideWithValue(snapshot.data!),
             iptvChannelsProvider.overrideWith((ref) async => const []),
+            channelBrowseMetadataProvider.overrideWith(
+              (ref) async => const <String, ChannelBrowseMetadata>{},
+            ),
             recentlyWatchedChannelsProvider.overrideWith(
               (ref) async => const [],
             ),
@@ -155,14 +162,17 @@ void main() {
       expect(find.text('Airo TV'), findsOneWidget);
       expect(find.byTooltip('Search channels'), findsOneWidget);
       expect(find.byTooltip('Cast'), findsOneWidget);
-    expect(find.byKey(const ValueKey('filter-chip-category')), findsOneWidget);
-    expect(find.text('Featured Player'), findsNothing);
-    expect(find.text('Play media from your saved playlist.'), findsNothing);
-    expect(find.text('Select a channel to start watching'), findsOneWidget);
-    expect(
-      find.text('Choose a channel from your playlist to begin streaming.'),
-      findsNothing,
-    );
+      expect(
+        find.byKey(const ValueKey('filter-chip-category')),
+        findsOneWidget,
+      );
+      expect(find.text('Featured Player'), findsNothing);
+      expect(find.text('Play media from your saved playlist.'), findsNothing);
+      expect(find.text('Select a channel to start watching'), findsOneWidget);
+      expect(
+        find.text('Choose a channel from your playlist to begin streaming.'),
+        findsNothing,
+      );
 
       expect(find.text('Name'), findsOneWidget);
       expect(find.text('City News Live'), findsWidgets);
@@ -182,7 +192,6 @@ void main() {
     } finally {
       debugDefaultTargetPlatformOverride = null;
     }
-  });
   });
 
   testWidgets('shows only the video surface while Android PiP is active', (

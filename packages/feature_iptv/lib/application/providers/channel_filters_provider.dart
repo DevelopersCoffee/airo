@@ -65,9 +65,9 @@ class ChannelFilters extends Equatable {
 
   Map<String, String> toJson() => {
     'search': search,
-    if (category case final value?) 'category': value,
-    if (country case final value?) 'country': value,
-    if (language case final value?) 'language': value,
+    'category': ?category,
+    'country': ?country,
+    'language': ?language,
   };
 
   factory ChannelFilters.fromJson(Map<String, Object?> json) {
