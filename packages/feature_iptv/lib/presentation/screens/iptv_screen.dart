@@ -65,6 +65,10 @@ class IPTVScreen extends ConsumerStatefulWidget {
 
 class _IPTVScreenState extends ConsumerState<IPTVScreen>
     with WidgetsBindingObserver {
+  final FocusNode _fullscreenFocusNode = FocusNode(
+    debugLabel: 'IPTV fullscreen back handler',
+  );
+
   /// True while a [IPTVScreen.deepLinkChannelId] is set and its resolution
   /// (in the post-frame callback below) hasn't yet either started playback
   /// or determined the channel doesn't exist. Gates the first frame so the
@@ -170,6 +174,7 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
     // 1. _toggleFullscreen() when user explicitly exits fullscreen
     // 2. AppShell when navigating to a different tab
     WidgetsBinding.instance.removeObserver(this);
+    _fullscreenFocusNode.dispose();
     AiroNativePictureInPicture.setStateChangeHandler(null);
     super.dispose();
   }
@@ -177,6 +182,27 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     ref.read(appLifecycleStateProvider.notifier).state = state;
+  }
+
+  @override
+  Future<bool> didPopRoute() async {
+    if (!ref.read(isFullscreenModeProvider)) return false;
+    _exitFullscreen();
+    return true;
+  }
+
+  KeyEventResult _handleFullscreenKey(FocusNode node, KeyEvent event) {
+    if (event is! KeyDownEvent || !ref.read(isFullscreenModeProvider)) {
+      return KeyEventResult.ignored;
+    }
+    final key = event.logicalKey;
+    if (key == LogicalKeyboardKey.goBack ||
+        key == LogicalKeyboardKey.escape ||
+        key == LogicalKeyboardKey.browserBack) {
+      _exitFullscreen();
+      return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
   }
 
   void _toggleFullscreen() {
@@ -518,15 +544,26 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
     final isFullscreen = ref.watch(isFullscreenModeProvider);
     final isPlaying =
         ref.watch(streamingStateProvider).value?.isPlaying == true;
+    Widget guardRouteBack(Widget child) {
+      return PopScope<void>(
+        canPop: !isFullscreen,
+        onPopInvokedWithResult: (didPop, _) {
+          if (!didPop) _exitFullscreen();
+        },
+        child: child,
+      );
+    }
 
     if (_isPictureInPicture) {
-      return AiroResponsiveScaffold(
-        padding: EdgeInsets.zero,
-        backgroundColor: Colors.black,
-        body: VideoPlayerWidget(
-          showControls: true,
-          initiallyFullscreen: true,
-          onFullscreenToggle: _toggleFullscreen,
+      return guardRouteBack(
+        AiroResponsiveScaffold(
+          padding: EdgeInsets.zero,
+          backgroundColor: Colors.black,
+          body: VideoPlayerWidget(
+            showControls: true,
+            initiallyFullscreen: true,
+            onFullscreenToggle: _toggleFullscreen,
+          ),
         ),
       );
     }
@@ -539,21 +576,23 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
         widget.deepLinkChannelId != null && _deepLinkPending && !isPlaying;
 
     if (isWaitingForDeepLink) {
-      return Scaffold(
-        body: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const CircularProgressIndicator(),
-              const SizedBox(height: 16),
-              // Escape hatch: the user must never be stuck here indefinitely
-              // even before the 10s timeout in initState fires.
-              TextButton.icon(
-                onPressed: _cancelDeepLinkWait,
-                icon: const Icon(Icons.close),
-                label: const Text('Cancel'),
-              ),
-            ],
+      return guardRouteBack(
+        Scaffold(
+          body: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const CircularProgressIndicator(),
+                const SizedBox(height: 16),
+                // Escape hatch: the user must never be stuck here indefinitely
+                // even before the 10s timeout in initState fires.
+                TextButton.icon(
+                  onPressed: _cancelDeepLinkWait,
+                  icon: const Icon(Icons.close),
+                  label: const Text('Cancel'),
+                ),
+              ],
+            ),
           ),
         ),
       );
@@ -581,83 +620,91 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
     }
 
     if (showFullscreenPlayer) {
-      return PopScope<void>(
-        canPop: false,
-        onPopInvokedWithResult: (didPop, _) {
-          if (!didPop) _exitFullscreen();
-        },
-        child: AiroResponsiveScaffold(
-          padding: EdgeInsets.zero,
-          backgroundColor: Colors.black,
-          body: VideoPlayerWidget(
-            showControls: true,
-            initiallyFullscreen: true,
-            onFullscreenToggle: _toggleFullscreen,
-            enableSwipeChannelChange: true,
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && ref.read(isFullscreenModeProvider)) {
+          _fullscreenFocusNode.requestFocus();
+        }
+      });
+      return guardRouteBack(
+        Focus(
+          focusNode: _fullscreenFocusNode,
+          autofocus: true,
+          onKeyEvent: _handleFullscreenKey,
+          child: AiroResponsiveScaffold(
+            padding: EdgeInsets.zero,
+            backgroundColor: Colors.black,
+            body: VideoPlayerWidget(
+              showControls: true,
+              initiallyFullscreen: true,
+              onFullscreenToggle: _toggleFullscreen,
+              enableSwipeChannelChange: true,
+            ),
           ),
         ),
       );
     }
 
-    return AiroResponsiveScaffold(
-      padding: EdgeInsets.zero,
-      drawer: IptvNavigationDrawer(
-        showMovies: widget.onOpenVod != null,
-        onHome: () {},
-        onGuide: _openGuide,
-        onMovies: () => widget.onOpenVod?.call(),
-        onFavorites: _openFavorites,
-        onSettings: widget.onSettings,
-        onPlayLocalFileOnTv: widget.onPickLocalMediaForTv == null
-            ? null
-            : _playLocalFileOnTv,
-      ),
-      appBar: AppBar(
-        title: const Text('Airo TV'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.search),
-            tooltip: 'Search channels',
-            onPressed: _showSearchSheet,
-          ),
-          if (widget.onOpenVod != null)
+    return guardRouteBack(
+      AiroResponsiveScaffold(
+        padding: EdgeInsets.zero,
+        drawer: IptvNavigationDrawer(
+          showMovies: widget.onOpenVod != null,
+          onHome: () {},
+          onGuide: _openGuide,
+          onMovies: () => widget.onOpenVod?.call(),
+          onFavorites: _openFavorites,
+          onSettings: widget.onSettings,
+          onPlayLocalFileOnTv: widget.onPickLocalMediaForTv == null
+              ? null
+              : _playLocalFileOnTv,
+        ),
+        appBar: AppBar(
+          title: const Text('Airo TV'),
+          actions: [
             IconButton(
-              icon: const Icon(Icons.movie_outlined),
-              tooltip: 'Movies & Shows',
-              onPressed: widget.onOpenVod,
+              icon: const Icon(Icons.search),
+              tooltip: 'Search channels',
+              onPressed: _showSearchSheet,
             ),
-          IconButton(
-            icon: const Icon(Icons.link),
-            tooltip: 'Playlist source',
-            onPressed: _showPlaylistSheet,
-          ),
-          IconButton(
-            icon: const Icon(Icons.calendar_month_outlined),
-            tooltip: 'Guide URL',
-            onPressed: _showGuideSourceSheet,
-          ),
-          if (isGoogleCastSenderPlatform)
-            IconButton(
-              icon: const Icon(Icons.cast_connected),
-              tooltip: 'Cast',
-              onPressed: _showCastSheet,
-            ),
-        ],
-      ),
-      body: IptvResumeGate(
-        enabled: widget.deepLinkChannelId == null,
-        child: Column(
-          children: [
-            Expanded(
-              child: _StreamTabContent(
-                key: const ValueKey('iptv-browse-grid'),
-                onChannelTap: _playChannel,
-                onFullscreenToggle: _toggleFullscreen,
-                onPlaylistSourceTap: _showPlaylistSheet,
+            if (widget.onOpenVod != null)
+              IconButton(
+                icon: const Icon(Icons.movie_outlined),
+                tooltip: 'Movies & Shows',
+                onPressed: widget.onOpenVod,
               ),
+            IconButton(
+              icon: const Icon(Icons.link),
+              tooltip: 'Playlist source',
+              onPressed: _showPlaylistSheet,
             ),
-            const IptvCastMiniController(),
+            IconButton(
+              icon: const Icon(Icons.calendar_month_outlined),
+              tooltip: 'Guide URL',
+              onPressed: _showGuideSourceSheet,
+            ),
+            if (isGoogleCastSenderPlatform)
+              IconButton(
+                icon: const Icon(Icons.cast_connected),
+                tooltip: 'Cast',
+                onPressed: _showCastSheet,
+              ),
           ],
+        ),
+        body: IptvResumeGate(
+          enabled: widget.deepLinkChannelId == null,
+          child: Column(
+            children: [
+              Expanded(
+                child: _StreamTabContent(
+                  key: const ValueKey('iptv-browse-grid'),
+                  onChannelTap: _playChannel,
+                  onFullscreenToggle: _toggleFullscreen,
+                  onPlaylistSourceTap: _showPlaylistSheet,
+                ),
+              ),
+              const IptvCastMiniController(),
+            ],
+          ),
         ),
       ),
     );
@@ -672,7 +719,12 @@ class IPTVScreenBody extends ConsumerStatefulWidget {
   ConsumerState<IPTVScreenBody> createState() => _IPTVScreenBodyState();
 }
 
-class _IPTVScreenBodyState extends ConsumerState<IPTVScreenBody> {
+class _IPTVScreenBodyState extends ConsumerState<IPTVScreenBody>
+    with WidgetsBindingObserver {
+  final FocusNode _fullscreenFocusNode = FocusNode(
+    debugLabel: 'IPTV body fullscreen back handler',
+  );
+
   @override
   void initState() {
     super.initState();
@@ -681,6 +733,7 @@ class _IPTVScreenBodyState extends ConsumerState<IPTVScreenBody> {
     // Screen-level wakelock: survives the featured player widget being
     // scrolled out of the viewport or playback moving to the mini player.
     ref.read(wakelockPlaybackCoordinatorProvider);
+    WidgetsBinding.instance.addObserver(this);
   }
 
   @override
@@ -689,7 +742,30 @@ class _IPTVScreenBodyState extends ConsumerState<IPTVScreenBody> {
     // Orientation is reset in:
     // 1. _toggleFullscreen() when user explicitly exits fullscreen
     // 2. AppShell when navigating to a different tab
+    WidgetsBinding.instance.removeObserver(this);
+    _fullscreenFocusNode.dispose();
     super.dispose();
+  }
+
+  @override
+  Future<bool> didPopRoute() async {
+    if (!ref.read(isFullscreenModeProvider)) return false;
+    _exitFullscreen();
+    return true;
+  }
+
+  KeyEventResult _handleFullscreenKey(FocusNode node, KeyEvent event) {
+    if (event is! KeyDownEvent || !ref.read(isFullscreenModeProvider)) {
+      return KeyEventResult.ignored;
+    }
+    final key = event.logicalKey;
+    if (key == LogicalKeyboardKey.goBack ||
+        key == LogicalKeyboardKey.escape ||
+        key == LogicalKeyboardKey.browserBack) {
+      _exitFullscreen();
+      return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
   }
 
   void _toggleFullscreen() {
@@ -753,6 +829,13 @@ class _IPTVScreenBodyState extends ConsumerState<IPTVScreenBody> {
       _syncLocalPlaybackWithCast,
     );
     final isFullscreen = ref.watch(isFullscreenModeProvider);
+    if (isFullscreen) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && ref.read(isFullscreenModeProvider)) {
+          _fullscreenFocusNode.requestFocus();
+        }
+      });
+    }
 
     // Use AnimatedSwitcher with fade to black for seamless fullscreen transition
     return AnimatedSwitcher(
@@ -767,15 +850,20 @@ class _IPTVScreenBodyState extends ConsumerState<IPTVScreenBody> {
               onPopInvokedWithResult: (didPop, _) {
                 if (!didPop) _exitFullscreen();
               },
-              child: AiroResponsiveScaffold(
-                key: const ValueKey('fullscreen'),
-                padding: EdgeInsets.zero,
-                backgroundColor: Colors.black,
-                body: VideoPlayerWidget(
-                  showControls: true,
-                  initiallyFullscreen: true,
-                  onFullscreenToggle: _toggleFullscreen,
-                  enableSwipeChannelChange: true,
+              child: Focus(
+                focusNode: _fullscreenFocusNode,
+                autofocus: true,
+                onKeyEvent: _handleFullscreenKey,
+                child: AiroResponsiveScaffold(
+                  key: const ValueKey('fullscreen'),
+                  padding: EdgeInsets.zero,
+                  backgroundColor: Colors.black,
+                  body: VideoPlayerWidget(
+                    showControls: true,
+                    initiallyFullscreen: true,
+                    onFullscreenToggle: _toggleFullscreen,
+                    enableSwipeChannelChange: true,
+                  ),
                 ),
               ),
             )
