@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:platform_channels/platform_channels.dart';
 import '../../application/player_backgrounding_coordinator.dart';
+import '../../application/channel_warmup_policy.dart';
 import '../../application/providers/caption_preference_provider.dart';
 import '../../application/providers/channel_auto_scan_providers.dart';
 import '../../application/providers/iptv_providers.dart';
@@ -75,6 +76,8 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
   // Channel change overlay state
   String? _channelChangeOverlayText;
   Timer? _channelChangeOverlayTimer;
+  Timer? _adjacentChannelWarmupDebounce;
+  String _adjacentChannelWarmupSignature = '';
 
   // Netflix-style gesture controls (CV-PLAYER-GESTURES) + lock button.
   bool _isLocked = false;
@@ -121,6 +124,7 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
   void dispose() {
     _cancelHideControlsTimer();
     _channelChangeOverlayTimer?.cancel();
+    _adjacentChannelWarmupDebounce?.cancel();
     unawaited(_resetBrightnessSafely());
     super.dispose();
   }
@@ -245,6 +249,7 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
     if (nextChannel != null) {
       streamingService.playChannel(nextChannel);
       _showChannelChangeOverlay(nextChannel.name);
+      _scheduleAdjacentChannelWarmupFor(nextChannel);
     }
   }
 
@@ -254,7 +259,57 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
     if (prevChannel != null) {
       streamingService.playChannel(prevChannel);
       _showChannelChangeOverlay(prevChannel.name);
+      _scheduleAdjacentChannelWarmupFor(prevChannel);
     }
+  }
+
+  void _scheduleAdjacentChannelWarmup(StreamingState state) {
+    final currentChannel = state.currentChannel;
+    if (currentChannel == null) return;
+    _scheduleAdjacentChannelWarmupFor(currentChannel);
+  }
+
+  void _scheduleAdjacentChannelWarmupFor(IPTVChannel currentChannel) {
+    final channels = ref.read(filteredChannelsProvider);
+    if (channels.isEmpty) return;
+    final candidates = channelWarmupWindowAround(
+      currentChannel: currentChannel,
+      channels: channels,
+    );
+    if (candidates.isEmpty) return;
+
+    final autoScanState = ref.read(channelAutoScanProvider);
+    final plan = planChannelWarmup(
+      totalChannelCount: channels.length,
+      candidateCount: candidates.length,
+      cachedChannelCount: autoScanState.availabilityByChannelId.length,
+      playbackState: ref.read(playbackStateProvider),
+      interactionCritical: true,
+    );
+    if (plan.isEmpty) return;
+
+    final warmupChannels = candidates.take(plan.limit).toList(growable: false);
+    final signature = warmupChannels.map((channel) => channel.id).join(',');
+    if (signature.isEmpty || signature == _adjacentChannelWarmupSignature) {
+      return;
+    }
+    _adjacentChannelWarmupSignature = signature;
+    _adjacentChannelWarmupDebounce?.cancel();
+    _adjacentChannelWarmupDebounce = Timer(plan.debounce, () {
+      if (!mounted) return;
+      ref
+          .read(channelAutoScanProvider.notifier)
+          .start(
+            scopeId: 'airo-tv-player-nearby|$signature',
+            channels: warmupChannels,
+            maxConcurrentRequests: plan.maxConcurrentRequests,
+            currentPlayingChannelId: ref
+                .read(iptvStreamingServiceProvider)
+                .currentState
+                .currentChannel
+                ?.id,
+          );
+    });
   }
 
   void _seekBackward10(
@@ -348,6 +403,7 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _handleVodResume(service, state);
       _applyCaptionPreferenceIfNeeded(service, state);
+      _scheduleAdjacentChannelWarmup(state);
     });
 
     final videoView = service.buildVideoView();
@@ -773,18 +829,18 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                if (!_isFullscreen) ...[
-                  _PlayerRoundControlButton(
-                    key: const ValueKey('iptv-player-fullscreen-button'),
-                    icon: Icons.fullscreen,
-                    tooltip: 'Fullscreen',
-                    onPressed: _toggleFullscreen,
-                    diameter: 44,
-                    iconSize: 24,
-                    backgroundAlpha: 0.48,
-                  ),
-                  const SizedBox(width: 10),
-                ],
+                _PlayerRoundControlButton(
+                  key: const ValueKey('iptv-player-fullscreen-button'),
+                  icon: _isFullscreen
+                      ? Icons.fullscreen_exit
+                      : Icons.fullscreen,
+                  tooltip: _isFullscreen ? 'Exit fullscreen' : 'Fullscreen',
+                  onPressed: _toggleFullscreen,
+                  diameter: 44,
+                  iconSize: 24,
+                  backgroundAlpha: 0.48,
+                ),
+                const SizedBox(width: 10),
                 _PlayerRoundControlButton(
                   key: const ValueKey('iptv-player-pip-button'),
                   icon: Icons.picture_in_picture_alt_outlined,
