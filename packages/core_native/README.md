@@ -48,6 +48,7 @@ Synchronous APIs remain deterministic Dart fallback paths:
 
 - `normalizeChannelName`
 - `parseM3uEntries`
+- `parseM3uChannelsWithStats`
 - `parseXmltvProgrammes`
 - `parseXmltvProgrammesFile`
 
@@ -56,5 +57,7 @@ initialized and fall back to the same Dart behavior when unavailable:
 
 - `normalizeChannelNameNative`
 - `parseM3uEntriesNative`
+- `parseM3uChannelsWithStatsNative`
+- `parseM3uFileChannelsWithStatsNative`
 - `parseXmltvProgrammesNative`
 - `parseXmltvProgrammesFileNative`

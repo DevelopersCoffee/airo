@@ -61,6 +61,34 @@ https://example.com/parsed.m3u8
     expect(result.stats.elapsedMillis, greaterThanOrEqualTo(0));
   });
 
+  test('parses downloaded M3U file with aggregate stats', () async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    final directory = await Directory.systemTemp.createTemp(
+      'platform_playlist_import_file_parse_test_',
+    );
+    addTearDown(() async {
+      if (directory.existsSync()) {
+        await directory.delete(recursive: true);
+      }
+    });
+    final parser = M3UParserService(dio: Dio(), prefs: prefs);
+    final file = File('${directory.path}/playlist.m3u');
+    await file.writeAsString('''
+#EXTM3U
+#EXTINF:-1 group-title="News",File Parsed News
+https://example.com/file-parsed-news.m3u8
+''');
+
+    final result = await parser.parseM3UFileWithStatsOffMain(file.path);
+
+    expect(result.channels, hasLength(1));
+    expect(result.channels.single.name, 'File Parsed News');
+    expect(result.stats.parsedCount, 1);
+    expect(result.stats.skippedCount, 0);
+    expect(result.stats.malformedCount, 0);
+  });
+
   group('M3UParserService deduplication', () {
     late M3UParserService parser;
 
@@ -190,6 +218,7 @@ https://cdn.example.com/live.m3u8
         dio: Dio(),
         prefs: prefs,
         cacheDirectoryProvider: () async => cacheDir,
+        downloadDirectoryProvider: () async => cacheDir,
       );
     });
 
@@ -226,6 +255,7 @@ https://cdn.example.com/live.m3u8
         dio: Dio(),
         prefs: prefs,
         cacheDirectoryProvider: () async => cacheDir,
+        downloadDirectoryProvider: () async => cacheDir,
         maxPreferenceValueBytes: 32,
       );
 
@@ -253,6 +283,7 @@ https://cdn.example.com/live.m3u8
         dio: Dio(),
         prefs: prefs,
         cacheDirectoryProvider: () async => cacheDir,
+        downloadDirectoryProvider: () async => cacheDir,
         workerExecutor: workerExecutor,
       );
 
@@ -313,6 +344,7 @@ https://cdn.example.com/worker-news.m3u8
         dio: Dio(),
         prefs: prefs,
         cacheDirectoryProvider: () async => cacheDir,
+        downloadDirectoryProvider: () async => cacheDir,
         workerExecutor: workerExecutor,
       );
 
@@ -351,6 +383,34 @@ https://cdn.example.com/structured-news.m3u8
         'm3u_playlist_cache_encode',
         'm3u_playlist_cache_decode',
       ]);
+    });
+
+    test('removes temporary raw playlist download after import', () async {
+      var requestCount = 0;
+      final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+      addTearDown(() => server.close(force: true));
+
+      server.listen((request) async {
+        requestCount++;
+        request.response.write('''
+#EXTM3U
+#EXTINF:-1 group-title="News",Temporary Download News
+https://cdn.example.com/temporary-download-news.m3u8
+''');
+        await request.response.close();
+      });
+
+      await parser.setPlaylistUrl(
+        'http://${server.address.address}:${server.port}/playlist.m3u',
+      );
+
+      final channels = await parser.fetchPlaylist(forceRefresh: true);
+      final downloadDir = Directory('${cacheDir.path}/playlist_downloads');
+
+      expect(channels.single.name, 'Temporary Download News');
+      expect(requestCount, 1);
+      expect(downloadDir.existsSync(), isTrue);
+      expect(downloadDir.listSync(), isEmpty);
     });
 
     test('uses HTTP validators and cached playlist on 304 refresh', () async {
@@ -413,6 +473,7 @@ https://cdn.example.com/conditional-news.m3u8
         dio: Dio(),
         prefs: prefs,
         cacheDirectoryProvider: () async => cacheDir,
+        downloadDirectoryProvider: () async => cacheDir,
         maxPreferenceValueBytes: 96,
       );
 
