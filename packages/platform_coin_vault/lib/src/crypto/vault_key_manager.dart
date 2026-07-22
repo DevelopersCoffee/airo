@@ -1,3 +1,5 @@
+// ignore_for_file: prefer_initializing_formals
+
 import 'dart:math';
 
 import 'package:core_data/core_data.dart';
@@ -13,14 +15,16 @@ const String _wrappedDekKey = 'airo_coin_wrapped_dek';
 /// backed, acting as the KEK boundary. No caller ever gets the key without a
 /// successful biometric (or OS-fallback) authentication first.
 class VaultKeyManager implements EncryptionKeyManager {
-  VaultKeyManager({required LocalAuthentication localAuth, required SecureStorage secureStorage})
-    : _authenticate = (() => localAuth.authenticate(
-        localizedReason: 'Unlock your Airo Coin vault',
-        options: const AuthenticationOptions(biometricOnly: false),
-      )),
-      _localAuth = localAuth,
-      _secureStorage = secureStorage,
-      _isAvailable = null;
+  VaultKeyManager({
+    required LocalAuthentication localAuth,
+    required SecureStorage secureStorage,
+  }) : _authenticate = (() => localAuth.authenticate(
+         localizedReason: 'Unlock your Airo Coin vault',
+         options: const AuthenticationOptions(biometricOnly: false),
+       )),
+       _localAuth = localAuth,
+       _secureStorage = secureStorage,
+       _isAvailable = null;
 
   /// Test-only constructor: bypasses the real `local_auth` plugin and
   /// `flutter_secure_storage` platform channel, both of which are
@@ -51,10 +55,14 @@ class VaultKeyManager implements EncryptionKeyManager {
     try {
       authenticated = await _authenticate();
     } catch (e) {
-      return Failure(AuthFailure(message: 'Biometric authentication failed', cause: e));
+      return Failure(
+        AuthFailure(message: 'Biometric authentication failed', cause: e),
+      );
     }
     if (!authenticated) {
-      return const Failure(AuthFailure(message: 'Biometric authentication failed'));
+      return const Failure(
+        AuthFailure(message: 'Biometric authentication failed'),
+      );
     }
 
     final existing = await _secureStorage.read(_wrappedDekKey);
@@ -62,12 +70,17 @@ class VaultKeyManager implements EncryptionKeyManager {
       try {
         return Success(_decodeKey(stored));
       } catch (e) {
-        return Failure(CacheFailure(message: 'Stored vault key is corrupted', cause: e));
+        return Failure(
+          CacheFailure(message: 'Stored vault key is corrupted', cause: e),
+        );
       }
     }
 
     final newKey = _generateKeyBytes();
-    final writeResult = await _secureStorage.write(_wrappedDekKey, _encodeKey(newKey));
+    final writeResult = await _secureStorage.write(
+      _wrappedDekKey,
+      _encodeKey(newKey),
+    );
     if (writeResult.isFailure) {
       return Failure(writeResult.failure);
     }
@@ -90,10 +103,14 @@ class VaultKeyManager implements EncryptionKeyManager {
     try {
       authenticated = await _authenticate();
     } catch (e) {
-      return Failure(AuthFailure(message: 'Biometric authentication failed', cause: e));
+      return Failure(
+        AuthFailure(message: 'Biometric authentication failed', cause: e),
+      );
     }
     if (!authenticated) {
-      return const Failure(AuthFailure(message: 'Biometric authentication failed'));
+      return const Failure(
+        AuthFailure(message: 'Biometric authentication failed'),
+      );
     }
 
     final newKey = _generateKeyBytes();
@@ -114,10 +131,14 @@ class VaultKeyManager implements EncryptionKeyManager {
     try {
       authenticated = await _authenticate();
     } catch (e) {
-      return Failure(AuthFailure(message: 'Biometric authentication failed', cause: e));
+      return Failure(
+        AuthFailure(message: 'Biometric authentication failed', cause: e),
+      );
     }
     if (!authenticated) {
-      return const Failure(AuthFailure(message: 'Biometric authentication failed'));
+      return const Failure(
+        AuthFailure(message: 'Biometric authentication failed'),
+      );
     }
     return _secureStorage.write(_wrappedDekKey, _encodeKey(newKeyBytes));
   }
@@ -130,8 +151,9 @@ class VaultKeyManager implements EncryptionKeyManager {
   /// immediately after a single upstream [getDatabaseKey] auth has already
   /// gated the whole rotation operation. Calling this independently of that
   /// flow would persist a new DEK with no authentication check at all.
-  Future<Result<void>> persistRotatedKeyUnauthenticated(List<int> newKeyBytes) =>
-      _secureStorage.write(_wrappedDekKey, _encodeKey(newKeyBytes));
+  Future<Result<void>> persistRotatedKeyUnauthenticated(
+    List<int> newKeyBytes,
+  ) => _secureStorage.write(_wrappedDekKey, _encodeKey(newKeyBytes));
 
   @override
   Future<bool> isEncryptionAvailable() async {

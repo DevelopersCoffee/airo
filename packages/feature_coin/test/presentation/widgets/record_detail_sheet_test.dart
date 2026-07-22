@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:local_auth_platform_interface/local_auth_platform_interface.dart'
     show AuthMessages;
@@ -254,6 +255,49 @@ void main() {
 
     expect(find.text('Invalid PAN record key'), findsOneWidget);
     container.read(vaultSessionProvider.notifier).lock();
+  });
+
+  testWidgets('edit action pushes an encoded edit route', (tester) async {
+    const nickname = 'HDFC Salary / Primary';
+    final router = GoRouter(
+      initialLocation: '/',
+      routes: [
+        GoRoute(
+          path: '/',
+          builder: (context, state) => UncontrolledProviderScope(
+            container: container,
+            child: const Scaffold(
+              body: RecordDetailSheet(
+                recordType: VaultRecordType.bankAccount,
+                recordKey: nickname,
+                summary: BankAccountSummary(
+                  nickname: nickname,
+                  bankName: 'HDFC Bank',
+                  accountHolderName: 'Jane Doe',
+                  ifscCode: 'HDFC0001234',
+                  accountType: 'savings',
+                ),
+              ),
+            ),
+          ),
+        ),
+        GoRoute(
+          path: '/money/vault/edit/:type/:key',
+          builder: (context, state) => Scaffold(
+            body: Text(
+              'edit:${state.pathParameters['type']}:'
+              '${state.pathParameters['key']}',
+            ),
+          ),
+        ),
+      ],
+    );
+    await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+
+    await tester.tap(find.byTooltip('Edit record'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('edit:bankAccount:$nickname'), findsOneWidget);
   });
 
   testWidgets('delete confirms, re-authenticates, and removes the record', (

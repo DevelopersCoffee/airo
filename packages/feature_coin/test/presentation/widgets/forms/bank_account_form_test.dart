@@ -296,10 +296,13 @@ void main() {
 
   testWidgets('malformed PAN edit key renders a safe error', (tester) async {
     await tester.pumpWidget(
-      const MaterialApp(
-        home: VaultRecordFormScreen(
-          recordType: VaultRecordType.panCard,
-          recordKey: 'not-an-id',
+      UncontrolledProviderScope(
+        container: container,
+        child: const MaterialApp(
+          home: VaultRecordFormScreen(
+            recordType: VaultRecordType.panCard,
+            recordKey: 'not-an-id',
+          ),
         ),
       ),
     );

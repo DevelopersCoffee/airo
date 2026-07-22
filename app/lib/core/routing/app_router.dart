@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:feature_coin/feature_coin.dart';
 import 'package:go_router/go_router.dart';
 import '../../features/auth/screens/login_screen.dart';
 import '../../features/auth/screens/register_screen.dart';
@@ -129,6 +130,33 @@ class AppRouter {
                     path: 'split',
                     name: 'bill_split',
                     builder: (context, state) => const BillSplitScreen(),
+                  ),
+                  // Coin Vault (feature_coin)
+                  GoRoute(
+                    path: 'vault',
+                    name: RouteNames.coinVault,
+                    builder: (context, state) => const VaultGateScreen(),
+                    routes: [
+                      GoRoute(
+                        path: 'add/:type',
+                        name: RouteNames.coinVaultAdd,
+                        builder: (context, state) => VaultRecordFormScreen(
+                          recordType: VaultRecordType.values.byName(
+                            state.pathParameters['type']!,
+                          ),
+                        ),
+                      ),
+                      GoRoute(
+                        path: 'edit/:type/:key',
+                        name: RouteNames.coinVaultEdit,
+                        builder: (context, state) => VaultRecordFormScreen(
+                          recordType: VaultRecordType.values.byName(
+                            state.pathParameters['type']!,
+                          ),
+                          recordKey: state.pathParameters['key'],
+                        ),
+                      ),
+                    ],
                   ),
                   // Coins Feature Routes
                   GoRoute(

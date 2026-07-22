@@ -1,3 +1,5 @@
+// ignore_for_file: prefer_initializing_formals
+
 import 'package:core_domain/core_domain.dart';
 import 'package:sqflite/sqflite.dart';
 

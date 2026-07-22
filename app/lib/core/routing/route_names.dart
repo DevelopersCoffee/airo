@@ -5,7 +5,6 @@ class RouteNames {
   // Route paths
   static const String home = '/';
   static const String airo = '/airo';
-  static const String airomoney = '/airomoney';
   static const String login = '/login';
   static const String register = '/register';
   static const String profile = '/profile';
@@ -27,4 +26,10 @@ class RouteNames {
   static const String coinsAddExpensePath = '/money/add-expense';
   static const String coinsBudgetsPath = '/money/budgets';
   static const String coinsGroupsPath = '/money/groups';
+
+  // Coin Vault (feature_coin)
+  static const String coinVault = 'coin_vault';
+  static const String coinVaultAdd = 'coin_vault_add';
+  static const String coinVaultEdit = 'coin_vault_edit';
+  static const String coinVaultPath = '/money/vault';
 }

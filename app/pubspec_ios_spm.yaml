@@ -63,8 +63,8 @@ dependencies:
   # Local packages - Features
   airo:
     path: ../packages/airo
-  airomoney:
-    path: ../packages/airomoney
+  feature_coin:
+    path: ../packages/feature_coin
 
   cupertino_icons: ^1.0.9
   equatable: ^2.1.0
