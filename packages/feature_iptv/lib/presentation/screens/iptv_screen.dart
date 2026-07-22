@@ -16,7 +16,6 @@ import '../widgets/adaptive_iptv_sheet.dart';
 import '../widgets/cast_device_picker_sheet.dart';
 import '../widgets/channel_list_widget.dart';
 import '../widgets/iptv_cast_mini_controller.dart';
-import '../widgets/iptv_cast_prompt_card.dart';
 import '../widgets/iptv_mini_player.dart';
 import '../widgets/iptv_navigation_drawer.dart';
 import '../widgets/phone_media_play_on_tv_sheet.dart';
@@ -625,7 +624,6 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
               onChannelTap: _playChannel,
               onFullscreenToggle: _toggleFullscreen,
               onPlaylistSourceTap: _showPlaylistSheet,
-              onCastTap: kIsWeb ? null : _showCastSheet,
             ),
           ),
           const IptvCastMiniController(),
@@ -703,37 +701,6 @@ class _IPTVScreenBodyState extends ConsumerState<IPTVScreenBody> {
     await showPlaylistSourceSheet(context, ref);
   }
 
-  Future<void> _showCastSheet() async {
-    if (kIsWeb) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Cast is available in the mobile app.')),
-      );
-      return;
-    }
-
-    final streamingService = ref.read(iptvStreamingServiceProvider);
-    final channel = streamingService.currentState.currentChannel;
-    if (channel == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Choose a channel before casting.')),
-      );
-      return;
-    }
-
-    await showIptvCastDevicePicker(
-      context: context,
-      onDeviceSelected: (device) {
-        ref
-            .read(iptvCastProvider.notifier)
-            .castChannelToDevice(
-              channel: channel,
-              device: device,
-              selectedQuality: streamingService.currentState.selectedQuality,
-            );
-      },
-    );
-  }
-
   void _syncLocalPlaybackWithCast(bool? wasCasting, bool isCasting) {
     final streaming = ref.read(iptvStreamingServiceProvider);
     if (isCasting) {
@@ -778,7 +745,6 @@ class _IPTVScreenBodyState extends ConsumerState<IPTVScreenBody> {
                       onChannelTap: _playChannel,
                       onFullscreenToggle: _toggleFullscreen,
                       onPlaylistSourceTap: _showPlaylistSheet,
-                      onCastTap: kIsWeb ? null : _showCastSheet,
                     ),
                   ),
                   const IptvCastMiniController(),
@@ -795,13 +761,11 @@ class _StreamTabContent extends ConsumerWidget {
     required this.onChannelTap,
     required this.onFullscreenToggle,
     required this.onPlaylistSourceTap,
-    this.onCastTap,
   });
 
   final ValueChanged<IPTVChannel> onChannelTap;
   final VoidCallback onFullscreenToggle;
   final VoidCallback onPlaylistSourceTap;
-  final VoidCallback? onCastTap;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -823,6 +787,8 @@ class _StreamTabContent extends ConsumerWidget {
   ) {
     final screenWidth = MediaQuery.of(context).size.width;
     final isWideScreen = screenWidth > 800;
+    final hasActiveChannel =
+        streamingState.asData?.value.currentChannel != null;
 
     if (channels.isEmpty) {
       return _BringYourOwnPlaylistView(
@@ -839,23 +805,26 @@ class _StreamTabContent extends ConsumerWidget {
               ? Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(
-                      flex: 3,
-                      child: Padding(
-                        padding: const EdgeInsets.only(left: 16, right: 8),
-                        child: _FeaturedPlayerPanel(
-                          streamingState: streamingState,
-                          onFullscreenToggle: onFullscreenToggle,
-                          buildQualityDropdown: (state) =>
-                              _buildQualityDropdown(context, ref, state),
-                          onCastTap: onCastTap,
+                    if (hasActiveChannel)
+                      Expanded(
+                        flex: 3,
+                        child: Padding(
+                          padding: const EdgeInsets.only(left: 16, right: 8),
+                          child: _FeaturedPlayerPanel(
+                            streamingState: streamingState,
+                            onFullscreenToggle: onFullscreenToggle,
+                            buildQualityDropdown: (state) =>
+                                _buildQualityDropdown(context, ref, state),
+                          ),
                         ),
                       ),
-                    ),
                     Expanded(
-                      flex: 2,
+                      flex: hasActiveChannel ? 2 : 1,
                       child: Padding(
-                        padding: const EdgeInsets.only(left: 8, right: 16),
+                        padding: EdgeInsets.only(
+                          left: hasActiveChannel ? 8 : 16,
+                          right: 16,
+                        ),
                         child: _ChannelPanel(
                           channels: channels,
                           onChannelTap: onChannelTap,
@@ -869,21 +838,28 @@ class _StreamTabContent extends ConsumerWidget {
                     Expanded(
                       child: CustomScrollView(
                         slivers: [
-                          SliverToBoxAdapter(
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                              ),
-                              child: _FeaturedPlayerPanel(
-                                streamingState: streamingState,
-                                onFullscreenToggle: onFullscreenToggle,
-                                buildQualityDropdown: (state) =>
-                                    _buildQualityDropdown(context, ref, state),
-                                onCastTap: onCastTap,
+                          if (hasActiveChannel) ...[
+                            SliverToBoxAdapter(
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                ),
+                                child: _FeaturedPlayerPanel(
+                                  streamingState: streamingState,
+                                  onFullscreenToggle: onFullscreenToggle,
+                                  buildQualityDropdown: (state) =>
+                                      _buildQualityDropdown(
+                                        context,
+                                        ref,
+                                        state,
+                                      ),
+                                ),
                               ),
                             ),
-                          ),
-                          const SliverToBoxAdapter(child: SizedBox(height: 12)),
+                            const SliverToBoxAdapter(
+                              child: SizedBox(height: 12),
+                            ),
+                          ],
                           SliverFillRemaining(
                             hasScrollBody: true,
                             child: BrowseScreen(
@@ -1343,49 +1319,35 @@ class _BringYourOwnPlaylistView extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final placeholderHeight = constraints.maxHeight < 560 ? 180.0 : 240.0;
-
-        return SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            children: [
-              SizedBox(
-                height: placeholderHeight,
-                width: double.infinity,
-                child: const _PlayerPlaceholder(
-                  message: 'Add a playlist to start watching',
-                ),
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        children: [
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              'Add your playlist',
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w700,
               ),
-              const SizedBox(height: 20),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  'Add your playlist',
-                  style: theme.textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Airo is a media player. It does not provide channels, playlists, or program guide data. Add an M3U URL for media you own or are authorized to watch.',
-                style: theme.textTheme.bodyMedium,
-              ),
-              const SizedBox(height: 16),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: FilledButton.icon(
-                  onPressed: onPlaylistSourceTap,
-                  icon: const Icon(Icons.link),
-                  label: const Text('Add playlist URL'),
-                ),
-              ),
-            ],
+            ),
           ),
-        );
-      },
+          const SizedBox(height: 8),
+          Text(
+            'Airo is a media player. It does not provide channels, playlists, or program guide data. Add an M3U URL for media you own or are authorized to watch.',
+            style: theme.textTheme.bodyMedium,
+          ),
+          const SizedBox(height: 16),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: FilledButton.icon(
+              onPressed: onPlaylistSourceTap,
+              icon: const Icon(Icons.link),
+              label: const Text('Add playlist URL'),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -1395,28 +1357,24 @@ class _FeaturedPlayerPanel extends StatelessWidget {
     required this.streamingState,
     required this.onFullscreenToggle,
     required this.buildQualityDropdown,
-    this.onCastTap,
   });
 
   final AsyncValue<StreamingState> streamingState;
   final VoidCallback onFullscreenToggle;
   final Widget Function(StreamingState state) buildQualityDropdown;
-  final VoidCallback? onCastTap;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    if (streamingState.asData?.value.currentChannel == null) {
+      return const SizedBox.shrink();
+    }
+
     final player = AspectRatio(
       aspectRatio: 16 / 9,
-      child: streamingState.when(
-        data: (state) => state.currentChannel != null
-            ? VideoPlayerWidget(
-                showControls: true,
-                onFullscreenToggle: onFullscreenToggle,
-              )
-            : const _PlayerPlaceholder(),
-        loading: () => const _PlayerPlaceholder(),
-        error: (_, _) => const _PlayerPlaceholder(),
+      child: VideoPlayerWidget(
+        showControls: true,
+        onFullscreenToggle: onFullscreenToggle,
       ),
     );
 
@@ -1439,12 +1397,6 @@ class _FeaturedPlayerPanel extends StatelessWidget {
               const SizedBox(height: 12),
               streamingState.when(
                 data: (state) {
-                  if (state.currentChannel == null) {
-                    return const Text(
-                      'Choose a channel from your playlist to begin streaming.',
-                    );
-                  }
-
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -1467,13 +1419,6 @@ class _FeaturedPlayerPanel extends StatelessWidget {
                         state.currentChannel!.group,
                         style: theme.textTheme.bodyMedium,
                       ),
-                      if (!kIsWeb && onCastTap != null) ...[
-                        const SizedBox(height: 8),
-                        IptvCastPromptCard(
-                          channel: state.currentChannel!,
-                          onChooseTv: onCastTap,
-                        ),
-                      ],
                       const SizedBox(height: 12),
                       const IPTVMiniPlayer(forceVisible: true),
                     ],
@@ -1535,44 +1480,6 @@ class _ChannelPanel extends ConsumerWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _PlayerPlaceholder extends StatelessWidget {
-  const _PlayerPlaceholder({
-    this.message = 'Select a channel to start watching',
-  });
-
-  final String message;
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    return Container(
-      decoration: BoxDecoration(
-        color: colorScheme.surface.withValues(alpha: 0.42),
-        border: Border.all(color: colorScheme.outlineVariant),
-      ),
-      child: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.live_tv,
-              size: 64,
-              color: colorScheme.primary.withValues(alpha: 0.7),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              message,
-              style: TextStyle(
-                color: colorScheme.primary.withValues(alpha: 0.7),
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }

@@ -157,7 +157,11 @@ void main() {
     expect(find.byType(ChoiceChip), findsNothing);
     expect(find.text('Featured Player'), findsNothing);
     expect(find.text('Play media from your saved playlist.'), findsNothing);
-    expect(find.text('Select a channel to start watching'), findsOneWidget);
+    expect(find.text('Select a channel to start watching'), findsNothing);
+    expect(
+      find.text('Choose a channel from your playlist to begin streaming.'),
+      findsNothing,
+    );
 
     await tester.drag(find.byType(CustomScrollView), const Offset(0, -320));
     await tester.pumpAndSettle();
@@ -440,6 +444,7 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('Add playlist URL'), findsOneWidget);
+    expect(find.text('Add a playlist to start watching'), findsNothing);
     expect(find.text('Live Channels'), findsNothing);
   });
 
@@ -469,6 +474,11 @@ void main() {
     expect(find.text('News'), findsWidgets);
     expect(find.text('LIVE'), findsWidgets);
     expect(find.byIcon(Icons.equalizer), findsOneWidget);
+    expect(find.text('Play on TV'), findsNothing);
+    expect(
+      find.text('Send this channel to a Chromecast-enabled TV.'),
+      findsNothing,
+    );
   });
 
   testWidgets('hides Movies & Shows action when onOpenVod is not provided', (
