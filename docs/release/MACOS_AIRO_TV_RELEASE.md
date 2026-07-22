@@ -27,11 +27,11 @@ Recommended workflow inputs:
 
 ```text
 profile=tv
-version=airo-tv-v0.0.2
-build_name=0.0.2
-build_number=2
+version=airo-tv-v0.0.5
+build_name=0.0.5
+build_number=5
 release_ref=main
-release_branch=release/airo-tv-v0.0.2
+release_branch=release/airo-tv-v0.0.5
 require_notarization=false
 ```
 

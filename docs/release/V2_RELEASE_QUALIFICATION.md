@@ -21,7 +21,7 @@ device evidence into a release report:
 
 ```bash
 scripts/generate-release-qualification-report.py \
-  --manifest release-artifacts/Airo-TV-v2.0.0-Release-Manifest.json \
+  --manifest release-artifacts/Airo-TV-0.0.5-Release-Manifest.json \
   --evidence release-artifacts/qualification-evidence.json \
   --mode public
 ```
@@ -36,7 +36,7 @@ Use the reusable `core_release` preflight before public publication to verify
 the same evidence policy from package code instead of ad hoc script logic:
 
 ```bash
-AIRO_RELEASE_MANIFEST=release-artifacts/Airo-TV-v2.0.0-Release-Manifest.json \
+AIRO_RELEASE_MANIFEST=release-artifacts/Airo-TV-0.0.5-Release-Manifest.json \
 AIRO_QUALIFICATION_EVIDENCE=release-artifacts/qualification-evidence.json \
 QUALIFICATION_MODE=public \
 dart pub global run melos run release:qualification-preflight
@@ -95,7 +95,7 @@ Firebase Test Lab, and manual physical-device runs can all emit the same shape.
   "checks": [
     {
       "profileId": "tv",
-      "filename": "Airo-TV-v2.0.0.apk",
+      "filename": "Airo-TV-0.0.5.apk",
       "deviceClass": "android-tv",
       "checkType": "physical-device",
       "deviceModel": "Chromecast with Google TV",
@@ -107,11 +107,11 @@ Firebase Test Lab, and manual physical-device runs can all emit the same shape.
   "waivers": [
     {
       "profileId": "tv",
-      "filename": "Airo-TV-v2.0.0.apk",
+      "filename": "Airo-TV-0.0.5.apk",
       "deviceClass": "fire-tv",
       "reason": "Fire TV remains compatible/experimental for this release.",
       "approvedBy": "release-manager",
-      "expiresAfter": "v2.0.0"
+      "expiresAfter": "airo-tv-v0.0.5"
     }
   ]
 }

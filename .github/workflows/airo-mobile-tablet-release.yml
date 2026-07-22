@@ -65,15 +65,15 @@ on:
       version:
         description: 'Artifact and release version label'
         required: true
-        default: v2.0.0
+        default: v0.0.5
       build_name:
-        description: 'Android versionName, for example 2.0.0'
+        description: 'Android versionName, for example 0.0.5'
         required: true
-        default: 2.0.0
+        default: 0.0.5
       build_number:
         description: 'Android versionCode, must increase for every Play upload'
         required: true
-        default: '200'
+        default: '7'
       release_ref:
         description: 'Git ref to release; must contain latest origin/main'
         required: true
@@ -121,8 +121,8 @@ permissions:
 env:
   FLUTTER_VERSION: '3.44.4'
   RELEASE_VERSION: ${{ inputs.version || github.event.inputs.version || github.ref_name }}
-  BUILD_NAME: ${{ inputs.build_name || github.event.inputs.build_name || '2.0.0' }}
-  BUILD_NUMBER: ${{ inputs.build_number || github.event.inputs.build_number || '200' }}
+  BUILD_NAME: ${{ inputs.build_name || github.event.inputs.build_name || '0.0.5' }}
+  BUILD_NUMBER: ${{ inputs.build_number || github.event.inputs.build_number || '7' }}
   PROFILE: ${{ inputs.profile || github.event.inputs.profile || 'full' }}
 
 jobs:

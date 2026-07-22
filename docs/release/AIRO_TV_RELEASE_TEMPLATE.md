@@ -56,9 +56,8 @@ No breaking changes.
 
 ## Known Limitations
 
-- No EPG support.
 - No recording.
-- No favorites sync.
+- No cloud favorites sync.
 - No cloud playlists.
 - No multiple playlist merge.
 

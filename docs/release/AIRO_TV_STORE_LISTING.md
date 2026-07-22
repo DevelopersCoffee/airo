@@ -1,10 +1,10 @@
 # Airo TV Store Listing Metadata
 
 Canonical listing metadata for the Airo TV v2 Android TV release profile.
-This copy is scoped to the shipped v0.0.2 feature set in
+This copy is scoped to the shipped v0.0.5 feature set in
 [Airo TV Feature Matrix](./AIRO_TV_FEATURE_MATRIX.md). Do not claim planned
-features such as EPG, favorites, recording, cloud playlists, or bundled
-channels until the feature matrix marks them supported.
+features such as recording, cloud playlists, or bundled channels until the
+feature matrix marks them supported.
 
 ## Release Scope
 
@@ -42,6 +42,8 @@ clean, remote-friendly interface built for the living room.
 Key features:
 - Import your own M3U/M3U8 playlist URL
 - Browse and search channels by name
+- Add XMLTV guide sources, favorites, and user-authorized provider sources
+- See local channel status signals while browsing supported playlists
 - Play supported HLS and media streams on TV devices
 - Use Chromecast/Cast controls where supported by your device and network
 - Keep playlists local unless you choose to load a remote playlist URL
@@ -57,8 +59,8 @@ Supported playlist formats:
 M3U and M3U8.
 
 Playback support depends on the stream format, codec, device capability, and
-network connection. Some planned features, including EPG, favorites, recording,
-and cloud playlists, are not included in this release.
+network connection. Some planned features, including recording and cloud
+playlists, are not included in this release.
 ```
 
 Full description length: 1,122/4,000 characters.

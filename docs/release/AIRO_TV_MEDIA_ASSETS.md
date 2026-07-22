@@ -29,9 +29,10 @@ Python environment does not already provide it.
 - Search
 - Playlist Import
 
-The current v0.0.2 release does not include EPG, favorites, recording, cloud
-playlists, or AI Search. Do not add store screenshots for planned features until
-[Airo TV Feature Matrix](./AIRO_TV_FEATURE_MATRIX.md) marks them supported.
+The current v0.0.5 release includes guide-source setup and local favorites, but
+does not include recording, cloud playlists, or AI Search. Do not add store
+screenshots for planned features until [Airo TV Feature Matrix](./AIRO_TV_FEATURE_MATRIX.md)
+marks them supported.
 
 ## Demo Video
 
