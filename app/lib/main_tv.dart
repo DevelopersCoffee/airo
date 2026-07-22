@@ -449,7 +449,9 @@ Future<Duration?> warmTvDebugDefaultEpgCache(
       debugName: 'tv_debug_epg_warmup',
     );
     await repository.saveSnapshot(snapshot);
-    windowRepository?.updateSource(InMemoryCompactEpgRepository(seed: snapshot));
+    windowRepository?.updateSource(
+      InMemoryCompactEpgRepository(seed: snapshot),
+    );
     stopwatch.stop();
     return stopwatch.elapsed;
   } finally {
