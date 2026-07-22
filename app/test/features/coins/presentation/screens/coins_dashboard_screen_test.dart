@@ -92,6 +92,23 @@ void main() {
     expect(find.text('Start your money baseline'), findsOneWidget);
   });
 
+  testWidgets('shows the secure vault dashboard entry', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          dashboardDataProvider.overrideWith(
+            (ref) async => const DashboardData(),
+          ),
+        ],
+        child: const MaterialApp(home: CoinsDashboardScreen()),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('Secure Vault'), findsWidgets);
+    expect(find.text('Bank accounts, PAN, cards & documents'), findsOneWidget);
+  });
+
   testWidgets('opens add expense from the dashboard add action', (
     tester,
   ) async {
