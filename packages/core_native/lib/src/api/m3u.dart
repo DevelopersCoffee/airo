@@ -7,9 +7,9 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
 import '../frb_generated.dart';
 
-// These functions are ignored because they are not marked as `pub`: `is_attr_key_byte`, `new`, `parse_extinf`, `parse_line`, `parse_m3u_playlist_str`
+// These functions are ignored because they are not marked as `pub`: `is_attr_key_byte`, `new`, `parse_extinf`, `parse_line`, `parse_m3u_playlist_str_with_stats`, `parse_m3u_playlist_str`
 // These types are ignored because they are neither used by any `pub` functions nor (for structs and enums) marked `#[frb(unignore)]`: `AttributeIter`, `PendingExtInf`
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `clone`, `clone`, `clone`, `eq`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `next`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `clone`, `clone`, `clone`, `clone`, `clone`, `eq`, `eq`, `eq`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `next`
 // These functions are ignored (category: IgnoreBecauseOwnerTyShouldIgnore): `default`
 
 Future<List<M3uEntry>> parseM3UEntries({required String content}) =>
@@ -17,6 +17,11 @@ Future<List<M3uEntry>> parseM3UEntries({required String content}) =>
 
 Future<M3uPlaylist> parseM3UPlaylist({required String content}) =>
     RustLib.instance.api.crateApiM3UParseM3UPlaylist(content: content);
+
+/// Parse through the same Rust parser while retaining only safe aggregate
+/// counters for large-playlist import progress reporting.
+Future<M3uParseResult> parseM3UWithStats({required String content}) =>
+    RustLib.instance.api.crateApiM3UParseM3UWithStats(content: content);
 
 class M3uEntry {
   const M3uEntry({
@@ -72,6 +77,62 @@ class M3uEntry {
           language == other.language &&
           duration == other.duration &&
           extras == other.extras;
+}
+
+class M3uParseResult {
+  const M3uParseResult({required this.playlist, required this.stats});
+  final M3uPlaylist playlist;
+  final M3uParseStats stats;
+
+  static Future<M3uParseResult> default_() =>
+      RustLib.instance.api.crateApiM3UM3UParseResultDefault();
+
+  @override
+  int get hashCode => playlist.hashCode ^ stats.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is M3uParseResult &&
+          runtimeType == other.runtimeType &&
+          playlist == other.playlist &&
+          stats == other.stats;
+}
+
+/// Aggregate-only results for a playlist parse. These counters deliberately
+/// contain no source URL, channel name, or other user playlist content so they
+/// can safely be used in import progress and release diagnostics.
+class M3uParseStats {
+  const M3uParseStats({
+    required this.parsedCount,
+    required this.skippedCount,
+    required this.malformedCount,
+    required this.elapsedMillis,
+  });
+  final int parsedCount;
+  final int skippedCount;
+  final int malformedCount;
+  final PlatformInt64 elapsedMillis;
+
+  static Future<M3uParseStats> default_() =>
+      RustLib.instance.api.crateApiM3UM3UParseStatsDefault();
+
+  @override
+  int get hashCode =>
+      parsedCount.hashCode ^
+      skippedCount.hashCode ^
+      malformedCount.hashCode ^
+      elapsedMillis.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is M3uParseStats &&
+          runtimeType == other.runtimeType &&
+          parsedCount == other.parsedCount &&
+          skippedCount == other.skippedCount &&
+          malformedCount == other.malformedCount &&
+          elapsedMillis == other.elapsedMillis;
 }
 
 /// Full parse result: channel entries plus attributes from the `#EXTM3U`

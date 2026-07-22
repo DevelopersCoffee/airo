@@ -519,6 +519,9 @@ jobs:
           }
 
           require_asset "release-artifacts/tv/Airo-TV-${BUILD_NAME}.apk"
+          require_asset "release-artifacts/tv/Airo-TV-${BUILD_NAME}-arm64-v8a.apk"
+          require_asset "release-artifacts/tv/Airo-TV-${BUILD_NAME}-armeabi-v7a.apk"
+          require_asset "release-artifacts/tv/Airo-TV-${BUILD_NAME}-x86_64.apk"
           require_asset "release-artifacts/tv/Airo-TV-${BUILD_NAME}-Play-Store.aab"
 
           case "$MOBILE_PROFILE" in

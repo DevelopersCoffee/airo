@@ -37,7 +37,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
     default_rust_auto_opaque = RustAutoOpaqueMoi,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.11.1";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = -50892443;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = -939726224;
 
 // Section: executor
 
@@ -45,6 +45,71 @@ flutter_rust_bridge::frb_generated_default_handler!();
 
 // Section: wire_funcs
 
+fn wire__crate__api__m3u__m_3_u_parse_result_default_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "m_3_u_parse_result_default",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, ()>((move || {
+                    let output_ok =
+                        Result::<_, ()>::Ok(crate::api::m3u::M3uParseResult::default())?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__crate__api__m3u__m_3_u_parse_stats_default_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "m_3_u_parse_stats_default",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, ()>((move || {
+                    let output_ok = Result::<_, ()>::Ok(crate::api::m3u::M3uParseStats::default())?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
 fn wire__crate__api__m3u__m_3_u_playlist_default_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
@@ -173,6 +238,40 @@ fn wire__crate__api__m3u__parse_m3u_playlist_impl(
                 transform_result_sse::<_, ()>((move || {
                     let output_ok =
                         Result::<_, ()>::Ok(crate::api::m3u::parse_m3u_playlist(api_content))?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__crate__api__m3u__parse_m3u_with_stats_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "parse_m3u_with_stats",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_content = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, ()>((move || {
+                    let output_ok =
+                        Result::<_, ()>::Ok(crate::api::m3u::parse_m3u_with_stats(api_content))?;
                     Ok(output_ok)
                 })())
             }
@@ -559,6 +658,34 @@ impl SseDecode for crate::api::m3u::M3uEntry {
     }
 }
 
+impl SseDecode for crate::api::m3u::M3uParseResult {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_playlist = <crate::api::m3u::M3uPlaylist>::sse_decode(deserializer);
+        let mut var_stats = <crate::api::m3u::M3uParseStats>::sse_decode(deserializer);
+        return crate::api::m3u::M3uParseResult {
+            playlist: var_playlist,
+            stats: var_stats,
+        };
+    }
+}
+
+impl SseDecode for crate::api::m3u::M3uParseStats {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_parsedCount = <u32>::sse_decode(deserializer);
+        let mut var_skippedCount = <u32>::sse_decode(deserializer);
+        let mut var_malformedCount = <u32>::sse_decode(deserializer);
+        let mut var_elapsedMillis = <i64>::sse_decode(deserializer);
+        return crate::api::m3u::M3uParseStats {
+            parsed_count: var_parsedCount,
+            skipped_count: var_skippedCount,
+            malformed_count: var_malformedCount,
+            elapsed_millis: var_elapsedMillis,
+        };
+    }
+}
+
 impl SseDecode for crate::api::m3u::M3uPlaylist {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -737,44 +864,54 @@ fn pde_ffi_dispatcher_primary_impl(
 ) {
     // Codec=Pde (Serialization + dispatch), see doc to use other codecs
     match func_id {
-        1 => wire__crate__api__m3u__m_3_u_playlist_default_impl(port, ptr, rust_vec_len, data_len),
-        2 => wire__crate__api__text__normalize_channel_name_impl(port, ptr, rust_vec_len, data_len),
-        3 => wire__crate__api__m3u__parse_m3u_entries_impl(port, ptr, rust_vec_len, data_len),
-        4 => wire__crate__api__m3u__parse_m3u_playlist_impl(port, ptr, rust_vec_len, data_len),
-        5 => wire__crate__api__xmltv__parse_xmltv_current_next_file_impl(
+        1 => wire__crate__api__m3u__m_3_u_parse_result_default_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        6 => {
+        2 => {
+            wire__crate__api__m3u__m_3_u_parse_stats_default_impl(port, ptr, rust_vec_len, data_len)
+        }
+        3 => wire__crate__api__m3u__m_3_u_playlist_default_impl(port, ptr, rust_vec_len, data_len),
+        4 => wire__crate__api__text__normalize_channel_name_impl(port, ptr, rust_vec_len, data_len),
+        5 => wire__crate__api__m3u__parse_m3u_entries_impl(port, ptr, rust_vec_len, data_len),
+        6 => wire__crate__api__m3u__parse_m3u_playlist_impl(port, ptr, rust_vec_len, data_len),
+        7 => wire__crate__api__m3u__parse_m3u_with_stats_impl(port, ptr, rust_vec_len, data_len),
+        8 => wire__crate__api__xmltv__parse_xmltv_current_next_file_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        9 => {
             wire__crate__api__xmltv__parse_xmltv_programmes_impl(port, ptr, rust_vec_len, data_len)
         }
-        7 => wire__crate__api__xmltv__parse_xmltv_programmes_file_impl(
+        10 => wire__crate__api__xmltv__parse_xmltv_programmes_file_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        8 => wire__crate__api__xmltv__xmltv_current_next_result_default_impl(
+        11 => wire__crate__api__xmltv__xmltv_current_next_result_default_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        9 => wire__crate__api__xmltv__xmltv_current_next_stats_default_impl(
+        12 => wire__crate__api__xmltv__xmltv_current_next_stats_default_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        10 => wire__crate__api__xmltv__xmltv_parse_result_default_impl(
+        13 => wire__crate__api__xmltv__xmltv_parse_result_default_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        11 => wire__crate__api__xmltv__xmltv_parse_stats_default_impl(
+        14 => wire__crate__api__xmltv__xmltv_parse_stats_default_impl(
             port,
             ptr,
             rust_vec_len,
@@ -818,6 +955,50 @@ impl flutter_rust_bridge::IntoDart for crate::api::m3u::M3uEntry {
 impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::api::m3u::M3uEntry {}
 impl flutter_rust_bridge::IntoIntoDart<crate::api::m3u::M3uEntry> for crate::api::m3u::M3uEntry {
     fn into_into_dart(self) -> crate::api::m3u::M3uEntry {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::m3u::M3uParseResult {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.playlist.into_into_dart().into_dart(),
+            self.stats.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::m3u::M3uParseResult
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::m3u::M3uParseResult>
+    for crate::api::m3u::M3uParseResult
+{
+    fn into_into_dart(self) -> crate::api::m3u::M3uParseResult {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::m3u::M3uParseStats {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.parsed_count.into_into_dart().into_dart(),
+            self.skipped_count.into_into_dart().into_dart(),
+            self.malformed_count.into_into_dart().into_dart(),
+            self.elapsed_millis.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::m3u::M3uParseStats
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::m3u::M3uParseStats>
+    for crate::api::m3u::M3uParseStats
+{
+    fn into_into_dart(self) -> crate::api::m3u::M3uParseStats {
         self
     }
 }
@@ -1073,6 +1254,24 @@ impl SseEncode for crate::api::m3u::M3uEntry {
         <Option<String>>::sse_encode(self.language, serializer);
         <Option<i64>>::sse_encode(self.duration, serializer);
         <std::collections::HashMap<String, String>>::sse_encode(self.extras, serializer);
+    }
+}
+
+impl SseEncode for crate::api::m3u::M3uParseResult {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <crate::api::m3u::M3uPlaylist>::sse_encode(self.playlist, serializer);
+        <crate::api::m3u::M3uParseStats>::sse_encode(self.stats, serializer);
+    }
+}
+
+impl SseEncode for crate::api::m3u::M3uParseStats {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <u32>::sse_encode(self.parsed_count, serializer);
+        <u32>::sse_encode(self.skipped_count, serializer);
+        <u32>::sse_encode(self.malformed_count, serializer);
+        <i64>::sse_encode(self.elapsed_millis, serializer);
     }
 }
 

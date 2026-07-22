@@ -32,7 +32,7 @@ interactions in a real shipping app, not a demo.
 
 | Module | What it does | Status |
 |---|---|---|
-| 📺 **Airo TV** | Bring-your-own-playlist IPTV player for Android TV | **Available — [v0.0.3](https://github.com/DevelopersCoffee/airo/releases/tag/airo-tv-v0.0.3)** |
+| 📺 **Airo TV** | Bring-your-own-playlist IPTV player for Android TV | **Available — [v0.0.4](https://github.com/DevelopersCoffee/airo/releases/tag/airo-tv-v0.0.4)** |
 | ⭐ **Airo TV Pro** | Import intelligence, resilient playback, guide intelligence | In testing |
 | 🤖 **Airo AI** | On-device AI chat (Gemini Nano), model management, agent skills | In development |
 | 💰 **AiroMoney** | Personal finance tracking and money workflows | In development |
@@ -45,7 +45,7 @@ All modules live in one monorepo with strict package boundaries — see the
 
 ## 📺 Airo TV — Available Now
 
-[![Download Airo TV](https://img.shields.io/badge/Download-Airo%20TV%20APK-success?style=for-the-badge)](https://github.com/DevelopersCoffee/airo/releases/download/airo-tv-v0.0.3/Airo-TV-v0.0.3.apk)
+[![Download Airo TV](https://img.shields.io/badge/Download-Airo%20TV%20APK-success?style=for-the-badge)](https://github.com/DevelopersCoffee/airo/releases/download/airo-tv-v0.0.4/Airo-TV-0.0.4.apk)
 [![Live Showcase](https://img.shields.io/badge/▶-Live%20Showcase-blue?style=for-the-badge)](https://developerscoffee.github.io/airo/)
 
 ### See it in action
@@ -68,8 +68,8 @@ M3U/M3U8 playlists.
 
 | Platform | Link |
 |---|---|
-| 📺 Android TV | [Airo TV v0.0.3 APK](https://github.com/DevelopersCoffee/airo/releases/download/airo-tv-v0.0.3/Airo-TV-v0.0.3.apk) |
-| 🖥️ macOS (preview) | [Airo TV DMG](https://github.com/DevelopersCoffee/airo/releases/download/airo-tv-v0.0.3/Airo-TV-0.0.3-macOS.dmg) |
+| 📺 Android TV | [Airo TV v0.0.4 APK](https://github.com/DevelopersCoffee/airo/releases/download/airo-tv-v0.0.4/Airo-TV-0.0.4.apk) |
+| 🖥️ macOS (preview) | [Airo TV DMG](https://github.com/DevelopersCoffee/airo/releases/download/airo-tv-v0.0.4/Airo-TV-0.0.4-macOS.dmg) |
 | 🤖 Android | [Android releases](https://github.com/DevelopersCoffee/airo/releases) |
 | 🍎 iOS | [Latest IPA](https://github.com/DevelopersCoffee/airo/releases/latest/download/app-release.ipa) |
 | 🌐 Web | [Web build](https://github.com/DevelopersCoffee/airo/releases/latest/download/airo-web-release.zip) |
