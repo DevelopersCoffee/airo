@@ -8,6 +8,8 @@ export 'src/application/vault_config.dart';
 export 'src/application/clipboard_service.dart';
 export 'src/application/screen_security.dart';
 export 'src/application/vault_providers.dart';
+export 'src/application/vault_record_reader.dart';
+export 'src/application/vault_record_ref.dart';
 export 'src/application/vault_session.dart';
 export 'src/application/vault_summaries_provider.dart';
 export 'src/domain/vault_record_type.dart';

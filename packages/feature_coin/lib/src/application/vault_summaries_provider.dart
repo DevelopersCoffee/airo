@@ -1,17 +1,16 @@
+import 'package:core_domain/core_domain.dart';
+import 'package:equatable/equatable.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:platform_coin_vault/platform_coin_vault.dart';
 
 import 'vault_providers.dart';
 
-/// Aggregated, key-free summaries for the vault home list. Loading this
-/// provider performs no decryption; summaries are built from unencrypted
-/// columns only.
-final class VaultSummaries {
+final class VaultSummaries extends Equatable {
   const VaultSummaries({
-    required this.bankAccounts,
-    required this.panCards,
-    required this.creditCards,
-    required this.secureDocuments,
+    this.bankAccounts = const [],
+    this.panCards = const [],
+    this.creditCards = const [],
+    this.secureDocuments = const [],
   });
 
   final List<BankAccountSummary> bankAccounts;
@@ -24,33 +23,41 @@ final class VaultSummaries {
       panCards.isEmpty &&
       creditCards.isEmpty &&
       secureDocuments.isEmpty;
+
+  int get count =>
+      bankAccounts.length +
+      panCards.length +
+      creditCards.length +
+      secureDocuments.length;
+
+  @override
+  List<Object?> get props => [
+    bankAccounts,
+    panCards,
+    creditCards,
+    secureDocuments,
+  ];
 }
 
 final vaultSummariesProvider = FutureProvider<VaultSummaries>((ref) async {
-  final repos = await ref.watch(vaultRepositoriesProvider.future);
-
-  final bankAccounts = await repos.bankAccounts.listAllSummaries();
-  final panCards = await repos.panCards.listAllSummaries();
-  final creditCards = await repos.creditCards.listAllSummaries();
-  final secureDocuments = await repos.secureDocuments.listAllSummaries();
-
-  final errorMessage = bankAccounts.isFailure
-      ? bankAccounts.failure.message
-      : panCards.isFailure
-      ? panCards.failure.message
-      : creditCards.isFailure
-      ? creditCards.failure.message
-      : secureDocuments.isFailure
-      ? secureDocuments.failure.message
-      : null;
-  if (errorMessage != null) {
-    throw Exception(errorMessage);
-  }
-
+  final repositories = await ref.watch(vaultRepositoriesProvider.future);
   return VaultSummaries(
-    bankAccounts: bankAccounts.value,
-    panCards: panCards.value,
-    creditCards: creditCards.value,
-    secureDocuments: secureDocuments.value,
+    bankAccounts: _valueOrThrow(
+      await repositories.bankAccounts.listAllSummaries(),
+    ),
+    panCards: _valueOrThrow(await repositories.panCards.listAllSummaries()),
+    creditCards: _valueOrThrow(
+      await repositories.creditCards.listAllSummaries(),
+    ),
+    secureDocuments: _valueOrThrow(
+      await repositories.secureDocuments.listAllSummaries(),
+    ),
   );
 });
+
+T _valueOrThrow<T>(Result<T> result) {
+  if (result case Success<T>(:final value)) {
+    return value;
+  }
+  throw result.failure;
+}

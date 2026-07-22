@@ -3,9 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:platform_channels/platform_channels.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -53,6 +51,7 @@ void main() {
     CompactEpgRepository? compactEpgRepository,
     DateTime? compactEpgNow,
     StreamingState? streamingState,
+    StreamProbeTransport? streamProbeTransport,
     Size surfaceSize = const Size(1280, 720),
     bool settle = true,
   }) async {
@@ -85,6 +84,10 @@ void main() {
           streamingStateProvider.overrideWith(
             (ref) => Stream.value(effectiveStreamingState),
           ),
+          if (streamProbeTransport != null)
+            streamProbeTransportProvider.overrideWithValue(
+              streamProbeTransport,
+            ),
         ],
         child: const MaterialApp(home: IptvTvScreen()),
       ),
@@ -129,6 +132,11 @@ void main() {
       expect(find.text('Playlist'), findsOneWidget);
       expect(find.text('Help'), findsOneWidget);
       expect(find.text('Refresh'), findsOneWidget);
+      expect(find.text('Scan'), findsOneWidget);
+      expect(
+        find.bySemanticsLabel(RegExp('Scan visible channels')),
+        findsOneWidget,
+      );
       // The hero banner and its channel rail (added for the Airo TV design
       // revamp) surface the same top channel the grid already shows below,
       // so these now legitimately render more than once on screen.
@@ -140,6 +148,37 @@ void main() {
     } finally {
       semantics.dispose();
     }
+  });
+
+  testWidgets('auto scan removes and restores only unavailable channels', (
+    tester,
+  ) async {
+    await pumpScreen(
+      tester,
+      streamProbeTransport: _TvProbeTransport(
+        unavailableChannelIds: const {'sports-1'},
+      ),
+      surfaceSize: const Size(1280, 2000),
+      settle: false,
+    );
+
+    await tester.tap(find.text('Scan'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(find.text('Remove unavailable (1)'), findsOneWidget);
+    expect(find.text('Unavailable'), findsOneWidget);
+
+    await tester.tap(find.text('Remove unavailable (1)'));
+    await tester.pump();
+
+    expect(find.text('Restore'), findsOneWidget);
+    expect(find.text('4 of 5 live channels'), findsOneWidget);
+
+    await tester.tap(find.text('Restore'));
+    await tester.pump();
+
+    expect(find.text('5 of 5 live channels'), findsOneWidget);
   });
 
   testWidgets(
@@ -283,11 +322,7 @@ void main() {
   testWidgets('keeps compact TV viewport browse controls reachable', (
     tester,
   ) async {
-    await pumpScreen(
-      tester,
-      surfaceSize: const Size(1024, 576),
-      settle: false,
-    );
+    await pumpScreen(tester, surfaceSize: const Size(1024, 576), settle: false);
 
     expect(find.text('Live channels'), findsOneWidget);
     expect(find.text('Search'), findsWidgets);
@@ -587,4 +622,20 @@ void main() {
       }
     },
   );
+}
+
+class _TvProbeTransport implements StreamProbeTransport {
+  _TvProbeTransport({required this.unavailableChannelIds});
+
+  final Set<String> unavailableChannelIds;
+
+  @override
+  Future<StreamProbeHttpResponse> get(
+    StreamProbeRequest request, {
+    required StreamProbeCancellation cancellation,
+  }) async {
+    return StreamProbeHttpResponse(
+      statusCode: unavailableChannelIds.contains(request.channelId) ? 404 : 206,
+    );
+  }
 }

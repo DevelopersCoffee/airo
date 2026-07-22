@@ -438,7 +438,7 @@ jobs:
         run: |
           ruby -e 'require "yaml"; ARGV.each { |f| YAML.load_file(f); puts "workflow-yaml-ok #{f}" }' \
             .github/workflows/airo-tv-release.yml \
-            .github/workflows/v2-release-orchestrator.yml
+            .github/workflows/release-orchestrator.yml
           bash -n scripts/build-tv.sh scripts/check-android-tv-release.sh scripts/patch-android-plugin-gradle.sh
           python3 -m py_compile scripts/generate-release-manifest.py scripts/generate-release-qualification-report.py
           scripts/test-generate-release-manifest.sh
@@ -470,6 +470,7 @@ jobs:
             --tree-shake-icons \
             --split-debug-info=build/debug-info-tv \
             --obfuscate
+          cp build/app/outputs/flutter-apk/app-release.apk build/airo-tv-canonical-arm64.apk
 
       - name: Build Android TV AAB
         run: |
@@ -485,16 +486,34 @@ jobs:
             --split-debug-info=build/debug-info-tv \
             --obfuscate
 
+      - name: Build Android TV ABI split APKs
+        run: |
+          cd app
+          export GRADLE_OPTS="-Dorg.gradle.watch.fs=false -Xmx4g -Dorg.gradle.parallel=true"
+          flutter build apk --release \
+            --target=lib/main_tv.dart \
+            --dart-define=APP_VARIANT=tv \
+            --dart-define=APP_PLATFORM=androidTv \
+            --build-name="$BUILD_NAME" \
+            --build-number="$BUILD_NUMBER" \
+            --split-per-abi \
+            --tree-shake-icons \
+            --split-debug-info=build/debug-info-tv \
+            --obfuscate
+
       - name: Verify release artifacts
         env:
-          AIRO_TV_RELEASE_APK: app/build/app/outputs/flutter-apk/app-release.apk
+          AIRO_TV_RELEASE_APK: app/build/airo-tv-canonical-arm64.apk
           AIRO_TV_RELEASE_AAB: app/build/app/outputs/bundle/release/app-release.aab
         run: scripts/check-android-tv-release.sh
 
       - name: Stage named release artifacts
         run: |
           mkdir -p release-artifacts
-          cp app/build/app/outputs/flutter-apk/app-release.apk "release-artifacts/Airo-TV-${BUILD_NAME}.apk"
+          cp app/build/airo-tv-canonical-arm64.apk "release-artifacts/Airo-TV-${BUILD_NAME}.apk"
+          cp app/build/app/outputs/flutter-apk/app-arm64-v8a-release.apk "release-artifacts/Airo-TV-${BUILD_NAME}-arm64-v8a.apk"
+          cp app/build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk "release-artifacts/Airo-TV-${BUILD_NAME}-armeabi-v7a.apk"
+          cp app/build/app/outputs/flutter-apk/app-x86_64-release.apk "release-artifacts/Airo-TV-${BUILD_NAME}-x86_64.apk"
           cp app/build/app/outputs/bundle/release/app-release.aab "release-artifacts/Airo-TV-${BUILD_NAME}-Play-Store.aab"
           cp docs/release/AIRO_TV_RELEASE_TEMPLATE.md "release-artifacts/Airo-TV-${BUILD_NAME}-Release-Template.md"
           cp docs/release/AIRO_TV_MEDIA_ASSETS.md "release-artifacts/Airo-TV-${BUILD_NAME}-Media-Checklist.md"
@@ -519,6 +538,9 @@ jobs:
             echo "| Asset | Visibility | Purpose |"
             echo "| --- | --- | --- |"
             echo "| Airo-TV-${BUILD_NAME}.apk | Public/direct install | Android TV and compatible Fire TV testing |"
+            echo "| Airo-TV-${BUILD_NAME}-arm64-v8a.apk | Public/direct install | 64-bit ARM Android TV devices |"
+            echo "| Airo-TV-${BUILD_NAME}-armeabi-v7a.apk | Public/direct install | 32-bit ARM Android TV devices |"
+            echo "| Airo-TV-${BUILD_NAME}-x86_64.apk | Public/direct install | x86_64 emulator/Chromebook validation |"
             echo "| Airo-TV-${BUILD_NAME}-Play-Store.aab | Store upload / draft release evidence | Google Play TV upload input |"
             echo "| SHA256SUMS | Public/internal verification | Checksum evidence after final renaming |"
             echo "| Airo-TV-${BUILD_NAME}-Release-Manifest.json | Public/internal verification | Profile, package, source ref, workflow run, and checksum mapping |"

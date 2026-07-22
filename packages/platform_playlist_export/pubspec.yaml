@@ -1,7 +1,7 @@
 name: platform_playlist_export
-description: "A new Flutter package project."
+description: Typed contracts for exporting IPTV playlists into shareable formats.
 version: 0.0.1
-homepage:
+homepage: https://github.com/DevelopersCoffee/airo
 
 environment:
   sdk: ^3.12.2

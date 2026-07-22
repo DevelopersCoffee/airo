@@ -20,16 +20,14 @@ class RouteNames {
   static const String coinsGroups = 'coins_groups';
   static const String coinsGroupDetail = 'coins_group_detail';
   static const String coinsAddSplit = 'coins_add_split';
+  static const String coinVault = 'coin_vault';
+  static const String coinVaultAdd = 'coin_vault_add';
+  static const String coinVaultEdit = 'coin_vault_edit';
 
   // Coins Full Paths (for direct navigation)
   static const String coinsDashboardPath = '/money/dashboard';
   static const String coinsAddExpensePath = '/money/add-expense';
   static const String coinsBudgetsPath = '/money/budgets';
   static const String coinsGroupsPath = '/money/groups';
-
-  // Coin Vault (feature_coin)
-  static const String coinVault = 'coin_vault';
-  static const String coinVaultAdd = 'coin_vault_add';
-  static const String coinVaultEdit = 'coin_vault_edit';
   static const String coinVaultPath = '/money/vault';
 }

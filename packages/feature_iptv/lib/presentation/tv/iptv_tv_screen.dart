@@ -7,9 +7,12 @@ import 'package:flutter/services.dart';
 import 'package:platform_channels/platform_channels.dart';
 import 'package:platform_epg/platform_epg.dart';
 import 'package:platform_player/platform_player.dart';
+import 'package:platform_streams/platform_streams.dart';
 import 'package:product_capabilities/product_capabilities.dart';
 
 import '../../application/providers/iptv_providers.dart';
+import '../../application/providers/channel_auto_scan_providers.dart';
+import '../../application/channel_auto_scan_controller.dart';
 import '../../application/wakelock_playback_coordinator.dart';
 import '../../application/providers/rails_provider.dart';
 import '../../application/services/airo_macos_update_service.dart';
@@ -81,6 +84,11 @@ class _IptvTvScreenState extends ConsumerState<IptvTvScreen> {
   Widget build(BuildContext context) {
     final channelsAsync = ref.watch(iptvChannelsProvider);
     final filteredChannels = ref.watch(filteredChannelsProvider);
+    final autoScanState = ref.watch(channelAutoScanProvider);
+    final autoScanBaseScope = ref.watch(channelAutoScanScopeProvider);
+    final autoScanConcurrency = ref.watch(
+      channelAutoScanMaxConcurrentRequestsProvider,
+    );
     final streamingState = ref.watch(streamingStateProvider);
     final recentAsync = ref.watch(recentlyWatchedChannelsProvider);
     final hasActiveFilter = ref.watch(hasActiveFilterProvider);
@@ -98,9 +106,20 @@ class _IptvTvScreenState extends ConsumerState<IptvTvScreen> {
             onRetry: () => ref.invalidate(iptvChannelsProvider),
           ),
           data: (allChannels) {
-            final visibleChannels = _recentOnly
+            final scanCandidates = _recentOnly
                 ? recentAsync.value ?? const <IPTVChannel>[]
                 : filteredChannels;
+            final autoScanScope = _tvAutoScanScopeId(
+              baseScope: autoScanBaseScope,
+              recentOnly: _recentOnly,
+              channels: scanCandidates,
+            );
+            final visibleChannels = ref
+                .read(channelAutoScanProvider.notifier)
+                .channelsForScope(
+                  scopeId: autoScanScope,
+                  channels: scanCandidates,
+                );
 
             if (allChannels.isEmpty) {
               return _TvEmptyPlaylistLayout(
@@ -121,6 +140,7 @@ class _IptvTvScreenState extends ConsumerState<IptvTvScreen> {
               viewMode: _viewMode,
               recentOnly: _recentOnly,
               hasActiveFilter: hasActiveFilter || _recentOnly,
+              autoScanState: autoScanState,
               onChannelSelect: _playChannel,
               onPlaylistSourceTap: _showPlaylistSheet,
               onPlaylistHelpTap: _showPlaylistGuideDialog,
@@ -131,6 +151,27 @@ class _IptvTvScreenState extends ConsumerState<IptvTvScreen> {
                 ref.invalidate(recentlyWatchedChannelsProvider);
               },
               onClearFilters: _clearFilters,
+              onAutoScan: () {
+                unawaited(
+                  ref
+                      .read(channelAutoScanProvider.notifier)
+                      .start(
+                        scopeId: autoScanScope,
+                        channels: scanCandidates,
+                        currentPlayingChannelId: ref
+                            .read(currentChannelProvider)
+                            ?.id,
+                        maxConcurrentRequests: autoScanConcurrency,
+                      ),
+                );
+              },
+              onCancelAutoScan: () =>
+                  ref.read(channelAutoScanProvider.notifier).cancel(),
+              onRemoveUnavailable: () => ref
+                  .read(channelAutoScanProvider.notifier)
+                  .removeUnavailable(),
+              onRestoreUnavailable: () =>
+                  ref.read(channelAutoScanProvider.notifier).restore(),
               onRecentOnlyChanged: (value) {
                 setState(() => _recentOnly = value);
               },
@@ -143,6 +184,15 @@ class _IptvTvScreenState extends ConsumerState<IptvTvScreen> {
       ),
     );
   }
+}
+
+String _tvAutoScanScopeId({
+  required String baseScope,
+  required bool recentOnly,
+  required List<IPTVChannel> channels,
+}) {
+  return 'tv|${recentOnly ? 'recent' : 'filtered'}|$baseScope|'
+      '${channels.map((channel) => channel.id).join(',')}';
 }
 
 /// Search dialog with live results. The [TextEditingController] is owned by
@@ -283,6 +333,7 @@ class _TvBrowseLayout extends ConsumerWidget {
     required this.viewMode,
     required this.recentOnly,
     required this.hasActiveFilter,
+    required this.autoScanState,
     required this.onChannelSelect,
     required this.onPlaylistSourceTap,
     required this.onPlaylistHelpTap,
@@ -290,6 +341,10 @@ class _TvBrowseLayout extends ConsumerWidget {
     required this.onUpdateTap,
     required this.onRefresh,
     required this.onClearFilters,
+    required this.onAutoScan,
+    required this.onCancelAutoScan,
+    required this.onRemoveUnavailable,
+    required this.onRestoreUnavailable,
     required this.onRecentOnlyChanged,
     required this.onViewModeChanged,
   });
@@ -302,6 +357,7 @@ class _TvBrowseLayout extends ConsumerWidget {
   final _TvChannelViewMode viewMode;
   final bool recentOnly;
   final bool hasActiveFilter;
+  final ChannelAutoScanState autoScanState;
   final ValueChanged<IPTVChannel> onChannelSelect;
   final VoidCallback onPlaylistSourceTap;
   final VoidCallback onPlaylistHelpTap;
@@ -309,6 +365,10 @@ class _TvBrowseLayout extends ConsumerWidget {
   final VoidCallback onUpdateTap;
   final VoidCallback onRefresh;
   final VoidCallback onClearFilters;
+  final VoidCallback onAutoScan;
+  final VoidCallback onCancelAutoScan;
+  final VoidCallback onRemoveUnavailable;
+  final VoidCallback onRestoreUnavailable;
   final ValueChanged<bool> onRecentOnlyChanged;
   final ValueChanged<_TvChannelViewMode> onViewModeChanged;
 
@@ -407,8 +467,13 @@ class _TvBrowseLayout extends ConsumerWidget {
                         recentOnly: recentOnly,
                         hasRecentChannels: recentChannels.isNotEmpty,
                         hasActiveFilter: hasActiveFilter,
+                        autoScanState: autoScanState,
                         onRecentOnlyChanged: onRecentOnlyChanged,
                         onClearFilters: onClearFilters,
+                        onAutoScan: onAutoScan,
+                        onCancelAutoScan: onCancelAutoScan,
+                        onRemoveUnavailable: onRemoveUnavailable,
+                        onRestoreUnavailable: onRestoreUnavailable,
                         onViewModeChanged: onViewModeChanged,
                       ),
                       SizedBox(height: compactTv ? 8 : 20),
@@ -433,6 +498,8 @@ class _TvBrowseLayout extends ConsumerWidget {
                                   currentChannel: currentChannel,
                                   compact: denseTv,
                                   compactEpgEntries: compactEpgEntries,
+                                  availabilityByChannelId:
+                                      autoScanState.availabilityByChannelId,
                                   onChannelSelect: onChannelSelect,
                                   favoriteChannelIds: favoriteChannelIds,
                                   onToggleFavorite: toggleFavorite,
@@ -441,6 +508,8 @@ class _TvBrowseLayout extends ConsumerWidget {
                                   channels: visibleChannels,
                                   currentChannel: currentChannel,
                                   compactEpgEntries: compactEpgEntries,
+                                  availabilityByChannelId:
+                                      autoScanState.availabilityByChannelId,
                                   onChannelSelect: onChannelSelect,
                                   favoriteChannelIds: favoriteChannelIds,
                                   onToggleFavorite: toggleFavorite,
@@ -1308,8 +1377,13 @@ class _TvChannelToolbar extends StatelessWidget {
     required this.recentOnly,
     required this.hasRecentChannels,
     required this.hasActiveFilter,
+    required this.autoScanState,
     required this.onRecentOnlyChanged,
     required this.onClearFilters,
+    required this.onAutoScan,
+    required this.onCancelAutoScan,
+    required this.onRemoveUnavailable,
+    required this.onRestoreUnavailable,
     required this.onViewModeChanged,
   });
 
@@ -1317,34 +1391,72 @@ class _TvChannelToolbar extends StatelessWidget {
   final bool recentOnly;
   final bool hasRecentChannels;
   final bool hasActiveFilter;
+  final ChannelAutoScanState autoScanState;
   final ValueChanged<bool> onRecentOnlyChanged;
   final VoidCallback onClearFilters;
+  final VoidCallback onAutoScan;
+  final VoidCallback onCancelAutoScan;
+  final VoidCallback onRemoveUnavailable;
+  final VoidCallback onRestoreUnavailable;
   final ValueChanged<_TvChannelViewMode> onViewModeChanged;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    return Wrap(
+      spacing: 10,
+      runSpacing: 10,
+      crossAxisAlignment: WrapCrossAlignment.center,
       children: [
         _TvFilterChip(
           label: 'All',
           selected: !recentOnly,
           onSelect: () => onRecentOnlyChanged(false),
         ),
-        const SizedBox(width: 10),
         _TvFilterChip(
           label: 'Recent',
           selected: recentOnly,
           enabled: hasRecentChannels,
           onSelect: () => onRecentOnlyChanged(true),
         ),
-        const Spacer(),
         if (hasActiveFilter) ...[
           _TvActionButton(
             icon: Icons.filter_list_off,
             label: 'Clear',
             onSelect: onClearFilters,
           ),
-          const SizedBox(width: 12),
+        ],
+        if (autoScanState.isScanning) ...[
+          _TvAutoScanStatus(state: autoScanState),
+          _TvActionButton(
+            icon: Icons.stop_circle_outlined,
+            label: 'Stop scan',
+            semanticLabel: 'Stop channel scan',
+            onSelect: onCancelAutoScan,
+          ),
+        ] else if (autoScanState.canRestore) ...[
+          _TvAutoScanStatus(state: autoScanState),
+          _TvActionButton(
+            icon: Icons.restore,
+            label: 'Restore',
+            semanticLabel: 'Restore unavailable channels',
+            onSelect: onRestoreUnavailable,
+          ),
+        ] else if (autoScanState.canRemove) ...[
+          _TvAutoScanStatus(state: autoScanState),
+          _TvActionButton(
+            icon: Icons.delete_sweep_outlined,
+            label: 'Remove unavailable (${autoScanState.unavailableCount})',
+            semanticLabel:
+                'Remove ${autoScanState.unavailableCount} unavailable channels',
+            onSelect: onRemoveUnavailable,
+          ),
+        ] else ...[
+          _TvActionButton(
+            icon: Icons.radar,
+            label: 'Scan',
+            semanticLabel: 'Scan visible channels',
+            onSelect: onAutoScan,
+          ),
         ],
         _TvIconToggle(
           icon: Icons.grid_view,
@@ -1352,7 +1464,6 @@ class _TvChannelToolbar extends StatelessWidget {
           selected: viewMode == _TvChannelViewMode.grid,
           onSelect: () => onViewModeChanged(_TvChannelViewMode.grid),
         ),
-        const SizedBox(width: 10),
         _TvIconToggle(
           icon: Icons.view_list,
           label: 'List view',
@@ -1364,12 +1475,35 @@ class _TvChannelToolbar extends StatelessWidget {
   }
 }
 
+class _TvAutoScanStatus extends StatelessWidget {
+  const _TvAutoScanStatus({required this.state});
+
+  final ChannelAutoScanState state;
+
+  @override
+  Widget build(BuildContext context) {
+    final label = state.isScanning
+        ? 'Scanning ${state.completedCount}/${state.requestedCount}'
+        : '${state.unavailableCount} unavailable';
+    return Semantics(
+      label: '$label channels',
+      child: Text(
+        label,
+        style: Theme.of(context).textTheme.labelLarge?.copyWith(
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
+        ),
+      ),
+    );
+  }
+}
+
 class _TvChannelGridView extends StatefulWidget {
   const _TvChannelGridView({
     required this.channels,
     required this.currentChannel,
     required this.compact,
     required this.compactEpgEntries,
+    required this.availabilityByChannelId,
     required this.onChannelSelect,
     required this.favoriteChannelIds,
     required this.onToggleFavorite,
@@ -1379,6 +1513,7 @@ class _TvChannelGridView extends StatefulWidget {
   final IPTVChannel? currentChannel;
   final bool compact;
   final Map<String, CompactEpgEntry> compactEpgEntries;
+  final Map<String, StreamAvailability> availabilityByChannelId;
   final ValueChanged<IPTVChannel> onChannelSelect;
   final Set<String> favoriteChannelIds;
   final ValueChanged<IPTVChannel> onToggleFavorite;
@@ -1424,6 +1559,7 @@ class _TvChannelGridViewState extends State<_TvChannelGridView> {
             isPlaying: widget.currentChannel?.id == channel.id,
             isFavorite: widget.favoriteChannelIds.contains(channel.id),
             epgEntry: widget.compactEpgEntries[channel.id],
+            availability: widget.availabilityByChannelId[channel.id],
             autofocus: index == 0,
             onSelect: () => widget.onChannelSelect(channel),
             onToggleFavorite: () => widget.onToggleFavorite(channel),
@@ -1439,6 +1575,7 @@ class _TvChannelListView extends StatefulWidget {
     required this.channels,
     required this.currentChannel,
     required this.compactEpgEntries,
+    required this.availabilityByChannelId,
     required this.onChannelSelect,
     required this.favoriteChannelIds,
     required this.onToggleFavorite,
@@ -1447,6 +1584,7 @@ class _TvChannelListView extends StatefulWidget {
   final List<IPTVChannel> channels;
   final IPTVChannel? currentChannel;
   final Map<String, CompactEpgEntry> compactEpgEntries;
+  final Map<String, StreamAvailability> availabilityByChannelId;
   final ValueChanged<IPTVChannel> onChannelSelect;
   final Set<String> favoriteChannelIds;
   final ValueChanged<IPTVChannel> onToggleFavorite;
@@ -1487,6 +1625,7 @@ class _TvChannelListViewState extends State<_TvChannelListView> {
             isPlaying: widget.currentChannel?.id == channel.id,
             isFavorite: widget.favoriteChannelIds.contains(channel.id),
             epgEntry: widget.compactEpgEntries[channel.id],
+            availability: widget.availabilityByChannelId[channel.id],
             autofocus: index == 0,
             onSelect: () => widget.onChannelSelect(channel),
             onToggleFavorite: () => widget.onToggleFavorite(channel),
@@ -1503,6 +1642,7 @@ class _TvChannelCard extends StatelessWidget {
     required this.isPlaying,
     required this.isFavorite,
     required this.epgEntry,
+    required this.availability,
     required this.autofocus,
     required this.onSelect,
     required this.onToggleFavorite,
@@ -1512,6 +1652,7 @@ class _TvChannelCard extends StatelessWidget {
   final bool isPlaying;
   final bool isFavorite;
   final CompactEpgEntry? epgEntry;
+  final StreamAvailability? availability;
   final bool autofocus;
   final VoidCallback onSelect;
   final VoidCallback onToggleFavorite;
@@ -1524,9 +1665,11 @@ class _TvChannelCard extends StatelessWidget {
       autofocus: autofocus,
       onSelect: onSelect,
       onSecondaryAction: onToggleFavorite,
-      semanticLabel: isPlaying
-          ? '${channel.name}, currently playing'
-          : channel.name,
+      semanticLabel: _channelSemanticLabel(
+        channel: channel,
+        isPlaying: isPlaying,
+        availability: availability,
+      ),
       semanticHint: isFavorite
           ? 'Press OK to play this channel. Press menu to remove from favorites.'
           : 'Press OK to play this channel. Press menu to add to favorites.',
@@ -1593,6 +1736,12 @@ class _TvChannelCard extends StatelessWidget {
                 right: 6,
                 child: Icon(Icons.star, color: colorScheme.primary, size: 18),
               ),
+            if (availability != null)
+              Positioned(
+                top: 6,
+                left: 6,
+                child: _StreamAvailabilityBadge(availability: availability!),
+              ),
           ],
         ),
       ),
@@ -1606,6 +1755,7 @@ class _TvChannelRow extends StatelessWidget {
     required this.isPlaying,
     required this.isFavorite,
     required this.epgEntry,
+    required this.availability,
     required this.autofocus,
     required this.onSelect,
     required this.onToggleFavorite,
@@ -1615,6 +1765,7 @@ class _TvChannelRow extends StatelessWidget {
   final bool isPlaying;
   final bool isFavorite;
   final CompactEpgEntry? epgEntry;
+  final StreamAvailability? availability;
   final bool autofocus;
   final VoidCallback onSelect;
   final VoidCallback onToggleFavorite;
@@ -1627,9 +1778,11 @@ class _TvChannelRow extends StatelessWidget {
       autofocus: autofocus,
       onSelect: onSelect,
       onSecondaryAction: onToggleFavorite,
-      semanticLabel: isPlaying
-          ? '${channel.name}, currently playing'
-          : channel.name,
+      semanticLabel: _channelSemanticLabel(
+        channel: channel,
+        isPlaying: isPlaying,
+        availability: availability,
+      ),
       semanticHint: isFavorite
           ? 'Press OK to play this channel. Press menu to remove from favorites.'
           : 'Press OK to play this channel. Press menu to add to favorites.',
@@ -1688,6 +1841,10 @@ class _TvChannelRow extends StatelessWidget {
                   padding: const EdgeInsets.only(right: 8),
                   child: Icon(Icons.star, color: colorScheme.primary, size: 18),
                 ),
+              if (availability != null) ...[
+                _StreamAvailabilityBadge(availability: availability!),
+                const SizedBox(width: 8),
+              ],
               if (!channel.isAudioOnly) const _LivePill(),
               if (isPlaying) ...[
                 const SizedBox(width: 12),
@@ -1699,6 +1856,67 @@ class _TvChannelRow extends StatelessWidget {
       ),
     );
   }
+}
+
+String _channelSemanticLabel({
+  required IPTVChannel channel,
+  required bool isPlaying,
+  required StreamAvailability? availability,
+}) {
+  final parts = <String>[
+    channel.name,
+    if (isPlaying) 'currently playing',
+    if (availability != null) _availabilityLabel(availability),
+  ];
+  return parts.join(', ');
+}
+
+class _StreamAvailabilityBadge extends StatelessWidget {
+  const _StreamAvailabilityBadge({required this.availability});
+
+  final StreamAvailability availability;
+
+  @override
+  Widget build(BuildContext context) {
+    final label = _availabilityLabel(availability);
+    final color = switch (availability) {
+      StreamAvailability.available => Colors.green.shade700,
+      StreamAvailability.unavailable => Colors.red.shade700,
+      StreamAvailability.restricted => Colors.amber.shade800,
+      StreamAvailability.unverified ||
+      StreamAvailability.cancelled => Theme.of(context).colorScheme.outline,
+    };
+    return Semantics(
+      label: label,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(999),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+          child: Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+String _availabilityLabel(StreamAvailability availability) {
+  return switch (availability) {
+    StreamAvailability.available => 'Available',
+    StreamAvailability.unavailable => 'Unavailable',
+    StreamAvailability.restricted => 'Restricted',
+    StreamAvailability.unverified => 'Unverified',
+    StreamAvailability.cancelled => 'Scan cancelled',
+  };
 }
 
 class _CompactEpgLine extends StatelessWidget {
@@ -1772,12 +1990,14 @@ class _TvActionButton extends StatelessWidget {
     required this.label,
     required this.onSelect,
     this.autofocus = false,
+    this.semanticLabel,
   });
 
   final IconData icon;
   final String label;
   final VoidCallback onSelect;
   final bool autofocus;
+  final String? semanticLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -1786,7 +2006,7 @@ class _TvActionButton extends StatelessWidget {
     return TvFocusable(
       autofocus: autofocus,
       onSelect: onSelect,
-      semanticLabel: label,
+      semanticLabel: semanticLabel ?? label,
       semanticHint: 'Press OK to activate',
       semanticButton: true,
       child: DecoratedBox(

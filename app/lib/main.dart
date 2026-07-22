@@ -1,18 +1,19 @@
 import 'package:firebase_core/firebase_core.dart';
+import 'package:core_data/core_data.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'core/app/airo_app.dart';
+import 'core/config/firebase_status.dart';
 import 'core/error/global_error_handler.dart';
+import 'core/routing/app_router.dart';
 import 'core/startup/app_startup_tasks.dart';
 import 'package:feature_iptv/feature_iptv.dart';
+import 'features/iptv/epg_reminder_notification_gateway.dart';
 import 'features/music/application/providers/beats_audio_provider.dart';
 import 'firebase_options.dart';
-
-/// Global flag to track if Firebase is available
-bool isFirebaseInitialized = false;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -76,12 +77,34 @@ void main() async {
 
   // Initialize SharedPreferences for IPTV caching
   final prefs = await SharedPreferences.getInstance();
+  final epgReminderGateway = FlutterLocalNotificationsEpgReminderGateway(
+    onNotificationRoute: AppRouter.router.go,
+  );
+  await epgReminderGateway.initialize();
 
   runApp(
     ProviderScope(
-      overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+      overrides: [
+        sharedPreferencesProvider.overrideWithValue(prefs),
+        epgReminderNotificationGatewayProvider.overrideWithValue(
+          epgReminderGateway,
+        ),
+      ],
       child: const AiroApp(),
     ),
+  );
+
+  AppLifecycleListener(
+    onResume: () async {
+      try {
+        await EpgReminderScheduler(
+          store: EpgReminderStore(PreferencesStore(prefs)),
+          gateway: epgReminderGateway,
+        ).pruneElapsed();
+      } catch (error) {
+        debugPrint('[EpgReminderGateway] pruneElapsed failed: $error');
+      }
+    },
   );
 
   scheduleDeferredAuthInitialization();

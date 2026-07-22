@@ -154,9 +154,9 @@ class M3UParserService {
       throw Exception('Empty playlist response');
     }
 
-    final channels = await parseM3UOffMain(response.data!);
+    final parseResult = await parseM3UWithStatsOffMain(response.data!);
     await _saveHttpValidators(response.headers);
-    return _PlaylistFetchResult(channels: channels);
+    return _PlaylistFetchResult(channels: parseResult.channels);
   }
 
   /// Stream-based staged import of the user-supplied playlist, wrapping this
@@ -220,7 +220,8 @@ class M3UParserService {
         stage: ImportStage.parse,
         message: 'Parsing playlist',
       );
-      final channels = await parseM3UOffMain(response.data!);
+      final parseResult = await parseM3UWithStatsOffMain(response.data!);
+      final channels = parseResult.channels;
       await _saveHttpValidators(response.headers);
 
       // parseM3UOffMain (via parseM3UChannels) already normalizes and
@@ -230,7 +231,10 @@ class M3UParserService {
       yield ImportProgress(
         stage: ImportStage.normalize,
         fraction: 1,
-        message: '${channels.length} channels parsed',
+        message:
+            '${parseResult.stats.parsedCount} parsed; '
+            '${parseResult.stats.skippedCount} skipped; '
+            '${parseResult.stats.malformedCount} malformed',
       );
       yield const ImportProgress(stage: ImportStage.deduplicate, fraction: 1);
       yield const ImportProgress(stage: ImportStage.indexing, fraction: 1);
@@ -286,13 +290,40 @@ class M3UParserService {
   /// per the repo isolate policy; `parseM3uEntriesNative` also falls back to
   /// it automatically when the native bridge is unavailable.
   Future<List<IPTVChannel>> parseM3UOffMain(String content) {
+    return parseM3UWithStatsOffMain(content).then((result) => result.channels);
+  }
+
+  /// Parse through the production worker boundary and retain aggregate-only
+  /// telemetry for progress/diagnostics. No source URL or playlist entry is
+  /// retained in the stats result.
+  Future<M3UParseResult> parseM3UWithStatsOffMain(String content) async {
     if (!kIsWeb) {
-      return parseM3UChannelsNative(content);
+      final result = await parseM3uPlaylistWithStatsNative(content);
+      return M3UParseResult(
+        channels: _channelsFromM3uEntries(result.playlist.entries),
+        stats: M3UParseStats(
+          parsedCount: result.stats.parsedCount,
+          skippedCount: result.stats.skippedCount,
+          malformedCount: result.stats.malformedCount,
+          elapsedMillis: result.stats.elapsedMillis,
+        ),
+      );
     }
-    return workerExecutor.run<List<IPTVChannel>>(
+    return workerExecutor.run<M3UParseResult>(
       debugName: 'm3u_playlist_parse',
       kind: AiroWorkerJobKind.playlistImport,
-      computation: () => parseM3UChannels(content),
+      computation: () {
+        final result = parseM3uPlaylistWithStats(content);
+        return M3UParseResult(
+          channels: _channelsFromM3uEntries(result.playlist.entries),
+          stats: M3UParseStats(
+            parsedCount: result.stats.parsedCount,
+            skippedCount: result.stats.skippedCount,
+            malformedCount: result.stats.malformedCount,
+            elapsedMillis: result.stats.elapsedMillis,
+          ),
+        );
+      },
     );
   }
 
@@ -408,6 +439,29 @@ class _PlaylistFetchResult {
 
   final List<IPTVChannel> channels;
   final bool fromCache;
+}
+
+/// Aggregate-only output of a playlist parse. Channel records remain local to
+/// the import pipeline while progress and diagnostics use only [stats].
+class M3UParseResult {
+  const M3UParseResult({required this.channels, required this.stats});
+
+  final List<IPTVChannel> channels;
+  final M3UParseStats stats;
+}
+
+class M3UParseStats {
+  const M3UParseStats({
+    required this.parsedCount,
+    required this.skippedCount,
+    required this.malformedCount,
+    required this.elapsedMillis,
+  });
+
+  final int parsedCount;
+  final int skippedCount;
+  final int malformedCount;
+  final int elapsedMillis;
 }
 
 String _encodeChannelCache(List<IPTVChannel> channels) {

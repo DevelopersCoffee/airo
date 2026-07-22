@@ -31,16 +31,19 @@ class VaultRecordFormScreen extends ConsumerStatefulWidget {
 }
 
 class _VaultRecordFormScreenState extends ConsumerState<VaultRecordFormScreen> {
+  late final VaultScreenSecurity _screenSecurity;
+
   @override
   void initState() {
     super.initState();
-    ScreenSecurity.protect();
+    _screenSecurity = ref.read(screenSecurityProvider);
+    Future<void>.microtask(_screenSecurity.protect);
     Future.microtask(() => ref.read(vaultSessionProvider.notifier).unlock());
   }
 
   @override
   void dispose() {
-    ScreenSecurity.unprotect();
+    Future<void>.microtask(_screenSecurity.unprotect);
     super.dispose();
   }
 

@@ -99,5 +99,14 @@ void runAiroPlaybackEngineConformanceSuite(
       await engine.open(request());
       await expectLater(engine.dispose(), completes);
     });
+
+    test('buildView never throws, before or after open', () async {
+      final engine = createEngine();
+      expect(() => engine.buildView(), returnsNormally);
+
+      await engine.open(request());
+      expect(() => engine.buildView(), returnsNormally);
+      await engine.dispose();
+    });
   });
 }

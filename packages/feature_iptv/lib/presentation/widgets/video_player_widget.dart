@@ -95,10 +95,9 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
     _loadInitialBrightness();
     _startHideControlsTimer();
     // Wakelock is managed by WakelockPlaybackCoordinator at screen scope,
-    // not by this widget's lifetime.
-    AiroNativePictureInPicture.setStateChangeHandler((isActive) {
-      if (mounted) setState(() {});
-    });
+    // not by this widget's lifetime. PiP state comes from
+    // pictureInPictureActiveProvider (owned at session scope by
+    // playerBackgroundingCoordinatorProvider), watched in build().
   }
 
   Future<void> _loadInitialBrightness() async {
@@ -116,7 +115,6 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
     _cancelHideControlsTimer();
     _channelChangeOverlayTimer?.cancel();
     unawaited(_resetBrightnessSafely());
-    AiroNativePictureInPicture.setStateChangeHandler(null);
     super.dispose();
   }
 
@@ -277,10 +275,19 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
     final streamingService = ref.watch(iptvStreamingServiceProvider);
     final streamingState = ref.watch(streamingStateProvider);
     final aspectRatioFit = ref.watch(videoAspectRatioProvider);
+    // System PiP shows only the video surface: all chrome (controls
+    // overlay, lock button, swipe buttons, PlayerOverlay) stays out of the
+    // floating window (#1002).
+    final isPipActive = ref.watch(pictureInPictureActiveProvider);
 
     return streamingState.when(
-      data: (state) =>
-          _buildPlayer(context, streamingService, state, aspectRatioFit),
+      data: (state) => _buildPlayer(
+        context,
+        streamingService,
+        state,
+        aspectRatioFit,
+        isPipActive: isPipActive,
+      ),
       loading: () => _buildLoading(),
       error: (err, _) => _buildError(err.toString()),
     );
@@ -290,8 +297,9 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
     BuildContext context,
     VideoPlayerStreamingService service,
     StreamingState state,
-    AiroPlaybackViewFit aspectRatioFit,
-  ) {
+    AiroPlaybackViewFit aspectRatioFit, {
+    required bool isPipActive,
+  }) {
     // Update wakelock based on current playback state
     // This is called on every build when state changes
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -420,7 +428,7 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                   // content behind it since the old channel-name row moved
                   // into PlayerOverlay — before PlayerOverlay's own
                   // GestureDetector ever saw the tap.
-                  if (!_isLocked)
+                   if (!_isLocked && !isPipActive)
                     PlayerOverlay(
                       state: _toPlayerViewState(state),
                       onBack:
@@ -438,7 +446,7 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
 
                   // Controls overlay with fade animation — hidden entirely while
                   // locked so only the lock button remains interactive.
-                  if (!_isLocked)
+                  if (!_isLocked && !isPipActive)
                     AnimatedOpacity(
                       opacity: (widget.showControls && _showControlsOverlay)
                           ? 1.0
@@ -452,6 +460,7 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
 
                   // Previous/Next channel buttons (for fullscreen mode)
                   if (!_isLocked &&
+                      !isPipActive &&
                       widget.enableSwipeChannelChange &&
                       _showControlsOverlay)
                     Positioned(
@@ -467,6 +476,7 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                       ),
                     ),
                   if (!_isLocked &&
+                      !isPipActive &&
                       widget.enableSwipeChannelChange &&
                       _showControlsOverlay)
                     Positioned(
@@ -484,7 +494,7 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
 
                   // Lock button: touch-only concept, hidden entirely when
                   // enableTouchGestures is false (e.g. TV/remote input).
-                  if (widget.enableTouchGestures)
+                  if (widget.enableTouchGestures && !isPipActive)
                     Positioned(
                       top: 8,
                       right: 56,

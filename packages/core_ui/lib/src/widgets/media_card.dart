@@ -65,10 +65,11 @@ class MediaCard extends StatelessWidget {
   /// The [AiroRail.railHeight] a rail hosting this variant needs to avoid
   /// overflow: thumbnail height plus the name/subtitle text block, card
   /// border/padding, and the rail's own list-view inset (+64, matched
-  /// empirically against real card content — see git history for the
-  /// overflow this was tuned against).
+  /// empirically against real card content. The final pixel accounts for
+  /// Android text rasterization at device density, which otherwise makes a
+  /// name-and-subtitle card exceed its rail by one logical pixel.
   static double railHeightFor(MediaCardVariant variant) =>
-      _dimensionsFor(variant).$2 + 64;
+      _dimensionsFor(variant).$2 + 65;
 
   @override
   Widget build(BuildContext context) {

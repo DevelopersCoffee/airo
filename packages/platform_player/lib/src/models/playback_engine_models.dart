@@ -482,6 +482,7 @@ class AiroPlaybackState extends Equatable {
         'playbackSpeed: $playbackSpeed, '
         'selectedQualityId: $selectedQualityId, '
         'selectedTrackIds: $selectedTrackIds, '
+        'bufferedRanges: $bufferedRanges, '
         'diagnostics: $diagnostics, '
         'error: $error'
         ')';

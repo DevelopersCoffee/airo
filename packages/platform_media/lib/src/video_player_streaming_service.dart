@@ -21,6 +21,9 @@ import 'video_player_airo_playback_engine.dart';
 /// 6. Background audio mode
 /// 7. Audio context integration (pauses music during video)
 class VideoPlayerStreamingService implements IPTVStreamingService {
+  static const _deadStreamTerminalMessage =
+      'This channel may be blocked in your region or not currently broadcasting.';
+
   final AiroPlaybackEngine _engine;
   final StreamingConfig _config;
   final AudioContextManager _audioContext;
@@ -152,11 +155,12 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
 
   @override
   Future<void> playChannel(IPTVChannel channel) =>
-      _playChannel(channel, preserveFailover: false);
+      _playChannel(channel, preserveFailover: false, resetRetryCount: true);
 
   Future<void> _playChannel(
     IPTVChannel channel, {
     required bool preserveFailover,
+    required bool resetRetryCount,
   }) async {
     _loadStartTime = DateTime.now();
     _updateState(
@@ -166,7 +170,7 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
         errorMessage: null,
         clearDiagnostic: true,
         clearFailover: !preserveFailover,
-        retryCount: 0,
+        retryCount: resetRetryCount ? 0 : _state.retryCount,
       ),
     );
 
@@ -492,12 +496,10 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
 
     final newRetryCount = _state.retryCount + 1;
 
-    String userMessage;
-    if (newRetryCount > _config.maxRetries) {
-      userMessage = 'Unable to play this channel. Please try again later.';
-    } else {
-      userMessage = 'Playback failed: $message';
-    }
+    final retriesExhausted = newRetryCount > _config.maxRetries;
+    final userMessage = retriesExhausted
+        ? _deadStreamTerminalMessage
+        : 'Playback failed: $message';
 
     // CV-001: structured, user-safe diagnostic alongside the legacy
     // errorMessage. UI prefers this when present; retry stays manual here
@@ -514,11 +516,20 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
     // match the 'codec' substring check) fell through to a generic
     // `unknown` diagnostic.
     final diagnostic = _diagnosticFor(message, engineError);
+    final terminalDiagnostic = retriesExhausted
+        ? AiroPlaybackDiagnostic(
+            code: diagnostic.code,
+            severity: diagnostic.severity,
+            retryEligible: false,
+            userMessage: userMessage,
+            technicalDetail: diagnostic.technicalDetail,
+          )
+        : diagnostic;
     _updateState(
       _state.copyWith(
         playbackState: PlaybackState.error,
         errorMessage: userMessage,
-        diagnostic: diagnostic,
+        diagnostic: terminalDiagnostic,
         clearFailover: true,
         retryCount: newRetryCount,
         lastError: DateTime.now(),
@@ -677,12 +688,20 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
         _updateState(
           _state.copyWith(failover: _failoverProgressFor(decision.state)),
         );
-        await _playChannel(channel, preserveFailover: true);
+        await _playChannel(
+          channel,
+          preserveFailover: true,
+          resetRetryCount: false,
+        );
         return;
       }
     }
 
-    await _playChannel(channel, preserveFailover: false);
+    await _playChannel(
+      channel,
+      preserveFailover: false,
+      resetRetryCount: false,
+    );
   }
 
   @override

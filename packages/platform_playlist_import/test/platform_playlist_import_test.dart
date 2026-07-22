@@ -40,6 +40,27 @@ https://example.com/worker.m3u8
     expect(channels.single.streamUrl, 'https://example.com/worker.m3u8');
   });
 
+  test('returns aggregate stats without retaining playlist content', () async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    final parser = M3UParserService(dio: Dio(), prefs: prefs);
+
+    final result = await parser.parseM3UWithStatsOffMain('''
+#EXTM3U
+#EXTINF:-1 Broken entry without a comma
+#EXTINF:-1,Skipped without URL
+#EXTINF:-1,Parsed channel
+https://example.com/parsed.m3u8
+#EXTINF:-1,Trailing without URL
+''');
+
+    expect(result.channels, hasLength(1));
+    expect(result.stats.parsedCount, 1);
+    expect(result.stats.skippedCount, 2);
+    expect(result.stats.malformedCount, 1);
+    expect(result.stats.elapsedMillis, greaterThanOrEqualTo(0));
+  });
+
   group('M3UParserService deduplication', () {
     late M3UParserService parser;
 

@@ -20,8 +20,8 @@
       "appPlatform": "mobileFull",
       "ciBuild": true,
       "edgeProfile": false,
-      "requiredPackages": ["airo", "airomoney"],
-      "featureModules": ["airo", "airomoney"],
+      "requiredPackages": ["airo"],
+      "featureModules": ["airo", "feature_coin"],
       "allowedNativePlugins": ["*"],
       "heavyPackages": [],
       "requiredDependencyOverrides": {
@@ -61,8 +61,7 @@
         "chess",
         "flame",
         "flame_audio",
-        "google_mlkit_text_recognition",
-        "airomoney"
+        "google_mlkit_text_recognition"
       ],
       "requiredDependencyOverrides": {
         "flutter_chrome_cast": "../packages/platform_player/third_party/flutter_chrome_cast"
@@ -237,8 +236,8 @@
       "appPlatform": "ios",
       "ciBuild": false,
       "edgeProfile": false,
-      "requiredPackages": ["airo", "airomoney"],
-      "featureModules": ["airo", "airomoney"],
+      "requiredPackages": ["airo"],
+      "featureModules": ["airo", "feature_coin"],
       "allowedNativePlugins": ["*"],
       "heavyPackages": [],
       "requiredDependencyOverrides": {

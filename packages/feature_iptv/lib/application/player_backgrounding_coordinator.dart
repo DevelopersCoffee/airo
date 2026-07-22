@@ -135,6 +135,18 @@ class PlayerBackgroundingCoordinator {
 final playerBackgroundingCoordinatorProvider =
     Provider<PlayerBackgroundingCoordinator>((ref) {
       final coordinator = PlayerBackgroundingCoordinator();
+      // The single native PiP state-change subscription for the whole
+      // session, mirrored into pictureInPictureActiveProvider so any widget
+      // can switch to a video-only layout while PiP is up (#1002). Owning
+      // it here (session scope) instead of in individual widgets avoids
+      // competing subscribers on AiroNativePictureInPicture's single
+      // handler slot.
+      AiroNativePictureInPicture.setStateChangeHandler((isActive) {
+        ref.read(pictureInPictureActiveProvider.notifier).state = isActive;
+      });
+      ref.onDispose(
+        () => AiroNativePictureInPicture.setStateChangeHandler(null),
+      );
       ref.listen<AppLifecycleState>(appLifecycleStateProvider, (
         previous,
         next,

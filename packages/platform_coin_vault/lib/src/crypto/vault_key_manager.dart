@@ -118,9 +118,9 @@ class VaultKeyManager implements EncryptionKeyManager {
   }
 
   /// Generates a new candidate DEK without persisting it. Pair with
-  /// [commitRotatedKey] via `VaultKeyRotationService.rotateKeyWithReencryption()`
-  /// — never call [commitRotatedKey] with a candidate key before all vault
-  /// data has been re-encrypted under it.
+  /// [persistRotatedKeyUnauthenticated] via
+  /// `VaultKeyRotationService.rotateKeyWithReencryption()` — never persist a
+  /// candidate key before all vault data has been re-encrypted under it.
   List<int> generateCandidateKey() => _generateKeyBytes();
 
   /// Persists [newKeyBytes] as the active DEK. Only call this after all

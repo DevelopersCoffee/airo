@@ -101,7 +101,7 @@ jobs:
         run: |
           chmod +x scripts/check-build-profiles.py scripts/generate-release-manifest.py scripts/test-generate-release-manifest.sh scripts/generate-release-qualification-report.py scripts/test-generate-release-qualification-report.sh
           ruby -e 'require "yaml"; ARGV.each { |f| YAML.load_file(f); puts "ok #{f}" }' \
-            .github/workflows/v2-release-orchestrator.yml \
+            .github/workflows/release-orchestrator.yml \
             .github/workflows/airo-tv-release.yml \
             .github/workflows/airo-mobile-tablet-release.yml
           python3 -m py_compile scripts/check-build-profiles.py scripts/generate-release-manifest.py scripts/generate-release-qualification-report.py
@@ -180,7 +180,7 @@ jobs:
         run: |
           chmod +x scripts/check-build-profiles.py scripts/check-variant-pubspecs.sh scripts/generate-release-manifest.py scripts/test-generate-release-manifest.sh scripts/generate-release-qualification-report.py scripts/test-generate-release-qualification-report.sh
           ruby -e 'require "yaml"; ARGV.each { |f| YAML.load_file(f); puts "ok #{f}" }' \
-            .github/workflows/v2-release-orchestrator.yml \
+            .github/workflows/release-orchestrator.yml \
             .github/workflows/airo-tv-release.yml \
             .github/workflows/airo-mobile-tablet-release.yml
           python3 -m py_compile scripts/check-build-profiles.py scripts/generate-release-manifest.py scripts/generate-release-qualification-report.py
@@ -254,6 +254,14 @@ jobs:
           cd app
           flutter test --coverage --reporter=compact
 
+      - name: Convert coverage to SonarQube generic format
+        if: always()
+        run: |
+          python3 scripts/lcov_to_sonar_generic_coverage.py \
+            app/coverage/lcov.info \
+            --prefix "app/" \
+            --out app/coverage/sonar-generic-coverage.xml
+
       - name: Upload coverage
         if: always()
         uses: codecov/codecov-action@v7
@@ -267,7 +275,9 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: lcov-coverage
-          path: app/coverage/lcov.info
+          path: |
+            app/coverage/lcov.info
+            app/coverage/sonar-generic-coverage.xml
           retention-days: 1
           if-no-files-found: warn
 

@@ -21,13 +21,24 @@ void main() {
     group: 'News',
   );
 
-  Future<ProviderContainer> buildContainer(CompactEpgWindow window) async {
+  Future<ProviderContainer> buildContainer(
+    CompactEpgWindow window, {
+    DateTime? now,
+  }) async {
     final prefs = await SharedPreferences.getInstance();
     return ProviderContainer(
       overrides: [
         sharedPreferencesProvider.overrideWithValue(prefs),
         iptvChannelsProvider.overrideWith((ref) async => [channel]),
-        guideEpgWindowProvider.overrideWith((ref) async => window),
+        guidePagedWindowProvider.overrideWith(
+          () => _FakePagedNotifier(_pagedStateFor(window)),
+        ),
+        guideWindowStartProvider.overrideWithValue(window.windowStart),
+        guideWindowDurationProvider.overrideWith(
+          (ref) => window.windowEnd.difference(window.windowStart),
+        ),
+        if (now != null)
+          nowTickerProvider.overrideWith((ref) => Stream.value(now)),
       ],
     );
   }
@@ -106,7 +117,13 @@ void main() {
       overrides: [
         sharedPreferencesProvider.overrideWithValue(prefs),
         iptvChannelsProvider.overrideWith((ref) async => const []),
-        guideEpgWindowProvider.overrideWith((ref) async => window),
+        guidePagedWindowProvider.overrideWith(
+          () => _FakePagedNotifier(_pagedStateFor(window)),
+        ),
+        guideWindowStartProvider.overrideWithValue(window.windowStart),
+        guideWindowDurationProvider.overrideWith(
+          (ref) => window.windowEnd.difference(window.windowStart),
+        ),
       ],
     );
     addTearDown(container.dispose);
@@ -176,7 +193,13 @@ void main() {
         overrides: [
           sharedPreferencesProvider.overrideWithValue(prefs),
           iptvChannelsProvider.overrideWith((ref) async => manyChannels),
-          guideEpgWindowProvider.overrideWith((ref) async => window),
+          guidePagedWindowProvider.overrideWith(
+            () => _FakePagedNotifier(_pagedStateFor(window)),
+          ),
+          guideWindowStartProvider.overrideWithValue(window.windowStart),
+          guideWindowDurationProvider.overrideWith(
+            (ref) => window.windowEnd.difference(window.windowStart),
+          ),
         ],
       );
       addTearDown(container.dispose);
@@ -271,7 +294,13 @@ void main() {
           iptvChannelsProvider.overrideWith(
             (ref) async => [channel, channelTwo],
           ),
-          guideEpgWindowProvider.overrideWith((ref) async => window),
+          guidePagedWindowProvider.overrideWith(
+            () => _FakePagedNotifier(_pagedStateFor(window)),
+          ),
+          guideWindowStartProvider.overrideWithValue(window.windowStart),
+          guideWindowDurationProvider.overrideWith(
+            (ref) => window.windowEnd.difference(window.windowStart),
+          ),
         ],
       );
       addTearDown(container.dispose);
@@ -348,6 +377,144 @@ void main() {
     },
   );
 
+  testWidgets('airing blocks show a progress fill and minutes-left label', (
+    tester,
+  ) async {
+    final now = DateTime.utc(2026, 7, 17, 12, 15);
+    final window = CompactEpgWindow(
+      entries: [
+        CompactEpgWindowEntry(
+          channelId: 'channel-1',
+          channelName: 'Example Channel',
+          programs: [
+            CompactEpgProgram(
+              programId: 'p-airing',
+              title: 'Airing Now',
+              startsAt: now.subtract(const Duration(minutes: 15)),
+              endsAt: now.add(const Duration(minutes: 45)),
+            ),
+          ],
+        ),
+      ],
+      windowStart: now.subtract(const Duration(minutes: 30)),
+      windowEnd: now.add(const Duration(hours: 2, minutes: 30)),
+      generatedAt: now,
+      expiresAt: now.add(const Duration(hours: 1)),
+      source: CompactEpgSliceSource.localCache,
+    );
+    final container = await buildContainer(window, now: now);
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: const MaterialApp(
+          home: MediaQuery(
+            data: MediaQueryData(
+              size: Size(1280, 720),
+              navigationMode: NavigationMode.directional,
+            ),
+            child: Scaffold(
+              body: SizedBox(
+                width: 1280,
+                height: 720,
+                child: EpgTimelineGrid(),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.text('Airing Now'), findsOneWidget);
+    expect(find.byType(LinearProgressIndicator), findsOneWidget);
+    expect(find.text('45 min left'), findsOneWidget);
+  });
+
+  testWidgets('Jump to Present control re-scrolls the timeline to now', (
+    tester,
+  ) async {
+    final now = DateTime.utc(2026, 7, 17, 12);
+    final windowStart = now.subtract(const Duration(minutes: 30));
+    final window = CompactEpgWindow(
+      entries: [
+        CompactEpgWindowEntry(
+          channelId: 'channel-1',
+          channelName: 'Example Channel',
+          programs: [
+            CompactEpgProgram(
+              programId: 'p-now',
+              title: 'Now Show',
+              startsAt: now,
+              endsAt: now.add(const Duration(hours: 1)),
+            ),
+            CompactEpgProgram(
+              programId: 'p-late',
+              title: 'Late Show',
+              startsAt: now.add(const Duration(hours: 5)),
+              endsAt: now.add(const Duration(hours: 6)),
+            ),
+          ],
+        ),
+      ],
+      windowStart: windowStart,
+      windowEnd: windowStart.add(const Duration(hours: 8)),
+      generatedAt: now,
+      expiresAt: now.add(const Duration(hours: 1)),
+      source: CompactEpgSliceSource.localCache,
+    );
+    final container = await buildContainer(window, now: now);
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: const MaterialApp(
+          home: MediaQuery(
+            data: MediaQueryData(
+              size: Size(1280, 720),
+              navigationMode: NavigationMode.directional,
+            ),
+            child: Scaffold(
+              body: SizedBox(
+                width: 1280,
+                height: 720,
+                child: EpgTimelineGrid(),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.byKey(const ValueKey('epg_jump_to_present')), findsOneWidget);
+    double textLeft(String text) => tester.getTopLeft(find.text(text)).dx;
+
+    expect(textLeft('Now Show'), greaterThan(220));
+    expect(textLeft('Now Show'), lessThan(1280));
+    expect(textLeft('Late Show'), greaterThan(1280));
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+    await tester.pumpAndSettle();
+
+    expect(textLeft('Late Show'), greaterThan(220));
+    expect(textLeft('Late Show'), lessThan(1280));
+    expect(textLeft('Now Show'), lessThan(220));
+
+    await tester.tap(find.byKey(const ValueKey('epg_jump_to_present')));
+    await tester.pumpAndSettle();
+
+    expect(textLeft('Now Show'), greaterThan(220));
+    expect(textLeft('Now Show'), lessThan(1280));
+  });
+
   testWidgets('time ruler shows the window start in local time, not UTC', (
     tester,
   ) async {
@@ -365,8 +532,13 @@ void main() {
       overrides: [
         sharedPreferencesProvider.overrideWithValue(prefs),
         iptvChannelsProvider.overrideWith((ref) async => [channel]),
-        guideEpgWindowProvider.overrideWith((ref) async => window),
+        guidePagedWindowProvider.overrideWith(
+          () => _FakePagedNotifier(_pagedStateFor(window)),
+        ),
         guideWindowStartProvider.overrideWithValue(windowStart),
+        guideWindowDurationProvider.overrideWith(
+          (ref) => window.windowEnd.difference(window.windowStart),
+        ),
       ],
     );
     addTearDown(container.dispose);
@@ -406,4 +578,21 @@ void main() {
       expect(find.text(utcLabel), findsNothing);
     }
   });
+}
+
+GuidePagedWindowState _pagedStateFor(CompactEpgWindow window) {
+  return GuidePagedWindowState(
+    earliestStart: window.windowStart,
+    loadedThrough: window.windowEnd,
+    window: window,
+  );
+}
+
+class _FakePagedNotifier extends GuidePagedWindowNotifier {
+  _FakePagedNotifier(this._state);
+
+  final GuidePagedWindowState _state;
+
+  @override
+  GuidePagedWindowState build() => _state;
 }

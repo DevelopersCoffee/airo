@@ -117,6 +117,23 @@ https://example.com/news.m3u8
       expect(playlist.headers, isEmpty);
     });
 
+    test('reports redacted aggregate parse stats', () async {
+      final result = await parseM3uPlaylistWithStatsNative('''
+#EXTM3U
+#EXTINF:-1 Broken entry without a comma
+#EXTINF:-1,Skipped without URL
+#EXTINF:-1,Parsed channel
+https://example.com/parsed.m3u8
+#EXTINF:-1,Trailing without URL
+''');
+
+      expect(result.playlist.entries, hasLength(1));
+      expect(result.stats.parsedCount, 1);
+      expect(result.stats.skippedCount, 2);
+      expect(result.stats.malformedCount, 1);
+      expect(result.stats.elapsedMillis, greaterThanOrEqualTo(0));
+    });
+
     test(
       'native-preferred playlist API matches Dart fallback output',
       () async {

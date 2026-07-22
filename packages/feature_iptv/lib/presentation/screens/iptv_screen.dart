@@ -16,6 +16,7 @@ import '../widgets/adaptive_iptv_sheet.dart';
 import '../widgets/cast_device_picker_sheet.dart';
 import '../widgets/channel_list_widget.dart';
 import '../widgets/iptv_cast_mini_controller.dart';
+import '../widgets/iptv_cast_prompt_card.dart';
 import '../widgets/iptv_mini_player.dart';
 import '../widgets/iptv_navigation_drawer.dart';
 import '../widgets/phone_media_play_on_tv_sheet.dart';
@@ -75,6 +76,11 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
   /// a channel that arrives after the user already backed out.
   bool _deepLinkCancelled = false;
 
+  /// Android PiP shrinks the whole activity by default. Keep this screen's
+  /// presentation state in sync with the native callback so the PiP window
+  /// contains only the active video rather than the app bar and browse UI.
+  bool _isPictureInPicture = false;
+
   @override
   void initState() {
     super.initState();
@@ -91,6 +97,9 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
     // Feeds real app lifecycle transitions into appLifecycleStateProvider,
     // which playerBackgroundingCoordinatorProvider listens to above.
     WidgetsBinding.instance.addObserver(this);
+    AiroNativePictureInPicture.setStateChangeHandler((isActive) {
+      if (mounted) setState(() => _isPictureInPicture = isActive);
+    });
 
     final deepLinkId = widget.deepLinkChannelId;
     if (deepLinkId != null) {
@@ -158,6 +167,7 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
     // 1. _toggleFullscreen() when user explicitly exits fullscreen
     // 2. AppShell when navigating to a different tab
     WidgetsBinding.instance.removeObserver(this);
+    AiroNativePictureInPicture.setStateChangeHandler(null);
     super.dispose();
   }
 
@@ -497,6 +507,17 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
     final isPlaying =
         ref.watch(streamingStateProvider).value?.isPlaying == true;
 
+    if (_isPictureInPicture) {
+      return AiroResponsiveScaffold(
+        padding: EdgeInsets.zero,
+        backgroundColor: Colors.black,
+        body: VideoPlayerWidget(
+          showControls: true,
+          onFullscreenToggle: _toggleFullscreen,
+        ),
+      );
+    }
+
     // A deep link is "pending" until its resolution (in initState's
     // post-frame callback) either starts playback or determines the
     // channel doesn't exist (which clears _deepLinkPending). While
@@ -532,6 +553,19 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
     // player's own minimize/fullscreen-toggle button would never be able
     // to take a deep-linked channel back to the browse grid.
     final showFullscreenPlayer = isFullscreen;
+
+    // System PiP: the floating window IS the whole app window, so render
+    // only the video surface — no app bar, drawer, headers, or controls —
+    // like YouTube/Netflix PiP (#1002). Playback continues uninterrupted:
+    // the streaming service is provider-scoped, not widget-scoped, and the
+    // bare widget re-attaches to the same engine's video view (same swap
+    // the fullscreen toggle already does).
+    if (ref.watch(pictureInPictureActiveProvider)) {
+      return const Scaffold(
+        backgroundColor: Colors.black,
+        body: SizedBox.expand(child: VideoPlayerWidget(showControls: false)),
+      );
+    }
 
     if (showFullscreenPlayer) {
       return AiroResponsiveScaffold(
@@ -591,6 +625,7 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
               onChannelTap: _playChannel,
               onFullscreenToggle: _toggleFullscreen,
               onPlaylistSourceTap: _showPlaylistSheet,
+              onCastTap: kIsWeb ? null : _showCastSheet,
             ),
           ),
           const IptvCastMiniController(),
@@ -668,6 +703,37 @@ class _IPTVScreenBodyState extends ConsumerState<IPTVScreenBody> {
     await showPlaylistSourceSheet(context, ref);
   }
 
+  Future<void> _showCastSheet() async {
+    if (kIsWeb) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Cast is available in the mobile app.')),
+      );
+      return;
+    }
+
+    final streamingService = ref.read(iptvStreamingServiceProvider);
+    final channel = streamingService.currentState.currentChannel;
+    if (channel == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Choose a channel before casting.')),
+      );
+      return;
+    }
+
+    await showIptvCastDevicePicker(
+      context: context,
+      onDeviceSelected: (device) {
+        ref
+            .read(iptvCastProvider.notifier)
+            .castChannelToDevice(
+              channel: channel,
+              device: device,
+              selectedQuality: streamingService.currentState.selectedQuality,
+            );
+      },
+    );
+  }
+
   void _syncLocalPlaybackWithCast(bool? wasCasting, bool isCasting) {
     final streaming = ref.read(iptvStreamingServiceProvider);
     if (isCasting) {
@@ -712,6 +778,7 @@ class _IPTVScreenBodyState extends ConsumerState<IPTVScreenBody> {
                       onChannelTap: _playChannel,
                       onFullscreenToggle: _toggleFullscreen,
                       onPlaylistSourceTap: _showPlaylistSheet,
+                      onCastTap: kIsWeb ? null : _showCastSheet,
                     ),
                   ),
                   const IptvCastMiniController(),
@@ -728,11 +795,13 @@ class _StreamTabContent extends ConsumerWidget {
     required this.onChannelTap,
     required this.onFullscreenToggle,
     required this.onPlaylistSourceTap,
+    this.onCastTap,
   });
 
   final ValueChanged<IPTVChannel> onChannelTap;
   final VoidCallback onFullscreenToggle;
   final VoidCallback onPlaylistSourceTap;
+  final VoidCallback? onCastTap;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -779,6 +848,7 @@ class _StreamTabContent extends ConsumerWidget {
                           onFullscreenToggle: onFullscreenToggle,
                           buildQualityDropdown: (state) =>
                               _buildQualityDropdown(context, ref, state),
+                          onCastTap: onCastTap,
                         ),
                       ),
                     ),
@@ -809,6 +879,7 @@ class _StreamTabContent extends ConsumerWidget {
                                 onFullscreenToggle: onFullscreenToggle,
                                 buildQualityDropdown: (state) =>
                                     _buildQualityDropdown(context, ref, state),
+                                onCastTap: onCastTap,
                               ),
                             ),
                           ),
@@ -1324,11 +1395,13 @@ class _FeaturedPlayerPanel extends StatelessWidget {
     required this.streamingState,
     required this.onFullscreenToggle,
     required this.buildQualityDropdown,
+    this.onCastTap,
   });
 
   final AsyncValue<StreamingState> streamingState;
   final VoidCallback onFullscreenToggle;
   final Widget Function(StreamingState state) buildQualityDropdown;
+  final VoidCallback? onCastTap;
 
   @override
   Widget build(BuildContext context) {
@@ -1361,13 +1434,6 @@ class _FeaturedPlayerPanel extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Featured Player', style: theme.textTheme.titleLarge),
-              const SizedBox(height: 4),
-              Text(
-                'Play media from your saved playlist.',
-                style: theme.textTheme.bodyMedium,
-              ),
-              const SizedBox(height: 16),
               if (boundedHeight) Flexible(fit: FlexFit.loose, child: player),
               if (!boundedHeight) player,
               const SizedBox(height: 12),
@@ -1401,6 +1467,13 @@ class _FeaturedPlayerPanel extends StatelessWidget {
                         state.currentChannel!.group,
                         style: theme.textTheme.bodyMedium,
                       ),
+                      if (!kIsWeb && onCastTap != null) ...[
+                        const SizedBox(height: 8),
+                        IptvCastPromptCard(
+                          channel: state.currentChannel!,
+                          onChooseTv: onCastTap,
+                        ),
+                      ],
                       const SizedBox(height: 12),
                       const IPTVMiniPlayer(forceVisible: true),
                     ],

@@ -155,9 +155,18 @@ void main() {
 
     expect(find.text('Casting to Sony Bravia'), findsOneWidget);
     expect(find.text('P4U Music'), findsOneWidget);
+    expect(find.text('Stop'), findsOneWidget);
+    // CV-028: Reload/New session/Disconnect are secondary actions, hidden
+    // behind the "More controls" expand toggle by default.
+    expect(find.text('Reload'), findsNothing);
+    expect(find.text('New session'), findsNothing);
+    expect(find.text('Disconnect'), findsNothing);
+
+    await tester.tap(find.byTooltip('More controls'));
+    await tester.pump();
+
     expect(find.text('Reload'), findsOneWidget);
     expect(find.text('New session'), findsOneWidget);
-    expect(find.text('Stop'), findsOneWidget);
     expect(find.text('Disconnect'), findsOneWidget);
   });
 
@@ -187,9 +196,9 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('Stop'), findsOneWidget);
-    expect(find.text('Disconnect'), findsOneWidget);
     expect(find.text('Reload'), findsNothing);
     expect(find.text('New session'), findsNothing);
+    expect(find.text('Disconnect'), findsNothing);
   });
 }
 

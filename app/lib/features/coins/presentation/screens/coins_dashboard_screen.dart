@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:feature_coin/feature_coin.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/routing/route_names.dart';
 import '../../../../core/utils/locale_settings.dart';
@@ -91,7 +92,6 @@ class CoinsDashboardScreen extends ConsumerWidget {
                   const _QuickAddExpenseCard(),
                   const SizedBox(height: 16),
 
-                  // Secure Vault entry (feature_coin)
                   Card(
                     child: ListTile(
                       leading: const Icon(Icons.lock_outline),
@@ -761,7 +761,13 @@ class _QuickActionsRow extends StatelessWidget {
             MaterialPageRoute(builder: (_) => const BudgetManagementScreen()),
           ),
         ),
-        const _QuickActionButton(icon: Icons.camera_alt, label: 'Scan Receipt'),
+        _QuickActionButton(
+          icon: Icons.lock_outline,
+          label: 'Secure Vault',
+          onTap: () => Navigator.of(
+            context,
+          ).push(MaterialPageRoute(builder: (_) => const VaultGateScreen())),
+        ),
       ],
     );
   }

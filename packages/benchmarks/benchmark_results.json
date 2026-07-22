@@ -1,0 +1,26 @@
+[
+  {
+    "name": "m3u_parse_50ch",
+    "metric": "channels_per_sec",
+    "value": 124118.49755956554,
+    "unit": "channels/s",
+    "device_class": "desktop",
+    "timestamp": "2026-07-15T11:48:29.814478Z"
+  },
+  {
+    "name": "m3u_parse_50ch",
+    "metric": "bytes_per_sec",
+    "value": 20871766.54961654,
+    "unit": "bytes/s",
+    "device_class": "desktop",
+    "timestamp": "2026-07-15T11:48:29.814478Z"
+  },
+  {
+    "name": "channel_dedup_200",
+    "metric": "channels_per_sec",
+    "value": 1892657.6874605382,
+    "unit": "channels/s",
+    "device_class": "desktop",
+    "timestamp": "2026-07-15T11:48:32.015776Z"
+  }
+]

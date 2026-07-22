@@ -333,6 +333,37 @@ void main() {
         expect(svc.currentState.playbackState, PlaybackState.error);
       },
     );
+
+    test('retry exhaustion explains a dead or region-blocked stream', () async {
+      final scripted = _ScriptedOpenFailureEngine(
+        AiroPlaybackErrorCode.networkUnavailable,
+      );
+      final svc = VideoPlayerStreamingService(engine: scripted);
+      addTearDown(svc.dispose);
+
+      await svc.playChannel(channel());
+      for (var attempt = 0; attempt < 4; attempt++) {
+        await svc.retry();
+      }
+
+      expect(svc.currentState.retryCount, 5);
+      expect(svc.currentState.errorMessage, startsWith('Playback failed:'));
+
+      await svc.retry();
+
+      expect(svc.currentState.playbackState, PlaybackState.error);
+      expect(svc.currentState.retryCount, 6);
+      expect(
+        svc.currentState.errorMessage,
+        'This channel may be blocked in your region or not currently '
+        'broadcasting.',
+      );
+      expect(
+        svc.currentState.diagnostic?.userMessage,
+        svc.currentState.errorMessage,
+      );
+      expect(svc.currentState.diagnostic?.retryEligible, isFalse);
+    });
   });
 
   group('VideoPlayerStreamingService seek', () {

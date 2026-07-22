@@ -68,6 +68,7 @@ is overlay.
 ## Adding a new pro feature
 
 1. Add a `ProFeature` value (stable id is permanent) in `core_entitlements`.
+   Freeze the stable-id list in `packages/core_entitlements/test/goldens/pro_feature_stable_ids.dart`; any rename or renumber requires an explicit compatibility decision.
 2. If the public UI needs a hook (an empty row slot, a settings entry), land
    it here behind `entitlements.isEnabled(...)`.
 3. Implement the feature as a `ProModule` package in `airo-pro`'s
