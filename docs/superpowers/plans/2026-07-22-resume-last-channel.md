@@ -1,4 +1,4 @@
-# Resume Last Channel (TV Explorer UX Phase 1) Implementation Plan
+# Resume Last Channel (Airo TV UX Phase 1) Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -10,13 +10,13 @@
 
 ## Global Constraints
 
-- Spec: `docs/superpowers/specs/2026-07-22-tv-explorer-ux-adoption-design.md` (Resume flow section).
+- Spec: `docs/superpowers/specs/2026-07-22-airo-tv-ux-design.md` (Resume flow section).
 - Live channels resume at the live edge — same channel, never a timeshift position.
 - Never loop retries behind the splash; a failed tune falls back to browse state (bounded failover rule).
 - Splash dismiss: `max(3 s, first ready state)` capped at 6 s; any tap/key dismisses immediately.
 - No auto-play when no last channel is stored or the channel no longer exists.
 - Follow existing package layout: providers in `packages/feature_iptv/lib/application/providers/`, tests mirror under `packages/feature_iptv/test/iptv/`.
-- All commands run from `packages/feature_iptv/` inside the worktree (`/Users/udaychauhan/workspace/airo/.claude/worktrees/tv-explorer-ux`).
+- All commands run from `packages/feature_iptv/` inside the feature worktree.
 - Commit messages end with `Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>`.
 
 ---
@@ -175,7 +175,7 @@ import 'package:platform_channels/platform_channels.dart';
 import 'iptv_providers.dart';
 
 /// SharedPreferences key holding the id of the last successfully tuned
-/// live channel (TV Explorer UX Phase 1 — resume flow).
+/// live channel (Airo TV UX Phase 1 — resume flow).
 const String iptvLastChannelKey = 'iptv_last_channel';
 
 /// Pure resume-target lookup: stored id -> channel in the current list.
@@ -371,7 +371,7 @@ import 'package:flutter_riverpod/legacy.dart';
 import 'providers/iptv_providers.dart';
 import 'providers/last_channel_provider.dart';
 
-/// Lifecycle of the launch-time resume attempt (TV Explorer UX Phase 1).
+/// Lifecycle of the launch-time resume attempt (Airo TV UX Phase 1).
 enum ResumeStatus { idle, noTarget, tuning, done, failed }
 
 /// One-shot orchestrator: resolve resume target, tune it, report status.
@@ -431,8 +431,8 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 ### Task 3: Splash widget with min/cap timing and input skip
 
 **Files:**
-- Create: `packages/feature_iptv/lib/presentation/tv_explorer/iptv_resume_splash.dart`
-- Test: `packages/feature_iptv/test/iptv/presentation/tv_explorer/iptv_resume_splash_test.dart`
+- Create: `packages/feature_iptv/lib/presentation/tv_ux/iptv_resume_splash.dart`
+- Test: `packages/feature_iptv/test/iptv/presentation/tv_ux/iptv_resume_splash_test.dart`
 
 **Interfaces:**
 - Consumes: nothing from earlier tasks (pure widget; timing + input only).
@@ -442,13 +442,13 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 
 - [ ] **Step 1: Write the failing tests**
 
-Create `packages/feature_iptv/test/iptv/presentation/tv_explorer/iptv_resume_splash_test.dart`:
+Create `packages/feature_iptv/test/iptv/presentation/tv_ux/iptv_resume_splash_test.dart`:
 
 ```dart
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:feature_iptv/presentation/tv_explorer/iptv_resume_splash.dart';
+import 'package:feature_iptv/presentation/tv_ux/iptv_resume_splash.dart';
 
 void main() {
   Widget harness({required bool playbackReady, required VoidCallback onFinished}) {
@@ -541,19 +541,19 @@ Add `import 'package:flutter/services.dart';` for `LogicalKeyboardKey`.
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `flutter test test/iptv/presentation/tv_explorer/iptv_resume_splash_test.dart`
+Run: `flutter test test/iptv/presentation/tv_ux/iptv_resume_splash_test.dart`
 Expected: FAIL — widget file does not exist.
 
 - [ ] **Step 3: Write the implementation**
 
-Create `packages/feature_iptv/lib/presentation/tv_explorer/iptv_resume_splash.dart`:
+Create `packages/feature_iptv/lib/presentation/tv_ux/iptv_resume_splash.dart`:
 
 ```dart
 import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-/// Branded launch splash for the resume-last-channel flow (TV Explorer UX
+/// Branded launch splash for the resume-last-channel flow (Airo TV UX
 /// Phase 1). Timing contract:
 ///   dismiss at max(minDisplay, playbackReady), capped at maxDisplay;
 ///   any tap or key event dismisses immediately.
@@ -666,13 +666,13 @@ class _IptvResumeSplashState extends State<IptvResumeSplash> {
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `flutter test test/iptv/presentation/tv_explorer/iptv_resume_splash_test.dart`
+Run: `flutter test test/iptv/presentation/tv_ux/iptv_resume_splash_test.dart`
 Expected: PASS (6 tests).
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add lib/presentation/tv_explorer/iptv_resume_splash.dart test/iptv/presentation/tv_explorer/iptv_resume_splash_test.dart
+git add lib/presentation/tv_ux/iptv_resume_splash.dart test/iptv/presentation/tv_ux/iptv_resume_splash_test.dart
 git commit -m "feat(iptv): resume splash with min/cap timing and input skip
 
 Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
@@ -683,8 +683,8 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 ### Task 4: IptvResumeGate — single integration wrapper
 
 **Files:**
-- Create: `packages/feature_iptv/lib/presentation/tv_explorer/iptv_resume_gate.dart`
-- Test: `packages/feature_iptv/test/iptv/presentation/tv_explorer/iptv_resume_gate_test.dart`
+- Create: `packages/feature_iptv/lib/presentation/tv_ux/iptv_resume_gate.dart`
+- Test: `packages/feature_iptv/test/iptv/presentation/tv_ux/iptv_resume_gate_test.dart`
 
 **Interfaces:**
 - Consumes: `lastChannelRecorderProvider`, `resumeLastChannelControllerProvider` + `ResumeStatus`, `IptvResumeSplash`, `streamingStateProvider` (existing).
@@ -692,7 +692,7 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 
 - [ ] **Step 1: Write the failing tests**
 
-Create `packages/feature_iptv/test/iptv/presentation/tv_explorer/iptv_resume_gate_test.dart`:
+Create `packages/feature_iptv/test/iptv/presentation/tv_ux/iptv_resume_gate_test.dart`:
 
 ```dart
 import 'package:flutter/material.dart';
@@ -703,8 +703,8 @@ import 'package:platform_channels/platform_channels.dart';
 import 'package:feature_iptv/application/providers/iptv_providers.dart';
 import 'package:feature_iptv/application/providers/last_channel_provider.dart';
 import 'package:feature_iptv/application/resume_last_channel_controller.dart';
-import 'package:feature_iptv/presentation/tv_explorer/iptv_resume_gate.dart';
-import 'package:feature_iptv/presentation/tv_explorer/iptv_resume_splash.dart';
+import 'package:feature_iptv/presentation/tv_ux/iptv_resume_gate.dart';
+import 'package:feature_iptv/presentation/tv_ux/iptv_resume_splash.dart';
 
 IPTVChannel channel(String id) => IPTVChannel(
   id: id,
@@ -772,12 +772,12 @@ void main() {
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `flutter test test/iptv/presentation/tv_explorer/iptv_resume_gate_test.dart`
+Run: `flutter test test/iptv/presentation/tv_ux/iptv_resume_gate_test.dart`
 Expected: FAIL — gate file does not exist.
 
 - [ ] **Step 3: Write the implementation**
 
-Create `packages/feature_iptv/lib/presentation/tv_explorer/iptv_resume_gate.dart`:
+Create `packages/feature_iptv/lib/presentation/tv_ux/iptv_resume_gate.dart`:
 
 ```dart
 import 'package:flutter/material.dart';
@@ -852,13 +852,13 @@ the analyzer or a lint objects, switch to `ref.listen` on
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `flutter test test/iptv/presentation/tv_explorer/iptv_resume_gate_test.dart`
+Run: `flutter test test/iptv/presentation/tv_ux/iptv_resume_gate_test.dart`
 Expected: PASS (3 tests).
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add lib/presentation/tv_explorer/iptv_resume_gate.dart test/iptv/presentation/tv_explorer/iptv_resume_gate_test.dart
+git add lib/presentation/tv_ux/iptv_resume_gate.dart test/iptv/presentation/tv_ux/iptv_resume_gate_test.dart
 git commit -m "feat(iptv): resume gate wiring recorder, controller and splash
 
 Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
@@ -894,10 +894,10 @@ body: IptvResumeGate(
 Add the import to both files:
 
 ```dart
-import '../tv_explorer/iptv_resume_gate.dart';
+import '../tv_ux/iptv_resume_gate.dart';
 ```
 
-(from `presentation/screens/` the path is `../tv_explorer/iptv_resume_gate.dart`; from `presentation/tv/` it is also `../tv_explorer/iptv_resume_gate.dart`).
+(from `presentation/screens/` the path is `../tv_ux/iptv_resume_gate.dart`; from `presentation/tv/` it is also `../tv_ux/iptv_resume_gate.dart`).
 
 Rule: one wrap per screen, no other layout changes. If a screen already
 auto-plays something on launch (check `initState` for any `playChannel`
@@ -911,8 +911,8 @@ existing exports:
 ```dart
 export 'application/providers/last_channel_provider.dart';
 export 'application/resume_last_channel_controller.dart';
-export 'presentation/tv_explorer/iptv_resume_gate.dart';
-export 'presentation/tv_explorer/iptv_resume_splash.dart';
+export 'presentation/tv_ux/iptv_resume_gate.dart';
+export 'presentation/tv_ux/iptv_resume_splash.dart';
 ```
 
 - [ ] **Step 3: Run the full feature_iptv test suite**
@@ -933,7 +933,7 @@ git commit -m "feat(iptv): launch both IPTV surfaces through resume gate
 
 Last-watched live channel auto-resumes behind a ~3s branded splash
 (cap 6s, any input skips). No auto-play when nothing stored or the
-channel is gone. TV Explorer UX adoption Phase 1.
+channel is gone. Airo TV UX revamp Phase 1.
 
 Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 ```
