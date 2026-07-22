@@ -342,6 +342,12 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
   // Gated on !_isLocked, matching every other in-player interaction.
   TvInputResult _handleSurfInput(TvInputKey key) {
     if (_isLocked) return TvInputResult.notHandled;
+    final remoteResult = handleRemoteOverlayInput(
+      key,
+      onChannelPrevious: _goToPreviousChannel,
+      onChannelNext: _goToNextChannel,
+    );
+    if (remoteResult == TvInputResult.handled) return remoteResult;
     switch (key) {
       case TvInputKey.up:
         _goToPreviousChannel();
