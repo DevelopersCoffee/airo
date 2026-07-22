@@ -1,6 +1,9 @@
 use std::{fs, path::PathBuf};
 
-use airo_core::api::m3u::parse_m3u_entries;
+use airo_core::api::m3u::{
+    parse_m3u_channels_with_stats, parse_m3u_entries, parse_m3u_file_channels_with_stats,
+    parse_m3u_file_with_stats,
+};
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
 
 fn iptv_org_fixture_path() -> PathBuf {
@@ -27,6 +30,41 @@ fn bench_m3u_parser(c: &mut Criterion) {
             b.iter(|| {
                 let entries = parse_m3u_entries(black_box(content.clone()));
                 black_box(entries.len())
+            });
+        },
+    );
+    group.bench_with_input(
+        BenchmarkId::new("iptv_org_index_file", channel_count),
+        &fixture_path,
+        |b, path| {
+            b.iter(|| {
+                let result =
+                    parse_m3u_file_with_stats(black_box(path.to_string_lossy().to_string()))
+                        .expect("valid M3U fixture");
+                black_box(result.playlist.entries.len())
+            });
+        },
+    );
+    group.bench_with_input(
+        BenchmarkId::new("iptv_org_index_channels", channel_count),
+        &fixture,
+        |b, content| {
+            b.iter(|| {
+                let result = parse_m3u_channels_with_stats(black_box(content.clone()));
+                black_box(result.channels.len())
+            });
+        },
+    );
+    group.bench_with_input(
+        BenchmarkId::new("iptv_org_index_file_channels", channel_count),
+        &fixture_path,
+        |b, path| {
+            b.iter(|| {
+                let result = parse_m3u_file_channels_with_stats(black_box(
+                    path.to_string_lossy().to_string(),
+                ))
+                .expect("valid M3U fixture");
+                black_box(result.channels.len())
             });
         },
     );

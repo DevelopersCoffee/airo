@@ -44,6 +44,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   List<String> dco_decode_list_String(dynamic raw);
 
   @protected
+  List<M3uChannel> dco_decode_list_m_3_u_channel(dynamic raw);
+
+  @protected
   List<M3uEntry> dco_decode_list_m_3_u_entry(dynamic raw);
 
   @protected
@@ -59,6 +62,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   List<XmltvProgramme> dco_decode_list_xmltv_programme(dynamic raw);
+
+  @protected
+  M3uChannel dco_decode_m_3_u_channel(dynamic raw);
+
+  @protected
+  M3uChannelParseResult dco_decode_m_3_u_channel_parse_result(dynamic raw);
 
   @protected
   M3uEntry dco_decode_m_3_u_entry(dynamic raw);
@@ -137,6 +146,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   List<String> sse_decode_list_String(SseDeserializer deserializer);
 
   @protected
+  List<M3uChannel> sse_decode_list_m_3_u_channel(SseDeserializer deserializer);
+
+  @protected
   List<M3uEntry> sse_decode_list_m_3_u_entry(SseDeserializer deserializer);
 
   @protected
@@ -154,6 +166,14 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   List<XmltvProgramme> sse_decode_list_xmltv_programme(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  M3uChannel sse_decode_m_3_u_channel(SseDeserializer deserializer);
+
+  @protected
+  M3uChannelParseResult sse_decode_m_3_u_channel_parse_result(
     SseDeserializer deserializer,
   );
 
@@ -252,6 +272,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_list_String(List<String> self, SseSerializer serializer);
 
   @protected
+  void sse_encode_list_m_3_u_channel(
+    List<M3uChannel> self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_list_m_3_u_entry(
     List<M3uEntry> self,
     SseSerializer serializer,
@@ -278,6 +304,15 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_list_xmltv_programme(
     List<XmltvProgramme> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_m_3_u_channel(M3uChannel self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_m_3_u_channel_parse_result(
+    M3uChannelParseResult self,
     SseSerializer serializer,
   );
 

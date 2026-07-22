@@ -19,12 +19,14 @@ class M3UParserService {
   static const String _cacheEtagKey = 'iptv_playlist_etag';
   static const String _cacheLastModifiedKey = 'iptv_playlist_last_modified';
   static const String _cacheFileName = 'iptv_channel_cache.json';
+  static const String _downloadDirectoryName = 'playlist_downloads';
   static const Duration _cacheValidity = Duration(hours: 24);
 
   final Dio _dio;
   final SharedPreferences _prefs;
   final KeyValueStore _store;
   final Future<Directory> Function() _cacheDirectoryProvider;
+  final Future<Directory> Function() _downloadDirectoryProvider;
   final AiroWorkerExecutor workerExecutor;
 
   M3UParserService({
@@ -33,14 +35,20 @@ class M3UParserService {
     KeyValueStore? store,
     int maxPreferenceValueBytes = kKeyValueStorePreferenceMaxValueBytes,
     Future<Directory> Function()? cacheDirectoryProvider,
+    Future<Directory> Function()? downloadDirectoryProvider,
     this.workerExecutor = const AiroWorkerExecutor(),
+    // Keep the public constructor API as `dio`/`prefs` instead of exposing
+    // private field names to callers.
+    // ignore: prefer_initializing_formals
   }) : _dio = dio,
        _prefs = prefs,
        _store =
            store ??
            PreferencesStore(prefs, maxValueBytes: maxPreferenceValueBytes),
        _cacheDirectoryProvider =
-           cacheDirectoryProvider ?? getApplicationSupportDirectory;
+           cacheDirectoryProvider ?? getApplicationSupportDirectory,
+       _downloadDirectoryProvider =
+           downloadDirectoryProvider ?? getTemporaryDirectory;
 
   /// Fetch and parse the user-supplied playlist with caching.
   Future<List<IPTVChannel>> fetchPlaylist({bool forceRefresh = false}) async {
@@ -109,11 +117,11 @@ class M3UParserService {
     await clearCache();
   }
 
-  /// Perform the raw HTTP GET for [url], attaching cache validators. Shared
-  /// by [_fetchAndParse] (used by [fetchPlaylist]) and
+  /// Build the HTTP options for playlist requests, attaching cache validators.
+  /// Shared by [_fetchAndParse] (used by [fetchPlaylist]) and
   /// [fetchPlaylistWithProgress] so both observe identical request behavior;
   /// neither the request semantics nor [fetchPlaylist]'s callers change.
-  Future<Response<String>> _requestPlaylist(String url) async {
+  Future<Options> _playlistRequestOptions() async {
     final headers = <String, String>{'Accept-Encoding': 'gzip, deflate'};
     final etag = await _store.getString(_cacheEtagKey);
     final lastModified = await _store.getString(_cacheLastModifiedKey);
@@ -124,39 +132,54 @@ class M3UParserService {
       headers[HttpHeaders.ifModifiedSinceHeader] = lastModified;
     }
 
-    return _dio.get<String>(
-      url,
-      options: Options(
-        headers: headers,
-        responseType: ResponseType.plain,
-        receiveTimeout: const Duration(seconds: 30),
-        validateStatus: (status) =>
-            status != null &&
-            ((status >= HttpStatus.ok && status < HttpStatus.multipleChoices) ||
-                status == HttpStatus.notModified),
-      ),
+    return Options(
+      headers: headers,
+      receiveTimeout: const Duration(seconds: 30),
+      validateStatus: (status) =>
+          status != null &&
+          ((status >= HttpStatus.ok && status < HttpStatus.multipleChoices) ||
+              status == HttpStatus.notModified),
     );
+  }
+
+  /// Download the playlist to a temporary file so native imports can parse
+  /// from disk instead of materializing the HTTP body as a Dart string first.
+  Future<_PlaylistDownloadResult> _downloadPlaylist(String url) async {
+    final file = await _newPlaylistDownloadFile();
+    final response = await _dio.download(
+      url,
+      file.path,
+      options: await _playlistRequestOptions(),
+    );
+    return _PlaylistDownloadResult(response: response, file: file);
   }
 
   /// Fetch and parse M3U from URL.
   Future<_PlaylistFetchResult> _fetchAndParse(String url) async {
-    final response = await _requestPlaylist(url);
+    final download = await _downloadPlaylist(url);
+    final response = download.response;
 
-    if (response.statusCode == HttpStatus.notModified) {
-      final cached = await _loadFromCache(ignoreExpiry: true);
-      if (cached != null && cached.isNotEmpty) {
-        return _PlaylistFetchResult(channels: cached, fromCache: true);
+    try {
+      if (response.statusCode == HttpStatus.notModified) {
+        final cached = await _loadFromCache(ignoreExpiry: true);
+        if (cached != null && cached.isNotEmpty) {
+          return _PlaylistFetchResult(channels: cached, fromCache: true);
+        }
+        throw Exception('Playlist not modified but no cache is available');
       }
-      throw Exception('Playlist not modified but no cache is available');
-    }
 
-    if (response.data == null || response.data!.isEmpty) {
-      throw Exception('Empty playlist response');
-    }
+      if (!await download.file.exists() || await download.file.length() == 0) {
+        throw Exception('Empty playlist response');
+      }
 
-    final parseResult = await parseM3UWithStatsOffMain(response.data!);
-    await _saveHttpValidators(response.headers);
-    return _PlaylistFetchResult(channels: parseResult.channels);
+      final parseResult = await parseM3UFileWithStatsOffMain(
+        download.file.path,
+      );
+      await _saveHttpValidators(response.headers);
+      return _PlaylistFetchResult(channels: parseResult.channels);
+    } finally {
+      await _deletePlaylistDownload(download.file);
+    }
   }
 
   /// Stream-based staged import of the user-supplied playlist, wrapping this
@@ -201,56 +224,67 @@ class M3UParserService {
         stage: ImportStage.download,
         message: 'Downloading playlist',
       );
-      final response = await _requestPlaylist(playlistUrl);
+      final download = await _downloadPlaylist(playlistUrl);
+      final response = download.response;
 
-      if (response.statusCode == HttpStatus.notModified) {
-        final cached = await _loadFromCache(ignoreExpiry: true);
-        if (cached == null || cached.isEmpty) {
-          throw Exception('Playlist not modified but no cache is available');
+      try {
+        if (response.statusCode == HttpStatus.notModified) {
+          final cached = await _loadFromCache(ignoreExpiry: true);
+          if (cached == null || cached.isEmpty) {
+            throw Exception('Playlist not modified but no cache is available');
+          }
+          yield* _emitCacheHitThroughReady(cached);
+          return;
         }
-        yield* _emitCacheHitThroughReady(cached);
-        return;
+
+        if (!await download.file.exists() ||
+            await download.file.length() == 0) {
+          throw Exception('Empty playlist response');
+        }
+
+        yield const ImportProgress(
+          stage: ImportStage.parse,
+          message: 'Parsing playlist',
+        );
+        final parseResult = await parseM3UFileWithStatsOffMain(
+          download.file.path,
+        );
+        final channels = parseResult.channels;
+        await _saveHttpValidators(response.headers);
+
+        // parseM3UOffMain (via parseM3UChannels) already normalizes and
+        // deduplicates internally, so v1 can't observe those as separate sub
+        // steps; they're emitted back-to-back per the staged-import spec's
+        // explicit allowance for adjacent near-zero-duration stages.
+        yield ImportProgress(
+          stage: ImportStage.normalize,
+          fraction: 1,
+          message:
+              '${parseResult.stats.parsedCount} parsed; '
+              '${parseResult.stats.skippedCount} skipped; '
+              '${parseResult.stats.malformedCount} malformed',
+        );
+        yield const ImportProgress(stage: ImportStage.deduplicate, fraction: 1);
+        yield const ImportProgress(stage: ImportStage.indexing, fraction: 1);
+
+        // Rail generation is Riverpod-driven elsewhere via railsProvider
+        // invalidation; this stage is a placeholder for future real hooking.
+        yield const ImportProgress(
+          stage: ImportStage.generateRails,
+          fraction: 1,
+        );
+
+        await _saveToCache(channels);
+        yield const ImportProgress(stage: ImportStage.persist, fraction: 1);
+
+        yield ImportProgress(
+          stage: ImportStage.ready,
+          fraction: 1,
+          message: 'Imported ${channels.length} channels',
+        );
+      } finally {
+        await _deletePlaylistDownload(download.file);
       }
-
-      if (response.data == null || response.data!.isEmpty) {
-        throw Exception('Empty playlist response');
-      }
-
-      yield const ImportProgress(
-        stage: ImportStage.parse,
-        message: 'Parsing playlist',
-      );
-      final parseResult = await parseM3UWithStatsOffMain(response.data!);
-      final channels = parseResult.channels;
-      await _saveHttpValidators(response.headers);
-
-      // parseM3UOffMain (via parseM3UChannels) already normalizes and
-      // deduplicates internally, so v1 can't observe those as separate sub
-      // steps; they're emitted back-to-back per the staged-import spec's
-      // explicit allowance for adjacent near-zero-duration stages.
-      yield ImportProgress(
-        stage: ImportStage.normalize,
-        fraction: 1,
-        message:
-            '${parseResult.stats.parsedCount} parsed; '
-            '${parseResult.stats.skippedCount} skipped; '
-            '${parseResult.stats.malformedCount} malformed',
-      );
-      yield const ImportProgress(stage: ImportStage.deduplicate, fraction: 1);
-      yield const ImportProgress(stage: ImportStage.indexing, fraction: 1);
-
-      // Rail generation is Riverpod-driven elsewhere via railsProvider
-      // invalidation; this stage is a placeholder for future real hooking.
-      yield const ImportProgress(stage: ImportStage.generateRails, fraction: 1);
-
-      await _saveToCache(channels);
-      yield const ImportProgress(stage: ImportStage.persist, fraction: 1);
-
-      yield ImportProgress(
-        stage: ImportStage.ready,
-        fraction: 1,
-        message: 'Imported ${channels.length} channels',
-      );
     } catch (error) {
       yield ImportProgress(stage: ImportStage.failed, error: error);
     }
@@ -287,8 +321,8 @@ class M3UParserService {
   /// never blocked (and `RustLib` per-isolate statics cannot be reused inside
   /// a spawned `Isolate.run`, so the worker boundary cannot host FFI calls).
   /// The Dart fallback parser behind the worker executor remains the web path
-  /// per the repo isolate policy; `parseM3uEntriesNative` also falls back to
-  /// it automatically when the native bridge is unavailable.
+  /// per the repo isolate policy; `parseM3uChannelsWithStatsNative` also falls
+  /// back to it automatically when the native bridge is unavailable.
   Future<List<IPTVChannel>> parseM3UOffMain(String content) {
     return parseM3UWithStatsOffMain(content).then((result) => result.channels);
   }
@@ -298,9 +332,9 @@ class M3UParserService {
   /// retained in the stats result.
   Future<M3UParseResult> parseM3UWithStatsOffMain(String content) async {
     if (!kIsWeb) {
-      final result = await parseM3uPlaylistWithStatsNative(content);
+      final result = await parseM3uChannelsWithStatsNative(content);
       return M3UParseResult(
-        channels: _channelsFromM3uEntries(result.playlist.entries),
+        channels: _channelsFromNativeM3uChannels(result.channels),
         stats: M3UParseStats(
           parsedCount: result.stats.parsedCount,
           skippedCount: result.stats.skippedCount,
@@ -313,9 +347,45 @@ class M3UParserService {
       debugName: 'm3u_playlist_parse',
       kind: AiroWorkerJobKind.playlistImport,
       computation: () {
-        final result = parseM3uPlaylistWithStats(content);
+        final result = parseM3uChannelsWithStats(content);
         return M3UParseResult(
-          channels: _channelsFromM3uEntries(result.playlist.entries),
+          channels: _channelsFromNativeM3uChannels(result.channels),
+          stats: M3UParseStats(
+            parsedCount: result.stats.parsedCount,
+            skippedCount: result.stats.skippedCount,
+            malformedCount: result.stats.malformedCount,
+            elapsedMillis: result.stats.elapsedMillis,
+          ),
+        );
+      },
+    );
+  }
+
+  /// Parse an already-downloaded M3U file through the production native path.
+  ///
+  /// Native platforms parse from the file in Rust so the HTTP body does not
+  /// need to become a Dart `String` first. The web/test fallback preserves
+  /// deterministic behavior when the native library is unavailable.
+  Future<M3UParseResult> parseM3UFileWithStatsOffMain(String path) async {
+    if (!kIsWeb) {
+      final result = await parseM3uFileChannelsWithStatsNative(path);
+      return M3UParseResult(
+        channels: _channelsFromNativeM3uChannels(result.channels),
+        stats: M3UParseStats(
+          parsedCount: result.stats.parsedCount,
+          skippedCount: result.stats.skippedCount,
+          malformedCount: result.stats.malformedCount,
+          elapsedMillis: result.stats.elapsedMillis,
+        ),
+      );
+    }
+    return workerExecutor.run<M3UParseResult>(
+      debugName: 'm3u_playlist_file_parse',
+      kind: AiroWorkerJobKind.playlistImport,
+      computation: () {
+        final result = parseM3uChannelsWithStats(File(path).readAsStringSync());
+        return M3UParseResult(
+          channels: _channelsFromNativeM3uChannels(result.channels),
           stats: M3UParseStats(
             parsedCount: result.stats.parsedCount,
             skippedCount: result.stats.skippedCount,
@@ -330,6 +400,26 @@ class M3UParserService {
   Future<File> _cacheFile() async {
     final dir = await _cacheDirectoryProvider();
     return File('${dir.path}/$_cacheFileName');
+  }
+
+  Future<File> _newPlaylistDownloadFile() async {
+    final root = await _downloadDirectoryProvider();
+    final dir = Directory('${root.path}/$_downloadDirectoryName');
+    await dir.create(recursive: true);
+    return File(
+      '${dir.path}/playlist_${DateTime.now().microsecondsSinceEpoch}.m3u',
+    );
+  }
+
+  Future<void> _deletePlaylistDownload(File file) async {
+    try {
+      if (await file.exists()) {
+        await file.delete();
+      }
+    } catch (_) {
+      // Temporary playlist cleanup is best-effort; no cache metadata points
+      // at this raw download file.
+    }
   }
 
   /// Load channels from structured cache without reparsing the M3U payload.
@@ -441,6 +531,13 @@ class _PlaylistFetchResult {
   final bool fromCache;
 }
 
+class _PlaylistDownloadResult {
+  const _PlaylistDownloadResult({required this.response, required this.file});
+
+  final Response<dynamic> response;
+  final File file;
+}
+
 /// Aggregate-only output of a playlist parse. Channel records remain local to
 /// the import pipeline while progress and diagnostics use only [stats].
 class M3UParseResult {
@@ -484,110 +581,30 @@ Future<List<IPTVChannel>> _readChannelCacheFile(String path) async {
 /// tests and the web fallback; native production paths use
 /// [parseM3UChannelsNative].
 List<IPTVChannel> parseM3UChannels(String content) =>
-    _channelsFromM3uEntries(parseM3uEntries(content));
+    _channelsFromNativeM3uChannels(parseM3uChannelsWithStats(content).channels);
 
 /// Parse M3U content through the single Rust core parser, falling back to the
 /// Dart parser when the native bridge is unavailable (e.g. host-only test
 /// runs without the compiled library).
-Future<List<IPTVChannel>> parseM3UChannelsNative(String content) async =>
-    _channelsFromM3uEntries(await parseM3uEntriesNative(content));
-
-/// Normalize, validate, and deduplicate parsed M3U entries into channels.
-/// Shared by the Rust-backed and Dart-fallback parse paths so both produce
-/// identical output.
-List<IPTVChannel> _channelsFromM3uEntries(Iterable<NativeM3uEntry> entries) {
-  final channels = <IPTVChannel>[];
-  // Track seen channels by normalized name to deduplicate.
-  final seenChannels = <String, IPTVChannel>{};
-
-  for (final entry in entries) {
-    final streamUri = AiroPlaylistUrlPolicy.normalizeStreamUrl(entry.url);
-    if (streamUri == null) {
-      continue;
-    }
-
-    final normalizedName = _normalizeChannelName(entry.name);
-    final logoUri = AiroPlaylistUrlPolicy.normalizeLogoUrl(entry.logo);
-
-    final channel = IPTVChannel.fromM3U(
-      name: _formatChannelName(entry.name),
-      url: streamUri.toString(),
-      logo: logoUri?.toString(),
-      group: entry.group,
-      tvgId: entry.tvgId,
-      tvgName: entry.tvgName,
-      language: entry.language,
-    );
-
-    if (!seenChannels.containsKey(normalizedName)) {
-      seenChannels[normalizedName] = channel;
-    } else {
-      final existing = seenChannels[normalizedName]!;
-      if (existing.logoUrl == null && channel.logoUrl != null) {
-        seenChannels[normalizedName] = channel;
-      }
-    }
-  }
-
-  channels.addAll(seenChannels.values);
-  return channels;
+Future<List<IPTVChannel>> parseM3UChannelsNative(String content) async {
+  final result = await parseM3uChannelsWithStatsNative(content);
+  return _channelsFromNativeM3uChannels(result.channels);
 }
 
-/// Normalize channel name for deduplication (lowercase, remove special chars).
-String _normalizeChannelName(String name) {
-  final buffer = StringBuffer();
-  for (var i = 0; i < name.length; i++) {
-    final codeUnit = name.codeUnitAt(i);
-
-    if (codeUnit >= 0x30 && codeUnit <= 0x39) {
-      buffer.writeCharCode(codeUnit);
-    } else if (codeUnit >= 0x41 && codeUnit <= 0x5A) {
-      buffer.writeCharCode(codeUnit + 0x20);
-    } else if (codeUnit >= 0x61 && codeUnit <= 0x7A) {
-      buffer.writeCharCode(codeUnit);
-    }
-  }
-  return buffer.toString();
-}
-
-/// Format channel name for display (proper capitalization).
-String _formatChannelName(String name) {
-  final buffer = StringBuffer();
-  var index = 0;
-
-  while (index < name.length) {
-    while (index < name.length && _isWhitespace(name.codeUnitAt(index))) {
-      index++;
-    }
-    if (index >= name.length) break;
-
-    final wordStart = index;
-    while (index < name.length && !_isWhitespace(name.codeUnitAt(index))) {
-      index++;
-    }
-
-    if (buffer.isNotEmpty) {
-      buffer.write(' ');
-    }
-
-    final word = name.substring(wordStart, index);
-    if (word.length <= 4 && word == word.toUpperCase()) {
-      buffer.write(word);
-    } else {
-      buffer
-        ..write(word[0].toUpperCase())
-        ..write(word.substring(1).toLowerCase());
-    }
-  }
-
-  return buffer.toString();
-}
-
-bool _isWhitespace(int codeUnit) {
-  return codeUnit == 0x20 ||
-      codeUnit == 0x09 ||
-      codeUnit == 0x0A ||
-      codeUnit == 0x0B ||
-      codeUnit == 0x0C ||
-      codeUnit == 0x0D;
+List<IPTVChannel> _channelsFromNativeM3uChannels(
+  Iterable<NativeM3uChannel> channels,
+) {
+  return channels
+      .map(
+        (channel) => IPTVChannel.fromM3U(
+          name: channel.name,
+          url: channel.url,
+          logo: channel.logo,
+          group: channel.group,
+          tvgId: channel.tvgId,
+          tvgName: channel.tvgName,
+          language: channel.language,
+        ),
+      )
+      .toList(growable: false);
 }

@@ -37,7 +37,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
     default_rust_auto_opaque = RustAutoOpaqueMoi,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.11.1";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = -939726224;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = -1828127264;
 
 // Section: executor
 
@@ -45,6 +45,39 @@ flutter_rust_bridge::frb_generated_default_handler!();
 
 // Section: wire_funcs
 
+fn wire__crate__api__m3u__m_3_u_channel_parse_result_default_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "m_3_u_channel_parse_result_default",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, ()>((move || {
+                    let output_ok =
+                        Result::<_, ()>::Ok(crate::api::m3u::M3uChannelParseResult::default())?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
 fn wire__crate__api__m3u__m_3_u_parse_result_default_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
@@ -176,6 +209,41 @@ fn wire__crate__api__text__normalize_channel_name_impl(
         },
     )
 }
+fn wire__crate__api__m3u__parse_m3u_channels_with_stats_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "parse_m3u_channels_with_stats",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_content = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, ()>((move || {
+                    let output_ok = Result::<_, ()>::Ok(
+                        crate::api::m3u::parse_m3u_channels_with_stats(api_content),
+                    )?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
 fn wire__crate__api__m3u__parse_m3u_entries_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
@@ -204,6 +272,72 @@ fn wire__crate__api__m3u__parse_m3u_entries_impl(
                 transform_result_sse::<_, ()>((move || {
                     let output_ok =
                         Result::<_, ()>::Ok(crate::api::m3u::parse_m3u_entries(api_content))?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__crate__api__m3u__parse_m3u_file_channels_with_stats_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "parse_m3u_file_channels_with_stats",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_path = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, String>((move || {
+                    let output_ok = crate::api::m3u::parse_m3u_file_channels_with_stats(api_path)?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__crate__api__m3u__parse_m3u_file_with_stats_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "parse_m3u_file_with_stats",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_path = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, String>((move || {
+                    let output_ok = crate::api::m3u::parse_m3u_file_with_stats(api_path)?;
                     Ok(output_ok)
                 })())
             }
@@ -568,6 +702,18 @@ impl SseDecode for Vec<String> {
     }
 }
 
+impl SseDecode for Vec<crate::api::m3u::M3uChannel> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut len_ = <i32>::sse_decode(deserializer);
+        let mut ans_ = vec![];
+        for idx_ in 0..len_ {
+            ans_.push(<crate::api::m3u::M3uChannel>::sse_decode(deserializer));
+        }
+        return ans_;
+    }
+}
+
 impl SseDecode for Vec<crate::api::m3u::M3uEntry> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -629,6 +775,40 @@ impl SseDecode for Vec<crate::api::xmltv::XmltvProgramme> {
             ));
         }
         return ans_;
+    }
+}
+
+impl SseDecode for crate::api::m3u::M3uChannel {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_name = <String>::sse_decode(deserializer);
+        let mut var_url = <String>::sse_decode(deserializer);
+        let mut var_logo = <Option<String>>::sse_decode(deserializer);
+        let mut var_group = <Option<String>>::sse_decode(deserializer);
+        let mut var_tvgId = <Option<String>>::sse_decode(deserializer);
+        let mut var_tvgName = <Option<String>>::sse_decode(deserializer);
+        let mut var_language = <Option<String>>::sse_decode(deserializer);
+        return crate::api::m3u::M3uChannel {
+            name: var_name,
+            url: var_url,
+            logo: var_logo,
+            group: var_group,
+            tvg_id: var_tvgId,
+            tvg_name: var_tvgName,
+            language: var_language,
+        };
+    }
+}
+
+impl SseDecode for crate::api::m3u::M3uChannelParseResult {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_channels = <Vec<crate::api::m3u::M3uChannel>>::sse_decode(deserializer);
+        let mut var_stats = <crate::api::m3u::M3uParseStats>::sse_decode(deserializer);
+        return crate::api::m3u::M3uChannelParseResult {
+            channels: var_channels,
+            stats: var_stats,
+        };
     }
 }
 
@@ -864,54 +1044,75 @@ fn pde_ffi_dispatcher_primary_impl(
 ) {
     // Codec=Pde (Serialization + dispatch), see doc to use other codecs
     match func_id {
-        1 => wire__crate__api__m3u__m_3_u_parse_result_default_impl(
+        1 => wire__crate__api__m3u__m_3_u_channel_parse_result_default_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        2 => {
+        2 => wire__crate__api__m3u__m_3_u_parse_result_default_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        3 => {
             wire__crate__api__m3u__m_3_u_parse_stats_default_impl(port, ptr, rust_vec_len, data_len)
         }
-        3 => wire__crate__api__m3u__m_3_u_playlist_default_impl(port, ptr, rust_vec_len, data_len),
-        4 => wire__crate__api__text__normalize_channel_name_impl(port, ptr, rust_vec_len, data_len),
-        5 => wire__crate__api__m3u__parse_m3u_entries_impl(port, ptr, rust_vec_len, data_len),
-        6 => wire__crate__api__m3u__parse_m3u_playlist_impl(port, ptr, rust_vec_len, data_len),
-        7 => wire__crate__api__m3u__parse_m3u_with_stats_impl(port, ptr, rust_vec_len, data_len),
-        8 => wire__crate__api__xmltv__parse_xmltv_current_next_file_impl(
+        4 => wire__crate__api__m3u__m_3_u_playlist_default_impl(port, ptr, rust_vec_len, data_len),
+        5 => wire__crate__api__text__normalize_channel_name_impl(port, ptr, rust_vec_len, data_len),
+        6 => wire__crate__api__m3u__parse_m3u_channels_with_stats_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        7 => wire__crate__api__m3u__parse_m3u_entries_impl(port, ptr, rust_vec_len, data_len),
+        8 => wire__crate__api__m3u__parse_m3u_file_channels_with_stats_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
         9 => {
+            wire__crate__api__m3u__parse_m3u_file_with_stats_impl(port, ptr, rust_vec_len, data_len)
+        }
+        10 => wire__crate__api__m3u__parse_m3u_playlist_impl(port, ptr, rust_vec_len, data_len),
+        11 => wire__crate__api__m3u__parse_m3u_with_stats_impl(port, ptr, rust_vec_len, data_len),
+        12 => wire__crate__api__xmltv__parse_xmltv_current_next_file_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        13 => {
             wire__crate__api__xmltv__parse_xmltv_programmes_impl(port, ptr, rust_vec_len, data_len)
         }
-        10 => wire__crate__api__xmltv__parse_xmltv_programmes_file_impl(
+        14 => wire__crate__api__xmltv__parse_xmltv_programmes_file_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        11 => wire__crate__api__xmltv__xmltv_current_next_result_default_impl(
+        15 => wire__crate__api__xmltv__xmltv_current_next_result_default_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        12 => wire__crate__api__xmltv__xmltv_current_next_stats_default_impl(
+        16 => wire__crate__api__xmltv__xmltv_current_next_stats_default_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        13 => wire__crate__api__xmltv__xmltv_parse_result_default_impl(
+        17 => wire__crate__api__xmltv__xmltv_parse_result_default_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        14 => wire__crate__api__xmltv__xmltv_parse_stats_default_impl(
+        18 => wire__crate__api__xmltv__xmltv_parse_stats_default_impl(
             port,
             ptr,
             rust_vec_len,
@@ -935,6 +1136,50 @@ fn pde_ffi_dispatcher_sync_impl(
 
 // Section: rust2dart
 
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::m3u::M3uChannel {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.name.into_into_dart().into_dart(),
+            self.url.into_into_dart().into_dart(),
+            self.logo.into_into_dart().into_dart(),
+            self.group.into_into_dart().into_dart(),
+            self.tvg_id.into_into_dart().into_dart(),
+            self.tvg_name.into_into_dart().into_dart(),
+            self.language.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::api::m3u::M3uChannel {}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::m3u::M3uChannel>
+    for crate::api::m3u::M3uChannel
+{
+    fn into_into_dart(self) -> crate::api::m3u::M3uChannel {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::m3u::M3uChannelParseResult {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.channels.into_into_dart().into_dart(),
+            self.stats.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::m3u::M3uChannelParseResult
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::m3u::M3uChannelParseResult>
+    for crate::api::m3u::M3uChannelParseResult
+{
+    fn into_into_dart(self) -> crate::api::m3u::M3uChannelParseResult {
+        self
+    }
+}
 // Codec=Dco (DartCObject based), see doc to use other codecs
 impl flutter_rust_bridge::IntoDart for crate::api::m3u::M3uEntry {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
@@ -1192,6 +1437,16 @@ impl SseEncode for Vec<String> {
     }
 }
 
+impl SseEncode for Vec<crate::api::m3u::M3uChannel> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(self.len() as _, serializer);
+        for item in self {
+            <crate::api::m3u::M3uChannel>::sse_encode(item, serializer);
+        }
+    }
+}
+
 impl SseEncode for Vec<crate::api::m3u::M3uEntry> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -1239,6 +1494,27 @@ impl SseEncode for Vec<crate::api::xmltv::XmltvProgramme> {
         for item in self {
             <crate::api::xmltv::XmltvProgramme>::sse_encode(item, serializer);
         }
+    }
+}
+
+impl SseEncode for crate::api::m3u::M3uChannel {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <String>::sse_encode(self.name, serializer);
+        <String>::sse_encode(self.url, serializer);
+        <Option<String>>::sse_encode(self.logo, serializer);
+        <Option<String>>::sse_encode(self.group, serializer);
+        <Option<String>>::sse_encode(self.tvg_id, serializer);
+        <Option<String>>::sse_encode(self.tvg_name, serializer);
+        <Option<String>>::sse_encode(self.language, serializer);
+    }
+}
+
+impl SseEncode for crate::api::m3u::M3uChannelParseResult {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <Vec<crate::api::m3u::M3uChannel>>::sse_encode(self.channels, serializer);
+        <crate::api::m3u::M3uParseStats>::sse_encode(self.stats, serializer);
     }
 }
 

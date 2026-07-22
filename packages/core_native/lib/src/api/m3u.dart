@@ -7,9 +7,9 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
 import '../frb_generated.dart';
 
-// These functions are ignored because they are not marked as `pub`: `is_attr_key_byte`, `new`, `parse_extinf`, `parse_line`, `parse_m3u_playlist_str_with_stats`, `parse_m3u_playlist_str`
+// These functions are ignored because they are not marked as `pub`: `channels_from_parse_result`, `format_channel_name`, `is_attr_key_byte`, `is_private_or_local_host`, `new`, `normalize_channel_name`, `normalize_logo_url`, `normalize_network_url`, `normalize_stream_url`, `parse_authority_host`, `parse_extinf`, `parse_ipv4`, `parse_line`, `parse_m3u_playlist_reader_with_stats`, `parse_m3u_playlist_str_with_stats`, `parse_m3u_playlist_str`, `split_scheme`
 // These types are ignored because they are neither used by any `pub` functions nor (for structs and enums) marked `#[frb(unignore)]`: `AttributeIter`, `PendingExtInf`
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `clone`, `clone`, `clone`, `clone`, `clone`, `eq`, `eq`, `eq`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `next`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `next`
 // These functions are ignored (category: IgnoreBecauseOwnerTyShouldIgnore): `default`
 
 Future<List<M3uEntry>> parseM3UEntries({required String content}) =>
@@ -22,6 +22,90 @@ Future<M3uPlaylist> parseM3UPlaylist({required String content}) =>
 /// counters for large-playlist import progress reporting.
 Future<M3uParseResult> parseM3UWithStats({required String content}) =>
     RustLib.instance.api.crateApiM3UParseM3UWithStats(content: content);
+
+/// Parse, validate, normalize, and deduplicate M3U channels in Rust.
+///
+/// Native imports use this API to keep large playlist shaping off the Dart
+/// isolate and reduce duplicated temporary allocations on constrained TV
+/// devices. Stream/logo URL validation intentionally mirrors
+/// `AiroPlaylistUrlPolicy` on the Dart side.
+Future<M3uChannelParseResult> parseM3UChannelsWithStats({
+  required String content,
+}) =>
+    RustLib.instance.api.crateApiM3UParseM3UChannelsWithStats(content: content);
+
+/// Parse an M3U playlist from a file path while retaining only safe aggregate
+/// counters for large-playlist import progress reporting.
+Future<M3uParseResult> parseM3UFileWithStats({required String path}) =>
+    RustLib.instance.api.crateApiM3UParseM3UFileWithStats(path: path);
+
+/// Parse, validate, normalize, and deduplicate M3U channels from a file path in
+/// Rust, avoiding a full raw playlist `String` allocation in Dart first.
+Future<M3uChannelParseResult> parseM3UFileChannelsWithStats({
+  required String path,
+}) => RustLib.instance.api.crateApiM3UParseM3UFileChannelsWithStats(path: path);
+
+class M3uChannel {
+  const M3uChannel({
+    required this.name,
+    required this.url,
+    this.logo,
+    this.group,
+    this.tvgId,
+    this.tvgName,
+    this.language,
+  });
+  final String name;
+  final String url;
+  final String? logo;
+  final String? group;
+  final String? tvgId;
+  final String? tvgName;
+  final String? language;
+
+  @override
+  int get hashCode =>
+      name.hashCode ^
+      url.hashCode ^
+      logo.hashCode ^
+      group.hashCode ^
+      tvgId.hashCode ^
+      tvgName.hashCode ^
+      language.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is M3uChannel &&
+          runtimeType == other.runtimeType &&
+          name == other.name &&
+          url == other.url &&
+          logo == other.logo &&
+          group == other.group &&
+          tvgId == other.tvgId &&
+          tvgName == other.tvgName &&
+          language == other.language;
+}
+
+class M3uChannelParseResult {
+  const M3uChannelParseResult({required this.channels, required this.stats});
+  final List<M3uChannel> channels;
+  final M3uParseStats stats;
+
+  static Future<M3uChannelParseResult> default_() =>
+      RustLib.instance.api.crateApiM3UM3UChannelParseResultDefault();
+
+  @override
+  int get hashCode => channels.hashCode ^ stats.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is M3uChannelParseResult &&
+          runtimeType == other.runtimeType &&
+          channels == other.channels &&
+          stats == other.stats;
+}
 
 class M3uEntry {
   const M3uEntry({

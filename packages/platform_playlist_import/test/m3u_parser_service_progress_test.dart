@@ -33,6 +33,7 @@ void main() {
       dio: Dio(),
       prefs: prefs,
       cacheDirectoryProvider: () async => cacheDir,
+      downloadDirectoryProvider: () async => cacheDir,
     );
   });
 
