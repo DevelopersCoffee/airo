@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:platform_channels/platform_channels.dart';
 import '../../application/player_backgrounding_coordinator.dart';
 import '../../application/providers/caption_preference_provider.dart';
+import '../../application/providers/channel_auto_scan_providers.dart';
 import '../../application/providers/iptv_providers.dart';
 import '../../application/providers/recently_watched_recorder.dart';
 import '../../application/providers/video_aspect_ratio_provider.dart';
@@ -240,7 +241,7 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
   // Channel navigation button handlers
   void _goToNextChannel() {
     final streamingService = ref.read(iptvStreamingServiceProvider);
-    final nextChannel = ref.read(nextChannelProvider);
+    final nextChannel = ref.read(nextSelectableChannelProvider);
     if (nextChannel != null) {
       streamingService.playChannel(nextChannel);
       _showChannelChangeOverlay(nextChannel.name);
@@ -249,7 +250,7 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
 
   void _goToPreviousChannel() {
     final streamingService = ref.read(iptvStreamingServiceProvider);
-    final prevChannel = ref.read(previousChannelProvider);
+    final prevChannel = ref.read(previousSelectableChannelProvider);
     if (prevChannel != null) {
       streamingService.playChannel(prevChannel);
       _showChannelChangeOverlay(prevChannel.name);
@@ -808,18 +809,18 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                _PlayerRoundControlButton(
-                  key: const ValueKey('iptv-player-fullscreen-button'),
-                  icon: _isFullscreen
-                      ? Icons.fullscreen_exit
-                      : Icons.fullscreen,
-                  tooltip: _isFullscreen ? 'Exit fullscreen' : 'Fullscreen',
-                  onPressed: _toggleFullscreen,
-                  diameter: 44,
-                  iconSize: 24,
-                  backgroundAlpha: 0.48,
-                ),
-                const SizedBox(width: 10),
+                if (!_isFullscreen) ...[
+                  _PlayerRoundControlButton(
+                    key: const ValueKey('iptv-player-fullscreen-button'),
+                    icon: Icons.fullscreen,
+                    tooltip: 'Fullscreen',
+                    onPressed: _toggleFullscreen,
+                    diameter: 44,
+                    iconSize: 24,
+                    backgroundAlpha: 0.48,
+                  ),
+                  const SizedBox(width: 10),
+                ],
                 _PlayerRoundControlButton(
                   key: const ValueKey('iptv-player-pip-button'),
                   icon: Icons.picture_in_picture_alt_outlined,
@@ -934,98 +935,89 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
     VideoPlayerStreamingService service,
     StreamingState state,
   ) {
+    final canRewind =
+        state.canSeekBack ||
+        (!state.isLiveStream && state.position > Duration.zero);
     return Stack(
       fit: StackFit.expand,
       children: [
         Center(child: _buildCenterButton(service, state)),
         Positioned(
-          left: 0,
-          right: 0,
-          bottom: 0,
+          left: 12,
+          bottom: 8,
           child: SafeArea(
             top: false,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.38),
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        _PlayerControlButton(
-                          key: const ValueKey('iptv-player-dvr-rewind-button'),
-                          icon: Icons.replay_10,
-                          tooltip: state.isLiveStream
-                              ? 'Rewind 10 seconds'
-                              : 'Back 10 seconds',
-                          onPressed:
-                              state.canSeekBack ||
-                                  (!state.isLiveStream &&
-                                      state.position > Duration.zero)
-                              ? () => _seekBackward10(service, state)
-                              : null,
-                        ),
-                        _PlayerControlButton(
-                          key: const ValueKey('iptv-player-mute-button'),
-                          icon: state.isMuted || state.volume == 0
-                              ? Icons.volume_off
-                              : state.volume < 0.5
-                              ? Icons.volume_down
-                              : Icons.volume_up,
-                          tooltip: state.isMuted ? 'Unmute' : 'Mute',
-                          onPressed: () => service.toggleMute(),
-                        ),
-                        _PlayerControlButton(
-                          key: const ValueKey('iptv-player-volume-down-button'),
-                          icon: Icons.remove,
-                          tooltip: 'Volume down',
-                          onPressed: () => _stepVolume(service, state, -0.1),
-                        ),
-                        _PlayerControlButton(
-                          key: const ValueKey('iptv-player-volume-up-button'),
-                          icon: Icons.add,
-                          tooltip: 'Volume up',
-                          onPressed: () => _stepVolume(service, state, 0.1),
-                        ),
-                        if (widget.enableSwipeChannelChange) ...[
-                          _PlayerControlButton(
-                            key: const ValueKey(
-                              'iptv-player-channel-previous-button',
-                            ),
-                            icon: Icons.keyboard_arrow_down,
-                            tooltip: 'Previous channel',
-                            onPressed: _goToPreviousChannel,
-                          ),
-                          _PlayerControlButton(
-                            key: const ValueKey(
-                              'iptv-player-channel-next-button',
-                            ),
-                            icon: Icons.keyboard_arrow_up,
-                            tooltip: 'Next channel',
-                            onPressed: _goToNextChannel,
-                          ),
-                        ],
-                        _PlayerControlButton(
-                          key: const ValueKey('iptv-player-more-button'),
-                          icon: Icons.settings_outlined,
-                          tooltip: 'Player settings',
-                          onPressed: () =>
-                              _showPlayerActionsSheet(context, service, state),
-                        ),
-                      ],
-                    ),
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                if (canRewind)
+                  _PlayerFloatingControlButton(
+                    key: const ValueKey('iptv-player-dvr-rewind-button'),
+                    icon: Icons.replay_10,
+                    tooltip: state.isLiveStream
+                        ? 'Rewind 10 seconds'
+                        : 'Back 10 seconds',
+                    onPressed: () => _seekBackward10(service, state),
                   ),
+                _PlayerFloatingControlButton(
+                  key: const ValueKey('iptv-player-mute-button'),
+                  icon: state.isMuted || state.volume == 0
+                      ? Icons.volume_off
+                      : state.volume < 0.5
+                      ? Icons.volume_down
+                      : Icons.volume_up,
+                  tooltip: state.isMuted ? 'Unmute' : 'Mute',
+                  onPressed: () => service.toggleMute(),
                 ),
-              ),
+                _PlayerFloatingControlButton(
+                  key: const ValueKey('iptv-player-volume-down-button'),
+                  icon: Icons.remove,
+                  tooltip: 'Volume down',
+                  onPressed: () => _stepVolume(service, state, -0.1),
+                ),
+                _PlayerFloatingControlButton(
+                  key: const ValueKey('iptv-player-volume-up-button'),
+                  icon: Icons.add,
+                  tooltip: 'Volume up',
+                  onPressed: () => _stepVolume(service, state, 0.1),
+                ),
+              ],
+            ),
+          ),
+        ),
+        Positioned(
+          right: 12,
+          bottom: 8,
+          child: SafeArea(
+            top: false,
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              alignment: WrapAlignment.end,
+              children: [
+                if (widget.enableSwipeChannelChange) ...[
+                  _PlayerFloatingControlButton(
+                    key: const ValueKey('iptv-player-channel-previous-button'),
+                    icon: Icons.keyboard_arrow_down,
+                    tooltip: 'Previous channel',
+                    onPressed: _goToPreviousChannel,
+                  ),
+                  _PlayerFloatingControlButton(
+                    key: const ValueKey('iptv-player-channel-next-button'),
+                    icon: Icons.keyboard_arrow_up,
+                    tooltip: 'Next channel',
+                    onPressed: _goToNextChannel,
+                  ),
+                ],
+                _PlayerFloatingControlButton(
+                  key: const ValueKey('iptv-player-more-button'),
+                  icon: Icons.settings_outlined,
+                  tooltip: 'Player settings',
+                  onPressed: () =>
+                      _showPlayerActionsSheet(context, service, state),
+                ),
+              ],
             ),
           ),
         ),
@@ -1663,6 +1655,31 @@ class _PlayerControlButton extends StatelessWidget {
       visualDensity: VisualDensity.compact,
       padding: EdgeInsets.zero,
       constraints: const BoxConstraints.tightFor(width: 44, height: 44),
+    );
+  }
+}
+
+class _PlayerFloatingControlButton extends StatelessWidget {
+  const _PlayerFloatingControlButton({
+    super.key,
+    required this.icon,
+    required this.tooltip,
+    required this.onPressed,
+  });
+
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return _PlayerRoundControlButton(
+      icon: icon,
+      tooltip: tooltip,
+      onPressed: onPressed,
+      diameter: 44,
+      iconSize: 20,
+      backgroundAlpha: 0.54,
     );
   }
 }

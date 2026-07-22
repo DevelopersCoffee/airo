@@ -242,6 +242,10 @@ void main() {
       findsOneWidget,
     );
     expect(
+      find.byKey(const ValueKey('iptv-player-fullscreen-button')),
+      findsNothing,
+    );
+    expect(
       find.byKey(const ValueKey('iptv-player-more-button')),
       findsOneWidget,
     );
@@ -256,13 +260,19 @@ void main() {
   ) async {
     await pumpPlayer(tester);
 
+    expect(find.byIcon(Icons.lock_open), findsOneWidget);
+    expect(find.byIcon(Icons.lock_outline), findsNothing);
+
     await tester.tap(find.byType(PlayerLockButton));
     await tester.pump();
     expect(find.byIcon(Icons.play_arrow), findsNothing);
+    expect(find.byIcon(Icons.lock_outline), findsOneWidget);
+    expect(find.byIcon(Icons.lock_open), findsNothing);
 
     await tester.tap(find.byType(PlayerLockButton));
     await tester.pump();
     expect(find.byIcon(Icons.play_arrow), findsOneWidget);
+    expect(find.byIcon(Icons.lock_open), findsOneWidget);
   });
 
   testWidgets('resets brightness via the injected controller on dispose', (

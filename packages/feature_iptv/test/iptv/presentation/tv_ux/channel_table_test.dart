@@ -4,6 +4,7 @@ import 'package:feature_iptv/presentation/widgets/channel_logo.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:platform_channels/platform_channels.dart';
+import 'package:platform_streams/platform_streams.dart';
 
 void main() {
   const channels = [
@@ -35,12 +36,17 @@ void main() {
                 'one': ChannelBrowseMetadata(country: 'IN', language: 'en'),
                 'two': ChannelBrowseMetadata(country: 'US', language: 'en'),
               },
+              availabilityByChannelId: {
+                'one': StreamAvailability.available,
+                'two': StreamAvailability.unavailable,
+              },
             ),
           ),
         ),
       ),
     );
     expect(find.text('Flag'), findsOneWidget);
+    expect(find.text('Status'), findsOneWidget);
     expect(find.text('Language'), findsOneWidget);
     expect(find.byKey(const ValueKey('channel-row-one')), findsOneWidget);
     expect(find.byType(ChannelLogo), findsNWidgets(2));
@@ -49,6 +55,8 @@ void main() {
     expect(find.text('🇮🇳 India'), findsNothing);
     expect(find.text('🇺🇸 United States'), findsNothing);
     expect(find.text('English'), findsNWidgets(2));
+    expect(find.byIcon(Icons.check_circle), findsOneWidget);
+    expect(find.byIcon(Icons.error), findsOneWidget);
 
     expect(
       tester.getCenter(find.text('🇺🇸')).dx,
@@ -77,6 +85,7 @@ void main() {
               metadataByChannelId: {
                 'one': ChannelBrowseMetadata(country: 'IT'),
               },
+              availabilityByChannelId: {'one': StreamAvailability.restricted},
             ),
           ),
         ),
@@ -85,17 +94,55 @@ void main() {
 
     expect(find.text('Flag'), findsOneWidget);
     expect(find.text('Lang.'), findsOneWidget);
+    expect(find.text('Stat.'), findsOneWidget);
     expect(find.text('🇮🇹'), findsOneWidget);
     expect(find.text('🇮🇹 Italy'), findsNothing);
     expect(find.text('English, Italian'), findsOneWidget);
     expect(find.byIcon(Icons.newspaper), findsOneWidget);
-    expect(find.byIcon(Icons.live_tv), findsWidgets);
+    expect(find.byIcon(Icons.warning_amber_rounded), findsOneWidget);
     expect(tester.widget<ChannelLogo>(find.byType(ChannelLogo)).size, 26);
     expect(
       tester.getCenter(find.text('🇮🇹')).dx,
       greaterThan(tester.getCenter(find.text('English, Italian')).dx),
     );
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('reports the currently visible channels for bounded scanning', (
+    tester,
+  ) async {
+    final manyChannels = List<IPTVChannel>.generate(
+      40,
+      (index) => IPTVChannel(
+        id: 'channel-$index',
+        name: 'Channel $index',
+        streamUrl: 'https://example.com/$index.m3u8',
+        group: 'General',
+      ),
+    );
+    var visibleIds = const <String>[];
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SizedBox(
+            width: 900,
+            height: 260,
+            child: ChannelTable(
+              channels: manyChannels,
+              metadataByChannelId: const {},
+              onVisibleChannelsChanged: (channels) {
+                visibleIds = channels.map((channel) => channel.id).toList();
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(visibleIds, contains('channel-0'));
+    expect(visibleIds.length, lessThan(manyChannels.length));
   });
 
   testWidgets('large channel table scrolls rows while keeping header pinned', (

@@ -1,12 +1,15 @@
 import 'dart:async';
 
+import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:platform_channels/platform_channels.dart';
 import 'package:platform_streams/platform_streams.dart';
 
 import '../../application/providers/channel_filters_provider.dart';
+import '../../application/providers/channel_auto_scan_providers.dart';
 import '../../application/providers/hotbar_channels_provider.dart';
+import '../../application/providers/iptv_providers.dart';
 import '../../application/channel_metadata_enrichment.dart';
 import 'sections/channel_info_bar.dart';
 import 'sections/channel_table.dart';
@@ -41,10 +44,13 @@ class AiroTvShell extends ConsumerStatefulWidget {
 class _AiroTvShellState extends ConsumerState<AiroTvShell> {
   final _snapshotCache = ChannelBrowserSnapshotCache();
   bool _countryPromptShowing = false;
+  Timer? _visibleScanDebounce;
+  String _visibleScanSignature = '';
 
   @override
   void dispose() {
     _snapshotCache.clear();
+    _visibleScanDebounce?.cancel();
     super.dispose();
   }
 
@@ -58,6 +64,11 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
     final sort = ref.watch(channelSortProvider);
     final countryPrompt = ref.watch(channelCountryPromptProvider);
     final hasHotbar = ref.watch(hotbarChannelsProvider).isNotEmpty;
+    final autoScanState = ref.watch(channelAutoScanProvider);
+    final availabilityByChannelId = {
+      ...widget.availabilityByChannelId,
+      ...autoScanState.availabilityByChannelId,
+    };
     final snapshot = _snapshotCache.resolve(
       channels: widget.channels,
       metadataByChannelId: metadata,
@@ -73,11 +84,17 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
       key: const ValueKey('airo-tv-channel-table'),
       channels: snapshot.visibleChannels,
       metadataByChannelId: metadata,
-      availabilityByChannelId: widget.availabilityByChannelId,
+      availabilityByChannelId: availabilityByChannelId,
       sort: sort,
       onSort: (column) =>
           ref.read(channelSortProvider.notifier).state = sort.toggle(column),
-      onChannelSelected: widget.onChannelSelected,
+      onChannelSelected: (channel) => _selectChannel(
+        context,
+        channel,
+        snapshot.visibleChannels,
+        availabilityByChannelId,
+      ),
+      onVisibleChannelsChanged: _scheduleVisibleChannelScan,
     );
     final infoBar = ChannelInfoBar(channel: widget.currentChannel);
     final hotbar = Hotbar(
@@ -166,6 +183,68 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
         );
       },
     );
+  }
+
+  void _selectChannel(
+    BuildContext context,
+    IPTVChannel channel,
+    List<IPTVChannel> visibleChannels,
+    Map<String, StreamAvailability> availabilityByChannelId,
+  ) {
+    if (!isChannelConfirmedUnavailable(availabilityByChannelId[channel.id])) {
+      widget.onChannelSelected(channel);
+      return;
+    }
+
+    final fallback = visibleChannels
+        .where(
+          (candidate) =>
+              candidate.id != channel.id &&
+              canSelectChannelWithAvailability(
+                availabilityByChannelId[candidate.id],
+              ),
+        )
+        .firstOrNull;
+    if (fallback != null) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(content: Text('${channel.name} is unavailable. Skipping.')),
+        );
+      widget.onChannelSelected(fallback);
+      return;
+    }
+
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(content: Text('${channel.name} is unavailable right now.')),
+      );
+  }
+
+  void _scheduleVisibleChannelScan(List<IPTVChannel> channels) {
+    final visible = channels.take(18).toList(growable: false);
+    final signature = visible.map((channel) => channel.id).join(',');
+    if (signature.isEmpty || signature == _visibleScanSignature) return;
+    _visibleScanSignature = signature;
+    _visibleScanDebounce?.cancel();
+    _visibleScanDebounce = Timer(const Duration(milliseconds: 350), () {
+      if (!mounted) return;
+      ref
+          .read(channelAutoScanProvider.notifier)
+          .start(
+            scopeId: 'airo-tv-visible|$signature',
+            channels: visible,
+            maxConcurrentRequests: ref.read(
+              channelAutoScanMaxConcurrentRequestsProvider,
+            ),
+            currentPlayingChannelId: ref
+                .read(iptvStreamingServiceProvider)
+                .currentState
+                .currentChannel
+                ?.id,
+          );
+    });
   }
 
   void _maybeAskForCountry({

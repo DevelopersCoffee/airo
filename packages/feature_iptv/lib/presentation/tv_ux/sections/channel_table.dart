@@ -10,7 +10,7 @@ const _channelRowHeight = 56.0;
 const _tableHeaderHeight = 52.0;
 const _availabilityStripWidth = 4.0;
 
-class ChannelTable extends StatelessWidget {
+class ChannelTable extends StatefulWidget {
   const ChannelTable({
     super.key,
     required this.channels,
@@ -19,6 +19,7 @@ class ChannelTable extends StatelessWidget {
     this.sort = const ChannelSort(),
     this.onSort,
     this.onChannelSelected,
+    this.onVisibleChannelsChanged,
   });
 
   final List<IPTVChannel> channels;
@@ -27,6 +28,63 @@ class ChannelTable extends StatelessWidget {
   final ChannelSort sort;
   final ValueChanged<ChannelSortColumn>? onSort;
   final ValueChanged<IPTVChannel>? onChannelSelected;
+  final ValueChanged<List<IPTVChannel>>? onVisibleChannelsChanged;
+
+  @override
+  State<ChannelTable> createState() => _ChannelTableState();
+}
+
+class _ChannelTableState extends State<ChannelTable> {
+  late final ScrollController _scrollController;
+  String _lastVisibleSignature = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController = ScrollController();
+    _scrollController.addListener(_reportVisibleChannels);
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => _reportVisibleChannels(),
+    );
+  }
+
+  @override
+  void didUpdateWidget(covariant ChannelTable oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!identical(oldWidget.channels, widget.channels)) {
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _reportVisibleChannels(force: true),
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _scrollController
+      ..removeListener(_reportVisibleChannels)
+      ..dispose();
+    super.dispose();
+  }
+
+  void _reportVisibleChannels({bool force = false}) {
+    final callback = widget.onVisibleChannelsChanged;
+    if (callback == null || !mounted || widget.channels.isEmpty) return;
+    if (!_scrollController.hasClients) return;
+    final viewportHeight = _scrollController.position.viewportDimension;
+    final offset = _scrollController.offset;
+    final first = ((offset - _tableHeaderHeight) / _channelRowHeight)
+        .floor()
+        .clamp(0, widget.channels.length - 1)
+        .toInt();
+    final visibleCount =
+        ((viewportHeight - _tableHeaderHeight) / _channelRowHeight).ceil() + 4;
+    final end = (first + visibleCount).clamp(0, widget.channels.length).toInt();
+    final visible = widget.channels.sublist(first, end);
+    final signature = visible.map((channel) => channel.id).join(',');
+    if (!force && signature == _lastVisibleSignature) return;
+    _lastVisibleSignature = signature;
+    callback(visible);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -34,7 +92,9 @@ class ChannelTable extends StatelessWidget {
       builder: (context, constraints) {
         final wide = constraints.maxWidth >= 600;
         return Scrollbar(
+          controller: _scrollController,
           child: CustomScrollView(
+            controller: _scrollController,
             key: const PageStorageKey<String>('airo-tv-channel-table-scroll'),
             physics: const AlwaysScrollableScrollPhysics(),
             cacheExtent: _channelRowHeight * 8,
@@ -43,34 +103,35 @@ class ChannelTable extends StatelessWidget {
                 pinned: true,
                 delegate: _TableHeaderDelegate(
                   wide: wide,
-                  sort: sort,
-                  onSort: onSort,
+                  sort: widget.sort,
+                  onSort: widget.onSort,
                 ),
               ),
               SliverFixedExtentList(
                 itemExtent: _channelRowHeight,
                 delegate: SliverChildBuilderDelegate(
                   (context, index) {
-                    final channel = channels[index];
+                    final channel = widget.channels[index];
                     return RepaintBoundary(
                       key: ValueKey('channel-row-${channel.id}'),
                       child: _ChannelRow(
                         channel: channel,
-                        metadata: metadataByChannelId[channel.id],
-                        availability: availabilityByChannelId[channel.id],
+                        metadata: widget.metadataByChannelId[channel.id],
+                        availability:
+                            widget.availabilityByChannelId[channel.id],
                         wide: wide,
-                        onSelected: onChannelSelected,
+                        onSelected: widget.onChannelSelected,
                       ),
                     );
                   },
-                  childCount: channels.length,
+                  childCount: widget.channels.length,
                   addAutomaticKeepAlives: false,
                   findChildIndexCallback: (key) {
                     if (key is! ValueKey<String>) return null;
                     final value = key.value;
                     if (!value.startsWith('channel-row-')) return null;
                     final channelId = value.substring('channel-row-'.length);
-                    final index = channels.indexWhere(
+                    final index = widget.channels.indexWhere(
                       (channel) => channel.id == channelId,
                     );
                     return index < 0 ? null : index;
@@ -172,7 +233,7 @@ class _TableHeader extends StatelessWidget {
               ChannelSortColumn.language,
               flex: 2,
             ),
-            header('Type', ChannelSortColumn.type),
+            header(wide ? 'Status' : 'Stat.', ChannelSortColumn.type),
             header('Flag', ChannelSortColumn.country),
           ],
         ),
@@ -242,7 +303,7 @@ class _ChannelRow extends StatelessWidget {
               flex: wide ? 3 : 4,
               child: _MetadataCell(
                 icon: _categoryIcon(channel),
-                label: channel.group,
+                label: categoryDisplayLabel(channel.group) ?? channel.group,
               ),
             ),
             Expanded(
@@ -254,14 +315,7 @@ class _ChannelRow extends StatelessWidget {
               ),
             ),
             Expanded(
-              child: Tooltip(
-                message: channel.isAudioOnly ? 'Audio channel' : 'Live TV',
-                child: Icon(
-                  channel.isAudioOnly ? Icons.radio : Icons.live_tv,
-                  size: 18,
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-              ),
+              child: _AvailabilityStatusIcon(availability: availability),
             ),
             Expanded(
               child: Tooltip(
@@ -317,6 +371,51 @@ class _ChannelRow extends StatelessWidget {
     if (label == 'Country') return '🏳️';
     final firstSpace = label.indexOf(' ');
     return firstSpace > 0 ? label.substring(0, firstSpace) : label;
+  }
+}
+
+class _AvailabilityStatusIcon extends StatelessWidget {
+  const _AvailabilityStatusIcon({required this.availability});
+
+  final StreamAvailability? availability;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final (icon, color, label) = switch (availability) {
+      StreamAvailability.available => (
+        Icons.check_circle,
+        Colors.green,
+        'Channel reachable',
+      ),
+      StreamAvailability.unavailable => (
+        Icons.error,
+        colorScheme.error,
+        'Channel unavailable',
+      ),
+      StreamAvailability.restricted => (
+        Icons.warning_amber_rounded,
+        Colors.amber,
+        'Channel may be restricted',
+      ),
+      StreamAvailability.cancelled => (
+        Icons.schedule,
+        Colors.amber,
+        'Channel check pending',
+      ),
+      StreamAvailability.unverified || null => (
+        Icons.help_outline,
+        colorScheme.onSurfaceVariant,
+        'Channel not checked yet',
+      ),
+    };
+    return Tooltip(
+      message: label,
+      child: Semantics(
+        label: label,
+        child: Icon(icon, size: 18, color: color),
+      ),
+    );
   }
 }
 

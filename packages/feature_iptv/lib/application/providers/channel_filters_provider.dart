@@ -333,8 +333,7 @@ ChannelFilterDimensions channelFilterDimensions({
   final countries = <String>{};
   final languages = <String>{};
   for (final channel in channels) {
-    final category = categoryDisplayLabel(channel.group);
-    if (category != null) {
+    for (final category in channelCategoryLabels(channel.group)) {
       categoriesByKey.putIfAbsent(categoryFilterKey(category), () => category);
     }
     final metadata = metadataByChannelId[channel.id];
@@ -369,8 +368,9 @@ List<IPTVChannel> applyChannelFilters({
             channel.group.toLowerCase().contains(query);
         return matchesQuery &&
             (filters.category == null ||
-                categoryFilterKey(channel.group) ==
-                    categoryFilterKey(filters.category!));
+                channelCategoryLabels(channel.group)
+                    .map(categoryFilterKey)
+                    .contains(categoryFilterKey(filters.category!)));
       })
       .toList(growable: false);
 }
@@ -439,8 +439,20 @@ String categoryFilterKey(String value) =>
     value.trim().replaceAll(RegExp(r'\s+'), ' ').toLowerCase();
 
 String? categoryDisplayLabel(String value) {
-  final display = value.trim().replaceAll(RegExp(r'\s+'), ' ');
+  final display = channelCategoryLabels(value).join(', ');
   return display.isEmpty ? null : display;
+}
+
+List<String> channelCategoryLabels(String value) {
+  final seen = <String>{};
+  final labels = <String>[];
+  for (final token in value.split(RegExp(r'[;,]'))) {
+    final display = token.trim().replaceAll(RegExp(r'\s+'), ' ');
+    if (display.isEmpty) continue;
+    final key = categoryFilterKey(display);
+    if (seen.add(key)) labels.add(display);
+  }
+  return labels;
 }
 
 List<IPTVChannel> sortChannels({

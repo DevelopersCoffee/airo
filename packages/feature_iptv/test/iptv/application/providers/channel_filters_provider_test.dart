@@ -109,6 +109,40 @@ void main() {
     },
   );
 
+  test('category dimensions split semicolon-separated playlist groups', () {
+    const mixedCategories = [
+      IPTVChannel(
+        id: 'movie-news',
+        name: 'Movie News',
+        streamUrl: 'https://example.test/movie-news',
+        group: 'Movies; News ; movies',
+      ),
+      IPTVChannel(
+        id: 'sports',
+        name: 'Sports',
+        streamUrl: 'https://example.test/sports',
+        group: 'Sports, General',
+      ),
+    ];
+
+    expect(
+      channelFilterDimensions(
+        channels: mixedCategories,
+        metadataByChannelId: const {},
+      ).categories,
+      {'Movies', 'News', 'Sports', 'General'},
+    );
+    expect(categoryDisplayLabel('Movies; News ; movies'), 'Movies, News');
+    expect(
+      applyChannelFilters(
+        channels: mixedCategories,
+        filters: const ChannelFilters(category: 'News'),
+        metadataByChannelId: const {},
+      ).map((channel) => channel.id),
+      ['movie-news'],
+    );
+  });
+
   test('country limits language dimensions before a language is selected', () {
     const mixed = [
       IPTVChannel(

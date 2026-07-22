@@ -1,10 +1,12 @@
 import 'package:feature_iptv/application/providers/channel_filters_provider.dart';
+import 'package:feature_iptv/application/providers/channel_auto_scan_providers.dart';
 import 'package:feature_iptv/application/providers/iptv_providers.dart';
 import 'package:feature_iptv/presentation/tv_ux/airo_tv_shell.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:platform_channels/platform_channels.dart';
+import 'package:platform_streams/platform_streams.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -13,6 +15,14 @@ void main() {
       id: 'one',
       name: 'One',
       streamUrl: 'https://one',
+      group: 'News',
+      country: 'IN',
+      languages: ['en'],
+    ),
+    IPTVChannel(
+      id: 'two',
+      name: 'Two',
+      streamUrl: 'https://two',
       group: 'News',
       country: 'IN',
       languages: ['en'],
@@ -28,7 +38,10 @@ void main() {
   Future<ProviderContainer> pumpAt(WidgetTester tester, double width) async {
     final prefs = await SharedPreferences.getInstance();
     final container = ProviderContainer(
-      overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+      overrides: [
+        sharedPreferencesProvider.overrideWithValue(prefs),
+        streamProbeTransportProvider.overrideWithValue(_FakeProbeTransport()),
+      ],
     );
     addTearDown(container.dispose);
     await tester.pumpWidget(
@@ -56,7 +69,10 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
     final container = ProviderContainer(
-      overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+      overrides: [
+        sharedPreferencesProvider.overrideWithValue(prefs),
+        streamProbeTransportProvider.overrideWithValue(_FakeProbeTransport()),
+      ],
     );
     addTearDown(container.dispose);
     return tester
@@ -145,4 +161,57 @@ void main() {
       isTrue,
     );
   });
+
+  testWidgets('confirmed unavailable rows skip to a selectable channel', (
+    tester,
+  ) async {
+    final selected = <String>[];
+    final prefs = await SharedPreferences.getInstance();
+    final container = ProviderContainer(
+      overrides: [
+        sharedPreferencesProvider.overrideWithValue(prefs),
+        streamProbeTransportProvider.overrideWithValue(_FakeProbeTransport()),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp(
+          home: Scaffold(
+            body: SizedBox(
+              width: 900,
+              height: 720,
+              child: AiroTvShell(
+                channels: channels,
+                videoStage: const SizedBox(key: ValueKey('video-stage')),
+                availabilityByChannelId: const {
+                  'one': StreamAvailability.unavailable,
+                  'two': StreamAvailability.available,
+                },
+                onChannelSelected: (channel) => selected.add(channel.id),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('One'));
+    await tester.pump();
+
+    expect(selected, ['two']);
+    expect(find.text('One is unavailable. Skipping.'), findsOneWidget);
+  });
+}
+
+class _FakeProbeTransport implements StreamProbeTransport {
+  @override
+  Future<StreamProbeHttpResponse> get(
+    StreamProbeRequest request, {
+    required StreamProbeCancellation cancellation,
+  }) async {
+    return const StreamProbeHttpResponse(statusCode: 206);
+  }
 }
