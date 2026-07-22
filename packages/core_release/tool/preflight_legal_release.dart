@@ -13,7 +13,7 @@ void main(List<String> args) {
   final repoRoot = _repoRoot(options['repo-root']);
   final profiles = options['profile'];
   final profileIds = profiles == null || profiles.isEmpty
-      ? const ['iptv-standalone', 'mobile-streaming', 'tv']
+      ? const ['full', 'tv']
       : profiles;
   final privateDependencyConfirmation = AiroPrivateDependencyConfirmation.parse(
     _firstConfigured(

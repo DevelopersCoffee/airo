@@ -403,6 +403,41 @@ final previousChannelProvider = Provider<IPTVChannel?>((ref) {
   return filteredChannels[prevIndex];
 });
 
+IPTVChannel? channelAfter({
+  required IPTVChannel? currentChannel,
+  required List<IPTVChannel> channels,
+  required bool Function(IPTVChannel channel) canUseChannel,
+}) {
+  if (currentChannel == null || channels.isEmpty) return null;
+  final currentIndex = channels.indexWhere(
+    (channel) => channel.streamUrl == currentChannel.streamUrl,
+  );
+  if (currentIndex < 0) return null;
+  for (var offset = 1; offset < channels.length; offset++) {
+    final candidate = channels[(currentIndex + offset) % channels.length];
+    if (canUseChannel(candidate)) return candidate;
+  }
+  return null;
+}
+
+IPTVChannel? channelBefore({
+  required IPTVChannel? currentChannel,
+  required List<IPTVChannel> channels,
+  required bool Function(IPTVChannel channel) canUseChannel,
+}) {
+  if (currentChannel == null || channels.isEmpty) return null;
+  final currentIndex = channels.indexWhere(
+    (channel) => channel.streamUrl == currentChannel.streamUrl,
+  );
+  if (currentIndex < 0) return null;
+  for (var offset = 1; offset < channels.length; offset++) {
+    final candidate =
+        channels[(currentIndex - offset + channels.length) % channels.length];
+    if (canUseChannel(candidate)) return candidate;
+  }
+  return null;
+}
+
 /// Playback state provider
 final playbackStateProvider = Provider<PlaybackState>((ref) {
   final state = ref.watch(streamingStateProvider);

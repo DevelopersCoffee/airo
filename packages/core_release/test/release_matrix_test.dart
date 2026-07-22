@@ -9,22 +9,10 @@ void main() {
       expect(matrix.validate(), isEmpty);
       expect(
         matrix.profiles.map((profile) => profile.id),
-        containsAll(const [
-          'iptv-standalone',
-          'mobile-streaming',
-          'tv',
-          'ios-spm',
-          'web-validation',
-        ]),
+        containsAll(const ['full', 'tv', 'ios-spm', 'web-validation']),
       );
-      expect(
-        matrix.profileById('iptv-standalone').packageId,
-        'io.airo.app.iptv',
-      );
-      expect(
-        matrix.profileById('mobile-streaming').entrypoint,
-        'app/lib/main_mobile_streaming.dart',
-      );
+      expect(matrix.profileById('full').packageId, 'io.airo.app');
+      expect(matrix.profileById('full').entrypoint, 'app/lib/main.dart');
       expect(
         matrix.profileById('tv').platformPackageIds['macos'],
         'com.developerscoffee.airo.tv',
@@ -89,14 +77,14 @@ void main() {
     });
 
     test('keeps tablet support as an adaptive mobile artifact', () {
-      final iptv = AiroReleaseMatrix.v2Default().profileById('iptv-standalone');
+      final full = AiroReleaseMatrix.v2Default().profileById('full');
 
       expect(
-        iptv.tabletStrategy,
+        full.tabletStrategy,
         AiroReleaseTabletStrategy.adaptiveMobileArtifact,
       );
       expect(
-        iptv.supportStatuses[AiroReleaseDeviceClass.androidTablet],
+        full.supportStatuses[AiroReleaseDeviceClass.androidTablet],
         AiroReleaseSupportStatus.adaptiveSupported,
       );
     });

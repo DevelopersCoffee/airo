@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:platform_player/platform_player.dart';
 
 import 'providers/iptv_providers.dart';
+import 'providers/picture_in_picture_preference_provider.dart';
 
 /// Decides what happens to live playback when the app is backgrounded:
 /// PiP is attempted first, audio-only is the fallback (spec Goal 5). A
@@ -23,11 +24,13 @@ import 'providers/iptv_providers.dart';
 class PlayerBackgroundingCoordinator {
   PlayerBackgroundingCoordinator({
     Future<bool> Function()? isSupported,
+    bool Function()? isPictureInPictureEnabled,
     Future<bool> Function()? requestEnter,
     Future<bool> Function()? isActive,
     Future<void> Function(bool enabled)? setAutoEnter,
     Future<void> Function(bool enabled)? setAudioOnly,
   }) : _isSupported = isSupported ?? AiroNativePictureInPicture.isSupported,
+       _isPictureInPictureEnabled = isPictureInPictureEnabled ?? (() => true),
        _requestEnter = requestEnter ?? AiroNativePictureInPicture.requestEnter,
        _isActive = isActive ?? AiroNativePictureInPicture.isActive,
        _setAutoEnter =
@@ -35,6 +38,7 @@ class PlayerBackgroundingCoordinator {
        _setAudioOnly = setAudioOnly ?? AiroBackgroundAudioMode.setEnabled;
 
   final Future<bool> Function() _isSupported;
+  final bool Function() _isPictureInPictureEnabled;
   final Future<bool> Function() _requestEnter;
   final Future<bool> Function() _isActive;
   final Future<void> Function(bool enabled) _setAutoEnter;
@@ -60,9 +64,17 @@ class PlayerBackgroundingCoordinator {
     unawaited(_syncAutoEnterArming());
   }
 
+  /// Called when the user changes the automatic PiP playback preference.
+  void onPictureInPicturePreferenceChanged(bool enabled) {
+    unawaited(_syncAutoEnterArming());
+  }
+
   Future<void> _syncAutoEnterArming() async {
     final shouldArm =
-        _lastPlaying && !_manualAudioOnly && await _isSupported();
+        _lastPlaying &&
+        !_manualAudioOnly &&
+        _isPictureInPictureEnabled() &&
+        await _isSupported();
     if (shouldArm == _autoEnterArmed) return;
     _autoEnterArmed = shouldArm;
     await _setAutoEnter(shouldArm);
@@ -108,6 +120,12 @@ class PlayerBackgroundingCoordinator {
       return;
     }
 
+    if (!_isPictureInPictureEnabled()) {
+      _autoAudioOnlyActive = true;
+      await _setAudioOnly(true);
+      return;
+    }
+
     // The normal path: native auto-enter (armed while playback started)
     // already put the app into PiP by the time this paused callback runs.
     if (await _isActive()) return;
@@ -134,7 +152,10 @@ class PlayerBackgroundingCoordinator {
 
 final playerBackgroundingCoordinatorProvider =
     Provider<PlayerBackgroundingCoordinator>((ref) {
-      final coordinator = PlayerBackgroundingCoordinator();
+      final coordinator = PlayerBackgroundingCoordinator(
+        isPictureInPictureEnabled: () =>
+            ref.read(pictureInPicturePreferenceProvider),
+      );
       // The single native PiP state-change subscription for the whole
       // session, mirrored into pictureInPictureActiveProvider so any widget
       // can switch to a video-only layout while PiP is up (#1002). Owning
@@ -167,6 +188,9 @@ final playerBackgroundingCoordinatorProvider =
         if (streaming != null) {
           coordinator.onStreamingStateChanged(streaming);
         }
+      });
+      ref.listen<bool>(pictureInPicturePreferenceProvider, (previous, next) {
+        coordinator.onPictureInPicturePreferenceChanged(next);
       });
       return coordinator;
     });

@@ -61,7 +61,7 @@ void main() {
         serviceAccountPresent: false,
         appIds: const {},
         testerGroups: const {},
-        profileIds: const ['iptv-standalone', 'tv'],
+        profileIds: const ['full', 'tv'],
       );
 
       expect(preflight.ready, isFalse);

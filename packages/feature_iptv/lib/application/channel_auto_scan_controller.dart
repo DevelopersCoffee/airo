@@ -70,6 +70,7 @@ class ChannelAutoScanController extends StateNotifier<ChannelAutoScanState> {
   final StreamAvailabilityProbe probe;
   StreamProbeCancellation? _cancellation;
   int _scanGeneration = 0;
+  final Map<String, StreamAvailability> _cachedAvailabilityByChannelId = {};
 
   Future<void> start({
     required String scopeId,
@@ -87,9 +88,16 @@ class ChannelAutoScanController extends StateNotifier<ChannelAutoScanState> {
               .where((channel) => channel.id == currentPlayingChannelId)
               .firstOrNull;
     final availability = <String, StreamAvailability>{
+      for (final channel in channels)
+        if (_cachedAvailabilityByChannelId[channel.id] != null)
+          channel.id: _cachedAvailabilityByChannelId[channel.id]!,
       if (playingChannel != null)
         playingChannel.id: StreamAvailability.available,
     };
+    if (playingChannel != null) {
+      _cachedAvailabilityByChannelId[playingChannel.id] =
+          StreamAvailability.available;
+    }
     state = ChannelAutoScanState(
       scopeId: scopeId,
       phase: ChannelAutoScanPhase.scanning,
@@ -99,15 +107,25 @@ class ChannelAutoScanController extends StateNotifier<ChannelAutoScanState> {
     );
 
     final requests = channels
-        .where((channel) => channel.id != currentPlayingChannelId)
+        .where(
+          (channel) =>
+              channel.id != currentPlayingChannelId &&
+              !_cachedAvailabilityByChannelId.containsKey(channel.id),
+        )
         .map(_toProbeRequest)
         .toList(growable: false);
+    if (requests.isEmpty) {
+      _cancellation = null;
+      state = state.copyWith(phase: ChannelAutoScanPhase.complete);
+      return;
+    }
     final result = await probe.probeAll(
       requests,
       maxConcurrentRequests: maxConcurrentRequests,
       cancellation: cancellation,
       onResult: (result, completedProbeCount) {
         if (generation != _scanGeneration || cancellation.isCancelled) return;
+        _cachedAvailabilityByChannelId[result.channelId] = result.availability;
         final nextAvailability = <String, StreamAvailability>{
           ...state.availabilityByChannelId,
           result.channelId: result.availability,

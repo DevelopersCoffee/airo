@@ -28,8 +28,7 @@ The current v2 profile matrix is maintained in
 | Profile | Package ID | Device class | Entrypoint | Store status |
 | --- | --- | --- | --- | --- |
 | `tv` | `io.airo.app.tv` | Android TV, Google TV, Fire TV-compatible APK testing | `app/lib/main_tv.dart` | TV release workflow builds APK and Play AAB; real Play upload needs #585/#681 setup |
-| `iptv-standalone` | `io.airo.app.iptv` | Android phone and tablet IPTV-only builds | `app/lib/main_airo_iptv.dart` | Mobile/tablet release workflow builds APK and Play AAB; real publish setup needs #585/#681/#682 |
-| `mobile-streaming` | `io.airo.app.streaming` | Android phone and tablet streaming builds | `app/lib/main_mobile_streaming.dart` | Mobile/tablet release workflow builds APK and Play AAB; real publish setup needs #585/#681/#682 |
+| `full` | `io.airo.app` | Airo phone and tablet builds | `app/lib/main.dart` | Mobile/tablet release workflow builds APK and Play AAB; real publish setup needs #585/#681/#682 |
 | `ios-spm` | `com.developerscoffee.airo` | iOS/iPadOS validation profile | `app/lib/main.dart` | Deferred from the first v2 Android publishing wave |
 
 The Android Gradle config currently uses:

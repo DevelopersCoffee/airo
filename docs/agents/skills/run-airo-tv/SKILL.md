@@ -6,7 +6,7 @@ description: Launch and drive the Airo TV Flutter app (main_tv.dart entrypoint) 
 # Run Airo TV
 
 Airo TV is the TV-flavored Flutter entrypoint at `app/lib/main_tv.dart` (distinct from
-`main.dart`, `main_airo_iptv.dart`, `main_mobile_streaming.dart`, `main_qualification.dart`).
+`main.dart`, `main_tv.dart`, `main_qualification.dart`).
 
 ## 1. Pick a device
 

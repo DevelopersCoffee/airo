@@ -113,7 +113,8 @@ class FakeAiroPlaybackEngine implements AiroPlaybackEngine {
     // was actively playing (or buffering while playing) before the seek
     // instead of unconditionally dropping to `paused`, so the fake matches
     // production behavior for consumers keyed off `isPlaying`.
-    final wasPlaying = _state.phase == AiroPlaybackEnginePhase.playing ||
+    final wasPlaying =
+        _state.phase == AiroPlaybackEnginePhase.playing ||
         _state.phase == AiroPlaybackEnginePhase.buffering;
     _emit(_state.copyWith(phase: AiroPlaybackEnginePhase.seeking));
     _emit(
@@ -179,6 +180,17 @@ class FakeAiroPlaybackEngine implements AiroPlaybackEngine {
         selectedTrackIds: {..._state.selectedTrackIds, kind: trackId},
       ),
     );
+    return _state;
+  }
+
+  @override
+  Future<AiroPlaybackState> clearTrackSelection(
+    AiroPlaybackTrackKind kind,
+  ) async {
+    final nextSelected = Map<AiroPlaybackTrackKind, String>.from(
+      _state.selectedTrackIds,
+    )..remove(kind);
+    _emit(_state.copyWith(selectedTrackIds: nextSelected));
     return _state;
   }
 

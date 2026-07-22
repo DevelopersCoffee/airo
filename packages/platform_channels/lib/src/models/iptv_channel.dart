@@ -219,14 +219,15 @@ class IPTVChannel extends Equatable {
     String? tvgName,
     String? language,
   }) {
+    final normalizedGroup = _normalizeGroup(group);
     return IPTVChannel(
       id: url.hashCode.toString(),
       name: name,
       streamUrl: url,
       logoUrl: logo,
-      group: _normalizeGroup(group),
-      category: _inferCategory(group ?? '', name),
-      isAudioOnly: _isAudioStream(url, group, name),
+      group: normalizedGroup,
+      category: _inferCategory(normalizedGroup, name),
+      isAudioOnly: _isAudioStream(url, normalizedGroup, name),
       languages: language != null ? [language] : const ['en'],
       tvgId: tvgId != null ? int.tryParse(tvgId) : null,
       tvgName: tvgName,
@@ -244,8 +245,63 @@ class IPTVChannel extends Equatable {
     if (trimmed.isEmpty || _junkGroupValues.contains(trimmed.toLowerCase())) {
       return 'Uncategorized';
     }
-    return trimmed;
+    return _canonicalizeGroupLabel(trimmed);
   }
+
+  static String _canonicalizeGroupLabel(String raw) {
+    final collapsed = raw.trim().replaceAll(RegExp(r'\s+'), ' ');
+    final buffer = StringBuffer();
+
+    for (var i = 0; i < collapsed.length; i++) {
+      final char = collapsed[i];
+      if (char == ' ' || char == '&' || char == '/') {
+        buffer.write(char);
+        continue;
+      }
+
+      final start = i;
+      while (i < collapsed.length &&
+          collapsed[i] != ' ' &&
+          collapsed[i] != '&' &&
+          collapsed[i] != '/') {
+        i++;
+      }
+      final token = collapsed.substring(start, i);
+      buffer.write(_canonicalizeGroupToken(token));
+      i--;
+    }
+
+    return buffer.toString();
+  }
+
+  static String _canonicalizeGroupToken(String token) {
+    if (token.contains('-')) {
+      return token.split('-').map(_canonicalizeGroupToken).join('-');
+    }
+
+    final upper = token.toUpperCase();
+    if (_preservedGroupAcronyms.contains(upper)) return upper;
+
+    final lower = token.toLowerCase();
+    if (lower.isEmpty) return lower;
+    return '${lower[0].toUpperCase()}${lower.substring(1)}';
+  }
+
+  static const _preservedGroupAcronyms = {
+    'TV',
+    'HD',
+    'SD',
+    'UHD',
+    '4K',
+    'FM',
+    'AM',
+    'USA',
+    'UK',
+    'UAE',
+    'BBC',
+    'CNN',
+    'IPTV',
+  };
 
   static ChannelCategory _inferCategory(String group, [String? name]) {
     final g = group.toLowerCase();
@@ -339,7 +395,7 @@ class IPTVChannel extends Equatable {
       name: name ?? this.name,
       streamUrl: streamUrl ?? this.streamUrl,
       logoUrl: logoUrl ?? this.logoUrl,
-      group: group ?? this.group,
+      group: group == null ? this.group : _normalizeGroup(group),
       category: category ?? this.category,
       flavor: flavor ?? this.flavor,
       country: country ?? this.country,

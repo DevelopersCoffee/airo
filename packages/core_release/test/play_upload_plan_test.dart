@@ -41,22 +41,22 @@ void main() {
 
     test('resolves mobile package, AAB, and Play URL for real tracks', () {
       final uploadPlan = plan(
-        profileId: 'iptv-standalone',
+        profileId: 'full',
         requestedTrack: 'internal',
         serviceAccountAvailable: true,
       );
 
       expect(uploadPlan.mode, AiroPlayUploadMode.upload);
       expect(uploadPlan.canUpload, isTrue);
-      expect(uploadPlan.packageId, 'io.airo.app.iptv');
+      expect(uploadPlan.packageId, 'io.airo.app');
       expect(
         uploadPlan.expectedAabFileName,
-        'Airo-IPTV-2.0.0-200-Play-Store.aab',
+        'Airo-Full-2.0.0-200-Play-Store.aab',
       );
       expect(
         uploadPlan.playConsoleUrl,
         'https://play.google.com/console/u/0/developers/app/'
-        'io.airo.app.iptv/tracks/internal',
+        'io.airo.app/tracks/internal',
       );
       expect(
         uploadPlan.findings.map((finding) => finding.code),

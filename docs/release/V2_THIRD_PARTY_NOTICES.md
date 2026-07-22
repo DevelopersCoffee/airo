@@ -3,8 +3,7 @@
 This document records third-party notice obligations for the current v2 Android
 release profiles:
 
-- `iptv-standalone`
-- `mobile-streaming`
+- `full`
 - `tv`
 
 The profile matrix is maintained in `docs/release/V2_DISTRIBUTION_MATRIX.md`

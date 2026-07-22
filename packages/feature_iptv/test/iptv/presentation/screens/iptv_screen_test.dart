@@ -68,6 +68,7 @@ void main() {
   Widget createWidget({
     StreamingState? streamingState,
     VoidCallback? onOpenVod,
+    VoidCallback? onSettings,
     Future<PhoneLocalMediaItem?> Function()? onPickLocalMediaForTv,
     List<Override> extraOverrides = const [],
   }) {
@@ -106,6 +107,7 @@ void main() {
           child: MaterialApp(
             home: IPTVScreen(
               onOpenVod: onOpenVod,
+              onSettings: onSettings,
               onPickLocalMediaForTv: onPickLocalMediaForTv,
             ),
           ),
@@ -161,6 +163,8 @@ void main() {
 
       expect(find.text('Airo TV'), findsOneWidget);
       expect(find.byTooltip('Search channels'), findsOneWidget);
+      expect(find.byTooltip('Playlist source'), findsOneWidget);
+      expect(find.byTooltip('Guide URL'), findsOneWidget);
       expect(find.byTooltip('Cast'), findsOneWidget);
       expect(
         find.byKey(const ValueKey('filter-chip-category')),
@@ -213,6 +217,129 @@ void main() {
     expect(find.byType(AppBar), findsOneWidget);
   });
 
+  testWidgets('browse preview exposes a full player entry point', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      createWidget(
+        streamingState: StreamingState(
+          playbackState: PlaybackState.playing,
+          isLiveStream: true,
+          liveDelay: const Duration(seconds: 1),
+          currentChannel: channels.first,
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    final fullscreenButton = find.byKey(
+      const ValueKey('iptv-preview-fullscreen-button'),
+    );
+    expect(fullscreenButton, findsOneWidget);
+
+    await tester.tap(fullscreenButton);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(fullscreenButton, findsNothing);
+    expect(
+      find.byKey(const ValueKey('iptv-player-fullscreen-button')),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('portrait preview exposes usable compact player controls', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      createWidget(
+        streamingState: StreamingState(
+          playbackState: PlaybackState.playing,
+          isLiveStream: true,
+          liveDelay: const Duration(seconds: 1),
+          currentChannel: channels.first,
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(
+      find.byKey(const ValueKey('iptv-preview-fullscreen-button')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('iptv-player-mute-button')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('iptv-player-volume-down-button')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('iptv-player-volume-up-button')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('iptv-player-channel-previous-button')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('iptv-player-channel-next-button')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('iptv-player-more-button')),
+      findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('system Back exits fullscreen playback before popping the app', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      createWidget(
+        streamingState: StreamingState(
+          playbackState: PlaybackState.playing,
+          isLiveStream: true,
+          liveDelay: const Duration(seconds: 1),
+          currentChannel: channels.first,
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    await tester.tap(
+      find.byKey(const ValueKey('iptv-preview-fullscreen-button')),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(
+      find.byKey(const ValueKey('iptv-player-fullscreen-button')),
+      findsOneWidget,
+    );
+
+    final handled = await tester.binding.handlePopRoute();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(handled, isTrue);
+    expect(find.text('Airo TV'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('iptv-preview-fullscreen-button')),
+      findsOneWidget,
+    );
+  });
+
   testWidgets(
     'hamburger menu opens the drawer and Guide pushes the guide screen',
     (tester) async {
@@ -252,6 +379,26 @@ void main() {
     },
   );
 
+  testWidgets('hamburger menu Settings entry invokes the app callback', (
+    tester,
+  ) async {
+    var openedSettings = false;
+    await tester.pumpWidget(
+      createWidget(onSettings: () => openedSettings = true),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(Icons.menu));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Settings'), findsOneWidget);
+
+    await tester.tap(find.text('Settings'));
+    await tester.pumpAndSettle();
+
+    expect(openedSettings, isTrue);
+  });
+
   testWidgets('opens search sheet from app bar action', (tester) async {
     await tester.pumpWidget(createWidget());
     await tester.pumpAndSettle();
@@ -285,6 +432,19 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+
+  testWidgets('opens XMLTV source sheet from the Guide URL app bar action', (
+    tester,
+  ) async {
+    await tester.pumpWidget(createWidget());
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('Guide URL'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('XMLTV Guide Source'), findsOneWidget);
+    expect(find.text('No XMLTV source configured yet.'), findsOneWidget);
+  });
 
   testWidgets(
     'Add Playlist sheet shows a progress indicator and stage label while '

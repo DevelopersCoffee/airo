@@ -63,7 +63,7 @@ real_baseline_apk="$TMP_DIR/app-arm64-v8a-release.apk"
 make_file "$real_baseline_apk" 1024
 run_case "parses-committed-baseline" 0 \
   env APK_SIZE_APK_GLOB="$real_baseline_apk" \
-    APK_SIZE_COMPONENT=mobile-full \
+    APK_SIZE_COMPONENT=full \
     APK_SIZE_BASELINE_FILE="$ROOT_DIR/.github/apk-size-baselines.tsv" \
     APK_SIZE_REPORT_FILE="$TMP_DIR/real-baseline-report.md" \
     APK_SIZE_MAX_BYTES=2000 \

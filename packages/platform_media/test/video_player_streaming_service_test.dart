@@ -394,6 +394,37 @@ void main() {
         isNull,
       );
     });
+
+    test(
+      'clearTrackSelection turns subtitles off without stopping playback',
+      () async {
+        service.attachExternalSubtitle(
+          'chan-1',
+          AiroPlaybackExternalSubtitle(
+            handle: AiroPlaybackSourceHandle.redacted('sub-en'),
+            languageCode: 'en',
+            label: 'English',
+          ),
+        );
+        await service.playChannel(channel());
+        await service.selectTrack(
+          kind: AiroPlaybackTrackKind.subtitle,
+          trackId: 'external_sub_0',
+        );
+        expect(
+          service.currentState.selectedTrackIds[AiroPlaybackTrackKind.subtitle],
+          'external_sub_0',
+        );
+
+        await service.clearTrackSelection(AiroPlaybackTrackKind.subtitle);
+
+        expect(
+          service.currentState.selectedTrackIds[AiroPlaybackTrackKind.subtitle],
+          isNull,
+        );
+        expect(service.currentState.playbackState, PlaybackState.playing);
+      },
+    );
   });
 
   group('VideoPlayerStreamingService attachExternalSubtitle', () {
@@ -617,6 +648,11 @@ class _ScriptedOpenFailureEngine implements AiroPlaybackEngine {
   }) async => _state;
 
   @override
+  Future<AiroPlaybackState> clearTrackSelection(
+    AiroPlaybackTrackKind kind,
+  ) async => _state;
+
+  @override
   Future<AiroPlaybackDiagnostics> diagnostics() async =>
       AiroPlaybackDiagnostics(backendId: backendKind.stableId);
 
@@ -703,6 +739,11 @@ class _ScriptedMultiSourceEngine implements AiroPlaybackEngine {
     required AiroPlaybackTrackKind kind,
     required String trackId,
   }) async => _state;
+
+  @override
+  Future<AiroPlaybackState> clearTrackSelection(
+    AiroPlaybackTrackKind kind,
+  ) async => _state;
 
   @override
   Future<AiroPlaybackDiagnostics> diagnostics() async =>

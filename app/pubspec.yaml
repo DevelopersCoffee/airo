@@ -163,6 +163,11 @@ dependency_overrides:
   # Platform-owned fork with the iOS contentID fix required for receiver playback.
   flutter_chrome_cast:
     path: ../packages/platform_player/third_party/flutter_chrome_cast
+  # Pub package 1.5.3 declares an Android plugin class but does not ship the
+  # Android source. Keep the upstream Dart/iOS API and provide the missing
+  # Android FLAG_SECURE bridge locally so app builds retain screen protection.
+  screen_protector:
+    path: ../packages/third_party/screen_protector
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

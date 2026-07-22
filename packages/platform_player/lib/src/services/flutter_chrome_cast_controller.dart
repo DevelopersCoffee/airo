@@ -45,6 +45,7 @@ class FlutterChromeCastController implements AiroCastController {
   AiroCastMediaRequest? _currentMediaRequest;
   String? _currentPlaybackContentId;
   int _loadGeneration = 0;
+  bool _receiverLoadCommandSent = false;
   bool _initialized = false;
 
   @override
@@ -199,6 +200,7 @@ class FlutterChromeCastController implements AiroCastController {
         _connectedDevice = null;
         _currentMediaRequest = null;
         _currentPlaybackContentId = null;
+        _receiverLoadCommandSent = false;
         _loadGeneration++;
       }
 
@@ -271,6 +273,7 @@ class FlutterChromeCastController implements AiroCastController {
     try {
       _currentMediaRequest = request;
       _currentPlaybackContentId = null;
+      _receiverLoadCommandSent = false;
       _log(
         'load start gen=$generation title="${request.title}" '
         'url=${_uriSummary(request.url)}',
@@ -299,6 +302,7 @@ class FlutterChromeCastController implements AiroCastController {
         hlsVideoSegmentFormat: probe.segmentFormat,
       );
       _currentPlaybackContentId = mediaInfo.contentId;
+      _receiverLoadCommandSent = true;
 
       await GoogleCastRemoteMediaClient.instance.loadMedia(mediaInfo);
       if (!_isCurrentLoad(generation, request)) return;
@@ -376,6 +380,7 @@ class FlutterChromeCastController implements AiroCastController {
     final media = snapshot.media ?? _currentMediaRequest;
     _loadGeneration++;
     _currentPlaybackContentId = null;
+    _receiverLoadCommandSent = false;
     _setSession(
       AiroCastSessionSnapshot.stopped(
         device: device,
@@ -404,6 +409,7 @@ class FlutterChromeCastController implements AiroCastController {
     _connectedDevice = null;
     _currentMediaRequest = null;
     _currentPlaybackContentId = null;
+    _receiverLoadCommandSent = false;
     if (device != null) {
       _setSession(AiroCastSessionSnapshot.disconnected(device));
     } else {
@@ -649,6 +655,7 @@ class FlutterChromeCastController implements AiroCastController {
       _connectedDevice = null;
       _currentMediaRequest = null;
       _currentPlaybackContentId = null;
+      _receiverLoadCommandSent = false;
       _loadGeneration++;
       if (device != null) {
         _setSession(AiroCastSessionSnapshot.disconnected(device));
@@ -679,6 +686,7 @@ class FlutterChromeCastController implements AiroCastController {
         _connectedDevice = null;
         _currentMediaRequest = null;
         _currentPlaybackContentId = null;
+        _receiverLoadCommandSent = false;
         _loadGeneration++;
         _setSession(AiroCastSessionSnapshot.disconnected(device));
     }
@@ -807,6 +815,9 @@ class FlutterChromeCastController implements AiroCastController {
     }
 
     if (_sessionState.phase == AiroCastSessionPhase.loadingMedia) {
+      if (!_receiverLoadCommandSent) {
+        return false;
+      }
       if (status.playerState == CastMediaPlayerState.idle &&
           status.idleReason == GoogleCastMediaIdleReason.error) {
         return true;
@@ -841,10 +852,12 @@ class FlutterChromeCastController implements AiroCastController {
     required AiroCastMediaRequest media,
     Uri? playbackUrl,
     AiroCastSessionPhase phase = AiroCastSessionPhase.playing,
+    bool receiverLoadCommandSent = true,
   }) {
     _connectedDevice = device;
     _currentMediaRequest = media;
     _currentPlaybackContentId = (playbackUrl ?? media.url).toString();
+    _receiverLoadCommandSent = receiverLoadCommandSent;
     _setSession(switch (phase) {
       AiroCastSessionPhase.loadingMedia => AiroCastSessionSnapshot.loadingMedia(
         device: device,

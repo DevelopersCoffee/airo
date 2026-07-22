@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:platform_channels/platform_channels.dart';
+import '../models/playback_engine_models.dart';
 import '../models/streaming_state.dart';
 
 /// IPTV Streaming Service with YouTube-quality optimizations
@@ -41,6 +42,9 @@ abstract class IPTVStreamingService {
 
   /// Set preferred quality (auto or specific)
   Future<void> setQuality(VideoQuality quality);
+
+  /// Clear selected track for the requested kind, e.g. subtitles Off.
+  Future<void> clearTrackSelection(AiroPlaybackTrackKind kind);
 
   /// Get current streaming state stream
   Stream<StreamingState> get stateStream;

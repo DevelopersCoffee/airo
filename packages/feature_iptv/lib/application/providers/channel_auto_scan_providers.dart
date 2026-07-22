@@ -62,3 +62,35 @@ final autoScanFilteredChannelsProvider = Provider<List<IPTVChannel>>((ref) {
       .read(channelAutoScanProvider.notifier)
       .channelsForScope(scopeId: scopeId, channels: channels);
 });
+
+bool isChannelConfirmedUnavailable(StreamAvailability? availability) {
+  return availability == StreamAvailability.unavailable;
+}
+
+bool canSelectChannelWithAvailability(StreamAvailability? availability) {
+  return !isChannelConfirmedUnavailable(availability);
+}
+
+final nextSelectableChannelProvider = Provider<IPTVChannel?>((ref) {
+  final availabilityByChannelId = ref
+      .watch(channelAutoScanProvider)
+      .availabilityByChannelId;
+  return channelAfter(
+    currentChannel: ref.watch(currentChannelProvider),
+    channels: ref.watch(filteredChannelsProvider),
+    canUseChannel: (channel) =>
+        canSelectChannelWithAvailability(availabilityByChannelId[channel.id]),
+  );
+});
+
+final previousSelectableChannelProvider = Provider<IPTVChannel?>((ref) {
+  final availabilityByChannelId = ref
+      .watch(channelAutoScanProvider)
+      .availabilityByChannelId;
+  return channelBefore(
+    currentChannel: ref.watch(currentChannelProvider),
+    channels: ref.watch(filteredChannelsProvider),
+    canUseChannel: (channel) =>
+        canSelectChannelWithAvailability(availabilityByChannelId[channel.id]),
+  );
+});

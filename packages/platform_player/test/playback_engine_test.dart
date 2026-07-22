@@ -97,13 +97,14 @@ void main() {
         kind: AiroPlaybackTrackKind.subtitle,
         trackId: 'subs-en',
       );
+      await engine.clearTrackSelection(AiroPlaybackTrackKind.subtitle);
 
       expect(engine.currentState.volume, 1);
       expect(engine.currentState.playbackSpeed, 1.25);
       expect(engine.currentState.selectedQualityId, 'auto');
       expect(
         engine.currentState.selectedTrackIds[AiroPlaybackTrackKind.subtitle],
-        'subs-en',
+        isNull,
       );
       await engine.dispose();
     });
@@ -358,19 +359,19 @@ void main() {
       );
     });
 
-    test('fake engine buildView returns a non-null placeholder after open', () async {
-      final engine = FakeAiroPlaybackEngine();
-      expect(engine.buildView(), isNull);
+    test(
+      'fake engine buildView returns a non-null placeholder after open',
+      () async {
+        final engine = FakeAiroPlaybackEngine();
+        expect(engine.buildView(), isNull);
 
-      await engine.open(request());
-      final view = engine.buildView();
-      expect(view, isNotNull);
-      expect(
-        (view!.key as ValueKey<String>).value,
-        'fake-engine-view',
-      );
-      await engine.dispose();
-    });
+        await engine.open(request());
+        final view = engine.buildView();
+        expect(view, isNotNull);
+        expect((view!.key as ValueKey<String>).value, 'fake-engine-view');
+        await engine.dispose();
+      },
+    );
 
     test('unavailable engine buildView always returns null', () {
       final engine = UnavailableAiroPlaybackEngine();
@@ -419,18 +420,21 @@ void main() {
       expect(tracks[1].label, 'fr');
     });
 
-    test('falls back to positional label when both label and language null', () {
-      final tracks = externalSubtitleTracksFor(
-        requestWith([
-          AiroPlaybackExternalSubtitle(
-            handle: AiroPlaybackSourceHandle.redacted('sub-0'),
-          ),
-        ]),
-      );
+    test(
+      'falls back to positional label when both label and language null',
+      () {
+        final tracks = externalSubtitleTracksFor(
+          requestWith([
+            AiroPlaybackExternalSubtitle(
+              handle: AiroPlaybackSourceHandle.redacted('sub-0'),
+            ),
+          ]),
+        );
 
-      expect(tracks.single.label, 'External subtitle 1');
-      expect(tracks.single.languageCode, isNull);
-    });
+        expect(tracks.single.label, 'External subtitle 1');
+        expect(tracks.single.languageCode, isNull);
+      },
+    );
 
     test('projected list is unmodifiable', () {
       final tracks = externalSubtitleTracksFor(

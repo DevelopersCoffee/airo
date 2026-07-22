@@ -60,13 +60,9 @@ void main() {
       );
     });
 
-    test('keeps streaming disabled until its Firebase app is registered', () {
-      expect(
-        DefaultFirebaseOptions.isConfigured(
-          DefaultFirebaseOptions.androidStreaming,
-        ),
-        isFalse,
-      );
+    test('selects the supported full and TV variants', () {
+      expect(AppVariant.values, containsAll([AppVariant.full, AppVariant.tv]));
+      expect(AppVariant.values, hasLength(2));
     });
   });
 }

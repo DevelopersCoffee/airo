@@ -44,7 +44,7 @@ release or distribution run is intentionally started.
 | Dogfood/RC key alias | Secret: `DOGFOOD_KEY_ALIAS` | — |
 | Dogfood/RC key password | Secret: `DOGFOOD_KEY_PASSWORD` | — |
 | Google Play upload service account | Secret: `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON` | #585 |
-| Play package selection | Fastlane/env value: `SUPPLY_PACKAGE_NAME`; use `io.airo.app.tv`, `io.airo.app.iptv`, or `io.airo.app.streaming` | #585 |
+| Play package selection | Fastlane/env value: `SUPPLY_PACKAGE_NAME`; use `io.airo.app` or `io.airo.app.tv` | #585 |
 | Firebase App Distribution service account | Secret: `FIREBASE_SERVICE_ACCOUNT_JSON` | #682 |
 | Firebase App Distribution app IDs | Workflow inputs: `firebase_app_id`, `mobile_firebase_app_id`, `tv_firebase_app_id` depending on release workflow | #682 |
 | Firebase App Distribution tester groups | Workflow inputs: `firebase_tester_groups`, `mobile_firebase_tester_groups`, `tv_firebase_tester_groups` depending on release workflow | #682 |

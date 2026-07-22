@@ -727,6 +727,13 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
     _updateState(_state.copyWith(selectedTrackIds: result.selectedTrackIds));
   }
 
+  @override
+  Future<void> clearTrackSelection(AiroPlaybackTrackKind kind) async {
+    final result = await _engine.clearTrackSelection(kind);
+    if (result.error != null) return;
+    _updateState(_state.copyWith(selectedTrackIds: result.selectedTrackIds));
+  }
+
   /// Stores an external subtitle to include on the next [playChannel] open
   /// request *for [channelId]*. Engines don't support attaching a subtitle
   /// to an already-open source, so this doesn't take effect until the next

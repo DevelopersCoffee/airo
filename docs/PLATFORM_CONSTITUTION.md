@@ -15,7 +15,7 @@ We do not add features to comply with this document. We move, delete, and shrink
 ## 2. Layer model
 
 ```
-Apps (entrypoints: main_tv, main_mobile_streaming, main_airo_iptv, ...)
+Products (entrypoints: `main.dart` for Airo, `main_tv.dart` for Airo TV)
   ↓ may depend on
 Feature packages (feature_*)            — UI + orchestration for one domain
   ↓ may depend on

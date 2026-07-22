@@ -1,15 +1,22 @@
+import 'package:feature_iptv/application/providers/iptv_providers.dart';
 import 'package:feature_iptv/application/providers/last_channel_provider.dart';
 import 'package:feature_iptv/application/resume_last_channel_controller.dart';
 import 'package:feature_iptv/presentation/tv_ux/iptv_resume_gate.dart';
 import 'package:feature_iptv/presentation/tv_ux/iptv_resume_splash.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 import 'package:flutter_riverpod/misc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:platform_channels/platform_channels.dart';
+import 'package:platform_player/platform_player.dart';
 
 IPTVChannel channel(String id) =>
     IPTVChannel(id: id, name: id, streamUrl: 'https://example.com/$id.m3u8');
+
+final testPlaybackStateProvider = StateProvider<PlaybackState>(
+  (ref) => PlaybackState.idle,
+);
 
 void main() {
   Widget harness(List<Override> overrides) {
@@ -55,6 +62,41 @@ void main() {
     expect(find.byType(IptvResumeSplash), findsNothing);
   });
 
+  testWidgets(
+    'playback readiness after min display dismisses splash without provider mutation during build',
+    (tester) async {
+      final container = ProviderContainer(
+        overrides: [
+          resumeChannelProvider.overrideWith((ref) async => channel('aajtak')),
+          playChannelDelegateProvider.overrideWithValue((channel) async {}),
+          playbackStateProvider.overrideWith(
+            (ref) => ref.watch(testPlaybackStateProvider),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: const MaterialApp(home: IptvResumeGate(child: Text('BROWSE'))),
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+      expect(find.byType(IptvResumeSplash), findsOneWidget);
+
+      await tester.pump(const Duration(seconds: 4));
+      container.read(testPlaybackStateProvider.notifier).state =
+          PlaybackState.playing;
+      await tester.pump();
+
+      expect(tester.takeException(), isNull);
+      await tester.pump();
+      expect(find.byType(IptvResumeSplash), findsNothing);
+    },
+  );
+
   testWidgets('splash never returns after no-target dismissal', (tester) async {
     await tester.pumpWidget(
       harness([resumeChannelProvider.overrideWith((ref) async => null)]),
@@ -84,6 +126,7 @@ void main() {
     );
     await tester.pump();
     await tester.pump(const Duration(seconds: 7));
+    await tester.pump();
     expect(find.byType(IptvResumeSplash), findsNothing);
 
     await tester.pumpWidget(

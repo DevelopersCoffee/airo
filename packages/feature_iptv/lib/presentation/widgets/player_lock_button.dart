@@ -18,7 +18,7 @@ class PlayerLockButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return IconButton(
       icon: Icon(
-        locked ? Icons.lock_open : Icons.lock_outline,
+        locked ? Icons.lock_outline : Icons.lock_open,
         color: Colors.white,
         size: 20,
       ),

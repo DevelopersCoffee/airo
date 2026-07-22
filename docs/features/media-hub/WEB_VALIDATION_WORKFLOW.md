@@ -66,8 +66,8 @@ headless browser automation.
 ```bash
 cd app
 flutter build web --profile --no-wasm-dry-run \
-  --target=lib/main_airo_iptv.dart \
-  --dart-define=APP_VARIANT=iptv \
+  --target=lib/main.dart \
+  --dart-define=APP_VARIANT=full \
   --dart-define=APP_PLATFORM=webIptv \
   --dart-define=DEBUG_IPTV_PLAYLIST_URL=http://127.0.0.1:8787/iptv_channels.m3u
 python3 -m http.server 8788 --bind 127.0.0.1 --directory build/web

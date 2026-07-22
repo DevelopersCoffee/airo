@@ -41,6 +41,39 @@ void main() {
       );
     },
   );
+
+  test(
+    'selectable channel providers skip confirmed unavailable channels',
+    () async {
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      final transport = _FakeProbeTransport();
+      final container = ProviderContainer(
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          iptvChannelsProvider.overrideWith((ref) async => _channels),
+          streamProbeTransportProvider.overrideWithValue(transport),
+          currentChannelProvider.overrideWithValue(_channels.first),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await container.read(iptvChannelsProvider.future);
+      await container
+          .read(channelAutoScanProvider.notifier)
+          .start(
+            scopeId: 'visible',
+            channels: _channels,
+            maxConcurrentRequests: 2,
+          );
+
+      expect(container.read(nextSelectableChannelProvider)?.id, 'restricted');
+      expect(
+        container.read(previousSelectableChannelProvider)?.id,
+        'restricted',
+      );
+    },
+  );
 }
 
 const _channels = [

@@ -56,11 +56,19 @@ class _IptvResumeGateState extends ConsumerState<IptvResumeGate> {
         widget.child,
         IptvResumeSplash(
           playbackReady: playbackReady,
-          onFinished: () =>
-              ref.read(resumeSplashCompletedProvider.notifier).state = true,
+          onFinished: _markSplashCompleted,
         ),
       ],
     );
+  }
+
+  void _markSplashCompleted() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final completed = ref.read(resumeSplashCompletedProvider);
+      if (completed) return;
+      ref.read(resumeSplashCompletedProvider.notifier).state = true;
+    });
   }
 }
 

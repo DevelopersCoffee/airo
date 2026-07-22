@@ -10,6 +10,7 @@ void main() {
     VoidCallback? onGuide,
     VoidCallback? onMovies,
     VoidCallback? onFavorites,
+    VoidCallback? onSettings,
     VoidCallback? onPlayLocalFileOnTv,
   }) {
     return tester.pumpWidget(
@@ -21,6 +22,7 @@ void main() {
             onGuide: onGuide ?? () {},
             onMovies: onMovies ?? () {},
             onFavorites: onFavorites ?? () {},
+            onSettings: onSettings ?? () {},
             onPlayLocalFileOnTv: onPlayLocalFileOnTv,
           ),
           body: Builder(
@@ -34,20 +36,20 @@ void main() {
     );
   }
 
-  testWidgets(
-    'opens from the hamburger icon and lists Home, Guide, Movies, Favorites',
-    (tester) async {
-      await pumpDrawer(tester);
+  testWidgets('opens from the hamburger icon and lists product destinations', (
+    tester,
+  ) async {
+    await pumpDrawer(tester);
 
-      await tester.tap(find.byIcon(Icons.menu));
-      await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.menu));
+    await tester.pumpAndSettle();
 
-      expect(find.text('Home'), findsOneWidget);
-      expect(find.text('Guide'), findsOneWidget);
-      expect(find.text('Movies & Shows'), findsOneWidget);
-      expect(find.text('Favorites'), findsOneWidget);
-    },
-  );
+    expect(find.text('Home'), findsOneWidget);
+    expect(find.text('Guide'), findsOneWidget);
+    expect(find.text('Movies & Shows'), findsOneWidget);
+    expect(find.text('Favorites'), findsOneWidget);
+    expect(find.text('Settings'), findsOneWidget);
+  });
 
   testWidgets('tapping Home closes the drawer and invokes onHome', (
     tester,
@@ -94,6 +96,24 @@ void main() {
 
     expect(tapped, isTrue);
     expect(find.text('Favorites'), findsNothing);
+  });
+
+  testWidgets('tapping Settings closes the drawer and invokes onSettings', (
+    tester,
+  ) async {
+    var tapped = false;
+    await pumpDrawer(tester, onSettings: () => tapped = true);
+
+    await tester.tap(find.byIcon(Icons.menu));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Settings'), findsOneWidget);
+
+    await tester.tap(find.text('Settings'));
+    await tester.pumpAndSettle();
+
+    expect(tapped, isTrue);
+    expect(find.text('Settings'), findsNothing);
   });
 
   testWidgets('hides Movies & Shows when showMovies is false', (tester) async {

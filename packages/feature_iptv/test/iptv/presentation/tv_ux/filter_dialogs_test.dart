@@ -1,4 +1,5 @@
 import 'package:feature_iptv/presentation/tv_ux/sections/filter_dialogs.dart';
+import 'package:feature_iptv/application/providers/channel_filters_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -13,16 +14,25 @@ void main() {
         home: Scaffold(
           body: FilterOptionDialog(
             title: 'Country',
-            options: const ['US', 'IN'],
+            options: const ['US', 'AE', 'IN'],
             selectedValue: null,
             onSelected: (value) => selected = value,
             onClear: () {},
             onClose: () {},
+            optionLabel: countryDisplayLabel,
           ),
         ),
       ),
     );
 
+    expect(find.text('All Countries'), findsOneWidget);
+    expect(find.text('🇮🇳 India'), findsOneWidget);
+    expect(find.text('🇦🇪 United Arab Emirates'), findsOneWidget);
+    expect(find.text('🇺🇸 United States'), findsOneWidget);
+    expect(
+      tester.getTopLeft(find.text('🇮🇳 India')).dy,
+      lessThan(tester.getTopLeft(find.text('🇦🇪 United Arab Emirates')).dy),
+    );
     expect(find.byKey(const ValueKey('filter-option-IN')), findsOneWidget);
     expect(find.byType(Focus), findsWidgets);
 
@@ -56,6 +66,28 @@ void main() {
 
     expect(find.text('No channels match'), findsOneWidget);
     await tester.tap(find.text('Clear filters'));
+    expect(cleared, isTrue);
+  });
+
+  testWidgets('All option clears the active filter', (tester) async {
+    var cleared = false;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: FilterOptionDialog(
+            title: 'Category',
+            options: const ['News'],
+            selectedValue: 'News',
+            onSelected: (_) {},
+            onClear: () => cleared = true,
+            onClose: () {},
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('All Categories'));
+
     expect(cleared, isTrue);
   });
 }

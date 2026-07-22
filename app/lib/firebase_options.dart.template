@@ -1,12 +1,12 @@
 // Firebase configuration with multi-platform variant support
-// Supports: Mobile Full (io.airo.app), Mobile Streaming (io.airo.app.streaming), Android TV (io.airo.app.tv)
+// Supports: Airo (io.airo.app) and Airo TV (io.airo.app.tv).
 //
 // This is a TEMPLATE. To use:
 // 1. Copy to app/lib/firebase_options.dart (gitignored, never committed with real keys)
 // 2. Fill in the real `web`, `android`, and `androidTv` values from the Firebase
 //    Console (Project settings > Your apps) or from the `GOOGLE_SERVICES_JSON` /
 //    `FIREBASE_OPTIONS_DART` secrets used by the release workflows.
-// 3. Leave the `androidStreaming`, `ios`, `macos`, and `windows` entries as
+// 3. Leave the `ios`, `macos`, and `windows` entries as
 //    placeholders until those apps are registered in the Firebase project --
 //    `DefaultFirebaseOptions.isCurrentPlatformConfigured` skips Firebase init
 //    for any entry whose appId still contains `YOUR_` or `TODO`, so shipping
@@ -14,7 +14,6 @@
 //
 // Build with variant:
 //   flutter build apk --dart-define=APP_VARIANT=tv
-//   flutter build apk --dart-define=APP_VARIANT=streaming
 //   flutter build apk --dart-define=APP_VARIANT=full (default)
 
 import 'package:firebase_core/firebase_core.dart' show FirebaseOptions;
@@ -25,7 +24,6 @@ import 'package:flutter/foundation.dart'
 // Set via --dart-define=APP_VARIANT=<value>
 enum AppVariant {
   full, // io.airo.app - All features
-  streaming, // io.airo.app.streaming - Music + IPTV
   tv, // io.airo.app.tv - IPTV only
 }
 
@@ -43,8 +41,6 @@ class DefaultFirebaseOptions {
     switch (_variantString) {
       case 'tv':
         return AppVariant.tv;
-      case 'streaming':
-        return AppVariant.streaming;
       default:
         return AppVariant.full;
     }
@@ -120,8 +116,6 @@ class DefaultFirebaseOptions {
     switch (currentVariant) {
       case AppVariant.tv:
         return androidTv;
-      case AppVariant.streaming:
-        return androidStreaming;
       case AppVariant.full:
         return android;
     }
@@ -156,18 +150,6 @@ class DefaultFirebaseOptions {
   static const FirebaseOptions androidTv = FirebaseOptions(
     apiKey: 'YOUR_ANDROID_TV_API_KEY',
     appId: 'YOUR_ANDROID_TV_APP_ID',
-    messagingSenderId: 'YOUR_MESSAGING_SENDER_ID',
-    projectId: 'YOUR_PROJECT_ID',
-    storageBucket: 'YOUR_PROJECT_ID.firebasestorage.app',
-  );
-
-  /// Android Streaming - io.airo.app.streaming
-  ///
-  /// Update this after registering the io.airo.app.streaming Android app in
-  /// the Firebase console and downloading its client config.
-  static const FirebaseOptions androidStreaming = FirebaseOptions(
-    apiKey: 'YOUR_ANDROID_STREAMING_API_KEY',
-    appId: 'TODO_REGISTER_IO_AIRO_APP_STREAMING',
     messagingSenderId: 'YOUR_MESSAGING_SENDER_ID',
     projectId: 'YOUR_PROJECT_ID',
     storageBucket: 'YOUR_PROJECT_ID.firebasestorage.app',

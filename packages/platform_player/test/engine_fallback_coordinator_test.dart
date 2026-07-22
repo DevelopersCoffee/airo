@@ -77,6 +77,11 @@ class _ScriptedPlaybackEngine implements AiroPlaybackEngine {
   }) async => _state;
 
   @override
+  Future<AiroPlaybackState> clearTrackSelection(
+    AiroPlaybackTrackKind kind,
+  ) async => _state;
+
+  @override
   Future<AiroPlaybackDiagnostics> diagnostics() async {
     return AiroPlaybackDiagnostics(backendId: backendKind.stableId);
   }

@@ -16,8 +16,7 @@ see [V2 Human-In-Loop Blocker Index](./V2_HUMAN_IN_LOOP_BLOCKERS.md).
 Related issues: #681, #585, #657.
 
 - [ ] Create or confirm the Play Console app for each public v2 package ID.
-- [x] Confirm package IDs for mobile/tablet and TV:
-      `io.airo.app`, `io.airo.app.iptv`, `io.airo.app.streaming`, and
+- [x] Confirm package IDs for Airo and Airo TV: `io.airo.app` and
       `io.airo.app.tv`.
 - [ ] Decide whether mobile and tablet share one adaptive listing or use
       separate listings.

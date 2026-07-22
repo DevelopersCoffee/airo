@@ -414,22 +414,12 @@ class AiroReleaseQualificationPreflightRunner {
 
   static const List<AiroReleaseQualificationRequirement> requirements = [
     AiroReleaseQualificationRequirement(
-      profileId: 'iptv-standalone',
+      profileId: 'full',
       deviceClass: AiroReleaseDeviceClass.androidPhone,
       evidenceType: AiroReleaseQualificationEvidenceType.physicalDevice,
     ),
     AiroReleaseQualificationRequirement(
-      profileId: 'iptv-standalone',
-      deviceClass: AiroReleaseDeviceClass.androidTablet,
-      evidenceType: AiroReleaseQualificationEvidenceType.wideLayout,
-    ),
-    AiroReleaseQualificationRequirement(
-      profileId: 'mobile-streaming',
-      deviceClass: AiroReleaseDeviceClass.androidPhone,
-      evidenceType: AiroReleaseQualificationEvidenceType.physicalDevice,
-    ),
-    AiroReleaseQualificationRequirement(
-      profileId: 'mobile-streaming',
+      profileId: 'full',
       deviceClass: AiroReleaseDeviceClass.androidTablet,
       evidenceType: AiroReleaseQualificationEvidenceType.wideLayout,
     ),

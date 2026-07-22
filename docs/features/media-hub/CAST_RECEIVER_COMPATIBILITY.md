@@ -2,7 +2,7 @@
 
 ## V1 Scope
 
-Airo IPTV V1 uses Google Cast sender behavior. The mobile app starts a Cast
+Airo TV uses Google Cast sender behavior. The mobile app starts a Cast
 session, then the receiver fetches and plays the public media URL.
 
 Supported V1 receivers:
@@ -68,4 +68,3 @@ a deliberate custom Cast-compatible receiver implementation.
 - Google Cast overview: https://developers.google.com/cast/docs/overview
 - Google Default Media Web Receiver: https://developers.google.com/cast/docs/web_receiver
 - Apple AirPlay to Mac: https://support.apple.com/guide/mac-help/stream-video-and-audio-with-airplay-mchld7e543a0/mac
-

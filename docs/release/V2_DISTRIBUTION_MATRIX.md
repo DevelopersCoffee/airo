@@ -14,12 +14,11 @@ that platform contract aligned before changing release workflows.
 
 | Profile | Package ID | Entrypoint | Pubspec | Device class | Release artifacts | Distribution |
 | --- | --- | --- | --- | --- | --- | --- |
-| `iptv-standalone` | `io.airo.app.iptv` | `app/lib/main_airo_iptv.dart` | `app/pubspec_iptv.yaml` | Android phone and tablet IPTV-only builds | APK, Play Store AAB | GitHub Release evidence, Firebase App Distribution, Play track after credentials |
-| `mobile-streaming` | `io.airo.app.streaming` | `app/lib/main_mobile_streaming.dart` | `app/pubspec_streaming.yaml` | Android phone and tablet streaming builds | APK, Play Store AAB | GitHub Release evidence, Firebase App Distribution, Play track after credentials |
+| `full` | `io.airo.app` | `app/lib/main.dart` | `app/pubspec.yaml` | Airo phone and tablet builds | APK, Play Store AAB | GitHub Release evidence, Firebase App Distribution, Play track after credentials |
 | `tv` | `io.airo.app.tv` | `app/lib/main_tv.dart` | `app/pubspec_tv.yaml` | Android TV, Google TV, Fire TV-compatible APK testing | APK, Play Store AAB | GitHub Release, Firebase App Distribution where supported, Play TV track after credentials |
 | `tv` | `com.developerscoffee.airo.tv` | `app/lib/main_tv.dart` | `app/pubspec_tv.yaml` | macOS Airo TV IPTV build | ZIP, DMG, Homebrew Cask metadata | GitHub Release direct download, Homebrew Cask after notarization |
 | `ios-spm` | `com.developerscoffee.airo` | `app/lib/main.dart` | `app/pubspec_ios_spm.yaml` | iOS/iPadOS validation profile | Deferred | Not part of the first v2 Android publishing wave |
-| `web-validation` | `web` | `app/lib/main_airo_iptv.dart` | `app/pubspec.yaml` | Browser validation only | Deferred | Local validation only |
+| `web-validation` | `web` | `app/lib/main.dart` | `app/pubspec.yaml` | Browser validation only | Deferred | Local validation only |
 
 ## Tablet Policy
 
@@ -118,8 +117,7 @@ consistent across GitHub Releases, QA distribution, and store-upload jobs.
 
 - Final mobile/tablet listing strategy for the registered `io.airo.app.*`
   package IDs.
-- Whether `iptv-standalone` or `mobile-streaming` is the first public mobile
-  profile.
+- First Play track and public listing timing for the full Airo mobile profile.
 - Whether Amazon Appstore and F-Droid are in the first v2 release wave.
 - Whether the generated Homebrew Cask is submitted immediately to
   `homebrew-cask` or retained as release evidence for the first macOS launch.

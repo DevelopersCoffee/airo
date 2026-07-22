@@ -34,28 +34,29 @@ class FilterRow extends ConsumerWidget {
             options: dimensions.categories.toList(growable: false),
             selectedValue: filters.category,
             onSelected: notifier.setCategory,
-            onClear: notifier.clear,
+            onClear: () => notifier.setCategory(null),
           ),
         ),
       if (dimensions.countries.isNotEmpty)
         _FilterChip(
           key: const ValueKey('filter-chip-country'),
-          label: filters.country ?? 'Country',
+          label: countryDisplayLabel(filters.country),
           active: filters.country != null,
-          icon: Icons.public,
+          icon: Icons.flag,
           onSelected: () => showFilterOptionDialog(
             context: context,
             title: 'Country',
             options: dimensions.countries.toList(growable: false),
             selectedValue: filters.country,
             onSelected: notifier.setCountry,
-            onClear: notifier.clear,
+            onClear: () => notifier.setCountry(null),
+            optionLabel: countryDisplayLabel,
           ),
         ),
       if (dimensions.languages.isNotEmpty)
         _FilterChip(
           key: const ValueKey('filter-chip-language'),
-          label: filters.language ?? 'Language',
+          label: languageDisplayLabel(filters.language),
           active: filters.language != null,
           icon: Icons.translate,
           onSelected: () => showFilterOptionDialog(
@@ -64,36 +65,81 @@ class FilterRow extends ConsumerWidget {
             options: dimensions.languages.toList(growable: false),
             selectedValue: filters.language,
             onSelected: notifier.setLanguage,
-            onClear: notifier.clear,
+            onClear: () => notifier.setLanguage(null),
+            optionLabel: languageDisplayLabel,
           ),
         ),
     ];
 
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      child: Row(
-        children: [
-          for (final chip in chips) ...[chip, const SizedBox(width: 8)],
-        ],
-      ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth >= 760 && chips.length >= 4) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            child: Row(
+              children: [
+                Expanded(flex: 12, child: _expandChip(chips[0])),
+                const SizedBox(width: 8),
+                Expanded(flex: 13, child: _expandChip(chips[1])),
+                const SizedBox(width: 8),
+                Expanded(flex: 14, child: _expandChip(chips[2])),
+                const SizedBox(width: 8),
+                Expanded(flex: 13, child: _expandChip(chips[3])),
+              ],
+            ),
+          );
+        }
+
+        return SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          child: Row(
+            children: [
+              for (final chip in chips) ...[chip, const SizedBox(width: 8)],
+            ],
+          ),
+        );
+      },
     );
   }
 
-  Future<void> _showSearchDialog(
-    BuildContext context,
-    ChannelFiltersNotifier notifier,
-    String initialValue,
-  ) async {
-    final controller = TextEditingController(text: initialValue);
-    await showDialog<void>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
+  Widget _expandChip(Widget chip) {
+    if (chip is _FilterChip) {
+      return _FilterChip(
+        key: chip.key,
+        label: chip.label,
+        active: chip.active,
+        icon: chip.icon,
+        onSelected: chip.onSelected,
+        expanded: true,
+      );
+    }
+    return chip;
+  }
+}
+
+Future<void> _showSearchDialog(
+  BuildContext context,
+  ChannelFiltersNotifier notifier,
+  String initialValue,
+) async {
+  var searchText = initialValue;
+  await showDialog<void>(
+    context: context,
+    builder: (dialogContext) {
+      return AlertDialog(
         title: const Text('Search channels'),
-        content: TextField(
-          controller: controller,
+        content: TextFormField(
+          key: const ValueKey('filter-search-field'),
+          initialValue: initialValue,
           autofocus: true,
-          onSubmitted: (value) {
+          decoration: const InputDecoration(
+            prefixIcon: Icon(Icons.search),
+            hintText: 'Search by channel name',
+          ),
+          textInputAction: TextInputAction.search,
+          onChanged: (value) => searchText = value,
+          onFieldSubmitted: (value) {
             notifier.setSearch(value);
             Navigator.of(dialogContext).pop();
           },
@@ -108,16 +154,15 @@ class FilterRow extends ConsumerWidget {
           ),
           FilledButton(
             onPressed: () {
-              notifier.setSearch(controller.text);
+              notifier.setSearch(searchText);
               Navigator.of(dialogContext).pop();
             },
             child: const Text('Apply'),
           ),
         ],
-      ),
-    );
-    controller.dispose();
-  }
+      );
+    },
+  );
 }
 
 class _FilterChip extends StatelessWidget {
@@ -127,23 +172,80 @@ class _FilterChip extends StatelessWidget {
     required this.active,
     required this.icon,
     required this.onSelected,
+    this.expanded = false,
   });
 
   final String label;
   final bool active;
   final IconData icon;
   final VoidCallback onSelected;
+  final bool expanded;
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final background = active
+        ? scheme.primaryContainer
+        : scheme.surfaceContainerHighest.withValues(alpha: 0.72);
+    final foreground = active
+        ? scheme.onPrimaryContainer
+        : scheme.onSurfaceVariant;
+
     return TvFocusable(
       semanticLabel: label,
       onSelect: onSelected,
-      child: ChoiceChip(
-        selected: active,
-        avatar: Icon(icon, size: 18),
-        label: Text(label),
-        onSelected: (_) => onSelected(),
+      child: Material(
+        color: background,
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: onSelected,
+          child: Container(
+            height: 36,
+            width: expanded ? double.infinity : null,
+            constraints: const BoxConstraints(minWidth: 112),
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Row(
+              mainAxisSize: expanded ? MainAxisSize.max : MainAxisSize.min,
+              children: [
+                Icon(icon, size: 18, color: foreground),
+                const SizedBox(width: 8),
+                if (expanded)
+                  Expanded(
+                    child: _FilterChipLabel(label: label, active: active),
+                  )
+                else
+                  _FilterChipLabel(label: label, active: active),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _FilterChipLabel extends StatelessWidget {
+  const _FilterChipLabel({required this.label, required this.active});
+
+  final String label;
+  final bool active;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final foreground = active
+        ? theme.colorScheme.onPrimaryContainer
+        : theme.colorScheme.onSurfaceVariant;
+    return Text(
+      label,
+      key: ValueKey('filter-chip-label-$label'),
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: theme.textTheme.titleMedium?.copyWith(
+        color: foreground,
+        fontWeight: active ? FontWeight.w700 : FontWeight.w600,
       ),
     );
   }

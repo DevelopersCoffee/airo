@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:platform_channels/platform_channels.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -18,6 +19,7 @@ void main() {
     WidgetTester tester, {
     bool enableSwipeChannelChange = false,
     bool enableTouchGestures = true,
+    bool initiallyFullscreen = false,
     PlayerBrightnessController? brightnessController,
     StreamingState? state,
     List<IPTVChannel>? channels,
@@ -52,6 +54,7 @@ void main() {
           home: VideoPlayerWidget(
             enableSwipeChannelChange: enableSwipeChannelChange,
             enableTouchGestures: enableTouchGestures,
+            initiallyFullscreen: initiallyFullscreen,
             brightnessController: brightnessController,
           ),
         ),
@@ -134,31 +137,142 @@ void main() {
       await pumpPlayer(tester, enableSwipeChannelChange: true);
 
       expect(find.byIcon(Icons.play_arrow), findsOneWidget);
-      expect(find.byIcon(Icons.skip_previous), findsOneWidget);
-      expect(find.byIcon(Icons.skip_next), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('iptv-player-channel-previous-button')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('iptv-player-channel-next-button')),
+        findsOneWidget,
+      );
 
       await tester.tap(find.byType(PlayerLockButton));
       await tester.pump();
 
       expect(find.byIcon(Icons.play_arrow), findsNothing);
-      expect(find.byIcon(Icons.skip_previous), findsNothing);
-      expect(find.byIcon(Icons.skip_next), findsNothing);
+      expect(
+        find.byKey(const ValueKey('iptv-player-channel-previous-button')),
+        findsNothing,
+      );
+      expect(
+        find.byKey(const ValueKey('iptv-player-channel-next-button')),
+        findsNothing,
+      );
       expect(find.byType(PlayerLockButton), findsOneWidget);
     },
   );
+
+  testWidgets('expanded player uses TV Explorer-style player options', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1280, 720);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await pumpPlayer(tester, enableSwipeChannelChange: true);
+
+    expect(find.text('VOL'), findsOneWidget);
+    expect(find.text('CH'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('iptv-player-dvr-rewind-button')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('iptv-player-mute-button')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('iptv-player-volume-up-button')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('iptv-player-volume-down-button')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('iptv-player-channel-next-button')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('iptv-player-channel-previous-button')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('iptv-player-fullscreen-button')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('iptv-player-pip-button')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('iptv-player-more-button')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const ValueKey('audio-only-toggle')), findsNothing);
+    expect(
+      find.byKey(const ValueKey('iptv-player-quality-button')),
+      findsNothing,
+    );
+    expect(
+      find.byKey(const ValueKey('iptv-player-subtitle-button')),
+      findsNothing,
+    );
+  });
+
+  testWidgets('fullscreen phone keeps the TV Explorer player options', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(432, 932);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await pumpPlayer(
+      tester,
+      enableSwipeChannelChange: true,
+      initiallyFullscreen: true,
+    );
+
+    expect(find.text('VOL'), findsOneWidget);
+    expect(find.text('CH'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('iptv-player-pip-button')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('iptv-player-fullscreen-button')),
+      findsNothing,
+    );
+    expect(
+      find.byKey(const ValueKey('iptv-player-more-button')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('iptv-player-channel-next-button')),
+      findsOneWidget,
+    );
+  });
 
   testWidgets('tapping the lock button again unlocks and restores controls', (
     tester,
   ) async {
     await pumpPlayer(tester);
 
+    expect(find.byIcon(Icons.lock_open), findsOneWidget);
+    expect(find.byIcon(Icons.lock_outline), findsNothing);
+
     await tester.tap(find.byType(PlayerLockButton));
     await tester.pump();
     expect(find.byIcon(Icons.play_arrow), findsNothing);
+    expect(find.byIcon(Icons.lock_outline), findsOneWidget);
+    expect(find.byIcon(Icons.lock_open), findsNothing);
 
     await tester.tap(find.byType(PlayerLockButton));
     await tester.pump();
     expect(find.byIcon(Icons.play_arrow), findsOneWidget);
+    expect(find.byIcon(Icons.lock_open), findsOneWidget);
   });
 
   testWidgets('resets brightness via the injected controller on dispose', (
@@ -224,51 +338,27 @@ void main() {
   // button is reachable by tapping it via finder (never raw coordinates)
   // and asserting the real onBack callback fired.
   // ===========================================================================
-  testWidgets("PlayerOverlay's back button is reachable and invokes onBack", (
+  testWidgets('expanded player uses only the Airo TV floating control layer', (
     tester,
   ) async {
-    var backTapped = false;
+    tester.view.physicalSize = const Size(1280, 720);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
 
-    SharedPreferences.setMockInitialValues({});
-    final prefs = await SharedPreferences.getInstance();
+    await pumpPlayer(tester, enableSwipeChannelChange: true);
 
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [
-          sharedPreferencesProvider.overrideWithValue(prefs),
-          streamingStateProvider.overrideWith(
-            (ref) => Stream.value(
-              StreamingState(
-                playbackState: PlaybackState.playing,
-                isLiveStream: true,
-                currentChannel: const IPTVChannel(
-                  id: 'news-1',
-                  name: 'City News Live',
-                  streamUrl: 'https://example.com/news.m3u8',
-                  group: 'News',
-                  category: ChannelCategory.news,
-                ),
-              ),
-            ),
-          ),
-        ],
-        child: MaterialApp(
-          home: Scaffold(
-            body: VideoPlayerWidget(onBack: () => backTapped = true),
-          ),
-        ),
-      ),
+    expect(find.byKey(const ValueKey('player-overlay-back')), findsNothing);
+    expect(find.text('VOL'), findsOneWidget);
+    expect(find.text('CH'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('iptv-player-volume-up-button')),
+      findsOneWidget,
     );
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 100));
-
-    final backButton = find.byKey(const ValueKey('player-overlay-back'));
-    expect(backButton, findsOneWidget);
-
-    await tester.tap(backButton);
-    await tester.pump();
-
-    expect(backTapped, isTrue);
+    expect(
+      find.byKey(const ValueKey('iptv-player-channel-next-button')),
+      findsOneWidget,
+    );
   });
 
   // ===========================================================================
@@ -344,6 +434,13 @@ void main() {
       find.byKey(const ValueKey('iptv-player-subtitle-button')),
       findsNothing,
     );
+    await tester.tap(find.byKey(const ValueKey('iptv-player-more-button')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(
+      find.byKey(const ValueKey('iptv-player-subtitle-menu-action')),
+      findsNothing,
+    );
 
     // playChannel() starts periodic timers (buffer monitor, live-edge
     // detector). testWidgets' pending-timer invariant check runs before
@@ -406,6 +503,13 @@ void main() {
 
       expect(
         find.byKey(const ValueKey('iptv-player-subtitle-button')),
+        findsNothing,
+      );
+      await tester.tap(find.byKey(const ValueKey('iptv-player-more-button')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(
+        find.byKey(const ValueKey('iptv-player-subtitle-menu-action')),
         findsOneWidget,
       );
 
@@ -423,9 +527,10 @@ void main() {
       // time out. This is enough to let the bottom-sheet's route transition
       // animation finish.
       await tester.tap(
-        find.byKey(const ValueKey('iptv-player-subtitle-button')),
+        find.byKey(const ValueKey('iptv-player-subtitle-menu-action')),
       );
       await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
       await tester.pump(const Duration(milliseconds: 300));
 
       expect(find.text('English'), findsOneWidget);
@@ -449,6 +554,294 @@ void main() {
       await service.stop();
     },
   );
+
+  testWidgets('subtitle selector exposes Off and clears the subtitle track', (
+    tester,
+  ) async {
+    final engine = FakeAiroPlaybackEngine(
+      tracks: const [
+        AiroPlaybackTrackOption(
+          id: 'external_sub_0',
+          kind: AiroPlaybackTrackKind.subtitle,
+          label: 'English',
+          isExternal: true,
+        ),
+      ],
+    );
+    final service = VideoPlayerStreamingService(engine: engine);
+    addTearDown(service.dispose);
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          iptvStreamingServiceProvider.overrideWithValue(service),
+        ],
+        child: const MaterialApp(home: Scaffold(body: VideoPlayerWidget())),
+      ),
+    );
+    await tester.pump();
+
+    await service.playChannel(
+      IPTVChannel(id: 'c1', name: 'Chan', streamUrl: 'https://x/y.m3u8'),
+    );
+    await tester.pump();
+
+    expect(
+      service.currentState.selectedTrackIds[AiroPlaybackTrackKind.subtitle],
+      'external_sub_0',
+    );
+
+    await tester.tap(find.byKey(const ValueKey('iptv-player-more-button')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.tap(
+      find.byKey(const ValueKey('iptv-player-subtitle-menu-action')),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.tap(find.widgetWithText(ListTile, 'Off'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(
+      service.currentState.selectedTrackIds[AiroPlaybackTrackKind.subtitle],
+      isNull,
+    );
+
+    await service.stop();
+  });
+
+  testWidgets(
+    'compact phone controls expose volume, channel, PiP, and quality actions',
+    (tester) async {
+      tester.view.physicalSize = const Size(432, 932);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      const current = IPTVChannel(
+        id: 'news-1',
+        name: 'City News Live',
+        streamUrl: 'https://example.com/news.m3u8',
+        qualityUrls: {'high': 'https://example.com/news-720.m3u8'},
+      );
+      const next = IPTVChannel(
+        id: 'sports-1',
+        name: 'Stadium Sports',
+        streamUrl: 'https://example.com/sports.m3u8',
+      );
+      final engine = FakeAiroPlaybackEngine(
+        tracks: const [
+          AiroPlaybackTrackOption(
+            id: 'external_sub_0',
+            kind: AiroPlaybackTrackKind.subtitle,
+            label: 'English',
+            isExternal: true,
+          ),
+        ],
+      );
+      final service = VideoPlayerStreamingService(engine: engine);
+      addTearDown(service.dispose);
+      var pipRequested = false;
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+
+      final container = ProviderContainer(
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          iptvStreamingServiceProvider.overrideWithValue(service),
+          iptvChannelsProvider.overrideWith(
+            (ref) async => const [current, next],
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+      await container.read(iptvChannelsProvider.future);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(
+            home: Scaffold(
+              body: VideoPlayerWidget(
+                enableSwipeChannelChange: true,
+                requestPictureInPicture: () async {
+                  pipRequested = true;
+                  return true;
+                },
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      await service.playChannel(current);
+      await tester.pump();
+
+      expect(
+        find.byKey(const ValueKey('iptv-player-volume-down-button')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('iptv-player-volume-up-button')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('iptv-player-channel-next-button')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('iptv-player-more-button')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('iptv-player-quality-button')),
+        findsNothing,
+      );
+      expect(
+        find.byKey(const ValueKey('iptv-player-pip-button')),
+        findsNothing,
+      );
+      expect(find.byKey(const ValueKey('player-overlay-back')), findsNothing);
+
+      await tester.tap(
+        find.byKey(const ValueKey('iptv-player-volume-down-button')),
+      );
+      await tester.pump();
+      expect(service.currentState.volume, closeTo(0.9, 0.001));
+
+      await tester.tap(find.byKey(const ValueKey('iptv-player-more-button')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.text('Player actions'), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('iptv-player-pip-menu-action')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('iptv-player-quality-menu-action')),
+        findsOneWidget,
+      );
+
+      await tester.tap(
+        find.byKey(const ValueKey('iptv-player-quality-menu-action')),
+      );
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.widgetWithText(ListTile, '720p'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(ListTile, '720p'));
+      await tester.pumpAndSettle();
+      expect(service.currentState.selectedQuality, VideoQuality.high);
+
+      await tester.tap(find.byKey(const ValueKey('iptv-player-more-button')));
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.byKey(const ValueKey('iptv-player-pip-menu-action')),
+      );
+      await tester.pumpAndSettle();
+      expect(pipRequested, isTrue);
+
+      await tester.tap(
+        find.byKey(const ValueKey('iptv-player-channel-next-button')),
+      );
+      await tester.pump();
+      expect(service.currentState.currentChannel?.id, 'sports-1');
+
+      await service.stop();
+    },
+  );
+
+  testWidgets('DVR rewind is disabled until the stream reports DVR support', (
+    tester,
+  ) async {
+    final service = _RecordingSeekStreamingService();
+    addTearDown(service.dispose);
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          iptvStreamingServiceProvider.overrideWithValue(service),
+          streamingStateProvider.overrideWith(
+            (ref) => Stream.value(
+              StreamingState(
+                playbackState: PlaybackState.playing,
+                isLiveStream: true,
+                hasDvrSupport: false,
+                position: const Duration(seconds: 30),
+                currentChannel: const IPTVChannel(
+                  id: 'news-1',
+                  name: 'City News Live',
+                  streamUrl: 'https://example.com/news.m3u8',
+                ),
+              ),
+            ),
+          ),
+        ],
+        child: const MaterialApp(home: Scaffold(body: VideoPlayerWidget())),
+      ),
+    );
+    await tester.pump();
+
+    final button = tester.widget<IconButton>(
+      find.descendant(
+        of: find.byKey(const ValueKey('iptv-player-dvr-rewind-button')),
+        matching: find.byType(IconButton),
+      ),
+    );
+    expect(button.onPressed, isNull);
+  });
+
+  testWidgets('DVR rewind seeks back ten seconds inside the DVR window', (
+    tester,
+  ) async {
+    final service = _RecordingSeekStreamingService();
+    addTearDown(service.dispose);
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          iptvStreamingServiceProvider.overrideWithValue(service),
+          streamingStateProvider.overrideWith(
+            (ref) => Stream.value(
+              StreamingState(
+                playbackState: PlaybackState.playing,
+                isLiveStream: true,
+                hasDvrSupport: true,
+                dvrWindowStart: const Duration(seconds: 5),
+                dvrWindowDuration: const Duration(minutes: 5),
+                position: const Duration(seconds: 30),
+                currentChannel: const IPTVChannel(
+                  id: 'news-1',
+                  name: 'City News Live',
+                  streamUrl: 'https://example.com/news.m3u8',
+                ),
+              ),
+            ),
+          ),
+        ],
+        child: const MaterialApp(home: Scaffold(body: VideoPlayerWidget())),
+      ),
+    );
+    await tester.pump();
+
+    await tester.tap(
+      find.byKey(const ValueKey('iptv-player-dvr-rewind-button')),
+    );
+    await tester.pump();
+
+    expect(service.seekedPositions, [const Duration(seconds: 20)]);
+  });
 
   testWidgets(
     'auto-applies the preferred caption language once tracks are available (CV-008 handoff)',
@@ -616,4 +1009,15 @@ void main() {
       expect(find.text('Switching to source 2 of 2'), findsOneWidget);
     },
   );
+}
+
+class _RecordingSeekStreamingService extends VideoPlayerStreamingService {
+  _RecordingSeekStreamingService() : super(engine: FakeAiroPlaybackEngine());
+
+  final seekedPositions = <Duration>[];
+
+  @override
+  Future<void> seek(Duration position) async {
+    seekedPositions.add(position);
+  }
 }

@@ -55,14 +55,14 @@ void main() {
 
     test('requires package override for non-TV Play profiles', () {
       final preflight = run(
-        profileId: 'iptv-standalone',
+        profileId: 'full',
         environment: const {
           'GOOGLE_PLAY_SERVICE_ACCOUNT_JSON': 'fixture-google-payload',
         },
       );
 
       expect(preflight.googlePlayReady, isFalse);
-      expect(preflight.expectedAndroidPackageName, 'io.airo.app.iptv');
+      expect(preflight.expectedAndroidPackageName, 'io.airo.app');
       expect(preflight.androidPackageName, 'io.airo.app.tv');
       expect(
         preflight.findings.map((finding) => finding.code),

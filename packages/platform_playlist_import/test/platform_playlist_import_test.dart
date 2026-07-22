@@ -146,6 +146,27 @@ https://example.com/bbc-world-news.m3u8
 
       expect(channels.single.name, 'BBC World News');
     });
+
+    test('canonicalizes category labels after M3U import', () {
+      final channels = parser.parseM3U('''
+#EXTM3U
+#EXTINF:-1 group-title="News",News One
+https://example.com/news-one.m3u8
+#EXTINF:-1 group-title=" news ",News Two
+https://example.com/news-two.m3u8
+#EXTINF:-1 group-title="NEWS",News Three
+https://example.com/news-three.m3u8
+#EXTINF:-1 group-title="horror   &   sci-fi",Horror One
+https://example.com/horror-one.m3u8
+''');
+
+      expect(channels.map((channel) => channel.group), [
+        'News',
+        'News',
+        'News',
+        'Horror & Sci-Fi',
+      ]);
+    });
   });
 
   group('M3UParserService URL policy', () {

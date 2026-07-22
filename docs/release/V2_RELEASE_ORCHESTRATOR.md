@@ -31,7 +31,7 @@ debug-symbol retention, and optional Play track upload remain owned by the TV
 workflow. The orchestrator disables the TV-only GitHub Release publisher and
 owns the aggregate multi-profile GitHub Release asset set.
 
-When `mobile_profile` is `iptv-standalone` or `mobile-streaming`, the
+When `mobile_profile` is `full`, the
 orchestrator calls `.github/workflows/airo-mobile-tablet-release.yml` to build
 the selected profile's APK and Play Store AAB, generate `SHA256SUMS`, write a
 release manifest, retain obfuscation symbols, optionally upload the AAB to a

@@ -2,7 +2,7 @@
 
 ## Overview
 
-This guide provides comprehensive testing procedures for Fire TV support in the Airo IPTV/Media Hub feature. Fire TV devices require specific testing for platform detection, safe zones, remote button mapping, and D-pad navigation.
+This guide provides comprehensive testing procedures for Fire TV support in the Airo TV Media Hub feature. Fire TV devices require specific testing for platform detection, safe zones, remote button mapping, and D-pad navigation.
 
 ---
 
@@ -89,7 +89,7 @@ flutter run -d <fire-tv-ip>:5555
 
 ### 1. Platform Detection Testing
 
-**Test ID:** `FTV-PD-001`  
+**Test ID:** `FTV-PD-001`
 **Objective:** Verify Fire TV is correctly detected as `TvPlatform.fireTv`
 
 **Steps:**
@@ -123,7 +123,7 @@ adb logcat | grep -i "TvPlatform\|FireTV\|device_info"
 
 ### 2. Safe Zone Testing
 
-**Test ID:** `FTV-SZ-001`  
+**Test ID:** `FTV-SZ-001`
 **Objective:** Verify Fire TV safe zones (48dp horizontal, 27dp vertical) are applied
 
 **Steps:**
@@ -432,4 +432,3 @@ if (Build.MANUFACTURER.equals("Amazon", ignoreCase = true)) {
 - [TV Input Handler](../../../app/lib/core/tv/tv_input_handler.dart) - D-pad key mapping
 - [Device Form Factor](../../../app/lib/core/platform/device_form_factor.dart) - Platform detection
 - [TV Channel Grid](../../../app/lib/features/iptv/presentation/widgets/tv_channel_grid.dart) - Channel grid widget
-

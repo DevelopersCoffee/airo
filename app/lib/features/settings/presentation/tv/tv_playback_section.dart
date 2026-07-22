@@ -12,6 +12,7 @@ class TvPlaybackSection extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final current = ref.watch(videoAspectRatioProvider);
+    final pipEnabled = ref.watch(pictureInPicturePreferenceProvider);
     final extraSections = ref.watch(playbackSettingsExtraSectionsProvider);
     final colorScheme = Theme.of(context).colorScheme;
 
@@ -33,6 +34,14 @@ class TvPlaybackSection extends ConsumerWidget {
               colorScheme: colorScheme,
             ),
           ),
+        const SizedBox(height: 24),
+        _PictureInPictureOption(
+          enabled: pipEnabled,
+          onSelect: () => ref
+              .read(pictureInPicturePreferenceProvider.notifier)
+              .setEnabled(!pipEnabled),
+          colorScheme: colorScheme,
+        ),
         if (extraSections.isNotEmpty) const SizedBox(height: 24),
         ...extraSections,
       ],
@@ -48,6 +57,65 @@ class TvPlaybackSection extends ConsumerWidget {
       AiroPlaybackViewFit.fill => 'Fill width',
       AiroPlaybackViewFit.stretch => 'Stretch to fill',
     };
+  }
+}
+
+class _PictureInPictureOption extends StatelessWidget {
+  const _PictureInPictureOption({
+    required this.enabled,
+    required this.onSelect,
+    required this.colorScheme,
+  });
+
+  final bool enabled;
+  final VoidCallback onSelect;
+  final ColorScheme colorScheme;
+
+  @override
+  Widget build(BuildContext context) {
+    return TvFocusable(
+      onSelect: onSelect,
+      semanticLabel: 'Picture-in-picture',
+      semanticButton: true,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Icon(
+                Icons.picture_in_picture_alt_outlined,
+                color: colorScheme.onSurface,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Picture-in-picture',
+                      style: TextStyle(
+                        color: colorScheme.onSurface,
+                        fontSize: 16,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Automatically keep video playing when you leave the app.',
+                      style: TextStyle(color: colorScheme.onSurfaceVariant),
+                    ),
+                  ],
+                ),
+              ),
+              Switch(value: enabled, onChanged: (_) => onSelect()),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 

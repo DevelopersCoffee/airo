@@ -11,7 +11,7 @@
 ///
 /// Usage:
 /// ```dart
-/// // In main_mobile_streaming.dart or main.dart
+/// // In the full Airo entrypoint.
 /// FeatureRegistry.register(MusicFeatureModule());
 /// ```
 ///
@@ -31,7 +31,7 @@ import 'presentation/screens/music_screen.dart';
 ///
 /// Provides music streaming routes and services.
 /// Automatically enabled for platforms that support music
-/// (mobileStreaming, mobileFull, iPad).
+/// (mobileFull and iPad).
 class MusicFeatureModule extends AppFeatureModule {
   bool _audioInitialized = false;
 

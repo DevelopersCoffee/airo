@@ -428,13 +428,13 @@ class AiroReleaseMatrix extends Equatable {
     return AiroReleaseMatrix(
       profiles: [
         AiroReleaseProfile(
-          id: 'iptv-standalone',
-          displayName: 'Airo IPTV',
-          artifactNamePart: 'IPTV',
+          id: 'full',
+          displayName: 'Airo',
+          artifactNamePart: 'Full',
           releaseLine: AiroReleaseLine.v2,
-          packageId: 'io.airo.app.iptv',
-          entrypoint: 'app/lib/main_airo_iptv.dart',
-          pubspec: 'app/pubspec_iptv.yaml',
+          packageId: 'io.airo.app',
+          entrypoint: 'app/lib/main.dart',
+          pubspec: 'app/pubspec.yaml',
           abiStrategy: AiroReleaseAbiStrategy.singleArm64Apk,
           deviceClasses: const {
             AiroReleaseDeviceClass.androidPhone,
@@ -449,35 +449,7 @@ class AiroReleaseMatrix extends Equatable {
           artifactKinds: androidArtifactKinds,
           distributionRules: mobileDistributionRules,
           tabletStrategy: AiroReleaseTabletStrategy.adaptiveMobileArtifact,
-          decisionNote:
-              'First public mobile profile and tablet listing strategy remain '
-              'maintainer decisions.',
-        ),
-        AiroReleaseProfile(
-          id: 'mobile-streaming',
-          displayName: 'Airo Streaming',
-          artifactNamePart: 'Streaming',
-          releaseLine: AiroReleaseLine.v2,
-          packageId: 'io.airo.app.streaming',
-          entrypoint: 'app/lib/main_mobile_streaming.dart',
-          pubspec: 'app/pubspec_streaming.yaml',
-          abiStrategy: AiroReleaseAbiStrategy.singleArm64Apk,
-          deviceClasses: const {
-            AiroReleaseDeviceClass.androidPhone,
-            AiroReleaseDeviceClass.androidTablet,
-          },
-          supportStatuses: const {
-            AiroReleaseDeviceClass.androidPhone:
-                AiroReleaseSupportStatus.supported,
-            AiroReleaseDeviceClass.androidTablet:
-                AiroReleaseSupportStatus.adaptiveSupported,
-          },
-          artifactKinds: androidArtifactKinds,
-          distributionRules: mobileDistributionRules,
-          tabletStrategy: AiroReleaseTabletStrategy.adaptiveMobileArtifact,
-          decisionNote:
-              'First public mobile profile and tablet listing strategy remain '
-              'maintainer decisions.',
+          decisionNote: 'Airo is the full phone and tablet product.',
         ),
         AiroReleaseProfile(
           id: 'tv',
@@ -564,7 +536,7 @@ class AiroReleaseMatrix extends Equatable {
           artifactNamePart: 'Web-Validation',
           releaseLine: AiroReleaseLine.v2,
           packageId: 'web',
-          entrypoint: 'app/lib/main_airo_iptv.dart',
+          entrypoint: 'app/lib/main.dart',
           pubspec: 'app/pubspec.yaml',
           abiStrategy: AiroReleaseAbiStrategy.notApplicable,
           deviceClasses: const {AiroReleaseDeviceClass.web},

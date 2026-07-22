@@ -13,11 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 REPORT_FILENAME = "Release-Qualification-Report.md"
 
 PROFILE_REQUIREMENTS = {
-    "iptv-standalone": [
-        ("android-phone", "physical-device"),
-        ("android-tablet", "wide-layout"),
-    ],
-    "mobile-streaming": [
+    "full": [
         ("android-phone", "physical-device"),
         ("android-tablet", "wide-layout"),
     ],

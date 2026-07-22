@@ -3,9 +3,7 @@ import 'package:flutter/material.dart';
 /// Mobile hamburger-menu drawer for the IPTV screen, mirroring the
 /// destinations already reachable from the Android TV navigation rail
 /// (`_TvNavigationRail` in `app/lib/core/app/tv_shell.dart`): Home, Guide,
-/// Movies & Shows, and Favorites. TV's remaining rail destination
-/// (Settings) is reached on mobile via the Profile tab's Settings hub
-/// instead of this drawer.
+/// Movies & Shows, Favorites, and Settings.
 class IptvNavigationDrawer extends StatelessWidget {
   const IptvNavigationDrawer({
     super.key,
@@ -13,6 +11,7 @@ class IptvNavigationDrawer extends StatelessWidget {
     required this.onGuide,
     required this.onMovies,
     required this.onFavorites,
+    this.onSettings,
     this.showMovies = true,
     this.onPlayLocalFileOnTv,
   });
@@ -21,6 +20,7 @@ class IptvNavigationDrawer extends StatelessWidget {
   final VoidCallback onGuide;
   final VoidCallback onMovies;
   final VoidCallback onFavorites;
+  final VoidCallback? onSettings;
   final bool showMovies;
 
   /// CV-033 debug entry point: streams a phone-local file to a receiver.
@@ -66,6 +66,13 @@ class IptvNavigationDrawer extends StatelessWidget {
               title: const Text('Favorites'),
               onTap: () => _select(context, onFavorites),
             ),
+            if (onSettings case final onSettings?)
+              ListTile(
+                key: const ValueKey('iptv-drawer-settings'),
+                leading: const Icon(Icons.settings_outlined),
+                title: const Text('Settings'),
+                onTap: () => _select(context, onSettings),
+              ),
             if (onPlayLocalFileOnTv case final onPlayLocalFileOnTv?)
               ListTile(
                 key: const ValueKey('iptv-drawer-play-on-tv'),
