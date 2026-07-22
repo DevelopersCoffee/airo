@@ -1,5 +1,6 @@
 import 'package:feature_iptv/presentation/tv_ux/sections/remote_overlay.dart';
 import 'package:flutter/material.dart';
+import 'package:core_ui/core_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:platform_channels/platform_channels.dart';
 
@@ -51,5 +52,29 @@ void main() {
 
     expect(find.byKey(const ValueKey('remote-channel-next')), findsNothing);
     expect(find.byKey(const ValueKey('remote-random')), findsOneWidget);
+  });
+
+  test('hardware channel keys map without drawing touch controls', () {
+    var next = 0;
+    var previous = 0;
+
+    expect(
+      handleRemoteOverlayInput(
+        TvInputKey.channelUp,
+        onChannelNext: () => next++,
+        onChannelPrevious: () => previous++,
+      ),
+      TvInputResult.handled,
+    );
+    expect(
+      handleRemoteOverlayInput(
+        TvInputKey.channelDown,
+        onChannelNext: () => next++,
+        onChannelPrevious: () => previous++,
+      ),
+      TvInputResult.handled,
+    );
+    expect(next, 1);
+    expect(previous, 1);
   });
 }

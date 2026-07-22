@@ -15,6 +15,23 @@ IPTVChannel? randomFilteredChannel(
   return channels[index];
 }
 
+TvInputResult handleRemoteOverlayInput(
+  TvInputKey key, {
+  VoidCallback? onChannelPrevious,
+  VoidCallback? onChannelNext,
+}) {
+  switch (key) {
+    case TvInputKey.channelUp:
+      onChannelNext?.call();
+      return TvInputResult.handled;
+    case TvInputKey.channelDown:
+      onChannelPrevious?.call();
+      return TvInputResult.handled;
+    default:
+      return TvInputResult.notHandled;
+  }
+}
+
 /// Touch controls over the video stage. TV surfaces retain hardware input and
 /// expose only the random action as a focus stop in the surrounding shell.
 class RemoteOverlay extends StatefulWidget {
