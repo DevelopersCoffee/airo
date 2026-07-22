@@ -13,20 +13,18 @@ void main() {
         AiroFirebaseAndroidClientPreflightRequest(
           expectedClients: expectations,
           googleServicesJson: _googleServicesJson({
-            'io.airo.app.iptv': '1:906799550225:android:iptvreal',
-            'io.airo.app.streaming': '1:906799550225:android:streamreal',
+            'io.airo.app': '1:906799550225:android:fullreal',
           }),
           firebaseOptionsSource: _firebaseOptionsSource({
-            'androidIptv': '1:906799550225:android:iptvreal',
-            'androidStreaming': '1:906799550225:android:streamreal',
+            'android': '1:906799550225:android:fullreal',
           }),
         ),
       );
 
       expect(preflight.ready, isTrue);
       expect(preflight.findings, isEmpty);
-      expect(preflight.googleServicesClients.length, 2);
-      expect(preflight.firebaseOptions.length, 2);
+      expect(preflight.googleServicesClients.length, 1);
+      expect(preflight.firebaseOptions.length, 1);
     });
 
     test('blocks missing google-services clients and option blocks', () {
@@ -37,7 +35,7 @@ void main() {
             'io.airo.app': '1:906799550225:android:full',
           }),
           firebaseOptionsSource: _firebaseOptionsSource({
-            'androidStreaming': 'TODO_REGISTER_IO_AIRO_APP_STREAMING',
+            'android': 'TODO_REGISTER_IO_AIRO_APP',
           }),
         ),
       );
@@ -45,11 +43,9 @@ void main() {
       expect(preflight.ready, isFalse);
       expect(
         preflight.findings.map((finding) => finding.code),
-        containsAll(const {
-          AiroFirebaseAndroidClientFindingCode.missingGoogleServicesClient,
-          AiroFirebaseAndroidClientFindingCode.missingFirebaseOptionsBlock,
+        contains(
           AiroFirebaseAndroidClientFindingCode.placeholderFirebaseOptionsAppId,
-        }),
+        ),
       );
     });
 
@@ -58,12 +54,10 @@ void main() {
         AiroFirebaseAndroidClientPreflightRequest(
           expectedClients: expectations,
           googleServicesJson: _googleServicesJson({
-            'io.airo.app.iptv': '1:906799550225:android:iptvreal',
-            'io.airo.app.streaming': '1:906799550225:android:streamreal',
+            'io.airo.app': '1:906799550225:android:fullreal',
           }),
           firebaseOptionsSource: _firebaseOptionsSource({
-            'androidIptv': '1:906799550225:android:wrong1',
-            'androidStreaming': '1:906799550225:android:wrong2',
+            'android': '1:906799550225:android:wrong1',
           }),
         ),
       );
@@ -78,8 +72,8 @@ void main() {
         ),
       );
       expect(publicOutput, isNot(contains('fixture-api-key')));
-      expect(publicOutput, isNot(contains('iptvreal')));
-      expect(publicOutput, contains('1:...tvreal'));
+      expect(publicOutput, isNot(contains('fullreal')));
+      expect(publicOutput, contains('1:...wrong1'));
     });
 
     test(
@@ -88,16 +82,16 @@ void main() {
         final expected =
             AiroFirebaseAndroidClientPreflightRunner.expectationsFromReleaseProfiles(
               matrix: AiroReleaseMatrix.v2Default(),
-              profileIds: const ['iptv-standalone', 'mobile-streaming'],
+              profileIds: const ['full', 'tv'],
             );
 
         expect(expected.map((client) => client.packageName), [
-          'io.airo.app.iptv',
-          'io.airo.app.streaming',
+          'io.airo.app',
+          'io.airo.app.tv',
         ]);
         expect(expected.map((client) => client.firebaseOptionsName), [
-          'androidIptv',
-          'androidStreaming',
+          'android',
+          'androidTv',
         ]);
       },
     );
@@ -115,7 +109,7 @@ void main() {
 
       expect(markdown, contains('# Firebase Android Client Preflight'));
       expect(markdown, contains('missing_google_services_client'));
-      expect(markdown, contains('io.airo.app.streaming'));
+      expect(markdown, contains('io.airo.app'));
     });
   });
 }

@@ -17,6 +17,7 @@ import '../widgets/iptv_cast_mini_controller.dart';
 import '../widgets/iptv_navigation_drawer.dart';
 import '../widgets/phone_media_play_on_tv_sheet.dart';
 import '../widgets/video_player_widget.dart';
+import '../widgets/xmltv_source_sheet.dart';
 import '../tv/iptv_guide_screen.dart';
 import '../tv_ux/airo_tv_shell.dart';
 import '../tv_ux/iptv_resume_gate.dart';
@@ -26,6 +27,7 @@ import 'mobile_favorites_screen.dart';
 class IPTVScreen extends ConsumerStatefulWidget {
   const IPTVScreen({
     this.onOpenVod,
+    this.onSettings,
     this.onPickLocalMediaForTv,
     this.deepLinkChannelId,
     super.key,
@@ -38,6 +40,10 @@ class IPTVScreen extends ConsumerStatefulWidget {
   /// [IPTVScreen] for the `/iptv` route (see [IptvGuideScreen.onChannelSelected]
   /// for the same pattern).
   final VoidCallback? onOpenVod;
+
+  /// Invoked when the compact Airo TV drawer opens Settings. App-owned
+  /// because the feature package does not depend on go_router or app routes.
+  final VoidCallback? onSettings;
 
   /// CV-033 debug entry point: resolves a phone-local file into a
   /// [PhoneLocalMediaItem], or null if the user cancelled. Left as an
@@ -189,6 +195,11 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
       SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
     }
+  }
+
+  void _exitFullscreen() {
+    if (!ref.read(isFullscreenModeProvider)) return;
+    _toggleFullscreen();
   }
 
   void _playChannel(IPTVChannel channel) {
@@ -465,6 +476,10 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
     await showPlaylistSourceSheet(context, ref);
   }
 
+  Future<void> _showGuideSourceSheet() async {
+    await showXmltvSourceSheet(context);
+  }
+
   Future<void> _openGuide() async {
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
@@ -510,6 +525,7 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
         backgroundColor: Colors.black,
         body: VideoPlayerWidget(
           showControls: true,
+          initiallyFullscreen: true,
           onFullscreenToggle: _toggleFullscreen,
         ),
       );
@@ -565,12 +581,20 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
     }
 
     if (showFullscreenPlayer) {
-      return AiroResponsiveScaffold(
-        padding: EdgeInsets.zero,
-        backgroundColor: Colors.black,
-        body: VideoPlayerWidget(
-          showControls: true,
-          onFullscreenToggle: _toggleFullscreen,
+      return PopScope<void>(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, _) {
+          if (!didPop) _exitFullscreen();
+        },
+        child: AiroResponsiveScaffold(
+          padding: EdgeInsets.zero,
+          backgroundColor: Colors.black,
+          body: VideoPlayerWidget(
+            showControls: true,
+            initiallyFullscreen: true,
+            onFullscreenToggle: _toggleFullscreen,
+            enableSwipeChannelChange: true,
+          ),
         ),
       );
     }
@@ -583,6 +607,7 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
         onGuide: _openGuide,
         onMovies: () => widget.onOpenVod?.call(),
         onFavorites: _openFavorites,
+        onSettings: widget.onSettings,
         onPlayLocalFileOnTv: widget.onPickLocalMediaForTv == null
             ? null
             : _playLocalFileOnTv,
@@ -605,6 +630,11 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
             icon: const Icon(Icons.link),
             tooltip: 'Playlist source',
             onPressed: _showPlaylistSheet,
+          ),
+          IconButton(
+            icon: const Icon(Icons.calendar_month_outlined),
+            tooltip: 'Guide URL',
+            onPressed: _showGuideSourceSheet,
           ),
           if (isGoogleCastSenderPlatform)
             IconButton(
@@ -680,6 +710,11 @@ class _IPTVScreenBodyState extends ConsumerState<IPTVScreenBody> {
     }
   }
 
+  void _exitFullscreen() {
+    if (!ref.read(isFullscreenModeProvider)) return;
+    _toggleFullscreen();
+  }
+
   void _playChannel(IPTVChannel channel) {
     final castState = ref.read(iptvCastProvider);
     if (castState.activeDevice != null) {
@@ -727,14 +762,21 @@ class _IPTVScreenBodyState extends ConsumerState<IPTVScreenBody> {
         return FadeTransition(opacity: animation, child: child);
       },
       child: isFullscreen
-          ? AiroResponsiveScaffold(
-              key: const ValueKey('fullscreen'),
-              padding: EdgeInsets.zero,
-              backgroundColor: Colors.black,
-              body: VideoPlayerWidget(
-                showControls: true,
-                onFullscreenToggle: _toggleFullscreen,
-                enableSwipeChannelChange: true,
+          ? PopScope<void>(
+              canPop: false,
+              onPopInvokedWithResult: (didPop, _) {
+                if (!didPop) _exitFullscreen();
+              },
+              child: AiroResponsiveScaffold(
+                key: const ValueKey('fullscreen'),
+                padding: EdgeInsets.zero,
+                backgroundColor: Colors.black,
+                body: VideoPlayerWidget(
+                  showControls: true,
+                  initiallyFullscreen: true,
+                  onFullscreenToggle: _toggleFullscreen,
+                  enableSwipeChannelChange: true,
+                ),
               ),
             )
           : KeyedSubtree(
@@ -804,9 +846,30 @@ class _StreamTabContent extends ConsumerWidget {
         aspectRatio: 16 / 9,
         child: activeChannel == null
             ? const Center(child: Text('Select a channel to start watching'))
-            : VideoPlayerWidget(
-                showControls: true,
-                onFullscreenToggle: onFullscreenToggle,
+            : Stack(
+                fit: StackFit.expand,
+                children: [
+                  VideoPlayerWidget(
+                    showControls: true,
+                    enableSwipeChannelChange: true,
+                    onFullscreenToggle: onFullscreenToggle,
+                  ),
+                  Positioned(
+                    top: 8,
+                    left: 8,
+                    child: Material(
+                      color: Colors.black.withValues(alpha: 0.48),
+                      shape: const CircleBorder(),
+                      child: IconButton(
+                        key: const ValueKey('iptv-preview-fullscreen-button'),
+                        tooltip: 'Open full player',
+                        icon: const Icon(Icons.fullscreen),
+                        color: Colors.white,
+                        onPressed: onFullscreenToggle,
+                      ),
+                    ),
+                  ),
+                ],
               ),
       ),
     );

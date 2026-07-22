@@ -1,5 +1,10 @@
 # Modular Super App Architecture - Sprint Plan
 
+> **Historical plan — superseded on 2026-07-22.** This document records a
+> previous multi-target proposal and is not an active product, build, or
+> release contract. Current targets are defined by
+> `docs/release/V2_DISTRIBUTION_MATRIX.md` and `AiroReleaseMatrix.v2Default()`.
+
 ## Executive Summary
 
 This document outlines the comprehensive sprint plan for transforming the Airo Super App from a monolithic 323MB APK into a modular platform architecture with platform-specific builds.

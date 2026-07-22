@@ -50,16 +50,123 @@ void main() {
     );
   });
 
-  test('metadata dimensions exclude values that have no verified metadata', () {
+  test('playlist country and language values backfill missing enrichment', () {
     final dimensions = channelFilterDimensions(
       channels: channels,
       metadataByChannelId: const {},
     );
 
     expect(dimensions.categories, {'News', 'Sports'});
-    expect(dimensions.countries, isEmpty);
-    expect(dimensions.languages, isEmpty);
+    expect(dimensions.countries, {'IN'});
+    expect(dimensions.languages, {'en'});
   });
+
+  test(
+    'category dimensions and matching deduplicate case and spacing variants',
+    () {
+      const duplicateCategories = [
+        IPTVChannel(
+          id: 'news-title',
+          name: 'News title case',
+          streamUrl: 'https://example.test/news-title',
+          group: 'News',
+        ),
+        IPTVChannel(
+          id: 'news-spaced',
+          name: 'News spaced',
+          streamUrl: 'https://example.test/news-spaced',
+          group: ' news ',
+        ),
+        IPTVChannel(
+          id: 'news-upper',
+          name: 'News upper',
+          streamUrl: 'https://example.test/news-upper',
+          group: 'NEWS',
+        ),
+        IPTVChannel(
+          id: 'sports',
+          name: 'Sports',
+          streamUrl: 'https://example.test/sports',
+          group: 'Sports',
+        ),
+      ];
+
+      expect(
+        channelFilterDimensions(
+          channels: duplicateCategories,
+          metadataByChannelId: const {},
+        ).categories,
+        {'News', 'Sports'},
+      );
+      expect(
+        applyChannelFilters(
+          channels: duplicateCategories,
+          filters: const ChannelFilters(category: 'News'),
+          metadataByChannelId: const {},
+        ).map((channel) => channel.id),
+        ['news-title', 'news-spaced', 'news-upper'],
+      );
+    },
+  );
+
+  test('country limits language dimensions before a language is selected', () {
+    const mixed = [
+      IPTVChannel(
+        id: 'india',
+        name: 'India English',
+        streamUrl: 'https://example.test/india',
+        country: 'IN',
+        languages: ['en', 'hi'],
+      ),
+      IPTVChannel(
+        id: 'italy',
+        name: 'Italy Italian',
+        streamUrl: 'https://example.test/italy',
+        country: 'IT',
+        languages: ['it'],
+      ),
+    ];
+
+    final dimensions = channelFilterDimensions(
+      channels: mixed,
+      metadataByChannelId: const {},
+      country: 'IT',
+    );
+
+    expect(dimensions.countries, {'IN', 'IT'});
+    expect(dimensions.languages, {'it'});
+  });
+
+  test(
+    'country and language filters use playlist values without enrichment',
+    () {
+      const mixed = [
+        IPTVChannel(
+          id: 'india',
+          name: 'India English',
+          streamUrl: 'https://example.test/india',
+          country: 'IN',
+          languages: ['en'],
+        ),
+        IPTVChannel(
+          id: 'italy',
+          name: 'Italy Italian',
+          streamUrl: 'https://example.test/italy',
+          country: 'IT',
+          languages: ['it'],
+        ),
+      ];
+
+      expect(
+        applyChannelFilters(
+          channels: mixed,
+          filters: const ChannelFilters(country: 'IT', language: 'it'),
+          metadataByChannelId: const {},
+        ).map((channel) => channel.id),
+        ['italy'],
+      );
+    },
+  );
 
   test('sort reverses and composes with a filter', () {
     const filters = ChannelFilters(category: 'News');
@@ -82,6 +189,37 @@ void main() {
     );
   });
 
+  test('browser snapshot cache reuses derived list for unchanged inputs', () {
+    final cache = ChannelBrowserSnapshotCache();
+
+    final first = cache.resolve(
+      channels: channels,
+      metadataByChannelId: metadata,
+      filters: const ChannelFilters(category: 'News'),
+      sort: const ChannelSort(),
+    );
+    final second = cache.resolve(
+      channels: channels,
+      metadataByChannelId: metadata,
+      filters: const ChannelFilters(category: 'News'),
+      sort: const ChannelSort(),
+    );
+    final changed = cache.resolve(
+      channels: channels,
+      metadataByChannelId: metadata,
+      filters: const ChannelFilters(category: 'Sports'),
+      sort: const ChannelSort(),
+    );
+
+    expect(identical(first, second), isTrue);
+    expect(identical(first, changed), isFalse);
+    expect(first.visibleChannels.map((channel) => channel.id), [
+      'alpha',
+      'gamma',
+    ]);
+    expect(changed.visibleChannels.map((channel) => channel.id), ['beta']);
+  });
+
   test('filter state survives a fresh provider container', () async {
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
@@ -100,5 +238,30 @@ void main() {
       restarted.read(channelFiltersProvider),
       const ChannelFilters(country: 'IN', language: 'hi'),
     );
+  });
+
+  test('changing country clears a previously selected language', () async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    final container = ProviderContainer(
+      overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+    );
+    addTearDown(container.dispose);
+
+    container.read(channelFiltersProvider.notifier).setLanguage('en');
+    container.read(channelFiltersProvider.notifier).setCountry('IT');
+
+    expect(
+      container.read(channelFiltersProvider),
+      const ChannelFilters(country: 'IT'),
+    );
+  });
+
+  test('country labels use complete country names for common IPTV codes', () {
+    expect(countryDisplayLabel('IN'), '🇮🇳 India');
+    expect(countryDisplayLabel('AE'), '🇦🇪 United Arab Emirates');
+    expect(countryDisplayLabel('KR'), '🇰🇷 South Korea');
+    expect(countryDisplayLabel('ZA'), '🇿🇦 South Africa');
+    expect(countryDisplayLabel('gb'), '🇬🇧 United Kingdom');
   });
 }

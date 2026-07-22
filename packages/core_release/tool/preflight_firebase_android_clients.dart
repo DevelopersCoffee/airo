@@ -165,7 +165,6 @@ Options:
   --help                         Show this help
 
 Default expected clients:
-  io.airo.app.iptv=androidIptv
-  io.airo.app.streaming=androidStreaming
+  io.airo.app=android
 ''');
 }

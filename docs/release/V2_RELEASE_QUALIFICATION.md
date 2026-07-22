@@ -50,10 +50,8 @@ approved waiver.
 
 | Profile | Device class | Required evidence | Public release behavior |
 | --- | --- | --- | --- |
-| `iptv-standalone` | Android phone | Physical-device APK install and launch evidence | Required or waiver |
-| `iptv-standalone` | Android tablet / wide layout | Physical-device or managed-device wide-layout evidence | Required or waiver |
-| `mobile-streaming` | Android phone | Physical-device APK install and launch evidence | Required or waiver |
-| `mobile-streaming` | Android tablet / wide layout | Physical-device or managed-device wide-layout evidence | Required or waiver |
+| `full` | Android phone | Physical-device APK install and launch evidence | Required or waiver |
+| `full` | Android tablet / wide layout | Physical-device or managed-device wide-layout evidence | Required or waiver |
 | `tv` | Android TV / Google TV | Physical-device APK install and Leanback launch evidence | Required or waiver |
 | `tv` | Fire TV | Physical-device APK install and remote-navigation evidence | Required or waiver while support is compatible/experimental |
 | `tv` | iPad / iOS | Physical-device 30-min soak test evidence (Peak RAM ≤ 250 MiB, 0 leaks) | Verified |

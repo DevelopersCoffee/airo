@@ -73,6 +73,26 @@ void main() {
     );
   });
 
+  test('master playlist keeps child media playlist behind proxy', () async {
+    final originUrl = Uri.parse(
+      'http://${origin.address.address}:${origin.port}/playlist.m3u8',
+    );
+    final masterUrl = proxy.masterPlaylistUrl(
+      originUrl,
+      codecs: 'hvc1.1.6.L93.B0,mp4a.40.2',
+    );
+
+    final client = HttpClient();
+    final response = await (await client.getUrl(masterUrl)).close();
+    final body = await response.transform(utf8.decoder).join();
+    client.close(force: true);
+
+    expect(response.headers.value('access-control-allow-origin'), '*');
+    expect(body, contains('CODECS="hvc1.1.6.L93.B0,mp4a.40.2"'));
+    expect(body, contains(proxy.proxiedUrl(originUrl).toString()));
+    expect(body, isNot(contains('${originUrl.toString()}\n')));
+  });
+
   test('proxies segment bytes and attaches CORS headers', () async {
     final originUrl = Uri.parse(
       'http://${origin.address.address}:${origin.port}/segment1.ts',

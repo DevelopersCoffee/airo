@@ -30,8 +30,7 @@ release APK exceeds the profile budget or the approved baseline growth limit.
 
 Current enforced edge profiles:
 
-- `iptv-standalone`
-- `mobile-streaming`
+- `full`
 - `tv`
 
 `mobile-full` remains report-only because it is the v1 monolith line.

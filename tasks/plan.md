@@ -30,7 +30,7 @@ previously conflicting evidence:
 - `docs/index.html` describes **Airo TV v0.0.3** as available.
 - `docs/release/AIRO_TV_FEATURE_MATRIX.md` still says its unshipped items are
   “not included in v0.0.2”.
-- `app/pubspec_iptv.yaml` and `app/pubspec_streaming.yaml` currently use
+- Legacy lean target pubspecs formerly used
   `0.0.3-rc.1+3`.
 
 The release owner must inspect the published GitHub release assets/notes,

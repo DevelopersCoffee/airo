@@ -115,6 +115,24 @@ void main() {
       expect(autoEnterCalls, isEmpty);
     });
 
+    test('disabled PiP preference never arms native auto-enter', () async {
+      final autoEnterCalls = <bool>[];
+      final coordinator = PlayerBackgroundingCoordinator(
+        isActive: () async => false,
+        isSupported: () async => true,
+        isPictureInPictureEnabled: () => false,
+        requestEnter: () async => true,
+        setAutoEnter: (enabled) async => autoEnterCalls.add(enabled),
+        setAudioOnly: (_) async {},
+      );
+
+      coordinator.onStreamingStateChanged(_playingState());
+      await Future<void>.delayed(Duration.zero);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(autoEnterCalls, isEmpty);
+    });
+
     test('backgrounding with no prior manual toggle tries PiP first', () async {
       var requestEnterCalled = false;
       final coordinator = PlayerBackgroundingCoordinator(
@@ -149,6 +167,29 @@ void main() {
         _playingState(),
       );
 
+      expect(audioOnlySet, isTrue);
+    });
+
+    test('disabled PiP preference falls back to audio-only', () async {
+      var requestEnterCalled = false;
+      bool? audioOnlySet;
+      final coordinator = PlayerBackgroundingCoordinator(
+        isActive: () async => false,
+        isSupported: () async => true,
+        isPictureInPictureEnabled: () => false,
+        requestEnter: () async {
+          requestEnterCalled = true;
+          return true;
+        },
+        setAudioOnly: (enabled) async => audioOnlySet = enabled,
+      );
+
+      await coordinator.onLifecycleStateChanged(
+        AppLifecycleState.paused,
+        _playingState(),
+      );
+
+      expect(requestEnterCalled, isFalse);
       expect(audioOnlySet, isTrue);
     });
 

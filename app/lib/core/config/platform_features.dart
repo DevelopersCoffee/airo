@@ -24,10 +24,6 @@ enum AppPlatform {
   /// Package: io.airo.app
   mobileFull,
 
-  /// Mobile streaming app - music + IPTV only
-  /// Package: io.airo.app.streaming
-  mobileStreaming,
-
   /// Android TV / Fire TV - IPTV only
   /// Package: io.airo.app.tv
   androidTv,
@@ -90,8 +86,6 @@ class PlatformFeatures {
     switch (_platformString) {
       case 'androidTv':
         return AppPlatform.androidTv;
-      case 'mobileStreaming':
-        return AppPlatform.mobileStreaming;
       case 'iPad':
         return AppPlatform.iPad;
       default:
@@ -110,7 +104,6 @@ class PlatformFeatures {
       AppFeature.reader,
       AppFeature.ocr,
     },
-    AppPlatform.mobileStreaming: {AppFeature.iptv, AppFeature.music},
     AppPlatform.androidTv: {AppFeature.iptv},
     AppPlatform.iPad: {AppFeature.iptv, AppFeature.music, AppFeature.reader},
   };
@@ -127,9 +120,7 @@ class PlatformFeatures {
   static bool get isTV => current == AppPlatform.androidTv;
 
   /// Check if the current platform is mobile
-  static bool get isMobile =>
-      current == AppPlatform.mobileFull ||
-      current == AppPlatform.mobileStreaming;
+  static bool get isMobile => current == AppPlatform.mobileFull;
 
   /// Check if the current platform is tablet
   static bool get isTablet => current == AppPlatform.iPad;

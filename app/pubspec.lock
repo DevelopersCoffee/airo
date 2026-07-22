@@ -1981,12 +1981,11 @@ packages:
     source: hosted
     version: "2.1.2"
   screen_protector:
-    dependency: transitive
+    dependency: "direct overridden"
     description:
-      name: screen_protector
-      sha256: "66f2ffbfbe7acc26db49de893e0c49078c67b546c27a57958d9bd9901f77c38e"
-      url: "https://pub.dev"
-    source: hosted
+      path: "../packages/third_party/screen_protector"
+      relative: true
+    source: path
     version: "1.5.3"
   screenshot:
     dependency: "direct main"

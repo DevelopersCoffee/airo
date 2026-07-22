@@ -2,7 +2,9 @@ import 'dart:async';
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:platform_channels/platform_channels.dart';
 import '../../application/player_backgrounding_coordinator.dart';
 import '../../application/providers/caption_preference_provider.dart';
 import '../../application/providers/iptv_providers.dart';
@@ -42,6 +44,9 @@ class VideoPlayerWidget extends ConsumerStatefulWidget {
   /// revert-on-failure path in tests.
   final Future<void> Function(bool enabled)? setAudioOnlyMode;
 
+  /// Test seam for explicit system PiP. Defaults to the native PiP channel.
+  final Future<bool> Function()? requestPictureInPicture;
+
   const VideoPlayerWidget({
     super.key,
     this.showControls = true,
@@ -52,6 +57,7 @@ class VideoPlayerWidget extends ConsumerStatefulWidget {
     this.brightnessController,
     this.onBack,
     this.setAudioOnlyMode,
+    this.requestPictureInPicture,
   });
 
   @override
@@ -208,6 +214,19 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
         .manualAudioOnlyToggled(next);
   }
 
+  Future<void> _requestPictureInPicture() async {
+    final request =
+        widget.requestPictureInPicture ??
+        AiroNativePictureInPicture.requestEnter;
+    final entered = await request();
+    if (!mounted || entered) return;
+    ScaffoldMessenger.maybeOf(context)
+      ?..hideCurrentSnackBar()
+      ..showSnackBar(
+        const SnackBar(content: Text('Picture-in-picture is not available.')),
+      );
+  }
+
   void _toggleWebFullscreen() {
     if (kIsWeb) {
       try {
@@ -235,6 +254,29 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
       streamingService.playChannel(prevChannel);
       _showChannelChangeOverlay(prevChannel.name);
     }
+  }
+
+  void _seekBackward10(
+    VideoPlayerStreamingService service,
+    StreamingState state,
+  ) {
+    var target = state.position - const Duration(seconds: 10);
+    if (state.isLiveStream && state.dvrWindowStart != null) {
+      target = target < state.dvrWindowStart! ? state.dvrWindowStart! : target;
+    }
+    service.seek(target.isNegative ? Duration.zero : target);
+  }
+
+  void _stepVolume(
+    VideoPlayerStreamingService service,
+    StreamingState state,
+    double step,
+  ) {
+    final next = (state.volume + step).clamp(0.0, 1.0);
+    if (state.isMuted && next > 0) {
+      service.toggleMute();
+    }
+    service.setVolume(next);
   }
 
   // CV-008 UC-002: D-pad surf mode. Up/Down changes channel while playback
@@ -308,6 +350,7 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
     });
 
     final videoView = service.buildVideoView();
+    final compactInlinePlayer = _usesCompactInlinePlayer(context);
 
     // Shared player surface: video view + cinema-mode vignette + buffering indicator
     // Built once and reused in both enableTouchGestures branches to reduce duplication.
@@ -428,7 +471,7 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                   // content behind it since the old channel-name row moved
                   // into PlayerOverlay — before PlayerOverlay's own
                   // GestureDetector ever saw the tap.
-                   if (!_isLocked && !isPipActive)
+                  if (!_isLocked && !isPipActive && !compactInlinePlayer)
                     PlayerOverlay(
                       state: _toPlayerViewState(state),
                       onBack:
@@ -453,42 +496,8 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                           : 0.0,
                       duration: const Duration(milliseconds: 300),
                       child: IgnorePointer(
-                        ignoring: !_showControlsOverlay,
+                        ignoring: !widget.showControls || !_showControlsOverlay,
                         child: _buildControlsOverlay(context, service, state),
-                      ),
-                    ),
-
-                  // Previous/Next channel buttons (for fullscreen mode)
-                  if (!_isLocked &&
-                      !isPipActive &&
-                      widget.enableSwipeChannelChange &&
-                      _showControlsOverlay)
-                    Positioned(
-                      left: 16,
-                      top: 0,
-                      bottom: 0,
-                      child: Center(
-                        child: IconButton(
-                          icon: const Icon(Icons.skip_previous, size: 40),
-                          color: Colors.white,
-                          onPressed: _goToPreviousChannel,
-                        ),
-                      ),
-                    ),
-                  if (!_isLocked &&
-                      !isPipActive &&
-                      widget.enableSwipeChannelChange &&
-                      _showControlsOverlay)
-                    Positioned(
-                      right: 16,
-                      top: 0,
-                      bottom: 0,
-                      child: Center(
-                        child: IconButton(
-                          icon: const Icon(Icons.skip_next, size: 40),
-                          color: Colors.white,
-                          onPressed: _goToNextChannel,
-                        ),
                       ),
                     ),
 
@@ -763,12 +772,24 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
             ),
           ),
         ),
-        _buildControlButtons(service, state),
+        _buildControlButtons(context, service, state),
       ],
     );
   }
 
   Widget _buildControlButtons(
+    BuildContext context,
+    VideoPlayerStreamingService service,
+    StreamingState state,
+  ) {
+    if (_usesCompactInlinePlayer(context)) {
+      return _buildCompactControlButtons(context, service, state);
+    }
+    return _buildExpandedControlButtons(context, service, state);
+  }
+
+  Widget _buildExpandedControlButtons(
+    BuildContext context,
     VideoPlayerStreamingService service,
     StreamingState state,
   ) {
@@ -779,7 +800,114 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
         // the PlayerOverlay layer mounted above this one now owns the
         // title/subtitle chrome, built from the same StreamingState via
         // _toPlayerViewState.
-        Center(child: _buildCenterButton(service, state)),
+        Positioned(
+          top: 76,
+          left: 16,
+          child: SafeArea(
+            bottom: false,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _PlayerRoundControlButton(
+                  key: const ValueKey('iptv-player-fullscreen-button'),
+                  icon: _isFullscreen
+                      ? Icons.fullscreen_exit
+                      : Icons.fullscreen,
+                  tooltip: _isFullscreen ? 'Exit fullscreen' : 'Fullscreen',
+                  onPressed: _toggleFullscreen,
+                  diameter: 44,
+                  iconSize: 24,
+                  backgroundAlpha: 0.48,
+                ),
+                const SizedBox(width: 10),
+                _PlayerRoundControlButton(
+                  key: const ValueKey('iptv-player-pip-button'),
+                  icon: Icons.picture_in_picture_alt_outlined,
+                  tooltip: 'Picture-in-picture',
+                  onPressed: _requestPictureInPicture,
+                  diameter: 44,
+                  iconSize: 22,
+                  backgroundAlpha: 0.48,
+                ),
+              ],
+            ),
+          ),
+        ),
+        Center(
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  _PlayerRoundControlButton(
+                    key: const ValueKey('iptv-player-dvr-rewind-button'),
+                    icon: Icons.replay_10,
+                    tooltip: state.isLiveStream
+                        ? 'Rewind 10 seconds'
+                        : 'Back 10 seconds',
+                    onPressed:
+                        state.canSeekBack ||
+                            (!state.isLiveStream &&
+                                state.position > Duration.zero)
+                        ? () => _seekBackward10(service, state)
+                        : null,
+                    diameter: 72,
+                    iconSize: 34,
+                  ),
+                  const SizedBox(width: 22),
+                  _buildCenterButton(service, state),
+                  const SizedBox(width: 22),
+                  _PlayerRoundControlButton(
+                    key: const ValueKey('iptv-player-mute-button'),
+                    icon: state.isMuted || state.volume == 0
+                        ? Icons.volume_off
+                        : state.volume < 0.5
+                        ? Icons.volume_down
+                        : Icons.volume_up,
+                    tooltip: state.isMuted ? 'Unmute' : 'Mute',
+                    onPressed: () => service.toggleMute(),
+                    diameter: 64,
+                    iconSize: 28,
+                    backgroundColor: state.isMuted || state.volume == 0
+                        ? Colors.green
+                        : null,
+                  ),
+                  const SizedBox(width: 24),
+                  _PlayerStepperPillar(
+                    label: 'VOL',
+                    topKey: const ValueKey('iptv-player-volume-up-button'),
+                    bottomKey: const ValueKey('iptv-player-volume-down-button'),
+                    topIcon: Icons.add,
+                    bottomIcon: Icons.remove,
+                    topTooltip: 'Volume up',
+                    bottomTooltip: 'Volume down',
+                    onTopPressed: () => _stepVolume(service, state, 0.1),
+                    onBottomPressed: () => _stepVolume(service, state, -0.1),
+                  ),
+                  if (widget.enableSwipeChannelChange) ...[
+                    const SizedBox(width: 22),
+                    _PlayerStepperPillar(
+                      label: 'CH',
+                      topKey: const ValueKey('iptv-player-channel-next-button'),
+                      bottomKey: const ValueKey(
+                        'iptv-player-channel-previous-button',
+                      ),
+                      topIcon: Icons.keyboard_arrow_up,
+                      bottomIcon: Icons.keyboard_arrow_down,
+                      topTooltip: 'Next channel',
+                      bottomTooltip: 'Previous channel',
+                      onTopPressed: _goToNextChannel,
+                      onBottomPressed: _goToPreviousChannel,
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ),
         Positioned(
           left: 0,
           right: 0,
@@ -791,86 +919,341 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  if (!state.isLiveStream && state.duration > Duration.zero)
-                    _buildVodSeekBar(service, state),
-                  _buildBufferIndicator(state),
-                  const SizedBox(height: 8),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      // Mute toggle. Fine volume control is the right-half
-                      // drag gesture (PlayerGestureOverlay) — the old
-                      // hover-to-reveal slider never worked on touch devices.
-                      _PlayerControlButton(
-                        key: const ValueKey('iptv-player-mute-button'),
-                        icon: state.isMuted || state.volume == 0
-                            ? Icons.volume_off
-                            : state.volume < 0.5
-                            ? Icons.volume_down
-                            : Icons.volume_up,
-                        tooltip: state.isMuted ? 'Unmute' : 'Mute',
-                        onPressed: () => service.toggleMute(),
-                      ),
-                      // Manual audio-only toggle (Task 5, spec Goal 5).
-                      _PlayerControlButton(
-                        key: const ValueKey('audio-only-toggle'),
-                        icon: _isAudioOnly
-                            ? Icons.hearing
-                            : Icons.hearing_disabled,
-                        iconColor: _isAudioOnly ? Colors.amber : Colors.white,
-                        tooltip: _isAudioOnly
-                            ? 'Exit audio-only'
-                            : 'Listen only (audio-only)',
-                        onPressed: _toggleAudioOnly,
-                      ),
-                      const Spacer(),
-                      // Aspect ratio toggle
-                      _PlayerControlButton(
-                        key: const ValueKey('iptv-player-aspect-ratio-button'),
-                        icon: Icons.aspect_ratio,
-                        tooltip: 'Aspect Ratio',
-                        onPressed: () => ref
-                            .read(videoAspectRatioProvider.notifier)
-                            .cycleToNext(),
-                      ),
-                      // Cinema mode toggle
-                      _PlayerControlButton(
-                        icon: _isCinemaMode ? Icons.wb_sunny : Icons.theaters,
-                        iconColor: _isCinemaMode ? Colors.amber : Colors.white,
-                        tooltip: _isCinemaMode
-                            ? 'Standard Mode'
-                            : 'Cinema Mode',
-                        onPressed: () {
-                          setState(() => _isCinemaMode = !_isCinemaMode);
-                        },
-                      ),
-                      // Subtitle/track selector — hidden entirely when
-                      // there's nothing to show (mirrors the CV-pro-17
-                      // PiP-toggle visibility pattern).
-                      if (state.tracks.isNotEmpty)
-                        _PlayerControlButton(
-                          key: const ValueKey('iptv-player-subtitle-button'),
-                          icon: Icons.subtitles,
-                          tooltip: 'Subtitles & Tracks',
-                          onPressed: () =>
-                              _showTrackSelector(context, service, state),
-                        ),
-                      // Fullscreen button
-                      _PlayerControlButton(
-                        key: const ValueKey('iptv-player-fullscreen-button'),
-                        icon: _isFullscreen
-                            ? Icons.fullscreen_exit
-                            : Icons.fullscreen,
-                        onPressed: _toggleFullscreen,
-                      ),
-                    ],
-                  ),
+                  _buildTimelineAndMoreButton(context, service, state),
                 ],
               ),
             ),
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildCompactControlButtons(
+    BuildContext context,
+    VideoPlayerStreamingService service,
+    StreamingState state,
+  ) {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        Center(child: _buildCenterButton(service, state)),
+        Positioned(
+          left: 0,
+          right: 0,
+          bottom: 0,
+          child: SafeArea(
+            top: false,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.38),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _PlayerControlButton(
+                          key: const ValueKey('iptv-player-dvr-rewind-button'),
+                          icon: Icons.replay_10,
+                          tooltip: state.isLiveStream
+                              ? 'Rewind 10 seconds'
+                              : 'Back 10 seconds',
+                          onPressed:
+                              state.canSeekBack ||
+                                  (!state.isLiveStream &&
+                                      state.position > Duration.zero)
+                              ? () => _seekBackward10(service, state)
+                              : null,
+                        ),
+                        _PlayerControlButton(
+                          key: const ValueKey('iptv-player-mute-button'),
+                          icon: state.isMuted || state.volume == 0
+                              ? Icons.volume_off
+                              : state.volume < 0.5
+                              ? Icons.volume_down
+                              : Icons.volume_up,
+                          tooltip: state.isMuted ? 'Unmute' : 'Mute',
+                          onPressed: () => service.toggleMute(),
+                        ),
+                        _PlayerControlButton(
+                          key: const ValueKey('iptv-player-volume-down-button'),
+                          icon: Icons.remove,
+                          tooltip: 'Volume down',
+                          onPressed: () => _stepVolume(service, state, -0.1),
+                        ),
+                        _PlayerControlButton(
+                          key: const ValueKey('iptv-player-volume-up-button'),
+                          icon: Icons.add,
+                          tooltip: 'Volume up',
+                          onPressed: () => _stepVolume(service, state, 0.1),
+                        ),
+                        if (widget.enableSwipeChannelChange) ...[
+                          _PlayerControlButton(
+                            key: const ValueKey(
+                              'iptv-player-channel-previous-button',
+                            ),
+                            icon: Icons.keyboard_arrow_down,
+                            tooltip: 'Previous channel',
+                            onPressed: _goToPreviousChannel,
+                          ),
+                          _PlayerControlButton(
+                            key: const ValueKey(
+                              'iptv-player-channel-next-button',
+                            ),
+                            icon: Icons.keyboard_arrow_up,
+                            tooltip: 'Next channel',
+                            onPressed: _goToNextChannel,
+                          ),
+                        ],
+                        _PlayerControlButton(
+                          key: const ValueKey('iptv-player-more-button'),
+                          icon: Icons.more_horiz,
+                          tooltip: 'More player actions',
+                          onPressed: () =>
+                              _showPlayerActionsSheet(context, service, state),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  bool _usesCompactInlinePlayer(BuildContext context) {
+    final size = MediaQuery.sizeOf(context);
+    return !_isFullscreen && size.shortestSide < 600;
+  }
+
+  Widget _buildTimelineAndMoreButton(
+    BuildContext context,
+    VideoPlayerStreamingService service,
+    StreamingState state,
+  ) {
+    final isVod = !state.isLiveStream && state.duration > Duration.zero;
+    final displayPosition = _vodSeekDragPosition ?? state.position;
+    final remaining = isVod
+        ? state.duration - displayPosition
+        : state.liveDelay;
+    final rightLabel = isVod
+        ? '-${_formatDuration(_nonNegativeDuration(remaining))}'
+        : state.liveDelay > Duration.zero
+        ? '-${_formatDuration(state.liveDelay)}'
+        : 'LIVE';
+
+    return Row(
+      children: [
+        Text(
+          _formatDuration(displayPosition),
+          style: const TextStyle(color: Colors.white, fontSize: 18),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: isVod
+              ? Material(
+                  type: MaterialType.transparency,
+                  child: SliderTheme(
+                    data: SliderTheme.of(context).copyWith(
+                      trackHeight: 5,
+                      thumbShape: const RoundSliderThumbShape(
+                        enabledThumbRadius: 6,
+                      ),
+                    ),
+                    child: Slider(
+                      key: const ValueKey('iptv-player-vod-seek-bar'),
+                      value: displayPosition.inSeconds.toDouble().clamp(
+                        0.0,
+                        state.duration.inSeconds.toDouble(),
+                      ),
+                      min: 0,
+                      max: state.duration.inSeconds.toDouble(),
+                      activeColor: Colors.white,
+                      inactiveColor: Colors.white38,
+                      onChanged: (value) {
+                        setState(() {
+                          _vodSeekDragPosition = Duration(
+                            seconds: value.round(),
+                          );
+                        });
+                      },
+                      onChangeEnd: (value) {
+                        final target = Duration(seconds: value.round());
+                        service.seek(target);
+                        setState(() => _vodSeekDragPosition = null);
+                      },
+                    ),
+                  ),
+                )
+              : ClipRRect(
+                  borderRadius: BorderRadius.circular(999),
+                  child: LinearProgressIndicator(
+                    minHeight: 5,
+                    value: _liveProgressValue(state),
+                    backgroundColor: Colors.white38,
+                    valueColor: const AlwaysStoppedAnimation<Color>(
+                      Colors.white,
+                    ),
+                  ),
+                ),
+        ),
+        const SizedBox(width: 10),
+        Text(
+          rightLabel,
+          style: TextStyle(
+            color: rightLabel == 'LIVE' ? Colors.redAccent : Colors.white,
+            fontSize: 18,
+            fontWeight: rightLabel == 'LIVE' ? FontWeight.w700 : null,
+          ),
+        ),
+        const SizedBox(width: 14),
+        _PlayerRoundControlButton(
+          key: const ValueKey('iptv-player-more-button'),
+          icon: Icons.more_horiz,
+          tooltip: 'More player actions',
+          onPressed: () => _showPlayerActionsSheet(context, service, state),
+          diameter: 44,
+          iconSize: 24,
+          backgroundAlpha: 0.48,
+        ),
+      ],
+    );
+  }
+
+  double? _liveProgressValue(StreamingState state) {
+    if (!state.hasDvrSupport) return null;
+    final window = state.dvrWindowDuration;
+    if (window == null || window <= Duration.zero) return null;
+
+    final positionInWindow = state.dvrWindowStart == null
+        ? window - state.liveDelay
+        : state.position - state.dvrWindowStart!;
+    return positionInWindow.inMilliseconds.toDouble().clamp(
+          0.0,
+          window.inMilliseconds.toDouble(),
+        ) /
+        window.inMilliseconds;
+  }
+
+  Duration _nonNegativeDuration(Duration duration) {
+    return duration.isNegative ? Duration.zero : duration;
+  }
+
+  Future<void> _showPlayerActionsSheet(
+    BuildContext context,
+    VideoPlayerStreamingService service,
+    StreamingState state,
+  ) {
+    final hasQualityChoices = _qualityOptionsFor(state).length > 1;
+    final hasSubtitles = _subtitleTracksFor(state).isNotEmpty;
+
+    return showModalBottomSheet<void>(
+      context: context,
+      builder: (sheetContext) {
+        Future<void> afterSheet(VoidCallback action) async {
+          Navigator.of(sheetContext).pop();
+          await Future<void>.delayed(const Duration(milliseconds: 250));
+          if (!mounted) return;
+          action();
+        }
+
+        return SafeArea(
+          child: ListView(
+            shrinkWrap: true,
+            children: [
+              const ListTile(
+                title: Text('Player actions'),
+                subtitle: Text('Secondary controls for this stream'),
+              ),
+              ListTile(
+                key: const ValueKey('iptv-player-pip-menu-action'),
+                leading: const Icon(Icons.picture_in_picture_alt_outlined),
+                title: const Text('Picture-in-picture'),
+                onTap: () => unawaited(afterSheet(_requestPictureInPicture)),
+              ),
+              if (hasQualityChoices)
+                ListTile(
+                  key: const ValueKey('iptv-player-quality-menu-action'),
+                  leading: const Icon(Icons.hd_outlined),
+                  title: const Text('Quality'),
+                  subtitle: Text(state.currentQuality.label),
+                  onTap: () => unawaited(
+                    afterSheet(
+                      () => _showQualitySelector(context, service, state),
+                    ),
+                  ),
+                ),
+              if (hasSubtitles)
+                ListTile(
+                  key: const ValueKey('iptv-player-subtitle-menu-action'),
+                  leading: Icon(
+                    state.selectedTrackIds.containsKey(
+                          AiroPlaybackTrackKind.subtitle,
+                        )
+                        ? Icons.subtitles
+                        : Icons.subtitles_off_outlined,
+                  ),
+                  title: const Text('Subtitles'),
+                  onTap: () => unawaited(
+                    afterSheet(
+                      () => _showTrackSelector(context, service, state),
+                    ),
+                  ),
+                ),
+              ListTile(
+                key: const ValueKey('iptv-player-audio-only-menu-action'),
+                leading: Icon(
+                  _isAudioOnly ? Icons.hearing : Icons.hearing_disabled,
+                ),
+                title: Text(_isAudioOnly ? 'Exit audio-only' : 'Listen only'),
+                onTap: () => unawaited(afterSheet(_toggleAudioOnly)),
+              ),
+              ListTile(
+                key: const ValueKey('iptv-player-aspect-ratio-menu-action'),
+                leading: const Icon(Icons.aspect_ratio),
+                title: const Text('Aspect ratio'),
+                onTap: () => unawaited(
+                  afterSheet(
+                    () => ref
+                        .read(videoAspectRatioProvider.notifier)
+                        .cycleToNext(),
+                  ),
+                ),
+              ),
+              ListTile(
+                key: const ValueKey('iptv-player-cinema-menu-action'),
+                leading: Icon(_isCinemaMode ? Icons.wb_sunny : Icons.theaters),
+                title: Text(_isCinemaMode ? 'Standard mode' : 'Cinema mode'),
+                onTap: () => unawaited(
+                  afterSheet(
+                    () => setState(() => _isCinemaMode = !_isCinemaMode),
+                  ),
+                ),
+              ),
+              ListTile(
+                key: const ValueKey('iptv-player-fullscreen-menu-action'),
+                leading: Icon(
+                  _isFullscreen ? Icons.fullscreen_exit : Icons.fullscreen,
+                ),
+                title: Text(_isFullscreen ? 'Exit fullscreen' : 'Fullscreen'),
+                onTap: () => unawaited(afterSheet(_toggleFullscreen)),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -948,6 +1331,7 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
     VideoPlayerStreamingService service,
     StreamingState state,
   ) {
+    final subtitleTracks = _subtitleTracksFor(state);
     showModalBottomSheet<void>(
       context: context,
       builder: (context) {
@@ -955,7 +1339,20 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
           child: ListView(
             shrinkWrap: true,
             children: [
-              for (final track in state.tracks)
+              ListTile(
+                leading: const Icon(Icons.subtitles_off_outlined),
+                title: const Text('Off'),
+                trailing:
+                    state.selectedTrackIds[AiroPlaybackTrackKind.subtitle] ==
+                        null
+                    ? const Icon(Icons.check)
+                    : null,
+                onTap: () {
+                  service.clearTrackSelection(AiroPlaybackTrackKind.subtitle);
+                  Navigator.of(context).pop();
+                },
+              ),
+              for (final track in subtitleTracks)
                 ListTile(
                   title: Text(track.label),
                   subtitle: track.isExternal ? const Text('External') : null,
@@ -972,6 +1369,57 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
         );
       },
     );
+  }
+
+  void _showQualitySelector(
+    BuildContext context,
+    VideoPlayerStreamingService service,
+    StreamingState state,
+  ) {
+    final options = _qualityOptionsFor(state);
+    showModalBottomSheet<void>(
+      context: context,
+      builder: (context) {
+        return SafeArea(
+          child: ListView(
+            shrinkWrap: true,
+            children: [
+              for (final quality in options)
+                ListTile(
+                  title: Text(quality.label),
+                  trailing: state.selectedQuality == quality
+                      ? const Icon(Icons.check)
+                      : null,
+                  onTap: () {
+                    service.setQuality(quality);
+                    Navigator.of(context).pop();
+                  },
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  List<AiroPlaybackTrackOption> _subtitleTracksFor(StreamingState state) {
+    return state.tracks
+        .where((track) => track.kind == AiroPlaybackTrackKind.subtitle)
+        .toList(growable: false);
+  }
+
+  List<VideoQuality> _qualityOptionsFor(StreamingState state) {
+    final qualityUrls = state.currentChannel?.qualityUrls;
+    if (qualityUrls == null || qualityUrls.isEmpty) {
+      return const [VideoQuality.auto];
+    }
+    return VideoQuality.values
+        .where(
+          (quality) =>
+              quality == VideoQuality.auto ||
+              qualityUrls.containsKey(quality.name),
+        )
+        .toList(growable: false);
   }
 
   /// Builds the center button - either "Go Live" or play/pause based on state
@@ -1184,33 +1632,154 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
   }
 }
 
-/// A tight-footprint control-bar icon button. The default [IconButton]'s
-/// 48x48 minimum tap target doesn't fit six of them in the compact mini
-/// player's ~268px width (see CV-016 volume controls); this trims padding
-/// and tap-target constraints while keeping icons legible and tappable.
+/// Compact control-bar icon button for the phone inline player.
+///
+/// Keep the target at 44dp even when the row scrolls horizontally: the
+/// controls are useless if they fit visually but are too small to hit on a
+/// real phone.
 class _PlayerControlButton extends StatelessWidget {
   const _PlayerControlButton({
     super.key,
     required this.icon,
-    required this.onPressed,
+    this.onPressed,
     this.tooltip,
     this.iconColor = Colors.white,
   });
 
   final IconData icon;
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
   final String? tooltip;
   final Color iconColor;
 
   @override
   Widget build(BuildContext context) {
+    final effectiveColor = onPressed == null
+        ? Colors.white.withValues(alpha: 0.38)
+        : iconColor;
     return IconButton(
-      icon: Icon(icon, color: iconColor, size: 20),
+      icon: Icon(icon, color: effectiveColor, size: 20),
       tooltip: tooltip,
       onPressed: onPressed,
       visualDensity: VisualDensity.compact,
-      padding: const EdgeInsets.all(6),
-      constraints: const BoxConstraints(),
+      padding: EdgeInsets.zero,
+      constraints: const BoxConstraints.tightFor(width: 44, height: 44),
+    );
+  }
+}
+
+class _PlayerRoundControlButton extends StatelessWidget {
+  const _PlayerRoundControlButton({
+    super.key,
+    required this.icon,
+    this.onPressed,
+    this.tooltip,
+    this.iconColor = Colors.white,
+    this.backgroundColor,
+    this.backgroundAlpha = 0.64,
+    this.diameter = 64,
+    this.iconSize = 28,
+  });
+
+  final IconData icon;
+  final VoidCallback? onPressed;
+  final String? tooltip;
+  final Color iconColor;
+  final Color? backgroundColor;
+  final double backgroundAlpha;
+  final double diameter;
+  final double iconSize;
+
+  @override
+  Widget build(BuildContext context) {
+    final effectiveColor = onPressed == null
+        ? Colors.white.withValues(alpha: 0.38)
+        : iconColor;
+    return Material(
+      color: backgroundColor ?? Colors.black.withValues(alpha: backgroundAlpha),
+      shape: const CircleBorder(),
+      elevation: 8,
+      shadowColor: Colors.black54,
+      child: SizedBox.square(
+        dimension: diameter,
+        child: IconButton(
+          icon: Icon(icon, color: effectiveColor, size: iconSize),
+          tooltip: tooltip,
+          onPressed: onPressed,
+          visualDensity: VisualDensity.compact,
+        ),
+      ),
+    );
+  }
+}
+
+class _PlayerStepperPillar extends StatelessWidget {
+  const _PlayerStepperPillar({
+    required this.label,
+    required this.topKey,
+    required this.bottomKey,
+    required this.topIcon,
+    required this.bottomIcon,
+    required this.topTooltip,
+    required this.bottomTooltip,
+    required this.onTopPressed,
+    required this.onBottomPressed,
+  });
+
+  final String label;
+  final Key topKey;
+  final Key bottomKey;
+  final IconData topIcon;
+  final IconData bottomIcon;
+  final String topTooltip;
+  final String bottomTooltip;
+  final VoidCallback? onTopPressed;
+  final VoidCallback? onBottomPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.58),
+        borderRadius: BorderRadius.circular(999),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.45),
+            blurRadius: 18,
+          ),
+        ],
+      ),
+      child: SizedBox(
+        width: 82,
+        height: 210,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            _PlayerControlButton(
+              key: topKey,
+              icon: topIcon,
+              tooltip: topTooltip,
+              onPressed: onTopPressed,
+              iconColor: Colors.white,
+            ),
+            Text(
+              label,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 1.2,
+              ),
+            ),
+            _PlayerControlButton(
+              key: bottomKey,
+              icon: bottomIcon,
+              tooltip: bottomTooltip,
+              onPressed: onBottomPressed,
+              iconColor: Colors.white,
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

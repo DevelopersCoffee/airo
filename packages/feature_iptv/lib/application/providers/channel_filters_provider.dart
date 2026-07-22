@@ -99,7 +99,16 @@ class ChannelFiltersNotifier extends StateNotifier<ChannelFilters> {
   }
 
   void setCountry(String? value) {
-    _update(state.copyWith(country: value, clearCountry: value == null));
+    _update(
+      state.copyWith(
+        country: value,
+        clearCountry: value == null,
+        // A language is meaningful only within its country. Reset it whenever
+        // the parent country changes so a stale selection cannot leave the
+        // user with an empty browse list.
+        clearLanguage: value != state.country,
+      ),
+    );
   }
 
   void setLanguage(String? value) {
@@ -201,21 +210,102 @@ class ChannelFilterDimensions {
   final Set<String> languages;
 }
 
+class ChannelBrowserSnapshot {
+  const ChannelBrowserSnapshot({
+    required this.dimensions,
+    required this.visibleChannels,
+  });
+
+  final ChannelFilterDimensions dimensions;
+  final List<IPTVChannel> visibleChannels;
+}
+
+/// One-entry cache for the channel browser's expensive derived state.
+///
+/// The IPTV catalogue is large enough that filtering/sorting thousands of rows
+/// on every playback-state rebuild is visible on phones. The shell owns this
+/// cache for its widget lifetime and invalidates it only when the channel list,
+/// enrichment map, filter state, or sort state actually changes.
+class ChannelBrowserSnapshotCache {
+  Iterable<IPTVChannel>? _channels;
+  Map<String, ChannelBrowseMetadata>? _metadataByChannelId;
+  ChannelFilters? _filters;
+  ChannelSort? _sort;
+  ChannelBrowserSnapshot? _snapshot;
+
+  ChannelBrowserSnapshot resolve({
+    required Iterable<IPTVChannel> channels,
+    required Map<String, ChannelBrowseMetadata> metadataByChannelId,
+    required ChannelFilters filters,
+    required ChannelSort sort,
+  }) {
+    final previous = _snapshot;
+    if (previous != null &&
+        identical(_channels, channels) &&
+        identical(_metadataByChannelId, metadataByChannelId) &&
+        _filters == filters &&
+        _sort == sort) {
+      return previous;
+    }
+
+    final dimensions = channelFilterDimensions(
+      channels: channels,
+      metadataByChannelId: metadataByChannelId,
+      country: filters.country,
+    );
+    final visibleChannels = sortChannels(
+      channels: applyChannelFilters(
+        channels: channels,
+        filters: filters,
+        metadataByChannelId: metadataByChannelId,
+      ),
+      metadataByChannelId: metadataByChannelId,
+      sort: sort,
+    );
+    final next = ChannelBrowserSnapshot(
+      dimensions: dimensions,
+      visibleChannels: visibleChannels,
+    );
+
+    _channels = channels;
+    _metadataByChannelId = metadataByChannelId;
+    _filters = filters;
+    _sort = sort;
+    _snapshot = next;
+    return next;
+  }
+
+  void clear() {
+    _channels = null;
+    _metadataByChannelId = null;
+    _filters = null;
+    _sort = null;
+    _snapshot = null;
+  }
+}
+
 ChannelFilterDimensions channelFilterDimensions({
   required Iterable<IPTVChannel> channels,
   required Map<String, ChannelBrowseMetadata> metadataByChannelId,
+  String? country,
 }) {
-  final categories = <String>{};
+  final categoriesByKey = <String, String>{};
   final countries = <String>{};
   final languages = <String>{};
   for (final channel in channels) {
-    if (channel.group.isNotEmpty) categories.add(channel.group);
+    final category = categoryDisplayLabel(channel.group);
+    if (category != null) {
+      categoriesByKey.putIfAbsent(categoryFilterKey(category), () => category);
+    }
     final metadata = metadataByChannelId[channel.id];
-    if (_isPresent(metadata?.country)) countries.add(metadata!.country!);
-    if (_isPresent(metadata?.language)) languages.add(metadata!.language!);
+    final channelCountry = effectiveChannelCountry(channel, metadata);
+    if (_isPresent(channelCountry)) countries.add(channelCountry!);
+    if (country == null || country == channelCountry) {
+      languages.addAll(effectiveChannelLanguages(channel, metadata));
+    }
   }
   return ChannelFilterDimensions(
-    categories: Set.unmodifiable(categories),
+    categories: Set.unmodifiable(categoriesByKey.values.toSet()),
     countries: Set.unmodifiable(countries),
     languages: Set.unmodifiable(languages),
   );
@@ -227,20 +317,90 @@ List<IPTVChannel> applyChannelFilters({
   required Map<String, ChannelBrowseMetadata> metadataByChannelId,
 }) {
   final query = filters.search.toLowerCase();
-  return channels
+  return applyChannelScope(
+        channels: channels,
+        filters: filters,
+        metadataByChannelId: metadataByChannelId,
+      )
       .where((channel) {
-        final metadata = metadataByChannelId[channel.id];
         final matchesQuery =
             query.isEmpty ||
             channel.name.toLowerCase().contains(query) ||
             channel.group.toLowerCase().contains(query);
         return matchesQuery &&
-            (filters.category == null || channel.group == filters.category) &&
-            (filters.country == null || metadata?.country == filters.country) &&
-            (filters.language == null ||
-                metadata?.language == filters.language);
+            (filters.category == null ||
+                categoryFilterKey(channel.group) ==
+                    categoryFilterKey(filters.category!));
       })
       .toList(growable: false);
+}
+
+/// Applies the global discovery scope shared by browse and Guide. Search and
+/// category are intentionally left to each surface: Guide has its own search
+/// field and hidden-group rules, while country/language must remain global.
+List<IPTVChannel> applyChannelScope({
+  required Iterable<IPTVChannel> channels,
+  required ChannelFilters filters,
+  required Map<String, ChannelBrowseMetadata> metadataByChannelId,
+}) {
+  return channels
+      .where((channel) {
+        final metadata = metadataByChannelId[channel.id];
+        return (filters.country == null ||
+                effectiveChannelCountry(channel, metadata) ==
+                    filters.country) &&
+            (filters.language == null ||
+                effectiveChannelLanguages(
+                  channel,
+                  metadata,
+                ).contains(filters.language));
+      })
+      .toList(growable: false);
+}
+
+/// Returns verified enrichment when available, then the playlist value. The
+/// latter makes user-supplied M3U values useful while enrichment is loading or
+/// unavailable offline.
+String? effectiveChannelCountry(
+  IPTVChannel channel,
+  ChannelBrowseMetadata? metadata,
+) {
+  return _isPresent(metadata?.country) ? metadata!.country : channel.country;
+}
+
+/// The enrichment API currently supplies one preferred language. A playlist
+/// can supply several; retain all of those when no verified preference exists.
+List<String> effectiveChannelLanguages(
+  IPTVChannel channel,
+  ChannelBrowseMetadata? metadata,
+) {
+  if (_isPresent(metadata?.language)) return [metadata!.language!];
+  return channel.languages.where(_isPresent).toList(growable: false);
+}
+
+String countryDisplayLabel(String? value) {
+  if (!_isPresent(value)) return 'Country';
+  final code = value!.trim().toUpperCase();
+  final name = _countryNames[code];
+  if (name == null) return value;
+  return '${_countryFlag(code)} $name';
+}
+
+String languageDisplayLabel(String? value) {
+  if (!_isPresent(value)) return 'Language';
+  final code = value!.trim().toLowerCase();
+  return _languageNames[code] ?? value;
+}
+
+/// A normalized category key for picker deduplication and category filtering.
+/// Keep the playlist's original group intact; this only treats case and runs
+/// of whitespace as presentation-equivalent.
+String categoryFilterKey(String value) =>
+    value.trim().replaceAll(RegExp(r'\s+'), ' ').toLowerCase();
+
+String? categoryDisplayLabel(String value) {
+  final display = value.trim().replaceAll(RegExp(r'\s+'), ' ');
+  return display.isEmpty ? null : display;
 }
 
 List<IPTVChannel> sortChannels({
@@ -274,8 +434,11 @@ String? _sortValue(
   return switch (column) {
     ChannelSortColumn.name => channel.name,
     ChannelSortColumn.category => channel.group,
-    ChannelSortColumn.country => metadata?.country,
-    ChannelSortColumn.language => metadata?.language,
+    ChannelSortColumn.country => effectiveChannelCountry(channel, metadata),
+    ChannelSortColumn.language =>
+      effectiveChannelLanguages(channel, metadata).isEmpty
+          ? null
+          : effectiveChannelLanguages(channel, metadata).first,
     ChannelSortColumn.type => channel.isAudioOnly ? 'audio' : 'live',
   };
 }
@@ -290,3 +453,286 @@ int _compareNullable(String? left, String? right) {
 }
 
 bool _isPresent(String? value) => value != null && value.isNotEmpty;
+
+String _countryFlag(String countryCode) {
+  if (countryCode.length != 2) return '';
+  final first = countryCode.codeUnitAt(0);
+  final second = countryCode.codeUnitAt(1);
+  if (first < 65 || first > 90 || second < 65 || second > 90) return '';
+  return String.fromCharCodes([first + 127397, second + 127397]);
+}
+
+const _countryNames = <String, String>{
+  'AD': 'Andorra',
+  'AE': 'United Arab Emirates',
+  'AF': 'Afghanistan',
+  'AG': 'Antigua and Barbuda',
+  'AI': 'Anguilla',
+  'AL': 'Albania',
+  'AM': 'Armenia',
+  'AO': 'Angola',
+  'AQ': 'Antarctica',
+  'AR': 'Argentina',
+  'AS': 'American Samoa',
+  'AT': 'Austria',
+  'AU': 'Australia',
+  'AW': 'Aruba',
+  'AX': 'Åland Islands',
+  'AZ': 'Azerbaijan',
+  'BA': 'Bosnia and Herzegovina',
+  'BB': 'Barbados',
+  'BD': 'Bangladesh',
+  'BE': 'Belgium',
+  'BF': 'Burkina Faso',
+  'BG': 'Bulgaria',
+  'BH': 'Bahrain',
+  'BI': 'Burundi',
+  'BJ': 'Benin',
+  'BL': 'Saint Barthélemy',
+  'BM': 'Bermuda',
+  'BN': 'Brunei',
+  'BO': 'Bolivia',
+  'BQ': 'Caribbean Netherlands',
+  'BR': 'Brazil',
+  'BS': 'Bahamas',
+  'BT': 'Bhutan',
+  'BV': 'Bouvet Island',
+  'BW': 'Botswana',
+  'BY': 'Belarus',
+  'BZ': 'Belize',
+  'CA': 'Canada',
+  'CC': 'Cocos Islands',
+  'CD': 'Democratic Republic of the Congo',
+  'CF': 'Central African Republic',
+  'CG': 'Republic of the Congo',
+  'CH': 'Switzerland',
+  'CI': "Côte d'Ivoire",
+  'CK': 'Cook Islands',
+  'CL': 'Chile',
+  'CM': 'Cameroon',
+  'CN': 'China',
+  'CO': 'Colombia',
+  'CR': 'Costa Rica',
+  'CU': 'Cuba',
+  'CV': 'Cape Verde',
+  'CW': 'Curaçao',
+  'CX': 'Christmas Island',
+  'CY': 'Cyprus',
+  'CZ': 'Czechia',
+  'DE': 'Germany',
+  'DJ': 'Djibouti',
+  'DK': 'Denmark',
+  'DM': 'Dominica',
+  'DO': 'Dominican Republic',
+  'DZ': 'Algeria',
+  'EC': 'Ecuador',
+  'EE': 'Estonia',
+  'EG': 'Egypt',
+  'EH': 'Western Sahara',
+  'ER': 'Eritrea',
+  'ES': 'Spain',
+  'ET': 'Ethiopia',
+  'FI': 'Finland',
+  'FJ': 'Fiji',
+  'FK': 'Falkland Islands',
+  'FM': 'Micronesia',
+  'FO': 'Faroe Islands',
+  'FR': 'France',
+  'GA': 'Gabon',
+  'GB': 'United Kingdom',
+  'GD': 'Grenada',
+  'GE': 'Georgia',
+  'GF': 'French Guiana',
+  'GG': 'Guernsey',
+  'GH': 'Ghana',
+  'GI': 'Gibraltar',
+  'GL': 'Greenland',
+  'GM': 'Gambia',
+  'GN': 'Guinea',
+  'GR': 'Greece',
+  'GP': 'Guadeloupe',
+  'GQ': 'Equatorial Guinea',
+  'GS': 'South Georgia and the South Sandwich Islands',
+  'GT': 'Guatemala',
+  'GU': 'Guam',
+  'GW': 'Guinea-Bissau',
+  'GY': 'Guyana',
+  'HK': 'Hong Kong',
+  'HM': 'Heard Island and McDonald Islands',
+  'HN': 'Honduras',
+  'HR': 'Croatia',
+  'HT': 'Haiti',
+  'HU': 'Hungary',
+  'ID': 'Indonesia',
+  'IE': 'Ireland',
+  'IL': 'Israel',
+  'IM': 'Isle of Man',
+  'IN': 'India',
+  'IO': 'British Indian Ocean Territory',
+  'IQ': 'Iraq',
+  'IR': 'Iran',
+  'IS': 'Iceland',
+  'IT': 'Italy',
+  'JE': 'Jersey',
+  'JM': 'Jamaica',
+  'JO': 'Jordan',
+  'JP': 'Japan',
+  'KE': 'Kenya',
+  'KG': 'Kyrgyzstan',
+  'KH': 'Cambodia',
+  'KI': 'Kiribati',
+  'KM': 'Comoros',
+  'KN': 'Saint Kitts and Nevis',
+  'KP': 'North Korea',
+  'KR': 'South Korea',
+  'KW': 'Kuwait',
+  'KY': 'Cayman Islands',
+  'KZ': 'Kazakhstan',
+  'LA': 'Laos',
+  'LB': 'Lebanon',
+  'LC': 'Saint Lucia',
+  'LI': 'Liechtenstein',
+  'LK': 'Sri Lanka',
+  'LR': 'Liberia',
+  'LS': 'Lesotho',
+  'LT': 'Lithuania',
+  'LU': 'Luxembourg',
+  'LV': 'Latvia',
+  'LY': 'Libya',
+  'MA': 'Morocco',
+  'MC': 'Monaco',
+  'MD': 'Moldova',
+  'ME': 'Montenegro',
+  'MF': 'Saint Martin',
+  'MG': 'Madagascar',
+  'MH': 'Marshall Islands',
+  'MK': 'North Macedonia',
+  'ML': 'Mali',
+  'MM': 'Myanmar',
+  'MN': 'Mongolia',
+  'MO': 'Macao',
+  'MP': 'Northern Mariana Islands',
+  'MQ': 'Martinique',
+  'MR': 'Mauritania',
+  'MS': 'Montserrat',
+  'MT': 'Malta',
+  'MU': 'Mauritius',
+  'MV': 'Maldives',
+  'MW': 'Malawi',
+  'MX': 'Mexico',
+  'MY': 'Malaysia',
+  'MZ': 'Mozambique',
+  'NA': 'Namibia',
+  'NC': 'New Caledonia',
+  'NE': 'Niger',
+  'NF': 'Norfolk Island',
+  'NG': 'Nigeria',
+  'NI': 'Nicaragua',
+  'NL': 'Netherlands',
+  'NO': 'Norway',
+  'NP': 'Nepal',
+  'NR': 'Nauru',
+  'NU': 'Niue',
+  'NZ': 'New Zealand',
+  'OM': 'Oman',
+  'PA': 'Panama',
+  'PE': 'Peru',
+  'PF': 'French Polynesia',
+  'PG': 'Papua New Guinea',
+  'PH': 'Philippines',
+  'PK': 'Pakistan',
+  'PL': 'Poland',
+  'PM': 'Saint Pierre and Miquelon',
+  'PN': 'Pitcairn Islands',
+  'PR': 'Puerto Rico',
+  'PS': 'Palestine',
+  'PT': 'Portugal',
+  'PW': 'Palau',
+  'PY': 'Paraguay',
+  'QA': 'Qatar',
+  'RE': 'Réunion',
+  'RO': 'Romania',
+  'RS': 'Serbia',
+  'RU': 'Russia',
+  'RW': 'Rwanda',
+  'SA': 'Saudi Arabia',
+  'SB': 'Solomon Islands',
+  'SC': 'Seychelles',
+  'SD': 'Sudan',
+  'SE': 'Sweden',
+  'SG': 'Singapore',
+  'SH': 'Saint Helena',
+  'SI': 'Slovenia',
+  'SJ': 'Svalbard and Jan Mayen',
+  'SK': 'Slovakia',
+  'SL': 'Sierra Leone',
+  'SM': 'San Marino',
+  'SN': 'Senegal',
+  'SO': 'Somalia',
+  'SR': 'Suriname',
+  'SS': 'South Sudan',
+  'ST': 'São Tomé and Príncipe',
+  'SV': 'El Salvador',
+  'SX': 'Sint Maarten',
+  'SY': 'Syria',
+  'SZ': 'Eswatini',
+  'TC': 'Turks and Caicos Islands',
+  'TD': 'Chad',
+  'TF': 'French Southern Territories',
+  'TG': 'Togo',
+  'TH': 'Thailand',
+  'TJ': 'Tajikistan',
+  'TK': 'Tokelau',
+  'TL': 'Timor-Leste',
+  'TM': 'Turkmenistan',
+  'TN': 'Tunisia',
+  'TO': 'Tonga',
+  'TR': 'Turkey',
+  'TT': 'Trinidad and Tobago',
+  'TV': 'Tuvalu',
+  'TW': 'Taiwan',
+  'TZ': 'Tanzania',
+  'UA': 'Ukraine',
+  'UG': 'Uganda',
+  'UM': 'United States Minor Outlying Islands',
+  'US': 'United States',
+  'UY': 'Uruguay',
+  'UZ': 'Uzbekistan',
+  'VA': 'Vatican City',
+  'VC': 'Saint Vincent and the Grenadines',
+  'VE': 'Venezuela',
+  'VG': 'British Virgin Islands',
+  'VI': 'U.S. Virgin Islands',
+  'VN': 'Vietnam',
+  'VU': 'Vanuatu',
+  'WF': 'Wallis and Futuna',
+  'WS': 'Samoa',
+  'XK': 'Kosovo',
+  'YE': 'Yemen',
+  'YT': 'Mayotte',
+  'ZA': 'South Africa',
+  'ZM': 'Zambia',
+  'ZW': 'Zimbabwe',
+};
+
+const _languageNames = <String, String>{
+  'ar': 'Arabic',
+  'de': 'German',
+  'en': 'English',
+  'eng': 'English',
+  'es': 'Spanish',
+  'fr': 'French',
+  'hi': 'Hindi',
+  'hin': 'Hindi',
+  'id': 'Indonesian',
+  'it': 'Italian',
+  'ita': 'Italian',
+  'ja': 'Japanese',
+  'nl': 'Dutch',
+  'pl': 'Polish',
+  'pt': 'Portuguese',
+  'ru': 'Russian',
+  'tr': 'Turkish',
+  'uk': 'Ukrainian',
+  'vi': 'Vietnamese',
+};

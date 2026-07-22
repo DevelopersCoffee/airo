@@ -11,6 +11,7 @@ class FilterOptionDialog extends StatefulWidget {
     required this.onSelected,
     required this.onClear,
     required this.onClose,
+    this.optionLabel,
     this.emptyResult = false,
   });
 
@@ -20,6 +21,7 @@ class FilterOptionDialog extends StatefulWidget {
   final ValueChanged<String> onSelected;
   final VoidCallback onClear;
   final VoidCallback onClose;
+  final String Function(String)? optionLabel;
   final bool emptyResult;
 
   @override
@@ -31,7 +33,13 @@ class _FilterOptionDialogState extends State<FilterOptionDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final options = [...widget.options]..sort();
+    final optionLabel = widget.optionLabel ?? (value) => value;
+    final options = [...widget.options]
+      ..sort(
+        (left, right) => _sortLabel(
+          optionLabel(left),
+        ).compareTo(_sortLabel(optionLabel(right))),
+      );
     final displayed = _ascending ? options : options.reversed.toList();
 
     return Dialog(
@@ -89,26 +97,42 @@ class _FilterOptionDialogState extends State<FilterOptionDialog> {
                   ),
                 ),
               Expanded(
-                child: ListView.builder(
-                  itemCount: displayed.length,
-                  itemBuilder: (context, index) {
-                    final option = displayed[index];
-                    final selected = option == widget.selectedValue;
-                    return Padding(
+                child: ListView(
+                  children: [
+                    Padding(
                       padding: const EdgeInsets.symmetric(vertical: 2),
                       child: TvFocusable(
-                        key: ValueKey('filter-option-$option'),
-                        autofocus: index == 0,
-                        semanticLabel: option,
-                        onSelect: () => widget.onSelected(option),
+                        key: const ValueKey('filter-option-all'),
+                        autofocus: displayed.isEmpty,
+                        semanticLabel: _allLabelFor(widget.title),
+                        onSelect: widget.onClear,
                         child: ListTile(
-                          leading: selected ? const Icon(Icons.check) : null,
-                          title: Text(option),
-                          onTap: () => widget.onSelected(option),
+                          leading: widget.selectedValue == null
+                              ? const Icon(Icons.check)
+                              : null,
+                          title: Text(_allLabelFor(widget.title)),
+                          onTap: widget.onClear,
                         ),
                       ),
-                    );
-                  },
+                    ),
+                    for (var index = 0; index < displayed.length; index++)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 2),
+                        child: TvFocusable(
+                          key: ValueKey('filter-option-${displayed[index]}'),
+                          autofocus: index == 0,
+                          semanticLabel: optionLabel(displayed[index]),
+                          onSelect: () => widget.onSelected(displayed[index]),
+                          child: ListTile(
+                            leading: displayed[index] == widget.selectedValue
+                                ? const Icon(Icons.check)
+                                : null,
+                            title: Text(optionLabel(displayed[index])),
+                            onTap: () => widget.onSelected(displayed[index]),
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
               ),
             ],
@@ -126,6 +150,7 @@ Future<void> showFilterOptionDialog({
   required String? selectedValue,
   required ValueChanged<String> onSelected,
   required VoidCallback onClear,
+  String Function(String)? optionLabel,
   bool emptyResult = false,
 }) {
   return showDialog<void>(
@@ -143,7 +168,37 @@ Future<void> showFilterOptionDialog({
         onClear();
         Navigator.of(dialogContext).pop();
       },
+      optionLabel: optionLabel,
       onClose: () => Navigator.of(dialogContext).pop(),
     ),
   );
+}
+
+String _allLabelFor(String title) {
+  final normalized = title.trim().toLowerCase();
+  return switch (normalized) {
+    'country' => 'All Countries',
+    'language' => 'All Languages',
+    'category' => 'All Categories',
+    _ => 'All',
+  };
+}
+
+String _sortLabel(String label) {
+  final codePoints = label.runes.toList(growable: false);
+  var index = 0;
+  while (index < codePoints.length &&
+      codePoints[index] >= 0x1F1E6 &&
+      codePoints[index] <= 0x1F1FF) {
+    index += 1;
+  }
+  if (index >= 2) {
+    while (index < codePoints.length &&
+        String.fromCharCode(codePoints[index]).trim().isEmpty) {
+      index += 1;
+    }
+  } else {
+    index = 0;
+  }
+  return String.fromCharCodes(codePoints.skip(index)).toLowerCase();
 }

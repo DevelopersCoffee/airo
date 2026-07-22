@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   group('Airo legal release preflight', () {
     AiroLegalReleasePreflight run({
-      Iterable<String> profileIds = const ['iptv-standalone', 'tv'],
+      Iterable<String> profileIds = const ['full', 'tv'],
       bool rootLicensePresent = true,
       String rootLicenseText =
           'MIT License\n\nPermission is hereby granted, free of charge',

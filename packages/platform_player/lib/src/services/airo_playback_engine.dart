@@ -30,6 +30,8 @@ abstract class AiroPlaybackEngine {
     required String trackId,
   });
 
+  Future<AiroPlaybackState> clearTrackSelection(AiroPlaybackTrackKind kind);
+
   Future<AiroPlaybackDiagnostics> diagnostics();
 
   Future<AiroPlaybackState> enterPictureInPicture();

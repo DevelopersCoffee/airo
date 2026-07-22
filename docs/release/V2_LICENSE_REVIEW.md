@@ -20,8 +20,7 @@ Implementation work for this release line must start from latest `origin/main`.
 The current v2 Android publishing candidates are documented in
 `docs/release/V2_DISTRIBUTION_MATRIX.md` and `.github/airo-build-profiles.json`:
 
-- `iptv-standalone`
-- `mobile-streaming`
+- `full`
 - `tv`
 
 The `ios-spm` and `web-validation` profiles are not part of the first v2

@@ -19,16 +19,11 @@ fun dartDefine(name: String): String? {
 val appVariant = dartDefine("APP_VARIANT") ?: "full"
 val isLeanVariant = appVariant != "full"
 val isTvVariant = appVariant == "tv"
-val isStreamingVariant = appVariant == "streaming"
 val variantApplicationId = when (appVariant) {
-    "iptv" -> "io.airo.app.iptv"
-    "streaming" -> "io.airo.app.streaming"
     "tv" -> "io.airo.app.tv"
     else -> "io.airo.app"
 }
 val variantAppLabel = when (appVariant) {
-    "iptv" -> "Airo IPTV"
-    "streaming" -> "Airo Streaming"
     "tv" -> "Airo TV"
     else -> "Airo"
 }
@@ -181,12 +176,11 @@ android {
             // CV-030: mpv/media_kit native libs are excluded from variants
             // whose shipping matrix uses video_player as the sole engine.
             // - TV: storage-starved boxes (~8 GB); videoPlayer only per design.
-            // - streaming: allowedNativePlugins declares video_player only
-            //   (see .github/airo-build-profiles.json); mpv arrives transitively
-            //   but is not intended to run — stripping natives keeps the APK
-            //   inside its 35 MB budget (issue #862).
+            // - TV: allowedNativePlugins declares video_player only; mpv
+            //   arrives transitively but is not intended to run. Stripping
+            //   native libraries keeps the APK inside its 35 MB budget.
             // A codec failure yields a clean typed error, not a fallback.
-            if (isTvVariant || isStreamingVariant) {
+            if (isTvVariant) {
                 excludes += setOf(
                     "**/libmpv.so",
                     "**/libplayer.so",

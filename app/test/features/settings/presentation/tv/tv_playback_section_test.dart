@@ -39,6 +39,32 @@ void main() {
     expect(find.text('Fill screen (cropped)'), findsOneWidget);
     expect(find.text('Fill width'), findsOneWidget);
     expect(find.text('Stretch to fill'), findsOneWidget);
+    expect(find.text('Picture-in-picture'), findsOneWidget);
+  });
+
+  testWidgets('toggling PiP updates the persisted preference', (tester) async {
+    final container = await buildContainer();
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: const MaterialApp(home: Scaffold(body: TvPlaybackSection())),
+      ),
+    );
+    await tester.pump();
+
+    expect(container.read(pictureInPicturePreferenceProvider), isTrue);
+
+    await tester.tap(find.text('Picture-in-picture'));
+    await tester.pump();
+
+    expect(container.read(pictureInPicturePreferenceProvider), isFalse);
+    final prefs = await SharedPreferences.getInstance();
+    expect(
+      prefs.getBool(PictureInPicturePreferenceNotifier.storageKey),
+      isFalse,
+    );
   });
 
   testWidgets('selecting a fit option updates videoAspectRatioProvider', (

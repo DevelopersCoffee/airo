@@ -58,11 +58,10 @@ on:
       profile:
         description: 'Mobile/tablet v2 profile to build'
         required: true
-        default: iptv-standalone
+        default: full
         type: choice
         options:
-          - iptv-standalone
-          - mobile-streaming
+          - full
       version:
         description: 'Artifact and release version label'
         required: true
@@ -124,7 +123,7 @@ env:
   RELEASE_VERSION: ${{ inputs.version || github.event.inputs.version || github.ref_name }}
   BUILD_NAME: ${{ inputs.build_name || github.event.inputs.build_name || '2.0.0' }}
   BUILD_NUMBER: ${{ inputs.build_number || github.event.inputs.build_number || '200' }}
-  PROFILE: ${{ inputs.profile || github.event.inputs.profile || 'iptv-standalone' }}
+  PROFILE: ${{ inputs.profile || github.event.inputs.profile || 'full' }}
 
 jobs:
   prepare-release-ref:
@@ -207,21 +206,13 @@ jobs:
           echo "RELEASE_VERSION=$release_version" >> "$GITHUB_ENV"
 
           case "$PROFILE" in
-            iptv-standalone)
-              echo "TARGET_ENTRYPOINT=lib/main_airo_iptv.dart" >> "$GITHUB_ENV"
-              echo "PROFILE_PUBSPEC=pubspec_iptv.yaml" >> "$GITHUB_ENV"
-              echo "APP_VARIANT=iptv" >> "$GITHUB_ENV"
-              echo "APP_PLATFORM=mobileIptv" >> "$GITHUB_ENV"
-              echo "PACKAGE_ID=io.airo.app.iptv" >> "$GITHUB_ENV"
-              echo "ARTIFACT_PREFIX=Airo-IPTV" >> "$GITHUB_ENV"
-              ;;
-            mobile-streaming)
-              echo "TARGET_ENTRYPOINT=lib/main_mobile_streaming.dart" >> "$GITHUB_ENV"
-              echo "PROFILE_PUBSPEC=pubspec_streaming.yaml" >> "$GITHUB_ENV"
-              echo "APP_VARIANT=streaming" >> "$GITHUB_ENV"
-              echo "APP_PLATFORM=mobileStreaming" >> "$GITHUB_ENV"
-              echo "PACKAGE_ID=io.airo.app.streaming" >> "$GITHUB_ENV"
-              echo "ARTIFACT_PREFIX=Airo-Streaming" >> "$GITHUB_ENV"
+            full)
+              echo "TARGET_ENTRYPOINT=lib/main.dart" >> "$GITHUB_ENV"
+              echo "PROFILE_PUBSPEC=pubspec.yaml" >> "$GITHUB_ENV"
+              echo "APP_VARIANT=full" >> "$GITHUB_ENV"
+              echo "APP_PLATFORM=mobileFull" >> "$GITHUB_ENV"
+              echo "PACKAGE_ID=io.airo.app" >> "$GITHUB_ENV"
+              echo "ARTIFACT_PREFIX=Airo" >> "$GITHUB_ENV"
               ;;
             *)
               echo "::error::Unsupported mobile/tablet profile: $PROFILE"
@@ -249,7 +240,7 @@ jobs:
             ~/.pub-cache
             app/.dart_tool
             packages/*/.dart_tool
-          key: mobile-tablet-pub-${{ runner.os }}-${{ env.PROFILE }}-${{ hashFiles('**/pubspec.lock', 'app/pubspec_iptv.yaml', 'app/pubspec_streaming.yaml') }}
+          key: mobile-tablet-pub-${{ runner.os }}-${{ env.PROFILE }}-${{ hashFiles('**/pubspec.lock', 'app/pubspec.yaml') }}
           restore-keys: mobile-tablet-pub-${{ runner.os }}-${{ env.PROFILE }}-
 
       - name: Cache Gradle
@@ -331,12 +322,6 @@ jobs:
           else
             cp lib/firebase_options.dart.template lib/firebase_options.dart
             echo "::warning::FIREBASE_OPTIONS_DART_B64 is not set; using placeholder firebase_options.dart (Firebase init will be skipped at runtime)."
-          fi
-
-          if [[ "$PRODUCTION_SIGNING" == "true" && "$PROFILE" == "mobile-streaming" ]] && \
-             grep -q "TODO_REGISTER_IO_AIRO_APP_STREAMING" lib/firebase_options.dart; then
-            echo "::error::Production mobile-streaming releases require the real Firebase appId in app/lib/firebase_options.dart."
-            exit 1
           fi
 
       - name: Configure Android signing
@@ -575,13 +560,9 @@ jobs:
           echo "RELEASE_VERSION=$release_version" >> "$GITHUB_ENV"
 
           case "$PROFILE" in
-            iptv-standalone)
-              echo "PACKAGE_ID=io.airo.app.iptv" >> "$GITHUB_ENV"
-              echo "ARTIFACT_PREFIX=Airo-IPTV" >> "$GITHUB_ENV"
-              ;;
-            mobile-streaming)
-              echo "PACKAGE_ID=io.airo.app.streaming" >> "$GITHUB_ENV"
-              echo "ARTIFACT_PREFIX=Airo-Streaming" >> "$GITHUB_ENV"
+            full)
+              echo "PACKAGE_ID=io.airo.app" >> "$GITHUB_ENV"
+              echo "ARTIFACT_PREFIX=Airo" >> "$GITHUB_ENV"
               ;;
             *)
               echo "::error::Unsupported mobile/tablet profile for Play upload: $PROFILE"
@@ -670,13 +651,9 @@ jobs:
           echo "RELEASE_VERSION=$release_version" >> "$GITHUB_ENV"
 
           case "$PROFILE" in
-            iptv-standalone)
-              echo "PACKAGE_ID=io.airo.app.iptv" >> "$GITHUB_ENV"
-              echo "ARTIFACT_PREFIX=Airo-IPTV" >> "$GITHUB_ENV"
-              ;;
-            mobile-streaming)
-              echo "PACKAGE_ID=io.airo.app.streaming" >> "$GITHUB_ENV"
-              echo "ARTIFACT_PREFIX=Airo-Streaming" >> "$GITHUB_ENV"
+            full)
+              echo "PACKAGE_ID=io.airo.app" >> "$GITHUB_ENV"
+              echo "ARTIFACT_PREFIX=Airo" >> "$GITHUB_ENV"
               ;;
             *)
               echo "::error::Unsupported mobile/tablet profile for Firebase distribution: $PROFILE"

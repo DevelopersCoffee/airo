@@ -253,12 +253,8 @@ class AiroFirebaseAndroidClientPreflightRunner {
   static const List<AiroFirebaseAndroidClientExpectation>
   v2MobileTabletExpectations = [
     AiroFirebaseAndroidClientExpectation(
-      packageName: 'io.airo.app.iptv',
-      firebaseOptionsName: 'androidIptv',
-    ),
-    AiroFirebaseAndroidClientExpectation(
-      packageName: 'io.airo.app.streaming',
-      firebaseOptionsName: 'androidStreaming',
+      packageName: 'io.airo.app',
+      firebaseOptionsName: 'android',
     ),
   ];
 
@@ -464,8 +460,6 @@ class AiroFirebaseAndroidClientPreflightRunner {
     return AiroFirebaseAndroidClientExpectation(
       packageName: profile.packageId,
       firebaseOptionsName: switch (profile.id) {
-        'iptv-standalone' => 'androidIptv',
-        'mobile-streaming' => 'androidStreaming',
         'tv' => 'androidTv',
         _ => 'android',
       },

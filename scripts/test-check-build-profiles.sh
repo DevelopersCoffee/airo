@@ -9,7 +9,7 @@ AIRO_BUILD_PROFILE_REPORT_FILE="$TMP_DIR/airo-build-profile-report.md" \
   "$ROOT_DIR/scripts/check-build-profiles.py" >"$TMP_DIR/airo-build-profile-test.out"
 
 grep -q "Airo Build Profile Contract" "$TMP_DIR/airo-build-profile-test.out"
-grep -q "\`iptv-standalone\`" "$TMP_DIR/airo-build-profile-test.out"
+grep -q "\`full\`" "$TMP_DIR/airo-build-profile-test.out"
 grep -q "\`ios-spm\`" "$TMP_DIR/airo-build-profile-test.out"
 grep -q "\`tv\`" "$TMP_DIR/airo-build-profile-test.out"
 grep -q "5 KGP-risk deps guarded" "$TMP_DIR/airo-build-profile-test.out"

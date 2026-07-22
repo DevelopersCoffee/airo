@@ -102,8 +102,7 @@ on:
         type: choice
         options:
           - none
-          - iptv-standalone
-          - mobile-streaming
+          - full
       macos_profile:
         description: 'Optional macOS profile to build'
         required: true
@@ -240,7 +239,7 @@ jobs:
           esac
 
           if [ "$mobile_profile" = "none" ] && [ "$mobile_play_track" != "none" ]; then
-            echo "::error::mobile_play_track requires mobile_profile to be iptv-standalone or mobile-streaming."
+            echo "::error::mobile_play_track requires mobile_profile to be full."
             exit 1
           fi
 
@@ -527,13 +526,9 @@ jobs:
           case "$MOBILE_PROFILE" in
             none)
               ;;
-            iptv-standalone)
-              require_asset "release-artifacts/mobile-tablet/Airo-IPTV-${BUILD_NAME}-${BUILD_NUMBER}-arm64.apk"
-              require_asset "release-artifacts/mobile-tablet/Airo-IPTV-${BUILD_NAME}-${BUILD_NUMBER}-Play-Store.aab"
-              ;;
-            mobile-streaming)
-              require_asset "release-artifacts/mobile-tablet/Airo-Streaming-${BUILD_NAME}-${BUILD_NUMBER}-arm64.apk"
-              require_asset "release-artifacts/mobile-tablet/Airo-Streaming-${BUILD_NAME}-${BUILD_NUMBER}-Play-Store.aab"
+            full)
+              require_asset "release-artifacts/mobile-tablet/Airo-${BUILD_NAME}-${BUILD_NUMBER}-arm64.apk"
+              require_asset "release-artifacts/mobile-tablet/Airo-${BUILD_NAME}-${BUILD_NUMBER}-Play-Store.aab"
               ;;
             *)
               echo "::error::Unsupported mobile/tablet profile for release assets: $MOBILE_PROFILE"

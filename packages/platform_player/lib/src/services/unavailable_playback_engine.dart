@@ -72,6 +72,13 @@ class UnavailableAiroPlaybackEngine implements AiroPlaybackEngine {
   }
 
   @override
+  Future<AiroPlaybackState> clearTrackSelection(
+    AiroPlaybackTrackKind kind,
+  ) async {
+    return _unsupported('clearTrackSelection');
+  }
+
+  @override
   Future<AiroPlaybackDiagnostics> diagnostics() async {
     return AiroPlaybackDiagnostics(
       backendId: AiroPlaybackBackendKind.unavailable.stableId,

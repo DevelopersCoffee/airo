@@ -224,7 +224,7 @@ class AiroV2ReleaseReadinessPreflightRunner {
       title: 'Firebase Android clients for mobile/tablet profiles',
       owner: 'Release and CI/CD',
       status: AiroV2ReleaseGateStatus.unknown,
-      note: 'Requires io.airo.app.iptv and io.airo.app.streaming clients.',
+      note: 'Requires the io.airo.app mobile client.',
     ),
     AiroV2ReleaseReadinessGate(
       id: 'android_signing',

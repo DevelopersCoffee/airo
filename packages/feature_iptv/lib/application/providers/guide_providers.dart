@@ -13,6 +13,7 @@ import '../guide_window_query.dart';
 import '../mutable_xmltv_compact_epg_repository.dart';
 import '../xmltv_source_refresh_service.dart';
 import '../xmltv_source_store.dart';
+import 'channel_filters_provider.dart';
 import 'iptv_providers.dart';
 
 final epgChannelMatchOverrideStoreProvider =
@@ -308,11 +309,16 @@ final guideSearchQueryProvider = StateProvider<String>((ref) => '');
 final guideFilteredChannelsProvider = Provider<List<IPTVChannel>>((ref) {
   final index = ref.watch(channelSearchIndexProvider);
   final query = ref.watch(guideSearchQueryProvider);
+  final filters = ref.watch(channelFiltersProvider);
   final hiddenGroupIds =
       ref.watch(hiddenGroupIdsProvider).value ?? const <String>{};
   if (index == null) return const [];
 
-  final channels = index.filterAndSort(query: query);
+  final channels = applyChannelScope(
+    channels: index.filterAndSort(query: query),
+    filters: filters,
+    metadataByChannelId: const {},
+  );
   if (hiddenGroupIds.isEmpty) return channels;
   return channels
       .where((channel) => !hiddenGroupIds.contains(channel.group))

@@ -24,8 +24,7 @@ Use these package values for v2 Android profiles:
 | Profile | `SUPPLY_PACKAGE_NAME` |
 | --- | --- |
 | `tv` | `io.airo.app.tv` |
-| `iptv-standalone` | `io.airo.app.iptv` |
-| `mobile-streaming` | `io.airo.app.streaming` |
+| `full` | `io.airo.app` |
 
 Human setup still required:
 

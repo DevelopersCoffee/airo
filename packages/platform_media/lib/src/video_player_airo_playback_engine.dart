@@ -253,6 +253,17 @@ class VideoPlayerAiroPlaybackEngine implements AiroPlaybackEngine {
   }
 
   @override
+  Future<AiroPlaybackState> clearTrackSelection(
+    AiroPlaybackTrackKind kind,
+  ) async {
+    final nextSelected = Map<AiroPlaybackTrackKind, String>.from(
+      _state.selectedTrackIds,
+    )..remove(kind);
+    _emit(_state.copyWith(selectedTrackIds: nextSelected));
+    return _state;
+  }
+
+  @override
   Future<AiroPlaybackDiagnostics> diagnostics() async {
     return _state.diagnostics ??
         AiroPlaybackDiagnostics(backendId: backendKind.stableId);

@@ -144,7 +144,7 @@ class _AdaptiveLiveTvScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (_usesCompactPhoneLayout(context)) {
-      return const IPTVScreen();
+      return IPTVScreen(onSettings: () => context.go(TvRouteNames.settings));
     }
 
     if (const bool.fromEnvironment('AIRO_TV_UX_SHELL')) {

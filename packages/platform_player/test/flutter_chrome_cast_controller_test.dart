@@ -157,6 +157,44 @@ void main() {
     },
   );
 
+  test(
+    'ignores receiver idle error before the new channel load reaches receiver',
+    () {
+      const tv = AiroCastDevice(id: 'tv-1', name: 'Sony Bravia');
+      final channelB = AiroCastMediaRequest(
+        url: Uri.parse('https://example.com/channelB.m3u8'),
+        contentType: 'application/vnd.apple.mpegurl',
+        title: 'Channel B',
+        streamKind: AiroCastMediaStreamKind.live,
+      );
+      final controller = FlutterChromeCastController();
+
+      // The sender has moved the UI/session to "loading Channel B", but HLS
+      // probing/proxy preparation has not sent the Cast load command yet. A
+      // late no-content-id idle error from the previous Bravia media session
+      // must not be attributed to Channel B.
+      controller.debugSetConnectedSession(
+        device: tv,
+        media: channelB,
+        phase: AiroCastSessionPhase.loadingMedia,
+        receiverLoadCommandSent: false,
+      );
+
+      controller.debugApplyMediaStatus(
+        _status(
+          CastMediaPlayerState.idle,
+          idleReason: GoogleCastMediaIdleReason.error,
+        ),
+      );
+
+      expect(
+        controller.currentSessionState.phase,
+        AiroCastSessionPhase.loadingMedia,
+      );
+      expect(controller.currentSessionState.media, channelB);
+    },
+  );
+
   test('surfaces receiver idle error while a new media load is active', () {
     const tv = AiroCastDevice(id: 'tv-1', name: 'Sony Bravia');
     final current = AiroCastMediaRequest(

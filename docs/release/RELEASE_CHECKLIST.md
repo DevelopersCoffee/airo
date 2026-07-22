@@ -116,7 +116,7 @@ Pre-release verification checklist for Airo Super App releases.
 
 ### V2 Android Profiles
 - [ ] [V2 Distribution Matrix](./V2_DISTRIBUTION_MATRIX.md) reviewed for supported profiles, artifact names, visibility, and support policy
-- [ ] Final public profiles selected (`iptv-standalone`, `mobile-streaming`, `tv`, or approved subset)
+- [ ] Final public profiles selected (`full`, `tv`, or approved subset)
 - [ ] Final APK/AAB filenames do not use debug-looking names such as `app-release.apk`
 - [ ] `SHA256SUMS` generated after final artifact renaming
 - [ ] Release manifest JSON generated for every public/internal APK and AAB

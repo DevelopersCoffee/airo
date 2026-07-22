@@ -56,9 +56,7 @@ def infer_profile_id(filename: str, profiles: dict[str, dict]) -> str | None:
     normalized = filename.lower().replace("_", "-")
     aliases = {
         "tv": ["airo-tv"],
-        "iptv-standalone": ["airo-iptv", "iptv-standalone"],
-        "mobile-streaming": ["airo-streaming", "mobile-streaming"],
-        "mobile-full": ["airo-mobile-full", "mobile-full"],
+        "full": ["airo", "airo-full", "full"],
     }
     for profile_id in profiles:
         candidates = aliases.get(profile_id, [profile_id])

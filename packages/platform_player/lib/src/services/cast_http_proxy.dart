@@ -197,7 +197,7 @@ class CastHttpProxy {
       '#EXTM3U\n'
       '#EXT-X-VERSION:7\n'
       '$streamInf\n'
-      '${mediaPlaylist.toString()}\n',
+      '${proxiedUrl(mediaPlaylist)}\n',
     );
     await response.close();
   }

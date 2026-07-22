@@ -170,8 +170,8 @@ melos:
         flutter pub get
         dart run tool/preflight_firebase_android_clients.dart \
           --repo-root ../.. \
-          --profile iptv-standalone \
-          --profile mobile-streaming \
+          --profile full \
+          --profile tv \
           --output-json ../../artifacts/release/firebase-android-client-preflight.json \
           --output-markdown ../../artifacts/release/firebase-android-client-preflight.md
 
@@ -183,11 +183,11 @@ melos:
         dart run tool/preflight_firebase_distribution.dart \
           --repo-root ../.. \
           --mode "${AIRO_FIREBASE_DISTRIBUTION:-upload}" \
-          --profile "${AIRO_MOBILE_PROFILE:-iptv-standalone}" \
+          --profile "${AIRO_MOBILE_PROFILE:-full}" \
           --profile tv \
-          --firebase-app-id "${AIRO_MOBILE_PROFILE:-iptv-standalone}=${AIRO_MOBILE_FIREBASE_APP_ID:-}" \
+          --firebase-app-id "${AIRO_MOBILE_PROFILE:-full}=${AIRO_MOBILE_FIREBASE_APP_ID:-}" \
           --firebase-app-id "tv=${AIRO_TV_FIREBASE_APP_ID:-}" \
-          --tester-groups "${AIRO_MOBILE_PROFILE:-iptv-standalone}=${AIRO_MOBILE_FIREBASE_TESTER_GROUPS:-}" \
+          --tester-groups "${AIRO_MOBILE_PROFILE:-full}=${AIRO_MOBILE_FIREBASE_TESTER_GROUPS:-}" \
           --tester-groups "tv=${AIRO_TV_FIREBASE_TESTER_GROUPS:-}" \
           --output-json ../../artifacts/release/firebase-distribution-preflight.json \
           --output-markdown ../../artifacts/release/firebase-distribution-preflight.md
@@ -335,18 +335,6 @@ melos:
           --tree-shake-icons
         echo "✓ TV APK created at build/app/outputs/flutter-apk/"
 
-    build:streaming:
-      description: Build Mobile Streaming APK (<150MB target)
-      run: |
-        cd app
-        flutter build apk --release \
-          --target=lib/main_mobile_streaming.dart \
-          --dart-define=APP_VARIANT=streaming \
-          --dart-define=APP_PLATFORM=mobileStreaming \
-          --split-per-abi \
-          --tree-shake-icons
-        echo "✓ Streaming APK created at build/app/outputs/flutter-apk/"
-
     build:full:
       description: Build Mobile Full APK (all features)
       run: |
@@ -360,7 +348,7 @@ melos:
         echo "✓ Full APK created at build/app/outputs/flutter-apk/"
 
     build:all-platforms:
-      description: Build APKs for all platforms (TV, Streaming, Full)
+      description: Build APKs for Airo TV and full Airo
       run: |
         melos run build:tv
         melos run build:streaming

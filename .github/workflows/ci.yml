@@ -14,7 +14,7 @@ on:
   workflow_dispatch:
     inputs:
       build_full_android:
-        description: 'Build the mobile-full Android APK even for manual runs'
+        description: 'Build the full Airo Android APK even for manual runs'
         required: false
         default: true
         type: boolean
@@ -285,8 +285,7 @@ jobs:
   # Build Android - Multi-Platform Matrix
   # ============================================
   # Builds all platform variants:
-  # - mobile-full: All features
-  # - mobile-streaming: IPTV + Music
+  # - full: Airo
   # - tv: IPTV only
   # ============================================
   build-android:
@@ -296,7 +295,7 @@ jobs:
       fail-fast: false
       matrix:
         platform:
-          - name: mobile-full
+          - name: full
             target: lib/main.dart
             variant: full
             app_platform: mobileFull
@@ -304,24 +303,6 @@ jobs:
             enforce_size: false
             size_target_mb: 35
             description: "Full app with all features (size report only)"
-          - name: mobile-streaming
-            target: lib/main_mobile_streaming.dart
-            variant: streaming
-            app_platform: mobileStreaming
-            use_stubs: true
-            enforce_size: true
-            pubspec: pubspec_streaming.yaml
-            size_target_mb: 35
-            description: "Streaming app (IPTV + Music)"
-          - name: iptv-standalone
-            target: lib/main_airo_iptv.dart
-            variant: iptv
-            app_platform: mobileIptv
-            use_stubs: true
-            enforce_size: true
-            pubspec: pubspec_iptv.yaml
-            size_target_mb: 120
-            description: "Standalone IPTV app"
           - name: tv
             target: lib/main_tv.dart
             variant: tv
@@ -343,20 +324,20 @@ jobs:
           should_build=true
           reason="required for this event"
 
-          if [ "${{ github.event_name }}" = "pull_request" ] && [ "${{ matrix.platform.name }}" = "mobile-full" ]; then
+          if [ "${{ github.event_name }}" = "pull_request" ] && [ "${{ matrix.platform.name }}" = "full" ]; then
             if [[ " $PR_LABELS " == *" full-android-build "* ]]; then
               reason="PR has full-android-build label"
             else
               should_build=false
-              reason="mobile-full is skipped on PRs; add full-android-build label to run it"
+              reason="full is skipped on PRs; add full-android-build label to run it"
             fi
           fi
 
           if [ "${{ github.event_name }}" = "workflow_dispatch" ] && \
-             [ "${{ matrix.platform.name }}" = "mobile-full" ] && \
+             [ "${{ matrix.platform.name }}" = "full" ] && \
              [ "$BUILD_FULL_ANDROID" != "true" ]; then
             should_build=false
-            reason="manual run disabled mobile-full"
+            reason="manual run disabled full"
           fi
 
           echo "should_build=$should_build" >> "$GITHUB_OUTPUT"
@@ -409,8 +390,6 @@ jobs:
           cd app
           case "${{ matrix.platform.variant }}" in
             full) package_name="io.airo.app" ;;
-            iptv) package_name="io.airo.app.iptv" ;;
-            streaming) package_name="io.airo.app.streaming" ;;
             tv) package_name="io.airo.app.tv" ;;
             *)
               echo "::error::Unknown Android variant: ${{ matrix.platform.variant }}"
@@ -520,7 +499,7 @@ jobs:
         run: scripts/patch-android-plugin-gradle.sh
 
       - name: Run code generation
-        if: steps.android_scope.outputs.should_build == 'true' && matrix.platform.name == 'mobile-full'
+        if: steps.android_scope.outputs.should_build == 'true' && matrix.platform.name == 'full'
         run: |
           cd app
           dart run build_runner build --delete-conflicting-outputs
@@ -803,9 +782,7 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Platform | Description | Target Size |" >> $GITHUB_STEP_SUMMARY
           echo "|----------|-------------|-------------|" >> $GITHUB_STEP_SUMMARY
-          echo "| mobile-full | All features | report only |" >> $GITHUB_STEP_SUMMARY
-          echo "| mobile-streaming | IPTV + Music | <35MB |" >> $GITHUB_STEP_SUMMARY
-          echo "| iptv-standalone | IPTV-only mobile/tablet | <120MB |" >> $GITHUB_STEP_SUMMARY
+          echo "| full | Airo full app | report only |" >> $GITHUB_STEP_SUMMARY
           echo "| tv | IPTV only | <35MB |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "Release asset naming, visibility, and support policy: docs/release/V2_DISTRIBUTION_MATRIX.md" >> $GITHUB_STEP_SUMMARY
@@ -876,7 +853,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      
+
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@v0.35.0
         with:
@@ -884,7 +861,7 @@ jobs:
           scan-ref: '.'
           format: 'sarif'
           output: 'trivy-results.sarif'
-      
+
       - name: Upload Trivy results
         uses: github/codeql-action/upload-sarif@v4
         with:

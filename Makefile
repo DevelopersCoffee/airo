@@ -519,25 +519,6 @@ else
 	@bash scripts/build-tv.sh --full
 endif
 
-.PHONY: build-streaming
-build-streaming: ## Build Mobile Streaming APK with lightweight deps (Music + IPTV, <50MB target)
-ifeq ($(OS),Windows_NT)
-	@powershell -ExecutionPolicy Bypass -File scripts/build-streaming.ps1
-else
-	@bash scripts/build-streaming.sh
-endif
-
-.PHONY: build-streaming-full
-build-streaming-full: ## Build Mobile Streaming APK with full dependencies (~100MB, for testing)
-	@echo "$(BLUE)Building Mobile Streaming APK (full dependencies)...$(NC)"
-	@cd $(APP_DIR) && flutter build apk --release \
-		--target=lib/main_mobile_streaming.dart \
-		--dart-define=APP_VARIANT=streaming \
-		--dart-define=APP_PLATFORM=mobileStreaming \
-		--split-per-abi \
-		--tree-shake-icons
-	@echo "$(GREEN)✓ Streaming APK created$(NC)"
-
 .PHONY: build-full
 build-full: ## Build Mobile Full APK (all features)
 	@echo "$(BLUE)Building Mobile Full APK...$(NC)"

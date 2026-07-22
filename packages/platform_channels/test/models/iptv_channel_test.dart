@@ -44,6 +44,38 @@ void main() {
       expect(channel.group, 'Sports HD');
     });
 
+    test('fromM3U canonicalizes equivalent category labels', () {
+      final channels = [
+        IPTVChannel.fromM3U(
+          name: 'News title case',
+          url: 'https://cdn.example.com/news-title.m3u8',
+          group: 'News',
+        ),
+        IPTVChannel.fromM3U(
+          name: 'News lower case',
+          url: 'https://cdn.example.com/news-lower.m3u8',
+          group: ' news ',
+        ),
+        IPTVChannel.fromM3U(
+          name: 'News upper case',
+          url: 'https://cdn.example.com/news-upper.m3u8',
+          group: 'NEWS',
+        ),
+        IPTVChannel.fromM3U(
+          name: 'Nature category',
+          url: 'https://cdn.example.com/nature.m3u8',
+          group: 'nature   &   outdoors',
+        ),
+      ];
+
+      expect(channels.map((channel) => channel.group), [
+        'News',
+        'News',
+        'News',
+        'Nature & Outdoors',
+      ]);
+    });
+
     test('fromJson maps sentinel group to Uncategorized', () {
       final channel = IPTVChannel.fromJson(const {
         'id': '1',
@@ -64,6 +96,17 @@ void main() {
       });
 
       expect(channel.group, 'News');
+    });
+
+    test('fromJson canonicalizes cached category labels', () {
+      final channel = IPTVChannel.fromJson(const {
+        'id': '1',
+        'name': 'Channel',
+        'streamUrl': 'https://cdn.example.com/live.m3u8',
+        'group': '  horror   &   sci-fi ',
+      });
+
+      expect(channel.group, 'Horror & Sci-Fi');
     });
   });
 }

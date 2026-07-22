@@ -12,6 +12,7 @@ class PlaybackSettingsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final aspectRatio = ref.watch(videoAspectRatioProvider);
     final notifier = ref.read(videoAspectRatioProvider.notifier);
+    final pipEnabled = ref.watch(pictureInPicturePreferenceProvider);
     final extraSections = ref.watch(playbackSettingsExtraSectionsProvider);
 
     return Scaffold(
@@ -45,6 +46,18 @@ class PlaybackSettingsScreen extends ConsumerWidget {
                   ),
               ],
             ),
+          ),
+          SwitchListTile(
+            key: const ValueKey('playback-picture-in-picture-toggle'),
+            secondary: const Icon(Icons.picture_in_picture_alt_outlined),
+            title: const Text('Picture-in-picture'),
+            subtitle: const Text(
+              'Automatically keep video playing in a small window when you leave the app.',
+            ),
+            value: pipEnabled,
+            onChanged: (enabled) => ref
+                .read(pictureInPicturePreferenceProvider.notifier)
+                .setEnabled(enabled),
           ),
           ...extraSections,
         ],

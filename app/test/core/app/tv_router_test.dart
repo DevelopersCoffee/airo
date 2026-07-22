@@ -63,7 +63,13 @@ void main() {
 
     expect(find.text('Add your playlist'), findsOneWidget);
     expect(find.text('Live TV'), findsNothing);
-    expect(find.text('Settings'), findsNothing);
+    await tester.tap(find.byIcon(Icons.menu));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Settings'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Appearance'), findsOneWidget);
+    expect(find.widgetWithText(AppBar, 'Settings'), findsOneWidget);
   });
 
   testWidgets('uses compact IPTV layout on short phone landscape viewports', (
@@ -77,7 +83,9 @@ void main() {
 
     expect(find.text('Add your playlist'), findsOneWidget);
     expect(find.text('Live TV'), findsNothing);
-    expect(find.text('Settings'), findsNothing);
+    await tester.tap(find.byIcon(Icons.menu));
+    await tester.pumpAndSettle();
+    expect(find.text('Settings'), findsOneWidget);
   });
 
   testWidgets('redirects legacy login route to live TV', (tester) async {

@@ -1,4 +1,5 @@
 import 'package:feature_iptv/application/providers/guide_providers.dart';
+import 'package:feature_iptv/application/providers/channel_filters_provider.dart';
 import 'package:feature_iptv/application/providers/iptv_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -57,6 +58,28 @@ void main() {
       expect(container.read(channelSearchQueryProvider), '');
     },
   );
+
+  test('guide retains the global country and language scope', () async {
+    const italian = IPTVChannel(
+      id: 'channel-it',
+      name: 'Italian Channel',
+      streamUrl: 'https://example.com/italian.m3u8',
+      group: 'News',
+      country: 'IT',
+      languages: ['it'],
+    );
+    final container = buildContainer(channels: const [channel, italian]);
+    addTearDown(container.dispose);
+
+    await container.read(iptvChannelsProvider.future);
+    container.read(channelFiltersProvider.notifier).setCountry('IT');
+    container.read(channelFiltersProvider.notifier).setLanguage('it');
+
+    expect(
+      container.read(guideFilteredChannelsProvider).map((item) => item.id),
+      ['channel-it'],
+    );
+  });
 
   test(
     'guideFilteredChannelsProvider excludes channels in a hidden group (CV-021)',

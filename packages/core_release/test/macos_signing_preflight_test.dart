@@ -92,7 +92,7 @@ void main() {
     });
 
     test('rejects non-macOS release profiles', () {
-      final preflight = run(profileId: 'iptv-standalone');
+      final preflight = run(profileId: 'full');
 
       expect(preflight.ready, isFalse);
       expect(
