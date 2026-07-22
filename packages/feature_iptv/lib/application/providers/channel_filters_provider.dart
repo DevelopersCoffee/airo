@@ -63,6 +63,22 @@ class ChannelFilters extends Equatable {
     );
   }
 
+  Map<String, String> toJson() => {
+    'search': search,
+    if (category != null) 'category': category!,
+    if (country != null) 'country': country!,
+    if (language != null) 'language': language!,
+  };
+
+  factory ChannelFilters.fromJson(Map<String, Object?> json) {
+    return ChannelFilters(
+      search: json['search'] as String? ?? '',
+      category: json['category'] as String?,
+      country: json['country'] as String?,
+      language: json['language'] as String?,
+    );
+  }
+
   @override
   List<Object?> get props => [search, category, country, language];
 }
