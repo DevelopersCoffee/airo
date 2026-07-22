@@ -99,7 +99,10 @@ just an index:
 - Brain / AI Agent — no packages yet; owns product-layer Brain/chat journeys
   once built. `core_ai`, `core_ai_delegation`, `core_delegation` stay with
   Framework Agent below (runtime/model-routing, not a product journey).
-- Coins / Finance Agent — `airomoney`
+- Coins / Finance Agent — `feature_coin`, `platform_coin_vault`, and future
+  `platform_coin_*` / coin plugin packages. `packages/airomoney` is retired;
+  `app/lib/features/coins` is a legacy extraction source, not the home for new
+  Airo Coin behavior.
 - Meeting Intelligence Agent — dormant, no packages yet
 - Agent Skills Agent, Memory Agent, Routine OS Agent — super-app-level,
   unchanged, no owned packages exist yet in this repo pass
