@@ -99,6 +99,39 @@ void main() {
       channels,
     );
   });
+
+  test('reuses cached stream results when the preload window moves', () async {
+    final transport = _FakeProbeTransport({
+      'one': const StreamProbeHttpResponse(statusCode: 200),
+      'two': const StreamProbeHttpResponse(statusCode: 206),
+      'three': const StreamProbeHttpResponse(statusCode: 404),
+    });
+    final controller = ChannelAutoScanController(
+      probe: StreamAvailabilityProbe(transport: transport),
+    );
+    addTearDown(controller.dispose);
+
+    await controller.start(
+      scopeId: 'visible|one-two',
+      channels: [_channel('one'), _channel('two')],
+      maxConcurrentRequests: 2,
+    );
+    await controller.start(
+      scopeId: 'visible|two-three',
+      channels: [_channel('two'), _channel('three')],
+      maxConcurrentRequests: 2,
+    );
+
+    expect(transport.requestedChannelIds, ['one', 'two', 'three']);
+    expect(
+      controller.state.availabilityByChannelId['two'],
+      StreamAvailability.available,
+    );
+    expect(
+      controller.state.availabilityByChannelId['three'],
+      StreamAvailability.unavailable,
+    );
+  });
 }
 
 IPTVChannel _channel(String id) {

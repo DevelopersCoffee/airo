@@ -142,6 +142,7 @@ void main() {
     await tester.pump();
 
     expect(visibleIds, contains('channel-0'));
+    expect(visibleIds, contains('channel-30'));
     expect(visibleIds.length, lessThan(manyChannels.length));
   });
 

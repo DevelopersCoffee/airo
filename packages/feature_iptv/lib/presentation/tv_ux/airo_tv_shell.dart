@@ -223,7 +223,7 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
   }
 
   void _scheduleVisibleChannelScan(List<IPTVChannel> channels) {
-    final visible = channels.take(18).toList(growable: false);
+    final visible = channels.take(42).toList(growable: false);
     final signature = visible.map((channel) => channel.id).join(',');
     if (signature.isEmpty || signature == _visibleScanSignature) return;
     _visibleScanSignature = signature;

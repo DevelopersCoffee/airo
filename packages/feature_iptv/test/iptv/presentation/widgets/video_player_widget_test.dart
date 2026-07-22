@@ -338,51 +338,27 @@ void main() {
   // button is reachable by tapping it via finder (never raw coordinates)
   // and asserting the real onBack callback fired.
   // ===========================================================================
-  testWidgets("PlayerOverlay's back button is reachable and invokes onBack", (
+  testWidgets('expanded player uses only the Airo TV floating control layer', (
     tester,
   ) async {
-    var backTapped = false;
+    tester.view.physicalSize = const Size(1280, 720);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
 
-    SharedPreferences.setMockInitialValues({});
-    final prefs = await SharedPreferences.getInstance();
+    await pumpPlayer(tester, enableSwipeChannelChange: true);
 
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [
-          sharedPreferencesProvider.overrideWithValue(prefs),
-          streamingStateProvider.overrideWith(
-            (ref) => Stream.value(
-              StreamingState(
-                playbackState: PlaybackState.playing,
-                isLiveStream: true,
-                currentChannel: const IPTVChannel(
-                  id: 'news-1',
-                  name: 'City News Live',
-                  streamUrl: 'https://example.com/news.m3u8',
-                  group: 'News',
-                  category: ChannelCategory.news,
-                ),
-              ),
-            ),
-          ),
-        ],
-        child: MaterialApp(
-          home: Scaffold(
-            body: VideoPlayerWidget(onBack: () => backTapped = true),
-          ),
-        ),
-      ),
+    expect(find.byKey(const ValueKey('player-overlay-back')), findsNothing);
+    expect(find.text('VOL'), findsOneWidget);
+    expect(find.text('CH'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('iptv-player-volume-up-button')),
+      findsOneWidget,
     );
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 100));
-
-    final backButton = find.byKey(const ValueKey('player-overlay-back'));
-    expect(backButton, findsOneWidget);
-
-    await tester.tap(backButton);
-    await tester.pump();
-
-    expect(backTapped, isTrue);
+    expect(
+      find.byKey(const ValueKey('iptv-player-channel-next-button')),
+      findsOneWidget,
+    );
   });
 
   // ===========================================================================

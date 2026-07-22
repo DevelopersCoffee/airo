@@ -439,39 +439,10 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                         )
                       : playerSurface,
 
-                  // Renderer-agnostic top chrome (back button, title/
-                  // subtitle, quality + LIVE pills) and failover toast, built
-                  // from PlayerViewState (Task 8/9). Supersedes the old
-                  // network/quality/live badge row and the old channel-name
-                  // row inside `_buildControlsOverlay` below. Center
-                  // transport and the bottom bar are left to that richer
-                  // control bar — which still owns mute, aspect ratio,
-                  // cinema mode, subtitle selection, VOD seek, and Go Live —
-                  // since PlayerOverlay's current fixed contract has no
-                  // equivalent hooks for those yet (see task-9-report.md for
-                  // the follow-up).
-                  //
-                  // Painted (and therefore hit-tested) BEFORE
-                  // `_buildControlsOverlay` below on purpose: PlayerOverlay's
-                  // own tap-to-reveal surface is full-bleed (StackFit.expand)
-                  // so it can catch a tap anywhere on the video, but that
-                  // must not win the gesture arena over the buttons in the
-                  // richer overlay (mute/subtitle/fullscreen/etc) that sit at
-                  // the same screen coordinates — putting it first in paint
-                  // order means those buttons hit-test in front of it and
-                  // claim the tap first.
-                  //
-                  // This only works because `_buildControlsOverlay`'s own
-                  // decorative gradient background is wrapped in
-                  // `IgnorePointer` (see below): `Decoration.hitTest()`
-                  // reports a hit across a `Container`'s ENTIRE bounding box
-                  // regardless of the gradient's alpha, and that container is
-                  // full-bleed over the whole stack. Left un-ignored, it
-                  // would swallow every tap in its bounds — including
-                  // PlayerOverlay's back button up top, which has no legacy
-                  // content behind it since the old channel-name row moved
-                  // into PlayerOverlay — before PlayerOverlay's own
-                  // GestureDetector ever saw the tap.
+                  // Failover toast only. Airo TV owns one visible control
+                  // system below; keeping PlayerOverlay's old back/title layer
+                  // mounted here caused a second set of controls to reappear
+                  // after the floating controls faded.
                   if (!_isLocked && !isPipActive && !compactInlinePlayer)
                     PlayerOverlay(
                       state: _toPlayerViewState(state),
@@ -484,6 +455,7 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                           service.resume();
                         }
                       },
+                      showTopChrome: false,
                       showCenterControls: false,
                       showBottomBar: false,
                     ),
@@ -747,16 +719,8 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
       fit: StackFit.expand,
       children: [
         // Decorative gradient backdrop only — wrapped in IgnorePointer so it
-        // never hit-tests. Without this, `Decoration.hitTest()` claims every
-        // tap across this Container's full bounding box (opaque hit area,
-        // not per-pixel alpha), and since this whole overlay paints in front
-        // of PlayerOverlay above, that would swallow taps meant for
-        // PlayerOverlay's back button before its GestureDetector ever saw
-        // them — even though the gradient's top band has nothing visually
-        // interactive under it anymore (the old channel-name row moved to
-        // PlayerOverlay). The real buttons live in `_buildControlButtons`
-        // below as separate hit-testable siblings, so they're unaffected by
-        // this IgnorePointer and keep working exactly as before.
+        // never hit-tests. The real controls live in `_buildControlButtons`
+        // below as separate hit-testable siblings.
         IgnorePointer(
           child: Container(
             decoration: BoxDecoration(

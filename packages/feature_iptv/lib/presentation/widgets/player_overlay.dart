@@ -20,6 +20,7 @@ class PlayerOverlay extends StatefulWidget {
     this.onGuide,
     this.onFullscreen,
     this.autoHideDelay = const Duration(seconds: 3),
+    this.showTopChrome = true,
     this.showCenterControls = true,
     this.showBottomBar = true,
   });
@@ -32,6 +33,11 @@ class PlayerOverlay extends StatefulWidget {
   final VoidCallback? onGuide;
   final VoidCallback? onFullscreen;
   final Duration autoHideDelay;
+
+  /// Whether to render the top back/title/quality chrome. Feature-specific
+  /// players can disable this when they already own the visible controls and
+  /// only need the failover toast from this generic overlay.
+  final bool showTopChrome;
 
   /// Whether to render the center prev/play-pause/next row. Defaults to
   /// `true` (full standalone overlay per spec); callers that already have a
@@ -89,6 +95,20 @@ class _PlayerOverlayState extends State<PlayerOverlay> {
   @override
   Widget build(BuildContext context) {
     final state = widget.state;
+    final hasControls =
+        widget.showTopChrome ||
+        widget.showCenterControls ||
+        widget.showBottomBar;
+    if (!hasControls) {
+      return IgnorePointer(
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            if (state.failover != null) _buildFailoverToast(state.failover!),
+          ],
+        ),
+      );
+    }
     return GestureDetector(
       behavior: HitTestBehavior.translucent,
       onTap: _reveal,
@@ -104,7 +124,7 @@ class _PlayerOverlayState extends State<PlayerOverlay> {
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  _buildTopGradient(state),
+                  if (widget.showTopChrome) _buildTopGradient(state),
                   if (widget.showCenterControls) _buildCenterControls(state),
                   if (widget.showBottomBar) _buildBottomGradient(state),
                 ],

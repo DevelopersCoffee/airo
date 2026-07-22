@@ -9,6 +9,8 @@ import '../../widgets/channel_logo.dart';
 const _channelRowHeight = 56.0;
 const _tableHeaderHeight = 52.0;
 const _availabilityStripWidth = 4.0;
+const _preloadRowsBeforeViewport = 6;
+const _preloadRowsAfterViewport = 30;
 
 class ChannelTable extends StatefulWidget {
   const ChannelTable({
@@ -72,13 +74,18 @@ class _ChannelTableState extends State<ChannelTable> {
     if (!_scrollController.hasClients) return;
     final viewportHeight = _scrollController.position.viewportDimension;
     final offset = _scrollController.offset;
-    final first = ((offset - _tableHeaderHeight) / _channelRowHeight)
+    final firstVisible = ((offset - _tableHeaderHeight) / _channelRowHeight)
         .floor()
+        .clamp(0, widget.channels.length - 1)
+        .toInt();
+    final first = (firstVisible - _preloadRowsBeforeViewport)
         .clamp(0, widget.channels.length - 1)
         .toInt();
     final visibleCount =
         ((viewportHeight - _tableHeaderHeight) / _channelRowHeight).ceil() + 4;
-    final end = (first + visibleCount).clamp(0, widget.channels.length).toInt();
+    final end = (firstVisible + visibleCount + _preloadRowsAfterViewport)
+        .clamp(0, widget.channels.length)
+        .toInt();
     final visible = widget.channels.sublist(first, end);
     final signature = visible.map((channel) => channel.id).join(',');
     if (!force && signature == _lastVisibleSignature) return;
@@ -97,7 +104,7 @@ class _ChannelTableState extends State<ChannelTable> {
             controller: _scrollController,
             key: const PageStorageKey<String>('airo-tv-channel-table-scroll'),
             physics: const AlwaysScrollableScrollPhysics(),
-            cacheExtent: _channelRowHeight * 8,
+            cacheExtent: _channelRowHeight * 32,
             slivers: [
               SliverPersistentHeader(
                 pinned: true,

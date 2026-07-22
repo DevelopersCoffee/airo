@@ -73,6 +73,28 @@ void main() {
     expect(find.textContaining('Switching to source'), findsNothing);
   });
 
+  testWidgets('can render failover without legacy top chrome', (tester) async {
+    await tester.pumpWidget(
+      wrap(
+        PlayerOverlay(
+          state: const PlayerViewState(
+            title: 'Star Sports 1',
+            failover: FailoverProgress(currentSource: 2, totalSources: 4),
+          ),
+          onBack: () {},
+          onPlayPause: () {},
+          showTopChrome: false,
+          showCenterControls: false,
+          showBottomBar: false,
+        ),
+      ),
+    );
+
+    expect(find.byKey(const ValueKey('player-overlay-back')), findsNothing);
+    expect(find.text('Star Sports 1'), findsNothing);
+    expect(find.text('Switching to source 2 of 4'), findsOneWidget);
+  });
+
   testWidgets('auto-hides after autoHideDelay and reveals on tap', (
     tester,
   ) async {
@@ -109,9 +131,7 @@ void main() {
     expect(opacity.opacity, 1.0);
   });
 
-  testWidgets('play/pause callback fires on center button tap', (
-    tester,
-  ) async {
+  testWidgets('play/pause callback fires on center button tap', (tester) async {
     var tapped = false;
     await tester.pumpWidget(
       wrap(
