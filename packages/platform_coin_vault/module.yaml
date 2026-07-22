@@ -1,5 +1,20 @@
 name: platform_coin_vault
 owner: Coins / Finance Agent
+capabilities:
+  - capability.finance.coin.vault_storage
+supported_devices:
+  - phone
+  - tablet
+  - desktop
+ship_policy:
+  tv: Never Ship
+  phone: Always Ship
+  tablet: Always Ship
+  desktop: Optional
+native_dependencies:
+  - flutter_secure_storage
+  - local_auth
+  - sqflite
 reviewers:
   - Chief Architect
   - Chief Security Officer

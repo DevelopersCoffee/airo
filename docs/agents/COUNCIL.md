@@ -100,7 +100,7 @@ implementation detail — that's the domain agent's job.
 
 | Role | Owns | Notes |
 | --- | --- | --- |
-| Coins / Finance Agent | `airomoney` | Super-app-level, unrelated to Airo TV work |
+| Coins / Finance Agent | `feature_coin`, `platform_coin_vault`, future `platform_coin_*` and coin plugin packages | Airo Coin is package-first. `packages/airomoney` is retired; `app/lib/features/coins` is legacy super-app code to extract or delete, not a target for new behavior. |
 | AI/Brain Agent | (none yet) | Owns product-layer Brain/chat journeys once built. Does **not** own `core_ai`, `core_ai_delegation`, `core_delegation` — those runtime/model-routing packages stay with Framework Agent per `AGENT_POLICY.md`'s Ownership Map, to avoid a two-owner conflict on the same package. |
 | Meeting Intelligence Agent | (none yet) | Dormant — no packages exist for this sub-app yet |
 

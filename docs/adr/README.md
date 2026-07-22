@@ -13,6 +13,8 @@ An Architecture Decision Record (ADR) captures an important architectural decisi
 | [0001](0001-package-structure.md) | Modular Package Structure | Accepted | 2025-11-30 |
 | [0006](0006-mobile-ui-governance-and-shell-ownership.md) | Mobile UI Governance and Shell Ownership | Accepted | 2026-06-27 |
 | [0008](0008-storage-tiering-and-preference-size-guards.md) | Storage Tiering and Preference Size Guards | Accepted | 2026-07-15 |
+| [0009](0009-airo-coin-vault-crypto.md) | Airo Coin vault crypto design and threat model | Accepted | 2026-07-20 |
+| [0010](0010-airo-coin-package-first-development.md) | Airo Coin package-first development | Accepted | 2026-07-22 |
 
 ## Creating a New ADR
 
