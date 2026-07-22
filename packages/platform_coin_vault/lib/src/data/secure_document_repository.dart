@@ -1,3 +1,5 @@
+// ignore_for_file: prefer_initializing_formals
+
 import 'dart:convert';
 
 import 'package:core_domain/core_domain.dart';
@@ -54,7 +56,8 @@ class SecureDocumentRepository {
             : await _fieldCipher.encryptField(
                 String.fromCharCodes(record.attachmentBlob!),
                 keyBytes,
-                context: '${VaultTables.secureDocuments}:attachment_blob_enc:$id',
+                context:
+                    '${VaultTables.secureDocuments}:attachment_blob_enc:$id',
               );
 
         await txn.update(

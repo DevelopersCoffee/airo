@@ -21,6 +21,8 @@ class RouteNames {
   static const String coinsGroupDetail = 'coins_group_detail';
   static const String coinsAddSplit = 'coins_add_split';
   static const String coinVault = 'coin_vault';
+  static const String coinVaultAdd = 'coin_vault_add';
+  static const String coinVaultEdit = 'coin_vault_edit';
 
   // Coins Full Paths (for direct navigation)
   static const String coinsDashboardPath = '/money/dashboard';

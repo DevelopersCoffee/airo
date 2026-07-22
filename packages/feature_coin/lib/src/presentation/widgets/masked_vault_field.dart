@@ -1,74 +1,50 @@
 import 'package:flutter/material.dart';
 
-class MaskedVaultField extends StatefulWidget {
+/// One row in the record detail sheet. Plain fields pass [value] and no
+/// [onReveal]; sensitive fields pass a masked placeholder as [value], the
+/// decrypted text as [revealedValue], and an [onReveal] toggle.
+class MaskedVaultField extends StatelessWidget {
   const MaskedVaultField({
     super.key,
     required this.label,
-    required this.maskedValue,
-    required this.revealValue,
+    required this.value,
+    this.isRevealed = false,
+    this.revealedValue,
+    this.onReveal,
     this.onCopy,
   });
 
   final String label;
-  final String maskedValue;
-  final Future<String?> Function() revealValue;
-  final Future<void> Function(String value)? onCopy;
-
-  @override
-  State<MaskedVaultField> createState() => _MaskedVaultFieldState();
-}
-
-class _MaskedVaultFieldState extends State<MaskedVaultField> {
-  String? _revealedValue;
-  var _loading = false;
-
-  bool get _isRevealed => _revealedValue != null;
+  final String value;
+  final bool isRevealed;
+  final String? revealedValue;
+  final VoidCallback? onReveal;
+  final VoidCallback? onCopy;
 
   @override
   Widget build(BuildContext context) {
+    final display = isRevealed ? (revealedValue ?? value) : value;
     return ListTile(
-      contentPadding: EdgeInsets.zero,
-      title: Text(widget.label),
-      subtitle: Text(_revealedValue ?? widget.maskedValue),
-      trailing: Wrap(
-        spacing: 4,
+      dense: true,
+      title: Text(label, style: Theme.of(context).textTheme.labelSmall),
+      subtitle: Text(display, style: Theme.of(context).textTheme.bodyLarge),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          IconButton(
-            tooltip: _isRevealed
-                ? 'Hide ${widget.label}'
-                : 'Reveal ${widget.label}',
-            icon: _loading
-                ? const SizedBox.square(
-                    dimension: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : Icon(_isRevealed ? Icons.visibility_off : Icons.visibility),
-            onPressed: _loading ? null : _toggleReveal,
-          ),
-          if (widget.onCopy != null)
+          if (onReveal != null)
             IconButton(
-              tooltip: 'Copy ${widget.label}',
-              icon: const Icon(Icons.copy_outlined),
-              onPressed: _isRevealed
-                  ? () => widget.onCopy?.call(_revealedValue!)
-                  : null,
+              tooltip: isRevealed ? 'Hide $label' : 'Reveal $label',
+              icon: Icon(isRevealed ? Icons.visibility_off : Icons.visibility),
+              onPressed: onReveal,
+            ),
+          if (onCopy != null)
+            IconButton(
+              tooltip: 'Copy $label',
+              icon: const Icon(Icons.copy),
+              onPressed: onCopy,
             ),
         ],
       ),
     );
-  }
-
-  Future<void> _toggleReveal() async {
-    if (_isRevealed) {
-      setState(() => _revealedValue = null);
-      return;
-    }
-    setState(() => _loading = true);
-    final value = await widget.revealValue();
-    if (!mounted) return;
-    setState(() {
-      _revealedValue = value;
-      _loading = false;
-    });
   }
 }

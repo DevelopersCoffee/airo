@@ -1,8 +1,11 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:screen_protector/screen_protector.dart';
 
+/// Prevents screenshots and recents thumbnails while vault routes are visible.
+///
+/// Best-effort by design: plugin failure must never block vault usage.
 class VaultScreenSecurity {
-  const VaultScreenSecurity({
+  VaultScreenSecurity({
     this.enableProtection = ScreenProtector.protectDataLeakageOn,
     this.disableProtection = ScreenProtector.protectDataLeakageOff,
   });
@@ -10,7 +13,11 @@ class VaultScreenSecurity {
   final Future<void> Function() enableProtection;
   final Future<void> Function() disableProtection;
 
+  var _activeProtectors = 0;
+
   Future<void> protect() async {
+    _activeProtectors++;
+    if (_activeProtectors > 1) return;
     try {
       await enableProtection();
     } catch (_) {
@@ -19,6 +26,9 @@ class VaultScreenSecurity {
   }
 
   Future<void> unprotect() async {
+    if (_activeProtectors == 0) return;
+    _activeProtectors--;
+    if (_activeProtectors > 0) return;
     try {
       await disableProtection();
     } catch (_) {
@@ -28,5 +38,5 @@ class VaultScreenSecurity {
 }
 
 final screenSecurityProvider = Provider<VaultScreenSecurity>(
-  (ref) => const VaultScreenSecurity(),
+  (ref) => VaultScreenSecurity(),
 );

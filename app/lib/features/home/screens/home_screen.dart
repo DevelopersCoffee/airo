@@ -118,7 +118,7 @@ class HomeScreen extends StatelessWidget {
                   ),
                   AppCard(
                     title: 'Coins',
-                    description: 'Financial management',
+                    description: 'Expenses, budgets & secure vault',
                     icon: Icons.account_balance_wallet,
                     color: Colors.green,
                     onTap: () => context.go('/money'),

@@ -1,6 +1,7 @@
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:platform_coin_vault/platform_coin_vault.dart';
 
 import '../../application/vault_record_ref.dart';
@@ -8,7 +9,6 @@ import '../../application/vault_session.dart';
 import '../../application/vault_summaries_provider.dart';
 import '../../domain/vault_record_type.dart';
 import '../widgets/record_detail_sheet.dart';
-import 'vault_record_form_screen.dart';
 
 class VaultHomeScreen extends ConsumerWidget {
   const VaultHomeScreen({super.key, this.onAddRecord, this.onOpenRecord});
@@ -126,7 +126,11 @@ class VaultHomeScreen extends ConsumerWidget {
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
-      builder: (_) => RecordDetailSheet(summary: summary, recordRef: recordRef),
+      builder: (_) => RecordDetailSheet(
+        recordType: recordRef.type,
+        recordKey: recordRef.nickname ?? '${recordRef.id}',
+        summary: summary,
+      ),
     );
   }
 
@@ -143,9 +147,7 @@ class VaultHomeScreen extends ConsumerWidget {
     if (type == null) return;
     callback?.call(type);
     if (!context.mounted) return;
-    await Navigator.of(context).push<void>(
-      MaterialPageRoute(builder: (_) => VaultRecordFormScreen(type: type)),
-    );
+    await context.push<void>('/money/vault/add/${type.name}');
   }
 }
 

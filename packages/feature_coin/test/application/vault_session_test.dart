@@ -226,18 +226,66 @@ void main() {
       },
     );
 
-    test('lock zeroes the DEK bytes in place', () async {
+    test('lock zeroes the cached DEK bytes in place', () async {
+      final returnedKey = List<int>.generate(32, (index) => index + 1);
+      final manager = ControllableVaultKeyManager(
+        isAvailableCallback: () async => true,
+        getDatabaseKeyCallback: () async => Success(returnedKey),
+      );
+      final container = containerFor(manager);
+      final notifier = container.read(vaultSessionProvider.notifier);
+      await notifier.unlock();
+
+      expect(returnedKey.any((byte) => byte != 0), isTrue);
+
+      notifier.lock();
+
+      expect(returnedKey.every((byte) => byte == 0), isTrue);
+      expect(container.read(vaultSessionProvider), isA<VaultLocked>());
+    });
+
+    test(
+      'withKey uses an operation-owned key and zeroes it after use',
+      () async {
+        final container = containerFor(keyManager());
+        final notifier = container.read(vaultSessionProvider.notifier);
+        await notifier.unlock();
+
+        List<int>? operationKey;
+        final length = await notifier.withKey((key) async {
+          operationKey = key;
+          expect(key.any((byte) => byte != 0), isTrue);
+          return key.length;
+        });
+
+        expect(length, 32);
+        expect(operationKey!.every((byte) => byte == 0), isTrue);
+        expect(container.read(vaultSessionProvider), isA<VaultUnlocked>());
+      },
+    );
+
+    test('withKey returns null when vault locks during operation', () async {
       final container = containerFor(keyManager());
       final notifier = container.read(vaultSessionProvider.notifier);
       await notifier.unlock();
 
-      List<int>? captured;
-      await notifier.withKey((key) async => captured = key);
-      expect(captured!.any((byte) => byte != 0), isTrue);
+      final operationStarted = Completer<void>();
+      final releaseOperation = Completer<int>();
+      List<int>? operationKey;
+      final result = notifier.withKey((key) async {
+        operationKey = key;
+        operationStarted.complete();
+        return releaseOperation.future;
+      });
+      await operationStarted.future;
 
+      expect(operationKey!.any((byte) => byte != 0), isTrue);
       notifier.lock();
+      expect(operationKey, isEmpty);
+      releaseOperation.complete(7);
 
-      expect(captured!.every((byte) => byte == 0), isTrue);
+      expect(await result, isNull);
+      expect(operationKey, isEmpty);
       expect(container.read(vaultSessionProvider), isA<VaultLocked>());
     });
 

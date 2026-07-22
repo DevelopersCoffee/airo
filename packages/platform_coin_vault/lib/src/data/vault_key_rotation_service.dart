@@ -1,3 +1,5 @@
+// ignore_for_file: prefer_initializing_formals
+
 import 'package:core_domain/core_domain.dart';
 import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:sqflite/sqflite.dart';
@@ -11,7 +13,11 @@ import 'vault_database.dart';
 const Map<String, List<String>> _encryptedColumnsByTable = {
   VaultTables.bankAccounts: ['account_number_enc', 'notes_enc'],
   VaultTables.panCards: ['pan_number_enc', 'card_image_blob_enc'],
-  VaultTables.secureDocuments: ['custom_fields_enc', 'attachment_blob_enc', 'notes_enc'],
+  VaultTables.secureDocuments: [
+    'custom_fields_enc',
+    'attachment_blob_enc',
+    'notes_enc',
+  ],
 };
 
 /// Test-only visibility into [_encryptedColumnsByTable]. Exists so tests can
@@ -19,7 +25,8 @@ const Map<String, List<String>> _encryptedColumnsByTable = {
 /// in the schema — see `vault_key_rotation_service_test.dart`'s drift-guard
 /// test. Never use this outside tests.
 @visibleForTesting
-const Map<String, List<String>> encryptedColumnsByTableForTesting = _encryptedColumnsByTable;
+const Map<String, List<String>> encryptedColumnsByTableForTesting =
+    _encryptedColumnsByTable;
 
 /// Safely rotates the vault's DEK by re-encrypting every field-encrypted
 /// column, across every table, under the new key before the new key ever
@@ -78,10 +85,12 @@ class VaultKeyRotationService {
         }
       });
     } catch (e) {
-      return Failure(DatabaseFailure(
-        message: 'Re-encryption failed; the vault DEK was not rotated',
-        cause: e,
-      ));
+      return Failure(
+        DatabaseFailure(
+          message: 'Re-encryption failed; the vault DEK was not rotated',
+          cause: e,
+        ),
+      );
     }
 
     return _keyManager.persistRotatedKeyUnauthenticated(newKey);
