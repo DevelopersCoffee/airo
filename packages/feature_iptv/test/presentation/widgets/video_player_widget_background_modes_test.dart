@@ -7,6 +7,26 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  Future<void> openPlayerActionsSheet(WidgetTester tester) async {
+    final moreButton = find.byKey(const ValueKey('iptv-player-more-button'));
+    expect(moreButton, findsWidgets);
+    final button = tester.widget<IconButton>(
+      find.descendant(of: moreButton.first, matching: find.byType(IconButton)),
+    );
+    button.onPressed?.call();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+  }
+
+  Future<void> selectPlayerAction(
+    WidgetTester tester,
+    ValueKey<String> key,
+  ) async {
+    tester.widget<ListTile>(find.byKey(key)).onTap?.call();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+  }
+
   testWidgets('tapping the audio-only toggle enables background audio mode', (
     tester,
   ) async {
@@ -59,9 +79,11 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
 
-    await tester.tap(find.byKey(const ValueKey('audio-only-toggle')));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 100));
+    await openPlayerActionsSheet(tester);
+    await selectPlayerAction(
+      tester,
+      const ValueKey('iptv-player-audio-only-menu-action'),
+    );
 
     expect(calls.single.arguments, {'enabled': true});
     expect(AiroBackgroundAudioMode.isEnabled, isTrue);
@@ -121,12 +143,14 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
 
-      expect(find.byKey(const ValueKey('audio-only-toggle')), findsWidgets);
+      await openPlayerActionsSheet(tester);
+      expect(find.text('Listen only'), findsOneWidget);
 
       // First toggle succeeds
-      await tester.tap(find.byKey(const ValueKey('audio-only-toggle')));
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 100));
+      await selectPlayerAction(
+        tester,
+        const ValueKey('iptv-player-audio-only-menu-action'),
+      );
       expect(
         successfulToggles,
         equals(1),
@@ -135,9 +159,12 @@ void main() {
       expect(AiroBackgroundAudioMode.isEnabled, isTrue);
 
       // Now toggle back off, which should also succeed
-      await tester.tap(find.byKey(const ValueKey('audio-only-toggle')));
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 100));
+      await openPlayerActionsSheet(tester);
+      expect(find.text('Exit audio-only'), findsOneWidget);
+      await selectPlayerAction(
+        tester,
+        const ValueKey('iptv-player-audio-only-menu-action'),
+      );
       expect(
         successfulToggles,
         equals(2),
@@ -228,28 +255,22 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
 
-      final toggleFinder = find.byKey(const ValueKey('audio-only-toggle'));
-      expect(toggleFinder, findsWidgets);
-
-      Icon iconOf(Finder buttonFinder) => tester.widget<Icon>(
-        find.descendant(of: buttonFinder, matching: find.byType(Icon)),
-      );
-
       // Pre-tap: audio-only is off.
-      expect(iconOf(toggleFinder).icon, Icons.hearing_disabled);
-      expect(iconOf(toggleFinder).color, Colors.white);
+      await openPlayerActionsSheet(tester);
+      expect(find.text('Listen only'), findsOneWidget);
 
-      await tester.tap(toggleFinder);
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 100));
+      await selectPlayerAction(
+        tester,
+        const ValueKey('iptv-player-audio-only-menu-action'),
+      );
 
       // The injected setter was actually invoked and actually threw.
       expect(setAudioOnlyModeCalls, equals(1));
 
       // The widget's local state reverted to its pre-tap value instead of
       // getting stuck on the optimistic value set before the failed call.
-      expect(iconOf(toggleFinder).icon, Icons.hearing_disabled);
-      expect(iconOf(toggleFinder).color, Colors.white);
+      await openPlayerActionsSheet(tester);
+      expect(find.text('Listen only'), findsOneWidget);
 
       // The failed toggle never reached the coordinator.
       expect(successfulToggles, equals(0));
@@ -280,6 +301,9 @@ class SpyPlayerBackgroundingCoordinator
     AppLifecycleState state,
     StreamingState streaming,
   ) async {}
+
+  @override
+  void onPictureInPicturePreferenceChanged(bool enabled) {}
 
   @override
   void onStreamingStateChanged(StreamingState streaming) {}
