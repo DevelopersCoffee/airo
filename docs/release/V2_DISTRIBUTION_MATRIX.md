@@ -84,13 +84,13 @@ SHA256SUMS
 Examples:
 
 ```text
-Airo-IPTV-v2.0.0.apk
-Airo-Streaming-v2.0.0.apk
-Airo-TV-v2.0.0.apk
-Airo-TV-v2.0.0-Play-Store.aab
-Airo-TV-v2.0.0-macOS.zip
-Airo-TV-v2.0.0-macOS.dmg
-Airo-TV-v2.0.0-Release-Manifest.json
+Airo-0.0.5-7-arm64.apk
+Airo-0.0.5-7-Play-Store.aab
+Airo-TV-0.0.5.apk
+Airo-TV-0.0.5-Play-Store.aab
+Airo-TV-0.0.5-macOS.zip
+Airo-TV-0.0.5-macOS.dmg
+Airo-TV-0.0.5-Release-Manifest.json
 ```
 
 Do not publish debug-looking names such as `app-release.apk` or

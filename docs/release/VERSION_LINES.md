@@ -85,31 +85,33 @@ V2 is the new modular Airo architecture. It separates reusable foundation code
 from business modules so releases can target smaller APKs by user journey,
 device class, or store listing.
 
-**Market position:** Next major platform line.
+**Market position:** Active modular platform line.
 
 **Versioning:**
-- Use semantic versions under `v2.x.y`.
-- Start public modular releases at `v2.0.0`.
+- Use semantic product release tags for the current product line. Airo TV tags
+  use `airo-tv-v0.0.x`; full Airo tags use `v0.0.x` unless a release issue
+  explicitly defines a product-specific prefix.
+- The current Airo TV release train advances from `airo-tv-v0.0.4` to
+  `airo-tv-v0.0.5`.
 - Treat package contracts, feature registry APIs, and build target manifests as
   V2 compatibility surfaces.
 
 **Branching:**
-- `v2` is the long-lived base branch for the V2 modular architecture.
-- `feat/v2-modular-foundation` or issue-scoped `codex/v2-*` branches must start
-  from `v2` and carry isolated V2 implementation work before merge.
-- V2 release candidates are cut from `v2`; do not create a separate release
-  branch unless the team later adopts point-in-time release branches.
-- Tags use immutable semantic version tags such as `v2.0.0`, `v2.0.1`, and
-  `v2.1.0`.
+- Active modular release work starts from latest `origin/main`.
+- Issue-scoped `codex/*` branches must start from `origin/main` and carry
+  isolated implementation work before merge.
+- Release candidates are cut from `origin/main` into point-in-time release
+  branches such as `release/airo-tv-v0.0.5`.
+- Tags use immutable semantic product tags such as `airo-tv-v0.0.5` and
+  `v0.0.5`.
 
 **Artifact naming:**
-- `airo-v2-foundation.apk`
-- `airo-v2-full.apk`
-- `airo-v2-tv.apk`
-- `airo-v2-streaming.apk`
-- `airo-v2-coins.apk`
-- `airo-v2-<business-module>.apk`
-- `airo-v2-full.aab`
+- `Airo-0.0.5-7-arm64.apk`
+- `Airo-0.0.5-7-Play-Store.aab`
+- `Airo-TV-0.0.5.apk`
+- `Airo-TV-0.0.5-Play-Store.aab`
+- `Airo-TV-0.0.5-macOS.zip`
+- `Airo-TV-0.0.5-macOS.dmg`
 
 **Allowed changes:**
 - Feature registry and module manifest work.

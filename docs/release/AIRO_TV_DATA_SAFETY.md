@@ -14,7 +14,7 @@ access.
 | Entrypoint | `app/lib/main_tv.dart` |
 | Privacy Policy URL | `https://developerscoffee.github.io/airo/legal/privacy-policy/` |
 | Terms URL | `https://developerscoffee.github.io/airo/legal/terms-conditions/` |
-| Current release | v0.0.2 |
+| Current release | v0.0.5 |
 
 This declaration is based on the current v2 TV release behavior:
 

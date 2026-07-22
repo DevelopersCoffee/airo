@@ -12,7 +12,7 @@ must be saved by a maintainer with console access.
 | Product | Airo TV |
 | Android package ID | `io.airo.app.tv` |
 | Entrypoint | `app/lib/main_tv.dart` |
-| Current release | v0.0.2 |
+| Current release | v0.0.5 |
 | Privacy minimum age posture | Not directed to children under 16 |
 | Content model | Media player for user-provided playlist and stream URLs |
 

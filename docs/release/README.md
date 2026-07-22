@@ -8,6 +8,8 @@ Documentation for Airo releases and version history.
 
 | Version | Date | Highlights |
 |---------|------|------------|
+| [Airo TV v0.0.5](./AIRO_TV_v0.0.5.md) | 2026-07-22 | Product target consolidation, TV controls, filters, channel warmup |
+| [Airo TV v0.0.4](./AIRO_TV_v0.0.4.md) | 2026-07-22 | Search, favorites, guide setup, provider add-flows, diagnostics |
 | [Airo TV v0.0.2](./AIRO_TV_v0.0.2.md) | 2026-07-14 | Release trust update, checksums, clean assets, documentation |
 | [Airo TV v0.0.1](./AIRO_TV_v0.0.1.md) | 2026-07-14 | Android TV IPTV release, Play Store readiness, Cast diagnostics |
 | [v1.1.0](./CHANGELOG_v1.1.0.md) | 2025-11-29 | Bill Split, E2E Testing, OCR Integration |
@@ -15,21 +17,21 @@ Documentation for Airo releases and version history.
 
 ---
 
-## Latest Release: Airo TV v0.0.2
+## Latest Release: Airo TV v0.0.5
 
 ### New Features
-- **Release assets** - Clean APK/AAB filenames and SHA256 checksums
-- **Release notes** - Mature open-source release format for Airo TV releases
-- **Trust documentation** - Privacy, security, threat model, roadmap, feature matrix, and architecture docs
-- **Play Store readiness** - Release process documents screenshots, demo video, legal notice, and known limitations
+- **Focused product surface** - Airo TV is the active IPTV product target; obsolete Streaming/IPTV release targets are removed.
+- **Filters and setup** - First-run country selection, country/language/category filters, and deduplicated category values.
+- **Player controls** - Consistent Airo TV overlay controls across compact portrait, landscape, and fullscreen playback.
+- **Channel warmup** - Bounded health checks and nearby-channel warmup improve channel switching responsiveness.
 
 ### Quick Links
-- [Airo TV v0.0.2 Notes](./AIRO_TV_v0.0.2.md)
+- [Airo TV v0.0.5 Notes](./AIRO_TV_v0.0.5.md)
 - [Airo TV Release Template](./AIRO_TV_RELEASE_TEMPLATE.md)
 - [Airo TV Feature Matrix](./AIRO_TV_FEATURE_MATRIX.md)
 - [Airo TV Media Assets](./AIRO_TV_MEDIA_ASSETS.md)
 - [GitHub Releases](https://github.com/DevelopersCoffee/airo/releases)
-- [Download Airo TV APK](https://github.com/DevelopersCoffee/airo/releases/download/airo-tv-v0.0.2/Airo-TV-v0.0.2.apk)
+- [Download Airo TV APK](https://github.com/DevelopersCoffee/airo/releases/download/airo-tv-v0.0.5/Airo-TV-0.0.5.apk)
 - [Verify direct APK downloads](../../VERIFY_DOWNLOAD.md)
 - [Trust and transparency](../../TRUST.md)
 
@@ -39,6 +41,8 @@ Documentation for Airo releases and version history.
 
 | Document | Description |
 |----------|-------------|
+| [Airo TV v0.0.5](./AIRO_TV_v0.0.5.md) | Product target consolidation, TV controls, filters, channel warmup |
+| [Airo TV v0.0.4](./AIRO_TV_v0.0.4.md) | Search, favorites, guide setup, provider add-flows, diagnostics |
 | [Airo TV v0.0.2](./AIRO_TV_v0.0.2.md) | Professional release notes, checksums, limitations, installation |
 | [Airo TV v0.0.1](./AIRO_TV_v0.0.1.md) | Release notes, Play Store readiness, artifact checklist |
 | [Airo TV Release Template](./AIRO_TV_RELEASE_TEMPLATE.md) | Stable release format for future Airo TV versions |
@@ -78,7 +82,7 @@ Documentation for Airo releases and version history.
 
 - **GitHub Releases**: https://github.com/DevelopersCoffee/airo/releases
 - **GitHub Actions**: https://github.com/DevelopersCoffee/airo/actions
-- **Airo TV APK**: https://github.com/DevelopersCoffee/airo/releases/download/airo-tv-v0.0.2/Airo-TV-v0.0.2.apk
+- **Airo TV APK**: https://github.com/DevelopersCoffee/airo/releases/download/airo-tv-v0.0.5/Airo-TV-0.0.5.apk
 
 ---
 

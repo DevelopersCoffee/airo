@@ -4,6 +4,46 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html) for public release tags.
 
+## [Airo TV v0.0.5] - 2026-07-22
+
+### Added
+
+- First-run country selection and a Settings path for changing the country
+  filter after onboarding.
+- TV Explorer-inspired browse controls for search, category, country, and
+  language filtering, including clearer country labels and deduplicated
+  category values.
+- Bounded visible-channel health warmup and adaptive nearby-channel warming so
+  channel switching can avoid known-unavailable streams without scanning the
+  full playlist on the UI path.
+
+### Changed
+
+- Airo TV is the focused IPTV product surface. Obsolete Airo Streaming and Airo
+  IPTV product-target wiring was removed from build profiles, package IDs,
+  Firebase/preflight expectations, scripts, and release documentation.
+- Compact phone/tablet and fullscreen player controls now keep a single Airo TV
+  overlay layer instead of falling back to mixed legacy/native overlay buttons.
+- Channel rows prioritize channel and category space, move country to a compact
+  flag/metadata position, and keep list scrolling virtualized for large
+  playlists.
+
+### Fixed
+
+- Restored Settings entry points for theme and playback/PiP preferences.
+- Corrected player lock/unlock behavior and fullscreen escape affordances.
+- Fixed no-op player actions by either wiring supported controls or removing
+  unsupported affordances from the active Airo TV product surface.
+
+### Known limitations
+
+- Airo TV remains BYOC: it does not bundle playlists, channels, subscriptions,
+  or media content.
+- Production signing, Play upload, Firebase distribution, and macOS
+  notarization require maintainer-owned credentials.
+- Fire TV and legacy Android TV support remain compatible/experimental until
+  dedicated physical-device evidence is attached.
+
 ## [Airo TV v0.0.4] - 2026-07-22
 
 ### Added
@@ -138,7 +178,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Android TV package `io.airo.app.tv`.
 - IPTV playlist import, search, playback, Cast controls, and Play Store readiness notes.
 
-[Airo TV v0.0.4-rc.1]: https://github.com/DevelopersCoffee/airo/compare/airo-tv-v0.0.3...airo-tv-v0.0.4-rc.1
+[Airo TV v0.0.5]: https://github.com/DevelopersCoffee/airo/compare/airo-tv-v0.0.4...airo-tv-v0.0.5
 [Airo TV v0.0.4]: https://github.com/DevelopersCoffee/airo/compare/airo-tv-v0.0.3...airo-tv-v0.0.4
+[Airo TV v0.0.4-rc.1]: https://github.com/DevelopersCoffee/airo/compare/airo-tv-v0.0.3...airo-tv-v0.0.4-rc.1
 [Airo TV v0.0.2]: https://github.com/DevelopersCoffee/airo/compare/airo-tv-v0.0.1...airo-tv-v0.0.2
 [Airo TV v0.0.1]: https://github.com/DevelopersCoffee/airo/releases/tag/airo-tv-v0.0.1

@@ -3,21 +3,22 @@ name: Release Orchestrator
 on:
   push:
     tags:
-      - 'v2*'
+      - 'v*'
+      - 'airo-tv-v*'
   workflow_dispatch:
     inputs:
       version:
-        description: 'Release version label, for example v2.0.0'
+        description: 'Release version label, for example v0.0.5'
         required: true
-        default: 'v2.0.0'
+        default: 'airo-tv-v0.0.5'
       build_name:
-        description: 'Android versionName, for example 2.0.0'
+        description: 'Android versionName, for example 0.0.5'
         required: true
-        default: '2.0.0'
+        default: '0.0.5'
       build_number:
-        description: 'Android versionCode shared by v2 Android artifacts'
+        description: 'Android versionCode shared by Android artifacts'
         required: true
-        default: '200'
+        default: '7'
       release_ref:
         description: 'Git ref to release; must be based on origin/main'
         required: true
@@ -25,7 +26,7 @@ on:
       release_branch:
         description: 'Release branch to create/update from release_ref'
         required: true
-        default: 'release/v2.0.0'
+        default: 'release/airo-tv-v0.0.5'
       dry_run:
         description: 'Build and upload workflow artifacts without public/store publishing'
         required: true
@@ -130,9 +131,9 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  DEFAULT_VERSION: v2.0.0
-  DEFAULT_BUILD_NAME: 2.0.0
-  DEFAULT_BUILD_NUMBER: '200'
+  DEFAULT_VERSION: airo-tv-v0.0.5
+  DEFAULT_BUILD_NAME: 0.0.5
+  DEFAULT_BUILD_NUMBER: '7'
 
 jobs:
   prepare:
