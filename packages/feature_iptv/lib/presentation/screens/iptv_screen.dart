@@ -20,6 +20,7 @@ import '../widgets/iptv_navigation_drawer.dart';
 import '../widgets/phone_media_play_on_tv_sheet.dart';
 import '../widgets/video_player_widget.dart';
 import '../tv/iptv_guide_screen.dart';
+import '../tv_ux/airo_tv_shell.dart';
 import '../tv_ux/iptv_resume_gate.dart';
 import 'browse_screen.dart';
 import 'mobile_favorites_screen.dart';
@@ -774,6 +775,7 @@ class _StreamTabContent extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final channelsAsync = ref.watch(iptvChannelsProvider);
     final streamingState = ref.watch(streamingStateProvider);
+    ref.watch(railsProvider);
 
     return channelsAsync.when(
       data: (channels) => _buildContent(context, ref, channels, streamingState),
@@ -788,10 +790,7 @@ class _StreamTabContent extends ConsumerWidget {
     List<IPTVChannel> channels,
     AsyncValue<StreamingState> streamingState,
   ) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isWideScreen = screenWidth > 800;
-    final hasActiveChannel =
-        streamingState.asData?.value.currentChannel != null;
+    final activeChannel = streamingState.asData?.value.currentChannel;
 
     if (channels.isEmpty) {
       return _BringYourOwnPlaylistView(
@@ -799,83 +798,19 @@ class _StreamTabContent extends ConsumerWidget {
       );
     }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const SizedBox(height: 12),
-        Expanded(
-          child: isWideScreen
-              ? Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (hasActiveChannel)
-                      Expanded(
-                        flex: 3,
-                        child: Padding(
-                          padding: const EdgeInsets.only(left: 16, right: 8),
-                          child: _FeaturedPlayerPanel(
-                            streamingState: streamingState,
-                            onFullscreenToggle: onFullscreenToggle,
-                            buildQualityDropdown: (state) =>
-                                _buildQualityDropdown(context, ref, state),
-                          ),
-                        ),
-                      ),
-                    Expanded(
-                      flex: hasActiveChannel ? 2 : 1,
-                      child: Padding(
-                        padding: EdgeInsets.only(
-                          left: hasActiveChannel ? 8 : 16,
-                          right: 16,
-                        ),
-                        child: _ChannelPanel(
-                          channels: channels,
-                          onChannelTap: onChannelTap,
-                        ),
-                      ),
-                    ),
-                  ],
-                )
-              : Column(
-                  children: [
-                    Expanded(
-                      child: CustomScrollView(
-                        slivers: [
-                          if (hasActiveChannel) ...[
-                            SliverToBoxAdapter(
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                ),
-                                child: _FeaturedPlayerPanel(
-                                  streamingState: streamingState,
-                                  onFullscreenToggle: onFullscreenToggle,
-                                  buildQualityDropdown: (state) =>
-                                      _buildQualityDropdown(
-                                        context,
-                                        ref,
-                                        state,
-                                      ),
-                                ),
-                              ),
-                            ),
-                            const SliverToBoxAdapter(
-                              child: SizedBox(height: 12),
-                            ),
-                          ],
-                          SliverFillRemaining(
-                            hasScrollBody: true,
-                            child: BrowseScreen(
-                              onChannelSelected: onChannelTap,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-        ),
-      ],
+    return AiroTvShell(
+      channels: channels,
+      currentChannel: activeChannel,
+      onChannelSelected: onChannelTap,
+      videoStage: AspectRatio(
+        aspectRatio: 16 / 9,
+        child: activeChannel == null
+            ? const Center(child: Text('Select a channel to start watching'))
+            : VideoPlayerWidget(
+                showControls: true,
+                onFullscreenToggle: onFullscreenToggle,
+              ),
+      ),
     );
   }
 
