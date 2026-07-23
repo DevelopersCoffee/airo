@@ -116,7 +116,7 @@ class AdaptiveTvSettingsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (_usesCompactPhoneLayout(context)) {
-      return const SettingsHubScreen();
+      return SettingsHubScreen(onRootBack: () => context.go(TvRouteNames.live));
     }
 
     return const TvSettingsScreen();
