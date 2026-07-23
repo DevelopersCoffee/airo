@@ -104,4 +104,39 @@ void main() {
     expect(find.text('Coming soon'), findsNothing);
     expect(find.text('No favorite channels yet'), findsOneWidget);
   });
+
+  testWidgets('compact settings route shows a back button to live TV', (
+    tester,
+  ) async {
+    await pumpTvRouter(
+      tester,
+      initialLocation: TvRouteNames.settings,
+      surfaceSize: const Size(390, 844),
+    );
+
+    expect(find.widgetWithText(AppBar, 'Settings'), findsOneWidget);
+    expect(find.byIcon(Icons.arrow_back), findsOneWidget);
+
+    await tester.tap(find.byIcon(Icons.arrow_back));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Add your playlist'), findsOneWidget);
+    expect(find.widgetWithText(AppBar, 'Settings'), findsNothing);
+  });
+
+  testWidgets('compact settings route handles Android back by returning live', (
+    tester,
+  ) async {
+    await pumpTvRouter(
+      tester,
+      initialLocation: TvRouteNames.settings,
+      surfaceSize: const Size(390, 844),
+    );
+
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+
+    expect(find.text('Add your playlist'), findsOneWidget);
+    expect(find.widgetWithText(AppBar, 'Settings'), findsNothing);
+  });
 }

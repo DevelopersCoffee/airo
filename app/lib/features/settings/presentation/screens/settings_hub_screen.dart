@@ -16,117 +16,142 @@ import 'playback_settings_screen.dart';
 /// dedicated Audio/Playback/Source screens that previously lived inline in
 /// `ProfileScreen`.
 class SettingsHubScreen extends ConsumerWidget {
-  const SettingsHubScreen({super.key});
+  const SettingsHubScreen({super.key, this.onRootBack});
+
+  /// Optional fallback used when this screen is the root route of a compact
+  /// host app (for example Airo TV on phones) and Android back should return
+  /// to the app's primary surface instead of doing nothing.
+  final VoidCallback? onRootBack;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Settings')),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          Text('Appearance', style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 8),
-          RadioGroup<AppThemeId>(
-            groupValue: ref.watch(appThemeProvider),
-            onChanged: (themeId) {
-              if (themeId != null) {
-                ref.read(appThemeProvider.notifier).setTheme(themeId);
-              }
-            },
-            child: Column(
-              children: [
-                for (final theme in AppTheme.themes)
-                  RadioListTile<AppThemeId>(
-                    value: theme.id,
-                    title: Text(theme.name),
-                    subtitle: Text(theme.description),
+    final canPop = Navigator.of(context).canPop();
+    final shouldUseRootBack = onRootBack != null && !canPop;
+
+    return PopScope<void>(
+      canPop: !shouldUseRootBack,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop && shouldUseRootBack) {
+          onRootBack?.call();
+        }
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Settings'),
+          automaticallyImplyLeading: !shouldUseRootBack,
+          leading: shouldUseRootBack
+              ? IconButton(
+                  icon: const Icon(Icons.arrow_back),
+                  onPressed: onRootBack,
+                )
+              : null,
+        ),
+        body: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            Text('Appearance', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 8),
+            RadioGroup<AppThemeId>(
+              groupValue: ref.watch(appThemeProvider),
+              onChanged: (themeId) {
+                if (themeId != null) {
+                  ref.read(appThemeProvider.notifier).setTheme(themeId);
+                }
+              },
+              child: Column(
+                children: [
+                  for (final theme in AppTheme.themes)
+                    RadioListTile<AppThemeId>(
+                      value: theme.id,
+                      title: Text(theme.name),
+                      subtitle: Text(theme.description),
+                    ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 24),
+
+            ListTile(
+              title: const Text('Bedtime Mode'),
+              subtitle: const Text('Auto-enable at 22:30'),
+              trailing: Switch(
+                value: false,
+                onChanged: (value) {
+                  // TODO: Implement bedtime mode toggle
+                },
+              ),
+            ),
+
+            ListTile(
+              title: const Text('Background Audio'),
+              subtitle: const Text('Allow music while using other apps'),
+              trailing: Switch(
+                value: true,
+                onChanged: (value) {
+                  // TODO: Implement background audio toggle
+                },
+              ),
+            ),
+
+            ListTile(
+              title: const Text('Audio Ducking'),
+              subtitle: const Text('Lower music volume during game SFX'),
+              trailing: Switch(
+                value: true,
+                onChanged: (value) {
+                  // TODO: Implement audio ducking toggle
+                },
+              ),
+            ),
+
+            const _CurrencySelector(),
+
+            ListTile(
+              leading: const Icon(Icons.settings_voice),
+              title: const Text('Audio Settings'),
+              subtitle: const Text('Configure context-aware audio behavior'),
+              trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => const AudioSettingsScreen(),
                   ),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 24),
-
-          ListTile(
-            title: const Text('Bedtime Mode'),
-            subtitle: const Text('Auto-enable at 22:30'),
-            trailing: Switch(
-              value: false,
-              onChanged: (value) {
-                // TODO: Implement bedtime mode toggle
+                );
               },
             ),
-          ),
 
-          ListTile(
-            title: const Text('Background Audio'),
-            subtitle: const Text('Allow music while using other apps'),
-            trailing: Switch(
-              value: true,
-              onChanged: (value) {
-                // TODO: Implement background audio toggle
+            ListTile(
+              leading: const Icon(Icons.aspect_ratio),
+              title: const Text('Playback Settings'),
+              subtitle: const Text('Configure video aspect ratio'),
+              trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => const PlaybackSettingsScreen(),
+                  ),
+                );
               },
             ),
-          ),
 
-          ListTile(
-            title: const Text('Audio Ducking'),
-            subtitle: const Text('Lower music volume during game SFX'),
-            trailing: Switch(
-              value: true,
-              onChanged: (value) {
-                // TODO: Implement audio ducking toggle
-              },
+            ListTile(
+              leading: const Icon(Icons.dns_outlined),
+              title: const Text('Playlist Source'),
+              subtitle: const Text('Add or remove your M3U playlist URL'),
+              trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+              onTap: () => showPlaylistSourceSheet(context, ref),
             ),
-          ),
 
-          const _CurrencySelector(),
-
-          ListTile(
-            leading: const Icon(Icons.settings_voice),
-            title: const Text('Audio Settings'),
-            subtitle: const Text('Configure context-aware audio behavior'),
-            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-            onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => const AudioSettingsScreen(),
-                ),
-              );
-            },
-          ),
-
-          ListTile(
-            leading: const Icon(Icons.aspect_ratio),
-            title: const Text('Playback Settings'),
-            subtitle: const Text('Configure video aspect ratio'),
-            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-            onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => const PlaybackSettingsScreen(),
-                ),
-              );
-            },
-          ),
-
-          ListTile(
-            leading: const Icon(Icons.dns_outlined),
-            title: const Text('Playlist Source'),
-            subtitle: const Text('Add or remove your M3U playlist URL'),
-            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-            onTap: () => showPlaylistSourceSheet(context, ref),
-          ),
-
-          ListTile(
-            leading: const Icon(Icons.calendar_month_outlined),
-            title: const Text('EPG Guide Source'),
-            subtitle: const Text('Add or refresh your XMLTV guide URL'),
-            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-            onTap: () => showXmltvSourceSheet(context),
-          ),
-        ],
+            ListTile(
+              leading: const Icon(Icons.calendar_month_outlined),
+              title: const Text('EPG Guide Source'),
+              subtitle: const Text('Add or refresh your XMLTV guide URL'),
+              trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+              onTap: () => showXmltvSourceSheet(context),
+            ),
+          ],
+        ),
       ),
     );
   }
