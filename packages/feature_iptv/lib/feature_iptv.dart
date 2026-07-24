@@ -30,6 +30,7 @@ export "application/epg_reminder_scheduler.dart";
 export "application/providers/epg_reminder_providers.dart";
 export "application/epg_channel_match_override_store.dart";
 export "application/mutable_xmltv_compact_epg_repository.dart";
+export "application/airo_tv_bootstrap.dart";
 export "application/resume_last_channel_controller.dart";
 export "application/xmltv_source_refresh_service.dart";
 export "application/xmltv_source_store.dart";
