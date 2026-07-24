@@ -22,6 +22,7 @@ import 'player_brightness_controller.dart';
 import 'player_gesture_overlay.dart';
 import 'player_lock_button.dart';
 import 'player_overlay.dart';
+import '../tv_ux/sections/remote_overlay.dart';
 
 /// Video player widget with YouTube-like controls
 class VideoPlayerWidget extends ConsumerStatefulWidget {
@@ -263,6 +264,14 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
     }
   }
 
+  void _playRandomFilteredChannel(VideoPlayerStreamingService service) {
+    final channel = randomFilteredChannel(ref.read(filteredChannelsProvider));
+    if (channel == null) return;
+    service.playChannel(channel);
+    _showChannelChangeOverlay(channel.name);
+    _scheduleAdjacentChannelWarmupFor(channel);
+  }
+
   void _scheduleAdjacentChannelWarmup(StreamingState state) {
     final currentChannel = state.currentChannel;
     if (currentChannel == null) return;
@@ -341,6 +350,12 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
   // Gated on !_isLocked, matching every other in-player interaction.
   TvInputResult _handleSurfInput(TvInputKey key) {
     if (_isLocked) return TvInputResult.notHandled;
+    final remoteResult = handleRemoteOverlayInput(
+      key,
+      onChannelPrevious: _goToPreviousChannel,
+      onChannelNext: _goToNextChannel,
+    );
+    if (remoteResult == TvInputResult.handled) return remoteResult;
     switch (key) {
       case TvInputKey.up:
         _goToPreviousChannel();
@@ -850,6 +865,16 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                   iconSize: 22,
                   backgroundAlpha: 0.48,
                 ),
+                const SizedBox(width: 10),
+                _PlayerRoundControlButton(
+                  key: const ValueKey('iptv-player-random-channel-button'),
+                  icon: Icons.casino_outlined,
+                  tooltip: 'Random channel',
+                  onPressed: () => _playRandomFilteredChannel(service),
+                  diameter: 44,
+                  iconSize: 22,
+                  backgroundAlpha: 0.48,
+                ),
               ],
             ),
           ),
@@ -1030,6 +1055,12 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                     onPressed: _goToNextChannel,
                   ),
                 ],
+                _PlayerFloatingControlButton(
+                  key: const ValueKey('iptv-player-random-channel-button'),
+                  icon: Icons.casino_outlined,
+                  tooltip: 'Random channel',
+                  onPressed: () => _playRandomFilteredChannel(service),
+                ),
                 _PlayerFloatingControlButton(
                   key: const ValueKey('iptv-player-more-button'),
                   icon: Icons.settings_outlined,
