@@ -20,6 +20,20 @@ Detailed setup and configuration guides.
 - GitHub secret setup
 - Dashboard access
 
+### [GITHUB_MCP_SERVER.md](./GITHUB_MCP_SERVER.md)
+**GitHub MCP server for Codex**:
+- Project-scoped Codex setup
+- PAT and Docker/OAuth options
+- Safe credential handling
+- Verification steps
+
+### [HACKER_NEWS_MCP_SERVER.md](./HACKER_NEWS_MCP_SERVER.md)
+**Hacker News MCP server for Codex**:
+- Project-scoped Codex setup
+- `uvx` runtime shape
+- Python/`uv` prerequisites
+- Verification steps
+
 ---
 
 ## 🎯 Setup Guides
@@ -36,6 +50,18 @@ Detailed setup and configuration guides.
 3. Generate tokens
 4. Add GitHub secrets
 
+### GitHub MCP Server
+1. Read [GITHUB_MCP_SERVER.md](./GITHUB_MCP_SERVER.md)
+2. Choose hosted PAT or local Docker/OAuth
+3. Restart Codex
+4. Verify the `github` server appears in `/mcp`
+
+### Hacker News MCP Server
+1. Read [HACKER_NEWS_MCP_SERVER.md](./HACKER_NEWS_MCP_SERVER.md)
+2. Install `uv` if needed
+3. Restart Codex
+4. Verify the `hackernews` server appears in `/mcp`
+
 ---
 
 ## 📋 Checklist
@@ -47,6 +73,8 @@ Detailed setup and configuration guides.
 - [ ] Snyk account created
 - [ ] Tokens generated
 - [ ] GitHub secrets added
+- [ ] GitHub MCP server configured in Codex
+- [ ] Hacker News MCP server configured in Codex
 - [ ] First build successful
 
 ---
@@ -54,10 +82,11 @@ Detailed setup and configuration guides.
 ## 🔗 Links
 
 - **GitHub Actions**: https://docs.github.com/en/actions
+- **GitHub MCP Server**: https://github.com/github/github-mcp-server
+- **Hacker News MCP Server**: https://github.com/erithwik/mcp-hn
 - **SonarCloud**: https://sonarcloud.io
 - **Snyk**: https://app.snyk.io
 
 ---
 
 **Ready?** → [Start Setup](./GITHUB_ACTIONS_SETUP.md)
-

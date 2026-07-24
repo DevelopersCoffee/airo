@@ -60,6 +60,10 @@ make doctor
 Run only the checks relevant to your change when a full run is not practical, and
 document that scope in the PR.
 
+If you use Codex with repository MCP tools, see
+[`docs/setup/README.md`](docs/setup/README.md) for the project-scoped MCP setup
+included in this repository.
+
 ## Branch And Worktree Workflow
 
 Always start from the latest `origin/main`:

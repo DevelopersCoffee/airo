@@ -1,0 +1,21 @@
+# Project-scoped Codex MCP configuration for Airo.
+#
+# Sources:
+# - OpenAI Codex MCP docs: https://developers.openai.com/codex/mcp
+# - GitHub MCP Server Codex install guide:
+#   https://github.com/github/github-mcp-server/blob/main/docs/installation-guides/install-codex.md
+# - Hacker News MCP Server README:
+#   https://github.com/erithwik/mcp-hn/blob/main/README.md
+#
+# This keeps the GitHub MCP server discoverable for trusted Airo workspaces
+# without committing credentials, and adds a local Hacker News server for
+# research workflows. Set GITHUB_PAT_TOKEN in your shell before starting Codex,
+# and install `uv` for the Hacker News server. See docs/setup for details.
+
+[mcp_servers.github]
+url = "https://api.githubcopilot.com/mcp/"
+bearer_token_env_var = "GITHUB_PAT_TOKEN"
+
+[mcp_servers.hackernews]
+command = "uvx"
+args = ["mcp-hn"]
