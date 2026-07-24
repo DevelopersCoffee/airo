@@ -325,12 +325,18 @@ jobs:
             exit 1
           fi
 
+          dmg_stage_dir="$(mktemp -d)"
+          cp -R "$app_path" "$dmg_stage_dir/"
+          ln -s /Applications "$dmg_stage_dir/Applications"
+
           hdiutil create \
             -volname "$APP_NAME" \
-            -srcfolder "$app_path" \
+            -srcfolder "$dmg_stage_dir" \
             -ov \
             -format UDZO \
             "release-artifacts/$dmg_name"
+
+          rm -rf "$dmg_stage_dir"
 
           if [[ "$signing_status" == "signed" ]]; then
             codesign --force --timestamp --sign "$MACOS_CODESIGN_IDENTITY" "release-artifacts/$dmg_name"
