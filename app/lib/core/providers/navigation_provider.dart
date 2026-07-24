@@ -163,9 +163,9 @@ class AppNavigationPolicy {
   }
 }
 
-/// Phone bottom nav: exactly 5 destinations, matching the TV sidebar
-/// (`tv_shell.dart`) one-for-one — Home, Live, Guide, Favorites, Settings.
-/// All 5 fit persistently, so no overflow is needed on phone.
+/// Phone bottom nav keeps Airo's four primary super-app domains visible and
+/// exposes every remaining branch through a shared overflow destination.
+/// Airo TV owns its separate navigation policy in `tv_shell.dart`.
 ///
 /// Wide (tablet/desktop) layouts get a *different* curated set, not the
 /// full ten-tab list: the original six super-app domains (Coins, Mind,
@@ -180,11 +180,10 @@ class AppNavigationPolicy {
 /// `ProfileScreen`'s "Settings" entry) regardless of screen width.
 const appNavigationPolicy = AppNavigationPolicy(
   compactPrimaryTabs: [
-    AppNavigationTab.home,
+    AppNavigationTab.coins,
+    AppNavigationTab.mind,
+    AppNavigationTab.beats,
     AppNavigationTab.live,
-    AppNavigationTab.guide,
-    AppNavigationTab.favorites,
-    AppNavigationTab.settings,
   ],
   widePrimaryTabs: [
     AppNavigationTab.coins,
@@ -196,7 +195,14 @@ const appNavigationPolicy = AppNavigationPolicy(
     AppNavigationTab.guide,
     AppNavigationTab.favorites,
   ],
-  overflowTabs: [],
+  overflowTabs: [
+    AppNavigationTab.arena,
+    AppNavigationTab.quest,
+    AppNavigationTab.home,
+    AppNavigationTab.guide,
+    AppNavigationTab.favorites,
+    AppNavigationTab.settings,
+  ],
 );
 
 final appNavigationPolicyProvider = Provider<AppNavigationPolicy>(
