@@ -8,7 +8,7 @@ Implementation work for this release line must start from latest `origin/main`.
 ## Local Evidence Command
 
 ```bash
-dart pub global run melos run release:repo-health-preflight
+dart run melos run release:repo-health-preflight
 ```
 
 The default command is expected to fail until maintainers record the remaining
@@ -19,7 +19,7 @@ made, set:
 AIRO_REPO_DISCUSSIONS=enabled \
 AIRO_REPO_CODEOWNERS=present \
 AIRO_REPO_FUNDING=intentionally_absent \
-dart pub global run melos run release:repo-health-preflight
+dart run melos run release:repo-health-preflight
 ```
 
 Use `AIRO_REPO_CODEOWNERS=present` when a root or `.github/CODEOWNERS` file is
