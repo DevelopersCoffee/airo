@@ -27,6 +27,7 @@ import '../../features/life_track/presentation/screens/track_detail_screen.dart'
 import '../../features/life_track/presentation/screens/track_list_screen.dart';
 import '../../core/auth/auth_service.dart';
 import '../../core/app/app_shell.dart';
+import '../config/feature_flags.dart';
 import '../http/http_dog.dart';
 import 'route_names.dart';
 
@@ -267,7 +268,9 @@ class AppRouter {
                   name: 'Stream',
                   builder: (context, state) => IPTVScreen(
                     onOpenVod: () => context.go('/vod'),
-                    onPickLocalMediaForTv: pickPhoneLocalMediaForTv,
+                    onPickLocalMediaForTv: kEnablePhoneMediaReceiverExperimental
+                        ? pickPhoneLocalMediaForTv
+                        : null,
                     deepLinkChannelId: state.uri.queryParameters['channel'],
                   ),
                 ),
@@ -326,7 +329,9 @@ class AppRouter {
                   name: 'Home',
                   builder: (context, state) => IPTVScreen(
                     onOpenVod: () => context.go('/vod'),
-                    onPickLocalMediaForTv: pickPhoneLocalMediaForTv,
+                    onPickLocalMediaForTv: kEnablePhoneMediaReceiverExperimental
+                        ? pickPhoneLocalMediaForTv
+                        : null,
                   ),
                 ),
               ],

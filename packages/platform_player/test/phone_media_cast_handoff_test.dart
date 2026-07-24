@@ -101,9 +101,13 @@ void main() {
   test('legacy lite receiver mode resolves a conservative local-file '
       'capability envelope', () async {
     final handoff = handoffFor(
-      receiverModeContract: legacyModeContract(LegacyReceiverModeId.liteReceiver),
+      receiverModeContract: legacyModeContract(
+        LegacyReceiverModeId.liteReceiver,
+      ),
     );
-    final result = await handoff.start(itemFor(container: 'webm', videoCodec: 'vp9'));
+    final result = await handoff.start(
+      itemFor(container: 'webm', videoCodec: 'vp9'),
+    );
 
     expect(result, isA<PhoneMediaHandoffUnsupported>());
     final unsupported = result as PhoneMediaHandoffUnsupported;
@@ -111,16 +115,18 @@ void main() {
     expect(handoff.isServing, isFalse);
   });
 
-  test('legacy blocked receiver mode rejects even supported local files',
-      () async {
-    final handoff = handoffFor(
-      receiverModeContract: legacyModeContract(LegacyReceiverModeId.blocked),
-    );
-    final result = await handoff.start(itemFor());
+  test(
+    'legacy blocked receiver mode rejects even supported local files',
+    () async {
+      final handoff = handoffFor(
+        receiverModeContract: legacyModeContract(LegacyReceiverModeId.blocked),
+      );
+      final result = await handoff.start(itemFor());
 
-    expect(result, isA<PhoneMediaHandoffUnsupported>());
-    expect(handoff.isServing, isFalse);
-  });
+      expect(result, isA<PhoneMediaHandoffUnsupported>());
+      expect(handoff.isServing, isFalse);
+    },
+  );
 
   test('starts the LAN server and loads a buffered cast request', () async {
     final handoff = handoffFor();
@@ -237,8 +243,7 @@ void main() {
   });
 
   test('stops the server when connectivity reports disconnected', () async {
-    final connectivityController =
-        StreamController<List<ConnectivityResult>>();
+    final connectivityController = StreamController<List<ConnectivityResult>>();
     final events = <PhoneMediaDiagnosticEvent>[];
     addTearDown(connectivityController.close);
     final handoff = PhoneMediaCastHandoff(
