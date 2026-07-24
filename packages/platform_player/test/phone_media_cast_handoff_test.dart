@@ -211,11 +211,13 @@ void main() {
   test('stops the server when connectivity reports disconnected', () async {
     final connectivityController =
         StreamController<List<ConnectivityResult>>();
+    final events = <PhoneMediaDiagnosticEvent>[];
     addTearDown(connectivityController.close);
     final handoff = PhoneMediaCastHandoff(
       castController: castController,
       bindAddress: InternetAddress.loopbackIPv4,
       debugConnectivityStream: connectivityController.stream,
+      onDiagnosticEvent: events.add,
     );
     await handoff.start(itemFor());
     expect(handoff.isServing, isTrue);
@@ -224,6 +226,10 @@ void main() {
     await Future<void>.delayed(Duration.zero);
 
     expect(handoff.isServing, isFalse);
+    expect(
+      events.map((event) => event.kind),
+      contains(PhoneMediaDiagnosticEventKind.wifiDisconnectedTeardown),
+    );
 
     await handoff.dispose();
   });
