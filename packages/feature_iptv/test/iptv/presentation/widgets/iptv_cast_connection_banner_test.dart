@@ -18,9 +18,7 @@ void main() {
 
       await tester.pumpWidget(
         ProviderScope(
-          overrides: [
-            iptvCastProvider.overrideWith((ref) => notifier),
-          ],
+          overrides: [iptvCastProvider.overrideWith((ref) => notifier)],
           child: const MaterialApp(
             home: Scaffold(body: IptvCastMiniController()),
           ),
@@ -50,10 +48,49 @@ void main() {
     },
   );
 
-  testWidgets('"Browse channels" dismisses the banner into the compact controller', (
+  testWidgets(
+    '"Browse channels" dismisses the banner into the compact controller',
+    (tester) async {
+      final notifier = _MutableCastNotifier(const IptvCastState());
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [iptvCastProvider.overrideWith((ref) => notifier)],
+          child: const MaterialApp(
+            home: Scaffold(body: IptvCastMiniController()),
+          ),
+        ),
+      );
+
+      notifier.setState(
+        IptvCastState(
+          session: AiroCastSessionSnapshot.playing(device: tv, media: media),
+        ),
+      );
+      await tester.pump();
+
+      await tester.tap(find.text('Browse channels'));
+      await tester.pump();
+
+      expect(find.textContaining('Playing on'), findsNothing);
+      expect(find.text('Casting to Sony Bravia'), findsOneWidget);
+      expect(find.text('Reload'), findsNothing, reason: 'compact by default');
+    },
+  );
+
+  testWidgets('compact controller fits a short landscape surface', (
     tester,
   ) async {
-    final notifier = _MutableCastNotifier(const IptvCastState());
+    final notifier = _MutableCastNotifier(
+      IptvCastState(
+        session: AiroCastSessionSnapshot.playing(device: tv, media: media),
+      ),
+    );
+
+    tester.view.physicalSize = const Size(1280, 400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
 
     await tester.pumpWidget(
       ProviderScope(
@@ -64,50 +101,42 @@ void main() {
       ),
     );
 
-    notifier.setState(
-      IptvCastState(
-        session: AiroCastSessionSnapshot.playing(device: tv, media: media),
-      ),
-    );
-    await tester.pump();
-
-    await tester.tap(find.text('Browse channels'));
-    await tester.pump();
-
-    expect(find.textContaining('Playing on'), findsNothing);
+    expect(tester.takeException(), isNull);
     expect(find.text('Casting to Sony Bravia'), findsOneWidget);
-    expect(find.text('Reload'), findsNothing, reason: 'compact by default');
+    expect(find.byTooltip('Pause'), findsOneWidget);
+    expect(find.byTooltip('Stop receiver media'), findsOneWidget);
   });
 
-  testWidgets('"Open controls" dismisses the banner into the expanded controller', (
-    tester,
-  ) async {
-    final notifier = _MutableCastNotifier(const IptvCastState());
+  testWidgets(
+    '"Open controls" dismisses the banner into the expanded controller',
+    (tester) async {
+      final notifier = _MutableCastNotifier(const IptvCastState());
 
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [iptvCastProvider.overrideWith((ref) => notifier)],
-        child: const MaterialApp(
-          home: Scaffold(body: IptvCastMiniController()),
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [iptvCastProvider.overrideWith((ref) => notifier)],
+          child: const MaterialApp(
+            home: Scaffold(body: IptvCastMiniController()),
+          ),
         ),
-      ),
-    );
+      );
 
-    notifier.setState(
-      IptvCastState(
-        session: AiroCastSessionSnapshot.playing(device: tv, media: media),
-      ),
-    );
-    await tester.pump();
+      notifier.setState(
+        IptvCastState(
+          session: AiroCastSessionSnapshot.playing(device: tv, media: media),
+        ),
+      );
+      await tester.pump();
 
-    await tester.tap(find.text('Open controls'));
-    await tester.pump();
+      await tester.tap(find.text('Open controls'));
+      await tester.pump();
 
-    expect(find.textContaining('Playing on'), findsNothing);
-    expect(find.text('Reload'), findsOneWidget);
-    expect(find.text('New session'), findsOneWidget);
-    expect(find.text('Disconnect'), findsOneWidget);
-  });
+      expect(find.textContaining('Playing on'), findsNothing);
+      expect(find.text('Reload'), findsOneWidget);
+      expect(find.text('New session'), findsOneWidget);
+      expect(find.text('Disconnect'), findsOneWidget);
+    },
+  );
 
   testWidgets(
     'no banner for a session that is already connected when the widget mounts '

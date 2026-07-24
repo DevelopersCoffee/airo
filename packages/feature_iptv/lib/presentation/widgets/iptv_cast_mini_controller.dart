@@ -61,7 +61,8 @@ class _IptvCastMiniControllerState
             previous != null &&
             previous.isConnected &&
             previous.device?.id == next.device?.id;
-        if (!wasConnectedToSameDevice && next.device?.id != _confirmedDeviceId) {
+        if (!wasConnectedToSameDevice &&
+            next.device?.id != _confirmedDeviceId) {
           setState(() {}); // rebuild to evaluate the banner below
         }
       },
@@ -187,6 +188,19 @@ class _CompactCastController extends ConsumerWidget {
     final hasMedia = media != null;
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
+    final size = MediaQuery.sizeOf(context);
+
+    if (size.width > size.height && size.height < 600) {
+      return _buildLandscape(
+        context,
+        ref,
+        isPaused: isPaused,
+        isLoading: isLoading,
+        isStopped: isStopped,
+        isFailed: isFailed,
+        hasMedia: hasMedia,
+      );
+    }
 
     return Material(
       color: colorScheme.surfaceContainerHighest,
@@ -235,7 +249,9 @@ class _CompactCastController extends ConsumerWidget {
                   ),
                   IconButton(
                     tooltip: expanded ? 'Fewer controls' : 'More controls',
-                    icon: Icon(expanded ? Icons.expand_less : Icons.expand_more),
+                    icon: Icon(
+                      expanded ? Icons.expand_less : Icons.expand_more,
+                    ),
                     onPressed: onToggleExpanded,
                   ),
                 ],
@@ -321,6 +337,139 @@ class _CompactCastController extends ConsumerWidget {
                   const Icon(Icons.volume_up, size: 20),
                 ],
               ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLandscape(
+    BuildContext context,
+    WidgetRef ref, {
+    required bool isPaused,
+    required bool isLoading,
+    required bool isStopped,
+    required bool isFailed,
+    required bool hasMedia,
+  }) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    final notifier = ref.read(iptvCastProvider.notifier);
+
+    return Material(
+      color: colorScheme.surfaceContainerHighest,
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    isLoading
+                        ? Icons.hourglass_top
+                        : isFailed
+                        ? Icons.error_outline
+                        : Icons.cast_connected,
+                    color: isFailed ? colorScheme.error : null,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          _statusLabel(session.phase, device.name),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: textTheme.titleSmall,
+                        ),
+                        Text(
+                          _subtitle(session, media),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: textTheme.bodySmall?.copyWith(
+                            color: isFailed
+                                ? colorScheme.error
+                                : colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (hasMedia)
+                    IconButton(
+                      tooltip: isPaused || isStopped
+                          ? 'Start playback'
+                          : 'Pause',
+                      onPressed: isLoading
+                          ? null
+                          : () {
+                              if (isStopped) {
+                                notifier.reloadActiveMedia();
+                              } else {
+                                isPaused ? notifier.play() : notifier.pause();
+                              }
+                            },
+                      icon: Icon(
+                        isPaused || isStopped ? Icons.play_arrow : Icons.pause,
+                      ),
+                    ),
+                  IconButton(
+                    tooltip: 'Stop receiver media',
+                    onPressed: isLoading ? null : notifier.stop,
+                    icon: const Icon(Icons.stop),
+                  ),
+                  const Icon(Icons.volume_down, size: 20),
+                  SizedBox(
+                    width: 180,
+                    child: Slider(
+                      value: session.volume.clamp(0.0, 1.0).toDouble(),
+                      onChanged: notifier.setVolume,
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: expanded ? 'Fewer controls' : 'More controls',
+                    icon: Icon(
+                      expanded ? Icons.expand_less : Icons.expand_more,
+                    ),
+                    onPressed: onToggleExpanded,
+                  ),
+                ],
+              ),
+              if (expanded)
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    if (hasMedia) ...[
+                      _CastControlButton(
+                        tooltip: 'Reload current stream',
+                        icon: Icons.refresh,
+                        label: 'Reload',
+                        onPressed: isLoading
+                            ? null
+                            : notifier.reloadActiveMedia,
+                      ),
+                      _CastControlButton(
+                        tooltip: 'Start a new Cast session',
+                        icon: Icons.restart_alt,
+                        label: 'New session',
+                        onPressed: notifier.restartActiveSession,
+                      ),
+                    ],
+                    _CastControlButton(
+                      tooltip: 'Disconnect from ${device.name}',
+                      icon: Icons.cast_connected,
+                      label: 'Disconnect',
+                      onPressed: notifier.disconnect,
+                    ),
+                  ],
+                ),
             ],
           ),
         ),
