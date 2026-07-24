@@ -138,19 +138,20 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
               Flexible(
                 flex: 3,
                 child: Center(
-                  child: ConstrainedBox(
-                    key: const ValueKey('airo-tv-explorer-video-stage'),
-                    constraints: BoxConstraints.tightFor(
+                  child: FittedBox(
+                    fit: BoxFit.contain,
+                    child: SizedBox(
+                      key: const ValueKey('airo-tv-explorer-video-stage'),
                       width: previewWidth,
                       height: previewHeight,
-                    ),
-                    child: ClipRect(
-                      child: FittedBox(
-                        fit: BoxFit.contain,
-                        child: SizedBox(
-                          width: 640,
-                          height: 360,
-                          child: widget.videoStage,
+                      child: ClipRect(
+                        child: FittedBox(
+                          fit: BoxFit.contain,
+                          child: SizedBox(
+                            width: 640,
+                            height: 360,
+                            child: widget.videoStage,
+                          ),
                         ),
                       ),
                     ),

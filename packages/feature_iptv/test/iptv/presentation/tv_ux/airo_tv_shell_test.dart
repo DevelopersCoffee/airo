@@ -35,7 +35,11 @@ void main() {
     });
   });
 
-  Future<ProviderContainer> pumpAt(WidgetTester tester, double width) async {
+  Future<ProviderContainer> pumpAt(
+    WidgetTester tester,
+    double width, {
+    double height = 720,
+  }) async {
     final prefs = await SharedPreferences.getInstance();
     final container = ProviderContainer(
       overrides: [
@@ -51,7 +55,7 @@ void main() {
           home: Scaffold(
             body: SizedBox(
               width: width,
-              height: 720,
+              height: height,
               child: AiroTvShell(
                 channels: channels,
                 videoStage: const SizedBox(key: ValueKey('video-stage')),
@@ -138,6 +142,18 @@ void main() {
         .getSize(find.byKey(const ValueKey('airo-tv-explorer-panel')))
         .width;
     expect(stageWidth, lessThan(panelWidth));
+  });
+
+  testWidgets('wide preview scales down when cast controls reduce height', (
+    tester,
+  ) async {
+    await pumpAt(tester, 1280, height: 400);
+
+    expect(tester.takeException(), isNull);
+    expect(
+      find.byKey(const ValueKey('airo-tv-explorer-video-stage')),
+      findsOneWidget,
+    );
   });
 
   testWidgets('TV-sized layout keeps channel rows focusable', (tester) async {
