@@ -7,6 +7,7 @@ import 'package:core_media_routing/core_media_routing.dart';
 import 'package:equatable/equatable.dart';
 
 import '../models/cast_models.dart';
+import '../models/phone_media_diagnostic_models.dart';
 import 'airo_cast_controller.dart';
 import 'phone_media_file_server.dart';
 
@@ -107,6 +108,7 @@ class PhoneMediaCastHandoff {
     required this._castController,
     this.capabilities = PhoneMediaReceiverCapabilities.chromecastDefault,
     this._bindAddress,
+    this.onDiagnosticEvent,
     this.onSessionEvent,
     this._sessionTtl = const Duration(hours: 6),
     this._idleTimeout = const Duration(minutes: 2),
@@ -126,6 +128,7 @@ class PhoneMediaCastHandoff {
   /// paused. Must stay comfortably under [_idleTimeout], since a paused
   /// receiver generates no HTTP traffic of its own.
   final Duration _pauseKeepAliveInterval;
+  final void Function(PhoneMediaDiagnosticEvent event)? onDiagnosticEvent;
   final void Function(String event, Map<String, Object?> data)? onSessionEvent;
 
   PhoneMediaFileServer? _server;
@@ -160,6 +163,7 @@ class PhoneMediaCastHandoff {
       filePath: item.filePath,
       contentType: _contentTypeFor(item.container),
       bindAddress: _bindAddress,
+      onDiagnosticEvent: onDiagnosticEvent,
       onSessionEvent: onSessionEvent,
     );
     _server = server;
@@ -216,7 +220,11 @@ class PhoneMediaCastHandoff {
   // out the idle timeout.
   void _onConnectivityChanged(List<ConnectivityResult> results) {
     if (results.every((result) => result == ConnectivityResult.none)) {
-      onSessionEvent?.call('wifi_disconnected_teardown', const {});
+      final event = PhoneMediaDiagnosticEvent(
+        kind: PhoneMediaDiagnosticEventKind.wifiDisconnectedTeardown,
+      );
+      onDiagnosticEvent?.call(event);
+      onSessionEvent?.call(event.kind.stableId, event.toPublicMap());
       _cancelPauseKeepAlive();
       unawaited(_teardownServer());
     }

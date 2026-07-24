@@ -5,6 +5,8 @@ import 'dart:math';
 import 'package:core_media_routing/core_media_routing.dart';
 import 'package:flutter/foundation.dart';
 
+import '../models/phone_media_diagnostic_models.dart';
+
 /// A network interface candidate for LAN binding: OS name plus its addresses.
 typedef PhoneMediaLanInterface = ({
   String name,
@@ -29,6 +31,7 @@ class PhoneMediaFileServer implements AiroTemporaryMobileServerController {
     Future<List<PhoneMediaLanInterface>> Function()? interfaceLister,
     String? sessionToken,
     DateTime Function()? now,
+    this.onDiagnosticEvent,
     this.onSessionEvent,
   }) : _initialSnapshot = snapshot,
        _interfaceLister = interfaceLister ?? _systemInterfaces,
@@ -46,6 +49,10 @@ class PhoneMediaFileServer implements AiroTemporaryMobileServerController {
 
   /// Diagnostics hook (CV-001). Events carry stable ids only — never URLs,
   /// tokens, or file paths.
+  final void Function(PhoneMediaDiagnosticEvent event)? onDiagnosticEvent;
+
+  /// Backward-compatible diagnostics hook. Prefer [onDiagnosticEvent] for new
+  /// callers that want typed, redacted events.
   final void Function(String event, Map<String, Object?> data)? onSessionEvent;
 
   /// Cap on `request_rejected` diagnostics per [rejectedEventWindow]. A LAN
@@ -133,7 +140,12 @@ class PhoneMediaFileServer implements AiroTemporaryMobileServerController {
       const Duration(milliseconds: 100),
       (_) => _enforceLifecycle(),
     );
-    _emit('session_open', {'serverId': _initialSnapshot.serverId});
+    _emit(
+      PhoneMediaDiagnosticEvent(
+        kind: PhoneMediaDiagnosticEventKind.sessionOpen,
+        serverId: _initialSnapshot.serverId,
+      ),
+    );
     return url;
   }
 
@@ -146,7 +158,12 @@ class PhoneMediaFileServer implements AiroTemporaryMobileServerController {
     _lifecycleTimer = null;
     await server.close(force: true);
     _flushSuppressedRejections();
-    _emit('session_close', {'serverId': _initialSnapshot.serverId});
+    _emit(
+      PhoneMediaDiagnosticEvent(
+        kind: PhoneMediaDiagnosticEventKind.sessionClose,
+        serverId: _initialSnapshot.serverId,
+      ),
+    );
   }
 
   @override
@@ -228,7 +245,12 @@ class PhoneMediaFileServer implements AiroTemporaryMobileServerController {
     final snapshot = _effectiveSnapshot();
     final now = _now();
     if (snapshot.isExpired(now) || snapshot.isIdleTimedOut(now)) {
-      _emit('session_expired', {'serverId': _initialSnapshot.serverId});
+      _emit(
+        PhoneMediaDiagnosticEvent(
+          kind: PhoneMediaDiagnosticEventKind.sessionExpired,
+          serverId: _initialSnapshot.serverId,
+        ),
+      );
       unawaited(stopServer());
     }
   }
@@ -259,13 +281,23 @@ class PhoneMediaFileServer implements AiroTemporaryMobileServerController {
     final response = request.response;
     try {
       if (!_isAuthorizedPath(request.uri.path)) {
-        _emitRejected({'reason': 'unknown_path'});
+        _emitRejected(
+          PhoneMediaDiagnosticEvent(
+            kind: PhoneMediaDiagnosticEventKind.requestRejected,
+            reason: 'unknown_path',
+          ),
+        );
         response.statusCode = HttpStatus.notFound;
         await response.close();
         return;
       }
       if (request.method != 'GET' && request.method != 'HEAD') {
-        _emitRejected({'reason': 'unsupported_method'});
+        _emitRejected(
+          PhoneMediaDiagnosticEvent(
+            kind: PhoneMediaDiagnosticEventKind.requestRejected,
+            reason: 'unsupported_method',
+          ),
+        );
         response.statusCode = HttpStatus.methodNotAllowed;
         await response.close();
         return;
@@ -311,14 +343,17 @@ class PhoneMediaFileServer implements AiroTemporaryMobileServerController {
         final rangeNotSatisfiable = decision.servingCodes.contains(
           AiroTemporaryMobileServerServingCode.rangeNotSatisfiable,
         );
-        _emitRejected({
-          'validationCodes': decision.validationCodes
-              .map((code) => code.stableId)
-              .toList(),
-          'servingCodes': decision.servingCodes
-              .map((code) => code.stableId)
-              .toList(),
-        });
+        _emitRejected(
+          PhoneMediaDiagnosticEvent(
+            kind: PhoneMediaDiagnosticEventKind.requestRejected,
+            validationCodes: decision.validationCodes
+                .map((code) => code.stableId)
+                .toList(),
+            servingCodes: decision.servingCodes
+                .map((code) => code.stableId)
+                .toList(),
+          ),
+        );
         if (rangeNotSatisfiable) {
           response.statusCode = HttpStatus.requestedRangeNotSatisfiable;
           response.headers.set(
@@ -363,7 +398,12 @@ class PhoneMediaFileServer implements AiroTemporaryMobileServerController {
       _lastActivityAt = _now();
       await response.close();
     } catch (error) {
-      _emit('request_error', {'error': error.runtimeType.toString()});
+      _emit(
+        PhoneMediaDiagnosticEvent(
+          kind: PhoneMediaDiagnosticEventKind.requestError,
+          errorType: error.runtimeType.toString(),
+        ),
+      );
       try {
         response.statusCode = HttpStatus.internalServerError;
         await response.close();
@@ -377,7 +417,7 @@ class PhoneMediaFileServer implements AiroTemporaryMobileServerController {
   /// [maxRejectedEventsPerWindow] events fire within [rejectedEventWindow],
   /// further rejections only increment a counter that is flushed as one
   /// `request_rejected_suppressed` event on window rollover or shutdown.
-  void _emitRejected(Map<String, Object?> data) {
+  void _emitRejected(PhoneMediaDiagnosticEvent event) {
     final now = _now();
     final windowStart = _rejectedWindowStartedAt;
     if (windowStart == null ||
@@ -391,23 +431,31 @@ class PhoneMediaFileServer implements AiroTemporaryMobileServerController {
       return;
     }
     _rejectedEventsInWindow++;
-    _emit('request_rejected', data);
+    _emit(event);
   }
 
   void _flushSuppressedRejections() {
     if (_suppressedRejectedEvents == 0) return;
-    _emit('request_rejected_suppressed', {
-      'suppressedCount': _suppressedRejectedEvents,
-    });
+    _emit(
+      PhoneMediaDiagnosticEvent(
+        kind: PhoneMediaDiagnosticEventKind.requestRejectedSuppressed,
+        suppressedCount: _suppressedRejectedEvents,
+      ),
+    );
     _suppressedRejectedEvents = 0;
   }
 
-  void _emit(String event, Map<String, Object?> data) {
-    final handler = onSessionEvent;
-    if (handler != null) {
-      handler(event, data);
+  void _emit(PhoneMediaDiagnosticEvent event) {
+    final diagnosticHandler = onDiagnosticEvent;
+    if (diagnosticHandler != null) {
+      diagnosticHandler(event);
+    }
+
+    final legacyHandler = onSessionEvent;
+    if (legacyHandler != null) {
+      legacyHandler(event.kind.stableId, event.toPublicMap());
     } else {
-      debugPrint('[PhoneMediaServer] $event $data');
+      debugPrint('[PhoneMediaServer] ${event.kind.stableId} ${event.toPublicMap()}');
     }
   }
 
