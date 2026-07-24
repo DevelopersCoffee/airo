@@ -75,6 +75,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Playing on Fire Stick'), findsOneWidget);
+    expect(find.text('Open remote'), findsOneWidget);
     expect(find.text('Stop casting'), findsOneWidget);
   });
 

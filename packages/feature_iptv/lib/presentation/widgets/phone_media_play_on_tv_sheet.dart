@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:platform_player/platform_player.dart';
 
 import 'cast_device_picker_sheet.dart';
+import 'iptv_cast_mini_controller.dart';
 
 /// "Play on TV" surface for a phone-local media file (CV-033).
 ///
@@ -179,10 +180,21 @@ class _PhoneMediaPlayOnTvSheetState extends State<PhoneMediaPlayOnTvSheet> {
               style: theme.textTheme.bodyMedium,
             ),
             const SizedBox(height: 12),
-            OutlinedButton.icon(
-              onPressed: _stopHandoff,
-              icon: const Icon(Icons.stop),
-              label: const Text('Stop casting'),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                FilledButton.icon(
+                  onPressed: () => showIptvCastRemoteControlSheet(context),
+                  icon: const Icon(Icons.settings_remote),
+                  label: const Text('Open remote'),
+                ),
+                OutlinedButton.icon(
+                  onPressed: _stopHandoff,
+                  icon: const Icon(Icons.stop),
+                  label: const Text('Stop casting'),
+                ),
+              ],
             ),
           ],
           _HandoffPhase.failed => [

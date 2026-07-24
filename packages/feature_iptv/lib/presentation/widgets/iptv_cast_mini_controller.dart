@@ -4,6 +4,15 @@ import 'package:platform_player/platform_player.dart';
 
 import '../../application/providers/iptv_cast_providers.dart';
 
+Future<void> showIptvCastRemoteControlSheet(BuildContext context) {
+  return showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    useSafeArea: true,
+    builder: (_) => const _CastRemoteControlSheet(),
+  );
+}
+
 /// CV-028 "After connection" surface: a one-time "Playing on {deviceName}"
 /// confirmation the first time this widget observes a live transition into
 /// an active Cast session, settling into the persistent compact controller
@@ -30,12 +39,7 @@ class _IptvCastMiniControllerState
 
   void _openRemote() {
     _confirm();
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      builder: (_) => const _CastRemoteControlSheet(),
-    );
+    showIptvCastRemoteControlSheet(context);
   }
 
   @override
