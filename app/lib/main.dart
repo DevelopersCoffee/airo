@@ -6,6 +6,7 @@ import 'package:flutter/semantics.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'core/app/airo_app.dart';
+import 'core/app/main_provider_overrides.dart';
 import 'core/config/firebase_status.dart';
 import 'core/error/global_error_handler.dart';
 import 'core/routing/app_router.dart';
@@ -84,12 +85,10 @@ void main() async {
 
   runApp(
     ProviderScope(
-      overrides: [
-        sharedPreferencesProvider.overrideWithValue(prefs),
-        epgReminderNotificationGatewayProvider.overrideWithValue(
-          epgReminderGateway,
-        ),
-      ],
+      overrides: buildMainProviderOverrides(
+        prefs: prefs,
+        epgReminderGateway: epgReminderGateway,
+      ),
       child: const AiroApp(),
     ),
   );
