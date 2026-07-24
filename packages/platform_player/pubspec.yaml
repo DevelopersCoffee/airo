@@ -19,6 +19,8 @@ dependencies:
     path: third_party/flutter_chrome_cast
   platform_channels:
     path: ../platform_channels
+  platform_receiver_modes:
+    path: ../platform_receiver_modes
 
 dev_dependencies:
   flutter_test:
