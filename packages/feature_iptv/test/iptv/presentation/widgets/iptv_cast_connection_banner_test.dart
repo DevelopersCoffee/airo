@@ -107,36 +107,68 @@ void main() {
     expect(find.byTooltip('Stop receiver media'), findsOneWidget);
   });
 
-  testWidgets(
-    '"Open controls" dismisses the banner into the expanded controller',
-    (tester) async {
-      final notifier = _MutableCastNotifier(const IptvCastState());
+  testWidgets('Cast remote fits a short landscape surface', (tester) async {
+    final notifier = _MutableCastNotifier(
+      IptvCastState(
+        session: AiroCastSessionSnapshot.playing(device: tv, media: media),
+      ),
+    );
 
-      await tester.pumpWidget(
-        ProviderScope(
-          overrides: [iptvCastProvider.overrideWith((ref) => notifier)],
-          child: const MaterialApp(
-            home: Scaffold(body: IptvCastMiniController()),
-          ),
+    tester.view.physicalSize = const Size(1280, 400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [iptvCastProvider.overrideWith((ref) => notifier)],
+        child: const MaterialApp(
+          home: Scaffold(body: IptvCastMiniController()),
         ),
-      );
+      ),
+    );
+    await tester.tap(find.byTooltip('Open Cast remote'));
+    await tester.pumpAndSettle();
 
-      notifier.setState(
-        IptvCastState(
-          session: AiroCastSessionSnapshot.playing(device: tv, media: media),
+    expect(tester.takeException(), isNull);
+    expect(find.text('Remote for Sony Bravia'), findsOneWidget);
+    expect(find.text('Disconnect TV'), findsOneWidget);
+  });
+
+  testWidgets('"Open controls" presents the Cast remote sheet', (tester) async {
+    final notifier = _MutableCastNotifier(const IptvCastState());
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [iptvCastProvider.overrideWith((ref) => notifier)],
+        child: const MaterialApp(
+          home: Scaffold(body: IptvCastMiniController()),
         ),
-      );
-      await tester.pump();
+      ),
+    );
 
-      await tester.tap(find.text('Open controls'));
-      await tester.pump();
+    notifier.setState(
+      IptvCastState(
+        session: AiroCastSessionSnapshot.playing(device: tv, media: media),
+      ),
+    );
+    await tester.pump();
 
-      expect(find.textContaining('Playing on'), findsNothing);
-      expect(find.text('Reload'), findsOneWidget);
-      expect(find.text('New session'), findsOneWidget);
-      expect(find.text('Disconnect'), findsOneWidget);
-    },
-  );
+    await tester.tap(find.text('Open controls'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Remote for Sony Bravia'), findsOneWidget);
+    expect(find.text('P4U Music'), findsWidgets);
+    expect(find.byTooltip('Volume up'), findsOneWidget);
+    expect(find.byTooltip('Volume down'), findsOneWidget);
+    expect(find.byTooltip('Mute'), findsOneWidget);
+    expect(find.byTooltip('Stop receiver media'), findsWidgets);
+    expect(find.text('Disconnect TV'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Mute'));
+    await tester.pump();
+    expect(notifier.fakeController.recordedActions, contains('setVolume:0.0'));
+  });
 
   testWidgets(
     'no banner for a session that is already connected when the widget mounts '
@@ -206,12 +238,14 @@ void main() {
 
 class _MutableCastNotifier extends IptvCastNotifier {
   _MutableCastNotifier(IptvCastState initial)
-    : super(
-        controller: FakeAiroCastController(),
-        adapter: const IptvCastMediaAdapter(),
-      ) {
+    : this._(initial, FakeAiroCastController());
+
+  _MutableCastNotifier._(IptvCastState initial, this.fakeController)
+    : super(controller: fakeController, adapter: const IptvCastMediaAdapter()) {
     state = initial;
   }
+
+  final FakeAiroCastController fakeController;
 
   void setState(IptvCastState next) => state = next;
 }

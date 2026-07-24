@@ -21,15 +21,21 @@ class IptvCastMiniController extends ConsumerStatefulWidget {
 class _IptvCastMiniControllerState
     extends ConsumerState<IptvCastMiniController> {
   String? _confirmedDeviceId;
-  bool _expanded = false;
   bool _initialized = false;
 
-  void _confirm({required bool expand}) {
+  void _confirm() {
     final device = ref.read(iptvCastProvider).session.device;
-    setState(() {
-      _confirmedDeviceId = device?.id;
-      _expanded = expand;
-    });
+    setState(() => _confirmedDeviceId = device?.id);
+  }
+
+  void _openRemote() {
+    _confirm();
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (_) => const _CastRemoteControlSheet(),
+    );
   }
 
   @override
@@ -49,11 +55,8 @@ class _IptvCastMiniControllerState
       iptvCastProvider.select((state) => state.session),
       (previous, next) {
         if (!next.isConnected) {
-          if (_confirmedDeviceId != null || _expanded) {
-            setState(() {
-              _confirmedDeviceId = null;
-              _expanded = false;
-            });
+          if (_confirmedDeviceId != null) {
+            setState(() => _confirmedDeviceId = null);
           }
           return;
         }
@@ -83,8 +86,8 @@ class _IptvCastMiniControllerState
       return _ConnectionConfirmationBanner(
         device: device,
         media: media,
-        onBrowseChannels: () => _confirm(expand: false),
-        onOpenControls: () => _confirm(expand: true),
+        onBrowseChannels: _confirm,
+        onOpenControls: _openRemote,
       );
     }
 
@@ -92,8 +95,7 @@ class _IptvCastMiniControllerState
       session: session,
       device: device,
       media: media,
-      expanded: _expanded,
-      onToggleExpanded: () => setState(() => _expanded = !_expanded),
+      onOpenRemote: _openRemote,
     );
   }
 }
@@ -169,15 +171,13 @@ class _CompactCastController extends ConsumerWidget {
     required this.session,
     required this.device,
     required this.media,
-    required this.expanded,
-    required this.onToggleExpanded,
+    required this.onOpenRemote,
   });
 
   final AiroCastSessionSnapshot session;
   final AiroCastDevice device;
   final AiroCastMediaRequest? media;
-  final bool expanded;
-  final VoidCallback onToggleExpanded;
+  final VoidCallback onOpenRemote;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -248,11 +248,9 @@ class _CompactCastController extends ConsumerWidget {
                     ),
                   ),
                   IconButton(
-                    tooltip: expanded ? 'Fewer controls' : 'More controls',
-                    icon: Icon(
-                      expanded ? Icons.expand_less : Icons.expand_more,
-                    ),
-                    onPressed: onToggleExpanded,
+                    tooltip: 'Open Cast remote',
+                    icon: const Icon(Icons.settings_remote),
+                    onPressed: onOpenRemote,
                   ),
                 ],
               ),
@@ -292,35 +290,6 @@ class _CompactCastController extends ConsumerWidget {
                         ? null
                         : () => ref.read(iptvCastProvider.notifier).stop(),
                   ),
-                  if (expanded) ...[
-                    if (hasMedia) ...[
-                      _CastControlButton(
-                        tooltip: 'Reload current stream',
-                        icon: Icons.refresh,
-                        label: 'Reload',
-                        onPressed: isLoading
-                            ? null
-                            : () => ref
-                                  .read(iptvCastProvider.notifier)
-                                  .reloadActiveMedia(),
-                      ),
-                      _CastControlButton(
-                        tooltip: 'Start a new Cast session',
-                        icon: Icons.restart_alt,
-                        label: 'New session',
-                        onPressed: () => ref
-                            .read(iptvCastProvider.notifier)
-                            .restartActiveSession(),
-                      ),
-                    ],
-                    _CastControlButton(
-                      tooltip: 'Disconnect from ${device.name}',
-                      icon: Icons.cast_connected,
-                      label: 'Disconnect',
-                      onPressed: () =>
-                          ref.read(iptvCastProvider.notifier).disconnect(),
-                    ),
-                  ],
                 ],
               ),
               const SizedBox(height: 6),
@@ -433,43 +402,12 @@ class _CompactCastController extends ConsumerWidget {
                     ),
                   ),
                   IconButton(
-                    tooltip: expanded ? 'Fewer controls' : 'More controls',
-                    icon: Icon(
-                      expanded ? Icons.expand_less : Icons.expand_more,
-                    ),
-                    onPressed: onToggleExpanded,
+                    tooltip: 'Open Cast remote',
+                    icon: const Icon(Icons.settings_remote),
+                    onPressed: onOpenRemote,
                   ),
                 ],
               ),
-              if (expanded)
-                Wrap(
-                  spacing: 6,
-                  runSpacing: 6,
-                  children: [
-                    if (hasMedia) ...[
-                      _CastControlButton(
-                        tooltip: 'Reload current stream',
-                        icon: Icons.refresh,
-                        label: 'Reload',
-                        onPressed: isLoading
-                            ? null
-                            : notifier.reloadActiveMedia,
-                      ),
-                      _CastControlButton(
-                        tooltip: 'Start a new Cast session',
-                        icon: Icons.restart_alt,
-                        label: 'New session',
-                        onPressed: notifier.restartActiveSession,
-                      ),
-                    ],
-                    _CastControlButton(
-                      tooltip: 'Disconnect from ${device.name}',
-                      icon: Icons.cast_connected,
-                      label: 'Disconnect',
-                      onPressed: notifier.disconnect,
-                    ),
-                  ],
-                ),
             ],
           ),
         ),
@@ -496,6 +434,214 @@ class _CompactCastController extends ConsumerWidget {
       return session.error?.message ?? media?.title ?? 'Receiver needs action.';
     }
     return media?.title ?? 'Choose a channel to cast, or disconnect the TV.';
+  }
+}
+
+class _CastRemoteControlSheet extends ConsumerWidget {
+  const _CastRemoteControlSheet();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final session = ref.watch(iptvCastProvider).session;
+    final device = session.device;
+    if (device == null || !session.isConnected) {
+      return const SizedBox.shrink();
+    }
+
+    final size = MediaQuery.sizeOf(context);
+    final landscape = size.width > size.height;
+    final notifier = ref.read(iptvCastProvider.notifier);
+    final mediaTitle = session.media?.title ?? 'No media loaded';
+    final isPaused = session.phase == AiroCastSessionPhase.paused;
+    final isStopped = session.phase == AiroCastSessionPhase.stopped;
+    final isLoading = session.phase == AiroCastSessionPhase.loadingMedia;
+
+    final details = Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: landscape
+          ? CrossAxisAlignment.start
+          : CrossAxisAlignment.center,
+      children: [
+        Icon(
+          Icons.cast_connected,
+          size: 28,
+          color: Theme.of(context).colorScheme.primary,
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Remote for ${device.name}',
+          textAlign: landscape ? TextAlign.start : TextAlign.center,
+          style: Theme.of(context).textTheme.titleLarge,
+        ),
+        const SizedBox(height: 4),
+        Text(
+          mediaTitle,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          textAlign: landscape ? TextAlign.start : TextAlign.center,
+          style: Theme.of(context).textTheme.bodyMedium,
+        ),
+        const SizedBox(height: 16),
+        Row(
+          children: [
+            const Icon(Icons.volume_down),
+            Expanded(
+              child: Slider(
+                value: session.volume.clamp(0.0, 1.0).toDouble(),
+                onChanged: notifier.setVolume,
+              ),
+            ),
+            const Icon(Icons.volume_up),
+          ],
+        ),
+        const SizedBox(height: 8),
+        OutlinedButton.icon(
+          onPressed: () {
+            notifier.disconnect();
+            Navigator.of(context).pop();
+          },
+          icon: const Icon(Icons.cast_connected),
+          label: const Text('Disconnect TV'),
+        ),
+      ],
+    );
+
+    final pad = _CastRemotePad(
+      diameter: landscape ? 210 : 280,
+      isPaused: isPaused,
+      isStopped: isStopped,
+      isLoading: isLoading,
+      onPrimary: () {
+        if (isStopped) {
+          notifier.reloadActiveMedia();
+        } else {
+          isPaused ? notifier.play() : notifier.pause();
+        }
+      },
+      onVolumeUp: () =>
+          notifier.setVolume((session.volume + 0.1).clamp(0.0, 1.0).toDouble()),
+      onVolumeDown: () =>
+          notifier.setVolume((session.volume - 0.1).clamp(0.0, 1.0).toDouble()),
+      onMute: () => notifier.setVolume(0),
+      onStop: notifier.stop,
+    );
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 720),
+          child: landscape
+              ? Row(
+                  children: [
+                    Expanded(child: details),
+                    const SizedBox(width: 32),
+                    pad,
+                  ],
+                )
+              : Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [details, const SizedBox(height: 20), pad],
+                ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CastRemotePad extends StatelessWidget {
+  const _CastRemotePad({
+    required this.diameter,
+    required this.isPaused,
+    required this.isStopped,
+    required this.isLoading,
+    required this.onPrimary,
+    required this.onVolumeUp,
+    required this.onVolumeDown,
+    required this.onMute,
+    required this.onStop,
+  });
+
+  final double diameter;
+  final bool isPaused;
+  final bool isStopped;
+  final bool isLoading;
+  final VoidCallback onPrimary;
+  final VoidCallback onVolumeUp;
+  final VoidCallback onVolumeDown;
+  final VoidCallback onMute;
+  final VoidCallback onStop;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final edgeOffset = diameter * 0.08;
+    final centerSize = diameter * 0.42;
+
+    return SizedBox.square(
+      dimension: diameter,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: colorScheme.surfaceContainerHighest,
+          border: Border.all(color: colorScheme.outlineVariant),
+        ),
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            Positioned(
+              top: edgeOffset,
+              child: IconButton(
+                tooltip: 'Volume up',
+                onPressed: onVolumeUp,
+                icon: const Icon(Icons.volume_up),
+              ),
+            ),
+            Positioned(
+              bottom: edgeOffset,
+              child: IconButton(
+                tooltip: 'Volume down',
+                onPressed: onVolumeDown,
+                icon: const Icon(Icons.volume_down),
+              ),
+            ),
+            Positioned(
+              left: edgeOffset,
+              child: IconButton(
+                tooltip: 'Mute',
+                onPressed: onMute,
+                icon: const Icon(Icons.volume_off),
+              ),
+            ),
+            Positioned(
+              right: edgeOffset,
+              child: IconButton(
+                tooltip: 'Stop receiver media',
+                onPressed: isLoading ? null : onStop,
+                icon: const Icon(Icons.stop),
+              ),
+            ),
+            SizedBox.square(
+              dimension: centerSize,
+              child: FilledButton(
+                style: FilledButton.styleFrom(
+                  shape: const CircleBorder(),
+                  padding: EdgeInsets.zero,
+                ),
+                onPressed: isLoading ? null : onPrimary,
+                child: Icon(
+                  isPaused || isStopped ? Icons.play_arrow : Icons.pause,
+                  size: centerSize * 0.42,
+                  semanticLabel: isPaused || isStopped
+                      ? 'Start playback'
+                      : 'Pause',
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 
