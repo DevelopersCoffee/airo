@@ -264,6 +264,14 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
     }
   }
 
+  void _playRandomFilteredChannel(VideoPlayerStreamingService service) {
+    final channel = randomFilteredChannel(ref.read(filteredChannelsProvider));
+    if (channel == null) return;
+    service.playChannel(channel);
+    _showChannelChangeOverlay(channel.name);
+    _scheduleAdjacentChannelWarmupFor(channel);
+  }
+
   void _scheduleAdjacentChannelWarmup(StreamingState state) {
     final currentChannel = state.currentChannel;
     if (currentChannel == null) return;
@@ -562,28 +570,6 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                       ),
                     ),
 
-                  if (!_isLocked && !isPipActive)
-                    Positioned.fill(
-                      child: RemoteOverlay(
-                        isTv: !widget.enableTouchGestures,
-                        onChannelPrevious: _goToPreviousChannel,
-                        onChannelNext: _goToNextChannel,
-                        onMute: () => service.toggleMute(),
-                        onVolumeDown: () => service.setVolume(
-                          (state.volume - 0.1).clamp(0.0, 1.0).toDouble(),
-                        ),
-                        onVolumeUp: () => service.setVolume(
-                          (state.volume + 0.1).clamp(0.0, 1.0).toDouble(),
-                        ),
-                        onRandom: () {
-                          final channel = randomFilteredChannel(
-                            ref.read(filteredChannelsProvider),
-                          );
-                          if (channel != null) service.playChannel(channel);
-                        },
-                      ),
-                    ),
-
                   // Channel change overlay
                   if (_channelChangeOverlayText != null)
                     Positioned(
@@ -879,6 +865,16 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                   iconSize: 22,
                   backgroundAlpha: 0.48,
                 ),
+                const SizedBox(width: 10),
+                _PlayerRoundControlButton(
+                  key: const ValueKey('iptv-player-random-channel-button'),
+                  icon: Icons.casino_outlined,
+                  tooltip: 'Random channel',
+                  onPressed: () => _playRandomFilteredChannel(service),
+                  diameter: 44,
+                  iconSize: 22,
+                  backgroundAlpha: 0.48,
+                ),
               ],
             ),
           ),
@@ -1059,6 +1055,12 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                     onPressed: _goToNextChannel,
                   ),
                 ],
+                _PlayerFloatingControlButton(
+                  key: const ValueKey('iptv-player-random-channel-button'),
+                  icon: Icons.casino_outlined,
+                  tooltip: 'Random channel',
+                  onPressed: () => _playRandomFilteredChannel(service),
+                ),
                 _PlayerFloatingControlButton(
                   key: const ValueKey('iptv-player-more-button'),
                   icon: Icons.settings_outlined,

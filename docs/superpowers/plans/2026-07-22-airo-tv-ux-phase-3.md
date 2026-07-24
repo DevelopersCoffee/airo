@@ -4,12 +4,13 @@
 
 1. Write failing pure-unit tests for random selection from the filtered list,
    including empty and single-item inputs; implement the deterministic helper.
-2. Write failing widget tests for visible touch controls, inactivity dismissal,
-   pointer reappearance, and one callback per touch control; implement the
-   overlay without changing playback or failover behavior.
-3. Write failing remote-input tests using existing TV focus/key patterns;
-   wire channel navigation and mute/volume to established providers, with no
-   drawn touch controls on D-pad surfaces.
-4. Compose the overlay into `AiroTvShell`, giving random a D-pad focus target.
+2. Reuse the player's existing auto-hiding compact and expanded control layers
+   for volume, mute, and channel navigation. Do not mount a second full-screen
+   overlay over those controls.
+3. Write remote-input tests using existing TV focus/key patterns and map
+   hardware channel up/down to established filtered-list navigation.
+4. Add one focusable random action to both existing player control layouts.
+   Hardware volume and mute remain platform/OS-owned because `TvInputKey`
+   does not expose those keys.
 5. Run focused tests per slice, full feature-package tests/analyzer, review,
    and device dogfood before opening the PR.

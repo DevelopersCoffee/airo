@@ -24,6 +24,7 @@ void main() {
     PlayerBrightnessController? brightnessController,
     StreamingState? state,
     List<IPTVChannel>? channels,
+    VideoPlayerStreamingService? service,
   }) async {
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
@@ -37,6 +38,8 @@ void main() {
           ),
           if (channels != null)
             iptvChannelsProvider.overrideWith((ref) async => channels),
+          if (service != null)
+            iptvStreamingServiceProvider.overrideWithValue(service),
           streamingStateProvider.overrideWith(
             (ref) => Stream.value(
               state ??
@@ -217,6 +220,10 @@ void main() {
       find.byKey(const ValueKey('iptv-player-more-button')),
       findsOneWidget,
     );
+    expect(
+      find.byKey(const ValueKey('iptv-player-random-channel-button')),
+      findsOneWidget,
+    );
     expect(find.byKey(const ValueKey('audio-only-toggle')), findsNothing);
     expect(
       find.byKey(const ValueKey('iptv-player-quality-button')),
@@ -261,6 +268,30 @@ void main() {
       find.byKey(const ValueKey('iptv-player-channel-next-button')),
       findsOneWidget,
     );
+  });
+
+  testWidgets('random control plays from the filtered channel list', (
+    tester,
+  ) async {
+    const randomChannel = IPTVChannel(
+      id: 'random-1',
+      name: 'Random Channel',
+      streamUrl: 'https://example.com/random.m3u8',
+    );
+    final service = VideoPlayerStreamingService(
+      engine: FakeAiroPlaybackEngine(),
+    );
+    addTearDown(service.dispose);
+
+    await pumpPlayer(tester, channels: const [randomChannel], service: service);
+
+    await tester.tap(
+      find.byKey(const ValueKey('iptv-player-random-channel-button')),
+    );
+    await tester.pump();
+
+    expect(service.currentState.currentChannel, randomChannel);
+    await service.stop();
   });
 
   testWidgets('tapping the lock button again unlocks and restores controls', (
@@ -708,6 +739,10 @@ void main() {
       );
       expect(
         find.byKey(const ValueKey('iptv-player-more-button')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('iptv-player-random-channel-button')),
         findsOneWidget,
       );
       expect(
