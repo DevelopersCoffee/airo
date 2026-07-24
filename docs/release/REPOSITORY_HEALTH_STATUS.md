@@ -23,7 +23,8 @@ dart pub global run melos run release:repo-health-preflight
 ```
 
 Use `AIRO_REPO_CODEOWNERS=present` when a root or `.github/CODEOWNERS` file is
-added. Use `AIRO_REPO_FUNDING=present` when `.github/FUNDING.yml` is added.
+added. Use `AIRO_REPO_FUNDING=present` because `.github/FUNDING.yml` is now
+present in the repository.
 
 ## Verified Repo-Visible Files
 
@@ -42,6 +43,7 @@ added. Use `AIRO_REPO_FUNDING=present` when `.github/FUNDING.yml` is added.
 - `docs/release/V2_HUMAN_IN_LOOP_BLOCKERS.md`
 - `docs/release/STORE_COMPLIANCE.md`
 - `docs/release/V2_RELEASE_ORCHESTRATOR.md`
+- `.github/FUNDING.yml`
 
 ## Label Taxonomy
 
@@ -61,8 +63,6 @@ The local preflight verifies that the repository label taxonomy covers:
 ## Remaining Maintainer Decisions
 
 - Decide whether GitHub Discussions should be enabled or intentionally deferred.
-- Add `.github/FUNDING.yml`, or explicitly confirm funding/sponsor metadata is
-  intentionally absent for this release wave.
 
 ## Deferred Items
 

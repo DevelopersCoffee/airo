@@ -160,7 +160,7 @@ Workflow:
 ## Documentation
 
 - [Architecture](docs/architecture/README.md) · [Features](docs/features/README.md) · [Security](docs/security/README.md) · [Release](docs/release/README.md) · [Troubleshooting](docs/troubleshooting/README.md) · [Wiki source](docs/wiki/README.md)
-- Release engineering: [V2 orchestrator](docs/release/V2_RELEASE_ORCHESTRATOR.md) · [release checklist](docs/release/RELEASE_CHECKLIST.md) · [repository health](docs/release/REPOSITORY_HEALTH_STATUS.md)
+- Release engineering: [V2 orchestrator](docs/release/V2_RELEASE_ORCHESTRATOR.md) · [release workflow](.github/workflows/release-orchestrator.yml) · [publishing human setup](docs/release/V2_PUBLISHING_HUMAN_SETUP.md) · [release checklist](docs/release/RELEASE_CHECKLIST.md) · [repository health](docs/release/REPOSITORY_HEALTH_STATUS.md)
 
 ## Community Standards
 
