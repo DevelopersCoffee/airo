@@ -15,7 +15,8 @@ We do not add features to comply with this document. We move, delete, and shrink
 ## 2. Layer model
 
 ```
-Apps (entrypoints: main_tv, main_mobile_streaming, main_airo_iptv, ...)
+Apps (product entrypoints: main, main_tv; legacy/debug entrypoints must not
+be treated as products)
   ↓ may depend on
 Feature packages (feature_*)            — UI + orchestration for one domain
   ↓ may depend on
@@ -71,19 +72,36 @@ truth for focused module behavior.
 
 For Airo TV specifically:
 
+- The kept Airo TV validation surfaces are:
+  - Pixel 9 / compact Android: the **Airo TV** Android variant
+    (`APP_VARIANT=tv`, `io.airo.app.tv`) running `app/lib/main_tv.dart`
+    with the compact phone layout.
+  - macOS desktop: the Airo TV macOS app running `app/lib/main_tv.dart`.
+  - TV / 10-foot: the Airo TV Android TV / Google TV / Fire TV profile
+    running `app/lib/main_tv.dart`.
+- `app/lib/main_airo_iptv.dart`, `APP_VARIANT=iptv`,
+  `io.airo.app.iptv`, `app/pubspec_iptv.yaml`, and the **Airo IPTV** label
+  are legacy/debug-only until removed. Agents must not use them for product
+  QA, release qualification, screenshots, parity claims, or Pixel 9 testing.
+  If behavior still exists only there, move it into `feature_iptv`,
+  `main_tv`, or the relevant platform package before validating the product.
+- The default Airo TV visual identity is near-black with the Airo TV green
+  accent. Gold/cream styling belongs only to an optional theme selected from
+  the theme/settings surface and must not appear as the default for Pixel 9,
+  macOS, or TV Airo TV builds.
 - Reusable playback, playlist, EPG, source-management, Cast, reminder,
   bootstrap, and provider behavior belongs in `feature_iptv` and the
   relevant `platform_*` / `core_*` packages.
-- `app/lib/main_airo_iptv.dart`, `app/lib/main_tv.dart`, and full
-  `app/lib/main.dart` may only wire providers, entrypoints, routing,
-  platform startup, and product-shell chrome.
+- `app/lib/main_tv.dart` and full `app/lib/main.dart` may only wire
+  providers, entrypoints, routing, platform startup, and product-shell chrome.
 - A focused Airo TV build must not depend on the full Airo Settings hub to
   reach essential Airo TV workflows. If a workflow is required to operate the
   standalone module (playlist source, XMLTV guide source, playback settings,
   diagnostics), expose it from the Airo TV surface or a shared Airo TV widget.
 - When behavior is added to one Airo TV entrypoint, agents must check the
-  parity contract for standalone phone IPTV, TV/Fire TV, full Airo embedding,
-  web validation, and the open-core `airo_pro_bootstrap` seam.
+  parity contract for Pixel 9 compact Airo TV, macOS Airo TV, TV/Fire TV,
+  full Airo embedding, web validation, and the open-core
+  `airo_pro_bootstrap` seam.
 - Build profiles (`app/pubspec_*.yaml` and `.github/airo-build-profiles.json`)
   are part of the contract. Any new runtime plugin, native dependency, or
   optional Pro hook must be reflected there in the same change.
