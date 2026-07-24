@@ -95,6 +95,10 @@ SHA256SUMS
 homebrew/airo-tv.rb
 ```
 
+The DMG is built from a staging folder that contains both `Airo TV.app` and an
+`Applications` symlink, so testers get the standard Finder install gesture
+instead of a bare app bundle view when the disk image opens.
+
 The generated Homebrew Cask points to:
 
 ```text
