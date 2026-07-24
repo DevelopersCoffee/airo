@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:feature_coin/feature_coin.dart';
 import 'package:go_router/go_router.dart';
 import '../../features/auth/screens/login_screen.dart';
@@ -268,9 +267,7 @@ class AppRouter {
                   name: 'Stream',
                   builder: (context, state) => IPTVScreen(
                     onOpenVod: () => context.go('/vod'),
-                    onPickLocalMediaForTv: kDebugMode
-                        ? pickPhoneLocalMediaForTv
-                        : null,
+                    onPickLocalMediaForTv: pickPhoneLocalMediaForTv,
                     deepLinkChannelId: state.uri.queryParameters['channel'],
                   ),
                 ),
@@ -329,9 +326,7 @@ class AppRouter {
                   name: 'Home',
                   builder: (context, state) => IPTVScreen(
                     onOpenVod: () => context.go('/vod'),
-                    onPickLocalMediaForTv: kDebugMode
-                        ? pickPhoneLocalMediaForTv
-                        : null,
+                    onPickLocalMediaForTv: pickPhoneLocalMediaForTv,
                   ),
                 ),
               ],
