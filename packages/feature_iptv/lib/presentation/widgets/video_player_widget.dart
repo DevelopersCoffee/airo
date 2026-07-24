@@ -501,6 +501,7 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                           locked: _isLocked,
                           brightness: _brightness,
                           volume: state.isMuted ? 0.0 : state.volume,
+                          onTap: _showControls,
                           onBrightnessChanged: _onBrightnessGestureChanged,
                           onVolumeChanged: (value) {
                             if (state.isMuted) service.toggleMute();
@@ -526,6 +527,7 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                           service.resume();
                         }
                       },
+                      onReveal: _showControls,
                       showTopChrome: false,
                       showCenterControls: false,
                       showBottomBar: false,
