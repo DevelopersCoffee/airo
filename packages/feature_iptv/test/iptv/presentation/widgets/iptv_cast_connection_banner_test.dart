@@ -107,6 +107,37 @@ void main() {
     expect(find.byTooltip('Stop receiver media'), findsOneWidget);
   });
 
+  testWidgets('connection banner fits a short landscape surface', (
+    tester,
+  ) async {
+    final notifier = _MutableCastNotifier(const IptvCastState());
+
+    tester.view.physicalSize = const Size(1280, 400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [iptvCastProvider.overrideWith((ref) => notifier)],
+        child: const MaterialApp(
+          home: Scaffold(body: IptvCastMiniController()),
+        ),
+      ),
+    );
+    notifier.setState(
+      IptvCastState(
+        session: AiroCastSessionSnapshot.playing(device: tv, media: media),
+      ),
+    );
+    await tester.pump();
+
+    expect(tester.takeException(), isNull);
+    expect(find.text('Playing on Sony Bravia'), findsOneWidget);
+    expect(find.text('Browse'), findsOneWidget);
+    expect(find.text('Remote'), findsOneWidget);
+  });
+
   testWidgets('Cast remote fits a short landscape surface', (tester) async {
     final notifier = _MutableCastNotifier(
       IptvCastState(

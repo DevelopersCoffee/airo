@@ -122,6 +122,58 @@ class _ConnectionConfirmationBanner extends ConsumerWidget {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
     final channelName = media?.title ?? 'This channel';
+    final size = MediaQuery.sizeOf(context);
+
+    if (size.width > size.height && size.height < 600) {
+      return Material(
+        color: colorScheme.primaryContainer,
+        child: SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            child: Row(
+              children: [
+                const Icon(Icons.cast_connected),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Playing on ${device.name}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: textTheme.titleSmall?.copyWith(
+                          color: colorScheme.onPrimaryContainer,
+                        ),
+                      ),
+                      Text(
+                        channelName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: textTheme.bodySmall?.copyWith(
+                          color: colorScheme.onPrimaryContainer,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                TextButton(
+                  onPressed: onBrowseChannels,
+                  child: const Text('Browse'),
+                ),
+                FilledButton.tonalIcon(
+                  onPressed: onOpenControls,
+                  icon: const Icon(Icons.settings_remote),
+                  label: const Text('Remote'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
 
     return Material(
       color: colorScheme.primaryContainer,
