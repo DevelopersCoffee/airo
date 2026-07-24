@@ -4,6 +4,8 @@ import 'dart:io';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:platform_player/platform_player.dart';
+import 'package:platform_receiver_modes/platform_receiver_modes.dart';
+import 'package:product_capabilities/product_capabilities.dart';
 
 void main() {
   late Directory tempDir;
@@ -44,10 +46,12 @@ void main() {
   PhoneMediaCastHandoff handoffFor({
     PhoneMediaReceiverCapabilities capabilities =
         PhoneMediaReceiverCapabilities.chromecastDefault,
+    LegacyReceiverModeContract? receiverModeContract,
   }) {
     return PhoneMediaCastHandoff(
       castController: castController,
       capabilities: capabilities,
+      receiverModeContract: receiverModeContract,
       bindAddress: InternetAddress.loopbackIPv4,
       // Tests that aren't exercising connectivity teardown shouldn't reach
       // the real platform channel, which has no plugin registered here.
@@ -91,6 +95,36 @@ void main() {
 
       expect(result, isA<PhoneMediaHandoffStarted>());
       await handoff.stopHandoff();
+    },
+  );
+
+  test('legacy lite receiver mode resolves a conservative local-file '
+      'capability envelope', () async {
+    final handoff = handoffFor(
+      receiverModeContract: legacyModeContract(
+        LegacyReceiverModeId.liteReceiver,
+      ),
+    );
+    final result = await handoff.start(
+      itemFor(container: 'webm', videoCodec: 'vp9'),
+    );
+
+    expect(result, isA<PhoneMediaHandoffUnsupported>());
+    final unsupported = result as PhoneMediaHandoffUnsupported;
+    expect(unsupported.reason, PhoneMediaUnsupportedReason.container);
+    expect(handoff.isServing, isFalse);
+  });
+
+  test(
+    'legacy blocked receiver mode rejects even supported local files',
+    () async {
+      final handoff = handoffFor(
+        receiverModeContract: legacyModeContract(LegacyReceiverModeId.blocked),
+      );
+      final result = await handoff.start(itemFor());
+
+      expect(result, isA<PhoneMediaHandoffUnsupported>());
+      expect(handoff.isServing, isFalse);
     },
   );
 
@@ -209,8 +243,7 @@ void main() {
   });
 
   test('stops the server when connectivity reports disconnected', () async {
-    final connectivityController =
-        StreamController<List<ConnectivityResult>>();
+    final connectivityController = StreamController<List<ConnectivityResult>>();
     final events = <PhoneMediaDiagnosticEvent>[];
     addTearDown(connectivityController.close);
     final handoff = PhoneMediaCastHandoff(
@@ -233,6 +266,59 @@ void main() {
 
     await handoff.dispose();
   });
+}
+
+LegacyReceiverModeContract legacyModeContract(LegacyReceiverModeId modeId) {
+  return LegacyReceiverModeContract(
+    contractId: 'contract-${modeId.stableId}',
+    modeId: modeId,
+    sourceProfileId: 'profile-1',
+    enabled: modeId != LegacyReceiverModeId.off,
+    activationBlocked: modeId == LegacyReceiverModeId.blocked,
+    recommendedProductProfile: switch (modeId) {
+      LegacyReceiverModeId.blocked => ProductProfileId.embeddedReceiver,
+      LegacyReceiverModeId.off ||
+      LegacyReceiverModeId.liteReceiver ||
+      LegacyReceiverModeId.restrictedLiteReceiver =>
+        ProductProfileId.liteReceiver,
+    },
+    triggers: const [],
+    navigation: const [],
+    homeSections: const [],
+    includedModules: const {},
+    disabledModules: const {},
+    dataBudget: const LegacyReceiverDataBudget(
+      epgPastHours: 0,
+      epgFutureHours: 0,
+      catalogPageSize: 0,
+      maxRecentItems: 0,
+      maxFavoriteItems: 0,
+      allowFullLocalIndex: false,
+      allowBackgroundEnrichment: false,
+    ),
+    visualBudget: const LegacyReceiverVisualBudget(
+      artworkPolicy: LegacyReceiverArtworkPolicy.textOnly,
+      motionPolicy: LegacyReceiverMotionPolicy.none,
+      maxArtworkCacheMb: 0,
+      allowAnimatedPreviews: false,
+      allowBlurEffects: false,
+      allowAutoplayPreviews: false,
+    ),
+    delegationPolicy: LegacyReceiverDelegationPolicy(
+      preferred: const {},
+      required: const {},
+      allowStandalonePlayback: true,
+      allowCompanionDiscovery: true,
+    ),
+    resourceBudget: const ProductResourceBudget(
+      maxMemoryMb: 256,
+      maxStorageMb: 512,
+      maxArtworkCacheMb: 64,
+      maxBackgroundJobs: 1,
+    ),
+    runtimeConstraints: const [],
+    capturedAt: DateTime(2026),
+  );
 }
 
 /// Delegates to the fake for state but fails every media load.

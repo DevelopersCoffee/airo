@@ -718,7 +718,7 @@ void main() {
 
       await openIptvDrawer(tester);
 
-      expect(find.text('Play file on TV (debug)'), findsNothing);
+      expect(find.text('Play file on TV'), findsNothing);
     },
   );
 
@@ -738,7 +738,7 @@ void main() {
 
       await openIptvDrawer(tester);
 
-      expect(find.text('Play file on TV (debug)'), findsOneWidget);
+      expect(find.text('Play file on TV'), findsOneWidget);
 
       await selectDrawerTile(tester, const ValueKey('iptv-drawer-play-on-tv'));
 
