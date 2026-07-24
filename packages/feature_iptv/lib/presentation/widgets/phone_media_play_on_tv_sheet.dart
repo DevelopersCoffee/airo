@@ -62,8 +62,14 @@ class _PhoneMediaPlayOnTvSheetState extends State<PhoneMediaPlayOnTvSheet> {
   void dispose() {
     unawaited(_discoverySubscription?.cancel());
     unawaited(_sessionSubscription?.cancel());
-    unawaited(widget.handoff.dispose());
+    unawaited(_disposeResources());
     super.dispose();
+  }
+
+  Future<void> _disposeResources() async {
+    await widget.handoff.prepareSourceRelease();
+    await widget.item.sourceLease?.release();
+    await widget.handoff.dispose();
   }
 
   Future<void> _startDiscovery() async {

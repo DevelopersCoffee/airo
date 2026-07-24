@@ -40,6 +40,15 @@ enum FilePickerStatus { picking, done }
 
 /// Stub FilePicker - returns null on TV
 abstract final class FilePicker {
+  /// Pick one file - returns null on TV
+  static Future<PlatformFile?> pickFile({
+    String? dialogTitle,
+    String? initialDirectory,
+    FileType type = FileType.any,
+    List<String>? allowedExtensions,
+    bool lockParentWindow = false,
+  }) async => null;
+
   /// Pick files - returns null on TV
   static Future<FilePickerResult?> pickFiles({
     String? dialogTitle,

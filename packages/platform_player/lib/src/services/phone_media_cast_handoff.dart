@@ -12,12 +12,21 @@ import '../models/phone_media_diagnostic_models.dart';
 import 'airo_cast_controller.dart';
 import 'phone_media_file_server.dart';
 
+/// A process-local handle that keeps a selected media source readable.
+///
+/// Android document URIs use this to retain a seekable file descriptor without
+/// copying multi-gigabyte videos into the app cache.
+abstract interface class PhoneMediaSourceLease {
+  Future<void> release();
+}
+
 /// A phone-local media file selected for playback on a receiver (CV-033).
 class PhoneLocalMediaItem extends Equatable {
   const PhoneLocalMediaItem({
     required this.filePath,
     required this.title,
     required this.container,
+    this.sourceLease,
     this.videoCodec,
     this.audioCodec,
     this.duration,
@@ -28,6 +37,7 @@ class PhoneLocalMediaItem extends Equatable {
 
   /// Container/extension in lowercase without a dot, e.g. `mp4`, `mkv`.
   final String container;
+  final PhoneMediaSourceLease? sourceLease;
   final String? videoCodec;
   final String? audioCodec;
   final Duration? duration;
@@ -247,6 +257,12 @@ class PhoneMediaCastHandoff {
     await _castController.stop();
     await _teardownServer();
   }
+
+  /// Stops every read of the selected source before its platform lease closes.
+  ///
+  /// Full [dispose] also cancels session/connectivity subscriptions, which is
+  /// intentionally separate from this file-lifetime barrier.
+  Future<void> prepareSourceRelease() => _teardownServer();
 
   Future<void> dispose() async {
     final subscription = _sessionSubscription;

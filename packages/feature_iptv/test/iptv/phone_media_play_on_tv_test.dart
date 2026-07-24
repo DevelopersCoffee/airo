@@ -91,6 +91,38 @@ void main() {
     expect(find.text('Playing on Fire Stick'), findsNothing);
   });
 
+  testWidgets('disposal releases the selected source lease', (tester) async {
+    late PhoneMediaCastHandoff handoff;
+    final lease = _RecordingSourceLease(() {
+      expect(handoff.isServing, isFalse);
+    });
+    final item = PhoneLocalMediaItem(
+      filePath: mediaFile.path,
+      title: 'Movie Night',
+      container: 'mkv',
+      sourceLease: lease,
+    );
+    handoff = PhoneMediaCastHandoff(
+      castController: castController,
+      bindAddress: InternetAddress.loopbackIPv4,
+      debugConnectivityStream: const Stream.empty(),
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: PhoneMediaPlayOnTvSheet(
+          item: item,
+          handoff: handoff,
+          castController: castController,
+        ),
+      ),
+    );
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump();
+
+    expect(lease.releaseCount, 1);
+  });
+
   testWidgets('failed handoff shows an error state and offers retry', (
     tester,
   ) async {
@@ -182,4 +214,17 @@ void main() {
       isNot(contains(startsWith('load:'))),
     );
   });
+}
+
+class _RecordingSourceLease implements PhoneMediaSourceLease {
+  _RecordingSourceLease(this.onRelease);
+
+  final void Function() onRelease;
+  int releaseCount = 0;
+
+  @override
+  Future<void> release() async {
+    releaseCount++;
+    onRelease();
+  }
 }
