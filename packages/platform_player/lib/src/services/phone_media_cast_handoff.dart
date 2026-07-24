@@ -184,6 +184,9 @@ class PhoneMediaCastHandoff {
     if (unsupportedReason != null) {
       return PhoneMediaHandoffUnsupported(reason: unsupportedReason);
     }
+    if (!_castController.currentSessionState.isConnected) {
+      return const PhoneMediaHandoffFailed();
+    }
 
     _cancelPauseKeepAlive();
     await _teardownServer();
@@ -223,6 +226,15 @@ class PhoneMediaCastHandoff {
         _onConnectivityChanged,
       );
       await _castController.load(request);
+      final loadPhase = _castController.currentSessionState.phase;
+      final loadAccepted =
+          loadPhase == AiroCastSessionPhase.loadingMedia ||
+          loadPhase == AiroCastSessionPhase.playing ||
+          loadPhase == AiroCastSessionPhase.paused;
+      if (!loadAccepted) {
+        await _teardownServer();
+        return const PhoneMediaHandoffFailed();
+      }
       return PhoneMediaHandoffStarted(request: request);
     } catch (_) {
       // Never leave a live tokenized URL behind a handoff that failed.

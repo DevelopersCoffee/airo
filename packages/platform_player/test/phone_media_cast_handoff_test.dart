@@ -149,6 +149,36 @@ void main() {
     await handoff.stopHandoff();
   });
 
+  test('does not open a server or report success without a receiver', () async {
+    await castController.disconnect();
+    final handoff = handoffFor();
+
+    final result = await handoff.start(itemFor());
+
+    expect(result, isA<PhoneMediaHandoffFailed>());
+    expect(handoff.isServing, isFalse);
+    expect(
+      castController.recordedActions.where(
+        (action) => action.startsWith('load:'),
+      ),
+      isEmpty,
+    );
+  });
+
+  test('tears down when the controller records a failed media load', () async {
+    castController.failMediaLoad = true;
+    final handoff = handoffFor();
+
+    final result = await handoff.start(itemFor());
+
+    expect(result, isA<PhoneMediaHandoffFailed>());
+    expect(handoff.isServing, isFalse);
+    expect(
+      castController.currentSessionState.phase,
+      AiroCastSessionPhase.failed,
+    );
+  });
+
   test('stopHandoff stops the server and the cast session', () async {
     final handoff = handoffFor();
     await handoff.start(itemFor());

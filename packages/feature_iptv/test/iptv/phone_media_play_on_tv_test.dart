@@ -36,15 +36,21 @@ void main() {
     );
   }
 
-  Widget hostFor(PhoneLocalMediaItem item) {
+  Widget hostFor(
+    PhoneLocalMediaItem item, {
+    FakeAiroCastController? controller,
+  }) {
+    final selectedController = controller ?? castController;
     return MaterialApp(
       home: Scaffold(
         body: PhoneMediaPlayOnTvSheet(
           item: item,
           handoff: PhoneMediaCastHandoff(
-            castController: castController,
+            castController: selectedController,
             bindAddress: InternetAddress.loopbackIPv4,
+            debugConnectivityStream: const Stream.empty(),
           ),
+          castController: selectedController,
         ),
       ),
     );
@@ -55,8 +61,8 @@ void main() {
   ) async {
     await tester.pumpWidget(hostFor(itemFor()));
 
-    expect(find.text('Play on TV'), findsOneWidget);
-    expect(find.textContaining('Fire Stick'), findsOneWidget);
+    expect(find.text('Play on Fire Stick'), findsOneWidget);
+    expect(find.textContaining('Fire Stick'), findsNWidgets(2));
     expect(find.textContaining('Movie Night'), findsOneWidget);
   });
 
@@ -65,7 +71,7 @@ void main() {
   ) async {
     await tester.pumpWidget(hostFor(itemFor()));
 
-    await tester.tap(find.text('Play on TV'));
+    await tester.tap(find.text('Play on Fire Stick'));
     await tester.pumpAndSettle();
 
     expect(find.text('Playing on Fire Stick'), findsOneWidget);
@@ -77,7 +83,7 @@ void main() {
   ) async {
     await tester.pumpWidget(hostFor(itemFor(container: 'avi')));
 
-    await tester.tap(find.text('Play on TV'));
+    await tester.tap(find.text('Play on Fire Stick'));
     await tester.pumpAndSettle();
 
     expect(find.text("This format isn't supported by your TV"), findsOneWidget);
@@ -95,7 +101,7 @@ void main() {
     );
     await tester.pumpWidget(hostFor(missingFile));
 
-    await tester.tap(find.text('Play on TV'));
+    await tester.tap(find.text('Play on Fire Stick'));
     await tester.pumpAndSettle();
 
     expect(find.text("Couldn't play on your TV"), findsOneWidget);
@@ -105,12 +111,74 @@ void main() {
   testWidgets('stop casting returns to the idle offer state', (tester) async {
     await tester.pumpWidget(hostFor(itemFor()));
 
-    await tester.tap(find.text('Play on TV'));
+    await tester.tap(find.text('Play on Fire Stick'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Stop casting'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Play on TV'), findsOneWidget);
+    expect(find.text('Play on Fire Stick'), findsOneWidget);
     expect(find.text('Playing on Fire Stick'), findsNothing);
+  });
+
+  testWidgets('discovers a receiver and connects before starting playback', (
+    tester,
+  ) async {
+    await castController.disconnect();
+    await tester.pumpWidget(hostFor(itemFor()));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Fire Stick'), findsOneWidget);
+    expect(
+      find.textContaining('Choose a Chromecast-enabled TV'),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.text('Fire Stick'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Playing on Fire Stick'), findsOneWidget);
+    final connectIndex = castController.recordedActions.indexOf('connect:tv-1');
+    final loadIndex = castController.recordedActions.indexWhere(
+      (action) => action.startsWith('load:'),
+    );
+    expect(connectIndex, greaterThanOrEqualTo(0));
+    expect(loadIndex, greaterThan(connectIndex));
+  });
+
+  testWidgets('shows a retryable empty state when no receivers are found', (
+    tester,
+  ) async {
+    final emptyController = FakeAiroCastController();
+    addTearDown(emptyController.dispose);
+
+    await tester.pumpWidget(hostFor(itemFor(), controller: emptyController));
+    await tester.pumpAndSettle();
+
+    expect(find.text('No Cast devices found'), findsOneWidget);
+    expect(find.text('Scan again'), findsOneWidget);
+    expect(
+      emptyController.recordedActions,
+      isNot(contains(startsWith('load:'))),
+    );
+  });
+
+  testWidgets('connection failure does not claim playback started', (
+    tester,
+  ) async {
+    await castController.disconnect();
+    castController.failConnection = true;
+    await tester.pumpWidget(hostFor(itemFor()));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Fire Stick'));
+    await tester.pumpAndSettle();
+
+    expect(find.text("Couldn't play on your TV"), findsOneWidget);
+    expect(find.text('Find a TV'), findsOneWidget);
+    expect(find.textContaining('Playing on'), findsNothing);
+    expect(
+      castController.recordedActions,
+      isNot(contains(startsWith('load:'))),
+    );
   });
 }
