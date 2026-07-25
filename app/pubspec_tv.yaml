@@ -71,6 +71,8 @@ dependencies:
     path: ../packages/core_ai
   core_auth:
     path: ../packages/core_auth
+  core_app_shell:
+    path: ../packages/core_app_shell
   core_product_shell:
     path: ../packages/core_product_shell
 
