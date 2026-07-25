@@ -156,18 +156,15 @@ void main() {
     expect(find.text('Casting to Sony Bravia'), findsOneWidget);
     expect(find.text('P4U Music'), findsOneWidget);
     expect(find.text('Stop'), findsOneWidget);
-    // CV-028: Reload/New session/Disconnect are secondary actions, hidden
-    // behind the "More controls" expand toggle by default.
-    expect(find.text('Reload'), findsNothing);
-    expect(find.text('New session'), findsNothing);
+    // CV-028: secondary actions (disconnect) live in the full remote-control
+    // sheet reached via "Open Cast remote", not inline in the compact
+    // controller.
     expect(find.text('Disconnect'), findsNothing);
 
-    await tester.tap(find.byTooltip('More controls'));
-    await tester.pump();
+    await tester.tap(find.byTooltip('Open Cast remote'));
+    await tester.pumpAndSettle();
 
-    expect(find.text('Reload'), findsOneWidget);
-    expect(find.text('New session'), findsOneWidget);
-    expect(find.text('Disconnect'), findsOneWidget);
+    expect(find.text('Disconnect TV'), findsOneWidget);
   });
 
   testWidgets('mini controller keeps controls for recovered session', (
