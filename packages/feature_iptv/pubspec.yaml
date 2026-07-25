@@ -17,6 +17,8 @@ dependencies:
     path: ../core_product_shell
   core_ui:
     path: ../core_ui
+  feature_iptv_core:
+    path: ../feature_iptv_core
   dio: ^5.10.0
   equatable: ^2.0.8
   flutter:
