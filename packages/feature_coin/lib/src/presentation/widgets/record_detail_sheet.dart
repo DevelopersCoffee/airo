@@ -57,6 +57,11 @@ class _RecordDetailSheetState extends ConsumerState<RecordDetailSheet> {
 
   Future<bool> _ensureRecord() async {
     if (!_isVaultUnlocked) {
+      // Fails closed. The vault is browsable while locked, so this path is
+      // reachable by design; the user unlocks from the banner on
+      // VaultGateScreen. Prompting for biometrics inline from here is
+      // tracked separately — it interacts with the sensitive-value cache
+      // clearing below and needs its own tests.
       _clearSensitiveCache();
       _showSnack('Vault is locked - unlock and try again');
       return false;
