@@ -217,6 +217,12 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
     final isFullscreen = ref.read(isFullscreenModeProvider);
     ref.read(isFullscreenModeProvider.notifier).state = !isFullscreen;
 
+    // TV chrome is fixed: always landscape, always immersive (set once at
+    // startup by the app's configureTvSystemChrome). The phone-style
+    // portrait restore below rotated the whole Fire TV display to
+    // 1080x1920 on fullscreen exit.
+    if (widget.tenFootMode) return;
+
     if (!isFullscreen) {
       // Entering fullscreen
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
