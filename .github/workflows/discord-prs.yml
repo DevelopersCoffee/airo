@@ -1,0 +1,134 @@
+name: Discord — Pull Requests
+
+# ──────────────────────────────────────────────────────────────
+# Fires on PR lifecycle events.
+# Requires secret: DISCORD_DEV_WEBHOOK
+#   → Discord channel: #dev-updates
+# ──────────────────────────────────────────────────────────────
+on:
+  pull_request:
+    types: [opened, closed, ready_for_review, review_requested]
+
+jobs:
+  notify:
+    name: Notify Discord — PR event
+    runs-on: ubuntu-latest
+    # Skip draft PRs on opened (still fire on ready_for_review)
+    if: >
+      github.event.action != 'opened' ||
+      github.event.pull_request.draft == false
+    steps:
+      - name: Send PR embed
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_DEV_WEBHOOK }}
+        run: |
+          ACTION="${{ github.event.action }}"
+          TITLE="${{ github.event.pull_request.title }}"
+          URL="${{ github.event.pull_request.html_url }}"
+          NUMBER="${{ github.event.pull_request.number }}"
+          AUTHOR="${{ github.event.pull_request.user.login }}"
+          AVATAR="${{ github.event.pull_request.user.avatar_url }}"
+          HEAD="${{ github.event.pull_request.head.ref }}"
+          BASE="${{ github.event.pull_request.base.ref }}"
+          MERGED="${{ github.event.pull_request.merged }}"
+          ADDITIONS="${{ github.event.pull_request.additions }}"
+          DELETIONS="${{ github.event.pull_request.deletions }}"
+          CHANGED="${{ github.event.pull_request.changed_files }}"
+          REPO="${{ github.repository }}"
+
+          RAW_BODY=$(cat << 'BODY_EOF'
+          ${{ github.event.pull_request.body }}
+          BODY_EOF
+          )
+          BODY="${RAW_BODY:0:800}"
+
+          # ── Determine state & colour ─────────────────────────
+          if [ "$ACTION" = "closed" ] && [ "$MERGED" = "true" ]; then
+            COLOR=9442302     # purple  #8F42FE  — merged
+            ICON="🔀"
+            VERB="PR Merged"
+          elif [ "$ACTION" = "closed" ]; then
+            COLOR=15548997    # red     — closed without merge
+            ICON="❌"
+            VERB="PR Closed"
+          elif [ "$ACTION" = "opened" ]; then
+            COLOR=5793266     # blurple #5865F2
+            ICON="📬"
+            VERB="New PR Opened"
+          elif [ "$ACTION" = "ready_for_review" ]; then
+            COLOR=3447003     # blue
+            ICON="👀"
+            VERB="PR Ready for Review"
+          elif [ "$ACTION" = "review_requested" ]; then
+            REVIEWER="${{ github.event.requested_reviewer.login }}"
+            COLOR=16753920    # orange
+            ICON="🔔"
+            VERB="Review Requested → @${REVIEWER}"
+          else
+            COLOR=8421504
+            ICON="📝"
+            VERB="PR Updated"
+          fi
+
+          PAYLOAD=$(jq -n \
+            --arg icon      "$ICON" \
+            --arg verb      "$VERB" \
+            --arg title     "$TITLE" \
+            --arg body      "$BODY" \
+            --arg url       "$URL" \
+            --arg number    "$NUMBER" \
+            --arg author    "$AUTHOR" \
+            --arg avatar    "$AVATAR" \
+            --arg head      "$HEAD" \
+            --arg base      "$BASE" \
+            --arg additions "$ADDITIONS" \
+            --arg deletions "$DELETIONS" \
+            --arg changed   "$CHANGED" \
+            --arg repo      "$REPO" \
+            --argjson color "$COLOR" \
+            '{
+              username: "Airo Dev",
+              avatar_url: "https://raw.githubusercontent.com/DevelopersCoffee/airo/main/docs/assets/airo-tv/airo-icon.svg",
+              embeds: [{
+                title: ($icon + "  " + $verb + "  ·  #" + $number),
+                description: ("**" + $title + "**\n\n" + (if $body != "" then $body else "" end)),
+                url: $url,
+                color: $color,
+                author: {
+                  name: ("@" + $author),
+                  url: ("https://github.com/" + $author),
+                  icon_url: $avatar
+                },
+                fields: [
+                  {
+                    name: "🌿 Branch",
+                    value: ("`" + $head + "` → `" + $base + "`"),
+                    inline: false
+                  },
+                  {
+                    name: "➕ Additions",
+                    value: $additions,
+                    inline: true
+                  },
+                  {
+                    name: "➖ Deletions",
+                    value: $deletions,
+                    inline: true
+                  },
+                  {
+                    name: "📄 Files changed",
+                    value: $changed,
+                    inline: true
+                  }
+                ],
+                footer: {
+                  text: "DevelopersCoffee · Airo  |  discord.gg/62r67VcMzM"
+                },
+                timestamp: (now | strftime("%Y-%m-%dT%H:%M:%SZ"))
+              }]
+            }')
+
+          curl -s -f \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD" \
+            "$DISCORD_WEBHOOK"

@@ -1,0 +1,97 @@
+name: Discord — Release Announcement
+
+# ──────────────────────────────────────────────────────────────
+# Fires when a GitHub Release is published (not drafted).
+# Requires secret: DISCORD_RELEASES_WEBHOOK
+#   → Discord channel: #releases  (append /github is NOT needed
+#     here — we send our own JSON payload via curl)
+# ──────────────────────────────────────────────────────────────
+on:
+  release:
+    types: [published]
+
+jobs:
+  announce:
+    name: Announce release on Discord
+    runs-on: ubuntu-latest
+    steps:
+      - name: Build and send Discord embed
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_RELEASES_WEBHOOK }}
+        run: |
+          # ── Gather release metadata ──────────────────────────
+          TAG="${{ github.event.release.tag_name }}"
+          NAME="${{ github.event.release.name }}"
+          URL="${{ github.event.release.html_url }}"
+          AUTHOR="${{ github.event.release.author.login }}"
+          AVATAR="${{ github.event.release.author.avatar_url }}"
+          IS_PRE="${{ github.event.release.prerelease }}"
+          REPO="${{ github.repository }}"
+
+          # Truncate body to 3000 chars (Discord embed description limit)
+          RAW_BODY=$(cat << 'BODY_EOF'
+          ${{ github.event.release.body }}
+          BODY_EOF
+          )
+          BODY="${RAW_BODY:0:3000}"
+
+          # Choose colour: green for stable, yellow for pre-release
+          if [ "$IS_PRE" = "true" ]; then
+            COLOR=16776960   # yellow  #FFFF00
+            LABEL="🧪 Pre-release"
+          else
+            COLOR=5763719    # green   #57F287
+            LABEL="🚀 Stable Release"
+          fi
+
+          # Download links field (first two assets if present)
+          ASSETS_URL="https://github.com/${REPO}/releases/tag/${TAG}"
+
+          # ── Build JSON payload ───────────────────────────────
+          PAYLOAD=$(jq -n \
+            --arg tag    "$TAG" \
+            --arg name   "$NAME" \
+            --arg label  "$LABEL" \
+            --arg body   "$BODY" \
+            --arg url    "$URL" \
+            --arg author "$AUTHOR" \
+            --arg avatar "$AVATAR" \
+            --arg repo   "$REPO" \
+            --arg assets "$ASSETS_URL" \
+            --argjson color "$COLOR" \
+            '{
+              username: "Airo Releases",
+              avatar_url: "https://raw.githubusercontent.com/DevelopersCoffee/airo/main/docs/assets/airo-tv/airo-icon.svg",
+              embeds: [{
+                title: ("\($label)  ·  \($tag)"),
+                description: $body,
+                url: $url,
+                color: $color,
+                author: {
+                  name: ("Released by @" + $author),
+                  url: ("https://github.com/" + $author),
+                  icon_url: $avatar
+                },
+                fields: [
+                  {
+                    name: "📦 Repository",
+                    value: ("[" + $repo + "](https://github.com/" + $repo + ")"),
+                    inline: true
+                  },
+                  {
+                    name: "⬇️ Downloads",
+                    value: ("[View all assets](" + $assets + ")"),
+                    inline: true
+                  }
+                ],
+                footer: {
+                  text: "DevelopersCoffee · Airo  |  Join us → discord.gg/62r67VcMzM"
+                },
+                timestamp: (now | strftime("%Y-%m-%dT%H:%M:%SZ"))
+              }]
+            }')
+
+          curl -s -f \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD" \
+            "$DISCORD_WEBHOOK"
