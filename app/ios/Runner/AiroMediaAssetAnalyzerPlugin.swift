@@ -61,7 +61,7 @@ final class AiroMediaAssetAnalyzerPlugin: NSObject {
       var subtitleTracks = [[String: Any]]()
 
       for (index, track) in tracks.enumerated() {
-        let mediaType = try await track.load(.mediaType)
+        let mediaType = track.mediaType
         let estimatedDataRate = Int((try? await track.load(.estimatedDataRate)).map { $0.rounded() } ?? 0)
         if estimatedDataRate > 0 {
           overallBitrate += estimatedDataRate
@@ -71,8 +71,9 @@ final class AiroMediaAssetAnalyzerPlugin: NSObject {
         case .video:
           let naturalSize = try? await track.load(.naturalSize)
           let formatDescriptions = try? await track.load(.formatDescriptions)
-          let codec = videoCodecStableId(formatDescriptions?.first)
-          let dynamicRange = dynamicRangeStableId(formatDescriptions?.first, codec: codec)
+          let primaryFormatDescription = formatDescriptions?.first
+          let codec = videoCodecStableId(primaryFormatDescription)
+          let dynamicRange = dynamicRangeStableId(primaryFormatDescription, codec: codec)
           videoTracks.append([
             "id": "video-\(index)",
             "codec": codec,
@@ -84,25 +85,27 @@ final class AiroMediaAssetAnalyzerPlugin: NSObject {
           ])
         case .audio:
           let formatDescriptions = try? await track.load(.formatDescriptions)
+          let primaryFormatDescription = formatDescriptions?.first
           let locale = try? await track.load(.extendedLanguageTag)
           let commonMetadata = try? await track.load(.commonMetadata)
           audioTracks.append([
             "id": "audio-\(index)",
-            "codec": audioCodecStableId(formatDescriptions?.first),
+            "codec": audioCodecStableId(primaryFormatDescription),
             "language": locale ?? NSNull(),
             "label": trackLabel(commonMetadata) ?? NSNull(),
-            "channelCount": audioChannelCount(formatDescriptions?.first) ?? NSNull(),
+            "channelCount": audioChannelCount(primaryFormatDescription) ?? NSNull(),
             "isDefault": false,
             "isCommentary": false,
             "confidence": "exact",
           ])
         case .subtitle, .text, .closedCaption:
           let formatDescriptions = try? await track.load(.formatDescriptions)
+          let primaryFormatDescription = formatDescriptions?.first
           let locale = try? await track.load(.extendedLanguageTag)
           let commonMetadata = try? await track.load(.commonMetadata)
           subtitleTracks.append([
             "id": "subtitle-\(index)",
-            "format": subtitleFormatStableId(formatDescriptions?.first, mediaType: mediaType),
+            "format": subtitleFormatStableId(primaryFormatDescription, mediaType: mediaType),
             "language": locale ?? NSNull(),
             "label": trackLabel(commonMetadata) ?? NSNull(),
             "isDefault": false,
@@ -196,8 +199,8 @@ final class AiroMediaAssetAnalyzerPlugin: NSObject {
       .stringValue
   }
 
-  private func videoCodecStableId(_ description: Any?) -> String {
-    guard let description = description as? CMFormatDescription else {
+  private func videoCodecStableId(_ description: CMFormatDescription?) -> String {
+    guard let description else {
       return "unknown"
     }
     switch CMFormatDescriptionGetMediaSubType(description) {
@@ -216,11 +219,11 @@ final class AiroMediaAssetAnalyzerPlugin: NSObject {
     }
   }
 
-  private func audioCodecStableId(_ description: Any?) -> String {
-    guard let description = description as? CMAudioFormatDescription else {
+  private func audioCodecStableId(_ description: CMFormatDescription?) -> String {
+    guard let description else {
       return "unknown"
     }
-    switch CMAudioFormatDescriptionGetMediaSubType(description) {
+    switch CMFormatDescriptionGetMediaSubType(description) {
     case kAudioFormatMPEG4AAC, kAudioFormatMPEG4AAC_HE:
       return "aac"
     case kAudioFormatAC3:
@@ -240,8 +243,8 @@ final class AiroMediaAssetAnalyzerPlugin: NSObject {
     }
   }
 
-  private func audioChannelCount(_ description: Any?) -> Int? {
-    guard let description = description as? CMAudioFormatDescription,
+  private func audioChannelCount(_ description: CMFormatDescription?) -> Int? {
+    guard let description,
           let streamDescription = CMAudioFormatDescriptionGetStreamBasicDescription(description)
     else {
       return nil
@@ -249,8 +252,11 @@ final class AiroMediaAssetAnalyzerPlugin: NSObject {
     return Int(streamDescription.pointee.mChannelsPerFrame)
   }
 
-  private func subtitleFormatStableId(_ description: Any?, mediaType: AVMediaType) -> String {
-    guard let description = description as? CMFormatDescription else {
+  private func subtitleFormatStableId(
+    _ description: CMFormatDescription?,
+    mediaType: AVMediaType
+  ) -> String {
+    guard let description else {
       return mediaType == .closedCaption ? "unknown" : "unknown"
     }
     switch CMFormatDescriptionGetMediaSubType(description) {
@@ -261,23 +267,24 @@ final class AiroMediaAssetAnalyzerPlugin: NSObject {
     }
   }
 
-  private func dynamicRangeStableId(_ description: Any?, codec: String) -> String {
+  private func dynamicRangeStableId(_ description: CMFormatDescription?, codec: String) -> String {
     if codec == "hevc",
-       let description = description as? CMFormatDescription,
+       let description,
        let extensions = CMFormatDescriptionGetExtensions(description) as? [CFString: Any],
-       let transferFunction = extensions[kCVImageBufferTransferFunctionKey] as? String
+       let transferFunction = extensions[kCVImageBufferTransferFunctionKey]
     {
-      switch transferFunction {
-      case kCVImageBufferTransferFunction_SMPTE_ST_2084_PQ as String:
+      let transferFunctionValue = String(describing: transferFunction)
+      switch transferFunctionValue {
+      case String(describing: kCVImageBufferTransferFunction_SMPTE_ST_2084_PQ):
         return "hdr10"
-      case kCVImageBufferTransferFunction_ITU_R_2100_HLG as String:
+      case String(describing: kCVImageBufferTransferFunction_ITU_R_2100_HLG):
         return "hlg"
       default:
         break
       }
     }
     if codec == "hevc",
-       let description = description as? CMFormatDescription
+       let description
     {
       let subtype = CMFormatDescriptionGetMediaSubType(description)
       if subtype == makeFourCC("dvh1") || subtype == makeFourCC("dvhe") {

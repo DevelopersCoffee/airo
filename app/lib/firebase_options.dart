@@ -1,26 +1,17 @@
-// Firebase configuration with multi-platform variant support
+// Placeholder Firebase configuration with multi-platform variant support.
+//
+// This checked-in file keeps local analysis/builds working when no secret
+// Firebase config has been provisioned. CI and release workflows may overwrite
+// it with real values from `FIREBASE_OPTIONS_DART_B64`.
+//
+// Do not commit real Firebase keys into this file.
+//
 // Supports: Mobile Full (io.airo.app), Mobile Streaming
 // (io.airo.app.streaming), Android TV (io.airo.app.tv)
-//
-// This is a TEMPLATE. To use:
-// 1. Copy or write to app/lib/firebase_options.dart.
-// 2. Fill in the real `web`, `android`, and `androidTv` values from the Firebase
-//    Console (Project settings > Your apps) or from the `GOOGLE_SERVICES_JSON` /
-//    `FIREBASE_OPTIONS_DART` secrets used by the release workflows.
-// 3. Leave the `androidStreaming`, `ios`, `macos`, and `windows` entries as
-//    placeholders until those apps are registered in the Firebase project --
-//    `DefaultFirebaseOptions.isCurrentPlatformConfigured` skips Firebase init
-//    for any entry whose appId still contains `YOUR_` or `TODO`, so shipping
-//    with placeholders there is safe and intentional, not a bug.
-//
-// Build with variant:
-//   flutter build apk --dart-define=APP_VARIANT=tv
-//   flutter build apk --dart-define=APP_VARIANT=streaming
-//   flutter build apk --dart-define=APP_VARIANT=full (default)
 
 import 'package:firebase_core/firebase_core.dart' show FirebaseOptions;
 import 'package:flutter/foundation.dart'
-    show defaultTargetPlatform, kIsWeb, TargetPlatform;
+    show TargetPlatform, defaultTargetPlatform, kIsWeb;
 
 /// App variant for Firebase configuration selection
 // Set via --dart-define=APP_VARIANT=<value>
