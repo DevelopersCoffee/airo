@@ -1,5 +1,7 @@
 import '../../entities/transaction.dart';
 import '../../repositories/transaction_repository.dart';
+import '../../result.dart';
+export '../../result.dart';
 
 const transactionReviewPendingTag = 'review:pending';
 const transactionReviewApprovedTag = 'review:approved';

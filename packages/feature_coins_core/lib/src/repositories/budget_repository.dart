@@ -1,7 +1,6 @@
 import '../entities/budget.dart';
-
-/// Result type for repository operations
-typedef Result<T> = ({T? data, String? error});
+import '../result.dart';
+export '../result.dart';
 
 /// Budget repository interface
 ///

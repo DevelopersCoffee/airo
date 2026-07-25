@@ -2,6 +2,8 @@ import '../../entities/settlement.dart';
 import '../../repositories/settlement_repository.dart';
 import '../datasources/coins_local_datasource.dart';
 import '../mappers/settlement_mapper.dart';
+import '../../result.dart';
+export '../../result.dart';
 
 /// Implementation of SettlementRepository
 ///

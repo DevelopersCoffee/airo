@@ -1,9 +1,8 @@
 import '../../entities/group.dart';
 import '../../entities/group_member.dart';
 import '../../repositories/group_repository.dart';
-
-/// Result type for use case operations
-typedef Result<T> = ({T? data, String? error});
+import '../../result.dart';
+export '../../result.dart';
 
 /// Use case for creating a new group
 ///

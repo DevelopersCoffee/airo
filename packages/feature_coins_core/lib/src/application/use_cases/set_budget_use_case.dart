@@ -1,8 +1,7 @@
 import '../../entities/budget.dart';
 import '../../repositories/budget_repository.dart';
-
-/// Result type for use case operations
-typedef Result<T> = ({T? data, String? error});
+import '../../result.dart';
+export '../../result.dart';
 
 /// Use case for setting/updating a budget
 ///

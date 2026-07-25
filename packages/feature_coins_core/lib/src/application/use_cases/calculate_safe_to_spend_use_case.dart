@@ -2,9 +2,8 @@ import '../../repositories/budget_repository.dart';
 import '../../repositories/transaction_repository.dart';
 import '../../services/budget_engine.dart';
 import '../../models/safe_to_spend.dart';
-
-/// Result type for use case operations
-typedef Result<T> = ({T? data, String? error});
+import '../../result.dart';
+export '../../result.dart';
 
 /// Use case for calculating safe-to-spend amount
 ///
