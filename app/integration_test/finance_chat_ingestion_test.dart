@@ -1,5 +1,4 @@
-import 'package:airo_app/core/utils/currency_formatter.dart';
-import 'package:airo_app/core/utils/locale_settings.dart';
+import 'package:core_app_shell/core_app_shell.dart';
 import 'package:airo_app/features/agent_chat/application/assistant_model_preferences.dart';
 import 'package:airo_app/features/agent_chat/domain/models/assistant_runtime_ids.dart';
 import 'package:airo_app/features/agent_chat/presentation/screens/chat_screen.dart';

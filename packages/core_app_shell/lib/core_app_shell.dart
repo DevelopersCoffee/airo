@@ -6,6 +6,8 @@
 library;
 
 export 'src/app_theme_provider.dart';
+export 'src/currency_formatter.dart';
 export 'src/deferred_startup_task.dart';
 export 'src/device_form_factor.dart';
+export 'src/locale_settings.dart';
 export 'src/platform_features.dart';

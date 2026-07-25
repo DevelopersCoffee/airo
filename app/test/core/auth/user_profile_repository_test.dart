@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:airo_app/core/auth/models/user_profile.dart';
 import 'package:airo_app/core/auth/repositories/user_profile_repository.dart';
-import 'package:airo_app/core/utils/locale_settings.dart';
+import 'package:core_app_shell/core_app_shell.dart';
 
 void main() {
   late LocalUserProfileRepository repository;
