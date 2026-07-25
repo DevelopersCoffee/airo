@@ -11,6 +11,7 @@ import 'package:go_router/go_router.dart';
 import 'package:feature_iptv/feature_iptv.dart';
 import '../../features/settings/presentation/screens/settings_hub_screen.dart';
 import '../../features/settings/presentation/tv/tv_settings_screen.dart';
+import '../platform/device_form_factor.dart';
 import 'tv_shell.dart';
 
 /// TV-specific routes
@@ -155,6 +156,15 @@ class _AdaptiveLiveTvScreen extends StatelessWidget {
 }
 
 bool _usesCompactPhoneLayout(BuildContext context) {
+  // A detected TV always gets the 10-foot layout. TV sticks commonly render
+  // 1080p at density 2.0, so their *logical* viewport (960x540) is smaller
+  // than a phone's — the size heuristic alone would misclassify every one
+  // of them (seen on Fire TV Stick: phone drawer + cast chrome on a TV).
+  // Detection is warmed at startup by configureTvSystemChrome(), so the
+  // synchronous cached read is populated before the router ever builds.
+  if (DeviceFormFactorDetector.detectSync(context) == DeviceFormFactor.tv) {
+    return false;
+  }
   final size = MediaQuery.sizeOf(context);
   return size.width < 900 || size.height < 600;
 }

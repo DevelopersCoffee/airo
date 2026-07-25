@@ -2300,69 +2300,73 @@ class _TvEmptyPlaylistState extends StatelessWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
+    // Scrollable so short logical viewports (TV sticks render 1080p at
+    // density 2.0 → 540 logical height) don't overflow the hero column.
     return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 720),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.live_tv, size: 88, color: colorScheme.primary),
-            const SizedBox(height: 24),
-            Text('Airo TV', style: theme.textTheme.headlineMedium),
-            const SizedBox(height: 12),
-            RichText(
-              textAlign: TextAlign.center,
-              text: TextSpan(
-                style: theme.textTheme.titleMedium?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
-                ),
-                children: [
-                  const TextSpan(
-                    text: 'Import any M3U playlist and get a clean, ',
+      child: SingleChildScrollView(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 720),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.live_tv, size: 88, color: colorScheme.primary),
+              const SizedBox(height: 24),
+              Text('Airo TV', style: theme.textTheme.headlineMedium),
+              const SizedBox(height: 12),
+              RichText(
+                textAlign: TextAlign.center,
+                text: TextSpan(
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
                   ),
-                  TextSpan(
-                    text: 'smart TV experience',
-                    style: TextStyle(
-                      color: colorScheme.onSurface,
-                      fontWeight: FontWeight.w600,
+                  children: [
+                    const TextSpan(
+                      text: 'Import any M3U playlist and get a clean, ',
                     ),
+                    TextSpan(
+                      text: 'smart TV experience',
+                      style: TextStyle(
+                        color: colorScheme.onSurface,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const TextSpan(text: ' — instantly.'),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+              Wrap(
+                alignment: WrapAlignment.center,
+                spacing: 12,
+                runSpacing: 12,
+                children: [
+                  _TvActionButton(
+                    icon: Icons.link,
+                    label: 'Add Playlist URL',
+                    onSelect: onPlaylistSourceTap,
+                    autofocus: true,
                   ),
-                  const TextSpan(text: ' — instantly.'),
+                  _TvActionButton(
+                    icon: Icons.help_outline,
+                    label: 'How to add',
+                    onSelect: onPlaylistHelpTap,
+                  ),
                 ],
               ),
-            ),
-            const SizedBox(height: 24),
-            Wrap(
-              alignment: WrapAlignment.center,
-              spacing: 12,
-              runSpacing: 12,
-              children: [
-                _TvActionButton(
-                  icon: Icons.link,
-                  label: 'Add Playlist URL',
-                  onSelect: onPlaylistSourceTap,
-                  autofocus: true,
-                ),
-                _TvActionButton(
-                  icon: Icons.help_outline,
-                  label: 'How to add',
-                  onSelect: onPlaylistHelpTap,
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-            Wrap(
-              alignment: WrapAlignment.center,
-              spacing: 20,
-              runSpacing: 8,
-              children: const [
-                _EmptyStateChecklistItem(label: 'No account required'),
-                _EmptyStateChecklistItem(label: 'Dead links removed'),
-                _EmptyStateChecklistItem(label: 'Duplicates merged'),
-                _EmptyStateChecklistItem(label: 'Smart rails built'),
-              ],
-            ),
-          ],
+              const SizedBox(height: 20),
+              Wrap(
+                alignment: WrapAlignment.center,
+                spacing: 20,
+                runSpacing: 8,
+                children: const [
+                  _EmptyStateChecklistItem(label: 'No account required'),
+                  _EmptyStateChecklistItem(label: 'Dead links removed'),
+                  _EmptyStateChecklistItem(label: 'Duplicates merged'),
+                  _EmptyStateChecklistItem(label: 'Smart rails built'),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
