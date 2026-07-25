@@ -76,6 +76,8 @@ dependencies:
     path: ../packages/core_ai
   core_auth:
     path: ../packages/core_auth
+  core_product_shell:
+    path: ../packages/core_product_shell
 
   # Local packages - Features
   airo:

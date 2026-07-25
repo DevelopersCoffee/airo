@@ -425,6 +425,13 @@ packages:
       relative: true
     source: path
     version: "0.1.0"
+  core_product_shell:
+    dependency: "direct main"
+    description:
+      path: "../packages/core_product_shell"
+      relative: true
+    source: path
+    version: "0.0.1"
   core_protocol:
     dependency: transitive
     description:

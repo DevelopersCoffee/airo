@@ -1,6 +1,8 @@
 library;
 
 export "src/iptv.dart";
+export "domain/iptv_navigation_manifest.dart";
+export "domain/iptv_settings_manifest.dart";
 export "domain/local_iptv_search.dart";
 export "domain/vod_resume_coordinator.dart";
 export "domain/favorite_reimport_coordinator.dart";
