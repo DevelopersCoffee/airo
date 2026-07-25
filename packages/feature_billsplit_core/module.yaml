@@ -1,0 +1,10 @@
+name: feature_billsplit_core
+owner: Coins / Finance Agent
+reviewers:
+  - Chief Architect
+  - Chief QA Officer
+allowed_dependencies:
+  - core_app_shell
+forbidden_dependencies:
+  - app
+quality_gates: {}
