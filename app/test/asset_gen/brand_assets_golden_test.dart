@@ -92,11 +92,7 @@ class _BrandMark extends StatelessWidget {
   }
 }
 
-Future<void> _pumpAtSize(
-  WidgetTester tester,
-  Size size,
-  Widget child,
-) async {
+Future<void> _pumpAtSize(WidgetTester tester, Size size, Widget child) async {
   await tester.binding.setSurfaceSize(size);
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
@@ -115,9 +111,7 @@ void main() {
     if (!hasFont) return;
     final loader = FontLoader('BrandFont')
       ..addFont(
-        Future.value(
-          File(_fontPath).readAsBytesSync().buffer.asByteData(),
-        ),
+        Future.value(File(_fontPath).readAsBytesSync().buffer.asByteData()),
       );
     await loader.load();
   });
@@ -127,11 +121,7 @@ void main() {
   });
 
   testWidgets('tv banner 320x180 (xhdpi)', (tester) async {
-    await _pumpAtSize(
-      tester,
-      const Size(320, 180),
-      const _BrandMark(scale: 1),
-    );
+    await _pumpAtSize(tester, const Size(320, 180), const _BrandMark(scale: 1));
     await expectLater(
       find.byType(_BrandMark),
       matchesGoldenFile('goldens/tv_banner_xhdpi.png'),
