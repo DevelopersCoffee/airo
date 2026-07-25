@@ -17,6 +17,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 class MockLocalAuthentication extends Mock implements LocalAuthentication {}
 
 void main() {
+  late bool biometricGranted;
   late VaultDatabase vaultDb;
   late VaultRepositories repos;
   late ProviderContainer container;
@@ -54,9 +55,10 @@ void main() {
         fieldCipher: cipher,
       ),
     );
+    biometricGranted = true;
     final keyManager = VaultKeyManager.forTesting(
       secureStorage: InMemorySecureStorage(),
-      authenticate: () async => true,
+      authenticate: () async => biometricGranted,
       isAvailable: () async => true,
     );
     localAuth = MockLocalAuthentication();
@@ -196,6 +198,31 @@ void main() {
 
     expect(clipboard, isEmpty);
     expect(find.text('Vault is locked - unlock and try again'), findsOneWidget);
+  });
+
+  testWidgets('denied biometrics keep sensitive values locked away', (
+    tester,
+  ) async {
+    await pumpSheet(tester);
+
+    await tester.tap(find.byTooltip('Reveal Account number'));
+    await settleVaultAsync(tester);
+    expect(find.text('1234567890'), findsOneWidget);
+
+    container.read(vaultSessionProvider.notifier).lock();
+    await tester.pump();
+    biometricGranted = false;
+
+    // Fail closed: while locked, neither reveal nor copy may surface the
+    // account number, no matter how many times they are tapped.
+    await tester.tap(find.byTooltip('Reveal Account number'));
+    await settleVaultAsync(tester);
+    expect(find.text('1234567890'), findsNothing);
+    expect(find.text('•••• •••• ••••'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Copy Account number'));
+    await settleVaultAsync(tester);
+    expect(clipboard, isEmpty);
   });
 
   testWidgets('locking during reveal does not re-cache sensitive values', (
