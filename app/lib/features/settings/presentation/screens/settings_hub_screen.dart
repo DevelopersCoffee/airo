@@ -161,4 +161,3 @@ class SettingsHubScreen extends ConsumerWidget {
     );
   }
 }
-

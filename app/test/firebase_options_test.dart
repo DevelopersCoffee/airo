@@ -63,11 +63,7 @@ void main() {
     test('selects the supported full, streaming, and TV variants', () {
       expect(
         AppVariant.values,
-        containsAll([
-          AppVariant.full,
-          AppVariant.streaming,
-          AppVariant.tv,
-        ]),
+        containsAll([AppVariant.full, AppVariant.streaming, AppVariant.tv]),
       );
       expect(AppVariant.values, hasLength(3));
     });
