@@ -125,6 +125,66 @@ void main() {
     },
   );
 
+  testWidgets(
+    'TV renders the 10-foot AiroTvShell with no phone chrome, and keeps '
+    'playlist source reachable without an app bar',
+    (tester) async {
+      DeviceFormFactorDetector.debugFormFactorOverride = DeviceFormFactor.tv;
+      addTearDown(DeviceFormFactorDetector.clearCache);
+
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      await tester.binding.setSurfaceSize(const Size(960, 540));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            iptvChannelsProvider.overrideWith(
+              (ref) async => const [
+                IPTVChannel(
+                  id: 'ch1',
+                  name: 'Test Channel',
+                  streamUrl: 'https://example.com/ch1.m3u8',
+                ),
+              ],
+            ),
+            recentlyWatchedChannelsProvider.overrideWith(
+              (ref) async => const [],
+            ),
+            streamingStateProvider.overrideWith(
+              (ref) => Stream.value(
+                StreamingState(
+                  playbackState: PlaybackState.idle,
+                  isLiveStream: true,
+                ),
+              ),
+            ),
+          ],
+          child: MaterialApp.router(
+            routerConfig: TvRouter.createRouter(
+              initialLocation: TvRouteNames.live,
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // The 10-foot shell, not the older IptvTvScreen.
+      expect(
+        find.byKey(const ValueKey('airo-tv-explorer-wide-shell')),
+        findsOneWidget,
+      );
+      // No phone chrome on a television.
+      expect(find.byIcon(Icons.menu), findsNothing);
+      expect(find.byIcon(Icons.cast_connected), findsNothing);
+      // Removing the app bar must not strand playlist source — Settings has
+      // no playlist entry, so it lives in the LIVE bar on TV.
+      expect(find.bySemanticsLabel('Playlist source'), findsOneWidget);
+    },
+  );
+
   testWidgets('redirects legacy login route to live TV', (tester) async {
     await pumpTvRouter(
       tester,

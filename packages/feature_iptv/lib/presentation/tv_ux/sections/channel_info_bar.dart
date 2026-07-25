@@ -1,3 +1,4 @@
+import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,9 +8,13 @@ import '../../../application/providers/iptv_providers.dart';
 import '../../widgets/channel_logo.dart';
 
 class ChannelInfoBar extends ConsumerWidget {
-  const ChannelInfoBar({super.key, this.channel});
+  const ChannelInfoBar({super.key, this.channel, this.onPlaylistSourceTap});
 
   final IPTVChannel? channel;
+
+  /// Opens the playlist-source sheet. Wired on TV where the phone app bar
+  /// (the usual home of this action) is suppressed; null hides the button.
+  final VoidCallback? onPlaylistSourceTap;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -30,19 +35,43 @@ class ChannelInfoBar extends ConsumerWidget {
           const SizedBox(width: 8),
           Expanded(child: Text(name, overflow: TextOverflow.ellipsis)),
           const Chip(label: Text('LIVE')),
-          IconButton(
-            onPressed: channel == null
+          if (onPlaylistSourceTap != null)
+            TvFocusable(
+              semanticLabel: 'Playlist source',
+              onSelect: onPlaylistSourceTap,
+              child: IconButton(
+                onPressed: onPlaylistSourceTap,
+                tooltip: 'Playlist source',
+                icon: const Icon(Icons.link),
+              ),
+            ),
+          TvFocusable(
+            semanticLabel: isFavorite ? 'Remove from favorites' : 'Favorite',
+            enabled: channel != null,
+            onSelect: channel == null
                 ? null
                 : () => _toggleFavorite(context, ref, channel!),
-            tooltip: isFavorite ? 'Remove from favorites' : 'Favorite',
-            icon: Icon(isFavorite ? Icons.favorite : Icons.favorite_border),
+            child: IconButton(
+              onPressed: channel == null
+                  ? null
+                  : () => _toggleFavorite(context, ref, channel!),
+              tooltip: isFavorite ? 'Remove from favorites' : 'Favorite',
+              icon: Icon(isFavorite ? Icons.favorite : Icons.favorite_border),
+            ),
           ),
-          IconButton(
-            onPressed: channel == null
+          TvFocusable(
+            semanticLabel: 'Share',
+            enabled: channel != null,
+            onSelect: channel == null
                 ? null
                 : () => _copyShareDetails(context, channel!),
-            tooltip: 'Share',
-            icon: const Icon(Icons.share_outlined),
+            child: IconButton(
+              onPressed: channel == null
+                  ? null
+                  : () => _copyShareDetails(context, channel!),
+              tooltip: 'Share',
+              icon: const Icon(Icons.share_outlined),
+            ),
           ),
         ],
       ),

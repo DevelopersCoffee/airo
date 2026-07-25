@@ -30,8 +30,16 @@ class IPTVScreen extends ConsumerStatefulWidget {
     this.onSettings,
     this.onPickLocalMediaForTv,
     this.deepLinkChannelId,
+    this.tenFootMode = false,
     super.key,
   });
+
+  /// When true (a detected TV behind the app's TvShell sidebar), the phone
+  /// chrome — app bar, drawer, cast entry — is suppressed: the sidebar
+  /// already owns navigation, TVs are receivers not cast senders, and
+  /// browse-level actions live in the 10-foot shell itself. Touch devices
+  /// keep the full phone chrome.
+  final bool tenFootMode;
 
   /// Invoked when the user taps the "Movies & Shows" action to navigate to
   /// the VOD screen. Left as an optional callback (rather than a direct
@@ -644,6 +652,24 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
       );
     }
 
+    if (widget.tenFootMode) {
+      return guardRouteBack(
+        AiroResponsiveScaffold(
+          padding: EdgeInsets.zero,
+          body: IptvResumeGate(
+            enabled: widget.deepLinkChannelId == null,
+            child: _StreamTabContent(
+              key: const ValueKey('iptv-browse-grid'),
+              onChannelTap: _playChannel,
+              onFullscreenToggle: _toggleFullscreen,
+              onPlaylistSourceTap: _showPlaylistSheet,
+              playlistSourceInInfoBar: true,
+            ),
+          ),
+        ),
+      );
+    }
+
     return guardRouteBack(
       AiroResponsiveScaffold(
         padding: EdgeInsets.zero,
@@ -892,11 +918,16 @@ class _StreamTabContent extends ConsumerWidget {
     required this.onChannelTap,
     required this.onFullscreenToggle,
     required this.onPlaylistSourceTap,
+    this.playlistSourceInInfoBar = false,
   });
 
   final ValueChanged<IPTVChannel> onChannelTap;
   final VoidCallback onFullscreenToggle;
   final VoidCallback onPlaylistSourceTap;
+
+  /// True on TV (no app bar): surfaces the playlist-source entry in the
+  /// shell's LIVE bar instead. Phones keep it in the app bar only.
+  final bool playlistSourceInInfoBar;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -930,6 +961,7 @@ class _StreamTabContent extends ConsumerWidget {
       enrichMetadata: true,
       currentChannel: activeChannel,
       onChannelSelected: onChannelTap,
+      onPlaylistSourceTap: playlistSourceInInfoBar ? onPlaylistSourceTap : null,
       videoStage: AspectRatio(
         aspectRatio: 16 / 9,
         child: activeChannel == null

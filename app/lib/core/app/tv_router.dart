@@ -148,10 +148,11 @@ class _AdaptiveLiveTvScreen extends StatelessWidget {
       return IPTVScreen(onSettings: () => context.go(TvRouteNames.settings));
     }
 
-    if (const bool.fromEnvironment('AIRO_TV_UX_SHELL')) {
-      return const IPTVScreen();
-    }
-    return const IptvTvScreen();
+    // Wide layouts get the 10-foot AiroTvShell path with phone chrome
+    // (app bar, drawer, cast entry) suppressed — the TvShell sidebar owns
+    // navigation. The older IptvTvScreen remains only as a reference until
+    // it is removed.
+    return const IPTVScreen(tenFootMode: true);
   }
 }
 
