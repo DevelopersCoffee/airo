@@ -1,9 +1,11 @@
 name: Discord — Issues & Bugs
 
 # ──────────────────────────────────────────────────────────────
-# Fires on issue lifecycle events.
+# Fires on issue lifecycle events and milestone events.
 # Requires secret: DISCORD_ISSUES_WEBHOOK
-#   → Discord channel: #bugs-and-issues
+#   → Discord channel: #bugs-and-issues (Forum channel)
+#   Forum channels require thread_name in every payload.
+#   Each issue/milestone creates its own thread automatically.
 # ──────────────────────────────────────────────────────────────
 on:
   issues:
@@ -35,40 +37,29 @@ jobs:
           )
           BODY="${RAW_BODY:0:1000}"
 
-          # Labels list
-          LABELS=$(echo '${{ toJson(github.event.issue.labels) }}' | jq -r '[.[].name] | join(", ")' 2>/dev/null || echo "none")
+          LABELS=$(echo '${{ toJson(github.event.issue.labels) }}' \
+            | jq -r '[.[].name] | join(", ")' 2>/dev/null || echo "none")
 
-          # ── Choose colour and icon based on action ───────────
+          # ── Colour, icon, verb by action ─────────────────────
           case "$ACTION" in
             opened)
-              COLOR=15548997   # red   #ED4245
-              ICON="🐛"
-              VERB="Bug reported"
-              ;;
+              COLOR=15548997; ICON="🐛"; VERB="Bug reported"  ;;
             closed)
-              COLOR=5763719    # green #57F287
-              ICON="✅"
-              VERB="Issue closed"
-              ;;
+              COLOR=5763719;  ICON="✅"; VERB="Issue closed"  ;;
             reopened)
-              COLOR=16776960   # yellow
-              ICON="🔄"
-              VERB="Issue reopened"
-              ;;
+              COLOR=16776960; ICON="🔄"; VERB="Issue reopened" ;;
             labeled)
               LABEL_NAME="${{ github.event.label.name }}"
-              COLOR=5793266    # blurple
-              ICON="🏷️"
-              VERB="Labeled: ${LABEL_NAME}"
-              ;;
+              COLOR=5793266;  ICON="🏷️"; VERB="Labeled: ${LABEL_NAME}" ;;
             *)
-              COLOR=8421504
-              ICON="ℹ️"
-              VERB="Issue updated"
-              ;;
+              COLOR=8421504;  ICON="ℹ️"; VERB="Issue updated"  ;;
           esac
 
+          # Forum channels need thread_name — use issue title (max 100 chars)
+          THREAD_NAME="${ICON} #${NUMBER} — ${TITLE:0:90}"
+
           PAYLOAD=$(jq -n \
+            --arg thread_name "$THREAD_NAME" \
             --arg icon    "$ICON" \
             --arg verb    "$VERB" \
             --arg title   "$TITLE" \
@@ -81,7 +72,8 @@ jobs:
             --arg labels  "$LABELS" \
             --argjson color "$COLOR" \
             '{
-              username: "Airo Issues",
+              thread_name: $thread_name,
+              username: "Airo Issues Bot",
               avatar_url: "https://raw.githubusercontent.com/DevelopersCoffee/airo/main/docs/assets/airo-tv/airo-icon.svg",
               embeds: [{
                 title: ($icon + "  " + $verb + "  ·  #" + $number),
@@ -136,36 +128,18 @@ jobs:
           REPO="${{ github.repository }}"
 
           case "$ACTION" in
-            created)
-              COLOR=3447003    # blue
-              ICON="🎯"
-              VERB="Milestone created"
-              ;;
-            closed)
-              COLOR=5763719    # green
-              ICON="🏁"
-              VERB="Milestone completed"
-              ;;
-            edited)
-              COLOR=16753920   # orange
-              ICON="✏️"
-              VERB="Milestone updated"
-              ;;
-            *)
-              COLOR=8421504
-              ICON="📍"
-              VERB="Milestone event"
-              ;;
+            created) COLOR=3447003;  ICON="🎯"; VERB="Milestone created"    ;;
+            closed)  COLOR=5763719;  ICON="🏁"; VERB="Milestone completed"  ;;
+            edited)  COLOR=16753920; ICON="✏️";  VERB="Milestone updated"    ;;
+            *)       COLOR=8421504;  ICON="📍"; VERB="Milestone event"      ;;
           esac
 
           TOTAL=$((OPEN + CLOSED))
-          if [ "$TOTAL" -gt 0 ]; then
-            PROGRESS="$CLOSED / $TOTAL issues done"
-          else
-            PROGRESS="No issues yet"
-          fi
+          PROGRESS=$([ "$TOTAL" -gt 0 ] && echo "${CLOSED} / ${TOTAL} issues done" || echo "No issues yet")
+          THREAD_NAME="${ICON} Milestone #${NUMBER} — ${TITLE:0:80}"
 
           PAYLOAD=$(jq -n \
+            --arg thread_name "$THREAD_NAME" \
             --arg icon     "$ICON" \
             --arg verb     "$VERB" \
             --arg title    "$TITLE" \
@@ -176,7 +150,8 @@ jobs:
             --arg repo     "$REPO" \
             --argjson color "$COLOR" \
             '{
-              username: "Airo Milestones",
+              thread_name: $thread_name,
+              username: "Airo Milestones Bot",
               avatar_url: "https://raw.githubusercontent.com/DevelopersCoffee/airo/main/docs/assets/airo-tv/airo-icon.svg",
               embeds: [{
                 title: ($icon + "  " + $verb + "  ·  M#" + $number),
@@ -191,7 +166,7 @@ jobs:
                   },
                   {
                     name: "📅 Due",
-                    value: (if $due != "" and $due != "null" then $due else "No due date" end),
+                    value: (if ($due != "" and $due != "null") then $due else "No due date" end),
                     inline: true
                   },
                   {
