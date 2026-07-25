@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:airo_app/features/coins/domain/services/debt_simplifier.dart';
-import 'package:airo_app/features/coins/domain/models/debt_entry.dart';
+import 'package:feature_coins_core/src/services/debt_simplifier.dart';
+import 'package:feature_coins_core/src/models/debt_entry.dart';
 
 void main() {
   late DebtSimplifier simplifier;

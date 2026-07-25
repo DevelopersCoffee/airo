@@ -3,8 +3,8 @@ import 'package:mocktail/mocktail.dart';
 import 'package:airo_app/features/coins/data/datasources/coins_local_datasource.dart';
 import 'package:airo_app/features/coins/data/mappers/group_mapper.dart';
 import 'package:airo_app/features/coins/data/repositories/group_repository_impl.dart';
-import 'package:airo_app/features/coins/domain/entities/group.dart';
-import 'package:airo_app/features/coins/domain/entities/group_member.dart';
+import 'package:feature_coins_core/src/entities/group.dart';
+import 'package:feature_coins_core/src/entities/group_member.dart';
 
 class MockCoinsLocalDatasource extends Mock implements CoinsLocalDatasource {}
 

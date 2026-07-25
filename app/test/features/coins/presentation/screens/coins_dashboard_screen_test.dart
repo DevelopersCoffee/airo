@@ -3,9 +3,9 @@ import 'package:airo_app/features/coins/application/providers/android_import_per
 import 'package:airo_app/features/coins/application/services/android_finance_import_service.dart';
 import 'package:airo_app/features/coins/application/providers/dashboard_providers.dart';
 import 'package:airo_app/features/coins/application/providers/expense_providers.dart';
-import 'package:airo_app/features/coins/domain/entities/transaction.dart';
-import 'package:airo_app/features/coins/domain/repositories/transaction_repository.dart';
-import 'package:airo_app/features/coins/domain/models/safe_to_spend.dart';
+import 'package:feature_coins_core/src/entities/transaction.dart';
+import 'package:feature_coins_core/src/repositories/transaction_repository.dart';
+import 'package:feature_coins_core/src/models/safe_to_spend.dart';
 import 'package:airo_app/features/coins/presentation/screens/add_expense_screen.dart';
 import 'package:airo_app/features/coins/presentation/screens/coins_dashboard_screen.dart';
 import 'package:flutter/material.dart';

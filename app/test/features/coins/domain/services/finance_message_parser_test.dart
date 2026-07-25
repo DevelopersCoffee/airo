@@ -1,5 +1,5 @@
-import 'package:airo_app/features/coins/domain/entities/transaction.dart';
-import 'package:airo_app/features/coins/domain/services/finance_message_parser.dart';
+import 'package:feature_coins_core/src/entities/transaction.dart';
+import 'package:feature_coins_core/src/services/finance_message_parser.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
