@@ -1,0 +1,27 @@
+name: core_app_shell
+description: >
+  Shared app-shell infrastructure (theme provider, deferred startup-task
+  scheduling, platform-feature configuration, device form-factor detection)
+  consumed by every product shell instead of each shell re-implementing its
+  own bootstrap plumbing.
+version: 0.0.1
+publish_to: none
+
+environment:
+  sdk: ^3.12.2
+  flutter: ">=1.17.0"
+
+dependencies:
+  core_ui:
+    path: ../core_ui
+  flutter:
+    sdk: flutter
+  flutter_riverpod: ^3.3.2
+  shared_preferences: ^2.5.5
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:

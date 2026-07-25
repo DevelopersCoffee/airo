@@ -1,4 +1,4 @@
-import 'package:airo_app/core/providers/app_theme_provider.dart';
+import 'package:core_app_shell/core_app_shell.dart';
 import 'package:airo_app/features/settings/presentation/screens/settings_hub_screen.dart';
 import 'package:core_data/core_data.dart';
 import 'package:core_ui/core_ui.dart';
