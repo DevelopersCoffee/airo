@@ -8,7 +8,6 @@ import 'package:feature_iptv/feature_iptv.dart';
 import 'package:feature_iptv/presentation/tv_ux/sections/filter_dialogs.dart';
 import '../../../../core/providers/app_theme_provider.dart';
 import 'audio_settings_screen.dart';
-import 'playback_settings_screen.dart';
 
 /// Resolves a section descriptor from the shared
 /// [iptvSettingsSections] manifest by [id] — the same manifest
