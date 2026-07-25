@@ -109,20 +109,37 @@ cd /Users/udaychauhan/workspace/airo-fire-os/app && flutter devices
 ```
 Expected: a line containing `<stick-ip>:5555` with a device name like `AFTT` / `AFTMM` (Amazon Fire TV model codes) and platform `android-arm` or `android-arm64`.
 
-- [ ] **Step 3: Build the TV flavor release APK**
+- [ ] **Step 3: Build the TV variant APK**
+
+This project has no Gradle product flavors — the TV variant is selected
+solely via `--dart-define=APP_VARIANT=tv` (see `variantApplicationId` logic in
+`app/android/app/build.gradle.kts`). Do NOT pass `--flavor tv`; it fails with
+`Gradle project does not define any custom product flavors`.
+
+Release builds need `app/android/key.properties` + `app/android/release.keystore`
+present (gitignored — only exist in the checkout that has them, not in a fresh
+worktree; do not copy real signing credentials between directories without
+explicit human approval). If those aren't present, build debug instead:
 
 ```bash
 cd /Users/udaychauhan/workspace/airo-fire-os/app
-flutter build apk --flavor tv --dart-define=APP_VARIANT=tv -t lib/main_tv.dart
+flutter build apk --dart-define=APP_VARIANT=tv -t lib/main_tv.dart --debug
 ```
-Expected: exits 0, ends with `Built build/app/outputs/flutter-apk/app-tv-release.apk`.
+Expected: exits 0, ends with `Built build/app/outputs/flutter-apk/app-debug.apk`.
+(With real signing files present, drop `--debug` for a release build — output
+becomes `app-release.apk`. Note neither filename carries a flavor name.)
+
+Also note: `app/lib/firebase_options.dart` is gitignored. If missing in a
+fresh worktree, check whether `main` has a committed non-secret placeholder
+(as of this plan, commit `14709b3e` adds one) and pull just that file's
+content in rather than copying real Firebase secrets.
 
 - [ ] **Step 4: Install it on the Stick**
 
 ```bash
-adb -s <stick-ip>:5555 install -r build/app/outputs/flutter-apk/app-tv-release.apk
+adb -s <stick-ip>:5555 install -r build/app/outputs/flutter-apk/app-debug.apk
 ```
-Expected: `Success`.
+Expected: `Success`. (Swap in `app-release.apk` if you built release.)
 
 - [ ] **Step 5: Launch it**
 
