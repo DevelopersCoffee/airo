@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:airo_app/features/bill_split/domain/models/receipt_item.dart';
+import 'package:feature_billsplit_core/feature_billsplit_core.dart';
 import 'package:airo_app/features/bill_split/domain/services/receipt_parser_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 
