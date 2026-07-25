@@ -7,8 +7,8 @@ class IptvResumeSplash extends StatefulWidget {
     super.key,
     required this.playbackReady,
     required this.onFinished,
-    this.minDisplay = const Duration(seconds: 3),
-    this.maxDisplay = const Duration(seconds: 6),
+    this.minDisplay = const Duration(milliseconds: 500),
+    this.maxDisplay = const Duration(seconds: 2),
   });
 
   final bool playbackReady;

@@ -15,9 +15,15 @@ class ChannelLogo extends StatelessWidget {
   /// The channel name, used to derive the placeholder letter.
   final String channelName;
 
-  /// The display size of the logo in logical pixels.
-  /// Both width and height are set to this value (square).
+  /// The display height of the logo in logical pixels. Also the width
+  /// unless [width] widens the box.
   final double size;
+
+  /// Optional box width. Most TV channel logos are wide rectangles, not
+  /// squares — a wider box lets them render at full height instead of
+  /// being letterboxed down inside a square. Defaults to [size] (square)
+  /// for back-compat.
+  final double? width;
 
   /// How the image should be inscribed into the box.
   final BoxFit fit;
@@ -33,6 +39,7 @@ class ChannelLogo extends StatelessWidget {
     required this.logoUrl,
     required this.channelName,
     this.size = 48,
+    this.width,
     this.fit = BoxFit.cover,
     this.borderRadius = 6,
     this.isAudioOnly = false,
@@ -41,20 +48,22 @@ class ChannelLogo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dpr = MediaQuery.devicePixelRatioOf(context);
-    final cacheSize = (size * dpr).ceil();
+    final boxWidth = width ?? size;
+    final cacheWidth = (boxWidth * dpr).ceil();
+    final cacheHeight = (size * dpr).ceil();
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(borderRadius),
       child: SizedBox(
-        width: size,
+        width: boxWidth,
         height: size,
         child: _hasValidUrl
             ? CachedNetworkImage(
                 imageUrl: logoUrl!,
-                memCacheWidth: cacheSize,
-                memCacheHeight: cacheSize,
-                maxWidthDiskCache: cacheSize,
-                maxHeightDiskCache: cacheSize,
+                memCacheWidth: cacheWidth,
+                memCacheHeight: cacheHeight,
+                maxWidthDiskCache: cacheWidth,
+                maxHeightDiskCache: cacheHeight,
                 fit: fit,
                 placeholder: (_, _) => _buildPlaceholder(context),
                 errorWidget: (_, _, _) => _buildPlaceholder(context),

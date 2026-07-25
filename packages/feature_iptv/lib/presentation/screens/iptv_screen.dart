@@ -21,6 +21,7 @@ import '../widgets/xmltv_source_sheet.dart';
 import '../tv/iptv_guide_screen.dart';
 import '../tv_ux/airo_tv_shell.dart';
 import '../tv_ux/iptv_resume_gate.dart';
+import '../tv_ux/tv_loading_screen.dart';
 import 'mobile_favorites_screen.dart';
 
 /// IPTV Screen with YouTube-like streaming experience
@@ -30,8 +31,16 @@ class IPTVScreen extends ConsumerStatefulWidget {
     this.onSettings,
     this.onPickLocalMediaForTv,
     this.deepLinkChannelId,
+    this.tenFootMode = false,
     super.key,
   });
+
+  /// When true (a detected TV behind the app's TvShell sidebar), the phone
+  /// chrome — app bar, drawer, cast entry — is suppressed: the sidebar
+  /// already owns navigation, TVs are receivers not cast senders, and
+  /// browse-level actions live in the 10-foot shell itself. Touch devices
+  /// keep the full phone chrome.
+  final bool tenFootMode;
 
   /// Invoked when the user taps the "Movies & Shows" action to navigate to
   /// the VOD screen. Left as an optional callback (rather than a direct
@@ -207,6 +216,12 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
     final isFullscreen = ref.read(isFullscreenModeProvider);
     ref.read(isFullscreenModeProvider.notifier).state = !isFullscreen;
 
+    // TV chrome is fixed: always landscape, always immersive (set once at
+    // startup by the app's configureTvSystemChrome). The phone-style
+    // portrait restore below rotated the whole Fire TV display to
+    // 1080x1920 on fullscreen exit.
+    if (widget.tenFootMode) return;
+
     if (!isFullscreen) {
       // Entering fullscreen
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
@@ -224,6 +239,15 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
   void _exitFullscreen() {
     if (!ref.read(isFullscreenModeProvider)) return;
     _toggleFullscreen();
+  }
+
+  /// TV selection: open the full player directly. On a 10-foot UI the
+  /// browse shell's small preview stage is a poor first playback surface —
+  /// choosing a channel means "watch it now". Back returns to browse via
+  /// the existing fullscreen back handling.
+  void _playChannelFullscreen(IPTVChannel channel) {
+    ref.read(isFullscreenModeProvider.notifier).state = true;
+    _playChannel(channel);
   }
 
   void _playChannel(IPTVChannel channel) {
@@ -582,20 +606,40 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
     if (isWaitingForDeepLink) {
       return guardRouteBack(
         Scaffold(
-          body: Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const CircularProgressIndicator(),
-                const SizedBox(height: 16),
-                // Escape hatch: the user must never be stuck here indefinitely
-                // even before the 10s timeout in initState fires.
-                TextButton.icon(
-                  onPressed: _cancelDeepLinkWait,
-                  icon: const Icon(Icons.close),
-                  label: const Text('Cancel'),
-                ),
-              ],
+          body: DecoratedBox(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Color(0xFF05060F), Color(0xFF141B33)],
+              ),
+            ),
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const SizedBox(
+                    width: 40,
+                    height: 40,
+                    child: CircularProgressIndicator(strokeWidth: 3),
+                  ),
+                  const SizedBox(height: 24),
+                  Text(
+                    'Starting channel...',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Colors.white70,
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+                  // Escape hatch: the user must never be stuck here indefinitely
+                  // even before the 10s timeout in initState fires.
+                  TextButton.icon(
+                    onPressed: _cancelDeepLinkWait,
+                    icon: const Icon(Icons.close),
+                    label: const Text('Cancel'),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -642,6 +686,24 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
               initiallyFullscreen: true,
               onFullscreenToggle: _toggleFullscreen,
               enableSwipeChannelChange: true,
+            ),
+          ),
+        ),
+      );
+    }
+
+    if (widget.tenFootMode) {
+      return guardRouteBack(
+        AiroResponsiveScaffold(
+          padding: EdgeInsets.zero,
+          body: IptvResumeGate(
+            enabled: widget.deepLinkChannelId == null,
+            child: _StreamTabContent(
+              key: const ValueKey('iptv-browse-grid'),
+              onChannelTap: _playChannelFullscreen,
+              onFullscreenToggle: _toggleFullscreen,
+              onPlaylistSourceTap: _showPlaylistSheet,
+              playlistSourceInInfoBar: true,
             ),
           ),
         ),
@@ -896,11 +958,16 @@ class _StreamTabContent extends ConsumerWidget {
     required this.onChannelTap,
     required this.onFullscreenToggle,
     required this.onPlaylistSourceTap,
+    this.playlistSourceInInfoBar = false,
   });
 
   final ValueChanged<IPTVChannel> onChannelTap;
   final VoidCallback onFullscreenToggle;
   final VoidCallback onPlaylistSourceTap;
+
+  /// True on TV (no app bar): surfaces the playlist-source entry in the
+  /// shell's LIVE bar instead. Phones keep it in the app bar only.
+  final bool playlistSourceInInfoBar;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -910,7 +977,7 @@ class _StreamTabContent extends ConsumerWidget {
 
     return channelsAsync.when(
       data: (channels) => _buildContent(context, ref, channels, streamingState),
-      loading: () => const Center(child: CircularProgressIndicator()),
+      loading: () => const TvLoadingScreen(message: 'Loading channels...'),
       error: (error, stack) => _buildError(context, ref, error.toString()),
     );
   }
@@ -934,6 +1001,7 @@ class _StreamTabContent extends ConsumerWidget {
       enrichMetadata: true,
       currentChannel: activeChannel,
       onChannelSelected: onChannelTap,
+      onPlaylistSourceTap: playlistSourceInInfoBar ? onPlaylistSourceTap : null,
       videoStage: AspectRatio(
         aspectRatio: 16 / 9,
         child: activeChannel == null

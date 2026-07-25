@@ -166,6 +166,10 @@ class TvFocusable extends StatefulWidget {
   final Widget child;
   final VoidCallback? onSelect;
 
+  /// Externally-owned focus node, e.g. so a caller can drive focus
+  /// programmatically. When omitted, [TvFocusable] creates and owns its own.
+  final FocusNode? focusNode;
+
   /// Secondary action for this item — e.g. toggling a favorite or opening
   /// an options menu. Reachable via the remote's context-menu key or a
   /// long-press/right-click, without adding an extra focus stop to D-pad
@@ -189,6 +193,7 @@ class TvFocusable extends StatefulWidget {
     super.key,
     required this.child,
     this.onSelect,
+    this.focusNode,
     this.onSecondaryAction,
     this.onFocus,
     this.onUnfocus,
@@ -212,6 +217,7 @@ class TvFocusable extends StatefulWidget {
 class _TvFocusableState extends State<TvFocusable>
     with SingleTickerProviderStateMixin {
   late final FocusNode _focusNode;
+  bool _ownsFocusNode = false;
   late final AnimationController _animationController;
   late final CurvedAnimation _focusCurve;
   late final Animation<double> _scaleAnimation;
@@ -220,7 +226,14 @@ class _TvFocusableState extends State<TvFocusable>
   @override
   void initState() {
     super.initState();
-    _focusNode = FocusNode()..addListener(_onFocusChange);
+    final providedNode = widget.focusNode;
+    if (providedNode != null) {
+      _focusNode = providedNode;
+    } else {
+      _focusNode = FocusNode();
+      _ownsFocusNode = true;
+    }
+    _focusNode.addListener(_onFocusChange);
     _animationController = AnimationController(
       duration: TvFocusConstants.focusAnimationDuration,
       vsync: this,
@@ -237,9 +250,8 @@ class _TvFocusableState extends State<TvFocusable>
 
   @override
   void dispose() {
-    _focusNode
-      ..removeListener(_onFocusChange)
-      ..dispose();
+    _focusNode.removeListener(_onFocusChange);
+    if (_ownsFocusNode) _focusNode.dispose();
     _focusCurve.dispose();
     _animationController.dispose();
     _isFocused.dispose();
@@ -257,6 +269,33 @@ class _TvFocusableState extends State<TvFocusable>
         // ignore: deprecated_member_use
         SemanticsService.announce(widget.semanticLabel!, TextDirection.ltr);
       }
+      // D-pad traversal moves focus one element at a time regardless of
+      // whether that element is on-screen. Without this, a long list (e.g.
+      // a 12000-channel grid) leaves the user pressing "down" against an
+      // invisible focus target — it looks like navigation desynced from
+      // the remote. Every TvFocusable self-scrolls into view instead of
+      // requiring each screen to wire this up individually.
+      //
+      // Minimal-scroll policies only: an already-visible item must not
+      // move. Center-aligning here shifted the list under every focus
+      // change, which read as the D-pad skipping alternate rows.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final renderObject = context.findRenderObject();
+        if (renderObject == null) return;
+        Scrollable.ensureVisible(
+          context,
+          alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtEnd,
+          duration: TvFocusConstants.focusAnimationDuration,
+          curve: Curves.easeOutCubic,
+        );
+        Scrollable.ensureVisible(
+          context,
+          alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtStart,
+          duration: TvFocusConstants.focusAnimationDuration,
+          curve: Curves.easeOutCubic,
+        );
+      });
     } else {
       _animationController.reverse();
       widget.onUnfocus?.call();

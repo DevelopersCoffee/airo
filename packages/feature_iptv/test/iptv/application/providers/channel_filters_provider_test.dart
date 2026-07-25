@@ -51,14 +51,65 @@ void main() {
   });
 
   test('playlist country and language values backfill missing enrichment', () {
+    const withPlaylistValues = [
+      IPTVChannel(
+        id: 'alpha',
+        name: 'Alpha News',
+        streamUrl: 'https://example.test/alpha',
+        group: 'News',
+        country: 'DE',
+        languages: ['de'],
+      ),
+      IPTVChannel(
+        id: 'beta',
+        name: 'Beta Sport',
+        streamUrl: 'https://example.test/beta',
+        group: 'Sports',
+        country: 'US',
+        languages: ['en'],
+      ),
+    ];
+
+    final dimensions = channelFilterDimensions(
+      channels: withPlaylistValues,
+      metadataByChannelId: const {},
+    );
+
+    expect(dimensions.categories, {'News', 'Sports'});
+    expect(dimensions.countries, {'DE', 'US'});
+    expect(dimensions.languages, {'de', 'en'});
+  });
+
+  test('channels without a playlist country report no country dimension', () {
     final dimensions = channelFilterDimensions(
       channels: channels,
       metadataByChannelId: const {},
     );
 
     expect(dimensions.categories, {'News', 'Sports'});
-    expect(dimensions.countries, {'IN'});
-    expect(dimensions.languages, {'en'});
+    expect(dimensions.countries, isEmpty);
+  });
+
+  test('channels without a playlist language report no language dimension', () {
+    final dimensions = channelFilterDimensions(
+      channels: channels,
+      metadataByChannelId: const {},
+    );
+
+    expect(dimensions.languages, isEmpty);
+    expect(effectiveChannelLanguages(channels.first, null), isEmpty);
+  });
+
+  test('a channel with no country is kept under every country filter', () {
+    expect(
+      applyChannelScope(
+        channels: channels,
+        filters: const ChannelFilters(country: 'US'),
+        metadataByChannelId: const {},
+      ).map((channel) => channel.id),
+      isEmpty,
+    );
+    expect(effectiveChannelCountry(channels.first, null), isNull);
   });
 
   test(

@@ -269,7 +269,6 @@ class _ChannelRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final country = effectiveChannelCountry(channel, metadata);
     final languages = effectiveChannelLanguages(channel, metadata);
-    final language = languages.isEmpty ? null : languages.first;
     final languageSummary = _languageSummary(languages);
     final textTheme = Theme.of(context).textTheme;
     final logoSize = wide ? 30.0 : 26.0;
@@ -290,6 +289,9 @@ class _ChannelRow extends StatelessWidget {
               logoUrl: channel.effectiveLogoUrl,
               channelName: channel.name,
               size: logoSize,
+              // Wide box: broadcaster logos are mostly rectangular, and a
+              // square crushed them to a sliver at row height.
+              width: logoSize * 1.7,
               fit: BoxFit.contain,
               borderRadius: 4,
               isAudioOnly: channel.isAudioOnly,
@@ -316,7 +318,7 @@ class _ChannelRow extends StatelessWidget {
             Expanded(
               flex: 2,
               child: Text(
-                languageSummary ?? languageDisplayLabel(language),
+                languageSummary ?? '—',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),

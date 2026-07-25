@@ -116,6 +116,116 @@ void main() {
     expect(secondaryCount, 1);
   });
 
+  testWidgets(
+    'TvFocusable scrolls itself into view when it gains focus off-screen '
+    '(D-pad through a long list must not leave focus invisible)',
+    (tester) async {
+      final scrollController = ScrollController();
+      final focusNodes = List.generate(20, (_) => FocusNode());
+      addTearDown(() {
+        for (final node in focusNodes) {
+          node.dispose();
+        }
+      });
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SizedBox(
+              height: 300,
+              // Eagerly-built children (unlike ListView.builder) so the
+              // test isolates ensureVisible-on-focus from lazy-build
+              // timing — every item already exists in the tree, only
+              // scroll position needs to catch up to focus.
+              child: SingleChildScrollView(
+                controller: scrollController,
+                child: Column(
+                  children: [
+                    for (var index = 0; index < 20; index++)
+                      SizedBox(
+                        height: 100,
+                        child: TvFocusable(
+                          focusNode: focusNodes[index],
+                          onSelect: () {},
+                          child: Text('Item $index'),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      expect(scrollController.offset, 0);
+
+      // Item 10 is far below the 300px viewport (10 * 100 = 1000px down).
+      focusNodes[10].requestFocus();
+      await tester.pumpAndSettle();
+
+      expect(
+        scrollController.offset,
+        greaterThan(0),
+        reason: 'focused item 10 is off-screen; the list must scroll to it',
+      );
+    },
+  );
+
+  testWidgets(
+    'TvFocusable does not scroll when the focused item is already visible '
+    '(recentering on every focus reads as rows skipping under the D-pad)',
+    (tester) async {
+      final scrollController = ScrollController();
+      final focusNodes = List.generate(20, (_) => FocusNode());
+      addTearDown(() {
+        for (final node in focusNodes) {
+          node.dispose();
+        }
+      });
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SizedBox(
+              height: 300,
+              child: SingleChildScrollView(
+                controller: scrollController,
+                child: Column(
+                  children: [
+                    for (var index = 0; index < 20; index++)
+                      SizedBox(
+                        height: 100,
+                        child: TvFocusable(
+                          focusNode: focusNodes[index],
+                          onSelect: () {},
+                          child: Text('Item $index'),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      // Items 0-2 fill the 300px viewport. Focusing item 2 — fully visible
+      // at the bottom edge — must leave the scroll position untouched (a
+      // center-aligning scroll would move to offset 100).
+      focusNodes[2].requestFocus();
+      await tester.pumpAndSettle();
+
+      expect(
+        scrollController.offset,
+        0,
+        reason:
+            'item 2 was already fully on-screen; scrolling anyway makes '
+            'the list shift under every focus move',
+      );
+    },
+  );
+
   testWidgets('TvFocusable triggers onSecondaryAction via long-press', (
     tester,
   ) async {
