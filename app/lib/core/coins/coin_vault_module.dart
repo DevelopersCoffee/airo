@@ -1,5 +1,6 @@
 import 'package:core_product_shell/core_product_shell.dart';
 import 'package:feature_coin/feature_coin.dart';
+import 'package:flutter_riverpod/misc.dart';
 import 'package:go_router/go_router.dart';
 
 /// The Airo Coin vault as a shell-registrable [AppModule].
@@ -11,12 +12,18 @@ import 'package:go_router/go_router.dart';
 /// super-app still mounts the same screens through its existing
 /// `app_router.dart` wiring, which stays untouched per the no-break rule.
 ///
-/// Routes are mounted under `/money/vault` on every shell because
-/// `feature_coin`'s screens navigate with those literal paths today
-/// (`vault_home_screen.dart`, `record_detail_sheet.dart`). Making that
-/// base path shell-configurable is a `feature_coin` API change tracked for
-/// a later slice — not silently forked here.
+/// [basePath] controls where the vault mounts. The module both mounts its
+/// routes there and overrides `feature_coin`'s `vaultRoutePrefixProvider`
+/// to match, so the vault's internal add/edit navigation follows the mount
+/// point instead of a hardcoded host-app URL. The default stays the
+/// super-app's historical `/money/vault`.
 class CoinVaultModule extends AppModule {
+  CoinVaultModule({this.basePath = '/money/vault'})
+    : assert(basePath.startsWith('/'), 'basePath must be absolute');
+
+  /// Absolute route prefix the vault mounts under for the owning shell.
+  final String basePath;
+
   @override
   String get id => 'coin_vault';
 
@@ -26,9 +33,14 @@ class CoinVaultModule extends AppModule {
   Set<ShellId> get supportedShells => {ShellId.mobile, ShellId.coins};
 
   @override
+  List<Override> providerOverridesFor(ShellId shell) => [
+    vaultRoutePrefixProvider.overrideWithValue(basePath),
+  ];
+
+  @override
   List<RouteBase> routesFor(ShellId shell) => [
     GoRoute(
-      path: '/money/vault',
+      path: basePath,
       builder: (context, state) => const VaultGateScreen(),
       routes: [
         GoRoute(
