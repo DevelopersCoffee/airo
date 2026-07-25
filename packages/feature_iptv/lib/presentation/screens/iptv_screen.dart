@@ -21,6 +21,7 @@ import '../widgets/xmltv_source_sheet.dart';
 import '../tv/iptv_guide_screen.dart';
 import '../tv_ux/airo_tv_shell.dart';
 import '../tv_ux/iptv_resume_gate.dart';
+import '../tv_ux/tv_loading_screen.dart';
 import 'mobile_favorites_screen.dart';
 
 /// IPTV Screen with YouTube-like streaming experience
@@ -601,20 +602,40 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
     if (isWaitingForDeepLink) {
       return guardRouteBack(
         Scaffold(
-          body: Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const CircularProgressIndicator(),
-                const SizedBox(height: 16),
-                // Escape hatch: the user must never be stuck here indefinitely
-                // even before the 10s timeout in initState fires.
-                TextButton.icon(
-                  onPressed: _cancelDeepLinkWait,
-                  icon: const Icon(Icons.close),
-                  label: const Text('Cancel'),
-                ),
-              ],
+          body: DecoratedBox(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Color(0xFF05060F), Color(0xFF141B33)],
+              ),
+            ),
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const SizedBox(
+                    width: 40,
+                    height: 40,
+                    child: CircularProgressIndicator(strokeWidth: 3),
+                  ),
+                  const SizedBox(height: 24),
+                  Text(
+                    'Starting channel...',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Colors.white70,
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+                  // Escape hatch: the user must never be stuck here indefinitely
+                  // even before the 10s timeout in initState fires.
+                  TextButton.icon(
+                    onPressed: _cancelDeepLinkWait,
+                    icon: const Icon(Icons.close),
+                    label: const Text('Cancel'),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -952,7 +973,7 @@ class _StreamTabContent extends ConsumerWidget {
 
     return channelsAsync.when(
       data: (channels) => _buildContent(context, ref, channels, streamingState),
-      loading: () => const Center(child: CircularProgressIndicator()),
+      loading: () => const TvLoadingScreen(message: 'Loading channels...'),
       error: (error, stack) => _buildError(context, ref, error.toString()),
     );
   }
