@@ -42,6 +42,8 @@ export "presentation/screens/mobile_favorites_screen.dart";
 export "presentation/screens/vod_screen.dart";
 export "presentation/tv/iptv_guide_screen.dart";
 export "presentation/tv/iptv_tv_screen.dart";
+export "presentation/tv/settings/tv_playback_section.dart";
+export "presentation/tv/settings/tv_source_management_section.dart";
 export "presentation/tv_ux/iptv_resume_gate.dart";
 export "presentation/tv_ux/iptv_resume_splash.dart";
 export "presentation/tv_ux/airo_tv_shell.dart";

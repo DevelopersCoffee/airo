@@ -620,6 +620,13 @@ packages:
       relative: true
     source: path
     version: "0.0.1"
+  feature_iptv_core:
+    dependency: transitive
+    description:
+      path: "../packages/feature_iptv_core"
+      relative: true
+    source: path
+    version: "0.0.1"
   ffi:
     dependency: transitive
     description:

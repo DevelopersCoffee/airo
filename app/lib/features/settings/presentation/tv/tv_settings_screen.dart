@@ -4,15 +4,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:core_ui/core_ui.dart';
 
-import 'tv_playback_section.dart';
-import 'tv_source_management_section.dart';
 import 'tv_theme_section.dart';
 
 /// TV Settings screen (CV-022): a left-hand section list, right-hand detail
-/// pane. Tasks 5-6 replace the remaining stubs with real section widgets
-/// (`TvPlaybackSection`, `TvSourceManagementSection`). Section names/icons
-/// come from the shared `iptvSettingsSections` manifest (SSOT with the
-/// mobile settings hub); only this rail/detail layout stays TV-specific.
+/// pane. `TvPlaybackSection` and `TvSourceManagementSection` are IPTV-module
+/// concerns and live in `package:feature_iptv`; `TvThemeSection` stays here
+/// because it shares the app-wide `appThemeProvider` with the phone profile
+/// screen (a promoted, cross-app setting, not IPTV-local). Section
+/// names/icons come from the shared `iptvSettingsSections` manifest (SSOT
+/// with the mobile settings hub); only this rail/detail layout stays
+/// TV-specific.
 class TvSettingsScreen extends ConsumerStatefulWidget {
   const TvSettingsScreen({super.key});
 
