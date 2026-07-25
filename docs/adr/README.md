@@ -15,6 +15,7 @@ An Architecture Decision Record (ADR) captures an important architectural decisi
 | [0008](0008-storage-tiering-and-preference-size-guards.md) | Storage Tiering and Preference Size Guards | Accepted | 2026-07-15 |
 | [0009](0009-airo-coin-vault-crypto.md) | Airo Coin vault crypto design and threat model | Accepted | 2026-07-20 |
 | [0010](0010-airo-coin-package-first-development.md) | Airo Coin package-first development | Accepted | 2026-07-22 |
+| [0011](0011-super-app-modular-shell-ssot.md) | Super-app modular shell SSOT | Proposed | 2026-07-24 |
 
 ## Creating a New ADR
 

@@ -1,3 +1,5 @@
+import 'package:core_product_shell/core_product_shell.dart';
+import 'package:feature_iptv/feature_iptv.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:core_ui/core_ui.dart';
@@ -6,11 +8,11 @@ import 'tv_playback_section.dart';
 import 'tv_source_management_section.dart';
 import 'tv_theme_section.dart';
 
-enum _TvSettingsSection { theme, playback, sources, accessibility }
-
 /// TV Settings screen (CV-022): a left-hand section list, right-hand detail
 /// pane. Tasks 5-6 replace the remaining stubs with real section widgets
-/// (`TvPlaybackSection`, `TvSourceManagementSection`).
+/// (`TvPlaybackSection`, `TvSourceManagementSection`). Section names/icons
+/// come from the shared `iptvSettingsSections` manifest (SSOT with the
+/// mobile settings hub); only this rail/detail layout stays TV-specific.
 class TvSettingsScreen extends ConsumerStatefulWidget {
   const TvSettingsScreen({super.key});
 
@@ -19,18 +21,13 @@ class TvSettingsScreen extends ConsumerStatefulWidget {
 }
 
 class _TvSettingsScreenState extends ConsumerState<TvSettingsScreen> {
-  _TvSettingsSection _selected = _TvSettingsSection.theme;
+  IptvSettingsSectionId _selected = IptvSettingsSectionId.theme;
 
-  static const _sections = [
-    (_TvSettingsSection.theme, 'Theme', Icons.palette_outlined),
-    (_TvSettingsSection.playback, 'Playback', Icons.play_circle_outline),
-    (_TvSettingsSection.sources, 'Sources', Icons.dns_outlined),
-    (
-      _TvSettingsSection.accessibility,
-      'Accessibility',
-      Icons.accessibility_new_outlined,
-    ),
-  ];
+  /// The sections this screen renders, in shared-manifest order, filtered to
+  /// those declared visible on the TV shell.
+  static final _sections = iptvSettingsSections
+      .where((section) => section.isVisibleFor(ShellId.tv))
+      .toList(growable: false);
 
   @override
   Widget build(BuildContext context) {
@@ -46,17 +43,18 @@ class _TvSettingsScreenState extends ConsumerState<TvSettingsScreen> {
               child: ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
-                  for (final (section, label, icon) in _sections)
+                  for (final section in _sections)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 8),
                       child: TvFocusable(
-                        autofocus: section == _TvSettingsSection.theme,
-                        onSelect: () => setState(() => _selected = section),
-                        semanticLabel: label,
+                        autofocus: section.id == IptvSettingsSectionId.theme,
+                        onSelect: () =>
+                            setState(() => _selected = section.id),
+                        semanticLabel: section.labelFor(ShellId.tv),
                         semanticButton: true,
                         child: DecoratedBox(
                           decoration: BoxDecoration(
-                            color: section == _selected
+                            color: section.id == _selected
                                 ? colorScheme.primaryContainer
                                 : Colors.transparent,
                             borderRadius: BorderRadius.circular(8),
@@ -65,11 +63,14 @@ class _TvSettingsScreenState extends ConsumerState<TvSettingsScreen> {
                             padding: const EdgeInsets.all(12),
                             child: Row(
                               children: [
-                                Icon(icon, color: colorScheme.onSurface),
+                                Icon(
+                                  section.iconFor(ShellId.tv),
+                                  color: colorScheme.onSurface,
+                                ),
                                 const SizedBox(width: 12),
                                 Expanded(
                                   child: Text(
-                                    label,
+                                    section.labelFor(ShellId.tv),
                                     overflow: TextOverflow.ellipsis,
                                     style: TextStyle(
                                       color: colorScheme.onSurface,
@@ -100,18 +101,27 @@ class _TvSettingsScreenState extends ConsumerState<TvSettingsScreen> {
 
   Widget _buildDetail() {
     switch (_selected) {
-      case _TvSettingsSection.theme:
+      case IptvSettingsSectionId.theme:
         return const TvThemeSection(key: ValueKey('tv_settings_section_theme'));
-      case _TvSettingsSection.playback:
+      case IptvSettingsSectionId.playback:
         return const TvPlaybackSection(
           key: ValueKey('tv_settings_section_playback'),
         );
-      case _TvSettingsSection.sources:
+      case IptvSettingsSectionId.sources:
         return const TvSourceManagementSection(
           key: ValueKey('tv_settings_section_sources'),
         );
-      case _TvSettingsSection.accessibility:
+      case IptvSettingsSectionId.accessibility:
         return const _AccessibilityComingSoon();
+      case IptvSettingsSectionId.playlistSource:
+      case IptvSettingsSectionId.epgGuideSource:
+      case IptvSettingsSectionId.country:
+      case IptvSettingsSectionId.audio:
+        // Not part of the TV rail today (`_sections` filters to sections
+        // `isVisibleFor(ShellId.tv)`), so `_selected` can never actually
+        // resolve here. Kept exhaustive since `IptvSettingsSectionId` is a
+        // shared enum other shells also declare visibility for.
+        return const SizedBox.shrink();
     }
   }
 }

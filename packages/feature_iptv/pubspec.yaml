@@ -13,6 +13,8 @@ dependencies:
   collection: ^1.19.0
   core_data:
     path: ../core_data
+  core_product_shell:
+    path: ../core_product_shell
   core_ui:
     path: ../core_ui
   dio: ^5.10.0
