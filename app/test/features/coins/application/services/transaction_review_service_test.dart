@@ -1,4 +1,4 @@
-import 'package:airo_app/features/coins/application/services/transaction_review_service.dart';
+import 'package:feature_coins_core/src/application/services/transaction_review_service.dart';
 import 'package:feature_coins_core/src/entities/transaction.dart';
 import 'package:feature_coins_core/src/repositories/transaction_repository.dart';
 import 'package:flutter_test/flutter_test.dart';

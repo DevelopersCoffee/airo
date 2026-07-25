@@ -1,5 +1,5 @@
 import 'package:airo_app/features/coins/application/services/android_finance_import_preferences.dart';
-import 'package:airo_app/features/coins/application/services/android_finance_import_service.dart';
+import 'package:feature_coins_core/src/application/services/android_finance_import_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
