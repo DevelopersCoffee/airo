@@ -4,6 +4,11 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  // Durations are pinned here rather than inherited from the widget defaults
+  // so retuning the splash timing cannot silently invalidate these tests.
+  const minDisplay = Duration(milliseconds: 500);
+  const maxDisplay = Duration(seconds: 2);
+
   Widget harness({
     required bool playbackReady,
     required VoidCallback onFinished,
@@ -12,6 +17,8 @@ void main() {
       home: IptvResumeSplash(
         playbackReady: playbackReady,
         onFinished: onFinished,
+        minDisplay: minDisplay,
+        maxDisplay: maxDisplay,
       ),
     );
   }
@@ -24,10 +31,10 @@ void main() {
       harness(playbackReady: true, onFinished: () => finished++),
     );
 
-    await tester.pump(const Duration(seconds: 2));
+    await tester.pump(minDisplay - const Duration(milliseconds: 50));
     expect(finished, 0);
 
-    await tester.pump(const Duration(seconds: 1, milliseconds: 100));
+    await tester.pump(const Duration(milliseconds: 100));
     expect(finished, 1);
   });
 
@@ -37,7 +44,7 @@ void main() {
       harness(playbackReady: false, onFinished: () => finished++),
     );
 
-    await tester.pump(const Duration(seconds: 4));
+    await tester.pump(minDisplay + const Duration(milliseconds: 50));
     expect(finished, 0);
 
     await tester.pumpWidget(
@@ -55,7 +62,7 @@ void main() {
       harness(playbackReady: false, onFinished: () => finished++),
     );
 
-    await tester.pump(const Duration(seconds: 6, milliseconds: 100));
+    await tester.pump(maxDisplay + const Duration(milliseconds: 100));
     expect(finished, 1);
   });
 

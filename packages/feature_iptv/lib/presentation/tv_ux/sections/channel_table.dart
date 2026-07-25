@@ -269,7 +269,6 @@ class _ChannelRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final country = effectiveChannelCountry(channel, metadata);
     final languages = effectiveChannelLanguages(channel, metadata);
-    final language = languages.isEmpty ? null : languages.first;
     final languageSummary = _languageSummary(languages);
     final textTheme = Theme.of(context).textTheme;
     final logoSize = wide ? 30.0 : 26.0;
@@ -319,7 +318,7 @@ class _ChannelRow extends StatelessWidget {
             Expanded(
               flex: 2,
               child: Text(
-                languageSummary ?? languageDisplayLabel(language),
+                languageSummary ?? '—',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
