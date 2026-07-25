@@ -39,6 +39,7 @@ export "application/xmltv_source_store.dart";
 export "presentation/screens/browse_screen.dart";
 export "presentation/screens/iptv_screen.dart";
 export "presentation/screens/mobile_favorites_screen.dart";
+export "presentation/screens/settings/country_settings_tile.dart";
 export "presentation/screens/settings/playback_settings_screen.dart";
 export "presentation/screens/vod_screen.dart";
 export "presentation/tv/iptv_guide_screen.dart";

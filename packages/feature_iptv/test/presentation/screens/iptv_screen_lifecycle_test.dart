@@ -97,9 +97,7 @@ void main() {
       );
 
       // Resume too, to confirm the wiring works both directions.
-      tester.binding.handleAppLifecycleStateChanged(
-        AppLifecycleState.resumed,
-      );
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
       await tester.pumpAndSettle();
 
       expect(

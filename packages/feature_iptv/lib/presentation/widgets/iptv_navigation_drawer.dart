@@ -52,8 +52,7 @@ class IptvNavigationDrawer extends StatelessWidget {
                   key: ValueKey('iptv-drawer-${_keySuffix(destination.id)}'),
                   leading: Icon(destination.icon),
                   title: Text(destination.labelFor(ShellId.mobile)),
-                  onTap: () =>
-                      _select(context, _actionFor(destination.id)!),
+                  onTap: () => _select(context, _actionFor(destination.id)!),
                 ),
             if (onPlayLocalFileOnTv case final onPlayLocalFileOnTv?)
               ListTile(

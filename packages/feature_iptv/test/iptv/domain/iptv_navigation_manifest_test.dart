@@ -6,16 +6,13 @@ void main() {
   group('iptvNavigationDestinations', () {
     test('declares exactly Home, Guide, Movies/VOD, Favorites, Settings in '
         'order', () {
-      expect(
-        iptvNavigationDestinations.map((d) => d.id).toList(),
-        const [
-          IptvDestinationId.home,
-          IptvDestinationId.guide,
-          IptvDestinationId.vod,
-          IptvDestinationId.favorites,
-          IptvDestinationId.settings,
-        ],
-      );
+      expect(iptvNavigationDestinations.map((d) => d.id).toList(), const [
+        IptvDestinationId.home,
+        IptvDestinationId.guide,
+        IptvDestinationId.vod,
+        IptvDestinationId.favorites,
+        IptvDestinationId.settings,
+      ]);
     });
 
     test('mobile and TV share the same destination list (one manifest, two '
