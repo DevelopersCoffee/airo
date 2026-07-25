@@ -46,7 +46,9 @@ CLAUDE_SKILLS_DIR="$HOME/.claude/skills"
 ANTIGRAVITY_SKILLS_DIR="$HOME/.gemini/config/skills"
 
 TV_DESIGN_REPO="git@github.com:DevelopersCoffee/10-foot-design.git"
-TV_DESIGN_LOCAL="$HOME/.cache/developerscoffee/10-foot-design"
+# Prefer the workspace checkout; fall back to a cache clone on other machines
+TV_DESIGN_WORKSPACE="/Users/udaychauhan/workspace/10-foot-design"
+TV_DESIGN_CACHE="$HOME/.cache/developerscoffee/10-foot-design"
 TV_DESIGN_SKILL_NAME="android-tv-design"
 
 # ── Arg parsing ───────────────────────────────────────────────────────────────
@@ -98,8 +100,20 @@ install_skill() {
 
 # ── Ensure 10-foot-design repo is available locally ──────────────────────────
 ensure_tv_design_repo() {
+  # Use the developer workspace checkout when available (faster, no extra clone)
+  if [ -d "$TV_DESIGN_WORKSPACE/.git" ]; then
+    TV_DESIGN_LOCAL="$TV_DESIGN_WORKSPACE"
+    info "Found 10-foot-design at workspace path — pulling latest …"
+    git -C "$TV_DESIGN_LOCAL" pull --ff-only --quiet \
+      && ok "10-foot-design up to date" \
+      || warn "Could not pull (offline?). Using current checkout."
+    return
+  fi
+
+  # Fall back: clone into cache (CI / new dev machine)
+  TV_DESIGN_LOCAL="$TV_DESIGN_CACHE"
   if [ -d "$TV_DESIGN_LOCAL/.git" ]; then
-    info "Updating 10-foot-design …"
+    info "Updating cached 10-foot-design …"
     git -C "$TV_DESIGN_LOCAL" pull --ff-only --quiet \
       && ok "10-foot-design up to date" \
       || warn "Could not pull 10-foot-design (offline?). Using cached copy."
