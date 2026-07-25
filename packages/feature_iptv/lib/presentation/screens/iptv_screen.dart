@@ -236,6 +236,15 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
     _toggleFullscreen();
   }
 
+  /// TV selection: open the full player directly. On a 10-foot UI the
+  /// browse shell's small preview stage is a poor first playback surface —
+  /// choosing a channel means "watch it now". Back returns to browse via
+  /// the existing fullscreen back handling.
+  void _playChannelFullscreen(IPTVChannel channel) {
+    ref.read(isFullscreenModeProvider.notifier).state = true;
+    _playChannel(channel);
+  }
+
   void _playChannel(IPTVChannel channel) {
     final castState = ref.read(iptvCastProvider);
     if (castState.activeDevice != null) {
@@ -660,7 +669,7 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
             enabled: widget.deepLinkChannelId == null,
             child: _StreamTabContent(
               key: const ValueKey('iptv-browse-grid'),
-              onChannelTap: _playChannel,
+              onChannelTap: _playChannelFullscreen,
               onFullscreenToggle: _toggleFullscreen,
               onPlaylistSourceTap: _showPlaylistSheet,
               playlistSourceInInfoBar: true,
