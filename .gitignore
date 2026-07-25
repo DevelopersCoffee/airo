@@ -128,6 +128,10 @@ rust/target/
 .augment/skills/
 skills-lock.json
 
+# Exception: bundled skills that ship with the repo (installed via scripts/skills.sh)
+!.claude/skills/android-tv-design/
+!.claude/skills/android-tv-design/**
+
 # IDE-generated workspace descriptors
 *.iml
 
