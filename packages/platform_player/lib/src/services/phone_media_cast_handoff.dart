@@ -5,6 +5,7 @@ import 'dart:math';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:core_media_routing/core_media_routing.dart';
 import 'package:equatable/equatable.dart';
+import 'package:platform_receiver_modes/platform_receiver_modes.dart';
 
 import '../models/cast_models.dart';
 import '../models/phone_media_diagnostic_models.dart';
@@ -52,10 +53,39 @@ class PhoneMediaReceiverCapabilities extends Equatable {
     required this.supportedVideoCodecs,
   });
 
+  static const none = PhoneMediaReceiverCapabilities(
+    supportedContainers: {},
+    supportedVideoCodecs: {},
+  );
+
   static const chromecastDefault = PhoneMediaReceiverCapabilities(
     supportedContainers: {'mp4', 'm4v', 'webm'},
     supportedVideoCodecs: {'h264', 'vp8', 'vp9'},
   );
+
+  /// Conservative envelope derived from Airo's legacy-receiver mode contract.
+  ///
+  /// The contract does not currently expose codec tables directly, so this
+  /// maps mode classes to the safest local-file assumptions:
+  /// - `blocked`: reject all direct local-file handoffs
+  /// - `lite`/`restrictedLite`: MP4/M4V with H.264 only
+  /// - `off`: fall back to the generic Cast baseline
+  factory PhoneMediaReceiverCapabilities.forLegacyReceiverMode(
+    LegacyReceiverModeContract contract,
+  ) {
+    switch (contract.modeId) {
+      case LegacyReceiverModeId.blocked:
+        return none;
+      case LegacyReceiverModeId.liteReceiver:
+      case LegacyReceiverModeId.restrictedLiteReceiver:
+        return const PhoneMediaReceiverCapabilities(
+          supportedContainers: {'mp4', 'm4v'},
+          supportedVideoCodecs: {'h264'},
+        );
+      case LegacyReceiverModeId.off:
+        return chromecastDefault;
+    }
+  }
 
   final Set<String> supportedContainers;
   final Set<String> supportedVideoCodecs;
@@ -107,6 +137,7 @@ class PhoneMediaCastHandoff {
   PhoneMediaCastHandoff({
     required this._castController,
     this.capabilities = PhoneMediaReceiverCapabilities.chromecastDefault,
+    this.receiverModeContract,
     this._bindAddress,
     this.onDiagnosticEvent,
     this.onSessionEvent,
@@ -119,6 +150,7 @@ class PhoneMediaCastHandoff {
 
   final AiroCastController _castController;
   final PhoneMediaReceiverCapabilities capabilities;
+  final LegacyReceiverModeContract? receiverModeContract;
   final InternetAddress? _bindAddress;
   final Duration _sessionTtl;
   final Duration _idleTimeout;
@@ -141,8 +173,14 @@ class PhoneMediaCastHandoff {
   String? get connectedDeviceName =>
       _castController.currentSessionState.device?.name;
 
+  PhoneMediaReceiverCapabilities get resolvedCapabilities {
+    final contract = receiverModeContract;
+    if (contract == null) return capabilities;
+    return PhoneMediaReceiverCapabilities.forLegacyReceiverMode(contract);
+  }
+
   Future<PhoneMediaHandoffResult> start(PhoneLocalMediaItem item) async {
-    final unsupportedReason = capabilities.evaluate(item);
+    final unsupportedReason = resolvedCapabilities.evaluate(item);
     if (unsupportedReason != null) {
       return PhoneMediaHandoffUnsupported(reason: unsupportedReason);
     }

@@ -1,11 +1,11 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:platform_player/platform_player.dart';
 
-/// CV-033 debug entry point: lets the user pick a phone-local video file to
-/// stream to a cast receiver. Only wired into the app for debug builds
-/// (see `app_router.dart`) — the end-user surface for this flow is
-/// undecided, so this stays behind a debug gate rather than blocking
-/// hardware testing on final UX.
+/// Lets an experimental build pick a phone-local video file to stream to a
+/// receiver.
+///
+/// The feature package keeps the picker app-owned so `feature_iptv` does not
+/// depend on `file_picker`, but the flow itself is a real product surface.
 Future<PhoneLocalMediaItem?> pickPhoneLocalMediaForTv() async {
   final result = await FilePicker.pickFiles(type: FileType.video);
   final files = result?.files;

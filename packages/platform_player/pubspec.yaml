@@ -19,11 +19,15 @@ dependencies:
     path: third_party/flutter_chrome_cast
   platform_channels:
     path: ../platform_channels
+  platform_receiver_modes:
+    path: ../platform_receiver_modes
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
+  product_capabilities:
+    path: ../product_capabilities
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
