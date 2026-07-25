@@ -4,6 +4,8 @@ import '../../entities/shared_expense.dart';
 import '../../repositories/group_repository.dart';
 import '../datasources/coins_local_datasource.dart';
 import '../mappers/group_mapper.dart';
+import '../../result.dart';
+export '../../result.dart';
 
 /// Implementation of GroupRepository
 ///

@@ -1,8 +1,7 @@
 import '../../entities/settlement.dart';
 import '../../repositories/settlement_repository.dart';
-
-/// Result type for use case operations
-typedef Result<T> = ({T? data, String? error});
+import '../../result.dart';
+export '../../result.dart';
 
 /// Use case for recording a settlement
 ///

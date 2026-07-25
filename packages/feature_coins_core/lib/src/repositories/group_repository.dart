@@ -1,9 +1,8 @@
 import '../entities/group.dart';
 import '../entities/group_member.dart';
 import '../entities/shared_expense.dart';
-
-/// Result type for repository operations
-typedef Result<T> = ({T? data, String? error});
+import '../result.dart';
+export '../result.dart';
 
 /// Group repository interface
 ///

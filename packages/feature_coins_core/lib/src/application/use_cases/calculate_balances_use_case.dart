@@ -4,9 +4,8 @@ import '../../services/balance_engine.dart';
 import '../../services/debt_simplifier.dart';
 import '../../models/balance_summary.dart';
 import '../../models/debt_entry.dart';
-
-/// Result type for use case operations
-typedef Result<T> = ({T? data, String? error});
+import '../../result.dart';
+export '../../result.dart';
 
 /// Use case for calculating group balances
 ///

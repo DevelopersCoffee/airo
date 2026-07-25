@@ -1,7 +1,7 @@
 import '../../entities/group_member.dart';
 import '../../repositories/group_repository.dart';
-
-typedef Result<T> = ({T? data, String? error});
+import '../../result.dart';
+export '../../result.dart';
 
 class AddGroupMemberUseCase {
   final GroupRepository _repository;

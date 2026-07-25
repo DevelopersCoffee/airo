@@ -2,9 +2,8 @@ import '../../entities/shared_expense.dart';
 import '../../entities/split_entry.dart';
 import '../../repositories/group_repository.dart';
 import '../../services/split_calculator.dart';
-
-/// Result type for use case operations
-typedef Result<T> = ({T? data, String? error});
+import '../../result.dart';
+export '../../result.dart';
 
 /// Use case for adding a shared expense with splits
 ///

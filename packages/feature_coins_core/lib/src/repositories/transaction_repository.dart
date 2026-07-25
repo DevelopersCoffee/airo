@@ -1,8 +1,6 @@
 import '../entities/transaction.dart';
-
-/// Result type for repository operations
-/// TODO: Import from core_domain when available
-typedef Result<T> = ({T? data, String? error});
+import '../result.dart';
+export '../result.dart';
 
 /// Transaction repository interface
 ///

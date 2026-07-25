@@ -1,8 +1,7 @@
 import '../../entities/transaction.dart';
 import '../../repositories/transaction_repository.dart';
-
-/// Result type for use case operations
-typedef Result<T> = ({T? data, String? error});
+import '../../result.dart';
+export '../../result.dart';
 
 /// Use case for adding a new expense
 ///

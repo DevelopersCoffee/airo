@@ -2,6 +2,8 @@ import '../../entities/budget.dart';
 import '../../repositories/budget_repository.dart';
 import '../datasources/coins_local_datasource.dart';
 import '../mappers/budget_mapper.dart';
+import '../../result.dart';
+export '../../result.dart';
 
 /// Implementation of BudgetRepository
 ///

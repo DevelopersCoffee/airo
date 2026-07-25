@@ -2,6 +2,8 @@ import '../../entities/transaction.dart';
 import '../../repositories/transaction_repository.dart';
 import '../datasources/coins_local_datasource.dart';
 import '../mappers/transaction_mapper.dart';
+import '../../result.dart';
+export '../../result.dart';
 
 /// Implementation of TransactionRepository
 ///

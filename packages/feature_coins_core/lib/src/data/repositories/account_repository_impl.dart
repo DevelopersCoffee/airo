@@ -2,6 +2,8 @@ import '../../entities/account.dart';
 import '../../repositories/account_repository.dart';
 import '../datasources/coins_local_datasource.dart';
 import '../mappers/account_mapper.dart';
+import '../../result.dart';
+export '../../result.dart';
 
 /// Implementation of AccountRepository
 ///

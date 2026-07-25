@@ -1,7 +1,6 @@
 import '../entities/settlement.dart';
-
-/// Result type for repository operations
-typedef Result<T> = ({T? data, String? error});
+import '../result.dart';
+export '../result.dart';
 
 /// Settlement repository interface
 ///
