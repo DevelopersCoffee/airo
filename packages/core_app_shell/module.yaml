@@ -4,6 +4,7 @@ reviewers:
   - Flutter Architect
   - Chief QA Officer
 allowed_dependencies:
+  - core_data
   - core_ui
 forbidden_dependencies:
   - app

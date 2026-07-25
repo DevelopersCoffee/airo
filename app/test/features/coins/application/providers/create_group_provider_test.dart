@@ -1,5 +1,4 @@
-import 'package:airo_app/core/utils/currency_formatter.dart';
-import 'package:airo_app/core/utils/locale_settings.dart';
+import 'package:core_app_shell/core_app_shell.dart';
 import 'package:airo_app/features/coins/application/providers/group_providers.dart';
 import 'package:airo_app/features/coins/domain/entities/group.dart';
 import 'package:airo_app/features/coins/domain/entities/group_member.dart';
