@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:airo_app/features/coins/data/datasources/coins_local_datasource.dart';
-import 'package:airo_app/features/coins/data/mappers/transaction_mapper.dart';
-import 'package:airo_app/features/coins/data/repositories/transaction_repository_impl.dart';
+import 'package:feature_coins_core/src/data/datasources/coins_local_datasource.dart';
+import 'package:feature_coins_core/src/data/mappers/transaction_mapper.dart';
+import 'package:feature_coins_core/src/data/repositories/transaction_repository_impl.dart';
 import 'package:feature_coins_core/src/entities/transaction.dart';
 
 class MockCoinsLocalDatasource extends Mock implements CoinsLocalDatasource {}
