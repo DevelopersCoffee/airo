@@ -290,6 +290,9 @@ class _ChannelRow extends StatelessWidget {
               logoUrl: channel.effectiveLogoUrl,
               channelName: channel.name,
               size: logoSize,
+              // Wide box: broadcaster logos are mostly rectangular, and a
+              // square crushed them to a sliver at row height.
+              width: logoSize * 1.7,
               fit: BoxFit.contain,
               borderRadius: 4,
               isAudioOnly: channel.isAudioOnly,
