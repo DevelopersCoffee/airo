@@ -134,7 +134,13 @@ void main() {
         child: const MaterialApp(home: IPTVScreen(deepLinkChannelId: 'c1')),
       ),
     );
-    await tester.pumpAndSettle();
+    // Bounded pumps, not pumpAndSettle: the deep link lands on the player
+    // surface, whose progress indicator animates indefinitely — settle can
+    // never complete there (same reason the sibling deep-link tests above
+    // use plain pump()). Two pumps flush the deep-link resolution
+    // microtasks and the post-frame resume gate.
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
 
     expect(deepLinkPlayed.map((channel) => channel.id), ['c1']);
     expect(resumePlayed, isEmpty);
