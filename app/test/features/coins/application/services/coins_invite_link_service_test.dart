@@ -1,4 +1,4 @@
-import 'package:airo_app/features/coins/application/services/coins_invite_link_service.dart';
+import 'package:feature_coins_core/src/application/services/coins_invite_link_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

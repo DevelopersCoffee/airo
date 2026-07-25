@@ -1,4 +1,4 @@
-import 'package:airo_app/features/coins/application/services/finance_chat_ingestion_service.dart';
+import 'package:feature_coins_core/src/application/services/finance_chat_ingestion_service.dart';
 import 'package:feature_coins_core/src/entities/transaction.dart';
 import 'package:feature_coins_core/src/repositories/transaction_repository.dart';
 import 'package:feature_coins_core/src/services/finance_message_parser.dart';

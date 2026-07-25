@@ -1,6 +1,6 @@
 import 'package:airo_app/core/database/app_database.dart';
-import 'package:airo_app/features/coins/application/use_cases/add_split_use_case.dart';
-import 'package:airo_app/features/coins/application/use_cases/create_group_use_case.dart';
+import 'package:feature_coins_core/src/application/use_cases/add_split_use_case.dart';
+import 'package:feature_coins_core/src/application/use_cases/create_group_use_case.dart';
 import 'package:airo_app/features/coins/data/datasources/coins_local_datasource_impl.dart';
 import 'package:feature_coins_core/src/data/mappers/group_mapper.dart';
 import 'package:feature_coins_core/src/data/repositories/group_repository_impl.dart';
