@@ -298,16 +298,22 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
     if (picker == null) return;
 
     final item = await picker();
-    if (item == null || !mounted) return;
+    if (item == null) return;
+    if (!mounted) {
+      await item.sourceLease?.release();
+      return;
+    }
 
-    final handoff = PhoneMediaCastHandoff(
-      castController: ref.read(airoCastControllerProvider),
-    );
-    await showModalBottomSheet<void>(
+    final castController = ref.read(airoCastControllerProvider);
+    final handoff = PhoneMediaCastHandoff(castController: castController);
+    await showAdaptiveIptvSheet<void>(
       context: context,
-      isScrollControlled: true,
-      builder: (context) =>
-          PhoneMediaPlayOnTvSheet(item: item, handoff: handoff),
+      maxWidth: 600,
+      builder: (context) => PhoneMediaPlayOnTvSheet(
+        item: item,
+        handoff: handoff,
+        castController: castController,
+      ),
     );
   }
 

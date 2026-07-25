@@ -62,6 +62,23 @@ void main() {
     expect(mediaInfo.streamType, CastMediaStreamType.buffered);
   });
 
+  test('proxy mode bypasses tokenized private-LAN handoff URLs', () {
+    expect(
+      FlutterChromeCastController.shouldProxyUrl(
+        Uri.parse('http://192.168.1.15:33573/media?token=redacted'),
+        proxyEnabled: true,
+      ),
+      isFalse,
+    );
+    expect(
+      FlutterChromeCastController.shouldProxyUrl(
+        Uri.parse('https://example.com/channel.m3u8'),
+        proxyEnabled: true,
+      ),
+      isTrue,
+    );
+  });
+
   test('ignores stale receiver status for previous media content id', () {
     const tv = AiroCastDevice(id: 'tv-1', name: 'Sony Bravia');
     final current = AiroCastMediaRequest(
