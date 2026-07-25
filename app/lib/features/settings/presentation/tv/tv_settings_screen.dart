@@ -48,8 +48,7 @@ class _TvSettingsScreenState extends ConsumerState<TvSettingsScreen> {
                       padding: const EdgeInsets.only(bottom: 8),
                       child: TvFocusable(
                         autofocus: section.id == IptvSettingsSectionId.theme,
-                        onSelect: () =>
-                            setState(() => _selected = section.id),
+                        onSelect: () => setState(() => _selected = section.id),
                         semanticLabel: section.labelFor(ShellId.tv),
                         semanticButton: true,
                         child: DecoratedBox(

@@ -91,9 +91,7 @@ class SettingsHubScreen extends ConsumerWidget {
                 _section(IptvSettingsSectionId.audio).iconFor(ShellId.mobile),
               ),
               title: Text(
-                _section(
-                  IptvSettingsSectionId.audio,
-                ).labelFor(ShellId.mobile),
+                _section(IptvSettingsSectionId.audio).labelFor(ShellId.mobile),
               ),
               subtitle: const Text('Configure context-aware audio behavior'),
               trailing: const Icon(Icons.arrow_forward_ios, size: 16),

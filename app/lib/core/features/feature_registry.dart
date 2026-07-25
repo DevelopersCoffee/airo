@@ -89,8 +89,7 @@ abstract class AppFeatureModule implements shell.AppModule {
   List<RouteBase> routesFor(shell.ShellId shell) => routes;
 
   @override
-  List<Override> providerOverridesFor(shell.ShellId shell) =>
-      providerOverrides;
+  List<Override> providerOverridesFor(shell.ShellId shell) => providerOverrides;
 
   /// Initialize the feature (called once on app startup)
   ///
