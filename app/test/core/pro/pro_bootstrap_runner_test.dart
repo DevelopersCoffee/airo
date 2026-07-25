@@ -1,6 +1,31 @@
 import 'package:airo_app/core/pro/pro_bootstrap_runner.dart';
 import 'package:airo_app/core/startup/app_startup_tasks.dart';
+import 'package:core_entitlements/core_entitlements.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+class _RecordingModule implements ProModule {
+  _RecordingModule(this.id, this.feature, {this.throwOnInit = false});
+
+  @override
+  final String id;
+  @override
+  final ProFeature feature;
+  final bool throwOnInit;
+
+  var initialized = 0;
+  var disposed = 0;
+
+  @override
+  Future<void> initialize() async {
+    if (throwOnInit) throw StateError('boom');
+    initialized++;
+  }
+
+  @override
+  Future<void> dispose() async {
+    disposed++;
+  }
+}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -15,6 +40,57 @@ void main() {
     expect(initialized, isEmpty);
     expect(logs, isEmpty);
   });
+
+  test('entitled modules initialize; unentitled and broken ones are '
+      'contained', () async {
+    final entitled = _RecordingModule('a', ProFeature.epgReminders);
+    final broken = _RecordingModule(
+      'b',
+      ProFeature.regionalRanking,
+      throwOnInit: true,
+    );
+    final logs = <String>[];
+
+    final initialized = await runProBootstrap(
+      log: logs.add,
+      entitlements: LaunchPromoEntitlements.new,
+      register: (registry) {
+        registry.register(entitled);
+        registry.register(broken);
+      },
+    );
+
+    expect(initialized, ['a']);
+    expect(entitled.initialized, 1);
+    expect(logs.single, contains('Pro modules initialized: a'));
+  });
+
+  test('unentitled modules never initialize', () async {
+    final module = _RecordingModule('a', ProFeature.epgReminders);
+
+    final initialized = await runProBootstrap(
+      entitlements: NoEntitlements.new,
+      register: (registry) => registry.register(module),
+    );
+
+    expect(initialized, isEmpty);
+    expect(module.initialized, 0);
+  });
+
+  test(
+    'a throwing seam degrades to the baseline instead of crashing',
+    () async {
+      final logs = <String>[];
+
+      final initialized = await runProBootstrap(
+        log: logs.add,
+        register: (_) => throw StateError('bad overlay'),
+      );
+
+      expect(initialized, isEmpty);
+      expect(logs.single, contains('Pro bootstrap failed'));
+    },
+  );
 
   test(
     'scheduleDeferredProBootstrap runs the seam after first frame',
