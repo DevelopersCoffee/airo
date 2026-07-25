@@ -1,4 +1,5 @@
 import 'package:file_picker/file_picker.dart';
+import 'package:platform_media/platform_media.dart';
 import 'package:platform_player/platform_player.dart';
 
 /// CV-033 debug entry point: lets the user pick a phone-local video file to
@@ -14,10 +15,43 @@ Future<PhoneLocalMediaItem?> pickPhoneLocalMediaForTv() async {
   final file = files.first;
   final path = file.path;
   if (path == null) return null;
+  final analysis = await DefaultLocalMediaAssetAnalyzer().analyze(
+    MediaAssetAnalysisRequest(
+      assetId: file.identifier ?? file.name,
+      filePath: path,
+      fileName: file.name,
+      fileSizeBytesHint: file.size > 0 ? file.size : null,
+    ),
+  );
+  final profile = analysis.profile;
+  final primaryVideoTrack = profile != null && profile.videoTracks.isNotEmpty
+      ? profile.videoTracks.first
+      : null;
+  final primaryAudioTrack = profile != null && profile.audioTracks.isNotEmpty
+      ? profile.audioTracks.first
+      : null;
 
   return PhoneLocalMediaItem(
     filePath: path,
     title: file.name,
-    container: (file.extension ?? '').toLowerCase(),
+    container:
+        profile?.container.stableId ?? (file.extension ?? '').toLowerCase(),
+    videoCodec: _mapVideoCodec(primaryVideoTrack?.codec),
+    audioCodec: _mapAudioCodec(primaryAudioTrack?.codec),
+    duration: profile?.duration,
   );
+}
+
+String? _mapVideoCodec(MediaVideoCodec? codec) {
+  return switch (codec) {
+    null || MediaVideoCodec.unknown => null,
+    _ => codec.stableId,
+  };
+}
+
+String? _mapAudioCodec(MediaAudioCodec? codec) {
+  return switch (codec) {
+    null || MediaAudioCodec.unknown => null,
+    _ => codec.stableId,
+  };
 }

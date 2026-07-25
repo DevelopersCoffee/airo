@@ -37,6 +37,7 @@ class MainActivity : AudioServiceActivity() {
 
     private lateinit var pictureInPicturePlugin: AiroPictureInPicturePlugin
     private lateinit var backgroundAudioPlugin: AiroBackgroundAudioPlugin
+    private lateinit var mediaAssetAnalyzerPlugin: AiroMediaAssetAnalyzerPlugin
 
     override fun shouldDestroyEngineWithHost(): Boolean {
         return false
@@ -110,6 +111,9 @@ class MainActivity : AudioServiceActivity() {
 
         backgroundAudioPlugin = AiroBackgroundAudioPlugin(this)
         backgroundAudioPlugin.register(flutterEngine.dartExecutor.binaryMessenger)
+
+        mediaAssetAnalyzerPlugin = AiroMediaAssetAnalyzerPlugin(this)
+        mediaAssetAnalyzerPlugin.register(flutterEngine.dartExecutor.binaryMessenger)
     }
 
     override fun onUserLeaveHint() {
