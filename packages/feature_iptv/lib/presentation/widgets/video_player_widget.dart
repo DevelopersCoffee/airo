@@ -2,7 +2,6 @@ import 'dart:async';
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:platform_channels/platform_channels.dart';
 import '../../application/player_backgrounding_coordinator.dart';
@@ -1551,94 +1550,11 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
     );
   }
 
-  /// VOD-only seek bar (CV-016). Live streams use the live-edge/DVR
-  /// controls instead — this never renders when [StreamingState.isLiveStream]
-  /// is true or the stream has no known duration.
-  Widget _buildVodSeekBar(
-    VideoPlayerStreamingService service,
-    StreamingState state,
-  ) {
-    final durationSeconds = state.duration.inSeconds.toDouble();
-    final displayPosition = (_vodSeekDragPosition ?? state.position).inSeconds
-        .toDouble()
-        .clamp(0.0, durationSeconds);
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 4),
-      child: Row(
-        children: [
-          Text(
-            _formatDuration(_vodSeekDragPosition ?? state.position),
-            style: const TextStyle(color: Colors.white70, fontSize: 12),
-          ),
-          Expanded(
-            child: Material(
-              type: MaterialType.transparency,
-              child: SliderTheme(
-                data: SliderTheme.of(context).copyWith(
-                  trackHeight: 3,
-                  thumbShape: const RoundSliderThumbShape(
-                    enabledThumbRadius: 6,
-                  ),
-                ),
-                child: Slider(
-                  key: const ValueKey('iptv-player-vod-seek-bar'),
-                  value: displayPosition,
-                  min: 0,
-                  max: durationSeconds,
-                  activeColor: Colors.white,
-                  inactiveColor: Colors.white24,
-                  onChanged: (value) {
-                    setState(() {
-                      _vodSeekDragPosition = Duration(seconds: value.round());
-                    });
-                  },
-                  onChangeEnd: (value) {
-                    final target = Duration(seconds: value.round());
-                    service.seek(target);
-                    setState(() => _vodSeekDragPosition = null);
-                  },
-                ),
-              ),
-            ),
-          ),
-          Text(
-            _formatDuration(state.duration),
-            style: const TextStyle(color: Colors.white70, fontSize: 12),
-          ),
-        ],
-      ),
-    );
-  }
-
   String _formatDuration(Duration d) {
     final minutes = d.inMinutes.remainder(60).toString().padLeft(2, '0');
     final hours = d.inHours;
     final seconds = d.inSeconds.remainder(60).toString().padLeft(2, '0');
     return hours > 0 ? '$hours:$minutes:$seconds' : '$minutes:$seconds';
-  }
-
-  Widget _buildBufferIndicator(StreamingState state) {
-    final bufferHealth = state.bufferStatus.bufferHealth;
-    final color = bufferHealth >= 80
-        ? Colors.green
-        : bufferHealth >= 50
-        ? Colors.yellow
-        : Colors.red;
-    return Column(
-      children: [
-        LinearProgressIndicator(
-          value: bufferHealth / 100,
-          backgroundColor: Colors.white24,
-          valueColor: AlwaysStoppedAnimation<Color>(color),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          'Buffer: ${state.bufferStatus.bufferedAhead.inSeconds}s',
-          style: const TextStyle(color: Colors.white70, fontSize: 12),
-        ),
-      ],
-    );
   }
 
   /// Builds the renderer-agnostic [PlayerViewState] the new [PlayerOverlay]
@@ -1743,7 +1659,6 @@ class _PlayerRoundControlButton extends StatelessWidget {
     required this.icon,
     this.onPressed,
     this.tooltip,
-    this.iconColor = Colors.white,
     this.backgroundColor,
     this.backgroundAlpha = 0.64,
     this.diameter = 64,
@@ -1753,7 +1668,6 @@ class _PlayerRoundControlButton extends StatelessWidget {
   final IconData icon;
   final VoidCallback? onPressed;
   final String? tooltip;
-  final Color iconColor;
   final Color? backgroundColor;
   final double backgroundAlpha;
   final double diameter;
@@ -1763,7 +1677,7 @@ class _PlayerRoundControlButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final effectiveColor = onPressed == null
         ? Colors.white.withValues(alpha: 0.38)
-        : iconColor;
+        : Colors.white;
     return Material(
       color: backgroundColor ?? Colors.black.withValues(alpha: backgroundAlpha),
       shape: const CircleBorder(),
