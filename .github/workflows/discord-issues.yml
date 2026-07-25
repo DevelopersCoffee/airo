@@ -1,0 +1,188 @@
+name: Discord — Issues & Bugs
+
+# ──────────────────────────────────────────────────────────────
+# Fires on issue lifecycle events and milestone events.
+# Requires secret: DISCORD_ISSUES_WEBHOOK
+#   → Discord channel: #bugs-and-issues (Forum channel)
+#   Forum channels require thread_name in every payload.
+#   Each issue/milestone creates its own thread automatically.
+# ──────────────────────────────────────────────────────────────
+on:
+  issues:
+    types: [opened, closed, reopened, labeled]
+  milestone:
+    types: [created, closed, edited]
+
+jobs:
+  notify-issue:
+    name: Notify Discord — Issue event
+    runs-on: ubuntu-latest
+    if: github.event_name == 'issues'
+    steps:
+      - name: Send issue embed
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_ISSUES_WEBHOOK }}
+        run: |
+          ACTION="${{ github.event.action }}"
+          TITLE="${{ github.event.issue.title }}"
+          URL="${{ github.event.issue.html_url }}"
+          NUMBER="${{ github.event.issue.number }}"
+          AUTHOR="${{ github.event.issue.user.login }}"
+          AVATAR="${{ github.event.issue.user.avatar_url }}"
+          REPO="${{ github.repository }}"
+
+          RAW_BODY=$(cat << 'BODY_EOF'
+          ${{ github.event.issue.body }}
+          BODY_EOF
+          )
+          BODY="${RAW_BODY:0:1000}"
+
+          LABELS=$(echo '${{ toJson(github.event.issue.labels) }}' \
+            | jq -r '[.[].name] | join(", ")' 2>/dev/null || echo "none")
+
+          # ── Colour, icon, verb by action ─────────────────────
+          case "$ACTION" in
+            opened)
+              COLOR=15548997; ICON="🐛"; VERB="Bug reported"  ;;
+            closed)
+              COLOR=5763719;  ICON="✅"; VERB="Issue closed"  ;;
+            reopened)
+              COLOR=16776960; ICON="🔄"; VERB="Issue reopened" ;;
+            labeled)
+              LABEL_NAME="${{ github.event.label.name }}"
+              COLOR=5793266;  ICON="🏷️"; VERB="Labeled: ${LABEL_NAME}" ;;
+            *)
+              COLOR=8421504;  ICON="ℹ️"; VERB="Issue updated"  ;;
+          esac
+
+          # Forum channels need thread_name — use issue title (max 100 chars)
+          THREAD_NAME="${ICON} #${NUMBER} — ${TITLE:0:90}"
+
+          PAYLOAD=$(jq -n \
+            --arg thread_name "$THREAD_NAME" \
+            --arg icon    "$ICON" \
+            --arg verb    "$VERB" \
+            --arg title   "$TITLE" \
+            --arg body    "$BODY" \
+            --arg url     "$URL" \
+            --arg number  "$NUMBER" \
+            --arg author  "$AUTHOR" \
+            --arg avatar  "$AVATAR" \
+            --arg repo    "$REPO" \
+            --arg labels  "$LABELS" \
+            --argjson color "$COLOR" \
+            '{
+              thread_name: $thread_name,
+              username: "Airo Issues Bot",
+              avatar_url: "https://raw.githubusercontent.com/DevelopersCoffee/airo/main/docs/assets/airo-tv/airo-icon.svg",
+              embeds: [{
+                title: ($icon + "  " + $verb + "  ·  #" + $number),
+                description: ("**" + $title + "**\n\n" + (if $body != "" then $body else "_No description provided._" end)),
+                url: $url,
+                color: $color,
+                author: {
+                  name: ("@" + $author),
+                  url: ("https://github.com/" + $author),
+                  icon_url: $avatar
+                },
+                fields: [
+                  {
+                    name: "📁 Repository",
+                    value: ("[" + $repo + "](https://github.com/" + $repo + ")"),
+                    inline: true
+                  },
+                  {
+                    name: "🏷️ Labels",
+                    value: (if $labels != "" then $labels else "none" end),
+                    inline: true
+                  }
+                ],
+                footer: {
+                  text: "DevelopersCoffee · Airo  |  discord.gg/62r67VcMzM"
+                },
+                timestamp: (now | strftime("%Y-%m-%dT%H:%M:%SZ"))
+              }]
+            }')
+
+          curl -s -f \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD" \
+            "$DISCORD_WEBHOOK"
+
+  notify-milestone:
+    name: Notify Discord — Milestone event
+    runs-on: ubuntu-latest
+    if: github.event_name == 'milestone'
+    steps:
+      - name: Send milestone embed
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_ISSUES_WEBHOOK }}
+        run: |
+          ACTION="${{ github.event.action }}"
+          TITLE="${{ github.event.milestone.title }}"
+          URL="${{ github.event.milestone.html_url }}"
+          NUMBER="${{ github.event.milestone.number }}"
+          DUE="${{ github.event.milestone.due_on }}"
+          OPEN="${{ github.event.milestone.open_issues }}"
+          CLOSED="${{ github.event.milestone.closed_issues }}"
+          REPO="${{ github.repository }}"
+
+          case "$ACTION" in
+            created) COLOR=3447003;  ICON="🎯"; VERB="Milestone created"    ;;
+            closed)  COLOR=5763719;  ICON="🏁"; VERB="Milestone completed"  ;;
+            edited)  COLOR=16753920; ICON="✏️";  VERB="Milestone updated"    ;;
+            *)       COLOR=8421504;  ICON="📍"; VERB="Milestone event"      ;;
+          esac
+
+          TOTAL=$((OPEN + CLOSED))
+          PROGRESS=$([ "$TOTAL" -gt 0 ] && echo "${CLOSED} / ${TOTAL} issues done" || echo "No issues yet")
+          THREAD_NAME="${ICON} Milestone #${NUMBER} — ${TITLE:0:80}"
+
+          PAYLOAD=$(jq -n \
+            --arg thread_name "$THREAD_NAME" \
+            --arg icon     "$ICON" \
+            --arg verb     "$VERB" \
+            --arg title    "$TITLE" \
+            --arg url      "$URL" \
+            --arg number   "$NUMBER" \
+            --arg due      "$DUE" \
+            --arg progress "$PROGRESS" \
+            --arg repo     "$REPO" \
+            --argjson color "$COLOR" \
+            '{
+              thread_name: $thread_name,
+              username: "Airo Milestones Bot",
+              avatar_url: "https://raw.githubusercontent.com/DevelopersCoffee/airo/main/docs/assets/airo-tv/airo-icon.svg",
+              embeds: [{
+                title: ($icon + "  " + $verb + "  ·  M#" + $number),
+                description: ("**" + $title + "**"),
+                url: $url,
+                color: $color,
+                fields: [
+                  {
+                    name: "📊 Progress",
+                    value: $progress,
+                    inline: true
+                  },
+                  {
+                    name: "📅 Due",
+                    value: (if ($due != "" and $due != "null") then $due else "No due date" end),
+                    inline: true
+                  },
+                  {
+                    name: "📁 Repository",
+                    value: ("[" + $repo + "](https://github.com/" + $repo + ")"),
+                    inline: false
+                  }
+                ],
+                footer: {
+                  text: "DevelopersCoffee · Airo  |  discord.gg/62r67VcMzM"
+                },
+                timestamp: (now | strftime("%Y-%m-%dT%H:%M:%SZ"))
+              }]
+            }')
+
+          curl -s -f \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD" \
+            "$DISCORD_WEBHOOK"

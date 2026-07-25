@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:airo_app/features/coins/domain/services/balance_engine.dart';
-import 'package:airo_app/features/coins/domain/entities/shared_expense.dart';
-import 'package:airo_app/features/coins/domain/entities/split_entry.dart';
-import 'package:airo_app/features/coins/domain/entities/settlement.dart';
+import 'package:feature_coins_core/src/services/balance_engine.dart';
+import 'package:feature_coins_core/src/entities/shared_expense.dart';
+import 'package:feature_coins_core/src/entities/split_entry.dart';
+import 'package:feature_coins_core/src/entities/settlement.dart';
 
 void main() {
   late BalanceEngine engine;

@@ -1,0 +1,17 @@
+name: feature_coins_core
+description: >
+  Pure domain layer of the Airo Coins finance feature: entities, value
+  models, repository contracts, and calculation engines (balance, budget,
+  debt simplification, split). No Flutter, storage, or app dependencies.
+version: 0.0.1
+publish_to: none
+
+environment:
+  sdk: ^3.12.2
+
+dependencies:
+  equatable: ^2.0.8
+
+dev_dependencies:
+  lints: ^6.0.0
+  test: ^1.25.0

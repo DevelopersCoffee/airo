@@ -15,6 +15,7 @@ void main() {
     double volume = 0.5,
     ValueChanged<double>? onBrightnessChanged,
     ValueChanged<double>? onVolumeChanged,
+    VoidCallback? onTap,
   }) {
     tester.view.physicalSize = const Size(300, 400);
     tester.view.devicePixelRatio = 1.0;
@@ -28,6 +29,7 @@ void main() {
           volume: volume,
           onBrightnessChanged: onBrightnessChanged ?? (_) {},
           onVolumeChanged: onVolumeChanged ?? (_) {},
+          onTap: onTap,
           child: const ColoredBox(color: Colors.black),
         ),
       ),
@@ -88,6 +90,16 @@ void main() {
     expect(find.textContaining('%'), findsOneWidget);
 
     await gesture.up();
+  });
+
+  testWidgets('tapping the gesture surface invokes onTap', (tester) async {
+    var taps = 0;
+    await pumpOverlay(tester, onTap: () => taps++);
+
+    await tester.tap(find.byType(PlayerGestureOverlay));
+    await tester.pump();
+
+    expect(taps, 1);
   });
 
   testWidgets('locked overlay ignores drags entirely', (tester) async {

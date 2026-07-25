@@ -6,7 +6,9 @@ reviewers:
   - Chief QA Officer
 allowed_dependencies:
   - core_data
+  - core_product_shell
   - core_ui
+  - feature_iptv_core
   - platform_channels
   - platform_epg
   - platform_favorites
@@ -16,6 +18,7 @@ allowed_dependencies:
   - platform_playlist
   - platform_playlist_import
   - platform_streams
+  - platform_worker_jobs
   - product_capabilities
 forbidden_dependencies:
   - app

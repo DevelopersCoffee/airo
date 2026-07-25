@@ -133,7 +133,7 @@ void main() {
     await tester.tap(find.byIcon(Icons.menu));
     await tester.pumpAndSettle();
 
-    expect(find.text('Play file on TV (debug)'), findsNothing);
+    expect(find.text('Play file on TV'), findsNothing);
   });
 
   testWidgets(
@@ -145,13 +145,13 @@ void main() {
       await tester.tap(find.byIcon(Icons.menu));
       await tester.pumpAndSettle();
 
-      expect(find.text('Play file on TV (debug)'), findsOneWidget);
+      expect(find.text('Play file on TV'), findsOneWidget);
 
-      await tester.tap(find.text('Play file on TV (debug)'));
+      await tester.tap(find.text('Play file on TV'));
       await tester.pumpAndSettle();
 
       expect(tapped, isTrue);
-      expect(find.text('Play file on TV (debug)'), findsNothing);
+      expect(find.text('Play file on TV'), findsNothing);
     },
   );
 }

@@ -1,20 +1,27 @@
-import 'dart:async';
-
+import 'package:core_product_shell/core_product_shell.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:feature_iptv/feature_iptv.dart';
-import 'package:feature_iptv/presentation/tv_ux/sections/filter_dialogs.dart';
 import '../../../../core/providers/app_theme_provider.dart';
 import 'audio_settings_screen.dart';
-import 'playback_settings_screen.dart';
+
+/// Resolves a section descriptor from the shared
+/// [iptvSettingsSections] manifest by [id] — the same manifest
+/// `TvSettingsScreen` renders from. Throws if [id] isn't declared, which
+/// would mean the manifest and this screen have drifted.
+IptvSettingsSectionDescriptor _section(IptvSettingsSectionId id) =>
+    iptvSettingsSections.firstWhere((section) => section.id == id);
 
 /// Mobile settings hub (CV item 3): the mobile counterpart to
 /// [TvSettingsScreen] — a single scrollable list rather than a rail/detail
 /// split, since phone screens don't have room for a persistent side rail.
 /// Aggregates appearance and links to the
 /// dedicated Audio/Playback/Source screens that previously lived inline in
-/// `ProfileScreen`.
+/// `ProfileScreen`. Section labels below come from the shared
+/// `iptvSettingsSections` manifest (SSOT with the TV settings screen); only
+/// this list's layout (single scrollable column vs. TV's rail/detail split)
+/// stays mobile-specific.
 class SettingsHubScreen extends ConsumerWidget {
   const SettingsHubScreen({super.key, this.onRootBack});
 
@@ -49,7 +56,10 @@ class SettingsHubScreen extends ConsumerWidget {
         body: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            Text('Appearance', style: Theme.of(context).textTheme.titleMedium),
+            Text(
+              _section(IptvSettingsSectionId.theme).labelFor(ShellId.mobile),
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
             const SizedBox(height: 8),
             RadioGroup<AppThemeId>(
               groupValue: ref.watch(appThemeProvider),
@@ -73,8 +83,12 @@ class SettingsHubScreen extends ConsumerWidget {
             const SizedBox(height: 24),
 
             ListTile(
-              leading: const Icon(Icons.settings_voice),
-              title: const Text('Audio Settings'),
+              leading: Icon(
+                _section(IptvSettingsSectionId.audio).iconFor(ShellId.mobile),
+              ),
+              title: Text(
+                _section(IptvSettingsSectionId.audio).labelFor(ShellId.mobile),
+              ),
               subtitle: const Text('Configure context-aware audio behavior'),
               trailing: const Icon(Icons.arrow_forward_ios, size: 16),
               onTap: () {
@@ -87,8 +101,16 @@ class SettingsHubScreen extends ConsumerWidget {
             ),
 
             ListTile(
-              leading: const Icon(Icons.aspect_ratio),
-              title: const Text('Playback Settings'),
+              leading: Icon(
+                _section(
+                  IptvSettingsSectionId.playback,
+                ).iconFor(ShellId.mobile),
+              ),
+              title: Text(
+                _section(
+                  IptvSettingsSectionId.playback,
+                ).labelFor(ShellId.mobile),
+              ),
               subtitle: const Text('Configure video aspect ratio'),
               trailing: const Icon(Icons.arrow_forward_ios, size: 16),
               onTap: () {
@@ -100,19 +122,35 @@ class SettingsHubScreen extends ConsumerWidget {
               },
             ),
 
-            const _CountrySettingsTile(),
+            const CountrySettingsTile(),
 
             ListTile(
-              leading: const Icon(Icons.dns_outlined),
-              title: const Text('Playlist Source'),
+              leading: Icon(
+                _section(
+                  IptvSettingsSectionId.playlistSource,
+                ).iconFor(ShellId.mobile),
+              ),
+              title: Text(
+                _section(
+                  IptvSettingsSectionId.playlistSource,
+                ).labelFor(ShellId.mobile),
+              ),
               subtitle: const Text('Add or remove your M3U playlist URL'),
               trailing: const Icon(Icons.arrow_forward_ios, size: 16),
               onTap: () => showPlaylistSourceSheet(context, ref),
             ),
 
             ListTile(
-              leading: const Icon(Icons.calendar_month_outlined),
-              title: const Text('EPG Guide Source'),
+              leading: Icon(
+                _section(
+                  IptvSettingsSectionId.epgGuideSource,
+                ).iconFor(ShellId.mobile),
+              ),
+              title: Text(
+                _section(
+                  IptvSettingsSectionId.epgGuideSource,
+                ).labelFor(ShellId.mobile),
+              ),
               subtitle: const Text('Add or refresh your XMLTV guide URL'),
               trailing: const Icon(Icons.arrow_forward_ios, size: 16),
               onTap: () => showXmltvSourceSheet(context),
@@ -120,67 +158,6 @@ class SettingsHubScreen extends ConsumerWidget {
           ],
         ),
       ),
-    );
-  }
-}
-
-class _CountrySettingsTile extends ConsumerWidget {
-  const _CountrySettingsTile();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final filters = ref.watch(channelFiltersProvider);
-    final channelsAsync = ref.watch(iptvChannelsProvider);
-    final channels = channelsAsync.value ?? const <IPTVChannel>[];
-    final dimensions = channelFilterDimensions(
-      channels: channels,
-      metadataByChannelId: const {},
-    );
-    final canPickCountry =
-        dimensions.countries.isNotEmpty || filters.country != null;
-
-    return ListTile(
-      leading: const Icon(Icons.flag_outlined),
-      title: const Text('Country'),
-      subtitle: Text(
-        filters.country != null
-            ? countryDisplayLabel(filters.country)
-            : channelsAsync.isLoading
-            ? 'Loading countries…'
-            : dimensions.countries.isEmpty
-            ? 'Load channels first to choose a country'
-            : 'Choose your default channel country',
-      ),
-      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-      enabled: canPickCountry,
-      onTap: !canPickCountry
-          ? null
-          : () => _showCountryPicker(context, ref, dimensions, filters.country),
-    );
-  }
-
-  Future<void> _showCountryPicker(
-    BuildContext context,
-    WidgetRef ref,
-    ChannelFilterDimensions dimensions,
-    String? selectedCountry,
-  ) {
-    final filters = ref.read(channelFiltersProvider.notifier);
-    final countryPrompt = ref.read(channelCountryPromptProvider.notifier);
-    return showFilterOptionDialog(
-      context: context,
-      title: 'Country',
-      options: dimensions.countries.toList(growable: false),
-      selectedValue: selectedCountry,
-      onSelected: (country) {
-        filters.setCountry(country);
-        unawaited(countryPrompt.markCompleted());
-      },
-      onClear: () {
-        filters.setCountry(null);
-        unawaited(countryPrompt.markCompleted());
-      },
-      optionLabel: countryDisplayLabel,
     );
   }
 }

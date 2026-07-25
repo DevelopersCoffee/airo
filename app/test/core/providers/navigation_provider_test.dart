@@ -109,8 +109,7 @@ void main() {
       expect(chromeConfig.compactWidthBreakpoint, 600);
     });
 
-    test('phone bottom nav exposes exactly 5 destinations matching the TV '
-        'sidebar: Home, Live, Guide, Favorites, Settings', () {
+    test('phone navigation preserves Airo domains and overflows the rest', () {
       final container = ProviderContainer();
       addTearDown(container.dispose);
 
@@ -119,14 +118,24 @@ void main() {
       final phoneTabs = phoneLayout.persistentTabs;
 
       expect(phoneTabs.map((t) => t.label).toList(), [
-        'Home',
+        'Coins',
+        'Mind',
+        'Beats',
         'Live',
+      ]);
+      expect(phoneLayout.overflowTabs.map((t) => t.label).toList(), [
+        'Arena',
+        'Quest',
+        'Home',
         'Guide',
         'Favorites',
         'Settings',
       ]);
-      expect(phoneLayout.overflowTabs, isEmpty);
-      expect(phoneLayout.usesOverflow, isFalse);
+      expect(phoneLayout.usesOverflow, isTrue);
+      expect({
+        ...phoneTabs,
+        ...phoneLayout.overflowTabs,
+      }, containsAll(AppNavigationTab.values));
     });
 
     test('wide layouts show a curated 8-tab set: the original six domains '

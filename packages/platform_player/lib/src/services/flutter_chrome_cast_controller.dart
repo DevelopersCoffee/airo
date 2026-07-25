@@ -12,6 +12,7 @@ import 'package:flutter_chrome_cast/media.dart';
 import 'package:flutter_chrome_cast/models/android/android_cast_options.dart';
 import 'package:flutter_chrome_cast/models/ios/ios_cast_options.dart';
 import 'package:flutter_chrome_cast/session.dart';
+import 'package:platform_channels/platform_channels.dart';
 
 import '../models/cast_models.dart';
 import 'airo_cast_controller.dart';
@@ -439,12 +440,17 @@ class FlutterChromeCastController implements AiroCastController {
         codecs: 'hvc1.1.6.L93.B0,mp4a.40.2',
       );
     }
-    if (useProxy) {
+    if (shouldProxyUrl(original, proxyEnabled: useProxy)) {
       await _httpProxy.start();
       _log('load using proxy original=${_uriSummary(original)}');
       return _httpProxy.proxiedUrl(original);
     }
     return original;
+  }
+
+  @visibleForTesting
+  static bool shouldProxyUrl(Uri url, {required bool proxyEnabled}) {
+    return proxyEnabled && AiroPlaylistUrlPolicy.isAllowedCastProxyTarget(url);
   }
 
   Future<HlsProbe> probeHls(Uri url) async {

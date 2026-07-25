@@ -54,11 +54,9 @@ class IPTVScreen extends ConsumerStatefulWidget {
   /// because the feature package does not depend on go_router or app routes.
   final VoidCallback? onSettings;
 
-  /// CV-033 debug entry point: resolves a phone-local file into a
-  /// [PhoneLocalMediaItem], or null if the user cancelled. Left as an
-  /// optional callback so this package doesn't depend on `file_picker`; the
-  /// app wires this in only for debug builds while the end-user surface for
-  /// "Play on TV" is undecided. Null hides the drawer entry entirely.
+  /// Resolves a phone-local file into a [PhoneLocalMediaItem], or null if the
+  /// user cancelled. Left as an optional callback so this package does not
+  /// depend on `file_picker`; the host app owns the native file-picker wiring.
   final Future<PhoneLocalMediaItem?> Function()? onPickLocalMediaForTv;
 
   /// Channel id resolved from a deep link (universal link, home-screen
@@ -324,16 +322,22 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
     if (picker == null) return;
 
     final item = await picker();
-    if (item == null || !mounted) return;
+    if (item == null) return;
+    if (!mounted) {
+      await item.sourceLease?.release();
+      return;
+    }
 
-    final handoff = PhoneMediaCastHandoff(
-      castController: ref.read(airoCastControllerProvider),
-    );
-    await showModalBottomSheet<void>(
+    final castController = ref.read(airoCastControllerProvider);
+    final handoff = PhoneMediaCastHandoff(castController: castController);
+    await showAdaptiveIptvSheet<void>(
       context: context,
-      isScrollControlled: true,
-      builder: (context) =>
-          PhoneMediaPlayOnTvSheet(item: item, handoff: handoff),
+      maxWidth: 600,
+      builder: (context) => PhoneMediaPlayOnTvSheet(
+        item: item,
+        handoff: handoff,
+        castController: castController,
+      ),
     );
   }
 

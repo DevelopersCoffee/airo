@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:airo_app/features/coins/domain/services/budget_engine.dart';
-import 'package:airo_app/features/coins/domain/entities/budget.dart';
-import 'package:airo_app/features/coins/domain/entities/transaction.dart';
-import 'package:airo_app/features/coins/domain/models/safe_to_spend.dart';
+import 'package:feature_coins_core/src/services/budget_engine.dart';
+import 'package:feature_coins_core/src/entities/budget.dart';
+import 'package:feature_coins_core/src/entities/transaction.dart';
+import 'package:feature_coins_core/src/models/safe_to_spend.dart';
 
 void main() {
   late BudgetEngine engine;

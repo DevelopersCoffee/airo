@@ -107,6 +107,7 @@ void main() async {
   );
 
   scheduleDeferredAuthInitialization();
+  scheduleDeferredProBootstrap();
   scheduleDeferredAudioInitialization(
     initializeAudio: initAudioService,
     skipOnWeb: true,

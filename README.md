@@ -13,6 +13,7 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Last Commit](https://img.shields.io/github/last-commit/DevelopersCoffee/airo)](https://github.com/DevelopersCoffee/airo/commits/main)
 [![GitHub Stars](https://img.shields.io/github/stars/DevelopersCoffee/airo?style=social)](https://github.com/DevelopersCoffee/airo/stargazers)
+[![Discord](https://img.shields.io/badge/Discord-Join%20Community-5865F2?logo=discord&logoColor=white)](https://discord.gg/62r67VcMzM)
 
 ![Airo TV running on macOS — live channel browser and playback](docs/assets/images/airo-tv-macos-live.png)
 
@@ -144,6 +145,8 @@ Airo is an open-source playground for developers who care about on-device AI,
 agent-driven engineering, and cross-platform Flutter architecture. Star the
 repo to follow the work; fork it to experiment or send a PR.
 
+💬 **[Join the DevelopersCoffee Discord](https://discord.gg/62r67VcMzM)** — share ideas, ask questions, and grow the community with us.
+
 Good entry points:
 
 - Docs fixes, onboarding polish, and troubleshooting guides.
@@ -165,6 +168,8 @@ Workflow:
 ## Community Standards
 
 [Contributing](CONTRIBUTING.md) · [Code of Conduct](CODE_OF_CONDUCT.md) · [Security Policy](SECURITY.md) · [Trust](TRUST.md) · [Privacy](PRIVACY.md) · [Roadmap](ROADMAP.md) · [Changelog](CHANGELOG.md) · [Download Verification](VERIFY_DOWNLOAD.md)
+
+[![Join our Discord](https://img.shields.io/badge/Discord-Join%20DevelopersCoffee-5865F2?style=for-the-badge&logo=discord&logoColor=white)](https://discord.gg/62r67VcMzM)
 
 ## License
 

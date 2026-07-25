@@ -253,7 +253,8 @@ class _RecordDetailSheetState extends ConsumerState<RecordDetailSheet> {
 
   void _edit() {
     final encodedKey = Uri.encodeComponent(widget.recordKey);
-    context.push('/money/vault/edit/${widget.recordType.name}/$encodedKey');
+    final prefix = ref.read(vaultRoutePrefixProvider);
+    context.push('$prefix/edit/${widget.recordType.name}/$encodedKey');
   }
 
   void _showSnack(String message) {

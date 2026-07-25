@@ -52,6 +52,7 @@ class PlayerGestureOverlay extends StatefulWidget {
     required this.volume,
     required this.onBrightnessChanged,
     required this.onVolumeChanged,
+    this.onTap,
   });
 
   final Widget child;
@@ -64,6 +65,7 @@ class PlayerGestureOverlay extends StatefulWidget {
 
   final ValueChanged<double> onBrightnessChanged;
   final ValueChanged<double> onVolumeChanged;
+  final VoidCallback? onTap;
 
   @override
   State<PlayerGestureOverlay> createState() => _PlayerGestureOverlayState();
@@ -146,6 +148,7 @@ class _PlayerGestureOverlayState extends State<PlayerGestureOverlay> {
               Positioned.fill(
                 child: GestureDetector(
                   behavior: HitTestBehavior.translucent,
+                  onTap: widget.onTap,
                   onVerticalDragStart: (d) => _onDragStart(d, width),
                   onVerticalDragUpdate: (d) => _onDragUpdate(d, height),
                   onVerticalDragEnd: _onDragEnd,

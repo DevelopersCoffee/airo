@@ -186,6 +186,39 @@ void main() {
     expect(response2.statusCode, HttpStatus.notFound);
   });
 
+  test('typed diagnostics emit stable redacted lifecycle events', () async {
+    final events = <PhoneMediaDiagnosticEvent>[];
+    final server = PhoneMediaFileServer(
+      snapshot: snapshotFor(),
+      filePath: mediaFile.path,
+      contentType: 'video/mp4',
+      bindAddress: InternetAddress.loopbackIPv4,
+      sessionToken: 'typed-events-token',
+      onDiagnosticEvent: events.add,
+    );
+    final url = await server.start();
+
+    final rejected = await request(url.replace(path: '/m/wrong/media'));
+    expect(rejected.statusCode, HttpStatus.notFound);
+
+    await server.stopServer();
+
+    expect(
+      events.map((event) => event.kind),
+      containsAll([
+        PhoneMediaDiagnosticEventKind.sessionOpen,
+        PhoneMediaDiagnosticEventKind.requestRejected,
+        PhoneMediaDiagnosticEventKind.sessionClose,
+      ]),
+    );
+    final rejection = events.firstWhere(
+      (event) => event.kind == PhoneMediaDiagnosticEventKind.requestRejected,
+    );
+    expect(rejection.reason, 'unknown_path');
+    expect(rejection.toPublicMap().toString(), isNot(contains(mediaFile.path)));
+    expect(rejection.toString(), isNot(contains('typed-events-token')));
+  });
+
   test('rejects non-GET/HEAD methods with 405', () async {
     final server = serverFor();
     final url = await server.start();
@@ -491,5 +524,15 @@ void main() {
     expect(server.toString(), isNot(contains('test-session-token')));
     expect(server.toString(), isNot(contains(url.toString())));
     expect(server.toString(), isNot(contains(mediaFile.path)));
+  });
+
+  test('diagnostic event toString stays redacted', () {
+    final event = PhoneMediaDiagnosticEvent(
+      kind: PhoneMediaDiagnosticEventKind.requestError,
+      errorType: 'FileSystemException',
+    );
+    expect(event.toString(), contains('request_error'));
+    expect(event.toString(), isNot(contains('/Users/')));
+    expect(event.toPublicMap().toString(), isNot(contains('http://')));
   });
 }

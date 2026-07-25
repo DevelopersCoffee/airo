@@ -1,0 +1,26 @@
+name: core_product_shell
+description: >
+  Shared, shell-count-agnostic contract for app-shell composition: module
+  registration, shell identifiers, route/provider-override/startup-task
+  resolution. Consumed by every product shell (mobile super-app, Airo TV,
+  Airo Coins, and any future shell) instead of each shell re-solving its own
+  bootstrap.
+version: 0.0.1
+publish_to: none
+
+environment:
+  sdk: ^3.12.2
+  flutter: ">=1.17.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_riverpod: 3.3.2
+  go_router: ">=17.1.0 <18.0.0"
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:

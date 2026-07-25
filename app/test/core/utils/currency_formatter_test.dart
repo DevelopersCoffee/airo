@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:airo_app/core/utils/currency_formatter.dart';
+import 'package:core_app_shell/core_app_shell.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
 void main() {

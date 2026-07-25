@@ -76,12 +76,24 @@ dependencies:
     path: ../packages/core_ai
   core_auth:
     path: ../packages/core_auth
+  airo_pro_bootstrap:
+    path: ../packages/airo_pro_bootstrap
+  core_app_shell:
+    path: ../packages/core_app_shell
+  core_entitlements:
+    path: ../packages/core_entitlements
+  core_product_shell:
+    path: ../packages/core_product_shell
 
   # Local packages - Features
   airo:
     path: ../packages/airo
   feature_coin:
     path: ../packages/feature_coin
+  feature_billsplit_core:
+    path: ../packages/feature_billsplit_core
+  feature_coins_core:
+    path: ../packages/feature_coins_core
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.

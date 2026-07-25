@@ -1,5 +1,6 @@
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show ScrollCacheExtent;
 import 'package:platform_channels/platform_channels.dart';
 import 'package:platform_streams/platform_streams.dart';
 
@@ -104,7 +105,7 @@ class _ChannelTableState extends State<ChannelTable> {
             controller: _scrollController,
             key: const PageStorageKey<String>('airo-tv-channel-table-scroll'),
             physics: const AlwaysScrollableScrollPhysics(),
-            cacheExtent: _channelRowHeight * 32,
+            scrollCacheExtent: ScrollCacheExtent.pixels(_channelRowHeight * 32),
             slivers: [
               SliverPersistentHeader(
                 pinned: true,
@@ -251,7 +252,6 @@ class _TableHeader extends StatelessWidget {
 
 class _ChannelRow extends StatelessWidget {
   const _ChannelRow({
-    super.key,
     required this.channel,
     required this.metadata,
     required this.availability,

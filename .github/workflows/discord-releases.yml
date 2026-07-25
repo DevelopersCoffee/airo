@@ -1,0 +1,115 @@
+name: Discord — Release Announcement
+
+# ──────────────────────────────────────────────────────────────
+# Fires when a GitHub Release is published.
+#
+# Routing by tag prefix:
+#   airo-tv-v*  →  DISCORD_TV_RELEASES_WEBHOOK  (#airo-tv-releases)
+#   everything else → DISCORD_RELEASES_WEBHOOK  (#airo-releases)
+# ──────────────────────────────────────────────────────────────
+on:
+  release:
+    types: [published]
+
+jobs:
+  announce:
+    name: Announce release on Discord
+    runs-on: ubuntu-latest
+    steps:
+      - name: Route webhook by tag and send embed
+        env:
+          DISCORD_RELEASES_WEBHOOK:    ${{ secrets.DISCORD_RELEASES_WEBHOOK }}
+          DISCORD_TV_RELEASES_WEBHOOK: ${{ secrets.DISCORD_TV_RELEASES_WEBHOOK }}
+        run: |
+          TAG="${{ github.event.release.tag_name }}"
+          NAME="${{ github.event.release.name }}"
+          URL="${{ github.event.release.html_url }}"
+          AUTHOR="${{ github.event.release.author.login }}"
+          AVATAR="${{ github.event.release.author.avatar_url }}"
+          IS_PRE="${{ github.event.release.prerelease }}"
+          REPO="${{ github.repository }}"
+
+          # ── Route by tag prefix ──────────────────────────────
+          if [[ "$TAG" == airo-tv-v* ]]; then
+            WEBHOOK="$DISCORD_TV_RELEASES_WEBHOOK"
+            BOT_NAME="Airo TV Release Bot"
+            PRODUCT_LABEL="📺 Airo TV"
+          else
+            WEBHOOK="$DISCORD_RELEASES_WEBHOOK"
+            BOT_NAME="Airo Release Bot"
+            PRODUCT_LABEL="🌐 Airo Platform"
+          fi
+
+          # ── Colour by release type ───────────────────────────
+          if [ "$IS_PRE" = "true" ]; then
+            COLOR=16776960   # yellow — pre-release
+            TYPE_LABEL="🧪 Pre-release"
+          else
+            COLOR=5763719    # green  — stable
+            TYPE_LABEL="🚀 Stable Release"
+          fi
+
+          # ── Changelog body (max 3000 chars) ──────────────────
+          RAW_BODY=$(cat << 'BODY_EOF'
+          ${{ github.event.release.body }}
+          BODY_EOF
+          )
+          BODY="${RAW_BODY:0:3000}"
+
+          ASSETS_URL="https://github.com/${REPO}/releases/tag/${TAG}"
+
+          # ── Build JSON payload ───────────────────────────────
+          PAYLOAD=$(jq -n \
+            --arg bot_name    "$BOT_NAME" \
+            --arg tag         "$TAG" \
+            --arg name        "$NAME" \
+            --arg type_label  "$TYPE_LABEL" \
+            --arg product     "$PRODUCT_LABEL" \
+            --arg body        "$BODY" \
+            --arg url         "$URL" \
+            --arg author      "$AUTHOR" \
+            --arg avatar      "$AVATAR" \
+            --arg repo        "$REPO" \
+            --arg assets      "$ASSETS_URL" \
+            --argjson color   "$COLOR" \
+            '{
+              username: $bot_name,
+              avatar_url: "https://raw.githubusercontent.com/DevelopersCoffee/airo/main/docs/assets/airo-tv/airo-icon.svg",
+              embeds: [{
+                title: ($type_label + "  ·  " + $tag),
+                description: $body,
+                url: $url,
+                color: $color,
+                author: {
+                  name: ("Released by @" + $author),
+                  url: ("https://github.com/" + $author),
+                  icon_url: $avatar
+                },
+                fields: [
+                  {
+                    name: "🏷️ Product",
+                    value: $product,
+                    inline: true
+                  },
+                  {
+                    name: "📦 Repository",
+                    value: ("[" + $repo + "](https://github.com/" + $repo + ")"),
+                    inline: true
+                  },
+                  {
+                    name: "⬇️ Downloads",
+                    value: ("[View all assets](" + $assets + ")"),
+                    inline: true
+                  }
+                ],
+                footer: {
+                  text: "DevelopersCoffee · Airo  |  Join us → discord.gg/62r67VcMzM"
+                },
+                timestamp: (now | strftime("%Y-%m-%dT%H:%M:%SZ"))
+              }]
+            }')
+
+          curl -s -f \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD" \
+            "$WEBHOOK"

@@ -134,34 +134,40 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('phone width shows exactly the 5 TV-matching destinations', (
+  testWidgets('phone width preserves Airo super-app primary destinations', (
     tester,
   ) async {
-    await pumpShell(tester, initialLocation: '/home', width: 420);
+    await pumpShell(tester, initialLocation: '/money', width: 420);
 
-    expect(find.byKey(const ValueKey('app_nav_home')), findsOneWidget);
+    expect(find.byKey(const ValueKey('app_nav_coins')), findsOneWidget);
+    expect(find.byKey(const ValueKey('app_nav_mind')), findsOneWidget);
+    expect(find.byKey(const ValueKey('app_nav_beats')), findsOneWidget);
     expect(find.byKey(const ValueKey('app_nav_live')), findsOneWidget);
-    expect(find.byKey(const ValueKey('app_nav_guide')), findsOneWidget);
-    expect(find.byKey(const ValueKey('app_nav_favorites')), findsOneWidget);
-    expect(find.byKey(const ValueKey('app_nav_settings')), findsOneWidget);
-    expect(find.byKey(const ValueKey('app_nav_overflow')), findsNothing);
+    expect(find.byKey(const ValueKey('app_nav_overflow')), findsOneWidget);
 
-    // The other six domains are not part of the phone bottom nav.
-    expect(find.byKey(const ValueKey('app_nav_coins')), findsNothing);
-    expect(find.byKey(const ValueKey('app_nav_mind')), findsNothing);
-    expect(find.byKey(const ValueKey('app_nav_beats')), findsNothing);
+    // Secondary domains stay reachable through More instead of adopting the
+    // separate Airo TV shell's primary navigation.
     expect(find.byKey(const ValueKey('app_nav_arena')), findsNothing);
     expect(find.byKey(const ValueKey('app_nav_quest')), findsNothing);
+    expect(find.byKey(const ValueKey('app_nav_home')), findsNothing);
+    expect(find.byKey(const ValueKey('app_nav_guide')), findsNothing);
+    expect(find.byKey(const ValueKey('app_nav_favorites')), findsNothing);
+    expect(find.byKey(const ValueKey('app_nav_settings')), findsNothing);
 
-    expect(find.text('Home body'), findsOneWidget);
+    expect(find.text('Coins body'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
-  testWidgets('tapping a phone destination navigates to its branch', (
+  testWidgets('phone overflow navigates to a secondary Airo branch', (
     tester,
   ) async {
-    await pumpShell(tester, initialLocation: '/home', width: 420);
+    await pumpShell(tester, initialLocation: '/money', width: 420);
 
-    await tester.tap(find.byKey(const ValueKey('app_nav_guide')));
+    await tester.tap(find.byKey(const ValueKey('app_nav_overflow')));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const ValueKey('app_nav_overflow_entry_guide')),
+    );
     await tester.pumpAndSettle();
 
     expect(find.text('Guide body'), findsOneWidget);

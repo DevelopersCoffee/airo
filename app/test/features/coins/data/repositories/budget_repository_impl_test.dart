@@ -1,9 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:airo_app/features/coins/data/datasources/coins_local_datasource.dart';
-import 'package:airo_app/features/coins/data/mappers/budget_mapper.dart';
-import 'package:airo_app/features/coins/data/repositories/budget_repository_impl.dart';
-import 'package:airo_app/features/coins/domain/entities/budget.dart';
+import 'package:feature_coins_core/src/data/datasources/coins_local_datasource.dart';
+import 'package:feature_coins_core/src/data/mappers/budget_mapper.dart';
+import 'package:feature_coins_core/src/data/repositories/budget_repository_impl.dart';
+import 'package:feature_coins_core/src/entities/budget.dart';
 
 class MockCoinsLocalDatasource extends Mock implements CoinsLocalDatasource {}
 

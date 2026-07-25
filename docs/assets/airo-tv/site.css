@@ -265,6 +265,31 @@ button,
   background: var(--surface-2);
 }
 
+.button-discord {
+  background: #5865F2;
+  color: #fff;
+  border-color: #5865F2;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.button-discord:hover {
+  background: #4752C4;
+  border-color: #4752C4;
+  color: #fff;
+}
+
+.community-item-discord {
+  border-color: #5865F2;
+  background: color-mix(in oklch, #5865F2 8%, var(--surface));
+}
+
+.community-item-discord svg {
+  color: #5865F2;
+  flex-shrink: 0;
+}
+
 .hero {
   position: relative;
   display: flex;

@@ -37,6 +37,7 @@ class MainActivity : AudioServiceActivity() {
 
     private lateinit var pictureInPicturePlugin: AiroPictureInPicturePlugin
     private lateinit var backgroundAudioPlugin: AiroBackgroundAudioPlugin
+    private lateinit var phoneMediaPickerPlugin: PhoneMediaPickerPlugin
 
     override fun shouldDestroyEngineWithHost(): Boolean {
         return false
@@ -110,6 +111,9 @@ class MainActivity : AudioServiceActivity() {
 
         backgroundAudioPlugin = AiroBackgroundAudioPlugin(this)
         backgroundAudioPlugin.register(flutterEngine.dartExecutor.binaryMessenger)
+
+        phoneMediaPickerPlugin = PhoneMediaPickerPlugin(this)
+        phoneMediaPickerPlugin.register(flutterEngine.dartExecutor.binaryMessenger)
     }
 
     override fun onUserLeaveHint() {
@@ -190,6 +194,16 @@ class MainActivity : AudioServiceActivity() {
                 }
             }
         }
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        if (
+            ::phoneMediaPickerPlugin.isInitialized &&
+            phoneMediaPickerPlugin.onActivityResult(requestCode, resultCode, data)
+        ) {
+            return
+        }
+        super.onActivityResult(requestCode, resultCode, data)
     }
 
     private fun readCalendarEvents(date: String, endDate: String?, result: MethodChannel.Result) {
