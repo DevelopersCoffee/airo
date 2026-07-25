@@ -1,4 +1,4 @@
-import 'package:airo_app/core/providers/app_theme_provider.dart';
+import 'package:core_app_shell/core_app_shell.dart';
 import 'package:airo_app/features/agent_chat/presentation/screens/profile_screen.dart';
 import 'package:airo_app/features/settings/application/ai_storage_dashboard.dart';
 import 'package:feature_iptv/feature_iptv.dart';

@@ -65,7 +65,7 @@ class _CastDevicePickerSheetState extends ConsumerState<CastDevicePickerSheet> {
               maxLines: 2,
             ),
             const SizedBox(height: 16),
-            _DiscoveryBody(
+            CastDiscoveryBody(
               discovery: discovery,
               onRetry: () =>
                   ref.read(iptvCastProvider.notifier).startDiscovery(),
@@ -81,8 +81,9 @@ class _CastDevicePickerSheetState extends ConsumerState<CastDevicePickerSheet> {
   }
 }
 
-class _DiscoveryBody extends StatelessWidget {
-  const _DiscoveryBody({
+class CastDiscoveryBody extends StatelessWidget {
+  const CastDiscoveryBody({
+    super.key,
     required this.discovery,
     required this.onRetry,
     required this.onDeviceSelected,

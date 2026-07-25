@@ -5,10 +5,20 @@ import 'dart:math';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:core_media_routing/core_media_routing.dart';
 import 'package:equatable/equatable.dart';
+import 'package:platform_receiver_modes/platform_receiver_modes.dart';
 
 import '../models/cast_models.dart';
+import '../models/phone_media_diagnostic_models.dart';
 import 'airo_cast_controller.dart';
 import 'phone_media_file_server.dart';
+
+/// A process-local handle that keeps a selected media source readable.
+///
+/// Android document URIs use this to retain a seekable file descriptor without
+/// copying multi-gigabyte videos into the app cache.
+abstract interface class PhoneMediaSourceLease {
+  Future<void> release();
+}
 
 /// A phone-local media file selected for playback on a receiver (CV-033).
 class PhoneLocalMediaItem extends Equatable {
@@ -16,6 +26,7 @@ class PhoneLocalMediaItem extends Equatable {
     required this.filePath,
     required this.title,
     required this.container,
+    this.sourceLease,
     this.videoCodec,
     this.audioCodec,
     this.duration,
@@ -26,6 +37,7 @@ class PhoneLocalMediaItem extends Equatable {
 
   /// Container/extension in lowercase without a dot, e.g. `mp4`, `mkv`.
   final String container;
+  final PhoneMediaSourceLease? sourceLease;
   final String? videoCodec;
   final String? audioCodec;
   final Duration? duration;
@@ -51,10 +63,39 @@ class PhoneMediaReceiverCapabilities extends Equatable {
     required this.supportedVideoCodecs,
   });
 
+  static const none = PhoneMediaReceiverCapabilities(
+    supportedContainers: {},
+    supportedVideoCodecs: {},
+  );
+
   static const chromecastDefault = PhoneMediaReceiverCapabilities(
     supportedContainers: {'mp4', 'm4v', 'webm'},
     supportedVideoCodecs: {'h264', 'vp8', 'vp9'},
   );
+
+  /// Conservative envelope derived from Airo's legacy-receiver mode contract.
+  ///
+  /// The contract does not currently expose codec tables directly, so this
+  /// maps mode classes to the safest local-file assumptions:
+  /// - `blocked`: reject all direct local-file handoffs
+  /// - `lite`/`restrictedLite`: MP4/M4V with H.264 only
+  /// - `off`: fall back to the generic Cast baseline
+  factory PhoneMediaReceiverCapabilities.forLegacyReceiverMode(
+    LegacyReceiverModeContract contract,
+  ) {
+    switch (contract.modeId) {
+      case LegacyReceiverModeId.blocked:
+        return none;
+      case LegacyReceiverModeId.liteReceiver:
+      case LegacyReceiverModeId.restrictedLiteReceiver:
+        return const PhoneMediaReceiverCapabilities(
+          supportedContainers: {'mp4', 'm4v'},
+          supportedVideoCodecs: {'h264'},
+        );
+      case LegacyReceiverModeId.off:
+        return chromecastDefault;
+    }
+  }
 
   final Set<String> supportedContainers;
   final Set<String> supportedVideoCodecs;
@@ -106,7 +147,9 @@ class PhoneMediaCastHandoff {
   PhoneMediaCastHandoff({
     required this._castController,
     this.capabilities = PhoneMediaReceiverCapabilities.chromecastDefault,
+    this.receiverModeContract,
     this._bindAddress,
+    this.onDiagnosticEvent,
     this.onSessionEvent,
     this._sessionTtl = const Duration(hours: 6),
     this._idleTimeout = const Duration(minutes: 2),
@@ -117,6 +160,7 @@ class PhoneMediaCastHandoff {
 
   final AiroCastController _castController;
   final PhoneMediaReceiverCapabilities capabilities;
+  final LegacyReceiverModeContract? receiverModeContract;
   final InternetAddress? _bindAddress;
   final Duration _sessionTtl;
   final Duration _idleTimeout;
@@ -126,6 +170,7 @@ class PhoneMediaCastHandoff {
   /// paused. Must stay comfortably under [_idleTimeout], since a paused
   /// receiver generates no HTTP traffic of its own.
   final Duration _pauseKeepAliveInterval;
+  final void Function(PhoneMediaDiagnosticEvent event)? onDiagnosticEvent;
   final void Function(String event, Map<String, Object?> data)? onSessionEvent;
 
   PhoneMediaFileServer? _server;
@@ -138,10 +183,19 @@ class PhoneMediaCastHandoff {
   String? get connectedDeviceName =>
       _castController.currentSessionState.device?.name;
 
+  PhoneMediaReceiverCapabilities get resolvedCapabilities {
+    final contract = receiverModeContract;
+    if (contract == null) return capabilities;
+    return PhoneMediaReceiverCapabilities.forLegacyReceiverMode(contract);
+  }
+
   Future<PhoneMediaHandoffResult> start(PhoneLocalMediaItem item) async {
-    final unsupportedReason = capabilities.evaluate(item);
+    final unsupportedReason = resolvedCapabilities.evaluate(item);
     if (unsupportedReason != null) {
       return PhoneMediaHandoffUnsupported(reason: unsupportedReason);
+    }
+    if (!_castController.currentSessionState.isConnected) {
+      return const PhoneMediaHandoffFailed();
     }
 
     _cancelPauseKeepAlive();
@@ -160,6 +214,7 @@ class PhoneMediaCastHandoff {
       filePath: item.filePath,
       contentType: _contentTypeFor(item.container),
       bindAddress: _bindAddress,
+      onDiagnosticEvent: onDiagnosticEvent,
       onSessionEvent: onSessionEvent,
     );
     _server = server;
@@ -181,6 +236,15 @@ class PhoneMediaCastHandoff {
         _onConnectivityChanged,
       );
       await _castController.load(request);
+      final loadPhase = _castController.currentSessionState.phase;
+      final loadAccepted =
+          loadPhase == AiroCastSessionPhase.loadingMedia ||
+          loadPhase == AiroCastSessionPhase.playing ||
+          loadPhase == AiroCastSessionPhase.paused;
+      if (!loadAccepted) {
+        await _teardownServer();
+        return const PhoneMediaHandoffFailed();
+      }
       return PhoneMediaHandoffStarted(request: request);
     } catch (_) {
       // Never leave a live tokenized URL behind a handoff that failed.
@@ -193,6 +257,12 @@ class PhoneMediaCastHandoff {
     await _castController.stop();
     await _teardownServer();
   }
+
+  /// Stops every read of the selected source before its platform lease closes.
+  ///
+  /// Full [dispose] also cancels session/connectivity subscriptions, which is
+  /// intentionally separate from this file-lifetime barrier.
+  Future<void> prepareSourceRelease() => _teardownServer();
 
   Future<void> dispose() async {
     final subscription = _sessionSubscription;
@@ -216,7 +286,11 @@ class PhoneMediaCastHandoff {
   // out the idle timeout.
   void _onConnectivityChanged(List<ConnectivityResult> results) {
     if (results.every((result) => result == ConnectivityResult.none)) {
-      onSessionEvent?.call('wifi_disconnected_teardown', const {});
+      final event = PhoneMediaDiagnosticEvent(
+        kind: PhoneMediaDiagnosticEventKind.wifiDisconnectedTeardown,
+      );
+      onDiagnosticEvent?.call(event);
+      onSessionEvent?.call(event.kind.stableId, event.toPublicMap());
       _cancelPauseKeepAlive();
       unawaited(_teardownServer());
     }

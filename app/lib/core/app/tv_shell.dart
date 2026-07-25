@@ -4,7 +4,9 @@
 /// No bottom navigation - uses left-side rail navigation.
 library;
 
+import 'package:core_product_shell/core_product_shell.dart';
 import 'package:core_ui/core_ui.dart';
+import 'package:feature_iptv/feature_iptv.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
@@ -64,52 +66,14 @@ class TvShell extends ConsumerWidget {
   }
 }
 
-class _TvNavDestination {
-  const _TvNavDestination({
-    required this.icon,
-    required this.selectedIcon,
-    required this.label,
-    required this.semanticLabel,
-  });
-
-  final IconData icon;
-  final IconData selectedIcon;
-  final String label;
-  final String semanticLabel;
-}
-
-const _tvNavDestinations = [
-  _TvNavDestination(
-    icon: Icons.home_outlined,
-    selectedIcon: Icons.home,
-    label: 'Home',
-    semanticLabel: 'Home',
-  ),
-  _TvNavDestination(
-    icon: Icons.grid_view_outlined,
-    selectedIcon: Icons.grid_view,
-    label: 'Guide',
-    semanticLabel: 'TV Guide',
-  ),
-  _TvNavDestination(
-    icon: Icons.movie_outlined,
-    selectedIcon: Icons.movie,
-    label: 'Movies',
-    semanticLabel: 'Movies & Shows',
-  ),
-  _TvNavDestination(
-    icon: Icons.favorite_border,
-    selectedIcon: Icons.favorite,
-    label: 'Favorites',
-    semanticLabel: 'Favorites',
-  ),
-  _TvNavDestination(
-    icon: Icons.settings_outlined,
-    selectedIcon: Icons.settings,
-    label: 'Settings',
-    semanticLabel: 'Settings',
-  ),
-];
+/// The TV rail renders the shared [iptvNavigationDestinations] manifest —
+/// the same single source of truth the mobile drawer
+/// (`IptvNavigationDrawer` in
+/// `packages/feature_iptv/lib/presentation/widgets/iptv_navigation_drawer.dart`)
+/// renders. Order, icons, and per-shell label ("Movies" here vs. "Movies &
+/// Shows" on mobile) all come from that one list; only the rail's own visual
+/// chrome (D-pad focus, left accent bar, width) stays TV-specific here.
+final _tvNavDestinations = iptvNavigationDestinations;
 
 /// TV navigation sidebar with D-pad focus support, matching the Airo TV
 /// design handoff's rail: a green square logo mark up top, then icon+label
@@ -215,7 +179,7 @@ class _TvNavItem extends StatefulWidget {
     required this.onSelect,
   });
 
-  final _TvNavDestination destination;
+  final IptvNavigationDestination destination;
   final bool selected;
   final VoidCallback onSelect;
 
@@ -281,7 +245,7 @@ class _TvNavItemState extends State<_TvNavItem> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    widget.destination.label,
+                    widget.destination.labelFor(ShellId.tv),
                     style: TextStyle(
                       fontSize: 9,
                       fontWeight: FontWeight.w500,

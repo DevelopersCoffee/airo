@@ -1,0 +1,12 @@
+name: core_product_shell
+owner: Chief Architect
+reviewers:
+  - Flutter Architect
+  - Chief QA Officer
+  - Media Intelligence Architect
+contracts:
+  - shell_module_registry_v1
+allowed_dependencies: []
+forbidden_dependencies:
+  - app
+quality_gates: {}

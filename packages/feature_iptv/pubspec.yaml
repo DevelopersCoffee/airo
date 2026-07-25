@@ -13,8 +13,12 @@ dependencies:
   collection: ^1.19.0
   core_data:
     path: ../core_data
+  core_product_shell:
+    path: ../core_product_shell
   core_ui:
     path: ../core_ui
+  feature_iptv_core:
+    path: ../feature_iptv_core
   dio: ^5.10.0
   equatable: ^2.0.8
   flutter:
@@ -38,6 +42,8 @@ dependencies:
     path: ../platform_playlist_import
   platform_streams:
     path: ../platform_streams
+  platform_worker_jobs:
+    path: ../platform_worker_jobs
   product_capabilities:
     path: ../product_capabilities
   path_provider: ^2.1.6

@@ -1,4 +1,4 @@
-import 'package:airo_app/core/providers/app_theme_provider.dart';
+import 'package:core_app_shell/core_app_shell.dart';
 import 'package:airo_app/features/settings/presentation/tv/tv_theme_section.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';

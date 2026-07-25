@@ -390,6 +390,13 @@ packages:
       relative: true
     source: path
     version: "0.0.1"
+  core_app_shell:
+    dependency: "direct main"
+    description:
+      path: "../packages/core_app_shell"
+      relative: true
+    source: path
+    version: "0.0.1"
   core_auth:
     dependency: "direct main"
     description:
@@ -425,6 +432,13 @@ packages:
       relative: true
     source: path
     version: "0.1.0"
+  core_product_shell:
+    dependency: "direct main"
+    description:
+      path: "../packages/core_product_shell"
+      relative: true
+    source: path
+    version: "0.0.1"
   core_protocol:
     dependency: transitive
     description:
@@ -610,6 +624,13 @@ packages:
     dependency: "direct main"
     description:
       path: "../packages/feature_iptv"
+      relative: true
+    source: path
+    version: "0.0.1"
+  feature_iptv_core:
+    dependency: transitive
+    description:
+      path: "../packages/feature_iptv_core"
       relative: true
     source: path
     version: "0.0.1"
@@ -1780,6 +1801,13 @@ packages:
     dependency: transitive
     description:
       path: "../packages/platform_playlist_import"
+      relative: true
+    source: path
+    version: "0.0.1"
+  platform_receiver_modes:
+    dependency: transitive
+    description:
+      path: "../packages/platform_receiver_modes"
       relative: true
     source: path
     version: "0.0.1"
