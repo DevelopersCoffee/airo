@@ -275,13 +275,23 @@ class _TvFocusableState extends State<TvFocusable>
       // invisible focus target — it looks like navigation desynced from
       // the remote. Every TvFocusable self-scrolls into view instead of
       // requiring each screen to wire this up individually.
+      //
+      // Minimal-scroll policies only: an already-visible item must not
+      // move. Center-aligning here shifted the list under every focus
+      // change, which read as the D-pad skipping alternate rows.
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         final renderObject = context.findRenderObject();
         if (renderObject == null) return;
         Scrollable.ensureVisible(
           context,
-          alignment: 0.5,
+          alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtEnd,
+          duration: TvFocusConstants.focusAnimationDuration,
+          curve: Curves.easeOutCubic,
+        );
+        Scrollable.ensureVisible(
+          context,
+          alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtStart,
           duration: TvFocusConstants.focusAnimationDuration,
           curve: Curves.easeOutCubic,
         );

@@ -74,6 +74,19 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
   Timer? _hideControlsTimer;
   static const _controlsHideDelay = Duration(seconds: 4);
 
+  /// Default focus holder for the player surface. While it has focus the
+  /// D-pad channel-surfs; revealing the controls moves focus onto them.
+  final FocusNode _playerFocusNode = FocusNode(
+    debugLabel: 'player surface',
+    skipTraversal: true,
+  );
+
+  /// The center play/pause button — first focus target when the remote
+  /// reveals the controls overlay.
+  final FocusNode _centerControlFocusNode = FocusNode(
+    debugLabel: 'player center control',
+  );
+
   // Channel change overlay state
   String? _channelChangeOverlayText;
   Timer? _channelChangeOverlayTimer;
@@ -126,6 +139,8 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
     _cancelHideControlsTimer();
     _channelChangeOverlayTimer?.cancel();
     _adjacentChannelWarmupDebounce?.cancel();
+    _playerFocusNode.dispose();
+    _centerControlFocusNode.dispose();
     unawaited(_resetBrightnessSafely());
     super.dispose();
   }
@@ -154,6 +169,12 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
     _hideControlsTimer = Timer(_controlsHideDelay, () {
       if (mounted) {
         setState(() => _showControlsOverlay = false);
+        // If the D-pad had moved focus onto a control, don't leave it on a
+        // now-invisible button — return it to the surface so arrow keys go
+        // back to channel surfing instead of traversing hidden controls.
+        if (_playerFocusNode.canRequestFocus) {
+          _playerFocusNode.requestFocus();
+        }
       }
     });
   }
@@ -356,12 +377,40 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
       onChannelNext: _goToNextChannel,
     );
     if (remoteResult == TvInputResult.handled) return remoteResult;
+
+    final controlsVisible = _showControlsOverlay && widget.showControls;
+    if (controlsVisible) {
+      // Keep the overlay alive while the remote is being used.
+      _startHideControlsTimer();
+    }
+
     switch (key) {
+      // Channel surfing on up/down is the player's contract (CV-008
+      // UC-002) — it stays active whether or not the controls are shown.
       case TvInputKey.up:
         _goToPreviousChannel();
         return TvInputResult.handled;
       case TvInputKey.down:
         _goToNextChannel();
+        return TvInputResult.handled;
+      // Left/right walk the visible controls via normal focus traversal
+      // (the buttons are TvFocusable); with the overlay hidden there are
+      // no focus candidates (ExcludeFocus), so the keys are inert.
+      case TvInputKey.select:
+        if (controlsVisible) {
+          // A focused control's own TvFocusable consumes select before
+          // this listener; reaching here means nothing was focused yet.
+          if (_centerControlFocusNode.canRequestFocus) {
+            _centerControlFocusNode.requestFocus();
+          }
+          return TvInputResult.handled;
+        }
+        // Controls hidden: OK reveals them with focus on play/pause, the
+        // same pattern as every mainstream TV player.
+        _showControls();
+        if (_centerControlFocusNode.canRequestFocus) {
+          _centerControlFocusNode.requestFocus();
+        }
         return TvInputResult.handled;
       default:
         return TvInputResult.notHandled;
@@ -475,10 +524,11 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
       // Focus.onKeyEvent always ignores so the event bubbles up to
       // TvInputHandler's own listener above -- this node exists purely to
       // hold primary focus by default, since nothing else in the player
-      // (controls auto-hide) reliably claims it otherwise.
+      // (controls auto-hide) reliably claims it otherwise. The state-owned
+      // node lets the hide timer reclaim focus from on-screen controls.
       child: Focus(
+        focusNode: _playerFocusNode,
         autofocus: true,
-        skipTraversal: true,
         onKeyEvent: (node, event) => KeyEventResult.ignored,
         child: MouseRegion(
           onHover: (_) => _showControls(),
@@ -541,7 +591,14 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                       duration: const Duration(milliseconds: 300),
                       child: IgnorePointer(
                         ignoring: !widget.showControls || !_showControlsOverlay,
-                        child: _buildControlsOverlay(context, service, state),
+                        // Hidden controls must be invisible to D-pad focus
+                        // too, or arrow keys traverse buttons nobody can see
+                        // while the surface expects channel-surf input.
+                        child: ExcludeFocus(
+                          excluding:
+                              !widget.showControls || !_showControlsOverlay,
+                          child: _buildControlsOverlay(context, service, state),
+                        ),
                       ),
                     ),
 
@@ -1482,36 +1539,42 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
 
     if (showGoLive) {
       // "Go Live" button - red themed to indicate user is behind
-      return GestureDetector(
-        onTap: () => service.goLive(),
-        child: Container(
-          width: 80,
-          height: 80,
-          decoration: BoxDecoration(
-            color: Colors.red.shade700,
-            shape: BoxShape.circle,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.red.withValues(alpha: 0.4),
-                blurRadius: 16,
-                spreadRadius: 2,
-              ),
-            ],
-          ),
-          child: const Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.skip_next_rounded, color: Colors.white, size: 32),
-              Text(
-                'LIVE',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 0.5,
+      return TvFocusable(
+        focusNode: _centerControlFocusNode,
+        onSelect: () => service.goLive(),
+        semanticLabel: 'Go live',
+        borderRadius: 40,
+        child: GestureDetector(
+          onTap: () => service.goLive(),
+          child: Container(
+            width: 80,
+            height: 80,
+            decoration: BoxDecoration(
+              color: Colors.red.shade700,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.red.withValues(alpha: 0.4),
+                  blurRadius: 16,
+                  spreadRadius: 2,
                 ),
-              ),
-            ],
+              ],
+            ),
+            child: const Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.skip_next_rounded, color: Colors.white, size: 32),
+                Text(
+                  'LIVE',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       );
@@ -1519,31 +1582,39 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
 
     // Standard play/pause button — translucent white circle behind a dark
     // glyph, matching the design handoff's player chrome.
-    return GestureDetector(
-      onTap: () {
-        if (state.isPlaying) {
-          service.pause();
-        } else {
-          service.resume();
-        }
-      },
-      child: Container(
-        width: 70,
-        height: 70,
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.88),
-          shape: BoxShape.circle,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.45),
-              blurRadius: 24,
-            ),
-          ],
-        ),
-        child: Icon(
-          state.isPlaying ? Icons.pause : Icons.play_arrow,
-          color: Colors.black,
-          size: 32,
+    void togglePlayPause() {
+      if (state.isPlaying) {
+        service.pause();
+      } else {
+        service.resume();
+      }
+    }
+
+    return TvFocusable(
+      focusNode: _centerControlFocusNode,
+      onSelect: togglePlayPause,
+      semanticLabel: state.isPlaying ? 'Pause' : 'Play',
+      borderRadius: 35,
+      child: GestureDetector(
+        onTap: togglePlayPause,
+        child: Container(
+          width: 70,
+          height: 70,
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.88),
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.45),
+                blurRadius: 24,
+              ),
+            ],
+          ),
+          child: Icon(
+            state.isPlaying ? Icons.pause : Icons.play_arrow,
+            color: Colors.black,
+            size: 32,
+          ),
         ),
       ),
     );
@@ -1762,18 +1833,30 @@ class _PlayerRoundControlButton extends StatelessWidget {
     final effectiveColor = onPressed == null
         ? Colors.white.withValues(alpha: 0.38)
         : iconColor;
-    return Material(
-      color: backgroundColor ?? Colors.black.withValues(alpha: backgroundAlpha),
-      shape: const CircleBorder(),
-      elevation: 8,
-      shadowColor: Colors.black54,
-      child: SizedBox.square(
-        dimension: diameter,
-        child: IconButton(
-          icon: Icon(icon, color: effectiveColor, size: iconSize),
-          tooltip: tooltip,
-          onPressed: onPressed,
-          visualDensity: VisualDensity.compact,
+    return TvFocusable(
+      enabled: onPressed != null,
+      onSelect: onPressed,
+      semanticLabel: tooltip,
+      borderRadius: diameter / 2,
+      child: Material(
+        color:
+            backgroundColor ?? Colors.black.withValues(alpha: backgroundAlpha),
+        shape: const CircleBorder(),
+        elevation: 8,
+        shadowColor: Colors.black54,
+        child: SizedBox.square(
+          dimension: diameter,
+          // The TvFocusable wrapper owns D-pad focus for this control;
+          // letting the inner IconButton take focus too would create two
+          // stops per button under the remote.
+          child: ExcludeFocus(
+            child: IconButton(
+              icon: Icon(icon, color: effectiveColor, size: iconSize),
+              tooltip: tooltip,
+              onPressed: onPressed,
+              visualDensity: VisualDensity.compact,
+            ),
+          ),
         ),
       ),
     );
