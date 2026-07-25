@@ -1,0 +1,10 @@
+name: feature_coins_core
+owner: Coins / Finance Agent
+reviewers:
+  - Chief Architect
+  - Chief QA Officer
+allowed_dependencies: []
+forbidden_dependencies:
+  - app
+  - feature_coin
+quality_gates: {}

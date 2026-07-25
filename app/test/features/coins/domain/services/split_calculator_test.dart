@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:airo_app/features/coins/domain/services/split_calculator.dart';
+import 'package:feature_coins_core/src/services/split_calculator.dart';
 
 void main() {
   late SplitCalculator calculator;

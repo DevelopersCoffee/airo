@@ -634,6 +634,13 @@ packages:
       relative: true
     source: path
     version: "0.0.1"
+  feature_coins_core:
+    dependency: "direct main"
+    description:
+      path: "../packages/feature_coins_core"
+      relative: true
+    source: path
+    version: "0.0.1"
   feature_iptv:
     dependency: "direct main"
     description:
