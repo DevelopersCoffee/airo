@@ -34,6 +34,7 @@ import 'core/error/global_error_handler.dart';
 import 'core/features/feature_registry.dart';
 import 'core/platform/device_form_factor.dart';
 import 'core/providers/app_theme_provider.dart';
+import 'core/startup/app_startup_tasks.dart';
 import 'core/startup/deferred_startup_task.dart';
 import 'package:feature_iptv/feature_iptv.dart';
 import 'features/iptv/iptv_cast_provider_override.dart';
@@ -119,6 +120,7 @@ void main() async {
 
   scheduleTvFirebaseInitialization();
   scheduleTvFeatureInitialization();
+  scheduleDeferredProBootstrap();
   if (shouldWarmDebugPlaylist) {
     scheduleTvDebugDefaultPlaylistWarmup(prefs);
   }

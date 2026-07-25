@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import '../auth/auth_service.dart';
 import '../features/feature_registry.dart';
+import '../pro/pro_bootstrap_runner.dart';
 import 'deferred_startup_task.dart';
 
 typedef AppStartupInitializer = Future<void> Function();
@@ -52,5 +53,21 @@ void scheduleDeferredAudioInitialization({
     addPostFrameCallback: addPostFrameCallback,
     log: log,
     task: initializeAudio,
+  );
+}
+
+/// Runs the open-core pro bootstrap seam after the first frame.
+///
+/// No-op cost in open-source builds; in `airo-pro` overlay builds this is
+/// where entitled pro modules initialize. Never blocks or breaks startup.
+void scheduleDeferredProBootstrap({
+  void Function(DeferredStartupFrameCallback callback)? addPostFrameCallback,
+  void Function(String message)? log,
+}) {
+  scheduleDeferredStartupTask(
+    debugName: 'pro_bootstrap',
+    addPostFrameCallback: addPostFrameCallback,
+    log: log,
+    task: () => runProBootstrap(log: log),
   );
 }

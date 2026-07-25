@@ -26,10 +26,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'core/coins/coin_vault_module.dart';
+import 'core/startup/app_startup_tasks.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   runApp(AiroCoinsApp(registry: buildCoinsModuleRegistry()));
+  scheduleDeferredProBootstrap();
 }
 
 /// Builds the Airo Coins shell's module registry. Split out (and returning
