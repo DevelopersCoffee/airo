@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:platform_coin_vault/platform_coin_vault.dart';
 
+import '../../application/vault_providers.dart';
 import '../../application/vault_record_ref.dart';
 import '../../application/vault_session.dart';
 import '../../application/vault_summaries_provider.dart';
@@ -147,7 +148,8 @@ class VaultHomeScreen extends ConsumerWidget {
     if (type == null) return;
     callback?.call(type);
     if (!context.mounted) return;
-    await context.push<void>('/money/vault/add/${type.name}');
+    final prefix = ref.read(vaultRoutePrefixProvider);
+    await context.push<void>('$prefix/add/${type.name}');
   }
 }
 

@@ -38,7 +38,10 @@ void main() {
 @visibleForTesting
 ModuleRegistry buildCoinsModuleRegistry() {
   final registry = ModuleRegistry(shell: ShellId.coins)
-    ..register(CoinVaultModule());
+    // Standalone shell owns its URL space: mount the vault at /vault
+    // instead of inheriting the super-app's /money/vault prefix. The
+    // module overrides feature_coin's vaultRoutePrefixProvider to match.
+    ..register(CoinVaultModule(basePath: '/vault'));
   return registry;
 }
 
@@ -55,7 +58,7 @@ class AiroCoinsApp extends StatefulWidget {
 
 class _AiroCoinsAppState extends State<AiroCoinsApp> {
   late final GoRouter _router = GoRouter(
-    initialLocation: '/money/vault',
+    initialLocation: '/vault',
     routes: widget.registry.allRoutes,
   );
 

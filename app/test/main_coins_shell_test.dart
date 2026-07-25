@@ -24,7 +24,33 @@ void main() {
     expect(registry.shell, ShellId.coins);
     expect(registry.moduleIds, ['coin_vault']);
     final paths = registry.allRoutes.whereType<GoRoute>().map((r) => r.path);
-    expect(paths, contains('/money/vault'));
+    expect(paths, contains('/vault'));
+  });
+
+  test('vault module mounts routes and route-prefix override at basePath', () {
+    final module = CoinVaultModule(basePath: '/vault');
+
+    final paths = module
+        .routesFor(ShellId.coins)
+        .whereType<GoRoute>()
+        .map((r) => r.path);
+    expect(paths, contains('/vault'));
+
+    // The module keeps feature_coin's internal add/edit navigation in sync
+    // with the mount point by overriding vaultRoutePrefixProvider.
+    final container = ProviderContainer(
+      overrides: module.providerOverridesFor(ShellId.coins),
+    );
+    addTearDown(container.dispose);
+    expect(container.read(vaultRoutePrefixProvider), '/vault');
+  });
+
+  test('vault route prefix defaults to the super-app mount point', () {
+    final container = ProviderContainer();
+    addTearDown(container.dispose);
+    // The super-app registers no override, so feature_coin's default must
+    // stay its historical /money/vault mount (no-break rule).
+    expect(container.read(vaultRoutePrefixProvider), '/money/vault');
   });
 
   test('vault module ships to mobile and coins shells but never TV', () {
