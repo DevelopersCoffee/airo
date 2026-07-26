@@ -193,11 +193,17 @@ void main() {
     expect(find.text('1234567890'), findsNothing);
     expect(find.text('•••• •••• ••••'), findsOneWidget);
 
+    // Progressive auth: reaching for the value again re-prompts for
+    // biometrics and, once granted, serves it. The cache clearing asserted
+    // above is the security property; this is the recovery path.
     await tester.tap(find.byTooltip('Copy Account number'));
-    await settleVaultAsync(tester);
+    await settleVaultAsync(tester, until: () => clipboard == '1234567890');
 
-    expect(clipboard, isEmpty);
-    expect(find.text('Vault is locked - unlock and try again'), findsOneWidget);
+    expect(clipboard, '1234567890');
+    // Same teardown as the other successful-copy test: the clipboard's
+    // auto-clear timer and the vault's idle timer must not outlive it.
+    clipboardService.dispose();
+    container.read(vaultSessionProvider.notifier).lock();
   });
 
   testWidgets('denied biometrics keep sensitive values locked away', (
