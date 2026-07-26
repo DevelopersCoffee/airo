@@ -16,9 +16,11 @@ database adapter.
 - Import, search, lookup, write, cleanup, and compact-window workload steps.
 - Deterministic budget and metric evaluation for large IPTV/VOD/EPG datasets.
 - Fake and no-op benchmark runners for automation and adapter boundaries.
+- Versioned relational media graph rows, typed relationships, structured
+  queries, and independently loadable knowledge-pack lifecycle.
 
 This package does not choose a database engine, sync backend, vault provider,
 generate bundled provider content, import database SDKs, run device-lab
-benchmarks, or expose raw media source URLs, EPG source URLs, local paths, local
-IP addresses, provider credentials, viewing history, analytics payloads, or
-device identifiers.
+benchmarks, perform provider enrichment, invoke an LLM, or expose raw media
+source URLs, EPG source URLs, local paths, local IP addresses, provider
+credentials, viewing history, analytics payloads, or device identifiers.
