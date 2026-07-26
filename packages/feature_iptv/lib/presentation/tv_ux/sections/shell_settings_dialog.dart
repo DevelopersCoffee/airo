@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../application/providers/control_row_visibility_provider.dart';
+import '../../widgets/backup_restore_section.dart';
 
 Future<void> showAiroTvShellSettingsDialog(BuildContext context) {
   return showDialog<void>(
@@ -22,30 +23,34 @@ class AiroTvShellSettingsDialog extends ConsumerWidget {
       title: const Text('Explorer rows'),
       content: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 440),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              'Choose which controls appear below the video. Changes apply '
-              'immediately and stay set after restart.',
-            ),
-            const SizedBox(height: 12),
-            for (final row in AiroTvControlRow.values)
-              TvFocusable(
-                key: ValueKey('airo-tv-row-toggle-${row.storageName}'),
-                semanticLabel: '${row.label} row',
-                onSelect: () => ref
-                    .read(controlRowVisibilityProvider.notifier)
-                    .setVisible(row, !visibility.isVisible(row)),
-                child: SwitchListTile(
-                  title: Text(row.label),
-                  value: visibility.isVisible(row),
-                  onChanged: (value) => ref
-                      .read(controlRowVisibilityProvider.notifier)
-                      .setVisible(row, value),
-                ),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Choose which controls appear below the video. Changes apply '
+                'immediately and stay set after restart.',
               ),
-          ],
+              const SizedBox(height: 12),
+              for (final row in AiroTvControlRow.values)
+                TvFocusable(
+                  key: ValueKey('airo-tv-row-toggle-${row.storageName}'),
+                  semanticLabel: '${row.label} row',
+                  onSelect: () => ref
+                      .read(controlRowVisibilityProvider.notifier)
+                      .setVisible(row, !visibility.isVisible(row)),
+                  child: SwitchListTile(
+                    title: Text(row.label),
+                    value: visibility.isVisible(row),
+                    onChanged: (value) => ref
+                        .read(controlRowVisibilityProvider.notifier)
+                        .setVisible(row, value),
+                  ),
+                ),
+              const Divider(height: 32),
+              const BackupRestoreSection(),
+            ],
+          ),
         ),
       ),
       actions: [

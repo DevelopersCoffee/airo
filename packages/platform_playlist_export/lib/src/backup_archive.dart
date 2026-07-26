@@ -12,13 +12,22 @@ class AiroBackupSource {
     required this.id,
     required this.url,
     required this.label,
+    this.metadata = const {},
   });
 
   final String id;
   final String url;
   final String label;
+  final Map<String, String> metadata;
 
-  Map<String, Object> toMap() => {'id': id, 'url': url, 'label': label};
+  Map<String, Object> toMap() => {
+    'id': id,
+    'url': url,
+    'label': label,
+    'metadata': Map.fromEntries(
+      metadata.entries.toList()..sort((a, b) => a.key.compareTo(b.key)),
+    ),
+  };
 }
 
 class AiroBackupFavorite {
@@ -239,6 +248,59 @@ class AiroBackupService {
       store.replaceAtomically(preview.merged);
 }
 
+class AiroBackupDocument {
+  const AiroBackupDocument({
+    required this.fileName,
+    required this.mediaType,
+    required this.contents,
+  });
+
+  final String fileName;
+  final String mediaType;
+  final String contents;
+}
+
+abstract interface class AiroBackupDocumentGateway {
+  Future<void> save(AiroBackupDocument document);
+
+  Future<void> share(AiroBackupDocument document);
+
+  /// Returns null when the platform picker is cancelled.
+  Future<AiroBackupDocument?> pick();
+}
+
+class AiroBackupDocumentController {
+  const AiroBackupDocumentController({
+    required this.service,
+    required this.documents,
+  });
+
+  final AiroBackupService service;
+  final AiroBackupDocumentGateway documents;
+
+  Future<void> saveBackup() async {
+    await documents.save(await _backupDocument());
+  }
+
+  Future<void> shareBackup() async {
+    await documents.share(await _backupDocument());
+  }
+
+  Future<AiroBackupPreview?> pickAndPreview() async {
+    final document = await documents.pick();
+    if (document == null) return null;
+    return service.previewImport(document.contents);
+  }
+
+  Future<AiroBackupDocument> _backupDocument() async {
+    return AiroBackupDocument(
+      fileName: 'airo_tv_backup_v$kAiroBackupVersion.json',
+      mediaType: 'application/json',
+      contents: await service.export(),
+    );
+  }
+}
+
 String exportFavoritesM3u(Iterable<AiroBackupFavorite> favorites) {
   final ordered = favorites.toList()
     ..sort((a, b) => a.channelId.compareTo(b.channelId));
@@ -285,6 +347,9 @@ List<AiroBackupSource> _sources(Object? value) {
         id: _requiredText((item as Map)['id']),
         url: _validUrl((item)['url']),
         label: _requiredText((item)['label']),
+        metadata: Map<String, String>.from(
+          item['metadata'] as Map? ?? const {},
+        ),
       ),
   ];
 }
@@ -354,6 +419,9 @@ void _validateSources(List<AiroBackupSource> sources) {
   for (final source in sources) {
     _requiredText(source.id);
     _requiredText(source.label);
+    if (source.metadata.entries.any((entry) => entry.key.trim().isEmpty)) {
+      throw const AiroBackupException(AiroBackupRejection.invalidRecord);
+    }
     final url = _normalizedUrl(_validUrl(source.url));
     final byId = ids[source.id];
     if (byId != null && _normalizedUrl(byId.url) != url) {

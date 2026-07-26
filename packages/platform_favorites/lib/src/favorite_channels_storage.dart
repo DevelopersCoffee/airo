@@ -58,6 +58,12 @@ class FavoriteChannelsStorage {
     return isNowFavorite;
   }
 
+  /// Replaces the complete favorite-id set for an import/restore operation.
+  Future<void> replaceAll(Iterable<String> channelIds) {
+    final normalized = channelIds.where((id) => id.trim().isNotEmpty).toSet();
+    return _save(normalized);
+  }
+
   Future<void> _save(Set<String> ids) {
     return _store.setStringList(_favoritesKey, ids.toList(growable: false));
   }

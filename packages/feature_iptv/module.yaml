@@ -18,6 +18,7 @@ allowed_dependencies:
   - platform_player
   - platform_playlist
   - platform_playlist_import
+  - platform_playlist_export
   - platform_streams
   - platform_worker_jobs
   - product_capabilities

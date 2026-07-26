@@ -116,6 +116,10 @@ class ContentSourceStore {
     await _save(all);
   }
 
+  Future<void> replaceAll(Iterable<ContentSourceConfig> configs) {
+    return _save(List.unmodifiable(configs));
+  }
+
   Future<void> _save(List<ContentSourceConfig> configs) async {
     await _store.setString(
       _storageKey,

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../application/providers/iptv_providers.dart';
 import '../widgets/favorite_reimport_review_banner.dart';
+import '../widgets/favorites_backup_menu.dart';
 import '../widgets/iptv_icon_placeholder.dart';
 
 /// Mobile screen listing the user's favorited channels — the mobile
@@ -22,7 +23,10 @@ class MobileFavoritesScreen extends ConsumerWidget {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Favorites')),
+      appBar: AppBar(
+        title: const Text('Favorites'),
+        actions: const [FavoritesBackupMenu()],
+      ),
       body: Column(
         children: [
           const Padding(

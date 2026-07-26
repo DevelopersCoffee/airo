@@ -23,6 +23,7 @@ dependencies:
     path: ../feature_iptv_core
   dio: ^5.10.0
   equatable: ^2.0.8
+  file_picker: ^11.0.2
   flutter:
     sdk: flutter
   flutter_riverpod: ^3.3.2
@@ -42,6 +43,8 @@ dependencies:
     path: ../platform_playlist
   platform_playlist_import:
     path: ../platform_playlist_import
+  platform_playlist_export:
+    path: ../platform_playlist_export
   platform_streams:
     path: ../platform_streams
   platform_worker_jobs:
@@ -50,6 +53,7 @@ dependencies:
     path: ../product_capabilities
   path_provider: ^2.1.6
   screen_brightness: ^2.1.11
+  share_plus: ^12.0.2
   shared_preferences: ^2.5.5
   slm_edge_intelligence:
     git:
