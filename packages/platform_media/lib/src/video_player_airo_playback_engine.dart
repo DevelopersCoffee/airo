@@ -93,6 +93,8 @@ class VideoPlayerAiroPlaybackEngine implements AiroPlaybackEngine {
     await controller.setVolume(_state.volume);
     await controller.setPlaybackSpeed(_state.playbackSpeed);
     controller.addListener(_onControllerValueChanged);
+    final videoSize = controller.value.size;
+    final hasVideoSize = videoSize.width > 0 && videoSize.height > 0;
 
     _emit(
       _state.copyWith(
@@ -100,6 +102,18 @@ class VideoPlayerAiroPlaybackEngine implements AiroPlaybackEngine {
         request: request,
         position: request.startPosition,
         duration: controller.value.duration,
+        qualityOptions: hasVideoSize
+            ? [
+                AiroPlaybackQualityOption(
+                  id: 'source',
+                  label:
+                      '${videoSize.width.round()}x${videoSize.height.round()}',
+                  width: videoSize.width.round(),
+                  height: videoSize.height.round(),
+                ),
+              ]
+            : const [],
+        selectedQualityId: hasVideoSize ? 'source' : null,
         tracks: externalSubtitleTracksFor(request),
         diagnostics: AiroPlaybackDiagnostics(
           backendId: backendKind.stableId,
