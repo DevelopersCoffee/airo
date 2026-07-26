@@ -11,6 +11,7 @@ import '../models/cast_models.dart';
 import '../models/phone_media_diagnostic_models.dart';
 import 'airo_cast_controller.dart';
 import 'phone_media_file_server.dart';
+import 'phone_media_seekable_source.dart';
 
 /// A process-local handle that keeps a selected media source readable.
 ///
@@ -27,6 +28,7 @@ class PhoneLocalMediaItem extends Equatable {
     required this.title,
     required this.container,
     this.sourceLease,
+    this.source,
     this.videoCodec,
     this.audioCodec,
     this.duration,
@@ -38,6 +40,7 @@ class PhoneLocalMediaItem extends Equatable {
   /// Container/extension in lowercase without a dot, e.g. `mp4`, `mkv`.
   final String container;
   final PhoneMediaSourceLease? sourceLease;
+  final PhoneMediaSeekableSource? source;
   final String? videoCodec;
   final String? audioCodec;
   final Duration? duration;
@@ -203,7 +206,8 @@ class PhoneMediaCastHandoff {
 
     // Synchronous check: widget tests run in a fake-async zone where real
     // file IO futures never complete before the pump settles.
-    if (!File(item.filePath).existsSync()) {
+    final source = item.source ?? FilePhoneMediaSeekableSource(item.filePath);
+    if (!source.isAvailable) {
       return const PhoneMediaHandoffFailed();
     }
 
@@ -211,7 +215,7 @@ class PhoneMediaCastHandoff {
         _castController.currentSessionState.device?.id ?? 'receiver-unknown';
     final server = PhoneMediaFileServer(
       snapshot: _snapshotFor(item, receiverNodeId),
-      filePath: item.filePath,
+      source: source,
       contentType: _contentTypeFor(item.container),
       bindAddress: _bindAddress,
       onDiagnosticEvent: onDiagnosticEvent,

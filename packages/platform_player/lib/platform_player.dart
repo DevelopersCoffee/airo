@@ -25,6 +25,7 @@ export "src/services/native_fullscreen.dart";
 export "src/services/native_picture_in_picture.dart";
 export "src/services/phone_media_cast_handoff.dart";
 export "src/services/phone_media_file_server.dart";
+export "src/services/phone_media_seekable_source.dart";
 export "src/services/playback_session_tracker.dart";
 export "src/services/unavailable_playback_engine.dart";
 export "src/services/unavailable_cast_controller.dart";
