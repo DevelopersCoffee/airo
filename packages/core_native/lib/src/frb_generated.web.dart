@@ -9,6 +9,7 @@
 import 'api/m3u.dart';
 import 'api/native_engine.dart';
 import 'api/playlist_engine.dart';
+import 'api/relational_store.dart';
 import 'api/text.dart';
 import 'api/xmltv.dart';
 import 'dart:async';
@@ -164,6 +165,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   (String, String) dco_decode_record_string_string(dynamic raw);
+
+  @protected
+  RelationalStoreStatus dco_decode_relational_store_status(dynamic raw);
 
   @protected
   SubtitleCue dco_decode_subtitle_cue(dynamic raw);
@@ -391,6 +395,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   (String, String) sse_decode_record_string_string(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  RelationalStoreStatus sse_decode_relational_store_status(
     SseDeserializer deserializer,
   );
 
@@ -682,6 +691,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_record_string_string(
     (String, String) self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_relational_store_status(
+    RelationalStoreStatus self,
     SseSerializer serializer,
   );
 
