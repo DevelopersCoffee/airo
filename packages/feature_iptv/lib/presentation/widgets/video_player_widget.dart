@@ -92,6 +92,9 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
   Timer? _adjacentChannelWarmupDebounce;
   String _adjacentChannelWarmupSignature = '';
 
+  // MENU key context menu (AiroTV D-pad design "CONTEXT MENU (MENU key)").
+  bool _showContextMenu = false;
+
   // Netflix-style gesture controls (CV-PLAYER-GESTURES) + lock button.
   bool _isLocked = false;
   double _brightness = 0.5;
@@ -392,6 +395,17 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
       case TvInputKey.down:
         _goToNextChannel();
         return TvInputResult.handled;
+      case TvInputKey.menu:
+        if (ref.read(streamingStateProvider).asData?.value.currentChannel ==
+            null) {
+          return TvInputResult.notHandled;
+        }
+        setState(() => _showContextMenu = !_showContextMenu);
+        return TvInputResult.handled;
+      case TvInputKey.back:
+        if (!_showContextMenu) return TvInputResult.notHandled;
+        setState(() => _showContextMenu = false);
+        return TvInputResult.handled;
       // Left/right walk the visible controls via normal focus traversal
       // (the buttons are TvFocusable); with the overlay hidden there are
       // no focus candidates (ExcludeFocus), so the keys are inert.
@@ -414,6 +428,26 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
       default:
         return TvInputResult.notHandled;
     }
+  }
+
+  Future<void> _toggleFavoriteForCurrentChannel() async {
+    final channel = ref.read(streamingStateProvider).asData?.value.currentChannel;
+    if (channel == null) return;
+    final toggle = ref.read(channelFavoriteTogglerProvider);
+    final isNowFavorite = await toggle(channel.id);
+    if (!mounted) return;
+    setState(() => _showContextMenu = false);
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(
+            isNowFavorite
+                ? '${channel.name} added to favorites'
+                : '${channel.name} removed from favorites',
+          ),
+        ),
+      );
   }
 
   void _showChannelChangeOverlay(String text) {
@@ -653,6 +687,17 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                           ),
                         ),
                       ),
+                    ),
+
+                  // Context menu (MENU key) — right-side overlay, matching
+                  // the AiroTV D-pad design's "CONTEXT MENU (MENU key)"
+                  // screen. Only rendered while open; doesn't touch layout
+                  // otherwise.
+                  if (_showContextMenu && state.currentChannel != null)
+                    _ContextMenuOverlay(
+                      channel: state.currentChannel!,
+                      onToggleFavorite: _toggleFavoriteForCurrentChannel,
+                      onClose: () => setState(() => _showContextMenu = false),
                     ),
                 ],
               ),
@@ -1855,6 +1900,144 @@ class _PlayerStepperPillar extends StatelessWidget {
               tooltip: bottomTooltip,
               onPressed: onBottomPressed,
               iconColor: Colors.white,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// MENU-key context menu: right-side overlay panel for actions on the
+/// currently-playing channel. AiroTV D-pad design's "CONTEXT MENU (MENU
+/// key)" screen.
+class _ContextMenuOverlay extends ConsumerWidget {
+  const _ContextMenuOverlay({
+    required this.channel,
+    required this.onToggleFavorite,
+    required this.onClose,
+  });
+
+  final IPTVChannel channel;
+  final VoidCallback onToggleFavorite;
+  final VoidCallback onClose;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final favoriteIds = ref.watch(favoriteChannelIdsProvider).asData?.value;
+    final isFavorite = favoriteIds?.contains(channel.id) ?? false;
+
+    return Positioned(
+      right: 0,
+      top: 0,
+      bottom: 0,
+      width: 280,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.centerRight,
+            end: Alignment.centerLeft,
+            colors: [
+              Colors.black.withValues(alpha: 0.96),
+              Colors.black.withValues(alpha: 0.0),
+            ],
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Actions for',
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.6),
+                fontSize: 12,
+                letterSpacing: 1.0,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              channel.name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 20),
+            TvFocusable(
+              key: const ValueKey('context-menu-favorite'),
+              autofocus: true,
+              semanticLabel: isFavorite
+                  ? 'Remove from favorites'
+                  : 'Add to favorites',
+              onSelect: onToggleFavorite,
+              child: _ContextMenuItem(
+                icon: isFavorite ? Icons.favorite : Icons.favorite_border,
+                label: isFavorite
+                    ? 'Remove from favorites'
+                    : 'Add to favorites',
+                onTap: onToggleFavorite,
+              ),
+            ),
+            const SizedBox(height: 8),
+            TvFocusable(
+              key: const ValueKey('context-menu-close'),
+              semanticLabel: 'Close menu',
+              onSelect: onClose,
+              child: _ContextMenuItem(
+                icon: Icons.close,
+                label: 'Close',
+                onTap: onClose,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ContextMenuItem extends StatelessWidget {
+  const _ContextMenuItem({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(9),
+      child: Container(
+        height: 42,
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.06),
+          borderRadius: BorderRadius.circular(9),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 18, color: Colors.white),
+            const SizedBox(width: 11),
+            Expanded(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
             ),
           ],
         ),
