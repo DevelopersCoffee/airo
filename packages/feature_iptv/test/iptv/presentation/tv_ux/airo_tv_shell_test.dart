@@ -1,5 +1,6 @@
 import 'package:feature_iptv/application/providers/channel_filters_provider.dart';
 import 'package:feature_iptv/application/providers/channel_auto_scan_providers.dart';
+import 'package:feature_iptv/application/providers/connectivity_provider.dart';
 import 'package:feature_iptv/application/providers/iptv_providers.dart';
 import 'package:feature_iptv/presentation/tv_ux/airo_tv_shell.dart';
 import 'package:flutter/material.dart';
@@ -39,12 +40,14 @@ void main() {
     WidgetTester tester,
     double width, {
     double height = 720,
+    bool isOnline = true,
   }) async {
     final prefs = await SharedPreferences.getInstance();
     final container = ProviderContainer(
       overrides: [
         sharedPreferencesProvider.overrideWithValue(prefs),
         streamProbeTransportProvider.overrideWithValue(_FakeProbeTransport()),
+        isOnlineProvider.overrideWith((ref) => Stream.value(isOnline)),
       ],
     );
     addTearDown(container.dispose);
@@ -118,6 +121,27 @@ void main() {
     await pumpAt(tester, 900);
     expect(find.text('Country'), findsWidgets);
   });
+
+  testWidgets('offline banner is hidden while online', (tester) async {
+    await pumpAt(tester, 900);
+    await tester.pump();
+
+    expect(find.byIcon(Icons.wifi_off_rounded), findsNothing);
+  });
+
+  testWidgets(
+    'offline banner shows the cached-playlist message when disconnected',
+    (tester) async {
+      await pumpAt(tester, 900, isOnline: false);
+      await tester.pump();
+
+      expect(find.byIcon(Icons.wifi_off_rounded), findsOneWidget);
+      expect(
+        find.textContaining('your playlist is cached'),
+        findsOneWidget,
+      );
+    },
+  );
 
   testWidgets('wide layout uses the Explorer stage and panel composition', (
     tester,

@@ -8,6 +8,7 @@ import 'package:platform_streams/platform_streams.dart';
 
 import '../../application/providers/channel_filters_provider.dart';
 import '../../application/providers/channel_auto_scan_providers.dart';
+import '../../application/providers/connectivity_provider.dart';
 import '../../application/providers/hotbar_channels_provider.dart';
 import '../../application/providers/iptv_providers.dart';
 import '../../application/channel_metadata_enrichment.dart';
@@ -115,12 +116,18 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final chrome = [
+          const _OfflineBanner(),
           _ExplorerSection(label: 'LIVE', height: 60, child: infoBar),
           if (hasHotbar)
             _ExplorerSection(label: 'HOTBAR', height: 56, child: hotbar),
           _ExplorerSection(label: 'FILTER', height: 48, child: filterRow),
         ];
-        final compactChrome = [infoBar, if (hasHotbar) hotbar, filterRow];
+        final compactChrome = [
+          const _OfflineBanner(),
+          infoBar,
+          if (hasHotbar) hotbar,
+          filterRow,
+        ];
         if (constraints.maxWidth < 600) {
           return Column(
             children: [
@@ -353,6 +360,44 @@ class _ExplorerSection extends StatelessWidget {
             Expanded(child: child),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// AiroTV D-pad design's "OFFLINE" screen, condensed to a non-blocking
+/// banner instead of a full-screen takeover: the playlist is cached, so
+/// channels stay browsable and (if already playing) video keeps playing —
+/// only new stream starts would actually need the connection. Renders
+/// nothing while online.
+class _OfflineBanner extends ConsumerWidget {
+  const _OfflineBanner();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isOnline = ref.watch(isOnlineProvider).asData?.value ?? true;
+    if (isOnline) return const SizedBox.shrink();
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      color: const Color(0xFF3A2A0A),
+      child: Row(
+        children: [
+          const Icon(Icons.wifi_off_rounded, size: 16, color: Colors.amber),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'No network connection — your playlist is cached, but '
+              'streams need a connection.',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Colors.amber.shade100,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
