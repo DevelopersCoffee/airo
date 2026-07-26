@@ -1,0 +1,312 @@
+---
+layout: null
+---
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Terms &amp; Conditions — Airo TV | DevelopersCoffee</title>
+  <meta name="description" content="Terms and Conditions for Airo TV — a local-first IPTV player by DevelopersCoffee.">
+  <meta name="theme-color" content="#071010">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://developerscoffee.github.io/airo/legal/terms-conditions/">
+  <meta property="og:title" content="Terms &amp; Conditions — Airo TV">
+  <meta property="og:description" content="Terms and Conditions for Airo TV by DevelopersCoffee.">
+  <link rel="icon" type="image/svg+xml" href="../../assets/airo-tv/airo-icon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700;9..40,800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../assets/airo-tv/site.css">
+  <script defer src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js" integrity="sha384-uTYyvsSSUZeaPhb5RbKlQa0zY/WpX/QHfvg2mczXyBQOpkWPEDy9lczyp+w7SKXu" crossorigin="anonymous"></script>
+  <script defer src="../../assets/airo-tv/site.js"></script>
+  <style>
+    .legal-hero {
+      padding: calc(var(--header) + 56px) 0 40px;
+      border-bottom: 1px solid var(--border);
+    }
+    .legal-hero .eyebrow { margin-bottom: 12px; }
+    .legal-hero h1 {
+      font-size: clamp(2rem, 5vw, 3rem);
+      font-weight: 800;
+      margin: 0 0 16px;
+      line-height: 1.1;
+    }
+    .legal-hero .meta {
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+    .legal-body { padding: 64px 0 96px; }
+    .legal-grid {
+      display: grid;
+      grid-template-columns: 220px 1fr;
+      gap: 48px 64px;
+      align-items: start;
+    }
+    @media (max-width: 768px) {
+      .legal-grid { grid-template-columns: 1fr; }
+      .legal-toc  { display: none; }
+    }
+    .legal-toc {
+      position: sticky;
+      top: calc(var(--header) + 24px);
+    }
+    .legal-toc h2 {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: var(--muted);
+      margin: 0 0 12px;
+    }
+    .legal-toc ol {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .legal-toc a {
+      font-size: 0.85rem;
+      color: var(--muted);
+      text-decoration: none;
+      line-height: 1.5;
+      display: block;
+      padding: 3px 8px;
+      border-radius: 4px;
+      border-left: 2px solid transparent;
+      transition: color .15s, border-color .15s, background .15s;
+    }
+    .legal-toc a:hover {
+      color: var(--text);
+      border-left-color: var(--green);
+      background: var(--surface);
+    }
+    .legal-prose { min-width: 0; }
+    .legal-prose section { margin-bottom: 56px; }
+    .legal-prose h2 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      margin: 0 0 16px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--border);
+      scroll-margin-top: calc(var(--header) + 24px);
+    }
+    .legal-prose h3 {
+      font-size: 1rem;
+      font-weight: 600;
+      margin: 24px 0 10px;
+    }
+    .legal-prose p {
+      color: var(--muted);
+      margin: 0 0 14px;
+      line-height: 1.7;
+    }
+    .legal-prose ul, .legal-prose ol {
+      color: var(--muted);
+      padding-left: 20px;
+      margin: 0 0 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      line-height: 1.6;
+    }
+    .legal-prose strong { color: var(--text); }
+    .legal-prose a { color: var(--green); text-decoration: none; }
+    .legal-prose a:hover { text-decoration: underline; }
+    .callout {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--green);
+      border-radius: 8px;
+      padding: 16px 20px;
+      margin: 0 0 20px;
+    }
+    .callout.callout-warn { border-left-color: var(--gold); }
+    .callout p { margin: 0; }
+    .legal-back {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 0.875rem;
+      margin-bottom: 32px;
+      transition: color .15s;
+    }
+    .legal-back:hover { color: var(--green); }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to content</a>
+
+  <header class="site-header">
+    <div class="container nav-shell">
+      <a class="brand" href="../../" aria-label="Airo home">
+        <img src="../../assets/airo-tv/airo-icon.svg" alt="">
+        <span>Airo <small>Modular platform</small></span>
+      </a>
+      <button class="menu-button" type="button" aria-label="Open navigation" aria-controls="site-navigation" aria-expanded="false" data-menu-button>
+        <i data-lucide="menu" aria-hidden="true"></i>
+      </button>
+      <nav class="site-nav" id="site-navigation" aria-label="Primary navigation" data-navigation>
+        <a href="../../#architecture">Architecture</a>
+        <a href="../../#foundations">Foundations</a>
+        <a href="../../#modules">Modules</a>
+        <a href="../../#community">Community</a>
+        <a href="../../#roadmap">Roadmap</a>
+        <a class="button button-discord" href="https://discord.gg/62r67VcMzM" target="_blank" rel="noopener noreferrer"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z"/></svg> Discord</a>
+        <a class="button button-primary" href="../../tv/">Explore Airo TV <i data-lucide="arrow-right" aria-hidden="true"></i></a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main-content">
+
+    <div class="legal-hero">
+      <div class="container">
+        <p class="eyebrow">Legal</p>
+        <h1>Terms &amp; Conditions</h1>
+        <p class="meta">Last updated: <time datetime="2026-07-13">July 13, 2026</time> &nbsp;·&nbsp; Airo TV by DevelopersCoffee</p>
+      </div>
+    </div>
+
+    <div class="legal-body">
+      <div class="container">
+        <a class="legal-back" href="../../">
+          <i data-lucide="arrow-left" aria-hidden="true"></i> Back to Airo
+        </a>
+
+        <div class="legal-grid">
+
+          <aside class="legal-toc" aria-label="Page contents">
+            <h2>Contents</h2>
+            <ol>
+              <li><a href="#disclaimer">Content Disclaimer</a></li>
+              <li><a href="#terms-of-use">Terms of Use</a></li>
+              <li><a href="#intellectual-property">Intellectual Property</a></li>
+              <li><a href="#app-changes">App Changes</a></li>
+              <li><a href="#capabilities">Current Capabilities</a></li>
+              <li><a href="#third-party">Third-Party Services</a></li>
+              <li><a href="#security">Security &amp; Your Data</a></li>
+              <li><a href="#connectivity">Internet Connectivity</a></li>
+              <li><a href="#liability">Limitation of Liability</a></li>
+              <li><a href="#termination">Termination</a></li>
+              <li><a href="#changes">Changes to Terms</a></li>
+              <li><a href="#governing-law">Governing Law</a></li>
+              <li><a href="#contact">Contact Us</a></li>
+            </ol>
+          </aside>
+
+          <article class="legal-prose">
+
+            <section id="disclaimer">
+              <h2>⚠️ Important — Content Disclaimer</h2>
+              <div class="callout callout-warn">
+                <p>Airo TV <strong>only displays content added by the user</strong>. The application does <strong>NOT</strong> provide, host, supply, or distribute any content, channels, playlists, or streams of any kind.</p>
+              </div>
+              <p>Airo TV is designed to be used with your own created content or playlists that contain content you are legally authorised to access. DevelopersCoffee does <strong>not</strong> endorse, promote, or facilitate the streaming of copyright-protected material without proper authorisation from the rights holder.</p>
+              <p><strong>You are solely responsible for ensuring that all content you access through Airo TV is legal in your jurisdiction.</strong></p>
+            </section>
+
+            <section id="terms-of-use">
+              <h2>Terms of Use</h2>
+              <p>By downloading or using the app, these terms will automatically apply to you — you should make sure therefore that you read them carefully before using the app.</p>
+            </section>
+
+            <section id="intellectual-property">
+              <h2>Intellectual Property</h2>
+              <p>You are not allowed to copy or modify the app, any part of the app, or our trademarks in any way. You are not allowed to attempt to extract the source code of the app, and you also should not try to translate the app into other languages or make derivative versions. The app itself, and all the trademarks, copyright, database rights, and other intellectual property rights related to it, still belong to <strong>DevelopersCoffee</strong>.</p>
+            </section>
+
+            <section id="app-changes">
+              <h2>App Changes and Updates</h2>
+              <p>DevelopersCoffee is committed to ensuring that the app is as useful and efficient as possible. For that reason, we reserve the right to make changes to the app or to charge for its services at any time and for any reason. We will never charge you for the app or its services without making it very clear to you exactly what you are paying for.</p>
+              <p>We may wish to update the app at some point. The app is currently available on Android (including Android TV and Fire TV). The requirements for the system may change, and you will need to accept updates if you want to keep using the app.</p>
+            </section>
+
+            <section id="capabilities">
+              <h2>Current Release Capabilities</h2>
+              <p>Airo TV supports the current release capabilities documented in the <a href="https://github.com/DevelopersCoffee/airo/releases" target="_blank" rel="noopener noreferrer">release notes</a>.</p>
+
+              <h3>Playlist Formats</h3>
+              <ul><li>M3U / M3U8</li></ul>
+
+              <h3>Playback</h3>
+              <p>Playback depends on the stream URL, protocol, codec support, and capabilities of your Android TV, Google TV, or compatible device. Airo TV does not guarantee that every third-party playlist or stream URL will play.</p>
+
+              <h3>Additional Features</h3>
+              <ul>
+                <li>Chromecast casting support</li>
+                <li>Channel search by name</li>
+                <li>TV-focused remote navigation</li>
+              </ul>
+              <p>Planned features such as EPG, favourites, recording, cloud playlists, and AI Search are not included in the current release unless the feature matrix marks them supported.</p>
+            </section>
+
+            <section id="third-party">
+              <h2>Third-Party Services</h2>
+              <p>The app may use third-party services that declare their own Terms and Conditions. These third-party services may collect information used to identify you. We encourage you to review the terms and privacy policies of any third-party services used by the app.</p>
+            </section>
+
+            <section id="security">
+              <h2>Security and Your Data</h2>
+              <p>Airo TV stores and processes personal data that you have provided to us in order to provide our service. It is your responsibility to keep your device and access to the app secure. We recommend that you do not jailbreak or root your phone, as this may make your device vulnerable to malware/viruses/malicious programs, compromise your device's security features, and could mean that the Airo TV app will not work properly or at all.</p>
+            </section>
+
+            <section id="connectivity">
+              <h2>Internet Connectivity</h2>
+              <p>Certain functions of the app require an active internet connection. DevelopersCoffee cannot take responsibility for the app not working at full functionality if you do not have access to Wi-Fi and you do not have any data allowance left.</p>
+              <p>If you are using the app outside of an area with Wi-Fi, the terms of the agreement with your mobile network provider will still apply. You may be charged by your mobile provider for the cost of data during the connection while accessing the app, or other third-party charges. In using the app, you are accepting responsibility for any such charges, including roaming data charges if you use the app outside of your home territory without turning off data roaming.</p>
+            </section>
+
+            <section id="liability">
+              <h2>Limitation of Liability</h2>
+              <p>DevelopersCoffee cannot always take responsibility for the way you use the app. For example:</p>
+              <ul>
+                <li>You need to make sure that your device stays charged — if it runs out of battery and you cannot turn it on to avail the service, DevelopersCoffee cannot accept responsibility.</li>
+                <li>DevelopersCoffee accepts no liability for any loss, direct or indirect, you experience as a result of relying wholly on the functionality of the app.</li>
+                <li>DevelopersCoffee is not responsible for the content, quality, legality, or availability of any streams, channels, or media accessed through the app, as all content is user-provided.</li>
+                <li>The app is provided on an <strong>"as is"</strong> and <strong>"as available"</strong> basis without any warranties of any kind, either express or implied.</li>
+              </ul>
+            </section>
+
+            <section id="termination">
+              <h2>Termination</h2>
+              <p>We may terminate or suspend your access to the app immediately, without prior notice or liability, for any reason whatsoever, including without limitation if you breach these Terms and Conditions. Upon termination, your right to use the app will cease immediately.</p>
+              <p>All provisions of the Terms which by their nature should survive termination shall survive, including ownership provisions, warranty disclaimers, indemnity, and limitations of liability.</p>
+            </section>
+
+            <section id="changes">
+              <h2>Changes to These Terms</h2>
+              <p>We may update our Terms and Conditions from time to time. You are advised to review this page periodically for any changes. We will notify you of any changes by posting the new Terms and Conditions on this page.</p>
+              <p>These terms and conditions are effective as of <strong>July 13, 2026</strong>.</p>
+            </section>
+
+            <section id="governing-law">
+              <h2>Governing Law</h2>
+              <p>These Terms shall be governed and construed in accordance with applicable laws, without regard to conflict of law provisions.</p>
+            </section>
+
+            <section id="contact">
+              <h2>Contact Us</h2>
+              <p>If you have any questions or suggestions about our Terms and Conditions, do not hesitate to contact us:</p>
+              <ul>
+                <li><strong>Developer:</strong> DevelopersCoffee</li>
+                <li><strong>Email:</strong> <a href="mailto:coffee.devloper@gmail.com">coffee.devloper@gmail.com</a></li>
+                <li><strong>GitHub:</strong> <a href="https://github.com/DevelopersCoffee/airo" target="_blank" rel="noopener noreferrer">github.com/DevelopersCoffee/airo</a></li>
+                <li><strong>Discord:</strong> <a href="https://discord.gg/62r67VcMzM" target="_blank" rel="noopener noreferrer">discord.gg/62r67VcMzM</a></li>
+              </ul>
+            </section>
+
+          </article>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <footer class="site-footer"><div class="container"><div class="footer-grid"><div><a class="brand" href="../../"><img src="../../assets/airo-tv/airo-icon.svg" alt=""><span>Airo</span></a><h2>Focused experiences. Shared foundations.</h2><p>Airo TV is the first focused product in the Airo ecosystem.</p></div><div class="footer-col"><h3>Platform</h3><a href="../../#architecture">Architecture</a><a href="../../#foundations">Foundations</a><a href="../../#modules">Modules</a></div><div class="footer-col"><h3>Explore</h3><a href="../../tv/">Airo TV</a><a href="../../#community">Community</a><a href="../../#roadmap">Roadmap</a><a href="https://discord.gg/62r67VcMzM" target="_blank" rel="noopener noreferrer">Discord ↗</a></div><div class="footer-col"><h3>Trust</h3><a href="../privacy-policy/">Privacy</a><a href="../terms-conditions/">Terms</a><a href="mailto:coffee.devloper@gmail.com">Support</a></div></div><div class="footer-bottom"><span>&copy; <span data-current-year>2026</span> DevelopersCoffee</span><span>Airo is built in public. Roadmap scope may change as evidence changes.</span></div></div></footer>
+</body>
+</html>
