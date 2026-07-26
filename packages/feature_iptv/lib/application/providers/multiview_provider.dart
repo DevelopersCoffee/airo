@@ -21,6 +21,15 @@ abstract interface class IptvMultiviewSession implements AiroMultiviewSession {
   StreamingState get currentState;
 
   Widget? buildView();
+
+  Future<void> selectTrack({
+    required AiroPlaybackTrackKind kind,
+    required String trackId,
+  });
+
+  Future<void> clearTrackSelection(AiroPlaybackTrackKind kind);
+
+  Future<void> setQuality(VideoQuality quality);
 }
 
 enum MultiviewToggleResult { added, removed, capacityReached, failed }
@@ -96,6 +105,9 @@ class MultiviewController extends StateNotifier<MultiviewState> {
   }
 
   Future<void> promote(String channelId) => _pool.promote(channelId);
+
+  void swap(String firstChannelId, String secondChannelId) =>
+      _pool.swap(firstChannelId, secondChannelId);
 
   Future<void> close() async {
     if (_disposed) return;
@@ -194,6 +206,19 @@ class _VideoPlayerMultiviewSession implements IptvMultiviewSession {
 
   @override
   Widget? buildView() => _service.buildVideoView();
+
+  @override
+  Future<void> selectTrack({
+    required AiroPlaybackTrackKind kind,
+    required String trackId,
+  }) => _service.selectTrack(kind: kind, trackId: trackId);
+
+  @override
+  Future<void> clearTrackSelection(AiroPlaybackTrackKind kind) =>
+      _service.clearTrackSelection(kind);
+
+  @override
+  Future<void> setQuality(VideoQuality quality) => _service.setQuality(quality);
 
   @override
   Future<void> setAudible(bool audible) async {

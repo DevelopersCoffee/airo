@@ -1,5 +1,7 @@
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
+import 'package:platform_channels/platform_channels.dart';
+import 'package:platform_player/platform_player.dart';
 
 import '../../../application/providers/multiview_provider.dart';
 
@@ -9,11 +11,13 @@ class MultiviewStage extends StatelessWidget {
     required this.sessions,
     required this.featuredChannelId,
     required this.onPromote,
+    this.onSwap,
   });
 
   final List<IptvMultiviewSession> sessions;
   final String? featuredChannelId;
   final ValueChanged<String> onPromote;
+  final void Function(String firstId, String secondId)? onSwap;
 
   @override
   Widget build(BuildContext context) {
@@ -39,44 +43,28 @@ class MultiviewStage extends StatelessWidget {
                 session: session,
                 featured: session.id == featuredChannelId,
                 onPromote: onPromote,
+                onSwap: onSwap,
+                featuredChannelId: featuredChannelId,
               ),
             ),
         ],
       );
     }
 
-    final featured = activeSessions.firstWhere(
-      (session) => session.id == featuredChannelId,
-      orElse: () => activeSessions.first,
-    );
-    final thumbnails = activeSessions
-        .where((session) => session.id != featured.id)
-        .toList(growable: false);
-    return Column(
-      key: ValueKey('multiview-layout-featured-${activeSessions.length}'),
+    return GridView.count(
+      key: ValueKey('multiview-layout-quad-${activeSessions.length}'),
+      physics: const NeverScrollableScrollPhysics(),
+      crossAxisCount: 2,
+      childAspectRatio: 16 / 9,
       children: [
-        Expanded(child: _SessionSurface(session: featured, featured: true)),
-        SizedBox(
-          height: 108,
-          child: ListView.separated(
-            key: const ValueKey('multiview-thumbnail-strip'),
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.fromLTRB(8, 6, 8, 8),
-            itemCount: thumbnails.length,
-            separatorBuilder: (_, _) => const SizedBox(width: 8),
-            itemBuilder: (context, index) {
-              final session = thumbnails[index];
-              return SizedBox(
-                width: 172,
-                child: _PromotableSurface(
-                  session: session,
-                  featured: false,
-                  onPromote: onPromote,
-                ),
-              );
-            },
+        for (final session in activeSessions)
+          _PromotableSurface(
+            session: session,
+            featured: session.id == featuredChannelId,
+            onPromote: onPromote,
+            onSwap: onSwap,
+            featuredChannelId: featuredChannelId,
           ),
-        ),
       ],
     );
   }
@@ -87,11 +75,15 @@ class _PromotableSurface extends StatelessWidget {
     required this.session,
     required this.featured,
     required this.onPromote,
+    required this.onSwap,
+    required this.featuredChannelId,
   });
 
   final IptvMultiviewSession session;
   final bool featured;
   final ValueChanged<String> onPromote;
+  final void Function(String firstId, String secondId)? onSwap;
+  final String? featuredChannelId;
 
   @override
   Widget build(BuildContext context) {
@@ -99,15 +91,92 @@ class _PromotableSurface extends StatelessWidget {
       key: ValueKey('multiview-promote-${session.id}'),
       semanticLabel: featured
           ? '${session.channel.name}, featured'
-          : 'Feature ${session.channel.name}',
-      onSelect: featured ? null : () => onPromote(session.id),
+          : '${session.channel.name}, muted tile',
+      semanticHint: 'Focus for audio. Press OK to swap. Press Menu for tracks.',
+      onFocus: () => onPromote(session.id),
+      onSelect: featuredChannelId == null || featured || onSwap == null
+          ? null
+          : () => onSwap?.call(featuredChannelId!, session.id),
+      onSecondaryAction: () => _showTileControls(context, session),
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
-        onTap: featured ? null : () => onPromote(session.id),
+        onTap: () => onPromote(session.id),
         child: _SessionSurface(session: session, featured: featured),
       ),
     );
   }
+}
+
+Future<void> _showTileControls(
+  BuildContext context,
+  IptvMultiviewSession session,
+) {
+  return showDialog<void>(
+    context: context,
+    builder: (context) => StreamBuilder<StreamingState>(
+      stream: session.states,
+      initialData: session.currentState,
+      builder: (context, snapshot) {
+        final state = snapshot.data ?? session.currentState;
+        final audioTracks = state.tracks.where(
+          (track) => track.kind == AiroPlaybackTrackKind.audio,
+        );
+        final subtitleTracks = state.tracks.where(
+          (track) => track.kind == AiroPlaybackTrackKind.subtitle,
+        );
+        return SimpleDialog(
+          key: ValueKey('multiview-controls-${session.id}'),
+          title: Text('${session.channel.name} controls'),
+          children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(24, 4, 24, 4),
+              child: Text('Audio track'),
+            ),
+            for (final track in audioTracks)
+              SimpleDialogOption(
+                key: ValueKey('multiview-audio-${session.id}-${track.id}'),
+                onPressed: () => session.selectTrack(
+                  kind: AiroPlaybackTrackKind.audio,
+                  trackId: track.id,
+                ),
+                child: Text(track.label),
+              ),
+            const Padding(
+              padding: EdgeInsets.fromLTRB(24, 12, 24, 4),
+              child: Text('Subtitles'),
+            ),
+            SimpleDialogOption(
+              key: ValueKey('multiview-subtitle-off-${session.id}'),
+              onPressed: () =>
+                  session.clearTrackSelection(AiroPlaybackTrackKind.subtitle),
+              child: const Text('Off'),
+            ),
+            for (final track in subtitleTracks)
+              SimpleDialogOption(
+                key: ValueKey('multiview-subtitle-${session.id}-${track.id}'),
+                onPressed: () => session.selectTrack(
+                  kind: AiroPlaybackTrackKind.subtitle,
+                  trackId: track.id,
+                ),
+                child: Text(track.label),
+              ),
+            const Padding(
+              padding: EdgeInsets.fromLTRB(24, 12, 24, 4),
+              child: Text('Quality / bitrate'),
+            ),
+            for (final quality in VideoQuality.values)
+              SimpleDialogOption(
+                key: ValueKey(
+                  'multiview-quality-${session.id}-${quality.name}',
+                ),
+                onPressed: () => session.setQuality(quality),
+                child: Text(quality.name),
+              ),
+          ],
+        );
+      },
+    ),
+  );
 }
 
 class _SessionSurface extends StatelessWidget {

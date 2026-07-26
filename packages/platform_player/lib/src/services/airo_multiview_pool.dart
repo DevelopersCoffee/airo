@@ -45,6 +45,7 @@ class AiroMultiviewPool {
   final void Function(AiroMultiviewPoolState state)? onChanged;
   final Set<String> _pendingIds = {};
   AiroMultiviewPoolState _state = const AiroMultiviewPoolState();
+  Future<void> _audioRouteTail = Future.value();
   bool _closed = false;
 
   AiroMultiviewPoolState get state => _state;
@@ -102,6 +103,26 @@ class AiroMultiviewPool {
     );
   }
 
+  /// Reorders two active sessions without reopening either decoder.
+  void swap(String firstId, String secondId) {
+    if (_closed || firstId == secondId) return;
+    final sessions = _state.sessions.toList();
+    final firstIndex = sessions.indexWhere((session) => session.id == firstId);
+    final secondIndex = sessions.indexWhere(
+      (session) => session.id == secondId,
+    );
+    if (firstIndex < 0 || secondIndex < 0) return;
+    final first = sessions[firstIndex];
+    sessions[firstIndex] = sessions[secondIndex];
+    sessions[secondIndex] = first;
+    _setState(
+      AiroMultiviewPoolState(
+        sessions: List.unmodifiable(sessions),
+        featuredSessionId: _state.featuredSessionId,
+      ),
+    );
+  }
+
   Future<void> remove(String id) async {
     if (_closed) return;
     AiroMultiviewSession? removed;
@@ -147,6 +168,11 @@ class AiroMultiviewPool {
   }
 
   Future<void> _routeAudio(String featuredId) async {
+    _audioRouteTail = _audioRouteTail.then((_) => _applyAudioRoute(featuredId));
+    await _audioRouteTail;
+  }
+
+  Future<void> _applyAudioRoute(String featuredId) async {
     for (final session in _state.sessions) {
       await session.setAudible(false);
     }

@@ -121,6 +121,18 @@ class _FakeMultiviewSession implements IptvMultiviewSession {
   Widget buildView() => const SizedBox();
 
   @override
+  Future<void> clearTrackSelection(AiroPlaybackTrackKind kind) async {}
+
+  @override
+  Future<void> selectTrack({
+    required AiroPlaybackTrackKind kind,
+    required String trackId,
+  }) async {}
+
+  @override
+  Future<void> setQuality(VideoQuality quality) async {}
+
+  @override
   Future<void> setAudible(bool value) async {
     audible = value;
   }

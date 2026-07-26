@@ -90,6 +90,55 @@ void main() {
     await pool.close();
   });
 
+  test('rapid focus promotions serialize to the latest audible tile', () async {
+    final sessions = <String, _FakeSession>{};
+    final pool = AiroMultiviewPool(decoderBudget: 4);
+    for (final id in ['one', 'two', 'three']) {
+      await pool.add(
+        id: id,
+        openSession: () async =>
+            sessions.putIfAbsent(id, () => _FakeSession(id)),
+      );
+    }
+
+    await Future.wait([pool.promote('two'), pool.promote('three')]);
+
+    expect(pool.state.featuredSessionId, 'three');
+    expect(
+      sessions.values.where((session) => session.audible).single.id,
+      'three',
+    );
+    await pool.close();
+  });
+
+  test('swap reorders existing sessions without reopening them', () async {
+    final sessions = <String, _FakeSession>{};
+    var openCalls = 0;
+    final pool = AiroMultiviewPool(decoderBudget: 4);
+    for (final id in ['one', 'two', 'three']) {
+      await pool.add(
+        id: id,
+        openSession: () async {
+          openCalls++;
+          return sessions.putIfAbsent(id, () => _FakeSession(id));
+        },
+      );
+    }
+
+    pool.swap('one', 'three');
+
+    expect(pool.state.sessions.map((session) => session.id), [
+      'three',
+      'two',
+      'one',
+    ]);
+    expect(pool.state.sessions.first, same(sessions['three']));
+    expect(pool.state.sessions.last, same(sessions['one']));
+    expect(pool.state.featuredSessionId, 'one');
+    expect(openCalls, 3);
+    await pool.close();
+  });
+
   test('removing featured promotes next and close disposes all', () async {
     final sessions = <String, _FakeSession>{};
     final pool = AiroMultiviewPool(decoderBudget: 4);

@@ -166,6 +166,9 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
                   featuredChannelId: multiview.featuredChannelId,
                   onPromote: (channelId) =>
                       ref.read(multiviewProvider.notifier).promote(channelId),
+                  onSwap: (firstId, secondId) => ref
+                      .read(multiviewProvider.notifier)
+                      .swap(firstId, secondId),
                 ),
         ),
       ),
