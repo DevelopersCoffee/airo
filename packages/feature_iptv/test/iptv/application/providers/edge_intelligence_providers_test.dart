@@ -1,9 +1,10 @@
+import 'package:core_edge_intelligence/core_edge_intelligence.dart';
 import 'package:feature_iptv/feature_iptv.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:slm_edge_intelligence/slm_edge_intelligence.dart';
 
 void main() {
-  test('config parses rule and native backend values', () {
+  test('config parses rule, native, and pack values', () {
     expect(
       EdgeIptvConfig.fromValues(backend: 'rule').backend,
       EdgeIptvBackend.ruleBased,
@@ -27,228 +28,218 @@ void main() {
       ).packPath,
       '/packs/media.pack',
     );
-    final assetConfig = EdgeIptvConfig.fromValues(
-      backend: 'native',
-      packAsset: '  assets/packs/media.pack  ',
-    );
-    expect(assetConfig.packAsset, 'assets/packs/media.pack');
-    expect(assetConfig.shouldInstallPack, isTrue);
   });
 
-  test('play intent routes through parseIntent and play', () async {
-    final edge = _FakeEdgeIntelligence(
-      intent: const IntentResult(
-        intent: 'play',
-        tool: 'media.play',
-        confidence: 0.94,
-        constraints: {'query': 'Aaj Tak', 'live': true},
-        missingFields: [],
-        clarificationRequired: false,
-      ),
-      resolved: _resolved('rule_aaj_tak', 'Aaj Tak'),
-    );
-    final assistant = EdgeIptvAssistant(edge);
-
-    final resolution = await assistant.resolveNaturalLanguage('Play Aaj Tak');
-
-    expect(edge.calls, ['parseIntent:Play Aaj Tak', 'play:Aaj Tak']);
-    expect(resolution.channel?.name, 'Aaj Tak');
-    expect(
-      resolution.channel?.streamUrl,
-      'https://example.invalid/rule_aaj_tak.m3u8',
-    );
-    expect(resolution.channel?.category, ChannelCategory.news);
-    expect(resolution.channel?.flavor, ChannelFlavor.hindiNews);
-  });
-
-  test('search intent routes through search before resolve', () async {
-    final edge = _FakeEdgeIntelligence(
-      intent: const IntentResult(
-        intent: 'search',
+  test('high-confidence intent is validated then locally executed', () async {
+    final edge = _FakeEdge(
+      const IntentResult(
+        intent: 'browse',
         tool: 'media.search',
-        confidence: 0.92,
-        constraints: {'genre': 'sports', 'quality': 'hd'},
+        confidence: 0.94,
+        constraints: {'genre': 'sports', 'country': 'India'},
         missingFields: [],
         clarificationRequired: false,
       ),
-      searchResult: const SearchResult(
-        candidates: [
-          MediaCandidate(
-            id: 'rule_cricket_live',
-            title: 'India Cricket Live',
-            provider: 'rule_live',
-            type: 'live_event',
-            score: 0.99,
-          ),
-        ],
-      ),
-      resolved: _resolved('rule_cricket_live', 'India Cricket Live'),
     );
-    final assistant = EdgeIptvAssistant(edge);
+    final executor = _RecordingExecutor(['sports']);
+    final assistant = _assistant(edge, executor);
 
     final resolution = await assistant.resolveNaturalLanguage(
-      'Sports in HD only',
+      'Show every India match today',
     );
 
-    expect(edge.calls, [
-      'parseIntent:Sports in HD only',
-      'search:Sports in HD only',
-      'resolve:rule_cricket_live',
-    ]);
-    expect(resolution.channel?.streamUrl, contains('rule_cricket_live.m3u8'));
+    expect(edge.contexts.single.network, NetworkState.offline);
+    expect(executor.commands.single.intent, MediaIntent.browse);
+    expect(executor.commands.single.confidence, 0.94);
+    expect(resolution.channel?.id, 'sports');
+    expect(resolution.usedFallback, isFalse);
+    expect(resolution.elapsed, isNot(Duration.zero));
   });
 
-  test('resume intent routes through resume', () async {
-    final edge = _FakeEdgeIntelligence(
-      intent: const IntentResult(
-        intent: 'resume',
-        tool: 'media.resume',
-        confidence: 0.91,
-        constraints: {'continue_watching': true},
-        missingFields: [],
-        clarificationRequired: false,
-      ),
-      resolved: _resolved('rule_sony_max', 'Sony Max'),
-    );
-    final assistant = EdgeIptvAssistant(edge);
-
-    final resolution = await assistant.resolveNaturalLanguage(
-      "Continue yesterday's movie",
-    );
-
-    expect(edge.calls, ['parseIntent:Continue yesterday\'s movie', 'resume']);
-    expect(resolution.channel?.name, 'Sony Max');
-  });
-
-  test('recommend intent routes through recommend before resolve', () async {
-    final edge = _FakeEdgeIntelligence(
-      intent: const IntentResult(
-        intent: 'recommend',
-        tool: 'media.recommend',
-        confidence: 0.88,
+  test('low confidence falls back to deterministic original query', () async {
+    final edge = _FakeEdge(
+      const IntentResult(
+        intent: 'browse',
+        tool: 'media.search',
+        confidence: 0.4,
         constraints: {'genre': 'kids'},
         missingFields: [],
         clarificationRequired: false,
       ),
-      recommendationResult: const RecommendationResult(
-        candidates: [
-          MediaCandidate(
-            id: 'rule_pbs_kids',
-            title: 'PBS Kids',
-            provider: 'rule_iptv',
-            type: 'live_channel',
-            score: 0.86,
-          ),
-        ],
-      ),
-      resolved: _resolved('rule_pbs_kids', 'PBS Kids'),
     );
-    final assistant = EdgeIptvAssistant(edge);
+    final executor = _RecordingExecutor(['kids']);
+    final assistant = _assistant(edge, executor);
 
-    final resolution = await assistant.resolveNaturalLanguage(
-      'Cartoons for kids',
-    );
+    final resolution = await assistant.resolveNaturalLanguage('Kids cartoons');
 
-    expect(edge.calls, [
-      'parseIntent:Cartoons for kids',
-      'recommend',
-      'resolve:rule_pbs_kids',
-    ]);
-    expect(resolution.channel?.name, 'PBS Kids');
+    expect(executor.commands, hasLength(1));
+    expect(executor.commands.single.intent, MediaIntent.search);
+    expect(executor.commands.single.entities.single.value, 'Kids cartoons');
+    expect(resolution.usedFallback, isTrue);
   });
 
-  test('configured pack is installed once before intent parsing', () async {
-    final edge = _FakeEdgeIntelligence(
-      intent: const IntentResult(
-        intent: 'play',
-        tool: 'media.play',
-        confidence: 0.94,
-        constraints: {'query': 'Aaj Tak', 'live': true},
+  test(
+    'unsupported output is rejected before executor and falls back',
+    () async {
+      final edge = _FakeEdge(
+        const IntentResult(
+          intent: 'delete_everything',
+          tool: 'unknown',
+          confidence: 0.99,
+          constraints: {},
+          missingFields: [],
+          clarificationRequired: false,
+        ),
+      );
+      final executor = _RecordingExecutor(['local']);
+      final assistant = _assistant(edge, executor);
+
+      final resolution = await assistant.resolveNaturalLanguage('Local news');
+
+      expect(executor.commands, hasLength(1));
+      expect(executor.commands.single.intent, MediaIntent.search);
+      expect(resolution.usedFallback, isTrue);
+    },
+  );
+
+  test('model failure falls back without exposing the exception', () async {
+    final edge = _FakeEdge.failure();
+    final executor = _RecordingExecutor(const []);
+    final assistant = _assistant(edge, executor);
+
+    final resolution = await assistant.resolveNaturalLanguage('News');
+
+    expect(resolution.message, 'No local channel or programme matched.');
+    expect(resolution.usedFallback, isTrue);
+  });
+
+  test('resume uses recent channel and does not search', () async {
+    var searches = 0;
+    final executor = EdgeIptvIntentExecutor(
+      search: (_) async {
+        searches++;
+        return const [];
+      },
+      recentChannels: () async => [_channel('recent')],
+    );
+
+    final result = await executor.execute(
+      IntentCommand(intent: MediaIntent.resume, sort: null, confidence: 0.9),
+    );
+
+    expect((result as IntentExecutionCompleted).resultIds, ['recent']);
+    expect(searches, 0);
+  });
+
+  test('executor maps EPG programme results back to channel ids', () async {
+    final executor = EdgeIptvIntentExecutor(
+      search: (query) async => [
+        LocalIptvSearchResult(
+          type: LocalIptvSearchResultType.program,
+          title: '$query Live',
+          channelId: 'channel-1',
+          rank: 0,
+        ),
+      ],
+      recentChannels: () async => const [],
+    );
+
+    final result = await executor.execute(
+      IntentCommand(
+        intent: MediaIntent.browse,
+        entities: const [
+          IntentEntityValue(type: IntentEntityType.country, value: 'India'),
+        ],
+        sort: null,
+        confidence: 0.9,
+      ),
+    );
+
+    expect((result as IntentExecutionCompleted).resultIds, ['channel-1']);
+  });
+
+  test('configured pack installs once before offline parsing', () async {
+    final edge = _FakeEdge(
+      const IntentResult(
+        intent: 'search',
+        tool: 'media.search',
+        confidence: 0.9,
+        constraints: {'query': 'Aaj Tak'},
         missingFields: [],
         clarificationRequired: false,
       ),
-      resolved: _resolved('rule_aaj_tak', 'Aaj Tak'),
     );
     final assistant = EdgeIptvAssistant(
       edge,
+      executor: _RecordingExecutor(['aaj-tak']),
+      channelById: (id) async => _channel(id),
       config: EdgeIptvConfig.fromValues(
         backend: 'native',
         packPath: '/packs/media.pack',
       ),
     );
 
-    await assistant.resolveNaturalLanguage('Play Aaj Tak');
-    await assistant.resolveNaturalLanguage('Play Aaj Tak');
+    await assistant.resolveNaturalLanguage('Aaj Tak');
+    await assistant.resolveNaturalLanguage('Aaj Tak');
 
-    expect(edge.calls, [
-      'installPack:/packs/media.pack',
-      'parseIntent:Play Aaj Tak',
-      'play:Aaj Tak',
-      'parseIntent:Play Aaj Tak',
-      'play:Aaj Tak',
-    ]);
-  });
-
-  test('configured pack asset resolves before installation', () async {
-    final edge = _FakeEdgeIntelligence(
-      intent: const IntentResult(
-        intent: 'play',
-        tool: 'media.play',
-        confidence: 0.94,
-        constraints: {'query': 'Aaj Tak', 'live': true},
-        missingFields: [],
-        clarificationRequired: false,
-      ),
-      resolved: _resolved('rule_aaj_tak', 'Aaj Tak'),
+    expect(edge.installedPaths, ['/packs/media.pack']);
+    expect(edge.contexts, hasLength(2));
+    expect(
+      edge.contexts.every((context) => context.network == NetworkState.offline),
+      isTrue,
     );
-    final assistant = EdgeIptvAssistant(
-      edge,
-      config: EdgeIptvConfig.fromValues(
-        backend: 'native',
-        packAsset: 'assets/packs/media.pack',
-      ),
-      packPathResolver: (config) async {
-        expect(config.packAsset, 'assets/packs/media.pack');
-        return '/support/edge_intelligence/packs/media.pack';
-      },
-    );
-
-    await assistant.resolveNaturalLanguage('Play Aaj Tak');
-
-    expect(edge.calls, [
-      'installPack:/support/edge_intelligence/packs/media.pack',
-      'parseIntent:Play Aaj Tak',
-      'play:Aaj Tak',
-    ]);
   });
 }
 
-ResolvedMedia _resolved(String id, String title) {
-  return ResolvedMedia(
-    id: id,
-    title: title,
-    streamUri: Uri.parse('https://example.invalid/$id.m3u8'),
-    metadata: const {'genre': 'news', 'language': 'hi', 'live': true},
+EdgeIptvAssistant _assistant(_FakeEdge edge, IntentExecutor executor) {
+  return EdgeIptvAssistant(
+    edge,
+    executor: executor,
+    channelById: (id) async => _channel(id),
   );
 }
 
-final class _FakeEdgeIntelligence implements EdgeIntelligence {
-  _FakeEdgeIntelligence({
-    required this.intent,
-    required this.resolved,
-    this.searchResult = const SearchResult(candidates: []),
-    this.recommendationResult = const RecommendationResult(candidates: []),
-  });
+IPTVChannel _channel(String id) => IPTVChannel(
+  id: id,
+  name: id,
+  streamUrl: 'https://example.invalid/$id.m3u8',
+  group: 'Test',
+  category: ChannelCategory.general,
+  flavor: ChannelFlavor.general,
+  languages: const ['en'],
+  sources: const ['test'],
+);
 
-  final IntentResult intent;
-  final ResolvedMedia resolved;
-  final SearchResult searchResult;
-  final RecommendationResult recommendationResult;
-  final List<String> calls = [];
+final class _RecordingExecutor implements IntentExecutor {
+  _RecordingExecutor(this.resultIds);
+
+  final List<String> resultIds;
+  final List<IntentCommand> commands = [];
 
   @override
-  Future<SdkVersion> sdkVersion() async {
-    return const SdkVersion(major: 0, minor: 1, patch: 0, abi: 0);
+  Future<IntentExecutionResult> execute(IntentCommand command) async {
+    commands.add(command);
+    return IntentExecutionCompleted(resultIds: resultIds);
+  }
+}
+
+final class _FakeEdge implements EdgeIntelligence {
+  _FakeEdge(this.intent) : failure = null;
+  _FakeEdge.failure() : intent = null, failure = StateError('private failure');
+
+  final IntentResult? intent;
+  final Object? failure;
+  final List<ExecutionContext> contexts = [];
+  final List<String> installedPaths = [];
+
+  @override
+  Future<IntentResult> parseIntent(
+    ExecutionContext context,
+    ParseIntentQuery query,
+  ) async {
+    contexts.add(context);
+    if (failure case final failure?) throw failure;
+    return intent!;
   }
 
   @override
@@ -256,65 +247,33 @@ final class _FakeEdgeIntelligence implements EdgeIntelligence {
     ExecutionContext context,
     InstallPackCommand command,
   ) async {
-    calls.add('installPack:${command.packPath}');
+    installedPaths.add(command.packPath);
     return const PackInstallResult(
-      packId: 'test.pack',
-      version: '0.1.0',
+      packId: 'test',
+      version: '1',
       activated: true,
     );
   }
 
   @override
-  Future<IntentResult> parseIntent(
-    ExecutionContext context,
-    ParseIntentQuery query,
-  ) async {
-    calls.add('parseIntent:${query.utterance}');
-    return intent;
-  }
+  Future<SdkVersion> sdkVersion() async =>
+      const SdkVersion(major: 0, minor: 2, patch: 2, abi: 0);
 
   @override
-  Future<SearchResult> search(
-    ExecutionContext context,
-    SearchQuery query,
-  ) async {
-    calls.add('search:${query.text}');
-    return searchResult;
-  }
-
+  Future<SearchResult> search(ExecutionContext context, SearchQuery query) =>
+      throw UnimplementedError();
   @override
   Future<RecommendationResult> recommend(
     ExecutionContext context,
     RecommendationQuery query,
-  ) async {
-    calls.add('recommend');
-    return recommendationResult;
-  }
-
+  ) => throw UnimplementedError();
   @override
-  Future<ResolvedMedia> play(
-    ExecutionContext context,
-    PlayCommand command,
-  ) async {
-    calls.add('play:${command.itemId ?? command.query}');
-    return resolved;
-  }
-
+  Future<ResolvedMedia> play(ExecutionContext context, PlayCommand command) =>
+      throw UnimplementedError();
   @override
-  Future<ResolvedMedia?> resume(
-    ExecutionContext context,
-    ResumeQuery query,
-  ) async {
-    calls.add('resume');
-    return resolved;
-  }
-
+  Future<ResolvedMedia?> resume(ExecutionContext context, ResumeQuery query) =>
+      throw UnimplementedError();
   @override
-  Future<ResolvedMedia> resolve(
-    ExecutionContext context,
-    ResolveQuery query,
-  ) async {
-    calls.add('resolve:${query.itemId}');
-    return resolved;
-  }
+  Future<ResolvedMedia> resolve(ExecutionContext context, ResolveQuery query) =>
+      throw UnimplementedError();
 }

@@ -425,6 +425,13 @@ packages:
       relative: true
     source: path
     version: "0.0.1"
+  core_edge_intelligence:
+    dependency: transitive
+    description:
+      path: "../packages/core_edge_intelligence"
+      relative: true
+    source: path
+    version: "0.0.1"
   core_entitlements:
     dependency: "direct main"
     description:

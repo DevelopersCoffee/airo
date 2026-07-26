@@ -1,5 +1,7 @@
 ## 0.0.1
 
+- Added the offline Intent Engine v1 adapter, contract validation, confidence
+  fallback, and local playlist/EPG/history execution boundary.
 - Added the responsive Airo TV Explorer shell with persistent channel filters,
   saved filters, hotbar shortcuts, and resume-last-channel behavior.
 - Added Ways to Watch for fitted, fullscreen, supported floating-window, and

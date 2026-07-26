@@ -11,6 +11,20 @@ void main() {
   ) async {
     final container = ProviderContainer(
       overrides: [
+        iptvChannelsProvider.overrideWith(
+          (ref) async => [
+            IPTVChannel(
+              id: 'aaj-tak',
+              name: 'Aaj Tak',
+              streamUrl: 'https://example.com/aaj-tak/index.m3u8',
+              group: 'News',
+              category: ChannelCategory.news,
+              flavor: ChannelFlavor.hindiNews,
+              languages: const ['hi'],
+              sources: const ['acceptance-fixture'],
+            ),
+          ],
+        ),
         edgeIptvConfigProvider.overrideWithValue(
           EdgeIptvConfig.fromValues(
             backend: 'native',
@@ -26,7 +40,9 @@ void main() {
     final resolution = await assistant.resolveNaturalLanguage('Play Aaj Tak');
 
     expect(resolution.message, isNull);
-    expect(resolution.media?.title, 'Aaj Tak');
+    expect(resolution.command?.toJson()['intent'], 'play');
+    expect(resolution.usedFallback, isFalse);
+    expect(resolution.elapsed, lessThan(const Duration(milliseconds: 1500)));
     expect(
       resolution.channel?.streamUrl,
       'https://example.com/aaj-tak/index.m3u8',

@@ -11,9 +11,15 @@ sealed class IntentExecutionResult {
 }
 
 final class IntentExecutionCompleted extends IntentExecutionResult {
-  const IntentExecutionCompleted({required this.resultCount});
+  IntentExecutionCompleted({required Iterable<String> resultIds})
+    : resultIds = List.unmodifiable(resultIds);
 
-  final int resultCount;
+  /// Stable media identifiers selected by the application-owned executor.
+  ///
+  /// Identifiers keep intelligence outside the playback dependency graph.
+  final List<String> resultIds;
+
+  int get resultCount => resultIds.length;
 }
 
 final class IntentExecutionRejected extends IntentExecutionResult {

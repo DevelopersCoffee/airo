@@ -5,6 +5,14 @@ import 'package:core_edge_intelligence/core_edge_intelligence.dart';
 import 'package:test/test.dart';
 
 void main() {
+  test('execution result exposes immutable media identifiers', () {
+    final result = IntentExecutionCompleted(resultIds: const ['one', 'two']);
+
+    expect(result.resultCount, 2);
+    expect(result.resultIds, ['one', 'two']);
+    expect(() => result.resultIds.add('three'), throwsUnsupportedError);
+  });
+
   group('IntentCommand v1', () {
     test('round-trips every intent and typed contract branch', () {
       for (final intent in MediaIntent.values) {
@@ -262,6 +270,6 @@ void expectIssue(
 final class _FakeIntentExecutor implements IntentExecutor {
   @override
   Future<IntentExecutionResult> execute(IntentCommand command) async {
-    return const IntentExecutionCompleted(resultCount: 1);
+    return IntentExecutionCompleted(resultIds: const ['result']);
   }
 }
