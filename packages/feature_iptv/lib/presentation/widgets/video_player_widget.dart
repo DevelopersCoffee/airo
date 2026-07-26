@@ -2,7 +2,8 @@ import 'dart:async';
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' show KeyDownEvent, KeyUpEvent;
+import 'package:flutter/services.dart'
+    show Clipboard, ClipboardData, KeyDownEvent, KeyUpEvent;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:platform_channels/platform_channels.dart';
 import '../../application/player_backgrounding_coordinator.dart';
@@ -548,6 +549,121 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
       );
   }
 
+  Future<void> _refreshPlaylistFromContextMenu() async {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(const SnackBar(content: Text('Refreshing playlist…')));
+    try {
+      await ref.read(refreshChannelsProvider(true).future);
+      ref.invalidate(iptvChannelsProvider);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(const SnackBar(content: Text('Playlist refreshed')));
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(content: Text('Playlist refresh failed')),
+        );
+    }
+  }
+
+  void _selectAudioTrackFromContextMenu(
+    VideoPlayerStreamingService service,
+    StreamingState state,
+  ) {
+    setState(() => _showContextMenu = false);
+    _showTrackSelectorFor(
+      context,
+      service,
+      state,
+      kind: AiroPlaybackTrackKind.audio,
+    );
+  }
+
+  void _selectSubtitlesFromContextMenu(
+    VideoPlayerStreamingService service,
+    StreamingState state,
+  ) {
+    setState(() => _showContextMenu = false);
+    _showTrackSelector(context, service, state);
+  }
+
+  void _showChannelInfoFromContextMenu(StreamingState state) {
+    setState(() => _showContextMenu = false);
+    final channel = state.currentChannel;
+    if (channel == null) return;
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(channel.name),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (channel.group.isNotEmpty) Text('Group: ${channel.group}'),
+            Text('Quality: ${state.currentQuality.label}'),
+            Text(state.isLiveStream ? 'Live' : 'On demand'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showDiagnosticsFromContextMenu(StreamingState state) {
+    setState(() => _showContextMenu = false);
+    final channel = state.currentChannel;
+    final metrics = state.metrics;
+    final redactedSource = redactedUriForLog(
+      channel == null ? null : Uri.tryParse(channel.streamUrl),
+    );
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Diagnostics'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Source: $redactedSource'),
+            Text('Quality: ${state.currentQuality.label}'),
+            if (metrics != null) ...[
+              Text('Bitrate: ${metrics.currentBitrate} kbps'),
+              Text('Network: ${metrics.networkQuality.label}'),
+            ],
+            Text('Buffer health: ${state.bufferStatus.bufferHealth}'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _copyStreamLinkFromContextMenu(StreamingState state) async {
+    final channel = state.currentChannel;
+    final redacted = redactedUriForLog(
+      channel == null ? null : Uri.tryParse(channel.streamUrl),
+    );
+    await Clipboard.setData(ClipboardData(text: redacted));
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(const SnackBar(content: Text('Stream link copied')));
+  }
+
   void _showChannelChangeOverlay(String text) {
     _channelChangeOverlayTimer?.cancel();
     setState(() {
@@ -819,6 +935,17 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                       _ContextMenuOverlay(
                         channel: state.currentChannel!,
                         onToggleFavorite: _toggleFavoriteForCurrentChannel,
+                        onRefreshPlaylist: _refreshPlaylistFromContextMenu,
+                        onSelectAudioTrack: () =>
+                            _selectAudioTrackFromContextMenu(service, state),
+                        onSelectSubtitles: () =>
+                            _selectSubtitlesFromContextMenu(service, state),
+                        onShowChannelInfo: () =>
+                            _showChannelInfoFromContextMenu(state),
+                        onShowDiagnostics: () =>
+                            _showDiagnosticsFromContextMenu(state),
+                        onCopyStreamLink: () =>
+                            _copyStreamLinkFromContextMenu(state),
                         onClose: () => setState(() => _showContextMenu = false),
                       ),
 
@@ -2462,11 +2589,23 @@ class _ContextMenuOverlay extends ConsumerWidget {
   const _ContextMenuOverlay({
     required this.channel,
     required this.onToggleFavorite,
+    required this.onRefreshPlaylist,
+    required this.onSelectAudioTrack,
+    required this.onSelectSubtitles,
+    required this.onShowChannelInfo,
+    required this.onShowDiagnostics,
+    required this.onCopyStreamLink,
     required this.onClose,
   });
 
   final IPTVChannel channel;
   final VoidCallback onToggleFavorite;
+  final VoidCallback onRefreshPlaylist;
+  final VoidCallback onSelectAudioTrack;
+  final VoidCallback onSelectSubtitles;
+  final VoidCallback onShowChannelInfo;
+  final VoidCallback onShowDiagnostics;
+  final VoidCallback onCopyStreamLink;
   final VoidCallback onClose;
 
   @override
@@ -2514,30 +2653,107 @@ class _ContextMenuOverlay extends ConsumerWidget {
               ),
             ),
             const SizedBox(height: 20),
-            TvFocusable(
-              key: const ValueKey('context-menu-favorite'),
-              autofocus: true,
-              semanticLabel: isFavorite
-                  ? 'Remove from favorites'
-                  : 'Add to favorites',
-              onSelect: onToggleFavorite,
-              child: _ContextMenuItem(
-                icon: isFavorite ? Icons.favorite : Icons.favorite_border,
-                label: isFavorite
-                    ? 'Remove from favorites'
-                    : 'Add to favorites',
-                onTap: onToggleFavorite,
-              ),
-            ),
-            const SizedBox(height: 8),
-            TvFocusable(
-              key: const ValueKey('context-menu-close'),
-              semanticLabel: 'Close menu',
-              onSelect: onClose,
-              child: _ContextMenuItem(
-                icon: Icons.close,
-                label: 'Close',
-                onTap: onClose,
+            Expanded(
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    TvFocusable(
+                      key: const ValueKey('context-menu-favorite'),
+                      autofocus: true,
+                      semanticLabel: isFavorite
+                          ? 'Remove from favorites'
+                          : 'Add to favorites',
+                      onSelect: onToggleFavorite,
+                      child: _ContextMenuItem(
+                        icon: isFavorite
+                            ? Icons.favorite
+                            : Icons.favorite_border,
+                        label: isFavorite
+                            ? 'Remove from favorites'
+                            : 'Add to favorites',
+                        onTap: onToggleFavorite,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TvFocusable(
+                      key: const ValueKey('context-menu-refresh-playlist'),
+                      semanticLabel: 'Refresh playlist',
+                      onSelect: onRefreshPlaylist,
+                      child: _ContextMenuItem(
+                        icon: Icons.refresh,
+                        label: 'Refresh playlist',
+                        onTap: onRefreshPlaylist,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TvFocusable(
+                      key: const ValueKey('context-menu-audio-track'),
+                      semanticLabel: 'Audio track',
+                      onSelect: onSelectAudioTrack,
+                      child: _ContextMenuItem(
+                        icon: Icons.audiotrack_outlined,
+                        label: 'Audio track',
+                        onTap: onSelectAudioTrack,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TvFocusable(
+                      key: const ValueKey('context-menu-subtitles'),
+                      semanticLabel: 'Subtitles',
+                      onSelect: onSelectSubtitles,
+                      child: _ContextMenuItem(
+                        icon: Icons.subtitles_outlined,
+                        label: 'Subtitles',
+                        onTap: onSelectSubtitles,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TvFocusable(
+                      key: const ValueKey('context-menu-channel-info'),
+                      semanticLabel: 'Channel info',
+                      onSelect: onShowChannelInfo,
+                      child: _ContextMenuItem(
+                        icon: Icons.info_outline,
+                        label: 'Channel info',
+                        onTap: onShowChannelInfo,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TvFocusable(
+                      key: const ValueKey('context-menu-diagnostics'),
+                      semanticLabel: 'Diagnostics',
+                      onSelect: onShowDiagnostics,
+                      child: _ContextMenuItem(
+                        icon: Icons.medical_information_outlined,
+                        label: 'Diagnostics',
+                        onTap: onShowDiagnostics,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TvFocusable(
+                      key: const ValueKey('context-menu-copy-stream-link'),
+                      semanticLabel: 'Copy stream link',
+                      onSelect: onCopyStreamLink,
+                      child: _ContextMenuItem(
+                        icon: Icons.link,
+                        label: 'Copy stream link',
+                        onTap: onCopyStreamLink,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TvFocusable(
+                      key: const ValueKey('context-menu-close'),
+                      semanticLabel: 'Close menu',
+                      onSelect: onClose,
+                      child: _ContextMenuItem(
+                        icon: Icons.close,
+                        label: 'Close',
+                        onTap: onClose,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
