@@ -70,7 +70,9 @@ void main() {
   }
 
   testWidgets(
-    'D-pad down surfs to the next channel while playback stays primary (CV-008 UC-002)',
+    'D-pad up opens the Mini Guide, and selecting a channel there switches '
+    'playback (CV-008 UC-002, superseded by the AiroTV D-pad design: '
+    'UP browses instead of instantly surfing)',
     (tester) async {
       const current = IPTVChannel(
         id: 'news-1',
@@ -127,10 +129,19 @@ void main() {
       await service.playChannel(current);
       await tester.pump();
 
-      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
       await tester.pump();
 
+      // Mini Guide is open — browsing, not yet switched.
+      expect(find.text('Mini guide'), findsOneWidget);
       expect(find.text('Stadium Sports'), findsWidgets);
+      expect(service.currentState.currentChannel?.id, 'news-1');
+
+      await tester.tap(find.text('Stadium Sports').first);
+      await tester.pump();
+
+      expect(service.currentState.currentChannel?.id, 'sports-1');
+      expect(find.text('Mini guide'), findsNothing);
 
       // Pending timers (buffer monitor, live-edge detector) must be stopped
       // inside the test body -- the pending-timer check runs before
