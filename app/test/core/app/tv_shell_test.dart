@@ -60,34 +60,29 @@ void main() {
     },
   );
 
-  testWidgets(
-    'zen mode: sidebar is hidden while the player is fullscreen, and '
-    'returns when fullscreen exits',
-    (tester) async {
-      final container = ProviderContainer();
-      addTearDown(container.dispose);
+  testWidgets('zen mode: sidebar is hidden while the player is fullscreen, and '
+      'returns when fullscreen exits', (tester) async {
+    final container = ProviderContainer();
+    addTearDown(container.dispose);
 
-      await tester.pumpWidget(
-        UncontrolledProviderScope(
-          container: container,
-          child: const MaterialApp(
-            home: TvShell(child: SizedBox.expand()),
-          ),
-        ),
-      );
-      await tester.pump();
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: const MaterialApp(home: TvShell(child: SizedBox.expand())),
+      ),
+    );
+    await tester.pump();
 
-      expect(find.byKey(const Key('tv-sidebar-nav')), findsOneWidget);
+    expect(find.byKey(const Key('tv-sidebar-nav')), findsOneWidget);
 
-      container.read(isFullscreenModeProvider.notifier).state = true;
-      await tester.pump();
+    container.read(isFullscreenModeProvider.notifier).state = true;
+    await tester.pump();
 
-      expect(find.byKey(const Key('tv-sidebar-nav')), findsNothing);
+    expect(find.byKey(const Key('tv-sidebar-nav')), findsNothing);
 
-      container.read(isFullscreenModeProvider.notifier).state = false;
-      await tester.pump();
+    container.read(isFullscreenModeProvider.notifier).state = false;
+    await tester.pump();
 
-      expect(find.byKey(const Key('tv-sidebar-nav')), findsOneWidget);
-    },
-  );
+    expect(find.byKey(const Key('tv-sidebar-nav')), findsOneWidget);
+  });
 }
