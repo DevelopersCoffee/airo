@@ -98,4 +98,36 @@ void main() {
 
     expect(find.text('Actions for'), findsNothing);
   });
+
+  // Confirmed via on-device logcat: Fire OS intercepts KEYCODE_MENU for its
+  // own system overlay before Flutter's embedding ever sees it, so
+  // TvInputKey.menu is unreachable on real Fire TV hardware. Long-press
+  // Select/OK is the Fire TV convention (Prime Video, Netflix) and does
+  // reach the app.
+  testWidgets('long-pressing Select opens the context menu', (tester) async {
+    await pumpPlayer(tester);
+
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.select);
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(find.text('Actions for'), findsNothing);
+
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.text('Actions for'), findsOneWidget);
+
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.select);
+    await tester.pump();
+  });
+
+  testWidgets('a short Select tap does not open the context menu', (
+    tester,
+  ) async {
+    await pumpPlayer(tester);
+
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.select);
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.select);
+    await tester.pump(const Duration(milliseconds: 600));
+
+    expect(find.text('Actions for'), findsNothing);
+  });
 }
