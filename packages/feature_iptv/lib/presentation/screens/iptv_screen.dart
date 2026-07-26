@@ -21,6 +21,7 @@ import '../widgets/xmltv_source_sheet.dart';
 import '../tv/iptv_guide_screen.dart';
 import '../tv_ux/airo_tv_shell.dart';
 import '../tv_ux/iptv_resume_gate.dart';
+import '../tv_ux/sections/ways_to_watch_dialog.dart';
 import '../tv_ux/tv_loading_screen.dart';
 import 'mobile_favorites_screen.dart';
 
@@ -526,6 +527,26 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
     );
   }
 
+  Future<void> _showWaysToWatch() async {
+    final pictureInPictureSupported =
+        !widget.tenFootMode && await AiroNativePictureInPicture.isSupported();
+    if (!mounted) return;
+
+    if (isGoogleCastSenderPlatform) {
+      unawaited(ref.read(iptvCastProvider.notifier).startDiscovery());
+    }
+
+    await _showWaysToWatchDialog(
+      context: context,
+      pictureInPictureSupported: pictureInPictureSupported,
+      onExitFullscreen: _exitFullscreen,
+      onEnterFullscreen: () {
+        if (!ref.read(isFullscreenModeProvider)) _toggleFullscreen();
+      },
+      onShowCast: _showCastSheet,
+    );
+  }
+
   Future<void> _showPlaylistSheet() async {
     await showPlaylistSourceSheet(context, ref);
   }
@@ -626,9 +647,9 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
                   const SizedBox(height: 24),
                   Text(
                     'Starting channel...',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Colors.white70,
-                    ),
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodyMedium?.copyWith(color: Colors.white70),
                   ),
                   const SizedBox(height: 32),
                   // Escape hatch: the user must never be stuck here indefinitely
@@ -705,6 +726,7 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
               onChannelTap: _playChannelFullscreen,
               onFullscreenToggle: _toggleFullscreen,
               onPlaylistSourceTap: _showPlaylistSheet,
+              onWaysToWatchTap: _showWaysToWatch,
               playlistSourceInInfoBar: true,
             ),
           ),
@@ -768,6 +790,7 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
                   onChannelTap: _playChannel,
                   onFullscreenToggle: _toggleFullscreen,
                   onPlaylistSourceTap: _showPlaylistSheet,
+                  onWaysToWatchTap: _showWaysToWatch,
                 ),
               ),
               const IptvCastMiniController(),
@@ -777,6 +800,52 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
       ),
     );
   }
+}
+
+Future<void> _showWaysToWatchDialog({
+  required BuildContext context,
+  required bool pictureInPictureSupported,
+  required VoidCallback onExitFullscreen,
+  required VoidCallback onEnterFullscreen,
+  required VoidCallback onShowCast,
+}) {
+  return showDialog<void>(
+    context: context,
+    builder: (dialogContext) => Consumer(
+      builder: (context, dialogRef, _) {
+        final castState = dialogRef.watch(iptvCastProvider);
+        final castAvailable =
+            isGoogleCastSenderPlatform &&
+            castState.discovery.devices.isNotEmpty;
+        return WaysToWatchDialog(
+          pictureInPictureSupported: pictureInPictureSupported,
+          castAvailable: castAvailable,
+          onFitScreen: () {
+            Navigator.of(dialogContext).pop();
+            onExitFullscreen();
+          },
+          onFullScreen: () {
+            Navigator.of(dialogContext).pop();
+            onEnterFullscreen();
+          },
+          onPictureInPicture: () async {
+            Navigator.of(dialogContext).pop();
+            final entered = await AiroNativePictureInPicture.requestEnter();
+            if (!context.mounted || entered) return;
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Floating Window could not be started.'),
+              ),
+            );
+          },
+          onCast: () {
+            Navigator.of(dialogContext).pop();
+            onShowCast();
+          },
+        );
+      },
+    ),
+  );
 }
 
 /// IPTV Screen body content (without AppBar) for embedding in MediaHubScreen
@@ -881,6 +950,45 @@ class _IPTVScreenBodyState extends ConsumerState<IPTVScreenBody>
     await showPlaylistSourceSheet(context, ref);
   }
 
+  Future<void> _showCastSheet() async {
+    final channel = ref
+        .read(iptvStreamingServiceProvider)
+        .currentState
+        .currentChannel;
+    if (channel == null) return;
+    await showIptvCastDevicePicker(
+      context: context,
+      onDeviceSelected: (device) {
+        ref
+            .read(iptvCastProvider.notifier)
+            .castChannelToDevice(
+              channel: channel,
+              device: device,
+              selectedQuality: ref
+                  .read(iptvStreamingServiceProvider)
+                  .currentState
+                  .selectedQuality,
+            );
+      },
+    );
+  }
+
+  Future<void> _showWaysToWatch() async {
+    final pictureInPictureSupported =
+        await AiroNativePictureInPicture.isSupported();
+    if (!mounted) return;
+    unawaited(ref.read(iptvCastProvider.notifier).startDiscovery());
+    await _showWaysToWatchDialog(
+      context: context,
+      pictureInPictureSupported: pictureInPictureSupported,
+      onExitFullscreen: _exitFullscreen,
+      onEnterFullscreen: () {
+        if (!ref.read(isFullscreenModeProvider)) _toggleFullscreen();
+      },
+      onShowCast: _showCastSheet,
+    );
+  }
+
   void _syncLocalPlaybackWithCast(bool? wasCasting, bool isCasting) {
     final streaming = ref.read(iptvStreamingServiceProvider);
     if (isCasting) {
@@ -944,6 +1052,7 @@ class _IPTVScreenBodyState extends ConsumerState<IPTVScreenBody>
                       onChannelTap: _playChannel,
                       onFullscreenToggle: _toggleFullscreen,
                       onPlaylistSourceTap: _showPlaylistSheet,
+                      onWaysToWatchTap: _showWaysToWatch,
                     ),
                   ),
                   const IptvCastMiniController(),
@@ -960,12 +1069,14 @@ class _StreamTabContent extends ConsumerWidget {
     required this.onChannelTap,
     required this.onFullscreenToggle,
     required this.onPlaylistSourceTap,
+    required this.onWaysToWatchTap,
     this.playlistSourceInInfoBar = false,
   });
 
   final ValueChanged<IPTVChannel> onChannelTap;
   final VoidCallback onFullscreenToggle;
   final VoidCallback onPlaylistSourceTap;
+  final VoidCallback onWaysToWatchTap;
 
   /// True on TV (no app bar): surfaces the playlist-source entry in the
   /// shell's LIVE bar instead. Phones keep it in the app bar only.
@@ -1004,6 +1115,7 @@ class _StreamTabContent extends ConsumerWidget {
       currentChannel: activeChannel,
       onChannelSelected: onChannelTap,
       onPlaylistSourceTap: playlistSourceInInfoBar ? onPlaylistSourceTap : null,
+      onWaysToWatchTap: onWaysToWatchTap,
       videoStage: AspectRatio(
         aspectRatio: 16 / 9,
         child: activeChannel == null
