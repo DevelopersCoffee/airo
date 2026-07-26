@@ -1,19 +1,22 @@
+import 'package:core_product_shell/core_product_shell.dart';
 import 'package:flutter/foundation.dart';
-import 'package:go_router/go_router.dart';
 import 'package:feature_iptv/feature_iptv.dart';
+import 'package:go_router/go_router.dart';
 
-import '../../core/config/platform_features.dart';
-import '../../core/features/feature_registry.dart';
-
-class IptvFeatureModule extends AppFeatureModule {
+/// Shell adapter for the shared IPTV feature package.
+///
+/// The module is available to both the mobile super-app and focused TV app.
+/// Each host owns its shell chrome while this adapter preserves IPTV's stable
+/// route identities.
+class IptvFeatureModule extends AppModule {
   @override
-  String get name => 'iptv';
+  String get id => 'iptv';
 
   @override
-  AppFeature get featureType => AppFeature.iptv;
+  Set<ShellId> get supportedShells => {ShellId.mobile, ShellId.tv};
 
   @override
-  List<RouteBase> get routes => [
+  List<RouteBase> routesFor(ShellId shell) => [
     GoRoute(
       path: '/iptv',
       name: 'iptv',
@@ -30,10 +33,4 @@ class IptvFeatureModule extends AppFeatureModule {
       },
     ),
   ];
-
-  @override
-  Future<void> initialize() async {}
-
-  @override
-  Future<void> dispose() async {}
 }

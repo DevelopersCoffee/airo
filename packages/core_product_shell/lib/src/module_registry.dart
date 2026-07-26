@@ -4,6 +4,16 @@ import 'package:go_router/go_router.dart';
 import 'app_module.dart';
 import 'shell_id.dart';
 
+/// Thrown when two enabled modules make the product composition ambiguous.
+class ModuleCompositionException implements Exception {
+  const ModuleCompositionException(this.message);
+
+  final String message;
+
+  @override
+  String toString() => 'ModuleCompositionException: $message';
+}
+
 /// Resolves registered [AppModule]s for one running shell.
 ///
 /// This is the shared replacement for the app-owned static
@@ -21,10 +31,51 @@ class ModuleRegistry {
   bool _initialized = false;
 
   /// Registers [module] if it is enabled for [shell]. No-op otherwise.
+  ///
+  /// Enabled modules must have unique IDs, top-level route paths, and route
+  /// names. Product composition is resolved before `runApp`, so ambiguity is
+  /// reported immediately instead of depending on router ordering.
   void register(AppModule module) {
-    if (module.isEnabledForShell(shell)) {
-      _modules.add(module);
+    if (!module.isEnabledForShell(shell)) return;
+
+    final duplicateId = _modules.any((existing) => existing.id == module.id);
+    if (duplicateId) {
+      throw ModuleCompositionException(
+        'Duplicate module id "${module.id}" for shell "${shell.value}".',
+      );
     }
+
+    final existingRoutes = _modules
+        .expand((existing) => existing.routesFor(shell))
+        .whereType<GoRoute>()
+        .toList(growable: false);
+    final candidateRoutes = module.routesFor(shell).whereType<GoRoute>();
+
+    for (final candidate in candidateRoutes) {
+      final conflictingPath = existingRoutes
+          .where((route) => route.path == candidate.path)
+          .firstOrNull;
+      if (conflictingPath != null) {
+        throw ModuleCompositionException(
+          'Duplicate top-level route path "${candidate.path}" for shell '
+          '"${shell.value}" while registering module "${module.id}".',
+        );
+      }
+
+      final candidateName = candidate.name;
+      if (candidateName == null) continue;
+      final conflictingName = existingRoutes
+          .where((route) => route.name == candidateName)
+          .firstOrNull;
+      if (conflictingName != null) {
+        throw ModuleCompositionException(
+          'Duplicate top-level route name "$candidateName" for shell '
+          '"${shell.value}" while registering module "${module.id}".',
+        );
+      }
+    }
+
+    _modules.add(module);
   }
 
   /// Initializes every registered module exactly once. A failing module logs
@@ -65,9 +116,8 @@ class ModuleRegistry {
       _modules.expand((module) => module.routesFor(shell)).toList();
 
   /// All provider overrides contributed by registered modules for [shell].
-  List<Override> get allProviderOverrides => _modules
-      .expand((module) => module.providerOverridesFor(shell))
-      .toList();
+  List<Override> get allProviderOverrides =>
+      _modules.expand((module) => module.providerOverridesFor(shell)).toList();
 
   /// Read-only snapshot of registered modules.
   List<AppModule> get registeredModules => List.unmodifiable(_modules);
