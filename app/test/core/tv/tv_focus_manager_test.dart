@@ -111,8 +111,11 @@ void main() {
   });
 
   group('TvFocusConstants', () {
+    // AiroTV D-pad design's reviewed token set
+    // (issues/02-focus-tokens-reduced-motion.md): 2.5lp border, 1.04 scale,
+    // 5lp ring at 20% opacity, 120ms motion.
     test('should have correct focus border width', () {
-      expect(TvFocusConstants.focusBorderWidth, equals(3.0));
+      expect(TvFocusConstants.focusBorderWidth, equals(2.5));
     });
 
     test('should have correct focus border radius', () {
@@ -122,16 +125,20 @@ void main() {
     test('should have correct animation duration', () {
       expect(
         TvFocusConstants.focusAnimationDuration,
-        equals(const Duration(milliseconds: 200)),
+        equals(const Duration(milliseconds: 120)),
       );
     });
 
     test('should have correct focus scale factor', () {
-      expect(TvFocusConstants.focusScaleFactor, equals(1.05));
+      expect(TvFocusConstants.focusScaleFactor, equals(1.04));
     });
 
     test('should have correct glow spread', () {
-      expect(TvFocusConstants.focusGlowSpread, equals(4.0));
+      expect(TvFocusConstants.focusGlowSpread, equals(5.0));
+    });
+
+    test('should have correct glow opacity', () {
+      expect(TvFocusConstants.focusGlowOpacity, equals(0.20));
     });
   });
 
