@@ -210,6 +210,7 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
             mixWithOthers: _isBackgroundAudioMode,
             allowBackgroundPlayback:
                 _isBackgroundAudioMode || channel.isAudioOnly,
+            httpHeaders: _httpHeadersFor(channel),
           ),
         );
 
@@ -755,6 +756,17 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
   void _updateState(StreamingState newState) {
     _state = newState;
     _stateController.add(_state);
+  }
+
+  /// Mirrors the header names the availability probe sends
+  /// (`ChannelAutoScanController._toProbeRequest`). The probe and the player
+  /// must agree: if only the probe sends them, a provider that requires a
+  /// `User-Agent` reports the channel reachable and then refuses playback.
+  Map<String, String> _httpHeadersFor(IPTVChannel channel) {
+    return {
+      'User-Agent': ?channel.headers?.userAgent,
+      'Referer': ?channel.headers?.referrer,
+    };
   }
 
   @override

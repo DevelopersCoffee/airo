@@ -20,12 +20,14 @@ void main() {
   IPTVChannel channel({
     String streamUrl = 'https://example.com/live.m3u8',
     bool isAudioOnly = false,
+    ChannelHeaders? headers,
   }) {
     return IPTVChannel(
       id: 'chan-1',
       name: 'Test Channel',
       streamUrl: streamUrl,
       isAudioOnly: isAudioOnly,
+      headers: headers,
     );
   }
 
@@ -41,6 +43,28 @@ void main() {
   });
 
   group('VideoPlayerStreamingService playChannel', () {
+    test('forwards playlist-supplied headers to the platform', () async {
+      await service.playChannel(
+        channel(
+          headers: const ChannelHeaders(
+            userAgent: 'Mozilla/5.0 (Airo test)',
+            referrer: 'https://example.com/portal',
+          ),
+        ),
+      );
+
+      expect(fakePlatform.lastDataSource?.httpHeaders, {
+        'User-Agent': 'Mozilla/5.0 (Airo test)',
+        'Referer': 'https://example.com/portal',
+      });
+    });
+
+    test('sends no headers when the playlist supplies none', () async {
+      await service.playChannel(channel());
+
+      expect(fakePlatform.lastDataSource?.httpHeaders, isEmpty);
+    });
+
     test('opens via the injected engine and reaches playing', () async {
       await service.playChannel(channel());
       expect(service.currentState.playbackState, PlaybackState.playing);

@@ -62,6 +62,7 @@ class VideoPlayerAiroPlaybackEngine implements AiroPlaybackEngine {
 
     final controller = VideoPlayerController.networkUrl(
       Uri.parse(request.sourceHandle.value),
+      httpHeaders: request.httpHeaders,
       videoPlayerOptions: VideoPlayerOptions(
         mixWithOthers: request.mixWithOthers,
         allowBackgroundPlayback: request.allowBackgroundPlayback,
