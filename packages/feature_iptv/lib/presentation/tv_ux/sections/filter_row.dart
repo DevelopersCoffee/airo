@@ -15,6 +15,8 @@ class FilterRow extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final filters = ref.watch(channelFiltersProvider);
     final notifier = ref.read(channelFiltersProvider.notifier);
+    final recent = ref.watch(recentFilterValuesProvider);
+    final recentNotifier = ref.read(recentFilterValuesProvider.notifier);
     final chips = <Widget>[
       _FilterChip(
         key: const ValueKey('filter-chip-search'),
@@ -35,7 +37,11 @@ class FilterRow extends ConsumerWidget {
             title: 'Category',
             options: dimensions.categories.toList(growable: false),
             selectedValue: filters.category,
-            onSelected: notifier.setCategory,
+            recentValues: recent.categories,
+            onSelected: (value) {
+              notifier.setCategory(value);
+              recentNotifier.record(ChannelFilterDimension.category, value);
+            },
             onClear: () => notifier.setCategory(null),
           ),
         ),
@@ -50,7 +56,11 @@ class FilterRow extends ConsumerWidget {
             title: 'Country',
             options: dimensions.countries.toList(growable: false),
             selectedValue: filters.country,
-            onSelected: notifier.setCountry,
+            recentValues: recent.countries,
+            onSelected: (value) {
+              notifier.setCountry(value);
+              recentNotifier.record(ChannelFilterDimension.country, value);
+            },
             onClear: () => notifier.setCountry(null),
             optionLabel: countryDisplayLabel,
           ),
@@ -66,7 +76,11 @@ class FilterRow extends ConsumerWidget {
             title: 'Language',
             options: dimensions.languages.toList(growable: false),
             selectedValue: filters.language,
-            onSelected: notifier.setLanguage,
+            recentValues: recent.languages,
+            onSelected: (value) {
+              notifier.setLanguage(value);
+              recentNotifier.record(ChannelFilterDimension.language, value);
+            },
             onClear: () => notifier.setLanguage(null),
             optionLabel: languageDisplayLabel,
           ),

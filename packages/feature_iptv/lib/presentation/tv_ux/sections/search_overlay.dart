@@ -57,6 +57,7 @@ class _SearchOverlayState extends ConsumerState<SearchOverlay> {
 
   Future<void> _browseBy({
     required String title,
+    required ChannelFilterDimension dimension,
     required List<String> options,
     required String? selectedValue,
     required ValueChanged<String> onSelected,
@@ -64,13 +65,20 @@ class _SearchOverlayState extends ConsumerState<SearchOverlay> {
     String Function(String)? optionLabel,
   }) async {
     Navigator.of(context).pop();
+    final recentNotifier = ref.read(recentFilterValuesProvider.notifier);
     await showTvLongListPicker(
       // ignore: use_build_context_synchronously
       context: context,
       title: title,
       options: options,
       selectedValue: selectedValue,
-      onSelected: onSelected,
+      recentValues: ref.read(
+        recentFilterValuesProvider.select((r) => r.forDimension(dimension)),
+      ),
+      onSelected: (value) {
+        onSelected(value);
+        recentNotifier.record(dimension, value);
+      },
       onClear: onClear,
       optionLabel: optionLabel,
     );
@@ -141,6 +149,7 @@ class _SearchOverlayState extends ConsumerState<SearchOverlay> {
                           count: '${dimensions.categories.length}',
                           onSelect: () => _browseBy(
                             title: 'Category',
+                            dimension: ChannelFilterDimension.category,
                             options: dimensions.categories.toList(
                               growable: false,
                             ),
@@ -157,6 +166,7 @@ class _SearchOverlayState extends ConsumerState<SearchOverlay> {
                           count: '${dimensions.countries.length}',
                           onSelect: () => _browseBy(
                             title: 'Country',
+                            dimension: ChannelFilterDimension.country,
                             options: dimensions.countries.toList(
                               growable: false,
                             ),
@@ -174,6 +184,7 @@ class _SearchOverlayState extends ConsumerState<SearchOverlay> {
                           count: '${dimensions.languages.length}',
                           onSelect: () => _browseBy(
                             title: 'Language',
+                            dimension: ChannelFilterDimension.language,
                             options: dimensions.languages.toList(
                               growable: false,
                             ),
