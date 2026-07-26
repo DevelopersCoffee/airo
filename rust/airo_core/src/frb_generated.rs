@@ -37,7 +37,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
     default_rust_auto_opaque = RustAutoOpaqueMoi,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.11.1";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 1869107413;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 2008187082;
 
 // Section: executor
 
@@ -45,6 +45,44 @@ flutter_rust_bridge::frb_generated_default_handler!();
 
 // Section: wire_funcs
 
+fn wire__crate__api__native_engine__compare_vector_clocks_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "compare_vector_clocks",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_left =
+                <Vec<crate::api::native_engine::VectorClockCounter>>::sse_decode(&mut deserializer);
+            let api_right =
+                <Vec<crate::api::native_engine::VectorClockCounter>>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, ()>((move || {
+                    let output_ok = Result::<_, ()>::Ok(
+                        crate::api::native_engine::compare_vector_clocks(api_left, api_right),
+                    )?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
 fn wire__crate__api__m3u__m_3_u_channel_parse_result_default_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
@@ -494,6 +532,43 @@ fn wire__crate__api__m3u__parse_m3u_with_stats_impl(
         },
     )
 }
+fn wire__crate__api__native_engine__parse_subtitles_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "parse_subtitles",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_content = <String>::sse_decode(&mut deserializer);
+            let api_format =
+                <crate::api::native_engine::SubtitleFormat>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, ()>((move || {
+                    let output_ok = Result::<_, ()>::Ok(
+                        crate::api::native_engine::parse_subtitles(api_content, api_format),
+                    )?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
 fn wire__crate__api__xmltv__parse_xmltv_current_next_file_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
@@ -600,6 +675,44 @@ fn wire__crate__api__xmltv__parse_xmltv_programmes_file_impl(
                     let output_ok = crate::api::xmltv::parse_xmltv_programmes_file(
                         api_path,
                         api_max_programmes,
+                    )?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__crate__api__native_engine__rank_recommendations_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "rank_recommendations",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_candidates =
+                <Vec<crate::api::native_engine::RecommendationCandidate>>::sse_decode(
+                    &mut deserializer,
+                );
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, ()>((move || {
+                    let output_ok = Result::<_, ()>::Ok(
+                        crate::api::native_engine::rank_recommendations(api_candidates),
                     )?;
                     Ok(output_ok)
                 })())
@@ -931,6 +1044,32 @@ impl SseDecode for Vec<u8> {
     }
 }
 
+impl SseDecode for Vec<crate::api::native_engine::RecommendationCandidate> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut len_ = <i32>::sse_decode(deserializer);
+        let mut ans_ = vec![];
+        for idx_ in 0..len_ {
+            ans_.push(
+                <crate::api::native_engine::RecommendationCandidate>::sse_decode(deserializer),
+            );
+        }
+        return ans_;
+    }
+}
+
+impl SseDecode for Vec<crate::api::native_engine::RecommendationScore> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut len_ = <i32>::sse_decode(deserializer);
+        let mut ans_ = vec![];
+        for idx_ in 0..len_ {
+            ans_.push(<crate::api::native_engine::RecommendationScore>::sse_decode(deserializer));
+        }
+        return ans_;
+    }
+}
+
 impl SseDecode for Vec<(String, String)> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -938,6 +1077,34 @@ impl SseDecode for Vec<(String, String)> {
         let mut ans_ = vec![];
         for idx_ in 0..len_ {
             ans_.push(<(String, String)>::sse_decode(deserializer));
+        }
+        return ans_;
+    }
+}
+
+impl SseDecode for Vec<crate::api::native_engine::SubtitleCue> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut len_ = <i32>::sse_decode(deserializer);
+        let mut ans_ = vec![];
+        for idx_ in 0..len_ {
+            ans_.push(<crate::api::native_engine::SubtitleCue>::sse_decode(
+                deserializer,
+            ));
+        }
+        return ans_;
+    }
+}
+
+impl SseDecode for Vec<crate::api::native_engine::VectorClockCounter> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut len_ = <i32>::sse_decode(deserializer);
+        let mut ans_ = vec![];
+        for idx_ in 0..len_ {
+            ans_.push(<crate::api::native_engine::VectorClockCounter>::sse_decode(
+                deserializer,
+            ));
         }
         return ans_;
     }
@@ -1117,6 +1284,28 @@ impl SseDecode for Option<i64> {
     }
 }
 
+impl SseDecode for Option<u16> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        if (<bool>::sse_decode(deserializer)) {
+            return Some(<u16>::sse_decode(deserializer));
+        } else {
+            return None;
+        }
+    }
+}
+
+impl SseDecode for Option<u32> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        if (<bool>::sse_decode(deserializer)) {
+            return Some(<u32>::sse_decode(deserializer));
+        } else {
+            return None;
+        }
+    }
+}
+
 impl SseDecode for Option<crate::api::xmltv::XmltvProgramme> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -1272,12 +1461,111 @@ impl SseDecode for crate::api::playlist_engine::PlaylistSearchOperator {
     }
 }
 
+impl SseDecode for crate::api::native_engine::RecommendationCandidate {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_id = <String>::sse_decode(deserializer);
+        let mut var_title = <String>::sse_decode(deserializer);
+        let mut var_genreAffinity = <i64>::sse_decode(deserializer);
+        let mut var_providerAffinity = <i64>::sse_decode(deserializer);
+        let mut var_languageAffinity = <i64>::sse_decode(deserializer);
+        let mut var_completionPermille = <Option<u16>>::sse_decode(deserializer);
+        let mut var_lastWatchedAgeDays = <Option<u32>>::sse_decode(deserializer);
+        let mut var_preferredTime = <bool>::sse_decode(deserializer);
+        let mut var_deviceFit = <bool>::sse_decode(deserializer);
+        return crate::api::native_engine::RecommendationCandidate {
+            id: var_id,
+            title: var_title,
+            genre_affinity: var_genreAffinity,
+            provider_affinity: var_providerAffinity,
+            language_affinity: var_languageAffinity,
+            completion_permille: var_completionPermille,
+            last_watched_age_days: var_lastWatchedAgeDays,
+            preferred_time: var_preferredTime,
+            device_fit: var_deviceFit,
+        };
+    }
+}
+
+impl SseDecode for crate::api::native_engine::RecommendationScore {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_id = <String>::sse_decode(deserializer);
+        let mut var_score = <i64>::sse_decode(deserializer);
+        let mut var_genrePoints = <i64>::sse_decode(deserializer);
+        let mut var_providerPoints = <i64>::sse_decode(deserializer);
+        let mut var_languagePoints = <i64>::sse_decode(deserializer);
+        let mut var_completionPoints = <i64>::sse_decode(deserializer);
+        let mut var_recencyPoints = <i64>::sse_decode(deserializer);
+        let mut var_timeBucketPoints = <i64>::sse_decode(deserializer);
+        let mut var_deviceFitPoints = <i64>::sse_decode(deserializer);
+        return crate::api::native_engine::RecommendationScore {
+            id: var_id,
+            score: var_score,
+            genre_points: var_genrePoints,
+            provider_points: var_providerPoints,
+            language_points: var_languagePoints,
+            completion_points: var_completionPoints,
+            recency_points: var_recencyPoints,
+            time_bucket_points: var_timeBucketPoints,
+            device_fit_points: var_deviceFitPoints,
+        };
+    }
+}
+
 impl SseDecode for (String, String) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut var_field0 = <String>::sse_decode(deserializer);
         let mut var_field1 = <String>::sse_decode(deserializer);
         return (var_field0, var_field1);
+    }
+}
+
+impl SseDecode for crate::api::native_engine::SubtitleCue {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_startMillis = <u64>::sse_decode(deserializer);
+        let mut var_endMillis = <u64>::sse_decode(deserializer);
+        let mut var_text = <String>::sse_decode(deserializer);
+        return crate::api::native_engine::SubtitleCue {
+            start_millis: var_startMillis,
+            end_millis: var_endMillis,
+            text: var_text,
+        };
+    }
+}
+
+impl SseDecode for crate::api::native_engine::SubtitleFormat {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <i32>::sse_decode(deserializer);
+        return match inner {
+            0 => crate::api::native_engine::SubtitleFormat::Srt,
+            1 => crate::api::native_engine::SubtitleFormat::WebVtt,
+            _ => unreachable!("Invalid variant for SubtitleFormat: {}", inner),
+        };
+    }
+}
+
+impl SseDecode for crate::api::native_engine::SubtitleParseResult {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_cues = <Vec<crate::api::native_engine::SubtitleCue>>::sse_decode(deserializer);
+        let mut var_malformedCueCount = <u32>::sse_decode(deserializer);
+        let mut var_truncated = <bool>::sse_decode(deserializer);
+        return crate::api::native_engine::SubtitleParseResult {
+            cues: var_cues,
+            malformed_cue_count: var_malformedCueCount,
+            truncated: var_truncated,
+        };
+    }
+}
+
+impl SseDecode for u16 {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        deserializer.cursor.read_u16::<NativeEndian>().unwrap()
     }
 }
 
@@ -1305,6 +1593,32 @@ impl SseDecode for u8 {
 impl SseDecode for () {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {}
+}
+
+impl SseDecode for crate::api::native_engine::VectorClockCounter {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_nodeId = <String>::sse_decode(deserializer);
+        let mut var_counter = <u64>::sse_decode(deserializer);
+        return crate::api::native_engine::VectorClockCounter {
+            node_id: var_nodeId,
+            counter: var_counter,
+        };
+    }
+}
+
+impl SseDecode for crate::api::native_engine::VectorClockRelation {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <i32>::sse_decode(deserializer);
+        return match inner {
+            0 => crate::api::native_engine::VectorClockRelation::Equal,
+            1 => crate::api::native_engine::VectorClockRelation::LeftDominates,
+            2 => crate::api::native_engine::VectorClockRelation::RightDominates,
+            3 => crate::api::native_engine::VectorClockRelation::Concurrent,
+            _ => unreachable!("Invalid variant for VectorClockRelation: {}", inner),
+        };
+    }
 }
 
 impl SseDecode for crate::api::xmltv::XmltvCurrentNextEntry {
@@ -1403,99 +1717,114 @@ fn pde_ffi_dispatcher_primary_impl(
 ) {
     // Codec=Pde (Serialization + dispatch), see doc to use other codecs
     match func_id {
-        1 => wire__crate__api__m3u__m_3_u_channel_parse_result_default_impl(
+        1 => wire__crate__api__native_engine__compare_vector_clocks_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        2 => wire__crate__api__m3u__m_3_u_parse_result_default_impl(
+        2 => wire__crate__api__m3u__m_3_u_channel_parse_result_default_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        3 => {
+        3 => wire__crate__api__m3u__m_3_u_parse_result_default_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        4 => {
             wire__crate__api__m3u__m_3_u_parse_stats_default_impl(port, ptr, rust_vec_len, data_len)
         }
-        4 => wire__crate__api__m3u__m_3_u_playlist_default_impl(port, ptr, rust_vec_len, data_len),
-        5 => wire__crate__api__text__normalize_channel_name_impl(port, ptr, rust_vec_len, data_len),
-        6 => wire__crate__api__playlist_engine__open_playlist_index_impl(
+        5 => wire__crate__api__m3u__m_3_u_playlist_default_impl(port, ptr, rust_vec_len, data_len),
+        6 => wire__crate__api__text__normalize_channel_name_impl(port, ptr, rust_vec_len, data_len),
+        7 => wire__crate__api__playlist_engine__open_playlist_index_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        7 => wire__crate__api__playlist_engine__page_playlist_index_impl(
+        8 => wire__crate__api__playlist_engine__page_playlist_index_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        8 => wire__crate__api__m3u__parse_m3u_channels_with_stats_impl(
+        9 => wire__crate__api__m3u__parse_m3u_channels_with_stats_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        9 => wire__crate__api__m3u__parse_m3u_entries_impl(port, ptr, rust_vec_len, data_len),
-        10 => wire__crate__api__m3u__parse_m3u_file_channels_with_stats_impl(
+        10 => wire__crate__api__m3u__parse_m3u_entries_impl(port, ptr, rust_vec_len, data_len),
+        11 => wire__crate__api__m3u__parse_m3u_file_channels_with_stats_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        11 => {
+        12 => {
             wire__crate__api__m3u__parse_m3u_file_with_stats_impl(port, ptr, rust_vec_len, data_len)
         }
-        12 => wire__crate__api__m3u__parse_m3u_playlist_impl(port, ptr, rust_vec_len, data_len),
-        13 => wire__crate__api__m3u__parse_m3u_with_stats_impl(port, ptr, rust_vec_len, data_len),
-        14 => wire__crate__api__xmltv__parse_xmltv_current_next_file_impl(
+        13 => wire__crate__api__m3u__parse_m3u_playlist_impl(port, ptr, rust_vec_len, data_len),
+        14 => wire__crate__api__m3u__parse_m3u_with_stats_impl(port, ptr, rust_vec_len, data_len),
+        15 => {
+            wire__crate__api__native_engine__parse_subtitles_impl(port, ptr, rust_vec_len, data_len)
+        }
+        16 => wire__crate__api__xmltv__parse_xmltv_current_next_file_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        15 => {
+        17 => {
             wire__crate__api__xmltv__parse_xmltv_programmes_impl(port, ptr, rust_vec_len, data_len)
         }
-        16 => wire__crate__api__xmltv__parse_xmltv_programmes_file_impl(
+        18 => wire__crate__api__xmltv__parse_xmltv_programmes_file_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        17 => wire__crate__api__playlist_engine__search_playlist_index_impl(
+        19 => wire__crate__api__native_engine__rank_recommendations_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        18 => wire__crate__api__playlist_engine__search_playlist_index_v2_impl(
+        20 => wire__crate__api__playlist_engine__search_playlist_index_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        19 => wire__crate__api__xmltv__xmltv_current_next_result_default_impl(
+        21 => wire__crate__api__playlist_engine__search_playlist_index_v2_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        20 => wire__crate__api__xmltv__xmltv_current_next_stats_default_impl(
+        22 => wire__crate__api__xmltv__xmltv_current_next_result_default_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        21 => wire__crate__api__xmltv__xmltv_parse_result_default_impl(
+        23 => wire__crate__api__xmltv__xmltv_current_next_stats_default_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        22 => wire__crate__api__xmltv__xmltv_parse_stats_default_impl(
+        24 => wire__crate__api__xmltv__xmltv_parse_result_default_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        25 => wire__crate__api__xmltv__xmltv_parse_stats_default_impl(
             port,
             ptr,
             rust_vec_len,
@@ -1883,6 +2212,171 @@ impl flutter_rust_bridge::IntoIntoDart<crate::api::playlist_engine::PlaylistSear
     }
 }
 // Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::native_engine::RecommendationCandidate {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.id.into_into_dart().into_dart(),
+            self.title.into_into_dart().into_dart(),
+            self.genre_affinity.into_into_dart().into_dart(),
+            self.provider_affinity.into_into_dart().into_dart(),
+            self.language_affinity.into_into_dart().into_dart(),
+            self.completion_permille.into_into_dart().into_dart(),
+            self.last_watched_age_days.into_into_dart().into_dart(),
+            self.preferred_time.into_into_dart().into_dart(),
+            self.device_fit.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::native_engine::RecommendationCandidate
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::native_engine::RecommendationCandidate>
+    for crate::api::native_engine::RecommendationCandidate
+{
+    fn into_into_dart(self) -> crate::api::native_engine::RecommendationCandidate {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::native_engine::RecommendationScore {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.id.into_into_dart().into_dart(),
+            self.score.into_into_dart().into_dart(),
+            self.genre_points.into_into_dart().into_dart(),
+            self.provider_points.into_into_dart().into_dart(),
+            self.language_points.into_into_dart().into_dart(),
+            self.completion_points.into_into_dart().into_dart(),
+            self.recency_points.into_into_dart().into_dart(),
+            self.time_bucket_points.into_into_dart().into_dart(),
+            self.device_fit_points.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::native_engine::RecommendationScore
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::native_engine::RecommendationScore>
+    for crate::api::native_engine::RecommendationScore
+{
+    fn into_into_dart(self) -> crate::api::native_engine::RecommendationScore {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::native_engine::SubtitleCue {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.start_millis.into_into_dart().into_dart(),
+            self.end_millis.into_into_dart().into_dart(),
+            self.text.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::native_engine::SubtitleCue
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::native_engine::SubtitleCue>
+    for crate::api::native_engine::SubtitleCue
+{
+    fn into_into_dart(self) -> crate::api::native_engine::SubtitleCue {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::native_engine::SubtitleFormat {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        match self {
+            Self::Srt => 0.into_dart(),
+            Self::WebVtt => 1.into_dart(),
+            _ => unreachable!(),
+        }
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::native_engine::SubtitleFormat
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::native_engine::SubtitleFormat>
+    for crate::api::native_engine::SubtitleFormat
+{
+    fn into_into_dart(self) -> crate::api::native_engine::SubtitleFormat {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::native_engine::SubtitleParseResult {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.cues.into_into_dart().into_dart(),
+            self.malformed_cue_count.into_into_dart().into_dart(),
+            self.truncated.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::native_engine::SubtitleParseResult
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::native_engine::SubtitleParseResult>
+    for crate::api::native_engine::SubtitleParseResult
+{
+    fn into_into_dart(self) -> crate::api::native_engine::SubtitleParseResult {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::native_engine::VectorClockCounter {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.node_id.into_into_dart().into_dart(),
+            self.counter.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::native_engine::VectorClockCounter
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::native_engine::VectorClockCounter>
+    for crate::api::native_engine::VectorClockCounter
+{
+    fn into_into_dart(self) -> crate::api::native_engine::VectorClockCounter {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::native_engine::VectorClockRelation {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        match self {
+            Self::Equal => 0.into_dart(),
+            Self::LeftDominates => 1.into_dart(),
+            Self::RightDominates => 2.into_dart(),
+            Self::Concurrent => 3.into_dart(),
+            _ => unreachable!(),
+        }
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::native_engine::VectorClockRelation
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::native_engine::VectorClockRelation>
+    for crate::api::native_engine::VectorClockRelation
+{
+    fn into_into_dart(self) -> crate::api::native_engine::VectorClockRelation {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
 impl flutter_rust_bridge::IntoDart for crate::api::xmltv::XmltvCurrentNextEntry {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
@@ -2101,12 +2595,52 @@ impl SseEncode for Vec<u8> {
     }
 }
 
+impl SseEncode for Vec<crate::api::native_engine::RecommendationCandidate> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(self.len() as _, serializer);
+        for item in self {
+            <crate::api::native_engine::RecommendationCandidate>::sse_encode(item, serializer);
+        }
+    }
+}
+
+impl SseEncode for Vec<crate::api::native_engine::RecommendationScore> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(self.len() as _, serializer);
+        for item in self {
+            <crate::api::native_engine::RecommendationScore>::sse_encode(item, serializer);
+        }
+    }
+}
+
 impl SseEncode for Vec<(String, String)> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <i32>::sse_encode(self.len() as _, serializer);
         for item in self {
             <(String, String)>::sse_encode(item, serializer);
+        }
+    }
+}
+
+impl SseEncode for Vec<crate::api::native_engine::SubtitleCue> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(self.len() as _, serializer);
+        for item in self {
+            <crate::api::native_engine::SubtitleCue>::sse_encode(item, serializer);
+        }
+    }
+}
+
+impl SseEncode for Vec<crate::api::native_engine::VectorClockCounter> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(self.len() as _, serializer);
+        for item in self {
+            <crate::api::native_engine::VectorClockCounter>::sse_encode(item, serializer);
         }
     }
 }
@@ -2223,6 +2757,26 @@ impl SseEncode for Option<i64> {
         <bool>::sse_encode(self.is_some(), serializer);
         if let Some(value) = self {
             <i64>::sse_encode(value, serializer);
+        }
+    }
+}
+
+impl SseEncode for Option<u16> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <bool>::sse_encode(self.is_some(), serializer);
+        if let Some(value) = self {
+            <u16>::sse_encode(value, serializer);
+        }
+    }
+}
+
+impl SseEncode for Option<u32> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <bool>::sse_encode(self.is_some(), serializer);
+        if let Some(value) = self {
+            <u32>::sse_encode(value, serializer);
         }
     }
 }
@@ -2368,11 +2922,82 @@ impl SseEncode for crate::api::playlist_engine::PlaylistSearchOperator {
     }
 }
 
+impl SseEncode for crate::api::native_engine::RecommendationCandidate {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <String>::sse_encode(self.id, serializer);
+        <String>::sse_encode(self.title, serializer);
+        <i64>::sse_encode(self.genre_affinity, serializer);
+        <i64>::sse_encode(self.provider_affinity, serializer);
+        <i64>::sse_encode(self.language_affinity, serializer);
+        <Option<u16>>::sse_encode(self.completion_permille, serializer);
+        <Option<u32>>::sse_encode(self.last_watched_age_days, serializer);
+        <bool>::sse_encode(self.preferred_time, serializer);
+        <bool>::sse_encode(self.device_fit, serializer);
+    }
+}
+
+impl SseEncode for crate::api::native_engine::RecommendationScore {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <String>::sse_encode(self.id, serializer);
+        <i64>::sse_encode(self.score, serializer);
+        <i64>::sse_encode(self.genre_points, serializer);
+        <i64>::sse_encode(self.provider_points, serializer);
+        <i64>::sse_encode(self.language_points, serializer);
+        <i64>::sse_encode(self.completion_points, serializer);
+        <i64>::sse_encode(self.recency_points, serializer);
+        <i64>::sse_encode(self.time_bucket_points, serializer);
+        <i64>::sse_encode(self.device_fit_points, serializer);
+    }
+}
+
 impl SseEncode for (String, String) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <String>::sse_encode(self.0, serializer);
         <String>::sse_encode(self.1, serializer);
+    }
+}
+
+impl SseEncode for crate::api::native_engine::SubtitleCue {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <u64>::sse_encode(self.start_millis, serializer);
+        <u64>::sse_encode(self.end_millis, serializer);
+        <String>::sse_encode(self.text, serializer);
+    }
+}
+
+impl SseEncode for crate::api::native_engine::SubtitleFormat {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(
+            match self {
+                crate::api::native_engine::SubtitleFormat::Srt => 0,
+                crate::api::native_engine::SubtitleFormat::WebVtt => 1,
+                _ => {
+                    unimplemented!("");
+                }
+            },
+            serializer,
+        );
+    }
+}
+
+impl SseEncode for crate::api::native_engine::SubtitleParseResult {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <Vec<crate::api::native_engine::SubtitleCue>>::sse_encode(self.cues, serializer);
+        <u32>::sse_encode(self.malformed_cue_count, serializer);
+        <bool>::sse_encode(self.truncated, serializer);
+    }
+}
+
+impl SseEncode for u16 {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        serializer.cursor.write_u16::<NativeEndian>(self).unwrap();
     }
 }
 
@@ -2400,6 +3025,32 @@ impl SseEncode for u8 {
 impl SseEncode for () {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {}
+}
+
+impl SseEncode for crate::api::native_engine::VectorClockCounter {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <String>::sse_encode(self.node_id, serializer);
+        <u64>::sse_encode(self.counter, serializer);
+    }
+}
+
+impl SseEncode for crate::api::native_engine::VectorClockRelation {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(
+            match self {
+                crate::api::native_engine::VectorClockRelation::Equal => 0,
+                crate::api::native_engine::VectorClockRelation::LeftDominates => 1,
+                crate::api::native_engine::VectorClockRelation::RightDominates => 2,
+                crate::api::native_engine::VectorClockRelation::Concurrent => 3,
+                _ => {
+                    unimplemented!("");
+                }
+            },
+            serializer,
+        );
+    }
 }
 
 impl SseEncode for crate::api::xmltv::XmltvCurrentNextEntry {

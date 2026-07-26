@@ -7,6 +7,7 @@
 // ignore_for_file: argument_type_not_assignable
 
 import 'api/m3u.dart';
+import 'api/native_engine.dart';
 import 'api/playlist_engine.dart';
 import 'api/text.dart';
 import 'api/xmltv.dart';
@@ -36,6 +37,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   PlatformInt64 dco_decode_box_autoadd_i_64(dynamic raw);
 
   @protected
+  int dco_decode_box_autoadd_u_16(dynamic raw);
+
+  @protected
+  int dco_decode_box_autoadd_u_32(dynamic raw);
+
+  @protected
   XmltvProgramme dco_decode_box_autoadd_xmltv_programme(dynamic raw);
 
   @protected
@@ -62,7 +69,21 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   Uint8List dco_decode_list_prim_u_8_strict(dynamic raw);
 
   @protected
+  List<RecommendationCandidate> dco_decode_list_recommendation_candidate(
+    dynamic raw,
+  );
+
+  @protected
+  List<RecommendationScore> dco_decode_list_recommendation_score(dynamic raw);
+
+  @protected
   List<(String, String)> dco_decode_list_record_string_string(dynamic raw);
+
+  @protected
+  List<SubtitleCue> dco_decode_list_subtitle_cue(dynamic raw);
+
+  @protected
+  List<VectorClockCounter> dco_decode_list_vector_clock_counter(dynamic raw);
 
   @protected
   List<XmltvCurrentNextEntry> dco_decode_list_xmltv_current_next_entry(
@@ -100,6 +121,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   PlatformInt64? dco_decode_opt_box_autoadd_i_64(dynamic raw);
 
   @protected
+  int? dco_decode_opt_box_autoadd_u_16(dynamic raw);
+
+  @protected
+  int? dco_decode_opt_box_autoadd_u_32(dynamic raw);
+
+  @protected
   XmltvProgramme? dco_decode_opt_box_autoadd_xmltv_programme(dynamic raw);
 
   @protected
@@ -130,7 +157,25 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   PlaylistSearchOperator dco_decode_playlist_search_operator(dynamic raw);
 
   @protected
+  RecommendationCandidate dco_decode_recommendation_candidate(dynamic raw);
+
+  @protected
+  RecommendationScore dco_decode_recommendation_score(dynamic raw);
+
+  @protected
   (String, String) dco_decode_record_string_string(dynamic raw);
+
+  @protected
+  SubtitleCue dco_decode_subtitle_cue(dynamic raw);
+
+  @protected
+  SubtitleFormat dco_decode_subtitle_format(dynamic raw);
+
+  @protected
+  SubtitleParseResult dco_decode_subtitle_parse_result(dynamic raw);
+
+  @protected
+  int dco_decode_u_16(dynamic raw);
 
   @protected
   int dco_decode_u_32(dynamic raw);
@@ -143,6 +188,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void dco_decode_unit(dynamic raw);
+
+  @protected
+  VectorClockCounter dco_decode_vector_clock_counter(dynamic raw);
+
+  @protected
+  VectorClockRelation dco_decode_vector_clock_relation(dynamic raw);
 
   @protected
   XmltvCurrentNextEntry dco_decode_xmltv_current_next_entry(dynamic raw);
@@ -177,6 +228,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   PlatformInt64 sse_decode_box_autoadd_i_64(SseDeserializer deserializer);
 
   @protected
+  int sse_decode_box_autoadd_u_16(SseDeserializer deserializer);
+
+  @protected
+  int sse_decode_box_autoadd_u_32(SseDeserializer deserializer);
+
+  @protected
   XmltvProgramme sse_decode_box_autoadd_xmltv_programme(
     SseDeserializer deserializer,
   );
@@ -205,7 +262,25 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   Uint8List sse_decode_list_prim_u_8_strict(SseDeserializer deserializer);
 
   @protected
+  List<RecommendationCandidate> sse_decode_list_recommendation_candidate(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  List<RecommendationScore> sse_decode_list_recommendation_score(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   List<(String, String)> sse_decode_list_record_string_string(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  List<SubtitleCue> sse_decode_list_subtitle_cue(SseDeserializer deserializer);
+
+  @protected
+  List<VectorClockCounter> sse_decode_list_vector_clock_counter(
     SseDeserializer deserializer,
   );
 
@@ -247,6 +322,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   PlatformInt64? sse_decode_opt_box_autoadd_i_64(SseDeserializer deserializer);
+
+  @protected
+  int? sse_decode_opt_box_autoadd_u_16(SseDeserializer deserializer);
+
+  @protected
+  int? sse_decode_opt_box_autoadd_u_32(SseDeserializer deserializer);
 
   @protected
   XmltvProgramme? sse_decode_opt_box_autoadd_xmltv_programme(
@@ -299,9 +380,33 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  RecommendationCandidate sse_decode_recommendation_candidate(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  RecommendationScore sse_decode_recommendation_score(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   (String, String) sse_decode_record_string_string(
     SseDeserializer deserializer,
   );
+
+  @protected
+  SubtitleCue sse_decode_subtitle_cue(SseDeserializer deserializer);
+
+  @protected
+  SubtitleFormat sse_decode_subtitle_format(SseDeserializer deserializer);
+
+  @protected
+  SubtitleParseResult sse_decode_subtitle_parse_result(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  int sse_decode_u_16(SseDeserializer deserializer);
 
   @protected
   int sse_decode_u_32(SseDeserializer deserializer);
@@ -314,6 +419,16 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_decode_unit(SseDeserializer deserializer);
+
+  @protected
+  VectorClockCounter sse_decode_vector_clock_counter(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  VectorClockRelation sse_decode_vector_clock_relation(
+    SseDeserializer deserializer,
+  );
 
   @protected
   XmltvCurrentNextEntry sse_decode_xmltv_current_next_entry(
@@ -358,6 +473,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_box_autoadd_u_16(int self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_box_autoadd_u_32(int self, SseSerializer serializer);
+
+  @protected
   void sse_encode_box_autoadd_xmltv_programme(
     XmltvProgramme self,
     SseSerializer serializer,
@@ -397,8 +518,32 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_list_recommendation_candidate(
+    List<RecommendationCandidate> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_recommendation_score(
+    List<RecommendationScore> self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_list_record_string_string(
     List<(String, String)> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_subtitle_cue(
+    List<SubtitleCue> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_vector_clock_counter(
+    List<VectorClockCounter> self,
     SseSerializer serializer,
   );
 
@@ -455,6 +600,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
     PlatformInt64? self,
     SseSerializer serializer,
   );
+
+  @protected
+  void sse_encode_opt_box_autoadd_u_16(int? self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_opt_box_autoadd_u_32(int? self, SseSerializer serializer);
 
   @protected
   void sse_encode_opt_box_autoadd_xmltv_programme(
@@ -517,10 +668,40 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_recommendation_candidate(
+    RecommendationCandidate self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_recommendation_score(
+    RecommendationScore self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_record_string_string(
     (String, String) self,
     SseSerializer serializer,
   );
+
+  @protected
+  void sse_encode_subtitle_cue(SubtitleCue self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_subtitle_format(
+    SubtitleFormat self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_subtitle_parse_result(
+    SubtitleParseResult self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_u_16(int self, SseSerializer serializer);
 
   @protected
   void sse_encode_u_32(int self, SseSerializer serializer);
@@ -533,6 +714,18 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_unit(void self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_vector_clock_counter(
+    VectorClockCounter self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_vector_clock_relation(
+    VectorClockRelation self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_xmltv_current_next_entry(

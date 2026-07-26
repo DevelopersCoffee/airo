@@ -18,6 +18,11 @@ The generator reads `flutter_rust_bridge.yaml` and writes:
 - `packages/core_native/lib/src/api/*.dart`
 - `rust/airo_core/src/frb_generated.rs`
 
+The public wrapper also exposes deterministic native/fallback primitives for
+recommendation ranking, vector-clock comparison, and bounded SRT/WebVTT
+subtitle parsing. Feature packages import these wrappers rather than generated
+FRB types.
+
 App entrypoints can call `initializeCoreNativeBridge()` after
 `WidgetsFlutterBinding.ensureInitialized()`. The initializer returns `false`
 when the native library is unavailable so callers can keep deterministic Dart

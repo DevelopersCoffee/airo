@@ -4,6 +4,7 @@
 // ignore_for_file: unused_import, unused_element, unnecessary_import, duplicate_ignore, invalid_use_of_internal_member, annotate_overrides, non_constant_identifier_names, curly_braces_in_flow_control_structures, prefer_const_literals_to_create_immutables, unused_field
 
 import 'api/m3u.dart';
+import 'api/native_engine.dart';
 import 'api/playlist_engine.dart';
 import 'api/text.dart';
 import 'api/xmltv.dart';
@@ -67,7 +68,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.11.1';
 
   @override
-  int get rustContentHash => 1869107413;
+  int get rustContentHash => 2008187082;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -78,6 +79,11 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
 }
 
 abstract class RustLibApi extends BaseApi {
+  Future<VectorClockRelation> crateApiNativeEngineCompareVectorClocks({
+    required List<VectorClockCounter> left,
+    required List<VectorClockCounter> right,
+  });
+
   Future<M3uChannelParseResult> crateApiM3UM3UChannelParseResultDefault();
 
   Future<M3uParseResult> crateApiM3UM3UParseResultDefault();
@@ -120,6 +126,11 @@ abstract class RustLibApi extends BaseApi {
     required String content,
   });
 
+  Future<SubtitleParseResult> crateApiNativeEngineParseSubtitles({
+    required String content,
+    required SubtitleFormat format,
+  });
+
   Future<XmltvCurrentNextResult> crateApiXmltvParseXmltvCurrentNextFile({
     required String path,
     required List<String> channelIds,
@@ -135,6 +146,10 @@ abstract class RustLibApi extends BaseApi {
   Future<XmltvParseResult> crateApiXmltvParseXmltvProgrammesFile({
     required String path,
     required int maxProgrammes,
+  });
+
+  Future<List<RecommendationScore>> crateApiNativeEngineRankRecommendations({
+    required List<RecommendationCandidate> candidates,
   });
 
   Future<M3uChannelPage> crateApiPlaylistEngineSearchPlaylistIndex({
@@ -170,6 +185,41 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   });
 
   @override
+  Future<VectorClockRelation> crateApiNativeEngineCompareVectorClocks({
+    required List<VectorClockCounter> left,
+    required List<VectorClockCounter> right,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_list_vector_clock_counter(left, serializer);
+          sse_encode_list_vector_clock_counter(right, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 1,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_vector_clock_relation,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiNativeEngineCompareVectorClocksConstMeta,
+        argValues: [left, right],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiNativeEngineCompareVectorClocksConstMeta =>
+      const TaskConstMeta(
+        debugName: "compare_vector_clocks",
+        argNames: ["left", "right"],
+      );
+
+  @override
   Future<M3uChannelParseResult> crateApiM3UM3UChannelParseResultDefault() {
     return handler.executeNormal(
       NormalTask(
@@ -178,7 +228,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 1,
+            funcId: 2,
             port: port_,
           );
         },
@@ -208,7 +258,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 2,
+            funcId: 3,
             port: port_,
           );
         },
@@ -238,7 +288,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 3,
+            funcId: 4,
             port: port_,
           );
         },
@@ -265,7 +315,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 4,
+            funcId: 5,
             port: port_,
           );
         },
@@ -293,7 +343,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 5,
+            funcId: 6,
             port: port_,
           );
         },
@@ -330,7 +380,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 6,
+            funcId: 7,
             port: port_,
           );
         },
@@ -367,7 +417,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 7,
+            funcId: 8,
             port: port_,
           );
         },
@@ -400,7 +450,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 8,
+            funcId: 9,
             port: port_,
           );
         },
@@ -431,7 +481,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 9,
+            funcId: 10,
             port: port_,
           );
         },
@@ -463,7 +513,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 10,
+            funcId: 11,
             port: port_,
           );
         },
@@ -496,7 +546,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 11,
+            funcId: 12,
             port: port_,
           );
         },
@@ -527,7 +577,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 12,
+            funcId: 13,
             port: port_,
           );
         },
@@ -560,7 +610,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 13,
+            funcId: 14,
             port: port_,
           );
         },
@@ -582,6 +632,41 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
+  Future<SubtitleParseResult> crateApiNativeEngineParseSubtitles({
+    required String content,
+    required SubtitleFormat format,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(content, serializer);
+          sse_encode_subtitle_format(format, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 15,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_subtitle_parse_result,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiNativeEngineParseSubtitlesConstMeta,
+        argValues: [content, format],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiNativeEngineParseSubtitlesConstMeta =>
+      const TaskConstMeta(
+        debugName: "parse_subtitles",
+        argNames: ["content", "format"],
+      );
+
+  @override
   Future<XmltvCurrentNextResult> crateApiXmltvParseXmltvCurrentNextFile({
     required String path,
     required List<String> channelIds,
@@ -599,7 +684,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 14,
+            funcId: 16,
             port: port_,
           );
         },
@@ -639,7 +724,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 15,
+            funcId: 17,
             port: port_,
           );
         },
@@ -674,7 +759,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 16,
+            funcId: 18,
             port: port_,
           );
         },
@@ -696,6 +781,39 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
+  Future<List<RecommendationScore>> crateApiNativeEngineRankRecommendations({
+    required List<RecommendationCandidate> candidates,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_list_recommendation_candidate(candidates, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 19,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_list_recommendation_score,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiNativeEngineRankRecommendationsConstMeta,
+        argValues: [candidates],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiNativeEngineRankRecommendationsConstMeta =>
+      const TaskConstMeta(
+        debugName: "rank_recommendations",
+        argNames: ["candidates"],
+      );
+
+  @override
   Future<M3uChannelPage> crateApiPlaylistEngineSearchPlaylistIndex({
     required String indexPath,
     required String query,
@@ -713,7 +831,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 17,
+            funcId: 20,
             port: port_,
           );
         },
@@ -754,7 +872,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 18,
+            funcId: 21,
             port: port_,
           );
         },
@@ -784,7 +902,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 19,
+            funcId: 22,
             port: port_,
           );
         },
@@ -814,7 +932,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 20,
+            funcId: 23,
             port: port_,
           );
         },
@@ -844,7 +962,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 21,
+            funcId: 24,
             port: port_,
           );
         },
@@ -874,7 +992,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 22,
+            funcId: 25,
             port: port_,
           );
         },
@@ -918,6 +1036,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   PlatformInt64 dco_decode_box_autoadd_i_64(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return dco_decode_i_64(raw);
+  }
+
+  @protected
+  int dco_decode_box_autoadd_u_16(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw as int;
+  }
+
+  @protected
+  int dco_decode_box_autoadd_u_32(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw as int;
   }
 
   @protected
@@ -973,9 +1103,37 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  List<RecommendationCandidate> dco_decode_list_recommendation_candidate(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>)
+        .map(dco_decode_recommendation_candidate)
+        .toList();
+  }
+
+  @protected
+  List<RecommendationScore> dco_decode_list_recommendation_score(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_recommendation_score).toList();
+  }
+
+  @protected
   List<(String, String)> dco_decode_list_record_string_string(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return (raw as List<dynamic>).map(dco_decode_record_string_string).toList();
+  }
+
+  @protected
+  List<SubtitleCue> dco_decode_list_subtitle_cue(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_subtitle_cue).toList();
+  }
+
+  @protected
+  List<VectorClockCounter> dco_decode_list_vector_clock_counter(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_vector_clock_counter).toList();
   }
 
   @protected
@@ -1111,6 +1269,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  int? dco_decode_opt_box_autoadd_u_16(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw == null ? null : dco_decode_box_autoadd_u_16(raw);
+  }
+
+  @protected
+  int? dco_decode_opt_box_autoadd_u_32(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw == null ? null : dco_decode_box_autoadd_u_32(raw);
+  }
+
+  @protected
   XmltvProgramme? dco_decode_opt_box_autoadd_xmltv_programme(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw == null ? null : dco_decode_box_autoadd_xmltv_programme(raw);
@@ -1210,6 +1380,44 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  RecommendationCandidate dco_decode_recommendation_candidate(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 9)
+      throw Exception('unexpected arr length: expect 9 but see ${arr.length}');
+    return RecommendationCandidate(
+      id: dco_decode_String(arr[0]),
+      title: dco_decode_String(arr[1]),
+      genreAffinity: dco_decode_i_64(arr[2]),
+      providerAffinity: dco_decode_i_64(arr[3]),
+      languageAffinity: dco_decode_i_64(arr[4]),
+      completionPermille: dco_decode_opt_box_autoadd_u_16(arr[5]),
+      lastWatchedAgeDays: dco_decode_opt_box_autoadd_u_32(arr[6]),
+      preferredTime: dco_decode_bool(arr[7]),
+      deviceFit: dco_decode_bool(arr[8]),
+    );
+  }
+
+  @protected
+  RecommendationScore dco_decode_recommendation_score(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 9)
+      throw Exception('unexpected arr length: expect 9 but see ${arr.length}');
+    return RecommendationScore(
+      id: dco_decode_String(arr[0]),
+      score: dco_decode_i_64(arr[1]),
+      genrePoints: dco_decode_i_64(arr[2]),
+      providerPoints: dco_decode_i_64(arr[3]),
+      languagePoints: dco_decode_i_64(arr[4]),
+      completionPoints: dco_decode_i_64(arr[5]),
+      recencyPoints: dco_decode_i_64(arr[6]),
+      timeBucketPoints: dco_decode_i_64(arr[7]),
+      deviceFitPoints: dco_decode_i_64(arr[8]),
+    );
+  }
+
+  @protected
   (String, String) dco_decode_record_string_string(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
@@ -1217,6 +1425,44 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       throw Exception('Expected 2 elements, got ${arr.length}');
     }
     return (dco_decode_String(arr[0]), dco_decode_String(arr[1]));
+  }
+
+  @protected
+  SubtitleCue dco_decode_subtitle_cue(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 3)
+      throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
+    return SubtitleCue(
+      startMillis: dco_decode_u_64(arr[0]),
+      endMillis: dco_decode_u_64(arr[1]),
+      text: dco_decode_String(arr[2]),
+    );
+  }
+
+  @protected
+  SubtitleFormat dco_decode_subtitle_format(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return SubtitleFormat.values[raw as int];
+  }
+
+  @protected
+  SubtitleParseResult dco_decode_subtitle_parse_result(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 3)
+      throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
+    return SubtitleParseResult(
+      cues: dco_decode_list_subtitle_cue(arr[0]),
+      malformedCueCount: dco_decode_u_32(arr[1]),
+      truncated: dco_decode_bool(arr[2]),
+    );
+  }
+
+  @protected
+  int dco_decode_u_16(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw as int;
   }
 
   @protected
@@ -1241,6 +1487,24 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   void dco_decode_unit(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return;
+  }
+
+  @protected
+  VectorClockCounter dco_decode_vector_clock_counter(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 2)
+      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
+    return VectorClockCounter(
+      nodeId: dco_decode_String(arr[0]),
+      counter: dco_decode_u_64(arr[1]),
+    );
+  }
+
+  @protected
+  VectorClockRelation dco_decode_vector_clock_relation(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return VectorClockRelation.values[raw as int];
   }
 
   @protected
@@ -1351,6 +1615,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  int sse_decode_box_autoadd_u_16(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_u_16(deserializer));
+  }
+
+  @protected
+  int sse_decode_box_autoadd_u_32(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_u_32(deserializer));
+  }
+
+  @protected
   XmltvProgramme sse_decode_box_autoadd_xmltv_programme(
     SseDeserializer deserializer,
   ) {
@@ -1428,6 +1704,34 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  List<RecommendationCandidate> sse_decode_list_recommendation_candidate(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <RecommendationCandidate>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_recommendation_candidate(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
+  List<RecommendationScore> sse_decode_list_recommendation_score(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <RecommendationScore>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_recommendation_score(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
   List<(String, String)> sse_decode_list_record_string_string(
     SseDeserializer deserializer,
   ) {
@@ -1437,6 +1741,32 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var ans_ = <(String, String)>[];
     for (var idx_ = 0; idx_ < len_; ++idx_) {
       ans_.add(sse_decode_record_string_string(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
+  List<SubtitleCue> sse_decode_list_subtitle_cue(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <SubtitleCue>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_subtitle_cue(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
+  List<VectorClockCounter> sse_decode_list_vector_clock_counter(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <VectorClockCounter>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_vector_clock_counter(deserializer));
     }
     return ans_;
   }
@@ -1602,6 +1932,28 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  int? sse_decode_opt_box_autoadd_u_16(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    if (sse_decode_bool(deserializer)) {
+      return (sse_decode_box_autoadd_u_16(deserializer));
+    } else {
+      return null;
+    }
+  }
+
+  @protected
+  int? sse_decode_opt_box_autoadd_u_32(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    if (sse_decode_bool(deserializer)) {
+      return (sse_decode_box_autoadd_u_32(deserializer));
+    } else {
+      return null;
+    }
+  }
+
+  @protected
   XmltvProgramme? sse_decode_opt_box_autoadd_xmltv_programme(
     SseDeserializer deserializer,
   ) {
@@ -1731,6 +2083,60 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  RecommendationCandidate sse_decode_recommendation_candidate(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_id = sse_decode_String(deserializer);
+    var var_title = sse_decode_String(deserializer);
+    var var_genreAffinity = sse_decode_i_64(deserializer);
+    var var_providerAffinity = sse_decode_i_64(deserializer);
+    var var_languageAffinity = sse_decode_i_64(deserializer);
+    var var_completionPermille = sse_decode_opt_box_autoadd_u_16(deserializer);
+    var var_lastWatchedAgeDays = sse_decode_opt_box_autoadd_u_32(deserializer);
+    var var_preferredTime = sse_decode_bool(deserializer);
+    var var_deviceFit = sse_decode_bool(deserializer);
+    return RecommendationCandidate(
+      id: var_id,
+      title: var_title,
+      genreAffinity: var_genreAffinity,
+      providerAffinity: var_providerAffinity,
+      languageAffinity: var_languageAffinity,
+      completionPermille: var_completionPermille,
+      lastWatchedAgeDays: var_lastWatchedAgeDays,
+      preferredTime: var_preferredTime,
+      deviceFit: var_deviceFit,
+    );
+  }
+
+  @protected
+  RecommendationScore sse_decode_recommendation_score(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_id = sse_decode_String(deserializer);
+    var var_score = sse_decode_i_64(deserializer);
+    var var_genrePoints = sse_decode_i_64(deserializer);
+    var var_providerPoints = sse_decode_i_64(deserializer);
+    var var_languagePoints = sse_decode_i_64(deserializer);
+    var var_completionPoints = sse_decode_i_64(deserializer);
+    var var_recencyPoints = sse_decode_i_64(deserializer);
+    var var_timeBucketPoints = sse_decode_i_64(deserializer);
+    var var_deviceFitPoints = sse_decode_i_64(deserializer);
+    return RecommendationScore(
+      id: var_id,
+      score: var_score,
+      genrePoints: var_genrePoints,
+      providerPoints: var_providerPoints,
+      languagePoints: var_languagePoints,
+      completionPoints: var_completionPoints,
+      recencyPoints: var_recencyPoints,
+      timeBucketPoints: var_timeBucketPoints,
+      deviceFitPoints: var_deviceFitPoints,
+    );
+  }
+
+  @protected
   (String, String) sse_decode_record_string_string(
     SseDeserializer deserializer,
   ) {
@@ -1738,6 +2144,47 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_field0 = sse_decode_String(deserializer);
     var var_field1 = sse_decode_String(deserializer);
     return (var_field0, var_field1);
+  }
+
+  @protected
+  SubtitleCue sse_decode_subtitle_cue(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_startMillis = sse_decode_u_64(deserializer);
+    var var_endMillis = sse_decode_u_64(deserializer);
+    var var_text = sse_decode_String(deserializer);
+    return SubtitleCue(
+      startMillis: var_startMillis,
+      endMillis: var_endMillis,
+      text: var_text,
+    );
+  }
+
+  @protected
+  SubtitleFormat sse_decode_subtitle_format(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var inner = sse_decode_i_32(deserializer);
+    return SubtitleFormat.values[inner];
+  }
+
+  @protected
+  SubtitleParseResult sse_decode_subtitle_parse_result(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_cues = sse_decode_list_subtitle_cue(deserializer);
+    var var_malformedCueCount = sse_decode_u_32(deserializer);
+    var var_truncated = sse_decode_bool(deserializer);
+    return SubtitleParseResult(
+      cues: var_cues,
+      malformedCueCount: var_malformedCueCount,
+      truncated: var_truncated,
+    );
+  }
+
+  @protected
+  int sse_decode_u_16(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return deserializer.buffer.getUint16();
   }
 
   @protected
@@ -1761,6 +2208,25 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   @protected
   void sse_decode_unit(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
+  }
+
+  @protected
+  VectorClockCounter sse_decode_vector_clock_counter(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_nodeId = sse_decode_String(deserializer);
+    var var_counter = sse_decode_u_64(deserializer);
+    return VectorClockCounter(nodeId: var_nodeId, counter: var_counter);
+  }
+
+  @protected
+  VectorClockRelation sse_decode_vector_clock_relation(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var inner = sse_decode_i_32(deserializer);
+    return VectorClockRelation.values[inner];
   }
 
   @protected
@@ -1877,6 +2343,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_box_autoadd_u_16(int self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_u_16(self, serializer);
+  }
+
+  @protected
+  void sse_encode_box_autoadd_u_32(int self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_u_32(self, serializer);
+  }
+
+  @protected
   void sse_encode_box_autoadd_xmltv_programme(
     XmltvProgramme self,
     SseSerializer serializer,
@@ -1953,6 +2431,30 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_list_recommendation_candidate(
+    List<RecommendationCandidate> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_recommendation_candidate(item, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_list_recommendation_score(
+    List<RecommendationScore> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_recommendation_score(item, serializer);
+    }
+  }
+
+  @protected
   void sse_encode_list_record_string_string(
     List<(String, String)> self,
     SseSerializer serializer,
@@ -1961,6 +2463,30 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_i_32(self.length, serializer);
     for (final item in self) {
       sse_encode_record_string_string(item, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_list_subtitle_cue(
+    List<SubtitleCue> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_subtitle_cue(item, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_list_vector_clock_counter(
+    List<VectorClockCounter> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_vector_clock_counter(item, serializer);
     }
   }
 
@@ -2093,6 +2619,26 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_opt_box_autoadd_u_16(int? self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    sse_encode_bool(self != null, serializer);
+    if (self != null) {
+      sse_encode_box_autoadd_u_16(self, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_opt_box_autoadd_u_32(int? self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    sse_encode_bool(self != null, serializer);
+    if (self != null) {
+      sse_encode_box_autoadd_u_32(self, serializer);
+    }
+  }
+
+  @protected
   void sse_encode_opt_box_autoadd_xmltv_programme(
     XmltvProgramme? self,
     SseSerializer serializer,
@@ -2201,6 +2747,40 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_recommendation_candidate(
+    RecommendationCandidate self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.id, serializer);
+    sse_encode_String(self.title, serializer);
+    sse_encode_i_64(self.genreAffinity, serializer);
+    sse_encode_i_64(self.providerAffinity, serializer);
+    sse_encode_i_64(self.languageAffinity, serializer);
+    sse_encode_opt_box_autoadd_u_16(self.completionPermille, serializer);
+    sse_encode_opt_box_autoadd_u_32(self.lastWatchedAgeDays, serializer);
+    sse_encode_bool(self.preferredTime, serializer);
+    sse_encode_bool(self.deviceFit, serializer);
+  }
+
+  @protected
+  void sse_encode_recommendation_score(
+    RecommendationScore self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.id, serializer);
+    sse_encode_i_64(self.score, serializer);
+    sse_encode_i_64(self.genrePoints, serializer);
+    sse_encode_i_64(self.providerPoints, serializer);
+    sse_encode_i_64(self.languagePoints, serializer);
+    sse_encode_i_64(self.completionPoints, serializer);
+    sse_encode_i_64(self.recencyPoints, serializer);
+    sse_encode_i_64(self.timeBucketPoints, serializer);
+    sse_encode_i_64(self.deviceFitPoints, serializer);
+  }
+
+  @protected
   void sse_encode_record_string_string(
     (String, String) self,
     SseSerializer serializer,
@@ -2208,6 +2788,40 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_String(self.$1, serializer);
     sse_encode_String(self.$2, serializer);
+  }
+
+  @protected
+  void sse_encode_subtitle_cue(SubtitleCue self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_u_64(self.startMillis, serializer);
+    sse_encode_u_64(self.endMillis, serializer);
+    sse_encode_String(self.text, serializer);
+  }
+
+  @protected
+  void sse_encode_subtitle_format(
+    SubtitleFormat self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.index, serializer);
+  }
+
+  @protected
+  void sse_encode_subtitle_parse_result(
+    SubtitleParseResult self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_list_subtitle_cue(self.cues, serializer);
+    sse_encode_u_32(self.malformedCueCount, serializer);
+    sse_encode_bool(self.truncated, serializer);
+  }
+
+  @protected
+  void sse_encode_u_16(int self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    serializer.buffer.putUint16(self);
   }
 
   @protected
@@ -2231,6 +2845,25 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   @protected
   void sse_encode_unit(void self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
+  }
+
+  @protected
+  void sse_encode_vector_clock_counter(
+    VectorClockCounter self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.nodeId, serializer);
+    sse_encode_u_64(self.counter, serializer);
+  }
+
+  @protected
+  void sse_encode_vector_clock_relation(
+    VectorClockRelation self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.index, serializer);
   }
 
   @protected
