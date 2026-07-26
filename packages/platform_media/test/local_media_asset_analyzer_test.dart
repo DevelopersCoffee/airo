@@ -108,4 +108,19 @@ void main() {
     expect(request.toString(), contains('movie.mkv'));
     expect(request.toString(), isNot(contains(mediaFile.path)));
   });
+
+  test('pre-cancelled fallback never opens the selected asset', () async {
+    final cancellation = MediaAssetAnalysisCancellationToken()..cancel();
+
+    final result = await const VideoPlayerLocalMediaAssetAnalyzer().analyze(
+      MediaAssetAnalysisRequest(
+        assetId: 'asset-cancelled',
+        filePath: mediaFile.path,
+        cancellationToken: cancellation,
+      ),
+    );
+
+    expect(result.status, MediaAssetAnalysisStatus.cancelled);
+    expect(fakePlatform.lastDataSource, isNull);
+  });
 }

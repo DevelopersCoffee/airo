@@ -3,11 +3,47 @@ package io.airo.app
 import android.media.MediaExtractor
 import android.media.MediaFormat
 import android.media.MediaMetadataRetriever
+import android.os.Debug
 import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import java.io.File
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.Executor
 import java.util.concurrent.Executors
+import java.util.concurrent.FutureTask
+import java.util.concurrent.atomic.AtomicBoolean
+
+internal class MediaAnalysisJob<T>(
+    analysis: () -> T,
+    private val cancelledResult: () -> T,
+    private val failedResult: (Exception) -> T,
+    private val complete: (T) -> Unit,
+) {
+    private val didComplete = AtomicBoolean(false)
+    private val task = FutureTask {
+        try {
+            deliver(analysis())
+        } catch (error: Exception) {
+            deliver(failedResult(error))
+        }
+    }
+
+    fun enqueueOn(executor: Executor) {
+        executor.execute(task)
+    }
+
+    fun cancel() {
+        task.cancel(true)
+        deliver(cancelledResult())
+    }
+
+    private fun deliver(value: T) {
+        if (didComplete.compareAndSet(false, true)) {
+            complete(value)
+        }
+    }
+}
 
 class AiroMediaAssetAnalyzerPlugin(private val activity: MainActivity) {
     companion object {
@@ -15,6 +51,8 @@ class AiroMediaAssetAnalyzerPlugin(private val activity: MainActivity) {
     }
 
     private val executor = Executors.newSingleThreadExecutor()
+    private val analysisJobs =
+        ConcurrentHashMap<String, MediaAnalysisJob<Map<String, Any?>>>()
 
     fun register(messenger: BinaryMessenger) {
         MethodChannel(messenger, CHANNEL_NAME).setMethodCallHandler { call, result ->
@@ -30,12 +68,26 @@ class AiroMediaAssetAnalyzerPlugin(private val activity: MainActivity) {
                         )
                         return@setMethodCallHandler
                     }
-                    executor.execute {
-                        val payload = analyze(request)
-                        activity.runOnUiThread {
-                            result.success(payload)
+                    val queuedAt = System.currentTimeMillis()
+                    lateinit var job: MediaAnalysisJob<Map<String, Any?>>
+                    job = MediaAnalysisJob(
+                        analysis = { analyze(request) },
+                        cancelledResult = { queuedCancelledPayload(queuedAt) },
+                        failedResult = { unexpectedFailurePayload(queuedAt) },
+                        complete = { payload ->
+                            analysisJobs.remove(request.analysisId, job)
+                            activity.runOnUiThread {
+                                result.success(payload)
+                            }
                         }
-                    }
+                    )
+                    analysisJobs[request.analysisId] = job
+                    job.enqueueOn(executor)
+                }
+                "cancel" -> {
+                    val analysisId = call.argument<String>("analysisId")
+                    analysisId?.let { analysisJobs.remove(it)?.cancel() }
+                    result.success(null)
                 }
                 else -> result.notImplemented()
             }
@@ -44,6 +96,10 @@ class AiroMediaAssetAnalyzerPlugin(private val activity: MainActivity) {
 
     private fun analyze(request: MediaAssetAnalysisRequest): Map<String, Any?> {
         val startedAt = System.currentTimeMillis()
+        val startingMemoryBytes = residentMemoryBytes()
+        if (Thread.currentThread().isInterrupted) {
+            return cancelledPayload(startedAt, startingMemoryBytes, didUseMetadataProbe = false)
+        }
         val warnings = linkedSetOf<String>()
         val fileSizeBytes = request.fileSizeBytesHint ?: runCatching {
             File(request.filePath).length()
@@ -73,6 +129,9 @@ class AiroMediaAssetAnalyzerPlugin(private val activity: MainActivity) {
             extractor = MediaExtractor()
             extractor.setDataSource(request.filePath)
             for (index in 0 until extractor.trackCount) {
+                if (Thread.currentThread().isInterrupted) {
+                    return cancelledPayload(startedAt, startingMemoryBytes, didUseMetadataProbe = true)
+                }
                 val format = extractor.getTrackFormat(index)
                 val mimeType = format.getString(MediaFormat.KEY_MIME).orEmpty()
                 when {
@@ -142,6 +201,7 @@ class AiroMediaAssetAnalyzerPlugin(private val activity: MainActivity) {
                     "didUseMetadataProbe" to true,
                     "fileSizeBytes" to fileSizeBytes,
                     "estimatedBytesRead" to null,
+                    "peakMemoryBytes" to maxOf(startingMemoryBytes, residentMemoryBytes()),
                 ),
             )
         } finally {
@@ -149,6 +209,9 @@ class AiroMediaAssetAnalyzerPlugin(private val activity: MainActivity) {
             runCatching { extractor?.release() }
         }
 
+        if (Thread.currentThread().isInterrupted) {
+            return cancelledPayload(startedAt, startingMemoryBytes, didUseMetadataProbe = true)
+        }
         if (durationMs == null || durationMs <= 0) {
             warnings.add("duration_unavailable")
             durationMs = null
@@ -191,9 +254,56 @@ class AiroMediaAssetAnalyzerPlugin(private val activity: MainActivity) {
                 "didUseMetadataProbe" to true,
                 "fileSizeBytes" to fileSizeBytes,
                 "estimatedBytesRead" to null,
+                "peakMemoryBytes" to maxOf(startingMemoryBytes, residentMemoryBytes()),
             ),
         )
     }
+
+    private fun cancelledPayload(
+        startedAt: Long,
+        startingMemoryBytes: Long,
+        didUseMetadataProbe: Boolean,
+    ): Map<String, Any?> {
+        return mapOf(
+            "status" to "cancelled",
+            "diagnostics" to mapOf(
+                "elapsedMs" to (System.currentTimeMillis() - startedAt),
+                "didUseMetadataProbe" to didUseMetadataProbe,
+                "fileSizeBytes" to null,
+                "estimatedBytesRead" to null,
+                "peakMemoryBytes" to maxOf(startingMemoryBytes, residentMemoryBytes()),
+            ),
+        )
+    }
+
+    private fun queuedCancelledPayload(startedAt: Long): Map<String, Any?> {
+        return mapOf(
+            "status" to "cancelled",
+            "diagnostics" to mapOf(
+                "elapsedMs" to (System.currentTimeMillis() - startedAt),
+                "didUseMetadataProbe" to false,
+                "fileSizeBytes" to null,
+                "estimatedBytesRead" to null,
+                "peakMemoryBytes" to null,
+            ),
+        )
+    }
+
+    private fun unexpectedFailurePayload(startedAt: Long): Map<String, Any?> {
+        return mapOf(
+            "status" to "inspection_failed",
+            "failureReason" to "unexpected_native_failure",
+            "diagnostics" to mapOf(
+                "elapsedMs" to (System.currentTimeMillis() - startedAt),
+                "didUseMetadataProbe" to false,
+                "fileSizeBytes" to null,
+                "estimatedBytesRead" to null,
+                "peakMemoryBytes" to null,
+            ),
+        )
+    }
+
+    private fun residentMemoryBytes(): Long = Debug.getPss().toLong() * 1024L
 
     private fun videoCodecForMimeType(mimeType: String): String {
         return when (mimeType.lowercase()) {
@@ -244,6 +354,7 @@ class AiroMediaAssetAnalyzerPlugin(private val activity: MainActivity) {
 }
 
 private data class MediaAssetAnalysisRequest(
+    val analysisId: String,
     val assetId: String,
     val filePath: String,
     val fileName: String?,
@@ -253,9 +364,11 @@ private data class MediaAssetAnalysisRequest(
     companion object {
         fun from(arguments: Map<*, *>?): MediaAssetAnalysisRequest? {
             if (arguments == null) return null
+            val analysisId = arguments["analysisId"] as? String ?: return null
             val assetId = arguments["assetId"] as? String ?: return null
             val filePath = arguments["filePath"] as? String ?: return null
             return MediaAssetAnalysisRequest(
+                analysisId = analysisId,
                 assetId = assetId,
                 filePath = filePath,
                 fileName = arguments["fileName"] as? String,

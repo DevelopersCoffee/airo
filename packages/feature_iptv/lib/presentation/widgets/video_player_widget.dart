@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show KeyDownEvent, KeyUpEvent;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:platform_channels/platform_channels.dart';
 import '../../application/player_backgrounding_coordinator.dart';
@@ -93,7 +94,17 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
   String _adjacentChannelWarmupSignature = '';
 
   // MENU key context menu (AiroTV D-pad design "CONTEXT MENU (MENU key)").
+  //
+  // On real Fire TV hardware, KEYCODE_MENU never reaches the app -- Fire OS
+  // intercepts it at the system level for its own overlay (confirmed via
+  // on-device logcat: com.amazon.device.controller consumes it before
+  // Flutter's embedding sees it). Long-press Select/OK is the standard Fire
+  // TV convention for "more options" (Prime Video, Netflix, etc. all use
+  // it), and unlike Menu it's guaranteed to reach the app, so it's wired
+  // as the real-world trigger; TvInputKey.menu stays wired too for
+  // Android TV remotes that do have a working menu key.
   bool _showContextMenu = false;
+  Timer? _selectLongPressTimer;
 
   // UP/DOWN quick-browse overlays (AiroTV D-pad design "MINI GUIDE (UP)" /
   // "RECENT CHANNELS (DOWN)"). Replaces the previous instant channel-surf
@@ -147,6 +158,7 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
     _cancelHideControlsTimer();
     _channelChangeOverlayTimer?.cancel();
     _adjacentChannelWarmupDebounce?.cancel();
+    _selectLongPressTimer?.cancel();
     _playerFocusNode.dispose();
     _centerControlFocusNode.dispose();
     unawaited(_resetBrightnessSafely());
@@ -464,6 +476,31 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
     return all.sublist(start, end);
   }
 
+  static const _selectLongPressDuration = Duration(milliseconds: 500);
+
+  /// Detects a long-press of Select/OK to open the context menu (see the
+  /// field doc on [_showContextMenu] for why). Always returns `ignored` —
+  /// this only observes timing, it never claims the key event, so normal
+  /// short-press handling in [_handleSurfInput] (via [TvInputHandler]) is
+  /// unaffected.
+  KeyEventResult _detectSelectLongPress(FocusNode node, KeyEvent event) {
+    final key = TvInputHandler.mapLogicalKeyToTvInput(event.logicalKey);
+    if (key != TvInputKey.select) return KeyEventResult.ignored;
+
+    if (event is KeyDownEvent) {
+      _selectLongPressTimer ??= Timer(_selectLongPressDuration, () {
+        if (ref.read(streamingStateProvider).asData?.value.currentChannel !=
+            null) {
+          setState(() => _showContextMenu = true);
+        }
+      });
+    } else if (event is KeyUpEvent) {
+      _selectLongPressTimer?.cancel();
+      _selectLongPressTimer = null;
+    }
+    return KeyEventResult.ignored;
+  }
+
   void _playChannelFromQuickBrowse(IPTVChannel channel) {
     final streamingService = ref.read(iptvStreamingServiceProvider);
     streamingService.playChannel(channel);
@@ -473,7 +510,11 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
   }
 
   Future<void> _toggleFavoriteForCurrentChannel() async {
-    final channel = ref.read(streamingStateProvider).asData?.value.currentChannel;
+    final channel = ref
+        .read(streamingStateProvider)
+        .asData
+        ?.value
+        .currentChannel;
     if (channel == null) return;
     final toggle = ref.read(channelFavoriteTogglerProvider);
     final isNowFavorite = await toggle(channel.id);
@@ -594,184 +635,209 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
       ],
     );
 
-    return TvInputHandler(
-      onInput: _handleSurfInput,
-      // Focus.onKeyEvent always ignores so the event bubbles up to
-      // TvInputHandler's own listener above -- this node exists purely to
-      // hold primary focus by default, since nothing else in the player
-      // (controls auto-hide) reliably claims it otherwise. The state-owned
-      // node lets the hide timer reclaim focus from on-screen controls.
-      child: Focus(
-        focusNode: _playerFocusNode,
-        autofocus: true,
-        onKeyEvent: (node, event) => KeyEventResult.ignored,
-        child: MouseRegion(
-          onHover: (_) => _showControls(),
-          onEnter: (_) => _showControls(),
-          child: GestureDetector(
-            onTap: _showControls,
-            child: Container(
-              color: Colors.black,
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  // Video display + Netflix-style brightness/volume drag
-                  // gestures. Left half of the video area adjusts brightness,
-                  // right half adjusts volume; disabled while locked. The video
-                  // surface itself is the engine-driven view (CV-016 migration);
-                  // when it's null we fall through to loading/diagnostic/
-                  // placeholder inside the same gesture-enabled stack.
-                  widget.enableTouchGestures
-                      ? PlayerGestureOverlay(
-                          locked: _isLocked,
-                          brightness: _brightness,
-                          volume: state.isMuted ? 0.0 : state.volume,
-                          onTap: _showControls,
-                          onBrightnessChanged: _onBrightnessGestureChanged,
-                          onVolumeChanged: (value) {
-                            if (state.isMuted) service.toggleMute();
-                            service.setVolume(value);
-                          },
-                          child: playerSurface,
-                        )
-                      : playerSurface,
+    // TvInputHandler observes raw key events via a KeyboardListener, which
+    // is passive -- it cannot consume/stop the platform BACK button. So
+    // even though _handleSurfInput's TvInputKey.back case closes the
+    // context menu / quick-browse overlay via setState, the real Android
+    // back press keeps propagating past it and exits the Activity (there's
+    // no route to pop). PopScope is what actually intercepts the platform
+    // back button; block it exactly when an overlay needs BACK to close it
+    // instead of leaving the app.
+    return PopScope(
+      canPop: !_showContextMenu && _quickBrowse == null,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        setState(() {
+          _showContextMenu = false;
+          _quickBrowse = null;
+        });
+      },
+      child: TvInputHandler(
+        onInput: _handleSurfInput,
+        // Focus.onKeyEvent always ignores so the event bubbles up to
+        // TvInputHandler's own listener above -- this node exists purely to
+        // hold primary focus by default, since nothing else in the player
+        // (controls auto-hide) reliably claims it otherwise. The state-owned
+        // node lets the hide timer reclaim focus from on-screen controls.
+        child: Focus(
+          focusNode: _playerFocusNode,
+          autofocus: true,
+          onKeyEvent: _detectSelectLongPress,
+          child: MouseRegion(
+            onHover: (_) => _showControls(),
+            onEnter: (_) => _showControls(),
+            child: GestureDetector(
+              onTap: _showControls,
+              child: Container(
+                color: Colors.black,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    // Video display + Netflix-style brightness/volume drag
+                    // gestures. Left half of the video area adjusts brightness,
+                    // right half adjusts volume; disabled while locked. The video
+                    // surface itself is the engine-driven view (CV-016 migration);
+                    // when it's null we fall through to loading/diagnostic/
+                    // placeholder inside the same gesture-enabled stack.
+                    widget.enableTouchGestures
+                        ? PlayerGestureOverlay(
+                            locked: _isLocked,
+                            brightness: _brightness,
+                            volume: state.isMuted ? 0.0 : state.volume,
+                            onTap: _showControls,
+                            onBrightnessChanged: _onBrightnessGestureChanged,
+                            onVolumeChanged: (value) {
+                              if (state.isMuted) service.toggleMute();
+                              service.setVolume(value);
+                            },
+                            child: playerSurface,
+                          )
+                        : playerSurface,
 
-                  // Failover toast only. Airo TV owns one visible control
-                  // system below; keeping PlayerOverlay's old back/title layer
-                  // mounted here caused a second set of controls to reappear
-                  // after the floating controls faded.
-                  if (!_isLocked && !isPipActive && !compactInlinePlayer)
-                    PlayerOverlay(
-                      state: _toPlayerViewState(state),
-                      onBack:
-                          widget.onBack ?? widget.onFullscreenToggle ?? () {},
-                      onPlayPause: () {
-                        if (state.isPlaying) {
-                          service.pause();
-                        } else {
-                          service.resume();
-                        }
-                      },
-                      onReveal: _showControls,
-                      showTopChrome: false,
-                      showCenterControls: false,
-                      showBottomBar: false,
-                    ),
-
-                  // Controls overlay with fade animation — hidden entirely while
-                  // locked so only the lock button remains interactive.
-                  if (!_isLocked && !isPipActive)
-                    AnimatedOpacity(
-                      opacity: (widget.showControls && _showControlsOverlay)
-                          ? 1.0
-                          : 0.0,
-                      duration: const Duration(milliseconds: 300),
-                      child: IgnorePointer(
-                        ignoring: !widget.showControls || !_showControlsOverlay,
-                        // Hidden controls must be invisible to D-pad focus
-                        // too, or arrow keys traverse buttons nobody can see
-                        // while the surface expects channel-surf input.
-                        child: ExcludeFocus(
-                          excluding:
-                              !widget.showControls || !_showControlsOverlay,
-                          child: _buildControlsOverlay(context, service, state),
-                        ),
+                    // Failover toast only. Airo TV owns one visible control
+                    // system below; keeping PlayerOverlay's old back/title layer
+                    // mounted here caused a second set of controls to reappear
+                    // after the floating controls faded.
+                    if (!_isLocked && !isPipActive && !compactInlinePlayer)
+                      PlayerOverlay(
+                        state: _toPlayerViewState(state),
+                        onBack:
+                            widget.onBack ?? widget.onFullscreenToggle ?? () {},
+                        onPlayPause: () {
+                          if (state.isPlaying) {
+                            service.pause();
+                          } else {
+                            service.resume();
+                          }
+                        },
+                        onReveal: _showControls,
+                        showTopChrome: false,
+                        showCenterControls: false,
+                        showBottomBar: false,
                       ),
-                    ),
 
-                  // Lock button: touch-only concept, hidden entirely when
-                  // enableTouchGestures is false (e.g. TV/remote input).
-                  if (widget.enableTouchGestures && !isPipActive)
-                    Positioned(
-                      top: 8,
-                      right: 56,
-                      child: AnimatedOpacity(
-                        opacity: (_isLocked || _showControlsOverlay)
+                    // Controls overlay with fade animation — hidden entirely while
+                    // locked so only the lock button remains interactive.
+                    if (!_isLocked && !isPipActive)
+                      AnimatedOpacity(
+                        opacity: (widget.showControls && _showControlsOverlay)
                             ? 1.0
                             : 0.0,
                         duration: const Duration(milliseconds: 300),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: Colors.black45,
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: PlayerLockButton(
-                            key: const ValueKey('iptv-player-lock-button'),
-                            locked: _isLocked,
-                            onToggle: _toggleLocked,
-                          ),
-                        ),
-                      ),
-                    ),
-
-                  // Channel change overlay
-                  if (_channelChangeOverlayText != null)
-                    Positioned(
-                      child: AnimatedOpacity(
-                        opacity: _channelChangeOverlayText != null ? 1.0 : 0.0,
-                        duration: const Duration(milliseconds: 200),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 24,
-                            vertical: 12,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: 0.8),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            _channelChangeOverlayText!,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
+                        child: IgnorePointer(
+                          ignoring:
+                              !widget.showControls || !_showControlsOverlay,
+                          // Hidden controls must be invisible to D-pad focus
+                          // too, or arrow keys traverse buttons nobody can see
+                          // while the surface expects channel-surf input.
+                          child: ExcludeFocus(
+                            excluding:
+                                !widget.showControls || !_showControlsOverlay,
+                            child: _buildControlsOverlay(
+                              context,
+                              service,
+                              state,
                             ),
                           ),
                         ),
                       ),
-                    ),
 
-                  // Context menu (MENU key) — right-side overlay, matching
-                  // the AiroTV D-pad design's "CONTEXT MENU (MENU key)"
-                  // screen. Only rendered while open; doesn't touch layout
-                  // otherwise.
-                  if (_showContextMenu && state.currentChannel != null)
-                    _ContextMenuOverlay(
-                      channel: state.currentChannel!,
-                      onToggleFavorite: _toggleFavoriteForCurrentChannel,
-                      onClose: () => setState(() => _showContextMenu = false),
-                    ),
+                    // Lock button: touch-only concept, hidden entirely when
+                    // enableTouchGestures is false (e.g. TV/remote input).
+                    if (widget.enableTouchGestures && !isPipActive)
+                      Positioned(
+                        top: 8,
+                        right: 56,
+                        child: AnimatedOpacity(
+                          opacity: (_isLocked || _showControlsOverlay)
+                              ? 1.0
+                              : 0.0,
+                          duration: const Duration(milliseconds: 300),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.black45,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: PlayerLockButton(
+                              key: const ValueKey('iptv-player-lock-button'),
+                              locked: _isLocked,
+                              onToggle: _toggleLocked,
+                            ),
+                          ),
+                        ),
+                      ),
 
-                  // UP/DOWN quick-browse overlays.
-                  if (_quickBrowse == _TvQuickBrowse.miniGuide &&
-                      state.currentChannel != null)
-                    _QuickBrowseOverlay(
-                      title: 'Mini guide',
-                      channels: _miniGuideChannels(state.currentChannel!),
-                      currentChannelId: state.currentChannel!.id,
-                      onSelected: _playChannelFromQuickBrowse,
-                    ),
-                  if (_quickBrowse == _TvQuickBrowse.recent)
-                    Consumer(
-                      builder: (context, ref, _) {
-                        final recent = ref.watch(
-                          recentlyWatchedChannelsProvider,
-                        );
-                        return recent.when(
-                          data: (channels) => channels.isEmpty
-                              ? const SizedBox.shrink()
-                              : _QuickBrowseOverlay(
-                                  title: 'Recently watched',
-                                  channels: channels,
-                                  currentChannelId: state.currentChannel?.id,
-                                  onSelected: _playChannelFromQuickBrowse,
-                                ),
-                          loading: () => const SizedBox.shrink(),
-                          error: (_, _) => const SizedBox.shrink(),
-                        );
-                      },
-                    ),
-                ],
+                    // Channel change overlay
+                    if (_channelChangeOverlayText != null)
+                      Positioned(
+                        child: AnimatedOpacity(
+                          opacity: _channelChangeOverlayText != null
+                              ? 1.0
+                              : 0.0,
+                          duration: const Duration(milliseconds: 200),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 24,
+                              vertical: 12,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.8),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              _channelChangeOverlayText!,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+
+                    // Context menu (MENU key) — right-side overlay, matching
+                    // the AiroTV D-pad design's "CONTEXT MENU (MENU key)"
+                    // screen. Only rendered while open; doesn't touch layout
+                    // otherwise.
+                    if (_showContextMenu && state.currentChannel != null)
+                      _ContextMenuOverlay(
+                        channel: state.currentChannel!,
+                        onToggleFavorite: _toggleFavoriteForCurrentChannel,
+                        onClose: () => setState(() => _showContextMenu = false),
+                      ),
+
+                    // UP/DOWN quick-browse overlays.
+                    if (_quickBrowse == _TvQuickBrowse.miniGuide &&
+                        state.currentChannel != null)
+                      _QuickBrowseOverlay(
+                        title: 'Mini guide',
+                        channels: _miniGuideChannels(state.currentChannel!),
+                        currentChannelId: state.currentChannel!.id,
+                        onSelected: _playChannelFromQuickBrowse,
+                      ),
+                    if (_quickBrowse == _TvQuickBrowse.recent)
+                      Consumer(
+                        builder: (context, ref, _) {
+                          final recent = ref.watch(
+                            recentlyWatchedChannelsProvider,
+                          );
+                          return recent.when(
+                            data: (channels) => channels.isEmpty
+                                ? const SizedBox.shrink()
+                                : _QuickBrowseOverlay(
+                                    title: 'Recently watched',
+                                    channels: channels,
+                                    currentChannelId: state.currentChannel?.id,
+                                    onSelected: _playChannelFromQuickBrowse,
+                                  ),
+                            loading: () => const SizedBox.shrink(),
+                            error: (_, _) => const SizedBox.shrink(),
+                          );
+                        },
+                      ),
+                  ],
+                ),
               ),
             ),
           ),
