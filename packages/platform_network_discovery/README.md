@@ -12,6 +12,10 @@ contract before native mDNS/DNS-SD adapters exist.
 - Privacy-safe discovery TXT record generation and validation.
 - Discovery snapshots with stale filtering and duplicate-node merge.
 - No-op and in-memory fake adapters for host-only tests.
+- `UnifiedDiscoveryService` for mDNS/DNS-SD, SSDP/UPnP, existing Cast, and
+  AirPlay adapter snapshots. It deduplicates logical receivers while retaining
+  every compatible protocol route and isolates per-mechanism failure.
 
-This package does not implement native mDNS/DNS-SD, ask local-network
-permissions, open sockets, pair devices, send commands, or render UI.
+Native/SDK adapters remain host-specific and translate into
+`DiscoveryMechanismAdapter`; this package does not import their SDK types, ask
+local-network permissions, pair devices, send commands, or render UI.
