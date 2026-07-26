@@ -56,6 +56,9 @@ void main() {
     expect(find.text('Settings'), findsOneWidget);
     expect(find.byTooltip('Back'), findsOneWidget);
     expect(find.text('Appearance'), findsOneWidget);
+    expect(find.text('Choose your visual theme'), findsOneWidget);
+    expect(find.text('Airo Cyber'), findsNothing);
+    expect(find.text('Airo Classic'), findsNothing);
     expect(find.text('Bedtime Mode'), findsNothing);
     expect(find.text('Background Audio'), findsNothing);
     expect(find.text('Audio Ducking'), findsNothing);
@@ -160,7 +163,9 @@ void main() {
     expect(find.text('XMLTV Guide Source'), findsOneWidget);
   });
 
-  testWidgets('appearance picker saves selected theme', (tester) async {
+  testWidgets('appearance section opens theme picker and saves selection', (
+    tester,
+  ) async {
     await tester.binding.setSurfaceSize(const Size(400, 1600));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
@@ -180,13 +185,26 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.text('Airo Cyber'), findsOneWidget);
-    expect(find.text('Airo Classic'), findsOneWidget);
+    expect(find.text('Airo Cyber'), findsNothing);
+    await tester.tap(find.text('Appearance'));
+    await tester.pumpAndSettle();
+
+    expect(find.widgetWithText(AppBar, 'Theme'), findsOneWidget);
+    for (final theme in AppTheme.themes) {
+      expect(find.text(theme.name), findsOneWidget);
+      expect(find.text(theme.description), findsOneWidget);
+    }
 
     await tester.tap(find.text('Airo Classic'));
     await tester.pump();
 
     expect(notifier.state, AppThemeId.classic);
     expect(prefs.getString(AppThemeNotifier.storageKey), 'classic');
+
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+
+    expect(find.widgetWithText(AppBar, 'Settings'), findsOneWidget);
+    expect(find.text('Airo Classic'), findsNothing);
   });
 }
