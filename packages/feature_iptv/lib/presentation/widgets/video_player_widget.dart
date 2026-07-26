@@ -739,32 +739,44 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
           colors: [Colors.blueGrey.shade900, Colors.black87],
         ),
       ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          PlaybackDiagnosticOverlay(
-            diagnostic: diagnostic,
-            retryAttempt: state.retryCount > 0 ? state.retryCount : null,
-            maxRetryAttempts: 3,
-          ),
-          if (!diagnostic.retryEligible || state.retryCount == 0)
-            ElevatedButton.icon(
-              onPressed: () => ref.read(iptvStreamingServiceProvider).retry(),
-              icon: const Icon(Icons.refresh_rounded),
-              label: const Text('Try Again'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blueGrey.shade700,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 12,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
+      // The transport controls overlay (play/pause, scrub bar) is always
+      // present in the same Stack, faded in/out by opacity rather than
+      // removed — a vertically-centered error message can grow tall enough
+      // to sit under the bottom control bar. Anchoring to the upper band
+      // guarantees no collision regardless of message length.
+      child: Align(
+        alignment: Alignment.topCenter,
+        child: Padding(
+          padding: const EdgeInsets.only(top: 48),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              PlaybackDiagnosticOverlay(
+                diagnostic: diagnostic,
+                retryAttempt: state.retryCount > 0 ? state.retryCount : null,
+                maxRetryAttempts: 3,
               ),
-            ),
-        ],
+              if (!diagnostic.retryEligible || state.retryCount == 0)
+                ElevatedButton.icon(
+                  onPressed: () =>
+                      ref.read(iptvStreamingServiceProvider).retry(),
+                  icon: const Icon(Icons.refresh_rounded),
+                  label: const Text('Try Again'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blueGrey.shade700,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 12,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
       ),
     );
   }

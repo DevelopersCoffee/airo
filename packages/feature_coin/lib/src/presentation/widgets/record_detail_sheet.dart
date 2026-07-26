@@ -57,14 +57,16 @@ class _RecordDetailSheetState extends ConsumerState<RecordDetailSheet> {
 
   Future<bool> _ensureRecord() async {
     if (!_isVaultUnlocked) {
-      // Fails closed. The vault is browsable while locked, so this path is
-      // reachable by design; the user unlocks from the banner on
-      // VaultGateScreen. Prompting for biometrics inline from here is
-      // tracked separately — it interacts with the sensitive-value cache
-      // clearing below and needs its own tests.
+      // The vault is browsable while locked, so reaching for a sensitive
+      // value is exactly the moment to ask for biometrics rather than
+      // dead-ending the user on "unlock it somewhere else and come back".
       _clearSensitiveCache();
-      _showSnack('Vault is locked - unlock and try again');
-      return false;
+      await ref.read(vaultSessionProvider.notifier).unlock();
+      if (!mounted) return false;
+      if (!_isVaultUnlocked) {
+        _showSnack('Vault is locked - unlock and try again');
+        return false;
+      }
     }
     if (_record != null) return true;
     if (_loadingRecord) return false;
@@ -285,7 +287,7 @@ class _RecordDetailSheetState extends ConsumerState<RecordDetailSheet> {
   @override
   Widget build(BuildContext context) {
     ref.listen<VaultSessionState>(vaultSessionProvider, (_, next) {
-      if (next is! VaultUnlocked) {
+      if (next is! VaultUnlocked && next is! VaultUnlocking) {
         _clearSensitiveCache();
       }
     });
