@@ -6,17 +6,19 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 /// Android Keystore / iOS Keychain, configured for biometric binding.
 class VaultSecureStorage implements SecureStorage {
   VaultSecureStorage({FlutterSecureStorage? storage})
-    : _storage = storage ?? const FlutterSecureStorage(
-        aOptions: AndroidOptions.biometric(
-          enforceBiometrics: true,
-          storageNamespace: 'airo_coin_vault',
-        ),
-        iOptions: IOSOptions(
-          accessibility: KeychainAccessibility.first_unlock_this_device,
-          accessControlFlags: [AccessControlFlag.biometryCurrentSet],
-          accountName: 'airo_coin_vault',
-        ),
-      );
+    : _storage =
+          storage ??
+          const FlutterSecureStorage(
+            aOptions: AndroidOptions.biometric(
+              enforceBiometrics: true,
+              storageNamespace: 'airo_coin_vault',
+            ),
+            iOptions: IOSOptions(
+              accessibility: KeychainAccessibility.first_unlock_this_device,
+              accessControlFlags: [AccessControlFlag.biometryCurrentSet],
+              accountName: 'airo_coin_vault',
+            ),
+          );
 
   final FlutterSecureStorage _storage;
 
@@ -55,7 +57,9 @@ class VaultSecureStorage implements SecureStorage {
       await _storage.deleteAll();
       return const Success(null);
     } catch (e) {
-      return Failure(CacheFailure(message: 'Failed to delete all keys', cause: e));
+      return Failure(
+        CacheFailure(message: 'Failed to delete all keys', cause: e),
+      );
     }
   }
 

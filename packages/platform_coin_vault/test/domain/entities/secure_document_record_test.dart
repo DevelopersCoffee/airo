@@ -3,16 +3,19 @@ import 'package:platform_coin_vault/src/domain/entities/secure_document_record.d
 
 void main() {
   test('all ITR-driven categories are available', () {
-    expect(DocumentCategory.values, containsAll(<DocumentCategory>[
-      DocumentCategory.personalId,
-      DocumentCategory.incomeProof,
-      DocumentCategory.taxCredit,
-      DocumentCategory.investmentProof,
-      DocumentCategory.hra,
-      DocumentCategory.capitalGains,
-      DocumentCategory.homeLoan,
-      DocumentCategory.other,
-    ]));
+    expect(
+      DocumentCategory.values,
+      containsAll(<DocumentCategory>[
+        DocumentCategory.personalId,
+        DocumentCategory.incomeProof,
+        DocumentCategory.taxCredit,
+        DocumentCategory.investmentProof,
+        DocumentCategory.hra,
+        DocumentCategory.capitalGains,
+        DocumentCategory.homeLoan,
+        DocumentCategory.other,
+      ]),
+    );
   });
 
   test('linkedAccountNickname is optional', () {

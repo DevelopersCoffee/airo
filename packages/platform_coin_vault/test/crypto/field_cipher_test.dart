@@ -13,22 +13,25 @@ void main() {
   });
 
   group('FieldCipher', () {
-    test('decrypting an encrypted value returns the original plaintext', () async {
-      const plaintext = '1234567890';
+    test(
+      'decrypting an encrypted value returns the original plaintext',
+      () async {
+        const plaintext = '1234567890';
 
-      final encrypted = await cipher.encryptField(
-        plaintext,
-        keyBytes,
-        context: 'bank_accounts:account_number_enc:1',
-      );
-      final decrypted = await cipher.decryptField(
-        encrypted,
-        keyBytes,
-        context: 'bank_accounts:account_number_enc:1',
-      );
+        final encrypted = await cipher.encryptField(
+          plaintext,
+          keyBytes,
+          context: 'bank_accounts:account_number_enc:1',
+        );
+        final decrypted = await cipher.decryptField(
+          encrypted,
+          keyBytes,
+          context: 'bank_accounts:account_number_enc:1',
+        );
 
-      expect(decrypted, plaintext);
-    });
+        expect(decrypted, plaintext);
+      },
+    );
 
     test('encrypted output differs from plaintext', () async {
       const plaintext = 'ABCDE1234F';
@@ -42,26 +45,32 @@ void main() {
       expect(encrypted, isNot(contains(plaintext)));
     });
 
-    test('same plaintext encrypted twice yields different ciphertext (random nonce)', () async {
-      const plaintext = 'repeat-me';
+    test(
+      'same plaintext encrypted twice yields different ciphertext (random nonce)',
+      () async {
+        const plaintext = 'repeat-me';
 
-      final first = await cipher.encryptField(
-        plaintext,
-        keyBytes,
-        context: 'bank_accounts:notes_enc:1',
-      );
-      final second = await cipher.encryptField(
-        plaintext,
-        keyBytes,
-        context: 'bank_accounts:notes_enc:1',
-      );
+        final first = await cipher.encryptField(
+          plaintext,
+          keyBytes,
+          context: 'bank_accounts:notes_enc:1',
+        );
+        final second = await cipher.encryptField(
+          plaintext,
+          keyBytes,
+          context: 'bank_accounts:notes_enc:1',
+        );
 
-      expect(first, isNot(equals(second)));
-    });
+        expect(first, isNot(equals(second)));
+      },
+    );
 
     test('decrypting with the wrong key throws', () async {
       const plaintext = 'secret-value';
-      final wrongKey = List<int>.generate(32, (_) => Random.secure().nextInt(256));
+      final wrongKey = List<int>.generate(
+        32,
+        (_) => Random.secure().nextInt(256),
+      );
 
       final encrypted = await cipher.encryptField(
         plaintext,
@@ -70,29 +79,48 @@ void main() {
       );
 
       expect(
-        () => cipher.decryptField(encrypted, wrongKey, context: 'bank_accounts:notes_enc:1'),
+        () => cipher.decryptField(
+          encrypted,
+          wrongKey,
+          context: 'bank_accounts:notes_enc:1',
+        ),
         throwsA(anything),
       );
     });
 
-    test('decrypting with a mismatched context throws, even with the right key', () async {
-      const plaintext = 'secret-value';
+    test(
+      'decrypting with a mismatched context throws, even with the right key',
+      () async {
+        const plaintext = 'secret-value';
 
-      final encrypted = await cipher.encryptField(
-        plaintext,
-        keyBytes,
-        context: 'bank_accounts:notes_enc:1',
-      );
+        final encrypted = await cipher.encryptField(
+          plaintext,
+          keyBytes,
+          context: 'bank_accounts:notes_enc:1',
+        );
 
-      expect(
-        () => cipher.decryptField(encrypted, keyBytes, context: 'bank_accounts:notes_enc:2'),
-        throwsA(anything),
-      );
-    });
+        expect(
+          () => cipher.decryptField(
+            encrypted,
+            keyBytes,
+            context: 'bank_accounts:notes_enc:2',
+          ),
+          throwsA(anything),
+        );
+      },
+    );
 
     test('roundtrips empty string', () async {
-      final encrypted = await cipher.encryptField('', keyBytes, context: 'bank_accounts:notes_enc:1');
-      final decrypted = await cipher.decryptField(encrypted, keyBytes, context: 'bank_accounts:notes_enc:1');
+      final encrypted = await cipher.encryptField(
+        '',
+        keyBytes,
+        context: 'bank_accounts:notes_enc:1',
+      );
+      final decrypted = await cipher.decryptField(
+        encrypted,
+        keyBytes,
+        context: 'bank_accounts:notes_enc:1',
+      );
 
       expect(decrypted, '');
     });
