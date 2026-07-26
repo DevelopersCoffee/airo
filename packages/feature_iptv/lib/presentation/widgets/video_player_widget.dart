@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show KeyDownEvent, KeyUpEvent;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:platform_channels/platform_channels.dart';
 import '../../application/player_backgrounding_coordinator.dart';
@@ -93,7 +94,17 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
   String _adjacentChannelWarmupSignature = '';
 
   // MENU key context menu (AiroTV D-pad design "CONTEXT MENU (MENU key)").
+  //
+  // On real Fire TV hardware, KEYCODE_MENU never reaches the app -- Fire OS
+  // intercepts it at the system level for its own overlay (confirmed via
+  // on-device logcat: com.amazon.device.controller consumes it before
+  // Flutter's embedding sees it). Long-press Select/OK is the standard Fire
+  // TV convention for "more options" (Prime Video, Netflix, etc. all use
+  // it), and unlike Menu it's guaranteed to reach the app, so it's wired
+  // as the real-world trigger; TvInputKey.menu stays wired too for
+  // Android TV remotes that do have a working menu key.
   bool _showContextMenu = false;
+  Timer? _selectLongPressTimer;
 
   // UP/DOWN quick-browse overlays (AiroTV D-pad design "MINI GUIDE (UP)" /
   // "RECENT CHANNELS (DOWN)"). Replaces the previous instant channel-surf
@@ -147,6 +158,7 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
     _cancelHideControlsTimer();
     _channelChangeOverlayTimer?.cancel();
     _adjacentChannelWarmupDebounce?.cancel();
+    _selectLongPressTimer?.cancel();
     _playerFocusNode.dispose();
     _centerControlFocusNode.dispose();
     unawaited(_resetBrightnessSafely());
@@ -464,6 +476,31 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
     return all.sublist(start, end);
   }
 
+  static const _selectLongPressDuration = Duration(milliseconds: 500);
+
+  /// Detects a long-press of Select/OK to open the context menu (see the
+  /// field doc on [_showContextMenu] for why). Always returns `ignored` —
+  /// this only observes timing, it never claims the key event, so normal
+  /// short-press handling in [_handleSurfInput] (via [TvInputHandler]) is
+  /// unaffected.
+  KeyEventResult _detectSelectLongPress(FocusNode node, KeyEvent event) {
+    final key = TvInputHandler.mapLogicalKeyToTvInput(event.logicalKey);
+    if (key != TvInputKey.select) return KeyEventResult.ignored;
+
+    if (event is KeyDownEvent) {
+      _selectLongPressTimer ??= Timer(_selectLongPressDuration, () {
+        if (ref.read(streamingStateProvider).asData?.value.currentChannel !=
+            null) {
+          setState(() => _showContextMenu = true);
+        }
+      });
+    } else if (event is KeyUpEvent) {
+      _selectLongPressTimer?.cancel();
+      _selectLongPressTimer = null;
+    }
+    return KeyEventResult.ignored;
+  }
+
   void _playChannelFromQuickBrowse(IPTVChannel channel) {
     final streamingService = ref.read(iptvStreamingServiceProvider);
     streamingService.playChannel(channel);
@@ -604,7 +641,7 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
       child: Focus(
         focusNode: _playerFocusNode,
         autofocus: true,
-        onKeyEvent: (node, event) => KeyEventResult.ignored,
+        onKeyEvent: _detectSelectLongPress,
         child: MouseRegion(
           onHover: (_) => _showControls(),
           onEnter: (_) => _showControls(),
