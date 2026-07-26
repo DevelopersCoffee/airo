@@ -101,6 +101,11 @@ distribution:
   local stub.
 - Vendored `flutter_chrome_cast` BSD-3-Clause source under
   `packages/platform_player/third_party/flutter_chrome_cast`.
+- Playlist Engine v2 Rust dependencies: `memmap2` 0.9.11
+  (MIT OR Apache-2.0), `rusqlite` 0.32.1 (MIT), and `libsqlite3-sys` 0.30.1
+  (MIT). `rusqlite` is intentionally used without its `bundled` feature so
+  Airo does not embed a second SQLite runtime alongside the selected platform
+  profile's existing SQLite library.
 
 ## Required Before Public Distribution
 

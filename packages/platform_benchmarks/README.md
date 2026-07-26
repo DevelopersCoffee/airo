@@ -2,6 +2,26 @@
 
 Host-runnable benchmark and evidence tools for Airo platform performance.
 
+## Playlist Engine v2
+
+Build `airo_core` in release mode, then run the opt-in 100k native benchmark:
+
+```bash
+cd rust
+CARGO_TARGET_DIR="$PWD/airo_core/target" cargo build -p airo_core --release
+
+cd ../packages/platform_benchmarks
+AIRO_RUN_PLAYLIST_INDEX_BENCHMARK=true \
+AIRO_PLAYLIST_BENCHMARK_DEVICE="macOS host" \
+flutter test test/playlist_index_native_acceptance_test.dart
+```
+
+Host output is regression evidence only. Final milestone acceptance must set
+`AIRO_PLAYLIST_BENCHMARK_PHYSICAL=true` and name the exact physical Fire TV
+profile. The aggregate JSON contains no playlist paths, channel data, or URLs.
+See `docs/features/airo-tv/PLAYLIST_ENGINE_V2.md` for thresholds and memory
+policy.
+
 ## Airo TV Memory Timeline
 
 Use the local ADB memory capture when a physical Android TV device or 1 GB test
