@@ -13,7 +13,7 @@ import '../../application/providers/iptv_providers.dart';
 import '../../application/channel_metadata_enrichment.dart';
 import '../../application/channel_warmup_policy.dart';
 import 'sections/channel_info_bar.dart';
-import 'sections/channel_table.dart';
+import 'sections/channel_library_grid.dart';
 import 'sections/filter_dialogs.dart';
 import 'sections/filter_row.dart';
 import 'sections/hotbar.dart';
@@ -86,8 +86,8 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
       dimensions: snapshot.dimensions,
       countryPrompt: countryPrompt,
     );
-    final table = ChannelTable(
-      key: const ValueKey('airo-tv-channel-table'),
+    final table = ChannelLibraryGrid(
+      key: const ValueKey('airo-tv-channel-library'),
       channels: snapshot.visibleChannels,
       metadataByChannelId: metadata,
       availabilityByChannelId: availabilityByChannelId,
