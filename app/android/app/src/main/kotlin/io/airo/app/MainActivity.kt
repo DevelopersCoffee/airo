@@ -11,7 +11,7 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.provider.CalendarContract
 import android.provider.Settings
-import com.ryanheise.audioservice.AudioServiceActivity
+import com.ryanheise.audioservice.AudioServiceFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodChannel
@@ -20,7 +20,13 @@ import java.util.Calendar
 import java.util.Locale
 import java.util.TimeZone
 
-class MainActivity : AudioServiceActivity() {
+// AudioServiceFragmentActivity (FlutterFragmentActivity) rather than
+// AudioServiceActivity (FlutterActivity): local_auth hosts Android's
+// BiometricPrompt in a Fragment, so a plain FlutterActivity makes every
+// authenticate() call throw no_fragment_activity — the vault could never
+// show a biometric prompt. The audio_service behaviour is identical
+// between the two base classes.
+class MainActivity : AudioServiceFragmentActivity() {
     private val GEMINI_NANO_CHANNEL = "com.airo.gemini_nano"
     private val GEMINI_NANO_EVENT_CHANNEL = "com.airo.gemini_nano/stream"
     private val LITERT_LM_CHANNEL = "com.airo.litert_lm"
