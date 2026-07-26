@@ -69,7 +69,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.11.1';
 
   @override
-  int get rustContentHash => -1879699283;
+  int get rustContentHash => 935422684;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -87,6 +87,11 @@ abstract class RustLibApi extends BaseApi {
 
   Future<RelationalStoreStatus>
   crateApiRelationalStoreInitializeRelationalStore({required String path});
+
+  Future<void> crateApiRelationalStoreLoadRelationalMediaPack({
+    required String path,
+    required RelationalMediaKnowledgePack pack,
+  });
 
   Future<M3uChannelParseResult> crateApiM3UM3UChannelParseResultDefault();
 
@@ -152,6 +157,12 @@ abstract class RustLibApi extends BaseApi {
     required int maxProgrammes,
   });
 
+  Future<List<RelationalMediaTitle>>
+  crateApiRelationalStoreQueryRelationalMediaGraph({
+    required String path,
+    required RelationalMediaGraphQuery query,
+  });
+
   Future<List<RecommendationScore>> crateApiNativeEngineRankRecommendations({
     required List<RecommendationCandidate> candidates,
   });
@@ -175,6 +186,11 @@ abstract class RustLibApi extends BaseApi {
     required List<PlaylistSearchFilter> filters,
     required int offset,
     required int limit,
+  });
+
+  Future<bool> crateApiRelationalStoreUnloadRelationalMediaPack({
+    required String path,
+    required String packId,
   });
 
   Future<void> crateApiRelationalStoreUpsertRelationalSyncEntity({
@@ -268,6 +284,44 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
+  Future<void> crateApiRelationalStoreLoadRelationalMediaPack({
+    required String path,
+    required RelationalMediaKnowledgePack pack,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(path, serializer);
+          sse_encode_box_autoadd_relational_media_knowledge_pack(
+            pack,
+            serializer,
+          );
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 3,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiRelationalStoreLoadRelationalMediaPackConstMeta,
+        argValues: [path, pack],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiRelationalStoreLoadRelationalMediaPackConstMeta =>
+      const TaskConstMeta(
+        debugName: "load_relational_media_pack",
+        argNames: ["path", "pack"],
+      );
+
+  @override
   Future<M3uChannelParseResult> crateApiM3UM3UChannelParseResultDefault() {
     return handler.executeNormal(
       NormalTask(
@@ -276,7 +330,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 3,
+            funcId: 4,
             port: port_,
           );
         },
@@ -306,7 +360,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 4,
+            funcId: 5,
             port: port_,
           );
         },
@@ -336,7 +390,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 5,
+            funcId: 6,
             port: port_,
           );
         },
@@ -363,7 +417,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 6,
+            funcId: 7,
             port: port_,
           );
         },
@@ -391,7 +445,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 7,
+            funcId: 8,
             port: port_,
           );
         },
@@ -428,7 +482,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 8,
+            funcId: 9,
             port: port_,
           );
         },
@@ -465,7 +519,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 9,
+            funcId: 10,
             port: port_,
           );
         },
@@ -498,7 +552,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 10,
+            funcId: 11,
             port: port_,
           );
         },
@@ -529,7 +583,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 11,
+            funcId: 12,
             port: port_,
           );
         },
@@ -561,7 +615,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 12,
+            funcId: 13,
             port: port_,
           );
         },
@@ -594,7 +648,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 13,
+            funcId: 14,
             port: port_,
           );
         },
@@ -625,7 +679,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 14,
+            funcId: 15,
             port: port_,
           );
         },
@@ -658,7 +712,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 15,
+            funcId: 16,
             port: port_,
           );
         },
@@ -693,7 +747,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 16,
+            funcId: 17,
             port: port_,
           );
         },
@@ -732,7 +786,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 17,
+            funcId: 18,
             port: port_,
           );
         },
@@ -772,7 +826,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 18,
+            funcId: 19,
             port: port_,
           );
         },
@@ -807,7 +861,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 19,
+            funcId: 20,
             port: port_,
           );
         },
@@ -829,6 +883,46 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
+  Future<List<RelationalMediaTitle>>
+  crateApiRelationalStoreQueryRelationalMediaGraph({
+    required String path,
+    required RelationalMediaGraphQuery query,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(path, serializer);
+          sse_encode_box_autoadd_relational_media_graph_query(
+            query,
+            serializer,
+          );
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 21,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_list_relational_media_title,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiRelationalStoreQueryRelationalMediaGraphConstMeta,
+        argValues: [path, query],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta
+  get kCrateApiRelationalStoreQueryRelationalMediaGraphConstMeta =>
+      const TaskConstMeta(
+        debugName: "query_relational_media_graph",
+        argNames: ["path", "query"],
+      );
+
+  @override
   Future<List<RecommendationScore>> crateApiNativeEngineRankRecommendations({
     required List<RecommendationCandidate> candidates,
   }) {
@@ -840,7 +934,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 20,
+            funcId: 22,
             port: port_,
           );
         },
@@ -876,7 +970,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 21,
+            funcId: 23,
             port: port_,
           );
         },
@@ -915,7 +1009,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 22,
+            funcId: 24,
             port: port_,
           );
         },
@@ -956,7 +1050,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 23,
+            funcId: 25,
             port: port_,
           );
         },
@@ -978,6 +1072,42 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
+  Future<bool> crateApiRelationalStoreUnloadRelationalMediaPack({
+    required String path,
+    required String packId,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(path, serializer);
+          sse_encode_String(packId, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 26,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_bool,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiRelationalStoreUnloadRelationalMediaPackConstMeta,
+        argValues: [path, packId],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta
+  get kCrateApiRelationalStoreUnloadRelationalMediaPackConstMeta =>
+      const TaskConstMeta(
+        debugName: "unload_relational_media_pack",
+        argNames: ["path", "packId"],
+      );
+
+  @override
   Future<void> crateApiRelationalStoreUpsertRelationalSyncEntity({
     required String path,
     required RelationalSyncEntity entity,
@@ -991,7 +1121,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 24,
+            funcId: 27,
             port: port_,
           );
         },
@@ -1022,7 +1152,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 25,
+            funcId: 28,
             port: port_,
           );
         },
@@ -1052,7 +1182,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 26,
+            funcId: 29,
             port: port_,
           );
         },
@@ -1082,7 +1212,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 27,
+            funcId: 30,
             port: port_,
           );
         },
@@ -1112,7 +1242,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 28,
+            funcId: 31,
             port: port_,
           );
         },
@@ -1168,6 +1298,21 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   PlatformInt64 dco_decode_box_autoadd_i_64(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return dco_decode_i_64(raw);
+  }
+
+  @protected
+  RelationalMediaGraphQuery dco_decode_box_autoadd_relational_media_graph_query(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_relational_media_graph_query(raw);
+  }
+
+  @protected
+  RelationalMediaKnowledgePack
+  dco_decode_box_autoadd_relational_media_knowledge_pack(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_relational_media_knowledge_pack(raw);
   }
 
   @protected
@@ -1268,6 +1413,34 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   List<(String, String)> dco_decode_list_record_string_string(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return (raw as List<dynamic>).map(dco_decode_record_string_string).toList();
+  }
+
+  @protected
+  List<RelationalMediaEdge> dco_decode_list_relational_media_edge(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>)
+        .map(dco_decode_relational_media_edge)
+        .toList();
+  }
+
+  @protected
+  List<RelationalMediaEntity> dco_decode_list_relational_media_entity(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>)
+        .map(dco_decode_relational_media_entity)
+        .toList();
+  }
+
+  @protected
+  List<RelationalMediaTitle> dco_decode_list_relational_media_title(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>)
+        .map(dco_decode_relational_media_title)
+        .toList();
   }
 
   @protected
@@ -1614,6 +1787,79 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  RelationalMediaEdge dco_decode_relational_media_edge(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 2)
+      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
+    return RelationalMediaEdge(
+      titleUuid: dco_decode_String(arr[0]),
+      entityUuid: dco_decode_String(arr[1]),
+    );
+  }
+
+  @protected
+  RelationalMediaEntity dco_decode_relational_media_entity(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 3)
+      throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
+    return RelationalMediaEntity(
+      uuid: dco_decode_String(arr[0]),
+      entityType: dco_decode_String(arr[1]),
+      name: dco_decode_String(arr[2]),
+    );
+  }
+
+  @protected
+  RelationalMediaGraphQuery dco_decode_relational_media_graph_query(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 5)
+      throw Exception('unexpected arr length: expect 5 but see ${arr.length}');
+    return RelationalMediaGraphQuery(
+      entityType: dco_decode_opt_String(arr[0]),
+      entityName: dco_decode_opt_String(arr[1]),
+      releasedAfter: dco_decode_opt_box_autoadd_u_32(arr[2]),
+      releasedBefore: dco_decode_opt_box_autoadd_u_32(arr[3]),
+      contentRating: dco_decode_opt_String(arr[4]),
+    );
+  }
+
+  @protected
+  RelationalMediaKnowledgePack dco_decode_relational_media_knowledge_pack(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 5)
+      throw Exception('unexpected arr length: expect 5 but see ${arr.length}');
+    return RelationalMediaKnowledgePack(
+      packId: dco_decode_String(arr[0]),
+      schemaVersion: dco_decode_String(arr[1]),
+      titles: dco_decode_list_relational_media_title(arr[2]),
+      entities: dco_decode_list_relational_media_entity(arr[3]),
+      edges: dco_decode_list_relational_media_edge(arr[4]),
+    );
+  }
+
+  @protected
+  RelationalMediaTitle dco_decode_relational_media_title(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 4)
+      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
+    return RelationalMediaTitle(
+      uuid: dco_decode_String(arr[0]),
+      title: dco_decode_String(arr[1]),
+      releaseYear: dco_decode_u_32(arr[2]),
+      contentRating: dco_decode_opt_String(arr[3]),
+    );
+  }
+
+  @protected
   RelationalStoreStatus dco_decode_relational_store_status(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
@@ -1875,6 +2121,23 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  RelationalMediaGraphQuery sse_decode_box_autoadd_relational_media_graph_query(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_relational_media_graph_query(deserializer));
+  }
+
+  @protected
+  RelationalMediaKnowledgePack
+  sse_decode_box_autoadd_relational_media_knowledge_pack(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_relational_media_knowledge_pack(deserializer));
+  }
+
+  @protected
   RelationalSyncEntity sse_decode_box_autoadd_relational_sync_entity(
     SseDeserializer deserializer,
   ) {
@@ -2015,6 +2278,48 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var ans_ = <(String, String)>[];
     for (var idx_ = 0; idx_ < len_; ++idx_) {
       ans_.add(sse_decode_record_string_string(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
+  List<RelationalMediaEdge> sse_decode_list_relational_media_edge(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <RelationalMediaEdge>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_relational_media_edge(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
+  List<RelationalMediaEntity> sse_decode_list_relational_media_entity(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <RelationalMediaEntity>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_relational_media_entity(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
+  List<RelationalMediaTitle> sse_decode_list_relational_media_title(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <RelationalMediaTitle>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_relational_media_title(deserializer));
     }
     return ans_;
   }
@@ -2484,6 +2789,89 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  RelationalMediaEdge sse_decode_relational_media_edge(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_titleUuid = sse_decode_String(deserializer);
+    var var_entityUuid = sse_decode_String(deserializer);
+    return RelationalMediaEdge(
+      titleUuid: var_titleUuid,
+      entityUuid: var_entityUuid,
+    );
+  }
+
+  @protected
+  RelationalMediaEntity sse_decode_relational_media_entity(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_uuid = sse_decode_String(deserializer);
+    var var_entityType = sse_decode_String(deserializer);
+    var var_name = sse_decode_String(deserializer);
+    return RelationalMediaEntity(
+      uuid: var_uuid,
+      entityType: var_entityType,
+      name: var_name,
+    );
+  }
+
+  @protected
+  RelationalMediaGraphQuery sse_decode_relational_media_graph_query(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_entityType = sse_decode_opt_String(deserializer);
+    var var_entityName = sse_decode_opt_String(deserializer);
+    var var_releasedAfter = sse_decode_opt_box_autoadd_u_32(deserializer);
+    var var_releasedBefore = sse_decode_opt_box_autoadd_u_32(deserializer);
+    var var_contentRating = sse_decode_opt_String(deserializer);
+    return RelationalMediaGraphQuery(
+      entityType: var_entityType,
+      entityName: var_entityName,
+      releasedAfter: var_releasedAfter,
+      releasedBefore: var_releasedBefore,
+      contentRating: var_contentRating,
+    );
+  }
+
+  @protected
+  RelationalMediaKnowledgePack sse_decode_relational_media_knowledge_pack(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_packId = sse_decode_String(deserializer);
+    var var_schemaVersion = sse_decode_String(deserializer);
+    var var_titles = sse_decode_list_relational_media_title(deserializer);
+    var var_entities = sse_decode_list_relational_media_entity(deserializer);
+    var var_edges = sse_decode_list_relational_media_edge(deserializer);
+    return RelationalMediaKnowledgePack(
+      packId: var_packId,
+      schemaVersion: var_schemaVersion,
+      titles: var_titles,
+      entities: var_entities,
+      edges: var_edges,
+    );
+  }
+
+  @protected
+  RelationalMediaTitle sse_decode_relational_media_title(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_uuid = sse_decode_String(deserializer);
+    var var_title = sse_decode_String(deserializer);
+    var var_releaseYear = sse_decode_u_32(deserializer);
+    var var_contentRating = sse_decode_opt_String(deserializer);
+    return RelationalMediaTitle(
+      uuid: var_uuid,
+      title: var_title,
+      releaseYear: var_releaseYear,
+      contentRating: var_contentRating,
+    );
+  }
+
+  @protected
   RelationalStoreStatus sse_decode_relational_store_status(
     SseDeserializer deserializer,
   ) {
@@ -2771,6 +3159,24 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_box_autoadd_relational_media_graph_query(
+    RelationalMediaGraphQuery self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_relational_media_graph_query(self, serializer);
+  }
+
+  @protected
+  void sse_encode_box_autoadd_relational_media_knowledge_pack(
+    RelationalMediaKnowledgePack self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_relational_media_knowledge_pack(self, serializer);
+  }
+
+  @protected
   void sse_encode_box_autoadd_relational_sync_entity(
     RelationalSyncEntity self,
     SseSerializer serializer,
@@ -2906,6 +3312,42 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_i_32(self.length, serializer);
     for (final item in self) {
       sse_encode_record_string_string(item, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_list_relational_media_edge(
+    List<RelationalMediaEdge> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_relational_media_edge(item, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_list_relational_media_entity(
+    List<RelationalMediaEntity> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_relational_media_entity(item, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_list_relational_media_title(
+    List<RelationalMediaTitle> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_relational_media_title(item, serializer);
     }
   }
 
@@ -3288,6 +3730,65 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_String(self.$1, serializer);
     sse_encode_String(self.$2, serializer);
+  }
+
+  @protected
+  void sse_encode_relational_media_edge(
+    RelationalMediaEdge self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.titleUuid, serializer);
+    sse_encode_String(self.entityUuid, serializer);
+  }
+
+  @protected
+  void sse_encode_relational_media_entity(
+    RelationalMediaEntity self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.uuid, serializer);
+    sse_encode_String(self.entityType, serializer);
+    sse_encode_String(self.name, serializer);
+  }
+
+  @protected
+  void sse_encode_relational_media_graph_query(
+    RelationalMediaGraphQuery self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_opt_String(self.entityType, serializer);
+    sse_encode_opt_String(self.entityName, serializer);
+    sse_encode_opt_box_autoadd_u_32(self.releasedAfter, serializer);
+    sse_encode_opt_box_autoadd_u_32(self.releasedBefore, serializer);
+    sse_encode_opt_String(self.contentRating, serializer);
+  }
+
+  @protected
+  void sse_encode_relational_media_knowledge_pack(
+    RelationalMediaKnowledgePack self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.packId, serializer);
+    sse_encode_String(self.schemaVersion, serializer);
+    sse_encode_list_relational_media_title(self.titles, serializer);
+    sse_encode_list_relational_media_entity(self.entities, serializer);
+    sse_encode_list_relational_media_edge(self.edges, serializer);
+  }
+
+  @protected
+  void sse_encode_relational_media_title(
+    RelationalMediaTitle self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.uuid, serializer);
+    sse_encode_String(self.title, serializer);
+    sse_encode_u_32(self.releaseYear, serializer);
+    sse_encode_opt_String(self.contentRating, serializer);
   }
 
   @protected

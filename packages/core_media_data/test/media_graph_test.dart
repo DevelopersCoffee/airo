@@ -1,4 +1,5 @@
 import 'package:core_media_data/core_media_data.dart';
+import 'package:core_native/core_native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -133,4 +134,60 @@ void main() {
     expect(snapshot.entities, hasLength(1));
     expect(snapshot.edges, hasLength(3));
   });
+
+  test(
+    'async graph maps packs and queries through relational backend',
+    () async {
+      final backend = _FakeRelationalBackend();
+      final graph = RelationalMediaGraph(backend: backend);
+
+      await graph.load(movies);
+      final result = await graph.query(
+        const MediaGraphQuery(
+          entityType: MediaEntityType.actor,
+          entityName: 'Tom Hanks',
+          releasedAfter: 2010,
+        ),
+      );
+
+      expect(backend.loaded.single.packId, 'movies');
+      expect(backend.loaded.single.edges, hasLength(3));
+      expect(backend.queries.single.entityType, 'actor');
+      expect(result.single.id, 'sully');
+      expect(await graph.unload('movies'), isTrue);
+      expect(backend.unloaded, ['movies']);
+    },
+  );
+}
+
+class _FakeRelationalBackend implements MediaGraphRelationalBackend {
+  final List<AiroRelationalMediaPack> loaded = [];
+  final List<String> unloaded = [];
+  final List<AiroRelationalMediaQuery> queries = [];
+
+  @override
+  Future<bool> load(AiroRelationalMediaPack pack) async {
+    loaded.add(pack);
+    return true;
+  }
+
+  @override
+  Future<List<AiroRelationalMediaTitle>?> query(
+    AiroRelationalMediaQuery query,
+  ) async {
+    queries.add(query);
+    return const [
+      AiroRelationalMediaTitle(
+        uuid: 'sully',
+        title: 'Sully',
+        releaseYear: 2016,
+      ),
+    ];
+  }
+
+  @override
+  Future<bool?> unload(String packId) async {
+    unloaded.add(packId);
+    return true;
+  }
 }

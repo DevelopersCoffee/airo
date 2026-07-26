@@ -21,7 +21,8 @@ idempotent, and records schema version 1.
 
 The schema normalizes users, devices, profiles, playlists, channels, history,
 favorites, collections, settings, sync events, media graph rows/edges/pack
-ownership, sync fields, and vector counters. Structured records are never
+ownership (including shared edge ownership), sync fields, and vector counters.
+Structured records are never
 stored as whole-record JSON. Only `channels.raw_provider_metadata` may retain
 genuinely unstructured provider payloads.
 
@@ -37,5 +38,7 @@ queries, sync outbox ordering, and deleted entities.
 - Web fallback and existing unrelated app stores remain unchanged.
 - Migration failure rolls back its transaction; file-level backup/restore
   remains the operational rollback before callers are switched.
-- Native/Dart adapters and migration-from-any-legacy-media-blob work remain
-  required before production cutover.
+- Native/Dart adapters expose async relational read/write paths. No deployed
+  Airo TV media/sync blob schema exists in this repository, so there is no
+  legacy blob data to transform; unrelated application stores remain an
+  explicit non-goal.

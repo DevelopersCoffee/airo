@@ -7,8 +7,8 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
 import '../frb_generated.dart';
 
-// These functions are ignored because they are not marked as `pub`: `apply_migration`, `insert_counters`, `read_counters`, `validate_sync_entity`
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_fields_are_eq`, `clone`, `clone`, `clone`, `clone`, `eq`, `eq`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`
+// These functions are ignored because they are not marked as `pub`: `apply_migration`, `insert_counters`, `read_counters`, `validate_media_pack`, `validate_sync_entity`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`
 
 Future<RelationalStoreStatus> initializeRelationalStore({
   required String path,
@@ -31,6 +31,171 @@ Future<RelationalSyncEntity?> readRelationalSyncEntity({
   path: path,
   uuid: uuid,
 );
+
+Future<void> loadRelationalMediaPack({
+  required String path,
+  required RelationalMediaKnowledgePack pack,
+}) => RustLib.instance.api.crateApiRelationalStoreLoadRelationalMediaPack(
+  path: path,
+  pack: pack,
+);
+
+Future<bool> unloadRelationalMediaPack({
+  required String path,
+  required String packId,
+}) => RustLib.instance.api.crateApiRelationalStoreUnloadRelationalMediaPack(
+  path: path,
+  packId: packId,
+);
+
+Future<List<RelationalMediaTitle>> queryRelationalMediaGraph({
+  required String path,
+  required RelationalMediaGraphQuery query,
+}) => RustLib.instance.api.crateApiRelationalStoreQueryRelationalMediaGraph(
+  path: path,
+  query: query,
+);
+
+class RelationalMediaEdge {
+  const RelationalMediaEdge({
+    required this.titleUuid,
+    required this.entityUuid,
+  });
+  final String titleUuid;
+  final String entityUuid;
+
+  @override
+  int get hashCode => titleUuid.hashCode ^ entityUuid.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is RelationalMediaEdge &&
+          runtimeType == other.runtimeType &&
+          titleUuid == other.titleUuid &&
+          entityUuid == other.entityUuid;
+}
+
+class RelationalMediaEntity {
+  const RelationalMediaEntity({
+    required this.uuid,
+    required this.entityType,
+    required this.name,
+  });
+  final String uuid;
+  final String entityType;
+  final String name;
+
+  @override
+  int get hashCode => uuid.hashCode ^ entityType.hashCode ^ name.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is RelationalMediaEntity &&
+          runtimeType == other.runtimeType &&
+          uuid == other.uuid &&
+          entityType == other.entityType &&
+          name == other.name;
+}
+
+class RelationalMediaGraphQuery {
+  const RelationalMediaGraphQuery({
+    this.entityType,
+    this.entityName,
+    this.releasedAfter,
+    this.releasedBefore,
+    this.contentRating,
+  });
+  final String? entityType;
+  final String? entityName;
+  final int? releasedAfter;
+  final int? releasedBefore;
+  final String? contentRating;
+
+  @override
+  int get hashCode =>
+      entityType.hashCode ^
+      entityName.hashCode ^
+      releasedAfter.hashCode ^
+      releasedBefore.hashCode ^
+      contentRating.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is RelationalMediaGraphQuery &&
+          runtimeType == other.runtimeType &&
+          entityType == other.entityType &&
+          entityName == other.entityName &&
+          releasedAfter == other.releasedAfter &&
+          releasedBefore == other.releasedBefore &&
+          contentRating == other.contentRating;
+}
+
+class RelationalMediaKnowledgePack {
+  const RelationalMediaKnowledgePack({
+    required this.packId,
+    required this.schemaVersion,
+    required this.titles,
+    required this.entities,
+    required this.edges,
+  });
+  final String packId;
+  final String schemaVersion;
+  final List<RelationalMediaTitle> titles;
+  final List<RelationalMediaEntity> entities;
+  final List<RelationalMediaEdge> edges;
+
+  @override
+  int get hashCode =>
+      packId.hashCode ^
+      schemaVersion.hashCode ^
+      titles.hashCode ^
+      entities.hashCode ^
+      edges.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is RelationalMediaKnowledgePack &&
+          runtimeType == other.runtimeType &&
+          packId == other.packId &&
+          schemaVersion == other.schemaVersion &&
+          titles == other.titles &&
+          entities == other.entities &&
+          edges == other.edges;
+}
+
+class RelationalMediaTitle {
+  const RelationalMediaTitle({
+    required this.uuid,
+    required this.title,
+    required this.releaseYear,
+    this.contentRating,
+  });
+  final String uuid;
+  final String title;
+  final int releaseYear;
+  final String? contentRating;
+
+  @override
+  int get hashCode =>
+      uuid.hashCode ^
+      title.hashCode ^
+      releaseYear.hashCode ^
+      contentRating.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is RelationalMediaTitle &&
+          runtimeType == other.runtimeType &&
+          uuid == other.uuid &&
+          title == other.title &&
+          releaseYear == other.releaseYear &&
+          contentRating == other.contentRating;
+}
 
 class RelationalStoreStatus {
   const RelationalStoreStatus({

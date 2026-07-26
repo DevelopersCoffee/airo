@@ -3,7 +3,8 @@ owner: Chief Architect
 reviewers:
   - Playback Architect
   - Chief Performance Officer
-allowed_dependencies: []
+allowed_dependencies:
+  - core_native
 forbidden_dependencies:
   - app
 quality_gates: {}

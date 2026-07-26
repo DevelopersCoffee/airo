@@ -42,6 +42,15 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   PlatformInt64 dco_decode_box_autoadd_i_64(dynamic raw);
 
   @protected
+  RelationalMediaGraphQuery dco_decode_box_autoadd_relational_media_graph_query(
+    dynamic raw,
+  );
+
+  @protected
+  RelationalMediaKnowledgePack
+  dco_decode_box_autoadd_relational_media_knowledge_pack(dynamic raw);
+
+  @protected
   RelationalSyncEntity dco_decode_box_autoadd_relational_sync_entity(
     dynamic raw,
   );
@@ -91,6 +100,19 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   List<(String, String)> dco_decode_list_record_string_string(dynamic raw);
+
+  @protected
+  List<RelationalMediaEdge> dco_decode_list_relational_media_edge(dynamic raw);
+
+  @protected
+  List<RelationalMediaEntity> dco_decode_list_relational_media_entity(
+    dynamic raw,
+  );
+
+  @protected
+  List<RelationalMediaTitle> dco_decode_list_relational_media_title(
+    dynamic raw,
+  );
 
   @protected
   List<RelationalSyncCounter> dco_decode_list_relational_sync_counter(
@@ -198,6 +220,25 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   (String, String) dco_decode_record_string_string(dynamic raw);
 
   @protected
+  RelationalMediaEdge dco_decode_relational_media_edge(dynamic raw);
+
+  @protected
+  RelationalMediaEntity dco_decode_relational_media_entity(dynamic raw);
+
+  @protected
+  RelationalMediaGraphQuery dco_decode_relational_media_graph_query(
+    dynamic raw,
+  );
+
+  @protected
+  RelationalMediaKnowledgePack dco_decode_relational_media_knowledge_pack(
+    dynamic raw,
+  );
+
+  @protected
+  RelationalMediaTitle dco_decode_relational_media_title(dynamic raw);
+
+  @protected
   RelationalStoreStatus dco_decode_relational_store_status(dynamic raw);
 
   @protected
@@ -278,6 +319,17 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   PlatformInt64 sse_decode_box_autoadd_i_64(SseDeserializer deserializer);
 
   @protected
+  RelationalMediaGraphQuery sse_decode_box_autoadd_relational_media_graph_query(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  RelationalMediaKnowledgePack
+  sse_decode_box_autoadd_relational_media_knowledge_pack(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   RelationalSyncEntity sse_decode_box_autoadd_relational_sync_entity(
     SseDeserializer deserializer,
   );
@@ -331,6 +383,21 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   List<(String, String)> sse_decode_list_record_string_string(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  List<RelationalMediaEdge> sse_decode_list_relational_media_edge(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  List<RelationalMediaEntity> sse_decode_list_relational_media_entity(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  List<RelationalMediaTitle> sse_decode_list_relational_media_title(
     SseDeserializer deserializer,
   );
 
@@ -474,6 +541,31 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  RelationalMediaEdge sse_decode_relational_media_edge(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  RelationalMediaEntity sse_decode_relational_media_entity(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  RelationalMediaGraphQuery sse_decode_relational_media_graph_query(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  RelationalMediaKnowledgePack sse_decode_relational_media_knowledge_pack(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  RelationalMediaTitle sse_decode_relational_media_title(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   RelationalStoreStatus sse_decode_relational_store_status(
     SseDeserializer deserializer,
   );
@@ -578,6 +670,18 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_box_autoadd_relational_media_graph_query(
+    RelationalMediaGraphQuery self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_box_autoadd_relational_media_knowledge_pack(
+    RelationalMediaKnowledgePack self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_box_autoadd_relational_sync_entity(
     RelationalSyncEntity self,
     SseSerializer serializer,
@@ -646,6 +750,24 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_list_record_string_string(
     List<(String, String)> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_relational_media_edge(
+    List<RelationalMediaEdge> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_relational_media_entity(
+    List<RelationalMediaEntity> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_relational_media_title(
+    List<RelationalMediaTitle> self,
     SseSerializer serializer,
   );
 
@@ -820,6 +942,36 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_record_string_string(
     (String, String) self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_relational_media_edge(
+    RelationalMediaEdge self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_relational_media_entity(
+    RelationalMediaEntity self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_relational_media_graph_query(
+    RelationalMediaGraphQuery self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_relational_media_knowledge_pack(
+    RelationalMediaKnowledgePack self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_relational_media_title(
+    RelationalMediaTitle self,
     SseSerializer serializer,
   );
 

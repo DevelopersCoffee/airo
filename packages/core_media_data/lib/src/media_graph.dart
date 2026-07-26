@@ -1,3 +1,4 @@
+import 'package:core_native/core_native.dart';
 import 'package:equatable/equatable.dart';
 
 const String kMediaGraphSchemaVersion = '1.0.0';
@@ -141,6 +142,114 @@ abstract interface class MediaGraph {
   List<MediaTitleRow> query(MediaGraphQuery query);
 
   MediaGraphSnapshot snapshot();
+}
+
+abstract interface class AsyncMediaGraph {
+  Future<void> load(MediaKnowledgePack pack);
+
+  Future<bool> unload(String packId);
+
+  Future<List<MediaTitleRow>> query(MediaGraphQuery query);
+}
+
+abstract interface class MediaGraphRelationalBackend {
+  Future<bool> load(AiroRelationalMediaPack pack);
+
+  Future<bool?> unload(String packId);
+
+  Future<List<AiroRelationalMediaTitle>?> query(AiroRelationalMediaQuery query);
+}
+
+class NativeMediaGraphRelationalBackend implements MediaGraphRelationalBackend {
+  const NativeMediaGraphRelationalBackend({required this.databasePath});
+
+  final String databasePath;
+
+  @override
+  Future<bool> load(AiroRelationalMediaPack pack) =>
+      loadAiroRelationalMediaPack(path: databasePath, pack: pack);
+
+  @override
+  Future<bool?> unload(String packId) =>
+      unloadAiroRelationalMediaPack(path: databasePath, packId: packId);
+
+  @override
+  Future<List<AiroRelationalMediaTitle>?> query(
+    AiroRelationalMediaQuery query,
+  ) => queryAiroRelationalMediaGraph(path: databasePath, query: query);
+}
+
+class RelationalMediaGraph implements AsyncMediaGraph {
+  const RelationalMediaGraph({required this.backend});
+
+  final MediaGraphRelationalBackend backend;
+
+  @override
+  Future<void> load(MediaKnowledgePack pack) async {
+    final loaded = await backend.load(
+      AiroRelationalMediaPack(
+        packId: pack.id,
+        schemaVersion: pack.schemaVersion,
+        titles: [
+          for (final title in pack.titles)
+            AiroRelationalMediaTitle(
+              uuid: title.id,
+              title: title.title,
+              releaseYear: title.releaseYear,
+              contentRating: title.contentRating,
+            ),
+        ],
+        entities: [
+          for (final entity in pack.entities)
+            AiroRelationalMediaEntity(
+              uuid: entity.id,
+              entityType: entity.type.name,
+              name: entity.name,
+            ),
+        ],
+        edges: [
+          for (final edge in pack.edges)
+            AiroRelationalMediaEdge(
+              titleUuid: edge.titleId,
+              entityUuid: edge.entityId,
+            ),
+        ],
+      ),
+    );
+    if (!loaded) throw StateError('relational_media_graph_unavailable');
+  }
+
+  @override
+  Future<bool> unload(String packId) async {
+    final unloaded = await backend.unload(packId);
+    if (unloaded == null) {
+      throw StateError('relational_media_graph_unavailable');
+    }
+    return unloaded;
+  }
+
+  @override
+  Future<List<MediaTitleRow>> query(MediaGraphQuery query) async {
+    final rows = await backend.query(
+      AiroRelationalMediaQuery(
+        entityType: query.entityType?.name,
+        entityName: query.entityName,
+        releasedAfter: query.releasedAfter,
+        releasedBefore: query.releasedBefore,
+        contentRating: query.contentRating,
+      ),
+    );
+    if (rows == null) throw StateError('relational_media_graph_unavailable');
+    return [
+      for (final row in rows)
+        MediaTitleRow(
+          id: row.uuid,
+          title: row.title,
+          releaseYear: row.releaseYear,
+          contentRating: row.contentRating,
+        ),
+    ];
+  }
 }
 
 class InMemoryRelationalMediaGraph implements MediaGraph {

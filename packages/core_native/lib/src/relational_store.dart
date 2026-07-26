@@ -53,6 +53,74 @@ class AiroRelationalSyncEntity {
   final List<AiroRelationalSyncField> fields;
 }
 
+class AiroRelationalMediaTitle {
+  const AiroRelationalMediaTitle({
+    required this.uuid,
+    required this.title,
+    required this.releaseYear,
+    this.contentRating,
+  });
+
+  final String uuid;
+  final String title;
+  final int releaseYear;
+  final String? contentRating;
+}
+
+class AiroRelationalMediaEntity {
+  const AiroRelationalMediaEntity({
+    required this.uuid,
+    required this.entityType,
+    required this.name,
+  });
+
+  final String uuid;
+  final String entityType;
+  final String name;
+}
+
+class AiroRelationalMediaEdge {
+  const AiroRelationalMediaEdge({
+    required this.titleUuid,
+    required this.entityUuid,
+  });
+
+  final String titleUuid;
+  final String entityUuid;
+}
+
+class AiroRelationalMediaPack {
+  const AiroRelationalMediaPack({
+    required this.packId,
+    required this.schemaVersion,
+    required this.titles,
+    required this.entities,
+    required this.edges,
+  });
+
+  final String packId;
+  final String schemaVersion;
+  final List<AiroRelationalMediaTitle> titles;
+  final List<AiroRelationalMediaEntity> entities;
+  final List<AiroRelationalMediaEdge> edges;
+}
+
+class AiroRelationalMediaQuery {
+  const AiroRelationalMediaQuery({
+    this.entityType,
+    this.entityName,
+    this.releasedAfter,
+    this.releasedBefore,
+    this.contentRating,
+  });
+
+  final String? entityType;
+  final String? entityName;
+  final int? releasedAfter;
+  final int? releasedBefore;
+  final String? contentRating;
+}
+
 /// Applies the bundled relational schema using the Rust storage boundary.
 ///
 /// Returns `null` on web or when the native library cannot initialize. Once
@@ -94,6 +162,79 @@ Future<AiroRelationalSyncEntity?> readAiroRelationalSyncEntity({
     uuid: uuid,
   );
   return entity == null ? null : _fromNativeEntity(entity);
+}
+
+Future<bool> loadAiroRelationalMediaPack({
+  required String path,
+  required AiroRelationalMediaPack pack,
+}) async {
+  if (kIsWeb || !await initializeCoreNativeBridge()) return false;
+  await native_store.loadRelationalMediaPack(
+    path: path,
+    pack: native_store.RelationalMediaKnowledgePack(
+      packId: pack.packId,
+      schemaVersion: pack.schemaVersion,
+      titles: [
+        for (final title in pack.titles)
+          native_store.RelationalMediaTitle(
+            uuid: title.uuid,
+            title: title.title,
+            releaseYear: title.releaseYear,
+            contentRating: title.contentRating,
+          ),
+      ],
+      entities: [
+        for (final entity in pack.entities)
+          native_store.RelationalMediaEntity(
+            uuid: entity.uuid,
+            entityType: entity.entityType,
+            name: entity.name,
+          ),
+      ],
+      edges: [
+        for (final edge in pack.edges)
+          native_store.RelationalMediaEdge(
+            titleUuid: edge.titleUuid,
+            entityUuid: edge.entityUuid,
+          ),
+      ],
+    ),
+  );
+  return true;
+}
+
+Future<bool?> unloadAiroRelationalMediaPack({
+  required String path,
+  required String packId,
+}) async {
+  if (kIsWeb || !await initializeCoreNativeBridge()) return null;
+  return native_store.unloadRelationalMediaPack(path: path, packId: packId);
+}
+
+Future<List<AiroRelationalMediaTitle>?> queryAiroRelationalMediaGraph({
+  required String path,
+  required AiroRelationalMediaQuery query,
+}) async {
+  if (kIsWeb || !await initializeCoreNativeBridge()) return null;
+  final rows = await native_store.queryRelationalMediaGraph(
+    path: path,
+    query: native_store.RelationalMediaGraphQuery(
+      entityType: query.entityType,
+      entityName: query.entityName,
+      releasedAfter: query.releasedAfter,
+      releasedBefore: query.releasedBefore,
+      contentRating: query.contentRating,
+    ),
+  );
+  return [
+    for (final row in rows)
+      AiroRelationalMediaTitle(
+        uuid: row.uuid,
+        title: row.title,
+        releaseYear: row.releaseYear,
+        contentRating: row.contentRating,
+      ),
+  ];
 }
 
 native_store.RelationalSyncEntity _toNativeEntity(

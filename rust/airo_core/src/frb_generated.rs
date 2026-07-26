@@ -37,7 +37,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
     default_rust_auto_opaque = RustAutoOpaqueMoi,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.11.1";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = -1879699283;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 935422684;
 
 // Section: executor
 
@@ -111,6 +111,44 @@ fn wire__crate__api__relational_store__initialize_relational_store_impl(
                 transform_result_sse::<_, String>((move || {
                     let output_ok =
                         crate::api::relational_store::initialize_relational_store(api_path)?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__crate__api__relational_store__load_relational_media_pack_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "load_relational_media_pack",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_path = <String>::sse_decode(&mut deserializer);
+            let api_pack = <crate::api::relational_store::RelationalMediaKnowledgePack>::sse_decode(
+                &mut deserializer,
+            );
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, String>((move || {
+                    let output_ok = crate::api::relational_store::load_relational_media_pack(
+                        api_path, api_pack,
+                    )?;
                     Ok(output_ok)
                 })())
             }
@@ -716,6 +754,44 @@ fn wire__crate__api__xmltv__parse_xmltv_programmes_file_impl(
         },
     )
 }
+fn wire__crate__api__relational_store__query_relational_media_graph_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "query_relational_media_graph",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_path = <String>::sse_decode(&mut deserializer);
+            let api_query = <crate::api::relational_store::RelationalMediaGraphQuery>::sse_decode(
+                &mut deserializer,
+            );
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, String>((move || {
+                    let output_ok = crate::api::relational_store::query_relational_media_graph(
+                        api_path, api_query,
+                    )?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
 fn wire__crate__api__native_engine__rank_recommendations_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
@@ -876,6 +952,43 @@ fn wire__crate__api__playlist_engine__search_playlist_index_v2_impl(
                         Ok(output_ok)
                     })(),
                 )
+            }
+        },
+    )
+}
+fn wire__crate__api__relational_store__unload_relational_media_pack_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "unload_relational_media_pack",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_path = <String>::sse_decode(&mut deserializer);
+            let api_pack_id = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, String>((move || {
+                    let output_ok = crate::api::relational_store::unload_relational_media_pack(
+                        api_path,
+                        api_pack_id,
+                    )?;
+                    Ok(output_ok)
+                })())
             }
         },
     )
@@ -1191,6 +1304,48 @@ impl SseDecode for Vec<(String, String)> {
         let mut ans_ = vec![];
         for idx_ in 0..len_ {
             ans_.push(<(String, String)>::sse_decode(deserializer));
+        }
+        return ans_;
+    }
+}
+
+impl SseDecode for Vec<crate::api::relational_store::RelationalMediaEdge> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut len_ = <i32>::sse_decode(deserializer);
+        let mut ans_ = vec![];
+        for idx_ in 0..len_ {
+            ans_.push(
+                <crate::api::relational_store::RelationalMediaEdge>::sse_decode(deserializer),
+            );
+        }
+        return ans_;
+    }
+}
+
+impl SseDecode for Vec<crate::api::relational_store::RelationalMediaEntity> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut len_ = <i32>::sse_decode(deserializer);
+        let mut ans_ = vec![];
+        for idx_ in 0..len_ {
+            ans_.push(
+                <crate::api::relational_store::RelationalMediaEntity>::sse_decode(deserializer),
+            );
+        }
+        return ans_;
+    }
+}
+
+impl SseDecode for Vec<crate::api::relational_store::RelationalMediaTitle> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut len_ = <i32>::sse_decode(deserializer);
+        let mut ans_ = vec![];
+        for idx_ in 0..len_ {
+            ans_.push(
+                <crate::api::relational_store::RelationalMediaTitle>::sse_decode(deserializer),
+            );
         }
         return ans_;
     }
@@ -1699,6 +1854,87 @@ impl SseDecode for (String, String) {
     }
 }
 
+impl SseDecode for crate::api::relational_store::RelationalMediaEdge {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_titleUuid = <String>::sse_decode(deserializer);
+        let mut var_entityUuid = <String>::sse_decode(deserializer);
+        return crate::api::relational_store::RelationalMediaEdge {
+            title_uuid: var_titleUuid,
+            entity_uuid: var_entityUuid,
+        };
+    }
+}
+
+impl SseDecode for crate::api::relational_store::RelationalMediaEntity {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_uuid = <String>::sse_decode(deserializer);
+        let mut var_entityType = <String>::sse_decode(deserializer);
+        let mut var_name = <String>::sse_decode(deserializer);
+        return crate::api::relational_store::RelationalMediaEntity {
+            uuid: var_uuid,
+            entity_type: var_entityType,
+            name: var_name,
+        };
+    }
+}
+
+impl SseDecode for crate::api::relational_store::RelationalMediaGraphQuery {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_entityType = <Option<String>>::sse_decode(deserializer);
+        let mut var_entityName = <Option<String>>::sse_decode(deserializer);
+        let mut var_releasedAfter = <Option<u32>>::sse_decode(deserializer);
+        let mut var_releasedBefore = <Option<u32>>::sse_decode(deserializer);
+        let mut var_contentRating = <Option<String>>::sse_decode(deserializer);
+        return crate::api::relational_store::RelationalMediaGraphQuery {
+            entity_type: var_entityType,
+            entity_name: var_entityName,
+            released_after: var_releasedAfter,
+            released_before: var_releasedBefore,
+            content_rating: var_contentRating,
+        };
+    }
+}
+
+impl SseDecode for crate::api::relational_store::RelationalMediaKnowledgePack {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_packId = <String>::sse_decode(deserializer);
+        let mut var_schemaVersion = <String>::sse_decode(deserializer);
+        let mut var_titles =
+            <Vec<crate::api::relational_store::RelationalMediaTitle>>::sse_decode(deserializer);
+        let mut var_entities =
+            <Vec<crate::api::relational_store::RelationalMediaEntity>>::sse_decode(deserializer);
+        let mut var_edges =
+            <Vec<crate::api::relational_store::RelationalMediaEdge>>::sse_decode(deserializer);
+        return crate::api::relational_store::RelationalMediaKnowledgePack {
+            pack_id: var_packId,
+            schema_version: var_schemaVersion,
+            titles: var_titles,
+            entities: var_entities,
+            edges: var_edges,
+        };
+    }
+}
+
+impl SseDecode for crate::api::relational_store::RelationalMediaTitle {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_uuid = <String>::sse_decode(deserializer);
+        let mut var_title = <String>::sse_decode(deserializer);
+        let mut var_releaseYear = <u32>::sse_decode(deserializer);
+        let mut var_contentRating = <Option<String>>::sse_decode(deserializer);
+        return crate::api::relational_store::RelationalMediaTitle {
+            uuid: var_uuid,
+            title: var_title,
+            release_year: var_releaseYear,
+            content_rating: var_contentRating,
+        };
+    }
+}
+
 impl SseDecode for crate::api::relational_store::RelationalStoreStatus {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -1986,120 +2222,138 @@ fn pde_ffi_dispatcher_primary_impl(
             rust_vec_len,
             data_len,
         ),
-        3 => wire__crate__api__m3u__m_3_u_channel_parse_result_default_impl(
+        3 => wire__crate__api__relational_store__load_relational_media_pack_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        4 => wire__crate__api__m3u__m_3_u_parse_result_default_impl(
+        4 => wire__crate__api__m3u__m_3_u_channel_parse_result_default_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        5 => {
+        5 => wire__crate__api__m3u__m_3_u_parse_result_default_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        6 => {
             wire__crate__api__m3u__m_3_u_parse_stats_default_impl(port, ptr, rust_vec_len, data_len)
         }
-        6 => wire__crate__api__m3u__m_3_u_playlist_default_impl(port, ptr, rust_vec_len, data_len),
-        7 => wire__crate__api__text__normalize_channel_name_impl(port, ptr, rust_vec_len, data_len),
-        8 => wire__crate__api__playlist_engine__open_playlist_index_impl(
+        7 => wire__crate__api__m3u__m_3_u_playlist_default_impl(port, ptr, rust_vec_len, data_len),
+        8 => wire__crate__api__text__normalize_channel_name_impl(port, ptr, rust_vec_len, data_len),
+        9 => wire__crate__api__playlist_engine__open_playlist_index_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        9 => wire__crate__api__playlist_engine__page_playlist_index_impl(
+        10 => wire__crate__api__playlist_engine__page_playlist_index_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        10 => wire__crate__api__m3u__parse_m3u_channels_with_stats_impl(
+        11 => wire__crate__api__m3u__parse_m3u_channels_with_stats_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        11 => wire__crate__api__m3u__parse_m3u_entries_impl(port, ptr, rust_vec_len, data_len),
-        12 => wire__crate__api__m3u__parse_m3u_file_channels_with_stats_impl(
+        12 => wire__crate__api__m3u__parse_m3u_entries_impl(port, ptr, rust_vec_len, data_len),
+        13 => wire__crate__api__m3u__parse_m3u_file_channels_with_stats_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        13 => {
+        14 => {
             wire__crate__api__m3u__parse_m3u_file_with_stats_impl(port, ptr, rust_vec_len, data_len)
         }
-        14 => wire__crate__api__m3u__parse_m3u_playlist_impl(port, ptr, rust_vec_len, data_len),
-        15 => wire__crate__api__m3u__parse_m3u_with_stats_impl(port, ptr, rust_vec_len, data_len),
-        16 => {
+        15 => wire__crate__api__m3u__parse_m3u_playlist_impl(port, ptr, rust_vec_len, data_len),
+        16 => wire__crate__api__m3u__parse_m3u_with_stats_impl(port, ptr, rust_vec_len, data_len),
+        17 => {
             wire__crate__api__native_engine__parse_subtitles_impl(port, ptr, rust_vec_len, data_len)
         }
-        17 => wire__crate__api__xmltv__parse_xmltv_current_next_file_impl(
+        18 => wire__crate__api__xmltv__parse_xmltv_current_next_file_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        18 => {
+        19 => {
             wire__crate__api__xmltv__parse_xmltv_programmes_impl(port, ptr, rust_vec_len, data_len)
         }
-        19 => wire__crate__api__xmltv__parse_xmltv_programmes_file_impl(
+        20 => wire__crate__api__xmltv__parse_xmltv_programmes_file_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        20 => wire__crate__api__native_engine__rank_recommendations_impl(
+        21 => wire__crate__api__relational_store__query_relational_media_graph_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        21 => wire__crate__api__relational_store__read_relational_sync_entity_impl(
+        22 => wire__crate__api__native_engine__rank_recommendations_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        22 => wire__crate__api__playlist_engine__search_playlist_index_impl(
+        23 => wire__crate__api__relational_store__read_relational_sync_entity_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        23 => wire__crate__api__playlist_engine__search_playlist_index_v2_impl(
+        24 => wire__crate__api__playlist_engine__search_playlist_index_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        24 => wire__crate__api__relational_store__upsert_relational_sync_entity_impl(
+        25 => wire__crate__api__playlist_engine__search_playlist_index_v2_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        25 => wire__crate__api__xmltv__xmltv_current_next_result_default_impl(
+        26 => wire__crate__api__relational_store__unload_relational_media_pack_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        26 => wire__crate__api__xmltv__xmltv_current_next_stats_default_impl(
+        27 => wire__crate__api__relational_store__upsert_relational_sync_entity_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        27 => wire__crate__api__xmltv__xmltv_parse_result_default_impl(
+        28 => wire__crate__api__xmltv__xmltv_current_next_result_default_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        28 => wire__crate__api__xmltv__xmltv_parse_stats_default_impl(
+        29 => wire__crate__api__xmltv__xmltv_current_next_stats_default_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        30 => wire__crate__api__xmltv__xmltv_parse_result_default_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        31 => wire__crate__api__xmltv__xmltv_parse_stats_default_impl(
             port,
             ptr,
             rust_vec_len,
@@ -2539,6 +2793,120 @@ impl flutter_rust_bridge::IntoIntoDart<crate::api::native_engine::Recommendation
     for crate::api::native_engine::RecommendationScore
 {
     fn into_into_dart(self) -> crate::api::native_engine::RecommendationScore {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::relational_store::RelationalMediaEdge {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.title_uuid.into_into_dart().into_dart(),
+            self.entity_uuid.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::relational_store::RelationalMediaEdge
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::relational_store::RelationalMediaEdge>
+    for crate::api::relational_store::RelationalMediaEdge
+{
+    fn into_into_dart(self) -> crate::api::relational_store::RelationalMediaEdge {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::relational_store::RelationalMediaEntity {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.uuid.into_into_dart().into_dart(),
+            self.entity_type.into_into_dart().into_dart(),
+            self.name.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::relational_store::RelationalMediaEntity
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::relational_store::RelationalMediaEntity>
+    for crate::api::relational_store::RelationalMediaEntity
+{
+    fn into_into_dart(self) -> crate::api::relational_store::RelationalMediaEntity {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::relational_store::RelationalMediaGraphQuery {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.entity_type.into_into_dart().into_dart(),
+            self.entity_name.into_into_dart().into_dart(),
+            self.released_after.into_into_dart().into_dart(),
+            self.released_before.into_into_dart().into_dart(),
+            self.content_rating.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::relational_store::RelationalMediaGraphQuery
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::relational_store::RelationalMediaGraphQuery>
+    for crate::api::relational_store::RelationalMediaGraphQuery
+{
+    fn into_into_dart(self) -> crate::api::relational_store::RelationalMediaGraphQuery {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::relational_store::RelationalMediaKnowledgePack {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.pack_id.into_into_dart().into_dart(),
+            self.schema_version.into_into_dart().into_dart(),
+            self.titles.into_into_dart().into_dart(),
+            self.entities.into_into_dart().into_dart(),
+            self.edges.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::relational_store::RelationalMediaKnowledgePack
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::relational_store::RelationalMediaKnowledgePack>
+    for crate::api::relational_store::RelationalMediaKnowledgePack
+{
+    fn into_into_dart(self) -> crate::api::relational_store::RelationalMediaKnowledgePack {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::relational_store::RelationalMediaTitle {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.uuid.into_into_dart().into_dart(),
+            self.title.into_into_dart().into_dart(),
+            self.release_year.into_into_dart().into_dart(),
+            self.content_rating.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::relational_store::RelationalMediaTitle
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::relational_store::RelationalMediaTitle>
+    for crate::api::relational_store::RelationalMediaTitle
+{
+    fn into_into_dart(self) -> crate::api::relational_store::RelationalMediaTitle {
         self
     }
 }
@@ -3005,6 +3373,36 @@ impl SseEncode for Vec<(String, String)> {
     }
 }
 
+impl SseEncode for Vec<crate::api::relational_store::RelationalMediaEdge> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(self.len() as _, serializer);
+        for item in self {
+            <crate::api::relational_store::RelationalMediaEdge>::sse_encode(item, serializer);
+        }
+    }
+}
+
+impl SseEncode for Vec<crate::api::relational_store::RelationalMediaEntity> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(self.len() as _, serializer);
+        for item in self {
+            <crate::api::relational_store::RelationalMediaEntity>::sse_encode(item, serializer);
+        }
+    }
+}
+
+impl SseEncode for Vec<crate::api::relational_store::RelationalMediaTitle> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(self.len() as _, serializer);
+        for item in self {
+            <crate::api::relational_store::RelationalMediaTitle>::sse_encode(item, serializer);
+        }
+    }
+}
+
 impl SseEncode for Vec<crate::api::relational_store::RelationalSyncCounter> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -3387,6 +3785,63 @@ impl SseEncode for (String, String) {
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <String>::sse_encode(self.0, serializer);
         <String>::sse_encode(self.1, serializer);
+    }
+}
+
+impl SseEncode for crate::api::relational_store::RelationalMediaEdge {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <String>::sse_encode(self.title_uuid, serializer);
+        <String>::sse_encode(self.entity_uuid, serializer);
+    }
+}
+
+impl SseEncode for crate::api::relational_store::RelationalMediaEntity {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <String>::sse_encode(self.uuid, serializer);
+        <String>::sse_encode(self.entity_type, serializer);
+        <String>::sse_encode(self.name, serializer);
+    }
+}
+
+impl SseEncode for crate::api::relational_store::RelationalMediaGraphQuery {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <Option<String>>::sse_encode(self.entity_type, serializer);
+        <Option<String>>::sse_encode(self.entity_name, serializer);
+        <Option<u32>>::sse_encode(self.released_after, serializer);
+        <Option<u32>>::sse_encode(self.released_before, serializer);
+        <Option<String>>::sse_encode(self.content_rating, serializer);
+    }
+}
+
+impl SseEncode for crate::api::relational_store::RelationalMediaKnowledgePack {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <String>::sse_encode(self.pack_id, serializer);
+        <String>::sse_encode(self.schema_version, serializer);
+        <Vec<crate::api::relational_store::RelationalMediaTitle>>::sse_encode(
+            self.titles,
+            serializer,
+        );
+        <Vec<crate::api::relational_store::RelationalMediaEntity>>::sse_encode(
+            self.entities,
+            serializer,
+        );
+        <Vec<crate::api::relational_store::RelationalMediaEdge>>::sse_encode(
+            self.edges, serializer,
+        );
+    }
+}
+
+impl SseEncode for crate::api::relational_store::RelationalMediaTitle {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <String>::sse_encode(self.uuid, serializer);
+        <String>::sse_encode(self.title, serializer);
+        <u32>::sse_encode(self.release_year, serializer);
+        <Option<String>>::sse_encode(self.content_rating, serializer);
     }
 }
 

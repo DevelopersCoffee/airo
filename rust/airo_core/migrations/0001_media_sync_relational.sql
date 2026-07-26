@@ -158,6 +158,15 @@ CREATE TABLE IF NOT EXISTS pack_entity_owners (
   PRIMARY KEY(pack_id, entity_uuid)
 );
 
+CREATE TABLE IF NOT EXISTS pack_edge_owners (
+  pack_id TEXT NOT NULL REFERENCES knowledge_packs(pack_id) ON DELETE CASCADE,
+  title_uuid TEXT NOT NULL,
+  entity_uuid TEXT NOT NULL,
+  PRIMARY KEY(pack_id, title_uuid, entity_uuid),
+  FOREIGN KEY(title_uuid, entity_uuid)
+    REFERENCES media_edges(title_uuid, entity_uuid) ON DELETE CASCADE
+);
+
 CREATE TABLE IF NOT EXISTS sync_entities (
   uuid TEXT PRIMARY KEY,
   entity_type TEXT NOT NULL,
