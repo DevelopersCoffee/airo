@@ -2,6 +2,7 @@ import 'package:airo_app/features/iptv/phone_media_local_picker.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:platform_media/platform_media.dart';
+import 'package:platform_player/platform_player.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -56,6 +57,7 @@ void main() {
         if (call.method == 'pickVideo') {
           return <String, Object?>{
             'token': 'lease-1',
+            'descriptor': 42,
             'filePath': '/proc/self/fd/42',
             'title': 'Feature.FILM.MKV',
             'size': 6101307309,
@@ -76,6 +78,8 @@ void main() {
       expect(item.videoCodec, 'hevc');
       expect(item.audioCodec, 'dts');
       expect(item.duration, const Duration(hours: 2, minutes: 10, seconds: 7));
+      expect(item.source, isA<PhoneMediaSeekableSource>());
+      expect(await item.source!.length(), 6101307309);
       expect(analyzer.requests, [
         const MediaAssetAnalysisRequest(
           assetId: 'lease-1',
@@ -101,8 +105,10 @@ void main() {
       if (call.method == 'pickVideo') {
         return <String, Object?>{
           'token': 'lease-2',
+          'descriptor': 43,
           'filePath': '/proc/self/fd/43',
           'title': 'movie.mp4',
+          'size': 4096,
         };
       }
       return null;
@@ -117,6 +123,17 @@ void main() {
 
     expect(calls.map((call) => call.method), ['pickVideo', 'release']);
     expect(calls.last.arguments, {'token': 'lease-2'});
+    expect(item.source!.isAvailable, isFalse);
+    expect(
+      item.source!.length(),
+      throwsA(
+        isA<PhoneMediaSourceException>().having(
+          (error) => error.code,
+          'code',
+          PhoneMediaSourceFailureCode.closed,
+        ),
+      ),
+    );
   });
 
   test('malformed selection releases a supplied native token', () async {

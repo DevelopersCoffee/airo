@@ -22,6 +22,7 @@ export "src/services/iptv_streaming_service.dart";
 export "src/services/iptv_cast_media_adapter.dart";
 export "src/services/google_cast_platform_support.dart";
 export "src/services/native_fullscreen.dart";
+export "src/services/native_descriptor_phone_media_source.dart";
 export "src/services/native_picture_in_picture.dart";
 export "src/services/phone_media_cast_handoff.dart";
 export "src/services/phone_media_file_server.dart";

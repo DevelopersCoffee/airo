@@ -54,10 +54,16 @@ Future<PhoneLocalMediaItem?> pickAndroidPhoneLocalMediaForTv({
     if (selection == null) return null;
 
     final token = selection['token'] as String?;
+    final descriptor = (selection['descriptor'] as num?)?.round();
+    final mediaLength = (selection['size'] as num?)?.round();
     final filePath = selection['filePath'] as String?;
     final title = selection['title'] as String?;
     if (token == null ||
         token.isEmpty ||
+        descriptor == null ||
+        descriptor < 0 ||
+        mediaLength == null ||
+        mediaLength < 0 ||
         filePath == null ||
         filePath.isEmpty ||
         title == null ||
@@ -73,19 +79,23 @@ Future<PhoneLocalMediaItem?> pickAndroidPhoneLocalMediaForTv({
             assetId: token,
             filePath: filePath,
             fileName: title,
-            fileSizeBytesHint: (selection['size'] as num?)?.round(),
+            fileSizeBytesHint: mediaLength,
           ),
         );
+    final source = _AndroidPhoneMediaSource(
+      channel: channel,
+      token: token,
+      descriptor: descriptor,
+      mediaLength: mediaLength,
+    );
 
     return _phoneLocalMediaItem(
       filePath: filePath,
       title: title,
       fallbackContainer: _extensionOf(title),
       analysis: analysis,
-      sourceLease: _AndroidPhoneMediaSourceLease(
-        channel: channel,
-        token: token,
-      ),
+      sourceLease: source,
+      source: source,
     );
   } on PlatformException {
     return null;
@@ -98,6 +108,7 @@ PhoneLocalMediaItem _phoneLocalMediaItem({
   required String fallbackContainer,
   required MediaAssetAnalysisResult analysis,
   PhoneMediaSourceLease? sourceLease,
+  PhoneMediaSeekableSource? source,
 }) {
   final profile = analysis.profile;
   final analyzedContainer = profile?.container;
@@ -112,6 +123,7 @@ PhoneLocalMediaItem _phoneLocalMediaItem({
         ? fallbackContainer
         : analyzedContainer.stableId,
     sourceLease: sourceLease,
+    source: source,
     videoCodec:
         primaryVideo == null || primaryVideo.codec == MediaVideoCodec.unknown
         ? null
@@ -130,17 +142,38 @@ String _extensionOf(String fileName) {
   return fileName.substring(separator + 1).toLowerCase();
 }
 
-class _AndroidPhoneMediaSourceLease implements PhoneMediaSourceLease {
-  _AndroidPhoneMediaSourceLease({required this.channel, required this.token});
+class _AndroidPhoneMediaSource
+    implements PhoneMediaSourceLease, PhoneMediaSeekableSource {
+  _AndroidPhoneMediaSource({
+    required this.channel,
+    required this.token,
+    required int descriptor,
+    required int mediaLength,
+  }) : _source = NativeDescriptorPhoneMediaSource(
+         descriptor: descriptor,
+         mediaLength: mediaLength,
+       );
 
   final MethodChannel channel;
   final String token;
+  final NativeDescriptorPhoneMediaSource _source;
   bool _released = false;
+
+  @override
+  bool get isAvailable => !_released && _source.isAvailable;
+
+  @override
+  Future<int> length() => _source.length();
+
+  @override
+  Stream<List<int>> openRead(int start, int end) =>
+      _source.openRead(start, end);
 
   @override
   Future<void> release() async {
     if (_released) return;
     _released = true;
+    _source.close();
     await channel.invokeMethod<void>('release', {'token': token});
   }
 }
