@@ -64,7 +64,7 @@ class _SearchOverlayState extends ConsumerState<SearchOverlay> {
     String Function(String)? optionLabel,
   }) async {
     Navigator.of(context).pop();
-    await showFilterOptionDialog(
+    await showTvLongListPicker(
       // ignore: use_build_context_synchronously
       context: context,
       title: title,
