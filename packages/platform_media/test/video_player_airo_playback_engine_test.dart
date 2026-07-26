@@ -36,6 +36,23 @@ void main() {
       expect(engine.backendKind, AiroPlaybackBackendKind.videoPlayer);
     });
 
+    test('open reports the real initialized video dimensions', () async {
+      final engine = VideoPlayerAiroPlaybackEngine();
+
+      final state = await engine.open(request());
+
+      expect(state.selectedQualityId, 'source');
+      expect(state.qualityOptions, const [
+        AiroPlaybackQualityOption(
+          id: 'source',
+          label: '1920x1080',
+          width: 1920,
+          height: 1080,
+        ),
+      ]);
+      await engine.dispose();
+    });
+
     test(
       'platform decoder failure surfaces as a typed decoderFailed error',
       () async {

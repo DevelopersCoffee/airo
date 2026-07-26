@@ -72,6 +72,7 @@ class PhoneMediaPickerPlugin(private val activity: Activity) {
             result.success(
                 mapOf(
                     "token" to token,
+                    "descriptor" to descriptor.fd,
                     "filePath" to "/proc/self/fd/${descriptor.fd}",
                     "title" to title,
                     "size" to descriptor.statSize

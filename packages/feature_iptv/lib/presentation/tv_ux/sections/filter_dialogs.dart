@@ -201,11 +201,20 @@ class _PickerOptionRow extends _PickerRow {
 }
 
 /// AiroTV D-pad design's TV-native long-list picker (issues/03): a left-side
-/// A-Z jump rail (only populated initials) next to a lazily-built, grouped
-/// option list. Used everywhere Country/Language/Category are chosen from a
-/// TV remote, replacing [FilterOptionDialog]'s single eagerly-built list --
-/// which does not scale to a full-size country/channel-group list without
-/// building every focusable tile up front.
+/// Recent + A-Z jump rail (only populated initials) next to a lazily-built,
+/// grouped option list. Used everywhere Country/Language/Category are chosen
+/// from a TV remote, replacing [FilterOptionDialog]'s single eagerly-built
+/// list -- which does not scale to a full-size country/channel-group list
+/// without building every focusable tile up front.
+///
+/// issues/03-long-list-picker.md's acceptance criteria also mention a
+/// Favourites rail group. The prototype it was written against
+/// (`Airo TV - D-pad TV.dc.html`'s `pkData`) only defines "Recently used"
+/// and A-Z groups for this screen -- there is no favourite-value concept
+/// anywhere in the picker prototype, and no equivalent exists in the shipped
+/// app for filter values (only channels can be favourited). Favourites is
+/// intentionally omitted here as a product decision rather than built
+/// speculatively against an unspecified interaction.
 class TvLongListPicker extends StatefulWidget {
   const TvLongListPicker({
     super.key,
@@ -273,12 +282,6 @@ class _TvLongListPickerState extends State<TvLongListPicker> {
 
   void _buildRows() {
     final optionLabel = widget.optionLabel ?? (value) => value;
-    final sortedOptions = [...widget.options]
-      ..sort(
-        (left, right) => _sortLabel(
-          optionLabel(left),
-        ).compareTo(_sortLabel(optionLabel(right))),
-      );
 
     final rows = <_PickerRow>[];
     final letters = <String>[];
@@ -293,6 +296,20 @@ class _TvLongListPickerState extends State<TvLongListPicker> {
         rows.add(_PickerOptionRow(value));
       }
     }
+
+    // A value already shown under Recent is not repeated in its alphabetical
+    // group -- each option gets exactly one row, so its ValueKey/FocusNode
+    // stays unique within the list.
+    final presentRecentSet = presentRecent.toSet();
+    final sortedOptions =
+        widget.options
+            .where((value) => !presentRecentSet.contains(value))
+            .toList()
+          ..sort(
+            (left, right) => _sortLabel(
+              optionLabel(left),
+            ).compareTo(_sortLabel(optionLabel(right))),
+          );
 
     String? currentLetter;
     for (final value in sortedOptions) {
