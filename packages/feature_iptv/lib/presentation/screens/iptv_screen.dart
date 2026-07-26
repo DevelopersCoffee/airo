@@ -1203,17 +1203,24 @@ class _StreamTabContent extends ConsumerWidget {
 
 Future<void> showPlaylistSourceSheet(
   BuildContext context,
-  WidgetRef ref,
-) async {
+  WidgetRef ref, {
+  String? initialUrl,
+}) async {
   await showAdaptiveIptvSheet<void>(
     context: context,
     maxWidth: 640,
-    builder: (_) => const _PlaylistSourceSheet(),
+    builder: (_) => _PlaylistSourceSheet(initialUrl: initialUrl),
   );
 }
 
 class _PlaylistSourceSheet extends ConsumerStatefulWidget {
-  const _PlaylistSourceSheet();
+  const _PlaylistSourceSheet({this.initialUrl});
+
+  /// Pre-fills the URL field without auto-submitting -- the TV empty
+  /// state's QR handoff (issues/04-recovery-states.md) hands a phone-typed
+  /// URL in here, but the user still confirms/imports it themselves, same
+  /// as manual entry.
+  final String? initialUrl;
 
   @override
   ConsumerState<_PlaylistSourceSheet> createState() =>
@@ -1230,7 +1237,9 @@ class _PlaylistSourceSheetState extends ConsumerState<_PlaylistSourceSheet> {
   void initState() {
     super.initState();
     final parser = ref.read(m3uParserProvider);
-    _controller = TextEditingController(text: parser.getPlaylistUrl() ?? '');
+    _controller = TextEditingController(
+      text: widget.initialUrl ?? parser.getPlaylistUrl() ?? '',
+    );
   }
 
   @override
