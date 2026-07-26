@@ -23,6 +23,8 @@ or parse full XMLTV datasets.
 - Distributed EPG worker capability, sync request, snapshot manifest, and
   validation contracts for delegated compact guide processing.
 - Fake and no-op distributed worker adapters for deterministic automation.
+- Deterministic local EPG notification triggers with explicit favorite/entity
+  signals, rolling frequency caps, quiet hours, and redacted delivery receipts.
 
 This package does not render guide UI, persist full guide data, import vendor
 SDKs, open sockets, transfer payloads, or start playback. Snapshot storage is
