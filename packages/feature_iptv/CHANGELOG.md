@@ -6,3 +6,8 @@
   Cast playback.
 - Added persistent Explorer row controls, real engine-reported playback stats,
   contextual help, and in-app release notes.
+- Added channel-tile multiview controls with single, split, and featured-strip
+  layouts. Multiview keeps audio on the featured channel and supports
+  remote/keyboard promotion.
+- Limited concurrent multiview decoders to two on web and mobile and four on
+  desktop, with a hard ceiling of four and clear capacity feedback.
