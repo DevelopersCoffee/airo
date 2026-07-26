@@ -1,0 +1,5 @@
+HSPLio/airo/app/MainActivity;-><init>()V
+HSPLio/airo/app/MainActivity;->configureFlutterEngine(Lio/flutter/embedding/engine/FlutterEngine;)V
+HSPLio/flutter/embedding/android/FlutterActivity;->onCreate(Landroid/os/Bundle;)V
+HSPLio/flutter/embedding/engine/FlutterEngine;-><init>(Landroid/content/Context;)V
+HSPLio/flutter/embedding/engine/dart/DartExecutor;->executeDartEntrypoint(Lio/flutter/embedding/engine/dart/DartExecutor$DartEntrypoint;)V

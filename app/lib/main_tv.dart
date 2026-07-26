@@ -53,6 +53,7 @@ const _debugDefaultEpgUrl = String.fromEnvironment('DEBUG_IPTV_EPG_URL');
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   AiroImageCacheBudget.configureAndroidTv();
+  AiroMemoryPressureObserver();
 
   // Initialize global error handler for unhandled exceptions
   GlobalErrorHandler.initialize();
