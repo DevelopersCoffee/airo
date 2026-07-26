@@ -254,6 +254,82 @@ void main() {
 
     expect(secondaryCount, 1);
   });
+
+  // issues/02-focus-tokens-reduced-motion.md acceptance criterion 2:
+  // reduced motion makes focus scale instantaneous/absent without removing
+  // focus visibility (the border must still appear).
+  Widget wrap({required bool disableAnimations}) {
+    return MediaQuery(
+      data: MediaQueryData(disableAnimations: disableAnimations),
+      child: MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: SizedBox(
+              width: 160,
+              height: 80,
+              child: TvFocusable(
+                autofocus: true,
+                onSelect: () {},
+                child: const Center(child: Text('Focus me')),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  testWidgets('normal motion animates scale up to the design token (1.04) once '
+      'settled', (tester) async {
+    await tester.pumpWidget(wrap(disableAnimations: false));
+    await tester.pumpAndSettle();
+
+    final transform = tester.widget<Transform>(
+      find.descendant(
+        of: find.byType(TvFocusable),
+        matching: find.byType(Transform),
+      ),
+    );
+    expect(transform.transform.getMaxScaleOnAxis(), closeTo(1.04, 0.001));
+
+    final decoratedBox = tester.widget<DecoratedBox>(
+      find.descendant(
+        of: find.byType(TvFocusable),
+        matching: find.byType(DecoratedBox),
+      ),
+    );
+    final decoration = decoratedBox.decoration as BoxDecoration;
+    expect(decoration.border, isNotNull);
+  });
+
+  testWidgets(
+    'reduced motion keeps scale at 1.0 but still draws the focus border',
+    (tester) async {
+      await tester.pumpWidget(wrap(disableAnimations: true));
+      await tester.pumpAndSettle();
+
+      final transform = tester.widget<Transform>(
+        find.descendant(
+          of: find.byType(TvFocusable),
+          matching: find.byType(Transform),
+        ),
+      );
+      expect(transform.transform.getMaxScaleOnAxis(), closeTo(1.0, 0.001));
+
+      final decoratedBox = tester.widget<DecoratedBox>(
+        find.descendant(
+          of: find.byType(TvFocusable),
+          matching: find.byType(DecoratedBox),
+        ),
+      );
+      final decoration = decoratedBox.decoration as BoxDecoration;
+      expect(
+        decoration.border,
+        isNotNull,
+        reason: 'reduced motion must not remove focus visibility',
+      );
+    },
+  );
 }
 
 class _BuildCounter extends StatelessWidget {

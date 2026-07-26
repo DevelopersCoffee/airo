@@ -148,15 +148,19 @@ class _TvInputHandlerState extends State<TvInputHandler> {
   }
 }
 
+/// The AiroTV D-pad design's single reviewed focus token set
+/// (issues/02-focus-tokens-reduced-motion.md): 2.5lp border, 1.04 scale,
+/// a 5lp ring at 20% opacity, 120ms motion. Every TvFocusable consumes
+/// these -- there is no per-screen override of the numeric values.
 class TvFocusConstants {
   TvFocusConstants._();
 
-  static const double focusBorderWidth = 3.0;
+  static const double focusBorderWidth = 2.5;
   static const double focusBorderRadius = 8.0;
-  static const Duration focusAnimationDuration = Duration(milliseconds: 200);
-  static const double focusScaleFactor = 1.05;
-  static const double focusGlowSpread = 4.0;
-  static const double focusGlowBlur = 24.0;
+  static const Duration focusAnimationDuration = Duration(milliseconds: 120);
+  static const double focusScaleFactor = 1.04;
+  static const double focusGlowSpread = 5.0;
+  static const double focusGlowOpacity = 0.20;
 }
 
 /// A focusable wrapper for TV/D-pad navigation: draws a focus ring + glow,
@@ -333,6 +337,15 @@ class _TvFocusableState extends State<TvFocusable>
     final focusColor =
         widget.focusColor ?? Theme.of(context).colorScheme.primary;
     final isButton = widget.semanticButton ?? widget.onSelect != null;
+    // OS-level reduced-motion (System Settings > Accessibility): scale and
+    // list auto-scroll become instantaneous, but the border/glow stays --
+    // focus must remain visible with motion disabled
+    // (issues/02-focus-tokens-reduced-motion.md).
+    final reduceMotion =
+        MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+    _animationController.duration = reduceMotion
+        ? Duration.zero
+        : TvFocusConstants.focusAnimationDuration;
 
     Widget result = Focus(
       focusNode: _focusNode,
@@ -352,8 +365,10 @@ class _TvFocusableState extends State<TvFocusable>
                   boxShadow: widget.showGlowEffect
                       ? [
                           BoxShadow(
-                            color: focusColor.withValues(alpha: 0.35),
-                            blurRadius: TvFocusConstants.focusGlowBlur,
+                            color: focusColor.withValues(
+                              alpha: TvFocusConstants.focusGlowOpacity,
+                            ),
+                            spreadRadius: TvFocusConstants.focusGlowSpread,
                           ),
                         ]
                       : null,
@@ -365,7 +380,9 @@ class _TvFocusableState extends State<TvFocusable>
             child: child,
             builder: (context, child) {
               return Transform.scale(
-                scale: widget.showScaleEffect ? _scaleAnimation.value : 1,
+                scale: widget.showScaleEffect && !reduceMotion
+                    ? _scaleAnimation.value
+                    : 1,
                 child: DecoratedBox(
                   // Foreground, not background: an opaque child (e.g. a
                   // filled Material chip) fully covers a background-painted
