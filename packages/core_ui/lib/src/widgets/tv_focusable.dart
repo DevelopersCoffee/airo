@@ -280,9 +280,21 @@ class _TvFocusableState extends State<TvFocusable>
       // the remote. Every TvFocusable self-scrolls into view instead of
       // requiring each screen to wire this up individually.
       //
-      // Minimal-scroll policies only: an already-visible item must not
-      // move. Center-aligning here shifted the list under every focus
-      // change, which read as the D-pad skipping alternate rows.
+      // Minimal-scroll only: an already-visible item must not move.
+      // Center-aligning here shifted the list under every focus change,
+      // which read as the D-pad skipping alternate rows.
+      //
+      // This used to fire keepVisibleAtEnd immediately followed by
+      // keepVisibleAtStart on every focus change. Both calls are animated
+      // (non-zero duration), so the second call's own-visibility check ran
+      // against the pre-animation scroll offset -- the first call hadn't
+      // moved `.pixels` yet -- and its animateTo then replaced the first
+      // one outright. The net motion was whatever keepVisibleAtStart alone
+      // decided, which over-scrolls past the target compared to a single
+      // keepVisibleAtEnd call when the item enters from below. That read
+      // as the D-pad skipping an item on every move -- the same symptom
+      // the comment above already named, just reintroduced by calling
+      // both instead of one.
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         final renderObject = context.findRenderObject();
@@ -290,12 +302,6 @@ class _TvFocusableState extends State<TvFocusable>
         Scrollable.ensureVisible(
           context,
           alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtEnd,
-          duration: TvFocusConstants.focusAnimationDuration,
-          curve: Curves.easeOutCubic,
-        );
-        Scrollable.ensureVisible(
-          context,
-          alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtStart,
           duration: TvFocusConstants.focusAnimationDuration,
           curve: Curves.easeOutCubic,
         );
