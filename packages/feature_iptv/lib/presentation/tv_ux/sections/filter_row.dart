@@ -195,6 +195,7 @@ class _FilterChip extends StatelessWidget {
     return TvFocusable(
       semanticLabel: label,
       onSelect: onSelected,
+      borderRadius: 12,
       child: Material(
         color: background,
         borderRadius: BorderRadius.circular(12),
