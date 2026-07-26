@@ -196,16 +196,43 @@ reading the diffs — not from device testing.
   handoff-sheet assertion), traced to a concurrent phone-media/Cast UI
   refactor already on `main` — left alone as out of scope for this PR.
 
-### Recommended next steps (not yet executed, pending direction)
+## Resolution (2026-07-27, later same session)
 
-1. Issue 03: wire `recentValues` from an actual recency source, or drop
-   the unused parameter; add a Favourites rail or explicitly cut it as a
-   documented scope decision (the issue file treats it as required).
-2. Issue 04: either scope the open PR to the error/offline slice already
-   done and file the onboarding/Wi-Fi-settings half as a separate
-   follow-up, or keep building on this branch before opening a PR.
-3. Issue 05: push toward the actual device-matrix qualification pass; the
-   safe-area primitive alone doesn't close the issue.
-4. Push `feat/tv-long-list-picker` and `feat/tv-recovery-states` and open
-   PRs once the above gaps are triaged, so review doesn't happen ex post
-   facto on unreviewed local branches.
+While the gaps above were being fixed, the repo's concurrent activity
+overtook this doc a second time: `main` fast-forwarded to merge the
+**original, unfixed** versions of all three branches (PR #1168 for
+Issue 03, #1169 for Issue 04, #1170 for Issue 05) before this session's
+fixes could land. Net outcome:
+
+- **Issue 03 (long-list picker)**: fix applied (Recent wired end-to-end via
+  a new `RecentFilterValuesNotifier`, persisted and capped at 5; Favourites
+  formally dropped as a documented product decision — the prototype's own
+  `pkData` only defines Recent + A-Z groups, contradicting the issue file's
+  own AC3 text). Also fixed a latent duplicate-key/duplicate-FocusNode bug
+  in `_buildRows` that only became reachable once `recentValues` was
+  finally wired. Rebased cleanly onto the post-merge `main` (the base
+  commit was already present) and reopened as
+  [PR #1177](https://github.com/DevelopersCoffee/airo/pull/1177) —
+  15/15 tests pass, including against `main`'s already-expanded test
+  suite that had anticipated this feature.
+- **Issue 04 (recovery states)**: turned out to be **fully redundant**.
+  `main`'s merged commit (`c5c19d67`, PR #1169) is the identical fix with
+  the identical scoping decision (defer Wi-Fi settings/USB onboarding,
+  same reasoning, same wording) — landed concurrently while this
+  session's own copy of the same branch was being verified. Closed the
+  session's PR (#1178) with no delta to contribute. The onboarding/Wi-Fi
+  gap this doc originally flagged is still open and tracked as
+  [issue #1179](https://github.com/DevelopersCoffee/airo/issues/1179).
+- **Issue 05 (overscan)**: PR #1170 merged mid-session (`55c00c8f`) before
+  this session's CI-format fix could land on it — the fix commit
+  (`7cc9a59c`) ended up orphaned on an already-merged branch, harmless. No
+  action needed; the actual device-matrix qualification pass this issue
+  calls for is still outstanding and not scheduled here.
+
+Net: one real fix shipped as a new PR (#1177), one redundant PR closed in
+favor of the version that beat it to `main` (#1169), one issue's follow-up
+gap tracked (#1179), and one branch's work already fully landed (#1170).
+This repo has multiple concurrent agents/processes committing to the same
+branches and opening/merging PRs in parallel — expect this kind of race
+on any TV-backlog work picked up here without first checking `git log
+origin/main` for a same-titled commit.
