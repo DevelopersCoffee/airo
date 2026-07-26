@@ -26,9 +26,11 @@ runtime, schema, crypto, entitlement, or user-data changes.
 `2dd0fa57eb2267fe2cdb22c6322e7a7c22dc6741`, the freshly fetched
 `origin/main` tip on 2026-07-26.
 
-GitHub issue creation was attempted through the connected integration and
-rejected with HTTP 403 (`Resource not accessible by integration`). This file
-is the policy-approved linked planning artifact.
+The connected GitHub integration initially rejected issue creation with HTTP
+403 (`Resource not accessible by integration`). The authenticated `gh` CLI was
+then used to create
+[#1163](https://github.com/DevelopersCoffee/airo/issues/1163). This file remains
+the repository copy of the policy artifact.
 
 **Open question / claim gate:** There is no public Coins release artifact. All
 product outcomes remain `In development` or `Planned`. Copy must not state
@@ -100,3 +102,18 @@ claim ledger.
 - Out of scope: schemas, transactions, balances, sync, token issuance,
   purchases, pricing, advice, release, deployment, or publication.
 - Rollback: revert the static files; no user data or migration is involved.
+
+## Local implementation evidence
+
+- Worktree: `/Users/udaychauhan/workspace/airo-worktrees/coins-marketing`
+- Branch: `codex/coins-marketing`, created from fetched `origin/main`
+- Implementation commit:
+  `99bfcc0f705beb65c4ab009b16b09c743f9317dc`
+- Release-branding audit: passed
+- `git diff --check`: passed
+- Browser viewports: 1920x1080, 1280x720, 1024x576, and 390x844
+- Runtime checks: no console errors, no horizontal overflow, 44px visible
+  controls, keyboard-operable mobile menu, reduced-motion rendering, and
+  no-JavaScript product navigation
+- Publication: not performed; explicit maintainer deployment approval remains
+  required
