@@ -99,6 +99,38 @@ void main() {
     expect(find.text('Actions for'), findsNothing);
   });
 
+  // Confirmed on a real Fire TV Stick: TvInputHandler observes the BACK key
+  // via a passive KeyboardListener, which cannot consume the platform back
+  // button. tester.sendKeyEvent(escape) above only proves the in-app state
+  // closes -- it doesn't touch the Navigator's real pop path, so it missed
+  // this. The real Android back button was reaching the Activity handler
+  // *at the same time* as our state update and exiting the app. PopScope
+  // is what actually intercepts a platform pop request; simulate that
+  // directly via handlePopRoute (what a real Android back button drives).
+  testWidgets(
+    'a real platform back request is consumed while the context menu is '
+    'open, instead of also popping the app',
+    (tester) async {
+      await pumpPlayer(tester);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.contextMenu);
+      await tester.pump();
+      expect(find.text('Actions for'), findsOneWidget);
+
+      final handled = await tester.binding.handlePopRoute();
+
+      expect(
+        handled,
+        isTrue,
+        reason: 'PopScope must report the back request as handled, or the '
+            'platform (Android) proceeds to pop/exit the Activity on top '
+            "of whatever the app's own state did.",
+      );
+      await tester.pump();
+      expect(find.text('Actions for'), findsNothing);
+    },
+  );
+
   // Confirmed via on-device logcat: Fire OS intercepts KEYCODE_MENU for its
   // own system overlay before Flutter's embedding ever sees it, so
   // TvInputKey.menu is unreachable on real Fire TV hardware. Long-press
