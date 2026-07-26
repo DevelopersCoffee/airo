@@ -1,5 +1,29 @@
 import 'dart:io';
 
+enum PhoneMediaSourceFailureCode {
+  unavailable('unavailable'),
+  closed('closed'),
+  permissionLost('permission_lost'),
+  readFailed('read_failed');
+
+  const PhoneMediaSourceFailureCode(this.stableId);
+
+  final String stableId;
+}
+
+/// A redacted platform-source failure.
+///
+/// Platform exceptions, paths, document URIs, and descriptor values must not
+/// cross this boundary. Callers receive only a stable reason code.
+class PhoneMediaSourceException implements Exception {
+  const PhoneMediaSourceException(this.code);
+
+  final PhoneMediaSourceFailureCode code;
+
+  @override
+  String toString() => 'PhoneMediaSourceException(${code.stableId})';
+}
+
 /// A bounded, random-access media source consumed by the phone HTTP server.
 ///
 /// Platform adapters may retain a permission-scoped descriptor instead of

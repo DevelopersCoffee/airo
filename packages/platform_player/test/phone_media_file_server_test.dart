@@ -179,6 +179,44 @@ void main() {
     },
   );
 
+  for (final fixture in [
+    (code: PhoneMediaSourceFailureCode.closed, status: HttpStatus.gone),
+    (
+      code: PhoneMediaSourceFailureCode.permissionLost,
+      status: HttpStatus.forbidden,
+    ),
+    (
+      code: PhoneMediaSourceFailureCode.readFailed,
+      status: HttpStatus.internalServerError,
+    ),
+  ]) {
+    test(
+      'maps ${fixture.code.stableId} source failures deterministically',
+      () async {
+        final events = <PhoneMediaDiagnosticEvent>[];
+        final server = PhoneMediaFileServer(
+          snapshot: snapshotFor(),
+          source: _FailingSeekableSource(fixture.code),
+          contentType: 'video/mp4',
+          bindAddress: InternetAddress.loopbackIPv4,
+          sessionToken: 'source-failure-token',
+          onDiagnosticEvent: events.add,
+        );
+        final url = await server.start();
+        addTearDown(server.stopServer);
+
+        final response = await request(url, method: 'HEAD');
+
+        expect(response.statusCode, fixture.status);
+        final error = events.singleWhere(
+          (event) => event.kind == PhoneMediaDiagnosticEventKind.requestError,
+        );
+        expect(error.errorType, 'source_${fixture.code.stableId}');
+        expect(error.toString(), isNot(contains('source-failure-token')));
+      },
+    );
+  }
+
   test('rejects unsatisfiable ranges with 416', () async {
     final server = serverFor();
     final url = await server.start();
@@ -585,4 +623,21 @@ class _RecordingSeekableSource implements PhoneMediaSeekableSource {
       List<int>.generate(end - start, (index) => (start + index) % 251),
     );
   }
+}
+
+class _FailingSeekableSource implements PhoneMediaSeekableSource {
+  _FailingSeekableSource(this.code);
+
+  final PhoneMediaSourceFailureCode code;
+
+  @override
+  bool get isAvailable => true;
+
+  @override
+  Future<int> length() async {
+    throw PhoneMediaSourceException(code);
+  }
+
+  @override
+  Stream<List<int>> openRead(int start, int end) => const Stream.empty();
 }
