@@ -30,7 +30,7 @@ class FilterRow extends ConsumerWidget {
           label: filters.category ?? 'Category',
           active: filters.category != null,
           icon: Icons.category_outlined,
-          onSelected: () => showFilterOptionDialog(
+          onSelected: () => showTvLongListPicker(
             context: context,
             title: 'Category',
             options: dimensions.categories.toList(growable: false),
@@ -45,7 +45,7 @@ class FilterRow extends ConsumerWidget {
           label: countryDisplayLabel(filters.country),
           active: filters.country != null,
           icon: Icons.flag,
-          onSelected: () => showFilterOptionDialog(
+          onSelected: () => showTvLongListPicker(
             context: context,
             title: 'Country',
             options: dimensions.countries.toList(growable: false),
@@ -61,7 +61,7 @@ class FilterRow extends ConsumerWidget {
           label: languageDisplayLabel(filters.language),
           active: filters.language != null,
           icon: Icons.translate,
-          onSelected: () => showFilterOptionDialog(
+          onSelected: () => showTvLongListPicker(
             context: context,
             title: 'Language',
             options: dimensions.languages.toList(growable: false),
