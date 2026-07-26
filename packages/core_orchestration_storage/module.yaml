@@ -5,6 +5,7 @@ reviewers:
   - Chief Cloud Officer
   - Chief Performance Officer
 allowed_dependencies:
+  - core_native
   - core_commands
   - core_device_identity
   - core_presence
