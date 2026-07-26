@@ -686,6 +686,7 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
               initiallyFullscreen: true,
               onFullscreenToggle: _toggleFullscreen,
               enableSwipeChannelChange: true,
+              showPictureInPicture: !widget.tenFootMode,
             ),
           ),
         ),
@@ -1013,6 +1014,7 @@ class _StreamTabContent extends ConsumerWidget {
                     showControls: true,
                     enableSwipeChannelChange: true,
                     onFullscreenToggle: onFullscreenToggle,
+                    showPictureInPicture: !playlistSourceInInfoBar,
                   ),
                   Positioned(
                     top: 8,

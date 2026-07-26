@@ -19,6 +19,7 @@ void main() {
     bool enableSwipeChannelChange = false,
     bool enableTouchGestures = true,
     bool initiallyFullscreen = false,
+    bool showPictureInPicture = true,
     PlayerBrightnessController? brightnessController,
     StreamingState? state,
     List<IPTVChannel>? channels,
@@ -60,6 +61,7 @@ void main() {
             enableSwipeChannelChange: enableSwipeChannelChange,
             enableTouchGestures: enableTouchGestures,
             initiallyFullscreen: initiallyFullscreen,
+            showPictureInPicture: showPictureInPicture,
             brightnessController: brightnessController,
           ),
         ),
@@ -243,6 +245,38 @@ void main() {
       findsNothing,
     );
   });
+
+  testWidgets(
+    'showPictureInPicture: false hides the PiP control (TV callers -- no '
+    'Android TV / Fire TV multi-window model for PiP to float into)',
+    (tester) async {
+      tester.view.physicalSize = const Size(1280, 720);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await pumpPlayer(
+        tester,
+        enableSwipeChannelChange: true,
+        showPictureInPicture: false,
+      );
+
+      expect(
+        find.byKey(const ValueKey('iptv-player-pip-button')),
+        findsNothing,
+      );
+      // Everything else in the same row stays present -- this isn't a
+      // general control failure, just PiP specifically excluded.
+      expect(
+        find.byKey(const ValueKey('iptv-player-fullscreen-button')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('iptv-player-random-channel-button')),
+        findsOneWidget,
+      );
+    },
+  );
 
   testWidgets('fullscreen phone keeps the TV Explorer player options', (
     tester,
