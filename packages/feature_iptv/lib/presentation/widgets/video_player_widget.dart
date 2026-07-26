@@ -95,6 +95,12 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
   // MENU key context menu (AiroTV D-pad design "CONTEXT MENU (MENU key)").
   bool _showContextMenu = false;
 
+  // UP/DOWN quick-browse overlays (AiroTV D-pad design "MINI GUIDE (UP)" /
+  // "RECENT CHANNELS (DOWN)"). Replaces the previous instant channel-surf
+  // on up/down: browsing now stops on a channel instead of committing to
+  // it, and OK is what actually switches.
+  _TvQuickBrowse? _quickBrowse;
+
   // Netflix-style gesture controls (CV-PLAYER-GESTURES) + lock button.
   bool _isLocked = false;
   double _brightness = 0.5;
@@ -387,13 +393,18 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
     }
 
     switch (key) {
-      // Channel surfing on up/down is the player's contract (CV-008
-      // UC-002) — it stays active whether or not the controls are shown.
+      // UP opens the Mini Guide, DOWN opens Recent Channels — browsing
+      // stops on a channel instead of committing to it; OK inside the
+      // overlay is what actually switches (AiroTV D-pad design).
       case TvInputKey.up:
-        _goToPreviousChannel();
+        if (ref.read(streamingStateProvider).asData?.value.currentChannel ==
+            null) {
+          return TvInputResult.notHandled;
+        }
+        setState(() => _quickBrowse = _TvQuickBrowse.miniGuide);
         return TvInputResult.handled;
       case TvInputKey.down:
-        _goToNextChannel();
+        setState(() => _quickBrowse = _TvQuickBrowse.recent);
         return TvInputResult.handled;
       case TvInputKey.menu:
         if (ref.read(streamingStateProvider).asData?.value.currentChannel ==
@@ -403,9 +414,15 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
         setState(() => _showContextMenu = !_showContextMenu);
         return TvInputResult.handled;
       case TvInputKey.back:
-        if (!_showContextMenu) return TvInputResult.notHandled;
-        setState(() => _showContextMenu = false);
-        return TvInputResult.handled;
+        if (_showContextMenu) {
+          setState(() => _showContextMenu = false);
+          return TvInputResult.handled;
+        }
+        if (_quickBrowse != null) {
+          setState(() => _quickBrowse = null);
+          return TvInputResult.handled;
+        }
+        return TvInputResult.notHandled;
       // Left/right walk the visible controls via normal focus traversal
       // (the buttons are TvFocusable); with the overlay hidden there are
       // no focus candidates (ExcludeFocus), so the keys are inert.
@@ -428,6 +445,31 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
       default:
         return TvInputResult.notHandled;
     }
+  }
+
+  static const _miniGuideWindowSize = 12;
+
+  List<IPTVChannel> _miniGuideChannels(IPTVChannel current) {
+    final all = ref.read(filteredChannelsProvider);
+    if (all.isEmpty) return const [];
+    final currentIndex = all.indexWhere((c) => c.id == current.id);
+    if (currentIndex < 0) {
+      return all.take(_miniGuideWindowSize).toList(growable: false);
+    }
+    final start = (currentIndex - _miniGuideWindowSize ~/ 2).clamp(
+      0,
+      all.length,
+    );
+    final end = (start + _miniGuideWindowSize).clamp(0, all.length);
+    return all.sublist(start, end);
+  }
+
+  void _playChannelFromQuickBrowse(IPTVChannel channel) {
+    final streamingService = ref.read(iptvStreamingServiceProvider);
+    streamingService.playChannel(channel);
+    _showChannelChangeOverlay(channel.name);
+    _scheduleAdjacentChannelWarmupFor(channel);
+    setState(() => _quickBrowse = null);
   }
 
   Future<void> _toggleFavoriteForCurrentChannel() async {
@@ -698,6 +740,36 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                       channel: state.currentChannel!,
                       onToggleFavorite: _toggleFavoriteForCurrentChannel,
                       onClose: () => setState(() => _showContextMenu = false),
+                    ),
+
+                  // UP/DOWN quick-browse overlays.
+                  if (_quickBrowse == _TvQuickBrowse.miniGuide &&
+                      state.currentChannel != null)
+                    _QuickBrowseOverlay(
+                      title: 'Mini guide',
+                      channels: _miniGuideChannels(state.currentChannel!),
+                      currentChannelId: state.currentChannel!.id,
+                      onSelected: _playChannelFromQuickBrowse,
+                    ),
+                  if (_quickBrowse == _TvQuickBrowse.recent)
+                    Consumer(
+                      builder: (context, ref, _) {
+                        final recent = ref.watch(
+                          recentlyWatchedChannelsProvider,
+                        );
+                        return recent.when(
+                          data: (channels) => channels.isEmpty
+                              ? const SizedBox.shrink()
+                              : _QuickBrowseOverlay(
+                                  title: 'Recently watched',
+                                  channels: channels,
+                                  currentChannelId: state.currentChannel?.id,
+                                  onSelected: _playChannelFromQuickBrowse,
+                                ),
+                          loading: () => const SizedBox.shrink(),
+                          error: (_, _) => const SizedBox.shrink(),
+                        );
+                      },
                     ),
                 ],
               ),
@@ -1911,6 +1983,127 @@ class _PlayerStepperPillar extends StatelessWidget {
 /// MENU-key context menu: right-side overlay panel for actions on the
 /// currently-playing channel. AiroTV D-pad design's "CONTEXT MENU (MENU
 /// key)" screen.
+enum _TvQuickBrowse { miniGuide, recent }
+
+/// Bottom-docked horizontal browse strip for UP (Mini Guide) and DOWN
+/// (Recent Channels). AiroTV D-pad design: "◀ ▶ browse · OK switch".
+class _QuickBrowseOverlay extends StatelessWidget {
+  const _QuickBrowseOverlay({
+    required this.title,
+    required this.channels,
+    required this.currentChannelId,
+    required this.onSelected,
+  });
+
+  final String title;
+  final List<IPTVChannel> channels;
+  final String? currentChannelId;
+  final ValueChanged<IPTVChannel> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned(
+      left: 0,
+      right: 0,
+      bottom: 0,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(24, 20, 24, 20),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.bottomCenter,
+            end: Alignment.topCenter,
+            colors: [
+              Colors.black.withValues(alpha: 0.97),
+              Colors.black.withValues(alpha: 0.0),
+            ],
+          ),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const Text(
+                  '◀ ▶ browse   OK switch',
+                  style: TextStyle(color: Colors.white54, fontSize: 12),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              height: 96,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: channels.length,
+                separatorBuilder: (context, index) => const SizedBox(width: 10),
+                itemBuilder: (context, index) {
+                  final channel = channels[index];
+                  final isCurrent = channel.id == currentChannelId;
+                  return TvFocusable(
+                    key: ValueKey('quick-browse-${channel.id}'),
+                    autofocus: isCurrent || index == 0,
+                    semanticLabel: channel.name,
+                    onSelect: () => onSelected(channel),
+                    child: Container(
+                      width: 130,
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: isCurrent
+                            ? Colors.white.withValues(alpha: 0.16)
+                            : Colors.white.withValues(alpha: 0.06),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          if (isCurrent)
+                            const Padding(
+                              padding: EdgeInsets.only(bottom: 6),
+                              child: Text(
+                                'ON NOW',
+                                style: TextStyle(
+                                  color: Colors.greenAccent,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: 0.6,
+                                ),
+                              ),
+                            ),
+                          Text(
+                            channel.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _ContextMenuOverlay extends ConsumerWidget {
   const _ContextMenuOverlay({
     required this.channel,
