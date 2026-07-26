@@ -1,6 +1,5 @@
 import 'package:feature_iptv/application/providers/channel_filters_provider.dart';
-import 'package:feature_iptv/presentation/tv_ux/sections/channel_table.dart';
-import 'package:feature_iptv/presentation/widgets/channel_logo.dart';
+import 'package:feature_iptv/presentation/tv_ux/sections/channel_library_grid.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:platform_channels/platform_channels.dart';
@@ -22,7 +21,7 @@ void main() {
     ),
   ];
 
-  testWidgets('wide table exposes metadata columns and availability strip', (
+  testWidgets('grid renders every channel as a tile with sort chips', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -30,7 +29,8 @@ void main() {
         home: Scaffold(
           body: SizedBox(
             width: 800,
-            child: ChannelTable(
+            height: 600,
+            child: ChannelLibraryGrid(
               channels: channels,
               metadataByChannelId: {
                 'one': ChannelBrowseMetadata(country: 'IN', language: 'en'),
@@ -45,67 +45,66 @@ void main() {
         ),
       ),
     );
-    expect(find.text('Flag'), findsOneWidget);
-    expect(find.text('Status'), findsOneWidget);
-    expect(find.text('Language'), findsOneWidget);
-    expect(find.byKey(const ValueKey('channel-row-one')), findsOneWidget);
-    expect(find.byType(ChannelLogo), findsNWidgets(2));
-    expect(find.text('🇮🇳'), findsOneWidget);
-    expect(find.text('🇺🇸'), findsOneWidget);
-    expect(find.text('🇮🇳 India'), findsNothing);
-    expect(find.text('🇺🇸 United States'), findsNothing);
-    expect(find.text('English'), findsNWidgets(2));
-    expect(find.byIcon(Icons.check_circle), findsOneWidget);
-    expect(find.byIcon(Icons.error), findsOneWidget);
 
-    expect(
-      tester.getCenter(find.text('🇺🇸')).dx,
-      greaterThan(tester.getCenter(find.text('English').last).dx),
-    );
+    expect(find.text('Name'), findsOneWidget);
+    expect(find.text('Category'), findsOneWidget);
+    expect(find.text('Language'), findsOneWidget);
+    expect(find.text('Country'), findsOneWidget);
+    expect(find.byKey(const ValueKey('channel-tile-one')), findsOneWidget);
+    expect(find.byKey(const ValueKey('channel-tile-two')), findsOneWidget);
+    expect(find.text('One'), findsOneWidget);
+    expect(find.text('ABC'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
-  testWidgets('compact table keeps channel options visible with small logos', (
-    tester,
-  ) async {
+  testWidgets('tapping a tile invokes onChannelSelected', (tester) async {
+    IPTVChannel? tapped;
     await tester.pumpWidget(
-      const MaterialApp(
+      MaterialApp(
         home: Scaffold(
           body: SizedBox(
-            width: 390,
-            child: ChannelTable(
-              channels: [
-                IPTVChannel(
-                  id: 'one',
-                  name: 'One',
-                  streamUrl: 'https://one',
-                  group: 'News',
-                  languages: ['en', 'it'],
-                ),
-              ],
-              metadataByChannelId: {
-                'one': ChannelBrowseMetadata(country: 'IT'),
-              },
-              availabilityByChannelId: {'one': StreamAvailability.restricted},
+            width: 800,
+            height: 600,
+            child: ChannelLibraryGrid(
+              channels: channels,
+              metadataByChannelId: const {},
+              onChannelSelected: (channel) => tapped = channel,
             ),
           ),
         ),
       ),
     );
 
-    expect(find.text('Flag'), findsOneWidget);
-    expect(find.text('Lang.'), findsOneWidget);
-    expect(find.text('Stat.'), findsOneWidget);
-    expect(find.text('🇮🇹'), findsOneWidget);
-    expect(find.text('🇮🇹 Italy'), findsNothing);
-    expect(find.text('English, Italian'), findsOneWidget);
-    expect(find.byIcon(Icons.newspaper), findsOneWidget);
-    expect(find.byIcon(Icons.warning_amber_rounded), findsOneWidget);
-    expect(tester.widget<ChannelLogo>(find.byType(ChannelLogo)).size, 26);
-    expect(
-      tester.getCenter(find.text('🇮🇹')).dx,
-      greaterThan(tester.getCenter(find.text('English, Italian')).dx),
+    await tester.tap(find.text('One'));
+    await tester.pump();
+
+    expect(tapped?.id, 'one');
+  });
+
+  testWidgets('sort chip tap invokes onSort with the tapped column', (
+    tester,
+  ) async {
+    ChannelSortColumn? sorted;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SizedBox(
+            width: 800,
+            height: 600,
+            child: ChannelLibraryGrid(
+              channels: channels,
+              metadataByChannelId: const {},
+              onSort: (column) => sorted = column,
+            ),
+          ),
+        ),
+      ),
     );
-    expect(tester.takeException(), isNull);
+
+    await tester.tap(find.text('Category'));
+    await tester.pump();
+
+    expect(sorted, ChannelSortColumn.category);
   });
 
   testWidgets('reports the currently visible channels for bounded scanning', (
@@ -128,7 +127,7 @@ void main() {
           body: SizedBox(
             width: 900,
             height: 260,
-            child: ChannelTable(
+            child: ChannelLibraryGrid(
               channels: manyChannels,
               metadataByChannelId: const {},
               onVisibleChannelsChanged: (channels) {
@@ -142,13 +141,10 @@ void main() {
     await tester.pump();
 
     expect(visibleIds, contains('channel-0'));
-    expect(visibleIds, contains('channel-30'));
     expect(visibleIds.length, lessThan(manyChannels.length));
   });
 
-  testWidgets('large channel table scrolls rows while keeping header pinned', (
-    tester,
-  ) async {
+  testWidgets('large grid scrolls tiles into view', (tester) async {
     final manyChannels = List<IPTVChannel>.generate(
       120,
       (index) => IPTVChannel(
@@ -164,8 +160,8 @@ void main() {
         home: Scaffold(
           body: SizedBox(
             width: 900,
-            height: 260,
-            child: ChannelTable(
+            height: 500,
+            child: ChannelLibraryGrid(
               channels: manyChannels,
               metadataByChannelId: const {},
             ),
@@ -174,19 +170,42 @@ void main() {
       ),
     );
 
-    expect(find.text('Name'), findsOneWidget);
     expect(find.text('Channel 0'), findsOneWidget);
     expect(find.text('Channel 119'), findsNothing);
 
     await tester.scrollUntilVisible(
       find.text('Channel 119'),
       620,
-      scrollable: find.byType(Scrollable),
+      scrollable: find.byType(Scrollable).first,
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Name'), findsOneWidget);
-    expect(find.text('Channel 0'), findsNothing);
     expect(find.text('Channel 119'), findsOneWidget);
+  });
+
+  testWidgets('availability dot renders for checked channels', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: SizedBox(
+            width: 800,
+            height: 600,
+            child: ChannelLibraryGrid(
+              channels: channels,
+              metadataByChannelId: {},
+              availabilityByChannelId: {
+                'one': StreamAvailability.available,
+                'two': StreamAvailability.restricted,
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.byTooltip('Channel reachable'), findsOneWidget);
+    expect(find.byTooltip('Channel may be restricted'), findsOneWidget);
   });
 }

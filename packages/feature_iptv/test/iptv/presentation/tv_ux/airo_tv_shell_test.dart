@@ -106,10 +106,15 @@ void main() {
   ) async {
     await pumpAt(tester, 390);
     expect(find.byKey(const ValueKey('video-stage')), findsOneWidget);
-    expect(find.byKey(const ValueKey('airo-tv-channel-table')), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('airo-tv-channel-library')),
+      findsOneWidget,
+    );
   });
 
-  testWidgets('wide layout retains the full channel table', (tester) async {
+  testWidgets('wide layout retains the full channel library grid', (
+    tester,
+  ) async {
     await pumpAt(tester, 900);
     expect(find.text('Country'), findsWidgets);
   });
