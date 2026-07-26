@@ -11,3 +11,9 @@
   remote/keyboard promotion.
 - Limited concurrent multiview decoders to two on web and mobile and four on
   desktop, with a hard ceiling of four and clear capacity feedback.
+- Changed channel sharing to copy versioned Airo TV deep links that can restore
+  the active Explorer filters and tune the channel without exposing stream
+  URLs.
+- Added video-frame sharing from a capture boundary that excludes Explorer
+  chrome. The host opens the platform share surface where image sharing is
+  available.
