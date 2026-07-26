@@ -10,8 +10,10 @@ import 'package:platform_streams/platform_streams.dart';
 import '../../application/providers/channel_filters_provider.dart';
 import '../../application/providers/channel_auto_scan_providers.dart';
 import '../../application/providers/connectivity_provider.dart';
+import '../../application/providers/control_row_visibility_provider.dart';
 import '../../application/providers/hotbar_channels_provider.dart';
 import '../../application/providers/iptv_providers.dart';
+import '../../application/providers/multiview_provider.dart';
 import '../../application/channel_metadata_enrichment.dart';
 import '../../application/channel_warmup_policy.dart';
 import 'sections/channel_info_bar.dart';
@@ -19,6 +21,10 @@ import 'sections/channel_library_grid.dart';
 import 'sections/filter_dialogs.dart';
 import 'sections/filter_row.dart';
 import 'sections/hotbar.dart';
+import 'sections/multiview_stage.dart';
+import 'sections/playback_stats_bar.dart';
+import 'sections/shell_help_dialog.dart';
+import 'sections/shell_settings_dialog.dart';
 
 class AiroTvShell extends ConsumerStatefulWidget {
   const AiroTvShell({
@@ -31,6 +37,7 @@ class AiroTvShell extends ConsumerStatefulWidget {
     this.availabilityByChannelId = const {},
     this.enrichMetadata = false,
     this.onPlaylistSourceTap,
+    this.onWaysToWatchTap,
   });
 
   final List<IPTVChannel> channels;
@@ -44,6 +51,9 @@ class AiroTvShell extends ConsumerStatefulWidget {
   /// Opens the playlist-source sheet from the LIVE bar. Wired on TV where
   /// the phone app bar is suppressed; null hides the entry.
   final VoidCallback? onPlaylistSourceTap;
+
+  /// Opens the fit/full/floating/Cast chooser from the LIVE info bar.
+  final VoidCallback? onWaysToWatchTap;
 
   @override
   ConsumerState<AiroTvShell> createState() => _AiroTvShellState();
@@ -72,6 +82,13 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
     final sort = ref.watch(channelSortProvider);
     final countryPrompt = ref.watch(channelCountryPromptProvider);
     final hasHotbar = ref.watch(hotbarChannelsProvider).isNotEmpty;
+    final rowVisibility = ref.watch(controlRowVisibilityProvider);
+    final multiview = ref.watch(multiviewProvider);
+    final playbackStats = ref
+        .watch(streamingStateProvider)
+        .asData
+        ?.value
+        .playbackStats;
     final autoScanState = ref.watch(channelAutoScanProvider);
     final availabilityByChannelId = {
       ...widget.availabilityByChannelId,
@@ -103,38 +120,75 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
         availabilityByChannelId,
       ),
       onVisibleChannelsChanged: _scheduleVisibleChannelScan,
+      multiviewChannelIds: {
+        for (final session in multiview.sessions) session.id,
+      },
+      onMultiviewToggle: (channel) => _toggleMultiview(context, channel),
     );
     final infoBar = ChannelInfoBar(
       channel: widget.currentChannel,
       onPlaylistSourceTap: widget.onPlaylistSourceTap,
+      onWaysToWatchTap: widget.onWaysToWatchTap,
     );
     final hotbar = Hotbar(
       channels: widget.channels,
       onChannelSelected: widget.onChannelSelected,
     );
     final filterRow = FilterRow(dimensions: snapshot.dimensions);
+    final videoStage = _VideoStageWithActions(
+      child: multiview.sessions.isEmpty
+          ? widget.videoStage
+          : MultiviewStage(
+              sessions: multiview.sessions,
+              featuredChannelId: multiview.featuredChannelId,
+              onPromote: (channelId) =>
+                  ref.read(multiviewProvider.notifier).promote(channelId),
+            ),
+      onSettings: () => showAiroTvShellSettingsDialog(context),
+      onHelp: () => showAiroTvShellHelpDialog(context),
+    );
+    final showChannel = rowVisibility.isVisible(AiroTvControlRow.channel);
+    final showStats =
+        rowVisibility.isVisible(AiroTvControlRow.stats) &&
+        widget.currentChannel != null &&
+        playbackStats != null &&
+        playbackStats.hasValues;
+    final showHotbar =
+        rowVisibility.isVisible(AiroTvControlRow.hotbar) && hasHotbar;
+    final showFilter = rowVisibility.isVisible(AiroTvControlRow.filter);
+    final showPlaylist = rowVisibility.isVisible(AiroTvControlRow.playlist);
 
     return LayoutBuilder(
       builder: (context, constraints) {
         final chrome = [
           const _OfflineBanner(),
-          _ExplorerSection(label: 'LIVE', height: 60, child: infoBar),
-          if (hasHotbar)
+          if (showChannel)
+            _ExplorerSection(label: 'LIVE', height: 60, child: infoBar),
+          if (showStats)
+            _ExplorerSection(
+              label: 'STATS',
+              height: 48,
+              child: PlaybackStatsBar(stats: playbackStats),
+            ),
+          if (showHotbar)
             _ExplorerSection(label: 'HOTBAR', height: 56, child: hotbar),
-          _ExplorerSection(label: 'FILTER', height: 48, child: filterRow),
+          if (showFilter)
+            _ExplorerSection(label: 'FILTER', height: 48, child: filterRow),
         ];
         final compactChrome = [
           const _OfflineBanner(),
-          infoBar,
-          if (hasHotbar) hotbar,
-          filterRow,
+          if (showChannel) infoBar,
+          if (showStats)
+            SizedBox(height: 48, child: PlaybackStatsBar(stats: playbackStats)),
+          if (showHotbar) hotbar,
+          if (showFilter) filterRow,
         ];
         if (constraints.maxWidth < 600) {
           return Column(
             children: [
-              Flexible(flex: 3, child: widget.videoStage),
+              Flexible(flex: 3, child: videoStage),
               ...compactChrome,
-              Expanded(flex: 4, child: table),
+              if (showPlaylist) Expanded(flex: 4, child: table),
             ],
           );
         }
@@ -166,7 +220,7 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
                           child: SizedBox(
                             width: 640,
                             height: 360,
-                            child: widget.videoStage,
+                            child: videoStage,
                           ),
                         ),
                       ),
@@ -189,7 +243,7 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
                       child: Column(
                         children: [
                           ...chrome,
-                          Expanded(child: table),
+                          if (showPlaylist) Expanded(child: table),
                         ],
                       ),
                     ),
@@ -201,6 +255,26 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
         );
       },
     );
+  }
+
+  Future<void> _toggleMultiview(
+    BuildContext context,
+    IPTVChannel channel,
+  ) async {
+    final result = await ref.read(multiviewProvider.notifier).toggle(channel);
+    if (!context.mounted) return;
+    final message = switch (result) {
+      MultiviewToggleResult.added => '${channel.name} added to multiview',
+      MultiviewToggleResult.removed => '${channel.name} removed from multiview',
+      MultiviewToggleResult.capacityReached =>
+        'This device supports up to '
+            '${ref.read(multiviewProvider).capacity} multiview streams.',
+      MultiviewToggleResult.failed =>
+        '${channel.name} could not be opened in multiview.',
+    };
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
   }
 
   void _selectChannel(
@@ -313,6 +387,80 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
         _countryPromptShowing = false;
       }
     });
+  }
+}
+
+class _VideoStageWithActions extends StatelessWidget {
+  const _VideoStageWithActions({
+    required this.child,
+    required this.onSettings,
+    required this.onHelp,
+  });
+
+  final Widget child;
+  final VoidCallback onSettings;
+  final VoidCallback onHelp;
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        child,
+        Positioned(
+          top: 8,
+          right: 8,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _StageAction(
+                key: const ValueKey('airo-tv-shell-help-action'),
+                icon: Icons.help_outline,
+                tooltip: 'Airo TV Help',
+                onPressed: onHelp,
+              ),
+              const SizedBox(width: 4),
+              _StageAction(
+                key: const ValueKey('airo-tv-shell-settings-action'),
+                icon: Icons.tune,
+                tooltip: 'Explorer rows',
+                onPressed: onSettings,
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _StageAction extends StatelessWidget {
+  const _StageAction({
+    super.key,
+    required this.icon,
+    required this.tooltip,
+    required this.onPressed,
+  });
+
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return TvFocusable(
+      semanticLabel: tooltip,
+      onSelect: onPressed,
+      child: Material(
+        color: Colors.black.withValues(alpha: 0.56),
+        shape: const CircleBorder(),
+        child: IconButton(
+          tooltip: tooltip,
+          onPressed: onPressed,
+          icon: Icon(icon, color: Colors.white),
+        ),
+      ),
+    );
   }
 }
 
