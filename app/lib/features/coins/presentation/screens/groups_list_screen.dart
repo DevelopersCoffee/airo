@@ -161,12 +161,14 @@ class GroupsListScreen extends ConsumerWidget {
                   .value;
               final user = cloudState?.user;
               final creatorId =
-                  cloudState?.isCloudMode == true && user?.isGoogleUser == true
+                  cloudState?.isCloudMode == true &&
+                      user?.isGoogleIdentity == true
                   ? user!.id
                   : 'local_user';
               final creatorDisplayName =
-                  cloudState?.isCloudMode == true && user?.isGoogleUser == true
-                  ? user!.username
+                  cloudState?.isCloudMode == true &&
+                      user?.isGoogleIdentity == true
+                  ? (user!.username ?? 'You')
                   : 'You';
 
               await ref

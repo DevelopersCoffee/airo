@@ -1,28 +1,28 @@
+import 'package:feature_coins_core/feature_coins_core.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../../../../core/auth/auth_service.dart';
-import '../../../../core/auth/google_auth_service.dart';
+import 'coins_identity_provider.dart';
 
 enum CoinsStorageMode { local, cloud }
 
 class CoinsCloudModeState {
   final CoinsStorageMode mode;
-  final User? user;
+  final CoinsUser? user;
   final String? errorMessage;
 
   const CoinsCloudModeState({required this.mode, this.user, this.errorMessage});
 
   bool get isCloudMode => mode == CoinsStorageMode.cloud;
 
-  bool get hasGoogleIdentity => user?.isGoogleUser == true;
+  bool get hasGoogleIdentity => user?.isGoogleIdentity == true;
 
-  String get userLabel => user?.email ?? user?.username ?? 'Not signed in';
+  String get userLabel => user?.label ?? 'Not signed in';
 
   CoinsCloudModeState copyWith({
     CoinsStorageMode? mode,
-    User? user,
+    CoinsUser? user,
     String? errorMessage,
     bool clearError = false,
   }) {
@@ -38,13 +38,15 @@ final coinsCloudModeControllerProvider =
     StateNotifierProvider<
       CoinsCloudModeController,
       AsyncValue<CoinsCloudModeState>
-    >((ref) => CoinsCloudModeController());
+    >((ref) => CoinsCloudModeController(ref.watch(coinsIdentityProvider)));
 
 class CoinsCloudModeController
     extends StateNotifier<AsyncValue<CoinsCloudModeState>> {
-  CoinsCloudModeController() : super(const AsyncValue.loading()) {
+  CoinsCloudModeController(this._identity) : super(const AsyncValue.loading()) {
     _load();
   }
+
+  final CoinsIdentity _identity;
 
   static const String _modeKey = 'coins_storage_mode';
 
@@ -54,10 +56,10 @@ class CoinsCloudModeController
     final mode = modeName == CoinsStorageMode.cloud.name
         ? CoinsStorageMode.cloud
         : CoinsStorageMode.local;
-    final user = AuthService.instance.currentUser;
+    final user = _identity.current;
     state = AsyncValue.data(
       CoinsCloudModeState(
-        mode: user?.isGoogleUser == true ? mode : CoinsStorageMode.local,
+        mode: user?.isGoogleIdentity == true ? mode : CoinsStorageMode.local,
         user: user,
       ),
     );
@@ -66,15 +68,15 @@ class CoinsCloudModeController
   Future<bool> enableCloudMode() async {
     state = const AsyncValue.loading();
     try {
-      var user = AuthService.instance.currentUser;
-      if (user?.isGoogleUser != true) {
-        final result = await GoogleAuthService.instance.signInWithGoogle();
-        if (!result.success || result.user == null) {
+      var user = _identity.current;
+      if (user?.isGoogleIdentity != true) {
+        final result = await _identity.signInWithGoogle();
+        if (!result.isSuccess) {
           state = AsyncValue.data(
             CoinsCloudModeState(
               mode: CoinsStorageMode.local,
-              user: AuthService.instance.currentUser,
-              errorMessage: result.message ?? 'Google sign-in failed',
+              user: _identity.current,
+              errorMessage: result.errorMessage ?? 'Google sign-in failed',
             ),
           );
           return false;
@@ -100,7 +102,7 @@ class CoinsCloudModeController
     state = AsyncValue.data(
       CoinsCloudModeState(
         mode: CoinsStorageMode.local,
-        user: AuthService.instance.currentUser,
+        user: _identity.current,
       ),
     );
   }

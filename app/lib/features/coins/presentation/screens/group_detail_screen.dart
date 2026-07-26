@@ -141,7 +141,7 @@ class GroupDetailScreen extends ConsumerWidget {
     var isCloudMode = cloudState?.isCloudMode == true;
     var user = cloudState?.user;
 
-    if (!isCloudMode || user?.isGoogleUser != true) {
+    if (!isCloudMode || user?.isGoogleIdentity != true) {
       final shouldEnable = await showDialog<bool>(
         context: context,
         builder: (dialogContext) => AlertDialog(
@@ -169,7 +169,7 @@ class GroupDetailScreen extends ConsumerWidget {
           .enableCloudMode();
       user = ref.read(coinsCloudModeControllerProvider).value?.user;
       if (!context.mounted) return;
-      if (!isCloudMode || user?.isGoogleUser != true) {
+      if (!isCloudMode || user?.isGoogleIdentity != true) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Google sign-in is required to share')),
         );

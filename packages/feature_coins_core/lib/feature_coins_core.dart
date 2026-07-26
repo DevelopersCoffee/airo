@@ -5,6 +5,7 @@
 /// and ADR-0010 (package-first coin development).
 library;
 
+export 'src/application/coins_identity.dart';
 export 'src/application/services/android_finance_import_service.dart';
 export 'src/application/services/coins_invite_link_service.dart';
 export 'src/application/services/coins_notification_service.dart';
