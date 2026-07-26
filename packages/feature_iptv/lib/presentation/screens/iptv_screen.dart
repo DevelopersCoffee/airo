@@ -5,7 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:core_ui/core_ui.dart';
+import '../../application/iptv_deep_link.dart';
 import '../../application/player_backgrounding_coordinator.dart';
+import '../../application/providers/channel_filters_provider.dart';
 import '../../application/providers/iptv_providers.dart';
 import '../../application/wakelock_playback_coordinator.dart';
 import '../../application/providers/rails_provider.dart';
@@ -31,7 +33,9 @@ class IPTVScreen extends ConsumerStatefulWidget {
     this.onOpenVod,
     this.onSettings,
     this.onPickLocalMediaForTv,
+    this.deepLinkIntent,
     this.deepLinkChannelId,
+    this.onShareVideoFrame,
     this.tenFootMode = false,
     super.key,
   });
@@ -60,12 +64,22 @@ class IPTVScreen extends ConsumerStatefulWidget {
   /// depend on `file_picker`; the host app owns the native file-picker wiring.
   final Future<PhoneLocalMediaItem?> Function()? onPickLocalMediaForTv;
 
+  /// Parsed link intent supplied by the host router. Includes the channel and
+  /// optional Explorer filters without coupling this package to go_router.
+  final IptvDeepLinkIntent? deepLinkIntent;
+
+  /// Host-owned image delivery for frame-only screenshots.
+  final Future<void> Function(Uint8List pngBytes)? onShareVideoFrame;
+
   /// Channel id resolved from a deep link (universal link, home-screen
   /// widget, or "continue watching" notification tap) or the app's
   /// resume-last-channel affordance. When set, playback starts immediately
   /// in [initState] instead of waiting for a tap on the browse grid, and
   /// the browse grid is not the first frame rendered.
   final String? deepLinkChannelId;
+
+  String? get effectiveDeepLinkChannelId =>
+      deepLinkIntent?.channelId ?? deepLinkChannelId;
 
   @override
   ConsumerState<IPTVScreen> createState() => _IPTVScreenState();
@@ -81,7 +95,7 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
   /// (in the post-frame callback below) hasn't yet either started playback
   /// or determined the channel doesn't exist. Gates the first frame so the
   /// browse grid never flashes before deep-linked playback begins.
-  late bool _deepLinkPending = widget.deepLinkChannelId != null;
+  late bool _deepLinkPending = widget.effectiveDeepLinkChannelId != null;
 
   /// True once the user has tapped Cancel on the deep-link loading screen.
   /// Sticky for the lifetime of this deep-link attempt: unlike
@@ -116,10 +130,14 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
       if (mounted) setState(() => _isPictureInPicture = isActive);
     });
 
-    final deepLinkId = widget.deepLinkChannelId;
+    final deepLinkId = widget.effectiveDeepLinkChannelId;
     if (deepLinkId != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) async {
         if (!mounted) return;
+        final deepLinkFilters = widget.deepLinkIntent?.filters;
+        if (deepLinkFilters != null) {
+          ref.read(channelFiltersProvider.notifier).restore(deepLinkFilters);
+        }
         // Await the channel list rather than reading its current `.value`:
         // the list is almost never loaded yet by the very next frame (it's
         // usually still an in-flight fetch), so a synchronous read would
@@ -157,11 +175,19 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
           _playChannel(channel);
           setState(() => _deepLinkPending = false);
         } else {
-          // Missing (or unresolvable) channel: fall through to the normal
-          // browse-grid landing (spec Error Handling) — no snackbar wiring
-          // needed here since the grid is the existing default UI, not a
-          // special error state.
           setState(() => _deepLinkPending = false);
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) return;
+            ScaffoldMessenger.of(context)
+              ..hideCurrentSnackBar()
+              ..showSnackBar(
+                const SnackBar(
+                  content: Text(
+                    'That shared channel is no longer available. Browse to choose another.',
+                  ),
+                ),
+              );
+          });
         }
       });
     }
@@ -720,13 +746,14 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
         AiroResponsiveScaffold(
           padding: EdgeInsets.zero,
           body: IptvResumeGate(
-            enabled: widget.deepLinkChannelId == null,
+            enabled: widget.effectiveDeepLinkChannelId == null,
             child: _StreamTabContent(
               key: const ValueKey('iptv-browse-grid'),
               onChannelTap: _playChannelFullscreen,
               onFullscreenToggle: _toggleFullscreen,
               onPlaylistSourceTap: _showPlaylistSheet,
               onWaysToWatchTap: _showWaysToWatch,
+              onShareVideoFrame: widget.onShareVideoFrame,
               playlistSourceInInfoBar: true,
             ),
           ),
@@ -781,7 +808,7 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
           ],
         ),
         body: IptvResumeGate(
-          enabled: widget.deepLinkChannelId == null,
+          enabled: widget.effectiveDeepLinkChannelId == null,
           child: Column(
             children: [
               Expanded(
@@ -791,6 +818,7 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
                   onFullscreenToggle: _toggleFullscreen,
                   onPlaylistSourceTap: _showPlaylistSheet,
                   onWaysToWatchTap: _showWaysToWatch,
+                  onShareVideoFrame: widget.onShareVideoFrame,
                 ),
               ),
               const IptvCastMiniController(),
@@ -1070,6 +1098,7 @@ class _StreamTabContent extends ConsumerWidget {
     required this.onFullscreenToggle,
     required this.onPlaylistSourceTap,
     required this.onWaysToWatchTap,
+    this.onShareVideoFrame,
     this.playlistSourceInInfoBar = false,
   });
 
@@ -1077,6 +1106,7 @@ class _StreamTabContent extends ConsumerWidget {
   final VoidCallback onFullscreenToggle;
   final VoidCallback onPlaylistSourceTap;
   final VoidCallback onWaysToWatchTap;
+  final Future<void> Function(Uint8List pngBytes)? onShareVideoFrame;
 
   /// True on TV (no app bar): surfaces the playlist-source entry in the
   /// shell's LIVE bar instead. Phones keep it in the app bar only.
@@ -1116,6 +1146,7 @@ class _StreamTabContent extends ConsumerWidget {
       onChannelSelected: onChannelTap,
       onPlaylistSourceTap: playlistSourceInInfoBar ? onPlaylistSourceTap : null,
       onWaysToWatchTap: onWaysToWatchTap,
+      onShareVideoFrame: onShareVideoFrame,
       videoStage: AspectRatio(
         aspectRatio: 16 / 9,
         child: activeChannel == null

@@ -1,8 +1,11 @@
 import 'dart:async';
+import 'dart:typed_data';
+import 'dart:ui' as ui;
 
 import 'package:collection/collection.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:platform_channels/platform_channels.dart';
 import 'package:platform_streams/platform_streams.dart';
@@ -26,6 +29,9 @@ import 'sections/playback_stats_bar.dart';
 import 'sections/shell_help_dialog.dart';
 import 'sections/shell_settings_dialog.dart';
 
+typedef VideoFrameEncoder =
+    Future<Uint8List> Function(RenderRepaintBoundary boundary);
+
 class AiroTvShell extends ConsumerStatefulWidget {
   const AiroTvShell({
     super.key,
@@ -38,6 +44,8 @@ class AiroTvShell extends ConsumerStatefulWidget {
     this.enrichMetadata = false,
     this.onPlaylistSourceTap,
     this.onWaysToWatchTap,
+    this.onShareVideoFrame,
+    this.videoFrameEncoder,
   });
 
   final List<IPTVChannel> channels;
@@ -55,6 +63,13 @@ class AiroTvShell extends ConsumerStatefulWidget {
   /// Opens the fit/full/floating/Cast chooser from the LIVE info bar.
   final VoidCallback? onWaysToWatchTap;
 
+  /// Host-owned delivery for a frame-only PNG capture.
+  final Future<void> Function(Uint8List pngBytes)? onShareVideoFrame;
+
+  /// Test seam for deterministic rendering validation. Production uses the
+  /// boundary's PNG encoder.
+  final VideoFrameEncoder? videoFrameEncoder;
+
   @override
   ConsumerState<AiroTvShell> createState() => _AiroTvShellState();
 }
@@ -64,6 +79,7 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
   bool _countryPromptShowing = false;
   Timer? _visibleScanDebounce;
   String _visibleScanSignature = '';
+  final _videoCaptureKey = GlobalKey();
 
   @override
   void dispose() {
@@ -129,6 +145,9 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
       channel: widget.currentChannel,
       onPlaylistSourceTap: widget.onPlaylistSourceTap,
       onWaysToWatchTap: widget.onWaysToWatchTap,
+      onScreenshotTap: widget.onShareVideoFrame == null
+          ? null
+          : () => _captureVideoFrame(context),
     );
     final hotbar = Hotbar(
       channels: widget.channels,
@@ -136,14 +155,20 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
     );
     final filterRow = FilterRow(dimensions: snapshot.dimensions);
     final videoStage = _VideoStageWithActions(
-      child: multiview.sessions.isEmpty
-          ? widget.videoStage
-          : MultiviewStage(
-              sessions: multiview.sessions,
-              featuredChannelId: multiview.featuredChannelId,
-              onPromote: (channelId) =>
-                  ref.read(multiviewProvider.notifier).promote(channelId),
-            ),
+      child: KeyedSubtree(
+        key: const ValueKey('airo-tv-video-capture-scope'),
+        child: RepaintBoundary(
+          key: _videoCaptureKey,
+          child: multiview.sessions.isEmpty
+              ? widget.videoStage
+              : MultiviewStage(
+                  sessions: multiview.sessions,
+                  featuredChannelId: multiview.featuredChannelId,
+                  onPromote: (channelId) =>
+                      ref.read(multiviewProvider.notifier).promote(channelId),
+                ),
+        ),
+      ),
       onSettings: () => showAiroTvShellSettingsDialog(context),
       onHelp: () => showAiroTvShellHelpDialog(context),
     );
@@ -272,6 +297,46 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
       MultiviewToggleResult.failed =>
         '${channel.name} could not be opened in multiview.',
     };
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  Future<void> _captureVideoFrame(BuildContext context) async {
+    final share = widget.onShareVideoFrame;
+    final boundary =
+        _videoCaptureKey.currentContext?.findRenderObject()
+            as RenderRepaintBoundary?;
+    if (share == null || boundary == null) {
+      _showCaptureMessage(context, 'Video frame is not ready to share.');
+      return;
+    }
+    try {
+      final bytes =
+          await (widget.videoFrameEncoder?.call(boundary) ??
+              _encodeVideoBoundary(boundary));
+      await share(bytes);
+      if (!context.mounted) return;
+      _showCaptureMessage(context, 'Video frame ready to share.');
+    } catch (error) {
+      debugPrint('[AiroTvShell] video-frame capture failed: $error');
+      if (!context.mounted) return;
+      _showCaptureMessage(context, 'Could not capture this video frame.');
+    }
+  }
+
+  Future<Uint8List> _encodeVideoBoundary(RenderRepaintBoundary boundary) async {
+    final image = await boundary.toImage(pixelRatio: 1);
+    try {
+      final data = await image.toByteData(format: ui.ImageByteFormat.png);
+      if (data == null) throw StateError('PNG encoding failed');
+      return data.buffer.asUint8List();
+    } finally {
+      image.dispose();
+    }
+  }
+
+  void _showCaptureMessage(BuildContext context, String message) {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(SnackBar(content: Text(message)));

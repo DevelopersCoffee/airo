@@ -1,5 +1,8 @@
+import 'dart:typed_data';
+
 import 'package:feature_coin/feature_coin.dart';
 import 'package:go_router/go_router.dart';
+import 'package:share_plus/share_plus.dart';
 import '../../features/auth/screens/login_screen.dart';
 import '../../features/auth/screens/register_screen.dart';
 import '../../features/bill_split/presentation/screens/bill_split_screen.dart';
@@ -79,6 +82,13 @@ class AppRouter {
         ),
         GoRoute(path: '/beats', redirect: (context, state) => '/music'),
         GoRoute(path: '/stream', redirect: (context, state) => '/iptv'),
+        GoRoute(
+          path: '/airo/iptv',
+          redirect: (context, state) => Uri(
+            path: '/iptv',
+            queryParameters: state.uri.queryParameters,
+          ).toString(),
+        ),
         GoRoute(path: '/live', redirect: (context, state) => '/music'),
         GoRoute(path: '/live/music', redirect: (context, state) => '/music'),
         GoRoute(path: '/live/tv', redirect: (context, state) => '/iptv'),
@@ -271,7 +281,8 @@ class AppRouter {
                     onPickLocalMediaForTv: kEnablePhoneMediaReceiverExperimental
                         ? pickPhoneLocalMediaForTv
                         : null,
-                    deepLinkChannelId: state.uri.queryParameters['channel'],
+                    deepLinkIntent: IptvDeepLinkIntent.tryParse(state.uri),
+                    onShareVideoFrame: _shareIptvVideoFrame,
                   ),
                 ),
                 GoRoute(
@@ -387,4 +398,19 @@ class AppRouter {
       ),
     );
   }
+}
+
+Future<void> _shareIptvVideoFrame(Uint8List pngBytes) async {
+  await SharePlus.instance.share(
+    ShareParams(
+      files: [
+        XFile.fromData(
+          pngBytes,
+          mimeType: 'image/png',
+          name: 'airo-tv-frame.png',
+        ),
+      ],
+      subject: 'Airo TV video frame',
+    ),
+  );
 }
