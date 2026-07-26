@@ -1,0 +1,101 @@
+import 'package:feature_iptv/feature_iptv.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+// AiroTV D-pad design's "CONTEXT MENU (MENU key)" screen — reachable from
+// the live player via the remote's MENU key, previously entirely unhandled
+// (TvInputKey.menu fell through to the switch's default case).
+void main() {
+  Future<ProviderContainer> pumpPlayer(WidgetTester tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    final container = ProviderContainer(
+      overrides: [
+        sharedPreferencesProvider.overrideWithValue(prefs),
+        streamingStateProvider.overrideWith(
+          (ref) => Stream.value(
+            StreamingState(
+              playbackState: PlaybackState.playing,
+              isLiveStream: true,
+              currentChannel: IPTVChannel(
+                id: 'news-1',
+                name: 'City News Live',
+                streamUrl: 'https://example.com/news.m3u8',
+                group: 'News',
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: const MaterialApp(
+          home: Scaffold(
+            body: SizedBox(
+              width: 960,
+              height: 540,
+              child: VideoPlayerWidget(),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    return container;
+  }
+
+  testWidgets('MENU key opens the context menu for the current channel', (
+    tester,
+  ) async {
+    await pumpPlayer(tester);
+
+    expect(find.text('Actions for'), findsNothing);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.contextMenu);
+    await tester.pump();
+
+    expect(find.text('Actions for'), findsOneWidget);
+    expect(find.text('City News Live'), findsWidgets);
+    expect(find.text('Add to favorites'), findsOneWidget);
+  });
+
+  testWidgets('selecting Add to favorites toggles the favorite and closes '
+      'the menu', (tester) async {
+    final container = await pumpPlayer(tester);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.contextMenu);
+    await tester.pump();
+
+    await tester.tap(find.text('Add to favorites'));
+    await tester.pump();
+    await tester.pump();
+
+    final ids = await container.read(favoriteChannelIdsProvider.future);
+    expect(ids, contains('news-1'));
+    expect(find.text('Actions for'), findsNothing);
+    expect(find.text('City News Live added to favorites'), findsOneWidget);
+  });
+
+  testWidgets('BACK closes the context menu without navigating away', (
+    tester,
+  ) async {
+    await pumpPlayer(tester);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.contextMenu);
+    await tester.pump();
+    expect(find.text('Actions for'), findsOneWidget);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pump();
+
+    expect(find.text('Actions for'), findsNothing);
+  });
+}
