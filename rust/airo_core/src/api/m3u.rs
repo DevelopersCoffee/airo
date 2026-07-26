@@ -365,6 +365,87 @@ fn channels_from_parse_result(result: M3uParseResult) -> M3uChannelParseResult {
     }
 }
 
+/// Incrementally shape M3U channels from a byte slice without materializing a
+/// playlist-sized `String` or `Vec<M3uEntry>`.
+///
+/// The playlist engine passes a read-only mmap here. Invalid UTF-8 lines are
+/// counted as malformed and never cross the FFI boundary.
+pub(crate) fn for_each_m3u_channel_bytes<F>(
+    bytes: &[u8],
+    mut on_channel: F,
+) -> Result<M3uParseStats, String>
+where
+    F: FnMut(M3uChannel) -> Result<(), String>,
+{
+    let started_at = Instant::now();
+    let mut pending: Option<PendingExtInf> = None;
+    let mut stats = M3uParseStats::default();
+    let mut offset = 0;
+
+    while offset <= bytes.len() {
+        let remaining = &bytes[offset..];
+        let (line_bytes, next_offset) = match memchr(b'\n', remaining) {
+            Some(newline_index) => (
+                &bytes[offset..offset + newline_index],
+                Some(offset + newline_index + 1),
+            ),
+            None => (&bytes[offset..], None),
+        };
+
+        match std::str::from_utf8(line_bytes) {
+            Ok(line) => {
+                let line = line.trim();
+                if line.starts_with("#EXTINF:") {
+                    if pending.is_some() {
+                        stats.skipped_count += 1;
+                    }
+                    match parse_extinf(line) {
+                        Some(entry) => pending = Some(entry),
+                        None => {
+                            stats.malformed_count += 1;
+                            pending = None;
+                        }
+                    }
+                } else if !line.is_empty() && !line.starts_with('#') {
+                    if let Some(info) = pending.take() {
+                        stats.parsed_count = stats.parsed_count.saturating_add(1);
+                        if let Some(url) = normalize_stream_url(line) {
+                            on_channel(M3uChannel {
+                                name: format_channel_name(&info.name),
+                                url,
+                                logo: info.logo.as_deref().and_then(normalize_logo_url),
+                                group: info.group,
+                                tvg_id: info.tvg_id,
+                                tvg_name: info.tvg_name,
+                                language: info.language,
+                            })?;
+                        }
+                    }
+                }
+            }
+            Err(_) => {
+                stats.malformed_count = stats.malformed_count.saturating_add(1);
+                pending = None;
+            }
+        }
+
+        let Some(next_offset) = next_offset else {
+            break;
+        };
+        offset = next_offset;
+    }
+
+    if pending.is_some() {
+        stats.skipped_count = stats.skipped_count.saturating_add(1);
+    }
+    stats.elapsed_millis = started_at
+        .elapsed()
+        .as_millis()
+        .try_into()
+        .unwrap_or(i64::MAX);
+    Ok(stats)
+}
+
 fn normalize_channel_name(name: &str) -> String {
     name.chars()
         .filter(|c| c.is_ascii_alphanumeric())

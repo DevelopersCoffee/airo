@@ -2,5 +2,6 @@
 // Feature packages use this package's public API; never import frb types directly.
 export 'src/m3u.dart';
 export 'src/native_bridge.dart';
+export 'src/playlist_index.dart';
 export 'src/text.dart';
 export 'src/xmltv.dart';

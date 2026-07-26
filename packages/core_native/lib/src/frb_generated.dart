@@ -4,6 +4,7 @@
 // ignore_for_file: unused_import, unused_element, unnecessary_import, duplicate_ignore, invalid_use_of_internal_member, annotate_overrides, non_constant_identifier_names, curly_braces_in_flow_control_structures, prefer_const_literals_to_create_immutables, unused_field
 
 import 'api/m3u.dart';
+import 'api/playlist_engine.dart';
 import 'api/text.dart';
 import 'api/xmltv.dart';
 import 'dart:async';
@@ -66,7 +67,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.11.1';
 
   @override
-  int get rustContentHash => -1828127264;
+  int get rustContentHash => 2027540865;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -86,6 +87,18 @@ abstract class RustLibApi extends BaseApi {
   Future<M3uPlaylist> crateApiM3UM3UPlaylistDefault();
 
   Future<String> crateApiTextNormalizeChannelName({required String name});
+
+  Future<PlaylistIndexOpenResult> crateApiPlaylistEngineOpenPlaylistIndex({
+    required String sourcePath,
+    required String cacheDirectory,
+    required int firstPageLimit,
+  });
+
+  Future<M3uChannelPage> crateApiPlaylistEnginePagePlaylistIndex({
+    required String indexPath,
+    required int offset,
+    required int limit,
+  });
 
   Future<M3uChannelParseResult> crateApiM3UParseM3UChannelsWithStats({
     required String content,
@@ -122,6 +135,13 @@ abstract class RustLibApi extends BaseApi {
   Future<XmltvParseResult> crateApiXmltvParseXmltvProgrammesFile({
     required String path,
     required int maxProgrammes,
+  });
+
+  Future<M3uChannelPage> crateApiPlaylistEngineSearchPlaylistIndex({
+    required String indexPath,
+    required String query,
+    required int offset,
+    required int limit,
   });
 
   Future<XmltvCurrentNextResult> crateApiXmltvXmltvCurrentNextResultDefault();
@@ -287,6 +307,80 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
+  Future<PlaylistIndexOpenResult> crateApiPlaylistEngineOpenPlaylistIndex({
+    required String sourcePath,
+    required String cacheDirectory,
+    required int firstPageLimit,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(sourcePath, serializer);
+          sse_encode_String(cacheDirectory, serializer);
+          sse_encode_u_32(firstPageLimit, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 6,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_playlist_index_open_result,
+          decodeErrorData: sse_decode_playlist_engine_error,
+        ),
+        constMeta: kCrateApiPlaylistEngineOpenPlaylistIndexConstMeta,
+        argValues: [sourcePath, cacheDirectory, firstPageLimit],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiPlaylistEngineOpenPlaylistIndexConstMeta =>
+      const TaskConstMeta(
+        debugName: "open_playlist_index",
+        argNames: ["sourcePath", "cacheDirectory", "firstPageLimit"],
+      );
+
+  @override
+  Future<M3uChannelPage> crateApiPlaylistEnginePagePlaylistIndex({
+    required String indexPath,
+    required int offset,
+    required int limit,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(indexPath, serializer);
+          sse_encode_u_32(offset, serializer);
+          sse_encode_u_32(limit, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 7,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_m_3_u_channel_page,
+          decodeErrorData: sse_decode_playlist_engine_error,
+        ),
+        constMeta: kCrateApiPlaylistEnginePagePlaylistIndexConstMeta,
+        argValues: [indexPath, offset, limit],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiPlaylistEnginePagePlaylistIndexConstMeta =>
+      const TaskConstMeta(
+        debugName: "page_playlist_index",
+        argNames: ["indexPath", "offset", "limit"],
+      );
+
+  @override
   Future<M3uChannelParseResult> crateApiM3UParseM3UChannelsWithStats({
     required String content,
   }) {
@@ -298,7 +392,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 6,
+            funcId: 8,
             port: port_,
           );
         },
@@ -329,7 +423,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 7,
+            funcId: 9,
             port: port_,
           );
         },
@@ -361,7 +455,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 8,
+            funcId: 10,
             port: port_,
           );
         },
@@ -394,7 +488,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 9,
+            funcId: 11,
             port: port_,
           );
         },
@@ -425,7 +519,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 10,
+            funcId: 12,
             port: port_,
           );
         },
@@ -458,7 +552,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 11,
+            funcId: 13,
             port: port_,
           );
         },
@@ -497,7 +591,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 12,
+            funcId: 14,
             port: port_,
           );
         },
@@ -537,7 +631,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 13,
+            funcId: 15,
             port: port_,
           );
         },
@@ -572,7 +666,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 14,
+            funcId: 16,
             port: port_,
           );
         },
@@ -594,6 +688,45 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
+  Future<M3uChannelPage> crateApiPlaylistEngineSearchPlaylistIndex({
+    required String indexPath,
+    required String query,
+    required int offset,
+    required int limit,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(indexPath, serializer);
+          sse_encode_String(query, serializer);
+          sse_encode_u_32(offset, serializer);
+          sse_encode_u_32(limit, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 17,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_m_3_u_channel_page,
+          decodeErrorData: sse_decode_playlist_engine_error,
+        ),
+        constMeta: kCrateApiPlaylistEngineSearchPlaylistIndexConstMeta,
+        argValues: [indexPath, query, offset, limit],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiPlaylistEngineSearchPlaylistIndexConstMeta =>
+      const TaskConstMeta(
+        debugName: "search_playlist_index",
+        argNames: ["indexPath", "query", "offset", "limit"],
+      );
+
+  @override
   Future<XmltvCurrentNextResult> crateApiXmltvXmltvCurrentNextResultDefault() {
     return handler.executeNormal(
       NormalTask(
@@ -602,7 +735,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 15,
+            funcId: 18,
             port: port_,
           );
         },
@@ -632,7 +765,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 16,
+            funcId: 19,
             port: port_,
           );
         },
@@ -662,7 +795,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 17,
+            funcId: 20,
             port: port_,
           );
         },
@@ -692,7 +825,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 18,
+            funcId: 21,
             port: port_,
           );
         },
@@ -742,6 +875,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   XmltvProgramme dco_decode_box_autoadd_xmltv_programme(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return dco_decode_xmltv_programme(raw);
+  }
+
+  @protected
+  int dco_decode_i_32(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw as int;
   }
 
   @protected
@@ -810,6 +949,20 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       tvgId: dco_decode_opt_String(arr[4]),
       tvgName: dco_decode_opt_String(arr[5]),
       language: dco_decode_opt_String(arr[6]),
+    );
+  }
+
+  @protected
+  M3uChannelPage dco_decode_m_3_u_channel_page(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 4)
+      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
+    return M3uChannelPage(
+      channels: dco_decode_list_m_3_u_channel(arr[0]),
+      offset: dco_decode_u_32(arr[1]),
+      total: dco_decode_u_32(arr[2]),
+      hasMore: dco_decode_bool(arr[3]),
     );
   }
 
@@ -901,6 +1054,74 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  PlaylistCacheStatus dco_decode_playlist_cache_status(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return PlaylistCacheStatus.values[raw as int];
+  }
+
+  @protected
+  PlaylistEngineError dco_decode_playlist_engine_error(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 2)
+      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
+    return PlaylistEngineError(
+      code: dco_decode_playlist_engine_error_code(arr[0]),
+      message: dco_decode_String(arr[1]),
+    );
+  }
+
+  @protected
+  PlaylistEngineErrorCode dco_decode_playlist_engine_error_code(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return PlaylistEngineErrorCode.values[raw as int];
+  }
+
+  @protected
+  PlaylistIndexDescriptor dco_decode_playlist_index_descriptor(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 5)
+      throw Exception('unexpected arr length: expect 5 but see ${arr.length}');
+    return PlaylistIndexDescriptor(
+      indexPath: dco_decode_String(arr[0]),
+      cachePath: dco_decode_String(arr[1]),
+      totalChannels: dco_decode_u_32(arr[2]),
+      sourceSizeBytes: dco_decode_u_64(arr[3]),
+      sourceModifiedNanos: dco_decode_u_64(arr[4]),
+    );
+  }
+
+  @protected
+  PlaylistIndexOpenResult dco_decode_playlist_index_open_result(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 5)
+      throw Exception('unexpected arr length: expect 5 but see ${arr.length}');
+    return PlaylistIndexOpenResult(
+      descriptor: dco_decode_playlist_index_descriptor(arr[0]),
+      firstPage: dco_decode_m_3_u_channel_page(arr[1]),
+      parseStats: dco_decode_m_3_u_parse_stats(arr[2]),
+      cacheStatus: dco_decode_playlist_cache_status(arr[3]),
+      timings: dco_decode_playlist_open_timings(arr[4]),
+    );
+  }
+
+  @protected
+  PlaylistOpenTimings dco_decode_playlist_open_timings(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 4)
+      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
+    return PlaylistOpenTimings(
+      totalMicros: dco_decode_u_64(arr[0]),
+      sourceMapMicros: dco_decode_u_64(arr[1]),
+      indexBuildMicros: dco_decode_u_64(arr[2]),
+      firstPageMicros: dco_decode_u_64(arr[3]),
+    );
+  }
+
+  @protected
   (String, String) dco_decode_record_string_string(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
@@ -914,6 +1135,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   int dco_decode_u_32(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw as int;
+  }
+
+  @protected
+  BigInt dco_decode_u_64(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dcoDecodeU64(raw);
   }
 
   @protected
@@ -1044,6 +1271,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  int sse_decode_i_32(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return deserializer.buffer.getInt32();
+  }
+
+  @protected
   PlatformInt64 sse_decode_i_64(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return deserializer.buffer.getPlatformInt64();
@@ -1156,6 +1389,21 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  M3uChannelPage sse_decode_m_3_u_channel_page(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_channels = sse_decode_list_m_3_u_channel(deserializer);
+    var var_offset = sse_decode_u_32(deserializer);
+    var var_total = sse_decode_u_32(deserializer);
+    var var_hasMore = sse_decode_bool(deserializer);
+    return M3uChannelPage(
+      channels: var_channels,
+      offset: var_offset,
+      total: var_total,
+      hasMore: var_hasMore,
+    );
+  }
+
+  @protected
   M3uChannelParseResult sse_decode_m_3_u_channel_parse_result(
     SseDeserializer deserializer,
   ) {
@@ -1257,6 +1505,89 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  PlaylistCacheStatus sse_decode_playlist_cache_status(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var inner = sse_decode_i_32(deserializer);
+    return PlaylistCacheStatus.values[inner];
+  }
+
+  @protected
+  PlaylistEngineError sse_decode_playlist_engine_error(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_code = sse_decode_playlist_engine_error_code(deserializer);
+    var var_message = sse_decode_String(deserializer);
+    return PlaylistEngineError(code: var_code, message: var_message);
+  }
+
+  @protected
+  PlaylistEngineErrorCode sse_decode_playlist_engine_error_code(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var inner = sse_decode_i_32(deserializer);
+    return PlaylistEngineErrorCode.values[inner];
+  }
+
+  @protected
+  PlaylistIndexDescriptor sse_decode_playlist_index_descriptor(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_indexPath = sse_decode_String(deserializer);
+    var var_cachePath = sse_decode_String(deserializer);
+    var var_totalChannels = sse_decode_u_32(deserializer);
+    var var_sourceSizeBytes = sse_decode_u_64(deserializer);
+    var var_sourceModifiedNanos = sse_decode_u_64(deserializer);
+    return PlaylistIndexDescriptor(
+      indexPath: var_indexPath,
+      cachePath: var_cachePath,
+      totalChannels: var_totalChannels,
+      sourceSizeBytes: var_sourceSizeBytes,
+      sourceModifiedNanos: var_sourceModifiedNanos,
+    );
+  }
+
+  @protected
+  PlaylistIndexOpenResult sse_decode_playlist_index_open_result(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_descriptor = sse_decode_playlist_index_descriptor(deserializer);
+    var var_firstPage = sse_decode_m_3_u_channel_page(deserializer);
+    var var_parseStats = sse_decode_m_3_u_parse_stats(deserializer);
+    var var_cacheStatus = sse_decode_playlist_cache_status(deserializer);
+    var var_timings = sse_decode_playlist_open_timings(deserializer);
+    return PlaylistIndexOpenResult(
+      descriptor: var_descriptor,
+      firstPage: var_firstPage,
+      parseStats: var_parseStats,
+      cacheStatus: var_cacheStatus,
+      timings: var_timings,
+    );
+  }
+
+  @protected
+  PlaylistOpenTimings sse_decode_playlist_open_timings(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_totalMicros = sse_decode_u_64(deserializer);
+    var var_sourceMapMicros = sse_decode_u_64(deserializer);
+    var var_indexBuildMicros = sse_decode_u_64(deserializer);
+    var var_firstPageMicros = sse_decode_u_64(deserializer);
+    return PlaylistOpenTimings(
+      totalMicros: var_totalMicros,
+      sourceMapMicros: var_sourceMapMicros,
+      indexBuildMicros: var_indexBuildMicros,
+      firstPageMicros: var_firstPageMicros,
+    );
+  }
+
+  @protected
   (String, String) sse_decode_record_string_string(
     SseDeserializer deserializer,
   ) {
@@ -1270,6 +1601,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   int sse_decode_u_32(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return deserializer.buffer.getUint32();
+  }
+
+  @protected
+  BigInt sse_decode_u_64(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return deserializer.buffer.getBigUint64();
   }
 
   @protected
@@ -1364,12 +1701,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  int sse_decode_i_32(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    return deserializer.buffer.getInt32();
-  }
-
-  @protected
   void sse_encode_Map_String_String_None(
     Map<String, String> self,
     SseSerializer serializer,
@@ -1409,6 +1740,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_xmltv_programme(self, serializer);
+  }
+
+  @protected
+  void sse_encode_i_32(int self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    serializer.buffer.putInt32(self);
   }
 
   @protected
@@ -1509,6 +1846,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_m_3_u_channel_page(
+    M3uChannelPage self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_list_m_3_u_channel(self.channels, serializer);
+    sse_encode_u_32(self.offset, serializer);
+    sse_encode_u_32(self.total, serializer);
+    sse_encode_bool(self.hasMore, serializer);
+  }
+
+  @protected
   void sse_encode_m_3_u_channel_parse_result(
     M3uChannelParseResult self,
     SseSerializer serializer,
@@ -1598,6 +1947,72 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_playlist_cache_status(
+    PlaylistCacheStatus self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.index, serializer);
+  }
+
+  @protected
+  void sse_encode_playlist_engine_error(
+    PlaylistEngineError self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_playlist_engine_error_code(self.code, serializer);
+    sse_encode_String(self.message, serializer);
+  }
+
+  @protected
+  void sse_encode_playlist_engine_error_code(
+    PlaylistEngineErrorCode self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.index, serializer);
+  }
+
+  @protected
+  void sse_encode_playlist_index_descriptor(
+    PlaylistIndexDescriptor self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.indexPath, serializer);
+    sse_encode_String(self.cachePath, serializer);
+    sse_encode_u_32(self.totalChannels, serializer);
+    sse_encode_u_64(self.sourceSizeBytes, serializer);
+    sse_encode_u_64(self.sourceModifiedNanos, serializer);
+  }
+
+  @protected
+  void sse_encode_playlist_index_open_result(
+    PlaylistIndexOpenResult self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_playlist_index_descriptor(self.descriptor, serializer);
+    sse_encode_m_3_u_channel_page(self.firstPage, serializer);
+    sse_encode_m_3_u_parse_stats(self.parseStats, serializer);
+    sse_encode_playlist_cache_status(self.cacheStatus, serializer);
+    sse_encode_playlist_open_timings(self.timings, serializer);
+  }
+
+  @protected
+  void sse_encode_playlist_open_timings(
+    PlaylistOpenTimings self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_u_64(self.totalMicros, serializer);
+    sse_encode_u_64(self.sourceMapMicros, serializer);
+    sse_encode_u_64(self.indexBuildMicros, serializer);
+    sse_encode_u_64(self.firstPageMicros, serializer);
+  }
+
+  @protected
   void sse_encode_record_string_string(
     (String, String) self,
     SseSerializer serializer,
@@ -1611,6 +2026,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   void sse_encode_u_32(int self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     serializer.buffer.putUint32(self);
+  }
+
+  @protected
+  void sse_encode_u_64(BigInt self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    serializer.buffer.putBigUint64(self);
   }
 
   @protected
@@ -1689,11 +2110,5 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_String(self.start, serializer);
     sse_encode_opt_String(self.stop, serializer);
     sse_encode_opt_String(self.title, serializer);
-  }
-
-  @protected
-  void sse_encode_i_32(int self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    serializer.buffer.putInt32(self);
   }
 }

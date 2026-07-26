@@ -7,6 +7,7 @@
 // ignore_for_file: argument_type_not_assignable
 
 import 'api/m3u.dart';
+import 'api/playlist_engine.dart';
 import 'api/text.dart';
 import 'api/xmltv.dart';
 import 'dart:async';
@@ -38,6 +39,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   XmltvProgramme dco_decode_box_autoadd_xmltv_programme(dynamic raw);
 
   @protected
+  int dco_decode_i_32(dynamic raw);
+
+  @protected
   PlatformInt64 dco_decode_i_64(dynamic raw);
 
   @protected
@@ -67,6 +71,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   M3uChannel dco_decode_m_3_u_channel(dynamic raw);
 
   @protected
+  M3uChannelPage dco_decode_m_3_u_channel_page(dynamic raw);
+
+  @protected
   M3uChannelParseResult dco_decode_m_3_u_channel_parse_result(dynamic raw);
 
   @protected
@@ -91,10 +98,31 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   XmltvProgramme? dco_decode_opt_box_autoadd_xmltv_programme(dynamic raw);
 
   @protected
+  PlaylistCacheStatus dco_decode_playlist_cache_status(dynamic raw);
+
+  @protected
+  PlaylistEngineError dco_decode_playlist_engine_error(dynamic raw);
+
+  @protected
+  PlaylistEngineErrorCode dco_decode_playlist_engine_error_code(dynamic raw);
+
+  @protected
+  PlaylistIndexDescriptor dco_decode_playlist_index_descriptor(dynamic raw);
+
+  @protected
+  PlaylistIndexOpenResult dco_decode_playlist_index_open_result(dynamic raw);
+
+  @protected
+  PlaylistOpenTimings dco_decode_playlist_open_timings(dynamic raw);
+
+  @protected
   (String, String) dco_decode_record_string_string(dynamic raw);
 
   @protected
   int dco_decode_u_32(dynamic raw);
+
+  @protected
+  BigInt dco_decode_u_64(dynamic raw);
 
   @protected
   int dco_decode_u_8(dynamic raw);
@@ -140,6 +168,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  int sse_decode_i_32(SseDeserializer deserializer);
+
+  @protected
   PlatformInt64 sse_decode_i_64(SseDeserializer deserializer);
 
   @protected
@@ -173,6 +204,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   M3uChannel sse_decode_m_3_u_channel(SseDeserializer deserializer);
 
   @protected
+  M3uChannelPage sse_decode_m_3_u_channel_page(SseDeserializer deserializer);
+
+  @protected
   M3uChannelParseResult sse_decode_m_3_u_channel_parse_result(
     SseDeserializer deserializer,
   );
@@ -201,12 +235,45 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  PlaylistCacheStatus sse_decode_playlist_cache_status(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  PlaylistEngineError sse_decode_playlist_engine_error(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  PlaylistEngineErrorCode sse_decode_playlist_engine_error_code(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  PlaylistIndexDescriptor sse_decode_playlist_index_descriptor(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  PlaylistIndexOpenResult sse_decode_playlist_index_open_result(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  PlaylistOpenTimings sse_decode_playlist_open_timings(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   (String, String) sse_decode_record_string_string(
     SseDeserializer deserializer,
   );
 
   @protected
   int sse_decode_u_32(SseDeserializer deserializer);
+
+  @protected
+  BigInt sse_decode_u_64(SseDeserializer deserializer);
 
   @protected
   int sse_decode_u_8(SseDeserializer deserializer);
@@ -239,9 +306,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   XmltvProgramme sse_decode_xmltv_programme(SseDeserializer deserializer);
 
   @protected
-  int sse_decode_i_32(SseDeserializer deserializer);
-
-  @protected
   void sse_encode_Map_String_String_None(
     Map<String, String> self,
     SseSerializer serializer,
@@ -264,6 +328,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
     XmltvProgramme self,
     SseSerializer serializer,
   );
+
+  @protected
+  void sse_encode_i_32(int self, SseSerializer serializer);
 
   @protected
   void sse_encode_i_64(PlatformInt64 self, SseSerializer serializer);
@@ -311,6 +378,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_m_3_u_channel(M3uChannel self, SseSerializer serializer);
 
   @protected
+  void sse_encode_m_3_u_channel_page(
+    M3uChannelPage self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_m_3_u_channel_parse_result(
     M3uChannelParseResult self,
     SseSerializer serializer,
@@ -350,6 +423,42 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_playlist_cache_status(
+    PlaylistCacheStatus self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_playlist_engine_error(
+    PlaylistEngineError self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_playlist_engine_error_code(
+    PlaylistEngineErrorCode self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_playlist_index_descriptor(
+    PlaylistIndexDescriptor self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_playlist_index_open_result(
+    PlaylistIndexOpenResult self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_playlist_open_timings(
+    PlaylistOpenTimings self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_record_string_string(
     (String, String) self,
     SseSerializer serializer,
@@ -357,6 +466,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_u_32(int self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_u_64(BigInt self, SseSerializer serializer);
 
   @protected
   void sse_encode_u_8(int self, SseSerializer serializer);
@@ -399,9 +511,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
     XmltvProgramme self,
     SseSerializer serializer,
   );
-
-  @protected
-  void sse_encode_i_32(int self, SseSerializer serializer);
 }
 
 // Section: wire_class

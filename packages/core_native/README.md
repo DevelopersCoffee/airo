@@ -59,5 +59,8 @@ initialized and fall back to the same Dart behavior when unavailable:
 - `parseM3uEntriesNative`
 - `parseM3uChannelsWithStatsNative`
 - `parseM3uFileChannelsWithStatsNative`
+- `openPlaylistIndexNative`
+- `pagePlaylistIndexNative`
+- `searchPlaylistIndexNative`
 - `parseXmltvProgrammesNative`
 - `parseXmltvProgrammesFileNative`
