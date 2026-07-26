@@ -1,0 +1,15 @@
+name: core_edge_intelligence
+owner: Chief Architect
+reviewers:
+  - Platform Architect
+  - Chief QA Officer
+  - Chief Documentation Officer
+contracts:
+  - IntentCommand/v1
+allowed_dependencies: []
+forbidden_dependencies:
+  - core_media_routing
+  - platform_player
+  - platform_streams
+quality_gates:
+  test_coverage: "100% contract serialization/validation branches"

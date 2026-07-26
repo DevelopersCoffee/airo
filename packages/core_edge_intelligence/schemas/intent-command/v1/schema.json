@@ -1,0 +1,126 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://airo.dev/schemas/intent-command/v1/schema.json",
+  "title": "Airo IntentCommand 1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["intent", "entities", "filters", "sort", "confidence"],
+  "properties": {
+    "intent": {
+      "type": "string",
+      "enum": ["browse", "play", "resume", "similar", "search"]
+    },
+    "entities": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["type", "value"],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "title",
+              "alias",
+              "genre",
+              "language",
+              "country",
+              "provider",
+              "tag",
+              "actor",
+              "director",
+              "studio",
+              "collection"
+            ]
+          },
+          "value": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "filters": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["field", "operator", "value"],
+        "properties": {
+          "field": {
+            "type": "string",
+            "enum": [
+              "title",
+              "alias",
+              "genre",
+              "language",
+              "country",
+              "provider",
+              "tag",
+              "actor",
+              "director",
+              "studio",
+              "collection",
+              "live",
+              "favorite",
+              "year",
+              "durationSeconds"
+            ]
+          },
+          "operator": {
+            "type": "string",
+            "enum": [
+              "equals",
+              "notEquals",
+              "contains",
+              "greaterThan",
+              "greaterThanOrEqual",
+              "lessThan",
+              "lessThanOrEqual"
+            ]
+          },
+          "value": {"type": ["string", "number", "boolean", "null"]}
+        }
+      }
+    },
+    "sort": {
+      "oneOf": [
+        {"type": "null"},
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["field", "direction"],
+          "properties": {
+            "field": {
+              "type": "string",
+              "enum": [
+                "title",
+                "alias",
+                "genre",
+                "language",
+                "country",
+                "provider",
+                "tag",
+                "actor",
+                "director",
+                "studio",
+                "collection",
+                "live",
+                "favorite",
+                "year",
+                "durationSeconds"
+              ]
+            },
+            "direction": {
+              "type": "string",
+              "enum": ["ascending", "descending"]
+            }
+          }
+        }
+      ]
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    }
+  }
+}

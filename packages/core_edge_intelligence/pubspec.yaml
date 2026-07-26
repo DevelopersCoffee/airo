@@ -1,0 +1,11 @@
+name: core_edge_intelligence
+description: Versioned contracts between Airo edge intelligence and media execution.
+version: 0.0.1
+publish_to: none
+
+environment:
+  sdk: ^3.12.2
+
+dev_dependencies:
+  flutter_lints: ^6.0.0
+  test: ^1.26.3
