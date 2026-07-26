@@ -43,6 +43,10 @@ class _TvShellState extends ConsumerState<TvShell> {
   @override
   Widget build(BuildContext context) {
     final currentIndex = ref.watch(tvNavigationIndexProvider);
+    // Zen mode: once the player goes fullscreen, no shell chrome at all —
+    // the sidebar was painted on top of the video and also stole D-pad
+    // focus that should land on the player's own transport controls.
+    final isPlayerFullscreen = ref.watch(isFullscreenModeProvider);
 
     return Scaffold(
       body: Stack(
@@ -51,30 +55,32 @@ class _TvShellState extends ConsumerState<TvShell> {
           // Never removed from the tree by a sidebar tap — only a direct
           // deep link to a different route replaces it.
           Positioned.fill(child: widget.child),
-          if (_overlay != null)
-            Positioned.fill(
-              // The rail stays visible (painted after this, so on top) and
-              // isn't docked in a layout row anymore, so it no longer
-              // reserves space of its own — give overlay screens the same
-              // left inset the old Row gave them, so their content doesn't
-              // render underneath the now-floating rail.
-              child: Padding(
-                padding: const EdgeInsets.only(left: 88),
-                child: _buildOverlay(_overlay!),
+          if (!isPlayerFullscreen) ...[
+            if (_overlay != null)
+              Positioned.fill(
+                // The rail stays visible (painted after this, so on top) and
+                // isn't docked in a layout row anymore, so it no longer
+                // reserves space of its own — give overlay screens the same
+                // left inset the old Row gave them, so their content doesn't
+                // render underneath the now-floating rail.
+                child: Padding(
+                  padding: const EdgeInsets.only(left: 88),
+                  child: _buildOverlay(_overlay!),
+                ),
+              ),
+            // The rail is painted on top instead of docked in a Row, so it
+            // never claims layout width from the content beneath it.
+            Positioned(
+              left: 0,
+              top: 0,
+              bottom: 0,
+              child: _TvNavigationRail(
+                currentIndex: currentIndex,
+                onDestinationSelected: (index) =>
+                    _selectDestination(context, index),
               ),
             ),
-          // The rail is painted on top instead of docked in a Row, so it
-          // never claims layout width from the content beneath it.
-          Positioned(
-            left: 0,
-            top: 0,
-            bottom: 0,
-            child: _TvNavigationRail(
-              currentIndex: currentIndex,
-              onDestinationSelected: (index) =>
-                  _selectDestination(context, index),
-            ),
-          ),
+          ],
         ],
       ),
     );
