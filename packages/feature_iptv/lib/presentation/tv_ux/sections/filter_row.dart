@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../application/providers/channel_filters_provider.dart';
 import 'filter_dialogs.dart';
+import 'search_overlay.dart';
 
 class FilterRow extends ConsumerWidget {
   const FilterRow({super.key, required this.dimensions});
@@ -20,7 +21,8 @@ class FilterRow extends ConsumerWidget {
         label: filters.search.isEmpty ? 'Search' : filters.search,
         active: filters.search.isNotEmpty,
         icon: Icons.search,
-        onSelected: () => _showSearchDialog(context, notifier, filters.search),
+        onSelected: () =>
+            _showSearchOverlay(context, dimensions, notifier, filters.search),
       ),
       if (dimensions.categories.isNotEmpty)
         _FilterChip(
@@ -118,50 +120,20 @@ class FilterRow extends ConsumerWidget {
   }
 }
 
-Future<void> _showSearchDialog(
+Future<void> _showSearchOverlay(
   BuildContext context,
+  ChannelFilterDimensions dimensions,
   ChannelFiltersNotifier notifier,
   String initialValue,
-) async {
-  var searchText = initialValue;
-  await showDialog<void>(
+) {
+  return showDialog<void>(
     context: context,
-    builder: (dialogContext) {
-      return AlertDialog(
-        title: const Text('Search channels'),
-        content: TextFormField(
-          key: const ValueKey('filter-search-field'),
-          initialValue: initialValue,
-          autofocus: true,
-          decoration: const InputDecoration(
-            prefixIcon: Icon(Icons.search),
-            hintText: 'Search by channel name',
-          ),
-          textInputAction: TextInputAction.search,
-          onChanged: (value) => searchText = value,
-          onFieldSubmitted: (value) {
-            notifier.setSearch(value);
-            Navigator.of(dialogContext).pop();
-          },
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              notifier.setSearch('');
-              Navigator.of(dialogContext).pop();
-            },
-            child: const Text('Clear'),
-          ),
-          FilledButton(
-            onPressed: () {
-              notifier.setSearch(searchText);
-              Navigator.of(dialogContext).pop();
-            },
-            child: const Text('Apply'),
-          ),
-        ],
-      );
-    },
+    useSafeArea: false,
+    builder: (dialogContext) => SearchOverlay(
+      dimensions: dimensions,
+      notifier: notifier,
+      initialQuery: initialValue,
+    ),
   );
 }
 
