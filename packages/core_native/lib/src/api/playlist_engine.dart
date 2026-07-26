@@ -8,9 +8,9 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 import '../frb_generated.dart';
 import 'm3u.dart';
 
-// These functions are ignored because they are not marked as `pub`: `build_cache_and_index`, `cache_matches`, `channel_search_text`, `cleanup_temporary_artifacts`, `create_index`, `database_error`, `descriptor_for`, `elapsed_micros`, `finalize_index`, `for_each_channel`, `index_matches`, `insert_channel`, `invalid_argument`, `invalid_cache`, `io_error`, `normalize_identity`, `normalize_limit`, `normalize_search`, `open`, `read_cache_channel`, `read_optional_string`, `read_page`, `read_required_string`, `read_string_body`, `read_u128`, `read_u32`, `read_u64`, `rebuild_index_from_cache`, `remove_if_exists`, `replace_atomically`, `row_to_channel`, `sibling`, `source_fingerprint`, `to_sql_i64`, `validate_directory_path`, `validate_file_path`, `write_cache_channel`, `write_cache_header`, `write_optional_string`, `write_required_string`
+// These functions are ignored because they are not marked as `pub`: `build_cache_and_index`, `cache_matches`, `channel_search_text`, `cleanup_temporary_artifacts`, `create_index`, `database_error`, `decode_list`, `descriptor_for`, `elapsed_micros`, `encode_list`, `filter_sql`, `finalize_index`, `for_each_channel`, `index_matches`, `insert_channel`, `invalid_argument`, `invalid_cache`, `io_error`, `levenshtein`, `normalize_filters`, `normalize_identity`, `normalize_limit`, `normalize_list`, `normalize_optional`, `normalize_search`, `open`, `page_from_channels`, `read_cache_channel`, `read_fuzzy_page`, `read_optional_string`, `read_page`, `read_ranked_page`, `read_required_string`, `read_string_body`, `read_string_list`, `read_u128`, `read_u32`, `read_u64`, `rebuild_index_from_cache`, `remove_if_exists`, `replace_atomically`, `row_to_channel`, `sibling`, `source_fingerprint`, `to_sql_i64`, `validate_directory_path`, `validate_file_path`, `write_cache_channel`, `write_cache_header`, `write_optional_string`, `write_required_string`, `write_string_list`
 // These types are ignored because they are neither used by any `pub` functions nor (for structs and enums) marked `#[frb(unignore)]`: `MappedPlaylistCache`, `SourceFingerprint`
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`
 
 /// Open a versioned local playlist index and return its first page.
 ///
@@ -46,6 +46,25 @@ Future<M3uChannelPage> searchPlaylistIndex({
 }) => RustLib.instance.api.crateApiPlaylistEngineSearchPlaylistIndex(
   indexPath: indexPath,
   query: query,
+  offset: offset,
+  limit: limit,
+);
+
+/// Search text and/or structured fields through one deterministic native API.
+///
+/// Text ranking is exact title, title prefix, alias exact/prefix, field
+/// substring, then bounded trigram fuzzy matching. Structured filters use AND
+/// semantics and may be supplied without text for IntentCommand execution.
+Future<M3uChannelPage> searchPlaylistIndexV2({
+  required String indexPath,
+  required List<PlaylistSearchFilter> filters,
+  required int offset,
+  required int limit,
+  String? query,
+}) => RustLib.instance.api.crateApiPlaylistEngineSearchPlaylistIndexV2(
+  indexPath: indexPath,
+  query: query,
+  filters: filters,
   offset: offset,
   limit: limit,
 );
@@ -195,3 +214,38 @@ class PlaylistOpenTimings {
           indexBuildMicros == other.indexBuildMicros &&
           firstPageMicros == other.firstPageMicros;
 }
+
+enum PlaylistSearchField {
+  title,
+  alias,
+  genre,
+  language,
+  country,
+  provider,
+  tag,
+}
+
+class PlaylistSearchFilter {
+  const PlaylistSearchFilter({
+    required this.field,
+    required this.operator_,
+    required this.value,
+  });
+  final PlaylistSearchField field;
+  final PlaylistSearchOperator operator_;
+  final String value;
+
+  @override
+  int get hashCode => field.hashCode ^ operator_.hashCode ^ value.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is PlaylistSearchFilter &&
+          runtimeType == other.runtimeType &&
+          field == other.field &&
+          operator_ == other.operator_ &&
+          value == other.value;
+}
+
+enum PlaylistSearchOperator { equals, prefix, contains }

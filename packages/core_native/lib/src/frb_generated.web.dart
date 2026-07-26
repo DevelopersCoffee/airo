@@ -54,6 +54,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   List<M3uEntry> dco_decode_list_m_3_u_entry(dynamic raw);
 
   @protected
+  List<PlaylistSearchFilter> dco_decode_list_playlist_search_filter(
+    dynamic raw,
+  );
+
+  @protected
   Uint8List dco_decode_list_prim_u_8_strict(dynamic raw);
 
   @protected
@@ -114,6 +119,15 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   PlaylistOpenTimings dco_decode_playlist_open_timings(dynamic raw);
+
+  @protected
+  PlaylistSearchField dco_decode_playlist_search_field(dynamic raw);
+
+  @protected
+  PlaylistSearchFilter dco_decode_playlist_search_filter(dynamic raw);
+
+  @protected
+  PlaylistSearchOperator dco_decode_playlist_search_operator(dynamic raw);
 
   @protected
   (String, String) dco_decode_record_string_string(dynamic raw);
@@ -181,6 +195,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   List<M3uEntry> sse_decode_list_m_3_u_entry(SseDeserializer deserializer);
+
+  @protected
+  List<PlaylistSearchFilter> sse_decode_list_playlist_search_filter(
+    SseDeserializer deserializer,
+  );
 
   @protected
   Uint8List sse_decode_list_prim_u_8_strict(SseDeserializer deserializer);
@@ -261,6 +280,21 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   PlaylistOpenTimings sse_decode_playlist_open_timings(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  PlaylistSearchField sse_decode_playlist_search_field(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  PlaylistSearchFilter sse_decode_playlist_search_filter(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  PlaylistSearchOperator sse_decode_playlist_search_operator(
     SseDeserializer deserializer,
   );
 
@@ -347,6 +381,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_list_m_3_u_entry(
     List<M3uEntry> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_playlist_search_filter(
+    List<PlaylistSearchFilter> self,
     SseSerializer serializer,
   );
 
@@ -455,6 +495,24 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_playlist_open_timings(
     PlaylistOpenTimings self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_playlist_search_field(
+    PlaylistSearchField self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_playlist_search_filter(
+    PlaylistSearchFilter self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_playlist_search_operator(
+    PlaylistSearchOperator self,
     SseSerializer serializer,
   );
 

@@ -56,6 +56,10 @@ pub struct M3uChannel {
     pub tvg_id: Option<String>,
     pub tvg_name: Option<String>,
     pub language: Option<String>,
+    pub aliases: Vec<String>,
+    pub country: Option<String>,
+    pub provider: Option<String>,
+    pub tags: Vec<String>,
 }
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
@@ -328,6 +332,38 @@ fn is_attr_key_byte(byte: u8) -> bool {
     byte.is_ascii_alphanumeric() || byte == b'_' || byte == b'-'
 }
 
+fn channel_aliases(tvg_name: Option<&str>, tvg_id: Option<&str>) -> Vec<String> {
+    let mut aliases = Vec::new();
+    for value in [tvg_name, tvg_id].into_iter().flatten() {
+        let value = value.trim();
+        if !value.is_empty() && !aliases.iter().any(|alias| alias == value) {
+            aliases.push(value.to_string());
+        }
+    }
+    aliases
+}
+
+fn first_extra(extras: &HashMap<String, String>, keys: &[&str]) -> Option<String> {
+    keys.iter()
+        .find_map(|key| extras.get(*key))
+        .map(|value| value.trim())
+        .filter(|value| !value.is_empty())
+        .map(str::to_string)
+}
+
+fn list_extra(extras: &HashMap<String, String>, keys: &[&str]) -> Vec<String> {
+    let mut values = Vec::new();
+    for raw in keys.iter().filter_map(|key| extras.get(*key)) {
+        for value in raw.split([',', ';', '|']) {
+            let value = value.trim();
+            if !value.is_empty() && !values.iter().any(|existing| existing == value) {
+                values.push(value.to_string());
+            }
+        }
+    }
+    values
+}
+
 fn channels_from_parse_result(result: M3uParseResult) -> M3uChannelParseResult {
     let mut channels = Vec::<M3uChannel>::new();
     let mut seen_channels = HashMap::<String, usize>::new();
@@ -339,6 +375,10 @@ fn channels_from_parse_result(result: M3uParseResult) -> M3uChannelParseResult {
 
         let normalized_name = normalize_channel_name(&entry.name);
         let logo = entry.logo.as_deref().and_then(normalize_logo_url);
+        let aliases = channel_aliases(entry.tvg_name.as_deref(), entry.tvg_id.as_deref());
+        let country = first_extra(&entry.extras, &["tvg-country", "country"]);
+        let provider = first_extra(&entry.extras, &["provider", "tvg-provider"]);
+        let tags = list_extra(&entry.extras, &["tvg-tags", "tags"]);
         let channel = M3uChannel {
             name: format_channel_name(&entry.name),
             url: stream_url,
@@ -347,6 +387,10 @@ fn channels_from_parse_result(result: M3uParseResult) -> M3uChannelParseResult {
             tvg_id: entry.tvg_id,
             tvg_name: entry.tvg_name,
             language: entry.language,
+            aliases,
+            country,
+            provider,
+            tags,
         };
 
         if let Some(existing_index) = seen_channels.get(&normalized_name).copied() {
@@ -410,6 +454,11 @@ where
                     if let Some(info) = pending.take() {
                         stats.parsed_count = stats.parsed_count.saturating_add(1);
                         if let Some(url) = normalize_stream_url(line) {
+                            let aliases =
+                                channel_aliases(info.tvg_name.as_deref(), info.tvg_id.as_deref());
+                            let country = first_extra(&info.extras, &["tvg-country", "country"]);
+                            let provider = first_extra(&info.extras, &["provider", "tvg-provider"]);
+                            let tags = list_extra(&info.extras, &["tvg-tags", "tags"]);
                             on_channel(M3uChannel {
                                 name: format_channel_name(&info.name),
                                 url,
@@ -418,6 +467,10 @@ where
                                 tvg_id: info.tvg_id,
                                 tvg_name: info.tvg_name,
                                 language: info.language,
+                                aliases,
+                                country,
+                                provider,
+                                tags,
                             })?;
                         }
                     }

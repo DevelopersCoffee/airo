@@ -67,7 +67,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.11.1';
 
   @override
-  int get rustContentHash => 2027540865;
+  int get rustContentHash => 1869107413;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -140,6 +140,14 @@ abstract class RustLibApi extends BaseApi {
   Future<M3uChannelPage> crateApiPlaylistEngineSearchPlaylistIndex({
     required String indexPath,
     required String query,
+    required int offset,
+    required int limit,
+  });
+
+  Future<M3uChannelPage> crateApiPlaylistEngineSearchPlaylistIndexV2({
+    required String indexPath,
+    String? query,
+    required List<PlaylistSearchFilter> filters,
     required int offset,
     required int limit,
   });
@@ -727,6 +735,47 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
+  Future<M3uChannelPage> crateApiPlaylistEngineSearchPlaylistIndexV2({
+    required String indexPath,
+    String? query,
+    required List<PlaylistSearchFilter> filters,
+    required int offset,
+    required int limit,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(indexPath, serializer);
+          sse_encode_opt_String(query, serializer);
+          sse_encode_list_playlist_search_filter(filters, serializer);
+          sse_encode_u_32(offset, serializer);
+          sse_encode_u_32(limit, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 18,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_m_3_u_channel_page,
+          decodeErrorData: sse_decode_playlist_engine_error,
+        ),
+        constMeta: kCrateApiPlaylistEngineSearchPlaylistIndexV2ConstMeta,
+        argValues: [indexPath, query, filters, offset, limit],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiPlaylistEngineSearchPlaylistIndexV2ConstMeta =>
+      const TaskConstMeta(
+        debugName: "search_playlist_index_v2",
+        argNames: ["indexPath", "query", "filters", "offset", "limit"],
+      );
+
+  @override
   Future<XmltvCurrentNextResult> crateApiXmltvXmltvCurrentNextResultDefault() {
     return handler.executeNormal(
       NormalTask(
@@ -735,7 +784,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 18,
+            funcId: 19,
             port: port_,
           );
         },
@@ -765,7 +814,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 19,
+            funcId: 20,
             port: port_,
           );
         },
@@ -795,7 +844,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 20,
+            funcId: 21,
             port: port_,
           );
         },
@@ -825,7 +874,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 21,
+            funcId: 22,
             port: port_,
           );
         },
@@ -908,6 +957,16 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  List<PlaylistSearchFilter> dco_decode_list_playlist_search_filter(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>)
+        .map(dco_decode_playlist_search_filter)
+        .toList();
+  }
+
+  @protected
   Uint8List dco_decode_list_prim_u_8_strict(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw as Uint8List;
@@ -939,8 +998,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   M3uChannel dco_decode_m_3_u_channel(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 7)
-      throw Exception('unexpected arr length: expect 7 but see ${arr.length}');
+    if (arr.length != 11)
+      throw Exception('unexpected arr length: expect 11 but see ${arr.length}');
     return M3uChannel(
       name: dco_decode_String(arr[0]),
       url: dco_decode_String(arr[1]),
@@ -949,6 +1008,10 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       tvgId: dco_decode_opt_String(arr[4]),
       tvgName: dco_decode_opt_String(arr[5]),
       language: dco_decode_opt_String(arr[6]),
+      aliases: dco_decode_list_String(arr[7]),
+      country: dco_decode_opt_String(arr[8]),
+      provider: dco_decode_opt_String(arr[9]),
+      tags: dco_decode_list_String(arr[10]),
     );
   }
 
@@ -1119,6 +1182,31 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       indexBuildMicros: dco_decode_u_64(arr[2]),
       firstPageMicros: dco_decode_u_64(arr[3]),
     );
+  }
+
+  @protected
+  PlaylistSearchField dco_decode_playlist_search_field(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return PlaylistSearchField.values[raw as int];
+  }
+
+  @protected
+  PlaylistSearchFilter dco_decode_playlist_search_filter(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 3)
+      throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
+    return PlaylistSearchFilter(
+      field: dco_decode_playlist_search_field(arr[0]),
+      operator_: dco_decode_playlist_search_operator(arr[1]),
+      value: dco_decode_String(arr[2]),
+    );
+  }
+
+  @protected
+  PlaylistSearchOperator dco_decode_playlist_search_operator(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return PlaylistSearchOperator.values[raw as int];
   }
 
   @protected
@@ -1319,6 +1407,20 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  List<PlaylistSearchFilter> sse_decode_list_playlist_search_filter(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <PlaylistSearchFilter>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_playlist_search_filter(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
   Uint8List sse_decode_list_prim_u_8_strict(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var len_ = sse_decode_i_32(deserializer);
@@ -1377,6 +1479,10 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_tvgId = sse_decode_opt_String(deserializer);
     var var_tvgName = sse_decode_opt_String(deserializer);
     var var_language = sse_decode_opt_String(deserializer);
+    var var_aliases = sse_decode_list_String(deserializer);
+    var var_country = sse_decode_opt_String(deserializer);
+    var var_provider = sse_decode_opt_String(deserializer);
+    var var_tags = sse_decode_list_String(deserializer);
     return M3uChannel(
       name: var_name,
       url: var_url,
@@ -1385,6 +1491,10 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       tvgId: var_tvgId,
       tvgName: var_tvgName,
       language: var_language,
+      aliases: var_aliases,
+      country: var_country,
+      provider: var_provider,
+      tags: var_tags,
     );
   }
 
@@ -1588,6 +1698,39 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  PlaylistSearchField sse_decode_playlist_search_field(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var inner = sse_decode_i_32(deserializer);
+    return PlaylistSearchField.values[inner];
+  }
+
+  @protected
+  PlaylistSearchFilter sse_decode_playlist_search_filter(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_field = sse_decode_playlist_search_field(deserializer);
+    var var_operator_ = sse_decode_playlist_search_operator(deserializer);
+    var var_value = sse_decode_String(deserializer);
+    return PlaylistSearchFilter(
+      field: var_field,
+      operator_: var_operator_,
+      value: var_value,
+    );
+  }
+
+  @protected
+  PlaylistSearchOperator sse_decode_playlist_search_operator(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var inner = sse_decode_i_32(deserializer);
+    return PlaylistSearchOperator.values[inner];
+  }
+
+  @protected
   (String, String) sse_decode_record_string_string(
     SseDeserializer deserializer,
   ) {
@@ -1788,6 +1931,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_list_playlist_search_filter(
+    List<PlaylistSearchFilter> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_playlist_search_filter(item, serializer);
+    }
+  }
+
+  @protected
   void sse_encode_list_prim_u_8_strict(
     Uint8List self,
     SseSerializer serializer,
@@ -1843,6 +1998,10 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_opt_String(self.tvgId, serializer);
     sse_encode_opt_String(self.tvgName, serializer);
     sse_encode_opt_String(self.language, serializer);
+    sse_encode_list_String(self.aliases, serializer);
+    sse_encode_opt_String(self.country, serializer);
+    sse_encode_opt_String(self.provider, serializer);
+    sse_encode_list_String(self.tags, serializer);
   }
 
   @protected
@@ -2010,6 +2169,35 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_u_64(self.sourceMapMicros, serializer);
     sse_encode_u_64(self.indexBuildMicros, serializer);
     sse_encode_u_64(self.firstPageMicros, serializer);
+  }
+
+  @protected
+  void sse_encode_playlist_search_field(
+    PlaylistSearchField self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.index, serializer);
+  }
+
+  @protected
+  void sse_encode_playlist_search_filter(
+    PlaylistSearchFilter self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_playlist_search_field(self.field, serializer);
+    sse_encode_playlist_search_operator(self.operator_, serializer);
+    sse_encode_String(self.value, serializer);
+  }
+
+  @protected
+  void sse_encode_playlist_search_operator(
+    PlaylistSearchOperator self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.index, serializer);
   }
 
   @protected

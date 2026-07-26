@@ -76,6 +76,10 @@ class NativeM3uChannel {
     this.tvgId,
     this.tvgName,
     this.language,
+    this.aliases = const [],
+    this.country,
+    this.provider,
+    this.tags = const [],
   });
 
   final String name;
@@ -85,6 +89,10 @@ class NativeM3uChannel {
   final String? tvgId;
   final String? tvgName;
   final String? language;
+  final List<String> aliases;
+  final String? country;
+  final String? provider;
+  final List<String> tags;
 }
 
 class NativeM3uChannelParseResult {
@@ -277,6 +285,10 @@ NativeM3uChannel _fromNativeM3uChannel(native_m3u.M3uChannel channel) {
     tvgId: channel.tvgId,
     tvgName: channel.tvgName,
     language: channel.language,
+    aliases: channel.aliases,
+    country: channel.country,
+    provider: channel.provider,
+    tags: channel.tags,
   );
 }
 
@@ -319,6 +331,10 @@ List<NativeM3uChannel> _channelsFromM3uEntries(
 
     final normalizedName = _normalizeChannelName(entry.name);
     final logoUri = _normalizeLogoUrl(entry.logo);
+    final aliases = {
+      if (entry.tvgName?.trim().isNotEmpty ?? false) entry.tvgName!.trim(),
+      if (entry.tvgId?.trim().isNotEmpty ?? false) entry.tvgId!.trim(),
+    }.toList(growable: false);
 
     final channel = NativeM3uChannel(
       name: _formatChannelName(entry.name),
@@ -328,6 +344,12 @@ List<NativeM3uChannel> _channelsFromM3uEntries(
       tvgId: entry.tvgId,
       tvgName: entry.tvgName,
       language: entry.language,
+      aliases: aliases,
+      country: entry.extras['tvg-country'] ?? entry.extras['country'],
+      provider: entry.extras['provider'] ?? entry.extras['tvg-provider'],
+      tags: _splitMetadataList(
+        entry.extras['tvg-tags'] ?? entry.extras['tags'],
+      ),
     );
 
     if (!seenChannels.containsKey(normalizedName)) {
@@ -342,6 +364,16 @@ List<NativeM3uChannel> _channelsFromM3uEntries(
 
   channels.addAll(seenChannels.values);
   return channels;
+}
+
+List<String> _splitMetadataList(String? value) {
+  if (value == null) return const [];
+  return value
+      .split(RegExp('[,;|]'))
+      .map((item) => item.trim())
+      .where((item) => item.isNotEmpty)
+      .toSet()
+      .toList(growable: false);
 }
 
 NativeM3uParseResult _dartParseM3uPlaylistWithStats(String content) {

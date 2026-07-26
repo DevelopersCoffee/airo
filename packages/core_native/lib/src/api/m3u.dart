@@ -7,7 +7,7 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
 import '../frb_generated.dart';
 
-// These functions are ignored because they are not marked as `pub`: `channels_from_parse_result`, `for_each_m3u_channel_bytes`, `format_channel_name`, `is_attr_key_byte`, `is_private_or_local_host`, `new`, `normalize_channel_name`, `normalize_logo_url`, `normalize_network_url`, `normalize_stream_url`, `parse_authority_host`, `parse_extinf`, `parse_ipv4`, `parse_line`, `parse_m3u_playlist_reader_with_stats`, `parse_m3u_playlist_str_with_stats`, `parse_m3u_playlist_str`, `split_scheme`
+// These functions are ignored because they are not marked as `pub`: `channel_aliases`, `channels_from_parse_result`, `first_extra`, `for_each_m3u_channel_bytes`, `format_channel_name`, `is_attr_key_byte`, `is_private_or_local_host`, `list_extra`, `new`, `normalize_channel_name`, `normalize_logo_url`, `normalize_network_url`, `normalize_stream_url`, `parse_authority_host`, `parse_extinf`, `parse_ipv4`, `parse_line`, `parse_m3u_playlist_reader_with_stats`, `parse_m3u_playlist_str_with_stats`, `parse_m3u_playlist_str`, `split_scheme`
 // These types are ignored because they are neither used by any `pub` functions nor (for structs and enums) marked `#[frb(unignore)]`: `AttributeIter`, `PendingExtInf`
 // These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `next`
 // These functions are ignored (category: IgnoreBecauseOwnerTyShouldIgnore): `default`
@@ -49,11 +49,15 @@ class M3uChannel {
   const M3uChannel({
     required this.name,
     required this.url,
+    required this.aliases,
+    required this.tags,
     this.logo,
     this.group,
     this.tvgId,
     this.tvgName,
     this.language,
+    this.country,
+    this.provider,
   });
   final String name;
   final String url;
@@ -62,6 +66,10 @@ class M3uChannel {
   final String? tvgId;
   final String? tvgName;
   final String? language;
+  final List<String> aliases;
+  final String? country;
+  final String? provider;
+  final List<String> tags;
 
   @override
   int get hashCode =>
@@ -71,7 +79,11 @@ class M3uChannel {
       group.hashCode ^
       tvgId.hashCode ^
       tvgName.hashCode ^
-      language.hashCode;
+      language.hashCode ^
+      aliases.hashCode ^
+      country.hashCode ^
+      provider.hashCode ^
+      tags.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -84,7 +96,11 @@ class M3uChannel {
           group == other.group &&
           tvgId == other.tvgId &&
           tvgName == other.tvgName &&
-          language == other.language;
+          language == other.language &&
+          aliases == other.aliases &&
+          country == other.country &&
+          provider == other.provider &&
+          tags == other.tags;
 }
 
 class M3uChannelParseResult {

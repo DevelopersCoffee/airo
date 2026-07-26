@@ -27,8 +27,8 @@ playlist files itself.
 ## Cache and schema versions
 
 - Binary magic: `AIROPLV2`
-- Binary format version: `1`
-- SQLite schema version: `1`
+- Binary format version: `2`
+- SQLite schema version: `2`
 - Binary file: `playlist-v2.cache`
 - SQLite file: `playlist-v2.sqlite`
 
@@ -84,6 +84,7 @@ Milestone acceptance is strict:
 - exactly 100,000 indexed channels;
 - cold open below 1,000,000 microseconds;
 - warm open below 300,000 microseconds;
+- deterministic search p95 below 10,000 microseconds;
 - RSS delta at or below 96 MiB;
 - cold status `coldBuilt`, then `warmOpened`;
 - named physical Fire TV profile.

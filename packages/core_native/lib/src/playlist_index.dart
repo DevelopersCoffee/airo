@@ -37,6 +37,30 @@ class NativeM3uChannelPage {
   final bool hasMore;
 }
 
+enum NativePlaylistSearchField {
+  title,
+  alias,
+  genre,
+  language,
+  country,
+  provider,
+  tag,
+}
+
+enum NativePlaylistSearchOperator { equals, prefix, contains }
+
+class NativePlaylistSearchFilter {
+  const NativePlaylistSearchFilter({
+    required this.field,
+    required this.operator,
+    required this.value,
+  });
+
+  final NativePlaylistSearchField field;
+  final NativePlaylistSearchOperator operator;
+  final String value;
+}
+
 class NativePlaylistOpenTimings {
   const NativePlaylistOpenTimings({
     required this.totalMicros,
@@ -118,6 +142,36 @@ Future<NativeM3uChannelPage?> searchPlaylistIndexNative({
   );
 }
 
+Future<NativeM3uChannelPage?> searchPlaylistIndexV2Native({
+  required String indexPath,
+  required int offset,
+  String? query,
+  List<NativePlaylistSearchFilter> filters = const [],
+  int limit = 50,
+}) async {
+  if (kIsWeb || !await initializeCoreNativeBridge()) return null;
+  return _mapPage(
+    await native_engine.searchPlaylistIndexV2(
+      indexPath: indexPath,
+      query: query,
+      filters: filters
+          .map(
+            (filter) => native_engine.PlaylistSearchFilter(
+              field:
+                  native_engine.PlaylistSearchField.values[filter.field.index],
+              operator_: native_engine
+                  .PlaylistSearchOperator
+                  .values[filter.operator.index],
+              value: filter.value,
+            ),
+          )
+          .toList(growable: false),
+      offset: offset,
+      limit: limit,
+    ),
+  );
+}
+
 NativePlaylistIndexOpenResult _mapOpenResult(
   native_engine.PlaylistIndexOpenResult result,
 ) {
@@ -173,5 +227,9 @@ NativeM3uChannel _mapChannel(native_m3u.M3uChannel channel) {
     tvgId: channel.tvgId,
     tvgName: channel.tvgName,
     language: channel.language,
+    aliases: channel.aliases,
+    country: channel.country,
+    provider: channel.provider,
+    tags: channel.tags,
   );
 }

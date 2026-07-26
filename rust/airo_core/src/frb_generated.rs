@@ -37,7 +37,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
     default_rust_auto_opaque = RustAutoOpaqueMoi,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.11.1";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 2027540865;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 1869107413;
 
 // Section: executor
 
@@ -650,6 +650,53 @@ fn wire__crate__api__playlist_engine__search_playlist_index_impl(
         },
     )
 }
+fn wire__crate__api__playlist_engine__search_playlist_index_v2_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "search_playlist_index_v2",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_index_path = <String>::sse_decode(&mut deserializer);
+            let api_query = <Option<String>>::sse_decode(&mut deserializer);
+            let api_filters = <Vec<crate::api::playlist_engine::PlaylistSearchFilter>>::sse_decode(
+                &mut deserializer,
+            );
+            let api_offset = <u32>::sse_decode(&mut deserializer);
+            let api_limit = <u32>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, crate::api::playlist_engine::PlaylistEngineError>(
+                    (move || {
+                        let output_ok = crate::api::playlist_engine::search_playlist_index_v2(
+                            api_index_path,
+                            api_query,
+                            api_filters,
+                            api_offset,
+                            api_limit,
+                        )?;
+                        Ok(output_ok)
+                    })(),
+                )
+            }
+        },
+    )
+}
 fn wire__crate__api__xmltv__xmltv_current_next_result_default_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
@@ -858,6 +905,20 @@ impl SseDecode for Vec<crate::api::m3u::M3uEntry> {
     }
 }
 
+impl SseDecode for Vec<crate::api::playlist_engine::PlaylistSearchFilter> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut len_ = <i32>::sse_decode(deserializer);
+        let mut ans_ = vec![];
+        for idx_ in 0..len_ {
+            ans_.push(
+                <crate::api::playlist_engine::PlaylistSearchFilter>::sse_decode(deserializer),
+            );
+        }
+        return ans_;
+    }
+}
+
 impl SseDecode for Vec<u8> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -920,6 +981,10 @@ impl SseDecode for crate::api::m3u::M3uChannel {
         let mut var_tvgId = <Option<String>>::sse_decode(deserializer);
         let mut var_tvgName = <Option<String>>::sse_decode(deserializer);
         let mut var_language = <Option<String>>::sse_decode(deserializer);
+        let mut var_aliases = <Vec<String>>::sse_decode(deserializer);
+        let mut var_country = <Option<String>>::sse_decode(deserializer);
+        let mut var_provider = <Option<String>>::sse_decode(deserializer);
+        let mut var_tags = <Vec<String>>::sse_decode(deserializer);
         return crate::api::m3u::M3uChannel {
             name: var_name,
             url: var_url,
@@ -928,6 +993,10 @@ impl SseDecode for crate::api::m3u::M3uChannel {
             tvg_id: var_tvgId,
             tvg_name: var_tvgName,
             language: var_language,
+            aliases: var_aliases,
+            country: var_country,
+            provider: var_provider,
+            tags: var_tags,
         };
     }
 }
@@ -1157,6 +1226,52 @@ impl SseDecode for crate::api::playlist_engine::PlaylistOpenTimings {
     }
 }
 
+impl SseDecode for crate::api::playlist_engine::PlaylistSearchField {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <i32>::sse_decode(deserializer);
+        return match inner {
+            0 => crate::api::playlist_engine::PlaylistSearchField::Title,
+            1 => crate::api::playlist_engine::PlaylistSearchField::Alias,
+            2 => crate::api::playlist_engine::PlaylistSearchField::Genre,
+            3 => crate::api::playlist_engine::PlaylistSearchField::Language,
+            4 => crate::api::playlist_engine::PlaylistSearchField::Country,
+            5 => crate::api::playlist_engine::PlaylistSearchField::Provider,
+            6 => crate::api::playlist_engine::PlaylistSearchField::Tag,
+            _ => unreachable!("Invalid variant for PlaylistSearchField: {}", inner),
+        };
+    }
+}
+
+impl SseDecode for crate::api::playlist_engine::PlaylistSearchFilter {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_field =
+            <crate::api::playlist_engine::PlaylistSearchField>::sse_decode(deserializer);
+        let mut var_operator_ =
+            <crate::api::playlist_engine::PlaylistSearchOperator>::sse_decode(deserializer);
+        let mut var_value = <String>::sse_decode(deserializer);
+        return crate::api::playlist_engine::PlaylistSearchFilter {
+            field: var_field,
+            operator: var_operator_,
+            value: var_value,
+        };
+    }
+}
+
+impl SseDecode for crate::api::playlist_engine::PlaylistSearchOperator {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <i32>::sse_decode(deserializer);
+        return match inner {
+            0 => crate::api::playlist_engine::PlaylistSearchOperator::Equals,
+            1 => crate::api::playlist_engine::PlaylistSearchOperator::Prefix,
+            2 => crate::api::playlist_engine::PlaylistSearchOperator::Contains,
+            _ => unreachable!("Invalid variant for PlaylistSearchOperator: {}", inner),
+        };
+    }
+}
+
 impl SseDecode for (String, String) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -1356,25 +1471,31 @@ fn pde_ffi_dispatcher_primary_impl(
             rust_vec_len,
             data_len,
         ),
-        18 => wire__crate__api__xmltv__xmltv_current_next_result_default_impl(
+        18 => wire__crate__api__playlist_engine__search_playlist_index_v2_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        19 => wire__crate__api__xmltv__xmltv_current_next_stats_default_impl(
+        19 => wire__crate__api__xmltv__xmltv_current_next_result_default_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        20 => wire__crate__api__xmltv__xmltv_parse_result_default_impl(
+        20 => wire__crate__api__xmltv__xmltv_current_next_stats_default_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        21 => wire__crate__api__xmltv__xmltv_parse_stats_default_impl(
+        21 => wire__crate__api__xmltv__xmltv_parse_result_default_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        22 => wire__crate__api__xmltv__xmltv_parse_stats_default_impl(
             port,
             ptr,
             rust_vec_len,
@@ -1409,6 +1530,10 @@ impl flutter_rust_bridge::IntoDart for crate::api::m3u::M3uChannel {
             self.tvg_id.into_into_dart().into_dart(),
             self.tvg_name.into_into_dart().into_dart(),
             self.language.into_into_dart().into_dart(),
+            self.aliases.into_into_dart().into_dart(),
+            self.country.into_into_dart().into_dart(),
+            self.provider.into_into_dart().into_dart(),
+            self.tags.into_into_dart().into_dart(),
         ]
         .into_dart()
     }
@@ -1688,6 +1813,76 @@ impl flutter_rust_bridge::IntoIntoDart<crate::api::playlist_engine::PlaylistOpen
     }
 }
 // Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::playlist_engine::PlaylistSearchField {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        match self {
+            Self::Title => 0.into_dart(),
+            Self::Alias => 1.into_dart(),
+            Self::Genre => 2.into_dart(),
+            Self::Language => 3.into_dart(),
+            Self::Country => 4.into_dart(),
+            Self::Provider => 5.into_dart(),
+            Self::Tag => 6.into_dart(),
+            _ => unreachable!(),
+        }
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::playlist_engine::PlaylistSearchField
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::playlist_engine::PlaylistSearchField>
+    for crate::api::playlist_engine::PlaylistSearchField
+{
+    fn into_into_dart(self) -> crate::api::playlist_engine::PlaylistSearchField {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::playlist_engine::PlaylistSearchFilter {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.field.into_into_dart().into_dart(),
+            self.operator.into_into_dart().into_dart(),
+            self.value.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::playlist_engine::PlaylistSearchFilter
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::playlist_engine::PlaylistSearchFilter>
+    for crate::api::playlist_engine::PlaylistSearchFilter
+{
+    fn into_into_dart(self) -> crate::api::playlist_engine::PlaylistSearchFilter {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::playlist_engine::PlaylistSearchOperator {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        match self {
+            Self::Equals => 0.into_dart(),
+            Self::Prefix => 1.into_dart(),
+            Self::Contains => 2.into_dart(),
+            _ => unreachable!(),
+        }
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::playlist_engine::PlaylistSearchOperator
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::playlist_engine::PlaylistSearchOperator>
+    for crate::api::playlist_engine::PlaylistSearchOperator
+{
+    fn into_into_dart(self) -> crate::api::playlist_engine::PlaylistSearchOperator {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
 impl flutter_rust_bridge::IntoDart for crate::api::xmltv::XmltvCurrentNextEntry {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
@@ -1886,6 +2081,16 @@ impl SseEncode for Vec<crate::api::m3u::M3uEntry> {
     }
 }
 
+impl SseEncode for Vec<crate::api::playlist_engine::PlaylistSearchFilter> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(self.len() as _, serializer);
+        for item in self {
+            <crate::api::playlist_engine::PlaylistSearchFilter>::sse_encode(item, serializer);
+        }
+    }
+}
+
 impl SseEncode for Vec<u8> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -1936,6 +2141,10 @@ impl SseEncode for crate::api::m3u::M3uChannel {
         <Option<String>>::sse_encode(self.tvg_id, serializer);
         <Option<String>>::sse_encode(self.tvg_name, serializer);
         <Option<String>>::sse_encode(self.language, serializer);
+        <Vec<String>>::sse_encode(self.aliases, serializer);
+        <Option<String>>::sse_encode(self.country, serializer);
+        <Option<String>>::sse_encode(self.provider, serializer);
+        <Vec<String>>::sse_encode(self.tags, serializer);
     }
 }
 
@@ -2106,6 +2315,56 @@ impl SseEncode for crate::api::playlist_engine::PlaylistOpenTimings {
         <u64>::sse_encode(self.source_map_micros, serializer);
         <u64>::sse_encode(self.index_build_micros, serializer);
         <u64>::sse_encode(self.first_page_micros, serializer);
+    }
+}
+
+impl SseEncode for crate::api::playlist_engine::PlaylistSearchField {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(
+            match self {
+                crate::api::playlist_engine::PlaylistSearchField::Title => 0,
+                crate::api::playlist_engine::PlaylistSearchField::Alias => 1,
+                crate::api::playlist_engine::PlaylistSearchField::Genre => 2,
+                crate::api::playlist_engine::PlaylistSearchField::Language => 3,
+                crate::api::playlist_engine::PlaylistSearchField::Country => 4,
+                crate::api::playlist_engine::PlaylistSearchField::Provider => 5,
+                crate::api::playlist_engine::PlaylistSearchField::Tag => 6,
+                _ => {
+                    unimplemented!("");
+                }
+            },
+            serializer,
+        );
+    }
+}
+
+impl SseEncode for crate::api::playlist_engine::PlaylistSearchFilter {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <crate::api::playlist_engine::PlaylistSearchField>::sse_encode(self.field, serializer);
+        <crate::api::playlist_engine::PlaylistSearchOperator>::sse_encode(
+            self.operator,
+            serializer,
+        );
+        <String>::sse_encode(self.value, serializer);
+    }
+}
+
+impl SseEncode for crate::api::playlist_engine::PlaylistSearchOperator {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(
+            match self {
+                crate::api::playlist_engine::PlaylistSearchOperator::Equals => 0,
+                crate::api::playlist_engine::PlaylistSearchOperator::Prefix => 1,
+                crate::api::playlist_engine::PlaylistSearchOperator::Contains => 2,
+                _ => {
+                    unimplemented!("");
+                }
+            },
+            serializer,
+        );
     }
 }
 
