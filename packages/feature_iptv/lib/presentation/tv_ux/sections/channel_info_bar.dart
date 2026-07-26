@@ -4,6 +4,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:platform_channels/platform_channels.dart';
 
+import '../../../application/iptv_deep_link.dart';
+import '../../../application/providers/channel_filters_provider.dart';
 import '../../../application/providers/iptv_providers.dart';
 import '../../widgets/channel_logo.dart';
 
@@ -13,6 +15,7 @@ class ChannelInfoBar extends ConsumerWidget {
     this.channel,
     this.onPlaylistSourceTap,
     this.onWaysToWatchTap,
+    this.onScreenshotTap,
   });
 
   final IPTVChannel? channel;
@@ -23,6 +26,10 @@ class ChannelInfoBar extends ConsumerWidget {
 
   /// Opens the capability-aware fit/full/floating/Cast chooser.
   final VoidCallback? onWaysToWatchTap;
+
+  /// Captures and shares only the current video frame when the host supports
+  /// image delivery.
+  final VoidCallback? onScreenshotTap;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -72,15 +79,27 @@ class ChannelInfoBar extends ConsumerWidget {
             enabled: channel != null,
             onSelect: channel == null
                 ? null
-                : () => _copyShareDetails(context, channel!),
+                : () => _copyShareDetails(context, ref, channel!),
             child: IconButton(
               onPressed: channel == null
                   ? null
-                  : () => _copyShareDetails(context, channel!),
+                  : () => _copyShareDetails(context, ref, channel!),
               tooltip: 'Share',
               icon: const Icon(Icons.share_outlined),
             ),
           ),
+          if (onScreenshotTap != null)
+            TvFocusable(
+              key: const ValueKey('channel-info-screenshot'),
+              semanticLabel: 'Share video frame',
+              enabled: channel != null,
+              onSelect: channel == null ? null : onScreenshotTap,
+              child: IconButton(
+                onPressed: channel == null ? null : onScreenshotTap,
+                tooltip: 'Share video frame',
+                icon: const Icon(Icons.photo_camera_outlined),
+              ),
+            ),
           TvFocusable(
             key: const ValueKey('channel-info-ways-to-watch'),
             semanticLabel: 'Ways to Watch',
@@ -130,15 +149,17 @@ class ChannelInfoBar extends ConsumerWidget {
 
   Future<void> _copyShareDetails(
     BuildContext context,
+    WidgetRef ref,
     IPTVChannel selectedChannel,
   ) async {
     final messenger = ScaffoldMessenger.of(context);
     try {
-      await Clipboard.setData(
-        ClipboardData(
-          text: '${selectedChannel.name}\n${selectedChannel.streamUrl}',
-        ),
-      );
+      final filters = ref.read(channelFiltersProvider);
+      final link = IptvDeepLinkIntent(
+        channelId: selectedChannel.id,
+        filters: filters,
+      ).toUri();
+      await Clipboard.setData(ClipboardData(text: link.toString()));
       if (!context.mounted) return;
       messenger
         ..hideCurrentSnackBar()

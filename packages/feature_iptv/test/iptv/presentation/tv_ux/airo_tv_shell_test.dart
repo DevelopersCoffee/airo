@@ -5,8 +5,11 @@ import 'package:feature_iptv/application/providers/connectivity_provider.dart';
 import 'package:feature_iptv/application/providers/iptv_providers.dart';
 import 'package:feature_iptv/presentation/tv_ux/airo_tv_shell.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'dart:async';
+import 'dart:typed_data';
 import 'package:platform_channels/platform_channels.dart';
 import 'package:platform_player/platform_player.dart';
 import 'package:platform_streams/platform_streams.dart';
@@ -45,6 +48,8 @@ void main() {
     bool isOnline = true,
     IPTVChannel? currentChannel,
     StreamingState? streamingState,
+    Future<void> Function(Uint8List)? onShareVideoFrame,
+    Future<Uint8List> Function(RenderRepaintBoundary)? videoFrameEncoder,
   }) async {
     final prefs = await SharedPreferences.getInstance();
     final container = ProviderContainer(
@@ -72,6 +77,8 @@ void main() {
                 currentChannel: currentChannel,
                 videoStage: const SizedBox(key: ValueKey('video-stage')),
                 onChannelSelected: (_) {},
+                onShareVideoFrame: onShareVideoFrame,
+                videoFrameEncoder: videoFrameEncoder,
               ),
             ),
           ),
@@ -122,6 +129,49 @@ void main() {
       find.byKey(const ValueKey('airo-tv-channel-library')),
       findsOneWidget,
     );
+  });
+
+  testWidgets('screenshot captures the video scope without shell chrome', (
+    tester,
+  ) async {
+    final capturedCompleter = Completer<Uint8List>();
+    await pumpAt(
+      tester,
+      900,
+      currentChannel: channels.first,
+      onShareVideoFrame: (bytes) async => capturedCompleter.complete(bytes),
+      videoFrameEncoder: (_) async =>
+          Uint8List.fromList([137, 80, 78, 71, 13, 10, 26, 10]),
+    );
+    await tester.pumpAndSettle();
+
+    final scope = find.byKey(const ValueKey('airo-tv-video-capture-scope'));
+    expect(
+      find.descendant(
+        of: scope,
+        matching: find.byKey(const ValueKey('video-stage')),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: scope, matching: find.byTooltip('Share video frame')),
+      findsNothing,
+    );
+
+    tester
+        .widget<IconButton>(
+          find.widgetWithIcon(IconButton, Icons.photo_camera_outlined),
+        )
+        .onPressed!
+        .call();
+    await tester.pump();
+    final captured = await tester.runAsync(
+      () => capturedCompleter.future.timeout(const Duration(seconds: 2)),
+    );
+    await tester.pumpAndSettle();
+
+    expect(captured, isNotNull);
+    expect(captured!.take(8), [137, 80, 78, 71, 13, 10, 26, 10]);
   });
 
   testWidgets('wide layout retains the full channel library grid', (
