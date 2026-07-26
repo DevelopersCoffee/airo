@@ -13,6 +13,7 @@ import '../../application/providers/connectivity_provider.dart';
 import '../../application/providers/control_row_visibility_provider.dart';
 import '../../application/providers/hotbar_channels_provider.dart';
 import '../../application/providers/iptv_providers.dart';
+import '../../application/providers/multiview_provider.dart';
 import '../../application/channel_metadata_enrichment.dart';
 import '../../application/channel_warmup_policy.dart';
 import 'sections/channel_info_bar.dart';
@@ -20,6 +21,7 @@ import 'sections/channel_library_grid.dart';
 import 'sections/filter_dialogs.dart';
 import 'sections/filter_row.dart';
 import 'sections/hotbar.dart';
+import 'sections/multiview_stage.dart';
 import 'sections/playback_stats_bar.dart';
 import 'sections/shell_help_dialog.dart';
 import 'sections/shell_settings_dialog.dart';
@@ -81,6 +83,7 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
     final countryPrompt = ref.watch(channelCountryPromptProvider);
     final hasHotbar = ref.watch(hotbarChannelsProvider).isNotEmpty;
     final rowVisibility = ref.watch(controlRowVisibilityProvider);
+    final multiview = ref.watch(multiviewProvider);
     final playbackStats = ref
         .watch(streamingStateProvider)
         .asData
@@ -117,6 +120,10 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
         availabilityByChannelId,
       ),
       onVisibleChannelsChanged: _scheduleVisibleChannelScan,
+      multiviewChannelIds: {
+        for (final session in multiview.sessions) session.id,
+      },
+      onMultiviewToggle: (channel) => _toggleMultiview(context, channel),
     );
     final infoBar = ChannelInfoBar(
       channel: widget.currentChannel,
@@ -129,7 +136,14 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
     );
     final filterRow = FilterRow(dimensions: snapshot.dimensions);
     final videoStage = _VideoStageWithActions(
-      child: widget.videoStage,
+      child: multiview.sessions.isEmpty
+          ? widget.videoStage
+          : MultiviewStage(
+              sessions: multiview.sessions,
+              featuredChannelId: multiview.featuredChannelId,
+              onPromote: (channelId) =>
+                  ref.read(multiviewProvider.notifier).promote(channelId),
+            ),
       onSettings: () => showAiroTvShellSettingsDialog(context),
       onHelp: () => showAiroTvShellHelpDialog(context),
     );
@@ -241,6 +255,26 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
         );
       },
     );
+  }
+
+  Future<void> _toggleMultiview(
+    BuildContext context,
+    IPTVChannel channel,
+  ) async {
+    final result = await ref.read(multiviewProvider.notifier).toggle(channel);
+    if (!context.mounted) return;
+    final message = switch (result) {
+      MultiviewToggleResult.added => '${channel.name} added to multiview',
+      MultiviewToggleResult.removed => '${channel.name} removed from multiview',
+      MultiviewToggleResult.capacityReached =>
+        'This device supports up to '
+            '${ref.read(multiviewProvider).capacity} multiview streams.',
+      MultiviewToggleResult.failed =>
+        '${channel.name} could not be opened in multiview.',
+    };
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
   }
 
   void _selectChannel(

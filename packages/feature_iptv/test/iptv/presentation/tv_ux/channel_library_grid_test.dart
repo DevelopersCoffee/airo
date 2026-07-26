@@ -107,6 +107,35 @@ void main() {
     expect(sorted, ChannelSortColumn.category);
   });
 
+  testWidgets('TV action adds and removes channels from multiview', (
+    tester,
+  ) async {
+    IPTVChannel? toggled;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SizedBox(
+            width: 800,
+            height: 600,
+            child: ChannelLibraryGrid(
+              channels: channels,
+              metadataByChannelId: const {},
+              multiviewChannelIds: const {'two'},
+              onMultiviewToggle: (channel) => toggled = channel,
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.byTooltip('Add to multiview'), findsOneWidget);
+    expect(find.byTooltip('Remove from multiview'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('channel-multiview-one')));
+    await tester.pump();
+
+    expect(toggled?.id, 'one');
+  });
+
   testWidgets('reports the currently visible channels for bounded scanning', (
     tester,
   ) async {
@@ -183,9 +212,7 @@ void main() {
     expect(find.text('Channel 119'), findsOneWidget);
   });
 
-  testWidgets('availability dot renders for checked channels', (
-    tester,
-  ) async {
+  testWidgets('availability dot renders for checked channels', (tester) async {
     await tester.pumpWidget(
       const MaterialApp(
         home: Scaffold(
