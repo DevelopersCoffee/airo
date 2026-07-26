@@ -236,10 +236,7 @@ jobs:
       - name: Cache pub dependencies
         uses: actions/cache@v6
         with:
-          path: |
-            ~/.pub-cache
-            app/.dart_tool
-            packages/*/.dart_tool
+          path: ~/.pub-cache
           key: mobile-tablet-pub-${{ runner.os }}-${{ env.PROFILE }}-${{ hashFiles('**/pubspec.lock', 'app/pubspec.yaml') }}
           restore-keys: mobile-tablet-pub-${{ runner.os }}-${{ env.PROFILE }}-
 
