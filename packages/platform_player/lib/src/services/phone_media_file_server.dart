@@ -399,6 +399,25 @@ class PhoneMediaFileServer implements AiroTemporaryMobileServerController {
       await response.addStream(_source.openRead(start, end));
       _lastActivityAt = _now();
       await response.close();
+    } on PhoneMediaSourceException catch (error) {
+      _emit(
+        PhoneMediaDiagnosticEvent(
+          kind: PhoneMediaDiagnosticEventKind.requestError,
+          errorType: 'source_${error.code.stableId}',
+        ),
+      );
+      try {
+        response.statusCode = switch (error.code) {
+          PhoneMediaSourceFailureCode.unavailable => HttpStatus.notFound,
+          PhoneMediaSourceFailureCode.closed => HttpStatus.gone,
+          PhoneMediaSourceFailureCode.permissionLost => HttpStatus.forbidden,
+          PhoneMediaSourceFailureCode.readFailed =>
+            HttpStatus.internalServerError,
+        };
+        await response.close();
+      } catch (_) {
+        // Response headers or socket may already be committed.
+      }
     } catch (error) {
       _emit(
         PhoneMediaDiagnosticEvent(
