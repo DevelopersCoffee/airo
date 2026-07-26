@@ -423,9 +423,9 @@ class _OfflineBannerState extends ConsumerState<_OfflineBanner> {
               'streams need a connection.',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Colors.amber.shade100,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: Colors.amber.shade100),
             ),
           ),
           const SizedBox(width: 8),
