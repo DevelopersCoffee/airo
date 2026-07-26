@@ -317,4 +317,37 @@ void main() {
     expect(find.text('Add your playlist'), findsOneWidget);
     expect(find.widgetWithText(AppBar, 'Settings'), findsNothing);
   });
+
+  testWidgets('compact landscape settings Back returns to live TV', (
+    tester,
+  ) async {
+    await pumpTvRouter(
+      tester,
+      initialLocation: TvRouteNames.settings,
+      surfaceSize: const Size(1090, 485),
+    );
+
+    await tester.tap(find.byTooltip('Back'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Add your playlist'), findsOneWidget);
+    expect(find.widgetWithText(AppBar, 'Settings'), findsNothing);
+  });
+
+  testWidgets(
+    'compact landscape settings handles Android back by returning live',
+    (tester) async {
+      await pumpTvRouter(
+        tester,
+        initialLocation: TvRouteNames.settings,
+        surfaceSize: const Size(1090, 485),
+      );
+
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+
+      expect(find.text('Add your playlist'), findsOneWidget);
+      expect(find.widgetWithText(AppBar, 'Settings'), findsNothing);
+    },
+  );
 }
