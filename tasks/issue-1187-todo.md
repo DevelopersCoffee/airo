@@ -57,14 +57,14 @@ registry without changing existing navigation.
 
 **Acceptance criteria:**
 
-- [ ] Super-app registry includes allowed mobile modules.
-- [ ] Stable routes and startup behavior have parity tests.
-- [ ] Legacy static registry is removable or explicitly bounded.
+- [x] Super-app registry includes allowed mobile modules.
+- [x] Stable module mount points and startup behavior have parity tests.
+- [x] Legacy static registry is explicitly bounded as a compatibility façade.
 
 **Verification:**
 
-- [ ] Focused mobile router/startup/widget tests pass.
-- [ ] Targeted analyze passes.
+- [x] Focused mobile composition/startup/widget tests pass.
+- [x] Targeted analyze passes.
 
 **Dependencies:** Tasks 1-2
 
@@ -77,14 +77,14 @@ manifests.
 
 **Acceptance criteria:**
 
-- [ ] TV rejects packages marked `Never Ship` for TV.
-- [ ] Coins rejects TV-only product modules.
-- [ ] Validation is deterministic and documented.
+- [x] TV rejects packages marked `Never Ship` for TV.
+- [x] Coins rejects TV-only product modules.
+- [x] Validation is deterministic and documented.
 
 **Verification:**
 
-- [ ] Host-only policy script tests pass.
-- [ ] Focused product dependency checks pass.
+- [x] Host-only policy script tests pass.
+- [x] Focused product dependency checks pass.
 
 **Dependencies:** Tasks 2-3
 

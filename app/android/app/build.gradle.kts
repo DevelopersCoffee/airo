@@ -19,6 +19,7 @@ fun dartDefine(name: String): String? {
 val appVariant = dartDefine("APP_VARIANT") ?: "full"
 val isLeanVariant = appVariant != "full"
 val isTvVariant = appVariant == "tv"
+val isCoinsVariant = appVariant == "coins"
 val variantApplicationId = when (appVariant) {
     "tv" -> "io.airo.app.tv"
     "coins" -> "io.airo.app.coins"
@@ -100,12 +101,22 @@ android {
         normalized.contains("release") || normalized.contains("bundle")
     }
     val isCiBuild = providers.environmentVariable("CI").orNull.equals("true", ignoreCase = true)
+    val allowDebugReleaseSigning = providers.environmentVariable(
+        "AIRO_ALLOW_DEBUG_RELEASE_SIGNING",
+    ).orNull.equals("true", ignoreCase = true)
 
-    if (!hasReleaseSigningConfig && requestedReleaseBuild && !isCiBuild) {
+    if (
+        !hasReleaseSigningConfig &&
+        requestedReleaseBuild &&
+        !isCiBuild &&
+        !allowDebugReleaseSigning
+    ) {
         throw GradleException(
             "Missing Android release signing properties: ${missingSigningProperties.joinToString()}. " +
                 "Copy app/android/key.properties.example to app/android/key.properties " +
-                "or configure the GitHub release signing secrets."
+                "or configure the GitHub release signing secrets. For a local, " +
+                "non-distributable size qualification build only, set " +
+                "AIRO_ALLOW_DEBUG_RELEASE_SIGNING=true."
         )
     }
 
@@ -150,7 +161,12 @@ android {
                 manifest.srcFile("src/tv/AndroidManifest.xml")
                 res.srcDir("src/tv/res")
             }
-            kotlin.srcDir("src/main/kotlin")
+            if (isCoinsVariant) {
+                manifest.srcFile("src/coins/AndroidManifest.xml")
+                kotlin.setSrcDirs(listOf("src/coins/kotlin"))
+            } else {
+                kotlin.setSrcDirs(listOf("src/product/kotlin"))
+            }
             // Pick the real LiteRT-LM plugin only when the private Maven
             // dependency was resolvable (see `app/android/build.gradle.kts`).
             // Otherwise compile a stub with the same class name that
@@ -159,10 +175,12 @@ android {
             // compiles without the com.google.ai.edge.litertlm.* imports.
             val liteRtLmAvailable =
                 rootProject.extra.get("liteRtLmAvailable") as Boolean
-            kotlin.srcDir(
-                if (liteRtLmAvailable) "src/withLitertlm/kotlin"
-                else "src/withoutLitertlm/kotlin",
-            )
+            if (!isCoinsVariant) {
+                kotlin.srcDir(
+                    if (liteRtLmAvailable) "src/withLitertlm/kotlin"
+                    else "src/withoutLitertlm/kotlin",
+                )
+            }
         }
     }
 
@@ -208,7 +226,9 @@ dependencies {
     testImplementation("junit:junit:4.13.2")
 
     // ML Kit GenAI Prompt API for on-device Gemini Nano.
-    implementation("com.google.mlkit:genai-prompt:1.0.0-beta3")
+    if (!isCoinsVariant) {
+        implementation("com.google.mlkit:genai-prompt:1.0.0-beta3")
+    }
 
     // LiteRT-LM for local on-device LLM inference. Only wired when the
     // root `build.gradle.kts` was able to authenticate against the
@@ -222,19 +242,21 @@ dependencies {
     // shift in 0.14.0). LiteRtLmPlugin.kt has been verified against the 0.14.0
     // Kotlin API surface (Backend.CPU/GPU/NPU factories, engine.close(),
     // Contents.of, ConversationConfig) per developers.google.com/edge/litert-lm.
-    if (rootProject.extra.get("liteRtLmAvailable") as Boolean) {
+    if (!isCoinsVariant && rootProject.extra.get("liteRtLmAvailable") as Boolean) {
         implementation("com.google.ai.edge.litertlm:litertlm-android:0.14.0")
     }
 
-    // Coroutines and lifecycle dependencies for async operations
-    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.11.0")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.11.0")
+    if (!isCoinsVariant) {
+        // Coroutines and lifecycle dependencies for async operations
+        implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.11.0")
+        implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0")
+        implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0")
+        implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.11.0")
 
-    // WorkManager and OkHttp for background model downloading
-    implementation("androidx.work:work-runtime-ktx:2.11.2")
-    implementation("com.squareup.okhttp3:okhttp:5.4.0")
+        // WorkManager and OkHttp for background model downloading
+        implementation("androidx.work:work-runtime-ktx:2.11.2")
+        implementation("com.squareup.okhttp3:okhttp:5.4.0")
+    }
 
 }
 

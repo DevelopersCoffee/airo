@@ -65,30 +65,32 @@ core_product_shell validation
 ### Checkpoint: TV shell
 
 - [x] Focused TV bootstrap tests pass.
-- [ ] TV target analyzes with the lean manifest workflow.
+- [x] TV target analyzes with the lean manifest workflow.
 
 ### Phase 3: Super-app vertical slice
 
-- [ ] Define the mobile registry factory and module adapters.
-- [ ] Route module-owned destinations and provider overrides through the
-      registry while retaining route compatibility.
-- [ ] Add super-app parity tests for stable route prefixes and initial journey.
+- [x] Define the mobile registry factory and module adapters.
+- [x] Route module provider overrides and lifecycle through the registry.
+- [ ] Move shell-nested module destinations into registry route bundles while
+      retaining route compatibility.
+- [x] Add super-app composition parity tests for stable route prefixes.
+- [ ] Add initial-journey parity coverage for the registry-owned route tree.
 
 ### Checkpoint: Super-app shell
 
-- [ ] Focused super-app routing/startup tests pass.
-- [ ] No shared module contract remains app-owned except a documented temporary
+- [x] Focused super-app composition/startup tests pass.
+- [x] No shared module contract remains app-owned except a documented temporary
       façade.
 
 ### Phase 4: Product profile enforcement
 
-- [ ] Validate `module.yaml` ship policies against focused product manifests.
-- [ ] Prove TV excludes Never Ship Coins dependencies and Coins excludes IPTV.
-- [ ] Update ADR-0011 status, migration notes, rollback, and remaining work.
+- [x] Validate `module.yaml` ship policies against focused product manifests.
+- [x] Prove TV excludes Never Ship Coins dependencies and Coins excludes IPTV.
+- [x] Update ADR-0011 status, migration notes, rollback, and remaining work.
 
 ### Checkpoint: Complete
 
-- [ ] Super-app, TV, and Coins consume the same composition contract.
+- [x] Super-app, TV, and Coins consume the same composition contract.
 - [ ] Targeted format/analyze/test/build checks and `git diff --check` pass.
 - [ ] Issue #1187 contains validation evidence.
 

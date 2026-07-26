@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import json
 import os
+import re
 import sys
 from pathlib import Path
 
@@ -10,6 +11,7 @@ DEFAULT_PROFILE_FILE = ROOT / ".github" / "airo-build-profiles.json"
 DEFAULT_BASELINE_FILE = ROOT / ".github" / "apk-size-baselines.tsv"
 DEFAULT_REPORT_FILE = ROOT / "build-profile-report.md"
 CI_WORKFLOW = ROOT / ".github" / "workflows" / "ci.yml"
+PACKAGES_DIR = ROOT / "packages"
 
 
 def error(message, path=None):
@@ -107,6 +109,42 @@ def normalize_path(value):
     return value.rstrip("/")
 
 
+def module_ship_policy(package_name):
+    """Read the flat values nested under module.yaml's ship_policy key."""
+    manifest = PACKAGES_DIR / package_name / "module.yaml"
+    if not manifest.exists():
+        return {}
+
+    policy = {}
+    in_ship_policy = False
+    for raw in manifest.read_text(encoding="utf-8").splitlines():
+        if not raw.strip() or raw.lstrip().startswith("#"):
+            continue
+        if raw == "ship_policy:":
+            in_ship_policy = True
+            continue
+        if in_ship_policy and raw and not raw.startswith(" "):
+            break
+        if not in_ship_policy:
+            continue
+        match = re.match(r"^  ([\w-]+):\s*(.+?)\s*$", raw)
+        if match:
+            policy[match.group(1)] = match.group(2)
+    return policy
+
+
+def profile_device_class(profile):
+    explicit = profile.get("deviceClass")
+    if explicit:
+        return explicit
+    return {
+        "androidTv": "tv",
+        "mobileFull": "phone",
+        "ios": "phone",
+        "webFull": "desktop",
+    }.get(profile.get("appPlatform"))
+
+
 def main():
     profile_file = Path(os.environ.get("AIRO_BUILD_PROFILE_FILE", DEFAULT_PROFILE_FILE))
     baseline_file = Path(os.environ.get("AIRO_APK_BASELINE_FILE", DEFAULT_BASELINE_FILE))
@@ -169,6 +207,35 @@ def main():
         for package in profile.get("requiredPackages", []):
             if package not in deps:
                 error(f"{profile_id}: required package {package} missing from {pubspec}", pubspec)
+                failures += 1
+                status = "FAIL"
+
+        device_class = profile_device_class(profile)
+        if not device_class:
+            error(
+                f"{profile_id}: deviceClass is required for unknown appPlatform "
+                f"{profile.get('appPlatform')}",
+                profile_file,
+            )
+            failures += 1
+            status = "FAIL"
+
+        for module in profile.get("featureModules", []):
+            if module not in deps:
+                error(
+                    f"{profile_id}: feature module {module} missing from {pubspec}",
+                    pubspec,
+                )
+                failures += 1
+                status = "FAIL"
+
+            ship_policy = module_ship_policy(module)
+            if ship_policy.get(device_class, "").casefold() == "never ship":
+                error(
+                    f"{profile_id}: feature module {module} is marked Never Ship "
+                    f"for device class {device_class}",
+                    profile_file,
+                )
                 failures += 1
                 status = "FAIL"
 
