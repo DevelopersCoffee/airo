@@ -33,6 +33,13 @@ class VideoPlayerWidget extends ConsumerStatefulWidget {
   final bool enableTouchGestures;
   final PlayerBrightnessController? brightnessController;
 
+  /// Whether to offer system Picture-in-Picture (the floating-window
+  /// control and the TV settings toggle). PiP is a phone/tablet
+  /// multitasking concept -- Android TV and Fire TV don't have a
+  /// multi-window model for it to floated into, so TV callers pass
+  /// `false`. Defaults to `true` for phone/tablet callers.
+  final bool showPictureInPicture;
+
   /// Invoked when the new [PlayerOverlay] chrome's back button is tapped.
   /// Defaults to [onFullscreenToggle] when not supplied, since today's only
   /// callers mount this widget full-screen and treat "back" as "exit
@@ -57,6 +64,7 @@ class VideoPlayerWidget extends ConsumerStatefulWidget {
     this.enableSwipeChannelChange = false,
     this.initiallyFullscreen = false,
     this.enableTouchGestures = true,
+    this.showPictureInPicture = true,
     this.brightnessController,
     this.onBack,
     this.setAudioOnlyMode,
@@ -1108,16 +1116,18 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                   iconSize: 24,
                   backgroundAlpha: 0.48,
                 ),
-                const SizedBox(width: 10),
-                _PlayerRoundControlButton(
-                  key: const ValueKey('iptv-player-pip-button'),
-                  icon: Icons.picture_in_picture_alt_outlined,
-                  tooltip: 'Picture-in-picture',
-                  onPressed: _requestPictureInPicture,
-                  diameter: 44,
-                  iconSize: 22,
-                  backgroundAlpha: 0.48,
-                ),
+                if (widget.showPictureInPicture) ...[
+                  const SizedBox(width: 10),
+                  _PlayerRoundControlButton(
+                    key: const ValueKey('iptv-player-pip-button'),
+                    icon: Icons.picture_in_picture_alt_outlined,
+                    tooltip: 'Picture-in-picture',
+                    onPressed: _requestPictureInPicture,
+                    diameter: 44,
+                    iconSize: 22,
+                    backgroundAlpha: 0.48,
+                  ),
+                ],
                 const SizedBox(width: 10),
                 _PlayerRoundControlButton(
                   key: const ValueKey('iptv-player-random-channel-button'),
@@ -1473,12 +1483,13 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                 title: Text('Player actions'),
                 subtitle: Text('Secondary controls for this stream'),
               ),
-              ListTile(
-                key: const ValueKey('iptv-player-pip-menu-action'),
-                leading: const Icon(Icons.picture_in_picture_alt_outlined),
-                title: const Text('Picture-in-picture'),
-                onTap: () => unawaited(afterSheet(_requestPictureInPicture)),
-              ),
+              if (widget.showPictureInPicture)
+                ListTile(
+                  key: const ValueKey('iptv-player-pip-menu-action'),
+                  leading: const Icon(Icons.picture_in_picture_alt_outlined),
+                  title: const Text('Picture-in-picture'),
+                  onTap: () => unawaited(afterSheet(_requestPictureInPicture)),
+                ),
               if (hasQualityChoices)
                 ListTile(
                   key: const ValueKey('iptv-player-quality-menu-action'),
