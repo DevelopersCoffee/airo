@@ -10,7 +10,13 @@ import '../../domain/local_iptv_search.dart';
 /// program results for [localIptvSearchQueryProvider], focus-safe and
 /// overflow-safe at TV viewport sizes.
 class LocalSearchResultsPanel extends ConsumerWidget {
-  const LocalSearchResultsPanel({super.key});
+  const LocalSearchResultsPanel({super.key, this.onChannelSelected});
+
+  /// Called after a channel result is selected and playback has started.
+  /// The search overlay is modal (a [Dialog.fullscreen]); without this,
+  /// selecting a channel left the dialog open with nothing re-claiming
+  /// D-pad focus, so the remote appeared dead until Back was pressed.
+  final VoidCallback? onChannelSelected;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -60,7 +66,11 @@ class LocalSearchResultsPanel extends ConsumerWidget {
               _SectionHeader('Channels'),
               const SizedBox(height: 8),
               for (var i = 0; i < channelResults.length; i++)
-                _ResultRow(result: channelResults[i], autofocus: i == 0),
+                _ResultRow(
+                  result: channelResults[i],
+                  autofocus: i == 0,
+                  onChannelSelected: onChannelSelected,
+                ),
               const SizedBox(height: 20),
             ],
             if (programResults.isNotEmpty) ...[
@@ -70,6 +80,7 @@ class LocalSearchResultsPanel extends ConsumerWidget {
                 _ResultRow(
                   result: programResults[i],
                   autofocus: channelResults.isEmpty && i == 0,
+                  onChannelSelected: onChannelSelected,
                 ),
             ],
           ],
@@ -98,10 +109,15 @@ class _SectionHeader extends StatelessWidget {
 }
 
 class _ResultRow extends ConsumerWidget {
-  const _ResultRow({required this.result, this.autofocus = false});
+  const _ResultRow({
+    required this.result,
+    this.autofocus = false,
+    this.onChannelSelected,
+  });
 
   final LocalIptvSearchResult result;
   final bool autofocus;
+  final VoidCallback? onChannelSelected;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -118,6 +134,7 @@ class _ResultRow extends ConsumerWidget {
           for (final channel in channels) {
             if (channel.id == result.channelId) {
               ref.read(iptvStreamingServiceProvider).playChannel(channel);
+              onChannelSelected?.call();
               break;
             }
           }

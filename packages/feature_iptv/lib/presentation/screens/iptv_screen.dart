@@ -687,6 +687,7 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
               onFullscreenToggle: _toggleFullscreen,
               enableSwipeChannelChange: true,
               showPictureInPicture: !widget.tenFootMode,
+              useTvTransportBar: widget.tenFootMode,
             ),
           ),
         ),

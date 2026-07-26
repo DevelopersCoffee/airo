@@ -38,11 +38,7 @@ void main() {
         container: container,
         child: const MaterialApp(
           home: Scaffold(
-            body: SizedBox(
-              width: 960,
-              height: 540,
-              child: VideoPlayerWidget(),
-            ),
+            body: SizedBox(width: 960, height: 540, child: VideoPlayerWidget()),
           ),
         ),
       ),
@@ -122,7 +118,8 @@ void main() {
       expect(
         handled,
         isTrue,
-        reason: 'PopScope must report the back request as handled, or the '
+        reason:
+            'PopScope must report the back request as handled, or the '
             'platform (Android) proceeds to pop/exit the Activity on top '
             "of whatever the app's own state did.",
       );
@@ -162,4 +159,50 @@ void main() {
 
     expect(find.text('Actions for'), findsNothing);
   });
+
+  // Regression for issues/01-remote-focus-contract.md acceptance criterion
+  // 5: "Holding Select does not also trigger the short-press action."
+  // TvInputHandler fires on every key-down, so before this fix the
+  // short-press reveal-controls action (which moves focus onto the center
+  // play/pause control) ran on Select's down-stroke regardless of how long
+  // it was then held -- doubling up with the context menu that opened 500ms
+  // later on the same press.
+  testWidgets('a short Select tap moves focus onto the center control', (
+    tester,
+  ) async {
+    await pumpPlayer(tester);
+
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.select);
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.select);
+    await tester.pump();
+
+    expect(find.text('Actions for'), findsNothing);
+    expect(
+      FocusManager.instance.primaryFocus?.debugLabel,
+      'player center control',
+    );
+  });
+
+  testWidgets(
+    'a long-press does not also move focus onto the center control -- only '
+    'the context menu opens',
+    (tester) async {
+      await pumpPlayer(tester);
+
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.select);
+      await tester.pump(const Duration(milliseconds: 600));
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.select);
+      await tester.pump();
+
+      expect(find.text('Actions for'), findsOneWidget);
+      expect(
+        FocusManager.instance.primaryFocus?.debugLabel,
+        isNot('player center control'),
+        reason:
+            'the long-press must not also fire the short-press reveal '
+            'action on top of opening the context menu',
+      );
+    },
+  );
 }

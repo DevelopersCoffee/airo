@@ -205,14 +205,16 @@ class _SearchOverlayState extends ConsumerState<SearchOverlay> {
                     border: OutlineInputBorder(),
                   ),
                   textInputAction: TextInputAction.search,
-                  onChanged: (value) => ref
-                      .read(localIptvSearchQueryProvider.notifier)
-                      .state = value,
+                  onChanged: (value) =>
+                      ref.read(localIptvSearchQueryProvider.notifier).state =
+                          value,
                   onSubmitted: (_) => _close(),
                 ),
               ),
               const SizedBox(height: 12),
-              const Expanded(child: LocalSearchResultsPanel()),
+              Expanded(
+                child: LocalSearchResultsPanel(onChannelSelected: _close),
+              ),
             ],
           ),
         ),
@@ -257,10 +259,7 @@ class _BrowseTile extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Icon(icon, size: 22, color: theme.colorScheme.onSurfaceVariant),
-              Text(
-                label,
-                style: theme.textTheme.titleSmall,
-              ),
+              Text(label, style: theme.textTheme.titleSmall),
               Text(
                 count,
                 style: theme.textTheme.bodySmall?.copyWith(
