@@ -93,7 +93,8 @@ class _BrandMark extends StatelessWidget {
 }
 
 Future<void> _pumpAtSize(WidgetTester tester, Size size, Widget child) async {
-  await tester.binding.setSurfaceSize(size);
+  addTearDown(tester.view.resetPhysicalSize);
+  addTearDown(tester.view.resetDevicePixelRatio);
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
   await tester.pumpWidget(
@@ -114,10 +115,6 @@ void main() {
         Future.value(File(_fontPath).readAsBytesSync().buffer.asByteData()),
       );
     await loader.load();
-  });
-
-  tearDown(() async {
-    await TestWidgetsFlutterBinding.instance.setSurfaceSize(null);
   });
 
   testWidgets('tv banner 320x180 (xhdpi)', (tester) async {

@@ -254,10 +254,7 @@ jobs:
       - name: Cache pub dependencies
         uses: actions/cache@v6
         with:
-          path: |
-            ~/.pub-cache
-            app/.dart_tool
-            packages/*/.dart_tool
+          path: ~/.pub-cache
           key: tv-pub-${{ runner.os }}-${{ hashFiles('**/pubspec.lock', 'app/pubspec_tv.yaml') }}
           restore-keys: tv-pub-${{ runner.os }}-
 
