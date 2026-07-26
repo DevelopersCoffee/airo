@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:platform_media/platform_media.dart';
@@ -68,6 +70,7 @@ void main() {
           'elapsedMs': 120,
           'didUseMetadataProbe': true,
           'fileSizeBytes': 6100000000,
+          'peakMemoryBytes': 73400320,
         },
       };
     });
@@ -96,6 +99,7 @@ void main() {
       result.profile?.warnings,
       contains(MediaAssetWarningCode.overallBitrateEstimated),
     );
+    expect(result.diagnostics.peakMemoryBytes, 73400320);
   });
 
   test(
@@ -134,6 +138,81 @@ void main() {
 
       expect(result.status, MediaAssetAnalysisStatus.partial);
       expect(result.profile?.assetId, 'asset-fallback');
+    },
+  );
+
+  test(
+    'host analyzer fails closed for an unsupported profile version',
+    () async {
+      messenger.setMockMethodCallHandler(channel, (_) async {
+        return {
+          'status': 'complete',
+          'profile': {
+            'schemaVersion': '2.0.0',
+            'assetId': 'asset-future',
+            'container': 'mp4',
+            'videoTracks': <Object?>[],
+            'audioTracks': <Object?>[],
+            'subtitleTracks': <Object?>[],
+            'warnings': <Object?>[],
+          },
+          'diagnostics': {'elapsedMs': 1, 'didUseMetadataProbe': true},
+        };
+      });
+
+      final result = await HostPlatformMediaAssetAnalyzer().analyze(
+        const MediaAssetAnalysisRequest(
+          assetId: 'asset-future',
+          filePath: '/private/tmp/movie.mp4',
+        ),
+      );
+
+      expect(result.status, MediaAssetAnalysisStatus.unsupportedInspection);
+      expect(result.failureReason, 'unsupported_profile_version');
+      expect(result.profile, isNull);
+    },
+  );
+
+  test(
+    'cancellation stops the native probe and returns a typed result',
+    () async {
+      final analysisStarted = Completer<void>();
+      final nativeAnalysis = Completer<Map<String, Object?>>();
+      final calls = <MethodCall>[];
+      messenger.setMockMethodCallHandler(channel, (call) async {
+        calls.add(call);
+        if (call.method == 'analyze') {
+          analysisStarted.complete();
+          return nativeAnalysis.future;
+        }
+        if (call.method == 'cancel') {
+          nativeAnalysis.complete({
+            'status': 'cancelled',
+            'diagnostics': {'elapsedMs': 2, 'didUseMetadataProbe': true},
+          });
+          return null;
+        }
+        throw MissingPluginException();
+      });
+      final cancellation = MediaAssetAnalysisCancellationToken();
+      final resultFuture = HostPlatformMediaAssetAnalyzer().analyze(
+        MediaAssetAnalysisRequest(
+          assetId: 'asset-cancel',
+          filePath: '/private/tmp/movie.mkv',
+          cancellationToken: cancellation,
+        ),
+      );
+
+      await analysisStarted.future;
+      cancellation.cancel();
+      final result = await resultFuture;
+
+      expect(result.status, MediaAssetAnalysisStatus.cancelled);
+      expect(calls.map((call) => call.method), ['analyze', 'cancel']);
+      final analysisId =
+          (calls.first.arguments as Map<Object?, Object?>)['analysisId'];
+      expect(analysisId, isNotNull);
+      expect(calls.last.arguments, {'analysisId': analysisId});
     },
   );
 }

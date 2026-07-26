@@ -1,11 +1,13 @@
 import AVFoundation
 import CoreMedia
 import CoreVideo
+import Darwin
 import Flutter
 import Foundation
 
 final class AiroMediaAssetAnalyzerPlugin: NSObject {
   static let channelName = "com.airo.media_asset_analyzer"
+  private var analysisTasks = [String: Task<Void, Never>]()
 
   func register(with messenger: FlutterBinaryMessenger) {
     let channel = FlutterMethodChannel(name: Self.channelName, binaryMessenger: messenger)
@@ -15,6 +17,15 @@ final class AiroMediaAssetAnalyzerPlugin: NSObject {
   }
 
   private func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
+    if call.method == "cancel" {
+      let arguments = call.arguments as? [String: Any]
+      let analysisId = arguments?["analysisId"] as? String
+      if let analysisId {
+        analysisTasks.removeValue(forKey: analysisId)?.cancel()
+      }
+      result(nil)
+      return
+    }
     guard call.method == "analyze" else {
       result(FlutterMethodNotImplemented)
       return
@@ -32,16 +43,27 @@ final class AiroMediaAssetAnalyzerPlugin: NSObject {
       return
     }
 
-    Task {
-      let payload = await analyze(request)
+    let task = Task { [weak self] in
+      guard let self else { return }
+      let payload = await self.analyze(request)
       await MainActor.run {
+        self.analysisTasks.removeValue(forKey: request.analysisId)
         result(payload)
       }
     }
+    analysisTasks[request.analysisId] = task
   }
 
   private func analyze(_ request: MediaAssetAnalysisRequest) async -> [String: Any] {
     let startedAt = Date()
+    let startingMemoryBytes = residentMemoryBytes()
+    if Task.isCancelled {
+      return cancelledPayload(
+        startedAt: startedAt,
+        startingMemoryBytes: startingMemoryBytes,
+        didUseMetadataProbe: false
+      )
+    }
     var warnings = OrderedStringSet()
     let container = request.containerStableId()
     let fileSizeBytes = request.fileSizeBytesHint ?? fileSize(request.filePath)
@@ -61,6 +83,13 @@ final class AiroMediaAssetAnalyzerPlugin: NSObject {
       var subtitleTracks = [[String: Any]]()
 
       for (index, track) in tracks.enumerated() {
+        if Task.isCancelled {
+          return cancelledPayload(
+            startedAt: startedAt,
+            startingMemoryBytes: startingMemoryBytes,
+            didUseMetadataProbe: true
+          )
+        }
         let mediaType = track.mediaType
         let estimatedDataRate = Int((try? await track.load(.estimatedDataRate)).map { $0.rounded() } ?? 0)
         if estimatedDataRate > 0 {
@@ -159,9 +188,17 @@ final class AiroMediaAssetAnalyzerPlugin: NSObject {
           "didUseMetadataProbe": true,
           "fileSizeBytes": fileSizeBytes as Any,
           "estimatedBytesRead": NSNull(),
+          "peakMemoryBytes": max(startingMemoryBytes, residentMemoryBytes()),
         ],
       ]
     } catch {
+      if Task.isCancelled {
+        return cancelledPayload(
+          startedAt: startedAt,
+          startingMemoryBytes: startingMemoryBytes,
+          didUseMetadataProbe: true
+        )
+      }
       warnings.append("metadata_probe_failed")
       return [
         "status": "inspection_failed",
@@ -183,9 +220,45 @@ final class AiroMediaAssetAnalyzerPlugin: NSObject {
           "didUseMetadataProbe": true,
           "fileSizeBytes": fileSizeBytes as Any,
           "estimatedBytesRead": NSNull(),
+          "peakMemoryBytes": max(startingMemoryBytes, residentMemoryBytes()),
         ],
       ]
     }
+  }
+
+  private func cancelledPayload(
+    startedAt: Date,
+    startingMemoryBytes: Int,
+    didUseMetadataProbe: Bool
+  ) -> [String: Any] {
+    [
+      "status": "cancelled",
+      "diagnostics": [
+        "elapsedMs": Int(Date().timeIntervalSince(startedAt) * 1000.0),
+        "didUseMetadataProbe": didUseMetadataProbe,
+        "fileSizeBytes": NSNull(),
+        "estimatedBytesRead": NSNull(),
+        "peakMemoryBytes": max(startingMemoryBytes, residentMemoryBytes()),
+      ],
+    ]
+  }
+
+  private func residentMemoryBytes() -> Int {
+    var info = mach_task_basic_info()
+    var count = mach_msg_type_number_t(
+      MemoryLayout<mach_task_basic_info>.size / MemoryLayout<integer_t>.size
+    )
+    let status = withUnsafeMutablePointer(to: &info) { infoPointer in
+      infoPointer.withMemoryRebound(to: integer_t.self, capacity: Int(count)) {
+        task_info(
+          mach_task_self_,
+          task_flavor_t(MACH_TASK_BASIC_INFO),
+          $0,
+          &count
+        )
+      }
+    }
+    return status == KERN_SUCCESS ? Int(info.resident_size) : 0
   }
 
   private func fileSize(_ filePath: String) -> Int? {
@@ -296,6 +369,7 @@ final class AiroMediaAssetAnalyzerPlugin: NSObject {
 }
 
 private struct MediaAssetAnalysisRequest {
+  let analysisId: String
   let assetId: String
   let filePath: String
   let fileName: String?
@@ -303,11 +377,13 @@ private struct MediaAssetAnalysisRequest {
   let mimeTypeHint: String?
 
   init?(arguments: [String: Any]) {
-    guard let assetId = arguments["assetId"] as? String,
+    guard let analysisId = arguments["analysisId"] as? String,
+          let assetId = arguments["assetId"] as? String,
           let filePath = arguments["filePath"] as? String
     else {
       return nil
     }
+    self.analysisId = analysisId
     self.assetId = assetId
     self.filePath = filePath
     self.fileName = arguments["fileName"] as? String
