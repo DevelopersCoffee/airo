@@ -298,7 +298,7 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
       }
 
       final notifier = ref.read(channelFiltersProvider.notifier);
-      await showFilterOptionDialog(
+      await showTvLongListPicker(
         context: context,
         title: 'Choose your country',
         options: dimensions.countries.toList(growable: false),
@@ -392,9 +392,9 @@ class _OfflineBanner extends ConsumerWidget {
               'streams need a connection.',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Colors.amber.shade100,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: Colors.amber.shade100),
             ),
           ),
         ],
