@@ -364,6 +364,10 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
         duration: engineState.duration ?? _state.duration,
         tracks: engineState.tracks,
         selectedTrackIds: engineState.selectedTrackIds,
+        playbackStats: playbackStatsFromEngineState(engineState),
+        clearPlaybackStats:
+            engineState.phase == AiroPlaybackEnginePhase.idle ||
+            engineState.phase == AiroPlaybackEnginePhase.stopped,
         playbackState:
             _mapEnginePhase(engineState.phase) ?? _state.playbackState,
       ),
@@ -779,6 +783,28 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
     await _engine.dispose();
     await _stateController.close();
   }
+}
+
+/// Projects only facts explicitly reported by the active playback engine.
+///
+/// The legacy [StreamingMetrics.currentBitrate] is a quality-preset estimate
+/// and is intentionally excluded from this projection.
+AiroPlaybackStats? playbackStatsFromEngineState(AiroPlaybackState engineState) {
+  if (engineState.phase == AiroPlaybackEnginePhase.idle ||
+      engineState.phase == AiroPlaybackEnginePhase.stopped ||
+      engineState.phase == AiroPlaybackEnginePhase.unavailable) {
+    return null;
+  }
+  final quality = engineState.qualityOptions
+      .where((option) => option.id == engineState.selectedQualityId)
+      .firstOrNull;
+  final stats = AiroPlaybackStats(
+    codec: engineState.diagnostics?.codecName,
+    width: quality?.width,
+    height: quality?.height,
+    bitrateKbps: quality?.bitrateKbps,
+  );
+  return stats.hasValues ? stats : null;
 }
 
 class _EngineOpenError implements Exception {
