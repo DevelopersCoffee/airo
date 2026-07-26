@@ -69,7 +69,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.11.1';
 
   @override
-  int get rustContentHash => 1193979740;
+  int get rustContentHash => -1879699283;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -156,6 +156,12 @@ abstract class RustLibApi extends BaseApi {
     required List<RecommendationCandidate> candidates,
   });
 
+  Future<RelationalSyncEntity?>
+  crateApiRelationalStoreReadRelationalSyncEntity({
+    required String path,
+    required String uuid,
+  });
+
   Future<M3uChannelPage> crateApiPlaylistEngineSearchPlaylistIndex({
     required String indexPath,
     required String query,
@@ -169,6 +175,11 @@ abstract class RustLibApi extends BaseApi {
     required List<PlaylistSearchFilter> filters,
     required int offset,
     required int limit,
+  });
+
+  Future<void> crateApiRelationalStoreUpsertRelationalSyncEntity({
+    required String path,
+    required RelationalSyncEntity entity,
   });
 
   Future<XmltvCurrentNextResult> crateApiXmltvXmltvCurrentNextResultDefault();
@@ -851,6 +862,42 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
+  Future<RelationalSyncEntity?>
+  crateApiRelationalStoreReadRelationalSyncEntity({
+    required String path,
+    required String uuid,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(path, serializer);
+          sse_encode_String(uuid, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 21,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_opt_box_autoadd_relational_sync_entity,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiRelationalStoreReadRelationalSyncEntityConstMeta,
+        argValues: [path, uuid],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiRelationalStoreReadRelationalSyncEntityConstMeta =>
+      const TaskConstMeta(
+        debugName: "read_relational_sync_entity",
+        argNames: ["path", "uuid"],
+      );
+
+  @override
   Future<M3uChannelPage> crateApiPlaylistEngineSearchPlaylistIndex({
     required String indexPath,
     required String query,
@@ -868,7 +915,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 21,
+            funcId: 22,
             port: port_,
           );
         },
@@ -909,7 +956,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 22,
+            funcId: 23,
             port: port_,
           );
         },
@@ -931,6 +978,42 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
+  Future<void> crateApiRelationalStoreUpsertRelationalSyncEntity({
+    required String path,
+    required RelationalSyncEntity entity,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(path, serializer);
+          sse_encode_box_autoadd_relational_sync_entity(entity, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 24,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiRelationalStoreUpsertRelationalSyncEntityConstMeta,
+        argValues: [path, entity],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta
+  get kCrateApiRelationalStoreUpsertRelationalSyncEntityConstMeta =>
+      const TaskConstMeta(
+        debugName: "upsert_relational_sync_entity",
+        argNames: ["path", "entity"],
+      );
+
+  @override
   Future<XmltvCurrentNextResult> crateApiXmltvXmltvCurrentNextResultDefault() {
     return handler.executeNormal(
       NormalTask(
@@ -939,7 +1022,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 23,
+            funcId: 25,
             port: port_,
           );
         },
@@ -969,7 +1052,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 24,
+            funcId: 26,
             port: port_,
           );
         },
@@ -999,7 +1082,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 25,
+            funcId: 27,
             port: port_,
           );
         },
@@ -1029,7 +1112,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 26,
+            funcId: 28,
             port: port_,
           );
         },
@@ -1070,9 +1153,29 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  bool dco_decode_box_autoadd_bool(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw as bool;
+  }
+
+  @protected
+  double dco_decode_box_autoadd_f_64(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw as double;
+  }
+
+  @protected
   PlatformInt64 dco_decode_box_autoadd_i_64(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return dco_decode_i_64(raw);
+  }
+
+  @protected
+  RelationalSyncEntity dco_decode_box_autoadd_relational_sync_entity(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_relational_sync_entity(raw);
   }
 
   @protected
@@ -1091,6 +1194,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   XmltvProgramme dco_decode_box_autoadd_xmltv_programme(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return dco_decode_xmltv_programme(raw);
+  }
+
+  @protected
+  double dco_decode_f_64(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw as double;
   }
 
   @protected
@@ -1159,6 +1268,24 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   List<(String, String)> dco_decode_list_record_string_string(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return (raw as List<dynamic>).map(dco_decode_record_string_string).toList();
+  }
+
+  @protected
+  List<RelationalSyncCounter> dco_decode_list_relational_sync_counter(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>)
+        .map(dco_decode_relational_sync_counter)
+        .toList();
+  }
+
+  @protected
+  List<RelationalSyncField> dco_decode_list_relational_sync_field(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>)
+        .map(dco_decode_relational_sync_field)
+        .toList();
   }
 
   @protected
@@ -1300,9 +1427,31 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  bool? dco_decode_opt_box_autoadd_bool(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw == null ? null : dco_decode_box_autoadd_bool(raw);
+  }
+
+  @protected
+  double? dco_decode_opt_box_autoadd_f_64(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw == null ? null : dco_decode_box_autoadd_f_64(raw);
+  }
+
+  @protected
   PlatformInt64? dco_decode_opt_box_autoadd_i_64(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw == null ? null : dco_decode_box_autoadd_i_64(raw);
+  }
+
+  @protected
+  RelationalSyncEntity? dco_decode_opt_box_autoadd_relational_sync_entity(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw == null
+        ? null
+        : dco_decode_box_autoadd_relational_sync_entity(raw);
   }
 
   @protected
@@ -1473,6 +1622,56 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     return RelationalStoreStatus(
       schemaVersion: dco_decode_u_32(arr[0]),
       foreignKeysEnabled: dco_decode_bool(arr[1]),
+    );
+  }
+
+  @protected
+  RelationalSyncCounter dco_decode_relational_sync_counter(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 2)
+      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
+    return RelationalSyncCounter(
+      nodeId: dco_decode_String(arr[0]),
+      counter: dco_decode_u_64(arr[1]),
+    );
+  }
+
+  @protected
+  RelationalSyncEntity dco_decode_relational_sync_entity(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 9)
+      throw Exception('unexpected arr length: expect 9 but see ${arr.length}');
+    return RelationalSyncEntity(
+      uuid: dco_decode_String(arr[0]),
+      entityType: dco_decode_String(arr[1]),
+      schemaVersion: dco_decode_String(arr[2]),
+      entityVersion: dco_decode_u_32(arr[3]),
+      updatedAtMicros: dco_decode_i_64(arr[4]),
+      deletedAtMicros: dco_decode_opt_box_autoadd_i_64(arr[5]),
+      clock: dco_decode_list_relational_sync_counter(arr[6]),
+      deletionClock: dco_decode_list_relational_sync_counter(arr[7]),
+      fields: dco_decode_list_relational_sync_field(arr[8]),
+    );
+  }
+
+  @protected
+  RelationalSyncField dco_decode_relational_sync_field(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 9)
+      throw Exception('unexpected arr length: expect 9 but see ${arr.length}');
+    return RelationalSyncField(
+      name: dco_decode_String(arr[0]),
+      valueType: dco_decode_String(arr[1]),
+      textValue: dco_decode_opt_String(arr[2]),
+      integerValue: dco_decode_opt_box_autoadd_i_64(arr[3]),
+      realValue: dco_decode_opt_box_autoadd_f_64(arr[4]),
+      booleanValue: dco_decode_opt_box_autoadd_bool(arr[5]),
+      updatedAtMicros: dco_decode_i_64(arr[6]),
+      originNodeId: dco_decode_String(arr[7]),
+      clock: dco_decode_list_relational_sync_counter(arr[8]),
     );
   }
 
@@ -1658,9 +1857,29 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  bool sse_decode_box_autoadd_bool(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_bool(deserializer));
+  }
+
+  @protected
+  double sse_decode_box_autoadd_f_64(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_f_64(deserializer));
+  }
+
+  @protected
   PlatformInt64 sse_decode_box_autoadd_i_64(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return (sse_decode_i_64(deserializer));
+  }
+
+  @protected
+  RelationalSyncEntity sse_decode_box_autoadd_relational_sync_entity(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_relational_sync_entity(deserializer));
   }
 
   @protected
@@ -1681,6 +1900,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return (sse_decode_xmltv_programme(deserializer));
+  }
+
+  @protected
+  double sse_decode_f_64(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return deserializer.buffer.getFloat64();
   }
 
   @protected
@@ -1790,6 +2015,34 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var ans_ = <(String, String)>[];
     for (var idx_ = 0; idx_ < len_; ++idx_) {
       ans_.add(sse_decode_record_string_string(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
+  List<RelationalSyncCounter> sse_decode_list_relational_sync_counter(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <RelationalSyncCounter>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_relational_sync_counter(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
+  List<RelationalSyncField> sse_decode_list_relational_sync_field(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <RelationalSyncField>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_relational_sync_field(deserializer));
     }
     return ans_;
   }
@@ -1970,11 +2223,46 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  bool? sse_decode_opt_box_autoadd_bool(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    if (sse_decode_bool(deserializer)) {
+      return (sse_decode_box_autoadd_bool(deserializer));
+    } else {
+      return null;
+    }
+  }
+
+  @protected
+  double? sse_decode_opt_box_autoadd_f_64(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    if (sse_decode_bool(deserializer)) {
+      return (sse_decode_box_autoadd_f_64(deserializer));
+    } else {
+      return null;
+    }
+  }
+
+  @protected
   PlatformInt64? sse_decode_opt_box_autoadd_i_64(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
 
     if (sse_decode_bool(deserializer)) {
       return (sse_decode_box_autoadd_i_64(deserializer));
+    } else {
+      return null;
+    }
+  }
+
+  @protected
+  RelationalSyncEntity? sse_decode_opt_box_autoadd_relational_sync_entity(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    if (sse_decode_bool(deserializer)) {
+      return (sse_decode_box_autoadd_relational_sync_entity(deserializer));
     } else {
       return null;
     }
@@ -2209,6 +2497,72 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  RelationalSyncCounter sse_decode_relational_sync_counter(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_nodeId = sse_decode_String(deserializer);
+    var var_counter = sse_decode_u_64(deserializer);
+    return RelationalSyncCounter(nodeId: var_nodeId, counter: var_counter);
+  }
+
+  @protected
+  RelationalSyncEntity sse_decode_relational_sync_entity(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_uuid = sse_decode_String(deserializer);
+    var var_entityType = sse_decode_String(deserializer);
+    var var_schemaVersion = sse_decode_String(deserializer);
+    var var_entityVersion = sse_decode_u_32(deserializer);
+    var var_updatedAtMicros = sse_decode_i_64(deserializer);
+    var var_deletedAtMicros = sse_decode_opt_box_autoadd_i_64(deserializer);
+    var var_clock = sse_decode_list_relational_sync_counter(deserializer);
+    var var_deletionClock = sse_decode_list_relational_sync_counter(
+      deserializer,
+    );
+    var var_fields = sse_decode_list_relational_sync_field(deserializer);
+    return RelationalSyncEntity(
+      uuid: var_uuid,
+      entityType: var_entityType,
+      schemaVersion: var_schemaVersion,
+      entityVersion: var_entityVersion,
+      updatedAtMicros: var_updatedAtMicros,
+      deletedAtMicros: var_deletedAtMicros,
+      clock: var_clock,
+      deletionClock: var_deletionClock,
+      fields: var_fields,
+    );
+  }
+
+  @protected
+  RelationalSyncField sse_decode_relational_sync_field(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_name = sse_decode_String(deserializer);
+    var var_valueType = sse_decode_String(deserializer);
+    var var_textValue = sse_decode_opt_String(deserializer);
+    var var_integerValue = sse_decode_opt_box_autoadd_i_64(deserializer);
+    var var_realValue = sse_decode_opt_box_autoadd_f_64(deserializer);
+    var var_booleanValue = sse_decode_opt_box_autoadd_bool(deserializer);
+    var var_updatedAtMicros = sse_decode_i_64(deserializer);
+    var var_originNodeId = sse_decode_String(deserializer);
+    var var_clock = sse_decode_list_relational_sync_counter(deserializer);
+    return RelationalSyncField(
+      name: var_name,
+      valueType: var_valueType,
+      textValue: var_textValue,
+      integerValue: var_integerValue,
+      realValue: var_realValue,
+      booleanValue: var_booleanValue,
+      updatedAtMicros: var_updatedAtMicros,
+      originNodeId: var_originNodeId,
+      clock: var_clock,
+    );
+  }
+
+  @protected
   SubtitleCue sse_decode_subtitle_cue(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var var_startMillis = sse_decode_u_64(deserializer);
@@ -2396,12 +2750,33 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_box_autoadd_bool(bool self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_bool(self, serializer);
+  }
+
+  @protected
+  void sse_encode_box_autoadd_f_64(double self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_f_64(self, serializer);
+  }
+
+  @protected
   void sse_encode_box_autoadd_i_64(
     PlatformInt64 self,
     SseSerializer serializer,
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_i_64(self, serializer);
+  }
+
+  @protected
+  void sse_encode_box_autoadd_relational_sync_entity(
+    RelationalSyncEntity self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_relational_sync_entity(self, serializer);
   }
 
   @protected
@@ -2423,6 +2798,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_xmltv_programme(self, serializer);
+  }
+
+  @protected
+  void sse_encode_f_64(double self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    serializer.buffer.putFloat64(self);
   }
 
   @protected
@@ -2525,6 +2906,30 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_i_32(self.length, serializer);
     for (final item in self) {
       sse_encode_record_string_string(item, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_list_relational_sync_counter(
+    List<RelationalSyncCounter> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_relational_sync_counter(item, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_list_relational_sync_field(
+    List<RelationalSyncField> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_relational_sync_field(item, serializer);
     }
   }
 
@@ -2668,6 +3073,26 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_opt_box_autoadd_bool(bool? self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    sse_encode_bool(self != null, serializer);
+    if (self != null) {
+      sse_encode_box_autoadd_bool(self, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_opt_box_autoadd_f_64(double? self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    sse_encode_bool(self != null, serializer);
+    if (self != null) {
+      sse_encode_box_autoadd_f_64(self, serializer);
+    }
+  }
+
+  @protected
   void sse_encode_opt_box_autoadd_i_64(
     PlatformInt64? self,
     SseSerializer serializer,
@@ -2677,6 +3102,19 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_bool(self != null, serializer);
     if (self != null) {
       sse_encode_box_autoadd_i_64(self, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_opt_box_autoadd_relational_sync_entity(
+    RelationalSyncEntity? self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    sse_encode_bool(self != null, serializer);
+    if (self != null) {
+      sse_encode_box_autoadd_relational_sync_entity(self, serializer);
     }
   }
 
@@ -2860,6 +3298,50 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_u_32(self.schemaVersion, serializer);
     sse_encode_bool(self.foreignKeysEnabled, serializer);
+  }
+
+  @protected
+  void sse_encode_relational_sync_counter(
+    RelationalSyncCounter self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.nodeId, serializer);
+    sse_encode_u_64(self.counter, serializer);
+  }
+
+  @protected
+  void sse_encode_relational_sync_entity(
+    RelationalSyncEntity self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.uuid, serializer);
+    sse_encode_String(self.entityType, serializer);
+    sse_encode_String(self.schemaVersion, serializer);
+    sse_encode_u_32(self.entityVersion, serializer);
+    sse_encode_i_64(self.updatedAtMicros, serializer);
+    sse_encode_opt_box_autoadd_i_64(self.deletedAtMicros, serializer);
+    sse_encode_list_relational_sync_counter(self.clock, serializer);
+    sse_encode_list_relational_sync_counter(self.deletionClock, serializer);
+    sse_encode_list_relational_sync_field(self.fields, serializer);
+  }
+
+  @protected
+  void sse_encode_relational_sync_field(
+    RelationalSyncField self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.name, serializer);
+    sse_encode_String(self.valueType, serializer);
+    sse_encode_opt_String(self.textValue, serializer);
+    sse_encode_opt_box_autoadd_i_64(self.integerValue, serializer);
+    sse_encode_opt_box_autoadd_f_64(self.realValue, serializer);
+    sse_encode_opt_box_autoadd_bool(self.booleanValue, serializer);
+    sse_encode_i_64(self.updatedAtMicros, serializer);
+    sse_encode_String(self.originNodeId, serializer);
+    sse_encode_list_relational_sync_counter(self.clock, serializer);
   }
 
   @protected

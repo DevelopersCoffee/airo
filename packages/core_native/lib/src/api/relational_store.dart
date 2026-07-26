@@ -7,13 +7,29 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
 import '../frb_generated.dart';
 
-// These functions are ignored because they are not marked as `pub`: `apply_migration`
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_fields_are_eq`, `clone`, `eq`, `fmt`
+// These functions are ignored because they are not marked as `pub`: `apply_migration`, `insert_counters`, `read_counters`, `validate_sync_entity`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_fields_are_eq`, `clone`, `clone`, `clone`, `clone`, `eq`, `eq`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`
 
 Future<RelationalStoreStatus> initializeRelationalStore({
   required String path,
 }) => RustLib.instance.api.crateApiRelationalStoreInitializeRelationalStore(
   path: path,
+);
+
+Future<void> upsertRelationalSyncEntity({
+  required String path,
+  required RelationalSyncEntity entity,
+}) => RustLib.instance.api.crateApiRelationalStoreUpsertRelationalSyncEntity(
+  path: path,
+  entity: entity,
+);
+
+Future<RelationalSyncEntity?> readRelationalSyncEntity({
+  required String path,
+  required String uuid,
+}) => RustLib.instance.api.crateApiRelationalStoreReadRelationalSyncEntity(
+  path: path,
+  uuid: uuid,
 );
 
 class RelationalStoreStatus {
@@ -34,4 +50,121 @@ class RelationalStoreStatus {
           runtimeType == other.runtimeType &&
           schemaVersion == other.schemaVersion &&
           foreignKeysEnabled == other.foreignKeysEnabled;
+}
+
+class RelationalSyncCounter {
+  const RelationalSyncCounter({required this.nodeId, required this.counter});
+  final String nodeId;
+  final BigInt counter;
+
+  @override
+  int get hashCode => nodeId.hashCode ^ counter.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is RelationalSyncCounter &&
+          runtimeType == other.runtimeType &&
+          nodeId == other.nodeId &&
+          counter == other.counter;
+}
+
+class RelationalSyncEntity {
+  const RelationalSyncEntity({
+    required this.uuid,
+    required this.entityType,
+    required this.schemaVersion,
+    required this.entityVersion,
+    required this.updatedAtMicros,
+    required this.clock,
+    required this.deletionClock,
+    required this.fields,
+    this.deletedAtMicros,
+  });
+  final String uuid;
+  final String entityType;
+  final String schemaVersion;
+  final int entityVersion;
+  final PlatformInt64 updatedAtMicros;
+  final PlatformInt64? deletedAtMicros;
+  final List<RelationalSyncCounter> clock;
+  final List<RelationalSyncCounter> deletionClock;
+  final List<RelationalSyncField> fields;
+
+  @override
+  int get hashCode =>
+      uuid.hashCode ^
+      entityType.hashCode ^
+      schemaVersion.hashCode ^
+      entityVersion.hashCode ^
+      updatedAtMicros.hashCode ^
+      deletedAtMicros.hashCode ^
+      clock.hashCode ^
+      deletionClock.hashCode ^
+      fields.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is RelationalSyncEntity &&
+          runtimeType == other.runtimeType &&
+          uuid == other.uuid &&
+          entityType == other.entityType &&
+          schemaVersion == other.schemaVersion &&
+          entityVersion == other.entityVersion &&
+          updatedAtMicros == other.updatedAtMicros &&
+          deletedAtMicros == other.deletedAtMicros &&
+          clock == other.clock &&
+          deletionClock == other.deletionClock &&
+          fields == other.fields;
+}
+
+class RelationalSyncField {
+  const RelationalSyncField({
+    required this.name,
+    required this.valueType,
+    required this.updatedAtMicros,
+    required this.originNodeId,
+    required this.clock,
+    this.textValue,
+    this.integerValue,
+    this.realValue,
+    this.booleanValue,
+  });
+  final String name;
+  final String valueType;
+  final String? textValue;
+  final PlatformInt64? integerValue;
+  final double? realValue;
+  final bool? booleanValue;
+  final PlatformInt64 updatedAtMicros;
+  final String originNodeId;
+  final List<RelationalSyncCounter> clock;
+
+  @override
+  int get hashCode =>
+      name.hashCode ^
+      valueType.hashCode ^
+      textValue.hashCode ^
+      integerValue.hashCode ^
+      realValue.hashCode ^
+      booleanValue.hashCode ^
+      updatedAtMicros.hashCode ^
+      originNodeId.hashCode ^
+      clock.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is RelationalSyncField &&
+          runtimeType == other.runtimeType &&
+          name == other.name &&
+          valueType == other.valueType &&
+          textValue == other.textValue &&
+          integerValue == other.integerValue &&
+          realValue == other.realValue &&
+          booleanValue == other.booleanValue &&
+          updatedAtMicros == other.updatedAtMicros &&
+          originNodeId == other.originNodeId &&
+          clock == other.clock;
 }

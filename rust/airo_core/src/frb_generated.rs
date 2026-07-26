@@ -37,7 +37,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
     default_rust_auto_opaque = RustAutoOpaqueMoi,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.11.1";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 1193979740;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = -1879699283;
 
 // Section: executor
 
@@ -754,6 +754,42 @@ fn wire__crate__api__native_engine__rank_recommendations_impl(
         },
     )
 }
+fn wire__crate__api__relational_store__read_relational_sync_entity_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "read_relational_sync_entity",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_path = <String>::sse_decode(&mut deserializer);
+            let api_uuid = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, String>((move || {
+                    let output_ok = crate::api::relational_store::read_relational_sync_entity(
+                        api_path, api_uuid,
+                    )?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
 fn wire__crate__api__playlist_engine__search_playlist_index_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
@@ -840,6 +876,43 @@ fn wire__crate__api__playlist_engine__search_playlist_index_v2_impl(
                         Ok(output_ok)
                     })(),
                 )
+            }
+        },
+    )
+}
+fn wire__crate__api__relational_store__upsert_relational_sync_entity_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "upsert_relational_sync_entity",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_path = <String>::sse_decode(&mut deserializer);
+            let api_entity =
+                <crate::api::relational_store::RelationalSyncEntity>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, String>((move || {
+                    let output_ok = crate::api::relational_store::upsert_relational_sync_entity(
+                        api_path, api_entity,
+                    )?;
+                    Ok(output_ok)
+                })())
             }
         },
     )
@@ -1002,6 +1075,13 @@ impl SseDecode for bool {
     }
 }
 
+impl SseDecode for f64 {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        deserializer.cursor.read_f64::<NativeEndian>().unwrap()
+    }
+}
+
 impl SseDecode for i32 {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -1111,6 +1191,34 @@ impl SseDecode for Vec<(String, String)> {
         let mut ans_ = vec![];
         for idx_ in 0..len_ {
             ans_.push(<(String, String)>::sse_decode(deserializer));
+        }
+        return ans_;
+    }
+}
+
+impl SseDecode for Vec<crate::api::relational_store::RelationalSyncCounter> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut len_ = <i32>::sse_decode(deserializer);
+        let mut ans_ = vec![];
+        for idx_ in 0..len_ {
+            ans_.push(
+                <crate::api::relational_store::RelationalSyncCounter>::sse_decode(deserializer),
+            );
+        }
+        return ans_;
+    }
+}
+
+impl SseDecode for Vec<crate::api::relational_store::RelationalSyncField> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut len_ = <i32>::sse_decode(deserializer);
+        let mut ans_ = vec![];
+        for idx_ in 0..len_ {
+            ans_.push(
+                <crate::api::relational_store::RelationalSyncField>::sse_decode(deserializer),
+            );
         }
         return ans_;
     }
@@ -1307,11 +1415,46 @@ impl SseDecode for Option<String> {
     }
 }
 
+impl SseDecode for Option<bool> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        if (<bool>::sse_decode(deserializer)) {
+            return Some(<bool>::sse_decode(deserializer));
+        } else {
+            return None;
+        }
+    }
+}
+
+impl SseDecode for Option<f64> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        if (<bool>::sse_decode(deserializer)) {
+            return Some(<f64>::sse_decode(deserializer));
+        } else {
+            return None;
+        }
+    }
+}
+
 impl SseDecode for Option<i64> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         if (<bool>::sse_decode(deserializer)) {
             return Some(<i64>::sse_decode(deserializer));
+        } else {
+            return None;
+        }
+    }
+}
+
+impl SseDecode for Option<crate::api::relational_store::RelationalSyncEntity> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        if (<bool>::sse_decode(deserializer)) {
+            return Some(
+                <crate::api::relational_store::RelationalSyncEntity>::sse_decode(deserializer),
+            );
         } else {
             return None;
         }
@@ -1564,6 +1707,74 @@ impl SseDecode for crate::api::relational_store::RelationalStoreStatus {
         return crate::api::relational_store::RelationalStoreStatus {
             schema_version: var_schemaVersion,
             foreign_keys_enabled: var_foreignKeysEnabled,
+        };
+    }
+}
+
+impl SseDecode for crate::api::relational_store::RelationalSyncCounter {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_nodeId = <String>::sse_decode(deserializer);
+        let mut var_counter = <u64>::sse_decode(deserializer);
+        return crate::api::relational_store::RelationalSyncCounter {
+            node_id: var_nodeId,
+            counter: var_counter,
+        };
+    }
+}
+
+impl SseDecode for crate::api::relational_store::RelationalSyncEntity {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_uuid = <String>::sse_decode(deserializer);
+        let mut var_entityType = <String>::sse_decode(deserializer);
+        let mut var_schemaVersion = <String>::sse_decode(deserializer);
+        let mut var_entityVersion = <u32>::sse_decode(deserializer);
+        let mut var_updatedAtMicros = <i64>::sse_decode(deserializer);
+        let mut var_deletedAtMicros = <Option<i64>>::sse_decode(deserializer);
+        let mut var_clock =
+            <Vec<crate::api::relational_store::RelationalSyncCounter>>::sse_decode(deserializer);
+        let mut var_deletionClock =
+            <Vec<crate::api::relational_store::RelationalSyncCounter>>::sse_decode(deserializer);
+        let mut var_fields =
+            <Vec<crate::api::relational_store::RelationalSyncField>>::sse_decode(deserializer);
+        return crate::api::relational_store::RelationalSyncEntity {
+            uuid: var_uuid,
+            entity_type: var_entityType,
+            schema_version: var_schemaVersion,
+            entity_version: var_entityVersion,
+            updated_at_micros: var_updatedAtMicros,
+            deleted_at_micros: var_deletedAtMicros,
+            clock: var_clock,
+            deletion_clock: var_deletionClock,
+            fields: var_fields,
+        };
+    }
+}
+
+impl SseDecode for crate::api::relational_store::RelationalSyncField {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_name = <String>::sse_decode(deserializer);
+        let mut var_valueType = <String>::sse_decode(deserializer);
+        let mut var_textValue = <Option<String>>::sse_decode(deserializer);
+        let mut var_integerValue = <Option<i64>>::sse_decode(deserializer);
+        let mut var_realValue = <Option<f64>>::sse_decode(deserializer);
+        let mut var_booleanValue = <Option<bool>>::sse_decode(deserializer);
+        let mut var_updatedAtMicros = <i64>::sse_decode(deserializer);
+        let mut var_originNodeId = <String>::sse_decode(deserializer);
+        let mut var_clock =
+            <Vec<crate::api::relational_store::RelationalSyncCounter>>::sse_decode(deserializer);
+        return crate::api::relational_store::RelationalSyncField {
+            name: var_name,
+            value_type: var_valueType,
+            text_value: var_textValue,
+            integer_value: var_integerValue,
+            real_value: var_realValue,
+            boolean_value: var_booleanValue,
+            updated_at_micros: var_updatedAtMicros,
+            origin_node_id: var_originNodeId,
+            clock: var_clock,
         };
     }
 }
@@ -1846,37 +2057,49 @@ fn pde_ffi_dispatcher_primary_impl(
             rust_vec_len,
             data_len,
         ),
-        21 => wire__crate__api__playlist_engine__search_playlist_index_impl(
+        21 => wire__crate__api__relational_store__read_relational_sync_entity_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        22 => wire__crate__api__playlist_engine__search_playlist_index_v2_impl(
+        22 => wire__crate__api__playlist_engine__search_playlist_index_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        23 => wire__crate__api__xmltv__xmltv_current_next_result_default_impl(
+        23 => wire__crate__api__playlist_engine__search_playlist_index_v2_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        24 => wire__crate__api__xmltv__xmltv_current_next_stats_default_impl(
+        24 => wire__crate__api__relational_store__upsert_relational_sync_entity_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        25 => wire__crate__api__xmltv__xmltv_parse_result_default_impl(
+        25 => wire__crate__api__xmltv__xmltv_current_next_result_default_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        26 => wire__crate__api__xmltv__xmltv_parse_stats_default_impl(
+        26 => wire__crate__api__xmltv__xmltv_current_next_stats_default_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        27 => wire__crate__api__xmltv__xmltv_parse_result_default_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        28 => wire__crate__api__xmltv__xmltv_parse_stats_default_impl(
             port,
             ptr,
             rust_vec_len,
@@ -2341,6 +2564,83 @@ impl flutter_rust_bridge::IntoIntoDart<crate::api::relational_store::RelationalS
     }
 }
 // Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::relational_store::RelationalSyncCounter {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.node_id.into_into_dart().into_dart(),
+            self.counter.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::relational_store::RelationalSyncCounter
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::relational_store::RelationalSyncCounter>
+    for crate::api::relational_store::RelationalSyncCounter
+{
+    fn into_into_dart(self) -> crate::api::relational_store::RelationalSyncCounter {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::relational_store::RelationalSyncEntity {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.uuid.into_into_dart().into_dart(),
+            self.entity_type.into_into_dart().into_dart(),
+            self.schema_version.into_into_dart().into_dart(),
+            self.entity_version.into_into_dart().into_dart(),
+            self.updated_at_micros.into_into_dart().into_dart(),
+            self.deleted_at_micros.into_into_dart().into_dart(),
+            self.clock.into_into_dart().into_dart(),
+            self.deletion_clock.into_into_dart().into_dart(),
+            self.fields.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::relational_store::RelationalSyncEntity
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::relational_store::RelationalSyncEntity>
+    for crate::api::relational_store::RelationalSyncEntity
+{
+    fn into_into_dart(self) -> crate::api::relational_store::RelationalSyncEntity {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::relational_store::RelationalSyncField {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.name.into_into_dart().into_dart(),
+            self.value_type.into_into_dart().into_dart(),
+            self.text_value.into_into_dart().into_dart(),
+            self.integer_value.into_into_dart().into_dart(),
+            self.real_value.into_into_dart().into_dart(),
+            self.boolean_value.into_into_dart().into_dart(),
+            self.updated_at_micros.into_into_dart().into_dart(),
+            self.origin_node_id.into_into_dart().into_dart(),
+            self.clock.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::relational_store::RelationalSyncField
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::relational_store::RelationalSyncField>
+    for crate::api::relational_store::RelationalSyncField
+{
+    fn into_into_dart(self) -> crate::api::relational_store::RelationalSyncField {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
 impl flutter_rust_bridge::IntoDart for crate::api::native_engine::SubtitleCue {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
@@ -2604,6 +2904,13 @@ impl SseEncode for bool {
     }
 }
 
+impl SseEncode for f64 {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        serializer.cursor.write_f64::<NativeEndian>(self).unwrap();
+    }
+}
+
 impl SseEncode for i32 {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -2694,6 +3001,26 @@ impl SseEncode for Vec<(String, String)> {
         <i32>::sse_encode(self.len() as _, serializer);
         for item in self {
             <(String, String)>::sse_encode(item, serializer);
+        }
+    }
+}
+
+impl SseEncode for Vec<crate::api::relational_store::RelationalSyncCounter> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(self.len() as _, serializer);
+        for item in self {
+            <crate::api::relational_store::RelationalSyncCounter>::sse_encode(item, serializer);
+        }
+    }
+}
+
+impl SseEncode for Vec<crate::api::relational_store::RelationalSyncField> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(self.len() as _, serializer);
+        for item in self {
+            <crate::api::relational_store::RelationalSyncField>::sse_encode(item, serializer);
         }
     }
 }
@@ -2824,12 +3151,42 @@ impl SseEncode for Option<String> {
     }
 }
 
+impl SseEncode for Option<bool> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <bool>::sse_encode(self.is_some(), serializer);
+        if let Some(value) = self {
+            <bool>::sse_encode(value, serializer);
+        }
+    }
+}
+
+impl SseEncode for Option<f64> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <bool>::sse_encode(self.is_some(), serializer);
+        if let Some(value) = self {
+            <f64>::sse_encode(value, serializer);
+        }
+    }
+}
+
 impl SseEncode for Option<i64> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <bool>::sse_encode(self.is_some(), serializer);
         if let Some(value) = self {
             <i64>::sse_encode(value, serializer);
+        }
+    }
+}
+
+impl SseEncode for Option<crate::api::relational_store::RelationalSyncEntity> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <bool>::sse_encode(self.is_some(), serializer);
+        if let Some(value) = self {
+            <crate::api::relational_store::RelationalSyncEntity>::sse_encode(value, serializer);
         }
     }
 }
@@ -3038,6 +3395,54 @@ impl SseEncode for crate::api::relational_store::RelationalStoreStatus {
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <u32>::sse_encode(self.schema_version, serializer);
         <bool>::sse_encode(self.foreign_keys_enabled, serializer);
+    }
+}
+
+impl SseEncode for crate::api::relational_store::RelationalSyncCounter {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <String>::sse_encode(self.node_id, serializer);
+        <u64>::sse_encode(self.counter, serializer);
+    }
+}
+
+impl SseEncode for crate::api::relational_store::RelationalSyncEntity {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <String>::sse_encode(self.uuid, serializer);
+        <String>::sse_encode(self.entity_type, serializer);
+        <String>::sse_encode(self.schema_version, serializer);
+        <u32>::sse_encode(self.entity_version, serializer);
+        <i64>::sse_encode(self.updated_at_micros, serializer);
+        <Option<i64>>::sse_encode(self.deleted_at_micros, serializer);
+        <Vec<crate::api::relational_store::RelationalSyncCounter>>::sse_encode(
+            self.clock, serializer,
+        );
+        <Vec<crate::api::relational_store::RelationalSyncCounter>>::sse_encode(
+            self.deletion_clock,
+            serializer,
+        );
+        <Vec<crate::api::relational_store::RelationalSyncField>>::sse_encode(
+            self.fields,
+            serializer,
+        );
+    }
+}
+
+impl SseEncode for crate::api::relational_store::RelationalSyncField {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <String>::sse_encode(self.name, serializer);
+        <String>::sse_encode(self.value_type, serializer);
+        <Option<String>>::sse_encode(self.text_value, serializer);
+        <Option<i64>>::sse_encode(self.integer_value, serializer);
+        <Option<f64>>::sse_encode(self.real_value, serializer);
+        <Option<bool>>::sse_encode(self.boolean_value, serializer);
+        <i64>::sse_encode(self.updated_at_micros, serializer);
+        <String>::sse_encode(self.origin_node_id, serializer);
+        <Vec<crate::api::relational_store::RelationalSyncCounter>>::sse_encode(
+            self.clock, serializer,
+        );
     }
 }
 

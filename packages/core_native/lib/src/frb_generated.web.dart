@@ -35,7 +35,18 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   bool dco_decode_bool(dynamic raw);
 
   @protected
+  bool dco_decode_box_autoadd_bool(dynamic raw);
+
+  @protected
+  double dco_decode_box_autoadd_f_64(dynamic raw);
+
+  @protected
   PlatformInt64 dco_decode_box_autoadd_i_64(dynamic raw);
+
+  @protected
+  RelationalSyncEntity dco_decode_box_autoadd_relational_sync_entity(
+    dynamic raw,
+  );
 
   @protected
   int dco_decode_box_autoadd_u_16(dynamic raw);
@@ -45,6 +56,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   XmltvProgramme dco_decode_box_autoadd_xmltv_programme(dynamic raw);
+
+  @protected
+  double dco_decode_f_64(dynamic raw);
 
   @protected
   int dco_decode_i_32(dynamic raw);
@@ -79,6 +93,14 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   List<(String, String)> dco_decode_list_record_string_string(dynamic raw);
+
+  @protected
+  List<RelationalSyncCounter> dco_decode_list_relational_sync_counter(
+    dynamic raw,
+  );
+
+  @protected
+  List<RelationalSyncField> dco_decode_list_relational_sync_field(dynamic raw);
 
   @protected
   List<SubtitleCue> dco_decode_list_subtitle_cue(dynamic raw);
@@ -119,7 +141,18 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   String? dco_decode_opt_String(dynamic raw);
 
   @protected
+  bool? dco_decode_opt_box_autoadd_bool(dynamic raw);
+
+  @protected
+  double? dco_decode_opt_box_autoadd_f_64(dynamic raw);
+
+  @protected
   PlatformInt64? dco_decode_opt_box_autoadd_i_64(dynamic raw);
+
+  @protected
+  RelationalSyncEntity? dco_decode_opt_box_autoadd_relational_sync_entity(
+    dynamic raw,
+  );
 
   @protected
   int? dco_decode_opt_box_autoadd_u_16(dynamic raw);
@@ -168,6 +201,15 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   RelationalStoreStatus dco_decode_relational_store_status(dynamic raw);
+
+  @protected
+  RelationalSyncCounter dco_decode_relational_sync_counter(dynamic raw);
+
+  @protected
+  RelationalSyncEntity dco_decode_relational_sync_entity(dynamic raw);
+
+  @protected
+  RelationalSyncField dco_decode_relational_sync_field(dynamic raw);
 
   @protected
   SubtitleCue dco_decode_subtitle_cue(dynamic raw);
@@ -229,7 +271,18 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   bool sse_decode_bool(SseDeserializer deserializer);
 
   @protected
+  bool sse_decode_box_autoadd_bool(SseDeserializer deserializer);
+
+  @protected
+  double sse_decode_box_autoadd_f_64(SseDeserializer deserializer);
+
+  @protected
   PlatformInt64 sse_decode_box_autoadd_i_64(SseDeserializer deserializer);
+
+  @protected
+  RelationalSyncEntity sse_decode_box_autoadd_relational_sync_entity(
+    SseDeserializer deserializer,
+  );
 
   @protected
   int sse_decode_box_autoadd_u_16(SseDeserializer deserializer);
@@ -241,6 +294,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   XmltvProgramme sse_decode_box_autoadd_xmltv_programme(
     SseDeserializer deserializer,
   );
+
+  @protected
+  double sse_decode_f_64(SseDeserializer deserializer);
 
   @protected
   int sse_decode_i_32(SseDeserializer deserializer);
@@ -277,6 +333,16 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   List<(String, String)> sse_decode_list_record_string_string(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  List<RelationalSyncCounter> sse_decode_list_relational_sync_counter(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  List<RelationalSyncField> sse_decode_list_relational_sync_field(
     SseDeserializer deserializer,
   );
 
@@ -325,7 +391,18 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   String? sse_decode_opt_String(SseDeserializer deserializer);
 
   @protected
+  bool? sse_decode_opt_box_autoadd_bool(SseDeserializer deserializer);
+
+  @protected
+  double? sse_decode_opt_box_autoadd_f_64(SseDeserializer deserializer);
+
+  @protected
   PlatformInt64? sse_decode_opt_box_autoadd_i_64(SseDeserializer deserializer);
+
+  @protected
+  RelationalSyncEntity? sse_decode_opt_box_autoadd_relational_sync_entity(
+    SseDeserializer deserializer,
+  );
 
   @protected
   int? sse_decode_opt_box_autoadd_u_16(SseDeserializer deserializer);
@@ -404,6 +481,21 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  RelationalSyncCounter sse_decode_relational_sync_counter(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  RelationalSyncEntity sse_decode_relational_sync_entity(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  RelationalSyncField sse_decode_relational_sync_field(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   SubtitleCue sse_decode_subtitle_cue(SseDeserializer deserializer);
 
   @protected
@@ -476,8 +568,20 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_bool(bool self, SseSerializer serializer);
 
   @protected
+  void sse_encode_box_autoadd_bool(bool self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_box_autoadd_f_64(double self, SseSerializer serializer);
+
+  @protected
   void sse_encode_box_autoadd_i_64(
     PlatformInt64 self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_box_autoadd_relational_sync_entity(
+    RelationalSyncEntity self,
     SseSerializer serializer,
   );
 
@@ -492,6 +596,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
     XmltvProgramme self,
     SseSerializer serializer,
   );
+
+  @protected
+  void sse_encode_f_64(double self, SseSerializer serializer);
 
   @protected
   void sse_encode_i_32(int self, SseSerializer serializer);
@@ -541,6 +648,18 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_list_record_string_string(
     List<(String, String)> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_relational_sync_counter(
+    List<RelationalSyncCounter> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_relational_sync_field(
+    List<RelationalSyncField> self,
     SseSerializer serializer,
   );
 
@@ -605,8 +724,20 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_opt_String(String? self, SseSerializer serializer);
 
   @protected
+  void sse_encode_opt_box_autoadd_bool(bool? self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_opt_box_autoadd_f_64(double? self, SseSerializer serializer);
+
+  @protected
   void sse_encode_opt_box_autoadd_i_64(
     PlatformInt64? self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_opt_box_autoadd_relational_sync_entity(
+    RelationalSyncEntity? self,
     SseSerializer serializer,
   );
 
@@ -697,6 +828,24 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_relational_store_status(
     RelationalStoreStatus self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_relational_sync_counter(
+    RelationalSyncCounter self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_relational_sync_entity(
+    RelationalSyncEntity self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_relational_sync_field(
+    RelationalSyncField self,
     SseSerializer serializer,
   );
 

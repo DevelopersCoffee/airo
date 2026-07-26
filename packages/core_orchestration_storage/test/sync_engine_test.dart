@@ -174,4 +174,68 @@ void main() {
       expect(engine.entity('favorite-a')?.fields['favorite']?.value, isTrue);
     },
   );
+
+  test(
+    'engine hydrates and writes through relational persistence port',
+    () async {
+      final stored = entity(
+        fields: {
+          'name': field('Stored', const {'tv': 1}, origin: 'tv'),
+        },
+        counters: const {'tv': 1},
+      );
+      final incoming = entity(
+        fields: {
+          'favorite': field(true, const {'phone': 1}),
+        },
+        counters: const {'phone': 1},
+      );
+      final persistence = _FakeSyncPersistence(stored);
+      final engine = AiroSyncEngine(
+        resolver: resolver,
+        persistence: persistence,
+      );
+      final transport = AiroFakeSyncTransport(
+        kind: AiroSyncTransportKind.lan,
+        security: const AiroSyncTransportSecurity(
+          encrypted: true,
+          compressed: true,
+          pairedIdentityRef: 'identity-1',
+        ),
+        incoming: [
+          AiroSyncEnvelope(
+            envelopeId: 'persisted-envelope',
+            entity: incoming,
+            createdAt: baseTime,
+          ),
+        ],
+      );
+
+      await engine.synchronize(transport);
+
+      expect(persistence.readIds, ['favorite-a']);
+      expect(persistence.writes, hasLength(1));
+      expect(persistence.writes.single.fields['name']?.value, 'Stored');
+      expect(persistence.writes.single.fields['favorite']?.value, isTrue);
+    },
+  );
+}
+
+class _FakeSyncPersistence implements AiroSyncEntityPersistence {
+  _FakeSyncPersistence(this.stored);
+
+  final AiroSyncEntity? stored;
+  final List<String> readIds = [];
+  final List<AiroSyncEntity> writes = [];
+
+  @override
+  Future<AiroSyncEntity?> read(String uuid) async {
+    readIds.add(uuid);
+    return stored;
+  }
+
+  @override
+  Future<void> write(AiroSyncEntity entity) async {
+    writes.add(entity);
+  }
 }

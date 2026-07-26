@@ -383,10 +383,105 @@ class AiroSyncRunResult extends Equatable {
   List<Object?> get props => [appliedCount, duplicateCount, rejectedInsecure];
 }
 
+abstract interface class AiroSyncEntityPersistence {
+  Future<AiroSyncEntity?> read(String uuid);
+
+  Future<void> write(AiroSyncEntity entity);
+}
+
+class AiroRelationalSyncEntityPersistence implements AiroSyncEntityPersistence {
+  const AiroRelationalSyncEntityPersistence({required this.databasePath});
+
+  final String databasePath;
+
+  @override
+  Future<AiroSyncEntity?> read(String uuid) async {
+    final row = await readAiroRelationalSyncEntity(
+      path: databasePath,
+      uuid: uuid,
+    );
+    return row == null ? null : _fromRelational(row);
+  }
+
+  @override
+  Future<void> write(AiroSyncEntity entity) async {
+    final written = await upsertAiroRelationalSyncEntity(
+      path: databasePath,
+      entity: _toRelational(entity),
+    );
+    if (!written) {
+      throw StateError('relational_sync_store_unavailable');
+    }
+  }
+
+  AiroRelationalSyncEntity _toRelational(AiroSyncEntity entity) {
+    return AiroRelationalSyncEntity(
+      uuid: entity.uuid,
+      entityType: entity.type.name,
+      schemaVersion: entity.schemaVersion,
+      entityVersion: entity.version,
+      updatedAtMicros: entity.updatedAt.microsecondsSinceEpoch,
+      deletedAtMicros: entity.deletedAt?.microsecondsSinceEpoch,
+      clock: entity.clock.counters,
+      deletionClock: entity.deletionClock?.counters ?? const {},
+      fields: [
+        for (final entry in entity.fields.entries)
+          AiroRelationalSyncField(
+            name: entry.key,
+            value: entry.value.value,
+            updatedAtMicros: entry.value.updatedAt.microsecondsSinceEpoch,
+            originNodeId: entry.value.originNodeId,
+            clock: entry.value.clock.counters,
+          ),
+      ],
+    );
+  }
+
+  AiroSyncEntity _fromRelational(AiroRelationalSyncEntity entity) {
+    final type = AiroSyncEntityType.values
+        .where((value) => value.name == entity.entityType)
+        .firstOrNull;
+    if (type == null) throw StateError('unsupported_sync_entity_type');
+    return AiroSyncEntity(
+      uuid: entity.uuid,
+      type: type,
+      version: entity.entityVersion,
+      clock: AiroSyncVectorClock(entity.clock),
+      fields: {
+        for (final field in entity.fields)
+          field.name: AiroSyncField(
+            value: field.value,
+            clock: AiroSyncVectorClock(field.clock),
+            updatedAt: DateTime.fromMicrosecondsSinceEpoch(
+              field.updatedAtMicros,
+              isUtc: true,
+            ),
+            originNodeId: field.originNodeId,
+          ),
+      },
+      updatedAt: DateTime.fromMicrosecondsSinceEpoch(
+        entity.updatedAtMicros,
+        isUtc: true,
+      ),
+      deletedAt: entity.deletedAtMicros == null
+          ? null
+          : DateTime.fromMicrosecondsSinceEpoch(
+              entity.deletedAtMicros!,
+              isUtc: true,
+            ),
+      deletionClock: entity.deletedAtMicros == null
+          ? null
+          : AiroSyncVectorClock(entity.deletionClock),
+      schemaVersion: entity.schemaVersion,
+    );
+  }
+}
+
 class AiroSyncEngine {
-  AiroSyncEngine({required this.resolver});
+  AiroSyncEngine({required this.resolver, this.persistence});
 
   final AiroSyncConflictResolver resolver;
+  final AiroSyncEntityPersistence? persistence;
   final Map<String, AiroSyncEntity> _entities = {};
   final Set<String> _appliedEnvelopeIds = {};
 
@@ -407,10 +502,14 @@ class AiroSyncEngine {
         duplicates++;
         continue;
       }
-      final current = _entities[envelope.entity.uuid];
-      _entities[envelope.entity.uuid] = current == null
+      final current =
+          _entities[envelope.entity.uuid] ??
+          await persistence?.read(envelope.entity.uuid);
+      final merged = current == null
           ? envelope.entity
           : (await resolver.merge(current, envelope.entity)).entity;
+      _entities[envelope.entity.uuid] = merged;
+      await persistence?.write(merged);
       applied++;
     }
     return AiroSyncRunResult(
