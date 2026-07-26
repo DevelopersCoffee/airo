@@ -519,11 +519,12 @@ void main() {
     });
 
     test('TV should support D-pad focus states', () {
-      // From WEB-AC-005 adapted for TV
-      // TV focus indicators: border (3dp), scale (1.05x), glow
-      expect(TvFocusConstants.focusBorderWidth, equals(3.0));
-      expect(TvFocusConstants.focusScaleFactor, equals(1.05));
-      expect(TvFocusConstants.focusGlowSpread, equals(4.0));
+      // From WEB-AC-005 adapted for TV, tokens per the AiroTV D-pad design
+      // (issues/02-focus-tokens-reduced-motion.md): border (2.5dp),
+      // scale (1.04x), glow ring (5dp at 20% opacity)
+      expect(TvFocusConstants.focusBorderWidth, equals(2.5));
+      expect(TvFocusConstants.focusScaleFactor, equals(1.04));
+      expect(TvFocusConstants.focusGlowSpread, equals(5.0));
     });
 
     test('TV player controls should auto-hide after inactivity', () {
@@ -942,10 +943,10 @@ void main() {
     });
 
     test('Focus indicators provide sufficient contrast', () {
-      // Focus indicators use theme primary color with 3dp border
-      // and 4dp glow spread for visibility
-      expect(TvFocusConstants.focusBorderWidth, equals(3.0));
-      expect(TvFocusConstants.focusGlowSpread, equals(4.0));
+      // Focus indicators use theme primary color with a 2.5dp border
+      // and a 5dp glow spread ring for visibility
+      expect(TvFocusConstants.focusBorderWidth, equals(2.5));
+      expect(TvFocusConstants.focusGlowSpread, equals(5.0));
     });
   });
 
