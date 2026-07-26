@@ -1,3 +1,4 @@
+import 'package:core_data/core_data.dart';
 import 'package:feature_iptv/application/providers/channel_filters_provider.dart';
 import 'package:feature_iptv/application/providers/channel_auto_scan_providers.dart';
 import 'package:feature_iptv/application/providers/connectivity_provider.dart';
@@ -136,10 +137,7 @@ void main() {
       await tester.pump();
 
       expect(find.byIcon(Icons.wifi_off_rounded), findsOneWidget);
-      expect(
-        find.textContaining('your playlist is cached'),
-        findsOneWidget,
-      );
+      expect(find.textContaining('your playlist is cached'), findsOneWidget);
     },
   );
 
@@ -249,6 +247,66 @@ void main() {
     expect(selected, ['two']);
     expect(find.text('One is unavailable. Skipping.'), findsOneWidget);
   });
+
+  // issues/04-recovery-states.md acceptance criterion 4: Retry must be a
+  // real, D-pad reachable action that reports success or failure.
+  testWidgets('offline banner Retry re-checks connectivity and reports the '
+      'outcome', (tester) async {
+    final prefs = await SharedPreferences.getInstance();
+    final container = ProviderContainer(
+      overrides: [
+        sharedPreferencesProvider.overrideWithValue(prefs),
+        streamProbeTransportProvider.overrideWithValue(_FakeProbeTransport()),
+        isOnlineProvider.overrideWith((ref) => Stream.value(false)),
+        connectivityServiceProvider.overrideWithValue(
+          _FakeConnectivityService(false),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp(
+          home: Scaffold(
+            body: SizedBox(
+              width: 900,
+              height: 720,
+              child: AiroTvShell(
+                channels: channels,
+                videoStage: const SizedBox(key: ValueKey('video-stage')),
+                onChannelSelected: (_) {},
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.byKey(const ValueKey('offline-banner-retry')), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('offline-banner-retry')));
+    await tester.pump();
+
+    expect(
+      find.text('Still no connection — check your network and try again'),
+      findsOneWidget,
+    );
+  });
+}
+
+class _FakeConnectivityService implements ConnectivityService {
+  _FakeConnectivityService(this._connected);
+
+  final bool _connected;
+
+  @override
+  Future<bool> get isConnected async => _connected;
+
+  @override
+  Stream<bool> get onConnectivityChanged => const Stream.empty();
 }
 
 class _FakeProbeTransport implements StreamProbeTransport {

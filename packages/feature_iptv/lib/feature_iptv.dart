@@ -19,6 +19,7 @@ export "application/providers/playback_settings_extension_point.dart";
 export "application/providers/recently_watched_recorder.dart";
 export "application/providers/video_aspect_ratio_provider.dart";
 export "application/providers/caption_preference_provider.dart";
+export "application/providers/dead_link_report_provider.dart";
 export "application/providers/channel_auto_scan_providers.dart";
 export "application/providers/tv_font_mode_provider.dart";
 export "application/providers/channel_filters_provider.dart";

@@ -10,6 +10,7 @@ import '../../application/player_backgrounding_coordinator.dart';
 import '../../application/channel_warmup_policy.dart';
 import '../../application/providers/caption_preference_provider.dart';
 import '../../application/providers/channel_auto_scan_providers.dart';
+import '../../application/providers/dead_link_report_provider.dart';
 import '../../application/providers/iptv_providers.dart';
 import '../../application/providers/recently_watched_recorder.dart';
 import '../../application/providers/video_aspect_ratio_provider.dart';
@@ -831,9 +832,14 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                     // gestures. Left half of the video area adjusts brightness,
                     // right half adjusts volume; disabled while locked. The video
                     // surface itself is the engine-driven view (CV-016 migration);
-                    // when it's null we fall through to loading/diagnostic/
-                    // placeholder inside the same gesture-enabled stack.
-                    widget.enableTouchGestures
+                    // when it's null we fall through to loading/placeholder
+                    // inside the same gesture-enabled stack -- except a
+                    // diagnostic error, whose own recovery buttons need to
+                    // win every tap outright rather than compete with this
+                    // overlay's translucent drag detector for the same
+                    // gesture arena.
+                    widget.enableTouchGestures &&
+                            !(state.hasError && state.diagnostic != null)
                         ? PlayerGestureOverlay(
                             locked: _isLocked,
                             brightness: _brightness,
@@ -871,8 +877,14 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                       ),
 
                     // Controls overlay with fade animation — hidden entirely while
-                    // locked so only the lock button remains interactive.
-                    if (!_isLocked && !isPipActive)
+                    // locked so only the lock button remains interactive, and
+                    // while a diagnostic error owns the screen (there's no
+                    // video to control, and its own recovery buttons occupy
+                    // the same vertical band the center play/pause button
+                    // would otherwise sit in and silently swallow taps for).
+                    if (!_isLocked &&
+                        !isPipActive &&
+                        !(state.hasError && state.diagnostic != null))
                       AnimatedOpacity(
                         opacity: (widget.showControls && _showControlsOverlay)
                             ? 1.0
@@ -1059,29 +1071,70 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                 retryAttempt: state.retryCount > 0 ? state.retryCount : null,
                 maxRetryAttempts: 3,
               ),
-              if (!diagnostic.retryEligible || state.retryCount == 0)
-                ElevatedButton.icon(
-                  onPressed: () =>
-                      ref.read(iptvStreamingServiceProvider).retry(),
-                  icon: const Icon(Icons.refresh_rounded),
-                  label: const Text('Try Again'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blueGrey.shade700,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 12,
+              const SizedBox(height: 16),
+              // issues/04-recovery-states.md acceptance criterion 1: three
+              // distinct outcomes, not just retry -- and every one of them
+              // must be D-pad reachable (the old ElevatedButton had no
+              // TvFocusable, so a remote-only viewer could never reach it).
+              Wrap(
+                alignment: WrapAlignment.center,
+                spacing: 10,
+                runSpacing: 10,
+                children: [
+                  if (!diagnostic.retryEligible || state.retryCount == 0)
+                    _RecoveryActionButton(
+                      key: const ValueKey('diagnostic-error-retry'),
+                      icon: Icons.refresh_rounded,
+                      label: 'Try Again',
+                      autofocus: true,
+                      onSelect: () =>
+                          ref.read(iptvStreamingServiceProvider).retry(),
                     ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
+                  _RecoveryActionButton(
+                    key: const ValueKey('diagnostic-error-skip'),
+                    icon: Icons.skip_next_rounded,
+                    label: 'Skip channel',
+                    autofocus: diagnostic.retryEligible && state.retryCount > 0,
+                    onSelect: _goToNextChannel,
                   ),
-                ),
+                  _RecoveryActionButton(
+                    key: const ValueKey('diagnostic-error-report'),
+                    icon: Icons.flag_outlined,
+                    label: 'Report dead link',
+                    onSelect: () => _saveDeadLinkReport(state, diagnostic),
+                  ),
+                ],
+              ),
             ],
           ),
         ),
       ),
     );
+  }
+
+  Future<void> _saveDeadLinkReport(
+    StreamingState state,
+    AiroPlaybackDiagnostic diagnostic,
+  ) async {
+    final channel = state.currentChannel;
+    if (channel == null) return;
+    await ref
+        .read(deadLinkReportStorageProvider)
+        .save(
+          DeadLinkReport(
+            channelName: channel.name,
+            diagnosticCode: diagnostic.code.name,
+            userMessage: diagnostic.userMessage,
+            technicalDetail: diagnostic.technicalDetail,
+            reportedAt: DateTime.now(),
+          ),
+        );
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        const SnackBar(content: Text('Saved locally — nothing was sent')),
+      );
   }
 
   Widget _buildError(String message) {
@@ -2836,6 +2889,45 @@ class _ContextMenuItem extends StatelessWidget {
 /// the actual action live on the [TvFocusable] wrapping it; this just draws
 /// the pill matching the AiroTV D-pad design's transport button style
 /// (icon-only when unlabeled, icon+label otherwise).
+/// A D-pad-reachable recovery action for [_buildDiagnosticError] --
+/// TvFocusable-wrapped so remote-only viewers (no touch input) can actually
+/// reach it, unlike a bare ElevatedButton.
+class _RecoveryActionButton extends StatelessWidget {
+  const _RecoveryActionButton({
+    super.key,
+    required this.icon,
+    required this.label,
+    required this.onSelect,
+    this.autofocus = false,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onSelect;
+  final bool autofocus;
+
+  @override
+  Widget build(BuildContext context) {
+    return TvFocusable(
+      autofocus: autofocus,
+      onSelect: onSelect,
+      semanticLabel: label,
+      borderRadius: 8,
+      child: ElevatedButton.icon(
+        onPressed: onSelect,
+        icon: Icon(icon),
+        label: Text(label),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.blueGrey.shade700,
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        ),
+      ),
+    );
+  }
+}
+
 class _TvTransportButton extends StatelessWidget {
   const _TvTransportButton({required this.icon, this.label});
 
