@@ -121,6 +121,7 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
   // Android TV remotes that do have a working menu key.
   bool _showContextMenu = false;
   Timer? _selectLongPressTimer;
+  bool _selectConsumedByLongPress = false;
 
   // UP/DOWN quick-browse overlays (AiroTV D-pad design "MINI GUIDE (UP)" /
   // "RECENT CHANNELS (DOWN)"). Replaces the previous instant channel-surf
@@ -454,24 +455,37 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
       // Left/right walk the visible controls via normal focus traversal
       // (the buttons are TvFocusable); with the overlay hidden there are
       // no focus candidates (ExcludeFocus), so the keys are inert.
-      case TvInputKey.select:
-        if (controlsVisible) {
-          // A focused control's own TvFocusable consumes select before
-          // this listener; reaching here means nothing was focused yet.
-          if (_centerControlFocusNode.canRequestFocus) {
-            _centerControlFocusNode.requestFocus();
-          }
-          return TvInputResult.handled;
-        }
-        // Controls hidden: OK reveals them with focus on play/pause, the
-        // same pattern as every mainstream TV player.
-        _showControls();
-        if (_centerControlFocusNode.canRequestFocus) {
-          _centerControlFocusNode.requestFocus();
-        }
-        return TvInputResult.handled;
+      //
+      // Select is deliberately NOT handled here: TvInputHandler fires on
+      // every key-down, which would reveal controls the instant Select is
+      // pressed -- including the down-stroke of what turns out to be a
+      // long-press. That doubled the short-press action on top of the
+      // context menu opening (issues/01-remote-focus-contract.md
+      // acceptance criterion 5: "Holding Select does not also trigger the
+      // short-press action"). _detectSelectLongPress below owns Select
+      // entirely and only fires the short-press reveal on a clean key-up.
       default:
         return TvInputResult.notHandled;
+    }
+  }
+
+  /// The short-press Select action: reveal controls (or move focus onto
+  /// them if already visible). Only invoked from [_detectSelectLongPress]
+  /// on a key-up that wasn't consumed by the long-press timer.
+  void _revealControlsForSelect() {
+    if (_showControlsOverlay && widget.showControls) {
+      // A focused control's own TvFocusable consumes select before this
+      // listener; reaching here means nothing was focused yet.
+      if (_centerControlFocusNode.canRequestFocus) {
+        _centerControlFocusNode.requestFocus();
+      }
+      return;
+    }
+    // Controls hidden: OK reveals them with focus on play/pause, the same
+    // pattern as every mainstream TV player.
+    _showControls();
+    if (_centerControlFocusNode.canRequestFocus) {
+      _centerControlFocusNode.requestFocus();
     }
   }
 
@@ -494,25 +508,34 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
 
   static const _selectLongPressDuration = Duration(milliseconds: 500);
 
-  /// Detects a long-press of Select/OK to open the context menu (see the
-  /// field doc on [_showContextMenu] for why). Always returns `ignored` —
-  /// this only observes timing, it never claims the key event, so normal
-  /// short-press handling in [_handleSurfInput] (via [TvInputHandler]) is
-  /// unaffected.
+  /// Owns Select/OK end to end: starts the long-press timer on key-down,
+  /// and on key-up either leaves it to the context menu it already opened
+  /// (long-press) or fires the short-press reveal-controls action (clean
+  /// tap) -- never both, per issues/01-remote-focus-contract.md acceptance
+  /// criterion 5. Always returns `ignored` since nothing else needs this
+  /// key event once decided.
   KeyEventResult _detectSelectLongPress(FocusNode node, KeyEvent event) {
     final key = TvInputHandler.mapLogicalKeyToTvInput(event.logicalKey);
     if (key != TvInputKey.select) return KeyEventResult.ignored;
 
     if (event is KeyDownEvent) {
       _selectLongPressTimer ??= Timer(_selectLongPressDuration, () {
+        _selectLongPressTimer = null;
         if (ref.read(streamingStateProvider).asData?.value.currentChannel !=
             null) {
+          _selectConsumedByLongPress = true;
           setState(() => _showContextMenu = true);
         }
       });
     } else if (event is KeyUpEvent) {
+      final wasStillPending = _selectLongPressTimer != null;
       _selectLongPressTimer?.cancel();
       _selectLongPressTimer = null;
+      if (_selectConsumedByLongPress) {
+        _selectConsumedByLongPress = false;
+      } else if (wasStillPending) {
+        _revealControlsForSelect();
+      }
     }
     return KeyEventResult.ignored;
   }
