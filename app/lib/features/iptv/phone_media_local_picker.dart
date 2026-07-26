@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/services.dart';
+import 'package:platform_media/platform_media.dart';
 import 'package:platform_player/platform_player.dart';
 
 const _androidPhoneMediaPickerChannel = MethodChannel(
@@ -17,6 +18,7 @@ Future<PhoneLocalMediaItem?> pickPhoneLocalMediaForTv() async {
   if (Platform.isAndroid) {
     return pickAndroidPhoneLocalMediaForTv(
       channel: _androidPhoneMediaPickerChannel,
+      analyzer: DefaultLocalMediaAssetAnalyzer(),
     );
   }
 
@@ -24,16 +26,26 @@ Future<PhoneLocalMediaItem?> pickPhoneLocalMediaForTv() async {
   if (file == null) return null;
   final path = file.path;
   if (path == null) return null;
+  final analysis = await DefaultLocalMediaAssetAnalyzer().analyze(
+    MediaAssetAnalysisRequest(
+      assetId: file.identifier ?? file.name,
+      filePath: path,
+      fileName: file.name,
+      fileSizeBytesHint: file.size > 0 ? file.size : null,
+    ),
+  );
 
-  return PhoneLocalMediaItem(
+  return _phoneLocalMediaItem(
     filePath: path,
     title: file.name,
-    container: (file.extension ?? '').toLowerCase(),
+    fallbackContainer: (file.extension ?? '').toLowerCase(),
+    analysis: analysis,
   );
 }
 
 Future<PhoneLocalMediaItem?> pickAndroidPhoneLocalMediaForTv({
   required MethodChannel channel,
+  LocalMediaAssetAnalyzer? analyzer,
 }) async {
   try {
     final selection = await channel.invokeMapMethod<String, Object?>(
@@ -55,11 +67,21 @@ Future<PhoneLocalMediaItem?> pickAndroidPhoneLocalMediaForTv({
       }
       return null;
     }
+    final analysis = await (analyzer ?? DefaultLocalMediaAssetAnalyzer())
+        .analyze(
+          MediaAssetAnalysisRequest(
+            assetId: token,
+            filePath: filePath,
+            fileName: title,
+            fileSizeBytesHint: (selection['size'] as num?)?.round(),
+          ),
+        );
 
-    return PhoneLocalMediaItem(
+    return _phoneLocalMediaItem(
       filePath: filePath,
       title: title,
-      container: _extensionOf(title),
+      fallbackContainer: _extensionOf(title),
+      analysis: analysis,
       sourceLease: _AndroidPhoneMediaSourceLease(
         channel: channel,
         token: token,
@@ -68,6 +90,38 @@ Future<PhoneLocalMediaItem?> pickAndroidPhoneLocalMediaForTv({
   } on PlatformException {
     return null;
   }
+}
+
+PhoneLocalMediaItem _phoneLocalMediaItem({
+  required String filePath,
+  required String title,
+  required String fallbackContainer,
+  required MediaAssetAnalysisResult analysis,
+  PhoneMediaSourceLease? sourceLease,
+}) {
+  final profile = analysis.profile;
+  final analyzedContainer = profile?.container;
+  final primaryVideo = profile?.videoTracks.firstOrNull;
+  final primaryAudio = profile?.audioTracks.firstOrNull;
+  return PhoneLocalMediaItem(
+    filePath: filePath,
+    title: title,
+    container:
+        analyzedContainer == null ||
+            analyzedContainer == MediaAssetContainer.unknown
+        ? fallbackContainer
+        : analyzedContainer.stableId,
+    sourceLease: sourceLease,
+    videoCodec:
+        primaryVideo == null || primaryVideo.codec == MediaVideoCodec.unknown
+        ? null
+        : primaryVideo.codec.stableId,
+    audioCodec:
+        primaryAudio == null || primaryAudio.codec == MediaAudioCodec.unknown
+        ? null
+        : primaryAudio.codec.stableId,
+    duration: profile?.duration,
+  );
 }
 
 String _extensionOf(String fileName) {

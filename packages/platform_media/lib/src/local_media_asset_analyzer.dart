@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter/services.dart';
 import 'package:video_player/video_player.dart';
 
+import 'media_asset_profile_codec.dart';
 import 'media_asset_profile_models.dart';
 
 abstract class LocalMediaAssetAnalyzer {
@@ -40,6 +41,7 @@ class HostPlatformMediaAssetAnalyzer implements LocalMediaAssetAnalyzer {
   static MethodChannel _defaultChannel = const MethodChannel(
     'com.airo.media_asset_analyzer',
   );
+  static int _nextAnalysisId = 1;
 
   final MethodChannel _channel;
 
@@ -47,18 +49,50 @@ class HostPlatformMediaAssetAnalyzer implements LocalMediaAssetAnalyzer {
   Future<MediaAssetAnalysisResult> analyze(
     MediaAssetAnalysisRequest request,
   ) async {
+    final cancellation = request.cancellationToken;
+    if (cancellation?.isCancelled ?? false) return _cancelledResult();
+    final analysisId = 'analysis-${_nextAnalysisId++}';
     try {
-      final raw = await _channel.invokeMapMethod<String, Object?>('analyze', {
+      final invocation = _channel.invokeMapMethod<String, Object?>('analyze', {
+        'analysisId': analysisId,
         'assetId': request.assetId,
         'filePath': request.filePath,
         'fileName': request.fileName,
         'fileSizeBytesHint': request.fileSizeBytesHint,
         'mimeTypeHint': request.mimeTypeHint,
       });
+      final raw = cancellation == null
+          ? await invocation
+          : await Future.any<Map<String, Object?>?>([
+              invocation,
+              cancellation.whenCancelled.then((_) async {
+                await _channel.invokeMethod<void>('cancel', {
+                  'analysisId': analysisId,
+                });
+                return <String, Object?>{
+                  'status': MediaAssetAnalysisStatus.cancelled.stableId,
+                  'diagnostics': <String, Object?>{
+                    'elapsedMs': 0,
+                    'didUseMetadataProbe': true,
+                  },
+                };
+              }),
+            ]);
       if (raw == null) {
         return _unsupportedResult();
       }
-      return _parseResult(raw);
+      try {
+        return _parseResult(raw);
+      } on UnsupportedMediaAssetProfileVersion {
+        return const MediaAssetAnalysisResult(
+          status: MediaAssetAnalysisStatus.unsupportedInspection,
+          failureReason: 'unsupported_profile_version',
+          diagnostics: MediaAssetAnalysisDiagnostics(
+            elapsed: Duration.zero,
+            didUseMetadataProbe: false,
+          ),
+        );
+      }
     } on MissingPluginException {
       return _unsupportedResult();
     } on PlatformException catch (error) {
@@ -83,6 +117,16 @@ class HostPlatformMediaAssetAnalyzer implements LocalMediaAssetAnalyzer {
     );
   }
 
+  MediaAssetAnalysisResult _cancelledResult() {
+    return const MediaAssetAnalysisResult(
+      status: MediaAssetAnalysisStatus.cancelled,
+      diagnostics: MediaAssetAnalysisDiagnostics(
+        elapsed: Duration.zero,
+        didUseMetadataProbe: false,
+      ),
+    );
+  }
+
   MediaAssetAnalysisResult _parseResult(Map<String, Object?> raw) {
     return MediaAssetAnalysisResult(
       status: _analysisStatusFromStableId(raw['status'] as String?),
@@ -100,98 +144,13 @@ class HostPlatformMediaAssetAnalyzer implements LocalMediaAssetAnalyzer {
       didUseMetadataProbe: raw['didUseMetadataProbe'] as bool? ?? false,
       fileSizeBytes: (raw['fileSizeBytes'] as num?)?.round(),
       estimatedBytesRead: (raw['estimatedBytesRead'] as num?)?.round(),
+      peakMemoryBytes: (raw['peakMemoryBytes'] as num?)?.round(),
     );
   }
 
   MediaAssetProfile? _parseProfile(Map<Object?, Object?>? raw) {
     if (raw == null) return null;
-    return MediaAssetProfile(
-      schemaVersion:
-          raw['schemaVersion'] as String? ?? kMediaAssetProfileSchemaVersion,
-      assetId: raw['assetId'] as String? ?? 'unknown',
-      container: _containerFromStableId(raw['container'] as String?),
-      duration: _durationFromMs(raw['durationMs']),
-      fileSizeBytes: (raw['fileSizeBytes'] as num?)?.round(),
-      overallBitrate: (raw['overallBitrate'] as num?)?.round(),
-      videoTracks: _parseVideoTracks(raw['videoTracks']),
-      audioTracks: _parseAudioTracks(raw['audioTracks']),
-      subtitleTracks: _parseSubtitleTracks(raw['subtitleTracks']),
-      warnings: _parseWarnings(raw['warnings']),
-    );
-  }
-
-  List<MediaVideoTrackProfile> _parseVideoTracks(Object? rawTracks) {
-    final tracks = rawTracks as List<Object?>? ?? const [];
-    return tracks
-        .whereType<Map<Object?, Object?>>()
-        .map(
-          (raw) => MediaVideoTrackProfile(
-            id: raw['id'] as String? ?? 'video-unknown',
-            codec: _videoCodecFromStableId(raw['codec'] as String?),
-            bitrate: (raw['bitrate'] as num?)?.round(),
-            dynamicRange: _dynamicRangeFromStableId(
-              raw['dynamicRange'] as String?,
-            ),
-            confidence: _confidenceFromStableId(raw['confidence'] as String?),
-            dimensions: MediaAssetDimensions(
-              width: (raw['width'] as num?)?.round() ?? 0,
-              height: (raw['height'] as num?)?.round() ?? 0,
-            ),
-          ),
-        )
-        .toList(growable: false);
-  }
-
-  List<MediaAudioTrackProfile> _parseAudioTracks(Object? rawTracks) {
-    final tracks = rawTracks as List<Object?>? ?? const [];
-    return tracks
-        .whereType<Map<Object?, Object?>>()
-        .map(
-          (raw) => MediaAudioTrackProfile(
-            id: raw['id'] as String? ?? 'audio-unknown',
-            codec: _audioCodecFromStableId(raw['codec'] as String?),
-            confidence: _confidenceFromStableId(raw['confidence'] as String?),
-            language: raw['language'] as String?,
-            label: raw['label'] as String?,
-            channelCount: (raw['channelCount'] as num?)?.round(),
-            isDefault: raw['isDefault'] as bool? ?? false,
-            isCommentary: raw['isCommentary'] as bool? ?? false,
-          ),
-        )
-        .toList(growable: false);
-  }
-
-  List<MediaSubtitleTrackProfile> _parseSubtitleTracks(Object? rawTracks) {
-    final tracks = rawTracks as List<Object?>? ?? const [];
-    return tracks
-        .whereType<Map<Object?, Object?>>()
-        .map(
-          (raw) => MediaSubtitleTrackProfile(
-            id: raw['id'] as String? ?? 'subtitle-unknown',
-            format: _subtitleFormatFromStableId(raw['format'] as String?),
-            confidence: _confidenceFromStableId(raw['confidence'] as String?),
-            language: raw['language'] as String?,
-            label: raw['label'] as String?,
-            isDefault: raw['isDefault'] as bool? ?? false,
-            isForced: raw['isForced'] as bool? ?? false,
-            isCommentary: raw['isCommentary'] as bool? ?? false,
-          ),
-        )
-        .toList(growable: false);
-  }
-
-  List<MediaAssetWarningCode> _parseWarnings(Object? rawWarnings) {
-    final warnings = rawWarnings as List<Object?>? ?? const [];
-    return warnings
-        .whereType<String>()
-        .map(_warningCodeFromStableId)
-        .toList(growable: false);
-  }
-
-  Duration? _durationFromMs(Object? raw) {
-    final milliseconds = (raw as num?)?.round();
-    if (milliseconds == null || milliseconds <= 0) return null;
-    return Duration(milliseconds: milliseconds);
+    return MediaAssetProfileCodec.decode(raw);
   }
 
   @visibleForTesting
@@ -208,6 +167,9 @@ class VideoPlayerLocalMediaAssetAnalyzer implements LocalMediaAssetAnalyzer {
     MediaAssetAnalysisRequest request,
   ) async {
     final startedAt = DateTime.now();
+    if (request.cancellationToken?.isCancelled ?? false) {
+      return _cancelledResult(startedAt, didUseMetadataProbe: false);
+    }
     final warnings = <MediaAssetWarningCode>[];
     final container = _resolveContainer(request, warnings);
 
@@ -232,6 +194,9 @@ class VideoPlayerLocalMediaAssetAnalyzer implements LocalMediaAssetAnalyzer {
     try {
       didUseMetadataProbe = true;
       await controller.initialize();
+      if (request.cancellationToken?.isCancelled ?? false) {
+        return _cancelledResult(startedAt, didUseMetadataProbe: true);
+      }
       duration = controller.value.duration;
       final size = controller.value.size;
       dimensions = MediaAssetDimensions(
@@ -305,6 +270,19 @@ class VideoPlayerLocalMediaAssetAnalyzer implements LocalMediaAssetAnalyzer {
     );
   }
 
+  MediaAssetAnalysisResult _cancelledResult(
+    DateTime startedAt, {
+    required bool didUseMetadataProbe,
+  }) {
+    return MediaAssetAnalysisResult(
+      status: MediaAssetAnalysisStatus.cancelled,
+      diagnostics: MediaAssetAnalysisDiagnostics(
+        elapsed: DateTime.now().difference(startedAt),
+        didUseMetadataProbe: didUseMetadataProbe,
+      ),
+    );
+  }
+
   MediaAssetContainer _resolveContainer(
     MediaAssetAnalysisRequest request,
     List<MediaAssetWarningCode> warnings,
@@ -334,54 +312,5 @@ MediaAssetAnalysisStatus _analysisStatusFromStableId(String? stableId) {
   return MediaAssetAnalysisStatus.values.firstWhere(
     (value) => value.stableId == stableId,
     orElse: () => MediaAssetAnalysisStatus.inspectionFailed,
-  );
-}
-
-MediaAssetContainer _containerFromStableId(String? stableId) {
-  return MediaAssetContainer.values.firstWhere(
-    (value) => value.stableId == stableId,
-    orElse: () => MediaAssetContainer.unknown,
-  );
-}
-
-MediaTrackConfidence _confidenceFromStableId(String? stableId) {
-  return MediaTrackConfidence.values.firstWhere(
-    (value) => value.stableId == stableId,
-    orElse: () => MediaTrackConfidence.unknown,
-  );
-}
-
-MediaVideoCodec _videoCodecFromStableId(String? stableId) {
-  return MediaVideoCodec.values.firstWhere(
-    (value) => value.stableId == stableId,
-    orElse: () => MediaVideoCodec.unknown,
-  );
-}
-
-MediaAudioCodec _audioCodecFromStableId(String? stableId) {
-  return MediaAudioCodec.values.firstWhere(
-    (value) => value.stableId == stableId,
-    orElse: () => MediaAudioCodec.unknown,
-  );
-}
-
-MediaSubtitleFormat _subtitleFormatFromStableId(String? stableId) {
-  return MediaSubtitleFormat.values.firstWhere(
-    (value) => value.stableId == stableId,
-    orElse: () => MediaSubtitleFormat.unknown,
-  );
-}
-
-MediaDynamicRangeProfile _dynamicRangeFromStableId(String? stableId) {
-  return MediaDynamicRangeProfile.values.firstWhere(
-    (value) => value.stableId == stableId,
-    orElse: () => MediaDynamicRangeProfile.unknown,
-  );
-}
-
-MediaAssetWarningCode _warningCodeFromStableId(String? stableId) {
-  return MediaAssetWarningCode.values.firstWhere(
-    (value) => value.stableId == stableId,
-    orElse: () => MediaAssetWarningCode.metadataProbeFailed,
   );
 }
