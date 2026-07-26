@@ -114,10 +114,10 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('filter-chip-search')));
     await tester.pumpAndSettle();
     await tester.enterText(
-      find.byKey(const ValueKey('filter-search-field')),
+      find.byKey(const ValueKey('search-overlay-field')),
       'news',
     );
-    await tester.tap(find.text('Apply'));
+    await tester.tap(find.byIcon(Icons.close));
     await tester.pumpAndSettle();
 
     expect(container.read(channelFiltersProvider).search, 'news');
@@ -125,7 +125,11 @@ void main() {
 
     await tester.tap(find.byKey(const ValueKey('filter-chip-search')));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Clear'));
+    await tester.enterText(
+      find.byKey(const ValueKey('search-overlay-field')),
+      '',
+    );
+    await tester.tap(find.byIcon(Icons.close));
     await tester.pumpAndSettle();
 
     expect(container.read(channelFiltersProvider).search, '');
