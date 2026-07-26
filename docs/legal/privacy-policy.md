@@ -7,7 +7,7 @@ permalink: /legal/privacy-policy/
 
 # Privacy Policy
 
-**Last Updated: July 13, 2026**
+**Last Updated: July 26, 2026**
 
 ---
 
@@ -44,11 +44,12 @@ us** in any way.
 - **IPTV playlist URLs** — user-provided, stored locally on your device
 - **Playback and playlist cache data** — stored locally when needed for app
   functionality
+- **Favorites and channel filter selections** — stored locally on your device
+- **Electronic Program Guide (EPG) data** — downloaded from the XMLTV source
+  you configure, parsed on-device, and cached locally
 
-Planned features such as favorites, watch history, and Electronic Program
-Guide (EPG) data are not part of the current Airo TV v0.0.2 release. If those
-features are added later, the store declarations and this policy must be
-reviewed before public distribution.
+None of the above is transmitted to DevelopersCoffee. It stays on your
+device and is removed when you uninstall the app or clear its storage.
 
 ### Data We Do NOT Collect
 
@@ -56,8 +57,21 @@ reviewed before public distribution.
 - Location data
 - Contact information
 - Financial or payment information
-- Viewing habits or analytics sent to external servers
+- Viewing habits, watch history, or analytics sent to external servers
 - Advertising identifiers
+
+Airo TV integrates no advertising, analytics, or attribution SDK of any
+kind. There is no Google Analytics, Firebase Analytics, or Crashlytics in
+the application.
+
+### Permissions We Request
+
+The Airo TV build requests only what a network media player needs:
+internet and network-state access, multicast (for local network stream
+discovery), foreground-service and wake-lock permissions (to keep playback
+alive), notification posting (for playback controls), and boot-completed.
+It does **not** request access to contacts, calendar, location, camera,
+microphone, or device storage.
 
 ---
 
@@ -66,12 +80,44 @@ reviewed before public distribution.
 Airo TV processes all data locally on your device. Specifically:
 
 - **IPTV playlist parsing** is performed entirely on-device.
+- **Channel matching and enrichment** is performed entirely on-device (see
+  "Network Connections" below).
 - **Cast analytics logging is disabled** when initializing Google Cast support.
 - **No user data is transmitted** to DevelopersCoffee servers or any
   third-party analytics services.
 
 Your streaming content and playlist URLs **never leave your device** except
 when your TV/device requests the stream or playlist URL that you chose to load.
+
+---
+
+## Network Connections
+
+Airo TV contacts the following hosts. We list them so you know exactly what
+the app talks to and what is — and is not — sent.
+
+**Servers you choose.** The M3U playlist URL and the XMLTV program-guide URL
+you enter are requested directly by your device, along with the stream URLs
+those playlists contain. Airo TV does not proxy, mirror, or inspect this
+traffic, and it is not routed through DevelopersCoffee. The operators of
+those servers will see your IP address, as they would with any media player.
+
+**`iptv-org.github.io`.** To display channel names, countries, and languages,
+Airo TV downloads three public catalogue files from the community-maintained
+iptv-org project. This is a plain download of public data. **Your playlist is
+not uploaded and your channel list is not sent anywhere** — the catalogue is
+fetched in full and matched against your channels entirely on your own device.
+
+**Google Firebase.** Airo TV includes the Firebase core library so the app can
+initialize at startup. It does **not** include Firebase Analytics, Crashlytics,
+or Cloud Messaging, so no usage data, crash data, or push tokens are gathered
+through Firebase. Where Firebase generates a **Firebase installation ID**, that
+is a random, per-installation identifier that is not linked to you, not tied to
+any account, and reset when you uninstall the app or clear its data. It is
+never combined with your playlist data and is never used for advertising or
+cross-app tracking. Google's handling of it is governed by the
+[Google Privacy Policy](https://policies.google.com/privacy). Airo TV
+generates and shares no other identifier.
 
 ---
 
@@ -115,18 +161,50 @@ this Service.
 
 ## Service Providers
 
-We may employ third-party companies and individuals due to the following
-reasons:
+We do not employ third parties to process personal data on our behalf, and
+no third party receives personal information about you from us.
 
-- To facilitate our Service;
-- To provide the Service on our behalf;
-- To perform Service-related tasks; or
-- To assist us in analyzing how our Service is used.
+The only external services Airo TV interacts with are the ones named under
+"Network Connections" above: Google Firebase (core library only, no
+analytics or crash reporting), the public iptv-org catalogue, and whatever
+playlist, program-guide, and stream servers you choose to configure.
 
-We want to inform users of this Service that these third parties may have
-access to certain information. The reason is to perform the tasks assigned
-to them on our behalf. However, they are obligated not to disclose or use
-the information for any other purpose.
+---
+
+## Data Retention
+
+Because Airo TV keeps your data on your device rather than on our servers,
+retention is under your control:
+
+- **Preferences, playlist URLs, favorites, and filter selections** are kept
+  until you change them, clear the app's storage, or uninstall the app.
+- **Playlist and EPG caches** are kept until refreshed or superseded, and are
+  removed with the app's storage.
+- **The Firebase installation ID** persists for the life of the installation
+  and is reset when you clear the app's data or uninstall.
+
+DevelopersCoffee holds no user data, so there is nothing for us to retain or
+delete on your behalf.
+
+---
+
+## Your Privacy Rights
+
+Rights such as access, correction, deletion, portability, restriction, and
+objection under the GDPR, and the rights to know, delete, correct, and opt
+out of sale or sharing under the CCPA/CPRA, generally apply to data a company
+holds about you.
+
+**DevelopersCoffee does not collect, receive, or store personal data about
+Airo TV users**, so there is no profile for us to disclose, export, correct,
+or erase. We do not sell or share personal information, and we never have.
+
+You can exercise the practical equivalent of these rights directly and at any
+time: clear the app's storage or uninstall Airo TV to erase everything it
+holds, and edit or remove your playlist and EPG sources in Settings. If you
+believe we nonetheless hold information about you, contact us at the address
+below and we will respond within 30 days. Users in the EU/EEA and the UK also
+have the right to lodge a complaint with their local supervisory authority.
 
 ---
 
@@ -137,6 +215,14 @@ are striving to use commercially acceptable means of protecting it. But
 remember that no method of transmission over the internet, or method of
 electronic storage is 100% secure and reliable, and we cannot guarantee
 its absolute security.
+
+One point worth understanding about stream security: many real-world IPTV
+providers serve playlists and streams over plain, unencrypted HTTP. Airo TV
+permits cleartext connections so those sources remain playable. This means
+that **if the playlist or stream URL you supply uses `http://` rather than
+`https://`, that traffic is not encrypted** and may be visible to your
+network operator or internet provider. Airo TV's own connections use HTTPS.
+Prefer `https://` sources where your provider offers them.
 
 ---
 
@@ -172,7 +258,7 @@ We may update our Privacy Policy from time to time. Thus, you are advised
 to review this page periodically for any changes. We will notify you of
 any changes by posting the new Privacy Policy on this page.
 
-This policy is effective as of **July 13, 2026**.
+This policy is effective as of **July 26, 2026**.
 
 ---
 
