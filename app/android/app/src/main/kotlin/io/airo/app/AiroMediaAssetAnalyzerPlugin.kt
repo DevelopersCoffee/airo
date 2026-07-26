@@ -9,8 +9,41 @@ import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.Executor
 import java.util.concurrent.Executors
 import java.util.concurrent.FutureTask
+import java.util.concurrent.atomic.AtomicBoolean
+
+internal class MediaAnalysisJob<T>(
+    analysis: () -> T,
+    private val cancelledResult: () -> T,
+    private val failedResult: (Exception) -> T,
+    private val complete: (T) -> Unit,
+) {
+    private val didComplete = AtomicBoolean(false)
+    private val task = FutureTask {
+        try {
+            deliver(analysis())
+        } catch (error: Exception) {
+            deliver(failedResult(error))
+        }
+    }
+
+    fun enqueueOn(executor: Executor) {
+        executor.execute(task)
+    }
+
+    fun cancel() {
+        task.cancel(true)
+        deliver(cancelledResult())
+    }
+
+    private fun deliver(value: T) {
+        if (didComplete.compareAndSet(false, true)) {
+            complete(value)
+        }
+    }
+}
 
 class AiroMediaAssetAnalyzerPlugin(private val activity: MainActivity) {
     companion object {
@@ -18,7 +51,8 @@ class AiroMediaAssetAnalyzerPlugin(private val activity: MainActivity) {
     }
 
     private val executor = Executors.newSingleThreadExecutor()
-    private val analysisJobs = ConcurrentHashMap<String, FutureTask<Unit>>()
+    private val analysisJobs =
+        ConcurrentHashMap<String, MediaAnalysisJob<Map<String, Any?>>>()
 
     fun register(messenger: BinaryMessenger) {
         MethodChannel(messenger, CHANNEL_NAME).setMethodCallHandler { call, result ->
@@ -34,23 +68,25 @@ class AiroMediaAssetAnalyzerPlugin(private val activity: MainActivity) {
                         )
                         return@setMethodCallHandler
                     }
-                    lateinit var task: FutureTask<Unit>
-                    task = FutureTask {
-                        try {
-                            val payload = analyze(request)
+                    val queuedAt = System.currentTimeMillis()
+                    lateinit var job: MediaAnalysisJob<Map<String, Any?>>
+                    job = MediaAnalysisJob(
+                        analysis = { analyze(request) },
+                        cancelledResult = { queuedCancelledPayload(queuedAt) },
+                        failedResult = { unexpectedFailurePayload(queuedAt) },
+                        complete = { payload ->
+                            analysisJobs.remove(request.analysisId, job)
                             activity.runOnUiThread {
                                 result.success(payload)
                             }
-                        } finally {
-                            analysisJobs.remove(request.analysisId, task)
                         }
-                    }
-                    analysisJobs[request.analysisId] = task
-                    executor.execute(task)
+                    )
+                    analysisJobs[request.analysisId] = job
+                    job.enqueueOn(executor)
                 }
                 "cancel" -> {
                     val analysisId = call.argument<String>("analysisId")
-                    analysisId?.let { analysisJobs.remove(it)?.cancel(true) }
+                    analysisId?.let { analysisJobs.remove(it)?.cancel() }
                     result.success(null)
                 }
                 else -> result.notImplemented()
@@ -236,6 +272,33 @@ class AiroMediaAssetAnalyzerPlugin(private val activity: MainActivity) {
                 "fileSizeBytes" to null,
                 "estimatedBytesRead" to null,
                 "peakMemoryBytes" to maxOf(startingMemoryBytes, residentMemoryBytes()),
+            ),
+        )
+    }
+
+    private fun queuedCancelledPayload(startedAt: Long): Map<String, Any?> {
+        return mapOf(
+            "status" to "cancelled",
+            "diagnostics" to mapOf(
+                "elapsedMs" to (System.currentTimeMillis() - startedAt),
+                "didUseMetadataProbe" to false,
+                "fileSizeBytes" to null,
+                "estimatedBytesRead" to null,
+                "peakMemoryBytes" to null,
+            ),
+        )
+    }
+
+    private fun unexpectedFailurePayload(startedAt: Long): Map<String, Any?> {
+        return mapOf(
+            "status" to "inspection_failed",
+            "failureReason" to "unexpected_native_failure",
+            "diagnostics" to mapOf(
+                "elapsedMs" to (System.currentTimeMillis() - startedAt),
+                "didUseMetadataProbe" to false,
+                "fileSizeBytes" to null,
+                "estimatedBytesRead" to null,
+                "peakMemoryBytes" to null,
             ),
         )
     }

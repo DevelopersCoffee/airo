@@ -215,6 +215,47 @@ void main() {
       expect(calls.last.arguments, {'analysisId': analysisId});
     },
   );
+
+  test('native analysis leaves the Dart event loop responsive', () async {
+    final nativeAnalysis = Completer<Map<String, Object?>>();
+    messenger.setMockMethodCallHandler(channel, (call) {
+      expect(call.method, 'analyze');
+      return nativeAnalysis.future;
+    });
+    var analysisCompleted = false;
+
+    final analysis = HostPlatformMediaAssetAnalyzer()
+        .analyze(
+          const MediaAssetAnalysisRequest(
+            assetId: 'asset-responsive',
+            filePath: '/private/tmp/movie.mkv',
+          ),
+        )
+        .then((result) {
+          analysisCompleted = true;
+          return result;
+        });
+    final eventLoopTurn = Completer<void>();
+    Timer.run(eventLoopTurn.complete);
+
+    await eventLoopTurn.future.timeout(const Duration(seconds: 1));
+    expect(analysisCompleted, isFalse);
+
+    nativeAnalysis.complete({
+      'status': 'complete',
+      'profile': {
+        'schemaVersion': '1.0.0',
+        'assetId': 'asset-responsive',
+        'container': 'mkv',
+        'videoTracks': <Object?>[],
+        'audioTracks': <Object?>[],
+        'subtitleTracks': <Object?>[],
+        'warnings': <Object?>[],
+      },
+      'diagnostics': {'elapsedMs': 1, 'didUseMetadataProbe': true},
+    });
+    expect((await analysis).status, MediaAssetAnalysisStatus.complete);
+  });
 }
 
 class _FakeAnalyzer implements LocalMediaAssetAnalyzer {

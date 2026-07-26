@@ -276,44 +276,18 @@ final class AiroMediaAssetAnalyzerPlugin: NSObject {
     guard let description else {
       return "unknown"
     }
-    switch CMFormatDescriptionGetMediaSubType(description) {
-    case kCMVideoCodecType_H264:
-      return "h264"
-    case kCMVideoCodecType_HEVC:
-      return "hevc"
-    case kCMVideoCodecType_AV1:
-      return "av1"
-    case kCMVideoCodecType_VP9:
-      return "vp9"
-    case makeFourCC("dvh1"), makeFourCC("dvhe"):
-      return "hevc"
-    default:
-      return "unknown"
-    }
+    return MediaAssetFormatNormalizer.videoCodecStableId(
+      subtype: CMFormatDescriptionGetMediaSubType(description)
+    )
   }
 
   private func audioCodecStableId(_ description: CMFormatDescription?) -> String {
     guard let description else {
       return "unknown"
     }
-    switch CMFormatDescriptionGetMediaSubType(description) {
-    case kAudioFormatMPEG4AAC, kAudioFormatMPEG4AAC_HE:
-      return "aac"
-    case kAudioFormatAC3:
-      return "ac3"
-    case kAudioFormatEnhancedAC3:
-      return "eac3"
-    case makeFourCC("dtsc"), makeFourCC("dtsh"), makeFourCC("dtsl"):
-      return "dts"
-    case kAudioFormatOpus:
-      return "opus"
-    case kAudioFormatMPEGLayer3:
-      return "mp3"
-    case makeFourCC("mlpa"):
-      return "truehd"
-    default:
-      return "unknown"
-    }
+    return MediaAssetFormatNormalizer.audioCodecStableId(
+      subtype: CMFormatDescriptionGetMediaSubType(description)
+    )
   }
 
   private func audioChannelCount(_ description: CMFormatDescription?) -> Int? {
@@ -341,30 +315,18 @@ final class AiroMediaAssetAnalyzerPlugin: NSObject {
   }
 
   private func dynamicRangeStableId(_ description: CMFormatDescription?, codec: String) -> String {
-    if codec == "hevc",
-       let description,
-       let extensions = CMFormatDescriptionGetExtensions(description) as? [CFString: Any],
-       let transferFunction = extensions[kCVImageBufferTransferFunctionKey]
-    {
-      let transferFunctionValue = String(describing: transferFunction)
-      switch transferFunctionValue {
-      case String(describing: kCVImageBufferTransferFunction_SMPTE_ST_2084_PQ):
-        return "hdr10"
-      case String(describing: kCVImageBufferTransferFunction_ITU_R_2100_HLG):
-        return "hlg"
-      default:
-        break
-      }
+    let subtype = description.map(CMFormatDescriptionGetMediaSubType)
+    let extensions = description.flatMap {
+      CMFormatDescriptionGetExtensions($0) as? [CFString: Any]
     }
-    if codec == "hevc",
-       let description
-    {
-      let subtype = CMFormatDescriptionGetMediaSubType(description)
-      if subtype == makeFourCC("dvh1") || subtype == makeFourCC("dvhe") {
-        return "dolby_vision"
-      }
+    let transferFunction = extensions?[kCVImageBufferTransferFunctionKey].map {
+      String(describing: $0)
     }
-    return "unknown"
+    return MediaAssetFormatNormalizer.dynamicRangeStableId(
+      codec: codec,
+      subtype: subtype,
+      transferFunction: transferFunction
+    )
   }
 }
 
@@ -392,12 +354,83 @@ private struct MediaAssetAnalysisRequest {
   }
 
   func containerStableId() -> String {
-    let mimeType = mimeTypeHint?.lowercased() ?? ""
-    if mimeType.contains("matroska") || mimeType.contains("x-mkv") { return "mkv" }
-    if mimeType.contains("webm") { return "webm" }
-    if mimeType.contains("mp4") { return "mp4" }
-    if mimeType.contains("quicktime") { return "mov" }
-    if mimeType.contains("mpegts") || mimeType.contains("mp2t") { return "ts" }
+    MediaAssetFormatNormalizer.containerStableId(
+      mimeType: mimeTypeHint,
+      fileName: fileName
+    )
+  }
+}
+
+enum MediaAssetFormatNormalizer {
+  static func videoCodecStableId(subtype: FourCharCode) -> String {
+    switch subtype {
+    case kCMVideoCodecType_H264:
+      return "h264"
+    case kCMVideoCodecType_HEVC:
+      return "hevc"
+    case kCMVideoCodecType_AV1:
+      return "av1"
+    case kCMVideoCodecType_VP9:
+      return "vp9"
+    case makeFourCC("dvh1"), makeFourCC("dvhe"):
+      return "hevc"
+    default:
+      return "unknown"
+    }
+  }
+
+  static func audioCodecStableId(subtype: FourCharCode) -> String {
+    switch subtype {
+    case kAudioFormatMPEG4AAC, kAudioFormatMPEG4AAC_HE:
+      return "aac"
+    case kAudioFormatAC3:
+      return "ac3"
+    case kAudioFormatEnhancedAC3:
+      return "eac3"
+    case makeFourCC("dtsc"), makeFourCC("dtsh"), makeFourCC("dtsl"):
+      return "dts"
+    case kAudioFormatOpus:
+      return "opus"
+    case kAudioFormatMPEGLayer3:
+      return "mp3"
+    case makeFourCC("mlpa"):
+      return "truehd"
+    default:
+      return "unknown"
+    }
+  }
+
+  static func dynamicRangeStableId(
+    codec: String,
+    subtype: FourCharCode?,
+    transferFunction: String?
+  ) -> String {
+    guard codec == "hevc" else { return "unknown" }
+    switch transferFunction {
+    case String(describing: kCVImageBufferTransferFunction_SMPTE_ST_2084_PQ):
+      return "hdr10"
+    case String(describing: kCVImageBufferTransferFunction_ITU_R_2100_HLG):
+      return "hlg"
+    default:
+      break
+    }
+    if subtype == makeFourCC("dvh1") || subtype == makeFourCC("dvhe") {
+      return "dolby_vision"
+    }
+    return "unknown"
+  }
+
+  static func containerStableId(mimeType: String?, fileName: String?) -> String {
+    let normalizedMimeType = mimeType?.lowercased() ?? ""
+    if normalizedMimeType.contains("matroska") || normalizedMimeType.contains("x-mkv") {
+      return "mkv"
+    }
+    if normalizedMimeType.contains("webm") { return "webm" }
+    if normalizedMimeType.contains("mp4") { return "mp4" }
+    if normalizedMimeType.contains("quicktime") { return "mov" }
+    if normalizedMimeType.contains("mpegts") || normalizedMimeType.contains("mp2t") {
+      return "ts"
+    }
 
     let ext = (fileName as NSString?)?.pathExtension.lowercased() ?? ""
     switch ext {
@@ -426,6 +459,6 @@ private struct OrderedStringSet {
   }
 }
 
-private func makeFourCC(_ string: String) -> FourCharCode {
+func makeFourCC(_ string: String) -> FourCharCode {
   string.utf8.reduce(0) { ($0 << 8) + FourCharCode($1) }
 }
