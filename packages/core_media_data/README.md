@@ -18,6 +18,9 @@ database adapter.
 - Fake and no-op benchmark runners for automation and adapter boundaries.
 - Versioned relational media graph rows, typed relationships, structured
   queries, and independently loadable knowledge-pack lifecycle.
+- Deterministic rule-based media ranking with aggregate history feature
+  extraction, auditable integer score contributions, and a replaceable executor
+  boundary for native scoring.
 
 This package does not choose a database engine, sync backend, vault provider,
 generate bundled provider content, import database SDKs, run device-lab
