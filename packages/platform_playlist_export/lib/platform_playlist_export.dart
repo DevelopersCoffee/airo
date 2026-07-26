@@ -1,16 +1,12 @@
 /// Public contract types for playlist export flows.
 library;
 
+export 'src/backup_archive.dart';
+
 /// Supported output formats for playlist export.
 enum PlaylistExportFormat {
-  m3u(
-    fileExtension: 'm3u',
-    mediaType: 'audio/x-mpegurl',
-  ),
-  json(
-    fileExtension: 'json',
-    mediaType: 'application/json',
-  );
+  m3u(fileExtension: 'm3u', mediaType: 'audio/x-mpegurl'),
+  json(fileExtension: 'json', mediaType: 'application/json');
 
   const PlaylistExportFormat({
     required this.fileExtension,
@@ -83,10 +79,7 @@ class PlaylistExportRequest {
 
 /// Immutable export output container for downstream storage or share flows.
 class PlaylistExportResult {
-  const PlaylistExportResult({
-    required this.request,
-    required this.contents,
-  });
+  const PlaylistExportResult({required this.request, required this.contents});
 
   final PlaylistExportRequest request;
   final String contents;
