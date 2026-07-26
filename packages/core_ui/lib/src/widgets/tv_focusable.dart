@@ -366,7 +366,16 @@ class _TvFocusableState extends State<TvFocusable>
             builder: (context, child) {
               return Transform.scale(
                 scale: widget.showScaleEffect ? _scaleAnimation.value : 1,
-                child: DecoratedBox(decoration: decoration, child: child),
+                child: DecoratedBox(
+                  // Foreground, not background: an opaque child (e.g. a
+                  // filled Material chip) fully covers a background-painted
+                  // border, leaving no visible focus ring. Painting on top
+                  // guarantees the ring shows regardless of what the child
+                  // draws underneath it.
+                  position: DecorationPosition.foreground,
+                  decoration: decoration,
+                  child: child,
+                ),
               );
             },
           );
