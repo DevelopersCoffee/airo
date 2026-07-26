@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:platform_channels/platform_channels.dart';
+import 'package:platform_playlist_import/platform_playlist_import.dart';
 import 'package:slm_edge_intelligence/slm_edge_intelligence.dart';
 
 import '../../domain/local_iptv_search.dart';
@@ -79,6 +80,7 @@ final edgeIptvAssistantProvider = Provider<EdgeIptvAssistant>((ref) {
         return index.search(query);
       },
       recentChannels: () => ref.read(recentlyWatchedChannelsProvider.future),
+      structuredSearch: ref.watch(edgeIndexedIntentSearchProvider)?.call,
     ),
     channelById: (id) async {
       final channels = await ref.read(iptvChannelsProvider.future);
@@ -89,6 +91,11 @@ final edgeIptvAssistantProvider = Provider<EdgeIptvAssistant>((ref) {
     },
   );
 });
+
+/// Installed by playlist bootstrap after a native v2 descriptor is open.
+final edgeIndexedIntentSearchProvider = Provider<IndexedPlaylistIntentSearch?>(
+  (ref) => null,
+);
 
 final class EdgeIptvAssistant {
   EdgeIptvAssistant(
@@ -295,10 +302,15 @@ const _intentFilterFields = {
 };
 
 final class EdgeIptvIntentExecutor implements IntentExecutor {
-  EdgeIptvIntentExecutor({required this.search, required this.recentChannels});
+  EdgeIptvIntentExecutor({
+    required this.search,
+    required this.recentChannels,
+    this.structuredSearch,
+  });
 
   final Future<List<LocalIptvSearchResult>> Function(String query) search;
   final Future<List<IPTVChannel>> Function() recentChannels;
+  final Future<List<String>?> Function(IntentCommand command)? structuredSearch;
 
   @override
   Future<IntentExecutionResult> execute(IntentCommand command) async {
@@ -307,6 +319,10 @@ final class EdgeIptvIntentExecutor implements IntentExecutor {
       return IntentExecutionCompleted(
         resultIds: recent.isEmpty ? const [] : [recent.first.id],
       );
+    }
+    final nativeIds = await structuredSearch?.call(command);
+    if (nativeIds != null) {
+      return IntentExecutionCompleted(resultIds: nativeIds);
     }
 
     final terms = <String>{
@@ -323,5 +339,80 @@ final class EdgeIptvIntentExecutor implements IntentExecutor {
       }
     }
     return IntentExecutionCompleted(resultIds: ids);
+  }
+}
+
+final class IndexedPlaylistIntentSearch {
+  const IndexedPlaylistIntentSearch({
+    required this.service,
+    required this.descriptor,
+  });
+
+  final IndexedM3uPlaylistService service;
+  final IndexedM3uPlaylistDescriptor descriptor;
+
+  Future<List<String>?> call(IntentCommand command) async {
+    if (command.sort != null) return null;
+    final queryTerms = <String>[
+      for (final entity in command.entities)
+        if (entity.type == IntentEntityType.title ||
+            entity.type == IntentEntityType.alias)
+          entity.value,
+    ];
+    final filters = <IndexedPlaylistSearchFilter>[];
+    for (final filter in command.filters) {
+      final field = switch (filter.field) {
+        IntentFilterField.title => IndexedPlaylistSearchField.title,
+        IntentFilterField.alias => IndexedPlaylistSearchField.alias,
+        IntentFilterField.genre => IndexedPlaylistSearchField.genre,
+        IntentFilterField.language => IndexedPlaylistSearchField.language,
+        IntentFilterField.country => IndexedPlaylistSearchField.country,
+        IntentFilterField.provider => IndexedPlaylistSearchField.provider,
+        IntentFilterField.tag => IndexedPlaylistSearchField.tag,
+        _ => null,
+      };
+      final operator = switch (filter.operator) {
+        IntentFilterOperator.equals => IndexedPlaylistSearchOperator.equals,
+        IntentFilterOperator.contains => IndexedPlaylistSearchOperator.contains,
+        _ => null,
+      };
+      final value = filter.value;
+      if (field == null || operator == null || value is! String) return null;
+      filters.add(
+        IndexedPlaylistSearchFilter(
+          field: field,
+          operator: operator,
+          value: value,
+        ),
+      );
+    }
+    for (final entity in command.entities) {
+      final field = switch (entity.type) {
+        IntentEntityType.genre => IndexedPlaylistSearchField.genre,
+        IntentEntityType.language => IndexedPlaylistSearchField.language,
+        IntentEntityType.country => IndexedPlaylistSearchField.country,
+        IntentEntityType.provider => IndexedPlaylistSearchField.provider,
+        IntentEntityType.tag => IndexedPlaylistSearchField.tag,
+        _ => null,
+      };
+      if (field != null) {
+        filters.add(
+          IndexedPlaylistSearchFilter(
+            field: field,
+            operator: IndexedPlaylistSearchOperator.equals,
+            value: entity.value,
+          ),
+        );
+      }
+    }
+    final result = await service.searchV2(
+      descriptor: descriptor,
+      query: queryTerms.isEmpty ? null : queryTerms.join(' '),
+      filters: filters,
+      limit: 50,
+    );
+    return result?.channels
+        .map((channel) => channel.id)
+        .toList(growable: false);
   }
 }

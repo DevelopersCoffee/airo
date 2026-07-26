@@ -27,6 +27,18 @@ void main() {
                 totalMicros: calls == 1 ? 900000 : 200000,
               );
             },
+        search:
+            ({
+              required descriptor,
+              query,
+              filters = const [],
+              offset = 0,
+              limit = 50,
+            }) async => benchmarkOpenResult(
+              totalChannels: 1,
+              cacheStatus: IndexedM3uPlaylistCacheStatus.warmOpened,
+              totalMicros: 1,
+            ).firstPage,
       );
 
       final report = await runner.run(
@@ -37,6 +49,7 @@ void main() {
       expect(calls, 2);
       expect(report.meetsLatencyThresholds, isTrue);
       expect(report.meetsMemoryThreshold, isTrue);
+      expect(report.meetsSearchThreshold, isTrue);
       expect(report.qualifiesMilestone, isTrue);
       expect(report.toJson(), isNot(contains('sourcePath')));
       expect(report.toJson(), isNot(contains('cachePath')));
@@ -52,6 +65,8 @@ void main() {
       coldOpenMicros: 100,
       warmOpenMicros: 100,
       firstPageMicros: 10,
+      searchP50Micros: 100,
+      searchP95Micros: 200,
       rssDeltaBytes: 0,
       coldCacheStatus: 'coldBuilt',
       warmCacheStatus: 'warmOpened',
@@ -70,6 +85,8 @@ void main() {
       coldOpenMicros: kPlaylistIndexColdOpenCeilingMicros,
       warmOpenMicros: kPlaylistIndexWarmOpenCeilingMicros,
       firstPageMicros: 10,
+      searchP50Micros: 100,
+      searchP95Micros: kPlaylistIndexSearchP95CeilingMicros,
       rssDeltaBytes: kPlaylistIndexMemoryDeltaCeilingBytes + 1,
       coldCacheStatus: 'coldBuilt',
       warmCacheStatus: 'warmOpened',
@@ -77,6 +94,7 @@ void main() {
 
     expect(report.meetsLatencyThresholds, isFalse);
     expect(report.meetsMemoryThreshold, isFalse);
+    expect(report.meetsSearchThreshold, isFalse);
     expect(report.qualifiesMilestone, isFalse);
   });
 

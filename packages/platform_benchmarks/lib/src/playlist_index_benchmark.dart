@@ -6,12 +6,21 @@ const int kPlaylistIndexAcceptanceChannelCount = 100000;
 const int kPlaylistIndexColdOpenCeilingMicros = 1000000;
 const int kPlaylistIndexWarmOpenCeilingMicros = 300000;
 const int kPlaylistIndexMemoryDeltaCeilingBytes = 96 * 1024 * 1024;
+const int kPlaylistIndexSearchP95CeilingMicros = 10000;
 
 typedef PlaylistIndexOpen =
     Future<IndexedM3uPlaylistOpenResult?> Function({
       required String sourcePath,
       required String cacheDirectory,
       int firstPageLimit,
+    });
+typedef PlaylistIndexSearch =
+    Future<IndexedM3uChannelPage?> Function({
+      required IndexedM3uPlaylistDescriptor descriptor,
+      String? query,
+      List<IndexedPlaylistSearchFilter> filters,
+      int offset,
+      int limit,
     });
 
 class PlaylistIndexBenchmarkReport {
@@ -23,6 +32,8 @@ class PlaylistIndexBenchmarkReport {
     required this.coldOpenMicros,
     required this.warmOpenMicros,
     required this.firstPageMicros,
+    required this.searchP50Micros,
+    required this.searchP95Micros,
     required this.rssDeltaBytes,
     required this.coldCacheStatus,
     required this.warmCacheStatus,
@@ -35,6 +46,8 @@ class PlaylistIndexBenchmarkReport {
   final int coldOpenMicros;
   final int warmOpenMicros;
   final int firstPageMicros;
+  final int searchP50Micros;
+  final int searchP95Micros;
   final int rssDeltaBytes;
   final String coldCacheStatus;
   final String warmCacheStatus;
@@ -42,6 +55,9 @@ class PlaylistIndexBenchmarkReport {
   bool get meetsLatencyThresholds =>
       coldOpenMicros < kPlaylistIndexColdOpenCeilingMicros &&
       warmOpenMicros < kPlaylistIndexWarmOpenCeilingMicros;
+
+  bool get meetsSearchThreshold =>
+      searchP95Micros < kPlaylistIndexSearchP95CeilingMicros;
 
   bool get meetsMemoryThreshold =>
       rssDeltaBytes <= kPlaylistIndexMemoryDeltaCeilingBytes;
@@ -55,12 +71,13 @@ class PlaylistIndexBenchmarkReport {
       channelCount == kPlaylistIndexAcceptanceChannelCount &&
       firstPageCount > 0 &&
       meetsLatencyThresholds &&
+      meetsSearchThreshold &&
       meetsMemoryThreshold &&
       coldCacheStatus == 'coldBuilt' &&
       warmCacheStatus == 'warmOpened';
 
   Map<String, Object> toJson() => {
-    'schemaVersion': '1.0.0',
+    'schemaVersion': '1.1.0',
     'deviceProfile': deviceProfile,
     'physicalDevice': physicalDevice,
     'channelCount': channelCount,
@@ -68,12 +85,15 @@ class PlaylistIndexBenchmarkReport {
     'coldOpenMicros': coldOpenMicros,
     'warmOpenMicros': warmOpenMicros,
     'firstPageMicros': firstPageMicros,
+    'searchP50Micros': searchP50Micros,
+    'searchP95Micros': searchP95Micros,
     'rssDeltaBytes': rssDeltaBytes,
     'coldCacheStatus': coldCacheStatus,
     'warmCacheStatus': warmCacheStatus,
     'coldOpenCeilingMicros': kPlaylistIndexColdOpenCeilingMicros,
     'warmOpenCeilingMicros': kPlaylistIndexWarmOpenCeilingMicros,
     'memoryDeltaCeilingBytes': kPlaylistIndexMemoryDeltaCeilingBytes,
+    'searchP95CeilingMicros': kPlaylistIndexSearchP95CeilingMicros,
     'qualifiesMilestone': qualifiesMilestone,
   };
 }
@@ -81,11 +101,14 @@ class PlaylistIndexBenchmarkReport {
 class PlaylistIndexBenchmarkRunner {
   PlaylistIndexBenchmarkRunner({
     PlaylistIndexOpen? open,
+    PlaylistIndexSearch? search,
     this.channelCount = kPlaylistIndexAcceptanceChannelCount,
     this.firstPageLimit = 50,
-  }) : open = open ?? const IndexedM3uPlaylistService().open;
+  }) : open = open ?? const IndexedM3uPlaylistService().open,
+       search = search ?? const IndexedM3uPlaylistService().searchV2;
 
   final PlaylistIndexOpen open;
+  final PlaylistIndexSearch search;
   final int channelCount;
   final int firstPageLimit;
 
@@ -132,6 +155,37 @@ class PlaylistIndexBenchmarkRunner {
         );
       }
       final rssAfterWarm = ProcessInfo.currentRss;
+      final searchMicros = <int>[];
+      for (var iteration = 0; iteration < 31; iteration++) {
+        final stopwatch = Stopwatch()..start();
+        final results = await search(
+          descriptor: warm.descriptor,
+          query: iteration.isEven
+              ? 'Synthetic Channel ${channelCount - 1}'
+              : null,
+          filters: iteration.isEven
+              ? const []
+              : const [
+                  IndexedPlaylistSearchFilter(
+                    field: IndexedPlaylistSearchField.country,
+                    operator: IndexedPlaylistSearchOperator.equals,
+                    value: 'IN',
+                  ),
+                  IndexedPlaylistSearchFilter(
+                    field: IndexedPlaylistSearchField.provider,
+                    operator: IndexedPlaylistSearchOperator.equals,
+                    value: 'Synthetic Provider 999',
+                  ),
+                ],
+          limit: 50,
+        );
+        stopwatch.stop();
+        if (results == null) {
+          throw StateError('Native playlist search became unavailable.');
+        }
+        if (iteration > 0) searchMicros.add(stopwatch.elapsedMicroseconds);
+      }
+      searchMicros.sort();
 
       return PlaylistIndexBenchmarkReport(
         deviceProfile: deviceProfile,
@@ -141,6 +195,8 @@ class PlaylistIndexBenchmarkRunner {
         coldOpenMicros: cold.totalMicros,
         warmOpenMicros: warm.totalMicros,
         firstPageMicros: cold.firstPageMicros,
+        searchP50Micros: _percentile(searchMicros, 0.50),
+        searchP95Micros: _percentile(searchMicros, 0.95),
         rssDeltaBytes: [
           rssAfterCold - rssBefore,
           rssAfterWarm - rssBefore,
@@ -163,6 +219,8 @@ Future<void> writeSyntheticPlaylist(File file, int channelCount) async {
       sink.writeln(
         '#EXTINF:-1 tvg-id="synthetic.$index" '
         'tvg-logo="https://cdn.example/$index.png" '
+        'tvg-country="IN" provider="Synthetic Provider ${index % 1000}" '
+        'tvg-tags="benchmark,linear" '
         'group-title="Synthetic" tvg-language="en",'
         'Synthetic Channel $index',
       );
@@ -171,4 +229,10 @@ Future<void> writeSyntheticPlaylist(File file, int channelCount) async {
   } finally {
     await sink.close();
   }
+}
+
+int _percentile(List<int> sorted, double percentile) {
+  if (sorted.isEmpty) return 0;
+  final index = ((sorted.length - 1) * percentile).ceil();
+  return sorted[index.clamp(0, sorted.length - 1)];
 }

@@ -20,6 +20,38 @@ typedef NativePlaylistSearch =
       required int offset,
       int limit,
     });
+typedef NativePlaylistSearchV2 =
+    Future<NativeM3uChannelPage?> Function({
+      required String indexPath,
+      required int offset,
+      String? query,
+      List<NativePlaylistSearchFilter> filters,
+      int limit,
+    });
+
+enum IndexedPlaylistSearchField {
+  title,
+  alias,
+  genre,
+  language,
+  country,
+  provider,
+  tag,
+}
+
+enum IndexedPlaylistSearchOperator { equals, prefix, contains }
+
+class IndexedPlaylistSearchFilter {
+  const IndexedPlaylistSearchFilter({
+    required this.field,
+    required this.operator,
+    required this.value,
+  });
+
+  final IndexedPlaylistSearchField field;
+  final IndexedPlaylistSearchOperator operator;
+  final String value;
+}
 
 class IndexedM3uPlaylistDescriptor {
   const IndexedM3uPlaylistDescriptor({
@@ -80,11 +112,13 @@ class IndexedM3uPlaylistService {
     this.openNative = openPlaylistIndexNative,
     this.pageNative = pagePlaylistIndexNative,
     this.searchNative = searchPlaylistIndexNative,
+    this.searchV2Native = searchPlaylistIndexV2Native,
   });
 
   final NativePlaylistOpen openNative;
   final NativePlaylistPage pageNative;
   final NativePlaylistSearch searchNative;
+  final NativePlaylistSearchV2 searchV2Native;
 
   Future<IndexedM3uPlaylistOpenResult?> open({
     required String sourcePath,
@@ -146,6 +180,32 @@ class IndexedM3uPlaylistService {
     );
     return native == null ? null : _mapPage(native);
   }
+
+  Future<IndexedM3uChannelPage?> searchV2({
+    required IndexedM3uPlaylistDescriptor descriptor,
+    String? query,
+    List<IndexedPlaylistSearchFilter> filters = const [],
+    int offset = 0,
+    int limit = 50,
+  }) async {
+    final native = await searchV2Native(
+      indexPath: descriptor.indexPath,
+      query: query,
+      filters: filters
+          .map(
+            (filter) => NativePlaylistSearchFilter(
+              field: NativePlaylistSearchField.values[filter.field.index],
+              operator:
+                  NativePlaylistSearchOperator.values[filter.operator.index],
+              value: filter.value,
+            ),
+          )
+          .toList(growable: false),
+      offset: offset,
+      limit: limit,
+    );
+    return native == null ? null : _mapPage(native);
+  }
 }
 
 IndexedM3uChannelPage _mapPage(NativeM3uChannelPage page) {
@@ -166,5 +226,5 @@ IPTVChannel _mapChannel(NativeM3uChannel channel) {
     tvgId: channel.tvgId,
     tvgName: channel.tvgName,
     language: channel.language,
-  );
+  ).copyWith(country: channel.country, altNames: channel.aliases);
 }

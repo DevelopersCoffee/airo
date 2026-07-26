@@ -58,6 +58,22 @@ void main() {
               calls.add('search:$indexPath:$query:$offset:$limit');
               return nativePage(offset: offset, total: 2, hasMore: false);
             },
+        searchV2Native:
+            ({
+              required indexPath,
+              query,
+              filters = const [],
+              required offset,
+              limit = 50,
+            }) async {
+              calls.add(
+                'searchV2:$indexPath:$query:'
+                '${filters.single.field.name}:'
+                '${filters.single.operator.name}:'
+                '${filters.single.value}:$offset:$limit',
+              );
+              return nativePage(offset: offset, total: 1, hasMore: false);
+            },
       );
       const descriptor = IndexedM3uPlaylistDescriptor(
         indexPath: '/private/cache/playlist-v2.sqlite',
@@ -77,12 +93,25 @@ void main() {
         query: 'news',
         limit: 10,
       );
+      final structured = await service.searchV2(
+        descriptor: descriptor,
+        filters: const [
+          IndexedPlaylistSearchFilter(
+            field: IndexedPlaylistSearchField.country,
+            operator: IndexedPlaylistSearchOperator.equals,
+            value: 'IN',
+          ),
+        ],
+        limit: 5,
+      );
 
       expect(page?.offset, 50);
       expect(search?.total, 2);
+      expect(structured?.total, 1);
       expect(calls, [
         'page:/private/cache/playlist-v2.sqlite:50:25',
         'search:/private/cache/playlist-v2.sqlite:news:0:10',
+        'searchV2:/private/cache/playlist-v2.sqlite:null:country:equals:IN:0:5',
       ]);
     });
 

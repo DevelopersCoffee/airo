@@ -158,6 +158,46 @@ void main() {
     expect((result as IntentExecutionCompleted).resultIds, ['channel-1']);
   });
 
+  test('validated intent uses the shared native text/filter API', () async {
+    final service = _FakeIndexedService();
+    final search = IndexedPlaylistIntentSearch(
+      service: service,
+      descriptor: const IndexedM3uPlaylistDescriptor(
+        indexPath: '/private/index',
+        cachePath: '/private/cache',
+        totalChannels: 1,
+        sourceSizeBytes: 1,
+        sourceModifiedNanos: 1,
+      ),
+    );
+
+    final ids = await search.call(
+      IntentCommand(
+        intent: MediaIntent.browse,
+        entities: const [
+          IntentEntityValue(
+            type: IntentEntityType.title,
+            value: 'India Sports',
+          ),
+        ],
+        filters: const [
+          IntentFilterPredicate(
+            field: IntentFilterField.country,
+            operator: IntentFilterOperator.equals,
+            value: 'IN',
+          ),
+        ],
+        sort: null,
+        confidence: 0.9,
+      ),
+    );
+
+    expect(service.query, 'India Sports');
+    expect(service.filters.single.field, IndexedPlaylistSearchField.country);
+    expect(service.filters.single.value, 'IN');
+    expect(ids, hasLength(1));
+  });
+
   test('configured pack installs once before offline parsing', () async {
     final edge = _FakeEdge(
       const IntentResult(
@@ -276,4 +316,27 @@ final class _FakeEdge implements EdgeIntelligence {
   @override
   Future<ResolvedMedia> resolve(ExecutionContext context, ResolveQuery query) =>
       throw UnimplementedError();
+}
+
+final class _FakeIndexedService extends IndexedM3uPlaylistService {
+  String? query;
+  List<IndexedPlaylistSearchFilter> filters = const [];
+
+  @override
+  Future<IndexedM3uChannelPage?> searchV2({
+    required IndexedM3uPlaylistDescriptor descriptor,
+    String? query,
+    List<IndexedPlaylistSearchFilter> filters = const [],
+    int offset = 0,
+    int limit = 50,
+  }) async {
+    this.query = query;
+    this.filters = filters;
+    return IndexedM3uChannelPage(
+      channels: [_channel('india-sports')],
+      offset: 0,
+      total: 1,
+      hasMore: false,
+    );
+  }
 }
