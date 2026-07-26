@@ -21,6 +21,8 @@ database adapter.
 - Deterministic rule-based media ranking with aggregate history feature
   extraction, auditable integer score contributions, and a replaceable executor
   boundary for native scoring.
+- Deterministic "show similar" resolution from explicit genre, provider, and
+  language overlap with auditable contributions.
 
 This package does not choose a database engine, sync backend, vault provider,
 generate bundled provider content, import database SDKs, run device-lab

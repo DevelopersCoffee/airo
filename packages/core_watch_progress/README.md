@@ -7,6 +7,8 @@ This package defines:
 - stable profile/media/source progress keys;
 - local-only, opt-in, cloud-enabled, and disabled sync modes;
 - deterministic revision, retention, deletion, and validation decisions;
+- deterministic newest-unfinished resume resolution from reconciled
+  multi-device snapshots;
 - fake and no-op progress repositories for host-side tests.
 
 Product packages should consume these contracts and keep only UX-specific
