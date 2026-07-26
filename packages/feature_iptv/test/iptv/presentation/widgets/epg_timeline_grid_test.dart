@@ -102,6 +102,60 @@ void main() {
     },
   );
 
+  testWidgets('renders merged schedule gaps as non-programme listings', (
+    tester,
+  ) async {
+    final now = DateTime.utc(2026, 7, 17, 12);
+    final window = CompactEpgWindow(
+      entries: [
+        CompactEpgWindowEntry(
+          channelId: 'channel-1',
+          channelName: 'Example Channel',
+          programs: const [],
+          gaps: [
+            CompactEpgGap(
+              startsAt: now,
+              endsAt: now.add(const Duration(hours: 1)),
+            ),
+          ],
+        ),
+      ],
+      windowStart: now,
+      windowEnd: now.add(const Duration(hours: 3)),
+      generatedAt: now,
+      expiresAt: now.add(const Duration(hours: 1)),
+      source: CompactEpgSliceSource.localCache,
+    );
+    final container = await buildContainer(window);
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: const MaterialApp(
+          home: MediaQuery(
+            data: MediaQueryData(
+              size: Size(1280, 720),
+              navigationMode: NavigationMode.directional,
+            ),
+            child: Scaffold(
+              body: SizedBox(
+                width: 1280,
+                height: 720,
+                child: EpgTimelineGrid(),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('No listing'), findsOneWidget);
+    expect(find.bySemanticsLabel('No programme information'), findsOneWidget);
+    expect(find.byType(LinearProgressIndicator), findsNothing);
+  });
+
   testWidgets('shows empty state when there are no channels', (tester) async {
     final now = DateTime.utc(2026, 7, 17, 12);
     final window = CompactEpgWindow(

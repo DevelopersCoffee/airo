@@ -235,6 +235,7 @@ class _EpgChannelRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final programs = entry?.programs ?? const <CompactEpgProgram>[];
+    final gaps = entry?.gaps ?? const <CompactEpgGap>[];
     return SizedBox(
       height: EpgTimelineGrid.rowHeight,
       child: Row(
@@ -270,6 +271,15 @@ class _EpgChannelRow extends StatelessWidget {
                 width: windowDuration.inMinutes * EpgTimelineGrid.pxPerMinute,
                 child: Stack(
                   children: [
+                    for (final gap in gaps)
+                      _GapBlock(
+                        key: ValueKey(
+                          'epg_gap_${channel.id}_${gap.startsAt.microsecondsSinceEpoch}',
+                        ),
+                        gap: gap,
+                        windowStart: windowStart,
+                        windowDuration: windowDuration,
+                      ),
                     for (final program in programs)
                       _ProgramBlock(
                         key: ValueKey(
@@ -287,6 +297,65 @@ class _EpgChannelRow extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _GapBlock extends StatelessWidget {
+  const _GapBlock({
+    super.key,
+    required this.gap,
+    required this.windowStart,
+    required this.windowDuration,
+  });
+
+  final CompactEpgGap gap;
+  final DateTime windowStart;
+  final Duration windowDuration;
+
+  @override
+  Widget build(BuildContext context) {
+    final windowMinutes = windowDuration.inMinutes;
+    final startOffsetMinutes = gap.startsAt
+        .difference(windowStart)
+        .inMinutes
+        .clamp(0, windowMinutes);
+    final endOffsetMinutes = gap.endsAt
+        .difference(windowStart)
+        .inMinutes
+        .clamp(0, windowMinutes);
+    final width =
+        (endOffsetMinutes - startOffsetMinutes) * EpgTimelineGrid.pxPerMinute;
+    if (width <= 0) return const SizedBox.shrink();
+
+    return Positioned(
+      left: startOffsetMinutes * EpgTimelineGrid.pxPerMinute,
+      top: 4,
+      width: width,
+      height: EpgTimelineGrid.rowHeight - 8,
+      child: Semantics(
+        label: 'No programme information',
+        child: ExcludeSemantics(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: Theme.of(
+                context,
+              ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
+              border: Border.all(
+                color: Theme.of(context).colorScheme.outlineVariant,
+              ),
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: const Center(
+              child: Text(
+                'No listing',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

@@ -320,6 +320,7 @@ class CompactEpgWindowEntry extends Equatable {
     required this.channelId,
     required this.channelName,
     required this.programs,
+    this.gaps = const [],
     this.channelNumber,
     this.sourceRef,
   });
@@ -328,6 +329,7 @@ class CompactEpgWindowEntry extends Equatable {
   final String channelName;
   final String? channelNumber;
   final List<CompactEpgProgram> programs;
+  final List<CompactEpgGap> gaps;
   final CompactEpgSourceRef? sourceRef;
 
   @override
@@ -336,8 +338,32 @@ class CompactEpgWindowEntry extends Equatable {
     channelName,
     channelNumber,
     programs,
+    gaps,
     sourceRef,
   ];
+}
+
+enum CompactEpgGapKind { explicit, inferredAdjacent }
+
+/// A bounded absence in a merged schedule. This is not a programme and must
+/// never be sent to playback, reminders, or programme-detail surfaces.
+class CompactEpgGap extends Equatable {
+  const CompactEpgGap({
+    required this.startsAt,
+    required this.endsAt,
+    this.kind = CompactEpgGapKind.explicit,
+    this.adjacentProgramId,
+  });
+
+  final DateTime startsAt;
+  final DateTime endsAt;
+  final CompactEpgGapKind kind;
+  final String? adjacentProgramId;
+
+  Duration get duration => endsAt.difference(startsAt);
+
+  @override
+  List<Object?> get props => [startsAt, endsAt, kind, adjacentProgramId];
 }
 
 /// The result of a [GuideWindowQuery]: bounded per-channel programme lists,
