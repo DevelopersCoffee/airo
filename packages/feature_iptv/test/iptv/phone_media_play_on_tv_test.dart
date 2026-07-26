@@ -79,6 +79,46 @@ void main() {
     expect(find.text('Stop casting'), findsOneWidget);
   });
 
+  testWidgets('receiver disconnect replaces stale Playing state', (
+    tester,
+  ) async {
+    await tester.pumpWidget(hostFor(itemFor()));
+
+    await tester.tap(find.text('Play on Fire Stick'));
+    await tester.pumpAndSettle();
+    expect(find.text('Playing on Fire Stick'), findsOneWidget);
+
+    castController.emitReceiverDisconnected();
+    await tester.pumpAndSettle();
+
+    expect(find.text('Playing on Fire Stick'), findsNothing);
+    expect(find.text('Open remote'), findsNothing);
+    expect(find.text("Couldn't play on your TV"), findsOneWidget);
+    expect(find.text('Find a TV'), findsOneWidget);
+  });
+
+  testWidgets('loading media does not claim playback has started', (
+    tester,
+  ) async {
+    castController.completeLoads = false;
+    await tester.pumpWidget(hostFor(itemFor()));
+
+    await tester.tap(find.text('Play on Fire Stick'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Playing on Fire Stick'), findsNothing);
+    expect(find.text('Open remote'), findsNothing);
+    expect(find.text('Play on Fire Stick'), findsOneWidget);
+    expect(
+      tester
+          .widget<FilledButton>(
+            find.widgetWithText(FilledButton, 'Play on Fire Stick'),
+          )
+          .onPressed,
+      isNull,
+    );
+  });
+
   testWidgets('unsupported container shows format-not-supported state', (
     tester,
   ) async {
