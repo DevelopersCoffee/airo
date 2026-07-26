@@ -15,3 +15,4 @@ export 'src/models/auth_result.dart';
 
 // Repository
 export 'src/repositories/auth_repository.dart';
+export 'src/identity/airo_identity.dart';
