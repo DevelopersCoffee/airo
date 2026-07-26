@@ -127,6 +127,34 @@ class StreamingMetrics extends Equatable {
   ];
 }
 
+/// Real playback facts projected from the active engine.
+///
+/// Values stay nullable because not every backend or stream exposes every
+/// fact. Presentation code must omit unavailable values rather than infer
+/// them from a quality preset or network estimate.
+class AiroPlaybackStats extends Equatable {
+  const AiroPlaybackStats({
+    this.codec,
+    this.width,
+    this.height,
+    this.bitrateKbps,
+  });
+
+  final String? codec;
+  final int? width;
+  final int? height;
+  final int? bitrateKbps;
+
+  bool get hasValues =>
+      codec != null || width != null || height != null || bitrateKbps != null;
+
+  String? get resolution =>
+      width != null && height != null ? '${width}x$height' : null;
+
+  @override
+  List<Object?> get props => [codec, width, height, bitrateKbps];
+}
+
 /// Complete streaming state with Live DVR support
 class StreamingState extends Equatable {
   final IPTVChannel? currentChannel;
@@ -135,6 +163,10 @@ class StreamingState extends Equatable {
   final VideoQuality selectedQuality; // User preference (auto or specific)
   final BufferStatus bufferStatus;
   final StreamingMetrics? metrics;
+
+  /// Engine-reported codec/quality facts for user-facing playback stats.
+  /// Unlike [metrics], these values are never estimated.
+  final AiroPlaybackStats? playbackStats;
   final Duration position;
   final Duration duration;
   final double volume;
@@ -189,6 +221,7 @@ class StreamingState extends Equatable {
     this.selectedQuality = VideoQuality.auto,
     this.bufferStatus = const BufferStatus(),
     this.metrics,
+    this.playbackStats,
     this.position = Duration.zero,
     this.duration = Duration.zero,
     this.volume = 1.0,
@@ -270,6 +303,8 @@ class StreamingState extends Equatable {
     VideoQuality? selectedQuality,
     BufferStatus? bufferStatus,
     StreamingMetrics? metrics,
+    AiroPlaybackStats? playbackStats,
+    bool clearPlaybackStats = false,
     Duration? position,
     Duration? duration,
     double? volume,
@@ -300,6 +335,9 @@ class StreamingState extends Equatable {
       selectedQuality: selectedQuality ?? this.selectedQuality,
       bufferStatus: bufferStatus ?? this.bufferStatus,
       metrics: metrics ?? this.metrics,
+      playbackStats: clearPlaybackStats
+          ? null
+          : (playbackStats ?? this.playbackStats),
       position: position ?? this.position,
       duration: duration ?? this.duration,
       volume: volume ?? this.volume,
@@ -329,6 +367,7 @@ class StreamingState extends Equatable {
     playbackState,
     currentQuality,
     bufferStatus,
+    playbackStats,
     position,
     volume,
     isMuted,
