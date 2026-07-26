@@ -16,6 +16,7 @@ An Architecture Decision Record (ADR) captures an important architectural decisi
 | [0009](0009-airo-coin-vault-crypto.md) | Airo Coin vault crypto design and threat model | Accepted | 2026-07-20 |
 | [0010](0010-airo-coin-package-first-development.md) | Airo Coin package-first development | Accepted | 2026-07-22 |
 | [0011](0011-super-app-modular-shell-ssot.md) | Super-app modular shell SSOT | Proposed | 2026-07-24 |
+| [0012](0012-edge-intelligence-media-boundary.md) | Edge intelligence and media-engine boundary | Accepted | 2026-07-27 |
 
 ## Creating a New ADR
 

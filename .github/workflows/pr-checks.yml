@@ -83,6 +83,12 @@ jobs:
           scripts/test-check-module-manifests.sh
           scripts/check-module-manifests.py
 
+      - name: Enforce Edge Intelligence import boundary
+        run: |
+          chmod +x scripts/check-edge-import-boundaries.py scripts/test-check-edge-import-boundaries.py
+          python3 scripts/test-check-edge-import-boundaries.py
+          scripts/check-edge-import-boundaries.py
+
   # ============================================
   # Code Quality (analyze, format) - ~2 minutes
   # ============================================
@@ -113,6 +119,7 @@ jobs:
           (cd packages/core_data && flutter pub get) &
           (cd packages/core_ai && flutter pub get) &
           (cd packages/core_auth && flutter pub get) &
+          (cd packages/core_edge_intelligence && dart pub get) &
           wait
           cd app && flutter pub get
 
@@ -176,6 +183,7 @@ jobs:
           (cd packages/core_data && flutter pub get) &
           (cd packages/core_ai && flutter pub get) &
           (cd packages/core_auth && flutter pub get) &
+          (cd packages/core_edge_intelligence && dart pub get) &
           wait
 
       - name: Run core package tests (parallel)
@@ -185,6 +193,7 @@ jobs:
           (cd packages/core_data && flutter test --reporter=compact) &
           (cd packages/core_ai && flutter test --reporter=compact) &
           (cd packages/core_auth && flutter test --reporter=compact) &
+          (cd packages/core_edge_intelligence && dart test --reporter=compact) &
           wait
           echo "All core package tests completed!"
 
