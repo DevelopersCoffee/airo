@@ -31,6 +31,7 @@ class AiroTvShell extends ConsumerStatefulWidget {
     this.availabilityByChannelId = const {},
     this.enrichMetadata = false,
     this.onPlaylistSourceTap,
+    this.onWaysToWatchTap,
   });
 
   final List<IPTVChannel> channels;
@@ -44,6 +45,9 @@ class AiroTvShell extends ConsumerStatefulWidget {
   /// Opens the playlist-source sheet from the LIVE bar. Wired on TV where
   /// the phone app bar is suppressed; null hides the entry.
   final VoidCallback? onPlaylistSourceTap;
+
+  /// Opens the fit/full/floating/Cast chooser from the LIVE info bar.
+  final VoidCallback? onWaysToWatchTap;
 
   @override
   ConsumerState<AiroTvShell> createState() => _AiroTvShellState();
@@ -107,6 +111,7 @@ class _AiroTvShellState extends ConsumerState<AiroTvShell> {
     final infoBar = ChannelInfoBar(
       channel: widget.currentChannel,
       onPlaylistSourceTap: widget.onPlaylistSourceTap,
+      onWaysToWatchTap: widget.onWaysToWatchTap,
     );
     final hotbar = Hotbar(
       channels: widget.channels,

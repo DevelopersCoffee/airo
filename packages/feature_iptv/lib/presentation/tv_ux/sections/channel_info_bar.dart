@@ -8,13 +8,21 @@ import '../../../application/providers/iptv_providers.dart';
 import '../../widgets/channel_logo.dart';
 
 class ChannelInfoBar extends ConsumerWidget {
-  const ChannelInfoBar({super.key, this.channel, this.onPlaylistSourceTap});
+  const ChannelInfoBar({
+    super.key,
+    this.channel,
+    this.onPlaylistSourceTap,
+    this.onWaysToWatchTap,
+  });
 
   final IPTVChannel? channel;
 
   /// Opens the playlist-source sheet. Wired on TV where the phone app bar
   /// (the usual home of this action) is suppressed; null hides the button.
   final VoidCallback? onPlaylistSourceTap;
+
+  /// Opens the capability-aware fit/full/floating/Cast chooser.
+  final VoidCallback? onWaysToWatchTap;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -71,6 +79,17 @@ class ChannelInfoBar extends ConsumerWidget {
                   : () => _copyShareDetails(context, channel!),
               tooltip: 'Share',
               icon: const Icon(Icons.share_outlined),
+            ),
+          ),
+          TvFocusable(
+            key: const ValueKey('channel-info-ways-to-watch'),
+            semanticLabel: 'Ways to Watch',
+            enabled: channel != null && onWaysToWatchTap != null,
+            onSelect: channel == null ? null : onWaysToWatchTap,
+            child: IconButton(
+              onPressed: channel == null ? null : onWaysToWatchTap,
+              tooltip: 'Ways to Watch',
+              icon: const Icon(Icons.monitor_outlined),
             ),
           ),
         ],
