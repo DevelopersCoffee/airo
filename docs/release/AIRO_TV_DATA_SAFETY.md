@@ -26,7 +26,12 @@ This declaration is based on the current v2 TV release behavior:
   initialization.
 - Firebase Core/Auth packages may be present for runtime initialization and
   future auth compatibility, but the TV flow does not require account sign-in
-  for IPTV playback.
+  for IPTV playback. Because `firebase_core` ships, a Firebase installation ID
+  may be generated and sent to Google; this is declared under "Device or other
+  IDs" below.
+- Playlist and program-guide requests go directly from the device to the
+  servers the user configured, and the public iptv-org catalogue is downloaded
+  and matched on-device. The user's playlist is never uploaded anywhere.
 
 ## Google Play Data Safety
 
@@ -46,7 +51,7 @@ This declaration is based on the current v2 TV release behavior:
 | App activity | No app-owned external collection | No | App functionality | Preferences and playlist state are stored on device. |
 | Web browsing | No | No | Not applicable | Airo TV does not provide a browser. |
 | App info and performance | No app-owned external collection | No | Diagnostics only if user shares logs manually | Crashlytics is not included in the TV pubspec. |
-| Device or other IDs | No app-owned external collection | No | Not applicable | No advertising ID permission or analytics SDK is enabled. |
+| Device or other IDs | **Yes — collected by Firebase SDK, not by the developer** | No | App functionality | `firebase_core` is in `app/pubspec_tv.yaml`. Where Firebase generates a Firebase installation ID (FID), it is sent to Google under Google's own privacy policy. It is not received by DevelopersCoffee, not linked to a user or account, not used for advertising or cross-app tracking, and reset on uninstall or clear-data. No advertising ID permission or analytics SDK is enabled. |
 | IPTV playlist URLs | Local only | No | App functionality | User-provided playlist URLs are stored on device and used to fetch user-selected content. |
 | Stream URLs | Local/runtime only | No | App functionality | Stream URLs are requested by the app/player/Cast receiver only to play user-selected content. |
 
@@ -58,7 +63,27 @@ TV release. User-provided IPTV playlist URLs, preferences, and playback state
 are stored locally on the device for app functionality. The app does not include
 advertising, analytics, Crashlytics, purchases, location, contacts, camera, or
 microphone data collection in the TV profile.
+
+The app includes the Firebase core library. Where Firebase generates a Firebase
+installation ID, that identifier is transmitted to Google under Google's privacy
+policy. It is declared under "Device or other IDs" for app functionality. It is
+not received by the developer, not linked to a user or account, not used for
+advertising or tracking, and is reset when the app is uninstalled or its data
+cleared.
 ```
+
+### Why "Device or other IDs" is declared Yes
+
+Play's Data Safety scope covers data collected by **third-party SDKs bundled in
+the app**, not only data the developer receives. `firebase_core` ships in the TV
+profile, so the honest answer is to declare the identifier and describe its
+narrow purpose, rather than answer No on the grounds that DevelopersCoffee never
+sees it. Under-declaring is a policy-enforcement risk; declaring it with an
+accurate purpose is not.
+
+This must stay consistent with the published privacy policy, which describes the
+same identifier in its "Network Connections" section. If `firebase_core` is ever
+removed from `app/pubspec_tv.yaml`, revisit both together.
 
 ### Security Practices
 
@@ -80,7 +105,7 @@ the active iOS dependency set and runtime behavior.
 | --- | --- |
 | Data Used to Track You | None |
 | Data Linked to You | None for the current TV IPTV playback flow |
-| Data Not Linked to You | None collected by the developer for the current TV profile |
+| Data Not Linked to You | Identifiers — the Firebase installation ID, if generated. Nothing collected by the developer. |
 | Diagnostics | None unless a crash-reporting SDK is added before submission |
 | User Content | User-provided playlist URLs are local app functionality data, not collected by the developer |
 

@@ -34,6 +34,12 @@ class FakeVideoPlayerPlatform extends VideoPlayerPlatform {
   int _nextPlayerId = 0;
   int? _lastPlayerId;
 
+  /// Data source the most recent create was given. Exposes `httpHeaders` so
+  /// tests can assert that playlist-supplied headers survive the trip from
+  /// [IPTVChannel] down to the platform — providers that require a
+  /// `User-Agent` reject the stream without them.
+  DataSource? lastDataSource;
+
   @override
   Future<void> init() async {}
 
@@ -42,6 +48,7 @@ class FakeVideoPlayerPlatform extends VideoPlayerPlatform {
     final id = _nextPlayerId++;
     _eventControllers[id] = StreamController<VideoEvent>.broadcast();
     _lastPlayerId = id;
+    lastDataSource = options.dataSource;
     return id;
   }
 
