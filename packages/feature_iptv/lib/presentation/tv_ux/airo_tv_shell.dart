@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:collection/collection.dart';
+import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:platform_channels/platform_channels.dart';
@@ -370,11 +371,41 @@ class _ExplorerSection extends StatelessWidget {
 /// channels stay browsable and (if already playing) video keeps playing —
 /// only new stream starts would actually need the connection. Renders
 /// nothing while online.
-class _OfflineBanner extends ConsumerWidget {
+class _OfflineBanner extends ConsumerStatefulWidget {
   const _OfflineBanner();
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_OfflineBanner> createState() => _OfflineBannerState();
+}
+
+class _OfflineBannerState extends ConsumerState<_OfflineBanner> {
+  bool _checking = false;
+
+  // issues/04-recovery-states.md acceptance criterion 4: Retry must report
+  // success or failure, not just spin -- and must not be a fake button
+  // (isOnlineProvider is watched from the same ConnectivityService this
+  // re-checks, so a real change is what actually dismisses the banner).
+  Future<void> _retry() async {
+    if (_checking) return;
+    setState(() => _checking = true);
+    final isConnected = await ref.read(connectivityServiceProvider).isConnected;
+    if (!mounted) return;
+    setState(() => _checking = false);
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(
+            isConnected
+                ? 'Back online'
+                : 'Still no connection — check your network and try again',
+          ),
+        ),
+      );
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final isOnline = ref.watch(isOnlineProvider).asData?.value ?? true;
     if (isOnline) return const SizedBox.shrink();
 
@@ -395,6 +426,36 @@ class _OfflineBanner extends ConsumerWidget {
               style: Theme.of(
                 context,
               ).textTheme.bodySmall?.copyWith(color: Colors.amber.shade100),
+            ),
+          ),
+          const SizedBox(width: 8),
+          TvFocusable(
+            key: const ValueKey('offline-banner-retry'),
+            semanticLabel: 'Retry connection',
+            onSelect: _checking ? null : _retry,
+            borderRadius: 6,
+            child: TextButton.icon(
+              onPressed: _checking ? null : _retry,
+              icon: _checking
+                  ? const SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.amber,
+                      ),
+                    )
+                  : const Icon(
+                      Icons.refresh_rounded,
+                      size: 16,
+                      color: Colors.amber,
+                    ),
+              label: Text(
+                'Retry',
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: Colors.amber),
+              ),
             ),
           ),
         ],
