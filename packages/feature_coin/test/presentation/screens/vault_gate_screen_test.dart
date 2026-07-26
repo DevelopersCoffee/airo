@@ -153,4 +153,70 @@ void main() {
     expect(find.text('Biometrics unavailable'), findsOneWidget);
     expect(find.textContaining('Enroll biometrics'), findsOneWidget);
   });
+
+  testWidgets('no enrolled biometric guides to enrolment, not "try again"', (
+    tester,
+  ) async {
+    // Reproduces the Pixel 9 case: fingerprint hardware present, but no
+    // screen lock and so nothing enrolled. authenticate() fails instantly
+    // and the user used to see "Could not unlock vault / Try again",
+    // which they can retry forever without success.
+    final keyManager = VaultKeyManager.forTesting(
+      secureStorage: InMemorySecureStorage(),
+      authenticate: () async => false,
+      isAvailable: () async => true,
+      hasEnrolled: () async => false,
+    );
+    final container = ProviderContainer(
+      overrides: [
+        screenSecurityProvider.overrideWithValue(FakeScreenSecurity()),
+        vaultKeyManagerProvider.overrideWithValue(keyManager),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: const MaterialApp(home: VaultGateScreen(autoUnlock: true)),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Biometrics unavailable'), findsOneWidget);
+    expect(find.textContaining('Enroll biometrics'), findsOneWidget);
+  });
+
+  testWidgets('a real failed scan still reports an auth error', (tester) async {
+    // Contrast with the case above: a biometric IS enrolled, so a failure
+    // genuinely means the scan did not match and retrying can work.
+    final keyManager = VaultKeyManager.forTesting(
+      secureStorage: InMemorySecureStorage(),
+      authenticate: () async => false,
+      isAvailable: () async => true,
+      hasEnrolled: () async => true,
+    );
+    final container = ProviderContainer(
+      overrides: [
+        screenSecurityProvider.overrideWithValue(FakeScreenSecurity()),
+        vaultKeyManagerProvider.overrideWithValue(keyManager),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: const MaterialApp(home: VaultGateScreen(autoUnlock: true)),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+
+    expect(find.text('Biometrics unavailable'), findsNothing);
+    expect(
+      find.textContaining('Biometric authentication failed'),
+      findsOneWidget,
+    );
+  });
 }

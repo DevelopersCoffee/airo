@@ -20,7 +20,10 @@ void main() {
   setUp(() async {
     vaultDb = VaultDatabase(databaseFactory: databaseFactoryFfi);
     await vaultDb.open(path: inMemoryDatabasePath);
-    repository = SecureDocumentRepository(database: vaultDb, fieldCipher: FieldCipher());
+    repository = SecureDocumentRepository(
+      database: vaultDb,
+      fieldCipher: FieldCipher(),
+    );
     keyBytes = List<int>.generate(32, (_) => Random.secure().nextInt(256));
   });
 
@@ -28,25 +31,31 @@ void main() {
     await vaultDb.close();
   });
 
-  test('create then getByNickname roundtrips category and linked account', () async {
-    final record = SecureDocumentRecord(
-      id: null,
-      nickname: 'Form 16 FY24-25',
-      category: DocumentCategory.incomeProof,
-      linkedAccountNickname: 'HDFC Salary',
-      notes: 'Employer TDS certificate',
-      createdAt: DateTime(2026, 7, 19),
-    );
+  test(
+    'create then getByNickname roundtrips category and linked account',
+    () async {
+      final record = SecureDocumentRecord(
+        id: null,
+        nickname: 'Form 16 FY24-25',
+        category: DocumentCategory.incomeProof,
+        linkedAccountNickname: 'HDFC Salary',
+        notes: 'Employer TDS certificate',
+        createdAt: DateTime(2026, 7, 19),
+      );
 
-    final createResult = await repository.create(record, keyBytes);
-    expect(createResult.isSuccess, isTrue);
+      final createResult = await repository.create(record, keyBytes);
+      expect(createResult.isSuccess, isTrue);
 
-    final fetched = await repository.getByNickname('Form 16 FY24-25', keyBytes);
+      final fetched = await repository.getByNickname(
+        'Form 16 FY24-25',
+        keyBytes,
+      );
 
-    expect(fetched.value?.category, DocumentCategory.incomeProof);
-    expect(fetched.value?.linkedAccountNickname, 'HDFC Salary');
-    expect(fetched.value?.notes, 'Employer TDS certificate');
-  });
+      expect(fetched.value?.category, DocumentCategory.incomeProof);
+      expect(fetched.value?.linkedAccountNickname, 'HDFC Salary');
+      expect(fetched.value?.notes, 'Employer TDS certificate');
+    },
+  );
 
   test('stored notes_enc column is never plaintext', () async {
     final record = SecureDocumentRecord(
@@ -78,21 +87,27 @@ void main() {
     expect(fetched.value?.customFields, {'insurer': 'LIC', 'premium': '25000'});
   });
 
-  test('attachmentBlob roundtrips through encryption, including bytes >= 128', () async {
-    final blob = [0, 127, 128, 200, 255];
-    final record = SecureDocumentRecord(
-      id: null,
-      nickname: 'Scanned Rent Receipt',
-      category: DocumentCategory.hra,
-      attachmentBlob: blob,
-      createdAt: DateTime(2026, 7, 19),
-    );
+  test(
+    'attachmentBlob roundtrips through encryption, including bytes >= 128',
+    () async {
+      final blob = [0, 127, 128, 200, 255];
+      final record = SecureDocumentRecord(
+        id: null,
+        nickname: 'Scanned Rent Receipt',
+        category: DocumentCategory.hra,
+        attachmentBlob: blob,
+        createdAt: DateTime(2026, 7, 19),
+      );
 
-    await repository.create(record, keyBytes);
-    final fetched = await repository.getByNickname('Scanned Rent Receipt', keyBytes);
+      await repository.create(record, keyBytes);
+      final fetched = await repository.getByNickname(
+        'Scanned Rent Receipt',
+        keyBytes,
+      );
 
-    expect(fetched.value?.attachmentBlob, blob);
-  });
+      expect(fetched.value?.attachmentBlob, blob);
+    },
+  );
 
   test('creating a second document with the same nickname fails', () async {
     final record = SecureDocumentRecord(

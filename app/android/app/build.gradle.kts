@@ -21,10 +21,12 @@ val isLeanVariant = appVariant != "full"
 val isTvVariant = appVariant == "tv"
 val variantApplicationId = when (appVariant) {
     "tv" -> "io.airo.app.tv"
+    "coins" -> "io.airo.app.coins"
     else -> "io.airo.app"
 }
 val variantAppLabel = when (appVariant) {
     "tv" -> "Airo TV"
+    "coins" -> "Airo Coins"
     else -> "Airo"
 }
 
