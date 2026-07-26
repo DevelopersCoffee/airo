@@ -62,13 +62,68 @@ Tracks: airo #889. Related: #844 (CV-033 shipped), #849 (security fast-follows).
 - Item 10: not reached.
 - Item 11: not reached.
 - Receiver protocol mismatch: [#1151](https://github.com/DevelopersCoffee/airo/issues/1151).
+- Android document lease cannot be served:
+  [#1155](https://github.com/DevelopersCoffee/airo/issues/1155).
+- Cast SDK logcat exposes the tokenized media URL:
+  [#1156](https://github.com/DevelopersCoffee/airo/issues/1156).
+- Phone UI remains in Playing after receiver failure:
+  [#1157](https://github.com/DevelopersCoffee/airo/issues/1157).
+
+## Google Cast receiver rerun — 2026-07-26
+
+After the original Fire TV protocol blocker was recorded, a compatible Sony
+BRAVIA became available on the same LAN. It advertised
+`_googlecast._tcp.local` and the Default Media Receiver on Cast port 8009.
+
+- Phone: Pixel 9, Android 17 (API 37).
+- Build: current `origin/main` at `2dd0fa57`, debug APK built with
+  `ENABLE_PHONE_MEDIA_RECEIVER=true`, SHA-256
+  `4c71371b603c58af9706c91c0c72dd4eb1196ba6864e8d0c166bdc2bac2b97d2`.
+- Receiver: Sony BRAVIA Google Cast receiver. Stable device identifiers are
+  omitted from public evidence.
+- Phone baseline: 100% battery and 27.5°C while charging.
+- Fixture: a real local MP4 selected through Android DocumentsUI. Its name,
+  content URI, and path are omitted. This first rerun intentionally used the
+  smaller supported fixture to prove the production picker/receiver path before
+  attempting the required multi-gigabyte case.
+
+| # | Test | Result | Timing | Notes |
+|---|---|---|---|---|
+| 1 | Cold handoff (PASS < 10s to first frame) | FAIL | Cast connected in about 5s; load failed in under 1s | Discovery, receiver selection, Cast connection, Default Media Receiver launch, and phone server startup succeeded. The first receiver request produced `PathAccessException`; the receiver reported `idle/error`, the server closed, and no first frame appeared. |
+| 2 | Seek forward to ~90% | NOT RUN | — | Blocked by item 1 source-read failure. |
+| 3 | Seek backward to ~10% | NOT RUN | — | Blocked by item 1 source-read failure. |
+| 4 | Pause 3 min → resume | NOT RUN | — | Blocked by item 1 source-read failure. |
+| 5 | Sustained playback 30 min | NOT RUN | — | Blocked by item 1 source-read failure. |
+| 6 | Zero bytes on TV | INCONCLUSIVE | — | No first frame or sustained playback; no full-file transfer was observed. |
+| 7 | Unsupported format | NOT RUN | — | Positive-path failure captured first; do not mix fixes or additional diagnosis into this run. |
+| 8 | Stop casting / socket close | PARTIAL PASS | <1s after receiver error | The phone server emitted `session_close` immediately after the receiver load error. User-initiated stop remains untested. |
+| 9 | Token security spot-check | FAIL (logging gate) | — | A Cast SDK status log exposed the complete tokenized content URL. The token is omitted here and the session was torn down. |
+| 10 | Wi-Fi drop | NOT RUN | — | Blocked by item 1 source-read failure. |
+| 11 | App background-kill | NOT RUN | — | Blocked by item 1 source-read failure. |
+| 12 | Cross-receiver | NOT RUN | — | The Fire TV remains protocol-incompatible with this Google Cast baseline. |
+
+Redacted event sequence:
+
+```text
+[AiroCast] connect start device=<receiver>
+[AiroCast] session update state=connected device=<receiver>
+[PhoneMediaServer] session_open {serverId: <stable-redacted-id>}
+[AiroCast] load request sent
+[PhoneMediaServer] request_error {errorType: PathAccessException}
+[AiroCast] media status player=idle idle=error
+[PhoneMediaServer] session_close {serverId: <stable-redacted-id>}
+```
+
+The run also found that the phone sheet continued to display Playing after the
+receiver and server had failed. No D-pad, TV focus, or remote-navigation
+behavior was exercised.
 
 ## Summary
 
-The available Pixel 9 and Fire TV pair cannot execute the CV-033 playback
-matrix. CV-033 is a Google Cast sender, while the Fire TV AFTSSS exposes an
-Amazon Cast sink and did not appear in active Google Cast discovery. The
-positive-path large MP4 fixture is also missing. This run therefore records a
-real, reproducible qualification blocker rather than a playback result. Issue
-#1151 tracks the receiver-protocol mismatch. #844 has not been given a matrix
-completion comment because the matrix is not complete.
+The Fire TV remains incompatible with the CV-033 Google Cast protocol. A later
+Pixel-to-BRAVIA run proved compatible discovery and connection but exposed a
+production Android source-handle failure before first frame, plus a tokenized
+URL logging violation and stale Playing UI. The required large-file, seek,
+lifecycle, storage, and thermal matrix remains blocked until #1155 and #1156
+are resolved. #844 is complete as the host-tested baseline; #889 remains open
+as the physical qualification gate.
