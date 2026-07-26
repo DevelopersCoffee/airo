@@ -2227,8 +2227,7 @@ class _TvEmptyPlaylistLayout extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(32, 24, 32, 24),
+    return TvOverscanSafeArea(
       child: Column(
         children: [
           _TvLiteReceiverShellHeader(productProfile: productProfile),
