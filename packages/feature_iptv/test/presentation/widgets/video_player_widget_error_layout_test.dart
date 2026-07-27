@@ -155,11 +155,35 @@ void main() {
         'player recovery Report dead link',
       );
 
+      // Fire TV must not let the recovery row's edge escape to an unrelated
+      // player control. On-device this also catches a single RIGHT press
+      // being interpreted as two geometric traversal steps.
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pump();
+      expect(
+        FocusManager.instance.primaryFocus?.debugLabel,
+        'player recovery Report dead link',
+      );
+
       await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
       await tester.pump();
       expect(
         FocusManager.instance.primaryFocus?.debugLabel,
         'player recovery Skip channel',
+      );
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+      await tester.pump();
+      expect(
+        FocusManager.instance.primaryFocus?.debugLabel,
+        'player recovery Try Again',
+      );
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+      await tester.pump();
+      expect(
+        FocusManager.instance.primaryFocus?.debugLabel,
+        'player recovery Try Again',
       );
     },
   );

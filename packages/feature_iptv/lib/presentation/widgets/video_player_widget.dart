@@ -3,7 +3,13 @@ import 'package:core_ui/core_ui.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'
-    show Clipboard, ClipboardData, KeyDownEvent, KeyUpEvent;
+    show
+        Clipboard,
+        ClipboardData,
+        KeyDownEvent,
+        KeyEvent,
+        KeyUpEvent,
+        LogicalKeyboardKey;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:platform_channels/platform_channels.dart';
 import '../../application/player_backgrounding_coordinator.dart';
@@ -1204,10 +1210,38 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
     });
   }
 
+  KeyEventResult _handleDiagnosticRecoveryKey(
+    FocusNode node,
+    KeyEvent event, {
+    required bool showRetry,
+  }) {
+    final moveRight = event.logicalKey == LogicalKeyboardKey.arrowRight;
+    final moveLeft = event.logicalKey == LogicalKeyboardKey.arrowLeft;
+    if (!moveRight && !moveLeft) return KeyEventResult.ignored;
+
+    // Consume the complete physical key sequence. Fire OS can expose a
+    // directional press to both Flutter traversal and the raw TV listener;
+    // allowing either key-up or repeat to bubble can therefore skip an action.
+    if (event is! KeyDownEvent) return KeyEventResult.handled;
+
+    final actions = <FocusNode>[
+      if (showRetry) _diagnosticRetryFocusNode,
+      _diagnosticSkipFocusNode,
+      _diagnosticReportFocusNode,
+    ];
+    final currentIndex = actions.indexWhere((candidate) => candidate.hasFocus);
+    if (currentIndex < 0) return KeyEventResult.handled;
+    final offset = moveRight ? 1 : -1;
+    final targetIndex = (currentIndex + offset).clamp(0, actions.length - 1);
+    actions[targetIndex].requestFocus();
+    return KeyEventResult.handled;
+  }
+
   /// CV-001 structured failure state: user-safe copy plus bounded-retry
   /// progress from [StreamingState.diagnostic], with the legacy retry button.
   Widget _buildDiagnosticError(StreamingState state) {
     final diagnostic = state.diagnostic!;
+    final showRetry = !diagnostic.retryEligible || state.retryCount == 0;
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
@@ -1238,37 +1272,47 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
               // distinct outcomes, not just retry -- and every one of them
               // must be D-pad reachable (the old ElevatedButton had no
               // TvFocusable, so a remote-only viewer could never reach it).
-              Wrap(
-                alignment: WrapAlignment.center,
-                spacing: 10,
-                runSpacing: 10,
-                children: [
-                  if (!diagnostic.retryEligible || state.retryCount == 0)
+              Focus(
+                canRequestFocus: false,
+                skipTraversal: true,
+                onKeyEvent: (node, event) => _handleDiagnosticRecoveryKey(
+                  node,
+                  event,
+                  showRetry: showRetry,
+                ),
+                child: Wrap(
+                  alignment: WrapAlignment.center,
+                  spacing: 10,
+                  runSpacing: 10,
+                  children: [
+                    if (showRetry)
+                      _RecoveryActionButton(
+                        key: const ValueKey('diagnostic-error-retry'),
+                        focusNode: _diagnosticRetryFocusNode,
+                        icon: Icons.refresh_rounded,
+                        label: 'Try Again',
+                        autofocus: true,
+                        onSelect: () =>
+                            ref.read(iptvStreamingServiceProvider).retry(),
+                      ),
                     _RecoveryActionButton(
-                      key: const ValueKey('diagnostic-error-retry'),
-                      focusNode: _diagnosticRetryFocusNode,
-                      icon: Icons.refresh_rounded,
-                      label: 'Try Again',
-                      autofocus: true,
-                      onSelect: () =>
-                          ref.read(iptvStreamingServiceProvider).retry(),
+                      key: const ValueKey('diagnostic-error-skip'),
+                      focusNode: _diagnosticSkipFocusNode,
+                      icon: Icons.skip_next_rounded,
+                      label: 'Skip channel',
+                      autofocus:
+                          diagnostic.retryEligible && state.retryCount > 0,
+                      onSelect: _goToNextChannel,
                     ),
-                  _RecoveryActionButton(
-                    key: const ValueKey('diagnostic-error-skip'),
-                    focusNode: _diagnosticSkipFocusNode,
-                    icon: Icons.skip_next_rounded,
-                    label: 'Skip channel',
-                    autofocus: diagnostic.retryEligible && state.retryCount > 0,
-                    onSelect: _goToNextChannel,
-                  ),
-                  _RecoveryActionButton(
-                    key: const ValueKey('diagnostic-error-report'),
-                    focusNode: _diagnosticReportFocusNode,
-                    icon: Icons.flag_outlined,
-                    label: 'Report dead link',
-                    onSelect: () => _saveDeadLinkReport(state, diagnostic),
-                  ),
-                ],
+                    _RecoveryActionButton(
+                      key: const ValueKey('diagnostic-error-report'),
+                      focusNode: _diagnosticReportFocusNode,
+                      icon: Icons.flag_outlined,
+                      label: 'Report dead link',
+                      onSelect: () => _saveDeadLinkReport(state, diagnostic),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
