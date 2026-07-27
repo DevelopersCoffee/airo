@@ -7,6 +7,7 @@ reviewers:
 contracts:
   - compact_epg_v1
 allowed_dependencies:
+  - core_entitlements
   - core_native
 forbidden_dependencies:
   - app

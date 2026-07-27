@@ -95,6 +95,13 @@ packages:
       relative: true
     source: path
     version: "0.0.1"
+  core_entitlements:
+    dependency: transitive
+    description:
+      path: "../core_entitlements"
+      relative: true
+    source: path
+    version: "0.0.1"
   core_media_data:
     dependency: "direct main"
     description:
@@ -585,6 +592,13 @@ packages:
     dependency: "direct main"
     description:
       path: "../platform_playlist_import"
+      relative: true
+    source: path
+    version: "0.0.1"
+  platform_receiver_modes:
+    dependency: transitive
+    description:
+      path: "../platform_receiver_modes"
       relative: true
     source: path
     version: "0.0.1"
