@@ -91,8 +91,8 @@ core_product_shell validation
 ### Checkpoint: Complete
 
 - [x] Super-app, TV, and Coins consume the same composition contract.
-- [ ] Targeted format/analyze/test/build checks and `git diff --check` pass.
-- [ ] Issue #1187 contains validation evidence.
+- [x] Targeted format/analyze/test/build checks and `git diff --check` pass.
+- [x] Issue #1187 contains validation evidence.
 
 ## Risks and Mitigations
 
