@@ -25,6 +25,7 @@ void main() {
     WidgetTester tester, {
     List<AiroPlaybackTrackOption> tracks = const [],
     List<Override> extraOverrides = const [],
+    AiroPlaybackStats? playbackStats,
   }) async {
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
@@ -39,6 +40,7 @@ void main() {
               currentQuality: VideoQuality.high,
               currentChannel: channel,
               tracks: tracks,
+              playbackStats: playbackStats,
             ),
           ),
         ),
@@ -179,7 +181,21 @@ void main() {
   testWidgets(
     'Diagnostics shows a redacted source URI, never the raw stream URL',
     (tester) async {
-      await pumpPlayer(tester);
+      await pumpPlayer(
+        tester,
+        playbackStats: const AiroPlaybackStats(
+          codec: 'h264',
+          width: 1920,
+          height: 1080,
+          framesPerSecond: 25,
+          droppedFrames: 31,
+          audioCodec: 'aac',
+          audioBitrateKbps: 128,
+          audioChannels: 2,
+          cacheDuration: Duration(seconds: 4),
+          failoverSuggested: true,
+        ),
+      );
       await openContextMenu(tester);
 
       await tester.tap(find.text('Diagnostics'));
@@ -189,6 +205,15 @@ void main() {
       expect(find.text('Source: https://example.com'), findsOneWidget);
       expect(find.textContaining('token=abc123'), findsNothing);
       expect(find.textContaining('/secret/path'), findsNothing);
+      expect(find.text('Video codec: h264'), findsOneWidget);
+      expect(find.text('Resolution: 1920x1080'), findsOneWidget);
+      expect(find.text('Frame rate: 25.00 fps'), findsOneWidget);
+      expect(find.text('Dropped frames: 31'), findsOneWidget);
+      expect(find.text('Audio codec: aac'), findsOneWidget);
+      expect(
+        find.text('Playback is degraded. Try the next healthy stream source.'),
+        findsOneWidget,
+      );
     },
   );
 

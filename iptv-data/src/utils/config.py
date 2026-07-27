@@ -34,6 +34,19 @@ class ValidationConfig:
 
 
 @dataclass
+class StreamHealthConfig:
+    """Bounded ffprobe stage configuration."""
+
+    enabled: bool = False
+    ffprobe_path: str = "ffprobe"
+    timeout_seconds: float = 12
+    global_budget_seconds: float = 600
+    max_concurrent: int = 4
+    low_framerate_threshold: float = 29
+    sample_bitrate: bool = False
+
+
+@dataclass
 class DeduplicationConfig:
     """Deduplication configuration."""
 
@@ -92,6 +105,12 @@ class Config:
         return DeduplicationConfig(**dedup_config) if dedup_config else DeduplicationConfig()
 
     @property
+    def stream_health(self) -> StreamHealthConfig:
+        """Get bounded ffprobe stage configuration."""
+        health_config = self.processing.get("stream_health", {})
+        return StreamHealthConfig(**health_config) if health_config else StreamHealthConfig()
+
+    @property
     def normalization(self) -> NormalizationConfig:
         """Get normalization configuration."""
         norm_config = self.processing.get("normalization", {})
@@ -136,4 +155,3 @@ def load_config(config_path: str | Path) -> Config:
         failure_handling=raw_config.get("failure_handling", {}),
         logging=raw_config.get("logging", {}),
     )
-

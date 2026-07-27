@@ -44,6 +44,11 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+
+      - name: Install bounded stream probe
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends ffmpeg
       
       - name: Run linting
         run: |
@@ -58,9 +63,9 @@ jobs:
         id: pipeline
         run: |
           if [ "${{ github.event.inputs.skip_validation }}" == "true" ]; then
-            python -m src.main --config config/default.yaml --skip-validation
+            timeout 15m python -m src.main --config config/default.yaml --skip-validation
           else
-            python -m src.main --config config/default.yaml
+            timeout 15m python -m src.main --config config/default.yaml
           fi
       
       - name: Verify output

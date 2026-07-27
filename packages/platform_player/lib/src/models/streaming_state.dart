@@ -138,21 +138,56 @@ class AiroPlaybackStats extends Equatable {
     this.width,
     this.height,
     this.bitrateKbps,
+    this.framesPerSecond,
+    this.droppedFrames,
+    this.audioCodec,
+    this.audioBitrateKbps,
+    this.audioChannels,
+    this.cacheDuration,
+    this.failoverSuggested = false,
   });
 
   final String? codec;
   final int? width;
   final int? height;
   final int? bitrateKbps;
+  final double? framesPerSecond;
+  final int? droppedFrames;
+  final String? audioCodec;
+  final int? audioBitrateKbps;
+  final int? audioChannels;
+  final Duration? cacheDuration;
+  final bool failoverSuggested;
 
   bool get hasValues =>
-      codec != null || width != null || height != null || bitrateKbps != null;
+      codec != null ||
+      width != null ||
+      height != null ||
+      bitrateKbps != null ||
+      framesPerSecond != null ||
+      droppedFrames != null ||
+      audioCodec != null ||
+      audioBitrateKbps != null ||
+      audioChannels != null ||
+      cacheDuration != null;
 
   String? get resolution =>
       width != null && height != null ? '${width}x$height' : null;
 
   @override
-  List<Object?> get props => [codec, width, height, bitrateKbps];
+  List<Object?> get props => [
+    codec,
+    width,
+    height,
+    bitrateKbps,
+    framesPerSecond,
+    droppedFrames,
+    audioCodec,
+    audioBitrateKbps,
+    audioChannels,
+    cacheDuration,
+    failoverSuggested,
+  ];
 }
 
 /// Complete streaming state with Live DVR support

@@ -10,10 +10,12 @@ class FakeMpvPlayerFacade implements MpvPlayerFacade {
     this.fakeDuration = const Duration(minutes: 3),
     this.hardwareAccelerated = true,
     this.scriptedOpenError,
+    this.diagnosticSnapshot = const MpvDiagnosticSnapshot(),
   });
 
   final Duration fakeDuration;
   final bool hardwareAccelerated;
+  MpvDiagnosticSnapshot diagnosticSnapshot;
 
   /// If non-null, `open()` throws this instead of resolving successfully.
   Object? scriptedOpenError;
@@ -81,6 +83,12 @@ class FakeMpvPlayerFacade implements MpvPlayerFacade {
   Future<void> setRate(double value) async {
     calls.add('setRate($value)');
     rate = value;
+  }
+
+  @override
+  Future<MpvDiagnosticSnapshot> diagnostics() async {
+    calls.add('diagnostics');
+    return diagnosticSnapshot;
   }
 
   @override

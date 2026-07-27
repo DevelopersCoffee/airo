@@ -65,5 +65,46 @@ class MediaKitMpvPlayerFacade implements MpvPlayerFacade {
   Future<void> setRate(double value) => _player.setRate(value);
 
   @override
+  Future<MpvDiagnosticSnapshot> diagnostics() async {
+    final state = _player.state;
+    final video = state.track.video;
+    final audio = state.track.audio;
+    final dropped = await _optionalMpvInt('frame-drop-count');
+    final estimatedFps =
+        await _optionalMpvDouble('estimated-vf-fps') ?? video.fps;
+    return MpvDiagnosticSnapshot(
+      videoCodec: video.codec,
+      videoWidth: state.width ?? state.videoParams.w ?? video.w,
+      videoHeight: state.height ?? state.videoParams.h ?? video.h,
+      framesPerSecond: estimatedFps,
+      droppedFrames: dropped,
+      audioCodec: audio.codec,
+      audioBitrateKbps:
+          state.audioBitrate?.round() ??
+          (audio.bitrate == null ? null : (audio.bitrate! / 1000).round()),
+      audioChannels: state.audioParams.channelCount ?? audio.channelscount,
+      cacheDuration: state.buffer,
+    );
+  }
+
+  Future<String?> _optionalMpvProperty(String name) async {
+    try {
+      // media_kit keeps raw mpv property access on its native platform
+      // implementation. It is deliberately isolated here and soft-fails on
+      // non-native targets or future backend changes.
+      // ignore: avoid_dynamic_calls
+      return await (_player.platform as dynamic).getProperty(name) as String?;
+    } on Object {
+      return null;
+    }
+  }
+
+  Future<int?> _optionalMpvInt(String name) async =>
+      int.tryParse((await _optionalMpvProperty(name)) ?? '');
+
+  Future<double?> _optionalMpvDouble(String name) async =>
+      double.tryParse((await _optionalMpvProperty(name)) ?? '');
+
+  @override
   Future<void> dispose() => _player.dispose();
 }

@@ -135,56 +135,50 @@ void main() {
       },
     );
 
-    test(
-      'selectTrack succeeds for a projected external subtitle',
-      () async {
-        final engine = MpvAiroPlaybackEngine(
-          playerFactory: FakeMpvPlayerFacade.new,
-        );
-        await engine.open(
-          AiroMediaOpenRequest(
-            requestId: 'open-sub',
-            sourceHandle: AiroPlaybackSourceHandle.redacted('opaque-1'),
-            mediaKind: AiroPlaybackMediaKind.hls,
-            externalSubtitles: [
-              AiroPlaybackExternalSubtitle(
-                handle: AiroPlaybackSourceHandle.redacted('sub-fr'),
-                languageCode: 'fr',
-              ),
-            ],
-          ),
-        );
+    test('selectTrack succeeds for a projected external subtitle', () async {
+      final engine = MpvAiroPlaybackEngine(
+        playerFactory: FakeMpvPlayerFacade.new,
+      );
+      await engine.open(
+        AiroMediaOpenRequest(
+          requestId: 'open-sub',
+          sourceHandle: AiroPlaybackSourceHandle.redacted('opaque-1'),
+          mediaKind: AiroPlaybackMediaKind.hls,
+          externalSubtitles: [
+            AiroPlaybackExternalSubtitle(
+              handle: AiroPlaybackSourceHandle.redacted('sub-fr'),
+              languageCode: 'fr',
+            ),
+          ],
+        ),
+      );
 
-        final state = await engine.selectTrack(
-          kind: AiroPlaybackTrackKind.subtitle,
-          trackId: 'external_sub_0',
-        );
+      final state = await engine.selectTrack(
+        kind: AiroPlaybackTrackKind.subtitle,
+        trackId: 'external_sub_0',
+      );
 
-        expect(state.error, isNull);
-        expect(
-          state.selectedTrackIds[AiroPlaybackTrackKind.subtitle],
-          'external_sub_0',
-        );
-        await engine.dispose();
-      },
-    );
+      expect(state.error, isNull);
+      expect(
+        state.selectedTrackIds[AiroPlaybackTrackKind.subtitle],
+        'external_sub_0',
+      );
+      await engine.dispose();
+    });
 
-    test(
-      'selectTrack fails typed for an unknown track id',
-      () async {
-        final engine = MpvAiroPlaybackEngine(
-          playerFactory: FakeMpvPlayerFacade.new,
-        );
-        await engine.open(request());
+    test('selectTrack fails typed for an unknown track id', () async {
+      final engine = MpvAiroPlaybackEngine(
+        playerFactory: FakeMpvPlayerFacade.new,
+      );
+      await engine.open(request());
 
-        final state = await engine.selectTrack(
-          kind: AiroPlaybackTrackKind.audio,
-          trackId: 'nope',
-        );
-        expect(state.error?.code, AiroPlaybackErrorCode.trackUnavailable);
-        await engine.dispose();
-      },
-    );
+      final state = await engine.selectTrack(
+        kind: AiroPlaybackTrackKind.audio,
+        trackId: 'nope',
+      );
+      expect(state.error?.code, AiroPlaybackErrorCode.trackUnavailable);
+      await engine.dispose();
+    });
     test('dispose releases the facade', () async {
       FakeMpvPlayerFacade? capturedFake;
       final engine = MpvAiroPlaybackEngine(
@@ -199,16 +193,62 @@ void main() {
       expect(capturedFake!.disposed, isTrue);
     });
 
-    test('buildView always returns null (no media_kit_video dependency yet)', () async {
-      final engine = MpvAiroPlaybackEngine(
-        playerFactory: FakeMpvPlayerFacade.new,
-      );
-      expect(engine.buildView(), isNull);
+    test(
+      'buildView always returns null (no media_kit_video dependency yet)',
+      () async {
+        final engine = MpvAiroPlaybackEngine(
+          playerFactory: FakeMpvPlayerFacade.new,
+        );
+        expect(engine.buildView(), isNull);
 
-      await engine.open(request());
-      expect(engine.buildView(), isNull);
+        await engine.open(request());
+        expect(engine.buildView(), isNull);
 
-      await engine.dispose();
-    });
+        await engine.dispose();
+      },
+    );
+  });
+
+  test('diagnostics projects mpv facts and emits failover signal', () async {
+    final facade = FakeMpvPlayerFacade(
+      diagnosticSnapshot: const MpvDiagnosticSnapshot(
+        videoCodec: 'h264',
+        videoWidth: 1920,
+        videoHeight: 1080,
+        framesPerSecond: 25,
+        droppedFrames: 31,
+        audioCodec: 'aac',
+        audioBitrateKbps: 128,
+        audioChannels: 2,
+        cacheDuration: Duration(seconds: 4),
+      ),
+    );
+    final engine = MpvAiroPlaybackEngine(playerFactory: () => facade);
+    await engine.open(
+      AiroMediaOpenRequest(
+        requestId: 'diagnostics',
+        sourceHandle: AiroPlaybackSourceHandle.redacted('opaque-diagnostics'),
+        mediaKind: AiroPlaybackMediaKind.hls,
+      ),
+    );
+
+    final firstSample = await engine.diagnostics();
+    final diagnostics = await engine.diagnostics();
+
+    expect(firstSample.failoverSuggested, isFalse);
+    expect(diagnostics.codecName, 'h264');
+    expect(diagnostics.resolution, '1920x1080');
+    expect(diagnostics.framesPerSecond, 25);
+    expect(diagnostics.audioCodecName, 'aac');
+    expect(diagnostics.audioBitrateKbps, 128);
+    expect(diagnostics.audioChannels, 2);
+    expect(diagnostics.bufferedPosition, const Duration(seconds: 4));
+    expect(
+      diagnostics.detailCodes,
+      containsAll(<String>['low_framerate', 'heavy_frame_drops']),
+    );
+    expect(diagnostics.failoverSuggested, isTrue);
+    expect(engine.currentState.diagnostics, diagnostics);
+    await engine.dispose();
   });
 }

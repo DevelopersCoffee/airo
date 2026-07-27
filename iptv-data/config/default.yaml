@@ -65,6 +65,17 @@ processing:
     skip_patterns:
       - "*.onion"
       - "localhost:*"
+
+  # Bounded, non-blocking media inspection. Missing ffprobe, per-source
+  # timeout, malformed output, or global-budget exhaustion yields "unchecked".
+  stream_health:
+    enabled: true
+    ffprobe_path: ffprobe
+    timeout_seconds: 12
+    global_budget_seconds: 600
+    max_concurrent: 4
+    low_framerate_threshold: 29
+    sample_bitrate: false
   
   deduplication:
     enabled: true

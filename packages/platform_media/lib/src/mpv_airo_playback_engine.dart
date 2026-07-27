@@ -28,6 +28,7 @@ class MpvAiroPlaybackEngine implements AiroPlaybackEngine {
   );
   final StreamController<AiroPlaybackState> _stateController =
       StreamController<AiroPlaybackState>.broadcast();
+  int _consecutiveDegradedSamples = 0;
 
   @override
   AiroPlaybackBackendKind get backendKind => AiroPlaybackBackendKind.mpv;
@@ -49,6 +50,7 @@ class MpvAiroPlaybackEngine implements AiroPlaybackEngine {
     );
 
     await _disposePlayer();
+    _consecutiveDegradedSamples = 0;
     final player = _playerFactory();
     _player = player;
 
@@ -99,6 +101,7 @@ class MpvAiroPlaybackEngine implements AiroPlaybackEngine {
   @override
   Future<AiroPlaybackState> stop() async {
     await _player?.stop();
+    _consecutiveDegradedSamples = 0;
     _emit(
       _state.copyWith(
         phase: AiroPlaybackEnginePhase.stopped,
@@ -182,8 +185,42 @@ class MpvAiroPlaybackEngine implements AiroPlaybackEngine {
 
   @override
   Future<AiroPlaybackDiagnostics> diagnostics() async {
-    return _state.diagnostics ??
+    final existing =
+        _state.diagnostics ??
         AiroPlaybackDiagnostics(backendId: backendKind.stableId);
+    final player = _player;
+    if (player == null) return existing;
+    try {
+      final snapshot = await player.diagnostics();
+      final detailCodes = <String>[
+        if (snapshot.framesPerSecond != null && snapshot.framesPerSecond! < 29)
+          'low_framerate',
+        if ((snapshot.droppedFrames ?? 0) >= 30) 'heavy_frame_drops',
+      ];
+      _consecutiveDegradedSamples = detailCodes.isEmpty
+          ? 0
+          : _consecutiveDegradedSamples + 1;
+      final diagnostics = AiroPlaybackDiagnostics(
+        backendId: backendKind.stableId,
+        decoderName: existing.decoderName,
+        codecName: snapshot.videoCodec,
+        hardwareAccelerated: existing.hardwareAccelerated,
+        droppedFrames: snapshot.droppedFrames,
+        bufferedPosition: snapshot.cacheDuration,
+        videoWidth: snapshot.videoWidth,
+        videoHeight: snapshot.videoHeight,
+        framesPerSecond: snapshot.framesPerSecond,
+        audioCodecName: snapshot.audioCodec,
+        audioBitrateKbps: snapshot.audioBitrateKbps,
+        audioChannels: snapshot.audioChannels,
+        failoverSuggested: _consecutiveDegradedSamples >= 2,
+        detailCodes: detailCodes,
+      );
+      _emit(_state.copyWith(diagnostics: diagnostics));
+      return diagnostics;
+    } on Object {
+      return existing;
+    }
   }
 
   @override

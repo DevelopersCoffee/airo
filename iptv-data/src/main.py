@@ -11,7 +11,13 @@ from pathlib import Path
 from .exporters import JsonExporter, M3UExporter
 from .loaders import IptvOrgLoader, M3ULoader
 from .models import PipelineMetadata, RawChannel
-from .processors import Deduplicator, Enricher, Normalizer, StreamValidator
+from .processors import (
+    Deduplicator,
+    Enricher,
+    Normalizer,
+    StreamHealthProcessor,
+    StreamValidator,
+)
 from .utils import get_logger, load_config, setup_logging
 
 logger = get_logger(__name__)
@@ -20,6 +26,7 @@ logger = get_logger(__name__)
 async def run_pipeline(
     config_path: str,
     skip_validation: bool = False,
+    skip_stream_health: bool = False,
 ) -> int:
     """Run the IPTV sanity pipeline.
 
@@ -96,8 +103,28 @@ async def run_pipeline(
     deduplicator = Deduplicator(config.deduplication)
     processed_channels, duplicates_merged = deduplicator.deduplicate(normalized_channels)
 
-    # Step 5: Enrich
-    logger.info("Step 5: Enriching channels...")
+    # Step 5: Inspect media facts. This stage is deliberately soft-fail:
+    # individual failures and budget exhaustion remain "unchecked".
+    if config.stream_health.enabled and not skip_stream_health:
+        logger.info("Step 5: Inspecting bounded stream health...")
+        health_started = time.monotonic()
+        health_processor = StreamHealthProcessor(config.stream_health)
+        processed_channels, health_summary = await health_processor.enrich(
+            processed_channels
+        )
+        logger.info(
+            "Stream health completed "
+            f"available={health_summary.available} "
+            f"restricted={health_summary.restricted} "
+            f"unavailable={health_summary.unavailable} "
+            f"unchecked={health_summary.unchecked} "
+            f"duration_seconds={time.monotonic() - health_started:.2f}"
+        )
+    else:
+        logger.info("Step 5: Skipping stream health")
+
+    # Step 6: Enrich
+    logger.info("Step 6: Enriching channels...")
     enricher = Enricher(
         base_dir / config.enrichment.get("flavor_rules_file", "rules/flavor_rules.json"),
         base_dir / config.enrichment.get("category_rules_file", "rules/category_rules.json"),
@@ -134,8 +161,8 @@ async def run_pipeline(
         processing_time_seconds=round(processing_time, 2),
     )
 
-    # Step 6: Export
-    logger.info("Step 6: Exporting results...")
+    # Step 7: Export
+    logger.info("Step 7: Exporting results...")
     json_exporter = JsonExporter(config.output, base_dir)
     json_exporter.backup_previous()
     json_exporter.export(processed_channels, metadata, taxonomies=taxonomies)
@@ -163,9 +190,20 @@ def main() -> None:
         action="store_true",
         help="Skip stream validation for faster testing",
     )
+    parser.add_argument(
+        "--skip-stream-health",
+        action="store_true",
+        help="Skip bounded ffprobe inspection",
+    )
     args = parser.parse_args()
 
-    exit_code = asyncio.run(run_pipeline(args.config, args.skip_validation))
+    exit_code = asyncio.run(
+        run_pipeline(
+            args.config,
+            skip_validation=args.skip_validation,
+            skip_stream_health=args.skip_stream_health,
+        )
+    )
     sys.exit(exit_code)
 
 

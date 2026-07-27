@@ -344,6 +344,13 @@ class AiroPlaybackDiagnostics extends Equatable {
     this.hardwareAccelerated,
     this.droppedFrames,
     this.bufferedPosition,
+    this.videoWidth,
+    this.videoHeight,
+    this.framesPerSecond,
+    this.audioCodecName,
+    this.audioBitrateKbps,
+    this.audioChannels,
+    this.failoverSuggested = false,
   }) : detailCodes = List.unmodifiable(detailCodes);
 
   final String backendId;
@@ -352,6 +359,19 @@ class AiroPlaybackDiagnostics extends Equatable {
   final bool? hardwareAccelerated;
   final int? droppedFrames;
   final Duration? bufferedPosition;
+  final int? videoWidth;
+  final int? videoHeight;
+  final double? framesPerSecond;
+  final String? audioCodecName;
+  final int? audioBitrateKbps;
+  final int? audioChannels;
+  final bool failoverSuggested;
+
+  bool get isLowFramerate => framesPerSecond != null && framesPerSecond! < 29;
+
+  String? get resolution => videoWidth != null && videoHeight != null
+      ? '${videoWidth}x$videoHeight'
+      : null;
   final List<String> detailCodes;
 
   @override
@@ -363,6 +383,13 @@ class AiroPlaybackDiagnostics extends Equatable {
         'hardwareAccelerated: $hardwareAccelerated, '
         'droppedFrames: $droppedFrames, '
         'bufferedPosition: $bufferedPosition, '
+        'videoWidth: $videoWidth, '
+        'videoHeight: $videoHeight, '
+        'framesPerSecond: $framesPerSecond, '
+        'audioCodecName: $audioCodecName, '
+        'audioBitrateKbps: $audioBitrateKbps, '
+        'audioChannels: $audioChannels, '
+        'failoverSuggested: $failoverSuggested, '
         'detailCodes: $detailCodes'
         ')';
   }
@@ -375,6 +402,13 @@ class AiroPlaybackDiagnostics extends Equatable {
     hardwareAccelerated,
     droppedFrames,
     bufferedPosition,
+    videoWidth,
+    videoHeight,
+    framesPerSecond,
+    audioCodecName,
+    audioBitrateKbps,
+    audioChannels,
+    failoverSuggested,
     detailCodes,
   ];
 }

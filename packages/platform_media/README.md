@@ -18,12 +18,16 @@ future native media adapters consume these contracts through stable interfaces.
   boundaries.
 - Shared media error taxonomy for category, severity, retryability, stable user
   message keys, safe context refs, and redacted diagnostic handles.
+- Bounded mpv runtime diagnostics for actual codec/resolution/frame rate,
+  dropped frames, audio facts, and cache duration. The service polls only while
+  playing and turns low-FPS/heavy-drop readings into a stable failover
+  suggestion; failures leave playback untouched.
 
-This package does not perform native decoder probing yet, inspect raw media
-files, own route selection, localize user-facing copy, upload analytics, export
-support bundles, or decide Airo TV product UX. Native adapters should plug in
-behind `AiroMediaCapabilityDetector`, and backend-specific failures should map
-into `AiroMediaErrorClassifier`.
+This package does not run ffprobe on-device, inspect raw media files, own route
+selection, localize user-facing copy, upload analytics, export support bundles,
+or decide Airo TV product UX. Native adapters should plug in behind
+`AiroMediaCapabilityDetector`, and backend-specific failures should map into
+`AiroMediaErrorClassifier`.
 
 ## Usage
 

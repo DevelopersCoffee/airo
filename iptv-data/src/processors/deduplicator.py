@@ -217,6 +217,7 @@ class Deduplicator:
             "url": channel.stream_url,
             "health": health,
             "feedId": attrs.get("feed_id"),
+            "advertisedQuality": attrs.get("quality"),
             "labelCorrect": attrs.get("label_correct") is True,
             "framesPerSecond": attrs.get("fps"),
             "height": attrs.get("height"),

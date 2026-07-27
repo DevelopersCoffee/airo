@@ -646,6 +646,7 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
     setState(() => _showContextMenu = false);
     final channel = state.currentChannel;
     final metrics = state.metrics;
+    final playback = state.playbackStats;
     final redactedSource = redactedUriForLog(
       channel == null ? null : Uri.tryParse(channel.streamUrl),
     );
@@ -663,6 +664,32 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
               Text('Bitrate: ${metrics.currentBitrate} kbps'),
               Text('Network: ${metrics.networkQuality.label}'),
             ],
+            if (playback?.codec != null)
+              Text('Video codec: ${playback!.codec}'),
+            if (playback?.resolution != null)
+              Text('Resolution: ${playback!.resolution}'),
+            if (playback?.framesPerSecond != null)
+              Text(
+                'Frame rate: '
+                '${playback!.framesPerSecond!.toStringAsFixed(2)} fps',
+              ),
+            if (playback?.droppedFrames != null)
+              Text('Dropped frames: ${playback!.droppedFrames}'),
+            if (playback?.audioCodec != null)
+              Text('Audio codec: ${playback!.audioCodec}'),
+            if (playback?.audioBitrateKbps != null)
+              Text('Audio bitrate: ${playback!.audioBitrateKbps} kbps'),
+            if (playback?.audioChannels != null)
+              Text('Audio channels: ${playback!.audioChannels}'),
+            if (playback?.cacheDuration != null)
+              Text(
+                'Cache: '
+                '${playback!.cacheDuration!.inMilliseconds / 1000} seconds',
+              ),
+            if (playback?.failoverSuggested == true)
+              const Text(
+                'Playback is degraded. Try the next healthy stream source.',
+              ),
             Text('Buffer health: ${state.bufferStatus.bufferHealth}'),
           ],
         ),

@@ -107,6 +107,22 @@ then unavailable, followed by label, frame-rate, resolution, bitrate, provider
 priority, and URL tie-breakers. `streamUrl` is the first source and
 `qualityUrls` retains the remaining URLs for current clients.
 
+When the bounded `stream_health` stage receives valid ffprobe output, the
+source also carries a `healthDetails` block:
+
+- `status`: `available`, `restricted`, `unavailable`, or `unchecked`
+- `video`: codec, actual width/height, and rational frame rate
+- `audio`: codec, bitrate, and channel count when reported
+- `lowFramerate`: actual frame rate is below the configured 29 fps threshold
+- `mislabeled`: advertised height differs from the actual probed height
+- `actualQuality`: actual height label; authoritative over advertised quality
+
+The runner uses capped concurrency, a per-source timeout, and a global budget.
+Missing ffprobe, malformed output, or exhausted budgets produce `unchecked`;
+they never delete a source or block artifact publication. Restricted responses
+remain retained and are never treated as dead. Optional average-bitrate
+sampling is off by default because it increases CI network time.
+
 `provenance` is `matched` only for a trusted upstream identity; unjoined
 M3U/custom entries are exported as `unmatched` without changing their
 name/group. Unavailable-only channels are exported with `isWorking: false`.
@@ -116,16 +132,15 @@ user-visible content.
 
 ## 🔄 GitHub Actions
 
-The pipeline runs automatically via `.github/workflows/iptv_sanity.yml`:
-- **Daily at 00:00 UTC** (scheduled)
-- **On push to main** (when `iptv-data/` files change)
-- **Manual trigger** (workflow_dispatch)
+The pipeline runs via `.github/workflows/iptv_sanity.yml`:
 
-The workflow:
-1. Runs linting and tests
-2. Executes the pipeline
-3. **Publishes output to GitHub Gist** (publicly accessible)
-4. Uploads artifacts for 30-day retention
+- On release tags
+- By explicit manual trigger (`workflow_dispatch`)
+
+The workflow installs the runner `ffprobe`, runs linting and fixtures, executes
+the whole pipeline under a 15-minute process timeout (the health stage has its
+own shorter budget), publishes configured output, and uploads artifacts for
+30-day retention.
 
 ## 🔧 Gist Setup (Required)
 

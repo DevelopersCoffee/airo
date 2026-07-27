@@ -33,6 +33,9 @@ abstract class MpvPlayerFacade {
 
   Future<void> setRate(double value);
 
+  /// Returns only bounded, non-sensitive playback properties.
+  Future<MpvDiagnosticSnapshot> diagnostics();
+
   Future<void> dispose();
 }
 
@@ -41,4 +44,28 @@ class MpvOpenResult {
 
   final Duration duration;
   final bool hardwareAccelerated;
+}
+
+class MpvDiagnosticSnapshot {
+  const MpvDiagnosticSnapshot({
+    this.videoCodec,
+    this.videoWidth,
+    this.videoHeight,
+    this.framesPerSecond,
+    this.droppedFrames,
+    this.audioCodec,
+    this.audioBitrateKbps,
+    this.audioChannels,
+    this.cacheDuration,
+  });
+
+  final String? videoCodec;
+  final int? videoWidth;
+  final int? videoHeight;
+  final double? framesPerSecond;
+  final int? droppedFrames;
+  final String? audioCodec;
+  final int? audioBitrateKbps;
+  final int? audioChannels;
+  final Duration? cacheDuration;
 }

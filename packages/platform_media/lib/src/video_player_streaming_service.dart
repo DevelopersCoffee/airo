@@ -32,6 +32,7 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
   StreamingState _state = StreamingState();
   Timer? _bufferMonitor;
   Timer? _metricsTimer;
+  bool _diagnosticsPollInFlight = false;
   DateTime? _loadStartTime;
   bool _isBackgroundAudioMode = false;
 
@@ -430,7 +431,7 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
 
   void _startMetricsCollection() {
     _metricsTimer?.cancel();
-    _metricsTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+    _metricsTimer = Timer.periodic(const Duration(seconds: 5), (_) async {
       if (_state.isPlaying) {
         _updateState(
           _state.copyWith(
@@ -442,6 +443,16 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
             ),
           ),
         );
+        if (!_diagnosticsPollInFlight) {
+          _diagnosticsPollInFlight = true;
+          try {
+            await _engine.diagnostics();
+          } on Object {
+            // Diagnostics are optional and never affect playback.
+          } finally {
+            _diagnosticsPollInFlight = false;
+          }
+        }
       }
     });
   }
@@ -800,9 +811,16 @@ AiroPlaybackStats? playbackStatsFromEngineState(AiroPlaybackState engineState) {
       .firstOrNull;
   final stats = AiroPlaybackStats(
     codec: engineState.diagnostics?.codecName,
-    width: quality?.width,
-    height: quality?.height,
+    width: engineState.diagnostics?.videoWidth ?? quality?.width,
+    height: engineState.diagnostics?.videoHeight ?? quality?.height,
     bitrateKbps: quality?.bitrateKbps,
+    framesPerSecond: engineState.diagnostics?.framesPerSecond,
+    droppedFrames: engineState.diagnostics?.droppedFrames,
+    audioCodec: engineState.diagnostics?.audioCodecName,
+    audioBitrateKbps: engineState.diagnostics?.audioBitrateKbps,
+    audioChannels: engineState.diagnostics?.audioChannels,
+    cacheDuration: engineState.diagnostics?.bufferedPosition,
+    failoverSuggested: engineState.diagnostics?.failoverSuggested ?? false,
   );
   return stats.hasValues ? stats : null;
 }
