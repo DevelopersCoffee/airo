@@ -1856,23 +1856,23 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                     ),
                     child: Slider(
                       key: const ValueKey('iptv-player-vod-seek-bar'),
-                      value: displayPosition.inSeconds.toDouble().clamp(
+                      value: displayPosition.inMilliseconds.toDouble().clamp(
                         0.0,
-                        state.duration.inSeconds.toDouble(),
+                        state.duration.inMilliseconds.toDouble(),
                       ),
                       min: 0,
-                      max: state.duration.inSeconds.toDouble(),
+                      max: state.duration.inMilliseconds.toDouble(),
                       activeColor: Colors.white,
                       inactiveColor: Colors.white38,
                       onChanged: (value) {
                         setState(() {
                           _vodSeekDragPosition = Duration(
-                            seconds: value.round(),
+                            milliseconds: value.round(),
                           );
                         });
                       },
                       onChangeEnd: (value) {
-                        final target = Duration(seconds: value.round());
+                        final target = Duration(milliseconds: value.round());
                         service.seek(target);
                         setState(() => _vodSeekDragPosition = null);
                       },

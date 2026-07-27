@@ -395,8 +395,8 @@ void main() {
     expect(seekBar, findsOneWidget);
 
     final slider = tester.widget<Slider>(seekBar);
-    expect(slider.max, 120.0);
-    expect(slider.value, 30.0);
+    expect(slider.max, 120000.0);
+    expect(slider.value, 30000.0);
   });
 
   testWidgets('hides the VOD seek bar for live streams', (tester) async {
