@@ -1,6 +1,8 @@
 name: IPTV Sanity Pipeline
 
 on:
+  schedule:
+    - cron: '17 2 * * 1'
   push:
     tags:
       - 'v*'
@@ -86,6 +88,37 @@ jobs:
             echo "Error: Channel count ($CHANNEL_COUNT) below minimum threshold (50)"
             exit 1
           fi
+
+      - name: Build bounded EPG grab input
+        run: |
+          curl --fail --location --retry 3 \
+            https://iptv-org.github.io/api/guides.json \
+            --output /tmp/iptv-org-guides.json
+          python -m src.epg_artifacts generate \
+            --channels output/current/iptv_channels.json \
+            --guides /tmp/iptv-org-guides.json \
+            --output /tmp/airo.channels.xml
+
+      - name: Run upstream EPG grabber
+        working-directory: ${{ runner.temp }}
+        run: |
+          git clone --depth 1 https://github.com/iptv-org/epg.git iptv-org-epg
+          cd iptv-org-epg
+          npm ci
+          timeout 30m npm run grab -- \
+            --channels=/tmp/airo.channels.xml \
+            --output=/tmp/airo-guide.xml \
+            --maxConnections=10
+
+      - name: Publish per-country EPG artifacts
+        run: |
+          python -m src.epg_artifacts publish \
+            --channels output/current/iptv_channels.json \
+            --grabbed /tmp/airo-guide.xml \
+            --output-directory output/current \
+            --manifest output/current/manifest.json \
+            --minimum-programmes 1 \
+            --minimum-coverage-percent 70
       
       - name: Upload artifacts
         uses: actions/upload-artifact@v7

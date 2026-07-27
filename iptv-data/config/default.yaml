@@ -82,6 +82,12 @@ processing:
     max_concurrent: 4
     low_framerate_threshold: 29
     sample_bitrate: false
+
+  epg:
+    min_programmes: 1
+    min_coverage_percent: 70
+    max_connections: 10
+    timeout_minutes: 30
   
   deduplication:
     enabled: true

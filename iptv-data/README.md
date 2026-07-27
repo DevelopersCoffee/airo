@@ -100,6 +100,11 @@ hard-fails the run so the current artifact is not silently replaced.
 
 The pipeline produces:
 
+- `guide_IN.xml.gz`, `guide_US.xml.gz`, and `guide_GB.xml.gz` from the
+  bounded iptv-org/epg grab stage. Guide filenames and SHA-256 values are
+  published in `manifest.json`; a zero-programme or sub-70% India coverage
+  run leaves the previously published guide artifacts untouched.
+
 - `output/current/iptv_channels.json` - Main channel data
 - `output/current/taxonomies.json` - Canonical categories, represented
   countries, regions, and languages with a deterministic checksum
