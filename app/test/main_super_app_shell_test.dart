@@ -21,7 +21,7 @@ void main() {
       (route) => route.path,
     );
 
-    expect(paths, ['/money/vault', '/iptv', '/iptv/player']);
+    expect(paths, ['vault', '/iptv', '/iptv/player', '/vod']);
   });
 
   test('super-app registry keeps the vault prefix aligned with its route', () {

@@ -113,7 +113,8 @@ Issue `#1187` implements the first accepted composition slice:
 - `core_product_shell` provides open-ended `ShellId`, `AppModule`, and
   per-shell `ModuleRegistry` contracts.
 - Registry composition rejects duplicate enabled module IDs and conflicting
-  top-level route paths/names before application bootstrap.
+  route paths/names, including nested route identities, before application
+  bootstrap.
 - The super-app, Airo TV, and Airo Coins entrypoints each create a fresh
   shell-scoped registry.
 - Coins and IPTV declare supported shells once and preserve their existing
@@ -130,11 +131,12 @@ stage. Product-only Kotlin host channels live under `src/product`; the Coins
 profile compiles only `src/coins`. This is a real native compilation boundary,
 not a Dart feature flag.
 
-Route rendering is still partially shell-owned: mobile's stateful navigation
-tree consumes the registry for inclusion, lifecycle, and provider overrides
-while retaining its compatibility routes. Moving every nested mobile branch
-into module-provided route bundles remains migration work and must preserve
-deep links.
+Mobile's stateful navigation tree now mounts Coin Vault and IPTV route bundles
+directly from the registry. Shell-only navigation destinations such as Home,
+Guide, and Settings remain owned by the super-app because they describe its
+chrome rather than a reusable module. Parity tests preserve `/money/vault`,
+`/iptv`, `/iptv/player`, and `/vod`, and startup fails before `runApp` when a
+required module is absent or the registry belongs to another shell.
 
 Downloaded executable plugins are not introduced by this decision. Flutter
 Android deferred components must be compiled into and uploaded as one Android

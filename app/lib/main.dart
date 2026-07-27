@@ -81,11 +81,12 @@ void main() async {
 
   // Initialize SharedPreferences for IPTV caching
   final prefs = await SharedPreferences.getInstance();
+  final moduleRegistry = buildMainModuleRegistry();
+  final router = AppRouter.createRouter(moduleRegistry: moduleRegistry);
   final epgReminderGateway = FlutterLocalNotificationsEpgReminderGateway(
-    onNotificationRoute: AppRouter.router.go,
+    onNotificationRoute: router.go,
   );
   await epgReminderGateway.initialize();
-  final moduleRegistry = buildMainModuleRegistry();
 
   runApp(
     ProviderScope(
@@ -94,7 +95,7 @@ void main() async {
         epgReminderGateway: epgReminderGateway,
         moduleRegistry: moduleRegistry,
       ),
-      child: const AiroApp(),
+      child: AiroApp(router: router),
     ),
   );
 
@@ -124,10 +125,8 @@ void main() async {
 
 /// Builds the modules composed into the phone/tablet super-app.
 ///
-/// The router currently supplies shell-specific navigation chrome, while the
-/// registry owns module inclusion, lifecycle, and provider overrides. Route
-/// extraction into shell adapters remains additive so existing deep links are
-/// preserved during the migration.
+/// Shell-specific navigation chrome remains in [AppRouter], while the registry
+/// owns module inclusion, routes, lifecycle, and provider overrides.
 @visibleForTesting
 ModuleRegistry buildMainModuleRegistry() {
   return ModuleRegistry(shell: ShellId.mobile)

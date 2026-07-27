@@ -71,10 +71,10 @@ core_product_shell validation
 
 - [x] Define the mobile registry factory and module adapters.
 - [x] Route module provider overrides and lifecycle through the registry.
-- [ ] Move shell-nested module destinations into registry route bundles while
+- [x] Move shell-nested module destinations into registry route bundles while
       retaining route compatibility.
 - [x] Add super-app composition parity tests for stable route prefixes.
-- [ ] Add initial-journey parity coverage for the registry-owned route tree.
+- [x] Add initial-journey parity coverage for the registry-owned route tree.
 
 ### Checkpoint: Super-app shell
 
@@ -101,7 +101,7 @@ core_product_shell validation
 | Static registry state leaks across tests | High | Use one registry instance per shell/bootstrap. |
 | Route migration breaks deep links | High | Preserve paths/names and assert exact parity. |
 | Focused manifest still includes forbidden native packages | High | Add manifest/dependency policy validation before claiming size reduction. |
-| Registry validation inspects only top-level routes | Medium | Start with deterministic top-level conflicts; add recursive route identity validation before super-app migration. |
+| Nested route identity conflicts make composition ambiguous | Medium | Recursively validate resolved module route paths and names before startup. |
 | Compatibility façade becomes permanent | Medium | Track removal in this issue and ADR migration checklist. |
 
 ## Open Questions

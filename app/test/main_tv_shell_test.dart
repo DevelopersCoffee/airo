@@ -20,13 +20,22 @@ void main() {
     expect(module.isEnabledForShell(ShellId.tv), isTrue);
     expect(module.isEnabledForShell(ShellId.coins), isFalse);
 
-    for (final shell in [ShellId.mobile, ShellId.tv]) {
-      final routes = module.routesFor(shell).whereType<GoRoute>().toList();
-      expect(routes.map((route) => (route.path, route.name)), [
-        ('/iptv', 'iptv'),
-        ('/iptv/player', 'iptv_player'),
-      ]);
-    }
+    final tvRoutes = module.routesFor(ShellId.tv).whereType<GoRoute>().toList();
+    final mobileRoutes = module
+        .routesFor(ShellId.mobile)
+        .whereType<GoRoute>()
+        .toList();
+    const sharedIdentities = [
+      ('/iptv', 'iptv'),
+      ('/iptv/player', 'iptv_player'),
+    ];
+
+    expect(tvRoutes.map((route) => (route.path, route.name)), sharedIdentities);
+    expect(
+      mobileRoutes.take(2).map((route) => (route.path, route.name)),
+      sharedIdentities,
+    );
+    expect((mobileRoutes.last.path, mobileRoutes.last.name), ('/vod', 'VOD'));
   });
 
   test('TV deferred initialization uses the supplied registry', () async {

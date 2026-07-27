@@ -1,8 +1,6 @@
-import 'dart:typed_data';
-
-import 'package:feature_coin/feature_coin.dart';
+import 'package:core_product_shell/core_product_shell.dart';
+import 'package:feature_iptv/feature_iptv.dart';
 import 'package:go_router/go_router.dart';
-import 'package:share_plus/share_plus.dart';
 import '../../features/auth/screens/login_screen.dart';
 import '../../features/auth/screens/register_screen.dart';
 import '../../features/bill_split/presentation/screens/bill_split_screen.dart';
@@ -12,8 +10,6 @@ import '../../features/agent_chat/presentation/screens/model_library_screen.dart
 import '../../features/agent_chat/presentation/screens/notifications_screen.dart';
 import '../../features/agent_chat/presentation/screens/profile_screen.dart';
 import '../../features/settings/presentation/screens/settings_hub_screen.dart';
-import 'package:feature_iptv/feature_iptv.dart';
-import '../../features/iptv/phone_media_local_picker.dart';
 import '../../features/games/presentation/screens/games_hub_screen.dart';
 import '../../features/mind/presentation/screens/mind_screen.dart';
 import '../../features/music/presentation/screens/music_screen.dart';
@@ -30,6 +26,7 @@ import '../../features/life_track/presentation/screens/track_detail_screen.dart'
 import '../../features/life_track/presentation/screens/track_list_screen.dart';
 import '../../core/auth/auth_service.dart';
 import '../../core/app/app_shell.dart';
+import '../../features/iptv/phone_media_local_picker.dart';
 import '../config/feature_flags.dart';
 import '../http/http_dog.dart';
 import 'route_names.dart';
@@ -38,9 +35,20 @@ class AppRouter {
   // Private constructor to prevent instantiation
   AppRouter._();
 
-  static final GoRouter router = createRouter();
+  static GoRouter createRouter({
+    required ModuleRegistry moduleRegistry,
+    String initialLocation = '/money',
+  }) {
+    if (moduleRegistry.shell != ShellId.mobile) {
+      throw ArgumentError.value(
+        moduleRegistry.shell,
+        'moduleRegistry.shell',
+        'The super-app router requires ShellId.mobile.',
+      );
+    }
+    final coinVaultRoutes = _requiredModuleRoutes(moduleRegistry, 'coin_vault');
+    final iptvRoutes = _requiredModuleRoutes(moduleRegistry, 'iptv');
 
-  static GoRouter createRouter({String initialLocation = '/money'}) {
     return GoRouter(
       initialLocation: initialLocation,
       redirect: (context, state) async {
@@ -161,32 +169,7 @@ class AppRouter {
                       builder: (context, state) =>
                           const BudgetManagementScreen(),
                     ),
-                    GoRoute(
-                      path: 'vault',
-                      name: RouteNames.coinVault,
-                      builder: (context, state) => const VaultGateScreen(),
-                      routes: [
-                        GoRoute(
-                          path: 'add/:type',
-                          name: RouteNames.coinVaultAdd,
-                          builder: (context, state) => VaultRecordFormScreen(
-                            recordType: VaultRecordType.values.byName(
-                              state.pathParameters['type']!,
-                            ),
-                          ),
-                        ),
-                        GoRoute(
-                          path: 'edit/:type/:key',
-                          name: RouteNames.coinVaultEdit,
-                          builder: (context, state) => VaultRecordFormScreen(
-                            recordType: VaultRecordType.values.byName(
-                              state.pathParameters['type']!,
-                            ),
-                            recordKey: state.pathParameters['key'],
-                          ),
-                        ),
-                      ],
-                    ),
+                    ...coinVaultRoutes,
                     GoRoute(
                       path: 'groups',
                       name: RouteNames.coinsGroups,
@@ -271,27 +254,7 @@ class AppRouter {
               ],
             ),
             // Stream branch
-            StatefulShellBranch(
-              routes: [
-                GoRoute(
-                  path: '/iptv',
-                  name: 'Stream',
-                  builder: (context, state) => IPTVScreen(
-                    onOpenVod: () => context.go('/vod'),
-                    onPickLocalMediaForTv: kEnablePhoneMediaReceiverExperimental
-                        ? pickPhoneLocalMediaForTv
-                        : null,
-                    deepLinkIntent: IptvDeepLinkIntent.tryParse(state.uri),
-                    onShareVideoFrame: _shareIptvVideoFrame,
-                  ),
-                ),
-                GoRoute(
-                  path: '/vod',
-                  name: 'VOD',
-                  builder: (context, state) => const VodScreen(),
-                ),
-              ],
-            ),
+            StatefulShellBranch(routes: iptvRoutes),
             // Games branch
             StatefulShellBranch(
               routes: [
@@ -398,19 +361,21 @@ class AppRouter {
       ),
     );
   }
-}
 
-Future<void> _shareIptvVideoFrame(Uint8List pngBytes) async {
-  await SharePlus.instance.share(
-    ShareParams(
-      files: [
-        XFile.fromData(
-          pngBytes,
-          mimeType: 'image/png',
-          name: 'airo-tv-frame.png',
-        ),
-      ],
-      subject: 'Airo TV video frame',
-    ),
-  );
+  static List<GoRoute> _requiredModuleRoutes(
+    ModuleRegistry registry,
+    String moduleId,
+  ) {
+    final routes = registry
+        .routesForModule(moduleId)
+        .whereType<GoRoute>()
+        .toList(growable: false);
+    if (routes.isEmpty) {
+      throw ModuleCompositionException(
+        'Required module "$moduleId" has no GoRoute bundle for '
+        'shell "${registry.shell.value}".',
+      );
+    }
+    return routes;
+  }
 }
