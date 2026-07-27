@@ -165,11 +165,42 @@ Applied by rust-architect to any change under `rust/`.
 - [ ] Replay of any operation permutation converges
 - [ ] Revocation is monotonic — applying it twice equals applying it once
 
+### The plan's code is code
+- [ ] **[CI]** Every Rust block in a plan compiled before the plan was approved — paste it into a scratch crate, run `cargo clippy --all-targets -- -D warnings`. Three consecutive revisions shipped code that could not compile; each cost a reviewer more time than the check does.
+- [ ] Every "Interfaces" block matches the code in its own task, field for field — later tasks are written against the block, not the code
+- [ ] Every call site in a later task is checked against the signature the earlier task actually produced
+- [ ] Step-4 test counts, "Expected:" lines and commit messages match their own step; copy-pasted boilerplate is how a plan stops being an oracle
+
 ### Types over comments
-- [ ] Where a comment asserts a property, ask whether a type could hold it instead — `RevocationSubject` existed while the API still took `&str`, so the invariant never became enforceable
+- [ ] An invariant a comment asserts is expressed as a type, or the comment records why it cannot be — `RevocationSubject` existed while the API still took `&str`, so the invariant never became enforceable
+- [ ] No doc comment claims a property the call does not have — `verify` documented as "strict verification" when `verify_strict` is the strict call is a false claim in the security-critical direction
 - [ ] Impossible states are unrepresentable, not merely untested: no route to a guarded value via `Debug`, `Clone`, serde, a public field, or a pattern match
-- [ ] A convenience overload that accepts the looser type re-opens what the newtype closed
+- [ ] A `&str` convenience method beside a tagged subject type is justified or removed — a convenience overload accepting the looser type re-opens what the newtype closed, and it trains the next call site
 - [ ] APIs cannot be called in the wrong order — prefer consuming methods and typestate over documented sequencing
+- [ ] A returned obligation is consumed by a parameter the caller must supply, or an enum the caller must match; `#[must_use]` is a lint, not a mechanism
+- [ ] `#[must_use]` on a `-> bool` getter enforces nothing — the caller being warned is the one who never calls it
+- [ ] A constructor asserting provenance takes a witness only the claimed producer can mint, or stays `pub(crate)` until that producer exists
+- [ ] A typestate is only as strong as its narrowest visibility — a `pub(crate)` back door guards nothing once the crate holds more than one subsystem; gate the constructor on a witness type with a private field
+- [ ] Signing and derivation entry points take a domain-tagged payload type, never `&[u8]` — a raw signing oracle over the root key cannot be domain-separated by its callers' good intentions
+- [ ] A struct whose fields are covered by a signature or an AAD does not expose those fields as `pub` mutable
+- [ ] A helper written to hold an invariant (checked length prefixes, canonicalization) is used at **every** site that invariant applies to — one built and unused is worse than none, because it reads as done
+
+### Public surface
+- [ ] `pub` vs `pub(crate)` is decided per item, not per module; `pub mod` on a module holding key material exports every future item added to it
+- [ ] No key-minting or envelope-building primitive is reachable outside the aggregate that owns the revocation ledger — state created around the aggregate can never be shredded
+- [ ] **[CI]** Every `pub(crate)` item has a non-test caller or is `#[cfg(test)]` — `cargo clippy` builds the lib without `cfg(test)` and `dead_code` fails `-D warnings`
+- [ ] No public error variant is unconstructible in the phase that ships it
+
+### Lints and manifest
+- [ ] `#![forbid(unsafe_code)]` (or `[lints.rust] unsafe_code = "forbid"`) on any new pure-Rust crate — "no unsafe" is otherwise a description, not a property
+- [ ] Large fixture arrays are `static`, not `const` — `clippy::large_const_arrays` fails `-D warnings` and a `const` array is materialised at every use site
+- [ ] `x % n == 0` is written `x.is_multiple_of(n)` — `clippy::manual_is_multiple_of` fails `-D warnings`
+- [ ] No blank line between a doc comment and its item — `clippy::empty_line_after_doc_comments` fails `-D warnings`; a doc comment orphaned by a deleted const silently attaches to the next item
+- [ ] Fixed-size arrays above 32 bytes have their serde representation decided **in the design**, not left to the implementer — it is the on-disk format, and `[u8; 64]` has no serde impl
+- [ ] Dependency floors use a caret (`"4.1.3"`), never an open `">=4.1.3"` — an open floor lets a future major resolve beside the transitive one and links the crate twice
+- [ ] `default-features = false` on a crypto crate is diffed against that crate's default list and the loss recorded — dropping `ed25519-dalek`'s `fast` removes `curve25519-dalek/precomputed-tables`
+- [ ] A workspace `[profile.release]` is measured on **every** member, not only the new one; `opt-level`/`codegen-units` belong in `[profile.release.package.<name>]`, and `panic = "abort"` is never set where `catch_unwind` carries FFI errors
+- [ ] The accepted-transitive-`unsafe` note names the crates actually in `cargo tree`, verified, not the ones assumed to be there
 
 ### `unsafe`
 - [ ] The crate itself contains no `unsafe`
