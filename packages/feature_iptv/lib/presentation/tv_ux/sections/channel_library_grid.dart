@@ -253,6 +253,9 @@ class _ChannelTile extends StatelessWidget {
           logoUrl: channel.effectiveLogoUrl,
           initials: _initialsFor(channel.name),
           onTap: onSelected == null ? null : () => onSelected!(channel),
+          onLongPress: onMultiviewToggle == null
+              ? null
+              : () => onMultiviewToggle!(channel),
         ),
         Positioned(
           top: 7,
@@ -263,14 +266,9 @@ class _ChannelTile extends StatelessWidget {
           Positioned(
             top: 4,
             right: 4,
-            child: TvFocusable(
-              key: ValueKey('channel-multiview-${channel.id}'),
-              semanticLabel: inMultiview
-                  ? 'Remove ${channel.name} from multiview'
-                  : 'Add ${channel.name} to multiview',
-              onSelect: () => onMultiviewToggle!(channel),
-              borderRadius: 20,
+            child: ExcludeFocus(
               child: Material(
+                key: ValueKey('channel-multiview-${channel.id}'),
                 color: Colors.black.withValues(alpha: 0.68),
                 shape: const CircleBorder(),
                 child: IconButton(

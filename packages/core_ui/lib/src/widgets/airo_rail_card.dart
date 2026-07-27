@@ -57,6 +57,7 @@ class AiroRailCard extends StatelessWidget {
 
     return TvFocusable(
       onSelect: onTap,
+      onSecondaryAction: onLongPress,
       autofocus: autofocus,
       borderRadius: 12,
       focusColor: focusColor,

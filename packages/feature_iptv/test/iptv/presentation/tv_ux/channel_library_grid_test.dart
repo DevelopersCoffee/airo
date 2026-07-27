@@ -1,6 +1,8 @@
 import 'package:feature_iptv/application/providers/channel_filters_provider.dart';
 import 'package:feature_iptv/presentation/tv_ux/sections/channel_library_grid.dart';
+import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:platform_channels/platform_channels.dart';
 import 'package:platform_streams/platform_streams.dart';
@@ -134,6 +136,68 @@ void main() {
     await tester.pump();
 
     expect(toggled?.id, 'one');
+  });
+
+  testWidgets('one D-pad press moves exactly one channel tile', (tester) async {
+    final gridChannels = List<IPTVChannel>.generate(
+      5,
+      (index) => IPTVChannel(
+        id: 'channel-$index',
+        name: 'Channel $index',
+        streamUrl: 'https://example.com/$index.m3u8',
+        group: 'General',
+      ),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SizedBox(
+            width: 800,
+            height: 600,
+            child: ChannelLibraryGrid(
+              channels: gridChannels,
+              metadataByChannelId: const {},
+              onChannelSelected: (_) {},
+              onMultiviewToggle: (_) {},
+            ),
+          ),
+        ),
+      ),
+    );
+
+    final cards = find.byType(MediaCard);
+    final firstTile = find.byKey(const ValueKey('channel-tile-channel-0'));
+    final tileFocusStops = tester
+        .widgetList<Focus>(
+          find.descendant(of: firstTile, matching: find.byType(Focus)),
+        )
+        .where(
+          (focus) =>
+              focus.focusNode != null && focus.focusNode!.canRequestFocus,
+        );
+    expect(
+      tileFocusStops,
+      hasLength(1),
+      reason: 'A channel box must contribute exactly one D-pad focus stop',
+    );
+    final firstCardFocus = tester.widget<Focus>(
+      find.descendant(of: cards.at(0), matching: find.byType(Focus)).first,
+    );
+    final secondCardFocus = tester.widget<Focus>(
+      find.descendant(of: cards.at(1), matching: find.byType(Focus)).first,
+    );
+    firstCardFocus.focusNode!.requestFocus();
+    await tester.pump();
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+    await tester.pumpAndSettle();
+
+    expect(
+      secondCardFocus.focusNode!.hasFocus,
+      isTrue,
+      reason: 'RIGHT must move from channel 0 directly to channel 1',
+    );
   });
 
   testWidgets('reports the currently visible channels for bounded scanning', (
