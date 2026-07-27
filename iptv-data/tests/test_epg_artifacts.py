@@ -73,6 +73,46 @@ def test_channels_xml_prefers_main_feed_then_language() -> None:
     assert report == {"IN": 1, "US": 1}
 
 
+def test_channels_xml_can_emit_bounded_fallback_guides() -> None:
+    xml, report = build_channels_xml(
+        _channels(),
+        [
+            {
+                "channel": "News.in",
+                "feed": "HD",
+                "site": "b.example",
+                "site_id": "preferred",
+                "lang": "hi",
+            },
+            {
+                "channel": "News.in",
+                "feed": "SD",
+                "site": "a.example",
+                "site_id": "fallback",
+                "lang": "hi",
+            },
+            {
+                "channel": "News.in",
+                "feed": "SD",
+                "site": "c.example",
+                "site_id": "excluded",
+                "lang": "hi",
+            },
+        ],
+        max_guides_per_channel=2,
+    )
+
+    rows = ET.fromstring(xml).findall("channel")
+    assert [row.get("site_id") for row in rows] == ["preferred", "fallback"]
+    assert [row.get("xmltv_id") for row in rows] == ["News.in", "News.in"]
+    assert report == {"IN": 1}
+
+
+def test_channels_xml_rejects_empty_guide_limit() -> None:
+    with pytest.raises(ValueError, match="at least 1"):
+        build_channels_xml(_channels(), [], max_guides_per_channel=0)
+
+
 def test_country_filter_bounds_grab_input_and_coverage_gate(tmp_path: Path) -> None:
     guides = [
         {

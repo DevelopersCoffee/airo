@@ -16,8 +16,11 @@ def build_channels_xml(
     channels_payload: dict[str, Any],
     guides: list[dict[str, Any]],
     countries: set[str] | None = None,
+    max_guides_per_channel: int = 1,
 ) -> tuple[bytes, dict[str, int]]:
-    """Join curated channels to one deterministic upstream guide row each."""
+    """Join curated channels to a bounded number of deterministic guide rows."""
+    if max_guides_per_channel < 1:
+        raise ValueError("max_guides_per_channel must be at least 1")
     selected_countries = {country.upper() for country in countries or set()}
     channels = {
         str(channel["id"]): channel
@@ -44,7 +47,7 @@ def build_channels_xml(
         languages = {str(language).lower() for language in channel.get("languages", [])}
         stream_sources = channel.get("streamSources") or []
         preferred_feed = stream_sources[0].get("feedId") if stream_sources else None
-        selected = min(
+        selected = sorted(
             candidates,
             key=lambda guide: (
                 0 if preferred_feed is not None and guide.get("feed") == preferred_feed else 1,
@@ -52,18 +55,19 @@ def build_channels_xml(
                 str(guide.get("site", "")),
                 str(guide.get("site_id", "")),
             ),
-        )
-        element = ET.SubElement(
-            root,
-            "channel",
-            {
-                "site": str(selected["site"]),
-                "lang": str(selected.get("lang") or "en"),
-                "xmltv_id": channel_id,
-                "site_id": str(selected["site_id"]),
-            },
-        )
-        element.text = str(channel.get("name") or channel_id)
+        )[:max_guides_per_channel]
+        for guide in selected:
+            element = ET.SubElement(
+                root,
+                "channel",
+                {
+                    "site": str(guide["site"]),
+                    "lang": str(guide.get("lang") or "en"),
+                    "xmltv_id": channel_id,
+                    "site_id": str(guide["site_id"]),
+                },
+            )
+            element.text = str(channel.get("name") or channel_id)
         matched_by_country[str(channel.get("country") or "ZZ").upper()] += 1
     ET.indent(root, space="  ")
     return (
@@ -197,6 +201,7 @@ def main() -> None:
     generate.add_argument("--guides", type=Path, required=True)
     generate.add_argument("--output", type=Path, required=True)
     generate.add_argument("--countries", nargs="+")
+    generate.add_argument("--max-guides-per-channel", type=int, default=1)
     publish = subparsers.add_parser("publish")
     publish.add_argument("--channels", type=Path, required=True)
     publish.add_argument("--grabbed", type=Path, required=True)
@@ -212,6 +217,7 @@ def main() -> None:
             channels_payload,
             _load_json(args.guides),
             set(args.countries or []),
+            args.max_guides_per_channel,
         )
         args.output.write_bytes(xml)
         print(json.dumps(report, sort_keys=True))

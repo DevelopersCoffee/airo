@@ -98,6 +98,7 @@ jobs:
             --channels output/current/iptv_channels.json \
             --guides /tmp/iptv-org-guides.json \
             --countries IN \
+            --max-guides-per-channel 2 \
             --output /tmp/airo.channels.xml
 
       - name: Run upstream EPG grabber
