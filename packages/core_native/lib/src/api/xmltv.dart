@@ -7,10 +7,10 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
 import '../frb_generated.dart';
 
-// These functions are ignored because they are not marked as `pub`: `append_title`, `attribute_value`, `days_from_civil`, `finish_current_next_programme`, `finish_programme`, `is_leap_year`, `parse_xmltv_timestamp_epoch_seconds`, `pending_programme`, `resolve_general_ref`, `valid_datetime`
+// These functions are ignored because they are not marked as `pub`: `append_programme_text`, `attribute_value`, `clean_text`, `days_from_civil`, `finish_current_next_programme`, `finish_programme`, `finish_xmltv_programme`, `is_leap_year`, `parse_xmltv_timestamp_epoch_seconds`, `pending_programme`, `programme_text_field`, `resolve_general_ref`, `update_programme_element`, `valid_datetime`
 // These functions are ignored because they have generic arguments: `parse_xmltv_current_next_reader`, `parse_xmltv_programmes_reader`
-// These types are ignored because they are neither used by any `pub` functions nor (for structs and enums) marked `#[frb(unignore)]`: `CurrentNextCandidate`, `PendingProgramme`
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`
+// These types are ignored because they are neither used by any `pub` functions nor (for structs and enums) marked `#[frb(unignore)]`: `CurrentNextCandidate`, `PendingProgramme`, `ProgrammeTextField`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`
 // These functions are ignored (category: IgnoreBecauseOwnerTyShouldIgnore): `default`, `default`
 
 Future<XmltvParseResult> parseXmltvProgrammes({
@@ -174,17 +174,47 @@ class XmltvProgramme {
   const XmltvProgramme({
     required this.channelId,
     required this.start,
+    required this.categories,
+    required this.isNew,
+    required this.isPremiere,
+    required this.previouslyShown,
     this.stop,
     this.title,
+    this.subtitle,
+    this.description,
+    this.episodeNumber,
+    this.iconUrl,
+    this.rating,
   });
   final String channelId;
   final String start;
   final String? stop;
   final String? title;
+  final String? subtitle;
+  final String? description;
+  final List<String> categories;
+  final String? episodeNumber;
+  final String? iconUrl;
+  final String? rating;
+  final bool isNew;
+  final bool isPremiere;
+  final bool previouslyShown;
 
   @override
   int get hashCode =>
-      channelId.hashCode ^ start.hashCode ^ stop.hashCode ^ title.hashCode;
+      channelId.hashCode ^
+      start.hashCode ^
+      stop.hashCode ^
+      title.hashCode ^
+      subtitle.hashCode ^
+      description.hashCode ^
+      categories.hashCode ^
+      episodeNumber.hashCode ^
+      iconUrl.hashCode ^
+      rating.hashCode ^
+      isNew.hashCode ^
+      isPremiere.hashCode ^
+      previouslyShown.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -194,5 +224,14 @@ class XmltvProgramme {
           channelId == other.channelId &&
           start == other.start &&
           stop == other.stop &&
-          title == other.title;
+          title == other.title &&
+          subtitle == other.subtitle &&
+          description == other.description &&
+          categories == other.categories &&
+          episodeNumber == other.episodeNumber &&
+          iconUrl == other.iconUrl &&
+          rating == other.rating &&
+          isNew == other.isNew &&
+          isPremiere == other.isPremiere &&
+          previouslyShown == other.previouslyShown;
 }

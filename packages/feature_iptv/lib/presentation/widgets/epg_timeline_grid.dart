@@ -25,9 +25,15 @@ import 'epg_program_progress.dart';
 /// extents via [ScrollController.positions] (e.g. `.positions.first`), not
 /// via `.position`.
 class EpgTimelineGrid extends ConsumerStatefulWidget {
-  const EpgTimelineGrid({super.key, this.onChannelSelect});
+  const EpgTimelineGrid({
+    super.key,
+    this.onChannelSelect,
+    this.onProgramSelect,
+  });
 
   final void Function(IPTVChannel channel)? onChannelSelect;
+  final void Function(IPTVChannel channel, CompactEpgProgram program)?
+  onProgramSelect;
 
   static const double pxPerMinute = 4.0;
   static const double rowHeight = 88.0;
@@ -154,7 +160,16 @@ class _EpgTimelineGridState extends ConsumerState<EpgTimelineGrid> {
                       scrollController: _timelineController,
                       dimensions: dimensions,
                       onProgramFocus: (offset) => _scrollTimelineTo(offset),
-                      onSelect: () => widget.onChannelSelect?.call(channel),
+                      onChannelSelect: () =>
+                          widget.onChannelSelect?.call(channel),
+                      onProgramSelect: (program) {
+                        final callback = widget.onProgramSelect;
+                        if (callback != null) {
+                          callback(channel, program);
+                        } else {
+                          widget.onChannelSelect?.call(channel);
+                        }
+                      },
                     );
                   },
                 ),
@@ -220,7 +235,8 @@ class _EpgChannelRow extends StatelessWidget {
     required this.scrollController,
     required this.dimensions,
     required this.onProgramFocus,
-    required this.onSelect,
+    required this.onChannelSelect,
+    required this.onProgramSelect,
   });
 
   final IPTVChannel channel;
@@ -230,7 +246,8 @@ class _EpgChannelRow extends StatelessWidget {
   final ScrollController scrollController;
   final TvUiDimensions dimensions;
   final void Function(double offset) onProgramFocus;
-  final VoidCallback onSelect;
+  final VoidCallback onChannelSelect;
+  final void Function(CompactEpgProgram program) onProgramSelect;
 
   @override
   Widget build(BuildContext context) {
@@ -247,7 +264,7 @@ class _EpgChannelRow extends StatelessWidget {
             // no XMLTV source configured yet) — selection must not depend on
             // EPG data being present.
             child: TvFocusable(
-              onSelect: onSelect,
+              onSelect: onChannelSelect,
               semanticLabel: channel.name,
               semanticHint: 'Press OK to play this channel',
               semanticButton: true,
@@ -289,7 +306,7 @@ class _EpgChannelRow extends StatelessWidget {
                         windowStart: windowStart,
                         windowDuration: windowDuration,
                         onFocus: onProgramFocus,
-                        onSelect: onSelect,
+                        onSelect: () => onProgramSelect(program),
                       ),
                   ],
                 ),

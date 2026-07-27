@@ -86,7 +86,18 @@ class _IptvGuideScreenState extends ConsumerState<IptvGuideScreen> {
                 ),
                 Expanded(
                   child: widget.overrideFormFactor == AiroFormFactor.tv
-                      ? EpgTimelineGrid(onChannelSelect: selectChannel)
+                      ? EpgTimelineGrid(
+                          onChannelSelect: selectChannel,
+                          onProgramSelect: (channel, program) {
+                            unawaited(
+                              _showProgrammeDetails(
+                                channel,
+                                program,
+                                onWatchNow: () => selectChannel(channel),
+                              ),
+                            );
+                          },
+                        )
                       : EpgTouchTimelineGrid(
                           onChannelSelect: selectChannel,
                           onReminderToggle: (channel, program) {
@@ -159,6 +170,34 @@ class _IptvGuideScreenState extends ConsumerState<IptvGuideScreen> {
     }
   }
 
+  Future<void> _showProgrammeDetails(
+    IPTVChannel channel,
+    CompactEpgProgram program, {
+    required VoidCallback onWatchNow,
+  }) async {
+    final scheduler = ref.read(epgReminderSchedulerProvider);
+    final isReminded = await scheduler.isReminded(program.programId);
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => ProgrammeDetailsDialog(
+        channel: channel,
+        program: program,
+        isReminded: isReminded,
+        onWatchNow: () {
+          Navigator.of(dialogContext).pop();
+          onWatchNow();
+        },
+        onToggleReminder: program.startsAt.isAfter(DateTime.now().toUtc())
+            ? () {
+                Navigator.of(dialogContext).pop();
+                unawaited(_toggleReminder(channel, program));
+              }
+            : null,
+      ),
+    );
+  }
+
   int _advanceReminderToken(String programId) {
     final token = _nextReminderOperationToken++;
     _reminderOperationTokens[programId] = token;
@@ -182,6 +221,70 @@ class _IptvGuideScreenState extends ConsumerState<IptvGuideScreen> {
 
   bool _reminderOperationIsCurrent(String programId, int token) {
     return _reminderOperationTokens[programId] == token;
+  }
+}
+
+class ProgrammeDetailsDialog extends StatelessWidget {
+  const ProgrammeDetailsDialog({
+    required this.channel,
+    required this.program,
+    required this.isReminded,
+    required this.onWatchNow,
+    required this.onToggleReminder,
+    super.key,
+  });
+
+  final IPTVChannel channel;
+  final CompactEpgProgram program;
+  final bool isReminded;
+  final VoidCallback onWatchNow;
+  final VoidCallback? onToggleReminder;
+
+  @override
+  Widget build(BuildContext context) {
+    final localStart = program.startsAt.toLocal();
+    final localEnd = program.endsAt.toLocal();
+    final time =
+        '${TimeOfDay.fromDateTime(localStart).format(context)} – '
+        '${TimeOfDay.fromDateTime(localEnd).format(context)}';
+    final badges = [
+      if (program.isNew) 'NEW',
+      if (program.isPremiere) 'PREMIERE',
+      if (program.previouslyShown) 'REPEAT',
+    ];
+    return AlertDialog(
+      semanticLabel: 'Programme details for ${program.title}',
+      title: Text(program.title),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('${channel.name} · $time'),
+            if (program.subtitle != null) Text(program.subtitle!),
+            if (program.episodeNumber != null)
+              Text('Episode ${program.episodeNumber}'),
+            if (program.description != null) Text(program.description!),
+            if (program.categories.isNotEmpty)
+              Text('Categories: ${program.categories.join(', ')}'),
+            if (program.rating != null) Text('Rating: ${program.rating}'),
+            if (badges.isNotEmpty) Text(badges.join(' · ')),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(onPressed: onWatchNow, child: const Text('Watch now')),
+        if (onToggleReminder != null)
+          TextButton(
+            onPressed: onToggleReminder,
+            child: Text(isReminded ? 'Cancel reminder' : 'Set reminder'),
+          ),
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Close'),
+        ),
+      ],
+    );
   }
 }
 

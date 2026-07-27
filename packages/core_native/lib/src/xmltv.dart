@@ -12,12 +12,30 @@ class NativeXmltvProgramme {
     required this.start,
     this.stop,
     this.title,
+    this.subtitle,
+    this.description,
+    this.categories = const [],
+    this.episodeNumber,
+    this.iconUrl,
+    this.rating,
+    this.isNew = false,
+    this.isPremiere = false,
+    this.previouslyShown = false,
   });
 
   final String channelId;
   final String start;
   final String? stop;
   final String? title;
+  final String? subtitle;
+  final String? description;
+  final List<String> categories;
+  final String? episodeNumber;
+  final String? iconUrl;
+  final String? rating;
+  final bool isNew;
+  final bool isPremiere;
+  final bool previouslyShown;
 }
 
 class NativeXmltvParseStats {
@@ -276,6 +294,15 @@ NativeXmltvParseResult _fromNativeXmltvParseResult(
             start: programme.start,
             stop: programme.stop,
             title: programme.title,
+            subtitle: programme.subtitle,
+            description: programme.description,
+            categories: programme.categories,
+            episodeNumber: programme.episodeNumber,
+            iconUrl: programme.iconUrl,
+            rating: programme.rating,
+            isNew: programme.isNew,
+            isPremiere: programme.isPremiere,
+            previouslyShown: programme.previouslyShown,
           ),
         )
         .toList(growable: false),
@@ -321,6 +348,15 @@ NativeXmltvProgramme? _fromNativeXmltvProgramme(
     start: programme.start,
     stop: programme.stop,
     title: programme.title,
+    subtitle: programme.subtitle,
+    description: programme.description,
+    categories: programme.categories,
+    episodeNumber: programme.episodeNumber,
+    iconUrl: programme.iconUrl,
+    rating: programme.rating,
+    isNew: programme.isNew,
+    isPremiere: programme.isPremiere,
+    previouslyShown: programme.previouslyShown,
   );
 }
 
@@ -362,6 +398,15 @@ NativeXmltvParseResult _dartParseXmltvProgrammes(
         start: start,
         stop: _xmlAttribute(attributes, 'stop'),
         title: _xmlText(body, 'title'),
+        subtitle: _xmlText(body, 'sub-title'),
+        description: _xmlText(body, 'desc'),
+        categories: _xmlTexts(body, 'category'),
+        episodeNumber: _xmlText(body, 'episode-num'),
+        iconUrl: _xmlElementAttribute(body, 'icon', 'src'),
+        rating: _xmlText(_xmlElementBody(body, 'rating') ?? '', 'value'),
+        isNew: _xmlHasElement(body, 'new'),
+        isPremiere: _xmlHasElement(body, 'premiere'),
+        previouslyShown: _xmlHasElement(body, 'previously-shown'),
       ),
     );
   }
@@ -532,6 +577,42 @@ String? _xmlText(String body, String tag) {
   final value = match?.group(1)?.trim();
   if (value == null || value.isEmpty) return null;
   return _decodeXmlEntities(value);
+}
+
+List<String> _xmlTexts(String body, String tag) {
+  final pattern = RegExp(
+    '<$tag\\b[^>]*>(.*?)</$tag>',
+    caseSensitive: false,
+    dotAll: true,
+  );
+  return pattern
+      .allMatches(body)
+      .map((match) => _decodeXmlEntities((match.group(1) ?? '').trim()))
+      .where((value) => value.isNotEmpty)
+      .toList(growable: false);
+}
+
+String? _xmlElementBody(String body, String tag) {
+  final pattern = RegExp(
+    '<$tag\\b[^>]*>(.*?)</$tag>',
+    caseSensitive: false,
+    dotAll: true,
+  );
+  return pattern.firstMatch(body)?.group(1);
+}
+
+String? _xmlElementAttribute(String body, String tag, String attribute) {
+  final pattern = RegExp(
+    '<$tag\\b([^>]*)/?>',
+    caseSensitive: false,
+    dotAll: true,
+  );
+  final attributes = pattern.firstMatch(body)?.group(1);
+  return attributes == null ? null : _xmlAttribute(attributes, attribute);
+}
+
+bool _xmlHasElement(String body, String tag) {
+  return RegExp('<$tag(?:\\s|/?>)', caseSensitive: false).hasMatch(body);
 }
 
 String _decodeXmlEntities(String value) {

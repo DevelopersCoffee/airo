@@ -100,6 +100,22 @@
             </intent-filter>
         </receiver>
 
+        <!-- flutter_local_notifications: persist scheduled EPG reminders
+             across process death and restore them after device reboot. -->
+        <receiver
+            android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver"
+            android:exported="false" />
+        <receiver
+            android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+                <action android:name="com.htc.intent.action.QUICKBOOT_POWERON" />
+            </intent-filter>
+        </receiver>
+
         <!-- WorkManager Foreground Service type mapping for downloads -->
         <service
             android:name="androidx.work.impl.foreground.SystemForegroundService"

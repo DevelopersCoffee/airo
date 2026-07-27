@@ -474,6 +474,13 @@ packages:
       relative: true
     source: path
     version: "0.0.1"
+  core_workers:
+    dependency: transitive
+    description:
+      path: "../packages/core_workers"
+      relative: true
+    source: path
+    version: "0.1.0"
   coverage:
     dependency: transitive
     description:
@@ -1811,6 +1818,13 @@ packages:
       relative: true
     source: path
     version: "0.0.1"
+  platform_iptv_org_api:
+    dependency: transitive
+    description:
+      path: "../packages/platform_iptv_org_api"
+      relative: true
+    source: path
+    version: "0.1.0"
   platform_media:
     dependency: "direct main"
     description:
@@ -1829,6 +1843,13 @@ packages:
     dependency: "direct main"
     description:
       path: "../packages/platform_playlist"
+      relative: true
+    source: path
+    version: "0.0.1"
+  platform_playlist_export:
+    dependency: transitive
+    description:
+      path: "../packages/platform_playlist_export"
       relative: true
     source: path
     version: "0.0.1"

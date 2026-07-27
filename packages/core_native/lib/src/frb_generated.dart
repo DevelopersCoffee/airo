@@ -2070,13 +2070,22 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   XmltvProgramme dco_decode_xmltv_programme(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 4)
-      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
+    if (arr.length != 13)
+      throw Exception('unexpected arr length: expect 13 but see ${arr.length}');
     return XmltvProgramme(
       channelId: dco_decode_String(arr[0]),
       start: dco_decode_String(arr[1]),
       stop: dco_decode_opt_String(arr[2]),
       title: dco_decode_opt_String(arr[3]),
+      subtitle: dco_decode_opt_String(arr[4]),
+      description: dco_decode_opt_String(arr[5]),
+      categories: dco_decode_list_String(arr[6]),
+      episodeNumber: dco_decode_opt_String(arr[7]),
+      iconUrl: dco_decode_opt_String(arr[8]),
+      rating: dco_decode_opt_String(arr[9]),
+      isNew: dco_decode_bool(arr[10]),
+      isPremiere: dco_decode_bool(arr[11]),
+      previouslyShown: dco_decode_bool(arr[12]),
     );
   }
 
@@ -3105,11 +3114,29 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_start = sse_decode_String(deserializer);
     var var_stop = sse_decode_opt_String(deserializer);
     var var_title = sse_decode_opt_String(deserializer);
+    var var_subtitle = sse_decode_opt_String(deserializer);
+    var var_description = sse_decode_opt_String(deserializer);
+    var var_categories = sse_decode_list_String(deserializer);
+    var var_episodeNumber = sse_decode_opt_String(deserializer);
+    var var_iconUrl = sse_decode_opt_String(deserializer);
+    var var_rating = sse_decode_opt_String(deserializer);
+    var var_isNew = sse_decode_bool(deserializer);
+    var var_isPremiere = sse_decode_bool(deserializer);
+    var var_previouslyShown = sse_decode_bool(deserializer);
     return XmltvProgramme(
       channelId: var_channelId,
       start: var_start,
       stop: var_stop,
       title: var_title,
+      subtitle: var_subtitle,
+      description: var_description,
+      categories: var_categories,
+      episodeNumber: var_episodeNumber,
+      iconUrl: var_iconUrl,
+      rating: var_rating,
+      isNew: var_isNew,
+      isPremiere: var_isPremiere,
+      previouslyShown: var_previouslyShown,
     );
   }
 
@@ -3986,5 +4013,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_String(self.start, serializer);
     sse_encode_opt_String(self.stop, serializer);
     sse_encode_opt_String(self.title, serializer);
+    sse_encode_opt_String(self.subtitle, serializer);
+    sse_encode_opt_String(self.description, serializer);
+    sse_encode_list_String(self.categories, serializer);
+    sse_encode_opt_String(self.episodeNumber, serializer);
+    sse_encode_opt_String(self.iconUrl, serializer);
+    sse_encode_opt_String(self.rating, serializer);
+    sse_encode_bool(self.isNew, serializer);
+    sse_encode_bool(self.isPremiere, serializer);
+    sse_encode_bool(self.previouslyShown, serializer);
   }
 }

@@ -107,6 +107,13 @@ class CompactEpgProgram extends Equatable {
     this.subtitle,
     this.category,
     this.rating,
+    this.description,
+    this.categories = const [],
+    this.episodeNumber,
+    this.iconUrl,
+    this.isNew = false,
+    this.isPremiere = false,
+    this.previouslyShown = false,
     this.kind = CompactEpgProgramKind.standard,
     this.schemaVersion = kCompactEpgSchemaVersion,
   });
@@ -118,6 +125,13 @@ class CompactEpgProgram extends Equatable {
   final String? subtitle;
   final String? category;
   final String? rating;
+  final String? description;
+  final List<String> categories;
+  final String? episodeNumber;
+  final Uri? iconUrl;
+  final bool isNew;
+  final bool isPremiere;
+  final bool previouslyShown;
   final CompactEpgProgramKind kind;
   final DateTime startsAt;
   final DateTime endsAt;
@@ -138,6 +152,13 @@ class CompactEpgProgram extends Equatable {
     subtitle,
     category,
     rating,
+    description,
+    categories,
+    episodeNumber,
+    iconUrl,
+    isNew,
+    isPremiere,
+    previouslyShown,
     kind,
     startsAt,
     endsAt,

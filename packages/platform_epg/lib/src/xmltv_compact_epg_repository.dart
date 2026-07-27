@@ -209,6 +209,18 @@ class XmltvCompactEpgRepository implements CompactEpgRepository {
           title: _programTitle(nativeProgramme),
           startsAt: startsAt,
           endsAt: endsAt,
+          subtitle: nativeProgramme.subtitle,
+          description: nativeProgramme.description,
+          categories: nativeProgramme.categories,
+          category: nativeProgramme.categories.isEmpty
+              ? null
+              : nativeProgramme.categories.first,
+          episodeNumber: nativeProgramme.episodeNumber,
+          iconUrl: _httpUri(nativeProgramme.iconUrl),
+          rating: nativeProgramme.rating,
+          isNew: nativeProgramme.isNew,
+          isPremiere: nativeProgramme.isPremiere,
+          previouslyShown: nativeProgramme.previouslyShown,
         ),
       );
       retainedProgrammeCount++;
@@ -482,5 +494,22 @@ CompactEpgProgram? _compactProgramFromNative(
     title: _programTitle(programme),
     startsAt: startsAt,
     endsAt: endsAt,
+    subtitle: programme.subtitle,
+    description: programme.description,
+    categories: programme.categories,
+    category: programme.categories.isEmpty ? null : programme.categories.first,
+    episodeNumber: programme.episodeNumber,
+    iconUrl: _httpUri(programme.iconUrl),
+    rating: programme.rating,
+    isNew: programme.isNew,
+    isPremiere: programme.isPremiere,
+    previouslyShown: programme.previouslyShown,
   );
+}
+
+Uri? _httpUri(String? value) {
+  final uri = value == null ? null : Uri.tryParse(value);
+  return uri != null && (uri.scheme == 'http' || uri.scheme == 'https')
+      ? uri
+      : null;
 }

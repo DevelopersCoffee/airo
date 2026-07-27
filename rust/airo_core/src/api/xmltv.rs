@@ -13,6 +13,15 @@ pub struct XmltvProgramme {
     pub start: String,
     pub stop: Option<String>,
     pub title: Option<String>,
+    pub subtitle: Option<String>,
+    pub description: Option<String>,
+    pub categories: Vec<String>,
+    pub episode_number: Option<String>,
+    pub icon_url: Option<String>,
+    pub rating: Option<String>,
+    pub is_new: bool,
+    pub is_premiere: bool,
+    pub previously_shown: bool,
 }
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
@@ -57,6 +66,26 @@ struct PendingProgramme {
     start: Option<String>,
     stop: Option<String>,
     title: Option<String>,
+    subtitle: Option<String>,
+    description: Option<String>,
+    categories: Vec<String>,
+    episode_number: Option<String>,
+    icon_url: Option<String>,
+    rating: Option<String>,
+    is_new: bool,
+    is_premiere: bool,
+    previously_shown: bool,
+}
+
+#[flutter_rust_bridge::frb(ignore)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum ProgrammeTextField {
+    Title,
+    Subtitle,
+    Description,
+    Category,
+    EpisodeNumber,
+    Rating,
 }
 
 #[flutter_rust_bridge::frb(ignore)]
@@ -111,35 +140,49 @@ pub fn parse_xmltv_programmes_reader<R: BufRead>(
     let mut buffer = Vec::with_capacity(8192);
     let mut result = XmltvParseResult::default();
     let mut pending: Option<PendingProgramme> = None;
-    let mut inside_title = false;
+    let mut text_field: Option<ProgrammeTextField> = None;
 
     loop {
         match reader.read_event_into(&mut buffer)? {
             Event::Start(element) if element.name().as_ref() == b"programme" => {
                 pending = Some(pending_programme(&element, reader.decoder())?);
             }
-            Event::Start(element) if pending.is_some() && element.name().as_ref() == b"title" => {
-                inside_title = true;
+            Event::Start(element) if pending.is_some() => {
+                update_programme_element(
+                    pending.as_mut().expect("guarded"),
+                    &element,
+                    reader.decoder(),
+                    &mut text_field,
+                )?;
             }
-            Event::Text(text) if inside_title => {
-                if let Some(programme) = pending.as_mut() {
+            Event::Empty(element) if pending.is_some() => {
+                update_programme_element(
+                    pending.as_mut().expect("guarded"),
+                    &element,
+                    reader.decoder(),
+                    &mut text_field,
+                )?;
+                text_field = None;
+            }
+            Event::Text(text) if text_field.is_some() => {
+                if let (Some(programme), Some(field)) = (pending.as_mut(), text_field) {
                     let decoded = text.decode()?;
-                    append_title(programme, &unescape(&decoded)?);
+                    append_programme_text(programme, field, &unescape(&decoded)?);
                 }
             }
-            Event::GeneralRef(reference) if inside_title => {
-                if let Some(programme) = pending.as_mut() {
-                    append_title(programme, &resolve_general_ref(&reference)?);
+            Event::GeneralRef(reference) if text_field.is_some() => {
+                if let (Some(programme), Some(field)) = (pending.as_mut(), text_field) {
+                    append_programme_text(programme, field, &resolve_general_ref(&reference)?);
                 }
             }
-            Event::End(element) if element.name().as_ref() == b"title" => {
-                inside_title = false;
+            Event::End(element) if programme_text_field(element.name().as_ref()).is_some() => {
+                text_field = None;
             }
             Event::End(element) if element.name().as_ref() == b"programme" => {
                 if let Some(programme) = pending.take() {
                     finish_programme(programme, max_programmes, &mut result);
                 }
-                inside_title = false;
+                text_field = None;
             }
             Event::Eof => break,
             _ => {}
@@ -172,29 +215,43 @@ pub fn parse_xmltv_current_next_reader<R: BufRead>(
         ..XmltvCurrentNextResult::default()
     };
     let mut pending: Option<PendingProgramme> = None;
-    let mut inside_title = false;
+    let mut text_field: Option<ProgrammeTextField> = None;
 
     loop {
         match reader.read_event_into(&mut buffer)? {
             Event::Start(element) if element.name().as_ref() == b"programme" => {
                 pending = Some(pending_programme(&element, reader.decoder())?);
             }
-            Event::Start(element) if pending.is_some() && element.name().as_ref() == b"title" => {
-                inside_title = true;
+            Event::Start(element) if pending.is_some() => {
+                update_programme_element(
+                    pending.as_mut().expect("guarded"),
+                    &element,
+                    reader.decoder(),
+                    &mut text_field,
+                )?;
             }
-            Event::Text(text) if inside_title => {
-                if let Some(programme) = pending.as_mut() {
+            Event::Empty(element) if pending.is_some() => {
+                update_programme_element(
+                    pending.as_mut().expect("guarded"),
+                    &element,
+                    reader.decoder(),
+                    &mut text_field,
+                )?;
+                text_field = None;
+            }
+            Event::Text(text) if text_field.is_some() => {
+                if let (Some(programme), Some(field)) = (pending.as_mut(), text_field) {
                     let decoded = text.decode()?;
-                    append_title(programme, &unescape(&decoded)?);
+                    append_programme_text(programme, field, &unescape(&decoded)?);
                 }
             }
-            Event::GeneralRef(reference) if inside_title => {
-                if let Some(programme) = pending.as_mut() {
-                    append_title(programme, &resolve_general_ref(&reference)?);
+            Event::GeneralRef(reference) if text_field.is_some() => {
+                if let (Some(programme), Some(field)) = (pending.as_mut(), text_field) {
+                    append_programme_text(programme, field, &resolve_general_ref(&reference)?);
                 }
             }
-            Event::End(element) if element.name().as_ref() == b"title" => {
-                inside_title = false;
+            Event::End(element) if programme_text_field(element.name().as_ref()).is_some() => {
+                text_field = None;
             }
             Event::End(element) if element.name().as_ref() == b"programme" => {
                 if let Some(programme) = pending.take() {
@@ -207,7 +264,7 @@ pub fn parse_xmltv_current_next_reader<R: BufRead>(
                         &mut result.stats,
                     );
                 }
-                inside_title = false;
+                text_field = None;
             }
             Event::Eof => break,
             _ => {}
@@ -292,11 +349,96 @@ fn attribute_value(attribute: &Attribute<'_>, decoder: Decoder) -> quick_xml::Re
     Ok(attribute.decode_and_unescape_value(decoder)?.into_owned())
 }
 
-fn append_title(programme: &mut PendingProgramme, chunk: &str) {
-    programme
-        .title
-        .get_or_insert_with(String::new)
-        .push_str(chunk);
+fn programme_text_field(name: &[u8]) -> Option<ProgrammeTextField> {
+    match name {
+        b"title" => Some(ProgrammeTextField::Title),
+        b"sub-title" => Some(ProgrammeTextField::Subtitle),
+        b"desc" => Some(ProgrammeTextField::Description),
+        b"category" => Some(ProgrammeTextField::Category),
+        b"episode-num" => Some(ProgrammeTextField::EpisodeNumber),
+        b"value" => Some(ProgrammeTextField::Rating),
+        _ => None,
+    }
+}
+
+fn update_programme_element(
+    programme: &mut PendingProgramme,
+    element: &BytesStart<'_>,
+    decoder: Decoder,
+    text_field: &mut Option<ProgrammeTextField>,
+) -> quick_xml::Result<()> {
+    let name = element.name();
+    match name.as_ref() {
+        b"icon" => {
+            for attribute in element.attributes() {
+                let attribute = attribute?;
+                if attribute.key.as_ref() == b"src" {
+                    programme.icon_url = Some(attribute_value(&attribute, decoder)?);
+                }
+            }
+        }
+        b"new" => programme.is_new = true,
+        b"premiere" => programme.is_premiere = true,
+        b"previously-shown" => programme.previously_shown = true,
+        _ => {
+            *text_field = programme_text_field(name.as_ref());
+            if *text_field == Some(ProgrammeTextField::Category) {
+                programme.categories.push(String::new());
+            }
+        }
+    }
+    Ok(())
+}
+
+fn append_programme_text(programme: &mut PendingProgramme, field: ProgrammeTextField, chunk: &str) {
+    let target = match field {
+        ProgrammeTextField::Title => &mut programme.title,
+        ProgrammeTextField::Subtitle => &mut programme.subtitle,
+        ProgrammeTextField::Description => &mut programme.description,
+        ProgrammeTextField::EpisodeNumber => &mut programme.episode_number,
+        ProgrammeTextField::Rating => &mut programme.rating,
+        ProgrammeTextField::Category => {
+            programme
+                .categories
+                .last_mut()
+                .expect("category inserted")
+                .push_str(chunk);
+            return;
+        }
+    };
+    target.get_or_insert_with(String::new).push_str(chunk);
+}
+
+fn clean_text(value: Option<String>) -> Option<String> {
+    value
+        .map(|text| text.trim().to_string())
+        .filter(|text| !text.is_empty())
+}
+
+fn finish_xmltv_programme(
+    channel_id: String,
+    start: String,
+    programme: PendingProgramme,
+) -> XmltvProgramme {
+    XmltvProgramme {
+        channel_id,
+        start,
+        stop: programme.stop,
+        title: clean_text(programme.title),
+        subtitle: clean_text(programme.subtitle),
+        description: clean_text(programme.description),
+        categories: programme
+            .categories
+            .into_iter()
+            .filter_map(|category| clean_text(Some(category)))
+            .collect(),
+        episode_number: clean_text(programme.episode_number),
+        icon_url: clean_text(programme.icon_url),
+        rating: clean_text(programme.rating),
+        is_new: programme.is_new,
+        is_premiere: programme.is_premiere,
+        previously_shown: programme.previously_shown,
+    }
 }
 
 fn resolve_general_ref(reference: &BytesRef<'_>) -> quick_xml::Result<String> {
@@ -319,7 +461,8 @@ fn finish_programme(
     max_programmes: usize,
     result: &mut XmltvParseResult,
 ) {
-    let (Some(channel_id), Some(start)) = (programme.channel_id, programme.start) else {
+    let (Some(channel_id), Some(start)) = (programme.channel_id.clone(), programme.start.clone())
+    else {
         result.stats.skipped_programme_count += 1;
         return;
     };
@@ -331,15 +474,9 @@ fn finish_programme(
         return;
     }
 
-    result.programmes.push(XmltvProgramme {
-        channel_id,
-        start,
-        stop: programme.stop,
-        title: programme
-            .title
-            .map(|title| title.trim().to_string())
-            .filter(|title| !title.is_empty()),
-    });
+    result
+        .programmes
+        .push(finish_xmltv_programme(channel_id, start, programme));
 }
 
 fn finish_current_next_programme(
@@ -350,7 +487,8 @@ fn finish_current_next_programme(
     candidates: &mut [CurrentNextCandidate],
     stats: &mut XmltvCurrentNextStats,
 ) {
-    let (Some(channel_id), Some(start)) = (programme.channel_id, programme.start) else {
+    let (Some(channel_id), Some(start)) = (programme.channel_id.clone(), programme.start.clone())
+    else {
         stats.skipped_programme_count += 1;
         return;
     };
@@ -381,15 +519,7 @@ fn finish_current_next_programme(
     }
 
     stats.matched_programme_count += 1;
-    let compact_programme = XmltvProgramme {
-        channel_id,
-        start,
-        stop: programme.stop,
-        title: programme
-            .title
-            .map(|title| title.trim().to_string())
-            .filter(|title| !title.is_empty()),
-    };
+    let compact_programme = finish_xmltv_programme(channel_id, start, programme);
     let candidate = &mut candidates[index];
 
     if start_epoch_seconds <= now_epoch_seconds && now_epoch_seconds < stop_epoch_seconds {
@@ -499,7 +629,13 @@ mod tests {
 <tv>
   <programme channel="news.one" start="20260715090000 +0000" stop="20260715100000 +0000">
     <title lang="en">Morning News</title>
-    <desc>Ignored for compact summary</desc>
+    <sub-title>Headlines</sub-title>
+    <desc>Markets &amp; weather.</desc>
+    <category>News</category><category>Current affairs</category>
+    <episode-num system="onscreen">S2E5</episode-num>
+    <icon src="https://example.test/news.jpg"/>
+    <rating><value>PG</value></rating>
+    <new/><premiere/><previously-shown/>
   </programme>
   <programme channel="sports.one" start="20260715100000 +0000" stop="20260715110000 +0000">
     <title>Live Match</title>
@@ -517,6 +653,24 @@ mod tests {
             Some("20260715100000 +0000")
         );
         assert_eq!(result.programmes[0].title.as_deref(), Some("Morning News"));
+        assert_eq!(result.programmes[0].subtitle.as_deref(), Some("Headlines"));
+        assert_eq!(
+            result.programmes[0].description.as_deref(),
+            Some("Markets & weather.")
+        );
+        assert_eq!(
+            result.programmes[0].categories,
+            vec!["News", "Current affairs"]
+        );
+        assert_eq!(result.programmes[0].episode_number.as_deref(), Some("S2E5"));
+        assert_eq!(
+            result.programmes[0].icon_url.as_deref(),
+            Some("https://example.test/news.jpg")
+        );
+        assert_eq!(result.programmes[0].rating.as_deref(), Some("PG"));
+        assert!(result.programmes[0].is_new);
+        assert!(result.programmes[0].is_premiere);
+        assert!(result.programmes[0].previously_shown);
         assert_eq!(result.stats.programme_count, 2);
         assert_eq!(result.stats.skipped_programme_count, 0);
         assert!(result.stats.truncated);

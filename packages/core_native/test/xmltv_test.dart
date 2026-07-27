@@ -10,7 +10,13 @@ void main() {
 <tv>
   <programme channel="news.one" start="20260715090000 +0000" stop="20260715100000 +0000">
     <title lang="en">Morning &amp; Markets</title>
-    <desc>Ignored by compact summary</desc>
+    <sub-title>Headlines</sub-title>
+    <desc>Markets &amp; weather.</desc>
+    <category>News</category><category>Current affairs</category>
+    <episode-num system="onscreen">S2E5</episode-num>
+    <icon src="https://example.test/news.jpg"/>
+    <rating><value>PG</value></rating>
+    <new/><premiere/><previously-shown/>
   </programme>
   <programme channel="sports.one" start="20260715100000 +0000">
     <title>Live Match</title>
@@ -23,6 +29,15 @@ void main() {
       expect(result.programmes.single.start, '20260715090000 +0000');
       expect(result.programmes.single.stop, '20260715100000 +0000');
       expect(result.programmes.single.title, 'Morning & Markets');
+      expect(result.programmes.single.subtitle, 'Headlines');
+      expect(result.programmes.single.description, 'Markets & weather.');
+      expect(result.programmes.single.categories, ['News', 'Current affairs']);
+      expect(result.programmes.single.episodeNumber, 'S2E5');
+      expect(result.programmes.single.iconUrl, 'https://example.test/news.jpg');
+      expect(result.programmes.single.rating, 'PG');
+      expect(result.programmes.single.isNew, isTrue);
+      expect(result.programmes.single.isPremiere, isTrue);
+      expect(result.programmes.single.previouslyShown, isTrue);
       expect(result.stats.programmeCount, 2);
       expect(result.stats.skippedProgrammeCount, 0);
       expect(result.stats.truncated, isTrue);

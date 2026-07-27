@@ -39,10 +39,13 @@ void main() {
     void Function()? onSelectedCallback,
     AiroFormFactor? overrideFormFactor,
     TextScaler textScaler = TextScaler.noScaling,
+    CompactEpgProgram? guideProgram,
   }) async {
     final prefs = await SharedPreferences.getInstance();
     final channels = visibleChannels ?? [newsChannel, sportsChannel];
-    final now = DateTime.utc(2026, 7, 17, 12);
+    final now = guideProgram == null
+        ? DateTime.utc(2026, 7, 17, 12)
+        : guideProgram.startsAt.subtract(const Duration(minutes: 30));
 
     await tester.pumpWidget(
       ProviderScope(
@@ -63,7 +66,15 @@ void main() {
                 earliestStart: now,
                 loadedThrough: now.add(const Duration(hours: 3)),
                 window: CompactEpgWindow(
-                  entries: const [],
+                  entries: guideProgram == null
+                      ? const []
+                      : [
+                          CompactEpgWindowEntry(
+                            channelId: newsChannel.id,
+                            channelName: newsChannel.name,
+                            programs: [guideProgram],
+                          ),
+                        ],
                   windowStart: now,
                   windowEnd: now.add(const Duration(hours: 3)),
                   generatedAt: now,
@@ -122,6 +133,43 @@ void main() {
     },
     experimentalLeakTesting: LeakTesting.settings,
   );
+
+  testWidgets('TV programme selection opens rich details before playback', (
+    tester,
+  ) async {
+    final start = DateTime.now().toUtc().add(const Duration(hours: 1));
+    final program = CompactEpgProgram(
+      programId: 'rich-program',
+      title: 'The Big Match',
+      startsAt: start,
+      endsAt: start.add(const Duration(hours: 1)),
+      subtitle: 'Semi-final',
+      description: 'A decisive evening fixture.',
+      categories: const ['Sports', 'Cricket'],
+      category: 'Sports',
+      episodeNumber: 'S2E5',
+      rating: 'PG',
+      isNew: true,
+    );
+    await pumpScreen(
+      tester,
+      overrideFormFactor: AiroFormFactor.tv,
+      guideProgram: program,
+    );
+
+    await tester.tap(find.text('The Big Match'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Semi-final'), findsOneWidget);
+    expect(find.text('A decisive evening fixture.'), findsOneWidget);
+    expect(find.text('Categories: Sports, Cricket'), findsOneWidget);
+    expect(find.text('Episode S2E5'), findsOneWidget);
+    expect(find.text('Rating: PG'), findsOneWidget);
+    expect(find.text('NEW'), findsOneWidget);
+    expect(find.text('Watch now'), findsOneWidget);
+    expect(find.text('Set reminder'), findsOneWidget);
+    expect(find.text('City News Live'), findsOneWidget);
+  });
 
   testWidgets(
     'shows empty state when there are no channels',

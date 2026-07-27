@@ -75,6 +75,51 @@ void main() {
       );
     });
 
+    test(
+      'retains rich optional programme details without changing windowing',
+      () async {
+        final repository = XmltvCompactEpgRepository.fromXmltv(
+          content: '''
+<tv>
+  <programme channel="rich.one" start="20260715143000 +0530" stop="20260715150000 +0530">
+    <title>Rich Programme</title>
+    <sub-title>Chapter Two</sub-title>
+    <desc>A useful description.</desc>
+    <category>Drama</category><category>Series</category>
+    <episode-num system="onscreen">S2E5</episode-num>
+    <icon src="https://example.test/poster.jpg"/>
+    <rating><value>PG</value></rating>
+    <new/><premiere/>
+  </programme>
+</tv>
+''',
+          ingestedAt: ingestedAt,
+        );
+
+        final window = await repository.loadWindow(
+          GuideWindowQuery(
+            channelIds: const ['rich.one'],
+            windowStart: DateTime.utc(2026, 7, 15, 8),
+            windowEnd: DateTime.utc(2026, 7, 15, 10),
+            now: DateTime.utc(2026, 7, 15, 9, 15),
+          ),
+        );
+        final programme = window.entries.single.programs.single;
+
+        expect(programme.startsAt, DateTime.utc(2026, 7, 15, 9));
+        expect(programme.subtitle, 'Chapter Two');
+        expect(programme.description, 'A useful description.');
+        expect(programme.categories, ['Drama', 'Series']);
+        expect(programme.category, 'Drama');
+        expect(programme.episodeNumber, 'S2E5');
+        expect(programme.iconUrl, Uri.https('example.test', '/poster.jpg'));
+        expect(programme.rating, 'PG');
+        expect(programme.isNew, isTrue);
+        expect(programme.isPremiere, isTrue);
+        expect(programme.previouslyShown, isFalse);
+      },
+    );
+
     test('uses default duration when XMLTV stop is missing', () async {
       final repository = XmltvCompactEpgRepository.fromXmltv(
         content: '''

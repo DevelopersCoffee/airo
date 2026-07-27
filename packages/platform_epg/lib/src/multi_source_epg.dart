@@ -389,6 +389,13 @@ CompactEpgProgram _utcProgram(CompactEpgProgram program) {
     subtitle: program.subtitle,
     category: program.category,
     rating: program.rating,
+    description: program.description,
+    categories: program.categories,
+    episodeNumber: program.episodeNumber,
+    iconUrl: program.iconUrl,
+    isNew: program.isNew,
+    isPremiere: program.isPremiere,
+    previouslyShown: program.previouslyShown,
     kind: program.kind,
     schemaVersion: program.schemaVersion,
   );

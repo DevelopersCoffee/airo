@@ -2192,11 +2192,29 @@ impl SseDecode for crate::api::xmltv::XmltvProgramme {
         let mut var_start = <String>::sse_decode(deserializer);
         let mut var_stop = <Option<String>>::sse_decode(deserializer);
         let mut var_title = <Option<String>>::sse_decode(deserializer);
+        let mut var_subtitle = <Option<String>>::sse_decode(deserializer);
+        let mut var_description = <Option<String>>::sse_decode(deserializer);
+        let mut var_categories = <Vec<String>>::sse_decode(deserializer);
+        let mut var_episodeNumber = <Option<String>>::sse_decode(deserializer);
+        let mut var_iconUrl = <Option<String>>::sse_decode(deserializer);
+        let mut var_rating = <Option<String>>::sse_decode(deserializer);
+        let mut var_isNew = <bool>::sse_decode(deserializer);
+        let mut var_isPremiere = <bool>::sse_decode(deserializer);
+        let mut var_previouslyShown = <bool>::sse_decode(deserializer);
         return crate::api::xmltv::XmltvProgramme {
             channel_id: var_channelId,
             start: var_start,
             stop: var_stop,
             title: var_title,
+            subtitle: var_subtitle,
+            description: var_description,
+            categories: var_categories,
+            episode_number: var_episodeNumber,
+            icon_url: var_iconUrl,
+            rating: var_rating,
+            is_new: var_isNew,
+            is_premiere: var_isPremiere,
+            previously_shown: var_previouslyShown,
         };
     }
 }
@@ -3235,6 +3253,15 @@ impl flutter_rust_bridge::IntoDart for crate::api::xmltv::XmltvProgramme {
             self.start.into_into_dart().into_dart(),
             self.stop.into_into_dart().into_dart(),
             self.title.into_into_dart().into_dart(),
+            self.subtitle.into_into_dart().into_dart(),
+            self.description.into_into_dart().into_dart(),
+            self.categories.into_into_dart().into_dart(),
+            self.episode_number.into_into_dart().into_dart(),
+            self.icon_url.into_into_dart().into_dart(),
+            self.rating.into_into_dart().into_dart(),
+            self.is_new.into_into_dart().into_dart(),
+            self.is_premiere.into_into_dart().into_dart(),
+            self.previously_shown.into_into_dart().into_dart(),
         ]
         .into_dart()
     }
@@ -4046,6 +4073,15 @@ impl SseEncode for crate::api::xmltv::XmltvProgramme {
         <String>::sse_encode(self.start, serializer);
         <Option<String>>::sse_encode(self.stop, serializer);
         <Option<String>>::sse_encode(self.title, serializer);
+        <Option<String>>::sse_encode(self.subtitle, serializer);
+        <Option<String>>::sse_encode(self.description, serializer);
+        <Vec<String>>::sse_encode(self.categories, serializer);
+        <Option<String>>::sse_encode(self.episode_number, serializer);
+        <Option<String>>::sse_encode(self.icon_url, serializer);
+        <Option<String>>::sse_encode(self.rating, serializer);
+        <bool>::sse_encode(self.is_new, serializer);
+        <bool>::sse_encode(self.is_premiere, serializer);
+        <bool>::sse_encode(self.previously_shown, serializer);
     }
 }
 
