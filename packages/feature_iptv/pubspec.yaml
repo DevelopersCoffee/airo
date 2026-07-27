@@ -9,6 +9,8 @@ environment:
   flutter: ">=1.17.0"
 
 dependencies:
+  core_entitlements:
+    path: ../core_entitlements
   cached_network_image: 3.4.1
   collection: ^1.19.0
   core_data:
