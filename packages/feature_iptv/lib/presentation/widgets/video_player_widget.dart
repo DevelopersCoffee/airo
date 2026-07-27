@@ -1175,6 +1175,14 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
     return '${state.currentChannel?.id}|${diagnostic.code}|${state.retryCount}';
   }
 
+  FocusNode? _diagnosticRecoveryFocusNode(StreamingState state) {
+    final diagnostic = state.diagnostic;
+    if (!state.hasError || diagnostic == null) return null;
+    return !diagnostic.retryEligible || state.retryCount == 0
+        ? _diagnosticRetryFocusNode
+        : _diagnosticSkipFocusNode;
+  }
+
   void _scheduleRecoveryFocus(StreamingState state) {
     final token = _recoveryFocusToken(state);
     if (token == null) {
@@ -1188,10 +1196,7 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
     _cancelHideControlsTimer();
     if (_lastRecoveryFocusToken == token) return;
     _lastRecoveryFocusToken = token;
-    final diagnostic = state.diagnostic!;
-    final target = !diagnostic.retryEligible || state.retryCount == 0
-        ? _diagnosticRetryFocusNode
-        : _diagnosticSkipFocusNode;
+    final target = _diagnosticRecoveryFocusNode(state)!;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || _lastRecoveryFocusToken != token) return;
       if (target.canRequestFocus) target.requestFocus();
@@ -2303,8 +2308,13 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
         setState(() => _playerModalOpen = false);
         _startHideControlsTimer();
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted && restoreFocusNode.canRequestFocus) {
-            restoreFocusNode.requestFocus();
+          if (!mounted) return;
+          final currentState = ref.read(streamingStateProvider).asData?.value;
+          final target = currentState == null
+              ? restoreFocusNode
+              : _diagnosticRecoveryFocusNode(currentState) ?? restoreFocusNode;
+          if (target.canRequestFocus) {
+            target.requestFocus();
           }
         });
       }

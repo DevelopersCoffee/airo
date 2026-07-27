@@ -269,6 +269,32 @@ void main() {
     },
   );
 
+  testWidgets('closing player actions restores diagnostic recovery focus', (
+    tester,
+  ) async {
+    await pumpErrorPlayer(tester);
+    expect(
+      FocusManager.instance.primaryFocus?.debugLabel,
+      'player recovery Try Again',
+    );
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.contextMenu);
+    await tester.pumpAndSettle();
+    expect(find.text('Player actions'), findsOneWidget);
+    expect(
+      FocusManager.instance.primaryFocus?.debugLabel,
+      'player action Listen only',
+    );
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pumpAndSettle();
+    expect(find.text('Player actions'), findsNothing);
+    expect(
+      FocusManager.instance.primaryFocus?.debugLabel,
+      'player recovery Try Again',
+    );
+  });
+
   testWidgets('Report dead link saves a local report and confirms it', (
     tester,
   ) async {
