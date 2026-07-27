@@ -920,7 +920,7 @@ jobs:
           flutter pub get
 
       - name: Run Snyk Security Scan
-        uses: snyk/actions@0.2.0
+        uses: snyk/actions@v1.0.0
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
