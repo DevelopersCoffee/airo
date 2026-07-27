@@ -17,6 +17,9 @@ class ContentSourceConfig extends Equatable {
     required this.label,
     required this.url,
     this.macAddress,
+    this.accountStatus,
+    this.accountExpiresAt,
+    this.maxConnections,
   });
 
   final String id;
@@ -24,6 +27,9 @@ class ContentSourceConfig extends Equatable {
   final String label;
   final String url;
   final String? macAddress;
+  final String? accountStatus;
+  final DateTime? accountExpiresAt;
+  final int? maxConnections;
 
   factory ContentSourceConfig.fromJson(Map<String, dynamic> json) {
     return ContentSourceConfig(
@@ -34,6 +40,11 @@ class ContentSourceConfig extends Equatable {
       label: json['label'] as String,
       url: json['url'] as String,
       macAddress: json['macAddress'] as String?,
+      accountStatus: json['accountStatus'] as String?,
+      accountExpiresAt: json['accountExpiresAt'] == null
+          ? null
+          : DateTime.parse(json['accountExpiresAt'] as String).toUtc(),
+      maxConnections: json['maxConnections'] as int?,
     );
   }
 
@@ -43,6 +54,10 @@ class ContentSourceConfig extends Equatable {
     'label': label,
     'url': url,
     if (macAddress != null) 'macAddress': macAddress,
+    if (accountStatus != null) 'accountStatus': accountStatus,
+    if (accountExpiresAt != null)
+      'accountExpiresAt': accountExpiresAt!.toUtc().toIso8601String(),
+    if (maxConnections != null) 'maxConnections': maxConnections,
   };
 
   /// Builds the concrete [ContentSource] this config describes. Xtream and
@@ -79,7 +94,16 @@ class ContentSourceConfig extends Equatable {
   }
 
   @override
-  List<Object?> get props => [id, kind, label, url, macAddress];
+  List<Object?> get props => [
+    id,
+    kind,
+    label,
+    url,
+    macAddress,
+    accountStatus,
+    accountExpiresAt,
+    maxConnections,
+  ];
 }
 
 /// Persists the list of content sources a user has configured. Same

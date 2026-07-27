@@ -160,8 +160,17 @@ class _TvSourceManagementSectionState
             )).future,
           );
       }
-    } catch (error) {
-      debugPrint('TvSourceManagementSection: add source failed: $error');
+    } on XtreamAuthenticationException {
+      if (!mounted) return;
+      setState(
+        () => _submitError =
+            'Login was not accepted. Check your server and credentials.',
+      );
+      return;
+    } catch (_) {
+      // Provider exceptions may contain credential-bearing request URLs.
+      // Never interpolate them into diagnostics.
+      debugPrint('TvSourceManagementSection: source setup failed.');
       if (!mounted) return;
       setState(
         () =>
@@ -318,6 +327,17 @@ class _TvSourceManagementSectionState
                               color: colorScheme.onSurfaceVariant,
                             ),
                           ),
+                          if (config.accountStatus != null)
+                            Text(
+                              [
+                                config.accountStatus!,
+                                if (config.maxConnections != null)
+                                  '${config.maxConnections} connection${config.maxConnections == 1 ? '' : 's'}',
+                              ].join(' • '),
+                              style: TextStyle(
+                                color: colorScheme.onSurfaceVariant,
+                              ),
+                            ),
                           const SizedBox(height: 4),
                           _capabilityBadges(
                             context,

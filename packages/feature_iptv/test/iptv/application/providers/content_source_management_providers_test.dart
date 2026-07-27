@@ -17,6 +17,17 @@ void main() {
       overrides: [
         sharedPreferencesProvider.overrideWithValue(prefs),
         secureStoreProvider.overrideWithValue(InMemorySecureStore()),
+        xtreamAuthenticatorProvider.overrideWithValue(
+          ({
+            required String serverUrl,
+            required String username,
+            required String password,
+          }) async => const XtreamAuthResult(
+            isAuthenticated: true,
+            status: 'Active',
+            maxConnections: 2,
+          ),
+        ),
       ],
     );
   }
@@ -79,6 +90,8 @@ void main() {
     expect(config.label, 'My Xtream');
     expect(config.url, 'https://xtream.example.com');
     expect(config.id, startsWith('xtream-'));
+    expect(config.accountStatus, 'Active');
+    expect(config.maxConnections, 2);
 
     final credential = await container
         .read(contentSourceCredentialStoreProvider)
@@ -86,6 +99,47 @@ void main() {
     expect(credential, isNotNull);
     expect(credential!.username, 'u1');
     expect(credential.password, 'p1');
+  });
+
+  test('rejected Xtream credentials persist no config or secret', () async {
+    final prefs = await SharedPreferences.getInstance();
+    final secureStore = InMemorySecureStore();
+    var authenticationAttempts = 0;
+    final container = ProviderContainer(
+      overrides: [
+        sharedPreferencesProvider.overrideWithValue(prefs),
+        secureStoreProvider.overrideWithValue(secureStore),
+        xtreamAuthenticatorProvider.overrideWithValue(({
+          required String serverUrl,
+          required String username,
+          required String password,
+        }) async {
+          authenticationAttempts++;
+          return const XtreamAuthResult(
+            isAuthenticated: false,
+            status: 'Disabled',
+          );
+        }),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    await expectLater(
+      container.read(
+        addXtreamContentSourceProvider((
+          label: 'Rejected',
+          url: 'https://xtream.example.com',
+          username: 'secret-user',
+          password: 'secret-pass',
+        )).future,
+      ),
+      throwsA(isA<XtreamAuthenticationException>()),
+    );
+    expect(
+      await container.read(configuredContentSourcesProvider.future),
+      isEmpty,
+    );
+    expect(authenticationAttempts, 1);
   });
 
   test(

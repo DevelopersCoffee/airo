@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:core_data/core_data.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -10,9 +11,13 @@ import "package:platform_channels/platform_channels.dart";
 import "package:platform_epg/platform_epg.dart";
 import "package:platform_player/platform_player.dart";
 import "package:platform_media/platform_media.dart";
+import "package:platform_playlist/platform_playlist.dart";
 import "package:platform_playlist_import/platform_playlist_import.dart";
+import '../content_source_store.dart';
+import '../mutable_xmltv_compact_epg_repository.dart';
 import '../../domain/favorite_reimport_coordinator.dart';
 import '../../domain/vod_resume_coordinator.dart';
+import 'content_source_providers.dart';
 
 export 'iptv_cast_providers.dart';
 export 'airo_tv_profile_provider.dart';
@@ -110,19 +115,81 @@ final tvIptvIntegrationProvider = Provider<void>((ref) {
 /// All channels provider - fetches preprocessed channels from IPTV Sanity Agent
 /// Falls back to M3U parser if preprocessed data is unavailable
 final iptvChannelsProvider = FutureProvider<List<IPTVChannel>>((ref) async {
+  List<IPTVChannel> primaryChannels = const [];
   final channelDataService = ref.watch(channelDataServiceProvider);
   try {
     final channels = await channelDataService.fetchChannels();
     if (channels.isNotEmpty) {
-      return channels;
+      primaryChannels = channels;
     }
   } catch (e) {
     debugPrint('[Provider] ChannelDataService failed, falling back to M3U: $e');
   }
 
-  // Fallback to legacy M3U parser
-  final parser = ref.watch(m3uParserProvider);
-  return parser.fetchPlaylist();
+  if (primaryChannels.isEmpty) {
+    // Fallback to legacy M3U parser.
+    primaryChannels = await ref.watch(m3uParserProvider).fetchPlaylist();
+  }
+
+  final byocChannels = await ref.watch(configuredXtreamChannelsProvider.future);
+  return [...primaryChannels, ...byocChannels];
+});
+
+final configuredXtreamChannelsProvider = FutureProvider<List<IPTVChannel>>((
+  ref,
+) async {
+  final configs = await ContentSourceStore(
+    PreferencesStore(ref.read(sharedPreferencesProvider)),
+  ).getAll();
+  final xtreamConfigs = configs
+      .where((source) => source.kind == ContentSourceKind.xtream)
+      .toList(growable: false);
+  if (xtreamConfigs.isEmpty) return const [];
+  final credentials = ref.read(contentSourceCredentialStoreProvider);
+  final dio = ref.read(dioProvider);
+  final channels = <IPTVChannel>[];
+  for (final config in xtreamConfigs) {
+    final secret = await credentials.read(
+      ContentSourceCredentialRef(config.id),
+    );
+    if (secret == null) continue;
+    try {
+      final client = XtreamClient(
+        dio: dio,
+        serverUrl: config.url,
+        username: secret.username,
+        password: secret.password,
+        sourceId: config.id,
+      );
+      channels.addAll(
+        await XtreamContentSourceAdapter(
+          client,
+          sourceId: config.id,
+        ).loadChannels(),
+      );
+      final epgRepository = ref.read(compactEpgRepositoryProvider);
+      if (epgRepository is MutableXmltvCompactEpgRepository) {
+        final prefix = '${config.id}-';
+        epgRepository.updateNamedSource(
+          sourceId: 'epg-${config.id}',
+          priority: 0,
+          repository: XtreamEpgRepository(
+            client,
+            channelIdToStreamId: (channelId) => channelId.startsWith(prefix)
+                ? int.tryParse(channelId.substring(prefix.length))
+                : null,
+          ),
+        );
+      }
+    } catch (_) {
+      // Dio errors may contain a credential-bearing query URL. Keep
+      // diagnostics deliberately coarse and continue with other sources.
+      debugPrint(
+        '[Provider] Xtream source ${config.id} could not be refreshed.',
+      );
+    }
+  }
+  return channels;
 });
 
 /// Refresh channels provider

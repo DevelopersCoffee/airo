@@ -38,6 +38,30 @@ void main() {
 
     expect(result.isAuthenticated, isTrue);
     expect(result.status, 'Active');
+    expect(result.maxConnections, 1);
+  });
+
+  test('getLiveCategories() maps provider category names', () async {
+    dio = Dio(BaseOptions(baseUrl: 'https://xtream.example.com'));
+    dio.httpClientAdapter = FakeHttpClientAdapter({
+      playerApiUrl: (options) => Response(
+        requestOptions: options,
+        statusCode: 200,
+        data: [
+          {'category_id': '5', 'category_name': 'World News'},
+        ],
+      ),
+    });
+    final client = XtreamClient(
+      dio: dio,
+      serverUrl: 'https://xtream.example.com',
+      username: 'user1',
+      password: 'pass1',
+    );
+
+    final categories = await client.getLiveCategories();
+
+    expect(categories, const [XtreamCategory(id: '5', name: 'World News')]);
   });
 
   test(

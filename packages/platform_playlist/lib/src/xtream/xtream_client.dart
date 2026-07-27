@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:isolate';
 
 import 'package:dio/dio.dart';
 import 'package:equatable/equatable.dart';
@@ -8,13 +9,38 @@ import '../provider_health_recorder.dart';
 
 /// Result of Xtream Codes `player_api.php` auth (no `action` param).
 class XtreamAuthResult extends Equatable {
-  const XtreamAuthResult({required this.isAuthenticated, required this.status});
+  const XtreamAuthResult({
+    required this.isAuthenticated,
+    required this.status,
+    this.expiresAt,
+    this.maxConnections,
+    this.activeConnections,
+  });
 
   final bool isAuthenticated;
   final String status;
+  final DateTime? expiresAt;
+  final int? maxConnections;
+  final int? activeConnections;
 
   @override
-  List<Object?> get props => [isAuthenticated, status];
+  List<Object?> get props => [
+    isAuthenticated,
+    status,
+    expiresAt,
+    maxConnections,
+    activeConnections,
+  ];
+}
+
+class XtreamCategory extends Equatable {
+  const XtreamCategory({required this.id, required this.name});
+
+  final String id;
+  final String name;
+
+  @override
+  List<Object?> get props => [id, name];
 }
 
 class XtreamLiveStream extends Equatable {
@@ -145,15 +171,40 @@ class XtreamClient {
     return XtreamAuthResult(
       isAuthenticated: auth == 1 || auth == '1',
       status: status,
+      expiresAt: _unixTimestamp(userInfo?['exp_date']),
+      maxConnections: _integer(userInfo?['max_connections']),
+      activeConnections: _integer(userInfo?['active_cons']),
     );
   });
 
+  Future<List<XtreamCategory>> getLiveCategories() => _recorded(() async {
+    final response = await _dio.get<Object>(
+      '$_serverUrl/player_api.php',
+      queryParameters: _baseParams({'action': 'get_live_categories'}),
+      options: Options(responseType: ResponseType.plain),
+    );
+    final payload = await _decodeListPayload(response.data);
+    return payload
+        .cast<Map<String, dynamic>>()
+        .map(
+          (json) => XtreamCategory(
+            id: json['category_id'].toString(),
+            name: json['category_name']?.toString().trim().isNotEmpty == true
+                ? json['category_name'].toString().trim()
+                : 'Uncategorized',
+          ),
+        )
+        .toList(growable: false);
+  });
+
   Future<List<XtreamLiveStream>> getLiveStreams() => _recorded(() async {
-    final response = await _dio.get<List<dynamic>>(
+    final response = await _dio.get<Object>(
       '$_serverUrl/player_api.php',
       queryParameters: _baseParams({'action': 'get_live_streams'}),
+      options: Options(responseType: ResponseType.plain),
     );
-    return (response.data ?? const [])
+    final payload = await _decodeListPayload(response.data);
+    return payload
         .cast<Map<String, dynamic>>()
         .map(
           (json) => XtreamLiveStream(
@@ -221,4 +272,22 @@ class XtreamClient {
 
   String vodStreamUrl(int streamId, String containerExtension) =>
       '$_serverUrl/movie/$_username/$_password/$streamId.$containerExtension';
+
+  static int? _integer(Object? value) =>
+      value is int ? value : int.tryParse(value?.toString() ?? '');
+
+  static DateTime? _unixTimestamp(Object? value) {
+    final seconds = _integer(value);
+    if (seconds == null || seconds <= 0) return null;
+    return DateTime.fromMillisecondsSinceEpoch(
+      seconds * Duration.millisecondsPerSecond,
+      isUtc: true,
+    );
+  }
+
+  static Future<List<dynamic>> _decodeListPayload(Object? payload) {
+    if (payload is List<dynamic>) return Future.value(payload);
+    final text = payload?.toString() ?? '[]';
+    return Isolate.run(() => (jsonDecode(text) as List<dynamic>));
+  }
 }

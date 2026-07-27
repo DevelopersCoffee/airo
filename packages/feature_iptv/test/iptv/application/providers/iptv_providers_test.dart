@@ -1,6 +1,12 @@
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:core_data/core_data.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:platform_device_profile/platform_device_profile.dart';
+import 'package:platform_playlist/platform_playlist.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import "package:feature_iptv/feature_iptv.dart";
 
@@ -274,6 +280,91 @@ void main() {
         },
       );
     });
+
+    test(
+      'configured Xtream source contributes grouped channels and EPG',
+      () async {
+        final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+        addTearDown(() => server.close(force: true));
+        server.listen((request) async {
+          request.response.headers.contentType = ContentType.json;
+          switch (request.uri.queryParameters['action']) {
+            case 'get_live_categories':
+              request.response.write(
+                jsonEncode([
+                  {'category_id': '5', 'category_name': 'World News'},
+                ]),
+              );
+            case 'get_live_streams':
+              request.response.write(
+                jsonEncode([
+                  {
+                    'stream_id': 101,
+                    'name': 'News HD',
+                    'category_id': '5',
+                    'epg_channel_id': 'news.hd',
+                  },
+                ]),
+              );
+            case 'get_short_epg':
+              request.response.write(
+                jsonEncode({
+                  'epg_listings': [
+                    {
+                      'id': 'programme-1',
+                      'title': base64Encode(utf8.encode('Morning News')),
+                      'description': base64Encode(utf8.encode('Headlines')),
+                      'start': '2026-07-15 09:00:00',
+                      'end': '2026-07-15 10:00:00',
+                      'stream_id': '101',
+                    },
+                  ],
+                }),
+              );
+            default:
+              request.response.statusCode = HttpStatus.badRequest;
+          }
+          await request.response.close();
+        });
+        final prefs = await SharedPreferences.getInstance();
+        const sourceId = 'xtream-test';
+        await ContentSourceStore(PreferencesStore(prefs)).add(
+          ContentSourceConfig(
+            id: sourceId,
+            kind: ContentSourceKind.xtream,
+            label: 'Provider',
+            url: 'http://${server.address.host}:${server.port}',
+          ),
+        );
+        final secureStore = InMemorySecureStore();
+        await ContentSourceCredentialStore(secureStore).save(
+          const ContentSourceCredentialRef(sourceId),
+          const ContentSourceCredentials(username: 'user', password: 'pass'),
+        );
+        final epg = MutableXmltvCompactEpgRepository();
+        final sourceContainer = ProviderContainer(
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            secureStoreProvider.overrideWithValue(secureStore),
+            dioProvider.overrideWithValue(Dio()),
+            compactEpgRepositoryProvider.overrideWithValue(epg),
+          ],
+        );
+        addTearDown(sourceContainer.dispose);
+
+        final channels = await sourceContainer.read(
+          configuredXtreamChannelsProvider.future,
+        );
+
+        expect(channels.single.id, '$sourceId-101');
+        expect(channels.single.group, 'World News');
+        final slice = await epg.loadCurrentNext(
+          channelIds: [channels.single.id],
+          now: DateTime.utc(2026, 7, 15, 9, 30),
+        );
+        expect(slice.entries.single.current?.title, 'Morning News');
+      },
+    );
 
     group('Preference sorting', () {
       test('channels matching preferences should be ranked higher', () {

@@ -31,20 +31,29 @@ class XtreamContentSource extends ContentSource {
 /// same shape via [XtreamClient.getVodStreams] but is surfaced separately
 /// by CV-019 (local VOD listing over BYOC sources), not this adapter.
 class XtreamContentSourceAdapter {
-  XtreamContentSourceAdapter(this._client);
+  XtreamContentSourceAdapter(this._client, {this.sourceId = 'xtream'});
 
   final XtreamClient _client;
+  final String sourceId;
 
   Future<List<IPTVChannel>> loadChannels() async {
-    final streams = await _client.getLiveStreams();
+    final results = await Future.wait([
+      _client.getLiveCategories(),
+      _client.getLiveStreams(),
+    ]);
+    final categories = {
+      for (final category in results[0] as List<XtreamCategory>)
+        category.id: category.name,
+    };
+    final streams = results[1] as List<XtreamLiveStream>;
     return [
       for (final stream in streams)
         IPTVChannel(
-          id: 'xtream-${stream.streamId}',
+          id: '$sourceId-${stream.streamId}',
           name: stream.name,
           streamUrl: _client.liveStreamUrl(stream.streamId),
           logoUrl: stream.streamIcon,
-          group: stream.categoryId ?? 'Uncategorized',
+          group: categories[stream.categoryId] ?? 'Uncategorized',
           tvgId: int.tryParse(stream.epgChannelId ?? ''),
           tvgName: stream.epgChannelId,
         ),

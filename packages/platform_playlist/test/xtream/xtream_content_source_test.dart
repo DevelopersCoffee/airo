@@ -2,8 +2,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:platform_playlist/platform_playlist.dart';
 
 class _FakeXtreamClient implements XtreamClient {
-  _FakeXtreamClient(this._streams);
+  _FakeXtreamClient(this._streams, {this.categories = const []});
   final List<XtreamLiveStream> _streams;
+  final List<XtreamCategory> categories;
+
+  @override
+  Future<List<XtreamCategory>> getLiveCategories() async => categories;
 
   @override
   Future<List<XtreamLiveStream>> getLiveStreams() async => _streams;
@@ -33,15 +37,18 @@ void main() {
   test(
     'adapter maps XtreamLiveStream into IPTVChannel via live stream URL',
     () async {
-      final fakeClient = _FakeXtreamClient([
-        const XtreamLiveStream(
-          streamId: 101,
-          name: 'News HD',
-          streamIcon: 'https://xtream.example.com/logo.png',
-          categoryId: '5',
-          epgChannelId: 'news.hd',
-        ),
-      ]);
+      final fakeClient = _FakeXtreamClient(
+        [
+          const XtreamLiveStream(
+            streamId: 101,
+            name: 'News HD',
+            streamIcon: 'https://xtream.example.com/logo.png',
+            categoryId: '5',
+            epgChannelId: 'news.hd',
+          ),
+        ],
+        categories: const [XtreamCategory(id: '5', name: 'World News')],
+      );
       final adapter = XtreamContentSourceAdapter(fakeClient);
 
       final channels = await adapter.loadChannels();
@@ -54,6 +61,7 @@ void main() {
       );
       expect(channels.single.logoUrl, 'https://xtream.example.com/logo.png');
       expect(channels.single.id, 'xtream-101');
+      expect(channels.single.group, 'World News');
     },
   );
 }

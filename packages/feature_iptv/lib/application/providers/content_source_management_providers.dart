@@ -3,11 +3,45 @@ import 'package:core_data/core_data.dart';
 import 'package:platform_playlist/platform_playlist.dart';
 
 import '../content_source_store.dart';
+import '../mutable_xmltv_compact_epg_repository.dart';
 import 'content_source_providers.dart';
 import 'iptv_providers.dart';
 
 export 'content_source_providers.dart'
     show secureStoreProvider, contentSourceCredentialStoreProvider;
+
+class XtreamAuthenticationException implements Exception {
+  const XtreamAuthenticationException([
+    this.message = 'Xtream credentials were not accepted.',
+  ]);
+
+  final String message;
+
+  @override
+  String toString() => message;
+}
+
+typedef XtreamAuthenticator =
+    Future<XtreamAuthResult> Function({
+      required String serverUrl,
+      required String username,
+      required String password,
+    });
+
+final xtreamAuthenticatorProvider = Provider<XtreamAuthenticator>((ref) {
+  return ({
+    required String serverUrl,
+    required String username,
+    required String password,
+  }) {
+    return XtreamClient(
+      dio: ref.read(dioProvider),
+      serverUrl: serverUrl,
+      username: username,
+      password: password,
+    ).authenticate();
+  };
+});
 
 /// Persists the user's configured content sources
 /// ([ContentSourceConfig]/[ContentSourceStore], Task 1), backed by the same
@@ -47,6 +81,8 @@ final addM3uContentSourceProvider = FutureProvider.autoDispose
               url: args.url,
             ),
           );
+      ref.invalidate(iptvChannelsProvider);
+      ref.invalidate(configuredXtreamChannelsProvider);
       ref.invalidate(configuredContentSourcesProvider);
       keepAlive.close();
     });
@@ -55,13 +91,30 @@ final addM3uContentSourceProvider = FutureProvider.autoDispose
 /// credentials via [contentSourceCredentialStoreProvider], keyed on the
 /// generated config id so [removeContentSourceProvider] deletes the same
 /// credential slot.
-final addXtreamContentSourceProvider = FutureProvider.autoDispose
-    .family<
+final addXtreamContentSourceProvider =
+    FutureProvider.family<
       void,
       ({String label, String url, String username, String password})
     >((ref, args) async {
       final keepAlive = ref.keepAlive();
       final id = 'xtream-${DateTime.now().microsecondsSinceEpoch}';
+      final XtreamAuthResult auth;
+      try {
+        auth = await ref.read(xtreamAuthenticatorProvider)(
+          serverUrl: args.url,
+          username: args.username,
+          password: args.password,
+        );
+      } catch (_) {
+        throw const XtreamAuthenticationException(
+          'Could not verify the Xtream account.',
+        );
+      }
+      if (!auth.isAuthenticated ||
+          auth.status.toLowerCase() == 'expired' ||
+          (auth.expiresAt?.isBefore(DateTime.now().toUtc()) ?? false)) {
+        throw const XtreamAuthenticationException();
+      }
       await ref
           .watch(contentSourceCredentialStoreProvider)
           .save(
@@ -79,11 +132,16 @@ final addXtreamContentSourceProvider = FutureProvider.autoDispose
               kind: ContentSourceKind.xtream,
               label: args.label,
               url: args.url,
+              accountStatus: auth.status,
+              accountExpiresAt: auth.expiresAt,
+              maxConnections: auth.maxConnections,
             ),
           );
+      ref.invalidate(iptvChannelsProvider);
+      ref.invalidate(configuredXtreamChannelsProvider);
       ref.invalidate(configuredContentSourcesProvider);
       keepAlive.close();
-    });
+    }, retry: (_, _) => null);
 
 /// Adds a new Stalker Portal [ContentSourceConfig]. Stalker auth uses the
 /// device MAC address (persisted in the config itself, not a secret), so
@@ -153,6 +211,12 @@ final removeContentSourceProvider = FutureProvider.autoDispose
       await ref
           .watch(contentSourceCredentialStoreProvider)
           .delete(ContentSourceCredentialRef(id));
+      final epgRepository = ref.read(compactEpgRepositoryProvider);
+      if (epgRepository is MutableXmltvCompactEpgRepository) {
+        epgRepository.removeNamedSource('epg-$id');
+      }
+      ref.invalidate(iptvChannelsProvider);
+      ref.invalidate(configuredXtreamChannelsProvider);
       ref.invalidate(configuredContentSourcesProvider);
       keepAlive.close();
     });

@@ -17,6 +17,14 @@ void main() {
       overrides: [
         sharedPreferencesProvider.overrideWithValue(prefs),
         secureStoreProvider.overrideWithValue(InMemorySecureStore()),
+        xtreamAuthenticatorProvider.overrideWithValue(
+          ({
+            required String serverUrl,
+            required String username,
+            required String password,
+          }) async =>
+              const XtreamAuthResult(isAuthenticated: true, status: 'Active'),
+        ),
       ],
     );
   }
