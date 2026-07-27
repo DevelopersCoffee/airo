@@ -120,6 +120,7 @@ jobs:
           (cd packages/core_ai && flutter pub get) &
           (cd packages/core_auth && flutter pub get) &
           (cd packages/core_edge_intelligence && dart pub get) &
+          (cd packages/platform_iptv_org_api && dart pub get) &
           wait
           cd app && flutter pub get
 
@@ -194,6 +195,7 @@ jobs:
           (cd packages/core_ai && flutter test --reporter=compact) &
           (cd packages/core_auth && flutter test --reporter=compact) &
           (cd packages/core_edge_intelligence && dart test --reporter=compact) &
+          (cd packages/platform_iptv_org_api && dart test --reporter=compact) &
           wait
           echo "All core package tests completed!"
 

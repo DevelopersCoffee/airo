@@ -1,0 +1,15 @@
+name: platform_iptv_org_api
+owner: Media Intelligence Architect
+reviewers:
+  - Chief Architect
+  - Chief Performance Officer
+  - Chief Security Officer
+  - Chief Open Source Officer
+  - Chief QA Officer
+contracts:
+  - IptvOrgApiV1
+allowed_dependencies: []
+forbidden_dependencies:
+  - app
+  - feature_iptv
+quality_gates: {}
