@@ -164,6 +164,7 @@ void main() {
     test(
       'queue controls delegate through the shared download contract',
       () async {
+        when(() => mockRegistry.getModel(testModel.id)).thenReturn(testModel);
         when(
           () => mockDownload.pauseDownload(testModel.id),
         ).thenAnswer((_) async {});
@@ -171,7 +172,7 @@ void main() {
           () => mockDownload.resumeDownload(testModel.id),
         ).thenAnswer((_) async {});
         when(
-          () => mockDownload.retryDownload(testModel.id),
+          () => mockDownload.retryDownload(testModel.id, model: testModel),
         ).thenAnswer((_) async {});
         when(
           () => mockDownload.cancelDownload(testModel.id),
@@ -184,7 +185,9 @@ void main() {
 
         verify(() => mockDownload.pauseDownload(testModel.id)).called(1);
         verify(() => mockDownload.resumeDownload(testModel.id)).called(1);
-        verify(() => mockDownload.retryDownload(testModel.id)).called(1);
+        verify(
+          () => mockDownload.retryDownload(testModel.id, model: testModel),
+        ).called(1);
         verify(() => mockDownload.cancelDownload(testModel.id)).called(1);
       },
     );

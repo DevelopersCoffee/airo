@@ -383,7 +383,6 @@ class ModelCatalog {
       .toList();
 
   /// Gets only models with a confirmed MediaPipe web (.task) bundle.
-  static List<OfflineModelInfo> get webRuntimeSupported => bundledModels
-      .where((m) => m.supportsWebRuntime)
-      .toList();
+  static List<OfflineModelInfo> get webRuntimeSupported =>
+      bundledModels.where((m) => m.supportsWebRuntime).toList();
 }

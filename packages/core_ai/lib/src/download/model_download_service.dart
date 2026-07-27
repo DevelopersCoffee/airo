@@ -158,7 +158,21 @@ class ModelDownloadService {
 
   Future<void> resumeDownload(String modelId) => _downloads.resume(modelId);
 
-  Future<void> retryDownload(String modelId) => _downloads.retry(modelId);
+  Future<void> retryDownload(String modelId, {OfflineModelInfo? model}) async {
+    if (model == null) {
+      await _downloads.retry(modelId);
+      return;
+    }
+
+    // Re-enqueue with current catalog metadata so persisted requests from an
+    // older catalog cannot repeat a stale size or checksum failure.
+    await _downloads.cancel(modelId);
+    _scheduledIds.remove(modelId);
+    _scheduledModels.remove(modelId);
+    _scheduledIds.add(modelId);
+    _scheduledModels[modelId] = model;
+    await _prepareDownload(model);
+  }
 
   Future<void> cancelDownload(String modelId) => _downloads.cancel(modelId);
 
