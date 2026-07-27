@@ -359,7 +359,12 @@ class _TvFocusableState extends State<TvFocusable>
       onKeyEvent: _handleKeyEvent,
       child: ValueListenableBuilder<bool>(
         valueListenable: _isFocused,
-        child: widget.child,
+        // TvFocusable is the single reviewed D-pad stop for this visual
+        // target. Material controls such as IconButton and ChoiceChip create
+        // their own Focus nodes; leaving those requestable produces two
+        // remote stops inside one visible box and Fire TV traversal appears
+        // to skip the next box. Pointer gestures still reach the child.
+        child: ExcludeFocus(child: widget.child),
         builder: (context, isFocused, child) {
           final decoration = isFocused && widget.showBorderEffect
               ? BoxDecoration(

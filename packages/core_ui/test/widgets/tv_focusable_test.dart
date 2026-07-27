@@ -116,6 +116,51 @@ void main() {
     expect(secondaryCount, 1);
   });
 
+  testWidgets('TvFocusable contributes one remote stop with a button child', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: TvFocusable(
+            key: const ValueKey('remote-box'),
+            autofocus: true,
+            onSelect: () {},
+            child: IconButton(onPressed: () {}, icon: const Icon(Icons.share)),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final boxElement = tester.element(find.byKey(const ValueKey('remote-box')));
+    bool belongsToBox(FocusNode node) {
+      final context = node.context;
+      if (context is! Element) return false;
+      if (context == boxElement) return true;
+      var belongs = false;
+      context.visitAncestorElements((ancestor) {
+        if (ancestor == boxElement) {
+          belongs = true;
+          return false;
+        }
+        return true;
+      });
+      return belongs;
+    }
+
+    final requestableStops = FocusManager.instance.rootScope.descendants.where(
+      (node) => node.canRequestFocus && belongsToBox(node),
+    );
+    expect(
+      requestableStops,
+      hasLength(1),
+      reason:
+          'a focusable child must not become a hidden second stop inside '
+          'one visual TV box',
+    );
+  });
+
   testWidgets(
     'TvFocusable scrolls itself into view when it gains focus off-screen '
     '(D-pad through a long list must not leave focus invisible)',
