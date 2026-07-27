@@ -1,6 +1,15 @@
 /// Stub implementation of share_plus for TV builds
 library;
 
+/// Minimal cross-file surface re-exported by the real share_plus package.
+class XFile {
+  const XFile.fromData(this.data, {this.mimeType, this.name});
+
+  final List<int> data;
+  final String? mimeType;
+  final String? name;
+}
+
 /// Share result
 class ShareResult {
   const ShareResult(this.raw, this.status);

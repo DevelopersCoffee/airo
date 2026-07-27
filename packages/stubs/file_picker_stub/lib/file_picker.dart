@@ -12,12 +12,14 @@ class PlatformFile {
     this.path,
     this.bytes,
     this.extension,
+    this.identifier,
   });
   final String? path;
   final String name;
   final int size;
   final List<int>? bytes;
   final String? extension;
+  final String? identifier;
 }
 
 /// File picker result
