@@ -95,6 +95,8 @@ See `config/default.yaml` for all configuration options. Key settings:
 The pipeline produces:
 
 - `output/current/iptv_channels.json` - Main channel data
+- `output/current/taxonomies.json` - Canonical categories, represented
+  countries, regions, and languages with a deterministic checksum
 - `output/current/manifest.json` - Version metadata
 - `output/reports/pipeline_report.json` - Run statistics
 
@@ -120,6 +122,7 @@ To enable automatic publishing, you need to create a GitHub Gist and configure s
 1. Go to [gist.github.com](https://gist.github.com)
 2. Create a new **public** gist with these placeholder files:
    - `iptv_channels.json` (content: `{}`)
+   - `taxonomies.json` (content: `{}`)
    - `manifest.json` (content: `{}`)
    - `iptv_channels.m3u` (content: `#EXTM3U`)
 3. Copy the Gist ID from the URL (e.g., `https://gist.github.com/username/abc123def456` → ID is `abc123def456`)
@@ -153,6 +156,7 @@ static const String _gistId = 'YOUR_GIST_ID_HERE';  // Replace with actual Gist 
 
 Once configured, the data will be available at:
 - **JSON**: `https://gist.githubusercontent.com/raw/{GIST_ID}/iptv_channels.json`
+- **Taxonomies**: `https://gist.githubusercontent.com/raw/{GIST_ID}/taxonomies.json`
 - **M3U**: `https://gist.githubusercontent.com/raw/{GIST_ID}/iptv_channels.m3u`
 - **Manifest**: `https://gist.githubusercontent.com/raw/{GIST_ID}/manifest.json`
 
@@ -181,4 +185,3 @@ All components implemented and tested:
 ## 📄 License
 
 MIT License - See LICENSE file for details.
-

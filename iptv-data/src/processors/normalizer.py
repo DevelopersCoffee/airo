@@ -66,6 +66,11 @@ class Normalizer:
             country=country,
             language=language,
             group=channel.group_title or "Uncategorized",
+            alt_names=[
+                str(name)
+                for name in channel.extra_attrs.get("alt_names", [])
+                if isinstance(name, str) and name.strip()
+            ],
             headers=channel.headers,
             extra_attrs=channel.extra_attrs,
         )
@@ -139,4 +144,3 @@ class Normalizer:
             return channel.group_title.lower()
 
         return "general"
-

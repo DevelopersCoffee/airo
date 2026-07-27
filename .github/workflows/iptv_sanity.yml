@@ -67,6 +67,7 @@ jobs:
         run: |
           # Check that output files exist
           test -f output/current/iptv_channels.json
+          test -f output/current/taxonomies.json
           test -f output/current/manifest.json
           
           # Validate JSON
@@ -101,6 +102,7 @@ jobs:
 
           # Read file contents and escape for JSON
           CHANNELS_CONTENT=$(python -c "import json; print(json.dumps(open('output/current/iptv_channels.json').read()))")
+          TAXONOMIES_CONTENT=$(python -c "import json; print(json.dumps(open('output/current/taxonomies.json').read()))")
           MANIFEST_CONTENT=$(python -c "import json; print(json.dumps(open('output/current/manifest.json').read()))")
           M3U_CONTENT=$(python -c "import json; print(json.dumps(open('output/current/iptv_channels.m3u').read()))")
 
@@ -110,8 +112,11 @@ jobs:
             "description": "IPTV Channels Data v${VERSION} - Auto-updated by IPTV Sanity Pipeline",
             "files": {
               "iptv_channels.json": {
-                "content": ${CHANNELS_CONTENT}
-              },
+              "content": ${CHANNELS_CONTENT}
+            },
+            "taxonomies.json": {
+              "content": ${TAXONOMIES_CONTENT}
+            },
               "manifest.json": {
                 "content": ${MANIFEST_CONTENT}
               },

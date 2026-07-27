@@ -42,6 +42,7 @@ async def run_pipeline(
     # Step 1: Load from all sources
     logger.info("Step 1: Loading channels from sources...")
     all_channels: list[RawChannel] = []
+    taxonomies: dict[str, list[dict[str, object]]] = {}
 
     # Load M3U sources
     if config.sources.get("m3u") and config.sources["m3u"].enabled:
@@ -63,6 +64,7 @@ async def run_pipeline(
         try:
             iptv_org_channels = await iptv_org_loader.load()
             all_channels.extend(iptv_org_channels)
+            taxonomies = iptv_org_loader.taxonomies
         except Exception as e:
             logger.warning(f"Failed to load IPTV-org: {e}")
 
@@ -83,9 +85,7 @@ async def run_pipeline(
     if not skip_validation and config.validation.enabled:
         logger.info("Step 3: Validating streams...")
         validator = StreamValidator(config.validation)
-        normalized_channels, dead_streams_removed = await validator.validate(
-            normalized_channels
-        )
+        normalized_channels, dead_streams_removed = await validator.validate(normalized_channels)
     else:
         logger.info("Step 3: Skipping stream validation")
 
@@ -135,7 +135,7 @@ async def run_pipeline(
     logger.info("Step 6: Exporting results...")
     json_exporter = JsonExporter(config.output, base_dir)
     json_exporter.backup_previous()
-    json_exporter.export(processed_channels, metadata)
+    json_exporter.export(processed_channels, metadata, taxonomies=taxonomies)
 
     if "m3u" in config.output.secondary_formats:
         m3u_exporter = M3UExporter(config.output, base_dir)
@@ -168,4 +168,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

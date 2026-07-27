@@ -29,6 +29,10 @@ sources:
       channels: /channels.json
       streams: /streams.json
       blocklist: /blocklist.json
+      categories: /categories.json
+      countries: /countries.json
+      regions: /regions.json
+      languages: /languages.json
     cache_hours: 24
     retry:
       max_attempts: 2

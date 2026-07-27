@@ -1,6 +1,6 @@
 """IPTV-org API loader."""
 
-from typing import Any
+from typing import Any, cast
 
 import aiohttp
 
@@ -28,6 +28,7 @@ class IptvOrgLoader(BaseLoader):
         self._channels_data: list[dict[str, Any]] = []
         self._streams_data: list[dict[str, Any]] = []
         self._blocklist: set[str] = set()
+        self.taxonomies: dict[str, list[dict[str, Any]]] = {}
 
     def get_source_name(self) -> str:
         """Get source name."""
@@ -71,9 +72,18 @@ class IptvOrgLoader(BaseLoader):
             self._blocklist = {item.get("channel", "") for item in blocklist_data}
             logger.info(f"Fetched {len(self._blocklist)} blocked channels from IPTV-org")
 
-    async def _fetch_json(
-        self, session: aiohttp.ClientSession, url: str
-    ) -> list[dict[str, Any]]:
+            for endpoint in (
+                "categories",
+                "countries",
+                "regions",
+                "languages",
+            ):
+                path = self.endpoints.get(endpoint, f"/{endpoint}.json")
+                self.taxonomies[endpoint] = await self._fetch_json(
+                    session, f"{self.base_url}{path}"
+                )
+
+    async def _fetch_json(self, session: aiohttp.ClientSession, url: str) -> list[dict[str, Any]]:
         """Fetch JSON data from URL."""
         async with session.get(
             url,
@@ -81,7 +91,7 @@ class IptvOrgLoader(BaseLoader):
             headers={"User-Agent": "IPTV-Sanity-Agent/1.0"},
         ) as response:
             response.raise_for_status()
-            return await response.json()
+            return cast(list[dict[str, Any]], await response.json())
 
     def _process_channels(self) -> list[RawChannel]:
         """Process and filter channels."""
@@ -131,12 +141,14 @@ class IptvOrgLoader(BaseLoader):
                 language=", ".join(channel_data.get("languages", [])),
                 extra_attrs={
                     "iptv_org_id": channel_id,
+                    "alt_names": channel_data.get("alt_names", []),
                     "categories": channel_data.get("categories", []),
-                    "languages": channel_data.get("languages", []),
                     "is_nsfw": channel_data.get("is_nsfw", False),
+                    "network": channel_data.get("network"),
+                    "owners": channel_data.get("owners", []),
+                    "website": channel_data.get("website"),
                 },
             )
             channels.append(channel)
 
         return channels
-

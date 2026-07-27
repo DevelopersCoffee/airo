@@ -152,6 +152,35 @@ class TestDeduplicator:
         assert "m3u" in result[0].sources
         assert "iptv_org" in result[0].sources
 
+    def test_upstream_alias_merges_punctuation_variant(self, deduplicator: Deduplicator) -> None:
+        m3u = self._make_channel("Sony YAY", SourceType.M3U)
+        canonical = self._make_channel("Sony Yay!", SourceType.IPTV_ORG)
+        canonical.alt_names = ["Sony YAY"]
+        canonical.extra_attrs = {
+            "network": "Sony",
+            "owners": ["Sony Pictures Networks India"],
+            "website": "https://www.sonyyay.com/",
+        }
+
+        result, merged_count = deduplicator.deduplicate([m3u, canonical])
+
+        assert len(result) == 1
+        assert merged_count == 1
+        assert set(result[0].sources) == {"m3u", "iptv_org"}
+        assert result[0].network == "Sony"
+        assert result[0].owners == ["Sony Pictures Networks India"]
+        assert result[0].website == "https://www.sonyyay.com/"
+
+    def test_alias_never_merges_different_countries(self, deduplicator: Deduplicator) -> None:
+        india = self._make_channel("Sony YAY", SourceType.M3U, country="IN")
+        usa = self._make_channel("Different", SourceType.IPTV_ORG, country="US")
+        usa.alt_names = ["Sony YAY"]
+
+        result, merged_count = deduplicator.deduplicate([india, usa])
+
+        assert len(result) == 2
+        assert merged_count == 0
+
     def test_disabled_deduplication(self) -> None:
         """Test that disabled deduplication returns all channels."""
         config = DeduplicationConfig(enabled=False)
@@ -166,4 +195,3 @@ class TestDeduplicator:
 
         assert len(result) == 2
         assert merged_count == 0
-

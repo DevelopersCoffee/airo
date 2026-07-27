@@ -2,8 +2,7 @@
 
 from pathlib import Path
 
-import pytest
-
+from src.loaders.iptv_org_loader import IptvOrgLoader
 from src.loaders.m3u_loader import M3ULoader
 from src.models import SourceType
 from src.utils.config import SourceConfig
@@ -120,3 +119,38 @@ http://example.com/secure.m3u8
         loader = M3ULoader(SourceConfig(enabled=True, priority=5))
         assert loader.priority == 5
 
+
+class TestIptvOrgLoader:
+    def test_preserves_aliases_categories_and_organization_metadata(self) -> None:
+        loader = IptvOrgLoader(
+            SourceConfig(enabled=True),
+            target_countries=["IN"],
+        )
+        loader._channels_data = [
+            {
+                "id": "SonyYay.in",
+                "name": "Sony Yay!",
+                "alt_names": ["Sony YAY"],
+                "network": "Sony",
+                "owners": ["Sony Pictures Networks India"],
+                "country": "IN",
+                "categories": ["kids"],
+                "is_nsfw": False,
+                "website": "https://www.sonyyay.com/",
+            }
+        ]
+        loader._streams_data = [
+            {
+                "channel": "SonyYay.in",
+                "url": "https://example.com/sony-yay.m3u8",
+            }
+        ]
+
+        channel = loader._process_channels()[0]
+
+        assert channel.group_title == "kids"
+        assert channel.extra_attrs["categories"] == ["kids"]
+        assert channel.extra_attrs["alt_names"] == ["Sony YAY"]
+        assert channel.extra_attrs["network"] == "Sony"
+        assert channel.extra_attrs["owners"] == ["Sony Pictures Networks India"]
+        assert channel.extra_attrs["website"] == "https://www.sonyyay.com/"

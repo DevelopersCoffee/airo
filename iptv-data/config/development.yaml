@@ -24,6 +24,10 @@ sources:
       channels: /channels.json
       streams: /streams.json
       blocklist: /blocklist.json
+      categories: /categories.json
+      countries: /countries.json
+      regions: /regions.json
+      languages: /languages.json
     cache_hours: 1
     retry:
       max_attempts: 1
@@ -117,4 +121,3 @@ logging:
   level: DEBUG
   format: text  # Human-readable in dev
   include_timestamps: true
-

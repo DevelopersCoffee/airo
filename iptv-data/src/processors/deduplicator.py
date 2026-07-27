@@ -1,5 +1,7 @@
 """Channel deduplication logic."""
 
+import re
+
 from ..models import NormalizedChannel, ProcessedChannel, SourceType
 from ..utils import get_logger
 from ..utils.config import DeduplicationConfig
@@ -13,13 +15,9 @@ class Deduplicator:
     def __init__(self, config: DeduplicationConfig) -> None:
         """Initialize deduplicator with configuration."""
         self.config = config
-        self.priority_map = {
-            source: idx for idx, source in enumerate(config.priority_order)
-        }
+        self.priority_map = {source: idx for idx, source in enumerate(config.priority_order)}
 
-    def deduplicate(
-        self, channels: list[NormalizedChannel]
-    ) -> tuple[list[ProcessedChannel], int]:
+    def deduplicate(self, channels: list[NormalizedChannel]) -> tuple[list[ProcessedChannel], int]:
         """Deduplicate channels and return merged list.
 
         Args:
@@ -32,19 +30,38 @@ class Deduplicator:
             logger.info("Deduplication is disabled")
             return self._convert_all(channels), 0
 
-        # Group by composite key
-        groups: dict[str, list[NormalizedChannel]] = {}
-        for channel in channels:
-            key = channel.composite_key()
-            if key not in groups:
-                groups[key] = []
-            groups[key].append(channel)
+        # Union channels that share a canonical name or upstream alias, while
+        # retaining country/language in every key so aliases cannot collapse
+        # unrelated regional feeds.
+        parents = list(range(len(channels)))
+
+        def find(index: int) -> int:
+            while parents[index] != index:
+                parents[index] = parents[parents[index]]
+                index = parents[index]
+            return index
+
+        def union(left: int, right: int) -> None:
+            left_root = find(left)
+            right_root = find(right)
+            if left_root != right_root:
+                parents[right_root] = left_root
+
+        owner_by_key: dict[str, int] = {}
+        for index, channel in enumerate(channels):
+            for key in self._dedup_keys(channel):
+                owner = owner_by_key.setdefault(key, index)
+                union(index, owner)
+
+        groups_by_root: dict[int, list[NormalizedChannel]] = {}
+        for index, channel in enumerate(channels):
+            groups_by_root.setdefault(find(index), []).append(channel)
 
         # Merge each group
         result: list[ProcessedChannel] = []
         duplicates_merged = 0
 
-        for _key, group in groups.items():
+        for group in groups_by_root.values():
             if len(group) == 1:
                 result.append(self._to_processed(group[0]))
             else:
@@ -61,9 +78,7 @@ class Deduplicator:
     def _merge_group(self, group: list[NormalizedChannel]) -> ProcessedChannel:
         """Merge a group of duplicate channels into one."""
         # Sort by priority (lower is better)
-        sorted_group = sorted(
-            group, key=lambda c: self._get_priority(c.source)
-        )
+        sorted_group = sorted(group, key=lambda c: self._get_priority(c.source))
 
         # Use highest priority channel as base
         base = sorted_group[0]
@@ -72,6 +87,9 @@ class Deduplicator:
         alt_names = set()
         sources = set()
         quality_urls: dict[str, str] = {}
+        network = base.extra_attrs.get("network")
+        owners = set(base.extra_attrs.get("owners", []))
+        website = base.extra_attrs.get("website")
 
         for channel in sorted_group:
             sources.add(channel.source.value)
@@ -79,6 +97,10 @@ class Deduplicator:
             # Collect alternative names
             if channel.name != base.name:
                 alt_names.add(channel.name)
+            alt_names.update(channel.alt_names)
+            network = network or channel.extra_attrs.get("network")
+            owners.update(channel.extra_attrs.get("owners", []))
+            website = website or channel.extra_attrs.get("website")
 
             # Prefer logo from higher priority source
             if not base.logo_url and channel.logo_url:
@@ -101,14 +123,28 @@ class Deduplicator:
             flavor=base.flavor,
             group=base.group,
             quality_urls=quality_urls or base.quality_urls,
-            alt_names=list(alt_names) + base.alt_names,
+            alt_names=sorted(name for name in alt_names if name != base.name),
             headers=base.headers,
-            sources=list(sources),
+            sources=sorted(sources),
+            network=network,
+            owners=sorted(owners),
+            website=website,
         )
 
     def _get_priority(self, source: SourceType) -> int:
         """Get priority for a source type."""
         return self.priority_map.get(source.value, 999)
+
+    def _dedup_keys(self, channel: NormalizedChannel) -> set[str]:
+        """Build conservative alias keys scoped to country and language."""
+        names = [channel.normalized_name, *channel.alt_names]
+        keys = set()
+        for name in names:
+            normalized = re.sub(r"[^\w]+", "", name.lower())
+            normalized = re.sub(r"(?:4k|fhd|uhd|hd|sd|\d{3,4}p)$", "", normalized)
+            if normalized:
+                keys.add(f"{normalized}:{channel.country}:{channel.language}")
+        return keys or {channel.composite_key()}
 
     def _to_processed(self, channel: NormalizedChannel) -> ProcessedChannel:
         """Convert a single normalized channel to processed."""
@@ -126,11 +162,11 @@ class Deduplicator:
             alt_names=channel.alt_names,
             headers=channel.headers,
             sources=[channel.source.value],
+            network=channel.extra_attrs.get("network"),
+            owners=list(channel.extra_attrs.get("owners", [])),
+            website=channel.extra_attrs.get("website"),
         )
 
-    def _convert_all(
-        self, channels: list[NormalizedChannel]
-    ) -> list[ProcessedChannel]:
+    def _convert_all(self, channels: list[NormalizedChannel]) -> list[ProcessedChannel]:
         """Convert all channels without deduplication."""
         return [self._to_processed(c) for c in channels]
-

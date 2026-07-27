@@ -101,6 +101,9 @@ class ProcessedChannel:
     alt_names: list[str]
     headers: ChannelHeaders | None
     sources: list[str]  # Source types that contributed to this channel
+    network: str | None = None
+    owners: list[str] = field(default_factory=list)
+    website: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for JSON export."""
@@ -118,6 +121,12 @@ class ProcessedChannel:
             "altNames": self.alt_names,
             "sources": self.sources,
         }
+        if self.network:
+            result["network"] = self.network
+        if self.owners:
+            result["owners"] = self.owners
+        if self.website:
+            result["website"] = self.website
         if self.headers:
             result["headers"] = self.headers.to_dict()
         return result
@@ -151,4 +160,3 @@ class PipelineMetadata:
             "duplicatesMerged": self.duplicates_merged,
             "processingTimeSeconds": self.processing_time_seconds,
         }
-

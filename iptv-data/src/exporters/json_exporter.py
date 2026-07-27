@@ -26,6 +26,7 @@ class JsonExporter:
         self,
         channels: list[ProcessedChannel],
         metadata: PipelineMetadata,
+        taxonomies: dict[str, list[dict[str, Any]]] | None = None,
     ) -> Path:
         """Export channels to JSON file.
 
@@ -67,14 +68,14 @@ class JsonExporter:
 
         logger.info(f"Exported {len(channels)} channels to {output_path}")
 
+        taxonomy_checksum = self._write_taxonomies(channels, taxonomies or {})
+
         # Write manifest
-        self._write_manifest(metadata)
+        self._write_manifest(metadata, taxonomy_checksum)
 
         return output_path
 
-    def _sort_channels(
-        self, channels: list[ProcessedChannel]
-    ) -> list[ProcessedChannel]:
+    def _sort_channels(self, channels: list[ProcessedChannel]) -> list[ProcessedChannel]:
         """Sort channels based on configuration."""
         sort_by = self.config.guarantees.get("sort_by", ["country", "category", "name"])
 
@@ -97,7 +98,43 @@ class JsonExporter:
             "channels": [channel.to_dict() for channel in channels],
         }
 
-    def _write_manifest(self, metadata: PipelineMetadata) -> None:
+    def _write_taxonomies(
+        self,
+        channels: list[ProcessedChannel],
+        taxonomies: dict[str, list[dict[str, Any]]],
+    ) -> str | None:
+        """Write the small app-consumable taxonomy artifact deterministically."""
+        if not taxonomies:
+            return None
+        represented_countries = {channel.country.upper() for channel in channels}
+        output = {
+            "categories": sorted(
+                taxonomies.get("categories", []), key=lambda row: row.get("id", "")
+            ),
+            "countries": sorted(
+                (
+                    row
+                    for row in taxonomies.get("countries", [])
+                    if str(row.get("code", "")).upper() in represented_countries
+                ),
+                key=lambda row: row.get("code", ""),
+            ),
+            "regions": sorted(taxonomies.get("regions", []), key=lambda row: row.get("code", "")),
+            "languages": sorted(
+                taxonomies.get("languages", []), key=lambda row: row.get("code", "")
+            ),
+        }
+        canonical = json.dumps(output, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
+        checksum = hashlib.sha256(canonical.encode()).hexdigest()
+        payload = {"checksum": checksum, **output}
+        path = self.output_dir / "taxonomies.json"
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(payload, f, indent=2, ensure_ascii=False)
+        return checksum
+
+    def _write_manifest(
+        self, metadata: PipelineMetadata, taxonomy_checksum: str | None = None
+    ) -> None:
         """Write manifest.json with version info."""
         manifest = {
             "version": metadata.version,
@@ -107,6 +144,11 @@ class JsonExporter:
             "files": {
                 "channels": self.config.filenames.get("json", "iptv_channels.json"),
                 "m3u": self.config.filenames.get("m3u", "iptv_channels.m3u"),
+                **({"taxonomies": "taxonomies.json"} if taxonomy_checksum else {}),
+            },
+            "fileChecksums": {
+                "channels": metadata.checksum,
+                **({"taxonomies": taxonomy_checksum} if taxonomy_checksum is not None else {}),
             },
         }
 
@@ -131,4 +173,3 @@ class JsonExporter:
                 dest.write_bytes(file.read_bytes())
 
         logger.info(f"Backed up current output to {self.previous_dir}")
-
