@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:core_data/core_data.dart';
+import 'package:crypto/crypto.dart';
 import 'package:dio/dio.dart';
 import 'package:feature_iptv/application/mutable_xmltv_compact_epg_repository.dart';
 import 'package:feature_iptv/application/xmltv_source_refresh_service.dart';
@@ -67,6 +68,92 @@ void main() {
       expect(config?.lastError, isNull);
     },
   );
+
+  test(
+    'refresh detects gzip magic and verifies the manifest checksum',
+    () async {
+      final compressed = Uint8List.fromList(
+        gzip.encode(utf8.encode(_minimalXmltv)),
+      );
+      final gzipDio = Dio()..httpClientAdapter = _BytesXmltvAdapter(compressed);
+      final gzipService = XmltvSourceRefreshService(
+        dio: gzipDio,
+        sourceStore: sourceStore,
+        repository: repository,
+        downloadDirectoryProvider: () async => tempDir,
+      );
+
+      await gzipService.refresh(
+        'https://example.com/guide',
+        kind: XmltvSourceKind.system,
+        expectedSha256: sha256.convert(compressed).toString(),
+      );
+
+      final slice = await repository.loadCurrentNext(
+        channelIds: const ['chan-1'],
+        now: DateTime.utc(2026, 7, 17, 12, 10),
+      );
+      expect(slice.entryForChannel('chan-1')?.current?.title, 'Test Program');
+      final source = (await sourceStore.loadAll()).single;
+      expect(source.kind, XmltvSourceKind.system);
+      expect(source.lastError, isNull);
+      expect(await tempDir.list().toList(), isEmpty);
+    },
+  );
+
+  test('checksum mismatch records error and keeps previous guide', () async {
+    await service.refresh('https://example.com/guide.xml');
+    final wrongChecksumDio = Dio()
+      ..httpClientAdapter = _FakeXmltvAdapter('<tv/>');
+    final wrongChecksumService = XmltvSourceRefreshService(
+      dio: wrongChecksumDio,
+      sourceStore: sourceStore,
+      repository: repository,
+      downloadDirectoryProvider: () async => tempDir,
+    );
+
+    await expectLater(
+      () => wrongChecksumService.refresh(
+        'https://example.com/replacement.xml',
+        expectedSha256:
+            'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+      ),
+      throwsA(isA<StateError>()),
+    );
+
+    final slice = await repository.loadCurrentNext(
+      channelIds: const ['chan-1'],
+      now: DateTime.utc(2026, 7, 17, 12, 10),
+    );
+    expect(slice.entryForChannel('chan-1')?.current?.title, 'Test Program');
+    final source = await sourceStore.load();
+    expect(source?.url, 'https://example.com/guide.xml');
+    expect(source?.lastError, contains('checksum'));
+  });
+
+  test('manifest resolves and refreshes a same-origin country guide', () async {
+    final compressed = Uint8List.fromList(
+      gzip.encode(utf8.encode(_minimalXmltv)),
+    );
+    final manifestDio = Dio()
+      ..httpClientAdapter = _ManifestXmltvAdapter(compressed);
+    final manifestService = XmltvSourceRefreshService(
+      dio: manifestDio,
+      sourceStore: sourceStore,
+      repository: repository,
+      downloadDirectoryProvider: () async => tempDir,
+    );
+
+    await manifestService.refreshSystemSourceFromManifest(
+      manifestUrl: 'https://data.example/current/manifest.json',
+      country: 'in',
+    );
+
+    final source = (await sourceStore.loadAll()).single;
+    expect(source.url, 'https://data.example/current/guide_IN.xml.gz');
+    expect(source.kind, XmltvSourceKind.system);
+    expect(source.expectedSha256, sha256.convert(compressed).toString());
+  });
 
   test(
     'refresh with an invalid URL records an error, does not touch the repository',
@@ -193,6 +280,55 @@ class _FakeXmltvAdapter implements HttpClientAdapter {
   ) async {
     final bytes = utf8.encode(_content);
     return ResponseBody.fromBytes(bytes, 200);
+  }
+
+  @override
+  void close({bool force = false}) {}
+}
+
+class _BytesXmltvAdapter implements HttpClientAdapter {
+  _BytesXmltvAdapter(this._bytes);
+
+  final Uint8List _bytes;
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    return ResponseBody.fromBytes(_bytes, 200);
+  }
+
+  @override
+  void close({bool force = false}) {}
+}
+
+class _ManifestXmltvAdapter implements HttpClientAdapter {
+  _ManifestXmltvAdapter(this._guideBytes);
+
+  final Uint8List _guideBytes;
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    if (options.path.endsWith('manifest.json')) {
+      final manifest = jsonEncode({
+        'files': {'guide_IN': 'guide_IN.xml.gz'},
+        'fileChecksums': {'guide_IN': sha256.convert(_guideBytes).toString()},
+      });
+      return ResponseBody.fromBytes(
+        utf8.encode(manifest),
+        200,
+        headers: {
+          Headers.contentTypeHeader: ['application/json'],
+        },
+      );
+    }
+    return ResponseBody.fromBytes(_guideBytes, 200);
   }
 
   @override

@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:core_data/core_data.dart';
 import 'package:feature_iptv/application/xmltv_source_store.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -25,6 +27,48 @@ void main() {
     expect(loaded?.url, 'https://example.com/guide.xml');
     expect(loaded?.lastRefreshedAt, isNull);
     expect(loaded?.lastError, isNull);
+  });
+
+  test('keeps ordered system and user sources independently', () async {
+    await store.save(
+      const XmltvSourceConfig(
+        url: 'https://system.example/guide.xml.gz',
+        kind: XmltvSourceKind.system,
+        expectedSha256:
+            'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+      ),
+    );
+    await store.save(
+      const XmltvSourceConfig(url: 'https://user.example/guide.xml'),
+    );
+
+    final sources = await store.loadAll();
+
+    expect(sources.map((source) => source.kind), [
+      XmltvSourceKind.system,
+      XmltvSourceKind.user,
+    ]);
+    expect((await store.load())?.url, 'https://user.example/guide.xml');
+    expect(sources.first.expectedSha256, hasLength(64));
+  });
+
+  test('migrates the legacy single-source JSON without losing it', () async {
+    SharedPreferences.setMockInitialValues({
+      'xmltv_source_config': jsonEncode({
+        'url': 'https://legacy.example/guide.xml',
+        'lastRefreshedAt': '2026-07-17T12:00:00.000Z',
+      }),
+    });
+    final prefs = await SharedPreferences.getInstance();
+    final migratingStore = XmltvSourceStore(PreferencesStore(prefs));
+
+    final sources = await migratingStore.loadAll();
+
+    expect(sources.single.url, 'https://legacy.example/guide.xml');
+    expect(sources.single.kind, XmltvSourceKind.user);
+    expect(sources.single.lastRefreshedAt, DateTime.utc(2026, 7, 17, 12));
+    expect(prefs.getString('xmltv_source_config'), isNull);
+    expect(prefs.getString('xmltv_source_configs_v2'), isNotNull);
   });
 
   test(

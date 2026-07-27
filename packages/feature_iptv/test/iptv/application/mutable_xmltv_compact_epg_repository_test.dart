@@ -3,76 +3,109 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:platform_epg/platform_epg.dart';
 
 void main() {
-  test('defaults to unavailable when no source has been set', () async {
-    final repository = MutableXmltvCompactEpgRepository();
-    final now = DateTime.utc(2026, 7, 17, 12);
-
-    final slice = await repository.loadCurrentNext(
-      channelIds: ['chan-1'],
-      now: now,
-    );
-
-    expect(slice.availabilityAt(now), CompactEpgAvailability.unavailable);
-  });
-
-  test(
-    'updateSource swaps in a real repository, delegating loadWindow',
-    () async {
-      final repository = MutableXmltvCompactEpgRepository();
-      final now = DateTime.utc(2026, 7, 17, 12);
-      final fakeInner = InMemoryCompactEpgRepository(
-        seed: CompactEpgSlice(
-          entries: [
-            CompactEpgEntry(
-              channelId: 'chan-1',
-              channelName: 'Channel 1',
-              current: CompactEpgProgram(
-                programId: 'p1',
-                title: 'Now Showing',
-                startsAt: now.subtract(const Duration(minutes: 10)),
-                endsAt: now.add(const Duration(minutes: 20)),
-              ),
-            ),
-          ],
-          generatedAt: now,
-          expiresAt: now.add(const Duration(hours: 1)),
-          source: CompactEpgSliceSource.localCache,
-        ),
-      );
-
-      repository.updateSource(fakeInner);
-      final query = GuideWindowQuery(
-        channelIds: ['chan-1'],
-        windowStart: now.subtract(const Duration(hours: 1)),
-        windowEnd: now.add(const Duration(hours: 1)),
-        now: now,
-      );
-      final window = await repository.loadWindow(query);
-
-      expect(window.entryForChannel('chan-1')?.programs, isNotEmpty);
-    },
+  final start = DateTime.utc(2026, 7, 27, 10);
+  final end = start.add(const Duration(hours: 2));
+  final query = GuideWindowQuery(
+    channelIds: const ['news'],
+    windowStart: start,
+    windowEnd: end,
+    now: start,
   );
 
-  test('updateSource(null) reverts to unavailable', () async {
-    final repository = MutableXmltvCompactEpgRepository();
-    final now = DateTime.utc(2026, 7, 17, 12);
-    repository.updateSource(
-      InMemoryCompactEpgRepository(
-        seed: CompactEpgSlice(
-          entries: const [],
-          generatedAt: now,
-          expiresAt: now,
-          source: CompactEpgSliceSource.localCache,
+  test('user source wins collisions while system fills gaps', () async {
+    final repository = MutableXmltvCompactEpgRepository()
+      ..updateNamedSource(
+        sourceId: 'xmltv-system',
+        priority: 1,
+        repository: _WindowRepository(
+          _window(start, end, [
+            _program('system-conflict', 'System', start, 60),
+            _program('system-fill', 'System fill', start, 120, offset: 60),
+          ]),
         ),
-      ),
-    );
+      )
+      ..updateNamedSource(
+        sourceId: 'xmltv-user',
+        priority: 0,
+        repository: _WindowRepository(
+          _window(start, end, [_program('user', 'User', start, 60)]),
+        ),
+      );
 
-    repository.updateSource(null);
-    final slice = await repository.loadCurrentNext(
-      channelIds: ['chan-1'],
-      now: now,
-    );
+    final merged = await repository.loadWindow(query);
 
-    expect(slice.availabilityAt(now), CompactEpgAvailability.unavailable);
+    expect(merged.entries.single.programs.map((program) => program.programId), [
+      'user',
+      'system-fill',
+    ]);
   });
+
+  test('failed refresh can leave the previous named source intact', () async {
+    final repository = MutableXmltvCompactEpgRepository()
+      ..updateNamedSource(
+        sourceId: 'xmltv-user',
+        priority: 0,
+        repository: _WindowRepository(
+          _window(start, end, [_program('working', 'Working', start, 60)]),
+        ),
+      );
+
+    final window = await repository.loadWindow(query);
+
+    expect(window.entries.single.programs.single.programId, 'working');
+  });
+}
+
+CompactEpgWindow _window(
+  DateTime start,
+  DateTime end,
+  List<CompactEpgProgram> programs,
+) {
+  return CompactEpgWindow(
+    entries: [
+      CompactEpgWindowEntry(
+        channelId: 'news',
+        channelName: 'News',
+        programs: programs,
+      ),
+    ],
+    windowStart: start,
+    windowEnd: end,
+    generatedAt: start,
+    expiresAt: end,
+    source: CompactEpgSliceSource.localCache,
+  );
+}
+
+CompactEpgProgram _program(
+  String id,
+  String title,
+  DateTime start,
+  int durationMinutes, {
+  int offset = 0,
+}) {
+  final startsAt = start.add(Duration(minutes: offset));
+  return CompactEpgProgram(
+    programId: id,
+    title: title,
+    startsAt: startsAt,
+    endsAt: startsAt.add(Duration(minutes: durationMinutes)),
+  );
+}
+
+class _WindowRepository implements CompactEpgRepository {
+  const _WindowRepository(this.window);
+
+  final CompactEpgWindow window;
+
+  @override
+  Future<CompactEpgSlice> loadCurrentNext({
+    required Iterable<String> channelIds,
+    required DateTime now,
+  }) async {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<CompactEpgWindow> loadWindow(GuideWindowQuery query) async => window;
 }

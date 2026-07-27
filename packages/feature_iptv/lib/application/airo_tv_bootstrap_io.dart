@@ -147,7 +147,36 @@ Future<void> refreshAiroTvConfiguredXmltvSource(
     downloadDirectoryProvider:
         downloadDirectoryProvider ?? getTemporaryDirectory,
   );
-  await refreshService.refreshConfiguredSource();
+  await refreshService.refreshConfiguredSources();
+}
+
+Future<bool> refreshAiroTvBundledSystemGuide(
+  SharedPreferences prefs, {
+  required MutableXmltvCompactEpgRepository repository,
+  required String bundledPlaylistUrl,
+  required String manifestUrl,
+  required String country,
+  M3UParserService? parser,
+  Dio? dio,
+  XmltvSourceStore? sourceStore,
+  Future<Directory> Function()? downloadDirectoryProvider,
+}) async {
+  if (bundledPlaylistUrl.isEmpty || manifestUrl.isEmpty) return false;
+  final http = dio ?? Dio();
+  final parserService = parser ?? M3UParserService(dio: http, prefs: prefs);
+  if (parserService.getPlaylistUrl() != bundledPlaylistUrl) return false;
+  final refreshService = XmltvSourceRefreshService(
+    dio: http,
+    sourceStore: sourceStore ?? XmltvSourceStore(PreferencesStore(prefs)),
+    repository: repository,
+    downloadDirectoryProvider:
+        downloadDirectoryProvider ?? getTemporaryDirectory,
+  );
+  await refreshService.refreshSystemSourceFromManifest(
+    manifestUrl: manifestUrl,
+    country: country,
+  );
+  return true;
 }
 
 Future<CompactEpgSlice> _buildAiroTvCompactEpgSnapshot({

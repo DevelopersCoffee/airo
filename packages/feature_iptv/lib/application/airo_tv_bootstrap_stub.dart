@@ -48,3 +48,17 @@ Future<void> refreshAiroTvConfiguredXmltvSource(
   Object? sourceStore,
   Object? downloadDirectoryProvider,
 }) async {}
+
+Future<bool> refreshAiroTvBundledSystemGuide(
+  SharedPreferences prefs, {
+  required MutableXmltvCompactEpgRepository repository,
+  required String bundledPlaylistUrl,
+  required String manifestUrl,
+  required String country,
+  Object? parser,
+  Object? dio,
+  Object? sourceStore,
+  Object? downloadDirectoryProvider,
+}) async {
+  return false;
+}

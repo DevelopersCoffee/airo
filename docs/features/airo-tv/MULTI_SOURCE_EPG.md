@@ -4,6 +4,20 @@
 only bounded `CompactEpgWindow` values and does not parse XMLTV in presentation
 code.
 
+## Zero-config system guide
+
+TV release builds can register the pipeline guide without user interaction:
+
+- `IPTV_DATA_PLAYLIST_URL` identifies the bundled playlist.
+- `IPTV_DATA_MANIFEST_URL` is the HTTPS `manifest.json` beside that playlist.
+- `IPTV_DATA_COUNTRY` selects `guide_XX.xml.gz` and defaults to `IN`.
+
+The system source is activated only while the configured playlist exactly
+matches the bundled URL. The manifest filename must remain same-origin and its
+SHA-256 must match before the parsed repository is swapped. Gzip decoding runs
+off the main isolate. Existing user XMLTV configuration migrates into the
+ordered source store and remains higher priority than the system source.
+
 ## Source contract
 
 Each `EpgSourceWindow` contains an opaque, redacted source ID, a stable

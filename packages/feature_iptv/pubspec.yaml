@@ -21,6 +21,7 @@ dependencies:
     path: ../core_product_shell
   core_ui:
     path: ../core_ui
+  crypto: ^3.0.7
   feature_iptv_core:
     path: ../feature_iptv_core
   dio: ^5.10.0

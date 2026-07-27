@@ -49,6 +49,12 @@ const _debugDefaultPlaylistUrl = String.fromEnvironment(
   'DEBUG_IPTV_PLAYLIST_URL',
 );
 const _debugDefaultEpgUrl = String.fromEnvironment('DEBUG_IPTV_EPG_URL');
+const _bundledPlaylistUrl = String.fromEnvironment('IPTV_DATA_PLAYLIST_URL');
+const _bundledManifestUrl = String.fromEnvironment('IPTV_DATA_MANIFEST_URL');
+const _bundledGuideCountry = String.fromEnvironment(
+  'IPTV_DATA_COUNTRY',
+  defaultValue: 'IN',
+);
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -130,7 +136,14 @@ void main() async {
     repository: compactEpgRepository,
     windowRepository: mutableXmltvRepository,
   );
-  scheduleTvXmltvSourceRefresh(prefs, repository: mutableXmltvRepository);
+  if (_bundledPlaylistUrl.isNotEmpty && _bundledManifestUrl.isNotEmpty) {
+    scheduleTvBundledSystemGuideRefresh(
+      prefs,
+      repository: mutableXmltvRepository,
+    );
+  } else {
+    scheduleTvXmltvSourceRefresh(prefs, repository: mutableXmltvRepository);
+  }
 }
 
 @visibleForTesting
@@ -445,5 +458,49 @@ void scheduleTvXmltvSourceRefresh(
       sourceStore: sourceStore,
       downloadDirectoryProvider: downloadDirectoryProvider,
     ),
+  );
+}
+
+@visibleForTesting
+void scheduleTvBundledSystemGuideRefresh(
+  SharedPreferences prefs, {
+  required MutableXmltvCompactEpgRepository repository,
+  String bundledPlaylistUrl = _bundledPlaylistUrl,
+  String manifestUrl = _bundledManifestUrl,
+  String country = _bundledGuideCountry,
+  M3UParserService? parser,
+  Dio? dio,
+  XmltvSourceStore? sourceStore,
+  Future<Directory> Function()? downloadDirectoryProvider,
+  WidgetsBinding? binding,
+  void Function(DeferredStartupFrameCallback callback)? addPostFrameCallback,
+  void Function(String message)? log,
+}) {
+  if (bundledPlaylistUrl.isEmpty || manifestUrl.isEmpty) return;
+  scheduleDeferredStartupTask(
+    debugName: 'xmltv_bundled_system_guide_refresh',
+    binding: binding,
+    addPostFrameCallback: addPostFrameCallback,
+    log: log,
+    task: () async {
+      await refreshTvConfiguredXmltvSource(
+        prefs,
+        repository: repository,
+        dio: dio,
+        sourceStore: sourceStore,
+        downloadDirectoryProvider: downloadDirectoryProvider,
+      );
+      await refreshAiroTvBundledSystemGuide(
+        prefs,
+        repository: repository,
+        bundledPlaylistUrl: bundledPlaylistUrl,
+        manifestUrl: manifestUrl,
+        country: country,
+        parser: parser,
+        dio: dio,
+        sourceStore: sourceStore,
+        downloadDirectoryProvider: downloadDirectoryProvider,
+      );
+    },
   );
 }
