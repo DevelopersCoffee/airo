@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:platform_playlist_export/platform_playlist_export.dart';
+import 'package:platform_worker_jobs/platform_worker_jobs.dart';
 import 'package:share_plus/share_plus.dart';
 
 typedef BackupDocumentSaver =
@@ -57,21 +58,24 @@ class PlatformBackupDocumentGateway implements AiroBackupDocumentGateway {
   }
 
   static Future<AiroBackupDocument?> _pick() async {
-    final result = await FilePicker.pickFiles(
+    final file = await FilePicker.pickFile(
       dialogTitle: 'Choose an Airo TV backup',
       type: FileType.custom,
       allowedExtensions: const ['json'],
-      allowMultiple: false,
-      withData: true,
     );
-    final file = result?.files.singleOrNull;
     if (file == null) return null;
-    final bytes = file.bytes;
-    if (bytes == null) throw StateError('backup_file_bytes_unavailable');
+    final bytes = await file.readAsBytes();
+    final contents = bytes.length > 50 * 1024
+        ? await const AiroWorkerExecutor().run(
+            debugName: 'decode_airo_backup',
+            kind: AiroWorkerJobKind.deviceSync,
+            computation: () => utf8.decode(bytes),
+          )
+        : utf8.decode(bytes);
     return AiroBackupDocument(
       fileName: file.name,
       mediaType: 'application/json',
-      contents: utf8.decode(bytes),
+      contents: contents,
     );
   }
 }
