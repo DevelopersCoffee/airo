@@ -139,7 +139,7 @@ Related issues: #687, #689.
       app/profile ownership.
 - [ ] Confirm whether funding/sponsor configuration is intentionally absent.
 - [ ] Generate repository-health evidence with
-      `dart pub global run melos run release:repo-health-preflight`.
+      `dart run melos run release:repo-health-preflight`.
 
 ## Current Non-Secret Defaults
 
