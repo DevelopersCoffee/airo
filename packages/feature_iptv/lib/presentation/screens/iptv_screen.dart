@@ -90,6 +90,7 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
   final FocusNode _fullscreenFocusNode = FocusNode(
     debugLabel: 'IPTV fullscreen back handler',
   );
+  DateTime? _lastFullscreenBackAt;
 
   /// Guards the postFrameCallback below to fire once per fullscreen entry,
   /// not on every rebuild. Live playback rebuilds constantly (buffering,
@@ -228,9 +229,21 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
 
   @override
   Future<bool> didPopRoute() async {
-    if (!ref.read(isFullscreenModeProvider)) return false;
-    _exitFullscreen();
-    return true;
+    if (ref.read(isFullscreenModeProvider)) {
+      _lastFullscreenBackAt = DateTime.now();
+      _exitFullscreen();
+      return true;
+    }
+    final lastFullscreenBackAt = _lastFullscreenBackAt;
+    if (lastFullscreenBackAt != null &&
+        DateTime.now().difference(lastFullscreenBackAt) <
+            const Duration(seconds: 1)) {
+      // Fire OS can dispatch one remote BACK as two pop-route callbacks.
+      // Consume the duplicate so returning to browse never closes the app.
+      _lastFullscreenBackAt = null;
+      return true;
+    }
+    return false;
   }
 
   KeyEventResult _handleFullscreenKey(FocusNode node, KeyEvent event) {
@@ -238,9 +251,11 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
       return KeyEventResult.ignored;
     }
     final key = event.logicalKey;
-    if (key == LogicalKeyboardKey.goBack ||
-        key == LogicalKeyboardKey.escape ||
-        key == LogicalKeyboardKey.browserBack) {
+    // Android/Fire OS also sends BACK through didPopRoute. Consuming GoBack
+    // here exits fullscreen on key-down, then the platform pop-route closes
+    // the newly exposed browse route. Escape remains useful for desktop/web;
+    // Android BACK is handled exactly once by didPopRoute/PopScope.
+    if (key == LogicalKeyboardKey.escape) {
       _exitFullscreen();
       return KeyEventResult.handled;
     }
@@ -279,6 +294,7 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
 
   void _exitFullscreen() {
     if (!ref.read(isFullscreenModeProvider)) return;
+    _lastFullscreenBackAt = DateTime.now();
     _toggleFullscreen();
   }
 
@@ -634,10 +650,20 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
     final isPlaying =
         ref.watch(streamingStateProvider).value?.isPlaying == true;
     Widget guardRouteBack(Widget child) {
+      final lastFullscreenBackAt = _lastFullscreenBackAt;
+      final suppressDuplicateBack =
+          lastFullscreenBackAt != null &&
+          DateTime.now().difference(lastFullscreenBackAt) <
+              const Duration(seconds: 1);
       return PopScope<void>(
-        canPop: !isFullscreen,
+        canPop: !isFullscreen && !suppressDuplicateBack,
         onPopInvokedWithResult: (didPop, _) {
-          if (!didPop) _exitFullscreen();
+          if (didPop) return;
+          if (isFullscreen) {
+            _exitFullscreen();
+          } else if (suppressDuplicateBack) {
+            _lastFullscreenBackAt = null;
+          }
         },
         child: child,
       );
@@ -910,6 +936,7 @@ class _IPTVScreenBodyState extends ConsumerState<IPTVScreenBody>
   final FocusNode _fullscreenFocusNode = FocusNode(
     debugLabel: 'IPTV body fullscreen back handler',
   );
+  DateTime? _lastFullscreenBackAt;
 
   /// See _IPTVScreenState's identical field: guards the postFrameCallback
   /// below to fire once per fullscreen entry, not on every rebuild.
@@ -939,9 +966,19 @@ class _IPTVScreenBodyState extends ConsumerState<IPTVScreenBody>
 
   @override
   Future<bool> didPopRoute() async {
-    if (!ref.read(isFullscreenModeProvider)) return false;
-    _exitFullscreen();
-    return true;
+    if (ref.read(isFullscreenModeProvider)) {
+      _lastFullscreenBackAt = DateTime.now();
+      _exitFullscreen();
+      return true;
+    }
+    final lastFullscreenBackAt = _lastFullscreenBackAt;
+    if (lastFullscreenBackAt != null &&
+        DateTime.now().difference(lastFullscreenBackAt) <
+            const Duration(seconds: 1)) {
+      _lastFullscreenBackAt = null;
+      return true;
+    }
+    return false;
   }
 
   KeyEventResult _handleFullscreenKey(FocusNode node, KeyEvent event) {
@@ -949,9 +986,7 @@ class _IPTVScreenBodyState extends ConsumerState<IPTVScreenBody>
       return KeyEventResult.ignored;
     }
     final key = event.logicalKey;
-    if (key == LogicalKeyboardKey.goBack ||
-        key == LogicalKeyboardKey.escape ||
-        key == LogicalKeyboardKey.browserBack) {
+    if (key == LogicalKeyboardKey.escape) {
       _exitFullscreen();
       return KeyEventResult.handled;
     }
@@ -984,6 +1019,7 @@ class _IPTVScreenBodyState extends ConsumerState<IPTVScreenBody>
 
   void _exitFullscreen() {
     if (!ref.read(isFullscreenModeProvider)) return;
+    _lastFullscreenBackAt = DateTime.now();
     _toggleFullscreen();
   }
 
