@@ -14,6 +14,7 @@ allowed_dependencies:
   - platform_epg
   - platform_favorites
   - platform_history
+  - platform_iptv_org_api
   - platform_media
   - platform_player
   - platform_playlist

@@ -35,6 +35,8 @@ dependencies:
     path: ../platform_favorites
   platform_history:
     path: ../platform_history
+  platform_iptv_org_api:
+    path: ../platform_iptv_org_api
   platform_media:
     path: ../platform_media
   platform_player:
