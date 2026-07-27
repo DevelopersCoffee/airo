@@ -195,6 +195,51 @@ def test_country_filter_bounds_grab_input_and_coverage_gate(tmp_path: Path) -> N
     assert not (tmp_path / "guide_US.xml.gz").exists()
 
 
+def test_coverage_gate_uses_guide_eligible_denominator(tmp_path: Path) -> None:
+    channels = _channels()
+    channels["channels"].append(
+        {
+            "id": "NoGuide.in",
+            "name": "No Guide",
+            "country": "IN",
+            "languages": ["en"],
+            "streamSources": [],
+        }
+    )
+    eligible = tmp_path / "channels.xml"
+    eligible.write_text(
+        '<channels><channel xmltv_id="News.in"/></channels>',
+        encoding="utf-8",
+    )
+    grabbed = tmp_path / "guide.xml"
+    grabbed.write_text(
+        """<tv>
+<channel id="News.in"><display-name>News</display-name></channel>
+<programme channel="News.in" start="20260727000000 +0000" stop="20260727010000 +0000"><title>India</title></programme>
+</tv>""",
+        encoding="utf-8",
+    )
+    manifest = tmp_path / "manifest.json"
+    manifest.write_text('{"files": {}, "fileChecksums": {}}', encoding="utf-8")
+
+    result = publish_country_guides(
+        channels_payload=channels,
+        grabbed_xml=grabbed,
+        output_directory=tmp_path,
+        manifest_path=manifest,
+        minimum_coverage_percent=70,
+        countries={"IN"},
+        eligible_channels_xml=eligible,
+    )
+
+    report = result["countries"]["IN"]
+    assert report["coveragePercent"] == 100
+    assert report["curatedCoveragePercent"] == 50
+    assert report["guideEligibilityPercent"] == 50
+    assert report["eligibleChannels"] == 1
+    assert report["curatedChannels"] == 2
+
+
 def test_publish_splits_gzip_and_updates_manifest(tmp_path: Path) -> None:
     grabbed = tmp_path / "guide.xml"
     grabbed.write_text(

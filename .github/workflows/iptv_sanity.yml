@@ -121,6 +121,7 @@ jobs:
             --output-directory output/current \
             --manifest output/current/manifest.json \
             --countries IN \
+            --eligible-channels-xml /tmp/airo.channels.xml \
             --minimum-programmes 1 \
             --minimum-coverage-percent 70
       

@@ -95,6 +95,7 @@ def publish_country_guides(
     minimum_programmes: int = 1,
     minimum_coverage_percent: float = 0,
     countries: set[str] | None = None,
+    eligible_channels_xml: Path | None = None,
 ) -> dict[str, Any]:
     """Split one grabbed XMLTV file and atomically publish gzip artifacts."""
     selected_countries = {country.upper() for country in countries or set()}
@@ -107,6 +108,17 @@ def publish_country_guides(
             or str(channel.get("country") or "ZZ").upper() in selected_countries
         )
     }
+    eligible_channels = (
+        {
+            str(element.get("xmltv_id"))
+            for element in ET.parse(eligible_channels_xml)
+            .getroot()
+            .findall("channel")
+            if element.get("xmltv_id")
+        }
+        if eligible_channels_xml is not None
+        else set(channel_country)
+    )
     roots: dict[str, ET.Element] = {}
     covered_channels: dict[str, set[str]] = defaultdict(set)
     programme_counts: dict[str, int] = defaultdict(int)
@@ -129,10 +141,20 @@ def publish_country_guides(
     if total_programmes < minimum_programmes:
         raise ValueError(f"EPG programme gate failed: {total_programmes} < {minimum_programmes}")
     curated_counts: dict[str, int] = defaultdict(int)
+    eligible_counts: dict[str, int] = defaultdict(int)
     for country in channel_country.values():
         curated_counts[country] += 1
-    for country, curated_count in curated_counts.items():
-        coverage = 100 * len(covered_channels[country]) / curated_count if curated_count else 0
+    for channel_id in eligible_channels:
+        country = channel_country.get(channel_id)
+        if country is not None:
+            eligible_counts[country] += 1
+    for country in curated_counts:
+        eligible_count = eligible_counts[country]
+        coverage = (
+            100 * len(covered_channels[country]) / eligible_count
+            if eligible_count
+            else 0
+        )
         if coverage < minimum_coverage_percent:
             raise ValueError(
                 f"EPG coverage gate failed for {country}: "
@@ -176,9 +198,26 @@ def publish_country_guides(
             country: {
                 "programmes": programme_counts[country],
                 "coveredChannels": len(covered_channels[country]),
+                "eligibleChannels": eligible_counts[country],
                 "curatedChannels": curated_counts[country],
                 "coveragePercent": round(
-                    100 * len(covered_channels[country]) / curated_counts[country],
+                    100
+                    * len(covered_channels[country])
+                    / eligible_counts[country],
+                    2,
+                )
+                if eligible_counts[country]
+                else 0,
+                "curatedCoveragePercent": round(
+                    100
+                    * len(covered_channels[country])
+                    / curated_counts[country],
+                    2,
+                )
+                if curated_counts[country]
+                else 0,
+                "guideEligibilityPercent": round(
+                    100 * eligible_counts[country] / curated_counts[country],
                     2,
                 )
                 if curated_counts[country]
@@ -221,6 +260,7 @@ def main() -> None:
     publish.add_argument("--minimum-programmes", type=int, default=1)
     publish.add_argument("--minimum-coverage-percent", type=float, default=0)
     publish.add_argument("--countries", nargs="+")
+    publish.add_argument("--eligible-channels-xml", type=Path)
     args = parser.parse_args()
     channels_payload = _load_json(args.channels)
     if args.command == "generate":
@@ -242,6 +282,7 @@ def main() -> None:
             minimum_programmes=args.minimum_programmes,
             minimum_coverage_percent=args.minimum_coverage_percent,
             countries=set(args.countries or []),
+            eligible_channels_xml=args.eligible_channels_xml,
         )
         print(json.dumps(report, sort_keys=True))
 
