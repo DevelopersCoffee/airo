@@ -75,6 +75,33 @@ void main() {
   });
 
   group('ModuleRegistry', () {
+    test('returns one module route bundle without leaking other routes', () {
+      final registry = ModuleRegistry(shell: ShellId.mobile)
+        ..register(
+          _FakeModule(
+            id: 'money',
+            supportedShells: {ShellId.mobile},
+            routePath: '/money',
+          ),
+        )
+        ..register(
+          _FakeModule(
+            id: 'stream',
+            supportedShells: {ShellId.mobile},
+            routePath: '/iptv',
+          ),
+        );
+
+      expect(
+        registry
+            .routesForModule('money')
+            .whereType<GoRoute>()
+            .map((route) => route.path),
+        ['/money'],
+      );
+      expect(registry.routesForModule('missing'), isEmpty);
+    });
+
     test('only registers modules enabled for its shell', () {
       final registry = ModuleRegistry(shell: ShellId.tv);
       final iptv = _FakeModule(

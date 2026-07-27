@@ -115,6 +115,19 @@ class ModuleRegistry {
   List<RouteBase> get allRoutes =>
       _modules.expand((module) => module.routesFor(shell)).toList();
 
+  /// Routes contributed by the registered module identified by [moduleId].
+  ///
+  /// Shells use this when a module's routes must be mounted inside a specific
+  /// navigation branch rather than appended to the router's top-level list.
+  /// An absent module returns an empty bundle so optional modules stay
+  /// straightforward to compose.
+  List<RouteBase> routesForModule(String moduleId) {
+    final module = _modules
+        .where((candidate) => candidate.id == moduleId)
+        .firstOrNull;
+    return module?.routesFor(shell).toList(growable: false) ?? const [];
+  }
+
   /// All provider overrides contributed by registered modules for [shell].
   List<Override> get allProviderOverrides =>
       _modules.expand((module) => module.providerOverridesFor(shell)).toList();
