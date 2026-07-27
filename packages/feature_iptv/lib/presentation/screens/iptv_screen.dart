@@ -750,7 +750,11 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
               initiallyFullscreen: true,
               onFullscreenToggle: _toggleFullscreen,
               enableSwipeChannelChange: true,
-              showPictureInPicture: !widget.tenFootMode,
+              // The Fire TV acceptance contract keeps Picture-in-picture
+              // in Player actions even when the platform ultimately
+              // reports it unavailable; hiding the row made the required
+              // seven-row remote traversal impossible.
+              showPictureInPicture: true,
               useTvTransportBar: widget.tenFootMode,
             ),
           ),
@@ -1164,6 +1168,7 @@ class _StreamTabContent extends ConsumerWidget {
     if (channels.isEmpty) {
       return _BringYourOwnPlaylistView(
         onPlaylistSourceTap: onPlaylistSourceTap,
+        tenFootMode: playlistSourceInInfoBar,
       );
     }
 
@@ -1600,54 +1605,99 @@ class _PlaylistSourceInfoCallout extends StatelessWidget {
 }
 
 class _BringYourOwnPlaylistView extends StatelessWidget {
-  const _BringYourOwnPlaylistView({required this.onPlaylistSourceTap});
+  const _BringYourOwnPlaylistView({
+    required this.onPlaylistSourceTap,
+    required this.tenFootMode,
+  });
 
   final VoidCallback onPlaylistSourceTap;
+  final bool tenFootMode;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+
+    final scrollView = SingleChildScrollView(
+      padding: tenFootMode ? EdgeInsets.zero : const EdgeInsets.all(16),
+      child: Column(
+        children: [
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              'Add your playlist',
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Airo is a media player. It does not provide channels, playlists, or program guide data. Add an M3U URL for media you own or are authorized to watch.',
+            style: theme.textTheme.bodyMedium,
+          ),
+          const SizedBox(height: 16),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Semantics(
+              button: true,
+              label: 'Add a playlist URL',
+              hint: 'Opens playlist source setup.',
+              child: tenFootMode
+                  ? TvFocusable(
+                      key: const ValueKey('iptv-empty-add-playlist'),
+                      autofocus: true,
+                      semanticLabel: 'Add a playlist URL',
+                      onSelect: onPlaylistSourceTap,
+                      borderRadius: 20,
+                      child: Material(
+                        color: theme.colorScheme.primary,
+                        borderRadius: BorderRadius.circular(20),
+                        child: InkWell(
+                          onTap: onPlaylistSourceTap,
+                          canRequestFocus: false,
+                          borderRadius: BorderRadius.circular(20),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 12,
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.link,
+                                  color: theme.colorScheme.onPrimary,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'Add playlist URL',
+                                  style: TextStyle(
+                                    color: theme.colorScheme.onPrimary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    )
+                  : FilledButton.icon(
+                      onPressed: onPlaylistSourceTap,
+                      icon: const Icon(Icons.link),
+                      label: const Text('Add playlist URL'),
+                    ),
+            ),
+          ),
+        ],
+      ),
+    );
 
     return Semantics(
       container: true,
       explicitChildNodes: true,
       label: 'Playlist setup',
       hint: 'Add a playlist URL to browse your channels.',
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                'Add your playlist',
-                style: theme.textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Airo is a media player. It does not provide channels, playlists, or program guide data. Add an M3U URL for media you own or are authorized to watch.',
-              style: theme.textTheme.bodyMedium,
-            ),
-            const SizedBox(height: 16),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: Semantics(
-                button: true,
-                label: 'Add a playlist URL',
-                hint: 'Opens playlist source setup.',
-                child: FilledButton.icon(
-                  onPressed: onPlaylistSourceTap,
-                  icon: const Icon(Icons.link),
-                  label: const Text('Add playlist URL'),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
+      child: tenFootMode ? TvOverscanSafeArea(child: scrollView) : scrollView,
     );
   }
 }

@@ -103,6 +103,43 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
   final FocusNode _centerControlFocusNode = FocusNode(
     debugLabel: 'player center control',
   );
+  final FocusNode _moreActionsFocusNode = FocusNode(
+    debugLabel: 'player more actions',
+  );
+  final FocusNode _infoFocusNode = FocusNode(debugLabel: 'player channel info');
+  final FocusNode _audioTransportFocusNode = FocusNode(
+    debugLabel: 'player audio track',
+  );
+  final FocusNode _subtitleTransportFocusNode = FocusNode(
+    debugLabel: 'player subtitles',
+  );
+  final FocusNode _playerActionsAudioFocusNode = FocusNode(
+    debugLabel: 'player action Listen only',
+  );
+  final FocusNode _playerActionsQualityFocusNode = FocusNode(
+    debugLabel: 'player action Quality',
+  );
+  final FocusNode _playerActionsSubtitleFocusNode = FocusNode(
+    debugLabel: 'player action Subtitles',
+  );
+  final FocusNode _contextMenuFirstFocusNode = FocusNode(
+    debugLabel: 'channel action Favorite',
+  );
+  final FocusNode _diagnosticRetryFocusNode = FocusNode(
+    debugLabel: 'player recovery Try Again',
+  );
+  final FocusNode _diagnosticSkipFocusNode = FocusNode(
+    debugLabel: 'player recovery Skip channel',
+  );
+  final FocusNode _diagnosticReportFocusNode = FocusNode(
+    debugLabel: 'player recovery Report dead link',
+  );
+  final FocusNode _genericRetryFocusNode = FocusNode(
+    debugLabel: 'player recovery Try Again',
+  );
+  FocusNode? _contextMenuRestoreFocusNode;
+  bool _playerModalOpen = false;
+  String? _lastRecoveryFocusToken;
 
   // Channel change overlay state
   String? _channelChangeOverlayText;
@@ -110,7 +147,7 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
   Timer? _adjacentChannelWarmupDebounce;
   String _adjacentChannelWarmupSignature = '';
 
-  // MENU key context menu (AiroTV D-pad design "CONTEXT MENU (MENU key)").
+  // Channel-actions overlay opened from Info or a CENTER long-press.
   //
   // On real Fire TV hardware, KEYCODE_MENU never reaches the app -- Fire OS
   // intercepts it at the system level for its own overlay (confirmed via
@@ -179,6 +216,18 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
     _selectLongPressTimer?.cancel();
     _playerFocusNode.dispose();
     _centerControlFocusNode.dispose();
+    _moreActionsFocusNode.dispose();
+    _infoFocusNode.dispose();
+    _audioTransportFocusNode.dispose();
+    _subtitleTransportFocusNode.dispose();
+    _playerActionsAudioFocusNode.dispose();
+    _playerActionsQualityFocusNode.dispose();
+    _playerActionsSubtitleFocusNode.dispose();
+    _contextMenuFirstFocusNode.dispose();
+    _diagnosticRetryFocusNode.dispose();
+    _diagnosticSkipFocusNode.dispose();
+    _diagnosticReportFocusNode.dispose();
+    _genericRetryFocusNode.dispose();
     unawaited(_resetBrightnessSafely());
     super.dispose();
   }
@@ -416,8 +465,11 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
     );
     if (remoteResult == TvInputResult.handled) return remoteResult;
 
+    final streamingState = ref.read(streamingStateProvider).asData?.value;
+    final recoveryOwnsFocus =
+        streamingState?.hasError == true && streamingState?.diagnostic != null;
     final controlsVisible = _showControlsOverlay && widget.showControls;
-    if (controlsVisible) {
+    if (controlsVisible && !recoveryOwnsFocus) {
       // Keep the overlay alive while the remote is being used.
       _startHideControlsTimer();
     }
@@ -437,15 +489,22 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
         setState(() => _quickBrowse = _TvQuickBrowse.recent);
         return TvInputResult.handled;
       case TvInputKey.menu:
-        if (ref.read(streamingStateProvider).asData?.value.currentChannel ==
-            null) {
+        final state = ref.read(streamingStateProvider).asData?.value;
+        if (state?.currentChannel == null) {
           return TvInputResult.notHandled;
         }
-        setState(() => _showContextMenu = !_showContextMenu);
+        unawaited(
+          _showPlayerActionsSheet(
+            context,
+            ref.read(iptvStreamingServiceProvider),
+            state!,
+            restoreFocusNode: _centerControlFocusNode,
+          ),
+        );
         return TvInputResult.handled;
       case TvInputKey.back:
         if (_showContextMenu) {
-          setState(() => _showContextMenu = false);
+          _closeContextMenu();
           return TvInputResult.handled;
         }
         if (_quickBrowse != null) {
@@ -525,7 +584,7 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
         if (ref.read(streamingStateProvider).asData?.value.currentChannel !=
             null) {
           _selectConsumedByLongPress = true;
-          setState(() => _showContextMenu = true);
+          _openContextMenu(restoreFocusNode: _centerControlFocusNode);
         }
       });
     } else if (event is KeyUpEvent) {
@@ -549,6 +608,26 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
     setState(() => _quickBrowse = null);
   }
 
+  void _openContextMenu({required FocusNode restoreFocusNode}) {
+    _contextMenuRestoreFocusNode = restoreFocusNode;
+    setState(() => _showContextMenu = true);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_showContextMenu) return;
+      _contextMenuFirstFocusNode.requestFocus();
+    });
+  }
+
+  void _closeContextMenu({bool restoreFocus = true}) {
+    if (!_showContextMenu) return;
+    setState(() => _showContextMenu = false);
+    final target = _contextMenuRestoreFocusNode;
+    _contextMenuRestoreFocusNode = null;
+    if (!restoreFocus || target == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && target.canRequestFocus) target.requestFocus();
+    });
+  }
+
   Future<void> _toggleFavoriteForCurrentChannel() async {
     final channel = ref
         .read(streamingStateProvider)
@@ -559,7 +638,7 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
     final toggle = ref.read(channelFavoriteTogglerProvider);
     final isNowFavorite = await toggle(channel.id);
     if (!mounted) return;
-    setState(() => _showContextMenu = false);
+    _closeContextMenu();
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(
@@ -574,6 +653,7 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
   }
 
   Future<void> _refreshPlaylistFromContextMenu() async {
+    _closeContextMenu();
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(const SnackBar(content: Text('Refreshing playlist…')));
@@ -598,12 +678,15 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
     VideoPlayerStreamingService service,
     StreamingState state,
   ) {
-    setState(() => _showContextMenu = false);
-    _showTrackSelectorFor(
-      context,
-      service,
-      state,
-      kind: AiroPlaybackTrackKind.audio,
+    _closeContextMenu(restoreFocus: false);
+    unawaited(
+      _showTrackSelectorFor(
+        context,
+        service,
+        state,
+        kind: AiroPlaybackTrackKind.audio,
+        restoreFocusNode: _infoFocusNode,
+      ),
     );
   }
 
@@ -611,12 +694,19 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
     VideoPlayerStreamingService service,
     StreamingState state,
   ) {
-    setState(() => _showContextMenu = false);
-    _showTrackSelector(context, service, state);
+    _closeContextMenu(restoreFocus: false);
+    unawaited(
+      _showTrackSelector(
+        context,
+        service,
+        state,
+        restoreFocusNode: _infoFocusNode,
+      ),
+    );
   }
 
   void _showChannelInfoFromContextMenu(StreamingState state) {
-    setState(() => _showContextMenu = false);
+    _closeContextMenu();
     final channel = state.currentChannel;
     if (channel == null) return;
     showDialog<void>(
@@ -643,7 +733,7 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
   }
 
   void _showDiagnosticsFromContextMenu(StreamingState state) {
-    setState(() => _showContextMenu = false);
+    _closeContextMenu();
     final channel = state.currentChannel;
     final metrics = state.metrics;
     final playback = state.playbackStats;
@@ -704,6 +794,7 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
   }
 
   Future<void> _copyStreamLinkFromContextMenu(StreamingState state) async {
+    _closeContextMenu();
     final channel = state.currentChannel;
     final redacted = redactedUriForLog(
       channel == null ? null : Uri.tryParse(channel.streamUrl),
@@ -760,6 +851,7 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
     AiroPlaybackViewFit aspectRatioFit, {
     required bool isPipActive,
   }) {
+    _scheduleRecoveryFocus(state);
     // Update wakelock based on current playback state
     // This is called on every build when state changes
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -829,12 +921,14 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
       canPop: !_showContextMenu && _quickBrowse == null,
       onPopInvokedWithResult: (didPop, result) {
         if (didPop) return;
-        setState(() {
-          _showContextMenu = false;
-          _quickBrowse = null;
-        });
+        if (_showContextMenu) {
+          _closeContextMenu();
+        } else {
+          setState(() => _quickBrowse = null);
+        }
       },
       child: TvInputHandler(
+        enabled: !_playerModalOpen && !_showContextMenu,
         onInput: _handleSurfInput,
         // Focus.onKeyEvent always ignores so the event bubbles up to
         // TvInputHandler's own listener above -- this node exists purely to
@@ -989,13 +1083,13 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                         ),
                       ),
 
-                    // Context menu (MENU key) — right-side overlay, matching
-                    // the AiroTV D-pad design's "CONTEXT MENU (MENU key)"
-                    // screen. Only rendered while open; doesn't touch layout
-                    // otherwise.
+                    // Channel actions — right-side overlay opened from Info
+                    // or a CENTER long-press. It does not affect layout while
+                    // closed.
                     if (_showContextMenu && state.currentChannel != null)
                       _ContextMenuOverlay(
                         channel: state.currentChannel!,
+                        firstFocusNode: _contextMenuFirstFocusNode,
                         onToggleFavorite: _toggleFavoriteForCurrentChannel,
                         onRefreshPlaylist: _refreshPlaylistFromContextMenu,
                         onSelectAudioTrack: () =>
@@ -1008,7 +1102,7 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                             _showDiagnosticsFromContextMenu(state),
                         onCopyStreamLink: () =>
                             _copyStreamLinkFromContextMenu(state),
-                        onClose: () => setState(() => _showContextMenu = false),
+                        onClose: _closeContextMenu,
                       ),
 
                     // UP/DOWN quick-browse overlays.
@@ -1069,6 +1163,47 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
     );
   }
 
+  String? _recoveryFocusToken(StreamingState state) {
+    final diagnostic = state.diagnostic;
+    if (!state.hasError || diagnostic == null) return null;
+    return '${state.currentChannel?.id}|${diagnostic.code}|${state.retryCount}';
+  }
+
+  void _scheduleRecoveryFocus(StreamingState state) {
+    final token = _recoveryFocusToken(state);
+    if (token == null) {
+      final wasShowingRecovery = _lastRecoveryFocusToken != null;
+      _lastRecoveryFocusToken = null;
+      if (wasShowingRecovery && _hideControlsTimer == null) {
+        _startHideControlsTimer();
+      }
+      return;
+    }
+    _cancelHideControlsTimer();
+    if (_lastRecoveryFocusToken == token) return;
+    _lastRecoveryFocusToken = token;
+    final diagnostic = state.diagnostic!;
+    final target = !diagnostic.retryEligible || state.retryCount == 0
+        ? _diagnosticRetryFocusNode
+        : _diagnosticSkipFocusNode;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _lastRecoveryFocusToken != token) return;
+      if (target.canRequestFocus) target.requestFocus();
+    });
+  }
+
+  void _scheduleGenericRecoveryFocus(String message) {
+    final token = 'generic|$message';
+    if (_lastRecoveryFocusToken == token) return;
+    _lastRecoveryFocusToken = token;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _lastRecoveryFocusToken != token) return;
+      if (_genericRetryFocusNode.canRequestFocus) {
+        _genericRetryFocusNode.requestFocus();
+      }
+    });
+  }
+
   /// CV-001 structured failure state: user-safe copy plus bounded-retry
   /// progress from [StreamingState.diagnostic], with the legacy retry button.
   Widget _buildDiagnosticError(StreamingState state) {
@@ -1111,6 +1246,7 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                   if (!diagnostic.retryEligible || state.retryCount == 0)
                     _RecoveryActionButton(
                       key: const ValueKey('diagnostic-error-retry'),
+                      focusNode: _diagnosticRetryFocusNode,
                       icon: Icons.refresh_rounded,
                       label: 'Try Again',
                       autofocus: true,
@@ -1119,6 +1255,7 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                     ),
                   _RecoveryActionButton(
                     key: const ValueKey('diagnostic-error-skip'),
+                    focusNode: _diagnosticSkipFocusNode,
                     icon: Icons.skip_next_rounded,
                     label: 'Skip channel',
                     autofocus: diagnostic.retryEligible && state.retryCount > 0,
@@ -1126,6 +1263,7 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                   ),
                   _RecoveryActionButton(
                     key: const ValueKey('diagnostic-error-report'),
+                    focusNode: _diagnosticReportFocusNode,
                     icon: Icons.flag_outlined,
                     label: 'Report dead link',
                     onSelect: () => _saveDeadLinkReport(state, diagnostic),
@@ -1165,6 +1303,7 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
   }
 
   Widget _buildError(String message) {
+    _scheduleGenericRecoveryFocus(message);
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
@@ -1221,6 +1360,7 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
               // bug already fixed for the diagnostic error screen below.
               _RecoveryActionButton(
                 key: const ValueKey('iptv-player-error-retry'),
+                focusNode: _genericRetryFocusNode,
                 icon: Icons.refresh_rounded,
                 label: 'Try Again',
                 autofocus: true,
@@ -1475,8 +1615,8 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
   /// overlaps the button row below it, six action buttons matching the
   /// prototype exactly (Pause, Restart, Audio, Subtitles, Favourite, Info),
   /// and a "MENU for more actions" hint. Every button is wired to a real,
-  /// already-existing capability -- Info opens the same context menu MENU
-  /// itself opens, rather than a new stub panel.
+  /// already-existing capability -- Info opens channel actions, rather than
+  /// a new stub panel.
   Widget _buildTvTransportBar(
     BuildContext context,
     VideoPlayerStreamingService service,
@@ -1662,11 +1802,15 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
       ),
       TvFocusable(
         key: const ValueKey('iptv-tv-transport-audio'),
-        onSelect: () => _showTrackSelectorFor(
-          context,
-          service,
-          state,
-          kind: AiroPlaybackTrackKind.audio,
+        focusNode: _audioTransportFocusNode,
+        onSelect: () => unawaited(
+          _showTrackSelectorFor(
+            context,
+            service,
+            state,
+            kind: AiroPlaybackTrackKind.audio,
+            restoreFocusNode: _audioTransportFocusNode,
+          ),
         ),
         borderRadius: 10,
         semanticLabel: 'Audio',
@@ -1677,7 +1821,15 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
       ),
       TvFocusable(
         key: const ValueKey('iptv-tv-transport-subtitles'),
-        onSelect: () => _showTrackSelector(context, service, state),
+        focusNode: _subtitleTransportFocusNode,
+        onSelect: () => unawaited(
+          _showTrackSelector(
+            context,
+            service,
+            state,
+            restoreFocusNode: _subtitleTransportFocusNode,
+          ),
+        ),
         borderRadius: 10,
         semanticLabel: 'Subtitles',
         child: const _TvTransportButton(
@@ -1701,14 +1853,31 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
       ),
       TvFocusable(
         key: const ValueKey('iptv-tv-transport-info'),
+        focusNode: _infoFocusNode,
         onSelect: channel == null
             ? null
-            : () => setState(() => _showContextMenu = true),
+            : () => _openContextMenu(restoreFocusNode: _infoFocusNode),
         borderRadius: 10,
         semanticLabel: 'Info',
         child: const _TvTransportButton(
           icon: Icons.info_outline_rounded,
           label: 'Info',
+        ),
+      ),
+      TvFocusable(
+        key: const ValueKey('iptv-player-more-button'),
+        focusNode: _moreActionsFocusNode,
+        onSelect: () => _showPlayerActionsSheet(
+          context,
+          service,
+          state,
+          restoreFocusNode: _moreActionsFocusNode,
+        ),
+        borderRadius: 10,
+        semanticLabel: 'More player actions',
+        child: const _TvTransportButton(
+          icon: Icons.more_horiz_rounded,
+          label: 'More',
         ),
       ),
     ];
@@ -1804,8 +1973,12 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
                   key: const ValueKey('iptv-player-more-button'),
                   icon: Icons.settings_outlined,
                   tooltip: 'Player settings',
-                  onPressed: () =>
-                      _showPlayerActionsSheet(context, service, state),
+                  onPressed: () => _showPlayerActionsSheet(
+                    context,
+                    service,
+                    state,
+                    restoreFocusNode: _centerControlFocusNode,
+                  ),
                 ),
               ],
             ),
@@ -1905,7 +2078,12 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
           key: const ValueKey('iptv-player-more-button'),
           icon: Icons.settings_outlined,
           tooltip: 'Player settings',
-          onPressed: () => _showPlayerActionsSheet(context, service, state),
+          onPressed: () => _showPlayerActionsSheet(
+            context,
+            service,
+            state,
+            restoreFocusNode: _centerControlFocusNode,
+          ),
           diameter: 44,
           iconSize: 24,
           backgroundAlpha: 0.48,
@@ -1936,113 +2114,157 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
   Future<void> _showPlayerActionsSheet(
     BuildContext context,
     VideoPlayerStreamingService service,
-    StreamingState state,
-  ) {
+    StreamingState state, {
+    required FocusNode restoreFocusNode,
+  }) async {
+    if (_playerModalOpen) return;
     final hasQualityChoices = _qualityOptionsFor(state).length > 1;
     final hasSubtitles = _subtitleTracksFor(state).isNotEmpty;
+    _cancelHideControlsTimer();
+    setState(() => _playerModalOpen = true);
+    try {
+      await showModalBottomSheet<void>(
+        context: context,
+        requestFocus: true,
+        builder: (sheetContext) {
+          Future<void> afterSheet(VoidCallback action) async {
+            Navigator.of(sheetContext).pop();
+            await Future<void>.delayed(const Duration(milliseconds: 250));
+            if (!mounted) return;
+            action();
+          }
 
-    return showModalBottomSheet<void>(
-      context: context,
-      builder: (sheetContext) {
-        Future<void> afterSheet(VoidCallback action) async {
-          Navigator.of(sheetContext).pop();
-          await Future<void>.delayed(const Duration(milliseconds: 250));
-          if (!mounted) return;
-          action();
-        }
-
-        return SafeArea(
-          child: ListView(
-            shrinkWrap: true,
-            children: [
-              const ListTile(
-                title: Text('Player actions'),
-                subtitle: Text('Secondary controls for this stream'),
-              ),
-              if (widget.showPictureInPicture)
-                _TvSheetListTile(
-                  itemKey: const ValueKey('iptv-player-pip-menu-action'),
-                  leading: const Icon(Icons.picture_in_picture_alt_outlined),
-                  title: const Text('Picture-in-picture'),
-                  onSelect: () =>
-                      unawaited(afterSheet(_requestPictureInPicture)),
-                ),
-              if (hasQualityChoices)
-                _TvSheetListTile(
-                  itemKey: const ValueKey('iptv-player-quality-menu-action'),
-                  leading: const Icon(Icons.hd_outlined),
-                  title: const Text('Quality'),
-                  subtitle: Text(state.currentQuality.label),
-                  onSelect: () => unawaited(
-                    afterSheet(
-                      () => _showQualitySelector(context, service, state),
+          return _TvModalFocusScope(
+            initialFocusNode: _playerActionsAudioFocusNode,
+            child: SafeArea(
+              child: ListView(
+                shrinkWrap: true,
+                children: [
+                  const ListTile(
+                    title: Text('Player actions'),
+                    subtitle: Text('Secondary controls for this stream'),
+                  ),
+                  if (widget.showPictureInPicture)
+                    _TvSheetListTile(
+                      itemKey: const ValueKey('iptv-player-pip-menu-action'),
+                      leading: const Icon(
+                        Icons.picture_in_picture_alt_outlined,
+                      ),
+                      title: const Text('Picture-in-picture'),
+                      onSelect: () =>
+                          unawaited(afterSheet(_requestPictureInPicture)),
+                    ),
+                  if (hasQualityChoices)
+                    _TvSheetListTile(
+                      itemKey: const ValueKey(
+                        'iptv-player-quality-menu-action',
+                      ),
+                      focusNode: _playerActionsQualityFocusNode,
+                      leading: const Icon(Icons.hd_outlined),
+                      title: const Text('Quality'),
+                      subtitle: Text(state.currentQuality.label),
+                      onSelect: () => unawaited(
+                        _showQualitySelector(
+                          sheetContext,
+                          service,
+                          state,
+                          restoreFocusNode: _playerActionsQualityFocusNode,
+                        ),
+                      ),
+                    ),
+                  if (hasSubtitles)
+                    _TvSheetListTile(
+                      itemKey: const ValueKey(
+                        'iptv-player-subtitle-menu-action',
+                      ),
+                      focusNode: _playerActionsSubtitleFocusNode,
+                      leading: Icon(
+                        state.selectedTrackIds.containsKey(
+                              AiroPlaybackTrackKind.subtitle,
+                            )
+                            ? Icons.subtitles
+                            : Icons.subtitles_off_outlined,
+                      ),
+                      title: const Text('Subtitles'),
+                      onSelect: () => unawaited(
+                        _showTrackSelector(
+                          sheetContext,
+                          service,
+                          state,
+                          restoreFocusNode: _playerActionsSubtitleFocusNode,
+                        ),
+                      ),
+                    ),
+                  _TvSheetListTile(
+                    itemKey: const ValueKey(
+                      'iptv-player-audio-only-menu-action',
+                    ),
+                    focusNode: _playerActionsAudioFocusNode,
+                    leading: Icon(
+                      _isAudioOnly ? Icons.hearing : Icons.hearing_disabled,
+                    ),
+                    title: Text(
+                      _isAudioOnly ? 'Exit audio-only' : 'Listen only',
+                    ),
+                    onSelect: () => unawaited(afterSheet(_toggleAudioOnly)),
+                  ),
+                  _TvSheetListTile(
+                    itemKey: const ValueKey(
+                      'iptv-player-aspect-ratio-menu-action',
+                    ),
+                    leading: const Icon(Icons.aspect_ratio),
+                    title: const Text('Aspect ratio'),
+                    onSelect: () => unawaited(
+                      afterSheet(
+                        () => ref
+                            .read(videoAspectRatioProvider.notifier)
+                            .cycleToNext(),
+                      ),
                     ),
                   ),
-                ),
-              if (hasSubtitles)
-                _TvSheetListTile(
-                  itemKey: const ValueKey('iptv-player-subtitle-menu-action'),
-                  leading: Icon(
-                    state.selectedTrackIds.containsKey(
-                          AiroPlaybackTrackKind.subtitle,
-                        )
-                        ? Icons.subtitles
-                        : Icons.subtitles_off_outlined,
-                  ),
-                  title: const Text('Subtitles'),
-                  onSelect: () => unawaited(
-                    afterSheet(
-                      () => _showTrackSelector(context, service, state),
+                  _TvSheetListTile(
+                    itemKey: const ValueKey('iptv-player-cinema-menu-action'),
+                    leading: Icon(
+                      _isCinemaMode ? Icons.wb_sunny : Icons.theaters,
+                    ),
+                    title: Text(
+                      _isCinemaMode ? 'Standard mode' : 'Cinema mode',
+                    ),
+                    onSelect: () => unawaited(
+                      afterSheet(
+                        () => setState(() => _isCinemaMode = !_isCinemaMode),
+                      ),
                     ),
                   ),
-                ),
-              _TvSheetListTile(
-                itemKey: const ValueKey('iptv-player-audio-only-menu-action'),
-                // Always rendered regardless of PiP/quality/subtitles
-                // availability, so it's the one deterministic focus target
-                // this sheet can always autofocus.
-                autofocus: true,
-                leading: Icon(
-                  _isAudioOnly ? Icons.hearing : Icons.hearing_disabled,
-                ),
-                title: Text(_isAudioOnly ? 'Exit audio-only' : 'Listen only'),
-                onSelect: () => unawaited(afterSheet(_toggleAudioOnly)),
-              ),
-              _TvSheetListTile(
-                itemKey: const ValueKey('iptv-player-aspect-ratio-menu-action'),
-                leading: const Icon(Icons.aspect_ratio),
-                title: const Text('Aspect ratio'),
-                onSelect: () => unawaited(
-                  afterSheet(
-                    () => ref
-                        .read(videoAspectRatioProvider.notifier)
-                        .cycleToNext(),
+                  _TvSheetListTile(
+                    itemKey: const ValueKey(
+                      'iptv-player-fullscreen-menu-action',
+                    ),
+                    leading: Icon(
+                      _isFullscreen ? Icons.fullscreen_exit : Icons.fullscreen,
+                    ),
+                    title: Text(
+                      _isFullscreen ? 'Exit fullscreen' : 'Fullscreen',
+                    ),
+                    onSelect: () => unawaited(afterSheet(_toggleFullscreen)),
                   ),
-                ),
+                ],
               ),
-              _TvSheetListTile(
-                itemKey: const ValueKey('iptv-player-cinema-menu-action'),
-                leading: Icon(_isCinemaMode ? Icons.wb_sunny : Icons.theaters),
-                title: Text(_isCinemaMode ? 'Standard mode' : 'Cinema mode'),
-                onSelect: () => unawaited(
-                  afterSheet(
-                    () => setState(() => _isCinemaMode = !_isCinemaMode),
-                  ),
-                ),
-              ),
-              _TvSheetListTile(
-                itemKey: const ValueKey('iptv-player-fullscreen-menu-action'),
-                leading: Icon(
-                  _isFullscreen ? Icons.fullscreen_exit : Icons.fullscreen,
-                ),
-                title: Text(_isFullscreen ? 'Exit fullscreen' : 'Fullscreen'),
-                onSelect: () => unawaited(afterSheet(_toggleFullscreen)),
-              ),
-            ],
-          ),
-        );
-      },
-    );
+            ),
+          );
+        },
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _playerModalOpen = false);
+        _startHideControlsTimer();
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && restoreFocusNode.canRequestFocus) {
+            restoreFocusNode.requestFocus();
+          }
+        });
+      }
+    }
   }
 
   /// CV-016: VOD resume. Seeks to a saved position once per channel per
@@ -2114,18 +2336,20 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
     }
   }
 
-  void _showTrackSelector(
+  Future<void> _showTrackSelector(
     BuildContext context,
     VideoPlayerStreamingService service,
-    StreamingState state,
-  ) {
-    _showTrackSelectorFor(
+    StreamingState state, {
+    FocusNode? restoreFocusNode,
+  }) {
+    return _showTrackSelectorFor(
       context,
       service,
       state,
       kind: AiroPlaybackTrackKind.subtitle,
       offLabel: 'Off',
       offIcon: Icons.subtitles_off_outlined,
+      restoreFocusNode: restoreFocusNode,
     );
   }
 
@@ -2134,116 +2358,94 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget> {
   /// (`state.tracks`/`selectTrack`), just filtered to a different
   /// [AiroPlaybackTrackKind]. Audio has no "Off" row: unlike subtitles,
   /// there's no meaningful silent-track state to offer.
-  void _showTrackSelectorFor(
+  Future<void> _showTrackSelectorFor(
     BuildContext context,
     VideoPlayerStreamingService service,
     StreamingState state, {
     required AiroPlaybackTrackKind kind,
     String? offLabel,
     IconData? offIcon,
-  }) {
+    FocusNode? restoreFocusNode,
+  }) async {
     final tracks = state.tracks
         .where((track) => track.kind == kind)
         .toList(growable: false);
-    showModalBottomSheet<void>(
-      context: context,
-      builder: (context) {
-        final noneSelected = state.selectedTrackIds[kind] == null;
-        // Autofocus the selected row; if nothing is selected and there's
-        // no "Off" row to fall back to, autofocus the first track so the
-        // sheet is never opened with nothing D-pad-focused.
-        final autofocusOff = offLabel != null && noneSelected;
-        return SafeArea(
-          child: ListView(
-            shrinkWrap: true,
-            children: [
-              if (offLabel != null)
-                TvFocusable(
-                  autofocus: autofocusOff,
-                  semanticLabel: offLabel,
-                  onSelect: () {
-                    service.clearTrackSelection(kind);
-                    Navigator.of(context).pop();
-                  },
-                  child: ListTile(
-                    leading: offIcon == null ? null : Icon(offIcon),
-                    title: Text(offLabel),
-                    trailing: noneSelected ? const Icon(Icons.check) : null,
-                    onTap: () {
-                      service.clearTrackSelection(kind);
-                      Navigator.of(context).pop();
-                    },
-                  ),
-                ),
-              for (var i = 0; i < tracks.length; i++)
-                TvFocusable(
-                  autofocus:
-                      !autofocusOff &&
-                      (state.selectedTrackIds[tracks[i].kind] == tracks[i].id ||
-                          (noneSelected && offLabel == null && i == 0)),
-                  semanticLabel: tracks[i].label,
-                  onSelect: () {
-                    service.selectTrack(
-                      kind: tracks[i].kind,
-                      trackId: tracks[i].id,
-                    );
-                    Navigator.of(context).pop();
-                  },
-                  child: ListTile(
-                    title: Text(tracks[i].label),
-                    subtitle: tracks[i].isExternal
-                        ? const Text('External')
-                        : null,
-                    trailing:
-                        state.selectedTrackIds[tracks[i].kind] == tracks[i].id
-                        ? const Icon(Icons.check)
-                        : null,
-                    onTap: () {
-                      service.selectTrack(
-                        kind: tracks[i].kind,
-                        trackId: tracks[i].id,
-                      );
-                      Navigator.of(context).pop();
-                    },
-                  ),
-                ),
-            ],
-          ),
-        );
-      },
-    );
+    final selectedTrackId = state.selectedTrackIds[kind];
+    final noneSelected = selectedTrackId == null;
+    final options = <_TvSheetOption>[
+      if (offLabel != null)
+        _TvSheetOption(
+          label: offLabel,
+          leading: offIcon == null ? null : Icon(offIcon),
+          selected: noneSelected,
+          onSelect: () => service.clearTrackSelection(kind),
+        ),
+      for (final track in tracks)
+        _TvSheetOption(
+          label: track.label,
+          subtitle: track.isExternal ? const Text('External') : null,
+          selected: selectedTrackId == track.id,
+          onSelect: () =>
+              service.selectTrack(kind: track.kind, trackId: track.id),
+        ),
+    ];
+    final selectedIndex = options.indexWhere((option) => option.selected);
+    try {
+      await showModalBottomSheet<void>(
+        context: context,
+        requestFocus: true,
+        builder: (selectorContext) => _TvSelectionSheet(
+          debugLabelPrefix: 'player ${kind.name} option',
+          options: options,
+          initialIndex: selectedIndex < 0 ? 0 : selectedIndex,
+        ),
+      );
+    } finally {
+      if (mounted && restoreFocusNode != null) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && restoreFocusNode.canRequestFocus) {
+            restoreFocusNode.requestFocus();
+          }
+        });
+      }
+    }
   }
 
-  void _showQualitySelector(
+  Future<void> _showQualitySelector(
     BuildContext context,
     VideoPlayerStreamingService service,
-    StreamingState state,
-  ) {
+    StreamingState state, {
+    FocusNode? restoreFocusNode,
+  }) async {
     final options = _qualityOptionsFor(state);
-    showModalBottomSheet<void>(
-      context: context,
-      builder: (context) {
-        return SafeArea(
-          child: ListView(
-            shrinkWrap: true,
-            children: [
-              for (final quality in options)
-                _TvSheetListTile(
-                  title: Text(quality.label),
-                  autofocus: state.selectedQuality == quality,
-                  trailing: state.selectedQuality == quality
-                      ? const Icon(Icons.check)
-                      : null,
-                  onSelect: () {
-                    service.setQuality(quality);
-                    Navigator.of(context).pop();
-                  },
-                ),
-            ],
-          ),
-        );
-      },
-    );
+    final sheetOptions = [
+      for (final quality in options)
+        _TvSheetOption(
+          label: quality.label,
+          selected: state.selectedQuality == quality,
+          onSelect: () => service.setQuality(quality),
+        ),
+    ];
+    final selectedIndex = sheetOptions.indexWhere((option) => option.selected);
+    try {
+      await showModalBottomSheet<void>(
+        context: context,
+        requestFocus: true,
+        builder: (selectorContext) => _TvSelectionSheet(
+          debugLabelPrefix: 'player quality option',
+          options: sheetOptions,
+          initialIndex: selectedIndex < 0 ? 0 : selectedIndex,
+        ),
+      );
+    } finally {
+      if (mounted && restoreFocusNode != null) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && restoreFocusNode.canRequestFocus) {
+            restoreFocusNode.requestFocus();
+          }
+        });
+      }
+    }
   }
 
   List<AiroPlaybackTrackOption> _subtitleTracksFor(StreamingState state) {
@@ -2594,9 +2796,7 @@ class _PlayerStepperPillar extends StatelessWidget {
   }
 }
 
-/// MENU-key context menu: right-side overlay panel for actions on the
-/// currently-playing channel. AiroTV D-pad design's "CONTEXT MENU (MENU
-/// key)" screen.
+/// Right-side overlay panel for actions on the currently-playing channel.
 enum _TvQuickBrowse { miniGuide, recent }
 
 /// Bottom-docked horizontal browse strip for UP (Mini Guide) and DOWN
@@ -2721,6 +2921,7 @@ class _QuickBrowseOverlay extends StatelessWidget {
 class _ContextMenuOverlay extends ConsumerWidget {
   const _ContextMenuOverlay({
     required this.channel,
+    required this.firstFocusNode,
     required this.onToggleFavorite,
     required this.onRefreshPlaylist,
     required this.onSelectAudioTrack,
@@ -2732,6 +2933,7 @@ class _ContextMenuOverlay extends ConsumerWidget {
   });
 
   final IPTVChannel channel;
+  final FocusNode firstFocusNode;
   final VoidCallback onToggleFavorite;
   final VoidCallback onRefreshPlaylist;
   final VoidCallback onSelectAudioTrack;
@@ -2751,145 +2953,150 @@ class _ContextMenuOverlay extends ConsumerWidget {
       top: 0,
       bottom: 0,
       width: 280,
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.centerRight,
-            end: Alignment.centerLeft,
-            colors: [
-              Colors.black.withValues(alpha: 0.96),
-              Colors.black.withValues(alpha: 0.0),
-            ],
+      child: _TvModalFocusScope(
+        initialFocusNode: firstFocusNode,
+        onBack: onClose,
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.centerRight,
+              end: Alignment.centerLeft,
+              colors: [
+                Colors.black.withValues(alpha: 0.96),
+                Colors.black.withValues(alpha: 0.0),
+              ],
+            ),
           ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Actions for',
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.6),
-                fontSize: 12,
-                letterSpacing: 1.0,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              channel.name,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            const SizedBox(height: 20),
-            Expanded(
-              child: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    TvFocusable(
-                      key: const ValueKey('context-menu-favorite'),
-                      autofocus: true,
-                      semanticLabel: isFavorite
-                          ? 'Remove from favorites'
-                          : 'Add to favorites',
-                      onSelect: onToggleFavorite,
-                      child: _ContextMenuItem(
-                        icon: isFavorite
-                            ? Icons.favorite
-                            : Icons.favorite_border,
-                        label: isFavorite
-                            ? 'Remove from favorites'
-                            : 'Add to favorites',
-                        onTap: onToggleFavorite,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    TvFocusable(
-                      key: const ValueKey('context-menu-refresh-playlist'),
-                      semanticLabel: 'Refresh playlist',
-                      onSelect: onRefreshPlaylist,
-                      child: _ContextMenuItem(
-                        icon: Icons.refresh,
-                        label: 'Refresh playlist',
-                        onTap: onRefreshPlaylist,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    TvFocusable(
-                      key: const ValueKey('context-menu-audio-track'),
-                      semanticLabel: 'Audio track',
-                      onSelect: onSelectAudioTrack,
-                      child: _ContextMenuItem(
-                        icon: Icons.audiotrack_outlined,
-                        label: 'Audio track',
-                        onTap: onSelectAudioTrack,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    TvFocusable(
-                      key: const ValueKey('context-menu-subtitles'),
-                      semanticLabel: 'Subtitles',
-                      onSelect: onSelectSubtitles,
-                      child: _ContextMenuItem(
-                        icon: Icons.subtitles_outlined,
-                        label: 'Subtitles',
-                        onTap: onSelectSubtitles,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    TvFocusable(
-                      key: const ValueKey('context-menu-channel-info'),
-                      semanticLabel: 'Channel info',
-                      onSelect: onShowChannelInfo,
-                      child: _ContextMenuItem(
-                        icon: Icons.info_outline,
-                        label: 'Channel info',
-                        onTap: onShowChannelInfo,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    TvFocusable(
-                      key: const ValueKey('context-menu-diagnostics'),
-                      semanticLabel: 'Diagnostics',
-                      onSelect: onShowDiagnostics,
-                      child: _ContextMenuItem(
-                        icon: Icons.medical_information_outlined,
-                        label: 'Diagnostics',
-                        onTap: onShowDiagnostics,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    TvFocusable(
-                      key: const ValueKey('context-menu-copy-stream-link'),
-                      semanticLabel: 'Copy stream link',
-                      onSelect: onCopyStreamLink,
-                      child: _ContextMenuItem(
-                        icon: Icons.link,
-                        label: 'Copy stream link',
-                        onTap: onCopyStreamLink,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    TvFocusable(
-                      key: const ValueKey('context-menu-close'),
-                      semanticLabel: 'Close menu',
-                      onSelect: onClose,
-                      child: _ContextMenuItem(
-                        icon: Icons.close,
-                        label: 'Close',
-                        onTap: onClose,
-                      ),
-                    ),
-                  ],
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Actions for',
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.6),
+                  fontSize: 12,
+                  letterSpacing: 1.0,
                 ),
               ),
-            ),
-          ],
+              const SizedBox(height: 4),
+              Text(
+                channel.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 20),
+              Expanded(
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      TvFocusable(
+                        key: const ValueKey('context-menu-favorite'),
+                        focusNode: firstFocusNode,
+                        autofocus: true,
+                        semanticLabel: isFavorite
+                            ? 'Remove from favorites'
+                            : 'Add to favorites',
+                        onSelect: onToggleFavorite,
+                        child: _ContextMenuItem(
+                          icon: isFavorite
+                              ? Icons.favorite
+                              : Icons.favorite_border,
+                          label: isFavorite
+                              ? 'Remove from favorites'
+                              : 'Add to favorites',
+                          onTap: onToggleFavorite,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      TvFocusable(
+                        key: const ValueKey('context-menu-refresh-playlist'),
+                        semanticLabel: 'Refresh playlist',
+                        onSelect: onRefreshPlaylist,
+                        child: _ContextMenuItem(
+                          icon: Icons.refresh,
+                          label: 'Refresh playlist',
+                          onTap: onRefreshPlaylist,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      TvFocusable(
+                        key: const ValueKey('context-menu-audio-track'),
+                        semanticLabel: 'Audio track',
+                        onSelect: onSelectAudioTrack,
+                        child: _ContextMenuItem(
+                          icon: Icons.audiotrack_outlined,
+                          label: 'Audio track',
+                          onTap: onSelectAudioTrack,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      TvFocusable(
+                        key: const ValueKey('context-menu-subtitles'),
+                        semanticLabel: 'Subtitles',
+                        onSelect: onSelectSubtitles,
+                        child: _ContextMenuItem(
+                          icon: Icons.subtitles_outlined,
+                          label: 'Subtitles',
+                          onTap: onSelectSubtitles,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      TvFocusable(
+                        key: const ValueKey('context-menu-channel-info'),
+                        semanticLabel: 'Channel info',
+                        onSelect: onShowChannelInfo,
+                        child: _ContextMenuItem(
+                          icon: Icons.info_outline,
+                          label: 'Channel info',
+                          onTap: onShowChannelInfo,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      TvFocusable(
+                        key: const ValueKey('context-menu-diagnostics'),
+                        semanticLabel: 'Diagnostics',
+                        onSelect: onShowDiagnostics,
+                        child: _ContextMenuItem(
+                          icon: Icons.medical_information_outlined,
+                          label: 'Diagnostics',
+                          onTap: onShowDiagnostics,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      TvFocusable(
+                        key: const ValueKey('context-menu-copy-stream-link'),
+                        semanticLabel: 'Copy stream link',
+                        onSelect: onCopyStreamLink,
+                        child: _ContextMenuItem(
+                          icon: Icons.link,
+                          label: 'Copy stream link',
+                          onTap: onCopyStreamLink,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      TvFocusable(
+                        key: const ValueKey('context-menu-close'),
+                        semanticLabel: 'Close menu',
+                        onSelect: onClose,
+                        child: _ContextMenuItem(
+                          icon: Icons.close,
+                          label: 'Close',
+                          onTap: onClose,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -2911,6 +3118,7 @@ class _ContextMenuItem extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
+      canRequestFocus: false,
       borderRadius: BorderRadius.circular(9),
       child: Container(
         height: 42,
@@ -2953,37 +3161,180 @@ class _ContextMenuItem extends StatelessWidget {
 /// sheets -- wraps a [ListTile] in [TvFocusable] so a remote-only viewer
 /// can actually reach it. Bare [ListTile]s in these sheets were previously
 /// unreachable by D-pad despite the buttons that open them being focusable.
+class _TvModalFocusScope extends StatefulWidget {
+  const _TvModalFocusScope({
+    required this.initialFocusNode,
+    required this.child,
+    this.onBack,
+  });
+
+  final FocusNode initialFocusNode;
+  final Widget child;
+  final VoidCallback? onBack;
+
+  @override
+  State<_TvModalFocusScope> createState() => _TvModalFocusScopeState();
+}
+
+class _TvModalFocusScopeState extends State<_TvModalFocusScope> {
+  late final FocusScopeNode _scopeNode = FocusScopeNode(
+    debugLabel: 'player modal focus scope',
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && widget.initialFocusNode.canRequestFocus) {
+        widget.initialFocusNode.requestFocus();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _scopeNode.dispose();
+    super.dispose();
+  }
+
+  KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
+    if (event is! KeyDownEvent ||
+        TvInputHandler.mapLogicalKeyToTvInput(event.logicalKey) !=
+            TvInputKey.back ||
+        widget.onBack == null) {
+      return KeyEventResult.ignored;
+    }
+    widget.onBack!.call();
+    return KeyEventResult.handled;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Focus(
+      canRequestFocus: false,
+      onKeyEvent: _handleKeyEvent,
+      child: FocusTraversalGroup(
+        policy: ReadingOrderTraversalPolicy(),
+        child: FocusScope(node: _scopeNode, child: widget.child),
+      ),
+    );
+  }
+}
+
+class _TvSheetOption {
+  const _TvSheetOption({
+    required this.label,
+    required this.onSelect,
+    this.leading,
+    this.subtitle,
+    this.selected = false,
+  });
+
+  final String label;
+  final VoidCallback onSelect;
+  final Widget? leading;
+  final Widget? subtitle;
+  final bool selected;
+}
+
+class _TvSelectionSheet extends StatefulWidget {
+  const _TvSelectionSheet({
+    required this.debugLabelPrefix,
+    required this.options,
+    required this.initialIndex,
+  });
+
+  final String debugLabelPrefix;
+  final List<_TvSheetOption> options;
+  final int initialIndex;
+
+  @override
+  State<_TvSelectionSheet> createState() => _TvSelectionSheetState();
+}
+
+class _TvSelectionSheetState extends State<_TvSelectionSheet> {
+  late final List<FocusNode> _focusNodes = [
+    for (final option in widget.options)
+      FocusNode(debugLabel: '${widget.debugLabelPrefix} ${option.label}'),
+  ];
+
+  @override
+  void dispose() {
+    for (final node in _focusNodes) {
+      node.dispose();
+    }
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.options.isEmpty) return const SizedBox.shrink();
+    final initialIndex = widget.initialIndex.clamp(
+      0,
+      widget.options.length - 1,
+    );
+    return _TvModalFocusScope(
+      initialFocusNode: _focusNodes[initialIndex],
+      child: SafeArea(
+        child: ListView(
+          shrinkWrap: true,
+          children: [
+            for (var i = 0; i < widget.options.length; i++)
+              _TvSheetListTile(
+                focusNode: _focusNodes[i],
+                leading: widget.options[i].leading,
+                title: Text(widget.options[i].label),
+                subtitle: widget.options[i].subtitle,
+                trailing: widget.options[i].selected
+                    ? const Icon(Icons.check)
+                    : null,
+                onSelect: () {
+                  widget.options[i].onSelect();
+                  Navigator.of(context).pop();
+                },
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _TvSheetListTile extends StatelessWidget {
   const _TvSheetListTile({
     this.itemKey,
+    this.focusNode,
     this.leading,
     required this.title,
     this.subtitle,
     this.trailing,
     required this.onSelect,
-    this.autofocus = false,
   });
 
   final Key? itemKey;
+  final FocusNode? focusNode;
   final Widget? leading;
   final Widget title;
   final Widget? subtitle;
   final Widget? trailing;
   final VoidCallback onSelect;
-  final bool autofocus;
 
   @override
   Widget build(BuildContext context) {
     return TvFocusable(
-      autofocus: autofocus,
+      focusNode: focusNode,
       onSelect: onSelect,
-      child: ListTile(
+      semanticLabel: title is Text ? (title as Text).data : null,
+      child: InkWell(
         key: itemKey,
-        leading: leading,
-        title: title,
-        subtitle: subtitle,
-        trailing: trailing,
         onTap: onSelect,
+        canRequestFocus: false,
+        child: ListTile(
+          leading: leading,
+          title: title,
+          subtitle: subtitle,
+          trailing: trailing,
+        ),
       ),
     );
   }
@@ -2995,30 +3346,42 @@ class _RecoveryActionButton extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.onSelect,
+    required this.focusNode,
     this.autofocus = false,
   });
 
   final IconData icon;
   final String label;
   final VoidCallback onSelect;
+  final FocusNode focusNode;
   final bool autofocus;
 
   @override
   Widget build(BuildContext context) {
     return TvFocusable(
+      focusNode: focusNode,
       autofocus: autofocus,
       onSelect: onSelect,
       semanticLabel: label,
       borderRadius: 8,
-      child: ElevatedButton.icon(
-        onPressed: onSelect,
-        icon: Icon(icon),
-        label: Text(label),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.blueGrey.shade700,
-          foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      child: Material(
+        color: Colors.blueGrey.shade700,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        child: InkWell(
+          onTap: onSelect,
+          canRequestFocus: false,
+          borderRadius: BorderRadius.circular(8),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, color: Colors.white),
+                const SizedBox(width: 8),
+                Text(label, style: const TextStyle(color: Colors.white)),
+              ],
+            ),
+          ),
         ),
       ),
     );

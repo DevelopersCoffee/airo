@@ -1,5 +1,6 @@
 import 'package:airo_app/core/app/tv_router.dart';
 import 'package:airo_app/core/platform/device_form_factor.dart';
+import 'package:core_ui/core_ui.dart';
 import 'package:feature_iptv/feature_iptv.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -52,6 +53,63 @@ void main() {
     expect(find.text('Add your playlist'), findsOneWidget);
     expect(find.text('Welcome to Airo'), findsNothing);
   });
+
+  testWidgets(
+    '1920x1080 Fire TV empty playlist content clears the navigation rail',
+    (tester) async {
+      tester.view.physicalSize = const Size(1920, 1080);
+      tester.view.devicePixelRatio = 2;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      DeviceFormFactorDetector.debugFormFactorOverride = DeviceFormFactor.tv;
+      addTearDown(DeviceFormFactorDetector.clearCache);
+
+      await pumpTvRouter(tester, initialLocation: TvRouteNames.live);
+
+      final railRect = tester.getRect(find.byKey(const Key('tv-sidebar-nav')));
+      final headingRect = tester.getRect(find.text('Add your playlist'));
+      final copyRect = tester.getRect(
+        find.textContaining(
+          'does not provide channels, playlists, or program guide data',
+        ),
+      );
+      final buttonRect = tester.getRect(find.text('Add playlist URL'));
+
+      for (final contentRect in [headingRect, copyRect, buttonRect]) {
+        expect(
+          contentRect.left,
+          greaterThanOrEqualTo(railRect.right),
+          reason: '$contentRect must not intersect $railRect',
+        );
+      }
+
+      final addButton = find.byKey(const ValueKey('iptv-empty-add-playlist'));
+      final buttonFocus = tester.widget<Focus>(
+        find.descendant(of: addButton, matching: find.byType(Focus)).first,
+      );
+      buttonFocus.focusNode!.requestFocus();
+      await tester.pump(TvFocusConstants.focusAnimationDuration);
+      expect(buttonFocus.focusNode?.hasPrimaryFocus, isTrue);
+      expect(
+        tester
+            .widgetList<DecoratedBox>(
+              find.descendant(
+                of: addButton,
+                matching: find.byType(DecoratedBox),
+              ),
+            )
+            .where(
+              (box) =>
+                  box.decoration is BoxDecoration &&
+                  (box.decoration as BoxDecoration).border?.top.width ==
+                      TvFocusConstants.focusBorderWidth,
+            ),
+        isNotEmpty,
+        reason: 'the focused Add playlist action must paint the TV focus ring',
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   testWidgets('uses compact IPTV layout on phone portrait viewports', (
     tester,

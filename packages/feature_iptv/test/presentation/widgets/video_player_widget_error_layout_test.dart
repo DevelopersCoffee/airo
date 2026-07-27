@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:core_ui/core_ui.dart';
 import 'package:feature_iptv/feature_iptv.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -127,6 +130,120 @@ void main() {
       );
     }
   });
+
+  testWidgets(
+    'diagnostic recovery visibly owns focus and traverses every action',
+    (tester) async {
+      await pumpErrorPlayer(tester);
+
+      expect(
+        FocusManager.instance.primaryFocus?.debugLabel,
+        'player recovery Try Again',
+      );
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pump();
+      expect(
+        FocusManager.instance.primaryFocus?.debugLabel,
+        'player recovery Skip channel',
+      );
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pump();
+      expect(
+        FocusManager.instance.primaryFocus?.debugLabel,
+        'player recovery Report dead link',
+      );
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+      await tester.pump();
+      expect(
+        FocusManager.instance.primaryFocus?.debugLabel,
+        'player recovery Skip channel',
+      );
+    },
+  );
+
+  testWidgets(
+    'rebuilds preserve user focus and a failed retry remount refocuses Try Again',
+    (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      final states = StreamController<StreamingState>.broadcast();
+      addTearDown(states.close);
+      final service = VideoPlayerStreamingService(
+        engine: FakeAiroPlaybackEngine(),
+      );
+      addTearDown(service.dispose);
+      const mapper = AiroPlaybackDiagnosticMapper();
+      final diagnostic = mapper.map(
+        const AiroPlaybackFailureEvent(httpStatusCode: 403),
+      );
+      const channel = IPTVChannel(
+        id: 'news-1',
+        name: 'City News Live',
+        streamUrl: 'https://example.com/news.m3u8',
+      );
+      StreamingState failed() => StreamingState(
+        playbackState: PlaybackState.error,
+        isLiveStream: true,
+        diagnostic: diagnostic,
+        currentChannel: channel,
+      );
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            iptvStreamingServiceProvider.overrideWithValue(service),
+            streamingStateProvider.overrideWith((ref) => states.stream),
+          ],
+          child: const MaterialApp(home: Scaffold(body: VideoPlayerWidget())),
+        ),
+      );
+      states.add(failed());
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(
+        FocusManager.instance.primaryFocus?.debugLabel,
+        'player recovery Try Again',
+      );
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pump();
+      expect(
+        FocusManager.instance.primaryFocus?.debugLabel,
+        'player recovery Skip channel',
+      );
+
+      states.add(failed());
+      await tester.pump(const Duration(seconds: 5));
+      expect(
+        FocusManager.instance.primaryFocus?.debugLabel,
+        'player recovery Skip channel',
+        reason:
+            'same-error rebuilds and the old controls timer must not steal focus',
+      );
+
+      states.add(
+        StreamingState(
+          playbackState: PlaybackState.loading,
+          isLiveStream: true,
+          currentChannel: channel,
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+      states.add(failed());
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(
+        FocusManager.instance.primaryFocus?.debugLabel,
+        'player recovery Try Again',
+      );
+    },
+  );
 
   testWidgets('Report dead link saves a local report and confirms it', (
     tester,

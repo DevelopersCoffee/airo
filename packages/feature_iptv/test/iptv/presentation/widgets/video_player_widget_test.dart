@@ -827,9 +827,12 @@ void main() {
       await tester.tap(find.widgetWithText(ListTile, '720p'));
       await tester.pumpAndSettle();
       expect(service.currentState.selectedQuality, VideoQuality.high);
+      expect(find.text('Player actions'), findsOneWidget);
+      expect(
+        FocusManager.instance.primaryFocus?.debugLabel,
+        'player action Quality',
+      );
 
-      await tester.tap(find.byKey(const ValueKey('iptv-player-more-button')));
-      await tester.pumpAndSettle();
       await tester.tap(
         find.byKey(const ValueKey('iptv-player-pip-menu-action')),
       );
