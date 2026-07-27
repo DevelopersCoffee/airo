@@ -756,6 +756,18 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
   Future<void> retry() async {
     final channel = _state.currentChannel;
     if (channel == null) return;
+    // Retry stays fully manual/user-triggered (see _handleError's comment
+    // on that deliberate choice) -- this only rate-limits how fast a tap
+    // can resubmit, using the same StreamingConfig.retryDelay that was
+    // previously unread anywhere. A mid-flight retry (playbackState still
+    // loading) or one within retryDelay of the last failure is a no-op,
+    // not a queued/duplicate attempt.
+    if (_state.playbackState == PlaybackState.loading) return;
+    final lastError = _state.lastError;
+    if (lastError != null &&
+        DateTime.now().difference(lastError) < _config.retryDelay) {
+      return;
+    }
     _isHandlingError = false;
 
     // Fail over before resubmitting: if the failed channel has an untried

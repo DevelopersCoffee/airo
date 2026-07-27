@@ -117,7 +117,14 @@ class VideoPlayerAiroPlaybackEngine implements AiroPlaybackEngine {
         tracks: externalSubtitleTracksFor(request),
         diagnostics: AiroPlaybackDiagnostics(
           backendId: backendKind.stableId,
-          hardwareAccelerated: true,
+          // The video_player plugin doesn't expose which decode path
+          // ExoPlayer actually chose -- it auto-selects hardware vs.
+          // software per-codec with no signal surfaced to this layer.
+          // hardwareAccelerated stays null (unknown) rather than a
+          // fabricated true, since a diagnostic value someone might use
+          // to debug a decode problem must not lie about the one thing
+          // it's meant to report.
+          hardwareAccelerated: null,
         ),
       ),
     );
