@@ -3194,7 +3194,14 @@ established:
   - `relabelling_a_context_id_breaks_the_wrapping`
   - `a_wrapping_cannot_be_moved_to_another_envelope`
 - [ ] `SealedRestore` has no method returning a `Vault` and no method exposing key material — verified by a reviewer, not only by tests
-- [ ] No `fill_bytes` anywhere; `grep -rn "fill_bytes" rust/airo_mind/src` returns only `try_fill_bytes`
+- [ ] **Repository-wide verification passes (#1287), not reviewer memory.** These are CI checks because the last two defects were both "fixed in one file, forgotten in another":
+  - no `panic!`, `unwrap()`, `expect()`, or `todo!()` outside `#[cfg(test)]`
+  - no `fill_bytes`; only `try_fill_bytes`
+  - no direct RNG use outside `random_key` / `random_nonce`
+  - no `AeadCore::generate_nonce`
+  - every `Serialize`/`Deserialize` type has a round-trip test
+  - every AAD-bound field has a tamper test (invariant I3)
+  - no `derive(Debug)`, `derive(Clone)`, or `derive(PartialEq)` on a secret type
 - [ ] No `derive(Debug)`, `derive(Clone)`, or `derive(PartialEq)` on any secret type
 - [ ] `crate-type = ["rlib"]`; no `flutter_rust_bridge` dependency
 - [ ] Third-party notices updated for BSD-3-Clause, and for CC0 if Path A was chosen
