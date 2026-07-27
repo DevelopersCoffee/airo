@@ -1,8 +1,8 @@
 import 'dart:convert';
 
 import 'package:dio/dio.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:platform_worker_jobs/platform_worker_jobs.dart';
 
 import 'providers/channel_filters_provider.dart';
 import 'providers/iptv_providers.dart' show dioProvider, iptvChannelsProvider;
@@ -32,7 +32,7 @@ final channelBrowseMetadataProvider =
           ),
         ]);
         final channels = await ref.watch(iptvChannelsProvider.future);
-        return compute(_matchMetadata, <Object?>[
+        final input = <Object?>[
           channels
               .map(
                 (channel) => <String, String?>{
@@ -43,7 +43,12 @@ final channelBrowseMetadataProvider =
               )
               .toList(),
           responses.map((response) => response.data ?? '[]').toList(),
-        ]);
+        ];
+        return const AiroWorkerExecutor().run(
+          debugName: 'iptv_channel_metadata_match',
+          kind: AiroWorkerJobKind.searchIndexing,
+          computation: () => _matchMetadata(input),
+        );
       } catch (_) {
         return const {};
       }

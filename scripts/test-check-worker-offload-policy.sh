@@ -23,11 +23,32 @@ Future<int> runWorker() {
 }
 DART
 
+mkdir -p "$clean_dir/packages/core_workers/lib/src"
+cat >"$clean_dir/packages/core_workers/lib/src/run_off_main.dart" <<'DART'
+import 'dart:isolate';
+
+Future<int> runOffMain() {
+  return Isolate.run(() => 1);
+}
+DART
+
 mkdir -p "$clean_dir/packages/platform_playlist_import/lib/src"
 cat >"$clean_dir/packages/platform_playlist_import/lib/src/cache.dart" <<'DART'
 import 'dart:convert';
 
 Object decodeCache(String raw) => jsonDecode(raw);
+DART
+
+mkdir -p "$clean_dir/packages/feature_iptv/lib/application"
+cat >"$clean_dir/packages/feature_iptv/lib/application/preferences.dart" <<'DART'
+import 'dart:convert';
+
+Object decodeSmallPreference(String raw) => jsonDecode(raw);
+DART
+
+mkdir -p "$clean_dir/packages/feature_iptv/lib/presentation/widgets"
+cat >"$clean_dir/packages/feature_iptv/lib/presentation/widgets/changelog.dart" <<'DART'
+List<String> changelogLines(String changelog) => changelog.split('\n');
 DART
 
 "$SCRIPT" "$clean_dir" >/tmp/airo-worker-policy-clean.out

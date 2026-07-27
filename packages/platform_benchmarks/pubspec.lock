@@ -603,7 +603,7 @@ packages:
     source: path
     version: "0.0.1"
   platform_worker_jobs:
-    dependency: transitive
+    dependency: "direct main"
     description:
       path: "../platform_worker_jobs"
       relative: true
