@@ -1,4 +1,6 @@
 import 'package:airo_app/core/app/airo_app.dart';
+import 'package:airo_app/core/routing/app_router.dart';
+import 'package:airo_app/main.dart' as app;
 import 'package:feature_iptv/feature_iptv.dart' show sharedPreferencesProvider;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -31,6 +33,11 @@ void main() {
       _currentUserKey: _journeyUserJson,
     });
     final prefs = await SharedPreferences.getInstance();
+    final router = AppRouter.createRouter(
+      // ignore: invalid_use_of_visible_for_testing_member
+      moduleRegistry: app.buildMainModuleRegistry(),
+    );
+    addTearDown(router.dispose);
 
     // 2. Launch Application — use ProviderScope + AiroApp directly
     //    instead of app.main() to avoid GlobalErrorHandler overriding
@@ -38,7 +45,7 @@ void main() {
     await $.pumpWidgetAndSettle(
       ProviderScope(
         overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
-        child: const AiroApp(),
+        child: AiroApp(router: router),
       ),
     );
 
