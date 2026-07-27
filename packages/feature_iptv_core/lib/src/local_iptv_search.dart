@@ -96,7 +96,11 @@ class LocalIptvSearchIndex {
     for (final channel in _channels) {
       final nameQuality = _matchQuality(channel.name, normalized);
       final groupQuality = _matchQuality(channel.group, normalized);
-      final quality = _better(nameQuality, groupQuality);
+      final aliasQuality = channel.altNames.fold<_MatchQuality?>(
+        null,
+        (best, alias) => _better(best, _matchQuality(alias, normalized)),
+      );
+      final quality = _better(_better(nameQuality, groupQuality), aliasQuality);
       if (quality == null) continue;
 
       results.add(

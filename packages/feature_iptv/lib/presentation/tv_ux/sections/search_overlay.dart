@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../application/providers/channel_filters_provider.dart';
 import '../../../application/providers/local_iptv_search_providers.dart';
+import '../../../application/providers/iptv_org_api_providers.dart';
 import '../../widgets/local_search_results_panel.dart';
 import 'filter_dialogs.dart';
 
@@ -89,6 +90,23 @@ class _SearchOverlayState extends ConsumerState<SearchOverlay> {
     final theme = Theme.of(context);
     final filters = ref.watch(channelFiltersProvider);
     final dimensions = widget.dimensions;
+    final countries = ref.watch(iptvOrgCountryByCodeProvider);
+    final languages = ref.watch(iptvOrgLanguageByCodeProvider);
+    String countryLabel(String? value) => countryDisplayLabel(
+      value,
+      taxonomyNames: {
+        for (final entry in countries.entries) entry.key: entry.value.name,
+      },
+      taxonomyFlags: {
+        for (final entry in countries.entries) entry.key: entry.value.flag,
+      },
+    );
+    String languageLabel(String? value) => languageDisplayLabel(
+      value,
+      taxonomyNames: {
+        for (final entry in languages.entries) entry.key: entry.value.name,
+      },
+    );
 
     return Dialog.fullscreen(
       backgroundColor: theme.colorScheme.surface,
@@ -174,7 +192,7 @@ class _SearchOverlayState extends ConsumerState<SearchOverlay> {
                             selectedValue: filters.country,
                             onSelected: widget.notifier.setCountry,
                             onClear: () => widget.notifier.setCountry(null),
-                            optionLabel: countryDisplayLabel,
+                            optionLabel: countryLabel,
                           ),
                         ),
                       if (dimensions.languages.isNotEmpty)
@@ -192,7 +210,7 @@ class _SearchOverlayState extends ConsumerState<SearchOverlay> {
                             selectedValue: filters.language,
                             onSelected: widget.notifier.setLanguage,
                             onClear: () => widget.notifier.setLanguage(null),
-                            optionLabel: languageDisplayLabel,
+                            optionLabel: languageLabel,
                           ),
                         ),
                     ],

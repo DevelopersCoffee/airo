@@ -4,12 +4,18 @@ import 'package:platform_channels/platform_channels.dart';
 import 'package:platform_epg/platform_epg.dart';
 
 void main() {
-  IPTVChannel channel(String id, String name, {String group = 'News'}) {
+  IPTVChannel channel(
+    String id,
+    String name, {
+    String group = 'News',
+    List<String> altNames = const [],
+  }) {
     return IPTVChannel(
       id: id,
       name: name,
       streamUrl: 'http://example.com/$id.ts',
       group: group,
+      altNames: altNames,
     );
   }
 
@@ -159,6 +165,22 @@ void main() {
         ),
         isTrue,
       );
+    });
+
+    test('finds a channel by upstream alternative name', () {
+      final index = LocalIptvSearchIndex.build(
+        channels: [
+          channel('sony', 'Sony Yay!', altNames: const ['Sony YAY India']),
+        ],
+        programsByChannelId: const {},
+        favoriteChannelIds: const {},
+        recentChannelIds: const [],
+      );
+
+      final results = index.search('Sony YAY India');
+
+      expect(results.single.channelId, 'sony');
+      expect(results.single.title, 'Sony Yay!');
     });
 
     test('ranking is deterministic across repeated calls', () {

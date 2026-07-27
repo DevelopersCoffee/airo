@@ -1,10 +1,12 @@
 import 'package:feature_iptv/application/providers/channel_filters_provider.dart';
 import 'package:feature_iptv/application/providers/iptv_providers.dart';
+import 'package:feature_iptv/application/providers/iptv_org_api_providers.dart';
 import 'package:feature_iptv/presentation/tv_ux/sections/filter_row.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:platform_iptv_org_api/platform_iptv_org_api.dart';
 
 void main() {
   testWidgets('search is first and country uses human-readable labels', (
@@ -82,6 +84,53 @@ void main() {
     expect(find.text('Category'), findsOneWidget);
     expect(find.text('Country'), findsOneWidget);
     expect(find.text('Language'), findsOneWidget);
+  });
+
+  testWidgets('typed taxonomy replaces built-in country and language labels', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    final container = ProviderContainer(
+      overrides: [
+        sharedPreferencesProvider.overrideWithValue(prefs),
+        iptvOrgCountryByCodeProvider.overrideWithValue(const {
+          'IN': IptvOrgCountry(
+            name: 'Bharat',
+            code: 'IN',
+            languages: ['hin'],
+            flag: '🇮🇳',
+          ),
+        }),
+        iptvOrgLanguageByCodeProvider.overrideWithValue(const {
+          'hin': IptvOrgLanguage(name: 'Hindi', code: 'hin'),
+        }),
+      ],
+    );
+    addTearDown(container.dispose);
+    container.read(channelFiltersProvider.notifier)
+      ..setCountry('IN')
+      ..setLanguage('hin');
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: const MaterialApp(
+          home: Scaffold(
+            body: FilterRow(
+              dimensions: ChannelFilterDimensions(
+                categories: {},
+                countries: {'IN'},
+                languages: {'hin'},
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('🇮🇳 Bharat'), findsOneWidget);
+    expect(find.text('Hindi'), findsOneWidget);
   });
 
   testWidgets('search chip updates and clears channel filter search text', (

@@ -521,18 +521,25 @@ List<String> effectiveChannelLanguages(
   return channel.languages.where(_isPresent).toList(growable: false);
 }
 
-String countryDisplayLabel(String? value) {
+String countryDisplayLabel(
+  String? value, {
+  Map<String, String> taxonomyNames = const {},
+  Map<String, String> taxonomyFlags = const {},
+}) {
   if (!_isPresent(value)) return 'Country';
   final code = value!.trim().toUpperCase();
-  final name = _countryNames[code];
+  final name = taxonomyNames[code] ?? _countryNames[code];
   if (name == null) return value;
-  return '${_countryFlag(code)} $name';
+  return '${taxonomyFlags[code] ?? _countryFlag(code)} $name';
 }
 
-String languageDisplayLabel(String? value) {
+String languageDisplayLabel(
+  String? value, {
+  Map<String, String> taxonomyNames = const {},
+}) {
   if (!_isPresent(value)) return 'Language';
   final code = value!.trim().toLowerCase();
-  return _languageNames[code] ?? value;
+  return taxonomyNames[code] ?? _languageNames[code] ?? value;
 }
 
 /// A normalized category key for picker deduplication and category filtering.

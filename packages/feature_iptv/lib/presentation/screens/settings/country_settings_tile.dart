@@ -23,6 +23,16 @@ class CountrySettingsTile extends ConsumerWidget {
       channels: channels,
       metadataByChannelId: const {},
     );
+    final countries = ref.watch(iptvOrgCountryByCodeProvider);
+    String countryLabel(String? value) => countryDisplayLabel(
+      value,
+      taxonomyNames: {
+        for (final entry in countries.entries) entry.key: entry.value.name,
+      },
+      taxonomyFlags: {
+        for (final entry in countries.entries) entry.key: entry.value.flag,
+      },
+    );
     final canPickCountry =
         dimensions.countries.isNotEmpty || filters.country != null;
 
@@ -34,7 +44,7 @@ class CountrySettingsTile extends ConsumerWidget {
       title: Text(country.labelFor(ShellId.mobile)),
       subtitle: Text(
         filters.country != null
-            ? countryDisplayLabel(filters.country)
+            ? countryLabel(filters.country)
             : channelsAsync.isLoading
             ? 'Loading countries…'
             : dimensions.countries.isEmpty
@@ -45,7 +55,13 @@ class CountrySettingsTile extends ConsumerWidget {
       enabled: canPickCountry,
       onTap: !canPickCountry
           ? null
-          : () => _showCountryPicker(context, ref, dimensions, filters.country),
+          : () => _showCountryPicker(
+              context,
+              ref,
+              dimensions,
+              filters.country,
+              countryLabel,
+            ),
     );
   }
 
@@ -54,6 +70,7 @@ class CountrySettingsTile extends ConsumerWidget {
     WidgetRef ref,
     ChannelFilterDimensions dimensions,
     String? selectedCountry,
+    String Function(String?) countryLabel,
   ) {
     final filters = ref.read(channelFiltersProvider.notifier);
     final countryPrompt = ref.read(channelCountryPromptProvider.notifier);
@@ -70,7 +87,7 @@ class CountrySettingsTile extends ConsumerWidget {
         filters.setCountry(null);
         unawaited(countryPrompt.markCompleted());
       },
-      optionLabel: countryDisplayLabel,
+      optionLabel: countryLabel,
     );
   }
 }

@@ -37,6 +37,28 @@ final iptvOrgTaxonomyProvider = FutureProvider<IptvOrgTaxonomy>((ref) async {
   );
 });
 
+final iptvOrgCountryByCodeProvider = Provider<Map<String, IptvOrgCountry>>((
+  ref,
+) {
+  final taxonomy = ref.watch(iptvOrgTaxonomyProvider).value;
+  if (taxonomy == null) return const {};
+  return Map.unmodifiable({
+    for (final country in taxonomy.countries)
+      country.code.toUpperCase(): country,
+  });
+});
+
+final iptvOrgLanguageByCodeProvider = Provider<Map<String, IptvOrgLanguage>>((
+  ref,
+) {
+  final taxonomy = ref.watch(iptvOrgTaxonomyProvider).value;
+  if (taxonomy == null) return const {};
+  return Map.unmodifiable({
+    for (final language in taxonomy.languages)
+      language.code.toLowerCase(): language,
+  });
+});
+
 final class IptvOrgTaxonomy {
   IptvOrgTaxonomy({
     required List<IptvOrgCategory> categories,

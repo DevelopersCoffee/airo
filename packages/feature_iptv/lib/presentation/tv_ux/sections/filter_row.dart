@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../application/providers/channel_filters_provider.dart';
+import '../../../application/providers/iptv_org_api_providers.dart';
 import 'filter_dialogs.dart';
 import 'search_overlay.dart';
 
@@ -17,6 +18,24 @@ class FilterRow extends ConsumerWidget {
     final notifier = ref.read(channelFiltersProvider.notifier);
     final recent = ref.watch(recentFilterValuesProvider);
     final recentNotifier = ref.read(recentFilterValuesProvider.notifier);
+    final countries = ref.watch(iptvOrgCountryByCodeProvider);
+    final languages = ref.watch(iptvOrgLanguageByCodeProvider);
+    final countryNames = {
+      for (final entry in countries.entries) entry.key: entry.value.name,
+    };
+    final countryFlags = {
+      for (final entry in countries.entries) entry.key: entry.value.flag,
+    };
+    final languageNames = {
+      for (final entry in languages.entries) entry.key: entry.value.name,
+    };
+    String countryLabel(String? value) => countryDisplayLabel(
+      value,
+      taxonomyNames: countryNames,
+      taxonomyFlags: countryFlags,
+    );
+    String languageLabel(String? value) =>
+        languageDisplayLabel(value, taxonomyNames: languageNames);
     final chips = <Widget>[
       _FilterChip(
         key: const ValueKey('filter-chip-search'),
@@ -48,7 +67,7 @@ class FilterRow extends ConsumerWidget {
       if (dimensions.countries.isNotEmpty)
         _FilterChip(
           key: const ValueKey('filter-chip-country'),
-          label: countryDisplayLabel(filters.country),
+          label: countryLabel(filters.country),
           active: filters.country != null,
           icon: Icons.flag,
           onSelected: () => showTvLongListPicker(
@@ -62,13 +81,13 @@ class FilterRow extends ConsumerWidget {
               recentNotifier.record(ChannelFilterDimension.country, value);
             },
             onClear: () => notifier.setCountry(null),
-            optionLabel: countryDisplayLabel,
+            optionLabel: countryLabel,
           ),
         ),
       if (dimensions.languages.isNotEmpty)
         _FilterChip(
           key: const ValueKey('filter-chip-language'),
-          label: languageDisplayLabel(filters.language),
+          label: languageLabel(filters.language),
           active: filters.language != null,
           icon: Icons.translate,
           onSelected: () => showTvLongListPicker(
@@ -82,7 +101,7 @@ class FilterRow extends ConsumerWidget {
               recentNotifier.record(ChannelFilterDimension.language, value);
             },
             onClear: () => notifier.setLanguage(null),
-            optionLabel: languageDisplayLabel,
+            optionLabel: languageLabel,
           ),
         ),
     ];

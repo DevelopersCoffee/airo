@@ -394,4 +394,23 @@ void main() {
     expect(countryDisplayLabel('ZA'), '🇿🇦 South Africa');
     expect(countryDisplayLabel('gb'), '🇬🇧 United Kingdom');
   });
+
+  test(
+    'typed taxonomy labels override fallback names and preserve code fallback',
+    () {
+      expect(
+        countryDisplayLabel(
+          'IN',
+          taxonomyNames: const {'IN': 'Bharat'},
+          taxonomyFlags: const {'IN': '🇮🇳'},
+        ),
+        '🇮🇳 Bharat',
+      );
+      expect(
+        languageDisplayLabel('hin', taxonomyNames: const {'hin': 'Hindi'}),
+        'Hindi',
+      );
+      expect(languageDisplayLabel('zzz'), 'zzz');
+    },
+  );
 }
