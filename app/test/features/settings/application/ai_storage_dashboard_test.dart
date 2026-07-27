@@ -4,12 +4,15 @@ import 'package:airo_app/features/settings/application/ai_storage_dashboard.dart
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as path;
+import 'package:platform_downloads/platform_downloads.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   late Directory tempDir;
-  const diskChannel = MethodChannel('com.airo.model_download');
+  const diskChannel = MethodChannel(
+    MethodChannelBackgroundDownloads.methodChannelName,
+  );
   const pathProviderChannel = MethodChannel('plugins.flutter.io/path_provider');
 
   setUp(() async {
@@ -28,7 +31,7 @@ void main() {
         });
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(diskChannel, (methodCall) async {
-          if (methodCall.method == 'getFreeDiskSpace') {
+          if (methodCall.method == 'getAvailableBytes') {
             return 2 * 1024 * 1024 * 1024;
           }
           return null;

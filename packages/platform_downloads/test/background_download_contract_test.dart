@@ -33,6 +33,9 @@ void main() {
               ],
             };
           }
+          if (call.method == 'getAvailableBytes') {
+            return 4096;
+          }
           return null;
         });
   });
@@ -46,6 +49,14 @@ void main() {
     expect(
       () => DownloadArtifactRequest(
         artifactId: '',
+        source: Uri.parse('https://example.test/model.bin'),
+        destinationPath: '/sandbox/model.bin',
+      ),
+      throwsArgumentError,
+    );
+    expect(
+      () => DownloadArtifactRequest(
+        artifactId: '../../outside',
         source: Uri.parse('https://example.test/model.bin'),
         destinationPath: '/sandbox/model.bin',
       ),
@@ -129,6 +140,16 @@ void main() {
     },
   );
 
+  test('artifact actions reject unsafe identifiers before native dispatch', () {
+    final downloads = MethodChannelBackgroundDownloads(
+      methodChannel: methodChannel,
+      eventChannel: eventChannel,
+    );
+
+    expect(() => downloads.cancel('../outside'), throwsArgumentError);
+    expect(calls, isEmpty);
+  });
+
   test('queue snapshot decodes ordered entries and derived controls', () async {
     final downloads = MethodChannelBackgroundDownloads(
       methodChannel: methodChannel,
@@ -144,6 +165,20 @@ void main() {
     expect(snapshot.entries.single.canCancel, isTrue);
     expect(snapshot.entries.single.queuePosition, 1);
   });
+
+  test(
+    'available storage is exposed without a product-specific channel',
+    () async {
+      final downloads = MethodChannelBackgroundDownloads(
+        methodChannel: methodChannel,
+        eventChannel: eventChannel,
+      );
+
+      expect(await downloads.getAvailableBytes(), 4096);
+      expect(calls.single.method, 'getAvailableBytes');
+      expect(calls.single.arguments, <String, Object?>{'contractVersion': 1});
+    },
+  );
 
   test('progress payload exposes structured retryable failure semantics', () {
     final progress = DownloadProgress.fromMap(<Object?, Object?>{

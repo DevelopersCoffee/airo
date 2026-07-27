@@ -11,7 +11,7 @@ class DownloadArtifactRequest {
     this.expectedBytes,
     String? expectedSha256,
     String? displayName,
-  }) : artifactId = _requiredText(artifactId, 'artifactId'),
+  }) : artifactId = _validatedArtifactId(artifactId),
        destinationPath = _requiredText(destinationPath, 'destinationPath'),
        expectedSha256 = _validatedSha256(expectedSha256),
        displayName = _optionalText(displayName, 'displayName') {
@@ -55,6 +55,18 @@ class DownloadArtifactRequest {
   static String? _optionalText(String? value, String name) {
     if (value == null) return null;
     return _requiredText(value, name);
+  }
+
+  static String _validatedArtifactId(String value) {
+    final normalized = _requiredText(value, 'artifactId');
+    if (!RegExp(r'^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$').hasMatch(normalized)) {
+      throw ArgumentError.value(
+        value,
+        'artifactId',
+        'must be a safe 1-128 character identifier',
+      );
+    }
+    return normalized;
   }
 
   static String? _validatedSha256(String? value) {

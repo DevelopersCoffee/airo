@@ -15,4 +15,6 @@ abstract interface class BackgroundDownloads {
   Future<void> cancel(String artifactId);
 
   Future<DownloadQueueSnapshot> getQueue();
+
+  Future<int?> getAvailableBytes();
 }

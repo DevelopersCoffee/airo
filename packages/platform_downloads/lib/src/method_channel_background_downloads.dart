@@ -64,10 +64,21 @@ class MethodChannelBackgroundDownloads implements BackgroundDownloads {
     return DownloadQueueSnapshot.fromMap(payload.cast<Object?, Object?>());
   }
 
+  @override
+  Future<int?> getAvailableBytes() {
+    return _methodChannel.invokeMethod<int>('getAvailableBytes', {
+      'contractVersion': backgroundDownloadContractVersion,
+    });
+  }
+
   Future<void> _invokeArtifactAction(String method, String artifactId) {
     final normalizedId = artifactId.trim();
-    if (normalizedId.isEmpty) {
-      throw ArgumentError.value(artifactId, 'artifactId', 'must not be empty');
+    if (!RegExp(r'^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$').hasMatch(normalizedId)) {
+      throw ArgumentError.value(
+        artifactId,
+        'artifactId',
+        'must be a safe 1-128 character identifier',
+      );
     }
     return _methodChannel.invokeMethod<void>(method, <String, Object?>{
       'artifactId': normalizedId,
