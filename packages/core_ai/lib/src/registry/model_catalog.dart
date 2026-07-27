@@ -17,7 +17,7 @@ class ModelCatalog {
       id: 'gemma-4-e2b-it-litertlm',
       name: 'Gemma-4-E2B-it',
       family: ModelFamily.gemma,
-      fileSizeBytes: 2583085056,
+      fileSizeBytes: 2588147712,
       downloadUrl:
           'https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm/resolve/main/gemma-4-E2B-it.litertlm',
       quantization: ModelQuantization.q4,
