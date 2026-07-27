@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:platform_channels/platform_channels.dart';
@@ -24,6 +26,7 @@ class ChannelLibraryGrid extends StatefulWidget {
     this.sort = const ChannelSort(),
     this.onSort,
     this.onChannelSelected,
+    this.focusPlayDelay,
     this.onVisibleChannelsChanged,
     this.multiviewChannelIds = const {},
     this.onMultiviewToggle,
@@ -35,6 +38,7 @@ class ChannelLibraryGrid extends StatefulWidget {
   final ChannelSort sort;
   final ValueChanged<ChannelSortColumn>? onSort;
   final ValueChanged<IPTVChannel>? onChannelSelected;
+  final Duration? focusPlayDelay;
   final ValueChanged<List<IPTVChannel>>? onVisibleChannelsChanged;
   final Set<String> multiviewChannelIds;
   final ValueChanged<IPTVChannel>? onMultiviewToggle;
@@ -145,6 +149,7 @@ class _ChannelLibraryGridState extends State<ChannelLibraryGrid> {
                         availability:
                             widget.availabilityByChannelId[channel.id],
                         onSelected: widget.onChannelSelected,
+                        focusPlayDelay: widget.focusPlayDelay,
                         inMultiview: widget.multiviewChannelIds.contains(
                           channel.id,
                         ),
@@ -222,12 +227,13 @@ class _LibrarySortRow extends StatelessWidget {
   }
 }
 
-class _ChannelTile extends StatelessWidget {
+class _ChannelTile extends StatefulWidget {
   const _ChannelTile({
     required this.channel,
     required this.metadata,
     required this.availability,
     this.onSelected,
+    this.focusPlayDelay,
     required this.inMultiview,
     this.onMultiviewToggle,
   });
@@ -236,51 +242,104 @@ class _ChannelTile extends StatelessWidget {
   final ChannelBrowseMetadata? metadata;
   final StreamAvailability? availability;
   final ValueChanged<IPTVChannel>? onSelected;
+  final Duration? focusPlayDelay;
   final bool inMultiview;
   final ValueChanged<IPTVChannel>? onMultiviewToggle;
 
   @override
+  State<_ChannelTile> createState() => _ChannelTileState();
+}
+
+class _ChannelTileState extends State<_ChannelTile> {
+  Timer? _focusPlayTimer;
+
+  @override
+  void didUpdateWidget(covariant _ChannelTile oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.channel.id != widget.channel.id ||
+        oldWidget.focusPlayDelay != widget.focusPlayDelay ||
+        oldWidget.onSelected != widget.onSelected) {
+      _cancelFocusPlay();
+    }
+  }
+
+  @override
+  void dispose() {
+    _cancelFocusPlay();
+    super.dispose();
+  }
+
+  void _scheduleFocusPlay() {
+    _cancelFocusPlay();
+    final delay = widget.focusPlayDelay;
+    final onSelected = widget.onSelected;
+    if (delay == null || onSelected == null) return;
+    _focusPlayTimer = Timer(delay, () {
+      _focusPlayTimer = null;
+      if (!mounted) return;
+      onSelected(widget.channel);
+    });
+  }
+
+  void _cancelFocusPlay() {
+    _focusPlayTimer?.cancel();
+    _focusPlayTimer = null;
+  }
+
+  void _selectNow() {
+    _cancelFocusPlay();
+    widget.onSelected?.call(widget.channel);
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final country = effectiveChannelCountry(channel, metadata);
-    final languages = effectiveChannelLanguages(channel, metadata);
+    final country = effectiveChannelCountry(widget.channel, widget.metadata);
+    final languages = effectiveChannelLanguages(
+      widget.channel,
+      widget.metadata,
+    );
     final subtitle = _subtitleFor(country, languages);
 
     return Stack(
       children: [
         MediaCard(
-          name: channel.name,
+          name: widget.channel.name,
           subtitle: subtitle,
-          logoUrl: channel.effectiveLogoUrl,
-          initials: _initialsFor(channel.name),
-          onTap: onSelected == null ? null : () => onSelected!(channel),
-          onLongPress: onMultiviewToggle == null
+          logoUrl: widget.channel.effectiveLogoUrl,
+          initials: _initialsFor(widget.channel.name),
+          onTap: widget.onSelected == null ? null : _selectNow,
+          onLongPress: widget.onMultiviewToggle == null
               ? null
-              : () => onMultiviewToggle!(channel),
+              : () => widget.onMultiviewToggle!(widget.channel),
+          onFocus: _scheduleFocusPlay,
+          onUnfocus: _cancelFocusPlay,
         ),
         Positioned(
           top: 7,
           left: 7,
-          child: _AvailabilityDot(availability: availability),
+          child: _AvailabilityDot(availability: widget.availability),
         ),
-        if (onMultiviewToggle != null)
+        if (widget.onMultiviewToggle != null)
           Positioned(
             top: 4,
             right: 4,
             child: ExcludeFocus(
               child: Material(
-                key: ValueKey('channel-multiview-${channel.id}'),
+                key: ValueKey('channel-multiview-${widget.channel.id}'),
                 color: Colors.black.withValues(alpha: 0.68),
                 shape: const CircleBorder(),
                 child: IconButton(
                   visualDensity: VisualDensity.compact,
-                  tooltip: inMultiview
+                  tooltip: widget.inMultiview
                       ? 'Remove from multiview'
                       : 'Add to multiview',
-                  onPressed: () => onMultiviewToggle!(channel),
+                  onPressed: () => widget.onMultiviewToggle!(widget.channel),
                   icon: Icon(
-                    inMultiview ? Icons.remove_from_queue : Icons.add_to_queue,
+                    widget.inMultiview
+                        ? Icons.remove_from_queue
+                        : Icons.add_to_queue,
                     size: 18,
-                    color: inMultiview
+                    color: widget.inMultiview
                         ? Theme.of(context).colorScheme.primary
                         : Colors.white,
                   ),
@@ -293,7 +352,8 @@ class _ChannelTile extends StatelessWidget {
   }
 
   String? _subtitleFor(String? country, List<String> languages) {
-    final category = categoryDisplayLabel(channel.group) ?? channel.group;
+    final category =
+        categoryDisplayLabel(widget.channel.group) ?? widget.channel.group;
     final flag = _countryFlagOnly(country);
     final languageSummary = _languageSummary(languages);
     final parts = [category, ?flag, ?languageSummary];

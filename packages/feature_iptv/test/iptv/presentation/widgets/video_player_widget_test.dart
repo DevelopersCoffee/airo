@@ -139,8 +139,19 @@ void main() {
       expect(find.text('Mini guide'), findsOneWidget);
       expect(find.text('Stadium Sports'), findsWidgets);
       expect(service.currentState.currentChannel?.id, 'news-1');
+      expect(
+        FocusManager.instance.primaryFocus?.debugLabel,
+        'quick browse City News Live',
+      );
 
-      await tester.tap(find.text('Stadium Sports').first);
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pump();
+      expect(
+        FocusManager.instance.primaryFocus?.debugLabel,
+        'quick browse Stadium Sports',
+      );
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.select);
       await tester.pump();
 
       expect(service.currentState.currentChannel?.id, 'sports-1');

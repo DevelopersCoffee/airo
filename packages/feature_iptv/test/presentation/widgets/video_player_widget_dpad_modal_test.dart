@@ -132,6 +132,13 @@ void main() {
           reason: 'UP must focus ${orderedKeys[index]} exactly once',
         );
       }
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+      await tester.pump();
+      expect(
+        ownsPrimaryFocus(tester, orderedKeys.first),
+        isTrue,
+        reason: 'UP at the first action must remain trapped in the modal',
+      );
       for (var index = 1; index < orderedKeys.length; index++) {
         await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
         await tester.pump();
@@ -143,6 +150,13 @@ void main() {
         expect(find.text('Mini guide'), findsNothing);
         expect(find.text('Recent channels'), findsNothing);
       }
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+      await tester.pump();
+      expect(
+        ownsPrimaryFocus(tester, orderedKeys.last),
+        isTrue,
+        reason: 'DOWN at the last action must remain trapped in the modal',
+      );
 
       await tester.sendKeyEvent(LogicalKeyboardKey.escape);
       await tester.pumpAndSettle();
@@ -175,6 +189,15 @@ void main() {
         FocusManager.instance.primaryFocus?.debugLabel,
         'player subtitle option French subtitles',
       );
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(find.text('Subtitles'), findsWidgets);
+      expect(
+        FocusManager.instance.primaryFocus?.debugLabel,
+        'player action Subtitles',
+      );
+      await tester.sendKeyEvent(LogicalKeyboardKey.select);
+      await tester.pumpAndSettle();
 
       await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
       await tester.pump();
@@ -204,6 +227,14 @@ void main() {
         FocusManager.instance.primaryFocus?.debugLabel,
         'player quality option 720p',
       );
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(
+        FocusManager.instance.primaryFocus?.debugLabel,
+        'player action Quality',
+      );
+      await tester.sendKeyEvent(LogicalKeyboardKey.select);
+      await tester.pumpAndSettle();
 
       await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
       await tester.pump();
@@ -260,6 +291,16 @@ void main() {
         FocusManager.instance.primaryFocus?.debugLabel,
         'player audio option French audio',
       );
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(
+        FocusManager.instance.primaryFocus?.debugLabel,
+        'player audio track',
+      );
+      await tester.sendKeyEvent(LogicalKeyboardKey.select);
+      await tester.pumpAndSettle();
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+      await tester.pump();
       await tester.sendKeyEvent(LogicalKeyboardKey.select);
       await tester.pumpAndSettle();
       expect(service.selectedTracks.last, (

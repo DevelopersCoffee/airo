@@ -2855,7 +2855,7 @@ enum _TvQuickBrowse { miniGuide, recent }
 
 /// Bottom-docked horizontal browse strip for UP (Mini Guide) and DOWN
 /// (Recent Channels). AiroTV D-pad design: "◀ ▶ browse · OK switch".
-class _QuickBrowseOverlay extends StatelessWidget {
+class _QuickBrowseOverlay extends StatefulWidget {
   const _QuickBrowseOverlay({
     required this.title,
     required this.channels,
@@ -2869,103 +2869,200 @@ class _QuickBrowseOverlay extends StatelessWidget {
   final ValueChanged<IPTVChannel> onSelected;
 
   @override
+  State<_QuickBrowseOverlay> createState() => _QuickBrowseOverlayState();
+}
+
+class _QuickBrowseOverlayState extends State<_QuickBrowseOverlay> {
+  late List<FocusNode> _focusNodes;
+  late int _focusedIndex;
+
+  String get _channelSignature =>
+      widget.channels.map((channel) => channel.id).join('|');
+
+  @override
+  void initState() {
+    super.initState();
+    _createFocusNodes();
+    _requestInitialFocus();
+  }
+
+  @override
+  void didUpdateWidget(covariant _QuickBrowseOverlay oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final oldSignature = oldWidget.channels
+        .map((channel) => channel.id)
+        .join('|');
+    if (oldSignature == _channelSignature &&
+        oldWidget.currentChannelId == widget.currentChannelId) {
+      return;
+    }
+    for (final node in _focusNodes) {
+      node.dispose();
+    }
+    _createFocusNodes();
+    _requestInitialFocus();
+  }
+
+  @override
+  void dispose() {
+    for (final node in _focusNodes) {
+      node.dispose();
+    }
+    super.dispose();
+  }
+
+  void _createFocusNodes() {
+    _focusedIndex = widget.channels.indexWhere(
+      (channel) => channel.id == widget.currentChannelId,
+    );
+    if (_focusedIndex < 0) _focusedIndex = 0;
+    _focusNodes = [
+      for (final channel in widget.channels)
+        FocusNode(debugLabel: 'quick browse ${channel.name}'),
+    ];
+  }
+
+  void _requestInitialFocus() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _focusNodes.isEmpty) return;
+      _focusNodes[_focusedIndex].requestFocus();
+    });
+  }
+
+  KeyEventResult _handleBrowseKey(FocusNode node, KeyEvent event) {
+    if (event is! KeyDownEvent || widget.channels.isEmpty) {
+      return KeyEventResult.ignored;
+    }
+    final key = TvInputHandler.mapLogicalKeyToTvInput(event.logicalKey);
+    final nextIndex = switch (key) {
+      TvInputKey.left => (_focusedIndex - 1).clamp(
+        0,
+        widget.channels.length - 1,
+      ),
+      TvInputKey.right => (_focusedIndex + 1).clamp(
+        0,
+        widget.channels.length - 1,
+      ),
+      _ => null,
+    };
+    if (nextIndex != null) {
+      _focusedIndex = nextIndex;
+      _focusNodes[_focusedIndex].requestFocus();
+      return KeyEventResult.handled;
+    }
+    if (key == TvInputKey.up || key == TvInputKey.down) {
+      return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Positioned(
       left: 0,
       right: 0,
       bottom: 0,
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(24, 20, 24, 20),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.bottomCenter,
-            end: Alignment.topCenter,
-            colors: [
-              Colors.black.withValues(alpha: 0.97),
-              Colors.black.withValues(alpha: 0.0),
-            ],
-          ),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      child: Focus(
+        canRequestFocus: false,
+        skipTraversal: true,
+        onKeyEvent: _handleBrowseKey,
+        child: FocusScope(
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(24, 20, 24, 20),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.bottomCenter,
+                end: Alignment.topCenter,
+                colors: [
+                  Colors.black.withValues(alpha: 0.97),
+                  Colors.black.withValues(alpha: 0.0),
+                ],
+              ),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                  ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      widget.title,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const Text(
+                      '◀ ▶ browse   OK switch',
+                      style: TextStyle(color: Colors.white54, fontSize: 12),
+                    ),
+                  ],
                 ),
-                const Text(
-                  '◀ ▶ browse   OK switch',
-                  style: TextStyle(color: Colors.white54, fontSize: 12),
+                const SizedBox(height: 12),
+                SizedBox(
+                  height: 96,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: widget.channels.length,
+                    separatorBuilder: (context, index) =>
+                        const SizedBox(width: 10),
+                    itemBuilder: (context, index) {
+                      final channel = widget.channels[index];
+                      final isCurrent = channel.id == widget.currentChannelId;
+                      return TvFocusable(
+                        key: ValueKey('quick-browse-${channel.id}'),
+                        focusNode: _focusNodes[index],
+                        semanticLabel: channel.name,
+                        onFocus: () => _focusedIndex = index,
+                        onSelect: () => widget.onSelected(channel),
+                        child: Container(
+                          width: 130,
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: isCurrent
+                                ? Colors.white.withValues(alpha: 0.16)
+                                : Colors.white.withValues(alpha: 0.06),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              if (isCurrent)
+                                const Padding(
+                                  padding: EdgeInsets.only(bottom: 6),
+                                  child: Text(
+                                    'ON NOW',
+                                    style: TextStyle(
+                                      color: Colors.greenAccent,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w700,
+                                      letterSpacing: 0.6,
+                                    ),
+                                  ),
+                                ),
+                              Text(
+                                channel.name,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
                 ),
               ],
             ),
-            const SizedBox(height: 12),
-            SizedBox(
-              height: 96,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemCount: channels.length,
-                separatorBuilder: (context, index) => const SizedBox(width: 10),
-                itemBuilder: (context, index) {
-                  final channel = channels[index];
-                  final isCurrent = channel.id == currentChannelId;
-                  return TvFocusable(
-                    key: ValueKey('quick-browse-${channel.id}'),
-                    autofocus: isCurrent || index == 0,
-                    semanticLabel: channel.name,
-                    onSelect: () => onSelected(channel),
-                    child: Container(
-                      width: 130,
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: isCurrent
-                            ? Colors.white.withValues(alpha: 0.16)
-                            : Colors.white.withValues(alpha: 0.06),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          if (isCurrent)
-                            const Padding(
-                              padding: EdgeInsets.only(bottom: 6),
-                              child: Text(
-                                'ON NOW',
-                                style: TextStyle(
-                                  color: Colors.greenAccent,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w700,
-                                  letterSpacing: 0.6,
-                                ),
-                              ),
-                            ),
-                          Text(
-                            channel.name,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );

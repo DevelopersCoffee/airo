@@ -1176,6 +1176,10 @@ class _StreamTabContent extends ConsumerWidget {
       channels: channels,
       enrichMetadata: true,
       currentChannel: activeChannel,
+      showVideoStage: !playlistSourceInInfoBar,
+      focusPlayDelay: playlistSourceInInfoBar
+          ? const Duration(milliseconds: 1200)
+          : null,
       onChannelSelected: onChannelTap,
       onPlaylistSourceTap: playlistSourceInInfoBar ? onPlaylistSourceTap : null,
       onWaysToWatchTap: onWaysToWatchTap,

@@ -12,6 +12,7 @@ void main() {
     WidgetTester tester, {
     required String initialLocation,
     Size? surfaceSize,
+    List<IPTVChannel> channels = const [],
   }) async {
     if (surfaceSize != null) {
       await tester.binding.setSurfaceSize(surfaceSize);
@@ -26,7 +27,7 @@ void main() {
       ProviderScope(
         overrides: [
           sharedPreferencesProvider.overrideWithValue(prefs),
-          iptvChannelsProvider.overrideWith((ref) async => const []),
+          iptvChannelsProvider.overrideWith((ref) async => channels),
           recentlyWatchedChannelsProvider.overrideWith((ref) async => const []),
           streamingStateProvider.overrideWith(
             (ref) => Stream.value(
@@ -107,6 +108,46 @@ void main() {
         isNotEmpty,
         reason: 'the focused Add playlist action must paint the TV focus ring',
       );
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    '1920x1080 Fire TV loaded playlist grid clears the navigation rail',
+    (tester) async {
+      tester.view.physicalSize = const Size(1920, 1080);
+      tester.view.devicePixelRatio = 2;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      DeviceFormFactorDetector.debugFormFactorOverride = DeviceFormFactor.tv;
+      addTearDown(DeviceFormFactorDetector.clearCache);
+
+      await pumpTvRouter(
+        tester,
+        initialLocation: TvRouteNames.live,
+        channels: const [
+          IPTVChannel(
+            id: 'vevo-pop',
+            name: 'Vevo Pop',
+            streamUrl: 'https://example.com/vevo-pop.m3u8',
+          ),
+        ],
+      );
+
+      final railRect = tester.getRect(find.byKey(const Key('tv-sidebar-nav')));
+      final gridRect = tester.getRect(
+        find.byKey(const ValueKey('airo-tv-channel-library')),
+      );
+      expect(
+        gridRect.left,
+        greaterThanOrEqualTo(railRect.right),
+        reason: '$gridRect must not intersect $railRect',
+      );
+      expect(
+        find.byKey(const ValueKey('airo-tv-explorer-video-stage')),
+        findsNothing,
+      );
+      expect(find.text('Select a channel to start watching'), findsNothing);
       expect(tester.takeException(), isNull);
     },
   );
