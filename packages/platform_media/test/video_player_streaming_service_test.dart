@@ -222,7 +222,10 @@ void main() {
     VideoPlayerStreamingService serviceWith(
       _ScriptedMultiSourceEngine scripted,
     ) {
-      final svc = VideoPlayerStreamingService(engine: scripted);
+      final svc = VideoPlayerStreamingService(
+        engine: scripted,
+        failoverBackoffBase: Duration.zero,
+      );
       addTearDown(svc.dispose);
       return svc;
     }
@@ -260,6 +263,89 @@ void main() {
         expect(svc.currentState.diagnostic, isNull);
       },
     );
+
+    test(
+      'uses each source headers and remembers the last working source',
+      () async {
+        final scripted = _ScriptedMultiSourceEngine({
+          urlA: const AiroPlaybackError(
+            code: AiroPlaybackErrorCode.decoderFailed,
+            operation: 'open',
+            httpStatusCode: 403,
+          ),
+        });
+        final svc = serviceWith(scripted);
+        final sourceChannel = IPTVChannel(
+          id: 'source-headers',
+          name: 'Header Channel',
+          streamUrl: urlA,
+          streamSources: const [
+            ChannelStreamSource(
+              url: urlA,
+              feedId: 'primary',
+              userAgent: 'Airo-Primary',
+              referrer: 'https://primary.example',
+            ),
+            ChannelStreamSource(
+              url: urlB,
+              feedId: 'backup',
+              userAgent: 'Airo-Backup',
+              referrer: 'https://backup.example',
+            ),
+          ],
+        );
+
+        await svc.playChannel(sourceChannel);
+        await svc.playChannel(sourceChannel);
+
+        expect(scripted.openedUrls, [urlA, urlB, urlB]);
+        expect(scripted.openedRequests[0].httpHeaders, {
+          'User-Agent': 'Airo-Primary',
+          'Referer': 'https://primary.example',
+        });
+        expect(scripted.openedRequests[1].httpHeaders, {
+          'User-Agent': 'Airo-Backup',
+          'Referer': 'https://backup.example',
+        });
+      },
+    );
+
+    test('caps a failover session at three distinct sources', () async {
+      const urls = [
+        'https://one.example/live',
+        'https://two.example/live',
+        'https://three.example/live',
+        'https://four.example/live',
+      ];
+      final scripted = _ScriptedMultiSourceEngine({
+        for (final url in urls)
+          url: const AiroPlaybackError(
+            code: AiroPlaybackErrorCode.decoderFailed,
+            operation: 'open',
+            httpStatusCode: 404,
+          ),
+      });
+      final svc = serviceWith(scripted);
+
+      await svc.playChannel(
+        IPTVChannel(
+          id: 'bounded',
+          name: 'Bounded',
+          streamUrl: urls[0],
+          streamSources: [
+            ChannelStreamSource(url: urls[0], height: 1080),
+            ChannelStreamSource(url: urls[1], height: 720),
+            ChannelStreamSource(url: urls[2], height: 480),
+            ChannelStreamSource(url: urls[3], height: 360),
+          ],
+        ),
+      );
+
+      expect(scripted.openedUrls, hasLength(3));
+      expect(scripted.openedUrls.toSet(), hasLength(3));
+      expect(scripted.openedUrls, isNot(contains(urls[3])));
+      expect(svc.currentState.playbackState, PlaybackState.error);
+    });
 
     test(
       'recoverable failure on the primary does NOT auto-fail over',
@@ -702,6 +788,7 @@ class _ScriptedMultiSourceEngine implements AiroPlaybackEngine {
 
   final Map<String, AiroPlaybackError> _failuresByUrl;
   final openedUrls = <String>[];
+  final openedRequests = <AiroMediaOpenRequest>[];
   final _controller = StreamController<AiroPlaybackState>.broadcast();
   AiroPlaybackState _state = AiroPlaybackState.idle(
     backendKind: AiroPlaybackBackendKind.fake,
@@ -719,6 +806,7 @@ class _ScriptedMultiSourceEngine implements AiroPlaybackEngine {
   @override
   Future<AiroPlaybackState> open(AiroMediaOpenRequest request) async {
     openedUrls.add(request.sourceHandle.value);
+    openedRequests.add(request);
     final failure = _failuresByUrl[request.sourceHandle.value];
     if (failure != null) {
       _state = _state.copyWith(

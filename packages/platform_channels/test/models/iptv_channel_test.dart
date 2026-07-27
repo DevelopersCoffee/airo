@@ -16,6 +16,9 @@ void main() {
           labelCorrect: true,
           framesPerSecond: 50,
           height: 720,
+          quality: 'high',
+          userAgent: 'Airo-Test',
+          referrer: 'https://guide.example',
         ),
         ChannelStreamSource(
           url: 'https://backup.example/stream',

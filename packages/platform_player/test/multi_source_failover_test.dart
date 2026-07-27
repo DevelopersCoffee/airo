@@ -82,7 +82,11 @@ void main() {
     });
 
     test('diagnostics do not expose source handles', () {
-      final source = _source('primary', handle: 'private-source-handle');
+      final source = _source(
+        'primary',
+        handle: 'private-source-handle',
+        httpHeaders: const {'Authorization': 'private-token'},
+      );
       final decision = AiroMultiSourceFailoverController(
         sources: [source, _source('backup', rank: 1)],
       )..start();
@@ -90,8 +94,26 @@ void main() {
       final switched = decision.recordPlaybackError('primary');
 
       expect(source.toString(), isNot(contains('private-source-handle')));
+      expect(source.toString(), isNot(contains('private-token')));
       expect(switched.toString(), isNot(contains('private-source-handle')));
       expect(source.toString(), contains('sourceHandle: redacted'));
+    });
+
+    test('caps the ranked session to the configured attempt budget', () {
+      final controller = AiroMultiSourceFailoverController(
+        sources: [
+          _source('one'),
+          _source('two', rank: 1),
+          _source('three', rank: 2),
+          _source('four', rank: 3),
+        ],
+      );
+
+      expect(controller.state.sources.map((source) => source.sourceId), [
+        'one',
+        'two',
+        'three',
+      ]);
     });
   });
 }
@@ -103,6 +125,7 @@ AiroFailoverSource _source(
   AiroFailoverSourceHealth health = AiroFailoverSourceHealth.unknown,
   int? resolutionHeight,
   bool lastWorkedHere = false,
+  Map<String, String> httpHeaders = const {},
 }) {
   return AiroFailoverSource(
     sourceId: id,
@@ -112,5 +135,6 @@ AiroFailoverSource _source(
     health: health,
     resolutionHeight: resolutionHeight,
     lastWorkedHere: lastWorkedHere,
+    httpHeaders: httpHeaders,
   );
 }

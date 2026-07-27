@@ -27,6 +27,7 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
   final AiroPlaybackEngine _engine;
   final StreamingConfig _config;
   final AudioContextManager _audioContext;
+  final Duration _failoverBackoffBase;
   final _stateController = StreamController<StreamingState>.broadcast();
 
   StreamingState _state = StreamingState();
@@ -51,12 +52,14 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
   /// [playChannel] and preserved across [retry] so "Try Again" advances
   /// to an untried source instead of resubmitting a dead URL.
   AiroMultiSourceFailoverController? _failoverController;
+  final Map<String, String> _lastWorkingSourceIdsByChannel = {};
 
   VideoPlayerStreamingService({
     AiroPlaybackEngine? engine,
     this._config = StreamingConfig.youtube,
     AudioContextManager? audioContext,
     LiveEdgeConfig? liveEdgeConfig,
+    this._failoverBackoffBase = const Duration(milliseconds: 250),
     this.mediaSessionDelegate,
   }) : _engine = engine ?? VideoPlayerAiroPlaybackEngine(),
        _audioContext = audioContext ?? AudioContextManager(),
@@ -197,23 +200,23 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
             _pendingExternalSubtitle!,
         ];
 
-        final result = await _engine.open(
-          AiroMediaOpenRequest(
-            requestId: '${channel.id}-${_requestCounter++}',
-            sourceHandle: source.sourceHandle,
-            // Engines don't currently branch on mediaKind — hls is the
-            // dominant IPTV format in this codebase and there's no reliable
-            // pre-open live/VOD signal on IPTVChannel to infer from (live vs
-            // VOD detection is a post-open runtime heuristic, see
-            // LiveEdgeDetector._detectLiveStream).
-            mediaKind: AiroPlaybackMediaKind.hls,
-            externalSubtitles: externalSubtitles,
-            mixWithOthers: _isBackgroundAudioMode,
-            allowBackgroundPlayback:
-                _isBackgroundAudioMode || channel.isAudioOnly,
-            httpHeaders: _httpHeadersFor(channel),
-          ),
-        );
+        final result = await _engine
+            .open(
+              AiroMediaOpenRequest(
+                requestId: '${channel.id}-${_requestCounter++}',
+                sourceHandle: source.sourceHandle,
+                // Engines don't currently branch on mediaKind — hls is the
+                // dominant IPTV format in this codebase and there's no
+                // reliable pre-open live/VOD signal on IPTVChannel.
+                mediaKind: AiroPlaybackMediaKind.hls,
+                externalSubtitles: externalSubtitles,
+                mixWithOthers: _isBackgroundAudioMode,
+                allowBackgroundPlayback:
+                    _isBackgroundAudioMode || channel.isAudioOnly,
+                httpHeaders: source.httpHeaders,
+              ),
+            )
+            .timeout(const Duration(seconds: 12));
 
         if (result.error != null) {
           throw _EngineOpenError(result.error!);
@@ -222,6 +225,7 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
         await _engine.setVolume(_state.isMuted ? 0 : _state.volume);
         await _engine.setPlaybackSpeed(1.0);
         await _engine.play();
+        _lastWorkingSourceIdsByChannel[channel.id] = source.sourceId;
 
         // Calculate load time
         final loadTime = DateTime.now().difference(_loadStartTime!);
@@ -274,6 +278,7 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
                 failover: _failoverProgressFor(decision.state),
               ),
             );
+            await _waitBeforeFailover(decision.state.failedSourceIds.length);
             continue;
           }
         }
@@ -283,23 +288,60 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
     }
   }
 
-  /// Builds the failover source list for [channel]: the base stream URL
-  /// plus every distinct per-quality URL variant. Single-source channels
-  /// yield a one-entry list, which the controller treats as
-  /// immediately-exhausted on failure (legacy behavior preserved).
+  /// Builds a deterministic per-source list. New artifacts use
+  /// [IPTVChannel.streamSources]; legacy artifacts fall back to streamUrl and
+  /// qualityUrls.
   List<AiroFailoverSource> _failoverSourcesFor(IPTVChannel channel) {
-    final sources = <AiroFailoverSource>[
-      AiroFailoverSource(
-        sourceId: 'default',
-        sourceHandle: AiroPlaybackSourceHandle.direct(channel.streamUrl),
-        canonicalChannelId: channel.id,
-      ),
-    ];
+    final sources = <AiroFailoverSource>[];
+    final seenUrls = <String>{};
+    final rankedSources = channel.streamSources.toList()
+      ..sort(compareChannelStreamSources);
+    for (var index = 0; index < rankedSources.length; index++) {
+      final stream = rankedSources[index];
+      if (!seenUrls.add(stream.url)) continue;
+      sources.add(
+        AiroFailoverSource(
+          sourceId: stream.feedId ?? 'stream-$index',
+          sourceHandle: AiroPlaybackSourceHandle.direct(stream.url),
+          canonicalChannelId: channel.id,
+          rank: index,
+          health: switch (stream.health) {
+            ChannelSourceHealth.available => AiroFailoverSourceHealth.healthy,
+            ChannelSourceHealth.restricted => AiroFailoverSourceHealth.degraded,
+            ChannelSourceHealth.unchecked => AiroFailoverSourceHealth.unknown,
+            ChannelSourceHealth.unavailable => AiroFailoverSourceHealth.failed,
+          },
+          resolutionHeight: stream.height,
+          lastWorkedHere:
+              _lastWorkingSourceIdsByChannel[channel.id] ==
+              (stream.feedId ?? 'stream-$index'),
+          httpHeaders: _httpHeadersFor(
+            channel,
+            userAgent: stream.userAgent,
+            referrer: stream.referrer,
+          ),
+        ),
+      );
+    }
+    if (seenUrls.add(channel.streamUrl)) {
+      sources.add(
+        AiroFailoverSource(
+          sourceId: 'default',
+          sourceHandle: AiroPlaybackSourceHandle.direct(channel.streamUrl),
+          canonicalChannelId: channel.id,
+          rank: sources.length,
+          lastWorkedHere:
+              _lastWorkingSourceIdsByChannel[channel.id] == 'default',
+          httpHeaders: _httpHeadersFor(channel),
+        ),
+      );
+    }
     final qualityUrls = channel.qualityUrls;
     if (qualityUrls != null) {
       var rank = 1;
       for (final entry in qualityUrls.entries) {
         if (entry.value == channel.streamUrl) continue;
+        if (!seenUrls.add(entry.value)) continue;
         sources.add(
           AiroFailoverSource(
             sourceId: entry.key,
@@ -309,6 +351,9 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
             resolutionHeight: VideoQuality.values
                 .asNameMap()[entry.key]
                 ?.height,
+            lastWorkedHere:
+                _lastWorkingSourceIdsByChannel[channel.id] == entry.key,
+            httpHeaders: _httpHeadersFor(channel),
           ),
         );
       }
@@ -320,6 +365,18 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
   /// preference already resolves to (preserving pre-failover behavior).
   String _preferredSourceId(IPTVChannel channel) {
     final quality = _state.selectedQuality;
+    if (quality != VideoQuality.auto) {
+      final rankedSources = channel.streamSources.toList()
+        ..sort(compareChannelStreamSources);
+      for (var index = 0; index < rankedSources.length; index++) {
+        final source = rankedSources[index];
+        final qualityMatches =
+            source.quality?.toLowerCase() == quality.name.toLowerCase() ||
+            source.quality?.toLowerCase() == quality.label.toLowerCase() ||
+            source.height == quality.height;
+        if (qualityMatches) return source.feedId ?? 'stream-$index';
+      }
+    }
     final qualityUrls = channel.qualityUrls;
     if (quality != VideoQuality.auto &&
         qualityUrls != null &&
@@ -327,7 +384,14 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
         qualityUrls[quality.name] != channel.streamUrl) {
       return quality.name;
     }
-    return 'default';
+    return _lastWorkingSourceIdsByChannel[channel.id] ??
+        (channel.streamSources.isEmpty ? 'default' : 'stream-0');
+  }
+
+  Future<void> _waitBeforeFailover(int failedSourceCount) async {
+    if (_failoverBackoffBase == Duration.zero) return;
+    final exponent = (failedSourceCount - 1).clamp(0, 2);
+    await Future<void>.delayed(_failoverBackoffBase * (1 << exponent));
   }
 
   /// 1-based attempt ordinal for the failover toast ("Switching source
@@ -777,10 +841,14 @@ class VideoPlayerStreamingService implements IPTVStreamingService {
   /// (`ChannelAutoScanController._toProbeRequest`). The probe and the player
   /// must agree: if only the probe sends them, a provider that requires a
   /// `User-Agent` reports the channel reachable and then refuses playback.
-  Map<String, String> _httpHeadersFor(IPTVChannel channel) {
+  Map<String, String> _httpHeadersFor(
+    IPTVChannel channel, {
+    String? userAgent,
+    String? referrer,
+  }) {
     return {
-      'User-Agent': ?channel.headers?.userAgent,
-      'Referer': ?channel.headers?.referrer,
+      'User-Agent': ?(userAgent ?? channel.headers?.userAgent),
+      'Referer': ?(referrer ?? channel.headers?.referrer),
     };
   }
 

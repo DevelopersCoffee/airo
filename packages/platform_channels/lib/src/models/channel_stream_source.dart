@@ -45,6 +45,9 @@ final class ChannelStreamSource extends Equatable {
     this.framesPerSecond,
     this.height,
     this.bitrate,
+    this.quality,
+    this.userAgent,
+    this.referrer,
   });
 
   factory ChannelStreamSource.fromJson(Map<String, Object?> json) =>
@@ -56,6 +59,9 @@ final class ChannelStreamSource extends Equatable {
         framesPerSecond: (json['framesPerSecond'] as num?)?.toDouble(),
         height: json['height'] as int?,
         bitrate: json['bitrate'] as int?,
+        quality: json['quality'] as String? ?? json['actualQuality'] as String?,
+        userAgent: json['userAgent'] as String?,
+        referrer: json['referrer'] as String?,
       );
 
   final String url;
@@ -65,6 +71,9 @@ final class ChannelStreamSource extends Equatable {
   final double? framesPerSecond;
   final int? height;
   final int? bitrate;
+  final String? quality;
+  final String? userAgent;
+  final String? referrer;
 
   Map<String, Object?> toJson() => {
     'url': url,
@@ -74,6 +83,9 @@ final class ChannelStreamSource extends Equatable {
     if (framesPerSecond != null) 'framesPerSecond': framesPerSecond,
     if (height != null) 'height': height,
     if (bitrate != null) 'bitrate': bitrate,
+    if (quality != null) 'quality': quality,
+    if (userAgent != null) 'userAgent': userAgent,
+    if (referrer != null) 'referrer': referrer,
   };
 
   @override
@@ -85,6 +97,9 @@ final class ChannelStreamSource extends Equatable {
     framesPerSecond,
     height,
     bitrate,
+    quality,
+    userAgent,
+    referrer,
   ];
 }
 

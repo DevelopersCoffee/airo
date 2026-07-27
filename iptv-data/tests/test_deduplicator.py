@@ -2,7 +2,7 @@
 
 import pytest
 
-from src.models import NormalizedChannel, SourceType, ValidationStatus
+from src.models import ChannelHeaders, NormalizedChannel, SourceType, ValidationStatus
 from src.processors.deduplicator import Deduplicator
 from src.utils.config import DeduplicationConfig
 
@@ -151,6 +151,36 @@ class TestDeduplicator:
         assert len(result) == 1
         assert "m3u" in result[0].sources
         assert "iptv_org" in result[0].sources
+
+    def test_stream_sources_keep_per_source_request_headers(
+        self, deduplicator: Deduplicator
+    ) -> None:
+        primary = self._make_channel("Header News", SourceType.M3U)
+        primary.headers = ChannelHeaders(
+            user_agent="Primary-Agent",
+            referrer="https://primary.example",
+        )
+        backup = self._make_channel("Header News", SourceType.IPTV_ORG)
+        backup.stream_url = "https://backup.example/live.m3u8"
+        backup.headers = ChannelHeaders(
+            user_agent="Backup-Agent",
+            referrer="https://backup.example",
+        )
+
+        result, _ = deduplicator.deduplicate([primary, backup])
+
+        headers_by_url = {
+            source["url"]: (source["userAgent"], source["referrer"])
+            for source in result[0].stream_sources
+        }
+        assert headers_by_url[primary.stream_url] == (
+            "Primary-Agent",
+            "https://primary.example",
+        )
+        assert headers_by_url[backup.stream_url] == (
+            "Backup-Agent",
+            "https://backup.example",
+        )
 
     def test_upstream_alias_merges_punctuation_variant(self, deduplicator: Deduplicator) -> None:
         m3u = self._make_channel("Sony YAY", SourceType.M3U)

@@ -41,6 +41,7 @@ class AiroFailoverSource extends Equatable {
     this.health = AiroFailoverSourceHealth.unknown,
     this.resolutionHeight,
     this.lastWorkedHere = false,
+    this.httpHeaders = const {},
   });
 
   final String sourceId;
@@ -50,6 +51,7 @@ class AiroFailoverSource extends Equatable {
   final AiroFailoverSourceHealth health;
   final int? resolutionHeight;
   final bool lastWorkedHere;
+  final Map<String, String> httpHeaders;
 
   AiroFailoverSource copyWith({
     AiroFailoverSourceHealth? health,
@@ -63,6 +65,7 @@ class AiroFailoverSource extends Equatable {
       health: health ?? this.health,
       resolutionHeight: resolutionHeight,
       lastWorkedHere: lastWorkedHere ?? this.lastWorkedHere,
+      httpHeaders: httpHeaders,
     );
   }
 
@@ -88,13 +91,18 @@ class AiroFailoverSource extends Equatable {
     health,
     resolutionHeight,
     lastWorkedHere,
+    httpHeaders,
   ];
 }
 
 class AiroFailoverPolicy extends Equatable {
-  const AiroFailoverPolicy({this.stallThreshold = const Duration(seconds: 4)});
+  const AiroFailoverPolicy({
+    this.stallThreshold = const Duration(seconds: 4),
+    this.maxAttempts = 3,
+  }) : assert(maxAttempts > 0);
 
   final Duration stallThreshold;
+  final int maxAttempts;
 
   List<AiroFailoverSource> rankSources(Iterable<AiroFailoverSource> sources) {
     final ranked = sources.toList()
@@ -135,7 +143,7 @@ class AiroFailoverPolicy extends Equatable {
   }
 
   @override
-  List<Object?> get props => [stallThreshold];
+  List<Object?> get props => [stallThreshold, maxAttempts];
 }
 
 class AiroFailoverSessionState extends Equatable {
@@ -227,7 +235,9 @@ class AiroMultiSourceFailoverController {
   AiroMultiSourceFailoverController({
     required Iterable<AiroFailoverSource> sources,
     this.policy = const AiroFailoverPolicy(),
-  }) : _state = AiroFailoverSessionState(sources: policy.rankSources(sources));
+  }) : _state = AiroFailoverSessionState(
+         sources: policy.rankSources(sources).take(policy.maxAttempts),
+       );
 
   final AiroFailoverPolicy policy;
   AiroFailoverSessionState _state;
