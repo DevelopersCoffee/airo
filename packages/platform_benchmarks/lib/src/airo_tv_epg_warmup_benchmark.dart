@@ -1,12 +1,12 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'dart:isolate';
 
 import 'package:crypto/crypto.dart';
 import 'package:equatable/equatable.dart';
 import 'package:platform_channels/channel_search.dart';
 import 'package:platform_epg/platform_epg.dart';
+import 'package:platform_worker_jobs/platform_worker_jobs.dart';
 
 const String kAiroTvEpgWarmupBenchmarkSchemaVersion = '1.0.0';
 const Duration kAiroTvEpgWarmupDefaultMaxNowNextLatency = Duration(seconds: 1);
@@ -220,13 +220,14 @@ class AiroTvEpgWarmupBenchmarkRunner {
     await Future<void>.delayed(config.heartbeatInterval);
 
     final stopwatch = Stopwatch()..start();
-    final snapshot = await Isolate.run<CompactEpgSlice>(
-      () async => _buildSnapshot(
+    final snapshot = await const AiroWorkerExecutor().run<CompactEpgSlice>(
+      debugName: 'airo_tv_epg_warmup_benchmark',
+      kind: AiroWorkerJobKind.epgRefresh,
+      computation: () => _buildSnapshot(
         xmltvPath: fixture.path,
         now: config.now!,
         channels: channels,
       ),
-      debugName: 'airo_tv_epg_warmup_benchmark',
     );
     final snapshotPayload = encodeCompactEpgSlice(snapshot);
     final visibleSlice = snapshot.filterForChannels(visibleChannelIds);

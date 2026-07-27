@@ -1,6 +1,7 @@
 import 'dart:convert';
-import 'dart:isolate';
 import 'dart:typed_data';
+
+import 'package:core_workers/core_workers.dart';
 
 import 'cache.dart';
 import 'models.dart';
@@ -147,7 +148,7 @@ final class IptvOrgApiClient {
   ) async {
     final input = (endpoint.index, body);
     final decoded = body.length > _offMainDecodeThresholdBytes
-        ? await Isolate.run(() => _decodeEndpointBytes(input))
+        ? await runOffMain(() => _decodeEndpointBytes(input))
         : _decodeEndpointBytes(input);
     return (decoded as List).cast<Object?>();
   }

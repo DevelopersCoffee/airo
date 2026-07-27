@@ -8,7 +8,8 @@ reviewers:
   - Chief QA Officer
 contracts:
   - IptvOrgApiV1
-allowed_dependencies: []
+allowed_dependencies:
+  - core_workers
 forbidden_dependencies:
   - app
   - feature_iptv

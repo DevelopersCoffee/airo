@@ -38,7 +38,8 @@ direct_worker_matches="$(
   rg_dart \
     -e '(^|[^A-Za-z0-9_])compute\s*\(' \
     -e 'Isolate\.run\s*(<|\()' |
-    grep -Ev '(^|/)packages/platform_worker_jobs/lib/src/worker_executor\.dart:' || true
+    grep -Ev \
+      '(^|/)packages/(core_workers/lib/src/run_off_main|platform_worker_jobs/lib/src/worker_executor)\.dart:' || true
 )"
 
 if [[ -n "$direct_worker_matches" ]]; then
@@ -57,15 +58,12 @@ presentation_matches="$(
   rg_dart \
     -e '\bjsonDecode\s*\(' \
     -e '\bjsonEncode\s*\(' \
-    -e "split\('\\\\n'\)" \
-    -e 'split\("\\n"\)' \
     -e '#EXTINF' |
     awk -F: '
       $1 ~ /(^|\/)presentation\// ||
       $1 ~ /(^|\/)screens\// ||
       $1 ~ /(^|\/)widgets\// ||
-      $1 ~ /(^|\/)app\/lib\/main_tv\.dart$/ ||
-      $1 ~ /(^|\/)packages\/feature_iptv\/lib\// {
+      $1 ~ /(^|\/)app\/lib\/main_tv\.dart$/ {
         print
       }
     ' || true

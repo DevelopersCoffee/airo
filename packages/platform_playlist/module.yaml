@@ -10,6 +10,7 @@ allowed_dependencies:
   - platform_channels
   - platform_epg
   - platform_playlist_import
+  - platform_worker_jobs
 forbidden_dependencies:
   - app
 quality_gates: {}

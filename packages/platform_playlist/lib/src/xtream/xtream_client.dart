@@ -1,8 +1,8 @@
 import 'dart:convert';
-import 'dart:isolate';
 
 import 'package:dio/dio.dart';
 import 'package:equatable/equatable.dart';
+import 'package:platform_worker_jobs/platform_worker_jobs.dart';
 
 import '../provider_health.dart';
 import '../provider_health_recorder.dart';
@@ -288,6 +288,10 @@ class XtreamClient {
   static Future<List<dynamic>> _decodeListPayload(Object? payload) {
     if (payload is List<dynamic>) return Future.value(payload);
     final text = payload?.toString() ?? '[]';
-    return Isolate.run(() => (jsonDecode(text) as List<dynamic>));
+    return const AiroWorkerExecutor().run(
+      debugName: 'xtream_decode_list_payload',
+      kind: AiroWorkerJobKind.playlistImport,
+      computation: () => jsonDecode(text) as List<dynamic>,
+    );
   }
 }

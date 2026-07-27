@@ -24,6 +24,8 @@ dependencies:
     path: ../platform_player
   platform_playlist_import:
     path: ../platform_playlist_import
+  platform_worker_jobs:
+    path: ../platform_worker_jobs
 
 dev_dependencies:
   flutter_test:

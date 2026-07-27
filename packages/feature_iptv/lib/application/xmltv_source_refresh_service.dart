@@ -1,9 +1,9 @@
 import 'dart:io';
-import 'dart:isolate';
 
 import 'package:crypto/crypto.dart';
 import 'package:dio/dio.dart';
 import 'package:platform_epg/platform_epg.dart';
+import 'package:platform_worker_jobs/platform_worker_jobs.dart';
 
 import 'mutable_xmltv_compact_epg_repository.dart';
 import 'xmltv_source_store.dart';
@@ -82,8 +82,10 @@ class XmltvSourceRefreshService {
         throw StateError('Downloaded XMLTV file was empty.');
       }
       if (expectedSha256 != null) {
-        final actualSha256 = await Isolate.run(
-          () => sha256.bind(downloadFile.openRead()).first,
+        final actualSha256 = await const AiroWorkerExecutor().run(
+          debugName: 'xmltv_source_checksum',
+          kind: AiroWorkerJobKind.epgRefresh,
+          computation: () => sha256.bind(downloadFile.openRead()).first,
         );
         if (actualSha256.toString().toLowerCase() !=
             expectedSha256.toLowerCase()) {
@@ -91,8 +93,10 @@ class XmltvSourceRefreshService {
         }
       }
       if (await _isGzip(downloadFile, trimmedUrl)) {
-        await Isolate.run(
-          () => gzip.decoder
+        await const AiroWorkerExecutor().run<void>(
+          debugName: 'xmltv_source_decompress',
+          kind: AiroWorkerJobKind.epgRefresh,
+          computation: () => gzip.decoder
               .bind(downloadFile.openRead())
               .pipe(guideFile.openWrite()),
         );
