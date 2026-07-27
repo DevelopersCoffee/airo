@@ -23,9 +23,9 @@ abstract interface class CoinsIdentity {
 class CoinsUser {
   const CoinsUser({
     required this.id,
+    required this.isGoogleIdentity,
     this.email,
     this.username,
-    required this.isGoogleIdentity,
   });
 
   /// Stable identifier, used as the creator id on shared groups.
