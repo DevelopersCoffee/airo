@@ -654,6 +654,113 @@ AAD, in the section recording that the review finding had been applied. It was
 not. Prose asserting a security property is not evidence that the property
 holds, and reviewer memory is not a control.
 
+### I4 — Runtime exclusivity
+
+**All durable user state originates from the runtime.** There is no alternate
+persistence path.
+
+```
+Capability
+    │
+    ▼
+Operation
+    │
+    ▼
+Runtime
+    ├── Operation Log
+    ├── Content Store
+    └── Vault
+```
+
+I2 says a capability must not create durable storage. I4 is the stronger
+statement it implies: durable state does not merely *avoid* other paths, it has
+exactly one origin.
+
+The distinction matters for classification. Under I4, a feature-owned SQLite
+database, JSON file, or object store is not technical debt to be scheduled — it
+is an **architectural violation**, and it is named as one. Debt is a trade
+someone chose; a violation is a defect that makes `DestroyContent`, backup,
+recovery, sync, projection rebuild, and crypto-shredding incomplete for that
+feature's data.
+
+Known violations at the time of writing: `DriftMeetingRepository`,
+`features/coins/`, `features/money/`, and the settings AI-storage dashboard.
+Migration is tracked on #1293.
+
+## 11b. Architecture compliance
+
+Invariants that only a reviewer can check are invariants that erode. Every
+module declares how it persists, and CI validates the declaration against what
+the code actually does.
+
+```yaml
+module:
+  persistence: runtime | projection | ephemeral
+```
+
+| Value | Meaning | Allowed to write |
+|---|---|---|
+| `runtime` | Durable user state, via operations | Nothing directly — the runtime writes |
+| `projection` | Derived, rebuildable, disposable | Its own index or cache, droppable at any time without data loss |
+| `ephemeral` | Process- or session-scoped | Temp files, in-memory caches, nothing that outlives a reinstall |
+
+Worked examples:
+
+| Module | Declared | Actual | Result |
+|---|---|---|---|
+| Meeting | `runtime` | Drift database | **fail** |
+| Memory projection | `projection` | rebuildable index | pass |
+| Image cache | `ephemeral` | temp files | pass |
+| Vault | `runtime` | encrypted keystore | pass |
+
+A module declaring `runtime` that opens a database fails. A module declaring
+`projection` whose data cannot be regenerated from the log fails — that one is
+only catchable by a rebuild test, so `projection` modules must have one.
+
+## 11c. The runtime API
+
+**A capability never knows where data lives.** It receives a small, fixed
+surface:
+
+```rust
+create_operation()
+attach_content()
+query_projection()
+instantiate_context()
+emit_event()
+```
+
+Nothing else. No SQL. No filesystem. No encryption primitives. No sync. No key
+material.
+
+This is what makes I2 and I4 enforceable rather than aspirational: a Tier 1
+capability is declarative data and has no way to reach a filesystem, and a
+Tier 2 capability's sandbox prohibits file and network access outright (§5.1).
+The API is the only door, so the invariant holds by construction instead of by
+review.
+
+It is also the compatibility boundary. Storage can move from SQLite to
+something else in 2035 without touching a single capability, because no
+capability ever named a storage engine.
+
+### The test every capability is judged by
+
+> **Can it be implemented entirely by emitting operations and consuming
+> projections?**
+
+If no, exactly one of two things is true:
+
+1. **The runtime is missing a generic capability** that should be added once,
+   for everyone — in which case add it to the runtime, not to the feature.
+2. **The feature is attempting to bypass the runtime** — in which case the
+   answer is no.
+
+There is no third branch, and in particular there is no "this feature is
+special". Meeting intelligence is the current test of this: it is a capability
+that captures audio, transcribes, extracts entities, emits operations, and
+builds notes, tasks, and calendar events. It is **not** a runtime feature, and
+it gets no privileged storage path.
+
 ## 12. Open decisions, assigned to subsystem specs
 
 These are deliberately unresolved here. Resolving them without implementation
