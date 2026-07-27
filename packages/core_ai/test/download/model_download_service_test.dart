@@ -243,6 +243,21 @@ void main() {
   });
 
   test(
+    'retry with the current catalog refreshes stale request metadata',
+    () async {
+      downloadService.downloadModel(model);
+      await Future<void>.delayed(Duration.zero);
+
+      await downloadService.retryDownload(model.id, model: model);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(downloads.actions, contains('cancel:model-a'));
+      expect(downloads.requests, hasLength(2));
+      expect(downloads.requests.last.expectedBytes, model.fileSizeBytes);
+    },
+  );
+
+  test(
     'restoreQueue maps persisted platform state after engine restart',
     () async {
       downloads.queue = const DownloadQueueSnapshot(

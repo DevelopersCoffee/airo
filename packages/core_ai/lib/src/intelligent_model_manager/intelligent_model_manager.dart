@@ -150,8 +150,10 @@ class IntelligentModelManager {
   Future<void> resumeDownload(String modelId) =>
       _downloadService.resumeDownload(modelId);
 
-  Future<void> retryDownload(String modelId) =>
-      _downloadService.retryDownload(modelId);
+  Future<void> retryDownload(String modelId) {
+    final model = _requireModel(modelId);
+    return _downloadService.retryDownload(modelId, model: model);
+  }
 
   Future<void> cancelDownload(String modelId) =>
       _downloadService.cancelDownload(modelId);

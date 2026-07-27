@@ -86,7 +86,9 @@ void main() {
     when(
       () => downloads.restoreQueue(catalogModels: any(named: 'catalogModels')),
     ).thenAnswer((_) async => []);
-    when(() => downloads.retryDownload('queued')).thenAnswer((_) async {});
+    when(
+      () => downloads.retryDownload('queued', model: queuedInfo),
+    ).thenAnswer((_) async {});
     when(() => downloads.resumeDownload('queued')).thenAnswer((_) async {});
     when(() => downloads.cancelDownload('queued')).thenAnswer((_) async {});
     when(
@@ -149,7 +151,9 @@ void main() {
     await tester.tap(find.widgetWithText(TextButton, 'Delete'));
     await tester.pumpAndSettle();
 
-    verify(() => downloads.retryDownload('queued')).called(1);
+    verify(
+      () => downloads.retryDownload('queued', model: queuedInfo),
+    ).called(1);
     verify(() => downloads.resumeDownload('queued')).called(1);
     verify(() => downloads.cancelDownload('queued')).called(1);
     verify(() => downloads.downloadModel(installedInfo)).called(1);

@@ -143,7 +143,8 @@ class ActiveDownloadsNotifier
 
   Future<void> retryDownload(String modelId) {
     final service = _ref.read(modelDownloadServiceProvider);
-    return service.retryDownload(modelId);
+    final model = _ref.read(modelRegistryProvider).getModel(modelId);
+    return service.retryDownload(modelId, model: model);
   }
 
   Future<void> cancelDownload(String modelId) {

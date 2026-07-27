@@ -3,6 +3,14 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('ModelCatalog web runtime support', () {
+    test('Gemma-4-E2B catalog size matches the published artifact', () {
+      final model = ModelCatalog.bundledModels.firstWhere(
+        (m) => m.id == 'gemma-4-e2b-it-litertlm',
+      );
+
+      expect(model.fileSizeBytes, 2588147712);
+    });
+
     test('Gemma-4-E2B is flagged web-capable with a .task asset URL', () {
       final model = ModelCatalog.bundledModels.firstWhere(
         (m) => m.id == 'gemma-4-e2b-it-litertlm',
