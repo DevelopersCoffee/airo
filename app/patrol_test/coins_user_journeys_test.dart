@@ -34,6 +34,7 @@ void main() {
     });
     final prefs = await SharedPreferences.getInstance();
     final router = AppRouter.createRouter(
+      // ignore: invalid_use_of_visible_for_testing_member
       moduleRegistry: app.buildMainModuleRegistry(),
     );
     addTearDown(router.dispose);
