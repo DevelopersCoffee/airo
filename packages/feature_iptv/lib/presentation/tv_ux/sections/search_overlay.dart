@@ -112,6 +112,7 @@ class _SearchOverlayState extends ConsumerState<SearchOverlay> {
                     borderRadius: 20,
                     child: IconButton(
                       icon: const Icon(Icons.close),
+                      tooltip: 'Close search',
                       onPressed: _close,
                     ),
                   ),

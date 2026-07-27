@@ -67,40 +67,53 @@ class MobileFavoritesScreen extends ConsumerWidget {
                   itemBuilder: (context, index) {
                     final channel = channels[index];
 
-                    return ListTile(
-                      leading: SizedBox(
-                        width: 48,
-                        height: 48,
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(6),
-                          child: IptvIconPlaceholder.channel(
-                            isAudioOnly: channel.isAudioOnly,
+                    return Semantics(
+                      button: true,
+                      label: 'Play ${channel.name}, ${channel.group}',
+                      child: ListTile(
+                        leading: SizedBox(
+                          width: 48,
+                          height: 48,
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(6),
+                            child: IptvIconPlaceholder.channel(
+                              isAudioOnly: channel.isAudioOnly,
+                            ),
                           ),
                         ),
+                        title: Text(
+                          channel.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        subtitle: Text(
+                          channel.group,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        trailing: Semantics(
+                          button: true,
+                          toggled: true,
+                          label: 'Remove ${channel.name} from favorites',
+                          excludeSemantics: true,
+                          child: IconButton(
+                            icon: Icon(
+                              Icons.favorite,
+                              color: colorScheme.error,
+                            ),
+                            tooltip: 'Remove ${channel.name} from favorites',
+                            onPressed: () => ref.read(
+                              channelFavoriteTogglerProvider,
+                            )(channel.id),
+                          ),
+                        ),
+                        onTap: () {
+                          ref
+                              .read(iptvStreamingServiceProvider)
+                              .playChannel(channel);
+                          onChannelSelected();
+                        },
                       ),
-                      title: Text(
-                        channel.name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      subtitle: Text(
-                        channel.group,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      trailing: IconButton(
-                        icon: Icon(Icons.favorite, color: colorScheme.error),
-                        tooltip: 'Remove from favorites',
-                        onPressed: () => ref.read(
-                          channelFavoriteTogglerProvider,
-                        )(channel.id),
-                      ),
-                      onTap: () {
-                        ref
-                            .read(iptvStreamingServiceProvider)
-                            .playChannel(channel);
-                        onChannelSelected();
-                      },
                     );
                   },
                 );

@@ -61,6 +61,30 @@ List<Override> _providerOverrides({List<IPTVChannel>? played}) => [
 ];
 
 void main() {
+  testWidgets('channel list exposes play and search-clear semantics', (
+    tester,
+  ) async {
+    final semantics = tester.ensureSemantics();
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: _providerOverrides(),
+        child: MaterialApp(
+          home: Scaffold(body: ChannelListWidget(onChannelTap: (_) {})),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      tester.getSemantics(find.byKey(const ValueKey('channel-card-0'))).label,
+      contains('Play Channel One, News, live channel'),
+    );
+    await tester.enterText(find.byType(TextField), 'news');
+    await tester.pump();
+    expect(find.byTooltip('Clear channel search'), findsOneWidget);
+    semantics.dispose();
+  });
+
   testWidgets('tapping a channel card starts playback with no route push', (
     tester,
   ) async {

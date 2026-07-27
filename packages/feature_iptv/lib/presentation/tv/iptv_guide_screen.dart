@@ -74,6 +74,7 @@ class _IptvGuideScreenState extends ConsumerState<IptvGuideScreen> {
                   padding: const EdgeInsets.all(12),
                   child: TextField(
                     decoration: const InputDecoration(
+                      labelText: 'Search guide',
                       hintText: 'Search the guide',
                       prefixIcon: Icon(Icons.search),
                       border: OutlineInputBorder(),

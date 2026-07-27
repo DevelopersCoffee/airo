@@ -45,6 +45,7 @@ class VodListWidget extends ConsumerWidget {
                 suffixIcon: searchQuery.isNotEmpty
                     ? IconButton(
                         icon: const Icon(Icons.clear, size: 18),
+                        tooltip: 'Clear movie and show search',
                         onPressed: () =>
                             ref.read(vodSearchQueryProvider.notifier).state =
                                 '',

@@ -38,6 +38,7 @@ void main() {
     List<IPTVChannel>? visibleChannels,
     void Function()? onSelectedCallback,
     AiroFormFactor? overrideFormFactor,
+    TextScaler textScaler = TextScaler.noScaling,
   }) async {
     final prefs = await SharedPreferences.getInstance();
     final channels = visibleChannels ?? [newsChannel, sportsChannel];
@@ -74,6 +75,10 @@ void main() {
           ),
         ],
         child: MaterialApp(
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(context).copyWith(textScaler: textScaler),
+            child: child!,
+          ),
           home: IptvGuideScreen(
             onChannelSelected: onSelectedCallback ?? () {},
             overrideFormFactor: overrideFormFactor,
@@ -167,6 +172,27 @@ void main() {
     },
     experimentalLeakTesting: LeakTesting.settings,
   );
+
+  testWidgets('guide search exposes a stable accessible name', (tester) async {
+    final semantics = tester.ensureSemantics();
+    await pumpScreen(tester);
+
+    expect(
+      tester.getSemantics(find.byType(TextField)).label,
+      contains('Search guide'),
+    );
+    semantics.dispose();
+  });
+
+  testWidgets('guide remains usable at 2x text scale', (tester) async {
+    await pumpScreen(tester, textScaler: const TextScaler.linear(2));
+
+    expect(tester.takeException(), isNull);
+    expect(
+      tester.getSemantics(find.byType(TextField)).label,
+      contains('Search guide'),
+    );
+  });
 }
 
 class _FakePagedNotifier extends GuidePagedWindowNotifier {

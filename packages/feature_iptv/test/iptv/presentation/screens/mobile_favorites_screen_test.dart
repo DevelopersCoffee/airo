@@ -26,6 +26,7 @@ void main() {
     WidgetTester tester, {
     Set<String> favoriteIds = const {},
     VoidCallback? onChannelSelected,
+    TextScaler textScaler = TextScaler.noScaling,
   }) async {
     SharedPreferences.setMockInitialValues({
       'iptv_favorite_channel_ids': favoriteIds.toList(),
@@ -43,6 +44,10 @@ void main() {
           iptvStreamingServiceProvider.overrideWithValue(service),
         ],
         child: MaterialApp(
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(context).copyWith(textScaler: textScaler),
+            child: child!,
+          ),
           home: MobileFavoritesScreen(
             onChannelSelected: onChannelSelected ?? () {},
           ),
@@ -154,5 +159,33 @@ void main() {
 
     expect(find.text('City News Live'), findsNothing);
     expect(find.text('Stadium Sports'), findsOneWidget);
+  });
+
+  testWidgets('favorite row and toggle expose channel-specific semantics', (
+    tester,
+  ) async {
+    final semantics = tester.ensureSemantics();
+    await pumpScreen(tester, favoriteIds: {'news-1'});
+
+    expect(find.bySemanticsLabel('Play City News Live, News'), findsOneWidget);
+    final toggle = tester.getSemantics(
+      find.bySemanticsLabel('Remove City News Live from favorites'),
+    );
+    expect(toggle.label, 'Remove City News Live from favorites');
+    expect(toggle.toString(), contains('isToggled'));
+    semantics.dispose();
+  });
+
+  testWidgets('favorite actions remain laid out at 2x text scale', (
+    tester,
+  ) async {
+    await pumpScreen(
+      tester,
+      favoriteIds: {'news-1'},
+      textScaler: const TextScaler.linear(2),
+    );
+
+    expect(tester.takeException(), isNull);
+    expect(find.byTooltip('Remove City News Live from favorites'), findsOne);
   });
 }

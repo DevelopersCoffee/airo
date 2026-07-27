@@ -149,4 +149,39 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('player-overlay-play-pause')));
     expect(tapped, isTrue);
   });
+
+  testWidgets('transport controls expose semantic names and button roles', (
+    tester,
+  ) async {
+    final semantics = tester.ensureSemantics();
+    await tester.pumpWidget(
+      wrap(
+        PlayerOverlay(
+          state: const PlayerViewState(
+            title: 'Star Sports 1',
+            playback: PlaybackState.playing,
+          ),
+          onBack: () {},
+          onPlayPause: () {},
+          onPrevious: () {},
+          onNext: () {},
+          onGuide: () {},
+          onFullscreen: () {},
+        ),
+      ),
+    );
+
+    for (final label in [
+      'Back',
+      'Previous channel',
+      'Pause',
+      'Next channel',
+      'Volume',
+      'Open guide',
+      'Enter fullscreen',
+    ]) {
+      expect(find.bySemanticsLabel(label), findsOneWidget);
+    }
+    semantics.dispose();
+  });
 }

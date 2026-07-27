@@ -162,6 +162,7 @@ class _PlayerOverlayState extends State<PlayerOverlay> {
                 _CircleIconButton(
                   key: const ValueKey('player-overlay-back'),
                   icon: Icons.arrow_back,
+                  semanticLabel: 'Back',
                   onPressed: widget.onBack,
                 ),
                 const SizedBox(width: 12),
@@ -249,6 +250,7 @@ class _PlayerOverlayState extends State<PlayerOverlay> {
             _CircleIconButton(
               key: const ValueKey('player-overlay-previous'),
               icon: Icons.skip_previous,
+              semanticLabel: 'Previous channel',
               size: 48,
               onPressed: widget.onPrevious,
             ),
@@ -256,6 +258,7 @@ class _PlayerOverlayState extends State<PlayerOverlay> {
           _CircleIconButton(
             key: const ValueKey('player-overlay-play-pause'),
             icon: isPlaying ? Icons.pause : Icons.play_arrow,
+            semanticLabel: isPlaying ? 'Pause' : 'Play',
             size: 62,
             backgroundColor: Colors.white,
             iconColor: Colors.black,
@@ -266,6 +269,7 @@ class _PlayerOverlayState extends State<PlayerOverlay> {
             _CircleIconButton(
               key: const ValueKey('player-overlay-next'),
               icon: Icons.skip_next,
+              semanticLabel: 'Next channel',
               size: 48,
               onPressed: widget.onNext,
             ),
@@ -342,6 +346,7 @@ class _PlayerOverlayState extends State<PlayerOverlay> {
                     _CircleIconButton(
                       key: const ValueKey('player-overlay-volume'),
                       icon: Icons.volume_up,
+                      semanticLabel: 'Volume',
                       size: 36,
                       onPressed: () {},
                     ),
@@ -349,6 +354,7 @@ class _PlayerOverlayState extends State<PlayerOverlay> {
                       _CircleIconButton(
                         key: const ValueKey('player-overlay-guide'),
                         icon: Icons.grid_view,
+                        semanticLabel: 'Open guide',
                         size: 36,
                         onPressed: widget.onGuide,
                       ),
@@ -356,6 +362,7 @@ class _PlayerOverlayState extends State<PlayerOverlay> {
                       _CircleIconButton(
                         key: const ValueKey('player-overlay-fullscreen'),
                         icon: Icons.fullscreen,
+                        semanticLabel: 'Enter fullscreen',
                         size: 36,
                         onPressed: widget.onFullscreen,
                       ),
@@ -389,6 +396,7 @@ class _CircleIconButton extends StatelessWidget {
   const _CircleIconButton({
     super.key,
     required this.icon,
+    required this.semanticLabel,
     required this.onPressed,
     this.size = 40,
     this.backgroundColor = Colors.black45,
@@ -396,6 +404,7 @@ class _CircleIconButton extends StatelessWidget {
   });
 
   final IconData icon;
+  final String semanticLabel;
   final VoidCallback? onPressed;
   final double size;
   final Color backgroundColor;
@@ -403,16 +412,23 @@ class _CircleIconButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onPressed,
-      child: Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          color: backgroundColor,
-          shape: BoxShape.circle,
+    return SizedBox.square(
+      dimension: size,
+      child: Material(
+        color: backgroundColor,
+        shape: const CircleBorder(),
+        child: Semantics(
+          button: true,
+          enabled: onPressed != null,
+          label: semanticLabel,
+          excludeSemantics: true,
+          child: IconButton(
+            tooltip: semanticLabel,
+            onPressed: onPressed,
+            padding: EdgeInsets.zero,
+            icon: Icon(icon, color: iconColor, size: size * 0.5),
+          ),
         ),
-        child: Icon(icon, color: iconColor, size: size * 0.5),
       ),
     );
   }

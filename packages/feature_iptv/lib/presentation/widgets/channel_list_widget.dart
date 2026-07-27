@@ -50,6 +50,7 @@ class ChannelListWidget extends ConsumerWidget {
                   suffixIcon: searchQuery.isNotEmpty
                       ? IconButton(
                           icon: const Icon(Icons.clear, size: 18),
+                          tooltip: 'Clear channel search',
                           onPressed: () =>
                               ref
                                       .read(channelSearchQueryProvider.notifier)
@@ -304,42 +305,48 @@ class _RecentChannelCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: Container(
-        width: 80,
-        margin: const EdgeInsets.symmetric(horizontal: 4),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Channel logo
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: Container(
-                width: 56,
-                height: 56,
-                color: Colors.grey[200],
-                child: channel.hasLogo
-                    ? AiroNetworkImage(
-                        url: channel.logoUrl!,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) =>
-                            _buildDefaultIcon(),
-                      )
-                    : _buildDefaultIcon(),
+    return Semantics(
+      button: true,
+      label: 'Play ${channel.name}',
+      hint: channel.isAudioOnly ? 'Audio channel' : 'Live channel',
+      excludeSemantics: true,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          width: 80,
+          margin: const EdgeInsets.symmetric(horizontal: 4),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Channel logo
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  width: 56,
+                  height: 56,
+                  color: Colors.grey[200],
+                  child: channel.hasLogo
+                      ? AiroNetworkImage(
+                          url: channel.logoUrl!,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) =>
+                              _buildDefaultIcon(),
+                        )
+                      : _buildDefaultIcon(),
+                ),
               ),
-            ),
-            const SizedBox(height: 4),
-            // Channel name
-            Text(
-              channel.name,
-              maxLines: 2,
-              textAlign: TextAlign.center,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 11),
-            ),
-          ],
+              const SizedBox(height: 4),
+              // Channel name
+              Text(
+                channel.name,
+                maxLines: 2,
+                textAlign: TextAlign.center,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 11),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -379,7 +386,11 @@ class _ChannelListTile extends ConsumerWidget {
     return Semantics(
       button: true,
       selected: isPlaying,
-      label: channel.name,
+      label:
+          'Play ${channel.name}, $groupLabel, '
+          '${channel.isAudioOnly ? 'audio channel' : 'live channel'}',
+      value: isPlaying ? 'Playing' : 'Not playing',
+      excludeSemantics: true,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
         child: Material(
