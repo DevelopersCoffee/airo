@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:core_ui/core_ui.dart';
 import 'package:feature_iptv/feature_iptv.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -22,7 +25,9 @@ void main() {
     final prefs = await SharedPreferences.getInstance();
     const mapper = AiroPlaybackDiagnosticMapper();
     final diagnostic = mapper.map(
-      const AiroPlaybackFailureEvent(httpStatusCode: 403),
+      const AiroPlaybackFailureEvent(
+        overrideCode: AiroPlaybackDiagnosticCode.providerAuthDenied,
+      ),
     );
     const currentChannel = IPTVChannel(
       id: 'news-1',
@@ -33,9 +38,7 @@ void main() {
     // A fake engine, not the real service default: Skip channel drives a
     // real playChannel() call, which would otherwise stand up a genuine
     // VideoPlayerController that never gets disposed once the test ends.
-    final service = VideoPlayerStreamingService(
-      engine: FakeAiroPlaybackEngine(),
-    );
+    final service = _RecoveryRecordingService();
     addTearDown(() async {
       await service.stop();
       service.dispose();
@@ -128,12 +131,180 @@ void main() {
     }
   });
 
+  testWidgets(
+    'diagnostic recovery visibly owns focus and traverses every action',
+    (tester) async {
+      await pumpErrorPlayer(tester);
+
+      expect(
+        FocusManager.instance.primaryFocus?.debugLabel,
+        'player recovery Try Again',
+      );
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pump();
+      expect(
+        FocusManager.instance.primaryFocus?.debugLabel,
+        'player recovery Skip channel',
+      );
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pump();
+      expect(
+        FocusManager.instance.primaryFocus?.debugLabel,
+        'player recovery Report dead link',
+      );
+
+      // Fire TV must not let the recovery row's edge escape to an unrelated
+      // player control. On-device this also catches a single RIGHT press
+      // being interpreted as two geometric traversal steps.
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pump();
+      expect(
+        FocusManager.instance.primaryFocus?.debugLabel,
+        'player recovery Report dead link',
+      );
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+      await tester.pump();
+      expect(
+        FocusManager.instance.primaryFocus?.debugLabel,
+        'player recovery Skip channel',
+      );
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+      await tester.pump();
+      expect(
+        FocusManager.instance.primaryFocus?.debugLabel,
+        'player recovery Try Again',
+      );
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+      await tester.pump();
+      expect(
+        FocusManager.instance.primaryFocus?.debugLabel,
+        'player recovery Try Again',
+      );
+    },
+  );
+
+  testWidgets(
+    'rebuilds preserve user focus and a failed retry remount refocuses Try Again',
+    (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      final states = StreamController<StreamingState>.broadcast();
+      addTearDown(states.close);
+      final service = VideoPlayerStreamingService(
+        engine: FakeAiroPlaybackEngine(),
+      );
+      addTearDown(service.dispose);
+      const mapper = AiroPlaybackDiagnosticMapper();
+      final diagnostic = mapper.map(
+        const AiroPlaybackFailureEvent(
+          overrideCode: AiroPlaybackDiagnosticCode.providerAuthDenied,
+        ),
+      );
+      const channel = IPTVChannel(
+        id: 'news-1',
+        name: 'City News Live',
+        streamUrl: 'https://example.com/news.m3u8',
+      );
+      StreamingState failed() => StreamingState(
+        playbackState: PlaybackState.error,
+        isLiveStream: true,
+        diagnostic: diagnostic,
+        currentChannel: channel,
+      );
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            iptvStreamingServiceProvider.overrideWithValue(service),
+            streamingStateProvider.overrideWith((ref) => states.stream),
+          ],
+          child: const MaterialApp(home: Scaffold(body: VideoPlayerWidget())),
+        ),
+      );
+      states.add(failed());
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(
+        FocusManager.instance.primaryFocus?.debugLabel,
+        'player recovery Try Again',
+      );
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pump();
+      expect(
+        FocusManager.instance.primaryFocus?.debugLabel,
+        'player recovery Skip channel',
+      );
+
+      states.add(failed());
+      await tester.pump(const Duration(seconds: 5));
+      expect(
+        FocusManager.instance.primaryFocus?.debugLabel,
+        'player recovery Skip channel',
+        reason:
+            'same-error rebuilds and the old controls timer must not steal focus',
+      );
+
+      states.add(
+        StreamingState(
+          playbackState: PlaybackState.loading,
+          isLiveStream: true,
+          currentChannel: channel,
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+      states.add(failed());
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(
+        FocusManager.instance.primaryFocus?.debugLabel,
+        'player recovery Try Again',
+      );
+    },
+  );
+
+  testWidgets('closing player actions restores diagnostic recovery focus', (
+    tester,
+  ) async {
+    await pumpErrorPlayer(tester);
+    expect(
+      FocusManager.instance.primaryFocus?.debugLabel,
+      'player recovery Try Again',
+    );
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.contextMenu);
+    await tester.pumpAndSettle();
+    expect(find.text('Player actions'), findsOneWidget);
+    expect(
+      FocusManager.instance.primaryFocus?.debugLabel,
+      'player action Listen only',
+    );
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pumpAndSettle();
+    expect(find.text('Player actions'), findsNothing);
+    expect(
+      FocusManager.instance.primaryFocus?.debugLabel,
+      'player recovery Try Again',
+    );
+  });
+
   testWidgets('Report dead link saves a local report and confirms it', (
     tester,
   ) async {
     final container = await pumpErrorPlayer(tester);
 
-    await tester.tap(find.text('Report dead link'));
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+    await tester.sendKeyEvent(LogicalKeyboardKey.select);
     await tester.pump();
     await tester.pump();
 
@@ -165,14 +336,45 @@ void main() {
       ],
     );
 
-    await tester.tap(find.text('Skip channel'));
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+    await tester.sendKeyEvent(LogicalKeyboardKey.select);
     await tester.pump();
 
     expect(tester.takeException(), isNull);
+    final service =
+        container.read(iptvStreamingServiceProvider)
+            as _RecoveryRecordingService;
+    expect(service.playedChannels, [nextChannel]);
 
-    // Pending timers (buffer monitor, live-edge detector) must be stopped
-    // inside the test body -- the pending-timer check runs before
-    // addTearDown(service.dispose) fires.
-    await container.read(iptvStreamingServiceProvider).stop();
+    await service.stop();
   });
+
+  testWidgets('Try Again activates exactly once from CENTER', (tester) async {
+    final container = await pumpErrorPlayer(tester);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.select);
+    await tester.pump();
+
+    final service =
+        container.read(iptvStreamingServiceProvider)
+            as _RecoveryRecordingService;
+    expect(service.retryCalls, 1);
+  });
+}
+
+class _RecoveryRecordingService extends VideoPlayerStreamingService {
+  _RecoveryRecordingService() : super(engine: FakeAiroPlaybackEngine());
+
+  int retryCalls = 0;
+  final List<IPTVChannel> playedChannels = [];
+
+  @override
+  Future<void> retry() async {
+    retryCalls++;
+  }
+
+  @override
+  Future<void> playChannel(IPTVChannel channel) async {
+    playedChannels.add(channel);
+  }
 }

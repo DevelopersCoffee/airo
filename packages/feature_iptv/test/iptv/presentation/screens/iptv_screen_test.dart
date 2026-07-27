@@ -70,9 +70,11 @@ void main() {
     VoidCallback? onOpenVod,
     VoidCallback? onSettings,
     Future<PhoneLocalMediaItem?> Function()? onPickLocalMediaForTv,
+    Map<String, Object> initialPreferences = const {},
+    List<IPTVChannel> Function()? channelLoader,
     List<Override> extraOverrides = const [],
   }) {
-    SharedPreferences.setMockInitialValues({});
+    SharedPreferences.setMockInitialValues(initialPreferences);
     return FutureBuilder<SharedPreferences>(
       future: SharedPreferences.getInstance(),
       builder: (context, snapshot) {
@@ -85,7 +87,9 @@ void main() {
         return ProviderScope(
           overrides: [
             sharedPreferencesProvider.overrideWithValue(snapshot.data!),
-            iptvChannelsProvider.overrideWith((ref) async => channels),
+            iptvChannelsProvider.overrideWith(
+              (ref) async => channelLoader?.call() ?? channels,
+            ),
             channelBrowseMetadataProvider.overrideWith(
               (ref) async => const <String, ChannelBrowseMetadata>{},
             ),
@@ -623,6 +627,76 @@ void main() {
 
       expect(find.text('Add Playlist Source'), findsNothing);
       expect(railsBuildCount, 2);
+    },
+  );
+
+  testWidgets(
+    'playlist source reimport preserves name-only favorite for review',
+    (tester) async {
+      const oldChannel = IPTVChannel(
+        id: 'favorite-old',
+        name: 'Fixture News HD',
+        streamUrl: 'https://example.com/old.m3u8',
+      );
+      const newChannel = IPTVChannel(
+        id: 'favorite-new',
+        name: 'fixture-news',
+        streamUrl: 'https://example.com/new.m3u8',
+      );
+      late _FixtureM3UParserService parser;
+      var importReady = false;
+
+      await tester.pumpWidget(
+        createWidget(
+          initialPreferences: const {
+            'iptv_favorite_channel_ids': ['favorite-old'],
+          },
+          channelLoader: () => importReady ? [newChannel] : [oldChannel],
+          extraOverrides: [
+            m3uParserProvider.overrideWith((ref) {
+              parser = _FixtureM3UParserService(
+                dio: Dio(),
+                prefs: ref.watch(sharedPreferencesProvider),
+              );
+              return parser;
+            }),
+          ],
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await activateAppBarAction(tester, 'Playlist source');
+      await tester.enterText(
+        find.byType(TextField),
+        'https://example.com/playlist-b.m3u',
+      );
+      await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+      await tester.pump();
+      await tester.pump();
+
+      importReady = true;
+      parser.streamControllers.last.add(
+        const ImportProgress(
+          stage: ImportStage.ready,
+          fraction: 1,
+          message: 'Imported playlist B',
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final scope = ProviderScope.containerOf(
+        tester.element(find.byType(IPTVScreen)),
+      );
+      final candidates = scope.read(favoriteReimportReviewCandidatesProvider);
+      expect(candidates, hasLength(1));
+      expect(candidates.single.oldChannel.id, 'favorite-old');
+      expect(candidates.single.candidate.id, 'favorite-new');
+      expect(
+        await scope
+            .read(favoriteChannelsStorageProvider)
+            .getFavoriteChannelIds(),
+        {'favorite-old'},
+      );
     },
   );
 

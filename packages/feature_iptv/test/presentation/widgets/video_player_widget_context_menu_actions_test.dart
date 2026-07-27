@@ -65,7 +65,9 @@ void main() {
   }
 
   Future<void> openContextMenu(WidgetTester tester) async {
-    await tester.sendKeyEvent(LogicalKeyboardKey.contextMenu);
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.select);
+    await tester.pump(const Duration(milliseconds: 600));
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.select);
     await tester.pump();
     expect(find.text('Actions for'), findsOneWidget);
   }

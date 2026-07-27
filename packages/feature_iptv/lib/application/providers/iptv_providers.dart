@@ -25,6 +25,7 @@ import 'content_source_providers.dart';
 
 export 'iptv_cast_providers.dart';
 export 'airo_tv_profile_provider.dart';
+export 'connectivity_providers.dart';
 export 'edge_intelligence_providers.dart';
 export 'iptv_navigation_provider.dart';
 export 'voice_search_provider.dart';
