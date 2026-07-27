@@ -127,7 +127,7 @@ Android release builds require private signing material. Never commit
 ├── app/                  # Flutter host application
 ├── packages/
 │   ├── airo/             # AI-oriented package surface
-│   ├── airomoney/        # Personal finance package surface
+│   ├── feature_coin/     # Personal finance package surface
 │   ├── core_ai/          # AI contracts, registries, skills, model metadata
 │   ├── core_auth/        # Authentication package
 │   ├── core_data/        # Data and networking utilities
