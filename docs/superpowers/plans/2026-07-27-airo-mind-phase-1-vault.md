@@ -1027,8 +1027,8 @@ Create `rust/airo_mind/src/vault/envelope.rs`:
 //! exists. This is what lets one object be a medical record, an expense, and
 //! a tax deduction at the same time.
 
-use chacha20poly1305::aead::{Aead, KeyInit, OsRng as AeadOsRng};
-use chacha20poly1305::{AeadCore, XChaCha20Poly1305, XNonce};
+use chacha20poly1305::aead::{Aead, KeyInit, Payload};
+use chacha20poly1305::{XChaCha20Poly1305, XNonce};
 use serde::{Deserialize, Serialize};
 use zeroize::{Zeroize, ZeroizeOnDrop};
 
@@ -1241,7 +1241,7 @@ fn random_key() -> Result<[u8; 32], VaultError> {
     Ok(bytes)
 }
 
-fn random_nonce() -> Result<[u8; 24], VaultError> {
+pub(crate) fn random_nonce() -> Result<[u8; 24], VaultError> {
     use rand_core::RngCore;
     let mut bytes = [0u8; 24];
     rand_core::OsRng
@@ -1427,7 +1427,7 @@ Expected: FAIL to compile — module not declared.
 
 - [ ] **Step 3: Reconcile against the real `chacha20poly1305` v0.10 API**
 
-`AeadCore::generate_nonce` requires the `getrandom` feature. `KeyInit::new` takes `&Key`, which is `&GenericArray<u8, U32>` — the `.into()` on `&[u8; 32]` should work, but adjust if the compiler disagrees. The `aead` re-export path may be `chacha20poly1305::aead` or require the `aead` crate directly.
+Nonces come from `random_nonce()` (`try_fill_bytes`), never `AeadCore::generate_nonce`, which panics on RNG failure. `KeyInit::new` takes `&Key`, which is `&GenericArray<u8, U32>` — the `.into()` on `&[u8; 32]` should work, but adjust if the compiler disagrees. The `aead` re-export path may be `chacha20poly1305::aead` or require the `aead` crate directly.
 
 - [ ] **Step 4: Run test to verify it passes**
 
@@ -2121,13 +2121,16 @@ Create `rust/airo_mind/src/vault/package.rs`:
 
 use std::collections::BTreeMap;
 
-use chacha20poly1305::aead::{Aead, KeyInit, OsRng as AeadOsRng};
-use chacha20poly1305::{AeadCore, XChaCha20Poly1305, XNonce};
+use chacha20poly1305::aead::{Aead, KeyInit, Payload};
+use chacha20poly1305::{XChaCha20Poly1305, XNonce};
 use hkdf::Hkdf;
+use rand_core::RngCore;
 use serde::{Deserialize, Serialize};
 use sha2::Sha512;
+use zeroize::Zeroizing;
 
-use super::envelope::ContentEnvelope;
+use super::domain;
+use super::envelope::{random_nonce, ContentEnvelope};
 use super::error::VaultError;
 use super::revocation::RevocationLedger;
 use super::seed::Seed;
@@ -2157,52 +2160,154 @@ pub struct RecoveryPackage {
     /// restore must read it before it can decrypt anything, to know how far
     /// behind this backup is.
     pub revocation_epoch: u64,
+
+    // ── Reserved in v1, not yet used ────────────────────────────────────────
+    //
+    // A user-chosen passphrase over the 24 words is real defence: this package
+    // is designed to sit on a NAS, a USB stick, or the user's own cloud, where
+    // "someone photographed the seed card" is the realistic threat.
+    //
+    // The slot is reserved rather than the feature built, because adding these
+    // fields later changes the format and breaks every package already in the
+    // field. Reserving costs three fields and one AAD entry; not reserving
+    // forecloses the option permanently.
+    //
+    // v1 always writes `passphrase_used: false`, an empty `kdf_params`, and a
+    // random `kdf_salt`. `decrypt` MUST reject `passphrase_used: true` with
+    // `UnsupportedPackageVersion` until the feature ships — a package this
+    // build cannot open must fail loudly, never silently ignore the flag and
+    // derive the wrong key.
+    pub passphrase_used: bool,
+    pub kdf_params: BTreeMap<String, u64>,
+    pub kdf_salt: Vec<u8>,
+
     nonce: Vec<u8>,
     ciphertext: Vec<u8>,
 }
 
 impl RecoveryPackage {
+    /// The plaintext header, canonically encoded, bound as AAD.
+    ///
+    /// Without this the header is freely editable: `revocation_epoch` drives
+    /// the "your backup is N revocations behind" warning, and
+    /// `identity_public_key` drives "this package belongs to identity X".
+    /// Both are user-facing safety signals sitting outside the ciphertext.
+    ///
+    /// `kdf_*` and `passphrase_used` are bound too, so a downgrade attack
+    /// cannot strip a future passphrase by flipping the flag.
+    fn header_aad(&self) -> Vec<u8> {
+        let mut aad = Vec::new();
+        aad.extend_from_slice(domain::PACKAGE_HEADER);
+        aad.extend_from_slice(&self.format_version.to_be_bytes());
+        aad.extend_from_slice(&self.identity_public_key);
+        aad.extend_from_slice(&self.revocation_epoch.to_be_bytes());
+        aad.push(u8::from(self.passphrase_used));
+        aad.extend_from_slice(&(self.kdf_params.len() as u32).to_be_bytes());
+        for (key, value) in &self.kdf_params {
+            aad.extend_from_slice(&(key.len() as u32).to_be_bytes());
+            aad.extend_from_slice(key.as_bytes());
+            aad.extend_from_slice(&value.to_be_bytes());
+        }
+        aad.extend_from_slice(&(self.kdf_salt.len() as u32).to_be_bytes());
+        aad.extend_from_slice(&self.kdf_salt);
+        aad
+    }
+
     pub fn export(vault: &Vault, seed: &Seed) -> Result<Self, VaultError> {
         let payload = vault.to_payload();
-        let plaintext = serde_json::to_vec(&payload).map_err(|_| VaultError::SerializationFailed)?;
+        // `Zeroizing`: this buffer holds every context key in plaintext.
+        let plaintext = Zeroizing::new(
+            serde_json::to_vec(&payload).map_err(|_| VaultError::SerializationFailed)?,
+        );
 
-        let cipher = XChaCha20Poly1305::new(&package_key(seed)?.into());
-        let nonce = XChaCha20Poly1305::generate_nonce(&mut AeadOsRng);
-        let ciphertext = cipher
-            .encrypt(&nonce, plaintext.as_slice())
-            .map_err(|_| VaultError::SerializationFailed)?;
+        let mut salt = vec![0u8; 16];
+        rand_core::OsRng
+            .try_fill_bytes(&mut salt)
+            .map_err(|_| VaultError::RngUnavailable)?;
 
-        Ok(Self {
+        // Header is built first, because it is the AAD the ciphertext commits to.
+        let mut package = Self {
             format_version: RECOVERY_PACKAGE_FORMAT_VERSION,
             identity_public_key: payload.root_public_key,
             revocation_epoch: payload.revocations.head_epoch(),
-            nonce: nonce.to_vec(),
-            ciphertext,
-        })
+            passphrase_used: false,
+            kdf_params: BTreeMap::new(),
+            kdf_salt: salt,
+            nonce: random_nonce()?.to_vec(),
+            ciphertext: Vec::new(),
+        };
+
+        let nonce_bytes: [u8; 24] = package
+            .nonce
+            .as_slice()
+            .try_into()
+            .map_err(|_| VaultError::SerializationFailed)?;
+        let cipher = XChaCha20Poly1305::new(&package_key(seed)?.into());
+        package.ciphertext = cipher
+            .encrypt(
+                XNonce::from_slice(&nonce_bytes),
+                Payload {
+                    msg: plaintext.as_slice(),
+                    aad: &package.header_aad(),
+                },
+            )
+            .map_err(|_| VaultError::SerializationFailed)?;
+
+        Ok(package)
     }
 
     pub(crate) fn decrypt(&self, seed: &Seed) -> Result<VaultPayload, VaultError> {
-        if self.format_version != RECOVERY_PACKAGE_FORMAT_VERSION {
-            return Err(VaultError::UnsupportedPackageVersion(self.format_version));
-        }
+        self.check_supported()?;
         let nonce_bytes: [u8; 24] = self
             .nonce
             .as_slice()
             .try_into()
             .map_err(|_| VaultError::DecryptionFailed)?;
         let cipher = XChaCha20Poly1305::new(&package_key(seed)?.into());
-        let plaintext = cipher
-            .decrypt(XNonce::from_slice(&nonce_bytes), self.ciphertext.as_slice())
-            .map_err(|_| VaultError::DecryptionFailed)?;
+        let plaintext = Zeroizing::new(
+            cipher
+                .decrypt(
+                    XNonce::from_slice(&nonce_bytes),
+                    Payload {
+                        msg: self.ciphertext.as_slice(),
+                        aad: &self.header_aad(),
+                    },
+                )
+                .map_err(|_| VaultError::DecryptionFailed)?,
+        );
         serde_json::from_slice(&plaintext).map_err(|_| VaultError::SerializationFailed)
+    }
+
+    /// Rejects anything this build cannot open correctly.
+    ///
+    /// `passphrase_used: true` means a future build wrote a package whose key
+    /// derivation this build does not implement. Failing loudly is mandatory —
+    /// ignoring the flag would derive the wrong key and surface as
+    /// "wrong seed", sending the user hunting for a mnemonic that is correct.
+    fn check_supported(&self) -> Result<(), VaultError> {
+        if self.format_version != RECOVERY_PACKAGE_FORMAT_VERSION {
+            return Err(VaultError::UnsupportedPackageVersion(self.format_version));
+        }
+        if self.passphrase_used || !self.kdf_params.is_empty() {
+            return Err(VaultError::UnsupportedPackageVersion(self.format_version));
+        }
+        Ok(())
     }
 
     pub fn to_bytes(&self) -> Result<Vec<u8>, VaultError> {
         serde_json::to_vec(self).map_err(|_| VaultError::SerializationFailed)
     }
 
+    /// Version-checks on parse, not only on decrypt.
+    ///
+    /// The restore UI reads `revocation_epoch` from a parsed package before it
+    /// ever asks for the mnemonic, so an unsupported package must be rejected
+    /// at that point rather than after the user has typed 24 words.
     pub fn from_bytes(bytes: &[u8]) -> Result<Self, VaultError> {
-        serde_json::from_slice(bytes).map_err(|_| VaultError::SerializationFailed)
+        let package: Self =
+            serde_json::from_slice(bytes).map_err(|_| VaultError::SerializationFailed)?;
+        package.check_supported()?;
+        Ok(package)
     }
 }
 
