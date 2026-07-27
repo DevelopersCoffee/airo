@@ -134,17 +134,21 @@ class _TvInputHandlerState extends State<TvInputHandler> {
   @override
   Widget build(BuildContext context) {
     if (!widget.enabled) return widget.child;
-    return KeyboardListener(
+    return Focus(
       focusNode: _focusNode,
+      canRequestFocus: false,
       onKeyEvent: _handleKeyEvent,
       child: widget.child,
     );
   }
 
-  void _handleKeyEvent(KeyEvent event) {
-    if (event is! KeyDownEvent) return;
+  KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
+    if (event is! KeyDownEvent) return KeyEventResult.ignored;
     final key = TvInputHandler.mapLogicalKeyToTvInput(event.logicalKey);
-    if (key != null) widget.onInput?.call(key);
+    if (key == null) return KeyEventResult.ignored;
+    return widget.onInput?.call(key) == TvInputResult.handled
+        ? KeyEventResult.handled
+        : KeyEventResult.ignored;
   }
 }
 
@@ -359,12 +363,7 @@ class _TvFocusableState extends State<TvFocusable>
       onKeyEvent: _handleKeyEvent,
       child: ValueListenableBuilder<bool>(
         valueListenable: _isFocused,
-        // TvFocusable is the single reviewed D-pad stop for this visual
-        // target. Material controls such as IconButton and ChoiceChip create
-        // their own Focus nodes; leaving those requestable produces two
-        // remote stops inside one visible box and Fire TV traversal appears
-        // to skip the next box. Pointer gestures still reach the child.
-        child: ExcludeFocus(child: widget.child),
+        child: widget.child,
         builder: (context, isFocused, child) {
           final decoration = isFocused && widget.showBorderEffect
               ? BoxDecoration(

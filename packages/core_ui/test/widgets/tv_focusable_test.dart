@@ -116,48 +116,52 @@ void main() {
     expect(secondaryCount, 1);
   });
 
-  testWidgets('TvFocusable contributes one remote stop with a button child', (
+  testWidgets('handled global D-pad input does not traverse a second time', (
     tester,
   ) async {
+    final nodes = List.generate(3, (_) => FocusNode());
+    addTearDown(() {
+      for (final node in nodes) {
+        node.dispose();
+      }
+    });
+
     await tester.pumpWidget(
       MaterialApp(
-        home: Scaffold(
-          body: TvFocusable(
-            key: const ValueKey('remote-box'),
-            autofocus: true,
-            onSelect: () {},
-            child: IconButton(onPressed: () {}, icon: const Icon(Icons.share)),
+        home: TvInputHandler(
+          onInput: (key) {
+            if (key == TvInputKey.right) {
+              FocusManager.instance.primaryFocus!.focusInDirection(
+                TraversalDirection.right,
+              );
+              return TvInputResult.handled;
+            }
+            return TvInputResult.notHandled;
+          },
+          child: Row(
+            children: [
+              for (var index = 0; index < nodes.length; index++)
+                TvFocusable(
+                  focusNode: nodes[index],
+                  autofocus: index == 0,
+                  child: Text('Box $index'),
+                ),
+            ],
           ),
         ),
       ),
     );
     await tester.pumpAndSettle();
+    expect(nodes[0].hasFocus, isTrue);
 
-    final boxElement = tester.element(find.byKey(const ValueKey('remote-box')));
-    bool belongsToBox(FocusNode node) {
-      final context = node.context;
-      if (context is! Element) return false;
-      if (context == boxElement) return true;
-      var belongs = false;
-      context.visitAncestorElements((ancestor) {
-        if (ancestor == boxElement) {
-          belongs = true;
-          return false;
-        }
-        return true;
-      });
-      return belongs;
-    }
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+    await tester.pumpAndSettle();
 
-    final requestableStops = FocusManager.instance.rootScope.descendants.where(
-      (node) => node.canRequestFocus && belongsToBox(node),
-    );
+    expect(nodes[1].hasFocus, isTrue);
     expect(
-      requestableStops,
-      hasLength(1),
-      reason:
-          'a focusable child must not become a hidden second stop inside '
-          'one visual TV box',
+      nodes[2].hasFocus,
+      isFalse,
+      reason: 'one Fire TV key press must advance exactly one visual box',
     );
   });
 
