@@ -617,10 +617,27 @@ class _OfflineBannerState extends ConsumerState<_OfflineBanner> {
       );
   }
 
+  // issues/04-recovery-states.md acceptance criterion 4, second half: a
+  // real platform adapter, or omitted where unsupported -- never a
+  // disabled button (WifiSettingsLauncher.isSupported gates whether this
+  // renders at all, see build()).
+  Future<void> _openWifiSettings() async {
+    final opened = await ref.read(wifiSettingsLauncherProvider).open();
+    if (!mounted || opened) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        const SnackBar(content: Text("Couldn't open Wi-Fi settings")),
+      );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isOnline = ref.watch(isOnlineProvider).asData?.value ?? true;
     if (isOnline) return const SizedBox.shrink();
+    final wifiSettingsSupported = ref
+        .watch(wifiSettingsLauncherProvider)
+        .isSupported;
 
     return Container(
       width: double.infinity,
@@ -671,6 +688,29 @@ class _OfflineBannerState extends ConsumerState<_OfflineBanner> {
               ),
             ),
           ),
+          if (wifiSettingsSupported) ...[
+            const SizedBox(width: 4),
+            TvFocusable(
+              key: const ValueKey('offline-banner-wifi-settings'),
+              semanticLabel: 'Open Wi-Fi settings',
+              onSelect: _openWifiSettings,
+              borderRadius: 6,
+              child: TextButton.icon(
+                onPressed: _openWifiSettings,
+                icon: const Icon(
+                  Icons.settings_outlined,
+                  size: 16,
+                  color: Colors.amber,
+                ),
+                label: Text(
+                  'Wi-Fi Settings',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.copyWith(color: Colors.amber),
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );

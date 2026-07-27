@@ -1,3 +1,4 @@
+import 'package:core_ui/core_ui.dart';
 import 'package:feature_iptv/feature_iptv.dart';
 import 'package:feature_iptv/presentation/widgets/player_brightness_controller.dart';
 import 'package:feature_iptv/presentation/widgets/player_gesture_overlay.dart';
@@ -1098,6 +1099,82 @@ void main() {
       expect(find.text('Switching to source 2 of 2'), findsOneWidget);
     },
   );
+
+  // Regression: the player-actions sheet and the audio/subtitle/quality
+  // selectors it opens were bare ListTiles with no TvFocusable -- reachable
+  // by touch but invisible to D-pad focus traversal, so a remote-only
+  // viewer who opened the sheet (via the TvFocusable "more" button) hit a
+  // dead end once inside it.
+  testWidgets('player-actions sheet rows and the selectors they open are all '
+      'D-pad-reachable (TvFocusable)', (tester) async {
+    final engine = FakeAiroPlaybackEngine(
+      tracks: const [
+        AiroPlaybackTrackOption(
+          id: 'external_sub_0',
+          kind: AiroPlaybackTrackKind.subtitle,
+          label: 'English',
+          isExternal: true,
+        ),
+      ],
+    );
+    final service = VideoPlayerStreamingService(engine: engine);
+    addTearDown(service.dispose);
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          iptvStreamingServiceProvider.overrideWithValue(service),
+        ],
+        child: const MaterialApp(home: Scaffold(body: VideoPlayerWidget())),
+      ),
+    );
+    await tester.pump();
+
+    await service.playChannel(
+      IPTVChannel(id: 'c1', name: 'Chan', streamUrl: 'https://x/y.m3u8'),
+    );
+    await tester.pump();
+
+    await tester.tap(find.byKey(const ValueKey('iptv-player-more-button')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    for (final key in [
+      'iptv-player-subtitle-menu-action',
+      'iptv-player-audio-only-menu-action',
+      'iptv-player-aspect-ratio-menu-action',
+      'iptv-player-cinema-menu-action',
+      'iptv-player-fullscreen-menu-action',
+    ]) {
+      await tester.ensureVisible(find.byKey(ValueKey(key)));
+      await tester.pump();
+      expect(
+        find.ancestor(
+          of: find.byKey(ValueKey(key)),
+          matching: find.byType(TvFocusable),
+        ),
+        findsOneWidget,
+        reason: '$key must be a TvFocusable so a remote can reach it',
+      );
+    }
+
+    await tester.tap(
+      find.byKey(const ValueKey('iptv-player-subtitle-menu-action')),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(
+      find.ancestor(of: find.text('Off'), matching: find.byType(TvFocusable)),
+      findsOneWidget,
+      reason: 'the subtitle selector\'s "Off" row must be a TvFocusable too',
+    );
+
+    await service.stop();
+  });
 }
 
 class _RecordingSeekStreamingService extends VideoPlayerStreamingService {

@@ -91,6 +91,14 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
     debugLabel: 'IPTV fullscreen back handler',
   );
 
+  /// Guards the postFrameCallback below to fire once per fullscreen entry,
+  /// not on every rebuild. Live playback rebuilds constantly (buffering,
+  /// position, cast state); requesting focus on every one of those was
+  /// yanking focus back to this Back-only node from the player's own
+  /// TvInputHandler after it had already (correctly) taken over, leaving
+  /// every D-pad key except Back permanently dead in fullscreen.
+  bool _fullscreenFocusClaimed = false;
+
   /// True while a [IPTVScreen.deepLinkChannelId] is set and its resolution
   /// (in the post-frame callback below) hasn't yet either started playback
   /// or determined the channel doesn't exist. Gates the first frame so the
@@ -242,6 +250,10 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
   void _toggleFullscreen() {
     final isFullscreen = ref.read(isFullscreenModeProvider);
     ref.read(isFullscreenModeProvider.notifier).state = !isFullscreen;
+    if (isFullscreen) {
+      // Leaving fullscreen -- let the next entry claim focus fresh.
+      _fullscreenFocusClaimed = false;
+    }
 
     // TV chrome is fixed: always landscape, always immersive (set once at
     // startup by the app's configureTvSystemChrome). The phone-style
@@ -715,11 +727,14 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
     }
 
     if (showFullscreenPlayer) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted && ref.read(isFullscreenModeProvider)) {
-          _fullscreenFocusNode.requestFocus();
-        }
-      });
+      if (!_fullscreenFocusClaimed) {
+        _fullscreenFocusClaimed = true;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && ref.read(isFullscreenModeProvider)) {
+            _fullscreenFocusNode.requestFocus();
+          }
+        });
+      }
       return guardRouteBack(
         Focus(
           focusNode: _fullscreenFocusNode,
@@ -890,6 +905,10 @@ class _IPTVScreenBodyState extends ConsumerState<IPTVScreenBody>
     debugLabel: 'IPTV body fullscreen back handler',
   );
 
+  /// See _IPTVScreenState's identical field: guards the postFrameCallback
+  /// below to fire once per fullscreen entry, not on every rebuild.
+  bool _fullscreenFocusClaimed = false;
+
   @override
   void initState() {
     super.initState();
@@ -936,6 +955,10 @@ class _IPTVScreenBodyState extends ConsumerState<IPTVScreenBody>
   void _toggleFullscreen() {
     final isFullscreen = ref.read(isFullscreenModeProvider);
     ref.read(isFullscreenModeProvider.notifier).state = !isFullscreen;
+    if (isFullscreen) {
+      // Leaving fullscreen -- let the next entry claim focus fresh.
+      _fullscreenFocusClaimed = false;
+    }
 
     if (!isFullscreen) {
       // Entering fullscreen
@@ -1033,7 +1056,8 @@ class _IPTVScreenBodyState extends ConsumerState<IPTVScreenBody>
       _syncLocalPlaybackWithCast,
     );
     final isFullscreen = ref.watch(isFullscreenModeProvider);
-    if (isFullscreen) {
+    if (isFullscreen && !_fullscreenFocusClaimed) {
+      _fullscreenFocusClaimed = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted && ref.read(isFullscreenModeProvider)) {
           _fullscreenFocusNode.requestFocus();
@@ -1203,17 +1227,24 @@ class _StreamTabContent extends ConsumerWidget {
 
 Future<void> showPlaylistSourceSheet(
   BuildContext context,
-  WidgetRef ref,
-) async {
+  WidgetRef ref, {
+  String? initialUrl,
+}) async {
   await showAdaptiveIptvSheet<void>(
     context: context,
     maxWidth: 640,
-    builder: (_) => const _PlaylistSourceSheet(),
+    builder: (_) => _PlaylistSourceSheet(initialUrl: initialUrl),
   );
 }
 
 class _PlaylistSourceSheet extends ConsumerStatefulWidget {
-  const _PlaylistSourceSheet();
+  const _PlaylistSourceSheet({this.initialUrl});
+
+  /// Pre-fills the URL field without auto-submitting -- the TV empty
+  /// state's QR handoff (issues/04-recovery-states.md) hands a phone-typed
+  /// URL in here, but the user still confirms/imports it themselves, same
+  /// as manual entry.
+  final String? initialUrl;
 
   @override
   ConsumerState<_PlaylistSourceSheet> createState() =>
@@ -1230,7 +1261,9 @@ class _PlaylistSourceSheetState extends ConsumerState<_PlaylistSourceSheet> {
   void initState() {
     super.initState();
     final parser = ref.read(m3uParserProvider);
-    _controller = TextEditingController(text: parser.getPlaylistUrl() ?? '');
+    _controller = TextEditingController(
+      text: widget.initialUrl ?? parser.getPlaylistUrl() ?? '',
+    );
   }
 
   @override

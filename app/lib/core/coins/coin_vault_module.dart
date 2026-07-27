@@ -3,14 +3,15 @@ import 'package:feature_coin/feature_coin.dart';
 import 'package:flutter_riverpod/misc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../routing/route_names.dart';
+
 /// The Airo Coin vault as a shell-registrable [AppModule].
 ///
 /// Wraps `package:feature_coin` (the ADR-0010 package-first vault — never
 /// the frozen legacy `app/lib/features/coins` tree) so any shell can adopt
 /// it through the shared `core_product_shell` contract. The Airo Coins
-/// shell (`main_coins.dart`) is its first registry-driven consumer; the
-/// super-app still mounts the same screens through its existing
-/// `app_router.dart` wiring, which stays untouched per the no-break rule.
+/// shell (`main_coins.dart`) mounts it at `/vault`; the super-app mounts the
+/// same route bundle inside its historical `/money` navigation branch.
 ///
 /// [basePath] controls where the vault mounts. The module both mounts its
 /// routes there and overrides `feature_coin`'s `vaultRoutePrefixProvider`
@@ -40,11 +41,15 @@ class CoinVaultModule extends AppModule {
   @override
   List<RouteBase> routesFor(ShellId shell) => [
     GoRoute(
-      path: basePath,
+      // The super-app mounts the vault inside its existing /money shell
+      // branch. Focused products mount the same bundle at an absolute path.
+      path: shell == ShellId.mobile ? 'vault' : basePath,
+      name: RouteNames.coinVault,
       builder: (context, state) => const VaultGateScreen(),
       routes: [
         GoRoute(
           path: 'add/:type',
+          name: RouteNames.coinVaultAdd,
           builder: (context, state) => VaultRecordFormScreen(
             recordType: VaultRecordType.values.byName(
               state.pathParameters['type']!,
@@ -53,6 +58,7 @@ class CoinVaultModule extends AppModule {
         ),
         GoRoute(
           path: 'edit/:type/:key',
+          name: RouteNames.coinVaultEdit,
           builder: (context, state) => VaultRecordFormScreen(
             recordType: VaultRecordType.values.byName(
               state.pathParameters['type']!,

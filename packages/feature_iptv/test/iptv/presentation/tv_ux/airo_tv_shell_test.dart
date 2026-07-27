@@ -3,6 +3,7 @@ import 'package:feature_iptv/application/providers/channel_filters_provider.dart
 import 'package:feature_iptv/application/providers/channel_auto_scan_providers.dart';
 import 'package:feature_iptv/application/providers/connectivity_provider.dart';
 import 'package:feature_iptv/application/providers/iptv_providers.dart';
+import 'package:feature_iptv/application/services/wifi_settings_launcher.dart';
 import 'package:feature_iptv/presentation/tv_ux/airo_tv_shell.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -407,6 +408,103 @@ void main() {
       findsOneWidget,
     );
   });
+
+  // issues/04-recovery-states.md acceptance criterion 4, second half: a
+  // real platform adapter, or omitted where unsupported.
+  testWidgets(
+    'offline banner Wi-Fi Settings action opens settings and reports failure',
+    (tester) async {
+      final prefs = await SharedPreferences.getInstance();
+      final launcher = _FakeWifiSettingsLauncher(opened: false);
+      final container = ProviderContainer(
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          streamProbeTransportProvider.overrideWithValue(_FakeProbeTransport()),
+          isOnlineProvider.overrideWith((ref) => Stream.value(false)),
+          connectivityServiceProvider.overrideWithValue(
+            _FakeConnectivityService(false),
+          ),
+          wifiSettingsLauncherProvider.overrideWithValue(launcher),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(
+            home: Scaffold(
+              body: SizedBox(
+                width: 900,
+                height: 720,
+                child: AiroTvShell(
+                  channels: channels,
+                  videoStage: const SizedBox(key: ValueKey('video-stage')),
+                  onChannelSelected: (_) {},
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      final button = find.byKey(const ValueKey('offline-banner-wifi-settings'));
+      expect(button, findsOneWidget);
+
+      await tester.tap(button);
+      await tester.pump();
+
+      expect(launcher.openCallCount, 1);
+      expect(find.text("Couldn't open Wi-Fi settings"), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'offline banner hides the Wi-Fi Settings action where unsupported',
+    (tester) async {
+      final prefs = await SharedPreferences.getInstance();
+      final container = ProviderContainer(
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          streamProbeTransportProvider.overrideWithValue(_FakeProbeTransport()),
+          isOnlineProvider.overrideWith((ref) => Stream.value(false)),
+          connectivityServiceProvider.overrideWithValue(
+            _FakeConnectivityService(false),
+          ),
+          wifiSettingsLauncherProvider.overrideWithValue(
+            _FakeWifiSettingsLauncher(opened: false, isSupported: false),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(
+            home: Scaffold(
+              body: SizedBox(
+                width: 900,
+                height: 720,
+                child: AiroTvShell(
+                  channels: channels,
+                  videoStage: const SizedBox(key: ValueKey('video-stage')),
+                  onChannelSelected: (_) {},
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      expect(
+        find.byKey(const ValueKey('offline-banner-wifi-settings')),
+        findsNothing,
+      );
+    },
+  );
 }
 
 class _FakeConnectivityService implements ConnectivityService {
@@ -419,6 +517,25 @@ class _FakeConnectivityService implements ConnectivityService {
 
   @override
   Stream<bool> get onConnectivityChanged => const Stream.empty();
+}
+
+class _FakeWifiSettingsLauncher extends WifiSettingsLauncher {
+  _FakeWifiSettingsLauncher({required bool opened, bool isSupported = true})
+    : _opened = opened,
+      _isSupported = isSupported;
+
+  final bool _opened;
+  final bool _isSupported;
+  int openCallCount = 0;
+
+  @override
+  bool get isSupported => _isSupported;
+
+  @override
+  Future<bool> open() async {
+    openCallCount++;
+    return _opened;
+  }
 }
 
 class _FakeProbeTransport implements StreamProbeTransport {

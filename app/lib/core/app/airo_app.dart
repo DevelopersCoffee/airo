@@ -2,14 +2,16 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../features/agent_chat/data/services/notification_navigation_service.dart';
 import '../error/global_error_handler.dart';
 import '../providers/app_theme_provider.dart';
-import '../routing/app_router.dart';
 import '../platform/platform_config.dart';
 
 class AiroApp extends ConsumerStatefulWidget {
-  const AiroApp({super.key});
+  const AiroApp({required this.router, super.key});
+
+  final GoRouter router;
 
   @override
   ConsumerState<AiroApp> createState() => _AiroAppState();
@@ -21,11 +23,11 @@ class _AiroAppState extends ConsumerState<AiroApp> {
     super.initState();
     // Set the navigator key for global error handler after first frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final navigatorKey = AppRouter.router.routerDelegate.navigatorKey;
+      final navigatorKey = widget.router.routerDelegate.navigatorKey;
       GlobalErrorHandler.setNavigatorKey(navigatorKey);
       unawaited(
         NotificationNavigationService.instance
-            .bind(navigate: AppRouter.router.go)
+            .bind(navigate: widget.router.go)
             .catchError((Object error, StackTrace stackTrace) {
               debugPrint('Notification navigation unavailable: $error');
             }),
@@ -44,7 +46,7 @@ class _AiroAppState extends ConsumerState<AiroApp> {
         themeDefinition.darkTheme,
       ),
       themeMode: themeDefinition.themeMode,
-      routerConfig: AppRouter.router,
+      routerConfig: widget.router,
       debugShowCheckedModeBanner: false,
       // Platform-specific scroll behavior
       scrollBehavior: const MaterialScrollBehavior().copyWith(

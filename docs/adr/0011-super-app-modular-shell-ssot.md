@@ -2,11 +2,13 @@
 
 ## Status
 
-Proposed
+Accepted
 
 ## Date
 
 2026-07-24
+
+Accepted and implementation updated: 2026-07-27
 
 ## Context
 
@@ -103,6 +105,51 @@ The migration order is:
 
 No first-phase migration may change shared storage keys or break existing
 routes without explicit compatibility handling.
+
+## Implementation State
+
+Issue `#1187` implements the first accepted composition slice:
+
+- `core_product_shell` provides open-ended `ShellId`, `AppModule`, and
+  per-shell `ModuleRegistry` contracts.
+- Registry composition rejects duplicate enabled module IDs and conflicting
+  route paths/names, including nested route identities, before application
+  bootstrap.
+- The super-app, Airo TV, and Airo Coins entrypoints each create a fresh
+  shell-scoped registry.
+- Coins and IPTV declare supported shells once and preserve their existing
+  super-app route prefixes.
+- `.github/airo-build-profiles.json` is the product-profile source of truth,
+  and its validator rejects a feature module when `module.yaml` marks that
+  device class as `Never Ship`.
+- `app/pubspec_coins.yaml`, the Coins Android manifest, and `CoinsActivity`
+  form the first focused non-TV profile. Its arm64 release qualification
+  artifact is 20.7 MB against a 25 MB budget.
+
+The existing `app/` directory remains the shared Android project during this
+stage. Product-only Kotlin host channels live under `src/product`; the Coins
+profile compiles only `src/coins`. This is a real native compilation boundary,
+not a Dart feature flag.
+
+Mobile's stateful navigation tree now mounts Coin Vault and IPTV route bundles
+directly from the registry. Shell-only navigation destinations such as Home,
+Guide, and Settings remain owned by the super-app because they describe its
+chrome rather than a reusable module. Parity tests preserve `/money/vault`,
+`/iptv`, `/iptv/player`, and `/vod`, and startup fails before `runApp` when a
+required module is absent or the registry belongs to another shell.
+
+Downloaded executable plugins are not introduced by this decision. Flutter
+Android deferred components must be compiled into and uploaded as one Android
+App Bundle; independent CDN updates remain limited to signed data/assets until
+the delivery and security decisions in `#164` and `#168` are resolved.
+
+### Rollback
+
+Each entrypoint owns a fresh registry and product profiles use separate
+pubspecs/manifests. A focused profile can be removed without changing shared
+storage. If a shell migration regresses startup, restore that entrypoint's
+previous bootstrap adapter while retaining the package-level module contract;
+do not merge product-only host sources back into the Coins source set.
 
 ## Consequences
 
