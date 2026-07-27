@@ -73,6 +73,54 @@ def test_channels_xml_prefers_main_feed_then_language() -> None:
     assert report == {"IN": 1, "US": 1}
 
 
+def test_country_filter_bounds_grab_input_and_coverage_gate(tmp_path: Path) -> None:
+    guides = [
+        {
+            "channel": "News.in",
+            "feed": "HD",
+            "site": "india.example",
+            "site_id": "news",
+            "lang": "hi",
+        },
+        {
+            "channel": "World.us",
+            "feed": None,
+            "site": "world.example",
+            "site_id": "world",
+            "lang": "en",
+        },
+    ]
+    xml, report = build_channels_xml(_channels(), guides, {"IN"})
+
+    rows = ET.fromstring(xml).findall("channel")
+    assert [row.get("xmltv_id") for row in rows] == ["News.in"]
+    assert report == {"IN": 1}
+
+    grabbed = tmp_path / "guide.xml"
+    grabbed.write_text(
+        """<tv>
+<channel id="News.in"><display-name>News</display-name></channel>
+<programme channel="News.in" start="20260727000000 +0000" stop="20260727010000 +0000"><title>India</title></programme>
+</tv>""",
+        encoding="utf-8",
+    )
+    manifest = tmp_path / "manifest.json"
+    manifest.write_text('{"files": {}, "fileChecksums": {}}', encoding="utf-8")
+
+    result = publish_country_guides(
+        channels_payload=_channels(),
+        grabbed_xml=grabbed,
+        output_directory=tmp_path,
+        manifest_path=manifest,
+        minimum_coverage_percent=70,
+        countries={"IN"},
+    )
+
+    assert result["countries"]["IN"]["coveragePercent"] == 100
+    assert "US" not in result["countries"]
+    assert not (tmp_path / "guide_US.xml.gz").exists()
+
+
 def test_publish_splits_gzip_and_updates_manifest(tmp_path: Path) -> None:
     grabbed = tmp_path / "guide.xml"
     grabbed.write_text(

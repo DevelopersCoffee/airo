@@ -15,12 +15,18 @@ from typing import Any
 def build_channels_xml(
     channels_payload: dict[str, Any],
     guides: list[dict[str, Any]],
+    countries: set[str] | None = None,
 ) -> tuple[bytes, dict[str, int]]:
     """Join curated channels to one deterministic upstream guide row each."""
+    selected_countries = {country.upper() for country in countries or set()}
     channels = {
         str(channel["id"]): channel
         for channel in channels_payload.get("channels", [])
         if channel.get("id")
+        and (
+            not selected_countries
+            or str(channel.get("country") or "ZZ").upper() in selected_countries
+        )
     }
     guides_by_channel: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for guide in guides:
@@ -74,12 +80,18 @@ def publish_country_guides(
     manifest_path: Path,
     minimum_programmes: int = 1,
     minimum_coverage_percent: float = 0,
+    countries: set[str] | None = None,
 ) -> dict[str, Any]:
     """Split one grabbed XMLTV file and atomically publish gzip artifacts."""
+    selected_countries = {country.upper() for country in countries or set()}
     channel_country = {
         str(channel["id"]): str(channel.get("country") or "ZZ").upper()
         for channel in channels_payload.get("channels", [])
         if channel.get("id")
+        and (
+            not selected_countries
+            or str(channel.get("country") or "ZZ").upper() in selected_countries
+        )
     }
     roots: dict[str, ET.Element] = {}
     covered_channels: dict[str, set[str]] = defaultdict(set)
@@ -184,6 +196,7 @@ def main() -> None:
     generate.add_argument("--channels", type=Path, required=True)
     generate.add_argument("--guides", type=Path, required=True)
     generate.add_argument("--output", type=Path, required=True)
+    generate.add_argument("--countries", nargs="+")
     publish = subparsers.add_parser("publish")
     publish.add_argument("--channels", type=Path, required=True)
     publish.add_argument("--grabbed", type=Path, required=True)
@@ -191,10 +204,15 @@ def main() -> None:
     publish.add_argument("--manifest", type=Path, required=True)
     publish.add_argument("--minimum-programmes", type=int, default=1)
     publish.add_argument("--minimum-coverage-percent", type=float, default=0)
+    publish.add_argument("--countries", nargs="+")
     args = parser.parse_args()
     channels_payload = _load_json(args.channels)
     if args.command == "generate":
-        xml, report = build_channels_xml(channels_payload, _load_json(args.guides))
+        xml, report = build_channels_xml(
+            channels_payload,
+            _load_json(args.guides),
+            set(args.countries or []),
+        )
         args.output.write_bytes(xml)
         print(json.dumps(report, sort_keys=True))
     else:
@@ -205,6 +223,7 @@ def main() -> None:
             manifest_path=args.manifest,
             minimum_programmes=args.minimum_programmes,
             minimum_coverage_percent=args.minimum_coverage_percent,
+            countries=set(args.countries or []),
         )
         print(json.dumps(report, sort_keys=True))
 
