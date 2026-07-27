@@ -181,4 +181,3 @@ calls, keyboard/focus semantics, and no raw paths.
 - Docs: `core_ai` API/migration docs and Milestone 1 evidence
 - Verification environment: host Flutter/Dart; native transfer behavior is
   proved by #499
-

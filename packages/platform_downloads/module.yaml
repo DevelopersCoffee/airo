@@ -14,4 +14,3 @@ forbidden_dependencies:
   - core_ai
   - feature_coin
 quality_gates: {}
-

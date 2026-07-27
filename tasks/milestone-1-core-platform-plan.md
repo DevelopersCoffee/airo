@@ -142,4 +142,3 @@ Airo settings providers and manager screen
 - Product: focused manager widget/provider tests.
 - Quality: repository manifest/docs checks, package analyze/tests, and clean
   diff/worktree.
-

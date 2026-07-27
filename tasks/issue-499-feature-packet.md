@@ -177,4 +177,3 @@ atomic promotion, and cleanup.
 - Verification environment: host Flutter/Dart and native unit/build checks;
   physical-device evidence is required only for OS suspension behavior that
   native tests cannot simulate
-
