@@ -1,10 +1,10 @@
 import 'dart:convert';
 
 import 'package:airo_app/main.dart' as app;
-import 'package:airo_app/core/routing/app_router.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:patrol/patrol.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -77,7 +77,8 @@ void main() {
           .byKey(const Key('agent_chat_skills_button'))
           .evaluate()
           .isEmpty) {
-        AppRouter.router.go('/agent');
+        final navigatorContext = $.tester.element(find.byType(Navigator).first);
+        GoRouter.of(navigatorContext).go('/agent');
         await $.pumpAndSettle();
       }
       record('assistant_opened');
