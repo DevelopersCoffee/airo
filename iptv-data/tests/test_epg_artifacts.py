@@ -113,6 +113,40 @@ def test_channels_xml_rejects_empty_guide_limit() -> None:
         build_channels_xml(_channels(), [], max_guides_per_channel=0)
 
 
+def test_channels_xml_can_limit_only_fallback_sites() -> None:
+    xml, _ = build_channels_xml(
+        _channels(),
+        [
+            {
+                "channel": "News.in",
+                "feed": "HD",
+                "site": "primary.example",
+                "site_id": "primary",
+                "lang": "hi",
+            },
+            {
+                "channel": "News.in",
+                "feed": "SD",
+                "site": "cross-region.example",
+                "site_id": "excluded",
+                "lang": "hi",
+            },
+            {
+                "channel": "News.in",
+                "feed": "SD",
+                "site": "domestic.in",
+                "site_id": "fallback",
+                "lang": "hi",
+            },
+        ],
+        max_guides_per_channel=2,
+        fallback_site_suffixes=(".in",),
+    )
+
+    rows = ET.fromstring(xml).findall("channel")
+    assert [row.get("site_id") for row in rows] == ["primary", "fallback"]
+
+
 def test_country_filter_bounds_grab_input_and_coverage_gate(tmp_path: Path) -> None:
     guides = [
         {

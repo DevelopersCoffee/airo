@@ -17,6 +17,7 @@ def build_channels_xml(
     guides: list[dict[str, Any]],
     countries: set[str] | None = None,
     max_guides_per_channel: int = 1,
+    fallback_site_suffixes: tuple[str, ...] = (),
 ) -> tuple[bytes, dict[str, int]]:
     """Join curated channels to a bounded number of deterministic guide rows."""
     if max_guides_per_channel < 1:
@@ -47,7 +48,7 @@ def build_channels_xml(
         languages = {str(language).lower() for language in channel.get("languages", [])}
         stream_sources = channel.get("streamSources") or []
         preferred_feed = stream_sources[0].get("feedId") if stream_sources else None
-        selected = sorted(
+        ranked = sorted(
             candidates,
             key=lambda guide: (
                 0 if preferred_feed is not None and guide.get("feed") == preferred_feed else 1,
@@ -55,7 +56,16 @@ def build_channels_xml(
                 str(guide.get("site", "")),
                 str(guide.get("site_id", "")),
             ),
-        )[:max_guides_per_channel]
+        )
+        selected = ranked[:1]
+        fallback_candidates = ranked[1:]
+        if fallback_site_suffixes:
+            fallback_candidates = [
+                guide
+                for guide in fallback_candidates
+                if str(guide.get("site", "")).endswith(fallback_site_suffixes)
+            ]
+        selected.extend(fallback_candidates[: max_guides_per_channel - 1])
         for guide in selected:
             element = ET.SubElement(
                 root,
@@ -202,6 +212,7 @@ def main() -> None:
     generate.add_argument("--output", type=Path, required=True)
     generate.add_argument("--countries", nargs="+")
     generate.add_argument("--max-guides-per-channel", type=int, default=1)
+    generate.add_argument("--fallback-site-suffixes", nargs="+")
     publish = subparsers.add_parser("publish")
     publish.add_argument("--channels", type=Path, required=True)
     publish.add_argument("--grabbed", type=Path, required=True)
@@ -218,6 +229,7 @@ def main() -> None:
             _load_json(args.guides),
             set(args.countries or []),
             args.max_guides_per_channel,
+            tuple(args.fallback_site_suffixes or []),
         )
         args.output.write_bytes(xml)
         print(json.dumps(report, sort_keys=True))
