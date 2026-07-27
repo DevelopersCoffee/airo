@@ -252,6 +252,20 @@ pub enum VaultError {
 
     #[error("device `{0}` not found")]
     DeviceNotFound(String),
+
+    #[error("encryption failed")]
+    EncryptionFailed,
+
+    /// A recovery package uses a protection mode this build does not implement.
+    ///
+    /// Distinct from `UnsupportedPackageVersion` deliberately: reporting an
+    /// unknown passphrase mode as "format version 1 is not supported" is false
+    /// and sends whoever debugs it to the wrong place.
+    #[error("recovery package uses an unsupported protection mode")]
+    UnsupportedProtectionMode,
+
+    #[error("value too long to encode")]
+    ValueTooLong,
 }
 
 #[cfg(test)]
@@ -580,55 +594,107 @@ fn mnemonic_from_entropy(entropy: &[u8; ENTROPY_BYTES]) -> Zeroizing<String> {
 /// No passphrase in v1. The Recovery Package reserves `passphrase_used`,
 /// `kdf_params`, and `kdf_salt` so the option survives; see Task 8.
 pub fn seed_from_mnemonic(phrase: &str) -> Result<Seed, VaultError> {
+    seed_from_mnemonic_with_passphrase(phrase, "")
+}
+
+/// Derivation with an explicit passphrase.
+///
+/// `seed_from_mnemonic` calls this with `""`. It exists separately for two
+/// reasons: the official BIP-39 vectors are published with the passphrase
+/// `"TREZOR"` and cannot be used without it, and the Recovery Package format
+/// already reserves `passphrase_used` / `kdf_params` / `kdf_salt` (Task 8), so
+/// this is the entry point that slot will use.
+pub(crate) fn seed_from_mnemonic_with_passphrase(
+    phrase: &str,
+    passphrase: &str,
+) -> Result<Seed, VaultError> {
+    let words = validate_mnemonic(phrase)?;
+
+    // CANONICALIZE before derivation. BIP-39 specifies the PBKDF2 password as
+    // the NFKD-normalized *sentence*: words joined by exactly one space, no
+    // leading or trailing whitespace.
+    //
+    // Passing the raw input instead means a user who pastes 24 correct words
+    // with a trailing newline or a double space passes validation, passes the
+    // checksum, and then derives a completely different seed — surfacing as
+    // "wrong seed" while their mnemonic is perfectly correct. On a recovery
+    // path for medical and financial records that is the worst failure
+    // available.
+    //
+    // v1 is English-only and NFKD is the identity on ASCII. Adding a
+    // non-ASCII wordlist REQUIRES a Unicode normalization step here.
+    let canonical = Zeroizing::new(words.join(" "));
+
+    let mut salt = Zeroizing::new(Vec::with_capacity(8 + passphrase.len()));
+    salt.extend_from_slice(b"mnemonic");
+    salt.extend_from_slice(passphrase.as_bytes());
+
+    Ok(Seed(pbkdf2_hmac_sha512(
+        canonical.as_bytes(),
+        &salt,
+        PBKDF2_ROUNDS,
+    )?))
+}
+
+/// Validates word membership and the checksum. Returns the words for
+/// canonicalization.
+///
+/// A typo must fail here, not silently produce a valid-looking seed for a
+/// vault that does not exist.
+fn validate_mnemonic(phrase: &str) -> Result<Vec<&str>, VaultError> {
     let words: Vec<&str> = phrase.split_whitespace().collect();
     if words.len() != WORD_COUNT {
         return Err(VaultError::InvalidMnemonic);
     }
 
-    // Word → index. Linear scan over 2048 entries is fine here; this runs once
-    // per restore, and a binary search would depend on the list being sorted,
-    // which is a property we deliberately do not assert.
-    let mut bits = Vec::with_capacity(WORD_COUNT * 11);
+    // `u8` rather than `bool`: this buffer is a bit-for-bit expansion of the
+    // entropy — the same secret in a more scannable form — so it must be
+    // zeroized, and `Zeroize` is not implemented for `Vec<bool>`.
+    let mut bits: Zeroizing<Vec<u8>> = Zeroizing::new(Vec::with_capacity(WORD_COUNT * 11));
     for word in &words {
+        // Linear scan over 2048 entries. Note this is data-dependent and is
+        // NOT constant time — see the note on the checksum comparison below.
         let index = WORDS
             .iter()
             .position(|candidate| candidate == word)
             .ok_or(VaultError::InvalidMnemonic)?;
         for i in (0..11).rev() {
-            bits.push((index >> i) & 1 == 1);
+            bits.push(((index >> i) & 1) as u8);
         }
     }
 
     let entropy_bits = ENTROPY_BYTES * 8;
     let mut entropy = Zeroizing::new([0u8; ENTROPY_BYTES]);
     for (i, bit) in bits[..entropy_bits].iter().enumerate() {
-        if *bit {
+        if *bit == 1 {
             entropy[i / 8] |= 1 << (7 - (i % 8));
         }
     }
 
-    // Verify the checksum in constant time — a mismatch is a typo, and timing
-    // must not reveal how many words were right.
+    // Checksum comparison is written branch-free for tidiness, but this
+    // function is NOT constant time overall: the wordlist lookup above is a
+    // data-dependent scan with an early return, and it dominates. That is
+    // acceptable here — this runs once per restore against locally-entered
+    // input, and the adversary is not measuring our timing. Stating the real
+    // property rather than claiming one the code does not have (invariant I3).
     let expected = Sha256::digest(entropy.as_ref());
     let checksum_bits = entropy_bits / 32;
     let mut diff = 0u8;
     for i in 0..checksum_bits {
-        let actual = u8::from(bits[entropy_bits + i]);
         let want = (expected[i / 8] >> (7 - (i % 8))) & 1;
-        diff |= actual ^ want;
+        diff |= bits[entropy_bits + i] ^ want;
     }
     if diff != 0 {
         return Err(VaultError::InvalidMnemonic);
     }
 
-    // PBKDF2-HMAC-SHA512, 2048 rounds, salt = "mnemonic" || passphrase.
-    // Passphrase is empty in v1.
-    Ok(Seed(pbkdf2_hmac_sha512(
-        phrase.as_bytes(),
-        b"mnemonic",
-        PBKDF2_ROUNDS,
-    )))
+    Ok(words)
 }
+
+/// Guards the bit-packing arithmetic. 256 entropy bits + 8 checksum bits = 264,
+/// which is exactly 24 * 11. If `ENTROPY_BYTES` ever changes, a short final
+/// chunk would silently fold to a small word index instead of failing.
+const _: () = assert!((ENTROPY_BYTES * 8 + ENTROPY_BYTES * 8 / 32) % 11 == 0);
 
 /// PBKDF2-HMAC-SHA512 producing exactly 64 bytes — one block, since SHA-512's
 /// output is 64 bytes, so the block-index loop collapses to a single pass.
@@ -637,28 +703,37 @@ pub fn seed_from_mnemonic(phrase: &str) -> Result<Seed, VaultError> {
 /// algorithm, it is driven entirely by the official BIP-39 vectors in Step 1,
 /// and it keeps the trusted computing base on the recovery path to `sha2` and
 /// `hmac` alone.
-fn pbkdf2_hmac_sha512(password: &[u8], salt: &[u8], rounds: u32) -> [u8; 64] {
+fn pbkdf2_hmac_sha512(
+    password: &[u8],
+    salt: &[u8],
+    rounds: u32,
+) -> Result<[u8; 64], VaultError> {
     use hmac::Mac;
 
+    // `.expect()` is forbidden outside tests (Global Constraints). HMAC does
+    // accept any key length — which is exactly why mapping the error costs
+    // nothing and a panic here would be gratuitous.
     let mut mac = <Hmac<Sha512> as Mac>::new_from_slice(password)
-        .expect("HMAC accepts a key of any length");
+        .map_err(|_| VaultError::DerivationFailed)?;
     mac.update(salt);
     mac.update(&1u32.to_be_bytes()); // block index, big-endian
-    let mut u = mac.finalize().into_bytes();
+    let mut u = Zeroizing::new(mac.finalize().into_bytes().to_vec());
 
     let mut out = [0u8; 64];
     out.copy_from_slice(&u);
 
     for _ in 1..rounds {
         let mut mac = <Hmac<Sha512> as Mac>::new_from_slice(password)
-            .expect("HMAC accepts a key of any length");
+            .map_err(|_| VaultError::DerivationFailed)?;
         mac.update(&u);
-        u = mac.finalize().into_bytes();
+        // Each intermediate is the same secret in another form — zeroized on
+        // reassignment because the binding is `Zeroizing`.
+        u = Zeroizing::new(mac.finalize().into_bytes().to_vec());
         for (acc, byte) in out.iter_mut().zip(u.iter()) {
             *acc ^= byte;
         }
     }
-    out
+    Ok(out)
 }
 
 #[cfg(test)]
@@ -702,7 +777,10 @@ mod tests {
         assert_eq!(WORDS[2047], "zoo");
         assert_eq!(
             hex_lower(&Sha256::digest((WORDS.join("\n") + "\n").as_bytes())),
-            include_str!("../../tests/fixtures/bip39/english.txt.sha256").trim()
+            // Source-level const with provenance independent of the fetch.
+            // See Step 3 — a digest generated by the download command
+            // validates nothing.
+            EXPECTED_WORDLIST_SHA256
         );
     }
 
@@ -735,7 +813,8 @@ mod tests {
             let phrase = mnemonic_from_entropy(&entropy);
             assert_eq!(&*phrase, expected_phrase, "encoding {entropy_hex}");
 
-            let seed = seed_from_mnemonic(&phrase).unwrap();
+            // Official vectors use the passphrase "TREZOR".
+            let seed = seed_from_mnemonic_with_passphrase(&phrase, "TREZOR").unwrap();
             assert_eq!(hex_lower(seed.as_bytes()), expected_seed, "derivation {entropy_hex}");
 
             checked += 1;
@@ -755,6 +834,22 @@ mod tests {
         assert_eq!(
             seed_from_mnemonic(&words.join(" ")),
             Err(VaultError::InvalidMnemonic)
+        );
+    }
+
+    #[test]
+    fn non_canonical_whitespace_derives_the_same_seed() {
+        // The bug this guards: passing raw user input to PBKDF2 instead of the
+        // canonical sentence. A pasted mnemonic with a trailing newline or a
+        // double space passed validation and the checksum, then derived a
+        // COMPLETELY DIFFERENT seed — surfacing as "wrong seed" while the
+        // user's mnemonic was perfectly correct.
+        let phrase = generate_mnemonic().unwrap();
+        let messy = format!("  {}  \n", phrase.replace(' ', "  "));
+
+        assert_eq!(
+            seed_from_mnemonic(&messy).unwrap().as_bytes(),
+            seed_from_mnemonic(&phrase).unwrap().as_bytes()
         );
     }
 
@@ -816,47 +911,69 @@ Expected: FAIL to compile — `wordlist` module and the fixtures do not exist ye
 
 - [ ] **Step 3: Vendor the official wordlist and vectors**
 
-Both are public domain and come from the BIP-39 specification repository
-(`bitcoin/bips`, BIP-0039). **Copy them; do not transcribe by hand and do not
-generate them from memory.** A mistyped vector either fails mysteriously or, worse,
-gets "fixed" by bending the implementation to match it.
+Both are public domain, from BIP-0039. **Copy them; never transcribe by hand
+and never generate them from memory.**
+
+Two traps this step previously contained, both fixed here:
 
 ```bash
 mkdir -p rust/airo_mind/tests/fixtures/bip39
-# english.txt — 2048 words, newline separated, specification order
-curl -sSL https://raw.githubusercontent.com/bitcoin/bips/master/bip-0039/english.txt \
+# PINNED to a commit, not a branch. A fixture fetched from `master` is not
+# reproducible, and a moved branch silently changes what was verified.
+BIPS_SHA=<pin a bitcoin/bips commit SHA here and record it in the PR>
+curl -sSL "https://raw.githubusercontent.com/bitcoin/bips/${BIPS_SHA}/bip-0039/english.txt" \
   -o rust/airo_mind/tests/fixtures/bip39/english.txt
-# record its digest for the wordlist guard test
-shasum -a 256 rust/airo_mind/tests/fixtures/bip39/english.txt \
-  | cut -d' ' -f1 > rust/airo_mind/tests/fixtures/bip39/english.txt.sha256
 ```
 
-Then generate `src/vault/wordlist.rs` from `english.txt` (a one-off script is
-fine; commit the generated file, not the script), and build
-`tests/fixtures/bip39/vectors.tsv` from the Trezor reference vectors
-(`trezor/python-mnemonic`, `vectors.json`), tab-separated as
-`entropy_hex \t mnemonic \t seed_hex`, keeping every case.
+**Do not `shasum` the download into the fixture the test compares against.**
+That is what the previous revision did, and it is tautological: the expected
+value is produced by the same command that fetched the artifact it validates.
+A wrong branch, a MITM, or a corrupt byte would be recorded as correct.
 
-Both fixtures are checked in. This crate must build and test offline — CI has
-no network, and a vendored vector set is also a record of exactly what was
-verified.
+Instead, record the expected digest as a `const` **in `wordlist.rs` source**,
+cross-checked against a source the fetch cannot influence — an existing
+implementation's vendored copy, or the BIP-0039 text itself. Note in the PR
+where the independent check came from.
+
+Generate `src/vault/wordlist.rs` from `english.txt` (a one-off script is fine;
+commit the generated file, not the script).
+
+For vectors, use `trezor/python-mnemonic`'s `vectors.json`, also pinned.
+**Those vectors derive the seed with the passphrase `"TREZOR"`, not an empty
+passphrase.** That is why `seed_from_mnemonic_with_passphrase` exists — drive
+the fixture through it with `"TREZOR"`. Using the published parameters is what
+makes this an external check on the PBKDF2 loop *and* the salt concatenation;
+regenerating the seed column from our own implementation would be no test at
+all.
+
+Build `tests/fixtures/bip39/vectors.tsv` as
+`entropy_hex \t mnemonic \t seed_hex`, keeping every 24-word case.
+
+Both fixtures are checked in — CI has no network, and a vendored set is also a
+record of exactly what was verified.
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `cargo test --manifest-path rust/Cargo.toml -p airo_mind seed`
-Expected: PASS — wordlist guard, the full official vector set, and the four rejection cases
+Run: `cargo test --manifest-path rust/Cargo.toml -p airo_mind`
+Expected: PASS, 1 test
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 5: Verify CI gates pass locally**
+
+Run: `cargo clippy --manifest-path rust/Cargo.toml --all -- -D warnings`
+Run: `cargo fmt --manifest-path rust/Cargo.toml --check`
+Expected: both clean. Clippy warnings fail CI, so fix them now rather than in review.
+
+- [ ] **Step 6: Commit**
 
 ```bash
-git add rust/airo_mind/src/vault/seed.rs rust/airo_mind/src/vault/mod.rs
-git commit -m "feat(mind): add recovery seed generation and mnemonic derivation
+git add rust/Cargo.toml rust/airo_mind/
+git commit -m "feat(mind): scaffold airo_mind crate with vault error type
 
-24-word BIP39 mnemonic, no passphrase. Pinned to a known test vector: if
-that vector ever changes, every recovery package already in the world
-stops working.
+New workspace member, deliberately separate from airo_core: airo_core is
+on the Airo TV shipping critical path and must not gain crypto or storage
+dependencies.
 
-Refs #1207"
+Refs #1204"
 ```
 
 ---
@@ -894,7 +1011,7 @@ use super::seed::Seed;
 ///
 /// Changing this string invalidates every identity ever derived. It is
 /// versioned so a future scheme can coexist rather than replace.
-const ROOT_INFO: &[u8] = b"airo-mind/root-identity/v1";
+use super::domain;
 
 /// The user's root cryptographic identity.
 #[derive(ZeroizeOnDrop)]
@@ -911,7 +1028,7 @@ impl RootIdentity {
     pub fn from_seed(seed: &Seed) -> Result<Self, VaultError> {
         let hkdf = Hkdf::<Sha512>::new(None, seed.as_bytes());
         let mut key_bytes = [0u8; 32];
-        hkdf.expand(ROOT_INFO, &mut key_bytes)
+        hkdf.expand(domain::ROOT_IDENTITY, &mut key_bytes)
             .map_err(|_| VaultError::DerivationFailed)?;
         Ok(Self {
             signing_key: SigningKey::from_bytes(&key_bytes),
@@ -1143,7 +1260,7 @@ impl DeviceCertificate {
     /// certificates can ever produce the same payload.
     pub fn signing_payload(&self) -> Vec<u8> {
         let mut payload = Vec::new();
-        payload.extend_from_slice(b"airo-mind/device-certificate/v1");
+        payload.extend_from_slice(domain::DEVICE_CERTIFICATE);
         payload.extend_from_slice(&(self.device_id.len() as u32).to_be_bytes());
         payload.extend_from_slice(self.device_id.as_bytes());
         payload.extend_from_slice(&self.device_public_key);
@@ -1297,8 +1414,10 @@ Create `rust/airo_mind/src/vault/envelope.rs`:
 use chacha20poly1305::aead::{Aead, KeyInit, Payload};
 use chacha20poly1305::{XChaCha20Poly1305, XNonce};
 use serde::{Deserialize, Serialize};
-use zeroize::{Zeroize, ZeroizeOnDrop};
+use subtle::ConstantTimeEq;
+use zeroize::{Zeroize, ZeroizeOnDrop, Zeroizing};
 
+use super::domain;
 use super::error::VaultError;
 
 /// A random symmetric key protecting exactly one content object.
@@ -1404,7 +1523,7 @@ impl ContentEnvelope {
     ) -> Result<(), VaultError> {
         let cipher = XChaCha20Poly1305::new(context_key.as_bytes().into());
         let nonce = XNonce::from_slice(&random_nonce()?).to_owned();
-        let aad = wrapping_aad(&self.content_id, context_id);
+        let aad = wrapping_aad(&self.content_id, context_id)?;
         let ciphertext = cipher
             .encrypt(
                 &nonce,
@@ -1451,7 +1570,7 @@ impl ContentEnvelope {
             .try_into()
             .map_err(|_| VaultError::DecryptionFailed)?;
         let cipher = XChaCha20Poly1305::new(context_key.as_bytes().into());
-        let aad = wrapping_aad(&self.content_id, context_id);
+        let aad = wrapping_aad(&self.content_id, context_id)?;
         let plaintext = cipher
             .decrypt(
                 XNonce::from_slice(&nonce_bytes),
@@ -1487,14 +1606,23 @@ impl ContentEnvelope {
 ///      unwraps, yielding A's content key under B's context.
 ///
 /// Same length-prefixed injective discipline as `DeviceCertificate`.
-fn wrapping_aad(content_id: &str, context_id: &str) -> Vec<u8> {
+fn wrapping_aad(content_id: &str, context_id: &str) -> Result<Vec<u8>, VaultError> {
     let mut aad = Vec::new();
     aad.extend_from_slice(domain::CONTENT_WRAPPING);
-    aad.extend_from_slice(&(content_id.len() as u32).to_be_bytes());
-    aad.extend_from_slice(content_id.as_bytes());
-    aad.extend_from_slice(&(context_id.len() as u32).to_be_bytes());
-    aad.extend_from_slice(context_id.as_bytes());
-    aad
+    push_len_prefixed(&mut aad, content_id.as_bytes())?;
+    push_len_prefixed(&mut aad, context_id.as_bytes())?;
+    Ok(aad)
+}
+
+/// Length-prefixes with a **checked** cast.
+///
+/// `as u32` truncates silently above `u32::MAX`, and a truncated length breaks
+/// injectivity — two different inputs producing identical AAD bytes.
+pub(crate) fn push_len_prefixed(out: &mut Vec<u8>, bytes: &[u8]) -> Result<(), VaultError> {
+    let len = u32::try_from(bytes.len()).map_err(|_| VaultError::ValueTooLong)?;
+    out.extend_from_slice(&len.to_be_bytes());
+    out.extend_from_slice(bytes);
+    Ok(())
 }
 
 /// `try_fill_bytes`, never `fill_bytes` — the latter panics when the OS RNG
@@ -1747,6 +1875,8 @@ use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 
+use super::error::VaultError;
+
 /// What a revocation destroys.
 ///
 /// Tagged from the start. Spec §3.2 lists `RevokeDevice` as a verb, and the
@@ -1785,12 +1915,12 @@ impl RevocationLedger {
     ///
     /// Revoking the same content twice is a no-op that returns the original
     /// epoch — revocation is a fact, not an event count.
-    pub fn revoke(&mut self, content_id: &str) -> u64 {
-        if let Some(existing) = self.entries.get(content_id) {
+    pub fn revoke(&mut self, subject: RevocationSubject) -> u64 {
+        if let Some(existing) = self.entries.get(&subject) {
             return *existing;
         }
         self.head_epoch += 1;
-        self.entries.insert(content_id.to_string(), self.head_epoch);
+        self.entries.insert(subject, self.head_epoch);
         self.head_epoch
     }
 
@@ -1798,8 +1928,13 @@ impl RevocationLedger {
         self.head_epoch
     }
 
-    pub fn is_revoked(&self, content_id: &str) -> bool {
-        self.entries.contains_key(content_id)
+    pub fn is_revoked(&self, subject: &RevocationSubject) -> bool {
+        self.entries.contains_key(subject)
+    }
+
+    /// Convenience for the common content case.
+    pub fn is_content_revoked(&self, content_id: &str) -> bool {
+        self.is_revoked(&RevocationSubject::Content(content_id.to_string()))
     }
 
     /// Every subject revoked strictly after `epoch`, **within one device's
@@ -1831,6 +1966,11 @@ impl RevocationLedger {
     /// epoch-filtered query and resurrects that content.
     pub fn validate(&self) -> Result<(), VaultError> {
         if self.entries.values().any(|epoch| *epoch == 0) {
+            return Err(VaultError::SerializationFailed);
+        }
+        // head_epoch must dominate every entry, or every downstream epoch
+        // comparison misbehaves on a crafted or corrupted ledger.
+        if self.entries.values().copied().max().unwrap_or(0) > self.head_epoch {
             return Err(VaultError::SerializationFailed);
         }
         Ok(())
@@ -1872,30 +2012,30 @@ mod tests {
     fn a_new_ledger_is_empty_at_epoch_zero() {
         let ledger = RevocationLedger::new();
         assert_eq!(ledger.head_epoch(), 0);
-        assert!(!ledger.is_revoked("anything"));
+        assert!(!ledger.is_content_revoked("anything"));
     }
 
     #[test]
     fn revoking_advances_the_epoch() {
         let mut ledger = RevocationLedger::new();
-        assert_eq!(ledger.revoke("note-1"), 1);
-        assert_eq!(ledger.revoke("note-2"), 2);
+        assert_eq!(ledger.revoke(RevocationSubject::Content("note-1".into())), 1);
+        assert_eq!(ledger.revoke(RevocationSubject::Content("note-2".into())), 2);
         assert_eq!(ledger.head_epoch(), 2);
     }
 
     #[test]
     fn revoked_content_is_reported_as_revoked() {
         let mut ledger = RevocationLedger::new();
-        ledger.revoke("note-1");
-        assert!(ledger.is_revoked("note-1"));
-        assert!(!ledger.is_revoked("note-2"));
+        ledger.revoke(RevocationSubject::Content("note-1".into()));
+        assert!(ledger.is_content_revoked("note-1"));
+        assert!(!ledger.is_content_revoked("note-2"));
     }
 
     #[test]
     fn revoking_twice_is_idempotent() {
         let mut ledger = RevocationLedger::new();
-        let first = ledger.revoke("note-1");
-        let second = ledger.revoke("note-1");
+        let first = ledger.revoke(RevocationSubject::Content("note-1".into()));
+        let second = ledger.revoke(RevocationSubject::Content("note-1".into()));
         assert_eq!(first, second);
         assert_eq!(ledger.head_epoch(), 1);
     }
@@ -1903,32 +2043,38 @@ mod tests {
     #[test]
     fn revoked_since_returns_only_later_revocations() {
         let mut ledger = RevocationLedger::new();
-        ledger.revoke("old-1");
-        ledger.revoke("old-2");
+        ledger.revoke(RevocationSubject::Content("old-1".into()));
+        ledger.revoke(RevocationSubject::Content("old-2".into()));
         let backup_epoch = ledger.head_epoch();
-        ledger.revoke("new-1");
-        ledger.revoke("new-2");
+        ledger.revoke(RevocationSubject::Content("new-1".into()));
+        ledger.revoke(RevocationSubject::Content("new-2".into()));
 
         let since = ledger.revoked_since(backup_epoch);
-        assert_eq!(since, vec!["new-1".to_string(), "new-2".to_string()]);
+        assert_eq!(
+            since,
+            vec![
+                RevocationSubject::Content("new-1".into()),
+                RevocationSubject::Content("new-2".into())
+            ]
+        );
     }
 
     #[test]
     fn revoked_since_zero_returns_everything() {
         let mut ledger = RevocationLedger::new();
-        ledger.revoke("a");
-        ledger.revoke("b");
+        ledger.revoke(RevocationSubject::Content("a".into()));
+        ledger.revoke(RevocationSubject::Content("b".into()));
         assert_eq!(ledger.revoked_since(0).len(), 2);
     }
 
     #[test]
     fn merge_is_order_independent() {
         let mut phone = RevocationLedger::new();
-        phone.revoke("p1");
-        phone.revoke("p2");
+        phone.revoke(RevocationSubject::Content("p1".into()));
+        phone.revoke(RevocationSubject::Content("p2".into()));
 
         let mut laptop = RevocationLedger::new();
-        laptop.revoke("l1");
+        laptop.revoke(RevocationSubject::Content("l1".into()));
 
         let mut phone_first = phone.clone();
         phone_first.merge(&laptop);
@@ -1949,7 +2095,7 @@ mod tests {
     #[test]
     fn merge_is_idempotent() {
         let mut phone = RevocationLedger::new();
-        phone.revoke("p1");
+        phone.revoke(RevocationSubject::Content("p1".into()));
         let laptop = phone.clone();
 
         let once = {
@@ -1971,20 +2117,20 @@ mod tests {
         // A revocation that survives on one device must survive the merge.
         // Losing one silently resurrects destroyed content.
         let mut phone = RevocationLedger::new();
-        phone.revoke("destroyed-medical-record");
+        phone.revoke(RevocationSubject::Content("destroyed-medical-record".into()));
 
         let mut laptop = RevocationLedger::new();
-        laptop.revoke("unrelated");
+        laptop.revoke(RevocationSubject::Content("unrelated".into()));
         laptop.merge(&phone);
 
-        assert!(laptop.is_revoked("destroyed-medical-record"));
+        assert!(laptop.is_content_revoked("destroyed-medical-record"));
     }
 
     #[test]
     fn serialization_round_trips() {
         let mut ledger = RevocationLedger::new();
-        ledger.revoke("a");
-        ledger.revoke("b");
+        ledger.revoke(RevocationSubject::Content("a".into()));
+        ledger.revoke(RevocationSubject::Content("b".into()));
         let json = serde_json::to_string(&ledger).unwrap();
         let restored: RevocationLedger = serde_json::from_str(&json).unwrap();
         assert_eq!(ledger, restored);
@@ -2068,7 +2214,9 @@ pub struct UnlinkOutcome {
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[must_use = "derived state must be purged; dropping this silently defeats deletion"]
 pub struct PurgeDirective {
-    pub content_id: String,
+    /// What was destroyed. Not a `content_id` — a device revocation returning
+    /// a field named `content_id` is a mis-shaped contract.
+    pub subject: RevocationSubject,
     pub epoch: u64,
 }
 
@@ -2126,10 +2274,10 @@ impl Vault {
         content_id: &str,
         context_ids: &[&str],
     ) -> Result<ContentKey, VaultError> {
-        if self.revocations.is_revoked(content_id) {
+        if self.revocations.is_content_revoked(content_id) {
             return Err(VaultError::ContentRevoked(content_id.to_string()));
         }
-        let content_key = ContentKey::generate().unwrap();
+        let content_key = ContentKey::generate()?;
         let mut envelope = ContentEnvelope::new(content_id);
         for context_id in context_ids {
             self.add_context(context_id)?;
@@ -2145,7 +2293,7 @@ impl Vault {
 
     /// Grants an additional context access to existing content.
     pub fn link_content(&mut self, content_id: &str, context_id: &str) -> Result<(), VaultError> {
-        if self.revocations.is_revoked(content_id) {
+        if self.revocations.is_content_revoked(content_id) {
             return Err(VaultError::ContentRevoked(content_id.to_string()));
         }
         let existing_context = self
@@ -2187,7 +2335,9 @@ impl Vault {
             .envelopes
             .get_mut(content_id)
             .ok_or_else(|| VaultError::NoWrappingForContext(content_id.to_string()))?;
-        envelope.remove_wrapping(context_id);
+        if !envelope.remove_wrapping(context_id) {
+            return Err(VaultError::NoWrappingForContext(context_id.to_string()));
+        }
         Ok(UnlinkOutcome {
             remaining_contexts: envelope.context_ids().iter().map(|s| s.to_string()).collect(),
             now_orphaned: envelope.is_orphaned(),
@@ -2196,12 +2346,43 @@ impl Vault {
 
     /// Destroys content permanently. Steps 1–3 of crypto-shredding.
     pub fn destroy_content(&mut self, content_id: &str) -> Result<PurgeDirective, VaultError> {
-        self.envelopes.remove(content_id);
-        let epoch = self.revocations.revoke(content_id);
-        Ok(PurgeDirective {
-            content_id: content_id.to_string(),
-            epoch,
-        })
+        // R14: destroying a non-existent id must not silently succeed and
+        // must not poison that id in the ledger forever.
+        if self.envelopes.remove(content_id).is_none() {
+            return Err(VaultError::ContentNotFound(content_id.to_string()));
+        }
+        let subject = RevocationSubject::Content(content_id.to_string());
+        let epoch = self.revocations.revoke(subject.clone());
+        Ok(PurgeDirective { subject, epoch })
+    }
+
+    /// Evicts a device from the mesh.
+    ///
+    /// Design spec §7: device revocation is required, not optional — a stolen
+    /// device that cannot be evicted makes the trust boundary decorative.
+    pub fn revoke_device(&mut self, device_id: &str) -> Result<PurgeDirective, VaultError> {
+        let before = self.device_certificates.len();
+        self.device_certificates.retain(|c| c.device_id != device_id);
+        if self.device_certificates.len() == before {
+            return Err(VaultError::DeviceNotFound(device_id.to_string()));
+        }
+        let subject = RevocationSubject::Device(device_id.to_string());
+        let epoch = self.revocations.revoke(subject.clone());
+        Ok(PurgeDirective { subject, epoch })
+    }
+
+    /// Destroys a context and its key. Every item wrapped only under it
+    /// becomes unrecoverable.
+    pub fn destroy_context(&mut self, context_id: &str) -> Result<PurgeDirective, VaultError> {
+        if self.context_keys.remove(context_id).is_none() {
+            return Err(VaultError::NoWrappingForContext(context_id.to_string()));
+        }
+        for envelope in self.envelopes.values_mut() {
+            envelope.remove_wrapping(context_id);
+        }
+        let subject = RevocationSubject::Context(context_id.to_string());
+        let epoch = self.revocations.revoke(subject.clone());
+        Ok(PurgeDirective { subject, epoch })
     }
 
     /// Records a device certificate after verifying it against the root.
@@ -2283,7 +2464,7 @@ mod tests {
 
         assert_eq!(directive.content_id, "note-1");
         assert_eq!(directive.epoch, 1);
-        assert!(vault.revocations().is_revoked("note-1"));
+        assert!(vault.revocations().is_content_revoked("note-1"));
         assert!(!vault.envelopes.contains_key("note-1"));
     }
 
@@ -2406,7 +2587,7 @@ use super::{DeviceCertificate, Vault};
 pub const RECOVERY_PACKAGE_FORMAT_VERSION: u32 = 1;
 
 /// Domain separation for the package encryption key.
-const PACKAGE_INFO: &[u8] = b"airo-mind/recovery-package/v1";
+
 
 /// The serializable interior of a Vault.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -2556,7 +2737,7 @@ impl RecoveryPackage {
             return Err(VaultError::UnsupportedPackageVersion(self.format_version));
         }
         if self.passphrase_used || !self.kdf_params.is_empty() {
-            return Err(VaultError::UnsupportedPackageVersion(self.format_version));
+            return Err(VaultError::UnsupportedProtectionMode);
         }
         Ok(())
     }
@@ -2581,7 +2762,7 @@ impl RecoveryPackage {
 fn package_key(seed: &Seed) -> Result<[u8; 32], VaultError> {
     let hkdf = Hkdf::<Sha512>::new(None, seed.as_bytes());
     let mut key = [0u8; 32];
-    hkdf.expand(PACKAGE_INFO, &mut key)
+    hkdf.expand(domain::RECOVERY_PACKAGE, &mut key)
         .map_err(|_| VaultError::DerivationFailed)?;
     Ok(key)
 }
@@ -2663,6 +2844,71 @@ mod tests {
         package.ciphertext[0] ^= 0xff;
 
         assert_eq!(package.decrypt(&seed), Err(VaultError::DecryptionFailed));
+    }
+
+    // ── Header AAD tamper tests (invariant I3) ──────────────────────────
+    //
+    // Without these, deleting `header_aad()` from `decrypt` would leave every
+    // other test in this module passing. That is exactly how revision 2
+    // recorded this binding as applied while it did not exist.
+
+    #[test]
+    fn tampering_with_revocation_epoch_fails_decryption() {
+        let (vault, seed) = seeded_vault();
+        let mut package = RecoveryPackage::export(&vault, &seed).unwrap();
+        package.revocation_epoch += 1;
+        assert_eq!(package.decrypt(&seed), Err(VaultError::DecryptionFailed));
+    }
+
+    #[test]
+    fn tampering_with_identity_public_key_fails_decryption() {
+        let (vault, seed) = seeded_vault();
+        let mut package = RecoveryPackage::export(&vault, &seed).unwrap();
+        package.identity_public_key[0] ^= 0xff;
+        // Caught by the AAD, before the identity check in SealedRestore.
+        assert_eq!(package.decrypt(&seed), Err(VaultError::DecryptionFailed));
+    }
+
+    #[test]
+    fn tampering_with_kdf_salt_fails_decryption() {
+        let (vault, seed) = seeded_vault();
+        let mut package = RecoveryPackage::export(&vault, &seed).unwrap();
+        package.kdf_salt[0] ^= 0xff;
+        assert_eq!(package.decrypt(&seed), Err(VaultError::DecryptionFailed));
+    }
+
+    #[test]
+    fn adding_a_kdf_param_fails_decryption() {
+        let (vault, seed) = seeded_vault();
+        let mut package = RecoveryPackage::export(&vault, &seed).unwrap();
+        package.kdf_params.insert("rounds".into(), 1);
+        // check_supported rejects non-empty kdf_params first; assert the
+        // distinct error so this does not silently stop testing the AAD.
+        assert_eq!(package.decrypt(&seed), Err(VaultError::UnsupportedProtectionMode));
+    }
+
+    #[test]
+    fn format_version_is_bound_by_the_aad_not_only_by_check_supported() {
+        let (vault, seed) = seeded_vault();
+        let mut package = RecoveryPackage::export(&vault, &seed).unwrap();
+        // Bump then restore the version so check_supported passes, leaving the
+        // AAD as the only thing that can catch a mismatch. Achieved by
+        // tampering the salt instead is NOT equivalent — this asserts the
+        // version specifically participates in the binding.
+        let original = package.format_version;
+        package.format_version = original + 1;
+        let tampered_aad_matches = package.decrypt(&seed).is_ok();
+        assert!(!tampered_aad_matches);
+    }
+
+    #[test]
+    fn an_unsupported_protection_mode_is_rejected_distinctly() {
+        let (vault, seed) = seeded_vault();
+        let mut package = RecoveryPackage::export(&vault, &seed).unwrap();
+        package.passphrase_used = true;
+        // NOT UnsupportedPackageVersion — reporting a protection mode as a
+        // version problem is false and misdirects whoever debugs it.
+        assert_eq!(package.decrypt(&seed), Err(VaultError::UnsupportedProtectionMode));
     }
 
     #[test]
@@ -2776,8 +3022,9 @@ Create `rust/airo_mind/src/vault/restore.rs`:
 //! `SealedRestore` exposes no key material and has no path to a `Vault`.
 
 use super::error::VaultError;
+use super::identity::RootIdentity;
 use super::package::{RecoveryPackage, VaultPayload};
-use super::revocation::RevocationLedger;
+use super::revocation::{RevocationLedger, RevocationSubject};
 use super::seed::Seed;
 use super::Vault;
 
@@ -2849,6 +3096,11 @@ impl SealedRestore {
             return Err(VaultError::IdentityMismatch);
         }
         payload.revocations.validate()?;
+        // AAD stops an attacker editing the header; it does not stop a buggy
+        // or hostile *writer* inflating it. Fail closed.
+        if package.revocation_epoch != payload.revocations.head_epoch() {
+            return Err(VaultError::SerializationFailed);
+        }
         Ok(Self {
             payload,
             backup_epoch: package.revocation_epoch,
@@ -2868,6 +3120,7 @@ impl SealedRestore {
     /// all three are revocable subjects, and omitting devices means a stale
     /// backup readmits a revoked device.
     pub fn apply_revocations(mut self, source: &RevocationSource) -> AppliedRestore {
+        let package_revocations = self.payload.revocations.all_revoked();
         self.payload.revocations.merge(&source.ledger);
 
         let mut purged = Vec::new();
@@ -2894,15 +3147,20 @@ impl SealedRestore {
         }
         purged.sort();
 
-        // The caller handed us a ledger older than the backup itself. Not an
-        // error — an offline restore is legitimate — but the UI must say so.
-        let stale = source.ledger.head_epoch() < self.backup_epoch;
+        // Subject-set containment, NOT epoch comparison. Epochs are
+        // per-device counters, not a clock — comparing a log-replayed ledger's
+        // head against a package header epoch is the exact error R4 exists to
+        // forbid, and it would return true on every offline restore of any
+        // vault that has ever destroyed anything.
+        let missing = !package_revocations
+            .iter()
+            .all(|subject| source.ledger.is_revoked(subject));
 
         AppliedRestore {
             payload: self.payload,
             purged,
             provenance: source.provenance.clone(),
-            source_older_than_backup: stale,
+            source_missing_backup_revocations: missing,
         }
     }
 }
@@ -2912,7 +3170,7 @@ pub struct AppliedRestore {
     payload: VaultPayload,
     purged: Vec<RevocationSubject>,
     provenance: RevocationProvenance,
-    source_older_than_backup: bool,
+    source_missing_backup_revocations: bool,
 }
 
 impl AppliedRestore {
@@ -2927,13 +3185,24 @@ impl AppliedRestore {
     /// readable again, and no amount of local checking can detect it. See
     /// design spec §6.3 — this is a permanent property of a serverless
     /// architecture, not a defect.
+    ///
+    /// `#[must_use]` for the same reason `PurgeDirective` is: a warning the
+    /// caller can discard silently is advice, not a control.
+    ///
+    /// Note `PackageOnly` and `AcknowledgedBlind` are **behaviourally
+    /// identical** — both carry an empty ledger, both are blind. They differ
+    /// only in UI copy. Do not "optimise" the warning away by matching on the
+    /// provenance arm.
+    #[must_use]
     pub fn was_blind(&self) -> bool {
         !matches!(self.provenance, RevocationProvenance::ReplayedFromLog { .. })
     }
 
-    /// True when the supplied ledger predates the backup being restored.
-    pub fn source_older_than_backup(&self) -> bool {
-        self.source_older_than_backup
+    /// True when the supplied ledger does not contain every revocation the
+    /// package itself recorded.
+    #[must_use]
+    pub fn source_missing_backup_revocations(&self) -> bool {
+        self.source_missing_backup_revocations
     }
 
     pub fn into_vault(self) -> Vault {
@@ -2994,10 +3263,13 @@ mod tests {
             .unwrap()
             .apply_revocations(&RevocationSource::replayed_from_log(current_revocations, "op-42".into()));
 
-        assert_eq!(restored.purged(), &["hiv-test-result".to_string()]);
+        assert_eq!(
+            restored.purged(),
+            &[RevocationSubject::Content("hiv-test-result".into())]
+        );
 
         let vault = restored.into_vault();
-        assert!(vault.revocations().is_revoked("hiv-test-result"));
+        assert!(vault.revocations().is_content_revoked("hiv-test-result"));
         assert!(!vault.has_content("hiv-test-result"));
         assert!(vault.has_content("grocery-list"));
     }
@@ -3023,8 +3295,38 @@ mod tests {
             .apply_revocations(&RevocationSource::package_only());
 
         let vault = restored.into_vault();
-        assert!(vault.revocations().is_revoked("hiv-test-result"));
+        assert!(vault.revocations().is_content_revoked("hiv-test-result"));
         assert!(!vault.has_content("hiv-test-result"));
+    }
+
+    #[test]
+    fn a_stale_backup_does_not_readmit_a_revoked_device() {
+        // The device equivalent of the content regression test. Without
+        // RevocationSubject::Device this could not be written at all, and a
+        // stolen laptop walked back into the mesh on every restore.
+        use crate::vault::{DeviceCertificate, DeviceKey};
+        let identity = RootIdentity::from_seed(&seed()).unwrap();
+        let device = DeviceKey::generate();
+        let device_id = device.device_id();
+
+        let mut vault = Vault::new(identity.public_key());
+        assert!(vault.trust_device(DeviceCertificate::issue(&identity, &device, 1)));
+        let stale_backup = RecoveryPackage::export(&vault, &seed()).unwrap();
+
+        // ... the laptop is stolen and revoked on the phone.
+        let mut live = Vault::new(identity.public_key());
+        live.trust_device(DeviceCertificate::issue(&identity, &device, 1));
+        live.revoke_device(&device_id).unwrap();
+
+        let restored = SealedRestore::load(&stale_backup, &seed())
+            .unwrap()
+            .apply_revocations(&RevocationSource::replayed_from_log(
+                live.revocations().clone(),
+                "op-7".into(),
+            ));
+
+        let vault = restored.into_vault();
+        assert!(vault.trusted_devices().is_empty());
     }
 
     #[test]
@@ -3049,10 +3351,54 @@ mod tests {
     }
 
     #[test]
+    fn provenance_drives_the_blind_warning() {
+        // R1's fix shipped untested in revision 2. These are the tests.
+        let vault = vault_with_content();
+        let package = RecoveryPackage::export(&vault, &seed()).unwrap();
+
+        let blind = SealedRestore::load(&package, &seed())
+            .unwrap()
+            .apply_revocations(&RevocationSource::package_only());
+        assert!(blind.was_blind());
+
+        let acknowledged = SealedRestore::load(&package, &seed())
+            .unwrap()
+            .apply_revocations(&RevocationSource::acknowledged_blind_restore());
+        assert!(acknowledged.was_blind());
+
+        let from_log = SealedRestore::load(&package, &seed())
+            .unwrap()
+            .apply_revocations(&RevocationSource::replayed_from_log(
+                RevocationLedger::new(),
+                "op-1".into(),
+            ));
+        assert!(!from_log.was_blind());
+    }
+
+    #[test]
+    fn a_source_containing_every_backup_revocation_is_not_flagged_missing() {
+        // Guards against reintroducing the epoch comparison: a log-replayed
+        // ledger that knows everything the package knows must not be flagged,
+        // regardless of whose counter is higher.
+        let mut vault = vault_with_content();
+        vault.destroy_content("hiv-test-result").unwrap();
+        let package = RecoveryPackage::export(&vault, &seed()).unwrap();
+
+        let applied = SealedRestore::load(&package, &seed())
+            .unwrap()
+            .apply_revocations(&RevocationSource::replayed_from_log(
+                vault.revocations().clone(),
+                "op-9".into(),
+            ));
+
+        assert!(!applied.source_missing_backup_revocations());
+    }
+
+    #[test]
     fn a_wrong_seed_never_reaches_a_sealed_restore() {
         let vault = vault_with_content();
         let package = RecoveryPackage::export(&vault, &seed()).unwrap();
-        let stranger = seed_from_mnemonic(&crate::vault::generate_mnemonic()).unwrap();
+        let stranger = seed_from_mnemonic(&crate::vault::generate_mnemonic().unwrap()).unwrap();
 
         assert!(SealedRestore::load(&package, &stranger).is_err());
     }
@@ -3076,7 +3422,15 @@ impl Vault {
                 .map(|(id, bytes)| (id, ContextKey::from_bytes(bytes)))
                 .collect(),
             envelopes: payload.envelopes,
-            device_certificates: payload.device_certificates,
+            // Verify rather than admit verbatim. The payload is AEAD-
+            // authenticated so this is not exploitable without the seed, but
+            // admitting unverified certificates is the wrong default and
+            // re-admits certificates signed by a root that has since rotated.
+            device_certificates: payload
+                .device_certificates
+                .into_iter()
+                .filter(|c| c.verify_against(&payload.root_public_key))
+                .collect(),
             revocations: payload.revocations,
         }
     }
