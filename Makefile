@@ -127,7 +127,7 @@ install-deps: ## Install all dependencies
 	@echo "$(YELLOW)Installing dependencies...$(NC)"
 	@cd $(APP_DIR) && flutter pub get
 	@cd packages/airo && flutter pub get
-	@cd packages/airomoney && flutter pub get
+	@cd packages/feature_coin && flutter pub get
 
 .PHONY: setup-android
 setup-android: ## Setup Android development environment
@@ -577,7 +577,7 @@ test: ## Run all tests
 	@echo "$(BLUE)Running tests...$(NC)"
 	@cd $(APP_DIR) && flutter test
 	@cd packages/airo && flutter test
-	@cd packages/airomoney && flutter test
+	@cd packages/feature_coin && flutter test
 
 .PHONY: test-coverage
 test-coverage: ## Run tests with coverage and check threshold
@@ -794,14 +794,14 @@ analyze: ## Analyze code for issues
 	@echo "$(BLUE)Analyzing code...$(NC)"
 	@cd $(APP_DIR) && flutter analyze
 	@cd packages/airo && flutter analyze
-	@cd packages/airomoney && flutter analyze
+	@cd packages/feature_coin && flutter analyze
 
 .PHONY: format
 format: ## Format code
 	@echo "$(BLUE)Formatting code...$(NC)"
 	@cd $(APP_DIR) && dart format .
 	@cd packages/airo && dart format .
-	@cd packages/airomoney && dart format .
+	@cd packages/feature_coin && dart format .
 
 # Maintenance Commands
 .PHONY: clean
@@ -809,7 +809,7 @@ clean: ## Clean build artifacts
 	@echo "$(BLUE)Cleaning build artifacts...$(NC)"
 	@cd $(APP_DIR) && flutter clean
 	@cd packages/airo && flutter clean
-	@cd packages/airomoney && flutter clean
+	@cd packages/feature_coin && flutter clean
 
 .PHONY: upgrade
 upgrade: ## Upgrade Flutter and dependencies
@@ -817,7 +817,7 @@ upgrade: ## Upgrade Flutter and dependencies
 	@flutter upgrade
 	@cd $(APP_DIR) && flutter pub upgrade
 	@cd packages/airo && flutter pub upgrade
-	@cd packages/airomoney && flutter pub upgrade
+	@cd packages/feature_coin && flutter pub upgrade
 
 .PHONY: doctor
 doctor: ## Run Flutter doctor
