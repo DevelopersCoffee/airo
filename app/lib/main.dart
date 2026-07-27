@@ -1,5 +1,6 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:core_data/core_data.dart';
+import 'package:core_product_shell/core_product_shell.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
@@ -7,12 +8,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'core/app/airo_app.dart';
 import 'core/app/main_provider_overrides.dart';
+import 'core/coins/coin_vault_module.dart';
 import 'core/config/firebase_status.dart';
 import 'core/error/global_error_handler.dart';
 import 'core/routing/app_router.dart';
 import 'core/startup/app_startup_tasks.dart';
 import 'package:feature_iptv/feature_iptv.dart';
 import 'features/iptv/epg_reminder_notification_gateway.dart';
+import 'features/iptv/iptv_feature_module.dart';
 import 'features/music/application/providers/beats_audio_provider.dart';
 import 'firebase_options.dart';
 
@@ -78,8 +81,10 @@ void main() async {
 
   // Initialize SharedPreferences for IPTV caching
   final prefs = await SharedPreferences.getInstance();
+  final moduleRegistry = buildMainModuleRegistry();
+  final router = AppRouter.createRouter(moduleRegistry: moduleRegistry);
   final epgReminderGateway = FlutterLocalNotificationsEpgReminderGateway(
-    onNotificationRoute: AppRouter.router.go,
+    onNotificationRoute: router.go,
   );
   await epgReminderGateway.initialize();
 
@@ -88,8 +93,9 @@ void main() async {
       overrides: buildMainProviderOverrides(
         prefs: prefs,
         epgReminderGateway: epgReminderGateway,
+        moduleRegistry: moduleRegistry,
       ),
-      child: const AiroApp(),
+      child: AiroApp(router: router),
     ),
   );
 
@@ -107,9 +113,23 @@ void main() async {
   );
 
   scheduleDeferredAuthInitialization();
+  scheduleDeferredFeatureInitialization(
+    initializeFeatures: moduleRegistry.initializeAll,
+  );
   scheduleDeferredProBootstrap();
   scheduleDeferredAudioInitialization(
     initializeAudio: initAudioService,
     skipOnWeb: true,
   );
+}
+
+/// Builds the modules composed into the phone/tablet super-app.
+///
+/// Shell-specific navigation chrome remains in [AppRouter], while the registry
+/// owns module inclusion, routes, lifecycle, and provider overrides.
+@visibleForTesting
+ModuleRegistry buildMainModuleRegistry() {
+  return ModuleRegistry(shell: ShellId.mobile)
+    ..register(CoinVaultModule())
+    ..register(IptvFeatureModule());
 }
