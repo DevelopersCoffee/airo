@@ -1,0 +1,11 @@
+#EXTM3U
+#EXTINF:-1 tvg-name="fixture-news" group-title="News",fixture-news
+https://itnhls.wns.live/hls/stream.m3u8?cv017=new
+#EXTINF:-1 tvg-name="Fixture Dead Stream" group-title="Diagnostics",Fixture Dead Stream
+https://example.invalid/fire-tv-cv017-dead.m3u8
+#EXTINF:-1 tvg-id="VevoPop.us@SD" tvg-name="Vevo Pop" group-title="Music",Vevo Pop (1080p)
+https://d128y56w6v2kax.cloudfront.net/playlist/amg00056-vevotv-vevopopau-samsungau/playlist.m3u8
+#EXTINF:-1 tvg-id="YRFMusic.in@SD" tvg-name="YRF Music" group-title="Music",YRF Music (1080p)
+https://cdn-uw2-prod.tsv2.amagi.tv/linear/amg01412-xiaomiasia-yrfmusic-xiaomi/playlist.m3u8
+#EXTINF:-1 tvg-id="B4UMusic.in@India" tvg-name="B4U Music" group-title="Music",B4U Music (576p)
+https://cdn-2.pishow.tv/live/415/master.m3u8

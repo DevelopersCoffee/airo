@@ -5,9 +5,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-// AiroTV D-pad design's "CONTEXT MENU (MENU key)" screen — reachable from
-// the live player via the remote's MENU key, previously entirely unhandled
-// (TvInputKey.menu fell through to the switch's default case).
+// Player MENU owns Player actions. The separate channel-actions overlay stays
+// reachable through Fire TV's long-press Select convention and the transport
+// bar's Info button.
 void main() {
   Future<ProviderContainer> pumpPlayer(WidgetTester tester) async {
     SharedPreferences.setMockInitialValues({});
@@ -48,27 +48,34 @@ void main() {
     return container;
   }
 
-  testWidgets('MENU key opens the context menu for the current channel', (
+  Future<void> openContextMenu(WidgetTester tester) async {
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.select);
+    await tester.pump(const Duration(milliseconds: 600));
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.select);
+    await tester.pump();
+    expect(find.text('Actions for'), findsOneWidget);
+  }
+
+  testWidgets('MENU key opens Player actions for the current stream', (
     tester,
   ) async {
     await pumpPlayer(tester);
 
-    expect(find.text('Actions for'), findsNothing);
-
     await tester.sendKeyEvent(LogicalKeyboardKey.contextMenu);
     await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
 
-    expect(find.text('Actions for'), findsOneWidget);
-    expect(find.text('City News Live'), findsWidgets);
-    expect(find.text('Add to favorites'), findsOneWidget);
+    expect(find.text('Player actions'), findsOneWidget);
+    expect(find.text('Actions for'), findsNothing);
+    await tester.binding.handlePopRoute();
+    await tester.pump(const Duration(milliseconds: 400));
   });
 
   testWidgets('selecting Add to favorites toggles the favorite and closes '
       'the menu', (tester) async {
     final container = await pumpPlayer(tester);
 
-    await tester.sendKeyEvent(LogicalKeyboardKey.contextMenu);
-    await tester.pump();
+    await openContextMenu(tester);
 
     await tester.tap(find.text('Add to favorites'));
     await tester.pump();
@@ -85,9 +92,7 @@ void main() {
   ) async {
     await pumpPlayer(tester);
 
-    await tester.sendKeyEvent(LogicalKeyboardKey.contextMenu);
-    await tester.pump();
-    expect(find.text('Actions for'), findsOneWidget);
+    await openContextMenu(tester);
 
     await tester.sendKeyEvent(LogicalKeyboardKey.escape);
     await tester.pump();
@@ -109,9 +114,7 @@ void main() {
     (tester) async {
       await pumpPlayer(tester);
 
-      await tester.sendKeyEvent(LogicalKeyboardKey.contextMenu);
-      await tester.pump();
-      expect(find.text('Actions for'), findsOneWidget);
+      await openContextMenu(tester);
 
       final handled = await tester.binding.handlePopRoute();
 
@@ -146,6 +149,41 @@ void main() {
     await tester.sendKeyUpEvent(LogicalKeyboardKey.select);
     await tester.pump();
   });
+
+  testWidgets(
+    'channel actions visibly own focus, trap DOWN, and restore player focus',
+    (tester) async {
+      await pumpPlayer(tester);
+      await openContextMenu(tester);
+
+      expect(
+        FocusManager.instance.primaryFocus?.debugLabel,
+        'channel action Favorite',
+      );
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+      await tester.pump();
+      final refreshFocus = tester.widget<Focus>(
+        find
+            .descendant(
+              of: find.byKey(const ValueKey('context-menu-refresh-playlist')),
+              matching: find.byType(Focus),
+            )
+            .first,
+      );
+      expect(refreshFocus.focusNode?.hasPrimaryFocus, isTrue);
+      expect(find.text('Mini guide'), findsNothing);
+      expect(find.text('Recent channels'), findsNothing);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pump();
+      expect(find.text('Actions for'), findsNothing);
+      expect(
+        FocusManager.instance.primaryFocus?.debugLabel,
+        'player center control',
+      );
+    },
+  );
 
   testWidgets('a short Select tap does not open the context menu', (
     tester,

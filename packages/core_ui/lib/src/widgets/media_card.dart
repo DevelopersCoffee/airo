@@ -39,6 +39,8 @@ class MediaCard extends StatelessWidget {
     this.isLive = false,
     this.onTap,
     this.onLongPress,
+    this.onFocus,
+    this.onUnfocus,
     this.autofocus = false,
   });
 
@@ -52,6 +54,8 @@ class MediaCard extends StatelessWidget {
   final bool isLive;
   final VoidCallback? onTap;
   final VoidCallback? onLongPress;
+  final VoidCallback? onFocus;
+  final VoidCallback? onUnfocus;
   final bool autofocus;
 
   /// (width, thumbnailHeight) for each [MediaCardVariant].
@@ -86,6 +90,8 @@ class MediaCard extends StatelessWidget {
       thumbnailHeight: thumbnailHeight,
       onTap: onTap,
       onLongPress: onLongPress,
+      onFocus: onFocus,
+      onUnfocus: onUnfocus,
       autofocus: autofocus,
     );
   }
