@@ -17,6 +17,7 @@ import '../widgets/adaptive_iptv_sheet.dart';
 import '../widgets/cast_device_picker_sheet.dart';
 import '../widgets/iptv_cast_mini_controller.dart';
 import '../widgets/iptv_navigation_drawer.dart';
+import '../widgets/offline_playback_banner.dart';
 import '../widgets/phone_media_play_on_tv_sheet.dart';
 import '../widgets/video_player_widget.dart';
 import '../widgets/xmltv_source_sheet.dart';
@@ -1202,6 +1203,12 @@ class _StreamTabContent extends ConsumerWidget {
                         onPressed: onFullscreenToggle,
                       ),
                     ),
+                  ),
+                  const Positioned(
+                    top: 60,
+                    left: 8,
+                    right: 8,
+                    child: OfflinePlaybackBanner(),
                   ),
                 ],
               ),
