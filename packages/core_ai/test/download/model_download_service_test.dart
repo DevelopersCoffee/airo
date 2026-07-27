@@ -1,222 +1,271 @@
 import 'dart:async';
+
 import 'package:core_ai/core_ai.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:platform_downloads/platform_downloads.dart';
 
 class MockModelStorageManager extends Mock implements ModelStorageManager {}
 
+class FakeBackgroundDownloads implements BackgroundDownloads {
+  final eventController = StreamController<DownloadProgress>.broadcast();
+  final requests = <DownloadArtifactRequest>[];
+  final actions = <String>[];
+  var queue = const DownloadQueueSnapshot(entries: []);
+
+  @override
+  Stream<DownloadProgress> get events => eventController.stream;
+
+  @override
+  Future<void> enqueue(DownloadArtifactRequest request) async {
+    requests.add(request);
+  }
+
+  @override
+  Future<void> pause(String artifactId) async {
+    actions.add('pause:$artifactId');
+  }
+
+  @override
+  Future<void> resume(String artifactId) async {
+    actions.add('resume:$artifactId');
+  }
+
+  @override
+  Future<void> retry(String artifactId) async {
+    actions.add('retry:$artifactId');
+  }
+
+  @override
+  Future<void> cancel(String artifactId) async {
+    actions.add('cancel:$artifactId');
+  }
+
+  @override
+  Future<DownloadQueueSnapshot> getQueue() async => queue;
+
+  @override
+  Future<int?> getAvailableBytes() async => 10 * 1024 * 1024 * 1024;
+
+  Future<void> dispose() => eventController.close();
+}
+
 void main() {
-  TestWidgetsFlutterBinding.ensureInitialized();
-
   late ModelDownloadService downloadService;
-  late MockModelStorageManager mockStorageManager;
-  late List<MethodCall> methodCalls;
-  late StreamController<dynamic> progressStreamController;
+  late MockModelStorageManager storage;
+  late FakeBackgroundDownloads downloads;
 
-  const MethodChannel methodChannel = MethodChannel('com.airo.model_download');
-  const EventChannel eventChannel = EventChannel(
-    'com.airo.model_download/progress',
-  );
-
-  final modelA = OfflineModelInfo(
-    id: 'model_a',
+  final model = OfflineModelInfo(
+    id: 'model-a',
     name: 'Model A',
     family: ModelFamily.gemma,
     fileSizeBytes: 1000,
     downloadUrl: 'https://example.com/a.gguf',
+    sha256: '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
   );
 
-  final modelB = OfflineModelInfo(
-    id: 'model_b',
-    name: 'Model B',
-    family: ModelFamily.gemma,
-    fileSizeBytes: 2000,
-    downloadUrl: 'https://example.com/b.gguf',
-  );
+  setUpAll(() {
+    registerFallbackValue(model);
+  });
 
   setUp(() {
-    methodCalls = <MethodCall>[];
-    progressStreamController = StreamController<dynamic>.broadcast();
-
-    // Mock Method Channel
-    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(methodChannel, (MethodCall methodCall) async {
-          methodCalls.add(methodCall);
-          return true;
-        });
-
-    // Mock Event Channel
-    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(MethodChannel(eventChannel.name), (
-          MethodCall methodCall,
-        ) async {
-          if (methodCall.method == 'listen') {
-            progressStreamController.stream.listen((event) {
-              final message = const StandardMethodCodec().encodeSuccessEnvelope(
-                event,
-              );
-              TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-                  .handlePlatformMessage(eventChannel.name, message, (_) {});
-            });
-          }
-          return null;
-        });
-
-    mockStorageManager = MockModelStorageManager();
-
-    // Default mock behavior
+    storage = MockModelStorageManager();
+    downloads = FakeBackgroundDownloads();
     when(
-      () => mockStorageManager.verifyModelIntegrity(modelA),
+      () => storage.verifyModelIntegrity(model),
     ).thenAnswer((_) async => false);
     when(
-      () => mockStorageManager.verifyModelIntegrity(modelB),
-    ).thenAnswer((_) async => false);
-    when(
-      () => mockStorageManager.hasEnoughDiskSpace(any()),
+      () => storage.hasEnoughDiskSpace(model.fileSizeBytes),
     ).thenAnswer((_) async => true);
     when(
-      () => mockStorageManager.getModelPath(modelA.id, model: modelA),
-    ).thenAnswer((_) async => '/mock/path/model_a.gguf');
-    when(
-      () => mockStorageManager.getModelPath(modelB.id, model: modelB),
-    ).thenAnswer((_) async => '/mock/path/model_b.gguf');
-
+      () => storage.getModelPath(model.id, model: model),
+    ).thenAnswer((_) async => '/sandbox/model-a.gguf');
+    when(() => storage.writeInstallReceipt(any())).thenAnswer(
+      (_) async => ModelInstallReceipt(
+        modelId: model.id,
+        catalogFingerprint: 'fingerprint',
+        installedAt: DateTime.utc(2026, 7, 27),
+      ),
+    );
+    when(() => storage.deleteInstallReceipt(any())).thenAnswer((_) async {});
     downloadService = ModelDownloadService(
-      methodChannel: methodChannel,
-      eventChannel: eventChannel,
-      storageManager: mockStorageManager,
+      downloads: downloads,
+      storageManager: storage,
     );
   });
 
   tearDown(() async {
-    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(methodChannel, null);
-    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(MethodChannel(eventChannel.name), null);
-    await progressStreamController.close();
     await downloadService.dispose();
-  });
-
-  test('downloadModel starts native download if active is idle', () async {
-    final stream = downloadService.downloadModel(modelA);
-    final futureProgress = stream.first;
-
-    // Simulate progress updates from native
-    progressStreamController.add({
-      'modelId': 'model_a',
-      'status': 'downloading',
-      'downloadedBytes': 500,
-      'totalBytes': 1000,
-      'speedBytesPerSecond': 50.0,
-    });
-
-    final progress = await futureProgress;
-    expect(progress.modelId, 'model_a');
-    expect(progress.downloadedBytes, 500);
-    expect(progress.status, ModelDownloadStatus.downloading);
+    await downloads.dispose();
   });
 
   test(
-    'downloadModel queues subsequent downloads and processes sequentially',
+    'downloadModel delegates a verified request to platform_downloads',
     () async {
-      final streamA = downloadService.downloadModel(modelA);
-      final futureA = streamA.toList();
+      final firstProgress = downloadService.downloadModel(model).first;
 
-      final streamB = downloadService.downloadModel(modelB);
-      final futureB = streamB.first;
+      await Future<void>.delayed(Duration.zero);
 
-      // Let the microtasks run to queue the downloads
-      await Future.delayed(Duration.zero);
+      expect(downloads.requests, hasLength(1));
+      final request = downloads.requests.single;
+      expect(request.artifactId, model.id);
+      expect(request.source, Uri.parse(model.downloadUrl!));
+      expect(request.destinationPath, '/sandbox/model-a.gguf');
+      expect(request.expectedBytes, model.fileSizeBytes);
+      expect(request.expectedSha256, model.sha256);
+      expect((await firstProgress).status, ModelDownloadStatus.pending);
+    },
+  );
 
-      final progressB = await futureB;
-      expect(progressB.status, ModelDownloadStatus.pending);
+  test(
+    'platform progress maps to model progress without path leakage',
+    () async {
+      final progressValues = <ModelDownloadProgress>[];
+      final subscription = downloadService
+          .downloadModel(model)
+          .listen(progressValues.add);
+      await Future<void>.delayed(Duration.zero);
 
-      expect(methodCalls.map((c) => c.arguments['modelId']), ['model_a']);
+      downloads.eventController.add(
+        const DownloadProgress(
+          artifactId: 'model-a',
+          status: DownloadStatus.downloading,
+          downloadedBytes: 500,
+          totalBytes: 1000,
+          speedBytesPerSecond: 100,
+          retryCount: 1,
+        ),
+      );
+      await Future<void>.delayed(Duration.zero);
 
-      progressStreamController.add({
-        'modelId': 'model_a',
-        'status': 'completed',
-        'downloadedBytes': 1000,
-        'totalBytes': 1000,
-      });
+      expect(progressValues.last.modelId, model.id);
+      expect(progressValues.last.status, ModelDownloadStatus.downloading);
+      expect(progressValues.last.downloadedBytes, 500);
+      expect(progressValues.last.speedBytesPerSecond, 100);
+      expect(progressValues.last.error, isNull);
+      await subscription.cancel();
+    },
+  );
 
-      await futureA;
-      await Future.delayed(Duration.zero);
+  test('completed platform transfer records an install receipt', () async {
+    final progressValues = <ModelDownloadProgress>[];
+    final subscription = downloadService
+        .downloadModel(model)
+        .listen(progressValues.add);
+    await Future<void>.delayed(Duration.zero);
 
-      expect(methodCalls.map((c) => c.arguments['modelId']), [
-        'model_a',
-        'model_b',
+    downloads.eventController.add(
+      const DownloadProgress(
+        artifactId: 'model-a',
+        status: DownloadStatus.completed,
+        downloadedBytes: 1000,
+        totalBytes: 1000,
+      ),
+    );
+    await Future<void>.delayed(Duration.zero);
+
+    verify(() => storage.writeInstallReceipt(model)).called(1);
+    expect(progressValues.last.status, ModelDownloadStatus.completed);
+    await subscription.cancel();
+  });
+
+  test(
+    'pause resume retry and cancel delegate to the shared controller',
+    () async {
+      downloadService.downloadModel(model);
+      await Future<void>.delayed(Duration.zero);
+
+      await downloadService.pauseDownload(model.id);
+      await downloadService.resumeDownload(model.id);
+      await downloadService.retryDownload(model.id);
+      await downloadService.cancelDownload(model.id);
+
+      expect(downloads.actions, [
+        'pause:model-a',
+        'resume:model-a',
+        'retry:model-a',
+        'cancel:model-a',
       ]);
     },
   );
 
-  test('cancelDownload removes from queue directly', () async {
-    downloadService.downloadModel(modelA);
-    final streamB = downloadService.downloadModel(modelB);
+  test(
+    'valid existing artifact completes without enqueuing transfer',
+    () async {
+      when(
+        () => storage.verifyModelIntegrity(model),
+      ).thenAnswer((_) async => true);
 
-    final futureB = streamB.toList();
+      final progress = await downloadService.downloadModel(model).first;
 
-    // Let the microtasks run to queue the downloads
-    await Future.delayed(Duration.zero);
+      expect(progress.status, ModelDownloadStatus.completed);
+      expect(downloads.requests, isEmpty);
+    },
+  );
 
-    await downloadService.cancelDownload('model_b');
-
-    final list = await futureB;
-    expect(list.map((e) => e.status), contains(ModelDownloadStatus.cancelled));
-  });
-
-  test('cancelDownload invokes native cancel for active model', () async {
-    downloadService.downloadModel(modelA);
-
-    // Let the microtasks run to start the download
-    await Future.delayed(Duration.zero);
-
-    await downloadService.cancelDownload('model_a');
-
-    expect(methodCalls.last.method, 'cancelDownload');
-    expect(methodCalls.last.arguments['modelId'], 'model_a');
-  });
-
-  test('insufficient space fails download immediately', () async {
+  test('insufficient space fails before enqueue', () async {
     when(
-      () => mockStorageManager.hasEnoughDiskSpace(any()),
+      () => storage.hasEnoughDiskSpace(model.fileSizeBytes),
     ).thenAnswer((_) async => false);
 
-    final stream = downloadService.downloadModel(modelA);
-    final progress = await stream.first;
+    final progress = await downloadService.downloadModel(model).first;
 
     expect(progress.status, ModelDownloadStatus.failed);
     expect(progress.error, contains('Insufficient disk space'));
-    expect(methodCalls.isEmpty, isTrue);
+    expect(downloads.requests, isEmpty);
+  });
+
+  test('downloadModel preserves LiteRT destination extension', () async {
+    final litertModel = OfflineModelInfo(
+      id: 'gemma-litert',
+      name: 'Gemma LiteRT',
+      family: ModelFamily.gemma,
+      fileSizeBytes: 1000,
+      downloadUrl: 'https://example.com/gemma.litertlm',
+    );
+    when(
+      () => storage.verifyModelIntegrity(litertModel),
+    ).thenAnswer((_) async => false);
+    when(
+      () => storage.hasEnoughDiskSpace(litertModel.fileSizeBytes),
+    ).thenAnswer((_) async => true);
+    when(
+      () => storage.getModelPath(litertModel.id, model: litertModel),
+    ).thenAnswer((_) async => '/sandbox/gemma-litert.litertlm');
+
+    downloadService.downloadModel(litertModel);
+    await Future<void>.delayed(Duration.zero);
+
+    expect(
+      downloads.requests.single.destinationPath,
+      '/sandbox/gemma-litert.litertlm',
+    );
   });
 
   test(
-    'downloadModel preserves LiteRT destination extension from model metadata',
+    'restoreQueue maps persisted platform state after engine restart',
     () async {
-      final litertModel = OfflineModelInfo(
-        id: 'gemma_litert',
-        name: 'Gemma LiteRT',
-        family: ModelFamily.gemma,
-        fileSizeBytes: 1000,
-        downloadUrl: 'https://example.com/gemma.litertlm',
+      downloads.queue = const DownloadQueueSnapshot(
+        entries: [
+          DownloadProgress(
+            artifactId: 'model-a',
+            status: DownloadStatus.paused,
+            downloadedBytes: 400,
+            totalBytes: 1000,
+            queuePosition: 0,
+            retryCount: 2,
+            resumeSupported: true,
+          ),
+        ],
       );
 
-      when(
-        () => mockStorageManager.verifyModelIntegrity(litertModel),
-      ).thenAnswer((_) async => false);
-      when(
-        () =>
-            mockStorageManager.getModelPath(litertModel.id, model: litertModel),
-      ).thenAnswer((_) async => '/mock/path/gemma_litert.litertlm');
+      final restored = await downloadService.restoreQueue();
 
-      downloadService.downloadModel(litertModel);
-      await Future<void>.delayed(Duration.zero);
-
-      expect(
-        methodCalls.last.arguments['filePath'],
-        '/mock/path/gemma_litert.litertlm',
-      );
+      expect(restored.single.modelId, 'model-a');
+      expect(restored.single.status, ModelDownloadStatus.paused);
+      expect(restored.single.downloadedBytes, 400);
+      expect(restored.single.retryCount, 2);
+      expect(restored.single.resumeSupported, isTrue);
     },
   );
 }
