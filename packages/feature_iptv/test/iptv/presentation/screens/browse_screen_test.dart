@@ -13,6 +13,8 @@ void main() {
       streamUrl: 'https://example.com/news.m3u8',
       group: 'News',
       category: ChannelCategory.news,
+      country: 'IN',
+      languages: ['en'],
     ),
   ];
 
@@ -24,6 +26,9 @@ void main() {
     final container = ProviderContainer(
       overrides: [
         sharedPreferencesProvider.overrideWithValue(prefs),
+        regionalDiscoveryLocaleProvider.overrideWithValue(
+          const Locale('en', 'IN'),
+        ),
         iptvChannelsProvider.overrideWith((ref) async => channels),
         recentlyWatchedChannelsProvider.overrideWith((ref) async => const []),
       ],

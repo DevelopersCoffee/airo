@@ -6,7 +6,7 @@ void main() {
   const b = IPTVChannel(id: 'b', name: 'B', streamUrl: 'u');
   const c = IPTVChannel(id: 'c', name: 'C', streamUrl: 'u');
 
-  group('popularity ordering', () {
+  group('explicit signal ordering', () {
     test(
       'favorites outrank watch history, which outranks provider order',
       () async {
@@ -141,18 +141,18 @@ void main() {
     });
   });
 
-  test('DefaultRailCatalog exposes the v1 rail set', () {
+  test('DefaultRailCatalog exposes truth-labelled generic rails', () {
     final ids = DefaultRailCatalog.definitions().map((d) => d.id).toList();
     expect(
       ids,
       containsAll(<String>[
-        'top-india',
         'live-sports',
         'movies-on-now',
         'hindi-news',
         'favorites',
       ]),
     );
+    expect(ids, isNot(contains('top-india')));
     // No 'recently-added' rail: IPTVChannel carries no "added at" signal, so
     // a rail claiming that meaning would just be a byte-identical duplicate
     // of 'top-india' (both use an empty RailQuery + the same comparator).

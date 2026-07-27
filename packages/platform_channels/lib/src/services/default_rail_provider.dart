@@ -8,13 +8,6 @@ class DefaultRailCatalog {
 
   static List<RailDefinition> definitions() => const [
     RailDefinition(
-      id: 'top-india',
-      title: 'Top India',
-      subtitle: 'Ranked by popularity',
-      query: RailQuery(),
-      priority: 0,
-    ),
-    RailDefinition(
       id: 'recently-watched',
       title: 'Recently Watched',
       subtitle: 'Jump back in',
@@ -66,20 +59,19 @@ class DefaultRailCatalog {
   ];
 }
 
-/// Popularity-scored rail builder using tiered comparison: favorites strictly
+/// Signal-ordered rail builder using tiered comparison: favorites strictly
 /// outrank watch history, which strictly outranks provider order. Signals are
 /// independent; watch count cannot boost a non-favorite to outrank a favorite.
-/// Later replaced by regional popularity / trending / AI ranking behind
-/// the same [RailProvider] interface — zero UI change.
+/// Regional discovery uses a separate, truth-labelled application composer.
 class DefaultRailProvider implements RailProvider {
   DefaultRailProvider({
-    required List<IPTVChannel> channels,
+    required this.channels,
     this.favoriteIds = const {},
     this.watchCounts = const {},
     this.recentIds = const [],
-  }) : _channels = channels;
+  });
 
-  final List<IPTVChannel> _channels;
+  final List<IPTVChannel> channels;
   final Set<String> favoriteIds;
   final Map<String, int> watchCounts;
 
@@ -99,14 +91,14 @@ class DefaultRailProvider implements RailProvider {
   @override
   Future<List<IPTVChannel>> buildRail(RailDefinition rail) async {
     if (rail.query.recentOnly) {
-      final byId = {for (final ch in _channels) ch.id: ch};
+      final byId = {for (final ch in channels) ch.id: ch};
       return [
         for (final id in recentIds)
           if (byId[id] != null && rail.query.matches(byId[id]!)) byId[id]!,
       ].take(rail.maxItems).toList();
     }
 
-    Iterable<IPTVChannel> pool = _channels.where(rail.query.matches);
+    Iterable<IPTVChannel> pool = channels.where(rail.query.matches);
     if (rail.query.favoritesOnly) {
       pool = pool.where((ch) => favoriteIds.contains(ch.id));
     }
@@ -115,7 +107,7 @@ class DefaultRailProvider implements RailProvider {
     // intelligence layer.
     final indexed = pool.toList();
     final providerIndex = <String, int>{
-      for (var i = 0; i < _channels.length; i++) _channels[i].id: i,
+      for (var i = 0; i < channels.length; i++) channels[i].id: i,
     };
     indexed.sort((x, y) => _compare(x, y, providerIndex));
     return indexed.take(rail.maxItems).toList();

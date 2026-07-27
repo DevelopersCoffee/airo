@@ -1,5 +1,6 @@
 import 'package:feature_iptv/feature_iptv.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -12,7 +13,7 @@ void main() {
       const RailResult(
         definition: RailDefinition(
           id: 'top-india',
-          title: 'Top India',
+          title: 'Channels in India',
           query: RailQuery(),
           priority: 0,
         ),
@@ -26,8 +27,41 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.text('Top India'), findsOneWidget);
+    expect(find.text('Channels in India'), findsOneWidget);
     expect(find.text('Star Sports'), findsOneWidget);
+  });
+
+  testWidgets('rail cards are keyboard focusable and selectable', (
+    tester,
+  ) async {
+    var selected = false;
+    final rails = [
+      const RailResult(
+        definition: RailDefinition(
+          id: 'regional-IN',
+          title: 'Channels in India',
+          query: RailQuery(),
+          priority: 0,
+        ),
+        channels: [IPTVChannel(id: 'x', name: 'DD National', streamUrl: 'u')],
+      ),
+    ];
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [railsProvider.overrideWith((ref) async => rails)],
+        child: MaterialApp(
+          home: BrowseScreen(onChannelSelected: (_) => selected = true),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+    await tester.pump();
+    expect(FocusManager.instance.primaryFocus, isNotNull);
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pump();
+    expect(selected, isTrue);
   });
 
   testWidgets('shows loading indicator while rails build', (tester) async {

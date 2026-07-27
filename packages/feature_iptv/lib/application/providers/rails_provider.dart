@@ -2,11 +2,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:platform_channels/platform_channels.dart';
 
 import 'iptv_providers.dart';
+import 'regional_discovery_providers.dart';
 
 /// The generated browse rails. UI renders this list verbatim — rail
 /// content, ordering, and visibility are decided by the Media Engine
 /// (and later the Edge Intelligence SDK), never by widgets.
 final railsProvider = FutureProvider<List<RailResult>>((ref) async {
+  final regional = await ref.watch(regionalDiscoveryRailsProvider.future);
   final channels = await ref.watch(iptvChannelsProvider.future);
 
   List<IPTVChannel> favorites;
@@ -32,5 +34,14 @@ final railsProvider = FutureProvider<List<RailResult>>((ref) async {
     // Watch counts arrive when core_watch_progress wiring lands
     // (spec §9 — Continue Watching reserved).
   );
-  return provider.buildAll(DefaultRailCatalog.definitions());
+  final personal = await provider.buildAll(
+    DefaultRailCatalog.definitions()
+        .where(
+          (definition) =>
+              definition.id == 'recently-watched' ||
+              definition.id == 'favorites',
+        )
+        .toList(growable: false),
+  );
+  return [...personal, ...regional];
 });

@@ -1,39 +1,31 @@
-<!--
-This README describes the package. If you publish this package to pub.dev,
-this README's contents appear on the landing page for your package.
+# feature_iptv
 
-For information about how to write a good package README, see the guide for
-[writing package pages](https://dart.dev/tools/pub/writing-package-pages).
+Airo's application-owned IPTV journeys, including browse, search, playback,
+filters, settings, and TV presentation. Reusable transport, parsing, storage,
+and player contracts remain in platform packages.
 
-For general information about developing packages, see the Dart guide for
-[creating packages](https://dart.dev/guides/libraries/create-packages)
-and the Flutter guide for
-[developing packages and plugins](https://flutter.dev/to/develop-packages).
--->
+## Regional discovery curation
 
-TODO: Put a short description of the package here that helps potential users
-know whether this package might be useful for them.
+Regional shelves are composed by `RegionalDiscoveryComposer` from typed
+channel metadata, the user's country preference, optional session health, and
+reviewed editorial seeds. Labels may describe only those facts; popularity
+claims are not allowed.
 
-## Features
-
-TODO: List what your package can do. Maybe include images, gifs, or videos.
-
-## Getting started
-
-TODO: List prerequisites and provide or point to information on how to
-start using the package.
-
-## Usage
-
-TODO: Include short and useful examples for package users. Add longer examples
-to `/example` folder.
+Seeds live in `lib/domain/regional_discovery.dart` as
+`RegionalDiscoverySeed` values:
 
 ```dart
-const like = 'sample';
+RegionalDiscoverySeed(
+  countryCode: 'IN',          // ISO 3166-1 alpha-2
+  title: 'Curated for India', // explicit editorial label
+  channelIds: <String>[       // upstream IDs in intended shelf order
+    'DDNational.in',
+    'DDNews.in',
+  ],
+)
 ```
 
-## Additional information
-
-TODO: Tell users more about the package: where to find more information, how to
-contribute to the package, how to file issues, what response they can expect
-from the package authors, and more.
+Unknown or retired IDs are ignored. Adding a country requires product review
+of the label and ordered IDs plus deterministic composer tests. Device locale
+provides the initial country; Airo's existing country picker is the manual,
+locally persisted override. No network location signal is used.

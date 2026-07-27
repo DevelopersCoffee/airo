@@ -48,6 +48,8 @@ export "presentation/screens/browse_screen.dart";
 export "presentation/screens/iptv_screen.dart";
 export "presentation/screens/mobile_favorites_screen.dart";
 export "presentation/screens/settings/country_settings_tile.dart";
+export 'domain/regional_discovery.dart';
+export 'application/providers/regional_discovery_providers.dart';
 export "presentation/screens/settings/playback_settings_screen.dart";
 export "presentation/screens/vod_screen.dart";
 export "presentation/tv/iptv_guide_screen.dart";
