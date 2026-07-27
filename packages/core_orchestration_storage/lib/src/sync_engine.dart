@@ -339,6 +339,47 @@ abstract interface class AiroSyncTransport {
   Future<List<AiroSyncEnvelope>> pull();
 }
 
+abstract interface class AiroSyncExchange {
+  Future<void> push(AiroSyncEnvelope envelope);
+
+  Future<List<AiroSyncEnvelope>> pull();
+}
+
+abstract base class AiroExchangeSyncTransport implements AiroSyncTransport {
+  const AiroExchangeSyncTransport(this._exchange, {required this.security});
+
+  @override
+  final AiroSyncTransportSecurity security;
+
+  final AiroSyncExchange _exchange;
+
+  @override
+  Future<List<AiroSyncEnvelope>> pull() => _exchange.pull();
+
+  @override
+  Future<void> push(AiroSyncEnvelope envelope) => _exchange.push(envelope);
+}
+
+final class AiroLanSyncTransport extends AiroExchangeSyncTransport {
+  const AiroLanSyncTransport({
+    required AiroSyncTransportSecurity security,
+    required AiroSyncExchange exchange,
+  }) : super(exchange, security: security);
+
+  @override
+  AiroSyncTransportKind get kind => AiroSyncTransportKind.lan;
+}
+
+final class AiroCloudSyncTransport extends AiroExchangeSyncTransport {
+  const AiroCloudSyncTransport({
+    required AiroSyncTransportSecurity security,
+    required AiroSyncExchange exchange,
+  }) : super(exchange, security: security);
+
+  @override
+  AiroSyncTransportKind get kind => AiroSyncTransportKind.cloud;
+}
+
 class AiroFakeSyncTransport implements AiroSyncTransport {
   AiroFakeSyncTransport({
     required this.kind,

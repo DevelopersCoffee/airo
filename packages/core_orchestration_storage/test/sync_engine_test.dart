@@ -130,7 +130,7 @@ void main() {
   );
 
   test(
-    'LAN and cloud use one engine contract and reject insecure input',
+    'LAN and cloud adapters use one engine contract and reject insecure input',
     () async {
       final update = entity(
         fields: {
@@ -147,24 +147,20 @@ void main() {
         compressed: true,
         pairedIdentityRef: 'identity-1',
       );
-      final lan = AiroFakeSyncTransport(
-        kind: AiroSyncTransportKind.lan,
+      final lanExchange = _FakeSyncExchange([envelope]);
+      final cloudExchange = _FakeSyncExchange([envelope]);
+      final lan = AiroLanSyncTransport(security: secure, exchange: lanExchange);
+      final cloud = AiroCloudSyncTransport(
         security: secure,
-        incoming: [envelope],
+        exchange: cloudExchange,
       );
-      final cloud = AiroFakeSyncTransport(
-        kind: AiroSyncTransportKind.cloud,
-        security: secure,
-        incoming: [envelope],
-      );
-      final insecure = AiroFakeSyncTransport(
-        kind: AiroSyncTransportKind.cloud,
+      final insecure = AiroCloudSyncTransport(
         security: const AiroSyncTransportSecurity(
           encrypted: false,
           compressed: true,
           pairedIdentityRef: 'identity-1',
         ),
-        incoming: [envelope],
+        exchange: _FakeSyncExchange([envelope]),
       );
       final engine = AiroSyncEngine(resolver: resolver);
 
@@ -172,6 +168,10 @@ void main() {
       expect((await engine.synchronize(cloud)).duplicateCount, 1);
       expect((await engine.synchronize(insecure)).rejectedInsecure, isTrue);
       expect(engine.entity('favorite-a')?.fields['favorite']?.value, isTrue);
+      await lan.push(envelope);
+      await cloud.push(envelope);
+      expect(lanExchange.pushed, [envelope]);
+      expect(cloudExchange.pushed, [envelope]);
     },
   );
 
@@ -219,6 +219,26 @@ void main() {
       expect(persistence.writes.single.fields['favorite']?.value, isTrue);
     },
   );
+}
+
+class _FakeSyncExchange implements AiroSyncExchange {
+  _FakeSyncExchange(Iterable<AiroSyncEnvelope> incoming)
+    : _incoming = List.of(incoming);
+
+  final List<AiroSyncEnvelope> _incoming;
+  final List<AiroSyncEnvelope> pushed = [];
+
+  @override
+  Future<List<AiroSyncEnvelope>> pull() async {
+    final result = List<AiroSyncEnvelope>.of(_incoming);
+    _incoming.clear();
+    return result;
+  }
+
+  @override
+  Future<void> push(AiroSyncEnvelope envelope) async {
+    pushed.add(envelope);
+  }
 }
 
 class _FakeSyncPersistence implements AiroSyncEntityPersistence {
