@@ -57,20 +57,6 @@ on:
         description: 'Comma-separated Firebase tester groups'
         required: false
         type: string
-  pull_request:
-    branches: [ main ]
-    paths:
-      - 'app/**'
-      - 'packages/**'
-      - 'scripts/**'
-      - '.github/workflows/airo-tv-release.yml'
-  push:
-    branches: [ main ]
-    paths:
-      - 'app/**'
-      - 'packages/**'
-      - 'scripts/**'
-      - '.github/workflows/airo-tv-release.yml'
   workflow_dispatch:
     inputs:
       version:
