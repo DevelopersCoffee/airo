@@ -46,10 +46,9 @@ class ModuleRegistry {
     }
 
     final existingRoutes = _modules
-        .expand((existing) => existing.routesFor(shell))
-        .whereType<GoRoute>()
+        .expand((existing) => _routeIdentities(existing.routesFor(shell)))
         .toList(growable: false);
-    final candidateRoutes = module.routesFor(shell).whereType<GoRoute>();
+    final candidateRoutes = _routeIdentities(module.routesFor(shell));
 
     for (final candidate in candidateRoutes) {
       final conflictingPath = existingRoutes
@@ -57,7 +56,7 @@ class ModuleRegistry {
           .firstOrNull;
       if (conflictingPath != null) {
         throw ModuleCompositionException(
-          'Duplicate top-level route path "${candidate.path}" for shell '
+          'Duplicate route path "${candidate.path}" for shell '
           '"${shell.value}" while registering module "${module.id}".',
         );
       }
@@ -69,7 +68,7 @@ class ModuleRegistry {
           .firstOrNull;
       if (conflictingName != null) {
         throw ModuleCompositionException(
-          'Duplicate top-level route name "$candidateName" for shell '
+          'Duplicate route name "$candidateName" for shell '
           '"${shell.value}" while registering module "${module.id}".',
         );
       }
@@ -143,4 +142,28 @@ class ModuleRegistry {
 
   /// Ids of registered modules, in registration order.
   List<String> get moduleIds => _modules.map((module) => module.id).toList();
+}
+
+class _RouteIdentity {
+  const _RouteIdentity({required this.path, required this.name});
+
+  final String path;
+  final String? name;
+}
+
+Iterable<_RouteIdentity> _routeIdentities(
+  Iterable<RouteBase> routes, [
+  String parentPath = '',
+]) sync* {
+  for (final route in routes) {
+    var childParentPath = parentPath;
+    if (route case final GoRoute goRoute) {
+      final path = goRoute.path.startsWith('/')
+          ? goRoute.path
+          : '$parentPath/${goRoute.path}'.replaceAll('//', '/');
+      childParentPath = path;
+      yield _RouteIdentity(path: path, name: goRoute.name);
+    }
+    yield* _routeIdentities(route.routes, childParentPath);
+  }
 }

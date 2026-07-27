@@ -56,6 +56,21 @@ class _ThrowingModule extends AppModule {
   Future<void> dispose() async => throw StateError('boom-dispose');
 }
 
+class _RouteBundleModule extends AppModule {
+  _RouteBundleModule({required this.id, required this.routes});
+
+  @override
+  final String id;
+
+  final List<RouteBase> routes;
+
+  @override
+  Set<ShellId> get supportedShells => {ShellId.mobile};
+
+  @override
+  List<RouteBase> routesFor(ShellId shell) => routes;
+}
+
 void main() {
   group('ShellId', () {
     test('known shells are distinct and stable', () {
@@ -141,7 +156,7 @@ void main() {
       );
     });
 
-    test('rejects duplicate top-level route paths', () {
+    test('rejects duplicate route paths', () {
       final registry = ModuleRegistry(shell: ShellId.tv)
         ..register(
           _FakeModule(
@@ -163,13 +178,13 @@ void main() {
           isA<ModuleCompositionException>().having(
             (error) => error.message,
             'message',
-            contains('Duplicate top-level route path "/watch"'),
+            contains('Duplicate route path "/watch"'),
           ),
         ),
       );
     });
 
-    test('rejects duplicate top-level route names', () {
+    test('rejects duplicate route names', () {
       final registry = ModuleRegistry(shell: ShellId.mobile)
         ..register(
           _FakeModule(
@@ -191,7 +206,51 @@ void main() {
           isA<ModuleCompositionException>().having(
             (error) => error.message,
             'message',
-            contains('Duplicate top-level route name "watch"'),
+            contains('Duplicate route name "watch"'),
+          ),
+        ),
+      );
+    });
+
+    test('rejects duplicate nested route identities', () {
+      final registry = ModuleRegistry(shell: ShellId.mobile)
+        ..register(
+          _RouteBundleModule(
+            id: 'coins',
+            routes: [
+              GoRoute(
+                path: '/money',
+                builder: (_, _) => throw UnimplementedError(),
+                routes: [
+                  GoRoute(
+                    path: 'vault',
+                    name: 'vault',
+                    builder: (_, _) => throw UnimplementedError(),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+
+      expect(
+        () => registry.register(
+          _RouteBundleModule(
+            id: 'duplicate-vault',
+            routes: [
+              GoRoute(
+                path: '/money/vault',
+                name: 'vault-copy',
+                builder: (_, _) => throw UnimplementedError(),
+              ),
+            ],
+          ),
+        ),
+        throwsA(
+          isA<ModuleCompositionException>().having(
+            (error) => error.message,
+            'message',
+            contains('Duplicate route path "/money/vault"'),
           ),
         ),
       );
