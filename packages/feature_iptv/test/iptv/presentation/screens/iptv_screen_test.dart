@@ -731,8 +731,15 @@ void main() {
         title: 'Movie Night',
         container: 'mp4',
       );
+      final castController = FakeAiroCastController();
+      addTearDown(castController.dispose);
       await tester.pumpWidget(
-        createWidget(onPickLocalMediaForTv: () async => item),
+        createWidget(
+          onPickLocalMediaForTv: () async => item,
+          extraOverrides: [
+            airoCastControllerProvider.overrideWithValue(castController),
+          ],
+        ),
       );
       await tester.pumpAndSettle();
 

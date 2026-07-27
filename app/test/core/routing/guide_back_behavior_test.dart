@@ -1,4 +1,5 @@
 import 'package:airo_app/core/routing/app_router.dart';
+import 'package:airo_app/main.dart';
 import 'package:feature_iptv/feature_iptv.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -32,7 +33,10 @@ void main() {
   }) async {
     SharedPreferences.setMockInitialValues({'is_logged_in': true});
     final prefs = await SharedPreferences.getInstance();
-    final router = AppRouter.createRouter(initialLocation: initialLocation);
+    final router = AppRouter.createRouter(
+      moduleRegistry: buildMainModuleRegistry(),
+      initialLocation: initialLocation,
+    );
 
     await tester.pumpWidget(
       ProviderScope(
