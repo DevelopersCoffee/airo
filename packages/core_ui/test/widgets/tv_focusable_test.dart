@@ -173,6 +173,71 @@ void main() {
   );
 
   testWidgets(
+    'sequential D-pad moves down a long list scroll by one row at a time, '
+    'never overshooting past the newly-focused item',
+    (tester) async {
+      const rowHeight = 100.0;
+      const viewportHeight = 300.0;
+      final scrollController = ScrollController();
+      final focusNodes = List.generate(10, (_) => FocusNode());
+      addTearDown(() {
+        for (final node in focusNodes) {
+          node.dispose();
+        }
+      });
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SizedBox(
+              height: viewportHeight,
+              child: SingleChildScrollView(
+                controller: scrollController,
+                child: Column(
+                  children: [
+                    for (var index = 0; index < 10; index++)
+                      SizedBox(
+                        height: rowHeight,
+                        child: TvFocusable(
+                          focusNode: focusNodes[index],
+                          onSelect: () {},
+                          child: Text('Item $index'),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      // Items 0-2 fit in the 300px viewport untouched; from item 3 on,
+      // each step must scroll by at most one row's worth (100px) to bring
+      // the newly-focused row's trailing edge into view -- never more.
+      for (var index = 0; index < 10; index++) {
+        final before = scrollController.offset;
+        focusNodes[index].requestFocus();
+        await tester.pumpAndSettle();
+        final delta = scrollController.offset - before;
+
+        expect(
+          delta,
+          lessThanOrEqualTo(rowHeight + 0.01),
+          reason:
+              'focusing item $index scrolled by $delta px, more than one '
+              'row -- this is the double-scroll/skip regression',
+        );
+        expect(
+          find.text('Item $index'),
+          findsOneWidget,
+          reason: 'item $index must still be in the tree after scrolling',
+        );
+      }
+    },
+  );
+
+  testWidgets(
     'TvFocusable does not scroll when the focused item is already visible '
     '(recentering on every focus reads as rows skipping under the D-pad)',
     (tester) async {
@@ -254,6 +319,82 @@ void main() {
 
     expect(secondaryCount, 1);
   });
+
+  // issues/02-focus-tokens-reduced-motion.md acceptance criterion 2:
+  // reduced motion makes focus scale instantaneous/absent without removing
+  // focus visibility (the border must still appear).
+  Widget wrap({required bool disableAnimations}) {
+    return MediaQuery(
+      data: MediaQueryData(disableAnimations: disableAnimations),
+      child: MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: SizedBox(
+              width: 160,
+              height: 80,
+              child: TvFocusable(
+                autofocus: true,
+                onSelect: () {},
+                child: const Center(child: Text('Focus me')),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  testWidgets('normal motion animates scale up to the design token (1.04) once '
+      'settled', (tester) async {
+    await tester.pumpWidget(wrap(disableAnimations: false));
+    await tester.pumpAndSettle();
+
+    final transform = tester.widget<Transform>(
+      find.descendant(
+        of: find.byType(TvFocusable),
+        matching: find.byType(Transform),
+      ),
+    );
+    expect(transform.transform.getMaxScaleOnAxis(), closeTo(1.04, 0.001));
+
+    final decoratedBox = tester.widget<DecoratedBox>(
+      find.descendant(
+        of: find.byType(TvFocusable),
+        matching: find.byType(DecoratedBox),
+      ),
+    );
+    final decoration = decoratedBox.decoration as BoxDecoration;
+    expect(decoration.border, isNotNull);
+  });
+
+  testWidgets(
+    'reduced motion keeps scale at 1.0 but still draws the focus border',
+    (tester) async {
+      await tester.pumpWidget(wrap(disableAnimations: true));
+      await tester.pumpAndSettle();
+
+      final transform = tester.widget<Transform>(
+        find.descendant(
+          of: find.byType(TvFocusable),
+          matching: find.byType(Transform),
+        ),
+      );
+      expect(transform.transform.getMaxScaleOnAxis(), closeTo(1.0, 0.001));
+
+      final decoratedBox = tester.widget<DecoratedBox>(
+        find.descendant(
+          of: find.byType(TvFocusable),
+          matching: find.byType(DecoratedBox),
+        ),
+      );
+      final decoration = decoratedBox.decoration as BoxDecoration;
+      expect(
+        decoration.border,
+        isNotNull,
+        reason: 'reduced motion must not remove focus visibility',
+      );
+    },
+  );
 }
 
 class _BuildCounter extends StatelessWidget {

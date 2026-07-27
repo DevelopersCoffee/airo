@@ -1,3 +1,5 @@
+// ignore_for_file: deprecated_member_use, deprecated_member_use_from_same_package
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:core_app_shell/core_app_shell.dart';
 import 'package:intl/date_symbol_data_local.dart';
@@ -210,10 +212,8 @@ void main() {
 
   // Legacy IndianDateFormatter tests (deprecated but still supported)
   group('IndianDateFormatter (deprecated)', () {
-    // ignore: deprecated_member_use_from_same_package
     test('should still work for backward compatibility', () {
       final date = DateTime(2025, 11, 30);
-      // ignore: deprecated_member_use_from_same_package
       expect(IndianDateFormatter.formatDate(date), '30/11/2025');
     });
   });

@@ -508,6 +508,51 @@ class AiroReleaseMatrix extends Equatable {
               'profile for the first v2 desktop release.',
         ),
         AiroReleaseProfile(
+          id: 'coins',
+          displayName: 'Airo Coins',
+          artifactNamePart: 'Coins',
+          releaseLine: AiroReleaseLine.v2,
+          packageId: 'io.airo.app.coins',
+          entrypoint: 'app/lib/main_coins.dart',
+          pubspec: 'app/pubspec_coins.yaml',
+          abiStrategy: AiroReleaseAbiStrategy.singleArm64Apk,
+          deviceClasses: const {AiroReleaseDeviceClass.androidPhone},
+          supportStatuses: const {
+            AiroReleaseDeviceClass.androidPhone:
+                AiroReleaseSupportStatus.validationOnly,
+          },
+          artifactKinds: androidArtifactKinds,
+          distributionRules: const [
+            AiroReleaseDistributionRule(
+              channel: AiroReleaseDistributionChannel.localValidation,
+              status: AiroReleaseDistributionStatus.required,
+              internalQa: true,
+              note:
+                  'Focused profile is qualified locally before any public '
+                  'distribution decision.',
+            ),
+            AiroReleaseDistributionRule(
+              channel: AiroReleaseDistributionChannel.githubRelease,
+              status: AiroReleaseDistributionStatus.deferred,
+              note: 'No public Airo Coins artifact is approved yet.',
+            ),
+            AiroReleaseDistributionRule(
+              channel: AiroReleaseDistributionChannel.firebaseAppDistribution,
+              status: AiroReleaseDistributionStatus.deferred,
+              internalQa: true,
+              note: 'Enable only after focused profile device qualification.',
+            ),
+            AiroReleaseDistributionRule(
+              channel: AiroReleaseDistributionChannel.googlePlay,
+              status: AiroReleaseDistributionStatus.deferred,
+              note: 'A dedicated Play listing is not approved yet.',
+            ),
+          ],
+          decisionNote:
+              'A focused modular build exists for architecture and size '
+              'qualification; public distribution remains deferred.',
+        ),
+        AiroReleaseProfile(
           id: 'ios-spm',
           displayName: 'Airo iOS SPM',
           artifactNamePart: 'iOS-SPM',

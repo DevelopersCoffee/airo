@@ -249,4 +249,46 @@ void main() {
       const ChannelFilters(category: 'News'),
     );
   });
+
+  testWidgets(
+    'selecting a language records it as Recent for the next picker open',
+    (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      final container = ProviderContainer(
+        overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+      );
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: const MaterialApp(
+            home: Scaffold(
+              body: FilterRow(
+                dimensions: ChannelFilterDimensions(
+                  categories: {},
+                  countries: {},
+                  languages: {'en', 'hi', 'it'},
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.byKey(const ValueKey('filter-chip-language')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Hindi'));
+      await tester.pumpAndSettle();
+
+      expect(container.read(recentFilterValuesProvider).languages, ['hi']);
+
+      await tester.tap(find.byKey(const ValueKey('filter-chip-language')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Recent'), findsOneWidget);
+      expect(find.byKey(const ValueKey('picker-option-hi')), findsOneWidget);
+    },
+  );
 }

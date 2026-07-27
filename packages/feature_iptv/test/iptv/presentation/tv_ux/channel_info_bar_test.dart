@@ -1,3 +1,5 @@
+import 'package:feature_iptv/application/iptv_deep_link.dart';
+import 'package:feature_iptv/application/providers/channel_filters_provider.dart';
 import 'package:feature_iptv/application/providers/iptv_providers.dart';
 import 'package:feature_iptv/presentation/tv_ux/sections/channel_info_bar.dart';
 import 'package:flutter/material.dart';
@@ -110,9 +112,52 @@ void main() {
 
       expect(
         clipboardText,
-        'Example Channel\nhttps://example.test/stream.m3u8',
+        'https://developerscoffee.github.io/airo/iptv?v=1&channel=channel-1',
       );
       expect(find.text('Example Channel copied to clipboard'), findsOneWidget);
     },
   );
+
+  testWidgets('share includes the active filter combination', (tester) async {
+    final binding = TestDefaultBinaryMessengerBinding.instance;
+    String? clipboardText;
+    binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      SystemChannels.platform,
+      (call) async {
+        if (call.method == 'Clipboard.setData') {
+          final data = Map<String, Object?>.from(call.arguments as Map);
+          clipboardText = data['text'] as String?;
+        }
+        return null;
+      },
+    );
+    addTearDown(
+      () => binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        null,
+      ),
+    );
+    SharedPreferences.setMockInitialValues({
+      channelFilterSearchStorageKey: 'local news',
+      channelFilterCountryStorageKey: 'in',
+    });
+    final preferences = await SharedPreferences.getInstance();
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [sharedPreferencesProvider.overrideWithValue(preferences)],
+        child: const MaterialApp(
+          home: Scaffold(body: ChannelInfoBar(channel: channel)),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.tap(find.byTooltip('Share'));
+    await tester.pump();
+
+    final parsed = IptvDeepLinkIntent.tryParse(Uri.parse(clipboardText!));
+    expect(parsed?.channelId, channel.id);
+    expect(parsed?.filters.search, 'local news');
+    expect(parsed?.filters.country, 'in');
+  });
 }

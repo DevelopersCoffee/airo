@@ -1,7 +1,6 @@
 package com.felnanuke.google_cast
 
 import android.media.session.MediaSession
-import android.util.Log
 import com.felnanuke.google_cast.extensions.*
 import com.google.android.gms.cast.MediaStatus.REPEAT_MODE_REPEAT_ALL
 import com.google.android.gms.cast.MediaStatus.REPEAT_MODE_REPEAT_ALL_AND_SHUFFLE
@@ -14,11 +13,6 @@ import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import org.json.JSONObject
-
-/**
- * Tag for logging remote media client operations
- */
-private const val TAG = "RemoteMediaClient"
 
 /**
  * Flutter method channel for Google Cast remote media client operations
@@ -249,15 +243,6 @@ class RemoteMediaClientMethodChannel : FlutterPlugin, MethodChannel.MethodCallHa
             it.toLong()
         }
         currentRemoteMediaClient?.setActiveMediaTracks(longArray.toLongArray())
-            ?.addStatusListener { status ->
-                if (status.isSuccess) {
-
-                    Log.w(TAG, "setActiveTrackIds success $longArray")
-                } else {
-                    Log.w(TAG, "setActiveTrackIds failed $longArray")
-                }
-
-            }
 
 
     }
@@ -456,7 +441,6 @@ class RemoteMediaClientMethodChannel : FlutterPlugin, MethodChannel.MethodCallHa
         val mediaStatus = currentRemoteMediaClient?.mediaStatus
         val jsonObject = currentRemoteMediaClient?.mediaStatus?.toJson()
         jsonObject?.put("activeTrackIds", Gson().toJson(mediaStatus?.activeTrackIds))
-        Log.w(TAG, "onStatusUpdated $jsonObject")
         val json = jsonObject?.toString()
         channel.invokeMethod("onMediaStatusChanged", json)
     }

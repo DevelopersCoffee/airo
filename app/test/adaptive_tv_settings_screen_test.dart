@@ -30,24 +30,32 @@ void main() {
     );
   }
 
-  testWidgets('phone-sized layout shows the settings hub with theme picker', (
-    tester,
-  ) async {
-    tester.view.physicalSize = const Size(400, 850);
-    tester.view.devicePixelRatio = 1.0;
-    addTearDown(tester.view.reset);
+  testWidgets(
+    'phone-sized layout shows the settings hub with an Appearance entry '
+    'that opens the theme picker',
+    (tester) async {
+      tester.view.physicalSize = const Size(400, 850);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
 
-    await tester.pumpWidget(wrap(const Size(400, 850)));
-    await tester.pumpAndSettle();
+      await tester.pumpWidget(wrap(const Size(400, 850)));
+      await tester.pumpAndSettle();
 
-    expect(find.text('Appearance'), findsOneWidget);
-    expect(find.text('Airo Classic'), findsOneWidget);
-    expect(
-      find.byWidgetPredicate((w) => w is RadioListTile),
-      findsWidgets,
-      reason: 'theme options must be selectable on phones',
-    );
-  });
+      expect(find.text('Appearance'), findsOneWidget);
+      // The theme picker (RadioListTile per AppThemeId) lives on its own
+      // ThemeSettingsScreen, reached via the Appearance entry -- not
+      // inline on the hub.
+      await tester.tap(find.text('Appearance'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Airo Classic'), findsOneWidget);
+      expect(
+        find.byWidgetPredicate((w) => w is RadioListTile),
+        findsWidgets,
+        reason: 'theme options must be selectable on phones',
+      );
+    },
+  );
 
   testWidgets('TV-sized layout keeps the two-pane TV settings screen', (
     tester,

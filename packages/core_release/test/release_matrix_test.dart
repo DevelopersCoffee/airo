@@ -9,7 +9,7 @@ void main() {
       expect(matrix.validate(), isEmpty);
       expect(
         matrix.profiles.map((profile) => profile.id),
-        containsAll(const ['full', 'tv', 'ios-spm', 'web-validation']),
+        containsAll(const ['full', 'tv', 'coins', 'ios-spm', 'web-validation']),
       );
       expect(matrix.profileById('full').packageId, 'io.airo.app');
       expect(matrix.profileById('full').entrypoint, 'app/lib/main.dart');
@@ -18,6 +18,8 @@ void main() {
         'com.developerscoffee.airo.tv',
       );
       expect(matrix.profileById('tv').pubspec, 'app/pubspec_tv.yaml');
+      expect(matrix.profileById('coins').packageId, 'io.airo.app.coins');
+      expect(matrix.profileById('coins').pubspec, 'app/pubspec_coins.yaml');
     });
 
     test('uses stable APK, AAB, and manifest names per profile', () {
