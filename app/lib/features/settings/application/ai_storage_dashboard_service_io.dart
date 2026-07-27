@@ -1,8 +1,8 @@
 import 'dart:io';
 
-import 'package:flutter/services.dart';
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
+import 'package:platform_downloads/platform_downloads.dart';
 
 import '../../../core/database/app_database_native.dart';
 import 'ai_storage_dashboard.dart';
@@ -13,8 +13,6 @@ Future<AIStorageDashboardSummary> loadAIStorageDashboardSummary() {
 
 class _AIStorageDashboardIoService {
   const _AIStorageDashboardIoService();
-
-  static const _diskChannel = MethodChannel('com.airo.model_download');
 
   Future<AIStorageDashboardSummary> loadSummary() async {
     final documents = await getApplicationDocumentsDirectory();
@@ -77,7 +75,7 @@ class _AIStorageDashboardIoService {
 
   Future<int?> _availableDiskSpace() async {
     try {
-      return await _diskChannel.invokeMethod<int>('getFreeDiskSpace');
+      return await MethodChannelBackgroundDownloads().getAvailableBytes();
     } catch (_) {
       return null;
     }

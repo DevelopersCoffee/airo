@@ -1,15 +1,17 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:crypto/crypto.dart';
-import 'package:flutter/services.dart';
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
+import 'package:platform_downloads/platform_downloads.dart';
 
 import '../models/offline_model_info.dart';
+import '../intelligent_model_manager/model_install_receipt.dart';
 
 /// Manages storage, SHA-256 integrity check, and space validation.
 class ModelStorageManager {
-  ModelStorageManager({MethodChannel? channel})
-    : _channel = channel ?? const MethodChannel('com.airo.model_download');
+  ModelStorageManager({BackgroundDownloads? downloads})
+    : _downloads = downloads ?? MethodChannelBackgroundDownloads();
 
   static const supportedArtifactExtensions = <String>[
     '.litertlm',
@@ -19,7 +21,7 @@ class ModelStorageManager {
     '.onnx',
   ];
 
-  final MethodChannel _channel;
+  final BackgroundDownloads _downloads;
 
   /// Gets the directory where models are stored.
   Future<Directory> getModelsDirectory() async {
@@ -104,12 +106,66 @@ class ModelStorageManager {
     }
   }
 
+  /// Returns a stable fingerprint for update comparison without fetching data.
+  String catalogFingerprint(OfflineModelInfo model) {
+    final input = <String>[
+      model.id,
+      model.version ?? '',
+      model.downloadUrl ?? '',
+      model.fileSizeBytes.toString(),
+      model.sha256?.toLowerCase() ?? '',
+    ].join('\n');
+    return sha256.convert(utf8.encode(input)).toString();
+  }
+
+  Future<File> _receiptFile(String modelId) async {
+    final directory = await getModelsDirectory();
+    return File(path.join(directory.path, '$modelId.install.json'));
+  }
+
+  /// Atomically records the exact catalog artifact installed for [model].
+  Future<ModelInstallReceipt> writeInstallReceipt(
+    OfflineModelInfo model, {
+    DateTime? installedAt,
+  }) async {
+    final receipt = ModelInstallReceipt(
+      modelId: model.id,
+      catalogFingerprint: catalogFingerprint(model),
+      installedAt: (installedAt ?? DateTime.now()).toUtc(),
+      version: model.version,
+      sha256: model.sha256?.toLowerCase(),
+    );
+    final destination = await _receiptFile(model.id);
+    final temporary = File('${destination.path}.tmp');
+    await temporary.writeAsString(jsonEncode(receipt.toJson()), flush: true);
+    await temporary.rename(destination.path);
+    return receipt;
+  }
+
+  /// Reads a receipt, returning null for legacy, missing, or corrupt metadata.
+  Future<ModelInstallReceipt?> readInstallReceipt(String modelId) async {
+    final file = await _receiptFile(modelId);
+    if (!await file.exists()) return null;
+    try {
+      final decoded = jsonDecode(await file.readAsString());
+      if (decoded is! Map) return null;
+      return ModelInstallReceipt.fromJson(decoded.cast<String, Object?>());
+    } on Object {
+      return null;
+    }
+  }
+
+  Future<void> deleteInstallReceipt(String modelId) async {
+    final file = await _receiptFile(modelId);
+    if (await file.exists()) await file.delete();
+    final temporary = File('${file.path}.tmp');
+    if (await temporary.exists()) await temporary.delete();
+  }
+
   /// Checks if the device has enough free space for the model file, plus a safety margin.
   Future<bool> hasEnoughDiskSpace(int requiredBytes) async {
     try {
-      final int? freeBytes = await _channel.invokeMethod<int>(
-        'getFreeDiskSpace',
-      );
+      final freeBytes = await _downloads.getAvailableBytes();
       if (freeBytes == null) {
         return true; // Fallback if native call returns null
       }

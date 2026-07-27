@@ -87,6 +87,43 @@ void main() {
             'on TV, choosing a channel should open the full player '
             'directly instead of the small preview stage',
       );
+
+      // Fire OS dispatches BACK as both a raw GoBack key and a platform
+      // pop-route request. The first event must not exit fullscreen and
+      // expose the route to the second event, which would close the app.
+      final fullscreenFocus = tester.widget<Focus>(
+        find.byWidgetPredicate(
+          (widget) =>
+              widget is Focus &&
+              widget.focusNode?.debugLabel == 'IPTV fullscreen back handler',
+        ),
+      );
+      final rawBackResult = fullscreenFocus.onKeyEvent!.call(
+        fullscreenFocus.focusNode!,
+        const KeyDownEvent(
+          physicalKey: PhysicalKeyboardKey.escape,
+          logicalKey: LogicalKeyboardKey.goBack,
+          timeStamp: Duration.zero,
+        ),
+      );
+      await tester.pump();
+      expect(rawBackResult, KeyEventResult.ignored);
+      expect(container.read(isFullscreenModeProvider), isTrue);
+
+      final handled = await tester.binding.handlePopRoute();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(handled, isTrue);
+      expect(container.read(isFullscreenModeProvider), isFalse);
+      expect(find.byKey(const ValueKey('iptv-browse-grid')), findsOneWidget);
+
+      final duplicateHandled = await tester.binding.handlePopRoute();
+      await tester.pump();
+      expect(duplicateHandled, isTrue);
+      expect(
+        find.byKey(const ValueKey('iptv-browse-grid')),
+        findsOneWidget,
+        reason: 'a duplicate Fire OS BACK callback must not close the app',
+      );
     },
   );
 

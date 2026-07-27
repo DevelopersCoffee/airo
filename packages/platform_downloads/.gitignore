@@ -1,0 +1,4 @@
+android/.gradle/
+android/.kotlin/
+android/local.properties
+ios/.build/

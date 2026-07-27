@@ -3,28 +3,48 @@ import 'package:core_ai/core_ai.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as path;
+import 'package:platform_downloads/platform_downloads.dart';
+
+class FakeBackgroundDownloads implements BackgroundDownloads {
+  int? availableBytes = 2 * 1024 * 1024 * 1024;
+
+  @override
+  Stream<DownloadProgress> get events => const Stream.empty();
+
+  @override
+  Future<void> cancel(String artifactId) async {}
+
+  @override
+  Future<void> enqueue(DownloadArtifactRequest request) async {}
+
+  @override
+  Future<int?> getAvailableBytes() async => availableBytes;
+
+  @override
+  Future<DownloadQueueSnapshot> getQueue() async {
+    return const DownloadQueueSnapshot(entries: []);
+  }
+
+  @override
+  Future<void> pause(String artifactId) async {}
+
+  @override
+  Future<void> resume(String artifactId) async {}
+
+  @override
+  Future<void> retry(String artifactId) async {}
+}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   late ModelStorageManager storageManager;
-  late List<MethodCall> log;
+  late FakeBackgroundDownloads downloads;
   late Directory tempDir;
 
-  const MethodChannel channel = MethodChannel('com.airo.model_download');
-
   setUp(() async {
-    log = <MethodCall>[];
-    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
-          log.add(methodCall);
-          if (methodCall.method == 'getFreeDiskSpace') {
-            return 2 * 1024 * 1024 * 1024; // 2 GB
-          }
-          return null;
-        });
-
-    storageManager = ModelStorageManager(channel: channel);
+    downloads = FakeBackgroundDownloads();
+    storageManager = ModelStorageManager(downloads: downloads);
     tempDir = await Directory.systemTemp.createTemp('airo_storage_test');
 
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
@@ -40,8 +60,6 @@ void main() {
   });
 
   tearDown(() async {
-    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(channel, null);
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(
           const MethodChannel('plugins.flutter.io/path_provider'),
@@ -153,6 +171,36 @@ void main() {
       await storageManager.hasEnoughDiskSpace(1800 * 1024 * 1024),
       isFalse,
     );
+  });
+
+  test('install receipts persist exact catalog update evidence', () async {
+    const model = OfflineModelInfo(
+      id: 'receipt-model',
+      name: 'Receipt Model',
+      family: ModelFamily.gemma,
+      fileSizeBytes: 1024,
+      downloadUrl: 'https://example.com/model-v2.gguf',
+      version: '2.0.0',
+      sha256:
+          '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
+    );
+
+    final written = await storageManager.writeInstallReceipt(
+      model,
+      installedAt: DateTime.utc(2026, 7, 27),
+    );
+    final restored = await storageManager.readInstallReceipt(model.id);
+
+    expect(restored?.modelId, model.id);
+    expect(restored?.version, '2.0.0');
+    expect(restored?.catalogFingerprint, written.catalogFingerprint);
+    expect(
+      restored?.catalogFingerprint,
+      storageManager.catalogFingerprint(model),
+    );
+
+    await storageManager.deleteInstallReceipt(model.id);
+    expect(await storageManager.readInstallReceipt(model.id), isNull);
   });
 
   test(

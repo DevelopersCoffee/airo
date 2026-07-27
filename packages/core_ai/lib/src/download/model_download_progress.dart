@@ -40,6 +40,10 @@ class ModelDownloadProgress {
     this.speedBytesPerSecond = 0,
     this.startTime,
     this.error,
+    this.failureCode,
+    this.retryCount = 0,
+    this.queuePosition,
+    this.resumeSupported = false,
   });
 
   /// The model being downloaded.
@@ -63,6 +67,18 @@ class ModelDownloadProgress {
   /// Error message if download failed.
   final String? error;
 
+  /// Stable machine-readable failure code from the shared download contract.
+  final String? failureCode;
+
+  /// Number of explicit retries requested for this artifact.
+  final int retryCount;
+
+  /// Zero-based queue position when the artifact is waiting.
+  final int? queuePosition;
+
+  /// Whether the platform retained resumable state for this artifact.
+  final bool resumeSupported;
+
   /// Progress as a percentage (0.0 - 1.0).
   double get progress => totalBytes > 0 ? downloadedBytes / totalBytes : 0.0;
 
@@ -84,6 +100,18 @@ class ModelDownloadProgress {
       status == ModelDownloadStatus.downloading ||
       status == ModelDownloadStatus.paused ||
       status == ModelDownloadStatus.verifying;
+
+  bool get canPause => status == ModelDownloadStatus.downloading;
+
+  bool get canResume =>
+      status == ModelDownloadStatus.paused ||
+      (status == ModelDownloadStatus.failed && resumeSupported);
+
+  bool get canRetry => status == ModelDownloadStatus.failed;
+
+  bool get canCancel =>
+      status != ModelDownloadStatus.completed &&
+      status != ModelDownloadStatus.cancelled;
 
   /// Human-readable download stage label.
   String get statusDisplay {
@@ -181,6 +209,10 @@ class ModelDownloadProgress {
     double? speedBytesPerSecond,
     DateTime? startTime,
     String? error,
+    String? failureCode,
+    int? retryCount,
+    int? queuePosition,
+    bool? resumeSupported,
   }) {
     return ModelDownloadProgress(
       modelId: modelId ?? this.modelId,
@@ -190,6 +222,10 @@ class ModelDownloadProgress {
       speedBytesPerSecond: speedBytesPerSecond ?? this.speedBytesPerSecond,
       startTime: startTime ?? this.startTime,
       error: error ?? this.error,
+      failureCode: failureCode ?? this.failureCode,
+      retryCount: retryCount ?? this.retryCount,
+      queuePosition: queuePosition ?? this.queuePosition,
+      resumeSupported: resumeSupported ?? this.resumeSupported,
     );
   }
 }
