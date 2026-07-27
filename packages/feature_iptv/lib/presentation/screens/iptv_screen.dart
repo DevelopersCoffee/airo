@@ -589,13 +589,14 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
         !widget.tenFootMode && await AiroNativePictureInPicture.isSupported();
     if (!mounted) return;
 
-    if (isGoogleCastSenderPlatform) {
+    if (!widget.tenFootMode && isGoogleCastSenderPlatform) {
       unawaited(ref.read(iptvCastProvider.notifier).startDiscovery());
     }
 
     await _showWaysToWatchDialog(
       context: context,
       pictureInPictureSupported: pictureInPictureSupported,
+      showCast: !widget.tenFootMode,
       onExitFullscreen: _exitFullscreen,
       onEnterFullscreen: () {
         if (!ref.read(isFullscreenModeProvider)) _toggleFullscreen();
@@ -777,11 +778,9 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
               initiallyFullscreen: true,
               onFullscreenToggle: _toggleFullscreen,
               enableSwipeChannelChange: true,
-              // The Fire TV acceptance contract keeps Picture-in-picture
-              // in Player actions even when the platform ultimately
-              // reports it unavailable; hiding the row made the required
-              // seven-row remote traversal impossible.
-              showPictureInPicture: true,
+              // PiP is a phone/tablet multitasking action. Keep it out of
+              // the remote-only Android TV and Fire TV player surfaces.
+              showPictureInPicture: !widget.tenFootMode,
               useTvTransportBar: widget.tenFootMode,
             ),
           ),
@@ -881,6 +880,7 @@ class _IPTVScreenState extends ConsumerState<IPTVScreen>
 Future<void> _showWaysToWatchDialog({
   required BuildContext context,
   required bool pictureInPictureSupported,
+  required bool showCast,
   required VoidCallback onExitFullscreen,
   required VoidCallback onEnterFullscreen,
   required VoidCallback onShowCast,
@@ -895,6 +895,7 @@ Future<void> _showWaysToWatchDialog({
             castState.discovery.devices.isNotEmpty;
         return WaysToWatchDialog(
           pictureInPictureSupported: pictureInPictureSupported,
+          showCast: showCast,
           castAvailable: castAvailable,
           onFitScreen: () {
             Navigator.of(dialogContext).pop();
@@ -1077,6 +1078,7 @@ class _IPTVScreenBodyState extends ConsumerState<IPTVScreenBody>
     await _showWaysToWatchDialog(
       context: context,
       pictureInPictureSupported: pictureInPictureSupported,
+      showCast: true,
       onExitFullscreen: _exitFullscreen,
       onEnterFullscreen: () {
         if (!ref.read(isFullscreenModeProvider)) _toggleFullscreen();

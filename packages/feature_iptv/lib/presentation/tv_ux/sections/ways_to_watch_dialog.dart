@@ -5,6 +5,7 @@ class WaysToWatchDialog extends StatelessWidget {
   const WaysToWatchDialog({
     super.key,
     required this.pictureInPictureSupported,
+    this.showCast = true,
     required this.castAvailable,
     required this.onFitScreen,
     required this.onFullScreen,
@@ -13,6 +14,7 @@ class WaysToWatchDialog extends StatelessWidget {
   });
 
   final bool pictureInPictureSupported;
+  final bool showCast;
   final bool castAvailable;
   final VoidCallback onFitScreen;
   final VoidCallback onFullScreen;
@@ -54,17 +56,19 @@ class WaysToWatchDialog extends StatelessWidget {
                 description: 'Keep video visible while using other apps.',
                 onSelect: onPictureInPicture,
               ),
-            const Divider(height: 28),
-            const _SectionLabel('ON ANOTHER SCREEN'),
-            _WatchOption(
-              key: const ValueKey('ways-to-watch-cast'),
-              icon: Icons.cast,
-              title: 'Cast to TV',
-              description: castAvailable
-                  ? 'Choose a nearby Cast-enabled TV.'
-                  : 'No Cast devices available.',
-              onSelect: castAvailable ? onCast : null,
-            ),
+            if (showCast) ...[
+              const Divider(height: 28),
+              const _SectionLabel('ON ANOTHER SCREEN'),
+              _WatchOption(
+                key: const ValueKey('ways-to-watch-cast'),
+                icon: Icons.cast,
+                title: 'Cast to TV',
+                description: castAvailable
+                    ? 'Choose a nearby Cast-enabled TV.'
+                    : 'No Cast devices available.',
+                onSelect: castAvailable ? onCast : null,
+              ),
+            ],
           ],
         ),
       ),

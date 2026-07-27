@@ -32,6 +32,53 @@ class _RecordingStreamingService extends VideoPlayerStreamingService {
 }
 
 void main() {
+  testWidgets('tenFootMode: Ways to Watch excludes Cast to another TV', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(960, 540);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final played = <IPTVChannel>[];
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          iptvChannelsProvider.overrideWith((ref) async => _channels),
+          recentlyWatchedChannelsProvider.overrideWith((ref) async => const []),
+          streamingStateProvider.overrideWith(
+            (ref) => Stream.value(
+              StreamingState(
+                playbackState: PlaybackState.playing,
+                currentChannel: _channels.single,
+                isLiveStream: true,
+              ),
+            ),
+          ),
+          iptvStreamingServiceProvider.overrideWith((ref) {
+            final service = _RecordingStreamingService(played: played);
+            ref.onDispose(service.dispose);
+            return service;
+          }),
+        ],
+        child: const MaterialApp(home: IPTVScreen(tenFootMode: true)),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('channel-info-ways-to-watch')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('ways-to-watch-dialog')), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('ways-to-watch-cast')),
+      findsNothing,
+      reason:
+          'a remote-only Android TV or Fire TV should not offer to cast '
+          'its playback to another television',
+    );
+  });
+
   testWidgets(
     'tenFootMode: selecting a channel goes straight to fullscreen playback',
     (tester) async {
@@ -86,6 +133,15 @@ void main() {
         reason:
             'on TV, choosing a channel should open the full player '
             'directly instead of the small preview stage',
+      );
+      expect(
+        tester
+            .widget<VideoPlayerWidget>(find.byType(VideoPlayerWidget))
+            .showPictureInPicture,
+        isFalse,
+        reason:
+            'Android TV and Fire TV use a remote-only player where '
+            'Picture-in-Picture is not a meaningful action',
       );
 
       // Fire OS dispatches BACK as both a raw GoBack key and a platform
