@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -160,6 +162,100 @@ void main() {
             'a television must never be asked to rotate to portrait — '
             'seen on Fire TV Stick: display flipped to 1080x1920 after '
             'exiting the full player',
+      );
+    },
+  );
+
+  testWidgets(
+    'tenFootMode: the D-pad still reaches the player after rebuilds while '
+    'fullscreen (regression: an outer focus node re-requested focus on '
+    'every build, permanently stealing it back from the player once live '
+    'playback started rebuilding for buffering/position updates)',
+    (tester) async {
+      tester.view.physicalSize = const Size(960, 540);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final played = <IPTVChannel>[];
+      final stateController = StreamController<StreamingState>.broadcast();
+      addTearDown(stateController.close);
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            iptvChannelsProvider.overrideWith((ref) async => _channels),
+            recentlyWatchedChannelsProvider.overrideWith(
+              (ref) async => const [],
+            ),
+            streamingStateProvider.overrideWith(
+              (ref) => stateController.stream,
+            ),
+            iptvStreamingServiceProvider.overrideWith((ref) {
+              final service = _RecordingStreamingService(played: played);
+              ref.onDispose(service.dispose);
+              return service;
+            }),
+          ],
+          child: const MaterialApp(home: IPTVScreen(tenFootMode: true)),
+        ),
+      );
+      await tester.pump();
+      stateController.add(
+        StreamingState(playbackState: PlaybackState.idle, isLiveStream: true),
+      );
+      await tester.pump();
+
+      await tester.tap(find.text('Channel One'));
+      await tester.pump(const Duration(milliseconds: 400));
+      stateController.add(
+        StreamingState(
+          playbackState: PlaybackState.playing,
+          isLiveStream: true,
+          currentChannel: _channels.single,
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 400));
+
+      // The player only organically claims focus from the outer Back-only
+      // node once its own controls-auto-hide timer fires and calls
+      // requestFocus() (VideoPlayerWidget._controlsHideDelay = 4s) -- so
+      // clear that first, same as real playback would.
+      await tester.pump(const Duration(seconds: 5));
+
+      // Now simulate the rebuilds live playback drives constantly once a
+      // channel is playing (buffering/position/quality updates) -- exactly
+      // what used to let the outer Back-only focus node re-request and
+      // steal focus back from the player on every single one of them.
+      for (var i = 0; i < 5; i++) {
+        stateController.add(
+          StreamingState(
+            playbackState: PlaybackState.playing,
+            isLiveStream: true,
+            currentChannel: _channels.single,
+            position: Duration(seconds: i),
+          ),
+        );
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+
+      expect(
+        find.text('Channel One'),
+        findsWidgets,
+        reason:
+            'sanity check: the streamed state must have actually '
+            'propagated before testing the key event',
+      );
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+      await tester.pump();
+
+      expect(
+        find.text('Mini guide'),
+        findsOneWidget,
+        reason:
+            'Up must still reach the player\'s TvInputHandler after '
+            'several rebuilds, not just on the first frame of fullscreen',
       );
     },
   );
