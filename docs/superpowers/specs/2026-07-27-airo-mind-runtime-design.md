@@ -588,6 +588,72 @@ encryption, search projection — and it carries zero regulatory surface.
 
 Each is a follow-on milestone. None is a prerequisite.
 
+## 11a. Runtime invariants
+
+Non-negotiable. These are not guidelines and not subject to a capability's
+judgement. A change that violates one of these is a defect regardless of what
+it enables.
+
+### I1 — Only the operation log and the encrypted content store are durable
+
+Everything else is a **projection** and must be disposable.
+
+```
+Durable          Operation Log · encrypted Content Store
+Disposable       knowledge graph · memory graph · search index · FTS
+                 embeddings · AI cache · timeline · calendar · analytics
+```
+
+Two consequences, both testable:
+
+- **Destroying a projection must never lose data.** Any projection can be
+  deleted at any time and rebuilt from the log. If a value exists only in a
+  projection, it is a defect, not a feature.
+- **Destroying content must invalidate every projection derived from it.**
+  Otherwise crypto-shredding is incomplete by construction — an embedding of a
+  destroyed note is a lossy copy of that note.
+
+### I2 — No capability may create durable storage outside the runtime
+
+A capability that wants persistence has exactly one path:
+
+```
+Capability → Operation → Content → Operation Log
+```
+
+Never a private SQLite database, a JSON file, a preferences entry, a cache
+directory, or any other store it owns.
+
+This is not tidiness. The moment a capability writes durable state the runtime
+cannot see, `DestroyContent`, backup, recovery, sync, projection rebuild, and
+crypto-shredding all become **incomplete by construction** — each one silently
+missing whatever that capability kept to itself. The user is then told their
+data was destroyed while a copy survives in a file nobody enumerated.
+
+Enforcement is a Phase 4 requirement on the capability runtime, not a review
+convention: a Tier 1 capability has no filesystem access to violate this with,
+and Tier 2's sandbox prohibits file access outright (§5.1).
+
+### I3 — Every claimed security property has an automated tamper test
+
+If this document, a store listing, or a UI string claims a security property,
+a test must demonstrate it by attempting the violation and observing failure.
+
+```
+Claim:  the header AAD authenticates revocation_epoch
+Test:   modify revocation_epoch → decrypt fails
+```
+
+Required at minimum for: `revocation_epoch`, `identity_public_key`, package
+format version, schema fingerprint, capability manifest hash, content wrapping
+`content_id` and `context_id` binding, and device certificate fields.
+
+The reason this is an invariant rather than good practice: revision 2 of the
+Phase 1 plan **stated** that the recovery package header was authenticated as
+AAD, in the section recording that the review finding had been applied. It was
+not. Prose asserting a security property is not evidence that the property
+holds, and reviewer memory is not a control.
+
 ## 12. Open decisions, assigned to subsystem specs
 
 These are deliberately unresolved here. Resolving them without implementation

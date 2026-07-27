@@ -6,7 +6,7 @@
 
 **Architecture:** A new `rust/airo_mind` workspace crate holding pure-Rust cryptographic state. A BIP39 seed derives a root Ed25519 identity. Each device generates its *own* keypair locally and receives a root-signed certificate, so the seed never leaves the device that created it. Content keys are wrapped independently under each granting context key (envelope encryption over a hypergraph, not a key tree). A monotonic revocation ledger records destroyed keys, and restore is type-state enforced: a `RecoveryPackage` cannot become a usable `Vault` without first applying revocations.
 
-**Tech Stack:** Rust 2021, `ed25519-dalek` (signing), `chacha20poly1305` (XChaCha20-Poly1305 AEAD), `hkdf` + `sha2` (derivation), `bip39` (mnemonic), `zeroize`, `thiserror`, `serde` + `serde_json`.
+**Tech Stack:** Rust 2021, `ed25519-dalek` (signing), `chacha20poly1305` (XChaCha20-Poly1305 AEAD), `hkdf` + `sha2` + `hmac` (derivation, and BIP-39 implemented in-house), `zeroize`, `thiserror`, `serde` + `serde_json`.
 
 **Spec:** `docs/superpowers/specs/2026-07-27-airo-mind-runtime-design.md` §4, §6
 **Issues:** #1204 (scaffold), #1205 (governance), #1207–#1212 (Vault tasks), under epic #1193.
@@ -100,7 +100,7 @@ manifest.
 | `subtle` | `2` | approve — added by security R9, already transitive |
 | `ed25519-dalek` | `2` | **caveat:** floor `curve25519-dalek` at `>=4.1.3` |
 | `rand_core` | `0.6` | **caveat:** forced by the two above; migration issue required |
-| `bip39` | `2` | **caveat:** feature changes + a CC0 decision |
+| `hmac` | `0.12` | approve — replaces `bip39`, same `digest 0.10` generation |
 
 Version choice was validated as correct: `sha2 0.10` + `hkdf 0.12` share the
 `digest 0.10` generation `flutter_rust_bridge` already pulls in. Moving to
@@ -124,7 +124,29 @@ option. MIT-compatible, but binary distribution requires attribution and the
 non-endorsement clause. A BSD-3-Clause slot already exists in
 `docs/release/V2_THIRD_PARTY_NOTICES.md` — append, do not invent a mechanism.
 
-- [ ] **Step 3: Resolve the CC0 question — needs a decision before Task 2**
+- [ ] **Step 3: CC0 — DECIDED. Path B, implement BIP-39 in-house.**
+
+**`bip39`, `bitcoin_hashes`, and `hex-conservative` are dropped.** Task 2
+implements BIP-39 directly on the `sha2` and `hmac` already in the tree.
+
+Rationale, recorded so it is not relitigated:
+
+- ~200 LOC is small enough to audit completely
+- removes three supply-chain dependencies, one of which is CC0-1.0 — not
+  OSI-approved, and §4(a) expressly reserves the author's patent rights
+- verifiable against the complete official BIP-39 test vectors, not a sample
+- fits the long-term goal of minimising the trusted computing base
+
+Update the manifest: remove `bip39`, remove `default-features`/`features` for
+it, and add `hmac = "0.12"` (same `digest 0.10` generation as `sha2` and
+`hkdf`, so no new tree). File a governance scorecard for `hmac` on #1205.
+
+Dependency count drops from eleven to nine.
+
+The rest of Step 3 below is retained for the record only.
+
+<details>
+<summary>Original decision framing (resolved)</summary>
 
 `bip39`, `bitcoin_hashes`, and `hex-conservative` are **CC0-1.0**: not
 OSI-approved, and §4(a) expressly reserves the author's patent rights. Google's
@@ -144,6 +166,8 @@ Both paths are approved; pick one and record it on #1205.
 
 `tiny-bip39` was evaluated and **rejected** — it trades a license concern for a
 worse bus factor.
+
+</details>
 
 - [ ] **Step 4: Open the `rand_core` migration issue**
 
@@ -272,12 +296,11 @@ name = "airo_mind"
 crate-type = ["rlib"]
 
 [dependencies]
-# `rand` feature deliberately OFF: Mnemonic::from_entropy works without it, and
-# dropping it removes four crates and leaves ONE CSPRNG stack rather than two,
-# with an entropy buffer we own and can zeroize.
-# `zeroize` feature ON: without it the mnemonic's word indices are never wiped —
-# on the single most sensitive object in the design.
-bip39 = { version = "2", default-features = false, features = ["std", "zeroize"] }
+# BIP-39 is implemented in-house (Task 2), not taken as a dependency: ~200 LOC
+# auditable in full, no CC0 patent-non-grant on the recovery path, and three
+# fewer supply-chain crates. `hmac` is the same digest 0.10 generation as sha2
+# and hkdf, so it adds no new tree.
+hmac = "0.12"
 chacha20poly1305 = { version = "0.10", features = ["getrandom"] }
 # Explicit feature pinning, not defaults. `zeroize` is what keeps the root
 # private key out of freed memory; someone adding default-features = false for
@@ -444,22 +467,57 @@ Implements the first half of #1207.
 - Consumes: `VaultError` (Task 1)
 - Produces:
   - `Seed` — newtype over `[u8; 64]`, `ZeroizeOnDrop`, with `fn as_bytes(&self) -> &[u8; 64]`
-  - `fn generate_mnemonic() -> Zeroizing<String>` — 24 words
+  - `fn generate_mnemonic() -> Result<Zeroizing<String>, VaultError>` — 24 words
   - `fn seed_from_mnemonic(phrase: &str) -> Result<Seed, VaultError>`
 
 - [ ] **Step 1: Write the failing test**
 
 Create `rust/airo_mind/src/vault/seed.rs`:
 
+Create `rust/airo_mind/src/vault/wordlist.rs` — the official BIP-39 English
+wordlist, 2048 entries, public domain, verbatim from the specification:
+
+```rust
+//! BIP-39 English wordlist. Public domain, verbatim from the specification.
+//!
+//! Do not sort, reformat, or "clean up". Index order *is* the encoding — a
+//! single reordered entry silently changes every mnemonic ever generated.
+
+pub const WORDS: [&str; 2048] = [
+    "abandon", "ability", "able", "about", "above", "absent",
+    // ... 2042 more, in specification order ...
+    "zebra", "zero", "zone", "zoo",
+];
+```
+
+Source it from the BIP-39 repository's `english.txt` and verify with the
+checksum test in Step 1 rather than by eye.
+
+Create `rust/airo_mind/src/vault/seed.rs`:
+
 ```rust
 //! Recovery seed. The root of everything the user can ever recover.
+//!
+//! BIP-39 implemented in-house rather than taken as a dependency: ~200 lines
+//! auditable in full, verifiable against the complete official test vectors,
+//! and three fewer crates on the path that generates the recovery secret for
+//! medical and financial records.
 
-use bip39::Mnemonic;
+use hmac::Hmac;
+use rand_core::RngCore;
+use sha2::{Digest, Sha256, Sha512};
 use zeroize::{Zeroize, ZeroizeOnDrop, Zeroizing};
 
 use super::error::VaultError;
+use super::wordlist::WORDS;
 
-/// A 64-byte BIP39 seed. Zeroized on drop.
+/// 24 words = 256 bits of entropy + an 8-bit checksum.
+const ENTROPY_BYTES: usize = 32;
+const WORD_COUNT: usize = 24;
+/// Fixed by BIP-39. Not a tunable.
+const PBKDF2_ROUNDS: u32 = 2048;
+
+/// A 64-byte BIP-39 seed. Zeroized on drop.
 ///
 /// No `Clone`: the seed is the one secret whose compromise is total and
 /// unrecoverable, and silent duplication is how copies end up unzeroized.
@@ -477,24 +535,130 @@ impl Seed {
 /// Shown to the user exactly once. There is no other copy, and no server-side
 /// recovery path — that is the product promise, and it is also the reason the
 /// onboarding flow (#1234) must confirm the user recorded it.
-pub fn generate_mnemonic() -> Zeroizing<String> {
-    // `Zeroizing` because this is the root secret in plaintext. The bip39
-    // `zeroize` feature (pinned in Cargo.toml) covers the Mnemonic's internal
-    // word indices; this covers the String we hand back.
-    Zeroizing::new(
-        Mnemonic::generate(24)
-            .expect("24 is a valid BIP39 word count")
-            .to_string(),
-    )
+pub fn generate_mnemonic() -> Result<Zeroizing<String>, VaultError> {
+    let mut entropy = Zeroizing::new([0u8; ENTROPY_BYTES]);
+    rand_core::OsRng
+        .try_fill_bytes(entropy.as_mut())
+        .map_err(|_| VaultError::RngUnavailable)?;
+    Ok(mnemonic_from_entropy(&entropy))
+}
+
+/// Encodes entropy as a mnemonic. Separated from generation so the official
+/// test vectors can drive it directly.
+fn mnemonic_from_entropy(entropy: &[u8; ENTROPY_BYTES]) -> Zeroizing<String> {
+    // Checksum: the first `entropy_bits / 32` bits of SHA-256(entropy).
+    let checksum = Sha256::digest(entropy);
+    let checksum_bits = ENTROPY_BYTES * 8 / 32; // 8 for 256-bit entropy
+
+    // Concatenate entropy || checksum bits, then read 11 bits per word.
+    let mut bits = Vec::with_capacity(ENTROPY_BYTES * 8 + checksum_bits);
+    for byte in entropy.iter() {
+        for i in (0..8).rev() {
+            bits.push((byte >> i) & 1 == 1);
+        }
+    }
+    for i in 0..checksum_bits {
+        bits.push((checksum[i / 8] >> (7 - (i % 8))) & 1 == 1);
+    }
+
+    let words: Vec<&str> = bits
+        .chunks(11)
+        .map(|chunk| {
+            let index = chunk.iter().fold(0usize, |acc, bit| (acc << 1) | *bit as usize);
+            WORDS[index]
+        })
+        .collect();
+
+    Zeroizing::new(words.join(" "))
 }
 
 /// Derives the 64-byte seed from a mnemonic phrase.
 ///
-/// No passphrase. Adding one later is a breaking change to every existing
-/// recovery package, so it is deliberately excluded rather than defaulted.
+/// Validates word membership and the checksum before deriving — a typo must
+/// fail here, not silently produce a valid-looking seed for the wrong vault.
+///
+/// No passphrase in v1. The Recovery Package reserves `passphrase_used`,
+/// `kdf_params`, and `kdf_salt` so the option survives; see Task 8.
 pub fn seed_from_mnemonic(phrase: &str) -> Result<Seed, VaultError> {
-    let mnemonic = Mnemonic::parse(phrase).map_err(|_| VaultError::InvalidMnemonic)?;
-    Ok(Seed(mnemonic.to_seed("")))
+    let words: Vec<&str> = phrase.split_whitespace().collect();
+    if words.len() != WORD_COUNT {
+        return Err(VaultError::InvalidMnemonic);
+    }
+
+    // Word → index. Linear scan over 2048 entries is fine here; this runs once
+    // per restore, and a binary search would depend on the list being sorted,
+    // which is a property we deliberately do not assert.
+    let mut bits = Vec::with_capacity(WORD_COUNT * 11);
+    for word in &words {
+        let index = WORDS
+            .iter()
+            .position(|candidate| candidate == word)
+            .ok_or(VaultError::InvalidMnemonic)?;
+        for i in (0..11).rev() {
+            bits.push((index >> i) & 1 == 1);
+        }
+    }
+
+    let entropy_bits = ENTROPY_BYTES * 8;
+    let mut entropy = Zeroizing::new([0u8; ENTROPY_BYTES]);
+    for (i, bit) in bits[..entropy_bits].iter().enumerate() {
+        if *bit {
+            entropy[i / 8] |= 1 << (7 - (i % 8));
+        }
+    }
+
+    // Verify the checksum in constant time — a mismatch is a typo, and timing
+    // must not reveal how many words were right.
+    let expected = Sha256::digest(entropy.as_ref());
+    let checksum_bits = entropy_bits / 32;
+    let mut diff = 0u8;
+    for i in 0..checksum_bits {
+        let actual = u8::from(bits[entropy_bits + i]);
+        let want = (expected[i / 8] >> (7 - (i % 8))) & 1;
+        diff |= actual ^ want;
+    }
+    if diff != 0 {
+        return Err(VaultError::InvalidMnemonic);
+    }
+
+    // PBKDF2-HMAC-SHA512, 2048 rounds, salt = "mnemonic" || passphrase.
+    // Passphrase is empty in v1.
+    Ok(Seed(pbkdf2_hmac_sha512(
+        phrase.as_bytes(),
+        b"mnemonic",
+        PBKDF2_ROUNDS,
+    )))
+}
+
+/// PBKDF2-HMAC-SHA512 producing exactly 64 bytes — one block, since SHA-512's
+/// output is 64 bytes, so the block-index loop collapses to a single pass.
+///
+/// Hand-written rather than pulling the `pbkdf2` crate: this is the whole
+/// algorithm, it is driven entirely by the official BIP-39 vectors in Step 1,
+/// and it keeps the trusted computing base on the recovery path to `sha2` and
+/// `hmac` alone.
+fn pbkdf2_hmac_sha512(password: &[u8], salt: &[u8], rounds: u32) -> [u8; 64] {
+    use hmac::Mac;
+
+    let mut mac = <Hmac<Sha512> as Mac>::new_from_slice(password)
+        .expect("HMAC accepts a key of any length");
+    mac.update(salt);
+    mac.update(&1u32.to_be_bytes()); // block index, big-endian
+    let mut u = mac.finalize().into_bytes();
+
+    let mut out = [0u8; 64];
+    out.copy_from_slice(&u);
+
+    for _ in 1..rounds {
+        let mut mac = <Hmac<Sha512> as Mac>::new_from_slice(password)
+            .expect("HMAC accepts a key of any length");
+        mac.update(&u);
+        u = mac.finalize().into_bytes();
+        for (acc, byte) in out.iter_mut().zip(u.iter()) {
+            *acc ^= byte;
+        }
+    }
+    out
 }
 
 #[cfg(test)]
@@ -503,19 +667,19 @@ mod tests {
 
     #[test]
     fn generated_mnemonic_has_24_words() {
-        let phrase = generate_mnemonic();
+        let phrase = generate_mnemonic().unwrap();
         assert_eq!(phrase.split_whitespace().count(), 24);
     }
 
     #[test]
     fn generated_mnemonic_round_trips_to_a_seed() {
-        let phrase = generate_mnemonic();
+        let phrase = generate_mnemonic().unwrap();
         assert!(seed_from_mnemonic(&phrase).is_ok());
     }
 
     #[test]
     fn same_mnemonic_always_yields_the_same_seed() {
-        let phrase = generate_mnemonic();
+        let phrase = generate_mnemonic().unwrap();
         let a = seed_from_mnemonic(&phrase).unwrap();
         let b = seed_from_mnemonic(&phrase).unwrap();
         assert_eq!(a.as_bytes(), b.as_bytes());
@@ -523,24 +687,103 @@ mod tests {
 
     #[test]
     fn two_generated_mnemonics_differ() {
-        assert_ne!(generate_mnemonic(), generate_mnemonic());
+        assert_ne!(*generate_mnemonic().unwrap(), *generate_mnemonic().unwrap());
     }
 
     #[test]
-    fn known_vector_is_stable_across_platforms() {
-        // BIP39 test vector. If this assertion ever changes, every existing
-        // recovery package in the world stops working. Treat a failure here as
-        // a release blocker, never as a test to update.
-        let phrase = "abandon abandon abandon abandon abandon abandon abandon \
-                      abandon abandon abandon abandon abandon abandon abandon \
-                      abandon abandon abandon abandon abandon abandon abandon \
-                      abandon abandon art";
-        let seed = seed_from_mnemonic(phrase).unwrap();
+    fn wordlist_matches_the_specification() {
+        // Index order IS the encoding: one moved entry silently changes every
+        // mnemonic ever generated, and no other test would notice.
+        //
+        // The expected digest is not written here by hand. Compute it once from
+        // the official english.txt and paste the result — see Step 3.
+        assert_eq!(WORDS.len(), 2048);
+        assert_eq!(WORDS[0], "abandon");
+        assert_eq!(WORDS[2047], "zoo");
         assert_eq!(
-            hex_lower(seed.as_bytes()),
-            "5eb00bbddcf069084889a8ab9155568165f5c453ccb85e70811aaed6f6da5fc1\
-             9a5ac40b389cd370d086206dec8aa6c43daea6690f20ad3d8d48b2d2ce9e38e4"
+            hex_lower(&Sha256::digest((WORDS.join("\n") + "\n").as_bytes())),
+            include_str!("../../tests/fixtures/bip39/english.txt.sha256").trim()
         );
+    }
+
+    #[test]
+    fn official_vectors_encode_and_derive_correctly() {
+        // Drives the COMPLETE Trezor reference vector set from a checked-in
+        // fixture. Do not transcribe vectors by hand into this file: a
+        // mistyped expectation either fails mysteriously or, worse, gets
+        // "fixed" by bending the implementation to match it.
+        //
+        // Fixture format, one case per line, tab-separated:
+        //     <entropy_hex>\t<mnemonic>\t<seed_hex>
+        // Only the 256-bit (24-word) cases apply here; skip the rest.
+        let raw = include_str!("../../tests/fixtures/bip39/vectors.tsv");
+        let mut checked = 0;
+
+        for line in raw.lines().filter(|l| !l.trim().is_empty()) {
+            let mut parts = line.split('\t');
+            let entropy_hex = parts.next().expect("entropy column");
+            let expected_phrase = parts.next().expect("mnemonic column");
+            let expected_seed = parts.next().expect("seed column");
+
+            if entropy_hex.len() != ENTROPY_BYTES * 2 {
+                continue; // not a 24-word case
+            }
+
+            let entropy: [u8; ENTROPY_BYTES] =
+                hex_bytes(entropy_hex).try_into().expect("32 bytes");
+
+            let phrase = mnemonic_from_entropy(&entropy);
+            assert_eq!(&*phrase, expected_phrase, "encoding {entropy_hex}");
+
+            let seed = seed_from_mnemonic(&phrase).unwrap();
+            assert_eq!(hex_lower(seed.as_bytes()), expected_seed, "derivation {entropy_hex}");
+
+            checked += 1;
+        }
+
+        // Guards against an empty or truncated fixture silently passing.
+        assert!(checked >= 8, "expected the full 24-word vector set, got {checked}");
+    }
+
+    #[test]
+    fn a_single_wrong_word_fails_the_checksum() {
+        // A typo must fail here, not silently derive a valid-looking seed for
+        // a vault that does not exist.
+        let phrase = generate_mnemonic().unwrap();
+        let mut words: Vec<&str> = phrase.split_whitespace().collect();
+        words[5] = if words[5] == "zoo" { "abandon" } else { "zoo" };
+        assert_eq!(
+            seed_from_mnemonic(&words.join(" ")),
+            Err(VaultError::InvalidMnemonic)
+        );
+    }
+
+    #[test]
+    fn a_word_outside_the_list_is_rejected() {
+        let phrase = generate_mnemonic().unwrap();
+        let mut words: Vec<&str> = phrase.split_whitespace().collect();
+        words[0] = "notabip39word";
+        assert_eq!(
+            seed_from_mnemonic(&words.join(" ")),
+            Err(VaultError::InvalidMnemonic)
+        );
+    }
+
+    #[test]
+    fn wrong_word_count_is_rejected() {
+        let phrase = generate_mnemonic().unwrap();
+        let short: Vec<&str> = phrase.split_whitespace().take(23).collect();
+        assert_eq!(
+            seed_from_mnemonic(&short.join(" ")),
+            Err(VaultError::InvalidMnemonic)
+        );
+    }
+
+    fn hex_bytes(hex: &str) -> Vec<u8> {
+        (0..hex.len())
+            .step_by(2)
+            .map(|i| u8::from_str_radix(&hex[i..i + 2], 16).unwrap())
+            .collect()
     }
 
     #[test]
@@ -561,6 +804,7 @@ Modify `rust/airo_mind/src/vault/mod.rs` — add below the existing `mod error;`
 
 ```rust
 mod seed;
+mod wordlist;
 
 pub use seed::{generate_mnemonic, seed_from_mnemonic, Seed};
 ```
@@ -568,16 +812,39 @@ pub use seed::{generate_mnemonic, seed_from_mnemonic, Seed};
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `cargo test --manifest-path rust/Cargo.toml -p airo_mind seed`
-Expected: FAIL to compile — `bip39` not yet resolved, or `Mnemonic::generate` signature mismatch.
+Expected: FAIL to compile — `wordlist` module and the fixtures do not exist yet.
 
-- [ ] **Step 3: Reconcile against the real `bip39` API**
+- [ ] **Step 3: Vendor the official wordlist and vectors**
 
-The code above targets `bip39` v2. Run `cargo doc -p bip39 --open` or read `~/.cargo/registry/src/*/bip39-2*/src/lib.rs` and adjust the two call sites (`Mnemonic::generate`, `Mnemonic::parse`, `to_seed`) to the actual signatures. Do **not** change the known-vector assertion to make a test pass — if the vector fails, the derivation is wrong.
+Both are public domain and come from the BIP-39 specification repository
+(`bitcoin/bips`, BIP-0039). **Copy them; do not transcribe by hand and do not
+generate them from memory.** A mistyped vector either fails mysteriously or, worse,
+gets "fixed" by bending the implementation to match it.
+
+```bash
+mkdir -p rust/airo_mind/tests/fixtures/bip39
+# english.txt — 2048 words, newline separated, specification order
+curl -sSL https://raw.githubusercontent.com/bitcoin/bips/master/bip-0039/english.txt \
+  -o rust/airo_mind/tests/fixtures/bip39/english.txt
+# record its digest for the wordlist guard test
+shasum -a 256 rust/airo_mind/tests/fixtures/bip39/english.txt \
+  | cut -d' ' -f1 > rust/airo_mind/tests/fixtures/bip39/english.txt.sha256
+```
+
+Then generate `src/vault/wordlist.rs` from `english.txt` (a one-off script is
+fine; commit the generated file, not the script), and build
+`tests/fixtures/bip39/vectors.tsv` from the Trezor reference vectors
+(`trezor/python-mnemonic`, `vectors.json`), tab-separated as
+`entropy_hex \t mnemonic \t seed_hex`, keeping every case.
+
+Both fixtures are checked in. This crate must build and test offline — CI has
+no network, and a vendored vector set is also a record of exactly what was
+verified.
 
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `cargo test --manifest-path rust/Cargo.toml -p airo_mind seed`
-Expected: PASS, 6 tests
+Expected: PASS — wordlist guard, the full official vector set, and the four rejection cases
 
 - [ ] **Step 5: Commit**
 
@@ -724,7 +991,7 @@ mod tests {
     fn signature_fails_under_a_different_identity() {
         let mine = RootIdentity::from_seed(&test_seed()).unwrap();
         let theirs = RootIdentity::from_seed(
-            &seed_from_mnemonic(&crate::vault::generate_mnemonic()).unwrap(),
+            &seed_from_mnemonic(&crate::vault::generate_mnemonic().unwrap()).unwrap(),
         )
         .unwrap();
         let sig = theirs.sign(b"authorize device");
@@ -735,7 +1002,7 @@ mod tests {
     fn different_seeds_produce_different_identities() {
         let a = RootIdentity::from_seed(&test_seed()).unwrap();
         let b = RootIdentity::from_seed(
-            &seed_from_mnemonic(&crate::vault::generate_mnemonic()).unwrap(),
+            &seed_from_mnemonic(&crate::vault::generate_mnemonic().unwrap()).unwrap(),
         )
         .unwrap();
         assert_ne!(a.public_key(), b.public_key());
@@ -763,7 +1030,7 @@ Expected: FAIL to compile — module not yet declared, or `ed25519_dalek` trait 
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `cargo test --manifest-path rust/Cargo.toml -p airo_mind identity`
-Expected: PASS, 6 tests
+Expected: PASS — wordlist guard, the full official vector set, and the four rejection cases
 
 - [ ] **Step 5: Commit**
 
@@ -928,7 +1195,7 @@ mod tests {
     fn certificate_fails_against_a_different_root() {
         let root = RootIdentity::from_seed(&test_seed()).unwrap();
         let stranger = RootIdentity::from_seed(
-            &seed_from_mnemonic(&crate::vault::generate_mnemonic()).unwrap(),
+            &seed_from_mnemonic(&crate::vault::generate_mnemonic().unwrap()).unwrap(),
         )
         .unwrap();
         let certificate = DeviceCertificate::issue(&root, &DeviceKey::generate(), 1);
@@ -981,7 +1248,7 @@ Expected: FAIL to compile — module not declared.
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `cargo test --manifest-path rust/Cargo.toml -p airo_mind device`
-Expected: PASS, 6 tests
+Expected: PASS — wordlist guard, the full official vector set, and the four rejection cases
 
 - [ ] **Step 5: Commit**
 
@@ -2354,7 +2621,7 @@ mod tests {
     fn a_different_seed_cannot_decrypt() {
         let (vault, seed) = seeded_vault();
         let package = RecoveryPackage::export(&vault, &seed).unwrap();
-        let stranger = seed_from_mnemonic(&generate_mnemonic()).unwrap();
+        let stranger = seed_from_mnemonic(&generate_mnemonic().unwrap()).unwrap();
 
         assert_eq!(package.decrypt(&stranger), Err(VaultError::DecryptionFailed));
     }
@@ -2927,7 +3194,14 @@ established:
   - `relabelling_a_context_id_breaks_the_wrapping`
   - `a_wrapping_cannot_be_moved_to_another_envelope`
 - [ ] `SealedRestore` has no method returning a `Vault` and no method exposing key material — verified by a reviewer, not only by tests
-- [ ] No `fill_bytes` anywhere; `grep -rn "fill_bytes" rust/airo_mind/src` returns only `try_fill_bytes`
+- [ ] **Repository-wide verification passes (#1287), not reviewer memory.** These are CI checks because the last two defects were both "fixed in one file, forgotten in another":
+  - no `panic!`, `unwrap()`, `expect()`, or `todo!()` outside `#[cfg(test)]`
+  - no `fill_bytes`; only `try_fill_bytes`
+  - no direct RNG use outside `random_key` / `random_nonce`
+  - no `AeadCore::generate_nonce`
+  - every `Serialize`/`Deserialize` type has a round-trip test
+  - every AAD-bound field has a tamper test (invariant I3)
+  - no `derive(Debug)`, `derive(Clone)`, or `derive(PartialEq)` on a secret type
 - [ ] No `derive(Debug)`, `derive(Clone)`, or `derive(PartialEq)` on any secret type
 - [ ] `crate-type = ["rlib"]`; no `flutter_rust_bridge` dependency
 - [ ] Third-party notices updated for BSD-3-Clause, and for CC0 if Path A was chosen
