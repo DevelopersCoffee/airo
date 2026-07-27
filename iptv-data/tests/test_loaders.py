@@ -2,7 +2,9 @@
 
 from pathlib import Path
 
-from src.loaders.iptv_org_loader import IptvOrgLoader
+import pytest
+
+from src.loaders.iptv_org_loader import IptvOrgLoader, UpstreamSchemaError
 from src.loaders.m3u_loader import M3ULoader
 from src.models import SourceType
 from src.utils.config import SourceConfig
@@ -166,3 +168,193 @@ class TestIptvOrgLoader:
         assert channel.extra_attrs["network"] == "Sony"
         assert channel.extra_attrs["owners"] == ["Sony Pictures Networks India"]
         assert channel.extra_attrs["website"] == "https://www.sonyyay.com/"
+
+    def test_joins_logo_feed_and_ranks_all_streams(self) -> None:
+        loader = IptvOrgLoader(SourceConfig(enabled=True), target_countries=["IN"])
+        loader._channels_data = [
+            {
+                "id": "News.in",
+                "name": "News",
+                "country": "IN",
+                "categories": ["news"],
+                "is_nsfw": False,
+                "closed": None,
+                "replaced_by": None,
+            }
+        ]
+        loader._feeds_data = [
+            {
+                "channel": "News.in",
+                "id": "SD",
+                "is_main": False,
+                "languages": ["eng"],
+                "format": "480i",
+                "timezones": ["Asia/Kolkata"],
+            },
+            {
+                "channel": "News.in",
+                "id": "HD",
+                "is_main": True,
+                "languages": ["hin"],
+                "format": "1080i",
+                "timezones": ["Asia/Kolkata"],
+            },
+        ]
+        loader._logos_data = [
+            {
+                "channel": "News.in",
+                "feed": "HD",
+                "in_use": True,
+                "width": 2000,
+                "height": 1000,
+                "format": "SVG",
+                "url": "https://feed.example/logo.svg",
+            },
+            {
+                "channel": "News.in",
+                "feed": None,
+                "in_use": True,
+                "width": 100,
+                "height": 100,
+                "format": "PNG",
+                "url": "https://channel.example/logo.png",
+            },
+        ]
+        loader._streams_data = [
+            {
+                "channel": "News.in",
+                "feed": "SD",
+                "url": "https://sd.example/live",
+                "quality": "2160p",
+                "user_agent": None,
+                "referrer": None,
+            },
+            {
+                "channel": "News.in",
+                "feed": "HD",
+                "url": "https://hd.example/live",
+                "quality": "1080p",
+                "user_agent": "HD-Agent",
+                "referrer": "https://news.example",
+            },
+            {
+                "channel": None,
+                "feed": None,
+                "url": "https://orphan.example/live",
+                "quality": None,
+                "user_agent": None,
+                "referrer": None,
+            },
+        ]
+
+        channels = loader._process_channels()
+
+        assert [channel.stream_url for channel in channels] == [
+            "https://hd.example/live",
+            "https://sd.example/live",
+        ]
+        assert channels[0].tvg_logo == "https://channel.example/logo.png"
+        assert channels[0].language == "hin"
+        assert channels[0].extra_attrs["format"] == "1080i"
+        assert channels[0].extra_attrs["timezones"] == ["Asia/Kolkata"]
+        assert channels[0].headers is not None
+        assert channels[0].headers.user_agent == "HD-Agent"
+        assert channels[0].headers.referrer == "https://news.example"
+
+    @pytest.mark.parametrize(
+        ("filter_nsfw", "reason", "is_nsfw", "expected"),
+        [
+            (False, "dmca", False, 0),
+            (False, "nsfw", True, 1),
+            (True, "nsfw", False, 0),
+        ],
+    )
+    def test_block_policy(
+        self,
+        filter_nsfw: bool,
+        reason: str,
+        is_nsfw: bool,
+        expected: int,
+    ) -> None:
+        loader = IptvOrgLoader(
+            SourceConfig(enabled=True),
+            target_countries=["IN"],
+            filter_nsfw=filter_nsfw,
+        )
+        loader._channels_data = [
+            {
+                "id": "Policy.in",
+                "name": "Policy",
+                "country": "IN",
+                "categories": [],
+                "is_nsfw": is_nsfw,
+                "closed": None,
+                "replaced_by": None,
+            }
+        ]
+        loader._streams_data = [{"channel": "Policy.in", "url": "https://live"}]
+        loader._blocklist = {"Policy.in": reason}
+
+        assert len(loader._process_channels()) == expected
+
+    def test_closed_and_replaced_channels_are_counted_and_dropped(self) -> None:
+        loader = IptvOrgLoader(SourceConfig(enabled=True), target_countries=["IN"])
+        loader._channels_data = [
+            {
+                "id": "Closed.in",
+                "name": "Closed",
+                "country": "IN",
+                "categories": [],
+                "is_nsfw": False,
+                "closed": "2025-01-01",
+                "replaced_by": None,
+            },
+            {
+                "id": "Old.in",
+                "name": "Old",
+                "country": "IN",
+                "categories": [],
+                "is_nsfw": False,
+                "closed": None,
+                "replaced_by": "New.in",
+            },
+            {
+                "id": "New.in",
+                "name": "New",
+                "country": "IN",
+                "categories": [],
+                "is_nsfw": False,
+                "closed": None,
+                "replaced_by": None,
+            },
+        ]
+        loader._streams_data = [
+            {"channel": channel_id, "url": f"https://{channel_id}"}
+            for channel_id in ("Closed.in", "Old.in", "New.in")
+        ]
+
+        channels = loader._process_channels()
+
+        assert [channel.tvg_id for channel in channels] == ["New.in"]
+        assert loader.drop_counts["closed"] == 1
+        assert loader.drop_counts["replaced"] == 1
+
+    def test_schema_guard_rejects_missing_and_wrong_types(self) -> None:
+        loader = IptvOrgLoader(SourceConfig(enabled=True))
+        valid = {
+            "channel": "News.in",
+            "feed": None,
+            "url": "https://live",
+            "quality": None,
+            "user_agent": None,
+            "referrer": None,
+        }
+
+        with pytest.raises(UpstreamSchemaError, match=r"streams.json.*missing.*url"):
+            loader._validate_schema(
+                "streams", [{key: value for key, value in valid.items() if key != "url"}]
+            )
+        with pytest.raises(UpstreamSchemaError, match=r"streams.json.*wrong_type.*url"):
+            loader._validate_schema("streams", [{**valid, "url": 42}])
+
+        loader._validate_schema("streams", [{**valid, "new_field": "allowed"}])

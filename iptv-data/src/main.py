@@ -10,6 +10,7 @@ from pathlib import Path
 
 from .exporters import JsonExporter, M3UExporter
 from .loaders import IptvOrgLoader, M3ULoader
+from .loaders.iptv_org_loader import UpstreamSchemaError
 from .models import PipelineMetadata, RawChannel
 from .processors import (
     Deduplicator,
@@ -67,6 +68,7 @@ async def run_pipeline(
         iptv_org_loader = IptvOrgLoader(
             config.sources["iptv_org"],
             target_countries=config.target_countries,
+            filter_nsfw=bool(config.processing.get("filter_nsfw", True)),
         )
         try:
             iptv_org_channels = await iptv_org_loader.load()
@@ -74,6 +76,10 @@ async def run_pipeline(
             taxonomies = iptv_org_loader.taxonomies
         except Exception as e:
             logger.warning(f"Failed to load IPTV-org: {e}")
+            if "upstream_schema_mismatch" in config.failure_handling.get(
+                "hard_fail", []
+            ) and isinstance(getattr(e, "cause", None), UpstreamSchemaError):
+                return 1
 
     logger.info(f"Loaded {len(all_channels)} channels from all sources")
 
@@ -92,9 +98,7 @@ async def run_pipeline(
     if not skip_validation and config.validation.enabled:
         logger.info("Step 3: Validating streams...")
         validator = StreamValidator(config.validation)
-        normalized_channels, dead_streams_detected = await validator.validate(
-            normalized_channels
-        )
+        normalized_channels, dead_streams_detected = await validator.validate(normalized_channels)
     else:
         logger.info("Step 3: Skipping stream validation")
 
@@ -109,9 +113,7 @@ async def run_pipeline(
         logger.info("Step 5: Inspecting bounded stream health...")
         health_started = time.monotonic()
         health_processor = StreamHealthProcessor(config.stream_health)
-        processed_channels, health_summary = await health_processor.enrich(
-            processed_channels
-        )
+        processed_channels, health_summary = await health_processor.enrich(processed_channels)
         logger.info(
             "Stream health completed "
             f"available={health_summary.available} "

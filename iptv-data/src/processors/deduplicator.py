@@ -124,6 +124,9 @@ class Deduplicator:
             owners.update(channel.extra_attrs.get("owners", []))
             website = website or channel.extra_attrs.get("website")
             stream_sources.append(self._stream_source(channel))
+            quality = channel.extra_attrs.get("quality")
+            if isinstance(quality, str) and quality:
+                quality_urls.setdefault(quality, channel.stream_url)
             categories.add(channel.category)
             categories.update(channel.extra_attrs.get("categories", []))
 
@@ -199,6 +202,7 @@ class Deduplicator:
         }.get(status, health_rank[channel.validation_status])
         return (
             explicit_rank,
+            0 if attrs.get("is_main_feed") is True else 1,
             0 if attrs.get("label_correct") is True else 1,
             -float(attrs.get("fps") or -1),
             -int(attrs.get("height") or -1),
@@ -208,10 +212,8 @@ class Deduplicator:
         )
 
     def _stream_source(self, channel: NormalizedChannel) -> dict[str, object]:
-        rank = self._source_rank(channel)[0]
-        health = {0: "available", 1: "restricted", 3: "unavailable"}.get(
-            rank, "unchecked"
-        )
+        rank = int(self._source_rank(channel)[0])
+        health = {0: "available", 1: "restricted", 3: "unavailable"}.get(rank, "unchecked")
         attrs = channel.extra_attrs
         return {
             "url": channel.stream_url,
@@ -227,9 +229,7 @@ class Deduplicator:
             "bitrate": attrs.get("bitrate"),
         }
 
-    def _unique_stream_sources(
-        self, sources: list[dict[str, object]]
-    ) -> list[dict[str, object]]:
+    def _unique_stream_sources(self, sources: list[dict[str, object]]) -> list[dict[str, object]]:
         by_url: dict[str, dict[str, object]] = {}
         for source in sources:
             by_url.setdefault(str(source["url"]), source)
@@ -264,9 +264,7 @@ class Deduplicator:
             network=channel.extra_attrs.get("network"),
             owners=list(channel.extra_attrs.get("owners", [])),
             website=channel.extra_attrs.get("website"),
-            provenance=(
-                "matched" if channel.source is SourceType.IPTV_ORG else "unmatched"
-            ),
+            provenance=("matched" if channel.source is SourceType.IPTV_ORG else "unmatched"),
             stream_sources=[self._stream_source(channel)],
             is_working=self._source_rank(channel)[0] != 3,
             categories=sorted(

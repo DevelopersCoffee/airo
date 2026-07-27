@@ -160,8 +160,10 @@ class TestDeduplicator:
             user_agent="Primary-Agent",
             referrer="https://primary.example",
         )
+        primary.extra_attrs["quality"] = "1080p"
         backup = self._make_channel("Header News", SourceType.IPTV_ORG)
         backup.stream_url = "https://backup.example/live.m3u8"
+        backup.extra_attrs["quality"] = "720p"
         backup.headers = ChannelHeaders(
             user_agent="Backup-Agent",
             referrer="https://backup.example",
@@ -181,6 +183,8 @@ class TestDeduplicator:
             "Backup-Agent",
             "https://backup.example",
         )
+        assert result[0].quality_urls["1080p"] == primary.stream_url
+        assert result[0].quality_urls["720p"] == backup.stream_url
 
     def test_upstream_alias_merges_punctuation_variant(self, deduplicator: Deduplicator) -> None:
         m3u = self._make_channel("Sony YAY", SourceType.M3U)

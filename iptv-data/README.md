@@ -90,6 +90,12 @@ See `config/default.yaml` for all configuration options. Key settings:
 - **processing**: Validation, deduplication, normalization rules
 - **output**: Format, versioning, thresholds
 
+`processing.filter_nsfw` (default `true`) controls both IPTV-org channel
+metadata and blocklist entries whose reason is `nsfw`. DMCA entries are always
+excluded. Consumed channel, stream, blocklist, logo, and feed fields are
+schema-checked before publication; a missing field or incompatible type
+hard-fails the run so the current artifact is not silently replaced.
+
 ## 📤 Output
 
 The pipeline produces:
